@@ -43,13 +43,13 @@ extern unsigned char D_8029DA00[];      /* the small font's */
  * every other printable loads its glyph's column of the font page and draws
  * it as a texture rectangle, clamped at the top-left screen edges when it
  * runs off them. The frame (0x1C0, the four homed locals at 0x184..0x190)
- * is set by the declaration order and the two unused ints; the loop walks a
+ * is set by the declaration order and the unused int; the loop walks a
  * copy of the argument, which leaves the argument itself homed.
- * RESIDUE (549): the display-list pointer's address lives in t1 where the
- * ROM has a3, which renames the temporaries of every command after it. */
-/* @t3 0x8022E4E0 */
-/* @t4-pass 0x8022E4E0 1 2026-09-29 compiles 150 best 549 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022E4E0 2 2026-09-29 compiles 150 best 549 moved 0  (n64/tools/n64permute.py) */
+ * The glyph width in screen pixels is read once into n; the commands whose
+ * word order or register use is fixed by the line layout are written out as
+ * explicit blocks; the t origin of the clamped rectangle is computed into
+ * u1 between its two words, which numbers it ahead of dtdy and fixes the
+ * frame slots of the hoisted rectangle terms. */
 /* @implements 0x8022E4E0 tgr BrTextEmitString */
 void BrTextEmitString(unsigned char *s)
 {
@@ -111,16 +111,28 @@ void BrTextEmitString(unsigned char *s)
   gDPSetTextureFilter(D_8028A858++, D_8028A898);
   gDPSetTextureLUT(D_8028A858++, 0);
   gDPSetTexturePersp(D_8028A858++, G_TP_NONE);
-  gDPSetTextureLOD(D_8028A858++, 0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)( 0xba) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 16) & ((0x01 << ( 8)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 8)) - 1)) << ( 0))) );
+    _g->words.w1 = (unsigned int)( 0);
+  }
   gSPTexture(D_8028A858++, 0xffff, 0xffff, 0, 0, 1);
   gDPTileSync(D_8028A858++);
   gDPLoadSync(D_8028A858++);
   gDPPipeSync(D_8028A858++);
   gDPSetTile(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0x1B0, 7, 0, 0, 0, 0, 0, 0, 0);
   gDPSetTextureImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, D_8028BDC8 ? rampB : rampA);
-  gDPLoadBlock(D_8028A858++, 7, 0, 0, 319, 0);
-  gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, 1, 0x1B0, 1, 0, 2, 6, 0, 0, 3, 0);
-  gDPSetTileSize(D_8028A858++, 1, 2, 2, 0x1E, 0x9E);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)(0xf3) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+    _g->words.w1 = (((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)(((( 319) < ( 2047) ? ( 319) : ( 2047)))) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0x1B0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0x1E) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0x9E) & ((0x01 << ( 12)) - 1)) << ( 0)));
+  }
   if (D_8028BDCC != 0) {
     gDPSetEnvColor(D_8028A858++, D_8028BDD0, D_8028BDD4, D_8028BDD8, 0xff);
     gDPSetPrimColor(D_8028A858++, 0xff, 0xff, D_8028BDDC, D_8028BDE0, D_8028BDE4, 0xff);
@@ -135,7 +147,8 @@ void BrTextEmitString(unsigned char *s)
   while (*p != 0) {
     c = *p;
     if (c != ' ') {
-      if (c == '%' && (n = p[1]) != 0) {
+      if (c == '%' && p[1] != 0) {
+        n = p[1];
         if (n == '%') {
           p++;
           c = *p;
@@ -229,21 +242,47 @@ void BrTextEmitString(unsigned char *s)
         uls = tbl[g];
         w = tbl[g + 1] - uls + 1;
         lrs = uls + w;
+        n = w * size / cell;
         gDPSetTextureImage(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, texw, tex);
-        gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, ((lrs - uls + 1) + 7) >> 3, 0, 7, 0, 2, 6, 0, 2, 6, 0);
+        {
+          Gfx *_g = (Gfx *)(D_8028A858++);
+
+          _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
+                         _SHIFTL(((lrs - uls + 1) + 7) >> 3, 9, 9) | _SHIFTL(0, 0, 9);
+          _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
+                         _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4);
+        }
         gDPLoadSync(D_8028A858++);
-        gDPLoadTile(D_8028A858++, 7, uls << 2, row << 2, lrs << 2, (row + cell) << 2);
+        {
+          Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( uls << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( row << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+          _g->words.w1 = ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( lrs << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( (row + cell) << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+        }
         gDPTileSync(D_8028A858++);
-        gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, ((w + 1) + 7) >> 3, 0, 0, 0, 2, 6, 0, 2, 6, 0);
-        gDPSetTileSize(D_8028A858++, 0, 2, 2, ((w - 1) << 2) + 2, ((cell - 1) << 2) + 2);
-        if (x < 0 || x + w * size / cell > 320 || y < 0 || y + size > 240) {
-          gSPScisTextureRectangle(D_8028A858++, x << 2, y << 2, (x + w * size / cell) << 2, (y + size) << 2, 0,
-                                  16, ((cell - 1) << 5) + 16, (w << 10) / (w * size / cell),
-                                  -(((cell << 10) - (1 << 10)) / size));
+        {
+          Gfx *_g = (Gfx *)(D_8028A858++);
+
+          _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+          _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+        }
+        {
+          Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+          _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( ((w - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( ((cell - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+        }
+        if (x < 0 || x + n > 320 || y < 0 || y + size > 240) {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)((x + n) << 2), 0), 12, 12) | _SHIFTL(MAX((s16)((y + size) << 2), 0), 0, 12));
+            _g->words.w1 = (_SHIFTL((0), 24, 3) | _SHIFTL(MAX((s16)(x << 2), 0), 12, 12) | _SHIFTL(MAX((s16)(y << 2), 0), 0, 12));
+            u1 = (cell - 1) << 5;
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(((16) - (((s16)(x << 2) < 0) ? (((s16)((w << 10) / (n)) < 0) ? (MAX((((s16)(x << 2) * (s16)((w << 10) / (n))) >> 7), 0)) : (MIN((((s16)(x << 2) * (s16)((w << 10) / (n))) >> 7), 0))) : 0)), 16, 16) | _SHIFTL(((u1 + 16) - (((y << 2) < 0) ? (((s16)(-(((cell << 10) - (1 << 10)) / size)) < 0) ? (MAX((((s16)(y << 2) * (s16)(-(((cell << 10) - (1 << 10)) / size))) >> 7), 0)) : (MIN((((s16)(y << 2) * (s16)(-(((cell << 10) - (1 << 10)) / size))) >> 7), 0))) : 0)), 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(((w << 10) / (n)), 16, 16) | _SHIFTL((-(((cell << 10) - (1 << 10)) / size)), 0, 16)));
+          }
         } else {
-          gSPTextureRectangle(D_8028A858++, x << 2, y << 2, (x + w * size / cell) << 2, (y + size) << 2, 0,
-                              16, ((cell - 1) << 5) + 16, (w << 10) / (w * size / cell),
-                              -(((cell << 10) - (1 << 10)) / size));
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + n) << 2, 12, 12) | _SHIFTL((y + size) << 2, 0, 12));
+            _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(16, 16, 16) | _SHIFTL(((cell - 1) << 5) + 16, 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((w << 10) / (n), 16, 16) | _SHIFTL(-(((cell << 10) - (1 << 10)) / size), 0, 16)));
+          }
         }
         x += (w - pad) * size / cell;
       }
