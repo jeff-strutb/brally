@@ -59,8 +59,8 @@
 @drop define:pE_p39B720
 @drop define:pE_nAB428
 @drop define:pE_nAB42C
-@drop fn:BrExt_10052030
-@after fn:BrExt_10052030
+@drop proto:BrExt_10052030
+@after proto:BrExt_10052030
 
 /* ==========================================================================
  * The six menu-screen builders

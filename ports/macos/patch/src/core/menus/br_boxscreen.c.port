@@ -164,8 +164,8 @@ BR73_HELPER BrUiCtl_ *Br73Ctl(BrUiPage_ *pPage, BrPhase_ *pPhase,
 @drop define:pS73_p0AB508
 @drop define:g73_n0AB428
 @drop define:g73_n0AB42C
-@drop fn:BrExt_10054B50
-@after fn:BrExt_10054B50
+@drop proto:BrExt_10054B50
+@after proto:BrExt_10054B50
 
 /* Shorthand so the transcriptions stay readable.  Relies on the local names
  * pPage / pPhase / pCtl, which every builder declares. */
