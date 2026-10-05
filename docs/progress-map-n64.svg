@@ -11,7 +11,7 @@
 <rect x="405.6" y="242.5" width="61.9" height="89.0" fill="#58a6ff"><title>(unnamed)  0x80208CF0  1860B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="332.1" width="50.4" height="68.1" fill="#3fb950"><title>(unnamed)  0x802063A4  1164B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="400.8" width="50.4" height="53.3" fill="#3fb950"><title>(unnamed)  0x80208570  912B  [unfiled 0x8020xxxx]</title></rect>
-<rect x="317.5" y="332.1" width="42.1" height="46.2" fill="#58a6ff"><title>(unnamed)  0x80208A58  664B  [unfiled 0x8020xxxx]</title></rect>
+<rect x="317.5" y="332.1" width="42.1" height="46.2" fill="#3fb950"><title>(unnamed)  0x80208A58  664B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="317.5" y="378.9" width="42.1" height="38.3" fill="#3fb950"><title>(unnamed)  0x802060DC  552B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="317.5" y="417.8" width="42.1" height="36.3" fill="#58a6ff"><title>(unnamed)  0x8020C460  524B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="360.3" y="332.1" width="37.9" height="33.2" fill="#3fb950"><title>(unnamed)  0x8020A820  432B  [unfiled 0x8020xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 465 &#183; T3 codegen-only 102 &#183; 132,292/457,392 bytes exact (28.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 466 &#183; T3 codegen-only 101 &#183; 132,956/457,392 bytes exact (29.1%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
