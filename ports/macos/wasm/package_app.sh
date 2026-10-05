@@ -206,6 +206,39 @@ if ls ports/common/models/placements/*.env >/dev/null 2>&1; then
         [ -d "ports/common/textures/$a" ] && { cp -Rc "ports/common/textures/$a" "$ENVR/textures/" 2>/dev/null ||
             cp -R "ports/common/textures/$a" "$ENVR/textures/"; }
     done
+    # the Remastered landscape (host/host_terrain.m): each track's field and
+    # canopy (remaster_terrain.py), its hidden-ground list and scatter, every
+    # model the scatter names, the photoscanned ground sets at the 2048 the
+    # loader samples them at, and the grass leaves
+    if ls ports/common/models/terrain/*.ter >/dev/null 2>&1; then
+        mkdir -p "$ENVR/models/terrain"
+        for f in ports/common/models/terrain/*.ter ports/common/models/terrain/*.canopy; do
+            [ -f "$f" ] && { cp -c "$f" "$ENVR/models/terrain/" 2>/dev/null || cp "$f" "$ENVR/models/terrain/"; }
+        done
+        for f in ports/common/models/placements/*.terrain ports/common/models/placements/*.scatter; do
+            [ -f "$f" ] && cp "$f" "$ENVR/models/placements/"
+        done
+        for a in $($PY -c '
+import sys, struct
+for p in sys.argv[1:]:
+    b = open(p, "rb").read(); n = struct.unpack("<i", b[4:8])[0]; o = 8
+    for _ in range(n):
+        e = b.index(b"\0", o); print(b[o:e].decode().split(" ")[0]); o = e + 1
+' ports/common/models/placements/*.scatter | sort -u); do
+            [ -d "$ENVR/models/$a" ] && continue
+            cp -Rc "ports/common/models/$a" "$ENVR/models/" 2>/dev/null || cp -R "ports/common/models/$a" "$ENVR/models/"
+            [ -d "ports/common/textures/$a" ] && { cp -Rc "ports/common/textures/$a" "$ENVR/textures/" 2>/dev/null ||
+                cp -R "ports/common/textures/$a" "$ENVR/textures/"; }
+        done
+        PH=ports/common/models/env/polyhaven/textures
+        for m in sparse_grass forest_ground_04 dirt mossy_rock gray_rocks rock_01; do
+            mkdir -p "$ENVR/textures/$m"
+            for k in diff_4k.jpg nor_gl_4k.png arm_4k.jpg disp_4k.png; do
+                [ -f "$PH/$m/${m}_$k" ] && sips -Z 2048 "$PH/$m/${m}_$k" --out "$ENVR/textures/$m/" >/dev/null
+            done
+        done
+        cp -R "$PH/grass_blades" "$ENVR/textures/"
+    fi
     [ -f ports/common/models/env/thirdparty/CREDITS.tsv ] &&
         cp ports/common/models/env/thirdparty/CREDITS.tsv "$APP/Contents/Resources/Licenses/ThirdPartyModels.tsv"
 fi
