@@ -251,7 +251,7 @@ class Driver(P.ProbeBox):
     def paint_return(self):
         """Back into the paint shop after a press that left it."""
         yield from self.wait_for(lambda: self.mode in (self.PAINT, 0x802111E0, CAR_SELECT, TITLE),
-                                 1500, 'back to the paint shop')
+                                 2400, 'back to the paint shop')
         if self.mode == TITLE:                  # the shop's exit goes to the title
             yield from self.idle(60)
             yield from self.tap('START')

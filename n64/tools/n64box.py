@@ -108,6 +108,7 @@ class Box:
         self.events = {}                        # event -> (mq, msg)
         self.vi_event = None                    # (mq, msg, retraceCount)
         self.count = 0                          # virtual osGetCount
+        self.vi_due = TICKS_PER_FRAME           # the next vertical retrace, on the count
         self.frame = 0
         self.frames_wanted = 0
         self.pending = []                       # [(when, mq, msg)] deliveries
@@ -270,7 +271,11 @@ class Box:
     def advance_time(self):
         """Nothing can run: deliver the next thing the hardware would do.
         -> False when there is nothing left that could ever wake a thread."""
-        next_vi = (self.count // TICKS_PER_FRAME + 1) * TICKS_PER_FRAME
+        # the VI interrupts every 1/60 s whatever else falls due on that tick:
+        # an event due exactly on it is delivered first, then the retrace
+        # (recomputing it from the count would skip it, and the clock would
+        # run ahead of the frames)
+        next_vi = self.vi_due
         self.pending.sort(key=lambda p: p[0])
         if self.pending and self.pending[0][0] <= next_vi:
             when, kind, a, b = self.pending.pop(0)
@@ -287,6 +292,7 @@ class Box:
             return True
         # the next vertical retrace
         self.count = next_vi
+        self.vi_due = next_vi + TICKS_PER_FRAME
         self.frame += 1
         self.log.append((self.frame, 'ram', self.ram_digest()))
         if self.frames_wanted and self.frame >= self.frames_wanted:

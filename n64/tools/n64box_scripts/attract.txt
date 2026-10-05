@@ -1,5 +1,6 @@
 # Boot, dismiss the Controller Pak warning, then leave the pad alone so the
 # game runs its attract sequence (title, credits, demo race).
+frames 4092
 0 -
 40 A
 46 -
