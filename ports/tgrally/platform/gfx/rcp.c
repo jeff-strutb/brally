@@ -387,17 +387,20 @@ static int tile_texture(int t, int *pw, int *ph)
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++)
             texel(t, x, y, rgba + (y * w + x) * 4);
+    if (s_cache[slot].tex)
+        rdr_texture_free(s_cache[slot].tex);
+    s_cache[slot].tex = rdr_texture(rgba, w, h);
     if (s_texdump) {
         static int n;
         char path[512];
         int brr_png_write(const char *path, const uint8_t *px, int w, int h, int stride, int order);
-        snprintf(path, sizeof path, "%s/tex%04d_f%d_s%d_%dx%d.png", s_texdump, n++, s_tile[t].fmt,
-                 s_tile[t].siz, w, h);
+        int za = 0, q;
+        for (q = 0; q < w * h; q++)
+            za += rgba[q * 4 + 3] == 0;
+        snprintf(path, sizeof path, "%s/tex%04d_h%d_f%d_s%d_%dx%d_a0-%d_pal%d.png", s_texdump, n++, s_cache[slot].tex, s_tile[t].fmt,
+                 s_tile[t].siz, w, h, za, s_tile[t].pal);
         brr_png_write(path, rgba, w, h, w * 4, 0);
     }
-    if (s_cache[slot].tex)
-        rdr_texture_free(s_cache[slot].tex);
-    s_cache[slot].tex = rdr_texture(rgba, w, h);
     s_cache[slot].key = key;
     s_cache[slot].w = w;
     s_cache[slot].h = h;
@@ -513,6 +516,14 @@ static void state(RdrState *st, int tile0)
         int lod = (s_omh >> 16) & 1;
         fill_tile(&st->tile[1], (lod && s_tex.level == 0) ? tile0 : (tile0 + 1) & 7);
     }
+    if (((s_omh >> 16) & 1) && s_tex.level > 0 && (uses_texel(st, 0) || uses_texel(st, 1))) {
+        int k;
+        st->lod_levels = s_tex.level + 1;             /* tiles t .. t + level */
+        if (st->lod_levels > 8)
+            st->lod_levels = 8;
+        for (k = 0; k < st->lod_levels; k++)
+            fill_tile(&st->lod[k], (tile0 + k) & 7);
+    }
     st->filter = ((s_omh >> 12) & 3) == 2;
     bl = s_oml >> 16;
     /* cycle 1's blender: P * A + M * B */
@@ -540,8 +551,16 @@ static void state(RdrState *st, int tile0)
             st->blend_mode = RDR_BLEND_OPAQUE;
     }
     st->alpha_compare = (s_oml & 3) == 1 ? 1 : (s_oml & 3) == 3 ? 2 : 0;
-    if (s_oml & 0x2000)                               /* alpha from coverage: cut at half */
+    if ((s_oml & 0x2000) && (s_oml & 0x8) && st->blend_mode == RDR_BLEND_OPAQUE) {
+        /* coverage from alpha, anti-aliased: a pixel's partial coverage blends it
+           into the framebuffer by that coverage (soft edges, dust, foliage); none
+           drops it */
+        st->blend_mode = RDR_BLEND_ALPHA;
+        st->blend_alpha = 0;
+        st->alpha_compare = 4;
+    } else if (s_oml & 0x2000) {                      /* coverage from alpha, no AA: cut at half */
         st->alpha_compare = st->alpha_compare ? st->alpha_compare : 3;
+    }
     st->z_test = (s_geom & G_ZBUFFER) && (s_oml & 0x10);
     st->z_write = (s_geom & G_ZBUFFER) && (s_oml & 0x20);
     st->z_decal = ((s_oml >> 10) & 3) == 3;
@@ -601,6 +620,9 @@ static void triangle(int a, int b, int c)
                 s_tile[(s_tex.tile + 1) & 7].lrt, s_tile[(s_tex.tile + 1) & 7].masks, s_tile[(s_tex.tile + 1) & 7].maskt,
                 s_tile[(s_tex.tile + 1) & 7].shifts, s_tile[(s_tex.tile + 1) & 7].shiftt, st.tile[1].w, st.tile[1].h),
         fprintf(stderr, "    fog %.2f %.2f %.2f %.2f blend %.2f\n", s_fogc[0], s_fogc[1], s_fogc[2], s_fogc[3], s_blendc[3]),
+        fprintf(stderr, "    shade %.2f %.2f %.2f %.2f | %.2f %.2f %.2f %.2f | %.2f %.2f %.2f %.2f\n",
+                v[0]->v.r, v[0]->v.g, v[0]->v.b, v[0]->v.a, v[1]->v.r, v[1]->v.g, v[1]->v.b, v[1]->v.a,
+                v[2]->v.r, v[2]->v.g, v[2]->v.b, v[2]->v.a),
         fprintf(stderr, "    prim %.2f %.2f %.2f %.2f env %.2f %.2f %.2f %.2f texscale %04X %04X st %.1f,%.1f %.1f,%.1f %.1f,%.1f lookat %d %d %d / %d %d %d\n",
                 s_prim[0], s_prim[1], s_prim[2], s_prim[3], s_env[0], s_env[1], s_env[2], s_env[3], s_tex.ss, s_tex.ts,
                 v[0]->v.s, v[0]->v.t, v[1]->v.s, v[1]->v.t, v[2]->v.s, v[2]->v.t, s_lookat[0][0], s_lookat[0][1], s_lookat[0][2],

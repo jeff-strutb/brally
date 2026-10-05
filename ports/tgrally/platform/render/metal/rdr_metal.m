@@ -24,7 +24,7 @@ static const char *k_shader =
 "struct VOut { float4 pos [[position]]; float2 st; float4 rgba; };\n"
 "struct Tile { float4 org; int4 size; int4 wrap; int4 cl; };\n"
 "struct U { int4 cc[4]; float4 prim, env, fog, blendc; float plod; int cycle, filter, fog_blend;\n"
-"           int alpha_cmp, ntex, balpha, pad1; float2 fb; Tile tile[2]; };\n"
+"           int alpha_cmp, ntex, balpha, lodn; float2 fb; Tile tile[10]; };\n"
 "vertex VOut vs(VIn v [[stage_in]], constant U &u [[buffer(1)]]) {\n"
 "  VOut o; float w = v.pos.w;\n"
 "  o.pos = float4(v.pos.x / u.fb.x * 2.0 - w, w - v.pos.y / u.fb.y * 2.0, (v.pos.z + w) * 0.5, w);\n"
@@ -48,28 +48,42 @@ static const char *k_shader =
 "  float4 a = mix(t.read(uint2(xa, ya)), t.read(uint2(xb, ya)), fx);\n"
 "  float4 b = mix(t.read(uint2(xa, yb)), t.read(uint2(xb, yb)), fx);\n"
 "  return mix(a, b, fy); }\n"
-"float4 inp(int c, float4 comb, float4 t0, float4 t1, float4 sh, constant U &u) {\n"
+"float4 inp(int c, float4 comb, float4 t0, float4 t1, float4 sh, constant U &u, float lfrac) {\n"
 "  switch (c) {\n"
 "  case 0: return comb; case 1: return t0; case 2: return t1; case 3: return u.prim; case 4: return sh;\n"
 "  case 5: return u.env; case 6: return float4(1.0); case 8: return float4(0.5);\n"
 "  case 11: return float4(comb.a); case 12: return float4(t0.a); case 13: return float4(t1.a);\n"
 "  case 14: return float4(u.prim.a); case 15: return float4(sh.a); case 16: return float4(u.env.a);\n"
+"  case 17: return float4(lfrac);\n"
 "  case 18: return float4(u.plod);\n"
 "  default: return float4(0.0); } }\n"
 "fragment float4 fs(VOut i [[stage_in]], constant U &u [[buffer(1)]],\n"
-"                   texture2d<float> t0t [[texture(0)]], texture2d<float> t1t [[texture(1)]]) {\n"
-"  float4 t0 = float4(0.0), t1 = float4(0.0), comb = float4(0.0);\n"
+"                   texture2d<float> t0t [[texture(0)]], texture2d<float> t1t [[texture(1)]],\n"
+"                   array<texture2d<float>, 8> lt [[texture(2)]]) {\n"
+"  float4 t0 = float4(0.0), t1 = float4(0.0), comb = float4(0.0); float lfrac = 0.0;\n"
+"  if (u.lodn > 0) {\n"
+"    float2 dx = dfdx(i.st), dy = dfdy(i.st);\n"
+"    float lod = max(max(abs(dx.x), abs(dx.y)), max(abs(dy.x), abs(dy.y)));\n"
+"    int level = 0;\n"
+"    if (lod >= 1.0) { level = min(int(floor(log2(lod))), 7); lfrac = min(lod / exp2(float(level)) - 1.0, 1.0); }\n"
+"    int a = min(level, u.lodn - 1), b = min(level + 1, u.lodn - 1);\n"
+"    if (level >= u.lodn - 1) lfrac = 1.0;\n"
+"    t0 = texel(lt[a], u.tile[2 + a], i.st, u.filter);\n"
+"    t1 = texel(lt[b], u.tile[2 + b], i.st, u.filter);\n"
+"  } else {\n"
 "  if ((u.ntex & 1) != 0) t0 = texel(t0t, u.tile[0], i.st, u.filter);\n"
 "  if ((u.ntex & 2) != 0) t1 = texel(t1t, u.tile[1], i.st, u.filter);\n"
+"  }\n"
 "  for (int c = 0; c < u.cycle; c++) {\n"
 "    int4 r = u.cc[c * 2], a = u.cc[c * 2 + 1];\n"
-"    float3 rgb = (inp(r.x, comb, t0, t1, i.rgba, u).rgb - inp(r.y, comb, t0, t1, i.rgba, u).rgb) *\n"
-"                 inp(r.z, comb, t0, t1, i.rgba, u).rgb + inp(r.w, comb, t0, t1, i.rgba, u).rgb;\n"
-"    float al = (inp(a.x, comb, t0, t1, i.rgba, u).a - inp(a.y, comb, t0, t1, i.rgba, u).a) *\n"
-"               inp(a.z, comb, t0, t1, i.rgba, u).a + inp(a.w, comb, t0, t1, i.rgba, u).a;\n"
+"    float3 rgb = (inp(r.x, comb, t0, t1, i.rgba, u, lfrac).rgb - inp(r.y, comb, t0, t1, i.rgba, u, lfrac).rgb) *\n"
+"                 inp(r.z, comb, t0, t1, i.rgba, u, lfrac).rgb + inp(r.w, comb, t0, t1, i.rgba, u, lfrac).rgb;\n"
+"    float al = (inp(a.x, comb, t0, t1, i.rgba, u, lfrac).a - inp(a.y, comb, t0, t1, i.rgba, u, lfrac).a) *\n"
+"               inp(a.z, comb, t0, t1, i.rgba, u, lfrac).a + inp(a.w, comb, t0, t1, i.rgba, u, lfrac).a;\n"
 "    comb = clamp(float4(rgb, al), 0.0, 1.0); }\n"
 "  if (u.alpha_cmp == 1 && comb.a < u.blendc.a) discard_fragment();\n"
 "  if (u.alpha_cmp == 3 && comb.a < 0.5) discard_fragment();\n"
+"  if (u.alpha_cmp == 4 && comb.a < 1.0 / 255.0) discard_fragment();\n"
 "  if (u.fog_blend != 0) comb.rgb = mix(comb.rgb, u.fog.rgb, i.rgba.a);\n"
 "  if (u.balpha == 1) comb.a = u.fog.a; else if (u.balpha == 2) comb.a = i.rgba.a;\n"
 "  return comb; }\n"
@@ -86,9 +100,9 @@ typedef struct {
     simd_float4 prim, env, fog, blendc;
     float plod;
     int cycle, filter, fog_blend;
-    int alpha_cmp, ntex, balpha, pad1;
+    int alpha_cmp, ntex, balpha, lodn;
     simd_float2 fb;
-    TileU tile[2];
+    TileU tile[10];
 } Uniforms;
 
 static id<MTLDevice> s_dev;
@@ -273,11 +287,15 @@ static void uniforms(const RdrState *st, Uniforms *u)
     u->alpha_cmp = st->alpha_compare;
     u->balpha = st->blend_alpha;
     u->fb = (simd_float2){ (float)s_fb_w, (float)s_fb_h };
-    for (k = 0; k < 2; k++) {
-        const RdrTile *t = &st->tile[k];
+    u->lodn = st->lod_levels;
+    for (k = 0; k < 10; k++) {
+        const RdrTile *t = k < 2 ? &st->tile[k] : &st->lod[k - 2];
+        if (k >= 2 && k - 2 >= st->lod_levels)
+            break;
         if (!t->tex)
             continue;
-        u->ntex |= 1 << k;
+        if (k < 2)
+            u->ntex |= 1 << k;
         u->tile[k].org = (simd_float4){ t->s0, t->t0, t->sscale, t->tscale };
         u->tile[k].size = (simd_int4){ t->w, t->h, t->mask_s, t->mask_t };
         u->tile[k].wrap = (simd_int4){ t->clamp_s, t->clamp_t, t->mirror_s, t->mirror_t };
@@ -300,8 +318,9 @@ static void draw(const RdrState *st, const RdrVtx *v, int n, int depth)
         [s_enc setScissorRect:(MTLScissorRect){ (NSUInteger)x0, (NSUInteger)y0, (NSUInteger)(x1 - x0),
                                                 (NSUInteger)(y1 - y0) }];
     }
-    for (k = 0; k < 2; k++) {
-        id t = st->tile[k].tex && (NSUInteger)st->tile[k].tex < [s_tex count] ? s_tex[st->tile[k].tex] : nil;
+    for (k = 0; k < 10; k++) {
+        int h = k < 2 ? st->tile[k].tex : (k - 2 < st->lod_levels ? st->lod[k - 2].tex : 0);
+        id t = h && (NSUInteger)h < [s_tex count] ? s_tex[h] : nil;
         [s_enc setFragmentTexture:(t && t != [NSNull null]) ? t : s_dummy atIndex:k];
     }
     [s_enc setVertexBytes:&u length:sizeof u atIndex:1];

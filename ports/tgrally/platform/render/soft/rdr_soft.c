@@ -126,6 +126,8 @@ static void sample(const RdrTile *t, int filter, float s, float u, float out[4])
     }
 }
 
+static float s_lod_frac;
+
 static float input(int code, int ch, const float comb[4], const float t0[4], const float t1[4],
                    const float shade[4], const RdrState *st)
 {
@@ -144,7 +146,7 @@ static float input(int code, int ch, const float comb[4], const float t0[4], con
     case RDR_CC_PRIM_A: return st->prim[3];
     case RDR_CC_SHADE_A: return shade[3];
     case RDR_CC_ENV_A: return st->env[3];
-    case RDR_CC_LOD_FRAC: return 0;
+    case RDR_CC_LOD_FRAC: return s_lod_frac;
     case RDR_CC_PRIM_LOD_FRAC: return st->prim_lod_frac;
     case RDR_CC_K5: return st->k5;
     case RDR_CC_K4: return st->k4;
@@ -153,14 +155,39 @@ static float input(int code, int ch, const float comb[4], const float t0[4], con
 }
 
 /* the combiner's output for one pixel; returns 0 if alpha compare drops it */
-static int combine(const RdrState *st, const float shade[4], float s, float t, float out[4])
+static int combine(const RdrState *st, const float shade[4], float s, float t, float lod, float out[4])
 {
     float t0[4] = { 0 }, t1[4] = { 0 }, comb[4] = { 0 }, res[4];
     int c, ch;
-    if (st->tile[0].tex)
-        sample(&st->tile[0], st->filter, s, t, t0);
-    if (st->tile[1].tex)
-        sample(&st->tile[1], st->filter, s, t, t1);
+    RdrState lst;
+    if (st->lod_levels > 0) {                 /* the level and fraction from the texel rate */
+        int level = 0, a, b;
+        float frac = 0;
+        if (lod >= 1.0f) {
+            while (level < 7 && lod >= (float)(2 << level))
+                level++;
+            frac = lod / (float)(1 << level) - 1.0f;
+            if (frac > 1)
+                frac = 1;
+        }
+        a = level < st->lod_levels - 1 ? level : st->lod_levels - 1;
+        b = level + 1 < st->lod_levels - 1 ? level + 1 : st->lod_levels - 1;
+        if (level >= st->lod_levels - 1)
+            frac = 1;                         /* past the last level: clamped */
+        sample(&st->lod[a], st->filter, s, t, t0);
+        sample(&st->lod[b], st->filter, s, t, t1);
+        lst = *st;
+        lst.lod_levels = 0;
+        lst.tile[0].tex = lst.tile[1].tex = 0;
+        s_lod_frac = frac;
+        st = &lst;
+    } else {
+        s_lod_frac = 0;
+        if (st->tile[0].tex)
+            sample(&st->tile[0], st->filter, s, t, t0);
+        if (st->tile[1].tex)
+            sample(&st->tile[1], st->filter, s, t, t1);
+    }
     for (c = 0; c < st->cycle; c++) {
         for (ch = 0; ch < 3; ch++) {
             float a = input(st->cc.rgb[c][0], ch, comb, t0, t1, shade, st);
@@ -184,6 +211,8 @@ static int combine(const RdrState *st, const float shade[4], float s, float t, f
         if (comb[3] < st->blend[3] || st->blend[3] > 0)
             return 0;
     if (st->alpha_compare == 3 && comb[3] < 0.5f)
+        return 0;
+    if (st->alpha_compare == 4 && comb[3] < 1.0f / 255.0f)
         return 0;
     if (st->alpha_compare == 2 && comb[3] < (rand() & 255) / 255.0f)
         return 0;
@@ -264,9 +293,22 @@ static void raster(const RdrState *st, const SV *a, const SV *b, const SV *c)
             sh[1] = (w0 * a->g + w1 * b->g + w2 * c->g) / iw;
             sh[2] = (w0 * a->b + w1 * b->b + w2 * c->b) / iw;
             sh[3] = (w0 * a->a + w1 * b->a + w2 * c->a) / iw;
-            if (!combine(st, sh, (w0 * a->s + w1 * b->s + w2 * c->s) / iw,
-                         (w0 * a->t + w1 * b->t + w2 * c->t) / iw, col))
-                continue;
+            {
+                float ss = (w0 * a->s + w1 * b->s + w2 * c->s) / iw, tt = (w0 * a->t + w1 * b->t + w2 * c->t) / iw;
+                float lod = 0;
+                if (st->lod_levels > 0) {     /* the coordinates one pixel right and one down */
+                    float dw0x = (b->y - c->y) / area, dw1x = (c->y - a->y) / area;
+                    float dw0y = (c->x - b->x) / area, dw1y = (a->x - c->x) / area;
+                    float u0 = w0 + dw0x, u1 = w1 + dw1x, u2 = 1 - u0 - u1;
+                    float v0 = w0 + dw0y, v1 = w1 + dw1y, v2 = 1 - v0 - v1;
+                    float iwx = u0 * a->iw + u1 * b->iw + u2 * c->iw, iwy = v0 * a->iw + v1 * b->iw + v2 * c->iw;
+                    float sx = (u0 * a->s + u1 * b->s + u2 * c->s) / iwx, tx = (u0 * a->t + u1 * b->t + u2 * c->t) / iwx;
+                    float sy = (v0 * a->s + v1 * b->s + v2 * c->s) / iwy, ty = (v0 * a->t + v1 * b->t + v2 * c->t) / iwy;
+                    lod = fmaxf(fmaxf(fabsf(sx - ss), fabsf(tx - tt)), fmaxf(fabsf(sy - ss), fabsf(ty - tt)));
+                }
+                if (!combine(st, sh, ss, tt, lod, col))
+                    continue;
+            }
             if (st->z_write)
                 s_z[i] = z;
             write_px(st, i, col, sh[3]);
@@ -354,7 +396,7 @@ void rdr_rect(const RdrState *st, float x0, float y0, float x1, float y1, float 
             {
                 float sh[4] = { 0, 0, 0, 0 };
                 float ss = s + (x - x0) * dsdx, tt = t + (y - y0) * dtdy;
-                if (!combine(st, sh, ss, tt, col))
+                if (!combine(st, sh, ss, tt, fmaxf(fabsf(dsdx), fabsf(dtdy)), col))
                     continue;
             }
             write_px(st, i, col, 0);

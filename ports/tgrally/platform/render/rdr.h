@@ -53,12 +53,18 @@ typedef struct RdrState {
     float prim[4], env[4], fog[4], blend[4];
     float prim_lod_frac, k4, k5;
     RdrTile tile[2];        /* texel 0 and texel 1 */
+    /* texture LOD: when lod_levels > 0, a pixel's level is the integer part of
+       log2 of its texels per pixel (texture coordinates' largest step), texel 0
+       comes from lod[level], texel 1 from lod[level + 1] (both clamped to the
+       last), and LOD_FRAC is the fraction (texels per pixel / 2^level - 1) */
+    int lod_levels;
+    RdrTile lod[8];
     int filter;             /* 0 point, 1 bilinear */
     int blend_mode;         /* RDR_BLEND_* */
     int blend_alpha;        /* the blend's alpha: 0 the combined alpha, 1 the fog colour's,
                                2 the shade's (the blender's A input) */
     int fog_blend;          /* the blender mixes in the fog colour by shade alpha */
-    int alpha_compare;      /* 0 none, 1 against blend alpha, 2 dither */
+    int alpha_compare;      /* 0 none, 1 against blend alpha, 2 dither, 3 below one half, 4 zero */
     int z_test, z_write, z_decal;
     int cull;               /* (already done by the RSP: informational) */
     int scissor[4];         /* x0, y0, x1, y1 in framebuffer pixels */
