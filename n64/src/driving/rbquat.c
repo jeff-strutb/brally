@@ -51,8 +51,8 @@ typedef struct BrRbBody {       /* a rigid body's shape and mass properties */
   float x1c8;                   /* 0x1C8 */
   float x1cc;
   float x1d0;
-  int x1d4;
-  int x1d8;
+  float x1d4;
+  float x1d8;
 } BrRbBody;
 void BrStub80258070(float m[3][3]);
 typedef struct BrRbState {      /* a full rigid-body state (0x44 bytes) */
@@ -258,21 +258,21 @@ void BrRbSetParams(BrRbParams *p, float a, float b, float c, float d, float e, f
  * constants 0.174 and 0.5, and for a box the inertia tensor of a solid
  * cuboid (mass / 12 * the sum of the other two sides squared) and, unless
  * the body is fixed, its diagonal inverse.
- * RESIDUE (75): the ROM keeps the squared sides in stack homes (h*h at
- * sp+0x2C, w then w*w at sp+0x24) and loads the side into f14 in each case
- * arm; ours keeps them in registers. */
-/* @t4-pass 0x80258C24 1 2026-09-29 compiles 26 best 75 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80258C24 2 2026-09-29 compiles 26 best 75 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80258C24 */
+ * The squared sides are a vector whose address is taken, so they live in
+ * stack homes (h*h at sp+0x2C, w then w*w at sp+0x24) and each sum keeps
+ * its written operand order (d first), as the ROM has it; an array element
+ * would be loaded first.  k is first set to the side d, which numbers the
+ * side's load before d*d and gives the ROM's f14/f16; k = 1/12 then
+ * k *= mass orders the constant and mass loads as the ROM does. */
 /* @implements 0x80258C24 tgr BrRbBodyInit */
 void BrRbBodyInit(BrRbBody *b)
 {
   int i;
   int j;
   float d;
-  float hh;
-  float ww;
   float k;
+  BrVec3 s;
+  BrVec3 *p;
 
   b->x0[0] = 0;
   b->x0[1] = 0;
@@ -283,9 +283,9 @@ void BrRbBodyInit(BrRbBody *b)
   b->x1b4 = 0;
   b->x19c = 0;
   b->x1c4 = 0.0f;
+  b->x1c0 = 0.174f;
   b->x1cc = 0.0f;
   b->x1d0 = 0.0f;
-  b->x1c0 = 0.174f;
   b->x1c8 = 0.5f;
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -296,26 +296,28 @@ void BrRbBodyInit(BrRbBody *b)
       }
     }
   }
+  k = b->d;
   switch (b->shape) {
   case 0:
   case 1:
-    d = b->d;
-    hh = b->h * b->h;
-    k = 0.083333336f * b->mass;
-    b->I[0][0] = (d * d + hh) * k;
-    ww = b->w * b->w;
-    b->I[1][1] = (d * d + ww) * k;
-    b->I[2][2] = (hh + ww) * k;
+    d = b->d * b->d;
+    s.z = b->h * b->h;
+    k = 0.083333336f;
+    k *= b->mass;
+    b->I[0][0] = (d + s.z) * k;
+    s.x = b->w;
+    s.x = s.x * s.x;
+    b->I[1][1] = (d + s.x) * k;
+    b->I[2][2] = (s.z + s.x) * k;
+    p = &s;
     BrStub80258070(b->I);
     break;
   }
-  if (b->shape == 2) {
-    b->x1d4 = 0;
-  } else {
-    b->Iinv[0][0] = 1.0 / b->I[0][0];
-    b->Iinv[1][1] = 1.0 / b->I[1][1];
-    b->Iinv[2][2] = 1.0 / b->I[2][2];
-    b->x1d4 = 0;
+  if (b->shape != 2) {
+    b->Iinv[0][0] = 1.0f / b->I[0][0];
+    b->Iinv[1][1] = 1.0f / b->I[1][1];
+    b->Iinv[2][2] = 1.0f / b->I[2][2];
   }
-  b->x1d8 = 0;
+  b->x1d4 = 0.0f;
+  b->x1d8 = 0.0f;
 }
