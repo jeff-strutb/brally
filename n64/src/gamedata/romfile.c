@@ -57,13 +57,11 @@ void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size))
  * primitive colour, 3 tinted and blended with the environment colour, 4
  * the same over the other render mode, else the texture as it is.
  * Coordinates are doubled on a hi-res screen.  The DXT divisions are
- * unsigned here (the ROM uses divu), unlike image.c's.
- * RESIDUE (gap 36, same length): the ROM holds w in s4, the strip row in s2
- * and the rectangle's bottom in s3 (ours: s3, s4, s2), and stores the
- * texture command's first word before its second. */
-/* @t4-pass 0x8023DF9C 1 2026-10-03 compiles 26 best 62 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023DF9C 2 2026-10-03 compiles 26 best 62 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8023DF9C */
+ * unsigned here (the ROM uses divu), unlike image.c's.  The strip row is
+ * zeroed just before the loop (its short live range ranks it above the
+ * rectangle's bottom for a saved register), and the texture and rectangle
+ * commands are written out as blocks, one word per line, so the stores
+ * keep the ROM's order. */
 /* @implements 0x8023DF9C tgr BrRomImageDraw */
 void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg, int pb, int pa,
                     int er, int eg, int eb, int ea, int mode)
@@ -90,7 +88,11 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
   BrTexSizeBits(img->h, &maskT, &bitsT);
   gDPPipeSync(D_8028A858++);
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
-  gSPTexture(D_8028A858++, 0xffff, 0xffff, 0, 0, 1);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+    _g->words.w0 = 0xbb000001;
+    _g->words.w1 = 0xffffffff;
+  }
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
   switch (mode) {
   case 1:
@@ -120,7 +122,6 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
     gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
     break;
   }
-  row = 0;
   if (img->fmt == 2) {
     gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0x8000);
   } else {
@@ -150,11 +151,12 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
   } else {
     lines = 0x1000 / line;
   }
+  left = img->h;
   dsdx = (img->w << 10) / w;
   dtdy = (img->h << 10) / h;
-  yb = ((y + h) << 2) << 8;
   lines -= 1;
-  left = img->h;
+  yb = ((y + h) << 2) << 8;
+  row = 0;
   while (left != 0) {
     if (left < lines) {
       lines = left;
@@ -191,8 +193,14 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
       gDPSetTileSize(D_8028A858++, 0, 0, 0, (img->w - 1) << 2, lines << 2);
       break;
     }
-    gSPTextureRectangle(D_8028A858++, x << 2, yb >> 8, (x + w) << 2, (yb + step) >> 8, 0, 0,
-                        (lines - 1) << 5, dsdx, -dtdy);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + w) << 2, 12, 12) | _SHIFTL((yb + step) >> 8, 0, 12));
+      _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(yb >> 8, 0, 12));
+      gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(0, 16, 16) | _SHIFTL((lines - 1) << 5, 0, 16)));
+      gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(dsdx, 16, 16) | _SHIFTL(-dtdy, 0, 16)));
+    }
     row += lines;
   }
   gDPPipeSync(D_8028A858++);
