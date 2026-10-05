@@ -1331,9 +1331,9 @@
 <rect x="598.8" y="200.9" width="5.7" height="6.2" fill="#3fb950"><title>BrFontFreeAndExit  0x10058360  19B  [core/drawing/br_font]</title></rect>
 <rect x="598.8" y="207.7" width="5.7" height="3.0" fill="#3fb950"><title>BrFontSetRenderDst  0x1006E020  10B  [core/drawing/br_font]</title></rect>
 <text x="503.5" y="223.2" font-size="10" fill="#8b949e">FUN_100498a0</text>
-<rect x="502.0" y="228.2" width="102.5" height="86.2" fill="#58a6ff"><title>(unnamed)  0x100498A0  3993B  [core/menus/FUN_100498a0]</title></rect>
-<text x="503.5" y="327.1" font-size="10" fill="#8b949e">br_seasonscreen</text>
-<rect x="502.0" y="332.1" width="102.5" height="82.8" fill="#58a6ff"><title>BrExt_10052030  0x1004AEE0  3862B  [core/menus/br_seasonscreen]</title></rect>
+<rect x="502.0" y="228.2" width="102.5" height="86.2" fill="#3fb950"><title>(unnamed)  0x100498A0  3993B  [core/menus/FUN_100498a0]</title></rect>
+<text x="503.5" y="327.1" font-size="10" fill="#8b949e">BrExt_10052030_1004AEE0</text>
+<rect x="502.0" y="332.1" width="102.5" height="82.8" fill="#3fb950"><title>(unnamed)  0x1004AEE0  3862B  [core/menus/BrExt_10052030_1004AEE0]</title></rect>
 <text x="503.5" y="427.5" font-size="10" fill="#8b949e">br_ctlai</text>
 <rect x="502.0" y="432.5" width="102.5" height="82.7" fill="#58a6ff"><title>BrCtlAiBody  0x1005D770  3858B  [core/driving/br_ctlai]</title></rect>
 <text x="503.5" y="527.8" font-size="10" fill="#8b949e">FUN_100038f0</text>
@@ -1341,15 +1341,15 @@
 <text x="503.5" y="626.6" font-size="10" fill="#8b949e">BrPhaseEnterPlaceholder_1004A580_100439B0</text>
 <rect x="502.0" y="631.6" width="102.5" height="79.8" fill="#3fb950"><title>(unnamed)  0x100439B0  3746B  [core/menus/BrPhaseEnterPlaceholder_1004A580_100439B0]</title></rect>
 <text x="503.5" y="724.0" font-size="10" fill="#8b949e">FUN_1004cba0</text>
-<rect x="502.0" y="729.0" width="102.5" height="77.9" fill="#58a6ff"><title>(unnamed)  0x1004CBA0  3671B  [core/menus/FUN_1004cba0]</title></rect>
+<rect x="502.0" y="729.0" width="102.5" height="77.9" fill="#3fb950"><title>(unnamed)  0x1004CBA0  3671B  [core/menus/FUN_1004cba0]</title></rect>
 <text x="503.5" y="819.4" font-size="10" fill="#8b949e">br_snapinterp</text>
 <rect x="502.0" y="824.4" width="94.1" height="73.5" fill="#58a6ff"><title>BrSnapInterpDraw  0x100131E0  3217B  [core/drawing/br_snapinterp]</title></rect>
 <rect x="596.7" y="824.4" width="7.8" height="40.2" fill="#3fb950"><title>BrSnapPickSlot  0x10013F20  157B  [core/drawing/br_snapinterp]</title></rect>
 <rect x="596.7" y="865.2" width="7.8" height="32.7" fill="#58a6ff"><title>BrRaceBeginResetOnce  0x10013E80  128B  [core/drawing/br_snapinterp]</title></rect>
 <text x="609.6" y="10.5" font-size="10" fill="#8b949e">FUN_1004be00</text>
-<rect x="608.1" y="15.5" width="93.1" height="81.6" fill="#58a6ff"><title>(unnamed)  0x1004BE00  3475B  [core/menus/FUN_1004be00]</title></rect>
-<text x="609.6" y="109.7" font-size="10" fill="#8b949e">br_boxscreen</text>
-<rect x="608.1" y="114.7" width="93.1" height="79.3" fill="#58a6ff"><title>BrExt_10054B50  0x1004DA00  3394B  [core/menus/br_boxscreen]</title></rect>
+<rect x="608.1" y="15.5" width="93.1" height="81.6" fill="#3fb950"><title>(unnamed)  0x1004BE00  3475B  [core/menus/FUN_1004be00]</title></rect>
+<text x="609.6" y="109.7" font-size="10" fill="#8b949e">BrExt_10054B50_1004DA00</text>
+<rect x="608.1" y="114.7" width="93.1" height="79.3" fill="#3fb950"><title>(unnamed)  0x1004DA00  3394B  [core/menus/BrExt_10054B50_1004DA00]</title></rect>
 <text x="609.6" y="206.6" font-size="10" fill="#8b949e">EXE: brally.exe</text>
 <rect x="608.1" y="211.6" width="29.2" height="43.7" fill="#3fb950"><title>WinMain  0x00401810  600B  [EXE: brally.exe]</title></rect>
 <rect x="608.1" y="255.9" width="29.2" height="33.9" fill="#3fb950"><title>ReadList  0x004012C0  467B  [EXE: brally.exe]</title></rect>
@@ -2807,4 +2807,4 @@
 <rect x="1591.5" y="897.4" width="2.5" height="0.5" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1597.6" y="892.9" width="0.4" height="1.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1597.6" y="897.9" width="0.4" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1500 &#183; T3 codegen-only 101 &#183; 336,431/521,753 bytes exact (64.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1505 &#183; T3 codegen-only 96 &#183; 354,826/521,753 bytes exact (68.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
