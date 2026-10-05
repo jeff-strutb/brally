@@ -1317,11 +1317,10 @@ void BrCamShakeAdd(int cam, float amount)
  * buffers, the RSP, RDP and retrace event queues, the RSP and RDP event
  * threads, the controllers (through the SI queue), and for each controller
  * with a pak that answers as a rumble pak, mark it and stop its motor.
- * RESIDUE (14): IDO gives the last callee-saved register to the flag value
- * 1; the ROM gives it to the loop bound 4 and loads the 1 at the store. */
-/* @t4-pass 0x8021BE88 1 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021BE88 2 2026-10-03 compiles 116 best 14 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021BE88 */
+ * When the second pak call fails the loop continues to the next controller,
+ * which puts the loop bound ahead of the stored 1 when equal-priority
+ * constants are coloured: the bound keeps its saved register and the 1 is
+ * loaded where it is stored. */
 /* @implements 0x8021BE88 tgr BrSchedInit */
 void BrSchedInit(void)
 {
@@ -1357,7 +1356,10 @@ void BrSchedInit(void)
     if ((bits >> i & 1) && !(D_8031A3D0[i].errno & 8) && (D_8031A3D0[i].type & 4) &&
         (D_8031A3D0[i].status & 1)) {
       r = func_80265CD0(D_80272D48, &D_8031A3F8[i], i);
-      if (r != 0 && (r == 10 || r == 11) && func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+      if (r != 0 && (r == 10 || r == 11)) {
+        if (func_80262370(D_80272D48, &D_8031A3F8[i], i) != 0) {
+          continue;
+        }
         D_8031B1E8[i] = 1;
         func_80261F20(&D_8031A3F8[i]);
       }
