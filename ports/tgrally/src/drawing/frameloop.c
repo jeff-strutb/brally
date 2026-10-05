@@ -107,10 +107,10 @@ extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
 extern int osTvType;
-extern char D_802A5D70[];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
-extern char D_802A54B0[];
-extern char D_802A6040[];
-extern char D_802A5780[];
+extern OSViMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern OSViMode D_802A54B0[1];
+extern OSViMode D_802A6040[1];
+extern OSViMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;

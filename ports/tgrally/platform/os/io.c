@@ -18,8 +18,35 @@ int32_t  osResetType = 0;
 /* ---- managers the game starts: nothing to run ------------------------------- */
 void osCreateViManager(OSPri pri) { (void)pri; }
 void osCreatePiManager(OSPri pri, OSMesgQueue *q, OSMesg *b, int32_t n) { (void)pri; (void)q; (void)b; (void)n; }
-void osViSetMode(OSViMode *mode) { (void)mode; }
-void osViSetSpecialFeatures(uint32_t f) { (void)f; }
+/* the VI's control register as libultra keeps it: the mode's, then the special
+ * features' changes (the renderer's VI stage reads it, tgr_vi_ctrl) */
+static uint32_t s_vi_ctrl = 0x311E, s_vi_mode_aa = 0x100;
+
+void osViSetMode(OSViMode *mode)
+{
+    s_vi_ctrl = mode->regs[0];
+    s_vi_mode_aa = s_vi_ctrl & 0x300;
+}
+
+void osViSetSpecialFeatures(uint32_t f)
+{
+    if (f & 0x01) s_vi_ctrl |= 0x08;                  /* OS_VI_GAMMA_ON */
+    if (f & 0x02) s_vi_ctrl &= ~0x08u;
+    if (f & 0x04) s_vi_ctrl |= 0x04;                  /* OS_VI_GAMMA_DITHER_ON */
+    if (f & 0x08) s_vi_ctrl &= ~0x04u;
+    if (f & 0x10) s_vi_ctrl |= 0x10;                  /* OS_VI_DIVOT_ON */
+    if (f & 0x20) s_vi_ctrl &= ~0x10u;
+    if (f & 0x40) {                                   /* OS_VI_DITHER_FILTER_ON: and anti-alias */
+        s_vi_ctrl |= 0x10000;                         /* with resampling, always fetching */
+        s_vi_ctrl &= ~0x300u;
+    }
+    if (f & 0x80) {
+        s_vi_ctrl &= ~0x10000u;
+        s_vi_ctrl = (s_vi_ctrl & ~0x300u) | s_vi_mode_aa;
+    }
+}
+
+uint32_t tgr_vi_ctrl(void) { return s_vi_ctrl; }
 void osViBlack(uint8_t on) { (void)on; }
 void osInvalDCache(void *p, int32_t n) { (void)p; (void)n; }
 void osWritebackDCacheAll(void) {}

@@ -66,6 +66,14 @@ typedef struct RdrState {
     int fog_blend;          /* the blender mixes in the fog colour by shade alpha */
     int alpha_compare;      /* 0 none, 1 against blend alpha, 2 dither, 3 below one half, 4 zero */
     int z_test, z_write, z_decal;
+    /* coverage, for a renderer that models it (rdr_covers): the RDP counts how
+       much of each pixel a primitive covers (8 samples) and keeps it with the
+       pixel for the VI's anti-aliasing */
+    int aa;                 /* AA_EN: coverage from 8 samples (else the pixel centre's) */
+    int force_bl;           /* FORCE_BL: the blender always mixes (translucent surfaces) */
+    int cvg_dst;            /* 0 clamp, 1 wrap, 2 full, 3 save: the coverage written */
+    int cvg_x_alpha;        /* coverage is scaled by the pixel's alpha (texture edges) */
+    int rgb_dither;         /* 0 magic square, 1 Bayer, 2 noise, 3 none: to 5 bits a channel */
     int cull;               /* (already done by the RSP: informational) */
     int scissor[4];         /* x0, y0, x1, y1 in framebuffer pixels */
 } RdrState;
@@ -92,6 +100,13 @@ void rdr_triangles(const RdrState *st, const RdrVtx *v, int n);   /* n vertices,
 void rdr_rect(const RdrState *st, float x0, float y0, float x1, float y1,
               float s, float t, float dsdx, float dtdy, int fill, const float rgba[4]);
 void rdr_clear_depth(void);
+/* 1 if the renderer counts coverage per pixel as the RDP does (seams under a
+   pixel wide then close by themselves); 0: the RCP layer adds its own fill */
+int  rdr_covers(void);
+/* the VI's control register for the frame about to end (libultra's VI_CTRL_*
+   bits: pixel size, gamma, gamma dither, divot, the anti-alias mode, the
+   dither filter) */
+void rdr_vi(uint32_t ctrl);
 void rdr_frame_end(void);                              /* the finished frame */
 /* the last finished frame, 0xAARRGGBB, top row first (for screenshots and
  * hosts that present pixels); NULL if the renderer cannot read it back */

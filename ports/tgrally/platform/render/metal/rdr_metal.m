@@ -92,8 +92,10 @@ static const char *k_shader =
 "vertex BOut bvs(uint vid [[vertex_id]], constant float4 &r [[buffer(0)]]) {\n"
 "  float2 p = float2((vid & 1) ? 1.0 : 0.0, (vid & 2) ? 1.0 : 0.0);\n"
 "  BOut o; o.pos = float4(r.x + p.x * r.z, r.y + p.y * r.w, 0.0, 1.0); o.uv = float2(p.x, 1.0 - p.y); return o; }\n"
-"fragment float4 bfs(BOut i [[stage_in]], texture2d<float> t [[texture(0)]]) {\n"
-"  constexpr sampler s(filter::linear); return t.sample(s, i.uv); }\n";
+"fragment float4 bfs(BOut i [[stage_in]], texture2d<float> t [[texture(0)]], constant int &gamma [[buffer(0)]]) {\n"
+"  constexpr sampler s(filter::linear); float4 c = t.sample(s, i.uv);\n"
+"  if (gamma != 0) c.rgb = sqrt(c.rgb);   /* the VI's gamma: the square root */\n"
+"  return c; }\n";
 
 typedef struct { simd_float4 org; simd_int4 size; simd_int4 wrap; simd_int4 cl; } TileU;
 typedef struct {
@@ -108,9 +110,10 @@ typedef struct {
 
 static id<MTLDevice> s_dev;
 static id<MTLCommandQueue> s_q;
-static id<MTLRenderPipelineState> s_pipe[4], s_blit;
+#define SAMPLES 4                                     /* multisampling: the RDP's edge coverage */
+static id<MTLRenderPipelineState> s_pipe[5], s_blit;   /* opaque, alpha, add, keep; alpha to coverage */
 static id<MTLDepthStencilState> s_ds[2][2][2];       /* [test][write][decal] */
-static id<MTLTexture> s_color, s_depth, s_dummy;
+static id<MTLTexture> s_color, s_depth, s_dummy, s_ms;   /* s_ms: the multisampled colour, resolved into s_color */
 static id<MTLCommandBuffer> s_cb;
 static id<MTLRenderCommandEncoder> s_enc;
 static int s_fb_w, s_fb_h, s_first = 1;
@@ -121,6 +124,14 @@ static uint32_t *s_pixels;
 static int s_px_w, s_px_h;
 
 static CAMetalLayer *s_layer;
+static int s_gamma;                                   /* the VI's gamma correction is on */
+
+int rdr_covers(void) { return 0; }
+
+void rdr_vi(uint32_t ctrl)
+{
+    s_gamma = (ctrl & 0x08) != 0;
+}
 
 int rdr_presents(void) { return 1; }
 
@@ -155,13 +166,16 @@ int rdr_init(void)
         vd.attributes[2].format = MTLVertexFormatFloat4;
         vd.attributes[2].offset = offsetof(RdrVtx, r);
         vd.layouts[0].stride = sizeof(RdrVtx);
-        for (b = 0; b < 4; b++) {                     /* opaque, alpha, add, keep */
+        for (b = 0; b < 5; b++) {                     /* opaque, alpha, add, keep; texture edges */
             d = [MTLRenderPipelineDescriptor new];
             d.vertexFunction = [lib newFunctionWithName:@"vs"];
             d.fragmentFunction = [lib newFunctionWithName:@"fs"];
             d.vertexDescriptor = vd;
             d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
             d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+            d.rasterSampleCount = SAMPLES;
+            if (b == 4)                               /* coverage times alpha: an alpha-cut edge, */
+                d.alphaToCoverageEnabled = YES;       /* anti-aliased, in any draw order */
             if (b == RDR_BLEND_ALPHA || b == RDR_BLEND_ADD) {
                 d.colorAttachments[0].blendingEnabled = YES;
                 d.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
@@ -208,10 +222,11 @@ int rdr_init(void)
 static void begin_pass(MTLLoadAction color, MTLLoadAction depth)
 {
     MTLRenderPassDescriptor *p = [MTLRenderPassDescriptor renderPassDescriptor];
-    p.colorAttachments[0].texture = s_color;
+    p.colorAttachments[0].texture = s_ms;
+    p.colorAttachments[0].resolveTexture = s_color;
     p.colorAttachments[0].loadAction = color;
     p.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-    p.colorAttachments[0].storeAction = MTLStoreActionStore;
+    p.colorAttachments[0].storeAction = MTLStoreActionStoreAndMultisampleResolve;
     p.depthAttachment.texture = s_depth;
     p.depthAttachment.loadAction = depth;
     p.depthAttachment.clearDepth = 1.0;
@@ -254,8 +269,14 @@ void rdr_frame_begin(int fb_w, int fb_h)
             td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
             td.storageMode = MTLStorageModePrivate;
             s_color = [s_dev newTextureWithDescriptor:td];
+            td.textureType = MTLTextureType2DMultisample;
+            td.sampleCount = SAMPLES;
+            td.usage = MTLTextureUsageRenderTarget;
+            s_ms = [s_dev newTextureWithDescriptor:td];
             td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:tw
                                                                    height:th mipmapped:NO];
+            td.textureType = MTLTextureType2DMultisample;
+            td.sampleCount = SAMPLES;
             td.usage = MTLTextureUsageRenderTarget;
             td.storageMode = MTLStorageModePrivate;
             s_depth = [s_dev newTextureWithDescriptor:td];
@@ -338,7 +359,7 @@ static void draw(const RdrState *st, const RdrVtx *v, int n, int depth)
     Uniforms u;
     int k;
     uniforms(st, &u);
-    [s_enc setRenderPipelineState:s_pipe[st->blend_mode & 3]];
+    [s_enc setRenderPipelineState:s_pipe[st->aa && st->cvg_x_alpha && !st->force_bl ? 4 : st->blend_mode & 3]];
     [s_enc setDepthStencilState:depth ? s_ds[st->z_test != 0][st->z_write != 0][st->z_decal != 0] : s_ds[0][0][0]];
     {
         int x0 = (int)(st->scissor[0] * s_scale + 0.5f), y0 = (int)(st->scissor[1] * s_scale + 0.5f);
@@ -452,6 +473,7 @@ void rdr_frame_end(void)
                 [e setRenderPipelineState:s_blit];
                 [e setVertexBytes:&r length:sizeof r atIndex:0];
                 [e setFragmentTexture:s_color atIndex:0];
+                [e setFragmentBytes:&s_gamma length:sizeof s_gamma atIndex:0];
                 [e drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
                 [e endEncoding];
                 [s_cb presentDrawable:dr];

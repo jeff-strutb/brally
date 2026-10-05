@@ -29,7 +29,8 @@
  *   TGR_ONLYTRIS=N / TGR_SKIPTRIS=N   draw only the first N / skip the first N
  *                        triangles of each frame (to find what draws a region) */
 static int s_log, s_only = -1, s_skip;
-int tgr_rcp_tri;                 /* the frame's triangle number (TGR_PIXEL reports it) */
+int tgr_rcp_tri;
+uint32_t tgr_vi_ctrl(void);                         /* platform/os/io.c */                 /* the frame's triangle number (TGR_PIXEL reports it) */
 static const char *s_texdump;
 
 /* ---- memory ---------------------------------------------------------------- */
@@ -569,6 +570,11 @@ static void state(RdrState *st, int tile0)
     st->z_test = (s_geom & G_ZBUFFER) && (s_oml & 0x10);
     st->z_write = (s_geom & G_ZBUFFER) && (s_oml & 0x20);
     st->z_decal = ((s_oml >> 10) & 3) == 3;
+    st->aa = (s_oml & 0x8) != 0;
+    st->force_bl = (s_oml & 0x4000) != 0;
+    st->cvg_dst = (s_oml >> 8) & 3;
+    st->cvg_x_alpha = (s_oml & 0x1000) != 0;
+    st->rgb_dither = (s_omh >> 6) & 3;
     st->scissor[0] = s_scissor[0];
     st->scissor[1] = s_scissor[1];
     st->scissor[2] = s_scissor[2];
@@ -750,7 +756,7 @@ static void triangle(int a, int b, int c)
     }
     if (skip)
         return;
-    if (st.z_test && !st.z_decal && (st.blend_mode == RDR_BLEND_OPAQUE || st.alpha_compare == 4)) {
+    if (!rdr_covers() && st.z_test && !st.z_decal && (st.blend_mode == RDR_BLEND_OPAQUE || st.alpha_compare == 4)) {
         RdrVtx poly[8], fan[18];                      /* not translucent: the RDP's coverage first */
         int n = cover_like_rdp(out, poly), m = 0;
         for (k = 0; k < n; k++)
@@ -825,7 +831,7 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         c[0] = ((p >> 11) & 31) / 31.0f;
         c[1] = ((p >> 6) & 31) / 31.0f;
         c[2] = ((p >> 1) & 31) / 31.0f;
-        c[3] = 1.0f;
+        c[3] = (float)(p & 1);                        /* the alpha bit: full coverage, or none */
         memset(&st, 0, sizeof st);
         st.scissor[0] = s_scissor[0];
         st.scissor[1] = s_scissor[1];
@@ -1049,6 +1055,7 @@ static void run(uint32_t dl)
             if (s_cimg != s_zimg) {
                 int w = s_cimg_w, h = w * 3 / 4;
                 if (s_frame_open && (w != s_fb_w || h != s_fb_h)) {
+                    rdr_vi(tgr_vi_ctrl());
                     rdr_frame_end();
                     s_frame_open = 0;
                 }
@@ -1085,6 +1092,7 @@ void tgr_rcp_task(uint32_t dl)
     }
     run(dl);
     if (s_frame_open) {
+        rdr_vi(tgr_vi_ctrl());
         rdr_frame_end();
         s_frame_open = 0;
     }

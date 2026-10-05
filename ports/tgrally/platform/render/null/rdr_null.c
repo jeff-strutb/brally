@@ -16,5 +16,7 @@ void rdr_rect(const RdrState *st, float x0, float y0, float x1, float y1, float 
     (void)fill; (void)rgba;
 }
 void rdr_clear_depth(void) {}
+int rdr_covers(void) { return 0; }
+void rdr_vi(uint32_t ctrl) { (void)ctrl; }
 void rdr_frame_end(void) {}
 const uint32_t *rdr_frame_pixels(int *w, int *h) { *w = *h = 0; return 0; }
