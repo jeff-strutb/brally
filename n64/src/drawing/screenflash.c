@@ -38,6 +38,7 @@ extern unsigned char D_802A49D0;
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[];
 extern int D_8031B410[2];               /* per frame buffer: the left bar last drawn there */
+extern int D_8031B418[2];               /* per frame buffer: the right bar edge stored with it */
 int BrFadeOutDone(void);
 /* -- end declarations -- */
 
@@ -276,102 +277,81 @@ void BrScreenDim(float level)
 
 /* WHAT IT DOES: Advance the screen fade by one frame: moves the level
  * towards the target at the fade speed, and when a fade-in-then-out is
- * pending turns it round at the top. */
-/* @t4-pass 0x80223F54 1 2026-09-26 compiles 21 best 228 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80223F54 2 2026-09-26 compiles 21 best 228 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80223F54 */
+ * pending turns it round at the top.
+ * Also moves the effects and music volume levels (D_8028B774, D_8028B768)
+ * towards their targets and writes them out as bytes (int-converted, then
+ * stored).  Each fade is skipped once when its flag is set; the wipe's bar
+ * edges are kept per frame buffer in D_8031B410 and D_8031B418. */
 /* @implements 0x80223F54 tgr BrFadeStep */
 void BrFadeStep(void)
 {
-  float fVar1;
-  int iVar2;
-  unsigned int uVar3;
-  double dVar4;
-  
-  fVar1 = D_8028B754;
+  unsigned int d;
+
   if (D_8028B778 == 0) {
-    if (D_8028B754 != D_8028B75C) {
-      D_8028B75C = D_8028B75C + D_8028B758 * D_8028AAD8;
+    if (D_8028B75C != D_8028B754) {
+      D_8028B75C += D_8028B758 * D_8028AAD8;
       if (D_8028B758 < 0.0f) {
-        if (D_8028B75C < D_8028B754) goto LAB_80224010;
-      }
-      else if ((D_8028B754 <= D_8028B75C) && (D_8028B75C = D_8028B754, D_8028B784 != 0)) {
-        D_8028B758 = -D_8028B758;
-        D_8028B754 = 0.0f;
-        D_8028B784 = 0;
-LAB_80224010:
-        D_8028B75C = fVar1;
+        if (D_8028B75C < D_8028B754) {
+          D_8028B75C = D_8028B754;
+        }
+      } else if (D_8028B754 <= D_8028B75C) {
+        D_8028B75C = D_8028B754;
+        if (D_8028B784 != 0) {
+          D_8028B754 = 0.0f;
+          D_8028B758 = -D_8028B758;
+          D_8028B784 = 0;
+        }
       }
     }
-  }
-  else {
+  } else {
     D_8028B778 = 0;
   }
-  fVar1 = D_8028B758;
-  iVar2 = D_8028A85C * 4;
-  *(int *)(iVar2 + -0x7fce4bf0) = D_8028B740;
-  *(unsigned int *)(iVar2 + -0x7fce4be8) = D_8028B744;
+  D_8031B410[D_8028A85C] = D_8028B740;
+  D_8031B418[D_8028A85C] = D_8028B744;
   D_8028B748 = 0;
   D_8028B74C = D_8028AAB4;
-  if (0.0f < fVar1) {
-    D_8028B744 = (int)((float)(int)D_8028AAB0 * D_8028B75C) + 3U & 0xfffffffc;
+  if (0.0f < D_8028B758) {
     D_8028B740 = 0;
-  }
-  else if (fVar1 < 0.0f) {
-    uVar3 = ((D_8028AAB0 - (int)((float)(int)D_8028AAB0 * D_8028B75C)) - D_8028B740) + 3 &
-            0xfffffffc;
-    D_8028B744 = D_8028B744 + uVar3;
-    D_8028B740 = D_8028B740 + uVar3;
-    if ((int)D_8028AAB0 < (int)D_8028B744) {
+    D_8028B744 = ((int)(D_8028AAB0 * D_8028B75C) + 3) & ~3;
+  } else if (D_8028B758 < 0.0f) {
+    d = (D_8028AAB0 - (int)(D_8028AAB0 * D_8028B75C) - D_8028B740 + 3) & ~3;
+    D_8028B740 += d;
+    D_8028B744 += d;
+    if (D_8028AAB0 < D_8028B744) {
       D_8028B744 = D_8028AAB0;
     }
-  }
-  else {
-    D_8028B744 = D_8028AAB0;
+  } else {
     D_8028B740 = 0;
+    D_8028B744 = D_8028AAB0;
   }
   if (D_8028B780 == 0) {
-    if (D_8028B76C != D_8028B774) {
-      D_8028B774 = D_8028B774 + D_8028B770 * D_8028AAD8;
+    if (D_8028B774 != D_8028B76C) {
+      D_8028B774 += D_8028B770 * D_8028AAD8;
       if (D_8028B770 < 0.0f) {
         if (D_8028B774 < D_8028B76C) {
           D_8028B774 = D_8028B76C;
         }
-      }
-      else if (D_8028B76C < D_8028B774) {
+      } else if (D_8028B76C < D_8028B774) {
         D_8028B774 = D_8028B76C;
       }
     }
-  }
-  else {
+  } else {
     D_8028B780 = 0;
   }
-  D_802A49D0 = (char)(int)((double)D_8028B774 * 255.0);
+  D_802A49D0 = (int)(D_8028B774 * 255.0);
   if (D_8028B77C == 0) {
-    if (D_8028B760 == D_8028B768) {
-      dVar4 = (double)D_8028B768;
-      goto LAB_802242c4;
-    }
-    D_8028B768 = D_8028B768 + D_8028B764 * D_8028AAD8;
-    if (D_8028B764 < 0.0f) {
-      if (D_8028B760 <= D_8028B768) {
-        dVar4 = (double)D_8028B768;
-        goto LAB_802242c4;
+    if (D_8028B768 != D_8028B760) {
+      D_8028B768 += D_8028B764 * D_8028AAD8;
+      if (D_8028B764 < 0.0f) {
+        if (D_8028B768 < D_8028B760) {
+          D_8028B768 = D_8028B760;
+        }
+      } else if (D_8028B760 < D_8028B768) {
+        D_8028B768 = D_8028B760;
       }
-      D_8028B768 = D_8028B760;
     }
-    else {
-      if (D_8028B768 <= D_8028B760) {
-        dVar4 = (double)D_8028B768;
-        goto LAB_802242c4;
-      }
-      D_8028B768 = D_8028B760;
-    }
-  }
-  else {
+  } else {
     D_8028B77C = 0;
   }
-  dVar4 = (double)D_8028B768;
-LAB_802242c4:
-  D_802A49C8 = (char)(int)(dVar4 * 255.0);
+  D_802A49C8 = (int)(D_8028B768 * 255.0);
 }
