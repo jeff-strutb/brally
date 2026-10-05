@@ -795,6 +795,7 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
         fill_tile(&st.tile[0], tile);
         st.blend_mode = RDR_BLEND_OPAQUE;
         st.alpha_compare = (s_oml & 3) ? 1 : 0;
+        st.filter = 0;                                /* copy mode does not filter */
         st.z_test = st.z_write = 0;
     } else {
         st.z_test = st.z_test && 0;                   /* rectangles take the primitive depth: unused */

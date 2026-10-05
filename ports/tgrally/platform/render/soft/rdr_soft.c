@@ -108,8 +108,8 @@ static void sample(const RdrTile *t, int filter, float s, float u, float out[4])
             out[k] = p[k] / 255.0f;
         return;
     }
-    x -= 0.5f;
-    y -= 0.5f;
+    /* the RDP's bilinear filter: three texels, not four (the triangle of the
+       2x2 square the sample falls in), texel i at coordinate i */
     x0 = (int)floorf(x);
     y0 = (int)floorf(y);
     fx = x - x0;
@@ -122,8 +122,8 @@ static void sample(const RdrTile *t, int filter, float s, float u, float out[4])
         const uint8_t *p00 = tx->px + (ya * tx->w + xa) * 4, *p10 = tx->px + (ya * tx->w + xb) * 4;
         const uint8_t *p01 = tx->px + (yb * tx->w + xa) * 4, *p11 = tx->px + (yb * tx->w + xb) * 4;
         for (k = 0; k < 4; k++)
-            out[k] = ((p00[k] * (1 - fx) + p10[k] * fx) * (1 - fy) + (p01[k] * (1 - fx) + p11[k] * fx) * fy) /
-                     255.0f;
+            out[k] = (fx + fy < 1 ? p00[k] + fx * (p10[k] - p00[k]) + fy * (p01[k] - p00[k])
+                                  : p11[k] + (1 - fx) * (p01[k] - p11[k]) + (1 - fy) * (p10[k] - p11[k])) / 255.0f;
     }
 }
 

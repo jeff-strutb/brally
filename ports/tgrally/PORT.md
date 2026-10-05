@@ -80,7 +80,7 @@ its definition exactly (`tools/abicheck.py`, `tools/protofix.py`).
 |---|---|
 | `platform/os/` | libultra's API, natively: threads (one runs at a time, scheduled at OS calls, as the VR4300 ran them), message queues and events, the video retrace, PI DMA from the ROM file, the controllers and Controller Pak, timers, the audio interface, RCP tasks |
 | `platform/gfx/` | the RSP and RDP: an F3DEX 1.21 display-list interpreter (transform, lighting, clipping, the texture loads into TMEM) feeding a renderer with the RDP's combiner and blender state |
-| `platform/render/` | renderers behind `rdr.h`: Metal, null (headless) |
+| `platform/render/` | renderers behind `rdr.h`: Metal (draws at the window's resolution: the N64's frame scaled to the window's 4:3 area, `TGR_SCALE` without a window), soft (the N64's own resolution, the reference), null (headless) |
 | `platform/audio/` | the game's software mixer (`mixer.s` in the decomp) in C, and the audio interface's buffers out to the host |
 | host | `ports/brally/platform/host/` (window, input, audio out, time, files) |
 

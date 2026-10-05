@@ -1,8 +1,9 @@
 /* rdr_metal.m: the renderer interface (render/rdr.h) on Metal (macOS).
  *
  * The same rules as the software renderer (render/soft/rdr_soft.c), on the
- * GPU: frames are drawn offscreen at the N64's framebuffer size with a depth
- * buffer, the colour combiner and the tiles' wrap, mirror and mask rules are
+ * GPU: frames are drawn offscreen with a depth buffer, at the window's
+ * resolution (the N64's frame scaled to the window's 4:3 area, so geometry
+ * and texture filtering are evaluated per output pixel, not stretched), the colour combiner and the tiles' wrap, mirror and mask rules are
  * evaluated in the fragment shader from the RDP state of each draw, alpha
  * compare discards, and the blender's modes are fixed-function blends.  A
  * finished frame is scaled into the window's Metal layer (the host's) at the
@@ -23,7 +24,7 @@ static const char *k_shader =
 "struct VIn { float4 pos [[attribute(0)]]; float2 st [[attribute(1)]]; float4 rgba [[attribute(2)]]; };\n"
 "struct VOut { float4 pos [[position]]; float2 st; float4 rgba; };\n"
 "struct Tile { float4 org; int4 size; int4 wrap; int4 cl; };\n"
-"struct U { int4 cc[4]; float4 prim, env, fog, blendc; float plod; int cycle, filter, fog_blend;\n"
+"struct U { int4 cc[4]; float4 prim, env, fog, blendc; float plod, scale; int cycle, filter, fog_blend;\n"
 "           int alpha_cmp, ntex, balpha, lodn; float2 fb; Tile tile[10]; };\n"
 "vertex VOut vs(VIn v [[stage_in]], constant U &u [[buffer(1)]]) {\n"
 "  VOut o; float w = v.pos.w;\n"
@@ -42,12 +43,12 @@ static const char *k_shader =
 "    int ix = wrapi(int(floor(x)), w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x);\n"
 "    int iy = wrapi(int(floor(y)), h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y);\n"
 "    return t.read(uint2(ix, iy)); }\n"
-"  x -= 0.5; y -= 0.5; float fx = x - floor(x), fy = y - floor(y); int x0 = int(floor(x)), y0 = int(floor(y));\n"
+"  float fx = x - floor(x), fy = y - floor(y); int x0 = int(floor(x)), y0 = int(floor(y));\n"
 "  int xa = wrapi(x0, w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x), xb = wrapi(x0 + 1, w, tl.wrap.x, tl.wrap.z, tl.size.z, tl.cl.x);\n"
 "  int ya = wrapi(y0, h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y), yb = wrapi(y0 + 1, h, tl.wrap.y, tl.wrap.w, tl.size.w, tl.cl.y);\n"
-"  float4 a = mix(t.read(uint2(xa, ya)), t.read(uint2(xb, ya)), fx);\n"
-"  float4 b = mix(t.read(uint2(xa, yb)), t.read(uint2(xb, yb)), fx);\n"
-"  return mix(a, b, fy); }\n"
+"  float4 p00 = t.read(uint2(xa, ya)), p10 = t.read(uint2(xb, ya)), p01 = t.read(uint2(xa, yb)), p11 = t.read(uint2(xb, yb));\n"
+"  return fx + fy < 1.0 ? p00 + fx * (p10 - p00) + fy * (p01 - p00)\n"
+"                       : p11 + (1.0 - fx) * (p01 - p11) + (1.0 - fy) * (p10 - p11); }\n"
 "float4 inp(int c, float4 comb, float4 t0, float4 t1, float4 sh, constant U &u, float lfrac) {\n"
 "  switch (c) {\n"
 "  case 0: return comb; case 1: return t0; case 2: return t1; case 3: return u.prim; case 4: return sh;\n"
@@ -63,7 +64,7 @@ static const char *k_shader =
 "  float4 t0 = float4(0.0), t1 = float4(0.0), comb = float4(0.0); float lfrac = 0.0;\n"
 "  if (u.lodn > 0) {\n"
 "    float2 dx = dfdx(i.st), dy = dfdy(i.st);\n"
-"    float lod = max(max(abs(dx.x), abs(dx.y)), max(abs(dy.x), abs(dy.y)));\n"
+"    float lod = max(max(abs(dx.x), abs(dx.y)), max(abs(dy.x), abs(dy.y))) * u.scale;\n"
 "    int level = 0;\n"
 "    if (lod >= 1.0) { level = min(int(floor(log2(lod))), 7); lfrac = min(lod / exp2(float(level)) - 1.0, 1.0); }\n"
 "    int a = min(level, u.lodn - 1), b = min(level + 1, u.lodn - 1);\n"
@@ -98,7 +99,7 @@ typedef struct { simd_float4 org; simd_int4 size; simd_int4 wrap; simd_int4 cl; 
 typedef struct {
     simd_int4 cc[4];
     simd_float4 prim, env, fog, blendc;
-    float plod;
+    float plod, scale;                                /* scale: target pixels per N64 pixel */
     int cycle, filter, fog_blend;
     int alpha_cmp, ntex, balpha, lodn;
     simd_float2 fb;
@@ -113,6 +114,8 @@ static id<MTLTexture> s_color, s_depth, s_dummy;
 static id<MTLCommandBuffer> s_cb;
 static id<MTLRenderCommandEncoder> s_enc;
 static int s_fb_w, s_fb_h, s_first = 1;
+static int s_tw, s_th;                                /* the target: the N64's frame at the output's size */
+static float s_scale = 1;
 static NSMutableArray *s_tex;                         /* handle -> texture (NSNull: free) */
 static uint32_t *s_pixels;
 static int s_px_w, s_px_h;
@@ -215,28 +218,54 @@ static void begin_pass(MTLLoadAction color, MTLLoadAction depth)
     p.depthAttachment.storeAction = MTLStoreActionStore;
     s_enc = [s_cb renderCommandEncoderWithDescriptor:p];
     [s_enc setDepthClipMode:MTLDepthClipModeClamp];   /* the RSP clips on w, not on z */
-    [s_enc setViewport:(MTLViewport){ 0, 0, s_fb_w, s_fb_h, 0, 1 }];
+    [s_enc setViewport:(MTLViewport){ 0, 0, s_tw, s_th, 0, 1 }];
+}
+
+/* the target's scale: the window's 4:3 area in pixels over the N64's frame
+ * (so a frame is drawn at the window's resolution, not stretched), or
+ * TGR_SCALE without a window (screenshots) */
+static float target_scale(int fb_w)
+{
+    int dw = 0, dh = 0;
+    float k;
+    if (s_layer) {
+        host_macos_layer_fit(&dw, &dh);
+        if (dw > 0 && dh > 0) {
+            k = (float)(dw * 3 > dh * 4 ? dh * 4 / 3 : dw) / (float)fb_w;
+            return k < 0.25f ? 0.25f : k;
+        }
+    }
+    {
+        const char *e = getenv("TGR_SCALE");
+        k = e ? (float)atof(e) : 1.0f;
+    }
+    return k < 0.25f ? 0.25f : k > 16 ? 16 : k;
 }
 
 void rdr_frame_begin(int fb_w, int fb_h)
 {
     @autoreleasepool {
-        if (!s_color || fb_w != s_fb_w || fb_h != s_fb_h) {
+        float k = target_scale(fb_w);
+        int tw = (int)(fb_w * k + 0.5f), th = (int)(fb_h * k + 0.5f);
+        if (!s_color || tw != s_tw || th != s_th) {
             MTLTextureDescriptor *td =
-                [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:fb_w
-                                                                  height:fb_h mipmapped:NO];
+                [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:tw
+                                                                  height:th mipmapped:NO];
             td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
             td.storageMode = MTLStorageModePrivate;
             s_color = [s_dev newTextureWithDescriptor:td];
-            td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:fb_w
-                                                                   height:fb_h mipmapped:NO];
+            td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:tw
+                                                                   height:th mipmapped:NO];
             td.usage = MTLTextureUsageRenderTarget;
             td.storageMode = MTLStorageModePrivate;
             s_depth = [s_dev newTextureWithDescriptor:td];
-            s_fb_w = fb_w;
-            s_fb_h = fb_h;
+            s_tw = tw;
+            s_th = th;
             s_first = 1;
         }
+        s_fb_w = fb_w;
+        s_fb_h = fb_h;
+        s_scale = (float)tw / (float)fb_w;
         s_cb = [s_q commandBuffer];
         begin_pass(s_first ? MTLLoadActionClear : MTLLoadActionLoad, MTLLoadActionClear);
         s_first = 0;
@@ -281,6 +310,7 @@ static void uniforms(const RdrState *st, Uniforms *u)
     u->fog = (simd_float4){ st->fog[0], st->fog[1], st->fog[2], st->fog[3] };
     u->blendc = (simd_float4){ st->blend[0], st->blend[1], st->blend[2], st->blend[3] };
     u->plod = st->prim_lod_frac;
+    u->scale = s_scale;
     u->cycle = st->cycle;
     u->filter = st->filter;
     u->fog_blend = st->fog_blend;
@@ -311,8 +341,12 @@ static void draw(const RdrState *st, const RdrVtx *v, int n, int depth)
     [s_enc setRenderPipelineState:s_pipe[st->blend_mode & 3]];
     [s_enc setDepthStencilState:depth ? s_ds[st->z_test != 0][st->z_write != 0][st->z_decal != 0] : s_ds[0][0][0]];
     {
-        int x0 = st->scissor[0] < 0 ? 0 : st->scissor[0], y0 = st->scissor[1] < 0 ? 0 : st->scissor[1];
-        int x1 = st->scissor[2] > s_fb_w ? s_fb_w : st->scissor[2], y1 = st->scissor[3] > s_fb_h ? s_fb_h : st->scissor[3];
+        int x0 = (int)(st->scissor[0] * s_scale + 0.5f), y0 = (int)(st->scissor[1] * s_scale + 0.5f);
+        int x1 = (int)(st->scissor[2] * s_scale + 0.5f), y1 = (int)(st->scissor[3] * s_scale + 0.5f);
+        x0 = x0 < 0 ? 0 : x0;
+        y0 = y0 < 0 ? 0 : y0;
+        x1 = x1 > s_tw ? s_tw : x1;
+        y1 = y1 > s_th ? s_th : y1;
         if (x1 <= x0 || y1 <= y0)
             return;
         [s_enc setScissorRect:(MTLScissorRect){ (NSUInteger)x0, (NSUInteger)y0, (NSUInteger)(x1 - x0),
@@ -439,20 +473,20 @@ const uint32_t *rdr_frame_pixels(int *w, int *h)
             *w = *h = 0;
             return NULL;
         }
-        buf = [s_dev newBufferWithLength:(NSUInteger)s_fb_w * s_fb_h * 4 options:MTLResourceStorageModeShared];
+        buf = [s_dev newBufferWithLength:(NSUInteger)s_tw * s_th * 4 options:MTLResourceStorageModeShared];
         cb = [s_q commandBuffer];
         bl = [cb blitCommandEncoder];
         [bl copyFromTexture:s_color sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
-                 sourceSize:MTLSizeMake(s_fb_w, s_fb_h, 1) toBuffer:buf destinationOffset:0
-        destinationBytesPerRow:(NSUInteger)s_fb_w * 4 destinationBytesPerImage:(NSUInteger)s_fb_w * s_fb_h * 4];
+                 sourceSize:MTLSizeMake(s_tw, s_th, 1) toBuffer:buf destinationOffset:0
+        destinationBytesPerRow:(NSUInteger)s_tw * 4 destinationBytesPerImage:(NSUInteger)s_tw * s_th * 4];
         [bl endEncoding];
         [cb commit];
         [cb waitUntilCompleted];
-        if (s_px_w * s_px_h < s_fb_w * s_fb_h)
-            s_pixels = (uint32_t *)realloc(s_pixels, (size_t)s_fb_w * s_fb_h * 4);
-        memcpy(s_pixels, [buf contents], (size_t)s_fb_w * s_fb_h * 4);   /* BGRA = 0xAARRGGBB little-endian */
-        s_px_w = *w = s_fb_w;
-        s_px_h = *h = s_fb_h;
+        if (s_px_w * s_px_h < s_tw * s_th)
+            s_pixels = (uint32_t *)realloc(s_pixels, (size_t)s_tw * s_th * 4);
+        memcpy(s_pixels, [buf contents], (size_t)s_tw * s_th * 4);   /* BGRA = 0xAARRGGBB little-endian */
+        s_px_w = *w = s_tw;
+        s_px_h = *h = s_th;
         return s_pixels;
     }
 }
