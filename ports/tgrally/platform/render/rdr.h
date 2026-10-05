@@ -68,6 +68,9 @@ typedef struct RdrVtx {
 
 /* ---- what a renderer implements ----------------------------------------- */
 int  rdr_init(void);                                   /* 1 on success */
+void rdr_window(void);      /* the host's window is open (called on the main thread) */
+int  rdr_presents(void);    /* 1: frames reach the window by themselves (rdr_frame_end);
+                               0: the platform presents rdr_frame_pixels */
 void rdr_frame_begin(int fb_w, int fb_h);              /* a new colour image */
 int  rdr_texture(const uint8_t *rgba, int w, int h);   /* an RGBA8 image; a handle */
 void rdr_texture_free(int tex);

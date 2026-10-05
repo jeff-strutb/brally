@@ -18,6 +18,8 @@ static float *s_z;
 static int s_w, s_h, s_done_w, s_done_h, s_cap;
 
 int rdr_init(void) { return 1; }
+void rdr_window(void) {}
+int rdr_presents(void) { return 0; }
 
 void rdr_frame_begin(int fb_w, int fb_h)
 {

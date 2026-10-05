@@ -9,6 +9,7 @@
 #include <strings.h>
 #include "host.h"
 #include "plat.h"
+#include "../render/rdr.h"
 
 TgrConfig g_tgr;
 uint8_t *g_rom;
@@ -100,15 +101,18 @@ int main(int argc, char **argv)
     tgr_lift(g_rom, g_romlen);
     tgr_gfx_init();
     tgr_audio_init();
-    if (!g_tgr.headless && !host_window_open(640, 480, "Top Gear Rally")) {
-        fprintf(stderr, "tgr: no window\n");
-        return 1;
+    if (!g_tgr.headless) {
+        if (!host_window_open(640, 480, "Top Gear Rally")) {
+            fprintf(stderr, "tgr: no window\n");
+            return 1;
+        }
+        rdr_window();
     }
     tgr_os_start(BrBoot);
     if (g_tgr.headless) {
         tgr_os_wait();
     } else {
-        for (;;) {
+        while (!tgr_os_finished()) {
             host_event ev;
             if (host_poll_event(&ev, 10)) {
                 if (ev.type == HOST_EV_CLOSE)

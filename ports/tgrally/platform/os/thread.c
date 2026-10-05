@@ -443,6 +443,12 @@ void tgr_os_start(void (*boot)(void))
     host_thread_start(boot_main, NULL);
 }
 
+/* 1 once the run is over (--frames reached) */
+int tgr_os_finished(void)
+{
+    return s_finished;
+}
+
 void tgr_os_wait(void)
 {
     host_mutex_lock(G);

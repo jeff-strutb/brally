@@ -148,16 +148,19 @@ static int shot_wanted(uint32_t frame)
 /* the retrace: the last finished frame to the window, and a shot if one is asked for */
 void tgr_gfx_present(void)
 {
-    int w, h;
-    const uint32_t *px = rdr_frame_pixels(&w, &h);
+    int w, h, shot = g_tgr.shot_dir && shot_wanted(tgr_frame());
+    const uint32_t *px;
     uint32_t f = tgr_frame();
+    if (rdr_presents() && !shot)
+        return;                                 /* the renderer shows its own frames */
+    px = rdr_frame_pixels(&w, &h);
     if (!px || !w)
         return;
-    if (g_tgr.shot_dir && shot_wanted(f)) {
+    if (shot) {
         char path[512];
         snprintf(path, sizeof path, "%s/frame%05u.png", g_tgr.shot_dir, f);
         brr_png_write(path, (const uint8_t *)px, w, h, w * 4, BRR_PNG_BGRA);
     }
-    if (!g_tgr.headless)
+    if (!g_tgr.headless && !rdr_presents())
         host_present(px, w, h);
 }

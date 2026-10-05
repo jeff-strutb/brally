@@ -45,7 +45,8 @@ esac
 OBJS=
 for s in $SRCS; do
   o=$OUT/plat/$(echo "$s" | sed 's#/#__#g').o
-  $CC -c $PFLAGS "$s" -o "$o"
+  case "$s" in */render/metal/*) XF=-fobjc-arc;; *) XF=;; esac   # the Metal renderer is ARC
+  $CC -c $PFLAGS $XF "$s" -o "$o"
   OBJS="$OBJS $o"
 done
 $CC ${LDFLAGS_TGR} -o $OUT/tgrally $OUT/obj/*.o $OUT/plat/tgr_syms.o $OUT/plat/arena.o $OBJS $LIBS
