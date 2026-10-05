@@ -175,7 +175,7 @@
 <rect x="821.7" y="614.7" width="44.5" height="46.6" fill="#3fb950"><title>(unnamed)  0x8025E55C  708B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="866.8" y="614.7" width="43.5" height="46.6" fill="#3fb950"><title>(unnamed)  0x80252C9C  692B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="672.8" y="661.9" width="40.0" height="49.2" fill="#3fb950"><title>(unnamed)  0x802517B4  672B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="672.8" y="711.7" width="40.0" height="48.3" fill="#58a6ff"><title>(unnamed)  0x80251CD4  660B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="672.8" y="711.7" width="40.0" height="48.3" fill="#3fb950"><title>(unnamed)  0x80251CD4  660B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="672.8" y="760.7" width="40.0" height="46.8" fill="#3fb950"><title>(unnamed)  0x80251A54  640B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="672.8" y="808.1" width="40.0" height="45.1" fill="#3fb950"><title>(unnamed)  0x802590E8  616B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="672.8" y="853.7" width="40.0" height="44.2" fill="#3fb950"><title>(unnamed)  0x80252F64  604B  [unfiled 0x8025xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 472 &#183; T3 codegen-only 95 &#183; 141,928/457,392 bytes exact (31.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 473 &#183; T3 codegen-only 94 &#183; 142,588/457,392 bytes exact (31.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
