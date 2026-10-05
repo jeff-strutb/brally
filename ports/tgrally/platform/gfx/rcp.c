@@ -24,9 +24,12 @@
 /* ---- debugging switches (environment, read once) ------------------------------ *
  *   TGR_RCPLOG=1         log each primitive's state to stderr
  *   TGR_TEXDUMP=DIR      write every decoded texture as a PNG
+ *   TGR_PIXEL=X,Y        (soft renderer) report each write to that pixel with
+ *                        the triangle number the log gives
  *   TGR_ONLYTRIS=N / TGR_SKIPTRIS=N   draw only the first N / skip the first N
  *                        triangles of each frame (to find what draws a region) */
 static int s_log, s_only = -1, s_skip;
+int tgr_rcp_tri;                 /* the frame's triangle number (TGR_PIXEL reports it) */
 static const char *s_texdump;
 
 /* ---- memory ---------------------------------------------------------------- */
@@ -551,14 +554,16 @@ static void state(RdrState *st, int tile0)
             st->blend_mode = RDR_BLEND_OPAQUE;
     }
     st->alpha_compare = (s_oml & 3) == 1 ? 1 : (s_oml & 3) == 3 ? 2 : 0;
-    if ((s_oml & 0x2000) && (s_oml & 0x8) && st->blend_mode == RDR_BLEND_OPAQUE) {
-        /* coverage from alpha, anti-aliased: a pixel's partial coverage blends it
-           into the framebuffer by that coverage (soft edges, dust, foliage); none
-           drops it */
+    /* coverage times alpha (CVG_X_ALPHA, the texture-edge modes): a texel's alpha
+       scales the pixel's coverage, so anti-aliased it blends by that alpha and
+       none drops it (poles, foliage, dust); without anti-aliasing it cuts at half.
+       ALPHA_CVG_SEL alone (the opaque-surface modes) makes the pixel's alpha its
+       coverage: the combiner's alpha does not thin it. */
+    if ((s_oml & 0x1000) && (s_oml & 0x8) && st->blend_mode == RDR_BLEND_OPAQUE) {
         st->blend_mode = RDR_BLEND_ALPHA;
         st->blend_alpha = 0;
         st->alpha_compare = 4;
-    } else if (s_oml & 0x2000) {                      /* coverage from alpha, no AA: cut at half */
+    } else if (s_oml & 0x1000) {
         st->alpha_compare = st->alpha_compare ? st->alpha_compare : 3;
     }
     st->z_test = (s_geom & G_ZBUFFER) && (s_oml & 0x10);
@@ -578,36 +583,144 @@ static void frame_open(void)
     }
 }
 
+/* The RDP draws a pixel when any of its 8 coverage samples (4 sub-scanlines,
+ * 2 across) falls inside the triangle, so a mesh seam narrower than a pixel
+ * never opens.  A renderer that samples pixel centres covers the same pixels
+ * with the triangle grown by half a pixel (its edges pushed out) and cut to
+ * its bounding box grown by half a pixel (so a sharp corner cannot spike):
+ * the result is a convex polygon, its attributes found perspective-correctly
+ * from the triangle.  It is drawn just behind the triangle itself, so it fills
+ * a seam but never paints over the neighbour sharing an edge.  Triangles of
+ * under a pixel are left alone (the RDP's samples mostly miss them).
+ * Returns the polygon's vertex count (0: not grown). */
+static int cover_like_rdp(const RdrVtx v[3], RdrVtx out[8])
+{
+    float x[3], y[3], iw[3], nx[3], ny[3], px[16], py[16], qx[16], qy[16];
+    float x0, y0, x1, y1, cross;
+    int k, n, e;
+    for (k = 0; k < 3; k++) {
+        if (v[k].w <= 0.001f)
+            return 0;                                 /* clipped later: left as is */
+        iw[k] = 1.0f / v[k].w;
+        x[k] = v[k].x * iw[k];
+        y[k] = v[k].y * iw[k];
+    }
+    cross = (x[1] - x[0]) * (y[2] - y[0]) - (y[1] - y[0]) * (x[2] - x[0]);
+    if (fabsf(cross) < 2.0f)
+        return 0;
+    for (k = 0; k < 3; k++) {                         /* edge k: vertex k to k + 1, outward normal */
+        int j = (k + 1) % 3, o = (k + 2) % 3;
+        float dx = x[j] - x[k], dy = y[j] - y[k], l = sqrtf(dx * dx + dy * dy);
+        nx[k] = -dy / l;
+        ny[k] = dx / l;
+        if (nx[k] * (x[o] - x[k]) + ny[k] * (y[o] - y[k]) > 0) {   /* away from the third vertex */
+            nx[k] = -nx[k];
+            ny[k] = -ny[k];
+        }
+    }
+    for (k = 0; k < 3; k++) {                         /* vertex k joins edges k - 1 and k */
+        int i = (k + 2) % 3;
+        float d = 1.0f + nx[i] * nx[k] + ny[i] * ny[k], f = 0.5f / (d < 1e-4f ? 1e-4f : d);
+        px[k] = x[k] + (nx[i] + nx[k]) * f;
+        py[k] = y[k] + (ny[i] + ny[k]) * f;
+    }
+    x0 = fminf(x[0], fminf(x[1], x[2])) - 0.5f;
+    x1 = fmaxf(x[0], fmaxf(x[1], x[2])) + 0.5f;
+    y0 = fminf(y[0], fminf(y[1], y[2])) - 0.5f;
+    y1 = fmaxf(y[0], fmaxf(y[1], y[2])) + 0.5f;
+    n = 3;
+    for (e = 0; e < 4 && n > 0; e++) {                /* cut to the box, one side at a time */
+        int m = 0;
+        for (k = 0; k < n; k++) {
+            int j = (k + 1) % n;
+            float dk = e == 0 ? px[k] - x0 : e == 1 ? x1 - px[k] : e == 2 ? py[k] - y0 : y1 - py[k];
+            float dj = e == 0 ? px[j] - x0 : e == 1 ? x1 - px[j] : e == 2 ? py[j] - y0 : y1 - py[j];
+            if (dk >= 0) {
+                qx[m] = px[k];
+                qy[m++] = py[k];
+            }
+            if ((dk >= 0) != (dj >= 0)) {
+                float t = dk / (dk - dj);
+                qx[m] = px[k] + (px[j] - px[k]) * t;
+                qy[m++] = py[k] + (py[j] - py[k]) * t;
+            }
+        }
+        n = m > 8 ? 8 : m;
+        memcpy(px, qx, sizeof px);
+        memcpy(py, qy, sizeof py);
+    }
+    for (k = 0; k < n; k++) {                         /* each corner's attributes, from the triangle */
+        float l0 = ((x[1] - px[k]) * (y[2] - py[k]) - (y[1] - py[k]) * (x[2] - px[k])) / cross;
+        float l1 = ((x[2] - px[k]) * (y[0] - py[k]) - (y[2] - py[k]) * (x[0] - px[k])) / cross;
+        float l2 = 1.0f - l0 - l1, q = l0 * iw[0] + l1 * iw[1] + l2 * iw[2], w;
+        RdrVtx *o = &out[k];
+        if (q <= 1e-6f)
+            return 0;
+        w = 1.0f / q;
+#define PC(f) ((l0 * v[0].f * iw[0] + l1 * v[1].f * iw[1] + l2 * v[2].f * iw[2]) * w)
+        o->w = w;
+        o->x = px[k] * w;
+        o->y = py[k] * w;
+        o->z = PC(z);
+        o->s = PC(s);
+        o->t = PC(t);
+        o->r = PC(r);
+        o->g = PC(g);
+        o->b = PC(b);
+        o->a = PC(a);
+#undef PC
+    }
+    return n;
+}
+
 static void triangle(int a, int b, int c)
 {
     Vtx *v[3];
     RdrState st;
     RdrVtx out[3];
     float cross, ax, ay, bx, by, cx, cy;
-    int k;
+    int k, skip;
     if (a >= 32 || b >= 32 || c >= 32)
         return;
     v[0] = &s_vtx[a];
     v[1] = &s_vtx[b];
     v[2] = &s_vtx[c];
-    if (v[0]->clip & v[1]->clip & v[2]->clip & 15)
+    if (v[0]->clip & v[1]->clip & v[2]->clip & 15) {
+        if (s_log)
+            fprintf(stderr, "offscreen clip %d %d %d\n", v[0]->clip, v[1]->clip, v[2]->clip);
         return;                                       /* wholly off one side */
+    }
     if (!(v[0]->clip & 16) && !(v[1]->clip & 16) && !(v[2]->clip & 16)) {
         ax = v[0]->v.x / v[0]->v.w; ay = v[0]->v.y / v[0]->v.w;
         bx = v[1]->v.x / v[1]->v.w; by = v[1]->v.y / v[1]->v.w;
         cx = v[2]->v.x / v[2]->v.w; cy = v[2]->v.y / v[2]->v.w;
         cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);   /* screen y down */
-        if ((s_geom & G_CULL_BACK) && cross >= 0)         /* screen y runs down: clockwise is < 0 */
+        if (((s_geom & G_CULL_BACK) && cross >= 0) || ((s_geom & G_CULL_FRONT) && cross <= 0)) {
+            if (s_log)                                /* screen y runs down: clockwise is < 0 */
+                fprintf(stderr, "culled geom %08X cross %g y %.0f %.0f %.0f\n", s_geom, cross, ay, by, cy);
             return;
-        if ((s_geom & G_CULL_FRONT) && cross <= 0)
-            return;
+        }
+    }
+    {
+        static int count;
+        static uint32_t frame = 0xFFFFFFFF;
+        if (frame != tgr_frame()) {
+            frame = tgr_frame();
+            count = 0;
+            if (s_log)
+                fprintf(stderr, "frame %u\n", frame);
+        }
+        count++;
+        tgr_rcp_tri = count;
+        skip = (s_only >= 0 && count > s_only) || count <= s_skip;
     }
     frame_open();
     state(&st, s_tex.tile);
     if (s_log)
-        fprintf(stderr, "tri geom %08X omh %08X oml %08X cc %06X %08X tex %d %dx%d tex1 %d y %.0f %.0f %.0f w %.1f\n",
-                s_geom, s_omh, s_oml, s_cc0, s_cc1, st.tile[0].tex, st.tile[0].w, st.tile[0].h, st.tile[1].tex,
-                v[0]->v.y / v[0]->v.w, v[1]->v.y / v[1]->v.w, v[2]->v.y / v[2]->v.w, v[0]->v.w),
+        fprintf(stderr, "tri #%d geom %08X omh %08X oml %08X cc %06X %08X tex %d %dx%d tex1 %d y %.2f %.2f %.2f w %.1f x %.1f %.1f %.1f\n",
+                tgr_rcp_tri, s_geom, s_omh, s_oml, s_cc0, s_cc1, st.tile[0].tex, st.tile[0].w, st.tile[0].h, st.tile[1].tex,
+                v[0]->v.y / v[0]->v.w, v[1]->v.y / v[1]->v.w, v[2]->v.y / v[2]->v.w, v[0]->v.w,
+                v[0]->v.x / v[0]->v.w, v[1]->v.x / v[1]->v.w, v[2]->v.x / v[2]->v.w),
         fprintf(stderr, "    tile%d fmt %d siz %d line %d tmem %d pal %d uls %d ult %d lrs %d lrt %d mask %d/%d shift %d/%d s %.1f t %.1f timg %X\n",
                 s_tex.tile, s_tile[s_tex.tile].fmt, s_tile[s_tex.tile].siz, s_tile[s_tex.tile].line,
                 s_tile[s_tex.tile].tmem, s_tile[s_tex.tile].pal, s_tile[s_tex.tile].uls, s_tile[s_tex.tile].ult,
@@ -635,18 +748,20 @@ static void triangle(int a, int b, int c)
             out[k].b = v[0]->v.b;
         }
     }
-    {
-        static int count;
-        static uint32_t frame = 0xFFFFFFFF;
-        if (frame != tgr_frame()) {
-            frame = tgr_frame();
-            count = 0;
-            if (s_log)
-                fprintf(stderr, "frame %u\n", frame);
+    if (skip)
+        return;
+    if (st.z_test && !st.z_decal && (st.blend_mode == RDR_BLEND_OPAQUE || st.alpha_compare == 4)) {
+        RdrVtx poly[8], fan[18];                      /* not translucent: the RDP's coverage first */
+        int n = cover_like_rdp(out, poly), m = 0;
+        for (k = 0; k < n; k++)
+            poly[k].z += 2e-4f * poly[k].w;           /* a hair behind the triangle */
+        for (k = 1; k + 1 < n; k++) {
+            fan[m++] = poly[0];
+            fan[m++] = poly[k];
+            fan[m++] = poly[k + 1];
         }
-        count++;
-        if ((s_only >= 0 && count > s_only) || count <= s_skip)
-            return;
+        if (m)
+            rdr_triangles(&st, fan, m);
     }
     rdr_triangles(&st, out, 3);
 }
@@ -766,6 +881,8 @@ static void run(uint32_t dl)
                 s_vp.tx = (int16_t)rd16(a + 8) / 4.0f;
                 s_vp.ty = (int16_t)rd16(a + 10) / 4.0f;
                 s_vp.tz = (int16_t)rd16(a + 12) / 4.0f;
+                if (s_log)
+                    fprintf(stderr, "viewport scale %g %g %g trans %g %g %g\n", s_vp.sx, s_vp.sy, s_vp.sz, s_vp.tx, s_vp.ty, s_vp.tz);
             } else if (idx == 0x82 || idx == 0x84) {  /* look-at y, x */
                 int k = idx == 0x84 ? 0 : 1, j;
                 for (j = 0; j < 3; j++)

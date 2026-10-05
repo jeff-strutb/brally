@@ -5,6 +5,7 @@
  * and screenshots use it; it is also the reference the GPU renderers follow. */
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../rdr.h"
@@ -220,8 +221,19 @@ static int combine(const RdrState *st, const float shade[4], float s, float t, f
     return 1;
 }
 
+extern int tgr_rcp_tri;
+static int s_probe = -2;           /* TGR_PIXEL=X,Y: the pixel index reported, -1 none */
+
 static void write_px(const RdrState *st, int i, const float c[4], float fog)
 {
+    if (s_probe == -2) {
+        const char *e = getenv("TGR_PIXEL");
+        int x, y;
+        s_probe = e && sscanf(e, "%d,%d", &x, &y) == 2 ? y * 100000 + x : -1;
+    }
+    if (s_probe >= 0 && i == (s_probe / 100000) * s_w + s_probe % 100000)
+        fprintf(stderr, "pixel tri #%d tex %d/%d blend %d in %.2f %.2f %.2f %.2f\n", tgr_rcp_tri,
+                st->tile[0].tex, st->tile[1].tex, st->blend_mode, c[0], c[1], c[2], c[3]);
     uint32_t d = s_col[i];
     float dr = ((d >> 16) & 255) / 255.0f, dg = ((d >> 8) & 255) / 255.0f, db = (d & 255) / 255.0f;
     float r = c[0], g = c[1], b = c[2], a = st->blend_alpha == 1 ? st->fog[3] : st->blend_alpha == 2 ? fog : c[3];
