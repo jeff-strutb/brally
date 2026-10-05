@@ -2279,19 +2279,16 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
  * right and left edges finished with a 2-pixel stub at the bottom.
  * The colour is never set when no dash is drawn before a stub, so the stub
  * takes whatever byte sits in c's home (sp+0x59, after c1 and c2); t holds
- * y1 - 1 for the two stubs.
- * RESIDUE (60): saved-register choice -- the ROM keeps on, x, y in s1, s2,
- * s3 (ours x, y, on) and toggles on as (on + 1) & 1 straight into its
- * register; declaration order and every toggle spelling leave it. */
-/* @t4-pass 0x80251CD4 1 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80251CD4 2 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80251CD4 */
+ * y1 - 1 for the two stubs.  on is a byte toggled by an increment and a
+ * mask.  t is first set to the vertical dash bound and never read with it:
+ * that assignment numbers the y1 - 4 bound before x1 - 4, and the two tie
+ * for the last saved registers, so it gives them the ROM's s6/s7. */
 /* @implements 0x80251CD4 tgr BrPaintDashRect */
 void BrPaintDashRect(int x0, int y0, int x1, int y1)
 {
   int x;
+  unsigned char on;
   int y;
-  int on;
   char c1;                      /* c1, c2: declared, never used; */
   char c2;                      /* they put c at sp+0x59 */
   unsigned char c;
@@ -2311,25 +2308,30 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
     y0 = y1;
     y1 = y;
   }
+  t = y1 - 4;
   for (x = x0; x < x1 - 4; x += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y0, 4, 1, c, c, c);
   }
   for (y = y0; y < y1 - 4; y += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x1, y, 1, 4, c, c, c);
   }
   t = y1 - 1;
   BrFillRect(x1, t, 1, 2, c, c, c);
   for (x = x0; x < x1 - 4; x += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y1, 4, 1, c, c, c);
   }
   for (y = y0; y < y1 - 4; y += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x0, y, 1, 4, c, c, c);
   }
