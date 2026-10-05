@@ -233,8 +233,8 @@ void BrPaintDecalApply(void)
  * the text x is written inline as (x + 16) >> 1, so mode and ty share s0
  * and msg and y share s1 as in the ROM; the unused pad[2] gives its 0x68
  * frame. */
-/* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80244D84 tgr BrPakMessage */
 void BrPakMessage(int msg, char op, char mode)
 {
@@ -542,8 +542,8 @@ void BrPaintExitPrompt(void)
  * RESIDUE (205): saved-register choice in the key loop (the key pointer and
  * the constant 1 swap s3/s4, the text-length and width globals s0/s1) and
  * the pad address kept in a0 for the consume. */
-/* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8024AC70 */
 /* @implements 0x8024AC70 tgr BrPaintKeyboard */
 void BrPaintKeyboard(void)
@@ -858,8 +858,8 @@ void BrPaintBrushSelect(void)
  * RESIDUE (~260): the ROM keeps the stack count in its stack home and
  * recomputes each segment's address from it (dy and x1 homed too); ours
  * walks a pointer. */
-/* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8024DCA0 */
 /* @implements 0x8024DCA0 tgr BrPaintFloodFill */
 void BrPaintFloodFill(int sx, int sy)
@@ -1105,8 +1105,8 @@ void BrPaintStyleSelect(void)
  * spills the loop end; ours spills the y step.  Hoisting x/y, loops on the
  * parameters, loop-test spellings, declaration order and 396 permuter
  * compiles leave it. */
-/* @t4-pass 0x8024F000 1 2026-09-29 compiles 25 best 92 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024F000 2 2026-09-29 compiles 25 best 92 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024F000 1 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8024F000 2 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8024F000 */
 /* @implements 0x8024F000 tgr BrPaintLine */
 void BrPaintLine(int x0, int y0, int x1, int y1)
@@ -1188,8 +1188,8 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
  * 8-texel words swapped as the RDP's TMEM layout wants them.
  * RESIDUE (51): temporaries are numbered one register later than the ROM's
  * from the row-width shift on; the instructions and their order match. */
-/* @t4-pass 0x8024F25C 1 2026-09-29 compiles 26 best 51 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024F25C 2 2026-09-29 compiles 26 best 51 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8024F25C 1 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8024F25C 2 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8024F25C */
 /* @implements 0x8024F25C tgr BrPaintPlot */
 void BrPaintPlot(int x, int y, unsigned char c)
@@ -1631,8 +1631,8 @@ void BrPaintOvalStyleSelect(void)
  * RESIDUE (250): register priority -- the ROM keeps the corners, the radii
  * and the walk's running sums in their stack homes; ours holds more of them
  * in saved registers. */
-/* @t4-pass 0x80250B58 1 2026-10-03 compiles 28 best 250 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80250B58 2 2026-10-03 compiles 31 best 250 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80250B58 1 2026-10-03 compiles 28 best 250 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80250B58 2 2026-10-03 compiles 31 best 250 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80250B58 */
 /* @implements 0x80250B58 tgr BrPaintFillOval */
 void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
@@ -1736,8 +1736,8 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
  * size inward (up/down in the first region, across in the second).
  * RESIDUE (371): the ROM's frame is 8 smaller and keeps the corners and
  * radii in their stack homes; ours holds them in saved registers first. */
-/* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80250FCC */
 /* @implements 0x80250FCC tgr BrPaintFrameOval */
 void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
@@ -1977,8 +1977,8 @@ void BrPaintCircle(int sx, int sy, int r)
  * pointer (both one load each, as in the ROM).
  * RESIDUE (127, same length): the vector copies and interpolation are
  * scheduled differently (the view-counter store, float registers). */
-/* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80242BDC */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
@@ -2336,8 +2336,8 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
  * the eight octant points on odd pixels only, in dashes of four points.
  * RESIDUE (~270): the ROM keeps the corners in their parameter homes and
  * the radius twice (s6, s7); ours holds the corners in saved registers. */
-/* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80251F68 */
 /* @implements 0x80251F68 tgr BrPaintDashRoundRect */
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
@@ -2443,8 +2443,8 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
  * resolution, and on every other step the four quadrant points at odd
  * coordinates only, in dashes of four points of the two dash colours (swapped
  * every 8 frames). */
-/* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x802523CC */
 /* @implements 0x802523CC tgr BrPaintDashOval */
 void BrPaintDashOval(int x0, int y0, int x1, int y1)
@@ -2554,8 +2554,8 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
  * RESIDUE (~200): the ROM keeps the dash counter n in a temp register
  * (spilled to its home around the calls) and x in memory; ours keeps both
  * in memory, which shifts every temp after. */
-/* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x802528F8 */
 /* @implements 0x802528F8 tgr BrPaintDashCircle */
 void BrPaintDashCircle(int cx, int cy, int r)

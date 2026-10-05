@@ -7,7 +7,7 @@
 #include "tgr_syms.h"
 
 /* the N64's RAM, tgr_rdram, is defined with every data symbol of the game
- * as an alias into it at its original address (build/tgrally/gen/arena.s) */
+ * as an alias into it at its original address (build/tgrally/null-null/gen/arena.s) */
 
 /* ---- windows: native memory outside the arena the game stores an address of */
 #define WIN_FIRST 0x20

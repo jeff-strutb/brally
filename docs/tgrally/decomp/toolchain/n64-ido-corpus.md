@@ -1,8 +1,8 @@
 # N64 ido corpus
 
-> Local ROM-confirmed IDO 5.3 corpus from SM64/GoldenEye/Banjo/MK64 decomps (12,894 fns, ~9,800 at -O2) with a shape query tool; build/ext/n64corpus
+> Local ROM-confirmed IDO 5.3 corpus from SM64/GoldenEye/Banjo/MK64 decomps (12,894 fns, ~9,800 at -O2) with a shape query tool; build/tgrally/ext/n64corpus
 
-Built 2026-10-04 in `build/ext/n64corpus/` (git-ignored; never copy their C into the repo, same rule as the PC corpus [corpus-query-tool](../../../brally/decomp/corpus/corpus-query-tool.md)).
+Built 2026-10-04 in `build/tgrally/ext/n64corpus/` (git-ignored; never copy their C into the repo, same rule as the PC corpus [corpus-query-tool](../../../brally/decomp/corpus/corpus-query-tool.md)).
 
 - Repos (shallow clones): sm64, 007, banjo-kazooie (+ lib/ultralib submodule), mk64. Also cloned but NOT useful: sf64 and pokemonsnap (game code IDO 7.1), sk2 (Snowboard Kids 2 = KMC GCC).
 - the project lead's No-Intro ROMs sit in each game folder (USA; Banjo USA 1.0), all SHA1-verified.

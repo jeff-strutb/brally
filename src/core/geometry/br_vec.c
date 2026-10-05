@@ -40,7 +40,7 @@
  * One axis the oracle cannot settle: `pA->x += pB->x` and
  * `pA->x = pA->x + pB->x` are byte-identical under IDO too, so the compound
  * form is unproven either way -- it just does not matter to either target.
- * Method: n64/tools/n64match.py; see the commutative-addition entry in
+ * Method: tools/tgrally/n64match.py; see the commutative-addition entry in
  * docs/VC5-IDIOMS.md. */
 void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 {
@@ -210,7 +210,7 @@ void BrVec3MulAdd(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB, float s)
  * canonicalise commutative operands, so its bytes record the original's own
  * spelling. `pB->x * s` is therefore the original, not merely a form that
  * happens to work. Contrast BrVec3Scale above, where both spellings give the
- * same MIPS and the oracle proves nothing. Method: n64/tools/n64match.py. */
+ * same MIPS and the oracle proves nothing. Method: tools/tgrally/n64match.py. */
 void BrVec3MulAddTo(BrVec3 *pA, const BrVec3 *pB, float s)
 {
     /* x: fld s / fmul [pB], the same lever as BrVec3Scale. */

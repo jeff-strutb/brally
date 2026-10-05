@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""lockstep.py -- compare the port with the original ROM (n64/tools/n64box.py)
+"""lockstep.py -- compare the port with the original ROM (tools/tgrally/n64box.py)
 at the k-th graphics task: walk both display lists command by command and
 report the first difference (in a command, or in the data it names), and
 which game symbols differ in memory.
@@ -9,7 +9,7 @@ which game symbols differ in memory.
 The port is run with TGR_DUMP_TASK=K; n64box is run to the same task.  Both
 memories are compared as the original's bytes: the port keeps scalars native,
 so its .data/.bss are turned back to big-endian through the same runs the
-lift uses (build/tgrally/gen) before symbols are compared.
+lift uses (build/tgrally/null-null/gen) before symbols are compared.
 """
 import argparse
 import os
@@ -18,7 +18,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import tgrbox as n64box  # noqa: E402  (the port's view of the box: tools/tgrbox.py)
 
 
@@ -43,9 +43,9 @@ def box_memory(task, script):
 
 
 def port_memory(task, script):
-    out = os.path.join(ROOT, 'build/tgrally/lockstep')
+    out = os.path.join(ROOT, 'build/tgrally/null-null/lockstep')
     env = dict(os.environ, TGR_DUMP_TASK=str(task), TGR_DUMP=out)
-    cmd = [os.path.join(ROOT, 'build/tgrally/tgrally'), '--headless', '--frames', str(2 * task + 10)]
+    cmd = [os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), '--headless', '--frames', str(2 * task + 10)]
     if script:
         cmd += ['--script', script]
     subprocess.run(cmd, env=env, cwd=ROOT, capture_output=True)      # a crash after the dump is fine
@@ -117,7 +117,7 @@ def normalise(pmem):
             done[d:d + size] = b'\x01' * size
         p = a & 0x7FFFFF
         m[p:p + size] = m[p:p + size][::-1]
-    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/symunits.json'))):
+    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))):
         for off, size in sym['units']:
             a = sym['addr'] + off
             if DATA_VA <= a < DATA_VA + len(done):
@@ -125,7 +125,7 @@ def normalise(pmem):
             else:
                 unit(a, size, False)
     rom = open(n64box.ROM_PATH, 'rb').read()
-    for nat in json.load(open(os.path.join(ROOT, 'build/tgrally/natunits.json'))):
+    for nat in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/natunits.json'))):
         for k in range(nat['count']):
             r = DATA_ROM + nat['addr'] - DATA_VA + 4 * k
             a = struct.unpack('>I', rom[r:r + 4])[0]
@@ -143,7 +143,7 @@ def state_diff(bmem, pmem, limit=40):
     import bisect
     import json
     syms = sorted((s['addr'], s['size'], s['name']) for s in
-                  json.load(open(os.path.join(ROOT, 'build/tgrally/symunits.json'))))
+                  json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))))
     starts = [x[0] for x in syms]
     lo, hi = 0x8026FAB0, 0x80382BB0
     # the threads' stacks, and the 16-byte argument home area above each
@@ -160,7 +160,7 @@ def state_diff(bmem, pmem, limit=40):
     # those back to big-endian; elsewhere a field's width is unknown, so a
     # word or halfword that matches once swapped is the same value
     covered = bytearray(hi - lo)
-    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/symunits.json'))):
+    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))):
         for off, size in sym['units']:
             b = sym['addr'] + off - lo
             if 0 <= b < len(covered):

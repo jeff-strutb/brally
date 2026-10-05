@@ -167,8 +167,8 @@ void BrSeasonDrawHelp(int row)
  * (state & 1 in fp) and the text buffer in s2; ours spills the state and the
  * race count reloads each pass of the first loop.  Structure, calls and the
  * blink clock match. */
-/* @t4-pass 0x80208CF0 1 2026-09-29 compiles 196 best 440 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80208CF0 2 2026-09-29 compiles 196 best 440 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80208CF0 1 2026-09-29 compiles 196 best 440 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80208CF0 2 2026-09-29 compiles 196 best 440 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80208CF0 */
 /* @implements 0x80208CF0 tgr BrSeasonDraw */
 void BrSeasonDraw(void)

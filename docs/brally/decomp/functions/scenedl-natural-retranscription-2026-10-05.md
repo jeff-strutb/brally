@@ -6,7 +6,7 @@
 
 Session (2026-10-05) took 0x1000EAF0 BrSceneDlBuild (claim in build/match/lane_claims.csv) on the project lead's "hand-transcribe the largest PC T3s to T4" instruction. Peers: had BrRaceStep 0x10019A70,  had BrTex3dExpand 0x100250D0.
 
-**N64 twin:** n64/src/drawing/trackdraw.c BrTrackDraw (0x80235BAC) is the object pass (split/last deferral, `last - i + split` reverse read, `end` fixup). The PC trail section has no N64 twin.
+**N64 twin:** src/tgrally/drawing/trackdraw.c BrTrackDraw (0x80235BAC) is the object pass (split/last deferral, `last - i + split` reverse read, `end` fixup). The PC trail section has no N64 twin.
 
 **Ghidra body was transcribing VC5's own temps** (32 passes of spelling probes on it): `pCar`/`negCar0` (= 0xffffd620 - param_4) are VC5 strength-reduction of `param_4 + iCar*0x2b68`; `nTotal`/`pDst`/`firstVis` are VC5 IVs from `list[++cHead]`, `list[cHead - i + base]`, `DAT_102e0ca0 = cHead + 1`. Writing the natural source makes VC5 mint the identical temps.
 

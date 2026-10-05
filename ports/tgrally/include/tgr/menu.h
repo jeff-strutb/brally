@@ -1,5 +1,5 @@
 /* menu.h -- the front end's menu items and the records that embed them
- * (n64/docs/menu-analysis.md).
+ * (docs/tgrally/decomp/menu-analysis.md).
  */
 #ifndef TGR_MENU_H
 #define TGR_MENU_H

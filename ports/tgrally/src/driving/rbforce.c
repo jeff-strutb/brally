@@ -263,9 +263,9 @@ float cosf(float x);
  * RESIDUE (965): the ROM keeps the body pointer and most locals in its
  * 0x158 frame, reloading after every store; not -Olimit, not -O1.  A dead
  * {1, 0, 0} array (frame 0x98) sits in the slide-flag block. */
-/* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80259D14 3 2026-10-03 compiles 31 best 965 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80259D14 3 2026-10-03 compiles 31 best 965 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80259D14 */
 /* @implements 0x80259D14 tgr BrCarAxleGrip */
 void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned char *slipFp,
@@ -504,8 +504,8 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
  * .data right after BrCarAxleGrip's).
  * RESIDUE (423): the cross products' load order and the spill temps (the
  * ROM uses two, 0x20/0x24); the axis sits at 0x50, the ROM's 0x58. */
-/* @t4-pass 0x8025AC9C 1 2026-10-03 compiles 26 best 390 moved 16  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025AC9C 2 2026-10-03 compiles 26 best 390 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025AC9C 1 2026-10-03 compiles 26 best 390 moved 16  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025AC9C 2 2026-10-03 compiles 26 best 390 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025AC9C */
 /* @implements 0x8025AC9C tgr BrWheelTyre */
 void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float dt)

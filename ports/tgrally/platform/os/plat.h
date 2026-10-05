@@ -1,7 +1,7 @@
 /* plat.h: the platform layer's internals (platform/os, gfx, audio).
  *
  * libultra's API (ultra64.h) is implemented here over a model of the N64
- * that is the same as n64/tools/n64box.py's, so the original ROM run headless
+ * that is the same as tools/tgrally/n64box.py's, so the original ROM run headless
  * and this port run alike: one CPU (exactly one game thread runs at a time,
  * switched only at OS calls), one virtual clock (osGetCount; a retrace every
  * 1/60 s, advanced only when every game thread is blocked), the same order

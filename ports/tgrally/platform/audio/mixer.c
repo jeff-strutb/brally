@@ -1,4 +1,4 @@
-/* mixer.c: the game's software mixer (n64/src/audio/mixer.s, hand-written
+/* mixer.c: the game's software mixer (src/tgrally/audio/mixer.s, hand-written
  * MIPS III) in C, instruction for instruction in what it computes.
  *
  * A voice's position is a 32.32 accumulator whose high word is the address

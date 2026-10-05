@@ -1,6 +1,6 @@
 /* io.c: the rest of libultra's surface the game calls: the PI (ROM DMA), the
  * VI, the RCP's task handshake, the audio interface, the caches, printing,
- * and libm's sine table -- each as n64/tools/n64box.py models it. */
+ * and libm's sine table -- each as tools/tgrally/n64box.py models it. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

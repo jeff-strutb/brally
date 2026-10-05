@@ -4,7 +4,7 @@
 
 > BrCarSelect 0x8020D004 (16 KB) T4 2026-10-05 (ccf50198, image gate 662/0) by hand transcription; last residue was a WRONG void PROTOTYPE of BrRomUnpack; same fix applies to BrMenu 0x8020AD5C and BrIntroScreen 0x8020686C
 
-BrCarSelect (0x8020D004, n64/src/menus/carselect.c) went T3 -> T4 on 2026-10-05: commit ccf50198 + README regen 3c956ea7, image gate 662 placed / 0 bytes differ. Session, by hand transcription (3872 -> 14 diffs by reading the ROM; I then wasted a long stretch on variant sweeps for the last 14, which led to [hand-transcription-only](../../../brally/decomp/rules/hand-transcription-only.md)).
+BrCarSelect (0x8020D004, src/tgrally/menus/carselect.c) went T3 -> T4 on 2026-10-05: commit ccf50198 + README regen 3c956ea7, image gate 662 placed / 0 bytes differ. Session, by hand transcription (3872 -> 14 diffs by reading the ROM; I then wasted a long stretch on variant sweeps for the last 14, which led to [hand-transcription-only](../../../brally/decomp/rules/hand-transcription-only.md)).
 
 **The last 14 instructions = a wrong prototype.** The sound-bank clearing loop after `BrRomUnpack(...)` had ROM regs const 0x100 = v0, bank1 ptr = v1, bank2 ptr = a0 (ours: a0 / v0 / v1). carselect.c declared `void BrRomUnpack(...)`. The definition (romread.c) returns `unsigned int` (the unpacked length). With an int return, v0 is live at the start of the block after the call, so every web defined in the loop preheader (both SR pointer temps, and the counter in BrIntroScreen) avoids v0, while the bound constant (loop block only) gets it. Fixed by declaring `unsigned int BrRomUnpack(void *dst, int rom, void *s);`.
 

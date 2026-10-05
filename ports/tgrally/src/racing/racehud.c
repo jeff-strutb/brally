@@ -128,8 +128,8 @@ void BrRaceDrawLayers(void)
  * with x, y, the key and the frame at 0xEC..0xD8 and the needle pointer and
  * radii at 0x7C..0x74 (wide unused gaps between), where ours is 0xD8 with
  * register choices following. */
-/* @t4-pass 0x80237980 1 2026-10-03 compiles 120 best 811 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80237980 2 2026-10-03 compiles 120 best 811 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80237980 1 2026-10-03 compiles 120 best 811 moved 2  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80237980 2 2026-10-03 compiles 120 best 811 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80237980 */
 /* @implements 0x80237980 tgr BrHudDialDraw */
 void BrHudDialDraw(void)
@@ -312,9 +312,9 @@ void BrStub8023870C(void)
 /* WHAT IT DOES: Watch whether a car is driving the wrong way: after half a
  * second of facing backwards the WRONG WAY message starts flashing on that
  * player's screen, and it is taken down as soon as the car turns round. */
-/* @t4-pass 0x8021F1F0 1 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021F1F0 2 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021F1F0 3 2026-09-26 compiles 17 best 62 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021F1F0 1 2026-09-26 compiles 17 best 62 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021F1F0 2 2026-09-26 compiles 17 best 62 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021F1F0 3 2026-09-26 compiles 17 best 62 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021F1F0 tgr BrWrongWayCheck */
 void BrWrongWayCheck(BrCar *car)
 {
@@ -340,9 +340,9 @@ void BrWrongWayCheck(BrCar *car)
 /* WHAT IT DOES: Draw the direction arrow for the next turn: picks one of
  * the arrow shapes from the angle of the upcoming bend and draws it tinted
  * for that player. */
-/* @t4-pass 0x80233880 1 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80233880 2 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80233880 3 2026-09-26 compiles 17 best 348 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80233880 1 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80233880 2 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80233880 3 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80233880 */
 /* @implements 0x80233880 tgr BrHudArrowDraw */
 /* the car model's display lists and vertices are cartridge data: big-endian */
@@ -559,9 +559,9 @@ LAB_80233c10:
 /* WHAT IT DOES: Draw a race time as minutes, seconds and hundredths under
  * its label.  No named locals: the ROM's frame holds only the buffer, and
  * the seconds and minutes are the one expression CSE'd. */
-/* @t4-pass 0x80238714 1 2026-09-26 compiles 17 best 70 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238714 2 2026-09-26 compiles 16 best 70 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238714 3 2026-09-26 compiles 13 best 70 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238714 1 2026-09-26 compiles 17 best 70 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238714 2 2026-09-26 compiles 16 best 70 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238714 3 2026-09-26 compiles 13 best 70 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80238714 tgr BrHudTimeDraw */
 void BrHudTimeDraw(char *label, char *prefix, float t, int x, int y)
 {
@@ -576,9 +576,9 @@ void BrHudTimeDraw(char *label, char *prefix, float t, int x, int y)
 /* WHAT IT DOES: Draw the race times panel by race mode: the total time
  * (single-player layout only), then the lap time, best lap or time left,
  * placed below the top of the player's view. */
-/* @t4-pass 0x8023880C 1 2026-09-26 compiles 16 best 143 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023880C 2 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023880C 3 2026-09-26 compiles 17 best 143 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023880C 1 2026-09-26 compiles 16 best 143 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023880C 2 2026-09-26 compiles 17 best 143 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023880C 3 2026-09-26 compiles 17 best 143 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8023880C tgr BrHudTimesDraw */
 void BrHudTimesDraw(void)
 {
@@ -633,9 +633,9 @@ void BrHudTimesDraw(void)
  * (n/m, or FINISHED once done; shown finished only in the single-player
  * layout) at the top left; then the position number at the bottom left
  * with its st/nd/rd/th suffix after it, sized for the layout. */
-/* @t4-pass 0x80238AB8 1 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238AB8 2 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238AB8 3 2026-09-26 compiles 17 best 194 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238AB8 1 2026-09-26 compiles 17 best 194 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238AB8 2 2026-09-26 compiles 17 best 194 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238AB8 3 2026-09-26 compiles 17 best 194 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80238AB8 tgr BrHudLapDraw */
 void BrHudLapDraw(void)
 {
@@ -708,9 +708,9 @@ void BrHudLapDraw(void)
 /* WHAT IT DOES: Draw the car's current message (the first, else the
  * second) centred in the view, a third of the way down, sized for one or
  * two players, unless the display is switched off. */
-/* @t4-pass 0x80238DD4 1 2026-09-26 compiles 17 best 75 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238DD4 2 2026-09-26 compiles 17 best 76 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80238DD4 3 2026-09-26 compiles 17 best 76 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80238DD4 1 2026-09-26 compiles 17 best 75 moved 2  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238DD4 2 2026-09-26 compiles 17 best 76 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80238DD4 3 2026-09-26 compiles 17 best 76 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80238DD4 tgr BrHudPositionDraw */
 void BrHudPositionDraw(void)
 {

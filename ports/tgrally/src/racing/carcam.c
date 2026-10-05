@@ -143,8 +143,8 @@ void BrCarCamInit(BrCar *car)
  * RESIDUE (140): the ROM spills five matrix loads to its temp area for the
  * closing axis rows (frame 0xB8 vs ours 0x70) and keeps &cams[1] as a spilled
  * temp; structure, calls and named slots match. */
-/* @t4-pass 0x80221170 1 2026-09-29 compiles 13 best 140 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80221170 2 2026-09-29 compiles 13 best 140 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80221170 1 2026-09-29 compiles 13 best 140 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80221170 2 2026-09-29 compiles 13 best 140 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80221170 */
 /* @implements 0x80221170 tgr BrCamChaseStep */
 void BrCamChaseStep(BrCar *car)

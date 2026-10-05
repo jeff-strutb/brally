@@ -200,8 +200,8 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
  * sequences written out (the DXT and line arithmetic as in its macros).
  * RESIDUE (693): the ROM keeps no saved register (frame 0xF8) and reloads
  * w from its home at every use; ours holds w in s0. */
-/* @t4-pass 0x80245B00 1 2026-10-03 compiles 26 best 693 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80245B00 2 2026-10-03 compiles 26 best 693 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80245B00 1 2026-10-03 compiles 26 best 693 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80245B00 2 2026-10-03 compiles 26 best 693 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80245B00 */
 /* @implements 0x80245B00 tgr BrImageStrip */
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
@@ -489,8 +489,8 @@ void BrPadConsume(BrPadRec *pad, unsigned int bits);
  * report.  Sets *done when the caller may leave; returns the pak status on
  * an error.  (Run by the box with an empty pak: save, load, overwrite; the
  * pak errors, a new pak and the Rumble Pak swap are not reached.) */
-/* @t4-pass 0x80248F88 1 2026-09-28 compiles 21 best 1862 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80248F88 2 2026-09-28 compiles 21 best 1862 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80248F88 1 2026-09-28 compiles 21 best 1862 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80248F88 2 2026-09-28 compiles 21 best 1862 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80248F88 */
 /* @implements 0x80248F88 tgr BrDecalPakTransfer */
 int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu,

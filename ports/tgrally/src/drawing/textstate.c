@@ -400,8 +400,8 @@ void BrTextSetFont(int param_1)
  * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x8022F694 -- no
  * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
  * no data word holding it (the whole ROM searched for the value). */
-/* @t4-pass 0x8022F694 1 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F694 2 2026-10-03 compiles 121 best 1 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F694 1 2026-10-03 compiles 121 best 1 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022F694 2 2026-10-03 compiles 121 best 1 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8022F694 tgr BrTextPrintAt */
 void BrTextPrintAt(char *str, float x, float y, float unused)
 {
@@ -436,8 +436,8 @@ void BrTextPrint(char *s, int x, int y)
  * unprintables as 12/40 of the size, %% as a percent sign, and the %i, %n and
  * two-letter colour codes as nothing. Halved back when the hi-res flag doubled
  * the size. */
-/* @t4-pass 0x8022F720 1 2026-09-29 compiles 13 best 1 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F720 2 2026-09-29 compiles 13 best 1 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F720 1 2026-09-29 compiles 13 best 1 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022F720 2 2026-09-29 compiles 13 best 1 moved 0  (tools/tgrally/n64permute.py) */
 /* RESIDUE (1): the ROM compares the percent sign with the constant register
  * first (bnel t5, t1); IDO orders this compare itself, and every spelling of
  * it and the byte types tried gives c first. */

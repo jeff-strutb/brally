@@ -1,5 +1,5 @@
 /* thread.c: libultra's threads, message queues, events, timers and clock,
- * over the model n64/tools/n64box.py runs the original ROM in.
+ * over the model tools/tgrally/n64box.py runs the original ROM in.
  *
  * Every game thread is a host thread, but exactly one runs at a time: the
  * one holding the baton (s_cur).  The baton moves only inside an OS call,

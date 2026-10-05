@@ -3,7 +3,7 @@
 
 Runs clang's AST dump over each TU of ports/tgrally/src (N64 target, so types
 are read as the original compiler saw them) and writes
-build/tgrally/inventory.json:
+build/tgrally/null-null/inventory.json:
 
   vars:  name -> {decl: [(file, type, storage, used)], defined: [file]}
   funcs: name -> {decl: [(file, type)], defined: [file]}
@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 SRC = 'ports/tgrally/src'
-OUT = os.path.join(ROOT, 'build/tgrally/inventory.json')
+OUT = os.path.join(ROOT, 'build/tgrally/null-null/inventory.json')
 FLAGS = ['-target', 'mips-linux-gnu', '-fsyntax-only', '-std=gnu89', '-Wno-everything',
          '-Iports/tgrally/include', '-Xclang', '-ast-dump=json']
 

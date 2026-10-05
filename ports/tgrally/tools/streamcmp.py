@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""streamcmp.py -- run the original (n64/tools/n64box.py) and the port over
+"""streamcmp.py -- run the original (tools/tgrally/n64box.py) and the port over
 the same script and compare what each produced, in order: every graphics
 task's display-list digest, every frame-buffer swap, every audio buffer.
 The first difference is reported with its frame and its index in that
@@ -58,7 +58,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--script')
     ap.add_argument('--frames', type=int, default=600)
-    ap.add_argument('--bin', default=os.path.join(ROOT, 'build/tgrally/tgrally'), help='the port binary')
+    ap.add_argument('--bin', default=os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), help='the port binary')
     ap.add_argument('--timeout', type=int, default=180, help='seconds before the port counts as hung')
     ap.add_argument('--box', action='store_true', help=argparse.SUPPRESS)
     ap.add_argument('--log', help=argparse.SUPPRESS)
@@ -67,7 +67,7 @@ def main():
         run_box(a)
         return
     tag = os.path.splitext(os.path.basename(a.script))[0] if a.script else 'boot'
-    d = os.path.join(ROOT, 'build/tgrally/stream')
+    d = os.path.join(ROOT, 'build/tgrally/null-null/stream')
     os.makedirs(d, exist_ok=True)
     plog = os.path.join(d, tag + '.port')
     sc = ['--script', a.script] if a.script else []
@@ -78,12 +78,12 @@ def main():
     key = hashlib.sha1()
     full = script_frames(a.script) if a.script else a.frames
     for part in (open(a.script, 'rb').read() if a.script else b'', str(full).encode(),
-                 open(os.path.join(ROOT, 'n64/tools/n64box.py'), 'rb').read(),
+                 open(os.path.join(ROOT, 'tools/tgrally/n64box.py'), 'rb').read(),
                  inspect.getsource(run_box).encode(),
                  open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tgrbox.py'), 'rb').read(), str(os.path.getsize(os.path.join(
                      ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))).encode()):
         key.update(part)
-    cache = os.path.join(ROOT, 'build/tgrally/boxcache')
+    cache = os.path.join(ROOT, 'build/tgrally/null-null/boxcache')
     os.makedirs(cache, exist_ok=True)
     blog = os.path.join(cache, '%s-%s.log' % (tag, key.hexdigest()[:16]))
     box = None

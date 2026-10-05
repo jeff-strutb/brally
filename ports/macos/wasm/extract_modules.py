@@ -11,9 +11,9 @@ tools/extract_xm.py uses) and outdir/modules.json:
      "race_names": ["Desert", ...]}
 
 Both cues are the N64 game's own, read from its code and data, not chosen:
-  title  BrMainMenu (n64/src/menus/mainmenu.c) unpacks ROM 0x0EBC00 and
+  title  BrMainMenu (src/tgrally/menus/mainmenu.c) unpacks ROM 0x0EBC00 and
          starts it on the front end.
-  race   BrMusicLoadTrack (n64/src/startup/main.c) unpacks
+  race   BrMusicLoadTrack (src/tgrally/startup/main.c) unpacks
          D_8026FF24[track]; that table sits at ROM 0x70F24 and holds one
          module per track, 0-4, repeated for the mirrored tracks 5-9.
          race_names are those tracks' names, from the track records at

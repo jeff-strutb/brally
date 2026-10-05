@@ -136,10 +136,10 @@ void BrVec3Zero(BrVec3 *v);
  * RESIDUE (6): two lui's of the mark width scheduled one slot later than
  * the ROM's, and the scale's spill slot 0x64 (ROM 0x70).  500 permuter
  * compiles leave it. */
-/* @t4-pass 0x8023B418 1 2026-10-03 compiles 1 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023B418 2 2026-10-03 compiles 1 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023B418 3 2026-10-03 compiles 30 best 6 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023B418 4 2026-10-03 compiles 31 best 6 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023B418 1 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023B418 2 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023B418 3 2026-10-03 compiles 30 best 6 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023B418 4 2026-10-03 compiles 31 best 6 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8023B418 */
 /* @implements 0x8023B418 tgr BrSkidStep */
 void BrSkidStep(car)
@@ -413,8 +413,8 @@ void guMtxCatL(void *a, void *b, void *r);
  * has two unused ints above the drop.
  * RESIDUE (3): the low quad's z for the sink test sits in a0, the ROM's
  * in v0; compare/assignment spellings and 400 permuter compiles leave it. */
-/* @t4-pass 0x8023BF60 1 2026-10-03 compiles 26 best 3 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023BF60 2 2026-10-03 compiles 26 best 3 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023BF60 1 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023BF60 2 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8023BF60 */
 /* @implements 0x8023BF60 tgr BrSkidAge */
 void BrSkidAge(void)
@@ -849,8 +849,8 @@ extern float D_80368A80[4][4];          /* the falling particles' billboard */
  * ours keeps the index and a copy of p in saved registers, which moves
  * every spill slot.  Loop forms (for/while/do, a local index, a ushort
  * parameter) and 120 declaration orders leave it. */
-/* @t4-pass 0x8023D134 1 2026-10-03 compiles 25 best 352 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023D134 2 2026-10-03 compiles 25 best 352 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8023D134 1 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8023D134 2 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8023D134 */
 /* @implements 0x8023D134 tgr BrParticleListDraw */
 void BrParticleListDraw(int n, int r, int g, int b)

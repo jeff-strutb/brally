@@ -37,7 +37,7 @@
  * each took one more measured-dead lever.  Do NOT re-run:
  *   - THE FLOAT OPERAND SWAP (2nd light call arg pCarF[12] + eyeScale, orig
  *     flds the stack local, ours the struct field): the N64 commutative-order
- *     ORACLE is UNAVAILABLE here.  build/n64/report.csv has BrCarDrawVehicle
+ *     ORACLE is UNAVAILABLE here.  build/tgrally/n64/report.csv has BrCarDrawVehicle
  *     as status=MISS with an EMPTY n64_va -- no located Top Gear Rally twin
  *     (pairs.csv / probe.csv have zero drawcar hits), so IDO/MIPS cannot state
  *     which operand loads first.  Both C spellings that could flip it (summand

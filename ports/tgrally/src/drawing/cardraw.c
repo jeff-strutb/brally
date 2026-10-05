@@ -60,8 +60,8 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b);
  * RESIDUE (116): the two cull-mode ternaries -- the ROM materialises the 0x1000
  * arm first and fills the branch's delay slot from the 0x2000 arm (4 bytes
  * longer); everything after is shifted by that. */
-/* @t4-pass 0x8022F968 1 2026-09-29 compiles 97 best 116 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022F968 2 2026-09-29 compiles 97 best 116 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022F968 1 2026-09-29 compiles 97 best 116 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022F968 2 2026-09-29 compiles 97 best 116 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8022F968 */
 /* @implements 0x8022F968 tgr BrSkyDraw */
 void BrSkyDraw(void)
@@ -147,8 +147,8 @@ void BrCarPlaceWheels(int n)
  * two matrix buffers and the DL command word and s6/s7 to the loop; ours
  * the reverse.  Register-blind exact; loop forms and named locals do not
  * move it. */
-/* @t4-pass 0x8022FFB4 1 2026-10-03 compiles 118 best 20 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022FFB4 2 2026-10-03 compiles 117 best 20 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022FFB4 1 2026-10-03 compiles 118 best 20 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022FFB4 2 2026-10-03 compiles 117 best 20 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8022FFB4 */
 /* @implements 0x8022FFB4 tgr BrCarDrawWheels */
 void BrCarDrawWheels(BrCar *car)

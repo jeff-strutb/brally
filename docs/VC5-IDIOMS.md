@@ -4242,9 +4242,9 @@ commutative operand order and register allocation. Two worked examples:
     twin.
 
 **How to use it.** When a float sum's operand order is the only divergence
-left, do not permute: look the function up in `build/n64/report.csv` (build
-it with `n64/tools/n64match.py --all`) and read its MIPS with
-`n64/tools/n64rom.py func <vram>`. If it is listed, the order is a lookup,
+left, do not permute: look the function up in `build/tgrally/n64/report.csv` (build
+it with `tools/tgrally/n64match.py --all`) and read its MIPS with
+`tools/tgrally/n64rom.py func <vram>`. If it is listed, the order is a lookup,
 not a probe.
 
 **Boundary: this buys SOURCE truth, never CODEGEN truth.** It resolves what

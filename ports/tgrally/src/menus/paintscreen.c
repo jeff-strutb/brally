@@ -210,8 +210,8 @@ void BrPaintExitPrompt(void);
  * hold what the ROM's do (a callee's dead stack is read later on).
  * RESIDUE: the picture loop keeps its bound where the ROM keeps 0xe, and
  * the frame's last block stores i where the ROM does not (4 more words). */
-/* @t4-pass 0x80243260 1 2026-10-04 compiles 120 best 1544 moved 4  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80243260 2 2026-10-04 compiles 120 best 1544 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80243260 1 2026-10-04 compiles 120 best 1544 moved 4  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80243260 2 2026-10-04 compiles 120 best 1544 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80243260 */
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)

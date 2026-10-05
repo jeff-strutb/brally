@@ -4,7 +4,7 @@
 
 > BrCtlAiBody 0x8022762C T4 2026-10-05 (69b4e284, 1064 -> 0): uopt merges FLOAT CONSTANTS BY SPELLING (cfe ucode carries the text); constant-web save/cost decides callee FP saves; IV reset after the inner loop enables SR; first-appearance web numbering breaks priority ties
 
-BrCtlAiBody (n64/src/driving/ctlai.c) went 1064 -> 0 on 2026-10-05, commit 69b4e284, image gate 668/0. Hand transcription, about 15 reasoned steps, read from the ROM top-down.
+BrCtlAiBody (src/tgrally/driving/ctlai.c) went 1064 -> 0 on 2026-10-05, commit 69b4e284, image gate 668/0. Hand transcription, about 15 reasoned steps, read from the ROM top-down.
 
 **Float constants are keyed by their SPELLING.** cfe's ucode carries each float literal as text ("0.2", "0.0"; negated and folded ones as "-2.0000000298023224e-01"). uopt builds ONE constant web per spelling across the whole function. A function-wide web can cross calls or loops and change save/cost, so it grabs a callee FP register or splits where the ROM rematerialises (or the reverse). Levers, each measured:
 - `t < 0` (int literal) instead of `t < 0.0f` takes a loop-weighted use out of the "0.0" web (save 86 -> 56 < 60 callee cost: it splits as in the ROM, frees f22, prologue matches).

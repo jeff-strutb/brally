@@ -229,8 +229,8 @@ void BrPadConsume(BrDrivePad *pad, unsigned int bit);
  * a multiply by 0.5, keeps the steering target in f14 (ours f18) and its
  * frame is 0x10 smaller; the sign tests and the gearbox follow the same
  * flow. */
-/* @t4-pass 0x80222050 1 2026-09-29 compiles 121 best 753 moved 13  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80222050 2 2026-09-29 compiles 121 best 753 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80222050 1 2026-09-29 compiles 121 best 753 moved 13  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80222050 2 2026-09-29 compiles 121 best 753 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80222050 */
 /* @implements 0x80222050 tgr BrCarDriveInput */
 void BrCarDriveInput(BrCar *car)

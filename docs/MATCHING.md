@@ -73,7 +73,7 @@ code; same op, different operand source = allocation -> stop, `--qualify`.
 A whole-function register rotation is a symptom of one earlier source-shape
 fork. Fix the earliest divergence.
 
-N64 twin when blocked on what the source says: `build/n64/report.csv`. Useful
+N64 twin when blocked on what the source says: `build/tgrally/n64/report.csv`. Useful
 for commutative float operand order. Useless for colouring.
 
 Saw the same defect twice -> stop hand-solving, mint a generator.

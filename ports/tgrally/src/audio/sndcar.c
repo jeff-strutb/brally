@@ -61,8 +61,8 @@ float BrVec3Length(BrVec3 *v);
  * the 0x78 frame.
  * RESIDUE (838): the impact compare keeps n in v0 with a copy in v1 where
  * ours uses one register, and the temporaries rotate after it. */
-/* @t4-pass 0x8022BCB4 1 2026-09-29 compiles 100 best 837 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022BCB4 2 2026-09-29 compiles 100 best 837 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022BCB4 1 2026-09-29 compiles 100 best 837 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022BCB4 2 2026-09-29 compiles 100 best 837 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8022BCB4 */
 /* @implements 0x8022BCB4 tgr BrSndCarStep */
 void BrSndCarStep(BrCar *car)

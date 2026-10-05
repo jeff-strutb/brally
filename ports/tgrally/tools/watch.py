@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """watch.py -- which of the original's instructions write a range of RDRAM,
-up to the k-th graphics task (n64/tools/n64box.py, a write hook).
+up to the k-th graphics task (tools/tgrally/n64box.py, a write hook).
 
     watch.py ADDR [LEN] [--task K] [--script FILE] [--all]
 
-Each distinct writer (pc, the function from n64/config/symbols_tgr.csv) is
+Each distinct writer (pc, the function from config/tgrally/symbols_tgr.csv) is
 printed once with the first value it stored and the task it stored it in;
 --all prints every store.
 """
@@ -17,13 +17,13 @@ import sys
 from unicorn import UC_HOOK_MEM_WRITE
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import tgrbox as n64box  # noqa: E402  (the port's view of the box: tools/tgrbox.py)
 
 
 def functions():
     out = []
-    for r in csv.DictReader(open(os.path.join(ROOT, 'n64/config/symbols_tgr.csv'))):
+    for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv'))):
         try:
             out.append((int(r['va'], 16), r['name']))
         except (KeyError, ValueError):

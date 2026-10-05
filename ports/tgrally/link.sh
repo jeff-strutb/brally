@@ -4,15 +4,16 @@
 # host (shared with the Boss Rally port: ports/brally/platform/host).
 #   env: HOST    null (default, headless) | macos
 #        RENDER  null (default) | soft | metal (needs HOST=macos)
-#        OUT     build directory (default build/tgrally)
+#        OUT     build directory (default build/tgrally/HOST-RENDER)
 #        TGR_ROM your cartridge's ROM (default reference/tgrally/Top Gear Rally (USA).z64):
 #                its data is built into the executable (tools/assets.py); the game
 #                needs no ROM once built
 set -e
 cd "$(dirname "$0")/../.."
-OUT=${OUT:-build/tgrally}
 HOST=${HOST:-null}
 RENDER=${RENDER:-null}
+OUT=${OUT:-build/tgrally/$HOST-$RENDER}
+export OUT
 CC=${CC:-clang}
 P=ports/tgrally/platform
 H=ports/brally/platform/host

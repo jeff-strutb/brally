@@ -444,7 +444,7 @@ int BrTex3dMipChainLoad(char *param_1,char *param_2,BrTexReq272 *param_3)
    * residue is which register VC5 assigns to eax.  DEAD 2026-09-07: swapping
    * BOTH written multiply orders (iVar6*iVar3 / iVar5*iVar4) moved nothing --
    * VC5 canonicalises the integer imul regardless of source order, exactly as
-   * for the commutative FADD.  No N64 twin located (not in build/n64/report.csv),
+   * for the commutative FADD.  No N64 twin located (not in build/tgrally/n64/report.csv),
    * so the operand-order oracle is unavailable here.
    * @t4-pass 0x10027E10 1 2026-09-07 probes 1 bytes 227 insns 71 regions 2 rows 4 census no */
   if (iVar5 >= iVar6) {

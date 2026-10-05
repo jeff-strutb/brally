@@ -22,20 +22,20 @@ principles as the Boss Rally port (`ports/brally/PORTABLE-CORE.md`):
 
 ## How the core is made
 
-`src/` and `include/` are a fork of `n64/src` and `n64/include/tgr` at the
+`src/` and `include/` are a fork of `src/tgrally` and `src/tgrally/include/tgr` at the
 commit in `src/FORKED-FROM`, with the port's changes on top (addresses, byte
 order, the arena). The decomp keeps moving (M2 respells functions to match
-byte for byte), so `tools/sync.py` merges its progress in: each `n64/src`
+byte for byte), so `tools/sync.py` merges its progress in: each `src/tgrally`
 file changed since the fork commit is merged three ways (base: the fork
-commit, theirs: `n64/src` at HEAD, ours: the port's file). Conflicts are
+commit, theirs: `src/tgrally` at HEAD, ours: the port's file). Conflicts are
 resolved by hand, keeping the decomp's new code and the port's conversions;
 `sync.py --resolved` then runs `tools/errfix.py` and `tools/abicheck.py` over
 the merged files and moves the stamp. After a sync, rebuild and run the
-suite. `n64/src` itself is never edited for the port.
+suite. `src/tgrally` itself is never edited for the port.
 
 A function M2 restructures (arms swapped, blocks moved) is better rebuilt
 than merged hunk by hunk: take the decomp's file and re-apply the port's
-conversions, which can be read off as the diff from `n64/src` at the fork
+conversions, which can be read off as the diff from `src/tgrally` at the fork
 commit to the port's file. Code that moved merges cleanly in its new place
 without its conversions, so after any sync check that no line the port had
 converted survives verbatim. Data the decomp now defines in a TU (an
@@ -59,7 +59,7 @@ The game is ILP32 big-endian; the port is LP64 little-endian.
 **One arena at the original addresses.** All of the game's memory is one
 8 MB block, `tgr_rdram`, laid out as the N64's RAM. Every `.data` and `.bss`
 symbol is an assembler alias into it at its original address
-(`build/tgrally/gen/arena.s`, from `tools/globals.py`), so every 32-bit
+(`build/tgrally/null-null/gen/arena.s`, from `tools/globals.py`), so every 32-bit
 address the game holds (in display lists, segment tables, loaded track and
 car data, its own structures) is exactly the value the cartridge would hold.
 `tgr_addr.h` translates: `TGR_PTR(T, a)` an address to a native pointer,
@@ -129,7 +129,7 @@ retraces, the time spent presenting and the audio buffered.
 
 ## Verification
 
-`n64/tools/n64box.py` runs the original ROM headless (the CPU under Unicorn,
+`tools/tgrally/n64box.py` runs the original ROM headless (the CPU under Unicorn,
 the OS modelled exactly as the platform layer implements it: one game
 thread at a time, one virtual clock, one scripted input timeline). The
 port's tools use it through `tools/tgrbox.py`, which corrects its model of
@@ -138,7 +138,7 @@ by the RDP, stack residue in `BrTexLoad`) out of the display-list digest.
 
 | tool | |
 |---|---|
-| `tools/suite.py` | every `n64/tools/n64box_scripts` script through `streamcmp.py`, in parallel, on a snapshot of the binary; the original's streams are cached per script (`build/tgrally/boxcache`), so a full suite takes seconds |
+| `tools/suite.py` | every `tools/tgrally/n64box_scripts` script through `streamcmp.py`, in parallel, on a snapshot of the binary; the original's streams are cached per script (`build/tgrally/null-null/boxcache`), so a full suite takes seconds |
 | `tools/streamcmp.py` | one script: every display list (with the data it names), frame-buffer swap and audio buffer of the port against the original, first difference reported |
 | `tools/lockstep.py` | the game's state and display list at the k-th graphics task, symbol by symbol and command by command |
 | `tools/fncheck.py` | the game's state at the k-th call of any game function |

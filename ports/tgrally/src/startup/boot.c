@@ -202,8 +202,8 @@ void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
  * copy. */
-/* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8021D32C */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(BrCarModel *m)
@@ -341,8 +341,8 @@ void BrAnimSetPingPong(BrAnimSet *set)
  * RESIDUE (246): the ROM's frame is 0x28 to our 0x20, which moves every
  * spill slot. */
 /* @t3 0x8021D84C */
-/* @t4-pass 0x8021D84C 1 2026-10-04 compiles 121 best 246 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021D84C 2 2026-10-04 compiles 120 best 246 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021D84C 1 2026-10-04 compiles 121 best 246 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021D84C 2 2026-10-04 compiles 120 best 246 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021D84C tgr BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *set)
 {
@@ -662,8 +662,8 @@ void BrFaultThread(void *arg)
  * The first two stack fills walk a pointer alongside the counter (which
  * keeps IDO from unrolling them) and the third indexes the array (which it
  * unrolls by four), as the ROM has them. */
-/* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021E2C8 tgr BrIdleThread */
 void BrIdleThread(void *arg)
 {

@@ -829,8 +829,8 @@ void BrPadPollAll(void)
  * RESIDUE (~210): instruction scheduling -- the task's stores, the counter
  * loads and the debug copy's multiply are ordered differently; the
  * instruction multiset matches except about 30 moved ops. */
-/* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8021AA08 */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
@@ -1184,8 +1184,8 @@ void BrRaceFlagsApply(void)
 /* WHAT IT DOES: The RSP event thread: every time the RSP finishes a task,
  * mark the performance meter's first bar and pass the event on to the
  * scheduler's RSP queue. Never returns. */
-/* @t4-pass 0x8021BBDC 1 2026-10-03 compiles 121 best 7 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021BBDC 2 2026-10-03 compiles 121 best 7 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8021BBDC 1 2026-10-03 compiles 121 best 7 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8021BBDC 2 2026-10-03 compiles 121 best 7 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021BBDC tgr BrSpEventThread */
 void BrSpEventThread(void *arg)
 {

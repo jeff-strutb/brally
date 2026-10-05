@@ -8,20 +8,20 @@ native core needs a definition per address and the original's initial
 values.  For every data symbol the TUs reference this picks one owning TU
 (the one whose declaration has the most complete type), and writes
 
-  build/tgrally/gen/own/<tu>.c   the TU itself (#include) followed by the
+  build/tgrally/null-null/gen/own/<tu>.c   the TU itself (#include) followed by the
                                  definitions it owns and its rows of the
                                  symbol table: native address and size,
                                  original address and size, and the runs
                                  that lay the original's big-endian bytes
                                  into the native object
-  build/tgrally/gen/tgr_syms.c   the table's spine (each TU's rows), the
+  build/tgrally/null-null/gen/tgr_syms.c   the table's spine (each TU's rows), the
                                  runs, and the function table (original
                                  address -> native function) the lift uses
                                  for code pointers held in data
-  build/tgrally/gen/arena.s      symbols outside the program image (fixed
+  build/tgrally/null-null/gen/arena.s      symbols outside the program image (fixed
                                  RAM the game uses as buffers) as aliases
                                  into the platform's RDRAM arena
-  build/tgrally/globals.txt      what the source must resolve: an address
+  build/tgrally/null-null/globals.txt      what the source must resolve: an address
                                  declared at different sizes, an object
                                  that overlaps the next symbol
 
@@ -44,7 +44,7 @@ from concurrent.futures import ProcessPoolExecutor
 import clang.cindex as ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-OUT = os.path.join(ROOT, os.environ.get('OUT', 'build/tgrally'))
+OUT = os.path.join(ROOT, os.environ.get('OUT', 'build/tgrally/null-null'))
 GEN = os.path.join(OUT, 'gen')
 NATIVE = os.environ.get('TGR_TARGET') or subprocess.run(['clang', '-dumpmachine'], capture_output=True,
                                                          text=True).stdout.strip()
@@ -75,7 +75,7 @@ def region(a):
 
 def symbol_addresses():
     syms = {}
-    for r in csv.DictReader(open(os.path.join(ROOT, 'n64/config/symbols_tgr.csv'))):
+    for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv'))):
         try:
             syms[r['name']] = int(r['va'], 16)
         except (KeyError, ValueError):

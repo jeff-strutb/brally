@@ -4,7 +4,7 @@
 
 > BrDecalPakTransfer 0x80248F88 hand transcription state 2026-10-05 (session): decal step solved (direct field reads, row*stride, mask index local); case 7 head knot open (top colouring + LOAD/SAVE li a1 order); compiler-internals toolkit that made it tractable
 
-BrDecalPakTransfer (n64/src/menus/decalpak.c, 7.4 KB, claim "80248F88 "). Must be co-filed after image.c's BrBevelPanel/BrFillRect/BrImageDrawAt (ROM paint TU; cupcosts). Draft: scratch dp/m8.full.c (= BrPaintDecalCommit + image.c + decalpak, calls renamed BrBevelPanel).
+BrDecalPakTransfer (src/tgrally/menus/decalpak.c, 7.4 KB, claim "80248F88 "). Must be co-filed after image.c's BrBevelPanel/BrFillRect/BrImageDrawAt (ROM paint TU; cupcosts). Draft: scratch dp/m8.full.c (= BrPaintDecalCommit + image.c + decalpak, calls renamed BrBevelPanel).
 
 **Solved this session (all by reading the listing + compiler laws):**
 - Mask loop: `row * stride` (multu operand order = source order), and the mask index through a local (`x2 = (col >> 3) + row * stride; mask[x2]`): IDO puts the base first in `mask + idx` only when the index is a plain variable (cfe uadd complexity order, workbench L52).
@@ -28,5 +28,5 @@ BrDecalPakTransfer (n64/src/menus/decalpak.c, 7.4 KB, claim "80248F88 "). Must b
 **Toolkit (reusable):**
 - `cc` assembles `.s` with as1 `-noglobal` (no cross-block scheduling), so `.s` experiments are NOT faithful. Faithful: run cfe/uopt/ugen/as1 by hand (scratch dps/keep/pipe.sh), edit ugen's binasm (16-byte records; op 0x48=la, 0x52=li, 0x54=lw, 0x1c=.loc, 0x35=.livereg), re-run as1.
 - as1 fills a branch's load-delay gap with the FIRST record of the target block (target-hoist), only in the "near" regime; ROM shows no lui-hoist anywhere.
-- Instrumented ugen: build/ext/instr2/out/ugen; `DKWB_UGEN_TRACE=1` logs FREELIST pop/free with source line; `DKWB_INJECT=proc:emit:reg` moves a reg to the ring tail (oracle for ring-phase diagnosis); `DKWB_UGEN_SCHED=1` emit provenance. Combined toolchain scratch combo/ (ib4 uopt + instr2 ugen) graded via n64alloc Grader with TGR_TRACE_CC.
-- `CDX_DETAIL_WEB=<web>` prints a web's interference list. Workbench laws: build/ext/n64-decomp-workbench/docs/compiler-laws/ido-5.3.md (L52, L58, L66, L76 used here).
+- Instrumented ugen: build/tgrally/ext/instr2/out/ugen; `DKWB_UGEN_TRACE=1` logs FREELIST pop/free with source line; `DKWB_INJECT=proc:emit:reg` moves a reg to the ring tail (oracle for ring-phase diagnosis); `DKWB_UGEN_SCHED=1` emit provenance. Combined toolchain scratch combo/ (ib4 uopt + instr2 ugen) graded via n64alloc Grader with TGR_TRACE_CC.
+- `CDX_DETAIL_WEB=<web>` prints a web's interference list. Workbench laws: build/tgrally/ext/n64-decomp-workbench/docs/compiler-laws/ido-5.3.md (L52, L58, L66, L76 used here).

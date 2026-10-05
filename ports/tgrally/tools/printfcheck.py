@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """printfcheck.py -- the port's sprintf (platform/libc/xprintf.c) against the
-ROM's own (libultra's, at 0x80260DD4, run in n64/tools/n64box.py's CPU) over
+ROM's own (libultra's, at 0x80260DD4, run in tools/tgrally/n64box.py's CPU) over
 generated formats and values: every format the game's source uses, with
 random and edge-case arguments, and random formats besides.
 
@@ -19,7 +19,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import tgrbox as n64box  # noqa: E402  (the port's view of the box: tools/tgrbox.py)
 
 SPRINTF = 0x80260DD4
@@ -100,7 +100,7 @@ def main():
     ap.add_argument('--seed', type=int, default=1)
     a = ap.parse_args()
     rnd = random.Random(a.seed)
-    drv = os.path.join(ROOT, 'build/tgrally/printfcheck')
+    drv = os.path.join(ROOT, 'build/tgrally/null-null/printfcheck')
     subprocess.run(['clang', '-O2', '-I', os.path.join(ROOT, 'ports/tgrally/platform/include'),
                     os.path.join(HERE, 'printfcheck/driver.c'),
                     os.path.join(ROOT, 'ports/tgrally/platform/libc/xprintf.c'), '-o', drv], check=True)

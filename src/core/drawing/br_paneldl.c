@@ -29,7 +29,7 @@ static __inline unsigned int *BrPanelDlAlloc(void)
  * whose damage words are non-zero, and a final flush. Does nothing unless
  * the panel effect is enabled or the game is in one of the two modes that
  * always show it. */
-/* The loop is the N64 build's skid-mark pass (BrSkidDraw in n64/src/drawing/
+/* The loop is the N64 build's skid-mark pass (BrSkidDraw in src/tgrally/drawing/
  * particles.c): per car, four strips, and per strip seven quads drawn as one
  * G_TRI2 (v, v+4, v+1 / v+1, v+4, v+5) when any of the quad's six words is
  * set.  Three spellings are load-bearing: the strip address is a second loop

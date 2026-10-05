@@ -118,8 +118,8 @@ unsigned short BrU16QueuePop(unsigned short *q);
  * RESIDUE (41): register naming only -- |n1| and n1 swap f12/f14, the axis
  * indices sit in v1/a3 where ours use t1/t2, and u and the vertex copies
  * trade spill slots. */
-/* @t4-pass 0x8025B3B0 1 2026-09-29 compiles 26 best 41 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025B3B0 2 2026-09-29 compiles 26 best 41 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025B3B0 1 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025B3B0 2 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025B3B0 */
 /* @implements 0x8025B3B0 tgr BrCrTriContainsPoint */
 short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
@@ -283,8 +283,8 @@ int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
  * contact is separating.  The PC twin is BrCrImpulseSolve.
  * RESIDUE (~300): the ROM frame is 8 smaller (its loop counters have no
  * slots) and the FP schedule of the lever cross product differs. */
-/* @t4-pass 0x8025BBB8 1 2026-10-03 compiles 31 best 302 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025BBB8 2 2026-10-03 compiles 31 best 302 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025BBB8 1 2026-10-03 compiles 31 best 302 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025BBB8 2 2026-10-03 compiles 31 best 302 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025BBB8 */
 /* @implements 0x8025BBB8 tgr BrCrImpulseSolve */
 int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
@@ -610,8 +610,8 @@ int BrCollRespTipKick(BrTipBody *b)
  * centroid's x) and scaling the face by the body's extents.  The PC twin is
  * BrCrPlaneResolve. */
 /* @t3 0x8025DCB8 */
-/* @t4-pass 0x8025DCB8 1 2026-09-29 compiles 41 best 4 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025DCB8 2 2026-09-29 compiles 40 best 4 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025DCB8 1 2026-09-29 compiles 41 best 4 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025DCB8 2 2026-09-29 compiles 40 best 4 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8025DCB8 tgr BrCrPlaneResolve */
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v)
 {
@@ -879,9 +879,9 @@ void BrCarPhysAdvance(BrTipBody *b)
  * register and multiplies; the ROM shifts ((i << 2) - i) << 2 in place, so
  * every saved register after it moves.  Index types and byte/float/struct
  * pointer spellings all hoist. */
-/* @t4-pass 0x8025F18C 1 2026-09-29 compiles 26 best 209 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025F18C 2 2026-09-29 compiles 26 best 208 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025F18C 3 2026-09-29 compiles 26 best 208 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025F18C 1 2026-09-29 compiles 26 best 209 moved 2  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025F18C 2 2026-09-29 compiles 26 best 208 moved 1  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025F18C 3 2026-09-29 compiles 26 best 208 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025F18C */
 /* @implements 0x8025F18C tgr BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
@@ -968,8 +968,8 @@ short BrCollGridCellAcquire(float x, float y)
  * a[0], b[2], t[0], m[...]) to the stack and reloads them per test; ours
  * keeps more in registers (544).  The fifteen tests and their sums are in
  * the ROM's order. */
-/* @t4-pass 0x8025F4F8 1 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025F4F8 2 2026-10-03 compiles 26 best 516 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025F4F8 1 2026-10-03 compiles 26 best 516 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025F4F8 2 2026-10-03 compiles 26 best 516 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025F4F8 */
 /* @implements 0x8025F4F8 tgr BrObbOverlap */
 int BrObbOverlap(float *m, float *t, float *a, float *b)
@@ -1063,8 +1063,8 @@ float sqrtf(float x);
  * RESIDUE (432): the ROM keeps the outer index in its frame slot (0x148,
  * under the offset) and has four more named words there; the
  * car-missing/out tests branch straight to the loop end. */
-/* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8025FDE4 */
 /* @implements 0x8025FDE4 tgr BrCarCarCollide */
 void BrCarCarCollide(void)

@@ -110,7 +110,7 @@ M2  Byte-exact (T4)
 
 Same map as the PC lane, over the ROM: one box per function, sized by its bytes
 and coloured by tier (green = byte-exact, blue = contract-valid, amber = in
-progress, gray = not started). Regenerate: `python3 n64/tools/n64map.py --svg
+progress, gray = not started). Regenerate: `python3 tools/tgrally/n64map.py --svg
 docs/progress-map-n64.svg`.
 
 ## More
@@ -239,7 +239,7 @@ The repo root is the decomp. `ports/` is derived platform code, not byte-matched
     ports/brally/                the native 64-bit port: a retyped fork of the core
                               plus a cross-platform layer (macOS, Windows)
     ports/macos/              macOS/Metal 32-bit lane: NEW code, no `@implements`
-    n64/                      Top Gear Rally (IDO/MIPS); writes only build/n64/
+    n64/                      Top Gear Rally (IDO/MIPS); writes only build/tgrally/n64/
 
 `@implements <addr>` is a hard claim: MSVC 5.0 emits those original bytes.
 The engine is dispatch-driven: only ~13% is reachable by following `call`
@@ -303,9 +303,9 @@ the way the PC lane excludes Microsoft's C runtime, so the count shrinks as more
 library code is recognised.
 
 ```bash
-.venv/bin/python n64/tools/n64tiers.py     # tiers and milestones, rebuilt fresh
-.venv/bin/python n64/tools/n64build.py     # compile n64/src and grade every function
-n64/tools/n64ghidra.sh                     # machine drafts (T1) for every ROM function
+.venv/bin/python tools/tgrally/n64tiers.py     # tiers and milestones, rebuilt fresh
+.venv/bin/python tools/tgrally/n64build.py     # compile src/tgrally and grade every function
+tools/tgrally/n64ghidra.sh                     # machine drafts (T1) for every ROM function
 ```
 
 A byte-exact grade is strict: every instruction must match, and every address
@@ -314,33 +314,33 @@ jump tables are checked by their contents in the ROM.
 
 ### How N64 T3 is verified
 
-The same two oracles as the PC lane, over the original ROM: `n64/tools/n64box.py`
+The same two oracles as the PC lane, over the original ROM: `tools/tgrally/n64box.py`
 runs the retail cartridge headless under Unicorn (MIPS), with the operating
 system, the controllers, a Controller Pak and a Rumble Pak modelled and
-everything else executed for real. **A5** (`n64/tools/n64t3.py`, ledger
-`n64/config/t3_live.csv`) replays each T3 body against the original at real
-calls; **A7** (`n64t3.py --image`, ledger `n64/config/whole_image.csv`) runs
+everything else executed for real. **A5** (`tools/tgrally/n64t3.py`, ledger
+`config/tgrally/t3_live.csv`) replays each T3 body against the original at real
+calls; **A7** (`n64t3.py --image`, ledger `config/tgrally/whole_image.csv`) runs
 the whole image with every T3 body placed and must agree on every frame:
 every display list and audio task, and the game's RAM.
 
 Both are only as good as the play they see, so the 60 input scripts in
-`n64/tools/n64box_scripts/` cover the game broadly: all ten tracks (mirrors
+`tools/tgrally/n64box_scripts/` cover the game broadly: all ten tracks (mirrors
 included) across all five weathers, all 13 cars and every setup option, one
 and two players, arcade, time attack, practice and championship (one race
 driven all three laps to the flag, through the instant replay and results),
 the camera views, all five controller layouts, the cheat codes, the credits
 demos, the paint shop and the Controller and Rumble Paks. Most are written by
-`n64/tools/n64drive.py`, which plays the ROM toward a plan: menu rows, cheats,
+`tools/tgrally/n64drive.py`, which plays the ROM toward a plan: menu rows, cheats,
 cars, then a race on the computer drivers' own racing line, and records the
-pad as a script that replays identically. `n64/tools/n64probe.py --cover`
+pad as a script that replays identically. `tools/tgrally/n64probe.py --cover`
 reports which functions the scripts reach: 373 of the 439 byte-exact
 functions, and every T3.
 
 ```bash
-.venv/bin/python n64/tools/n64probe.py SCRIPT       # what a script does: screens, rows, race setup
-.venv/bin/python n64/tools/n64probe.py --cover      # functions the suite reaches, by tier
-.venv/bin/python n64/tools/n64drive.py list         # the generated plans
-.venv/bin/python n64/tools/n64drive.py verify --all # every generated script replays its recording
+.venv/bin/python tools/tgrally/n64probe.py SCRIPT       # what a script does: screens, rows, race setup
+.venv/bin/python tools/tgrally/n64probe.py --cover      # functions the suite reaches, by tier
+.venv/bin/python tools/tgrally/n64drive.py list         # the generated plans
+.venv/bin/python tools/tgrally/n64drive.py verify --all # every generated script replays its recording
 ```
 
 ### Reference ROM (you supply; not tracked in git)

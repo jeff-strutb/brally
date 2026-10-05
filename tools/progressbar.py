@@ -95,9 +95,9 @@ def text_breakdown():
 
 def n64_counts():
     """(t3_fns, t3_b, t4_fns, t4_b, target_fns, target_bytes) from
-    n64/tools/n64tiers.py -- the Top Gear Rally lane. Same parse-the-stdout
+    tools/tgrally/n64tiers.py -- the Top Gear Rally lane. Same parse-the-stdout
     approach as tier_counts(); the numbers carry commas here, so strip them."""
-    out = subprocess.run([PY, os.path.join(ROOT, 'n64', 'tools', 'n64tiers.py')],
+    out = subprocess.run([PY, os.path.join(ROOT, 'tools', 'tgrally', 'n64tiers.py')],
                          capture_output=True, text=True, cwd=ROOT).stdout
 
     def grab(pat):
@@ -307,7 +307,7 @@ def main():
         py = 'python3' if not os.path.exists(PY) else PY
         subprocess.run([py, os.path.join(ROOT, 'tools', 'progressmap.py'),
                         '--svg', SVG], cwd=ROOT, check=True)
-        subprocess.run([py, os.path.join(ROOT, 'n64', 'tools', 'n64map.py'),
+        subprocess.run([py, os.path.join(ROOT, 'tools', 'tgrally', 'n64map.py'),
                         '--svg', N64_SVG], cwd=ROOT, check=True)
     return 0
 

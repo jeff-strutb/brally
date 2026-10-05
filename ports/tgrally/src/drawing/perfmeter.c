@@ -75,8 +75,8 @@ void BrPerfFrameStart(void)
  * That word is 0 in the ROM's .data, no instruction forms its address
  * (n64rom xref: reads only, at those five sites), no data word points at
  * it, and a write watch over all 64 box scripts saw no store to it. */
-/* @t4-pass 0x8022D97C 1 2026-09-29 compiles 119 best 717 moved 5  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022D97C 2 2026-09-29 compiles 119 best 717 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022D97C 1 2026-09-29 compiles 119 best 717 moved 5  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022D97C 2 2026-09-29 compiles 119 best 717 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8022D97C tgr BrPerfMeterDraw */
 void BrPerfMeterDraw(void)
 {

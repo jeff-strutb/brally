@@ -32,9 +32,9 @@ void BrMat4Copy(float *param_1,float *param_2)
 
 /* WHAT IT DOES: Transform a point by a 4x4 matrix and divide by w: the
  * projected position. */
-/* @t4-pass 0x80224D00 1 2026-09-26 compiles 17 best 54 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80224D00 2 2026-09-26 compiles 17 best 54 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80224D00 3 2026-09-26 compiles 16 best 54 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80224D00 1 2026-09-26 compiles 17 best 54 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80224D00 2 2026-09-26 compiles 17 best 54 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80224D00 3 2026-09-26 compiles 16 best 54 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80224D00 tgr BrMat4ProjectPoint */
 void BrMat4ProjectPoint(float out[3], float v[3], float m[4][4])
 {

@@ -1,0 +1,241 @@
+"""Random source respelling against the ROM -- the N64 lane's byte grind.
+
+    .venv/bin/python tools/tgrally/n64permute.py 0x8022439C --iters 300
+    .venv/bin/python tools/tgrally/n64permute.py 0x8022439C --iters 300 --ledger
+    .venv/bin/python tools/tgrally/n64permute.py 0x8022439C --iters 300 --apply
+
+Each iteration applies one or two random, meaning-preserving respellings to
+the function's body, recompiles its file with IDO and grades the function
+with the T4 gate.  The best spelling is kept as the next starting point.
+
+Respellings: swap the operands of a commutative operator (+ * == != & | ^);
+move the last term of an assignment's single-operator * or + chain to the
+front (the rest kept grouped);
+x op= y <-> x = x op y; swap two adjacent declarations; swap two adjacent
+assignments to plain variables that do not read or write each other's names,
+or to two different fields of the same pointer.  None of them changes what the
+function does, so a spelling that grades EXACT is a match.
+
+--apply     write the best spelling back when it is EXACT
+--ledger    keep the closest spelling found and append a counted `@t4-pass`
+            line above the function (Gate B of n64t3.py --qualify): the
+            attempt count, the best diff count and how far this pass moved it
+"""
+import argparse
+import datetime
+import os
+import random
+import re
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
+import n64build as B  # noqa: E402
+import n64t3 as T  # noqa: E402
+
+COMM = r'\+|\*|==|!=|&|\||\^'
+OPERAND = r'[\w\.\->\[\]]+|\([^()]*\)'
+
+
+def top_terms(expr, op):
+    """expr split on the binary operator op at paren depth 0, or None when
+    another binary operator also sits at depth 0 (a single-operator chain
+    only, so rotating its terms re-associates nothing)."""
+    terms, depth, cur, prev = [], 0, '', ''
+    i = 0
+    while i < len(expr):
+        c = expr[i]
+        two = expr[i:i + 2]
+        if c in '([':
+            depth += 1
+        elif c in ')]':
+            depth -= 1
+        elif depth == 0:
+            binary = bool(prev) and (prev.isalnum() or prev in '_)].')
+            if two in ('->', '++', '--'):
+                cur += two
+                i += 2
+                prev = two[-1]
+                continue
+            if c in '+-*/%<>&|^?:=,!' and binary:
+                if c != op or two in ('&&', '||', '<<', '>>'):
+                    return None
+                terms.append(cur.strip())
+                cur, prev = '', ''
+                i += 1
+                continue
+        cur += c
+        if not c.isspace():
+            prev = c
+        i += 1
+    terms.append(cur.strip())
+    return terms if len(terms) >= 2 and all(terms) else None
+
+
+def mutate(body, rng):
+    ops = []
+    for m in re.finditer(r'(?<![\w\)\]])(%s)\s*(%s)\s*(%s)(?![\w\(\[])' % (OPERAND, COMM, OPERAND), body):
+        if m.group(2) in ('&', '|') and (m.group(1).startswith('&') or m.group(3).startswith('&')):
+            continue
+        # an operand must be a whole one: not the tail of an index or member
+        # (`a[i].f + 4` must not become `a[4 + i].f`), brackets balanced
+        if body[:m.start()].rstrip()[-1:] in ('[', '.', '>') or any(
+                g.count('[') != g.count(']') for g in (m.group(1), m.group(3))):
+            continue
+        # only a whole operation: with another arithmetic operator on either
+        # side, swapping would re-associate (a + b + c -> a + c + b), which
+        # changes float rounding
+        before = body[:m.start()].rstrip()[-1:]
+        after = body[m.end():].lstrip()[:1]
+        if before in '+-*/%&|^<>' and before or after in '+-*/%&|^<>' and after:
+            continue
+        ops.append(('swap', m))
+    # x op= y <-> x = x op y only when y is ONE operand: with another
+    # operator in y the rewrite changes precedence (x = x * a - 1 is not
+    # x *= a - 1) or float association (x = x - a - b is not x -= a - b)
+    single = re.compile(r'^\s*(%s)\s*$' % OPERAND)
+    for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*([+*&|^-])=\s*([^;]+);', body):
+        if single.match(m.group(3)):
+            ops.append(('expand', m))
+    for m in re.finditer(r'(\b[\w\.\->\[\]]+)\s*=\s*\1\s*([+*&|^-])\s*([^;]+);', body):
+        if single.match(m.group(3)):
+            ops.append(('contract', m))
+    # (t1 op ... op tn-1) op tn -> tn op (t1 op ... op tn-1): the last term
+    # commuted to the front of a single-operator * or + chain; the grouping of
+    # the rest is kept, so nothing re-associates
+    for m in re.finditer(r'(?<![=!<>+*/%&|^-])=(?!=)\s*([^;{}]+);', body):
+        for op in '*+':
+            t = top_terms(m.group(1), op)
+            # calls and ++/-- would move side effects past each other
+            if t and not re.search(r'\w\s*\(|\+\+|--', m.group(1)):
+                ops.append(('rotate', (m, op, t)))
+    lines = body.split('\n')
+    decl = [i for i, l in enumerate(lines)
+            if re.match(r'\s+(unsigned |signed )?(int|short|char|float|double|u8|u16|s16|u32|s32|f32|BrVec3)\b[^;(]*;\s*$', l)]
+    for i in decl:
+        if i + 1 in decl:
+            ops.append(('decl', i))
+    # adjacent simple assignments that do not touch each other's names
+    simple = re.compile(r'^\s+([^;{}()=]+?)\s*=\s*([^;{}=]+);\s*$')
+    for i in range(len(lines) - 1):
+        m1, m2 = simple.match(lines[i]), simple.match(lines[i + 1])
+        if not (m1 and m2):
+            continue
+        # a call can read or write anything, so it never moves past a store
+        if re.search(r'\w\s*\(', m1.group(2) + ' ' + m2.group(2)):
+            continue
+        n1 = set(re.findall(r'\w+', m1.group(1) + ' ' + m1.group(2)))
+        n2 = set(re.findall(r'\w+', m2.group(1) + ' ' + m2.group(2)))
+        w1, w2 = set(re.findall(r'\w+', m1.group(1))), set(re.findall(r'\w+', m2.group(1)))
+        if not (w1 & n2) and not (w2 & n1) and '*' not in m1.group(1) + m2.group(1) \
+                and '[' not in m1.group(1) + m2.group(1) and '->' not in m1.group(1) + m2.group(1):
+            ops.append(('stmt', i))
+            continue
+        # two stores to different fields of the same pointer, neither side
+        # reading what the other writes, cannot alias each other
+        f1 = re.match(r'^\s*(\w+)->(\w+)\s*$', m1.group(1))
+        f2 = re.match(r'^\s*(\w+)->(\w+)\s*$', m2.group(1))
+        if f1 and f2 and f1.group(1) == f2.group(1) and f1.group(2) != f2.group(2) \
+                and f1.group(2) not in m2.group(2) and f2.group(2) not in m1.group(2):
+            ops.append(('stmt', i))
+    if not ops:
+        return None
+    kind, m = rng.choice(ops)
+    if kind == 'swap':
+        return body[:m.start()] + '%s %s %s' % (m.group(3), m.group(2), m.group(1)) + body[m.end():]
+    if kind == 'expand':
+        return body[:m.start()] + '%s = %s %s %s;' % (m.group(1), m.group(1), m.group(2), m.group(3)) + body[m.end():]
+    if kind == 'contract':
+        return body[:m.start()] + '%s %s= %s;' % (m.group(1), m.group(2), m.group(3)) + body[m.end():]
+    if kind == 'rotate':
+        mm, op, t = m
+        rest = t[0] if len(t) == 2 else '(%s)' % (' %s ' % op).join(t[:-1])
+        last = t[-1]
+        return body[:mm.start(1)] + '%s %s %s' % (last, op, rest) + body[mm.end(1):]
+    if kind in ('decl', 'stmt'):
+        lines[m], lines[m + 1] = lines[m + 1], lines[m]
+        return '\n'.join(lines)
+    return None
+
+
+def grade_text(path, src, va, name):
+    d = os.path.dirname(path)
+    fd, tmp = tempfile.mkstemp(suffix='.c', dir=os.path.join(B.OUT))
+    os.close(fd)
+    try:
+        # compile in place of the real file so includes resolve the same way
+        open(tmp, 'w').write(src)
+        obj, err = B.compile_c(tmp)
+        if obj is None:
+            return None
+        pieces = {n: (s, e) for n, s, e in B.carve(obj) if n}
+        if name not in pieces:
+            return None
+        fnvas = {n: v for v, n, _ in B.tags_in(src)}
+        rom, fmap, syms = _ctx()
+        st, nd, notes, _, _ = B.grade(obj, rom, name, *pieces[name], va, fmap[va], syms, fnvas)
+        return 0 if st == 'EXACT' else max(1, nd)
+    finally:
+        os.unlink(tmp)
+
+
+_c = None
+
+
+def _ctx():
+    global _c
+    if _c is None:
+        _c = (B.Rom(), B.function_map(), B.load_symbols())
+    return _c
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('va')
+    ap.add_argument('--iters', type=int, default=200)
+    ap.add_argument('--seed', type=int, default=1)
+    ap.add_argument('--apply', action='store_true')
+    ap.add_argument('--ledger', action='store_true')
+    a = ap.parse_args()
+    va = int(a.va, 16)
+    path, name, _ = T.source_of(va)
+    src = open(path).read()
+    body = T.function_text(src, name)
+    start = grade_text(path, src, va, name)
+    best, best_body, compiles = start, body, 1
+    rng = random.Random(a.seed)
+    for i in range(a.iters):
+        cand = best_body
+        for _ in range(rng.choice((1, 1, 2))):
+            nxt = mutate(cand, rng)
+            if nxt:
+                cand = nxt
+        if cand == best_body:
+            continue
+        nd = grade_text(path, src.replace(body, cand), va, name)
+        compiles += 1
+        if nd is not None and nd < best:
+            best, best_body = nd, cand
+            print('  %d: %d diff%s' % (i, nd, '' if nd != 1 else ''))
+            if nd == 0:
+                break
+    print('%08X %s: start %s, best %s after %d compiles' % (va, name, start, best, compiles))
+    out = src
+    if best_body != body and (best == 0 and a.apply or a.ledger and best < start):
+        # every respelling preserves meaning, so a closer one is kept; the
+        # live oracle is re-run on the result before anything is certified
+        out = out.replace(body, best_body)
+        print('  kept the %s spelling' % ('byte-exact' if best == 0 else 'closer'))
+    if a.ledger:
+        n = len(re.findall(r'@t4-pass\s+0x%08X' % va, out)) + 1
+        line = '/* @t4-pass 0x%08X %d %s compiles %d best %d moved %d  (tools/tgrally/n64permute.py) */\n' % (
+            va, n, datetime.date.today().isoformat(), compiles, best, start - best)
+        tag = '/* @implements 0x%08X tgr %s */' % (va, name)
+        out = out.replace(tag, line + tag, 1)
+    if out != src:
+        open(path, 'w').write(out)
+
+
+if __name__ == '__main__':
+    main()

@@ -4,7 +4,7 @@
 The port binary is copied first, so the tree can be rebuilt while a suite
 runs; the longest scripts start first (the run takes as long as the
 longest one); the original's streams come from streamcmp's cache after the
-first run.  Results go to build/tgrally/suite/<time>/: one .res per script
+first run.  Results go to build/tgrally/null-null/suite/<time>/: one .res per script
 and summary.txt, which is also printed.
 
     suite.py [--jobs N] [NAME...]      (names: script basenames, default all)
@@ -21,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PY = os.path.join(ROOT, '.venv/bin/python')
-SCRIPTS = os.path.join(ROOT, 'n64/tools/n64box_scripts')
+SCRIPTS = os.path.join(ROOT, 'tools/tgrally/n64box_scripts')
 
 
 def frames_of(path):
@@ -53,10 +53,10 @@ def main():
     ap.add_argument('--jobs', type=int, default=os.cpu_count() or 8)
     ap.add_argument('names', nargs='*')
     a = ap.parse_args()
-    out = os.path.join(ROOT, 'build/tgrally/suite', time.strftime('%Y%m%d-%H%M%S'))
+    out = os.path.join(ROOT, 'build/tgrally/null-null/suite', time.strftime('%Y%m%d-%H%M%S'))
     os.makedirs(out)
     binary = os.path.join(out, 'tgrally')
-    shutil.copy2(os.path.join(ROOT, 'build/tgrally/tgrally'), binary)
+    shutil.copy2(os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), binary)
     jobs = []
     for p in sorted(glob.glob(os.path.join(SCRIPTS, '*.txt'))):
         name = os.path.splitext(os.path.basename(p))[0]

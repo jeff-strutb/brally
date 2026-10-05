@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """sync.py -- bring the decomp's progress into the port's fork of it.
 
-ports/tgrally/src is n64/src as of the commit in src/FORKED-FROM, with the
+ports/tgrally/src is src/tgrally as of the commit in src/FORKED-FROM, with the
 port's changes on top (addresses, byte order, the arena).  The decomp keeps
 moving (M2: functions respelled to match byte for byte, new ones
-transcribed); each n64/src file changed since the fork commit is merged
-three ways into the port's copy: base = n64/src at FORKED-FROM, theirs =
-n64/src at HEAD (committed work only), ours = the port's file.  A file new
+transcribed); each src/tgrally file changed since the fork commit is merged
+three ways into the port's copy: base = src/tgrally at FORKED-FROM, theirs =
+src/tgrally at HEAD (committed work only), ours = the port's file.  A file new
 in the decomp is copied; one the decomp deleted is reported.
 
     sync.py [--to COMMIT] [--dry-run]
@@ -44,8 +44,8 @@ def main():
     base = open(STAMP).read().split()[0]
     if a.resolved:
         to = open(STAMP + '.pending').read().split()[0]
-        files = [os.path.relpath(l.split('\t')[-1], 'n64/src')
-                 for l in git('diff', '--name-status', base, to, '--', 'n64/src').splitlines()]
+        files = [os.path.relpath(l.split('\t')[-1], 'src/tgrally')
+                 for l in git('diff', '--name-status', base, to, '--', 'src/tgrally').splitlines()]
         finish(to, [f for f in files if f.endswith(('.c', '.h', '.s'))])
         print('sync: FORKED-FROM is now %s' % to[:8])
         return
@@ -53,11 +53,11 @@ def main():
     if to == base:
         print('sync: the fork is at %s already' % to[:8])
         return
-    changed = [l.split('\t') for l in git('diff', '--name-status', base, to, '--', 'n64/src').splitlines()]
+    changed = [l.split('\t') for l in git('diff', '--name-status', base, to, '--', 'src/tgrally').splitlines()]
     clean, conflicts, added, removed = [], [], [], []
     for row in changed:
         st, path = row[0], row[-1]
-        rel = os.path.relpath(path, 'n64/src')
+        rel = os.path.relpath(path, 'src/tgrally')
         if not rel.endswith(('.c', '.h', '.s')):
             continue                # the decomp's progress notes are not port source
         ours = os.path.join(SRC, rel)

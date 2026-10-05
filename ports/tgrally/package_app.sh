@@ -22,16 +22,16 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-OUT=build/tgapp
+OUT=build/tgrally/macos-metal
 APP="$OUT/Top Gear Rally.app"
 if [ $BUILD = 1 ]; then
-    OUT=$OUT/build HOST=macos RENDER=metal GFLAG=-g0 ports/tgrally/link.sh
+    OUT=$OUT HOST=macos RENDER=metal GFLAG=-g0 ports/tgrally/link.sh
 fi
-[ -x $OUT/build/tgrally ] || { echo "package_app: no build at $OUT/build/tgrally" >&2; exit 1; }
+[ -x $OUT/tgrally ] || { echo "package_app: no build at $OUT/tgrally" >&2; exit 1; }
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp $OUT/build/tgrally "$APP/Contents/MacOS/tgrally"
+cp $OUT/tgrally "$APP/Contents/MacOS/tgrally"
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

@@ -751,7 +751,7 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
  * four `fxch` of the preload shape); `x + (y + z)` restores the shape, the
  * explicit left group also restores the term order.
  * The last three rows fell to the N64 build's shape of this function
- * (BrCollRespTipKick in n64/src/driving/collresp.c) plus placement:
+ * (BrCollRespTipKick in src/tgrally/driving/collresp.c) plus placement:
  * `count++` comes before the wheel pointer in each arm (the original's
  * ecx web), the kick vector is written whole in both arms of the sign test
  * (enough references to p to put it below w in the frame), the chassis dot

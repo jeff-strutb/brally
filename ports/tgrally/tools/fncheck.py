@@ -5,8 +5,8 @@ dumped there and the .data/.bss symbols that differ are listed.
 
     fncheck.py FUNCTION [--nth K] [--script FILE] [--frames N]
 
-The original stops in n64/tools/n64box.py at the function's address (from
-n64/config/symbols_tgr.csv); the port stops at a breakpoint under lldb and
+The original stops in tools/tgrally/n64box.py at the function's address (from
+config/tgrally/symbols_tgr.csv); the port stops at a breakpoint under lldb and
 calls tgr_dump_state.  K counts from 1.
 """
 import argparse
@@ -19,14 +19,14 @@ from unicorn import UC_HOOK_CODE
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 sys.path.insert(0, HERE)
 import tgrbox as n64box  # noqa: E402  (the port's view of the box: tools/tgrbox.py)
 import lockstep  # noqa: E402
 
 
 def address_of(fn):
-    for r in csv.DictReader(open(os.path.join(ROOT, 'n64/config/symbols_tgr.csv'))):
+    for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv'))):
         if r['name'] == fn:
             return int(r['va'], 16)
     sys.exit('fncheck: %s is not in the symbol table' % fn)
@@ -49,14 +49,14 @@ def box_memory(va, nth, script):
 
 
 def port_memory(fn, nth, script, frames):
-    out = os.path.join(ROOT, 'build/tgrally/fncheck.bin')
+    out = os.path.join(ROOT, 'build/tgrally/null-null/fncheck.bin')
     if os.path.exists(out):
         os.remove(out)
     cmd = ['lldb', '--batch', '-o', 'breakpoint set -n %s' % fn]
     if nth > 1:
         cmd += ['-o', 'breakpoint modify -i %d 1' % (nth - 1)]
     cmd += ['-o', 'run', '-o', 'expr (void)tgr_dump_state("%s", 0)' % out, '-o', 'kill', '--',
-            os.path.join(ROOT, 'build/tgrally/tgrally'), '--headless', '--frames', str(frames)]
+            os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), '--headless', '--frames', str(frames)]
     if script:
         cmd += ['--script', script]
     subprocess.run(cmd, cwd=ROOT, capture_output=True)

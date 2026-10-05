@@ -1,12 +1,13 @@
 #!/bin/sh
 # Top Gear Rally, native: compile every core TU (and, with link.sh, the
 # platform layer).  A TU that owns data symbols compiles through its wrapper
-# in build/tgrally/gen/own (tools/globals.py) so it defines them.
-#   env: JOBS (default 14), CC (default clang), OUT (default build/tgrally)
+# in build/tgrally/null-null/gen/own (tools/globals.py) so it defines them.
+#   env: JOBS (default 14), CC (default clang), OUT (default build/tgrally/null-null;
+#        link.sh passes its own, build/tgrally/HOST-RENDER)
 #   build.sh FILE...   compile those TUs only and print their errors
 set -e
 cd "$(dirname "$0")/../.."
-OUT=${OUT:-build/tgrally}
+OUT=${OUT:-build/tgrally/null-null}
 JOBS=${JOBS:-14}
 CC=${CC:-clang}
 PY=.venv/bin/python

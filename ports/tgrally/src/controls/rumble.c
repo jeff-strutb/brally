@@ -28,8 +28,8 @@ extern BrPfs D_8031A3F8[4];
  * motor on and off at the rates the current effect asks for, while the
  * player's pad is live, stopping it when the effect runs out; every 64
  * frames look for paks again. */
-/* @t4-pass 0x80260490 1 2026-10-03 compiles 30 best 170 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80260490 2 2026-10-03 compiles 30 best 170 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80260490 1 2026-10-03 compiles 30 best 170 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80260490 2 2026-10-03 compiles 30 best 170 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80260490 */
 /* @implements 0x80260490 tgr BrRumbleUpdate */
 void BrRumbleUpdate(int arg0)

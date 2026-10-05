@@ -1,5 +1,5 @@
 /* trace.c: what n64box logs at every retrace, for the lockstep comparison
- * (n64/tools/n64box.py --log): "frame kind value" lines. */
+ * (tools/tgrally/n64box.py --log): "frame kind value" lines. */
 #include <stdarg.h>
 #include <stdio.h>
 #include "plat.h"

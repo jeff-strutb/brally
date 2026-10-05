@@ -4,9 +4,9 @@
 
 > BrPaintShopScreen 0x80243260 (6.5 KB, menus/paintscreen.c) T3->T4 in progress : region metric 250 -> 7 (best_7.c + best_7_tree.c); TU-defined data shares lui at; as1/ugen levers; open allocation residue
 
-Claimed . Drafts in build/n64/search/80243260: best_7.c body + best_7_tree.c preamble (NOTES_.txt). Tree file has preamble edits applied (BrCarDefaultColour int, BrPaintSwatch unsigned fields, and now `BrPaintSwatch D_80369B98[16];` DEFINED in the TU); tree BODY still the old T3. Apply body+preamble together when T4; check the other paintscreen.c functions still build exact after the D_80369B98 definition.
+Claimed . Drafts in build/tgrally/n64/search/80243260: best_7.c body + best_7_tree.c preamble (NOTES_.txt). Tree file has preamble edits applied (BrCarDefaultColour int, BrPaintSwatch unsigned fields, and now `BrPaintSwatch D_80369B98[16];` DEFINED in the TU); tree BODY still the old T3. Apply body+preamble together when T4; check the other paintscreen.c functions still build exact after the D_80369B98 definition.
 
-Method: read ROM register classes; ring = t4-t9 LRF; v*/a*/t0-t3/s* = uopt webs. Tools: build/n64/m2tools/rmet.py (blind per-region), amet.py, dv.py, ugtrace.py (ugen free list), ugs.py (ugen raw -S per line range, pre-as1), capuc.py (uopt output ucode per line range; CAPDIR=scratch/capu UCFILE='before-8-*' gives cfe->uopt input), alldec.py/inblock.py (uopt p1 decisions), `cc -Wa,-R` (as1 scheduler trace).
+Method: read ROM register classes; ring = t4-t9 LRF; v*/a*/t0-t3/s* = uopt webs. Tools: build/tgrally/n64/m2tools/rmet.py (blind per-region), amet.py, dv.py, ugtrace.py (ugen free list), ugs.py (ugen raw -S per line range, pre-as1), capuc.py (uopt output ucode per line range; CAPDIR=scratch/capu UCFILE='before-8-*' gives cfe->uopt input), alldec.py/inblock.py (uopt p1 decisions), `cc -Wa,-R` (as1 scheduler trace).
 
 Levers found this round (all hand-derived):
 - as1 SHARES one `lui $at` across consecutive absolute accesses only when the symbol is DEFINED in the TU (probe-proven). ROM shows shared %hi -> define the data in that file. (`racestart.c`, `loadsave.c` already define data.)

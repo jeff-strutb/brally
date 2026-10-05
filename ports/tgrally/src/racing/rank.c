@@ -148,11 +148,11 @@ void BrRankUpdate(void)
  * Source facts: indexed arrays; int seg + pt * 40; a double 1.0.
  * RESIDUE (443): frame 0x18 larger (spill temps); &free[nFree] formed in
  * both save paths; restore-loop set-up order. */
-/* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (tools/tgrally/n64permute.py) */
 /* @t3 0x80229700 */
-/* @t4-pass 0x80229700 3 2026-09-29 compiles 150 best 443 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80229700 4 2026-09-29 compiles 150 best 443 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80229700 3 2026-09-29 compiles 150 best 443 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80229700 4 2026-09-29 compiles 150 best 443 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80229700 tgr BrCarSlotSwap */
 void BrCarSlotSwap(BrCar *me)
 {
@@ -372,8 +372,8 @@ void BrCarSlotSwap(BrCar *me)
  * iNext test's branch.  A5 equivalent, but A7 differs on a checkpoint frame
  * (views_coast_manual 4521): the register choice changes what callees save
  * on the stack, which survives to the retrace -- not T3 until it matches. */
-/* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x8022A0E0 */
 /* @implements 0x8022A0E0 tgr BrRaceGateStep */
 void BrRaceGateStep(BrRaceEnt *drv)

@@ -374,8 +374,8 @@ void BrPathGates(BrPathSeg *seg, float d)
  * car, depth and mid in their argument home slots and reloads them at each
  * use (seg in s3, ret in s4, frame 0x80); ours gives car and mid s-registers
  * (frame 0x78).  Structure and call order match. */
-/* @t4-pass 0x80226D9C 1 2026-09-29 compiles 13 best 253 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80226D9C 2 2026-09-29 compiles 13 best 253 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80226D9C 1 2026-09-29 compiles 13 best 253 moved 2  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80226D9C 2 2026-09-29 compiles 13 best 253 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80226D9C */
 /* @implements 0x80226D9C tgr BrAiScanCorridor */
 unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
@@ -1081,8 +1081,8 @@ void BrAiInputClear(short *car)
  * to the entry (lui/mtc1 once, mov.s in the loop) where the ROM builds it
  * inside the loop; everything after shifts by one slot.  Literal
  * spellings and goto/while loop shapes leave it. */
-/* @t4-pass 0x802290C4 1 2026-10-03 compiles 119 best 77 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802290C4 2 2026-10-03 compiles 119 best 77 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x802290C4 1 2026-10-03 compiles 119 best 77 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x802290C4 2 2026-10-03 compiles 119 best 77 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x802290C4 */
 /* @implements 0x802290C4 tgr BrPathWalk */
 void BrPathWalk(BrPathSeg *seg, int i, float frac, float d)

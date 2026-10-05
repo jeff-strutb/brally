@@ -85,8 +85,8 @@ void BrPaintPlot(int x, int y, unsigned char c);
  * RESIDUE (383, 7 short): saved-register allocation of the preview offsets
  * (the ROM keeps the unshifted differences in s3/s6/s7 and shifts at each
  * use), and its locals sit 0x1C lower in the frame. */
-/* @t4-pass 0x80247B0C 1 2026-10-03 compiles 26 best 325 moved 57  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80247B0C 2 2026-10-03 compiles 26 best 325 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80247B0C 1 2026-10-03 compiles 26 best 325 moved 57  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80247B0C 2 2026-10-03 compiles 26 best 325 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80247B0C */
 /* @implements 0x80247B0C tgr BrPaintClearMenu */
 void BrPaintClearMenu(void)

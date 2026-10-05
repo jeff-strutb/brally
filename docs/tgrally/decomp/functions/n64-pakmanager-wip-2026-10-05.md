@@ -2,9 +2,9 @@
 
 *Recorded 2026-10-05.*
 
-> BrPakManager 0x802534DC (cpakmenu.c) T3 in progress, : DIFF 1055 -> 193 (4 register-blind hunks); best body build/n64/search/802534DC/draft_m2.c (needs the header edits listed); what is solved and the one open uopt-order question
+> BrPakManager 0x802534DC (cpakmenu.c) T3 in progress, : DIFF 1055 -> 193 (4 register-blind hunks); best body build/tgrally/n64/search/802534DC/draft_m2.c (needs the header edits listed); what is solved and the one open uopt-order question
 
-BrPakManager (n64/src/menus/cpakmenu.c, 4420 B). Claimed `802534DC ` plus the file claim. The tree file is back at HEAD. The best body is `build/n64/search/802534DC/draft_m2.c` (DIFF 193, frame and prologue exact, 4 register-blind hunks). It needs two header edits to compile as measured:
+BrPakManager (src/tgrally/menus/cpakmenu.c, 4420 B). Claimed `802534DC ` plus the file claim. The tree file is back at HEAD. The best body is `build/tgrally/n64/search/802534DC/draft_m2.c` (DIFF 193, frame and prologue exact, 4 register-blind hunks). It needs two header edits to compile as measured:
 - delete the eight file statics D_8036A060..D_8036A270 (the draft declares them as function statics);
 - make BrImage's field at 0x10 `unsigned int w`.
 
@@ -23,6 +23,6 @@ BrPakManager (n64/src/menus/cpakmenu.c, 4420 B). Claimed `802534DC ` plus the fi
 3. Case 3: ox s0 / bx s1 / ty s2 in the ROM; ours has ty before bx (tie at 1.5, ty founded first).
 `n64alloc force 802534DC p1:w56=c3,p1:w158=c4` leaves only the ring rotation that follows item 1.
 
-**Spill-slot data (instr6, `CDX_LOG=1 build/ext/instr6/out/cc`, `[CDX] spilltemp web= off=`):** ours V=33 (0x50), y=45 (0x4C), 67 (0x48, unreferenced), st=80 (0x44). The ROM order is A < V < B < st < y: y is numbered last, and there is one more spilled temp (A, below V). Slots descend by web number. Here the numbers do NOT follow cfe source order (V in case 3 gets a lower number than y in loop 1). Equivalent y spellings in both loops (`(i<<3)+i+0x3f`, `i*9U+0x3f`) renumber y but keep it second. These are dead ends: `register y`, volatile y/st/x, declared-after-`name` locals, a static struct, externs, file statics, a byte array, the switch-selector ternary, and `if (ty != 0);`/`mask` locals. Next step: find uopt's web-founding traversal order (instr6 uopt.c) and why V precedes y.
+**Spill-slot data (instr6, `CDX_LOG=1 build/tgrally/ext/instr6/out/cc`, `[CDX] spilltemp web= off=`):** ours V=33 (0x50), y=45 (0x4C), 67 (0x48, unreferenced), st=80 (0x44). The ROM order is A < V < B < st < y: y is numbered last, and there is one more spilled temp (A, below V). Slots descend by web number. Here the numbers do NOT follow cfe source order (V in case 3 gets a lower number than y in loop 1). Equivalent y spellings in both loops (`(i<<3)+i+0x3f`, `i*9U+0x3f`) renumber y but keep it second. These are dead ends: `register y`, volatile y/st/x, declared-after-`name` locals, a static struct, externs, file statics, a byte array, the switch-selector ternary, and `if (ty != 0);`/`mask` locals. Next step: find uopt's web-founding traversal order (instr6 uopt.c) and why V precedes y.
 
-Tools that worked: the probe files in scratch/probe (sA..sAB reproduce the case-1 hoist), qsim2.py ring replay, ucd.py/ucall.py ucode dumps (cap = ugen-in, capu = uopt-in), and the compiler laws in build/ext/n64-decomp-workbench/docs/compiler-laws/ido-5.3.md (L9, L26, L32, L37, L55, L67).
+Tools that worked: the probe files in scratch/probe (sA..sAB reproduce the case-1 hoist), qsim2.py ring replay, ucd.py/ucall.py ucode dumps (cap = ugen-in, capu = uopt-in), and the compiler laws in build/tgrally/ext/n64-decomp-workbench/docs/compiler-laws/ido-5.3.md (L9, L26, L32, L37, L55, L67).

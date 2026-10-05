@@ -1,4 +1,4 @@
-"""tgrbox.py -- n64/tools/n64box.py as the port's comparison tools use it.
+"""tgrbox.py -- tools/tgrally/n64box.py as the port's comparison tools use it.
 
 Two differences from the stock box, both where the box's model of the
 machine is not the machine:
@@ -20,7 +20,7 @@ import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.insert(0, os.path.join(ROOT, 'n64/tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import n64box  # noqa: E402
 
 

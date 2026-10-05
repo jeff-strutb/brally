@@ -230,8 +230,8 @@ void BrNoteRatesInit(void)
  * RESIDUE (241): register allocation -- the ROM holds the four table
  * bases in s0-s3 (frame 0x48), ours the row values; the code is otherwise
  * in the ROM's order (register-blind gap 72). */
-/* @t4-pass 0x80256DEC 1 2026-10-03 compiles 25 best 240 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80256DEC 2 2026-10-03 compiles 25 best 240 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80256DEC 1 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80256DEC 2 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80256DEC */
 /* @implements 0x80256DEC tgr BrModRowRead */
 unsigned char *BrModRowRead(unsigned char *p)
@@ -634,8 +634,8 @@ void BrSfxLoopSamples(void)
  * RESIDUE: ours hoists more loop-invariant addresses and constants into
  * saved registers (frame 0x40 vs 0x30); the volume loop keeps a counter
  * and a pointer in the ROM.  Not yet matched. */
-/* @t4-pass 0x80257D3C 1 2026-10-04 compiles 31 best 209 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80257D3C 2 2026-10-04 compiles 31 best 209 moved 0  (n64/tools/n64permute.py) */
+/* @t4-pass 0x80257D3C 1 2026-10-04 compiles 31 best 209 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80257D3C 2 2026-10-04 compiles 31 best 209 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80257D3C */
 /* @implements 0x80257D3C tgr BrMusicThread */
 void BrMusicThread(void *arg)
