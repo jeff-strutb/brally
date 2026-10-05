@@ -471,7 +471,7 @@ static void test_vis_player_fallthrough(void)
  * DISASSEMBLY, and the glare accumulator values are GOLDEN VECTORS FROM
  * tools/x87emu.py executing the real opcode stream of 0x1000BEB0 out of
  * orig/BRGlide.dll -- not this port's output.  Regenerate with the emulator
- * (scratch glow_golden.py), never by copying the port's own numbers back.
+ * (a glow_golden.py driver), never by copying the port's own numbers back.
  *
  * Combiner #1 tokens (a0..Ad1):
  *   {0,0,0,1, 0,0,0,TEXEL0, 0,0,0,1, 0,0,0,TEXEL0}

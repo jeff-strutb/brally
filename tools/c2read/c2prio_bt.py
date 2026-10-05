@@ -1,5 +1,6 @@
 # Byte Tactics tools/c2prio.py (github.com/HectorBailey/byte-tactics, MIT, see
-# LICENSE.byte-tactics), unchanged; tools/c2read/c2read.py drives it.
+# LICENSE.byte-tactics); only comments changed (their references to the
+# Byte Tactics documents); tools/c2read/c2read.py drives it.
 """Show C2's own register candidates for one function: priority, order, register.
 
     uv run tools/c2prio.py 0x4cf570
@@ -41,7 +42,7 @@ for one it is live through without a reference. The shares add up to the
 priority in the table.
 
 --inline adds, before the table, C2's /Ob2 inline decisions for the function
-(docs/worker-guide.md, "The /Ob2 inline budget, read out of C2.EXE"): its IL
+(Byte Tactics guide, "The /Ob2 inline budget, read out of C2.EXE"): its IL
 size and budget, then every call site to an inline candidate in the order C2
 visits them (the depth-1 sites in source order, each inlined callee's own
 sites right after it), with the depth, R (this level's sites still to come,
@@ -64,7 +65,7 @@ some register and operand-order ties follow bits of these ids
 --frame adds C2's frame layout, which runs after the allocator: the locals left
 in memory in C2's list order with each one's size and reference count and the
 slot it opens or joins, then the slots in their final order with their offsets
-from the bottom of the locals (docs/worker-guide.md, "Get the frame layout from
+from the bottom of the locals (Byte Tactics guide, "Get the frame layout from
 the reference counts"). A compiler temporary's spill home is named after its
 candidate.
 
@@ -781,7 +782,7 @@ def host_main() -> None:
     token = secrets.token_hex(4)
     run = runs / token
     run.mkdir()
-    # A unique file name, so this run finds its own C2 among other workers' processes.
+    # A unique file name, so this run finds its own C2 among other processes.
     exe = run / f"c2p{token}.exe"
     data = bytearray(c2.read_bytes())
     off = file_offset(data, ENTRY)

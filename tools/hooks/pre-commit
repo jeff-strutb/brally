@@ -14,4 +14,7 @@
 # Installed by tools/install_hooks.py (setup.sh runs it). Bypass with
 # `git commit --no-verify` only when you are committing something that is not
 # a decompiled function -- and expect tools/fileaudit.py to catch it later.
-exec python3 "$(git rev-parse --show-toplevel)/tools/precommit_rule6.py"
+top="$(git rev-parse --show-toplevel)"
+# Provenance hygiene: no tool, vendor or workflow vocabulary, no dashes.
+python3 "$top/tools/provcheck.py" --staged || exit 1
+exec python3 "$top/tools/precommit_rule6.py"

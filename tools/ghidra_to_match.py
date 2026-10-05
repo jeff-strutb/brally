@@ -933,7 +933,7 @@ _REFINE_TYPES = ['char', 'unsigned char', 'short', 'unsigned short',
 # Ghidra wraps the originally-first operand of a flipped compare in an
 # identity (int)/(unsigned int) cast, which hid the flip from this regex,
 # `if (bound <= (int)idx)` never offered the `idx >= bound` candidate that
-# matches (proven 0x10008F90 BrObjSelCycle, found by the pass).
+# matches (proven 0x10008F90 BrObjSelCycle, found by the corpus-wide refinement pass).
 _SW = re.compile(
     r'switch\s*\((\w+)\)\s*\{\s*'
     r'((?:\s*case\s+(?:0x[0-9a-fA-F]+|\d+):\s*)+)'
@@ -994,7 +994,7 @@ def _classify_divergence(orig_bytes, rb, relocs):
         return 'error'
     # Strip trailing .obj 16-byte-alignment padding before sizing: 65 of
     # the first wide run's 137 'long' rows were nothing but this artifact
-    # (spotted on 0x10063DB0, proven corpus-wide by the pass).
+    # (spotted on 0x10063DB0, proven corpus-wide by the refinement pass).
     n = len(rb)
     while n > len(orig_bytes) and rb[n - 1] in (0x90, 0xCC):
         n -= 1
@@ -1350,7 +1350,7 @@ def _refine_candidates(src):
     #     to a 2-cmp range check, but the original's two-level jump table
     #     needs its high labels kept even when they return Y's value. A
     #     singleton extra case is folded again; a pair, or a fill through
-    #     the high bound, survives. Proven 0x10024DF0 (pass). The
+    #     the high bound, survives. Proven 0x10024DF0 (corpus-wide refinement pass). The
     #     jump TABLE is data the scorer can't see: a swspan match needs
     #     its table verified against the DLL by hand (see VC5-IDIOMS.md).
     for m in _SW.finditer(body):
@@ -1381,7 +1381,7 @@ def _refine_candidates(src):
     #     literal as `extern int s_*`, which loads its VALUE and pushes a
     #     register (`mov r,[s]; push r`); the original pushes the ADDRESS
     #     (`push offset s`), reached from `extern char s_*[]` (proven
-    #     BrFileReadChecked/WriteChecked 0x10008E60/E90 by the pass).
+    #     BrFileReadChecked/WriteChecked 0x10008E60/E90 by the corpus-wide refinement pass).
     for m in re.finditer(r'^extern int (s_\w+);$', head, re.M):
         nh = (head[:m.start()] + 'extern char %s[];' % m.group(1)
               + head[m.end():])
