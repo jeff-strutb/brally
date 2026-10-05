@@ -33,14 +33,6 @@ static int32_t br_dls_sext12(uint32_t v)
 /* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
 /* @t4-pass 0x1001EC30 3 2026-09-09 probes 10 bytes 178 insns 45 regions 4 rows 0 census no  (hand, fn.py variants: decl orders, mask/shift/guard spellings, q local, register hint, all inert or worse) */
 /* @t4-pass 0x1001EC30 4 2026-09-09 probes 11 bytes 178 insns 45 regions 4 rows 0 census yes  (hand, fn.py variants: word temp, param copy, return/diff spellings, all inert; corpus MISS at +0x1 len 12 -- the between-pushes parameter load is proven nowhere) */
-/* @t3 0x1001EC30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 178/178 insns 45/45 rows 0+0 regions 4 oracle EQUIVALENT
- * @t3-effort passes 4 zero-movement 3 4
- * residue is one register-colouring fork: esi<->edi for `p` vs `ult`, the
- * parameter load scheduled between the two pushes in the original and
- * after them here (identical multiset after the decimal-esp normaliser
- * fix, 8f86659).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind. */
 /* @implements 0x1001EC30 glide BrDlsTileSizeDecode */
 extern int DAT_118ed198;
 extern int DAT_1186c950;
@@ -49,23 +41,13 @@ extern int DAT_118ec988;
 extern int DAT_1186c958;
 extern int DAT_118ed1ac;
 
-/* RESIDUE 16 bytes, T3a, FIRSTDIV +0x1.  Size and instruction count are exact
- * (178/178, 45/45) and the register-blind gap is 1+1 -- the single surviving
- * shape is the parameter load, `mov esi,[esp+8]` (orig, between the two
- * pushes) against `mov edi,[esp+0xc]` (ours, after both).  The whole diff is
- * one esi<->edi swap: VC5 needs exactly two callee-saved registers here, for
- * `p` and for `ult`, and the original gives esi to `p` where we give it to
- * `ult`; uls/lrs/lrt land in edx/eax/ecx either way and every other byte is
- * identical.  Probed and DEAD, do not re-run: reading through an `unsigned *`
- * cursor and returning `(unsigned char *)(w + 2)`; reversing the declaration
- * order of uls/ult/lrs/lrt; copying the parameter into a local pointer
- * declared ahead of the ints (VC5 coalesces it back onto p).  Also ruled out
- * -- and it makes things worse, 50 diffs and +2 instructions -- reloading the
- * two globals for the final differences instead of keeping uls/ult live: they
- * really are locals live to the end, as the original has them. */
+/* ult has no local: it is formed, folded and read back through its global
+ * (DAT_1186c950).  With a local VC5 gave the local esi and the command
+ * pointer edi; the original keeps the pointer in esi and ult in edi, which is
+ * what this spelling produces. */
 unsigned char *BrDlsTileSizeDecode(unsigned char *p)
 {
-    int uls, ult, lrs, lrt;
+    int uls, lrs, lrt;
 
     uls = (*(unsigned *)p >> 12) & 0xFFF;
     DAT_118ed198 = uls;
@@ -73,12 +55,9 @@ unsigned char *BrDlsTileSizeDecode(unsigned char *p)
         uls -= 0x1000;
         DAT_118ed198 = uls;
     }
-    ult = *(unsigned *)p & 0xFFF;
-    DAT_1186c950 = ult;
-    if (ult >= 0x800) {
-        ult -= 0x1000;
-        DAT_1186c950 = ult;
-    }
+    DAT_1186c950 = *(unsigned *)p & 0xFFF;
+    if (DAT_1186c950 >= 0x800)
+        DAT_1186c950 -= 0x1000;
     lrs = (*(unsigned *)(p + 4) >> 12) & 0xFFF;
     DAT_1186c954 = lrs;
     if (lrs >= 0x800) {
@@ -92,7 +71,7 @@ unsigned char *BrDlsTileSizeDecode(unsigned char *p)
         DAT_118ec988 = lrt;
     }
     DAT_1186c958 = (lrs - uls + 4) >> 2;
-    DAT_118ed1ac = (lrt - ult + 4) >> 2;
+    DAT_118ed1ac = (lrt - DAT_1186c950 + 4) >> 2;
     return p + 8;
 }
 
