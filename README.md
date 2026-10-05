@@ -1,15 +1,14 @@
 # Boss Rally / Top Gear Rally: byte-exact decompilation
 
 <p>
-<img src="docs/mac-port-main-menu.png" width="49%" alt="Boss Rally's main menu, running natively on macOS through the Mac port">
-<img src="docs/mac-port-remastered.png" width="49%" alt="Racing past the Coastline lighthouse in the Mac port's Remastered mode: the modern model of the player's car, sun shadows, light shafts and a clean colour grade">
+<img src="docs/native-brally.png" width="49%" alt="Boss Rally racing along the Coastline sea wall, chasing a rival car, in the native 64-bit build on macOS">
+<img src="docs/native-tgrally.png" width="49%" alt="Top Gear Rally racing out of the Coastline town in the chase view, in the native build on macOS">
 </p>
 
-*Left: the main menu, running natively on an Apple Silicon Mac ([Remastered Mac port](remaster.md)).
-Right: Coastline with [Remastered lighting](remaster.md#remastered-lighting) and the
-[Remastered car](remaster.md#remastered-car) on (press ~ to switch back to the original look).
-The game also builds as a true 64-bit program for macOS, Windows and headless
-use: see [Native port](#native-port-64-bit-cross-platform).*
+*Left: Boss Rally's Coastline in the native 64-bit build ([Native port](#native-port-64-bit-cross-platform)),
+the decompiled PC source compiled for Apple Silicon and drawn through Metal.
+Right: Top Gear Rally's Coastline in the native N64 build ([ports/tgrally](ports/tgrally/PORT.md)),
+the decompiled ROM source compiled for Apple Silicon, with the RCP's display lists drawn through Metal.*
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
