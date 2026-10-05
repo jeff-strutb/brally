@@ -122,14 +122,14 @@
 <rect x="757.2" y="319.1" width="40.5" height="49.5" fill="#3fb950"><title>(unnamed)  0x8023880C  684B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="757.2" y="369.3" width="40.5" height="48.7" fill="#3fb950"><title>(unnamed)  0x8023B178  672B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="757.2" y="418.5" width="40.5" height="33.7" fill="#3fb950"><title>(unnamed)  0x80233494  468B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="798.2" y="319.1" width="38.3" height="35.3" fill="#58a6ff"><title>(unnamed)  0x8023CD60  464B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="837.1" y="319.1" width="38.0" height="35.3" fill="#58a6ff"><title>(unnamed)  0x80233E10  460B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="798.2" y="319.1" width="38.3" height="35.3" fill="#3fb950"><title>(unnamed)  0x8023CD60  464B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="837.1" y="319.1" width="38.0" height="35.3" fill="#3fb950"><title>(unnamed)  0x80233E10  460B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="875.7" y="319.1" width="34.6" height="35.3" fill="#3fb950"><title>(unnamed)  0x80239D84  420B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="798.2" y="355.0" width="36.5" height="33.2" fill="#3fb950"><title>(unnamed)  0x802336E0  416B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="798.2" y="388.8" width="36.5" height="32.2" fill="#3fb950"><title>(unnamed)  0x80239F28  404B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="798.2" y="421.6" width="36.5" height="30.6" fill="#3fb950"><title>(unnamed)  0x802303D4  384B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="835.3" y="355.0" width="37.8" height="28.2" fill="#3fb950"><title>(unnamed)  0x8023CFC4  368B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="873.7" y="355.0" width="36.6" height="28.2" fill="#58a6ff"><title>(unnamed)  0x8023CBFC  356B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="873.7" y="355.0" width="36.6" height="28.2" fill="#3fb950"><title>(unnamed)  0x8023CBFC  356B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="835.3" y="383.9" width="25.9" height="38.9" fill="#3fb950"><title>(unnamed)  0x80238DD4  348B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="835.3" y="423.3" width="25.9" height="28.9" fill="#3fb950"><title>(unnamed)  0x8023A0BC  260B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="861.8" y="383.9" width="24.6" height="24.7" fill="#6e5494"><title>(unnamed)  0x8023EDB0  212B  [unfiled 0x8023xxxx]</title></rect>
@@ -525,7 +525,7 @@
 <rect x="1245.8" y="643.9" width="50.7" height="43.9" fill="#3fb950"><title>(unnamed)  0x802111E0  768B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1297.1" y="643.9" width="50.7" height="43.9" fill="#58a6ff"><title>(unnamed)  0x8021BE88  768B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1348.4" y="643.9" width="50.5" height="43.9" fill="#3fb950"><title>(unnamed)  0x8021E2C8  764B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1192.0" y="688.5" width="50.2" height="42.8" fill="#58a6ff"><title>(unnamed)  0x8021C188  740B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1192.0" y="688.5" width="50.2" height="42.8" fill="#3fb950"><title>(unnamed)  0x8021C188  740B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1242.8" y="688.5" width="41.1" height="42.8" fill="#3fb950"><title>(unnamed)  0x8021B97C  608B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1284.5" y="688.5" width="40.0" height="42.8" fill="#3fb950"><title>(unnamed)  0x8021B72C  592B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1325.1" y="688.5" width="38.1" height="42.8" fill="#3fb950"><title>(unnamed)  0x8021B0C4  564B  [unfiled 0x8021xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 473 &#183; T3 codegen-only 94 &#183; 142,588/457,392 bytes exact (31.2%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 477 &#183; T3 codegen-only 90 &#183; 144,608/457,392 bytes exact (31.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
