@@ -88,6 +88,27 @@ If Gate A passes, certify. Do not spend a session permuting spellings
  * @t4-pass 0x........ N YYYY-MM-DD probes K bytes B insns I regions R rows G census yes
 ```
 
+## Compile state: headers, symbol ids and the C2 reader
+
+MSVC 5's order-only choices (which operand of a commutative op loads first,
+some register and slot ties, index folding) follow the ids the front end gives
+every declaration in the file, headers included, often by bit 14/15 or modulo
+65536 (Byte Tactics, docs/c2-regalloc.md "Symbol ids").  When every rewrite of
+an expression gives the same wrong order, the file's declaration prefix is the
+lever, not the expression.
+
+- The game was built against the 3dfx Glide 2.x SDK.  `setup.sh` fetches its
+  headers into `tools/glide2x-sdk/`; compile with
+  `FN_OPTS='/O2 /I tools/glide2x-sdk'` and put `#include <windows.h>`,
+  the CRT headers and `<glide.h>` / `<glideutl.h>` ahead of the file
+  (`#define _CRTIMP __declspec(dllimport)` first).
+- `tools/c2read/c2read.py SOURCE.c FUNC [--frame] [--symbols NAMES] [--trace]`
+  runs the real VC5 SP3 back end (`tools/msvc5/bin-sp3/C2.EXE`) under
+  winedbg and prints C2's own register candidates (priority, tie key,
+  register), frame-slot packing and symbol ids.  No gdb needed.  Rules it
+  shows: frame slots are ordered by reference count; register priority is
+  2 per reference times loop weight (1/4/8) times the candidates in the block.
+
 ## The live oracle (A5)
 
 The original DLL runs headless (`tools/brbox.py`), driven by scripts in

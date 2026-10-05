@@ -327,8 +327,28 @@ fi
 
 echo ""
 
+# ---- 3dfx Glide 2.x SDK headers -------------------------------------------
+# The game was built against the Glide 2.x SDK (glide.h, glideutl.h and the
+# 3dfx/fx*.h it includes).  Its declarations are part of each original
+# translation unit's symbol count, which MSVC 5's register and operand-order
+# choices follow, so matching work compiles with them: /I tools/glide2x-sdk.
+# Copy shipped with the Homeworld source release (pinned commit).
+GLIDE_DIR="tools/glide2x-sdk"
+GLIDE_SRC="https://raw.githubusercontent.com/aheadley/homeworld/c1e7f492eaea243af782376e8bd7b6ef147c5b8f/src/rgl/3dfx"
+if [ -f "$GLIDE_DIR/glide.h" ]; then
+    echo "[ok] Glide 2.x SDK headers in $GLIDE_DIR"
+else
+    echo "[fetch] Glide 2.x SDK headers -> $GLIDE_DIR/"
+    mkdir -p "$GLIDE_DIR"
+    for f in 3DFX.H FXDLL.H FXGLOB.H FXOS.H SST1VID.H glide.h glidesys.h glideutl.h; do
+        curl -L --fail -s -o "$GLIDE_DIR/$f" "$GLIDE_SRC/$f" || { echo "[fail] $f"; exit 1; }
+    done
+fi
+
+echo ""
+
 # ---- Keep the staged toolchain out of git --------------------------------
-for path in "tools/msvc5/" "tools/wine/"; do
+for path in "tools/msvc5/" "tools/wine/" "tools/glide2x-sdk/"; do
     grep -qxF "$path" .gitignore 2>/dev/null || {
         echo "$path" >> .gitignore
         echo "[ok] added $path to .gitignore"
