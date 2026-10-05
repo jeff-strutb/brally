@@ -137,6 +137,7 @@ void BR_THISCALL1 BrSndCarStep(BrDriverCar *pCar)
   int iVar8;
   int iVar9;
   float fVar10;
+  double dVar11;
   float local_28;
   int local_24;
   int local_20;
@@ -204,9 +205,9 @@ LAB_10061526:
     local_20 = iVar9 * 24;
     *(__int64 *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x8)) + local_20) =
         (__int64)(fVar10 * BR_K_00779E4 * BR_K_00779E8);
-    local_8 = (float)local_1c;
-    iVar4 = (int)(local_8 * local_14);
-    iVar5 = (int)(local_8 * local_18);
+    dVar11 = (double)local_1c;
+    iVar4 = (int)(dVar11 * local_14);
+    iVar5 = (int)(dVar11 * local_18);
     *(int *)((char *)&(*(int *)((char *)&g_aBrSfxChan + 0x14)) + local_20) = iVar4 + iVar5 * 0x10000;
   }
   local_20 = pCar->f0F68;
@@ -218,9 +219,9 @@ LAB_10061526:
   }
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f01FE) {
     BrSndPan(pPos, pMat, &local_8, &local_c, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_c);
-    iVar4 = (int)(fVar10 * local_8);
+    dVar11 = (double)*(int *)&local_28;
+    iVar6 = (int)(dVar11 * local_c);
+    iVar4 = (int)(dVar11 * local_8);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
     if (*(unsigned char *)&pCar->aBody[0].f01FE < 0xab) {
       BrSub10072AF0(0x11, *(int *)&local_28);
@@ -237,9 +238,9 @@ LAB_10061526:
   pCar->aBody[0].f01FE = 0;
   if (0x7f < pCar->aBody[0].f01FF) {
     BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_8);
-    iVar4 = (int)(fVar10 * local_c);
+    dVar11 = (double)*(int *)&local_28;
+    iVar6 = (int)(dVar11 * local_8);
+    iVar4 = (int)(dVar11 * local_c);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
     if (pCar->aBody[0].f01FF < 0xab) {
       BrSub10072AF0(0x13, *(int *)&local_28);
@@ -256,9 +257,9 @@ LAB_10061526:
   *(char *)&pCar->aBody[0].f01FF = 0;
   if (0x7f < *(unsigned char *)&pCar->aBody[0].f0208) {
     BrSndPan(pPos, pMat, &local_c, &local_8, (int *)&local_28, 0);
-    fVar10 = (float)*(int *)&local_28;
-    iVar6 = (int)(fVar10 * local_8);
-    iVar4 = (int)(fVar10 * local_c);
+    dVar11 = (double)*(int *)&local_28;
+    iVar6 = (int)(dVar11 * local_8);
+    iVar4 = (int)(dVar11 * local_c);
     *(int *)&local_28 = iVar6 + iVar4 * 0x10000;
     BrSub10072AF0(3, *(int *)&local_28);
   }

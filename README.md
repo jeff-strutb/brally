@@ -380,7 +380,9 @@ it as views of that one object, and N64-format disc data keeps its 4-byte
 address slots through one accessor. The initial data is lifted from your
 `BRGlide.dll` at build time (`tools/datalift.py`); the core never includes the
 MSVC 5.0 SDK headers. `src/` and `include/` stay exactly what MSVC 5.0
-compiles, and later byte-matching there never has to flow into the copy.
+compiles, and later byte-matching there never has to flow into the copy;
+`ports/brally/tools/sync.py` lists what the decomp changed since the fork, so
+the few changes that matter to behaviour are carried over by hand.
 `ports/brally/PORTABLE-CORE.md` has the design.
 
 **Verified against the original.** Under `BR_VCLOCK` the native build and the

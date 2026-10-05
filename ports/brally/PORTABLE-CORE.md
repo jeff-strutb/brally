@@ -69,6 +69,15 @@ directly. Every function is certified to behave as the original does, so
 later matching work in `src/` (byte shape, not behaviour) never has to flow
 into it. `src/` and `include/` stay exactly what MSVC 5.0 compiles.
 
+`tools/sync.py` catches the core up: it lists every decomp commit since
+`FORKED-FROM` with the files it touched, each function whose signature
+changed, and each file the decomp added, removed or renamed. A change of
+behaviour, signature, a global's identity or a file name is carried by hand
+into the core's retyped code and checked in lockstep; a respelling is not.
+`sync.py --stamp` then moves `FORKED-FROM`. A blind three-way merge does not
+work here: a respelled decomp body merges into the retyped one and the result
+reads neither's locals (`sync.py --merge FILE` does one file on request).
+
 The core never includes the MSVC 5.0 SDK headers. `platform/include/win32.h`
 declares the part of Win32, winmm and DirectSound the game uses, with
 fixed-width integer types, the SDK's struct layouts and COM vtable orders.

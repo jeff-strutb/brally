@@ -497,8 +497,12 @@ int BrWaveSeekData(HMMIO *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
 void BrPadPackButtons(unsigned char *out)
 {
     unsigned int flags;
-    unsigned char a[4];
-    unsigned char b[4];
+    /* BrInputPoll returns before writing either axis on the frame the pause
+     * key is pressed (0x4000), and the original then packs whatever its
+     * stack held there.  The core starts both at 0, a centred stick, so that
+     * frame does not depend on the previous call's stack. */
+    unsigned char a[4] = {0};
+    unsigned char b[4] = {0};
 
     flags = BrInputPoll(a, b);
     out[2] = a[0];

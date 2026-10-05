@@ -262,7 +262,7 @@ typedef struct BrAiMenuRec {
  * arrives in a float slot only so that thiscall's edx stays free and the
  * callee clears its own three arguments -- its bits are an int, read back as
  * one here (see BR_AI_SCAN and the arg struct notes above). */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/driving/BrAiCorridor_1005D060.cpp
+/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp
  * (byte-exact as a C++ thiscall member under /O2 /Gi).  History below.
  * 0x1005D060 glide BrAiScanCorridor -- TRANSCRIBED, NOT YET BYTE-EXACT (T2).
  * Fills the corridor-scan "binding gap" named in br_ai.h rule 8.  First-pass

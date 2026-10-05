@@ -909,7 +909,7 @@ int BrCtrlCfgReloadPreset(void);
 #pragma pop_macro("BrCtrlCfgReloadPreset")
 #pragma push_macro("BrCursorPairSet")
 #undef BrCursorPairSet
-void BrCursorPairSet(void *);
+void BrCursorPairSet(float);
 #pragma pop_macro("BrCursorPairSet")
 #pragma push_macro("BrDInputDeviceCreate_10059350")
 #undef BrDInputDeviceCreate_10059350

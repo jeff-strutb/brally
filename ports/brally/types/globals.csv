@@ -1026,7 +1026,7 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x100778C0,DAT_100778c0,float,4,extern,0,ports/brally/src/core/driving/FUN_1005c8b0.cpp,178,1
 0x100778C4,DAT_100778c4,float,4,extern,0,ports/brally/src/core/driving/FUN_1005c8b0.cpp,179,1
 0x100778C8,DAT_100778c8,float,4,extern,0,ports/brally/src/core/driving/FUN_1005c8b0.cpp,180,1
-0x100778CC,DAT_100778cc,float,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,87,1
+0x100778CC,DAT_100778cc,float,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,87,1
 0x100778CC,DAT_100778cc,float,4,extern,0,ports/brally/src/core/driving/FUN_1005c8b0.cpp,181,1
 0x100778CC,DAT_100778cc,float,4,extern,0,ports/brally/src/core/racing/br_carpatheval.c,23,1
 0x100778CC,g_brAiScanHalf,const float,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,283,1
@@ -5260,7 +5260,7 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x106EED48,BrG_6C7CB8,int,4,extern,0,ports/brally/src/core/geometry/br_camview.c,301,1
 0x106EED48,BrG_6C7CB8,int,4,extern,0,ports/brally/src/core/racing/br_cartick.c,15,1
 0x106EED48,BrG_6C7CB8,int,4,extern,0,ports/brally/src/core/racing/br_wrongway.c,12,1
-0x106EED48,DAT_106eed48,Node5D060 *,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,86,1
+0x106EED48,DAT_106eed48,Node5D060 *,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,86,1
 0x106EED48,DAT_106eed48,int,4,extern,0,ports/brally/src/core/racing/BrCarStartInit_1005E7B0.cpp,168,1
 0x106EED48,DAT_106eed48,int,4,extern,0,ports/brally/src/core/racing/BrLapSaveRestore_1005F6C0.cpp,55,1
 0x106EED48,DAT_106eed48,int,4,extern,0,ports/brally/src/core/racing/br_cartracklocate.c,17,1
@@ -6752,10 +6752,10 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x10AC67CC,DAT_10ac67cc,short,2,extern,0,ports/brally/src/core/driving/br_ctlinput.c,25,1
 0x10AC67D0,g_BrSndAA3470,int,4,extern,0,ports/brally/src/core/audio/br_sfxsrc.c,303,1
 0x10AC67D0,g_BrSndAA3470,int32_t,4,,1,ports/brally/src/core/audio/br_sndpos.c,180,1
-0x10AC67D4,DAT_10ac67d4,Node5D060 *,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,92,1
+0x10AC67D4,DAT_10ac67d4,Node5D060 *,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,92,1
 0x10AC67D4,g_pBrAiScanBestNode,BrAiPathNode *,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,277,1
 0x10AC67F0,DAT_10ac67f0,char[],4,extern,0,ports/brally/src/core/drawing/br_framebegin.c,,1
-0x10AC680C,DAT_10ac680c,int,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,88,1
+0x10AC680C,DAT_10ac680c,int,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,88,1
 0x10AC680C,g_brAiScanN,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,251,1
 0x10AC6AC0,DAT_10ac6ac0,char[],,extern,0,ports/brally/src/core/drawing/br_framebegin.c,,1
 0x10AC70B0,DAT_10ac70b0,char[],,extern,0,ports/brally/src/core/drawing/br_framebegin.c,,1
@@ -6830,7 +6830,7 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x10AF0860,DAT_10af0860,int,4,extern,0,ports/brally/src/core/racing/BrLapSaveRestore_1005F6C0.cpp,62,1
 0x10AF0860,g_AF0860,int,,extern,0,ports/brally/src/core/racing/BrRaceStep_10019A70.cpp,,1
 0x10AF086C,DAT_10af086c,char,1,extern,0,ports/brally/src/core/racing/BrLapSaveRestore_1005F6C0.cpp,63,1
-0x10AF11F8,DAT_10af11f8,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,98,1
+0x10AF11F8,DAT_10af11f8,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,98,1
 0x10AF11F8,g_brAiScanPt,BrVec3,12,extern,0,ports/brally/src/core/driving/br_ctlai.c,255,1
 0x10AF1208,DAT_10af1208,char[],4,extern,0,ports/brally/src/core/drawing/br_model.c,17,1
 0x10AF1208,DAT_10af1208,int,4,extern,0,ports/brally/src/core/racing/BrLapSaveRestore_1005F6C0.cpp,88,1
@@ -6973,42 +6973,42 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x10AF988C,BrPathWalkNode,BrNode *,4,extern,0,ports/brally/include/slice3_40.h,151,10
 0x10AF9B38,BrPathWalkPoint,BrVec3,12,extern,0,ports/brally/include/slice3_40.h,150,10
 0x10AF9B44,BrPathWrapCount,int32_t,4,extern,0,ports/brally/include/slice3_40.h,149,10
-0x10B1C884,DAT_10b1c884,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,106,1
+0x10B1C884,DAT_10b1c884,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,106,1
 0x10B1C884,g_aScanMidA,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,270,1
-0x10B1C888,DAT_10b1c888,int,,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,93,1
+0x10B1C888,DAT_10b1c888,int,,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,93,1
 0x10B1C888,DAT_10b1c888,char,1,extern,0,ports/brally/src/core/racing/br_racestart.c,367,1
 0x10B1C888,g_brAiScanBestPt,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,278,1
-0x10B1C89C,DAT_10b1c89c,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,101,1
+0x10B1C89C,DAT_10b1c89c,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,101,1
 0x10B1C89C,g_brAiScanEndB,BrVec3,12,extern,0,ports/brally/src/core/driving/br_ctlai.c,276,1
-0x10B1C8E4,DAT_10b1c8e4,Vec5D060[],12,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,105,1
+0x10B1C8E4,DAT_10b1c8e4,Vec5D060[],12,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,105,1
 0x10B1C8E4,g_aScanMidB,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,269,1
-0x10B1C8FC,DAT_10b1c8fc,Vec5D060,,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,100,1
+0x10B1C8FC,DAT_10b1c8fc,Vec5D060,,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,100,1
 0x10B1C8FC,g_brAiScanEndA,BrVec3,12,extern,0,ports/brally/src/core/driving/br_ctlai.c,275,1
-0x10B1C958,DAT_10b1c958,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,111,1
+0x10B1C958,DAT_10b1c958,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,111,1
 0x10B1C958,g_aScanOut3,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,273,1
-0x10B1C9B8,DAT_10b1c9b8,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,109,1
+0x10B1C9B8,DAT_10b1c9b8,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,109,1
 0x10B1C9B8,g_aBrAiScanA,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,252,1
-0x10B1CA18,DAT_10b1ca18,int,,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,89,1
+0x10B1CA18,DAT_10b1ca18,int,,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,89,1
 0x10B1CA18,g_brAiScanFlag18,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,280,1
-0x10B1CA1C,DAT_10b1ca1c,int,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,96,1
+0x10B1CA1C,DAT_10b1ca1c,int,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,96,1
 0x10B1CA1C,g_brAiScanDepth,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,279,1
 0x10B1CA20,DAT_10b1ca20,int32_t,4,extern,0,ports/brally/src/core/racing/br_gridplace.c,,1
 0x10B1CA20,DAT_10b1ca20,int,4,extern,0,ports/brally/src/core/racing/br_pathwalk.c,104,1
-0x10B1CA28,DAT_10b1ca28,Vec5D060[],12,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,110,1
+0x10B1CA28,DAT_10b1ca28,Vec5D060[],12,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,110,1
 0x10B1CA28,g_aBrAiScanB,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,253,1
-0x10B1CA7C,DAT_10b1ca7c,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,103,1
+0x10B1CA7C,DAT_10b1ca7c,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,103,1
 0x10B1CA7C,g_aScanCentre,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,267,1
-0x10B1CAA0,DAT_10b1caa0,Vec5D060,,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,99,1
+0x10B1CAA0,DAT_10b1caa0,Vec5D060,,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,99,1
 0x10B1CAA0,g_brAiScanProbe,BrVec3,12,extern,0,ports/brally/src/core/driving/br_ctlai.c,274,1
-0x10B1CADC,DAT_10b1cadc,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,104,1
+0x10B1CADC,DAT_10b1cadc,Vec5D060[],4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,104,1
 0x10B1CADC,g_aScanInsetB,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,268,1
-0x10B1CAF4,DAT_10b1caf4,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,107,1
+0x10B1CAF4,DAT_10b1caf4,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,107,1
 0x10B1CAF4,g_aScanHitA,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,271,1
-0x10B1CB3C,DAT_10b1cb3c,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,102,1
+0x10B1CB3C,DAT_10b1cb3c,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,102,1
 0x10B1CB3C,g_aScanInsetA,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,266,1
-0x10B1CB54,DAT_10b1cb54,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,108,1
+0x10B1CB54,DAT_10b1cb54,Vec5D060[],,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,108,1
 0x10B1CB54,g_aScanHitB,BrVec3[],,extern,0,ports/brally/src/core/driving/br_ctlai.c,272,1
-0x10B1CBE8,DAT_10b1cbe8,int,,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,94,1
+0x10B1CBE8,DAT_10b1cbe8,int,,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,94,1
 0x10B1CBE8,g_brAiBiasPos,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,258,1
 0x10B1CBEC,DAT_10b1cbec,int,4,extern,0,ports/brally/src/core/racing/br_ghoststep.c,30,1
 0x10B1CBEC,DAT_10b1cbec,int32_t,4,extern,0,ports/brally/src/core/racing/br_gridplace.c,27,1
@@ -7019,7 +7019,7 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x10B1CBF0,DAT_10b1cbf0,unsigned char[],4,extern,0,ports/brally/src/core/racing/br_racecar.c,142,1
 0x10B1CBF0,g_brPairStaticA,uint32_t[83],332,,1,ports/brally/src/core/drawing/br_pairbuf.c,51,1
 0x10B1CD3C,g_brPairStaticB,uint32_t[83],332,,1,ports/brally/src/core/drawing/br_pairbuf.c,52,1
-0x10B1CE88,DAT_10b1ce88,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,97,1
+0x10B1CE88,DAT_10b1ce88,Vec5D060,12,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,97,1
 0x10B1CE88,g_brAiScanAim,BrVec3,12,extern,0,ports/brally/src/core/driving/br_ctlai.c,254,1
 0x10B1CE98,DAT_10b1ce98,int,4,extern,0,ports/brally/src/core/racing/br_ghoststep.c,32,1
 0x10B1CE98,DAT_10b1ce98,int32_t,4,extern,0,ports/brally/src/core/racing/br_gridplace.c,26,1
@@ -7035,11 +7035,11 @@ va,name,type,size32,storage,defines,decl_file,line,tus
 0x10B1CEA4,DAT_10b1cea4,int,4,extern,0,ports/brally/src/core/racing/br_pathwalk.c,,1
 0x10B1CEB8,g_BrSndNearest,BrSndNearest,76,extern,0,ports/brally/src/core/audio/br_sndpos.c,178,1
 0x10B1CEB8,g_BrSndNearest,BrSndNearest,76,,1,ports/brally/src/core/audio/br_sndpos.c,179,1
-0x10B1CF04,DAT_10b1cf04,int,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,95,1
+0x10B1CF04,DAT_10b1cf04,int,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,95,1
 0x10B1CF04,g_brAiBiasNeg,int32_t,,extern,0,ports/brally/src/core/driving/br_ctlai.c,259,1
-0x10B1CF08,DAT_10b1cf08,int,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,90,1
+0x10B1CF08,DAT_10b1cf08,int,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,90,1
 0x10B1CF08,g_brAiScanF08,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,281,1
-0x10B1CF0C,DAT_10b1cf0c,int,4,extern,0,ports/brally/src/core/driving/BrAiCorridor_1005D060.cpp,91,1
+0x10B1CF0C,DAT_10b1cf0c,int,4,extern,0,ports/brally/src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,91,1
 0x10B1CF0C,g_brAiScanF0C,int32_t,4,extern,0,ports/brally/src/core/driving/br_ctlai.c,282,1
 0x10B1CF10,DAT_10b1cf10,int,4,extern,0,ports/brally/src/core/driving/FUN_1005c8b0.cpp,169,1
 0x10B1CF10,g_B1CF10,int,4,extern,0,ports/brally/src/core/racing/BrRaceStep_10019A70.cpp,,1

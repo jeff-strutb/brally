@@ -21,5 +21,9 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 find ports/brally/src/core \( -name '*.c' -o -name '*.cpp' \) | sort > $OUT/tus.txt
+# the link takes every object in $OUT/obj: drop those whose source was renamed
+# or removed, or the old copy links beside the new one
+sed 's#ports/brally/src/core/##; s#/#__#g; s#$#.o#' $OUT/tus.txt > $OUT/objs.txt
+(cd $OUT/obj && ls | grep '\.o$' | grep -vxFf ../objs.txt | xargs rm -f)
 xargs -P $JOBS -n 1 ports/brally/cc64.sh < $OUT/tus.txt | sort > $OUT/compile.txt
 echo "portable core: $(grep -c '^OK' $OUT/compile.txt) of $(wc -l < $OUT/tus.txt | tr -d ' ') TUs compiled"
