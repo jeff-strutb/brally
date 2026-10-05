@@ -689,11 +689,10 @@ void BrRbAddForces(BrRbBody *b)
  * into the wheel's force sum, and while the wheel is on the ground the
  * moment of its flat (x, y) part about the wheel's mounting point goes into
  * the car body's torque.
- * RESIDUE (42): the float-register rotation of BrRbAddForces, from the
- * body-axes copy on; 298 permuter compiles leave it. */
-/* @t4-pass 0x80259634 1 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80259634 2 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80259634 */
+ * The cross product is written r[i] * g[j] - r[j] * g[i] and the sums with
+ * the stored value first where the ROM has it: ugen runs each function
+ * twice and the second pass starts from the float free list the first left,
+ * so these operand orders name every float temporary from the first copy. */
 /* @implements 0x80259634 tgr BrRbAddWheelForces */
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
 {
@@ -719,19 +718,19 @@ void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
     flat[2] = 0.0f;
     func_80258758(g, b->m, flat);
     w->force[0] = w->force[0] + f[0];
-    w->force[1] = f[1] + w->force[1];
+    w->force[1] = w->force[1] + f[1];
     w->force[2] = w->force[2] + f[2];
     if (0 != w->x1b4) {
       p[0] = w->m[3][0];
       p[1] = w->m[3][1];
       p[2] = w->m[3][2];
       func_80258758(r, b->m, p);
-      t[0] = r[1] * g[2] - g[1] * r[2];
-      t[1] = r[2] * g[0] - g[2] * r[0];
-      t[2] = r[0] * g[1] - g[0] * r[1];
-      b->torque[0] = t[0] + b->torque[0];
+      t[0] = r[1] * g[2] - r[2] * g[1];
+      t[1] = r[2] * g[0] - r[0] * g[2];
+      t[2] = r[0] * g[1] - r[1] * g[0];
+      b->torque[0] = b->torque[0] + t[0];
       b->torque[1] = b->torque[1] + t[1];
-      b->torque[2] = t[2] + b->torque[2];
+      b->torque[2] = b->torque[2] + t[2];
     }
   }
 }
