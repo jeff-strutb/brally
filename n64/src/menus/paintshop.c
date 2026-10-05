@@ -1407,63 +1407,50 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
  * twice the resolution, each octant point a run as long as the brush (a
  * texel inward for the larger brushes).  The corners are worked in the
  * parameters, inset by the radius after the edges.
- * RESIDUE (496): the ROM holds the radius twice in its frame and keeps the
- * corners in their stack homes; ours keeps more in saved registers, which
- * reorders the edge loops' setup. */
-/* @t4-pass 0x8024FEB8 1 2026-10-03 compiles 31 best 494 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024FEB8 2 2026-10-03 compiles 31 best 494 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024FEB8 */
+ * The far corner is the sx1 parameter itself (no local copy), the half
+ * brush is read straight from the table, the radius is the shorter side's
+ * quarter plus a quarter brush in one expression, and the corner walk reads
+ * (a >> 1) and (b >> 1) at each use with a starting at 0 before err = -b,
+ * stepping err += a++ and err -= b--. */
 /* @implements 0x8024FEB8 tgr BrPaintFrameRoundRect */
 void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
-  int x1;
   int t;
-  int bw;
   int hw;
-  int q;
-  int r;
+  int unused;                   /* declared, never used: the frame holds it */
   int x;
   int y;
+  int r;
   int a;
   int b;
-  int err;
-  int ha;
-  int hb;
   int k;
+  int err;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  x1 = (sx1 - D_8028DB94.x) >> 2;
-  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
-  if (x1 < sx0) {
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (sx1 < sx0) {
     t = sx0;
-    sx0 = x1;
-    x1 = t;
+    sx0 = sx1;
+    sx1 = t;
   }
   if (sy1 < sy0) {
     t = sy0;
     sy0 = sy1;
     sy1 = t;
   }
-  bw = D_8028D4A0[D_8028DAC0].w;
-  r = sy1 - sy0;
-  hw = bw >> 1;
-  if (x1 - sx0 < r) {
-    r = x1 - sx0;
-  }
-  q = hw >> 1;
-  r = (r >> 2) + q;
+  hw = D_8028D4A0[D_8028DAC0].w >> 1;
+  r = ((sx1 - sx0 < sy1 - sy0 ? sx1 - sx0 : sy1 - sy0) >> 2) + (hw >> 1);
   if (hw == 0) {
     for (y = sy0 + r; y < sy1 - r; y++) {
       BrPaintPlot(sx0, y, D_8028DB58);
     }
     for (y = sy0 + r; y < sy1 - r; y++) {
-      BrPaintPlot(x1, y, D_8028DB58);
+      BrPaintPlot(sx1, y, D_8028DB58);
     }
-    for (x = sx0 + r; x < x1 - r; x++) {
+    for (x = sx0 + r; x < sx1 - r; x++) {
       BrPaintPlot(x, sy1, D_8028DB58);
     }
-    for (x = sx0 + r; x < x1 - r; x++) {
+    for (x = sx0 + r; x < sx1 - r; x++) {
       BrPaintPlot(x, sy0, D_8028DB58);
     }
   } else {
@@ -1473,98 +1460,95 @@ void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
       }
     }
     for (y = sy0 + r; y <= sy1 - r; y++) {
-      for (x = x1 - hw; x < x1 + hw; x++) {
+      for (x = sx1 - hw; x < sx1 + hw; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
     for (y = sy1 - hw; y < sy1 + hw; y++) {
-      for (x = sx0 + r; x <= x1 - r; x++) {
+      for (x = sx0 + r; x <= sx1 - r; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
     for (y = sy0 - hw; y < sy0 + hw; y++) {
-      for (x = sx0 + r; x <= x1 - r; x++) {
+      for (x = sx0 + r; x <= sx1 - r; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
   }
   sx0 += r;
-  x1 -= r;
+  sx1 -= r;
   sy0 += r;
   sy1 -= r;
   if (D_8028DAC0 > 2) {
     sx0--;
     sy0--;
   }
-  r += q;
+  r += hw >> 1;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b;) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
       if (hw == 0) {
-        BrPaintPlot(sx0 - ha, sy0 - hb, D_8028DB58);
+        BrPaintPlot(sx0 - (a >> 1), sy0 - (b >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - ha, sy0 - hb + k, D_8028DB58);
+          BrPaintPlot(sx0 - (a >> 1), sy0 - (b >> 1) + k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - ha, hb + sy1, D_8028DB58);
+        BrPaintPlot(sx0 - (a >> 1), (b >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - ha, hb + sy1 - k, D_8028DB58);
+          BrPaintPlot(sx0 - (a >> 1), (b >> 1) + sy1 - k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(ha + x1, hb + sy1, D_8028DB58);
+        BrPaintPlot((a >> 1) + sx1, (b >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(ha + x1, hb + sy1 - k, D_8028DB58);
+          BrPaintPlot((a >> 1) + sx1, (b >> 1) + sy1 - k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(ha + x1, sy0 - hb, D_8028DB58);
+        BrPaintPlot((a >> 1) + sx1, sy0 - (b >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(ha + x1, sy0 - hb + k, D_8028DB58);
+          BrPaintPlot((a >> 1) + sx1, sy0 - (b >> 1) + k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(hb + x1, ha + sy1, D_8028DB58);
+        BrPaintPlot((b >> 1) + sx1, (a >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(hb + x1 - k, ha + sy1, D_8028DB58);
+          BrPaintPlot((b >> 1) + sx1 - k, (a >> 1) + sy1, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(hb + x1, sy0 - ha, D_8028DB58);
+        BrPaintPlot((b >> 1) + sx1, sy0 - (a >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(hb + x1 - k, sy0 - ha, D_8028DB58);
+          BrPaintPlot((b >> 1) + sx1 - k, sy0 - (a >> 1), D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - hb, sy0 - ha, D_8028DB58);
+        BrPaintPlot(sx0 - (b >> 1), sy0 - (a >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - hb + k, sy0 - ha, D_8028DB58);
+          BrPaintPlot(sx0 - (b >> 1) + k, sy0 - (a >> 1), D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - hb, ha + sy1, D_8028DB58);
+        BrPaintPlot(sx0 - (b >> 1), (a >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - hb + k, ha + sy1, D_8028DB58);
+          BrPaintPlot(sx0 - (b >> 1) + k, (a >> 1) + sy1, D_8028DB58);
         }
       }
     }
-    err += a;
-    a++;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
