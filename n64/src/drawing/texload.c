@@ -26,8 +26,6 @@ typedef struct BrTex {          /* a texture's load record (0x24 bytes) */
   unsigned int rest : 24;
 } BrTex;
 extern Gfx *D_8028A858;
-extern int D_8028AB1C;                  /* the texture's TMEM address */
-extern int D_8028AB18;                  /* the tile it is drawn with */
 void BrTexSizeBits(unsigned int v, int *mask, int *bits);
 void func_80264420(int);
 /* -- end declarations -- */
@@ -152,16 +150,16 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits)
  * one; mask sizes from the texture's width and height, and texturing on
  * with the full scale.  Built from libultra's texture macros (their MIN and
  * block pointers are in the ROM); the wrap flags are bitfields.
- * Every declared local takes a frame slot in order; pal after tmem puts it at
- * the ROM's 0x84, which matters because only the palette texture sets it.
- * RESIDUE (~230 raw): a compiler temporary at 0x24 for the ROM's 0x28, and
- * the TMEM/tile globals load at other points. */
-/* @t4-pass 0x80217734 1 2026-10-03 compiles 119 best 232 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80217734 2 2026-10-03 compiles 120 best 232 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80217734 */
+ * Every declared local takes a frame slot in order (tmem is no longer used
+ * but keeps its slot); pal after tmem puts it at the ROM's 0x84, which
+ * matters because only the palette texture sets it.  The tile and TMEM
+ * address are this function's own statics (nothing else touches them), so
+ * each use reloads them, and the tile macros mask the address themselves. */
 /* @implements 0x80217734 tgr BrTexLoad */
 void BrTexLoad(int n, BrTex *tbl)
 {
+  static int tile = 0;          /* 0x8028AB18: the tile (never set; zero) */
+  static int base = 0;          /* 0x8028AB1C: the TMEM address (never set; zero) */
   BrTex *tx;
   int maskS;
   int maskT;
@@ -192,8 +190,7 @@ void BrTexLoad(int n, BrTex *tbl)
   }
   gDPTileSync(D_8028A858++);
   gDPSetTextureImage(D_8028A858++, 0, 2, 1, tx->data);
-  tmem = D_8028AB1C & 0x1ff;
-  gDPSetTile(D_8028A858++, 0, 2, 0, tmem, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+  gDPSetTile(D_8028A858++, 0, 2, 0, base, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
   gDPLoadSync(D_8028A858++);
   if (tx->type == 1) {
     gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 3) >> 2) - 1, 0);
@@ -215,18 +212,13 @@ void BrTexLoad(int n, BrTex *tbl)
     gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
     fmt = 4;
     siz = 1;
-    tmem = D_8028AB1C & 0x1ff;
-    } else {
+  } else {
     gDPLoadBlock(D_8028A858++, 7, 0, 0, w * h - 1, 0);
     gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
     fmt = 0;
     siz = 2;
   }
-  {
-    int tile = D_8028AB18;
-
-    gDPSetTile(D_8028A858++, fmt, siz, (w * (4 << siz) + 63)  >> 6, tmem, tile, pal, cmt, bitsT, 0, cms, bitsS, 0);
-    gDPSetTileSize(D_8028A858++, tile, tx->uls * 4 + 2, tx->ult * 4 + 2, tx->lrs * 4 + 2, tx->lrt * 4 + 2);
-    gSPTexture(D_8028A858++, maskS, maskT, 0, tile, 1);
-  }
+  gDPSetTile(D_8028A858++, fmt, siz, (w * (4 << siz) + 63)  >> 6, base, tile, pal, cmt, bitsT, 0, cms, bitsS, 0);
+  gDPSetTileSize(D_8028A858++, tile, tx->uls * 4 + 2, tx->ult * 4 + 2, tx->lrs * 4 + 2, tx->lrt * 4 + 2);
+  gSPTexture(D_8028A858++, maskS, maskT, 0, tile, 1);
 }
