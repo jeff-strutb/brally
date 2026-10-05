@@ -56,6 +56,52 @@ static int load_rom(const char *path)
     return 1;
 }
 
+/* the ROM when none is named: the app's Resources (TopGearRally.z64, the
+ * builder's own, put there by package_app.sh), any ROM in the save folder,
+ * then the development tree's reference copy */
+static const char *find_rom(const char *argv0)
+{
+    static char path[2048];
+    static const char *exts[] = { ".z64", ".v64", ".n64" };
+    char exe[1024];
+    const char *dir;
+    host_dir *d;
+    FILE *f;
+    if (argv0 && realpath(argv0, exe)) {
+        char *slash = strrchr(exe, '/');
+        if (slash) {
+            *slash = 0;
+            snprintf(path, sizeof path, "%s/../Resources/TopGearRally.z64", exe);
+            if ((f = fopen(path, "rb")) != NULL) {
+                fclose(f);
+                return path;
+            }
+        }
+    }
+    dir = host_save_dir();
+    if (dir && (d = host_dir_open(dir)) != NULL) {
+        const char *name;
+        int is_dir;
+        uint64_t size;
+        while ((name = host_dir_next(d, &is_dir, &size)) != NULL) {
+            size_t n = strlen(name), k;
+            for (k = 0; k < 3 && !is_dir; k++)
+                if (n > 4 && !strcasecmp(name + n - 4, exts[k])) {
+                    snprintf(path, sizeof path, "%s/%s", dir, name);
+                    host_dir_close(d);
+                    return path;
+                }
+        }
+        host_dir_close(d);
+    }
+    snprintf(path, sizeof path, "reference/tgrally/Top Gear Rally (USA).z64");
+    if ((f = fopen(path, "rb")) != NULL) {
+        fclose(f);
+        return path;
+    }
+    return NULL;
+}
+
 void tgr_log(const char *fmt, ...)
 {
     va_list ap;
@@ -88,15 +134,22 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--shot-at") && i + 1 < argc) g_tgr.shot_at = argv[++i];
         else usage();
     }
-    if (!g_tgr.rom_path)
-        g_tgr.rom_path = "reference/tgrally/Top Gear Rally (USA).z64";
+    host_set_app_name("Top Gear Rally", "Top Gear Rally");
     host_init(argc, argv);
-    if (!load_rom(g_tgr.rom_path)) {
-        fprintf(stderr, "tgr: cannot read the ROM %s (--rom or TGR_ROM)\n", g_tgr.rom_path);
+    if (!g_tgr.rom_path)
+        g_tgr.rom_path = find_rom(argv[0]);
+    if (!g_tgr.rom_path || !load_rom(g_tgr.rom_path)) {
+        char msg[1400];
+        snprintf(msg, sizeof msg, "Top Gear Rally needs your cartridge's ROM (Top Gear Rally (USA), .z64, .v64 or .n64).\n\n"
+                 "Put it in %s, or pass --rom FILE.", host_save_dir() ? host_save_dir() : "the save folder");
+        fprintf(stderr, "tgr: %s\n", msg);
+        if (!g_tgr.headless)
+            host_message_box(msg, "Top Gear Rally");
         return 1;
     }
     if (g_tgr.script)
         tgr_script_load(g_tgr.script);
+    tgr_pak_init();
     tgr_addr_init();
     tgr_lift(g_rom, g_romlen);
     tgr_gfx_init();

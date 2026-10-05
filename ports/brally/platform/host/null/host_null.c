@@ -17,6 +17,8 @@
 
 static char s_cd[1024], s_game[1024], s_save[1024];
 
+void host_set_app_name(const char *dir, const char *title) { (void)dir; (void)title; }
+
 void host_init(int argc, char **argv)
 {
     const char *e;

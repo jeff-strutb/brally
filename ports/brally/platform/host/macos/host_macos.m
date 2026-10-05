@@ -23,6 +23,15 @@
 #include "host.h"
 
 static char s_cd[1024], s_game[1024], s_save[1024], s_music[1024];
+static const char *s_app_dir = "Boss Rally 64", *s_app_title = "Boss Rally";
+
+void host_set_app_name(const char *dir, const char *title)
+{
+    if (dir)
+        s_app_dir = dir;
+    if (title)
+        s_app_title = title;
+}
 
 /* ---- process -------------------------------------------------------------------- */
 static int is_dir(const char *p)
@@ -42,7 +51,7 @@ void host_init(int argc, char **argv)
         {
             NSMenu *bar = [NSMenu new], *app = [NSMenu new];
             NSMenuItem *item = [NSMenuItem new];
-            [app addItemWithTitle:@"Quit Boss Rally" action:@selector(terminate:) keyEquivalent:@"q"];
+            [app addItemWithTitle:[NSString stringWithFormat:@"Quit %s", s_app_title] action:@selector(terminate:) keyEquivalent:@"q"];
             [item setSubmenu:app];
             [bar addItem:item];
             [NSApp setMainMenu:bar];
@@ -66,7 +75,7 @@ void host_init(int argc, char **argv)
         } else {
             NSString *base = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory,
                                                                  NSUserDomainMask, YES) firstObject];
-            snprintf(s_save, sizeof s_save, "%s/Boss Rally 64", base ? [base fileSystemRepresentation] : ".");
+            snprintf(s_save, sizeof s_save, "%s/%s", base ? [base fileSystemRepresentation] : ".", s_app_dir);
         }
         host_mkdir(s_save);
         /* the CD's audio tracks: BR_MUSICDIR, the extracted ones in the tree,
@@ -303,7 +312,7 @@ int host_window_open(int width, int height, const char *title)
                                                       NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
                                               backing:NSBackingStoreBuffered
                                                 defer:NO];
-        [s_win setTitle:[NSString stringWithUTF8String:title ? title : "Boss Rally"]];
+        [s_win setTitle:[NSString stringWithUTF8String:title ? title : s_app_title]];
         [s_win setContentAspectRatio:NSMakeSize(width, height)];
         s_view = [[BrView alloc] initWithFrame:r];
         [s_view setWantsLayer:YES];
@@ -438,7 +447,7 @@ void host_message_box(const char *text, const char *caption)
 {
     @autoreleasepool {
         NSAlert *a = [NSAlert new];
-        [a setMessageText:[NSString stringWithUTF8String:caption ? caption : "Boss Rally"]];
+        [a setMessageText:[NSString stringWithUTF8String:caption ? caption : s_app_title]];
         [a setInformativeText:[NSString stringWithUTF8String:text ? text : ""]];
         [a runModal];
     }

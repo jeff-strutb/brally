@@ -237,11 +237,98 @@ int32_t osPfsInitPak(OSMesgQueue *mq, OSPfs *pfs, int32_t channel) { return osPf
 int32_t osPfsRepairId(OSPfs *pfs) { (void)pfs; return s_pak ? 0 : PFS_ERR_NOPACK; }
 int32_t osPfsChecker(OSPfs *pfs) { (void)pfs; return s_pak ? 0 : PFS_ERR_NOPACK; }
 
-/* the pak's notes (an empty pak; saves land in memory for the run) */
+/* the pak's notes: in a scripted run an empty pak whose saves last the run
+ * (as n64box models it); in play, a pak kept in a file in the host's save
+ * folder, written after every change */
 #define PAK_BYTES (123 * 256)
 #define PAK_NOTES 16
 static struct { int used; uint16_t company; uint32_t game; uint8_t name[16], ext[4]; uint8_t *data; int size; }
     s_notes[PAK_NOTES];
+
+static char s_pak_path[1024];
+
+static void put32(FILE *f, uint32_t v) { fputc((int)(v >> 24), f); fputc((int)(v >> 16) & 255, f); fputc((int)(v >> 8) & 255, f); fputc((int)v & 255, f); }
+static uint32_t get32(FILE *f)
+{
+    uint32_t v = 0;
+    int k;
+    for (k = 0; k < 4; k++)
+        v = v << 8 | (uint32_t)(fgetc(f) & 255);
+    return v;
+}
+
+/* the file: "TGRPAK1\n", the note count, then each note's company, game,
+ * name, extension, size and bytes (big-endian numbers) */
+static void pak_save(void)
+{
+    char tmp[1100];
+    FILE *f;
+    int i, n = 0;
+    if (!s_pak_path[0])
+        return;
+    snprintf(tmp, sizeof tmp, "%s.tmp", s_pak_path);
+    f = fopen(tmp, "wb");
+    if (!f)
+        return;
+    for (i = 0; i < PAK_NOTES; i++)
+        n += s_notes[i].used;
+    fwrite("TGRPAK1\n", 1, 8, f);
+    put32(f, (uint32_t)n);
+    for (i = 0; i < PAK_NOTES; i++) {
+        if (!s_notes[i].used)
+            continue;
+        put32(f, s_notes[i].company);
+        put32(f, s_notes[i].game);
+        fwrite(s_notes[i].name, 1, 16, f);
+        fwrite(s_notes[i].ext, 1, 4, f);
+        put32(f, (uint32_t)s_notes[i].size);
+        fwrite(s_notes[i].data, 1, (size_t)s_notes[i].size, f);
+    }
+    if (fclose(f) == 0)
+        rename(tmp, s_pak_path);
+}
+
+static void pak_load(void)
+{
+    char magic[8];
+    FILE *f = fopen(s_pak_path, "rb");
+    uint32_t n, i;
+    if (!f)
+        return;
+    if (fread(magic, 1, 8, f) == 8 && !memcmp(magic, "TGRPAK1\n", 8)) {
+        n = get32(f);
+        for (i = 0; i < n && i < PAK_NOTES; i++) {
+            s_notes[i].used = 1;
+            s_notes[i].company = (uint16_t)get32(f);
+            s_notes[i].game = get32(f);
+            if (fread(s_notes[i].name, 1, 16, f) != 16 || fread(s_notes[i].ext, 1, 4, f) != 4)
+                break;
+            s_notes[i].size = (int)get32(f);
+            if (s_notes[i].size <= 0 || s_notes[i].size > PAK_BYTES)
+                break;
+            s_notes[i].data = (uint8_t *)calloc(1, (size_t)s_notes[i].size);
+            if (fread(s_notes[i].data, 1, (size_t)s_notes[i].size, f) != (size_t)s_notes[i].size)
+                break;
+        }
+    }
+    fclose(f);
+}
+
+/* in play (no script) a Controller Pak is plugged into port 1, kept in
+ * <save folder>/controller-pak-1.bin */
+void tgr_pak_init(void)
+{
+    const char *dir;
+    if (s_scripted)
+        return;
+    dir = host_save_dir();
+    if (!dir)
+        return;
+    host_mkdir(dir);
+    snprintf(s_pak_path, sizeof s_pak_path, "%s/controller-pak-1.bin", dir);
+    s_pak = 1;
+    pak_load();
+}
 
 static int note_find(uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)
 {
@@ -288,6 +375,7 @@ int32_t osPfsAllocateFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *
     s_notes[i].size = (length + 255) & ~255;
     s_notes[i].data = (uint8_t *)calloc(1, (size_t)s_notes[i].size);
     *file_no = i;
+    pak_save();
     return 0;
 }
 
@@ -302,6 +390,7 @@ int32_t osPfsDeleteFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *na
         return PFS_ERR_INVALID;
     free(s_notes[i].data);
     memset(&s_notes[i], 0, sizeof s_notes[i]);
+    pak_save();
     return 0;
 }
 
@@ -314,8 +403,10 @@ int32_t osPfsReadWriteFile(OSPfs *pfs, int32_t file_no, uint8_t flag, int32_t of
         return PFS_ERR_INVALID;
     if (flag == 0)
         memcpy(data, s_notes[file_no].data + offset, (size_t)size);
-    else
+    else {
         memcpy(s_notes[file_no].data + offset, data, (size_t)size);
+        pak_save();
+    }
     return 0;
 }
 

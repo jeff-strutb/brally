@@ -37,6 +37,7 @@ void tgr_log(const char *fmt, ...);
 uint64_t tgr_count(void);                   /* the virtual clock */
 uint32_t tgr_frame(void);                   /* retraces so far */
 void tgr_os_start(void (*boot)(void));      /* run BrBoot on the first game thread */
+void tgr_pak_init(void);                    /* in play, the Controller Pak file (os/si.c) */
 void tgr_os_wait(void);                     /* the caller (the process) waits for the end */
 int  tgr_os_finished(void);                 /* the run is over (--frames reached) */
 void tgr_os_lock(void);                     /* the game's state, from a host thread */

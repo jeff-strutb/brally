@@ -144,6 +144,9 @@ intptr_t host_spawn_self(const char *const *env, const char *log);
 void     host_kill(intptr_t id, uint32_t grace_ms);
 
 /* ---- process ---------------------------------------------------------------------- */
+/* the program's name, before host_init: dir names the save folder (default
+ * "Boss Rally 64"), title the menus and dialogs (default "Boss Rally") */
+void host_set_app_name(const char *dir, const char *title);
 void host_init(int argc, char **argv);
 void host_shutdown(void);
 

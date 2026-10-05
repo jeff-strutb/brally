@@ -43,6 +43,15 @@
 #include "host.h"
 
 static char s_cd[MAX_PATH], s_game[MAX_PATH], s_save[MAX_PATH], s_music[MAX_PATH];
+static const char *s_app_dir = "Boss Rally 64", *s_app_title = "Boss Rally";
+
+void host_set_app_name(const char *dir, const char *title)
+{
+    if (dir)
+        s_app_dir = dir;
+    if (title)
+        s_app_title = title;
+}
 
 /* ---- process -------------------------------------------------------------------- */
 static int is_dir(const char *p)
@@ -82,7 +91,7 @@ void host_init(int argc, char **argv)
     } else {
         char app[MAX_PATH];
         if (SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL, 0, app) == S_OK)
-            snprintf(s_save, sizeof s_save, "%s\\Boss Rally 64", app);
+            snprintf(s_save, sizeof s_save, "%s\\%s", app, s_app_dir);
         else
             snprintf(s_save, sizeof s_save, "%s\\save", here);
     }
@@ -248,7 +257,7 @@ int host_window_open(int width, int height, const char *title)
     r.right = width * 2;
     r.bottom = height * 2;
     AdjustWindowRect(&r, style, FALSE);
-    s_win = CreateWindowA("BossRally64", title ? title : "Boss Rally", style, CW_USEDEFAULT, CW_USEDEFAULT,
+    s_win = CreateWindowA("BossRally64", title ? title : s_app_title, style, CW_USEDEFAULT, CW_USEDEFAULT,
                           r.right - r.left, r.bottom - r.top, NULL, NULL, wc.hInstance, NULL);
     if (!s_win)
         return 0;
