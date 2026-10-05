@@ -1,0 +1,88 @@
+/* u16queue.c -- reading a table of 16-bit entries through a cursor
+ */
+#include "tgr/common.h"
+#include "tgr/track.h"
+
+/* -- declarations -- */
+/* the loaded track's tables (cartridge data, big-endian) */
+#define D_80025C20 BEPTR(be16_t *, D_80025C00.gridEntries)
+#define D_80025C24 BEPTR(be16_t *, D_80025C00.gridCells)   /* per 64x64 grid cell: first entry (the next cell's is the end) */
+#define D_80025C68 BEPTR(be16_t *, D_80025C00.queue2)      /* the second queue table */
+/* -- end declarations -- */
+
+/* WHAT IT DOES: BrGridCellRange for a world position: the grid cell under
+ * (x, y) -- 32 units a cell, 0 to 2048 on each axis -- and the range of
+ * entries it owns (count high, first entry low); outside the grid, 0. */
+/* @implements 0x8021E620 tgr BrGridCellRangeAt */
+unsigned int BrGridCellRangeAt(float x, float y)
+{
+  unsigned short i;
+  int first;
+
+  if (x < 0.0f || x >= 2048.0f || y < 0.0f || y >= 2048.0f) {
+    return 0;
+  }
+  i = (unsigned char)tgr_f2u(x / 32.0f) + (unsigned char)tgr_f2u(y / 32.0f) * 64;
+  first = BE16(D_80025C24[i]);
+  return (BE16(D_80025C24[(unsigned short)(i + 1)]) - first) << 16 | first;
+}
+
+/* WHAT IT DOES: For a cell of the 64 by 64 grid, the range of entries it
+ * owns: the count in the high half and the first entry in the low half;
+ * outside the grid, 0. */
+/* @implements 0x8021E998 tgr BrGridCellRange */
+unsigned int BrGridCellRange(int x, int y)
+{
+  unsigned short i;
+  int first;
+
+  if (x < 0 || x >= 64 || y < 0 || y >= 64) {
+    return 0;
+  }
+  i = (unsigned char)x + (unsigned char)y * 64;
+  first = BE16(D_80025C24[i]);
+  return (BE16(D_80025C24[(unsigned short)(i + 1)]) - first) << 16 | first;
+}
+
+/* WHAT IT DOES: Read the next entry of the queue table through a cursor
+ * (position, entries left) and move it on by one; with nothing left answer
+ * zero and leave the cursor alone.  Both cursor halves are rewritten from
+ * one packed word, as the PC twin BrU16QueuePop does.  Both halves are
+ * stored on one source line: as1 breaks its scheduling ties on the line
+ * number, and the ROM's register order needs the two stores tied. */
+/* @implements 0x8021EA90 tgr BrU16QueuePop */
+unsigned short BrU16QueuePop(unsigned short *q)
+{
+  unsigned short hi;
+  unsigned short lo;
+  unsigned int packed;
+
+  hi = q[1];
+  if (hi) {
+    lo = q[0];
+    packed = (lo + 1) | ((hi - 1) << 16);
+    q[0] = packed & 0xffff; q[1] = packed >> 16;
+    return BE16(D_80025C20[lo]);
+  }
+  return 0;
+}
+
+/* WHAT IT DOES: BrU16QueuePop over the second queue table (D_80025C68):
+ * read the next entry through a cursor (position, entries left) and move it
+ * on by one; nothing left answers zero. */
+/* @implements 0x8021EADC tgr BrU16QueuePopB */
+unsigned short BrU16QueuePopB(unsigned short *q)
+{
+  unsigned short hi;
+  unsigned short lo;
+  unsigned int packed;
+
+  hi = q[1];
+  if (hi) {
+    lo = q[0];
+    packed = (lo + 1) | ((hi - 1) << 16);
+    q[0] = packed & 0xffff; q[1] = packed >> 16;
+    return BE16(D_80025C68[lo]);
+  }
+  return 0;
+}

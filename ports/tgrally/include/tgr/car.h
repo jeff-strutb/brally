@@ -1,0 +1,287 @@
+/* car.h -- the car record (0x2090 bytes), four of them at 0x8031B760.
+ * Only the fields a matched function touches are named; the rest is padding
+ * sized by offset.
+ */
+#ifndef TGR_CAR_H
+#define TGR_CAR_H
+
+#include "tgr/season.h"
+#include "tgr/vec.h"
+
+/* A rigid-body state (0x44 bytes): the car keeps three (current, and two
+ * copies the integrator steps between). */
+typedef struct BrRbState {
+    BrVec3 pos;                 /* 0x00 */
+    BrVec3 vel;                 /* 0x0C */
+    float q[4];                 /* 0x18  orientation */
+    BrVec3 angVel;              /* 0x28 */
+    char pad34[0x10];
+} BrRbState;
+
+/* A car's camera: its matrix and field of view (0x44 bytes). */
+typedef struct BrCarCam {
+    float mtx[4][4];
+    float fov;                  /* 0x40  radians */
+} BrCarCam;
+
+/* A car kind's handling numbers (0x4C bytes each), a table at 0x8028B330. */
+typedef struct BrCarKindParams {
+    float x00[7];               /* gear ratios, copied whole to the car at 0xDF8 */
+    float x1c[5];               /* to 0xE14.. */
+    int x30[2];                 /* to 0xE28.. */
+    float x38[4];               /* to 0x324.. */
+    int x48;                    /* to 0xE34 */
+} BrCarKindParams;
+extern BrCarKindParams D_8028B330[];
+
+/* The record a car's +0xED0 points at; only its flags are known. */
+typedef struct BrCarLink {
+    char pad00[0x68];
+    unsigned int flags;         /* 0x68  bits 0-1: the car is out of the race */
+    char pad6c[0x74 - 0x6C];
+    int x74;                    /* 0x74  the entrant's row in the AI pace table */
+} BrCarLink;
+
+/* A body of the car (0x208 bytes): the car itself is one, at 0x1C0 (its
+ * fields named on BrCar), and each wheel another. */
+typedef struct BrCarBody {
+    char pad000[0x74];
+    float pos[3];               /* 0x74  where it hangs off the car body */
+    char pad080[0x128 - 0x80];
+    unsigned char surface;      /* 0x128  the surface under it (read when x13c is set) */
+    char pad129[0x13C - 0x129];
+    int x13c;                   /* 0x13C */
+    char pad140[0x148 - 0x140];
+    float steer;                /* 0x148  radians */
+    char pad14c[0x15C - 0x14C];
+    float spin;                 /* 0x15C  degrees */
+    char pad160[0x208 - 0x160];
+} BrCarBody;
+
+/* A skid-mark vertex (an F3DEX Vtx, 16 bytes) and point (0x18 bytes):
+ * a point's half-width is drawn while non-zero. */
+typedef struct BrSkidVtx {     /* RSP memory: big-endian (tgr_core.h) */
+    be16_t ob[3];
+    be16_t flag;
+    be16_t tc[2];
+    unsigned char cn[4];
+} BrSkidVtx;
+typedef struct BrSkidPt {
+    short pos[3];
+    short half[3];              /* 0x06 */
+    char pad0c[0x18 - 0x0C];
+} BrSkidPt;
+
+typedef struct BrCar {
+    float mtx0[4][4];           /* 0x000  body matrix */
+    float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
+    int slot;                   /* 0x140  index in the car array */
+    short sndHits;              /* 0x144  impact sounds in a row (to 16) */
+    char pad146[0x14C - 0x146];
+    TgrAddr wheel[4];  /* struct BrCarWheel * -- 0x14C  the wheels' rigid bodies */
+    char pad15c[0x1C0 - 0x15C];
+    BrRbState st;               /* 0x1C0  the body's state */
+    float stMtx[4][4];          /* 0x204  st's orientation as a matrix */
+    char pad244[0x25C - 0x244];
+    BrRbState stA;              /* 0x25C */
+    BrRbState stB;              /* 0x2A0 */
+    char pad2e4[0x31C - 0x2E4];
+    float spin;                 /* 0x31C  the body's roll angle, degrees */
+    char pad320[0x324 - 0x320];
+    float x324[4];              /* 0x324  from the kind table */
+    BrVec3 x334;                /* 0x334  where the HUD arrow points */
+    int x340;                   /* 0x340  negative: the car is off the track */
+    unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
+    unsigned char x345;         /* 0x345 */
+    unsigned char sndHitA;      /* 0x346  pending one-shot sounds: loudness, 0 none */
+    unsigned char sndHitB;      /* 0x347 */
+    char pad348;
+    unsigned char hitAge;       /* 0x349  frames since the last car-to-car hit */
+    unsigned char x34a;         /* 0x34A */
+    unsigned char sndHitC;      /* 0x34B */
+    unsigned char sndImpact;    /* 0x34C  the surface impact level */
+    char pad34d[0x3C8 - 0x34D];
+    BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
+    char padbe8[0xDF0 - 0xBE8];
+    float xdf0;                 /* 0xDF0 */
+    float xdf4;                 /* 0xDF4  scales the exhaust smoke (0.001 per unit) */
+    float xdf8[7];              /* 0xDF8  gear ratios, from the kind table */
+    float xe14[5];              /* 0xE14  from the kind table */
+    int xe28[2];                /* 0xE28  from the kind table */
+    int xe30;                   /* 0xE30 */
+    int xe34;                   /* 0xE34  from the kind table */
+    float xe38;                 /* 0xE38 */
+    float xe3c;                 /* 0xE3C */
+    int xe40;                   /* 0xE40 */
+    char pade44[0xE58 - 0xE44];
+    int xe58;                   /* 0xE58 */
+    TgrAddr season;           /* BrSeason * -- 0xE5C  the player's season, 0 for others */
+    int xe60;                   /* 0xE60  from the season (or the ghost's header) */
+    int xe64;                   /* 0xE64 */
+    int xe68;                   /* 0xE68 */
+    int xe6c;                   /* 0xE6C */
+    int xe70[4];                /* 0xE70 */
+    char pade80[0xED0 - 0xE80];
+    TgrAddr link;     /* struct BrCarLink * -- 0xED0 */
+    int xed4;                   /* 0xED4  a countdown, one per frame */
+    TgrAddr xed8;               /* 0xED8  the car's control function (camera step, AI): void (*)(BrCar *) */
+    BrVec3 aim;                 /* 0xEDC  the AI's smoothed aim point */
+    BrVec3 linePos;             /* 0xEE8  the nearest point on the racing line */
+    BrVec3 lineDir;             /* 0xEF4  the line's direction there */
+    BrVec3 lineSide;            /* 0xF00  across the line */
+    BrVec3 lineUp;              /* 0xF0C */
+    float lineOffAbs;           /* 0xF18  |lineOff| */
+    BrVec3 lineRel;             /* 0xF1C  the car relative to linePos */
+    float lineOff;              /* 0xF28  the car's signed distance across the line */
+    BrVec3 posStart;            /* 0xF2C  where the race started */
+    int xf38;                   /* 0xF38 */
+    int xf3c;                   /* 0xF3C */
+    int xf40;                   /* 0xF40 */
+    float xf44;                 /* 0xF44 */
+    int xf48;                   /* 0xF48  camera mode */
+    int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
+    BrVec3 posPrev;             /* 0xF50  last frame's position */
+    int xf5c;                   /* 0xF5C  the path segment the car is on */
+    int xf60;                   /* 0xF60  and the point in it */
+    float xf64;                 /* 0xF64  the heading's atan2 arguments at the restart point */
+    float xf68;                 /* 0xF68 */
+    float xf6c;                 /* 0xF6C */
+    int xf70;                   /* 0xF70 */
+    int xf74;                   /* 0xF74  -1 for a player's car */
+    int laps;                   /* 0xF78  laps completed */
+    int xf7c;                   /* 0xF7C  -1 for a player's car */
+    float raceTime;             /* 0xF80  race clock, seconds */
+    float lapTimes[5];          /* 0xF84  each lap's time */
+    float xf98;                 /* 0xF98 */
+    int xf9c;                   /* 0xF9C */
+    float lapTime;              /* 0xFA0  current lap clock */
+    float xfa4;                 /* 0xFA4  a countdown (mode 1 only) */
+    float xfa8;                 /* 0xFA8  grid row distance back, the ranking key */
+    int xfac;                   /* 0xFAC */
+    int msgA;                   /* 0xFB0  first message and its timer */
+    float msgATime;             /* 0xFB4 */
+    int msgB;                   /* 0xFB8  second message and its timer */
+    float msgBTime;             /* 0xFBC */
+    char xfc0[0x14];            /* 0xFC0  text for msgB (a formatted time) */
+    int xfd4;                   /* 0xFD4 */
+    BrVec3 velfd8;              /* 0xFD8  another velocity copy */
+    float xfe4[11];             /* 0xFE4 */
+    float x1010;                /* 0x1010  zeroed when the particle pool is reset */
+    BrVec3 smokeAt;             /* 0x1014  where the last smoke particle started */
+    float sprayTime[4];         /* 0x1020  per wheel: the spray emit timer */
+    BrVec3 sprayAt[4];          /* 0x1030  per wheel: where its last spray particle started */
+    float skidLife[4];          /* 0x1060  per wheel: frames the mark lasts off the ground */
+    int skidSurf[4];            /* 0x1070  the surface it was last on */
+    float skidClock[4];         /* 0x1080  lays a mark point past 0.75 */
+    int skidEmit[4];            /* 0x1090  a point was laid this frame */
+    BrVec3 skidAt[4];           /* 0x10A0  where the last point went */
+    BrSkidVtx skidVtx[4][36];   /* 0x10D0  each wheel's trail, newest first */
+    BrSkidPt skidPt[4][9];      /* 0x19D0 */
+    short skidKind[4][9];       /* 0x1D30  each point's surface */
+    BrVec3 pos1d78;             /* 0x1D78  another position copy */
+    char pad1d84[0x1D88 - 0x1D84];
+    be32_t mtx[16];             /* 0x1D88  an Mtx (RSP memory, big-endian) */
+    char pad1dc8[0x1DCC - 0x1DC8];
+    float heading;              /* 0x1DCC  of the camera, radians */
+    char pad1dd0[0x1DD4 - 0x1DD0];
+    float x1dd4;                /* 0x1DD4  rotation rates while free-flying */
+    float x1dd8;                /* 0x1DD8 */
+    float x1ddc;                /* 0x1DDC  speed while free-flying */
+    float x1de0;                /* 0x1DE0 */
+    float fog;                  /* 0x1DE4  fog amount at the car */
+    TgrAddr cam;              /* BrCarCam * -- 0x1DE8  the camera in use */
+    TgrAddr cam2;             /* BrCarCam * -- 0x1DEC  the camera it switches back to */
+    BrCarCam cams[4];           /* 0x1DF0 */
+    char pad1f00[0x1F44 - 0x1F00];
+    BrCarCam cam4;              /* 0x1F44 */
+    float camSpeed;             /* 0x1F88  the chase camera's smoothed speed */
+    float camSpin;              /* 0x1F8C  and spin */
+    float x1f90;                /* 0x1F90 */
+    BrVec3 camTarget;           /* 0x1F94  where the camera looks */
+    BrVec3 camPosA;             /* 0x1FA0  copies of the chase camera's start position */
+    float x1fac;                /* 0x1FAC */
+    char pad1fb0[0x1FB4 - 0x1FB0];
+    BrVec3 camPosB;             /* 0x1FB4 */
+    unsigned short x1fc0[32];   /* 0x1FC0  trigger ids the car has passed */
+    int x2000;                  /* 0x2000  entries in x1fc0 */
+    unsigned short x2004[32];   /* 0x2004  object ids near the car */
+    int x2044;                  /* 0x2044 */
+    float x2048;                /* 0x2048  lifts the spray particles (half of it) */
+    int x204c;                  /* 0x204C */
+    char pad2050[0x2058 - 0x2050];
+    int x2058;                  /* 0x2058  the kind it was given (copied to kind) */
+    int kind;                   /* 0x205C */
+    unsigned char colour[4];    /* 0x2060  body colour r, g, b and a fourth byte */
+    float x2064;                /* 0x2064 */
+    int x2068;                  /* 0x2068 */
+    int wrongWay;               /* 0x206C  frames spent facing backwards */
+    unsigned char cellX;        /* 0x2070  the 32-unit track grid cell it is in (0..63) */
+    unsigned char cellY;        /* 0x2071 */
+    char pad2072[0x2074 - 0x2072];
+    TgrAddr pad;          /* unsigned int * -- 0x2074  the slot's pad record */
+    TgrAddr model;                /* char * -- 0x2078  the slot's model buffer */
+    char pad207c[0x2090 - 0x207C];
+} BrCar;
+
+extern BrCar D_8031B760[4];
+
+/* A car's loaded model (the head of its model buffer): cartridge data, kept
+ * big-endian as loaded; its addresses are original ones (BEPTR). */
+typedef struct BrCarModelPart {   /* a texture's load record (BrTex, 0x24 bytes) */
+    be32_t a;                   /* 0x00  texture */
+    be32_t b;                   /* 0x04  palette (RGBA5551) for a paletted texture */
+    char pad08[0x18];
+    unsigned char fmt;          /* 0x20  low nibble 1: paletted */
+    char pad21[3];
+} BrCarModelPart;
+typedef struct BrCarModel {
+    char pad00[0x10];
+    be32_t nParts;              /* 0x10 */
+    be32_t parts;               /* 0x14  BrCarModelPart[nParts] */
+    be32_t dl[3][10];           /* 0x18  display lists */
+    be32_t x90;
+    be32_t x94;
+    char pad98[0xbc - 0x98];
+    be32_t dl2[3][3];           /* 0xBC  wheel display lists (0 when the model has none) */
+    bef_t wheel[4][3];          /* 0xE0  wheel positions in the body's frame */
+    unsigned char decalPart[12]; /* 0x110  six paint slots, two parts each; [2] carries the body paint */
+    be32_t x11c;                /* 0x11C  be32_t[12] */
+} BrCarModel;
+#define BR_CARPARTS(m)   BEPTR(BrCarModelPart *, (m)->parts)
+
+/* A car's model file (0x60 bytes each), a table at 0x8028AE0C. */
+typedef struct BrCarModelRec {
+    TgrAddr name;               /* 0x00  the car's name (char *) */
+    int x04[4];                 /* 0x04 */
+    int rom;                    /* 0x14  ROM address of the model file */
+    int present;                /* 0x18  non-zero when the car is in this build */
+    unsigned int size;          /* 0x1C  bytes, set when it is loaded */
+    int dialRom;                /* 0x20  ROM address of the dashboard art: the dial
+                                   face, then its 0x200-byte palettes (one per
+                                   weather) from +0x400... */
+    int x24;                    /* 0x24  a ROM address */
+    unsigned char dialW;        /* 0x28  the rev counter's size */
+    unsigned char dialH;        /* 0x29 */
+    signed char lampX;          /* 0x2A  the rev lamps' offset in the dial */
+    signed char lampY;          /* 0x2B */
+    unsigned char lampW;        /* 0x2C  and size (frames follow the dial face) */
+    unsigned char lampH;        /* 0x2D */
+    unsigned char dialMode;     /* 0x2E  0 a needle; 1, 2 a palette rev bar */
+    unsigned char needleX;      /* 0x2F  the needle's centre in the dial; for a */
+    unsigned char needleY;      /* 0x30  bar, needleX is its length in colours */
+    char pad31[3];
+    float needleMax;            /* 0x34  needle angle at full revs */
+    float needleRest;           /* 0x38  needle angle at rest */
+    int drive;                  /* 0x3C  the drive name's index (car select) */
+    int x40;                    /* 0x40  the class name's index */
+    float maxSpeed;             /* 0x44  shown on a 0..500 bar */
+    float accel;                /* 0x48  shown on a 0..10 bar */
+    int x4c[2];                 /* 0x4C */
+    int gears;                  /* 0x54 */
+    float len;                  /* 0x58  body length, 1/256 units */
+    float wid;                  /* 0x5C  body half-width */
+} BrCarModelRec;
+
+extern BrCarModelRec D_8028AE0C[];
+
+#endif

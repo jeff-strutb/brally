@@ -1,0 +1,195 @@
+/* io.c: the rest of libultra's surface the game calls: the PI (ROM DMA), the
+ * VI, the RCP's task handshake, the audio interface, the caches, printing,
+ * and libm's sine table -- each as n64/tools/n64box.py models it. */
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "plat.h"
+#include "tgr_core.h"
+#include "sha1.h"
+
+int32_t  osTvType = 1;              /* NTSC */
+uint32_t osMemSize = 0x400000;      /* 4 MB, no Expansion Pak */
+uint64_t osClockRate = 62500000;
+uint32_t osRomBase = 0xB0000000;
+int32_t  osResetType = 0;
+
+/* ---- managers the game starts: nothing to run ------------------------------- */
+void osCreateViManager(OSPri pri) { (void)pri; }
+void osCreatePiManager(OSPri pri, OSMesgQueue *q, OSMesg *b, int32_t n) { (void)pri; (void)q; (void)b; (void)n; }
+void osViSetMode(OSViMode *mode) { (void)mode; }
+void osViSetSpecialFeatures(uint32_t f) { (void)f; }
+void osViBlack(uint8_t on) { (void)on; }
+void osInvalDCache(void *p, int32_t n) { (void)p; (void)n; }
+void osWritebackDCacheAll(void) {}
+
+/* ---- the VI ----------------------------------------------------------------- */
+static uint32_t s_framebuffer;
+
+void osViSwapBuffer(void *fb)
+{
+    s_framebuffer = tgr_addr32(fb);
+    tgr_trace("swap", "%08X", s_framebuffer);
+    tgr_gfx_swap(s_framebuffer);
+}
+
+void *osViGetCurrentFramebuffer(void)
+{
+    return TGR_PTR(void *, s_framebuffer);
+}
+
+/* ---- the PI: the cartridge -------------------------------------------------- */
+int32_t osPiStartDma(OSIoMesg *mb, int32_t pri, int32_t direction, uint32_t devAddr, void *vAddr,
+                     uint32_t nbytes, OSMesgQueue *mq)
+{
+    uint32_t src = devAddr & 0x0FFFFFFF;
+    (void)pri;
+    if (direction != OS_READ) {
+        fprintf(stderr, "tgr: a DMA to the cartridge\n");
+        abort();
+    }
+    if (src + nbytes <= g_romlen) {
+        memcpy(vAddr, g_rom + src, nbytes);
+    } else {
+        size_t have = src < g_romlen ? g_romlen - src : 0;
+        memcpy(vAddr, g_rom + src, have);
+        memset((uint8_t *)vAddr + have, 0, nbytes - have);
+    }
+    if (mb)
+        mb->hdr.retQueue = tgr_addr32(mq);
+    tgr_os_lock();
+    tgr_post_mesg_at(tgr_count(), mq, tgr_addr32(mb));
+    tgr_os_unlock();
+    return 0;
+}
+
+int32_t osPiReadIo(uint32_t devAddr, uint32_t *data)
+{
+    uint32_t off = devAddr & 0x0FFFFFFF;
+    *data = off + 4 <= g_romlen ? (uint32_t)g_rom[off] << 24 | (uint32_t)g_rom[off + 1] << 16 |
+                                  (uint32_t)g_rom[off + 2] << 8 | g_rom[off + 3] : 0;
+    return 0;
+}
+
+/* ---- the RCP: tasks --------------------------------------------------------- */
+void osSpTaskLoad(OSTask *task)
+{
+    tgr_os_lock();
+    if (task->t.type == M_GFXTASK) {
+        tgr_gfx_task(task->t.data_ptr);
+        tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
+        tgr_post_event_at(tgr_count() + 2, OS_EVENT_DP);
+    } else {
+        tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
+    }
+    tgr_os_unlock();
+}
+
+void osSpTaskStartGo(OSTask *task) { (void)task; }
+
+/* ---- the audio interface: buffers played at the set rate, 4 bytes a sample -- */
+#define AI_CLOCK 48681812u
+static struct { uint64_t start; uint32_t n; } s_aiq[2];
+static int s_ain;
+static uint32_t s_airate;
+
+static uint64_t ai_ticks(uint32_t bytes)
+{
+    return (uint64_t)bytes * 46875000ull / ((uint64_t)(s_airate ? s_airate : 1) * 4);
+}
+
+static void ai_update(void)
+{
+    while (s_ain && s_airate) {
+        uint64_t played = (tgr_count() - s_aiq[0].start) * s_airate * 4 / 46875000ull;
+        uint64_t end;
+        if (played < s_aiq[0].n)
+            break;
+        end = s_aiq[0].start + ai_ticks(s_aiq[0].n);
+        s_aiq[0] = s_aiq[1];
+        s_ain--;
+        if (s_ain)
+            s_aiq[0].start = end;               /* it began when its predecessor ended */
+    }
+}
+
+uint32_t osAiGetLength(void)
+{
+    uint64_t played;
+    ai_update();
+    if (!s_ain || !s_airate)
+        return 0;
+    played = (tgr_count() - s_aiq[0].start) * s_airate * 4 / 46875000ull;
+    return played >= s_aiq[0].n ? 0 : (uint32_t)(s_aiq[0].n - played) & ~7u;
+}
+
+uint32_t osAiGetStatus(void)
+{
+    ai_update();
+    return s_ain >= 2 ? 0x80000000u : 0;
+}
+
+int32_t osAiSetFrequency(uint32_t f)
+{
+    uint32_t dac = (uint32_t)((double)AI_CLOCK / f + 0.5);
+    s_airate = AI_CLOCK / dac;
+    return (int32_t)s_airate;
+}
+
+int32_t osAiSetNextBuffer(void *buf, uint32_t size)
+{
+    uint64_t start;
+    ai_update();
+    if (s_ain >= 2)
+        return -1;
+    start = tgr_count();
+    if (s_ain) {
+        uint64_t end = s_aiq[s_ain - 1].start + ai_ticks(s_aiq[s_ain - 1].n);
+        if (end > start)
+            start = end;
+    }
+    s_aiq[s_ain].start = start;
+    s_aiq[s_ain].n = size;
+    s_ain++;
+    if (g_tgr.trace) {
+        Sha1 h;
+        char d[17];
+        sha1_init(&h);
+        sha1_update(&h, buf, size);
+        sha1_hex16(&h, d);
+        tgr_trace("ai", "%s", d);
+    }
+    tgr_audio_buffer((const int16_t *)buf, (int)(size / 4), (int)s_airate);
+    return 0;
+}
+
+/* ---- printing ---------------------------------------------------------------- */
+void osSyncPrintf(const char *fmt, ...)
+{
+    va_list ap;
+    if (!getenv("TGR_LOG"))
+        return;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+}
+
+/* ---- libm: sins / coss through libultra's table (in the ROM's data) ---------- */
+int16_t sins(uint16_t x)
+{
+    uint16_t v = (x >> 4) & 0xFFFF;
+    int16_t r;
+    if (v & 0x400)
+        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, 0x802A540Eu - (v & 0x3FF) * 2));
+    else
+        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, 0x802A4C10u + (v & 0x3FF) * 2));
+    if (v & 0x800)
+        return (int16_t)-r;
+    return r;
+}
+
+int16_t coss(uint16_t x)
+{
+    return sins((uint16_t)(x + 0x4000));
+}
