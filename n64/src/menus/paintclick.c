@@ -68,11 +68,6 @@ extern BrPaintRect D_80369CD8[13];      /* the tool buttons */
 extern BrPaintRect D_80369DB0[10];      /* the decal slot buttons */
 extern BrClickSwatch D_80369B98[16];    /* the palette */
 extern unsigned char D_80369DA8[3];     /* the colour before the mixer opened */
-extern int D_80369B80;                  /* the drag anchor */
-extern int D_80369B84;
-extern unsigned int D_80369B88;         /* the last click, in milliseconds */
-extern int D_80369B8C;                  /* the anchor has been set */
-extern int D_80369B90;
 typedef struct BrImage BrImage;
 extern BrImage *D_8028DB08;             /* the slot's preview image */
 extern BrImage *D_8028DB0C[10];
@@ -142,31 +137,34 @@ void BrPaintDashCircle(int x, int y, int r);
  * rectangle and oval take a first click as the anchor and a second to
  * draw, the text tool opens the keyboard and then stamps the text; between
  * the clicks a dashed outline follows the cursor.
- * RESIDUE (gap 85, same length): the ROM loads and stores the two anchor
- * flags without keeping their addresses in v0, tests the palette loop with
- * slti where ours gets bne, and its loop pointer temporaries sit one word
- * higher (0x1C/0x20). */
-/* @t4-pass 0x8024C184 1 2026-10-03 compiles 26 best 525 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024C184 2 2026-10-03 compiles 26 best 525 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024C184 */
+ * The anchors are function statics.  Coordinates go through the locals x
+ * and y and are adjusted in place, the paint area is placed by halving the
+ * free width and height first, the brush index is held in i and the brush
+ * square's half size in r, and the circle radius is a statement of its
+ * own: each of these decides a register or a stack slot.  Three groups of
+ * statements share one line because as1 breaks scheduling ties on the line
+ * number. */
 /* @implements 0x8024C184 tgr BrPaintClick */
 void BrPaintClick(void)
 {
+  static int D_80369B80;               /* the drag anchor */
+  static int D_80369B84;
+  static unsigned int D_80369B88;      /* the last click, in milliseconds */
+  static int D_80369B8C;               /* the anchor has been set */
+  static int D_80369B90;
   int j;
   int i;
   int w;
   int h;
   int r;
   unsigned int t;
-  int k;
-  int u1[5];                    /* unused: the frame has them */
+  int u0;                       /* unused: the frame has it */
+  int x;
+  int y;
+  int u1[3];                    /* unused: the frame has them */
   char clicked;
 
-  if (D_80369B8C != 0) {
-  } else {
-    D_80369B8C = 1;
-    D_80369B80 = D_8028D110.x;
-  }
+  if (D_80369B8C != 0) { } else { D_80369B8C = 1; D_80369B80 = D_8028D110.x; }
   if (D_80369B90 == 0) {
     D_80369B90 = 1;
     D_80369B84 = D_8028D110.y;
@@ -179,8 +177,8 @@ void BrPaintClick(void)
       if (BrPaintCursorInRect(&D_80369DB0[i])) {
         BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
         D_8028DB6C = D_8028DB68;
-        D_8028DB68 = i;
         D_8028DB08 = D_8028DB0C[i];
+        D_8028DB68 = i;
         if (D_8028DB68 != D_8028DB6C) {
           D_8028DBD0 = 1;
           D_8028DBB0 = 0;
@@ -190,12 +188,12 @@ void BrPaintClick(void)
           D_8028DB8C = D_8028AB08->parts[D_8028AB08->decalPart[i]].h;
           osSyncPrintf("decal_width = %d\n", D_8028DB88);
           osSyncPrintf("decal_height = %d\n", D_8028DB8C);
-          w = D_8028DB88;
-          h = D_8028DB8C;
-          D_8028DB94.x = D_8028D470.x + ((D_8028D470.w - w * 4) >> 1);
-          D_8028DB94.y = D_8028D470.y + ((D_8028D470.h - h * 4) >> 1);
-          D_8028DB94.w = w * 4;
-          D_8028DB94.h = h * 4;
+          w = (D_8028D470.w - D_8028DB88 * 4) >> 1;
+          h = (D_8028D470.h - D_8028DB8C * 4) >> 1;
+          D_8028DB94.x = D_8028D470.x + w;
+          D_8028DB94.y = D_8028D470.y + h;
+          D_8028DB94.w = D_8028DB88 * 4;
+          D_8028DB94.h = D_8028DB8C * 4;
         }
         if (D_8028DB68 == 4 || D_8028DB68 == 5 || D_8028DB68 == 8 || D_8028DB68 == 9) {
           D_8028DBCC = 0;
@@ -219,8 +217,8 @@ void BrPaintClick(void)
         }
         t = BR_MSEC();
         if (t - D_80369B88 < 350) {
-          for (k = 0; k < 3; k++) {
-            D_80369DA8[k] = D_80369B98[D_8028DB58].c[k];
+          for (j = 0; j < 3; j++) {
+            D_80369DA8[j] = D_80369B98[D_8028DB58].c[j];
           }
           D_8028DBD4 = 1;
           return;
@@ -305,8 +303,8 @@ void BrPaintClick(void)
       if (D_8028DBA8 > 0) {
         if (D_8028DBE4 != 0) {
           D_8028D110.x = D_80369B80;
-          D_8028DBE4 = 0;
           D_8028D110.y = D_80369B84;
+          D_8028DBE4 = 0;
         }
         BrPaintTextDraw(D_8028D110.x, D_8028D110.y + 1);
         return;
@@ -333,14 +331,18 @@ void BrPaintClick(void)
         BrPaintDecalCommit();
         D_8028DBC0 = 1;
       }
-      if (D_8028DAC0 == 0) {
-        BrPaintPlot((D_8028D110.x - D_8028DB94.x) >> 2, (D_8028DB94.y + D_8028DB94.h - D_8028D110.y) >> 2,
-                    D_8028DB58);
+      i = D_8028DAC0;
+      if (i == 0) {
+        x = D_8028D110.x;
+        y = D_8028D110.y;
+        x -= D_8028DB94.x;
+        x >>= 2; y = D_8028DB94.y + D_8028DB94.h - y; y >>= 2;
+        BrPaintPlot(x, y, D_8028DB58);
       } else if (D_8028CE9C == 0) {
-        BrPaintDisc(D_8028D110.x, D_8028D110.y, D_8028D4A0[D_8028DAC0].w >> 1, 1);
+        BrPaintDisc(D_8028D110.x, D_8028D110.y, D_8028D4A0[i].w >> 1, 1);
       } else {
-        BrPaintFillRect(D_8028D110.x - D_8028D4A0[D_8028DAC0].w * 2, D_8028D110.y - D_8028D4A0[D_8028DAC0].w * 2,
-                        D_8028D110.x + D_8028D4A0[D_8028DAC0].w * 2, D_8028D110.y + D_8028D4A0[D_8028DAC0].w * 2);
+        r = D_8028D4A0[i].w * 2;
+        BrPaintFillRect(D_8028D110.x - r, D_8028D110.y - r, D_8028D110.x + r, D_8028D110.y + r);
       }
       return;
     case 3:
@@ -388,8 +390,10 @@ void BrPaintClick(void)
       } else {
         BrPaintDecalCommit();
         if (D_8028CF8C == 2 || D_8028CF8C == 3) {
-          r = (int)sqrtf((float)((D_8028D110.x - D_80369B80) * (D_8028D110.x - D_80369B80) +
-                                 (D_8028D110.y - D_80369B84) * (D_8028D110.y - D_80369B84))) >> 2;
+          x = D_8028D110.x - D_80369B80;
+          y = D_8028D110.y - D_80369B84;
+          r = sqrtf(x * x + y * y);
+          r >>= 2;
         }
         if (D_8028CF8C == 0) {
           BrPaintFillOval(D_80369B80, D_80369B84, D_8028D110.x, D_8028D110.y);
@@ -426,9 +430,10 @@ void BrPaintClick(void)
         BrPaintDashOval(D_80369B80, D_80369B84, D_8028D110.x, D_8028D110.y);
         return;
       }
-      BrPaintDashCircle(D_80369B80, D_80369B84,
-                        (int)sqrtf((float)((D_8028D110.x - D_80369B80) * (D_8028D110.x - D_80369B80) +
-                                           (D_8028D110.y - D_80369B84) * (D_8028D110.y - D_80369B84))));
+      x = D_8028D110.x - D_80369B80;
+      y = D_8028D110.y - D_80369B84;
+      r = sqrtf(x * x + y * y);
+      BrPaintDashCircle(D_80369B80, D_80369B84, r);
       return;
     }
   }
