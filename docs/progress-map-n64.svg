@@ -155,7 +155,7 @@
 <rect x="562.8" y="545.8" width="64.3" height="68.4" fill="#58a6ff"><title>(unnamed)  0x80250FCC  1488B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="627.7" y="545.8" width="61.5" height="68.4" fill="#3fb950"><title>(unnamed)  0x8025DFCC  1424B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="689.8" y="545.8" width="57.2" height="68.4" fill="#58a6ff"><title>(unnamed)  0x802523CC  1324B  [unfiled 0x8025xxxx]</title></rect>
-<rect x="747.6" y="545.8" width="55.8" height="68.4" fill="#58a6ff"><title>(unnamed)  0x80256720  1292B  [unfiled 0x8025xxxx]</title></rect>
+<rect x="747.6" y="545.8" width="55.8" height="68.4" fill="#3fb950"><title>(unnamed)  0x80256720  1292B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="803.9" y="545.8" width="53.3" height="68.4" fill="#3f6f7a"><title>(unnamed)  0x80254878  1236B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="857.9" y="545.8" width="52.4" height="68.4" fill="#3fb950"><title>(unnamed)  0x80250698  1216B  [unfiled 0x8025xxxx]</title></rect>
 <rect x="562.8" y="614.7" width="55.5" height="60.6" fill="#58a6ff"><title>(unnamed)  0x80250B58  1140B  [unfiled 0x8025xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 494 &#183; T3 codegen-only 73 &#183; 158,252/457,392 bytes exact (34.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 495 &#183; T3 codegen-only 72 &#183; 159,544/457,392 bytes exact (34.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
