@@ -104,7 +104,7 @@
 <rect x="727.0" y="15.5" width="93.1" height="115.1" fill="#3fb950"><title>(unnamed)  0x8023DF9C  3604B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="820.7" y="15.5" width="89.6" height="115.1" fill="#58a6ff"><title>(unnamed)  0x80237980  3468B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="131.2" width="111.2" height="80.0" fill="#58a6ff"><title>(unnamed)  0x80234FF8  2996B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="736.1" y="131.2" width="91.8" height="80.0" fill="#58a6ff"><title>(unnamed)  0x8023A784  2476B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="736.1" y="131.2" width="91.8" height="80.0" fill="#3fb950"><title>(unnamed)  0x8023A784  2476B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="828.5" y="131.2" width="81.8" height="80.0" fill="#58a6ff"><title>(unnamed)  0x8023BF60  2208B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="211.9" width="78.0" height="70.2" fill="#58a6ff"><title>(unnamed)  0x8023B418  1848B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="282.6" width="78.0" height="57.0" fill="#58a6ff"><title>(unnamed)  0x8023D134  1504B  [unfiled 0x8023xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 507 &#183; T3 codegen-only 60 &#183; 262,600/457,392 bytes exact (57.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 508 &#183; T3 codegen-only 59 &#183; 265,076/457,392 bytes exact (58.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
