@@ -42,6 +42,7 @@
  */
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
+#import <MetalFX/MetalFX.h>
 #include "host.h"
 #include <stdarg.h>
 #include <execinfo.h>
@@ -54,6 +55,19 @@
 #define W 640
 #define H 480
 static int RW = W, RH = H;     /* the render target, in pixels */
+static int g_rz;               /* this frame uses Remastered's reversed hardware depth (see the shader's RZ) */
+int hglide_rz(void) { return g_rz; }
+/* Remastered renders below the window's resolution and MetalFX's spatial
+ * upscaler brings the finished frame up to it (BR_RSCALE, linear, default
+ * 0.7: half the pixels); OW x OH the size it goes up to (0: no upscale) */
+static int OW, OH;
+static id<MTLFXSpatialScaler> g_fxs;
+static id<MTLFXTemporalScaler> g_fxt;
+static int g_temporal;          /* this frame: MetalFX's temporal upscaler (else the spatial one) */
+int hglide_temporal(void) { return g_temporal; }
+id<MTLTexture> hfx_motion(float *jx, float *jy, int *history);
+static id<MTLTexture> g_up;
+static id<MTLTexture> g_fxlo;  /* the finished frame at the render size (screenshots read it) */
 
 CAMetalLayer *happ_metal_layer(void);   /* host_app.m; nil when headless */
 
@@ -73,6 +87,12 @@ typedef struct {
 static const char *SHADER =
 "#include <metal_stdlib>\n"
 "using namespace metal;\n"
+"/* RZ: Remastered's depth -- reversed hardware depth, z/w = RZK / w, the\n"
+"   compares flipped, nothing written from the fragment shader (the GPU then\n"
+"   rejects hidden surfaces before shading them); off: the Voodoo W-buffer\n"
+"   word written per fragment, as the game's hardware did */\n"
+"constant bool RZ [[function_constant(0)]];\n"
+"constant float RZK = 0.01;\n"
 "struct GV { float x, y, ooz, oow, r, g, b, a, sow, tow, xf; };\n"
 "struct GU { int cc_func, cc_fact, cc_local, cc_other, cc_inv;\n"
 "  int ac_func, ac_fact, ac_local, ac_other, ac_inv;\n"
@@ -80,7 +100,7 @@ static const char *SHADER =
 "  int at_fn, at_ref, fogmode, dmode, use_tex, clear;\n"
 "  float clear_depth, mat; float4 cconst, fogcolor, clearcol; float su, sv, lodbias, pad2;\n"
 "  float fogtab[64]; };\n"
-"struct VO { float4 pos [[position]];\n"
+"struct VO { float4 pos [[position, invariant]];\n"
 "  float4 col [[center_no_perspective]]; float ooz [[center_no_perspective]];\n"
 "  float oow [[center_no_perspective]]; float sow [[center_no_perspective]];\n"
 "  float tow [[center_no_perspective]];\n"
@@ -91,7 +111,7 @@ static const char *SHADER =
 "   pixels, y down */\n"
 "vertex VO vs(uint vid [[vertex_id]], const device GV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
 "  GV g = v[vid]; VO o; float4 T = xt[int(g.xf)];\n"
-"  o.pos = float4(T.x * g.x + T.y, T.z * g.y + T.w, 0.5, 1.0);\n"
+"  o.pos = float4(T.x * g.x + T.y, T.z * g.y + T.w, RZ ? RZK * g.oow : 0.5, 1.0);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = g.ooz; o.oow = g.oow; o.sow = g.sow; o.tow = g.tow;\n"
 "  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = 0; o.nrm = 0;\n"
 "  return o; }\n"
@@ -101,7 +121,7 @@ static const char *SHADER =
 "struct CV { float x, y, z, w, r, g, b, a, s, t, wx, wy, wz, fl, xf, nx, ny, nz; };\n"
 "vertex VO vsc(uint vid [[vertex_id]], const device CV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
 "  CV g = v[vid]; VO o; float q = 1.0 / g.w; float4 T = xt[int(g.xf)];\n"
-"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
+"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, RZ ? RZK : g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
 "  o.pw = g.w; o.ps = g.s; o.pt = g.t; o.pcol = o.col; o.pm = 1; o.wp = float3(g.wx, g.wy, g.wz); o.fl = g.fl;\n"
 "  o.nrm = float3(g.nx, g.ny, g.nz);\n"
@@ -111,7 +131,7 @@ static const char *SHADER =
 "   depth and maps the texture without perspective */\n"
 "vertex VO vscn(uint vid [[vertex_id]], const device CV *v [[buffer(0)]], const device float4 *xt [[buffer(1)]]) {\n"
 "  CV g = v[vid]; VO o; float q = 1.0 / 65535.0; float4 T = xt[int(g.xf)];\n"
-"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, g.z, g.w);\n"
+"  o.pos = float4(T.x * g.x + T.y * g.w, T.z * g.y + T.w * g.w, RZ ? 1e-7 * g.w : g.z, g.w);\n"
 "  o.col = float4(g.r, g.g, g.b, g.a); o.ooz = 0; o.oow = q; o.sow = g.s * q; o.tow = g.t * q;\n"
 "  o.pw = 1; o.ps = 0; o.pt = 0; o.pcol = 0; o.pm = 0; o.wp = 0; o.fl = g.fl == 1.0 ? 2.0 : 0.0; o.nrm = 0;\n"
 "  return o; }\n"
@@ -185,8 +205,7 @@ static const char *SHADER =
 "  outc.a = comb1(u.ac_func, fa, loc.a, loc.a, oth.a);\n"
 "  if (u.ac_inv) outc.a = 255 - outc.a;\n"
 "  return clamp(outc, 0.0, 255.0); }\n"
-"fragment FO fs(VO vin [[stage_in]], constant GU &u [[buffer(0)]],\n"
-"               texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) {\n"
+"FO fs_core(VO vin, constant GU &u, texture2d<float> tex, sampler smp) {\n"
 "  FO o; VO in = vin;\n"
 "  /* clip-space corners: w, s and t come perspective-correct, so 1/w, s/w and\n"
 "     t/w are exact at every pixel, clipped by the GPU or not */\n"
@@ -234,6 +253,12 @@ static const char *SHADER =
 "  } else if (vin.fl == 2.0) { o.n = float4(o.c.rgb, 1); o.g = float4(0, 0, 0, 3); }   /* the sky keeps its own colour, for host_fx.m */\n"
 "  else o.n = float4(0, 0, 0, o.c.a);   /* 2D: blended ones scale the scene coverage by 1 - a */\n"
 "  return o; }\n"
+"fragment FO fs(VO vin [[stage_in]], constant GU &u [[buffer(0)]],\n"
+"               texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) { return fs_core(vin, u, tex, smp); }\n"
+"struct FOZ { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; float m [[color(4)]]; };\n"
+"fragment FOZ fs_rz(VO vin [[stage_in]], constant GU &u [[buffer(0)]],\n"
+"                   texture2d<float> tex [[texture(0)]], sampler smp [[sampler(0)]]) {\n"
+"  FO o = fs_core(vin, u, tex, smp); FOZ z; z.c = o.c; z.n = o.n; z.g = o.g; z.a = o.a; z.m = o.m; return z; }\n"
 "fragment FO fs_trivial(VO vin [[stage_in]]) { FO o; o.c = float4(0.5); o.n = 0; o.g = 0; o.d = 0.5; return o; }\n"
 "struct PO { float4 pos [[position]]; float2 uv; };\n"
 "vertex PO pvs(uint vid [[vertex_id]]) {\n"
@@ -505,6 +530,16 @@ static void size_targets(void)
     } else {
         w = W; h = H;
     }
+    {   /* Remastered: the scene below the window's size, upscaled at the swap */
+        const char *e2 = getenv("BR_RSCALE");
+        double rs = e2 ? atof(e2) : (getenv("BR_MFX_SPATIAL") ? 0.7 : 0.5);
+        int ow = w, oh = h;
+        if (l && hfx_on() && rs > 0.2 && rs < 0.999 && !getenv("BR_RES")) {
+            w = (int)floor(w * rs); w -= w % 4; h = (int)floor(h * rs); h -= h % 2;
+            OW = ow; OH = oh;
+        } else OW = OH = 0;
+        g_temporal = OW > 0 && !getenv("BR_MFX_SPATIAL") && [MTLFXTemporalScalerDescriptor supportsDevice:g_dev];
+    }
     if (g_color && w == RW && h == RH) return;
     RW = w; RH = h;
     td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
@@ -551,7 +586,11 @@ static void gl_setup(void)
     g_dev = MTLCreateSystemDefaultDevice();
     if (!g_dev) { fprintf(stderr, "no Metal device\n"); exit(1); }
     g_q = [g_dev newCommandQueue];
-    g_lib = [g_dev newLibraryWithSource:[NSString stringWithUTF8String:SHADER] options:nil error:&err];
+    {
+        MTLCompileOptions *co = [MTLCompileOptions new];
+        co.preserveInvariance = YES;   /* a decal's second pass over a polygon lands on the same depth */
+        g_lib = [g_dev newLibraryWithSource:[NSString stringWithUTF8String:SHADER] options:co error:&err];
+    }
     if (!g_lib) { fprintf(stderr, "Glide shader: %s\n", err.localizedDescription.UTF8String); exit(1); }
     size_targets();
     td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
@@ -593,7 +632,8 @@ static void gl_setup(void)
     if (!g_blit) { fprintf(stderr, "blit pipeline: %s\n", err.localizedDescription.UTF8String); exit(1); }
     {
         CAMetalLayer *l = happ_metal_layer();
-        if (l) { l.device = g_dev; l.pixelFormat = MTLPixelFormatBGRA8Unorm; l.framebufferOnly = YES; l.maximumDrawableCount = 2; }
+        if (l) { l.device = g_dev; l.pixelFormat = MTLPixelFormatBGRA8Unorm; l.framebufferOnly = YES; l.maximumDrawableCount = 2;
+            if (getenv("BR_VSYNC") && !atoi(getenv("BR_VSYNC"))) l.displaySyncEnabled = NO; }
     }
 }
 
@@ -614,14 +654,19 @@ static MTLBlendFactor bf(int f, int isdst)
 }
 static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int nocolor, int kind)
 {
-    NSNumber *k = @(((long)kind << 32) | (rs << 24) | (rd << 16) | (as << 8) | ad | (nocolor << 30));
+    NSNumber *k = @(((long)g_rz << 40) | ((long)kind << 32) | (rs << 24) | (rd << 16) | (as << 8) | ad | (nocolor << 30));
     id<MTLRenderPipelineState> p = g_pipes[k];
     if (!p) {
         NSError *err = nil;
         MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
         MTLRenderPipelineColorAttachmentDescriptor *c;
-        d.vertexFunction = [g_lib newFunctionWithName:kind == 2 ? @"vscn" : kind ? @"vsc" : @"vs"];
-        d.fragmentFunction = [g_lib newFunctionWithName:(getenv("BR_EXP") && atoi(getenv("BR_EXP")) == 2) ? @"fs_trivial" : @"fs"];
+        {
+            MTLFunctionConstantValues *cv = [MTLFunctionConstantValues new];
+            bool rz = g_rz != 0;
+            [cv setConstantValue:&rz type:MTLDataTypeBool atIndex:0];
+            d.vertexFunction = [g_lib newFunctionWithName:kind == 2 ? @"vscn" : kind ? @"vsc" : @"vs" constantValues:cv error:&err];
+        }
+        d.fragmentFunction = [g_lib newFunctionWithName:(getenv("BR_EXP") && atoi(getenv("BR_EXP")) == 2) ? @"fs_trivial" : g_rz ? @"fs_rz" : @"fs"];
         d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
         c = d.colorAttachments[0];
         c.pixelFormat = MTLPixelFormatRGBA8Unorm;
@@ -661,7 +706,7 @@ static id<MTLRenderPipelineState> gpipe(int rs, int rd, int as, int ad, int noco
 }
 static id<MTLDepthStencilState> dss(int enabled, int fn, int mask)
 {
-    NSNumber *k = @((enabled << 8) | (fn << 1) | mask);
+    NSNumber *k = @((g_rz << 9) | (enabled << 8) | (fn << 1) | mask);
     id<MTLDepthStencilState> s = g_dss[k];
     if (!s) {
         static const MTLCompareFunction CF[8] = {
@@ -669,7 +714,12 @@ static id<MTLDepthStencilState> dss(int enabled, int fn, int mask)
             MTLCompareFunctionLessEqual, MTLCompareFunctionGreater, MTLCompareFunctionNotEqual,
             MTLCompareFunctionGreaterEqual, MTLCompareFunctionAlways };
         MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
-        d.depthCompareFunction = enabled ? CF[fn & 7] : MTLCompareFunctionAlways;
+        /* reversed depth: nearer is larger, so every inequality turns round */
+        static const MTLCompareFunction CFR[8] = {
+            MTLCompareFunctionNever, MTLCompareFunctionGreater, MTLCompareFunctionEqual,
+            MTLCompareFunctionGreaterEqual, MTLCompareFunctionLess, MTLCompareFunctionNotEqual,
+            MTLCompareFunctionLessEqual, MTLCompareFunctionAlways };
+        d.depthCompareFunction = enabled ? (g_rz ? CFR[fn & 7] : CF[fn & 7]) : MTLCompareFunctionAlways;
         d.depthWriteEnabled = enabled && mask;
         s = [g_dev newDepthStencilStateWithDescriptor:d];
         g_dss[k] = s;
@@ -780,9 +830,11 @@ static void end_pass(void)
 static void hglide_normals(void);
 
 /* finish all GPU work: needed before the CPU touches the target */
+static int g_flushes;
 static void flush_wait(void)
 {
     end_pass();
+    g_flushes++;
     if (g_cb) { hglide_normals(); resolve_xf(); [g_cb commit]; [g_cb waitUntilCompleted]; g_cb = nil; }
     else if (g_q) {
         /* nothing open: frames already committed may still be drawing; an
@@ -1286,9 +1338,33 @@ MTLScissorRect hglide_scissor(int view)
     return scissor_rect(!g_wide ? XF_BOX3D : view == 2 ? XF_MIRROR : XF_WIDE3D);
 }
 
+/* the Voodoo W-buffer word of 1/w (the shader's wfloat) */
+static u32 wword(double oow)
+{
+    u32 t, m, w; int e;
+    if (oow >= 1.0) return 0;
+    if (oow <= 0.0) return 0xFFFF;
+    t = (u32)fmin(oow * 4294967296.0, 4294967295.0);
+    if (t == 0) return 0xFFFF;
+    e = __builtin_clz(t);
+    m = e <= 19 ? (~t >> (19 - e)) : (~t << (e - 19));
+    w = ((u32)e << 12) | (m & 0xFFF);
+    return w < 0xFFFF ? w + 1 : w;
+}
+/* the 1/w a depth word stands for (the word falls as 1/w grows) */
+static double wword_oow(u32 word)
+{
+    double lo = 0, hi = 1;
+    int i;
+    if (word >= 0xFFFF) return 0;
+    for (i = 0; i < 60; i++) { double mid = (lo + hi) * 0.5; if (wword(mid) > word) lo = mid; else hi = mid; }
+    return hi;
+}
+
 void h_grBufferClear(u32 color, u32 alpha, u32 depth)
 {
     gllog("grBufferClear %08X %u %u", color, alpha, depth);
+    if (getenv("BR_TER_TRACE") && hglide_swaps() % 600 == 300) fprintf(stderr, "trace: frame %u clear %08X\n", hglide_swaps(), color);
     gv q[6];
     float x0 = 0, y0 = 0, x1 = W, y1 = H;
     int i;
@@ -1298,6 +1374,9 @@ void h_grBufferClear(u32 color, u32 alpha, u32 depth)
     q[0].x = x0; q[0].y = y0; q[1].x = x1; q[1].y = y0; q[2].x = x0; q[2].y = y1;
     q[3].x = x1; q[3].y = y0; q[4].x = x1; q[4].y = y1; q[5].x = x0; q[5].y = y1;
     for (i = 0; i < 6; i++) { q[i].oow = 1; q[i].xf = g_wide ? XF_STRETCH : XF_BOX2D; }
+    /* reversed depth: the clear lands at the depth its word stands for
+     * (the vertex shader puts it at RZK x oow) */
+    if (g_rz) { float o = (float)wword_oow(depth & 0xFFFF); for (i = 0; i < 6; i++) q[i].oow = o; }
     if (g_wide) {
         /* a race frame: a clear over part of the screen (a fill rectangle:
          * the mirror's frame, a panel) is a 2D element like any other, drawn
@@ -1327,8 +1406,26 @@ void hglide_shot(const char *path)
     u32 *px;
     int i;
     flush_wait();
+    if (g_up && g_fxlo && OW > 0 && !getenv("BR_SHOT_LO")) {   /* what reaches the screen: the upscaled frame */
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:g_up.pixelFormat width:g_up.width height:g_up.height mipmapped:NO];
+        id<MTLTexture> t; id<MTLCommandBuffer> b = [g_q commandBuffer]; id<MTLBlitCommandEncoder> be = [b blitCommandEncoder];
+        int w = (int)g_up.width, h = (int)g_up.height;
+        td.storageMode = MTLStorageModeShared;
+        t = [g_dev newTextureWithDescriptor:td];
+        [be copyFromTexture:g_up toTexture:t]; [be endEncoding]; [b commit]; [b waitUntilCompleted];
+        px = malloc((size_t)w * h * 4);
+        [t getBytes:px bytesPerRow:(NSUInteger)w * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0];
+        f = fopen(path, "wb");
+        if (f) {
+            fprintf(f, "P6\n%d %d\n255\n", w, h);
+            for (i = 0; i < w * h; i++) { u8 c[3] = { (u8)px[i], (u8)(px[i] >> 8), (u8)(px[i] >> 16) }; fwrite(c, 1, 3, f); }
+            fclose(f);
+        }
+        free(px);
+        return;
+    }
     px = malloc((size_t)RW * RH * 4);
-    [(g_fxout ? g_fxout : g_color) getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
+    [(g_fxlo ? g_fxlo : g_color) getBytes:px bytesPerRow:(NSUInteger)RW * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)RW, (NSUInteger)RH) mipmapLevel:0];
     f = fopen(path, "wb");
     if (f) {
         fprintf(f, "P6\n%d %d\n255\n", RW, RH);
@@ -1440,7 +1537,8 @@ void hglide_mailbox_present(void)
 static void gpuframe(id<MTLCommandBuffer> cb)
 {
     static int on = -1;
-    static double last_end, acc, acc_span, mn = 1e9;
+    static double last_end, acc, acc_span, acc_busy, mn = 1e9;
+    static int fl0;
     static int n;
     if (on < 0) on = getenv("BR_GPUFRAME") != NULL;
     if (!on || !cb) return;
@@ -1449,17 +1547,36 @@ static void gpuframe(id<MTLCommandBuffer> cb)
         if (last_end > 0) {
             double d = (en - last_end) * 1000.0;
             acc += d; acc_span += (en - b.GPUStartTime) * 1000.0; if (d < mn) mn = d;
+            acc_busy += (en - (b.GPUStartTime > last_end ? b.GPUStartTime : last_end)) * 1000.0;
             if (++n == 240) {
-                fprintf(stderr, "gpuframe: %.2f ms per frame (min %.2f; own span %.2f) over 240 frames\n", acc / n, mn, acc_span / n);
-                acc = acc_span = 0; n = 0; mn = 1e9;
+                fprintf(stderr, "gpuframe: %.2f ms per frame (min %.2f; own span %.2f; busy %.2f; flush waits %d) over 240 frames\n", acc / n, mn, acc_span / n, acc_busy / n, g_flushes - fl0);
+                acc = acc_span = acc_busy = 0; n = 0; mn = 1e9; fl0 = g_flushes;
             }
         }
         last_end = en;
     }];
 }
 
+/* BR_CPUFRAME=1: the main thread's time per frame between swaps (the game,
+ * the emulation, the host's encoding) and inside the swap, every 240 frames */
+static double g_cpu_end, g_cpu_acc_game, g_cpu_acc_swap; static int g_cpu_n2;
+static void cpuframe_tail(double t_start)
+{
+    static int on = -1;
+    double t = CACurrentMediaTime() * 1000.0;
+    if (on < 0) on = getenv("BR_CPUFRAME") != NULL;
+    if (!on) return;
+    if (g_cpu_end > 0) { g_cpu_acc_game += t_start - g_cpu_end; g_cpu_acc_swap += t - t_start; }
+    g_cpu_end = t;
+    if (++g_cpu_n2 == 240) {
+        fprintf(stderr, "cpuframe: between swaps %.2f ms, in the swap %.2f ms (240 frames)\n", g_cpu_acc_game / 240, g_cpu_acc_swap / 240);
+        g_cpu_acc_game = g_cpu_acc_swap = 0; g_cpu_n2 = 0;
+    }
+}
+
 void h_grBufferSwap(u32 interval)
 {
+    double t_swap0 = CACurrentMediaTime() * 1000.0;
     { extern void htext_swap(void); htext_swap(); }
     CAMetalLayer *l;
     int mailbox = hframe_mailbox();
@@ -1487,6 +1604,61 @@ void h_grBufferSwap(u32 interval)
     { void hcar_frame_end(id<MTLCommandBuffer> cb, id<MTLTexture> pic);
       if (!g_cb) begin_pass(), end_pass();
       hcar_frame_end(g_cb, g_fxout ? g_fxout : g_color); }
+    g_fxlo = g_fxout;
+    /* up to the window's size: MetalFX's spatial upscaler */
+    if (OW > 0 && g_fxout && g_temporal && (OW != RW || OH != RH)) {
+        id<MTLTexture> in = g_fxout, mvt;
+        float jx, jy; int hist;
+        if (!g_fxt || g_fxt.inputWidth != in.width || g_fxt.inputHeight != in.height || g_fxt.outputWidth != (NSUInteger)OW || g_fxt.outputHeight != (NSUInteger)OH) {
+            MTLFXTemporalScalerDescriptor *td2 = [MTLFXTemporalScalerDescriptor new];
+            MTLTextureDescriptor *td;
+            td2.inputWidth = in.width; td2.inputHeight = in.height;
+            td2.outputWidth = (NSUInteger)OW; td2.outputHeight = (NSUInteger)OH;
+            td2.colorTextureFormat = in.pixelFormat; td2.outputTextureFormat = in.pixelFormat;
+            td2.depthTextureFormat = MTLPixelFormatDepth32Float;
+            td2.motionTextureFormat = MTLPixelFormatRG16Float;
+            g_fxt = [td2 newTemporalScalerWithDevice:g_dev];
+            td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:in.pixelFormat width:(NSUInteger)OW height:(NSUInteger)OH mipmapped:NO];
+            td.usage = g_fxt ? g_fxt.outputTextureUsage | MTLTextureUsageShaderRead : MTLTextureUsageShaderRead;
+            td.storageMode = MTLStorageModePrivate;
+            g_up = [g_dev newTextureWithDescriptor:td];
+            if (!g_fxt) fprintf(stderr, "glide: MetalFX temporal upscaler unavailable\n");
+        }
+        mvt = hfx_motion(&jx, &jy, &hist);
+        if (g_fxt && mvt) {
+            g_fxt.colorTexture = in; g_fxt.depthTexture = g_depth; g_fxt.motionTexture = mvt; g_fxt.outputTexture = g_up;
+            g_fxt.inputContentWidth = in.width; g_fxt.inputContentHeight = in.height;
+            g_fxt.jitterOffsetX = getenv("BR_MFX_JX") ? atof(getenv("BR_MFX_JX")) * jx : jx;
+            g_fxt.jitterOffsetY = getenv("BR_MFX_JY") ? atof(getenv("BR_MFX_JY")) * jy : jy;
+            g_fxt.motionVectorScaleX = (float)in.width; g_fxt.motionVectorScaleY = (float)in.height;
+            g_fxt.depthReversed = YES;
+            g_fxt.reset = !hist;
+            [g_fxt encodeToCommandBuffer:g_cb];
+            g_fxout = g_up;
+        }
+    } else if (OW > 0 && g_fxout && (OW != RW || OH != RH)) {
+        id<MTLTexture> in = g_fxout;
+        if (!g_fxs || g_fxs.inputWidth != in.width || g_fxs.inputHeight != in.height || g_fxs.outputWidth != (NSUInteger)OW || g_fxs.outputHeight != (NSUInteger)OH) {
+            MTLFXSpatialScalerDescriptor *sd = [MTLFXSpatialScalerDescriptor new];
+            MTLTextureDescriptor *td;
+            sd.inputWidth = in.width; sd.inputHeight = in.height;
+            sd.outputWidth = (NSUInteger)OW; sd.outputHeight = (NSUInteger)OH;
+            sd.colorTextureFormat = in.pixelFormat; sd.outputTextureFormat = in.pixelFormat;
+            sd.colorProcessingMode = MTLFXSpatialScalerColorProcessingModePerceptual;
+            g_fxs = [sd newSpatialScalerWithDevice:g_dev];
+            td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:in.pixelFormat width:(NSUInteger)OW height:(NSUInteger)OH mipmapped:NO];
+            td.usage = g_fxs ? g_fxs.outputTextureUsage | MTLTextureUsageShaderRead : MTLTextureUsageShaderRead;
+            td.storageMode = MTLStorageModePrivate;
+            g_up = [g_dev newTextureWithDescriptor:td];
+            if (!g_fxs) fprintf(stderr, "glide: MetalFX spatial upscaler unavailable\n");
+        }
+        if (g_fxs) {
+            g_fxs.colorTexture = in; g_fxs.outputTexture = g_up;
+            g_fxs.inputContentWidth = in.width; g_fxs.inputContentHeight = in.height;
+            [g_fxs encodeToCommandBuffer:g_cb];
+            g_fxout = g_up;
+        }
+    }
     g_fx_fresh = 1;
     g_swaps++;
     shot();
@@ -1517,7 +1689,9 @@ void h_grBufferSwap(u32 interval)
         g_mbox = pic; g_mbox_seq++;
         os_unfair_lock_unlock(&g_mbl);
     }
+    cpuframe_tail(t_swap0);
     g_xi = (g_xi + 1) % 3;              /* the frames in flight keep theirs */
+    g_rz = hfx_on();                    /* the next frame's depth: reversed hardware while Remastered */
     g_nel = 0;
     g_mirror_ok = 0;
     g_wide_prev = g_wide;

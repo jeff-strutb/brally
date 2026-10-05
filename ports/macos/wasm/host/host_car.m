@@ -54,8 +54,8 @@ void hfx_jitter(float *jx, float *jy, int rw, int rh);
 void hglide_map(int view, float T[4]);                 /* host_glide.m: the screen map */
 MTLScissorRect hglide_scissor(int view);
 int hrender_view(void);                                /* native/render.m */
-void hfx_shadow_batch(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
-                      int at_fn, int at_ref, int use_tex, float su, float sv);
+void hfx_shadow_batch_dyn(id<MTLBuffer> buf, size_t off, int n, id<MTLTexture> tex, id<MTLSamplerState> smp,
+                          int at_fn, int at_ref, int use_tex, float su, float sv);
 
 #define STR(...) #__VA_ARGS__
 static const char *CARSRC = "#include <metal_stdlib>\n" STR(
@@ -90,13 +90,13 @@ vertex VO cvs(uint vid [[vertex_id]], const device MV *v [[buffer(0)]], constant
   float4 c = u.P * w;
   float X = u.vpt.x * c.x + u.vpt.y * c.w, Y = u.vpt.z * c.y + u.vpt.w * c.w;
   float Yd = u.misc.x > 0.5 ? 480.0 * c.w - Y : Y;
-  o.pos = float4(u.map.x * X + u.map.y * c.w, u.map.z * Yd + u.map.w * c.w, (c.z + c.w) * 0.5, c.w);
+  o.pos = float4(u.map.x * X + u.map.y * c.w, u.map.z * Yd + u.map.w * c.w, 0.01, c.w);
   o.pos.xy += u.jit.xy * c.w;              /* the scene's anti-aliasing jitter (host_fx.m's TAA) */
   o.wp = w.xyz; o.lp = p; o.dent = dent;
   o.wn = (u.M * float4(m.n, 0)).xyz; o.wt = (u.M * float4(m.t.xyz, 0)).xyz; o.tw = m.t.w;
   o.uv = m.uv; o.oow = 1.0 / c.w;
   return o; }
-struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; float d [[depth(any)]]; };
+struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; };
 uint wfloat(float oow) {
   if (oow >= 1.0) return 0;
   if (oow <= 0.0) return 0xFFFF;
@@ -219,7 +219,6 @@ fragment FO cfs(VO in [[stage_in]], constant CU &u [[buffer(0)]],
     col = m == 6 ? alb * kd * (sunl + amb) : m == 7 ? env : m == 8 ? spec * sunl : m == 9 ? float3(0.02, 0.2, 0.05) :
           m == 1 ? pow(B.rgb, 2.2) * 2.0 : m == 2 ? float3(B.a) * 2.0 : m == 3 ? float3(ao) * 2.0 : m == 4 ? (N0 * 0.5 + 0.5) * 2.0 : float3(MR.g, MR.b, 0) * 2.0;
   } else if (u.fogc.w > 0.5) col = mix(col, u.fogc.rgb, fogof(u, 1.0 / in.oow) / 255.0);
-  o.d = float(wfloat(in.oow)) / 65536.0;
   if (u.misc.y > 0.5) {                        /* main view: pre-lit, to the fx composite */
     o.c = float4(pow(saturate(col / 4.0), 1.0 / 2.2), 1);
     o.n = float4(N0, 1); o.g = float4(in.wp, 4.0);
@@ -261,7 +260,6 @@ fragment FO gfs(VO in [[stage_in]], constant CU &u [[buffer(0)]], texture2d<floa
     a = max(a, mix(a, 0.97, line)); a = min(1.0, a + 0.15 * ck);
   }
   if (u.fogc.w > 0.5) { float k = fogof(u, 1.0 / in.oow) / 255.0; col = mix(col, u.fogc.rgb * a, k); }
-  o.d = float(wfloat(in.oow)) / 65536.0;
   o.c = u.misc.y > 0.5 ? float4(pow(saturate(col / 4.0), 1.0 / 2.2), a) : float4(pow(aces(col * u.misc.z), 1.0 / 2.2), a);
   o.n = 0; o.g = 0;
   return o; }
@@ -511,7 +509,7 @@ static void setup(id<MTLDevice> dev)
     if (!g_gpipe) { fprintf(stderr, "car glass pipeline: %s\n", err.localizedDescription.UTF8String); return; }
     {
         MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
-        d.depthCompareFunction = MTLCompareFunctionLess;
+        d.depthCompareFunction = MTLCompareFunctionGreater;   /* host_glide.m's reversed depth (Remastered) */
         d.depthWriteEnabled = YES;
         g_ds = [D newDepthStencilStateWithDescriptor:d];
         d.depthWriteEnabled = NO;
@@ -673,7 +671,7 @@ static void rig(cu *u)
     int w = (int)H32(0x104B15E8u);
     float k, sc[3], sk[3], gr[3];
     const char *ov = getenv("BR_FX_WEATHER"), *s = getenv("BR_FX_SUN");
-    double sun[3] = { 1, 1, 1.1 }, l;
+    double sun[3] = { 3, 1, 1.1 }, l;   /* host_fx.m's sun */
     if (ov) w = atoi(ov);
     u->misc[2] = w == 2 ? 1.12f : w == 4 ? 1.25f : w == 3 ? 1.05f : w == 1 ? 1.08f : 1.08f;   /* the fx exposure */
     u->misc[3] = w == 2 || w == 4 ? 1.0f : 0.85f;                                            /* coat strength */
@@ -762,7 +760,7 @@ static void cast_shadow(const float *M)
         v[12] = p[0] * M[2] + p[1] * M[6] + p[2] * M[10] + M[14];
         v[13] = 1;
     }
-    hfx_shadow_batch(b, 0, g_proxy.ni, nil, nil, 7, 0, 0, 1, 1);
+    hfx_shadow_batch_dyn(b, 0, g_proxy.ni, nil, nil, 7, 0, 0, 1, 1);
 }
 
 void hcar_draw(int slot)

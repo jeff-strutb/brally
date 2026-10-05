@@ -53,6 +53,7 @@ MTLScissorRect hglide_scissor(int view);
 int hrender_view(void);
 u32 hmem_alloc(u32 n, int zero);
 double hframe_game_ms(void);
+void hter_track(const char *name);
 
 #define TRK_HDR    0x106EECD8u        /* the loaded .TRK header (host order) */
 #define OBJ_TABLE  0x106EED38u        /* its instance array, 0x54-byte records */
@@ -91,13 +92,13 @@ vertex VO evs(uint vid [[vertex_id]], uint iid [[instance_id]], const device MV 
   float4 c = u.P * w;
   float X = u.vpt.x * c.x + u.vpt.y * c.w, Y = u.vpt.z * c.y + u.vpt.w * c.w;
   float Yd = u.misc.x > 0.5 ? 480.0 * c.w - Y : Y;
-  o.pos = float4(u.map.x * X + u.map.y * c.w, u.map.z * Yd + u.map.w * c.w, (c.z + c.w) * 0.5, c.w);
+  o.pos = float4(u.map.x * X + u.map.y * c.w, u.map.z * Yd + u.map.w * c.w, 0.01, c.w);
   o.pos.xy += u.jit.xy * c.w;
   o.wp = w.xyz;
   o.wn = (M * float4(float3(m.n), 0)).xyz; o.wt = (M * float4(m.t.xyz, 0)).xyz; o.tw = m.t.w;
   o.uv = m.uv; o.oow = 1.0 / c.w; o.lp = p;
   return o; }
-struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; float d [[depth(any)]]; };
+struct FO { float4 c [[color(0)]]; float4 n [[color(1)]]; float4 g [[color(2)]]; float4 a [[color(3)]]; };
 uint wfloat(float oow) {
   if (oow >= 1.0) return 0;
   if (oow <= 0.0) return 0xFFFF;
@@ -121,6 +122,11 @@ float canopy_ao(constant EU &u, float3 lp) {
   if (u.geo.x <= 0.0) return 1.0;
   float r = saturate(length(lp.xy) / u.geo.x), z = saturate(lp.z / max(u.geo.y, 1e-3));
   return mix(0.28, 1.0, saturate(r * r * 0.85 + z * 0.35)); }
+float h31(float3 p) { return fract(sin(dot(p, float3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vn3(float3 p) {
+  float3 i = floor(p), f = p - i; f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h31(i), h31(i + float3(1, 0, 0)), f.x), mix(h31(i + float3(0, 1, 0)), h31(i + float3(1, 1, 0)), f.x), f.y),
+             mix(mix(h31(i + float3(0, 0, 1)), h31(i + float3(1, 0, 1)), f.x), mix(h31(i + float3(0, 1, 1)), h31(i + 1.0), f.x), f.y), f.z); }
 float3 aces(float3 x) { return saturate(x * (2.51 * x + 0.03) / (x * (2.43 * x + 0.59) + 0.14)); }
 fragment FO efs(VO in [[stage_in]], bool front [[front_facing]], constant EU &u [[buffer(0)]],
                 texture2d<float> tb [[texture(0)]], texture2d<float> tm [[texture(1)]], texture2d<float> tn [[texture(2)]]) {
@@ -128,9 +134,20 @@ fragment FO efs(VO in [[stage_in]], bool front [[front_facing]], constant EU &u 
   FO o; o.a = 0;
   float4 B = tb.sample(s, in.uv);
   if (u.jit.w > 0.5 && u.jit.w < 1.5) {  /* BR_ENV_DEBUG=1: every model flat magenta, wherever it lands */
-    o.c = float4(1, 0, 1, 1); o.n = float4(0, 0, 0, 1); o.g = float4(0); o.d = 0.0; return o; }
+    o.c = float4(1, 0, 1, 1); o.n = float4(0, 0, 0, 1); o.g = float4(0); return o; }
   if (u.mat.x > 0.5 && B.a < 0.5) discard_fragment();
   float3 alb = pow(B.rgb, 2.2);
+  /* rock in the landscape: moss and a skin of soil and grass on its upward
+     faces, patchy, and its foot darker where it goes into the ground */
+  if (u.mat.y > 0.5 && u.mat.x < 0.5) {
+    float3 wn = normalize(in.wn);
+    float n1 = vn3(in.wp * 0.9), n2 = vn3(in.wp * 3.7 + 11.0);
+    float up = smoothstep(0.45, 0.85, wn.z + (n1 - 0.5) * 0.5);
+    float3 moss = mix(float3(0.045, 0.06, 0.02), float3(0.08, 0.085, 0.03), n2);
+    float3 soil = float3(0.07, 0.055, 0.04) * (0.8 + 0.4 * n2);
+    alb = mix(alb, mix(moss, soil, smoothstep(0.55, 0.75, n1)), up * 0.85);
+    alb = mix(alb, alb * float3(0.75, 0.82, 0.6), smoothstep(0.55, 0.8, vn3(in.wp * 0.35 + 3.0)) * 0.5);   /* lichen */
+    alb *= mix(0.55, 1.0, smoothstep(0.0, 0.18 * u.mat.w, in.lp.z)); }
   float4 MR = tm.sample(s, in.uv);                 /* occlusion, roughness, metal */
   float ao = MR.r * (u.mat.x > 0.5 ? canopy_ao(u, in.lp) : 1.0), rough = clamp(MR.g, 0.05, 1.0), metal = MR.b;
   float3 nm = tn.sample(s, in.uv).xyz * 2.0 - 1.0;
@@ -164,7 +181,6 @@ fragment FO efs(VO in [[stage_in]], bool front [[front_facing]], constant EU &u 
         : dm == 5 ? float3(ao) * 2.0 : dm == 6 ? kd * 2.0 : dm == 7 ? float3(nl) * 2.0 : dm == 8 ? amb * 2.0
         : float3(MR.rgb) * 2.0; }
   if (u.fogc.w > 0.5 && u.jit.w < 1.5) col = mix(col, u.fogc.rgb, fogof(u, 1.0 / in.oow) / 255.0);
-  o.d = float(wfloat(in.oow)) / 65536.0;
   if (u.jit.w > 1.5) { o.c = float4(pow(saturate(col * 0.5), 1.0 / 2.2), 1); o.n = float4(0, 0, 0, 1); o.g = float4(0); return o; }
   if (u.misc.y > 0.5) {                        /* main view: pre-lit, to the fx composite */
     o.c = float4(pow(saturate(col / 4.0), 1.0 / 2.2), 1);
@@ -214,7 +230,7 @@ vertex IO ivs(uint vid [[vertex_id]], uint iid [[instance_id]], constant EU &u [
   float4 cl = u.P * float4(w, 1);
   float X = u.vpt.x * cl.x + u.vpt.y * cl.w, Y = u.vpt.z * cl.y + u.vpt.w * cl.w;
   float Yd = u.misc.x > 0.5 ? 480.0 * cl.w - Y : Y;
-  o.pos = float4(u.map.x * X + u.map.y * cl.w, u.map.z * Yd + u.map.w * cl.w, (cl.z + cl.w) * 0.5, cl.w);
+  o.pos = float4(u.map.x * X + u.map.y * cl.w, u.map.z * Yd + u.map.w * cl.w, 0.01, cl.w);
   o.pos.xy += u.jit.xy * cl.w;
   o.wp = w; o.uv = card_uv(M, h, c, u.mat.y); o.oow = 1.0 / cl.w; o.rt = rt; o.up = up; o.fw = h; o.cq = c;
   return o; }
@@ -238,7 +254,6 @@ fragment FO ifs(IO in [[stage_in]], constant EU &u [[buffer(0)]],
   col += alb * u.sunc.rgb * back * 0.2 * ao * ao;
   if (u.jit.w > 1.5 && u.jit.w < 2.5) col = alb * 2.0;
   if (u.fogc.w > 0.5) col = mix(col, u.fogc.rgb, fogof(u, 1.0 / in.oow) / 255.0);
-  o.d = float(wfloat(in.oow)) / 65536.0;
   if (u.misc.y > 0.5) { o.c = float4(pow(saturate(col / 4.0), 1.0 / 2.2), 1); o.n = float4(N, 1); o.g = float4(in.wp, 4.0);
                         o.a = float4(pow(saturate(alb), 1.0 / 2.2), 1); }
   else { o.c = float4(pow(aces(col * u.misc.z), 1.0 / 2.2), 1); o.n = float4(0, 0, 0, 1); o.g = float4(0); }
@@ -267,9 +282,18 @@ typedef struct { float M[16], svp[16]; float mat[4]; float misc[4]; } su;
 typedef struct { id<MTLTexture> base, orm, nrm; int clip; } emat;
 typedef struct { char name[64]; emat m[16]; int nm; int loaded; } easset;
 typedef struct { id<MTLBuffer> vb, ib; int ni, mat; } esub;
-typedef struct { int asset; char var[32]; esub lod[NLOD][MAX_SUB]; int nsub[NLOD]; float h, r; int ok;
+typedef struct { int asset; char var[32]; esub lod[NLOD][MAX_SUB]; int nsub[NLOD]; float h, r; int ok; int tris[NLOD];
                  id<MTLTexture> ibase, inrm; float iviews, ihalf, iheight; } emodel;
 typedef struct { int inst, model; float M[16]; float c[3], r, maxd; } eput;
+/* the scanned rocks, cliffs and boulders (by their asset's name): the
+ * ground's moss, grass and soil settle on what faces up */
+static float rock_asset(const easset *a)
+{
+    static const char *const K[] = { "rock", "cliff", "boulder", "mountainside", "stones", "outcrop" };
+    int i;
+    for (i = 0; i < (int)(sizeof K / sizeof *K); i++) if (strstr(a->name, K[i])) return 1.0f;
+    return 0.0f;
+}
 
 static id<MTLDevice> D;
 static id<MTLRenderPipelineState> g_pipe, g_spipe, g_ipipe, g_ispipe;
@@ -323,6 +347,7 @@ static id<MTLBuffer> g_dinst[3]; static size_t g_dinst_used; static unsigned g_d
 static float g_mainP[16]; static unsigned g_main_serial = ~0u;
 /* BR_ENV_STAT=1: the seam's counts (native/env.m reports through henv_note) */
 static long g_note[8];
+static double g_mtris[MAX_MODELS];   /* BR_ENV_STAT: triangles per model, for the budget */
 void henv_note(int k) { if (k >= 0 && k < 8) g_note[k]++; }
 /* BR_ENV_STAT=1: per 120 frames, markers run, models drawn and culled */
 static unsigned g_st_frame = ~0u; static long g_st_mark, g_st_draw, g_st_cull, g_st_alt, g_st_card, g_st_tris;
@@ -339,6 +364,12 @@ void henv_stat_tick(void)
     if (g_st_frame % 120 == 0) {
         fprintf(stderr, "env: frame %u markers %ld drawn %ld (as cards %ld) culled %ld tris/frame %ld (per 120 frames), card-less lists %ld\n",
                 g_st_frame, g_st_mark, g_st_draw, g_st_card, g_st_cull, g_st_tris / 120, g_st_alt);
+        {   int top[6] = { -1, -1, -1, -1, -1, -1 }, a, b;
+            for (a = 0; a < g_nmodels; a++) for (b = 0; b < 6; b++) if (top[b] < 0 || g_mtris[a] > g_mtris[top[b]]) { memmove(top + b + 1, top + b, sizeof(int) * (size_t)(5 - b)); top[b] = a; break; }
+            fprintf(stderr, "env: top models (tris/frame):");
+            for (b = 0; b < 6; b++) if (top[b] >= 0) fprintf(stderr, " %s/%s %.0fk", g_assets[g_models[top[b]].asset].name, g_models[top[b]].var, g_mtris[top[b]] / 120000.0);
+            fprintf(stderr, "\n");
+            memset(g_mtris, 0, sizeof g_mtris); }
         g_st_mark = g_st_draw = g_st_cull = g_st_card = g_st_tris = 0;
     }
 }
@@ -664,6 +695,7 @@ static void load_models(int m0, int m1)
             m->nsub[k] = m->nsub[k - 1];
         }
         m->ok = m->nsub[0] > 0;
+        for (k = 0; k < NLOD; k++) { int s3; m->tris[k] = 0; for (s3 = 0; s3 < m->nsub[k]; s3++) m->tris[k] += m->lod[k][s3].ni / 3; }
         {
             NSDictionary *im = vv[@"impostor"];
             if (im) {
@@ -999,7 +1031,10 @@ static void load_track(void)
             break;
         }
     }
-    if (g_pack && !memcmp(g_pack->sig, sig, sizeof sig)) pack_apply(g_pack, sig, tab);
+    if (g_pack && !memcmp(g_pack->sig, sig, sizeof sig)) {
+        pack_apply(g_pack, sig, tab);
+        hter_track(g_track_name);         /* host_terrain.m: its ground joins the hidden */
+    }
     if (!g_nputs) fprintf(stderr, "env: track %u faces %u vertices %u instances: no placements\n", sig[0], sig[1], sig[2]);
     {   /* the shadow casters, by model: small scatter (a draw distance) casts nothing */
         int cnt[MAX_MODELS + 1], mm;
@@ -1068,7 +1103,7 @@ static void setup(void)
     if (!g_spipe) { fprintf(stderr, "env shadow pipeline: %s\n", err.localizedDescription.UTF8String); return; }
     {
         MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
-        d.depthCompareFunction = MTLCompareFunctionLess;
+        d.depthCompareFunction = MTLCompareFunctionGreater;   /* host_glide.m's reversed depth (Remastered) */
         d.depthWriteEnabled = YES;
         g_ds = [D newDepthStencilStateWithDescriptor:d];
         d.depthCompareFunction = MTLCompareFunctionAlways;
@@ -1098,6 +1133,16 @@ int henv_active(void)
  * `orig`), or 0 for the original.  The copy is made once per track: the
  * original's commands up to its G_ENDDL, with the replaced cards' triangle
  * commands turned into triangles whose corners are all vertex 0. */
+/* host_terrain.m: more triangle commands of instance `inst` to blank (the
+ * ground its field replaces), added to the cards' */
+void henv_add_hide(int inst, const int *o, int n)
+{
+    if (inst < 0 || inst >= MAX_INST || n <= 0) return;
+    g_hide[inst] = realloc(g_hide[inst], sizeof(int) * (size_t)(g_nhide[inst] + n));
+    memcpy(g_hide[inst] + g_nhide[inst], o, sizeof(int) * (size_t)n);
+    g_nhide[inst] += n;
+}
+
 u32 henv_list(u32 idx, u32 orig)
 {
     u32 n, i, alt;
@@ -1111,13 +1156,15 @@ u32 henv_list(u32 idx, u32 orig)
         W_ST(u32, alt, i * 8, W_LD(u32, orig, i * 8));
         W_ST(u32, alt, i * 8 + 4, W_LD(u32, orig, i * 8 + 4));
     }
+    /* an offset's low bits name one triangle of a two-triangle command:
+     * 1 the first (in w0), 2 the second (in w1); 0 the whole command */
     for (i = 0; i < (u32)g_nhide[idx]; i++) {
-        u32 o = (u32)g_hide[idx][i], w0;
+        u32 o = (u32)g_hide[idx][i] & ~7u, t = (u32)g_hide[idx][i] & 7u, w0;
         if (o / 8 >= n) continue;
         w0 = W_LD(u32, alt, o);
         if ((w0 >> 24) == 0xB1) {
-            W_ST(u32, alt, o, w0 & 0xFF000000u);
-            W_ST(u32, alt, o + 4, W_LD(u32, alt, o + 4) & 0xFF000000u);
+            if (t != 2) W_ST(u32, alt, o, w0 & 0xFF000000u);
+            if (t != 1) W_ST(u32, alt, o + 4, W_LD(u32, alt, o + 4) & 0xFF000000u);
         } else if ((w0 >> 24) == 0xBF) {
             W_ST(u32, alt, o + 4, W_LD(u32, alt, o + 4) & 0xFF000000u);
         }
@@ -1170,25 +1217,35 @@ static int lod_for(const eput *q, const float *eye, int main)
     if (!main) return NLOD;              /* the mirror: the card */
     /* measured 2026-09-30: full models out to 9 radii drew up to 17.8M triangles a
      * frame on Mountain; the card (512 px frames) holds up from 5 */
-    return d < 2.0f ? 0 : d < 3.5f ? 1 : d < 5.0f ? 2 : NLOD;   /* NLOD: the card */
+    {
+        int l = d < 2.0f ? 0 : d < 3.5f ? 1 : d < 5.0f ? 2 : NLOD;   /* NLOD: the card */
+        /* a triangle budget: a level over 40k triangles is drawn only within
+         * one radius and a half; past that the next level, or the card
+         * (2026-10-05: the corridor's pines at their lightest authored
+         * level, 416k triangles, were most of 4-9M a frame) */
+        const emodel *m = &g_models[q->model];
+        while (l < NLOD && m->tris[l] > 40000 && d > 1.5f) l++;
+        while (l < NLOD && m->tris[l] > 60000) l++;     /* never a level that heavy while a lighter one or the card exists */
+        if (l >= NLOD && !m->ibase) l = NLOD - 1;
+        return l;
+    }
 }
 
 /* native/env.m, as the list jumps into instance `idx`'s list: draw the
  * models that stand on it, through the view the list is drawing now. */
-void henv_draw(int idx)
+/* the uniforms and pass state for drawing models into the view the list
+ * machine is drawing now; the encoder, or nil.  *pmain: the main view */
+static id<MTLRenderCommandEncoder> env_frame(eu *pu, int *pmain)
 {
     id<MTLDevice> dev;
     id<MTLRenderCommandEncoder> e;
     MTLScissorRect sc;
-    int origin_ll, fogmode, rw, rh, i, j, main, view;
+    int origin_ll, fogmode, rw, rh, i, main, view;
     float fogc[4];
     eu u;
-    if (g_state != 1 || idx < 0 || idx >= MAX_INST || !g_count[idx]) return;
-    g_st_mark++;
-    if (getenv("BR_ENV_TRACE")) { static u8 seen[MAX_INST]; if (!seen[idx]) { seen[idx] = 1; fprintf(stderr, "envtrace: draw %d\n", idx); } }
     memset(&u, 0, sizeof u);
     e = hglide_native_pass(&dev, &sc, &origin_ll, &fogmode, fogc, u.fogtab, &rw, &rh);
-    if (!e) return;
+    if (!e) return nil;
     hfx_jitter(&u.jit[0], &u.jit[1], rw, rh);
     view = hrender_view();
     hglide_map(view, u.map);
@@ -1214,6 +1271,20 @@ void henv_draw(int idx)
     [e setDepthStencilState:u.jit[3] > 0.5 && u.jit[3] < 1.5 ? g_dsall : g_ds];
     [e setScissorRect:sc];
     [e setCullMode:MTLCullModeNone];
+    *pu = u; *pmain = main;
+    return e;
+}
+
+void henv_draw(int idx)
+{
+    id<MTLRenderCommandEncoder> e;
+    int i, j, main;
+    eu u;
+    if (g_state != 1 || idx < 0 || idx >= MAX_INST || !g_count[idx]) return;
+    { static int nd = -1; if (nd < 0) nd = getenv("BR_ENV_NODRAW") != NULL; if (nd) return; }   /* profiling: the corridor's models off */
+    g_st_mark++;
+    if (getenv("BR_ENV_TRACE")) { static u8 seen[MAX_INST]; if (!seen[idx]) { seen[idx] = 1; fprintf(stderr, "envtrace: draw %d\n", idx); } }
+    if (!(e = env_frame(&u, &main))) return;
     if (g_dinst_serial != hglide_swaps()) { g_dinst_serial = hglide_swaps(); g_dinst_used = 0; }
     {
         /* the visible models standing on this instance, bucketed by (model,
@@ -1304,6 +1375,7 @@ void henv_draw(int idx)
                 esub *sb = &m->lod[lod][s2];
                 emat *mt = &a->m[sb->mat < a->nm ? sb->mat : 0];
                 u.mat[0] = (float)mt->clip;
+                u.mat[1] = mt->clip ? 0.0f : rock_asset(a);   /* natural rock: moss and soil where it faces up */
                 u.mat[2] = mt->clip ? 0.005f * m->h : 0.0f;    /* sway, model units; scaled by the instance */
                 u.mat[3] = m->h;
                 u.geo[0] = m->ihalf > 0 ? m->ihalf : m->r * 0.6f; u.geo[1] = m->h;
@@ -1317,7 +1389,7 @@ void henv_draw(int idx)
                 [e setFragmentTexture:mt->nrm atIndex:2];
                 [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)sb->ni indexType:MTLIndexTypeUInt32
                              indexBuffer:sb->ib indexBufferOffset:0 instanceCount:(NSUInteger)bn[b2]];
-                g_st_tris += (long)sb->ni / 3 * bn[b2];
+                g_st_tris += (long)sb->ni / 3 * bn[b2]; g_mtris[bm[b2]] += (double)sb->ni / 3 * bn[b2];
             }
         }
     }
@@ -1391,6 +1463,129 @@ void henv_shadow(id<MTLRenderCommandEncoder> e, const float *svp, const float *e
             [e setFragmentTexture:mt->base atIndex:0];
             [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)sb->ni indexType:MTLIndexTypeUInt32
                          indexBuffer:sb->ib indexBufferOffset:0 instanceCount:(NSUInteger)n];
+        }
+    }
+}
+
+/* ---- for host_terrain.m: models by name, drawn from its own instance lists ---- */
+
+/* the models for (asset, variant) pairs, loaded if new (in one batch); -1
+ * where one has no bake */
+void henv_models_find(int n, const char *const *asset, const char *const *var, int *out)
+{
+    int i, m0;
+    setup_once();
+    if (g_state != 1) { for (i = 0; i < n; i++) out[i] = -1; return; }
+    m0 = g_nmodels;
+    for (i = 0; i < n; i++) {
+        int ai = asset_index(asset[i]), mi;
+        for (mi = 0; mi < g_nmodels; mi++) if (g_models[mi].asset == ai && !strcmp(g_models[mi].var, var[i])) break;
+        if (mi == g_nmodels && g_nmodels < MAX_MODELS) {
+            g_models[g_nmodels].asset = ai;
+            snprintf(g_models[g_nmodels].var, sizeof g_models[0].var, "%s", var[i]);
+            g_nmodels++;
+        }
+        out[i] = mi < g_nmodels ? mi : -1;
+    }
+    if (g_nmodels > m0) load_models(m0, g_nmodels);
+    for (i = 0; i < n; i++) if (out[i] >= 0 && !g_models[out[i]].ok) out[i] = -1;
+}
+/* a model's height (model units) and radius, and whether it has a card */
+float henv_model_h(int m) { return m >= 0 && m < g_nmodels ? g_models[m].h : 1.0f; }
+float henv_model_r(int m) { return m >= 0 && m < g_nmodels ? g_models[m].r : 1.0f; }
+int henv_model_tris(int m, int lod) { return m >= 0 && m < g_nmodels && lod >= 0 && lod < NLOD ? g_models[m].tris[lod] : 0; }
+int henv_model_card(int m) { return m >= 0 && m < g_nmodels && g_models[m].ibase != nil; }
+
+/* draw sets of instances (row-vector world matrices in `buf`), each at its
+ * level (NLOD: the card), into the view being drawn */
+typedef struct { int model, lod; long first; int n; } henv_set;
+void henv_draw_sets(const henv_set *sets, int nsets, id<MTLBuffer> buf)
+{
+    id<MTLRenderCommandEncoder> e;
+    int main, k;
+    eu u;
+    if (g_state != 1 || !nsets || !(e = env_frame(&u, &main))) return;
+    for (k = 0; k < nsets; k++) {
+        const henv_set *st = &sets[k];
+        emodel *m = &g_models[st->model];
+        easset *a = &g_assets[m->asset];
+        int lod = st->lod, s2;
+        if (st->n <= 0 || !m->ok) continue;
+        if (lod >= NLOD && !m->ibase) lod = NLOD - 1;
+        if (lod >= NLOD) {
+            u.mat[0] = 1; u.mat[1] = m->iviews; u.mat[2] = m->ihalf; u.mat[3] = m->iheight;
+            [e setRenderPipelineState:g_ipipe];
+            [e setVertexBytes:&u length:sizeof u atIndex:1];
+            [e setVertexBuffer:buf offset:(NSUInteger)st->first * 64 atIndex:2];
+            [e setFragmentBytes:&u length:sizeof u atIndex:0];
+            [e setFragmentTexture:m->ibase atIndex:0];
+            [e setFragmentTexture:m->inrm atIndex:2];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)st->n];
+            [e setRenderPipelineState:g_pipe];
+            g_st_card += st->n;
+            continue;
+        }
+        for (s2 = 0; s2 < m->nsub[lod]; s2++) {
+            esub *sb = &m->lod[lod][s2];
+            emat *mt = &a->m[sb->mat < a->nm ? sb->mat : 0];
+            u.mat[0] = (float)mt->clip;
+            u.mat[1] = mt->clip ? 0.0f : rock_asset(a);   /* natural rock: moss and soil where it faces up */
+            u.mat[2] = mt->clip ? 0.005f * m->h : 0.0f;
+            u.mat[3] = m->h;
+            u.geo[0] = m->ihalf > 0 ? m->ihalf : m->r * 0.6f; u.geo[1] = m->h;
+            [e setVertexBuffer:sb->vb offset:0 atIndex:0];
+            [e setVertexBytes:&u length:sizeof u atIndex:1];
+            [e setVertexBuffer:buf offset:(NSUInteger)st->first * 64 atIndex:2];
+            [e setFragmentBytes:&u length:sizeof u atIndex:0];
+            [e setFragmentTexture:mt->base atIndex:0];
+            [e setFragmentTexture:mt->orm atIndex:1];
+            [e setFragmentTexture:mt->nrm atIndex:2];
+            [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)sb->ni indexType:MTLIndexTypeUInt32
+                         indexBuffer:sb->ib indexBufferOffset:0 instanceCount:(NSUInteger)st->n];
+            g_st_tris += (long)sb->ni / 3 * st->n; g_mtris[st->model] += (double)sb->ni / 3 * st->n;
+        }
+    }
+}
+
+/* the same sets into the sun's shadow map: cards as cards, meshes at
+ * their coarsest level */
+void henv_shadow_sets(id<MTLRenderCommandEncoder> e, const float *svp, const henv_set *sets, int nsets, id<MTLBuffer> buf)
+{
+    int k;
+    if (g_state != 1) return;
+    for (k = 0; k < nsets; k++) {
+        const henv_set *st = &sets[k];
+        emodel *m = &g_models[st->model];
+        easset *a = &g_assets[m->asset];
+        su u;
+        if (st->n <= 0 || !m->ok) continue;
+        memset(&u, 0, sizeof u);
+        memcpy(u.svp, svp, sizeof u.svp);
+        if (m->ibase && st->lod >= NLOD) {
+            float fx = svp[2], fy = svp[6], fz = svp[10], l = sqrtf(fx * fx + fy * fy + fz * fz);
+            u.mat[0] = 1; u.mat[1] = m->iviews; u.mat[2] = m->ihalf; u.mat[3] = m->iheight;
+            if (l > 0) { u.misc[0] = -fx / l; u.misc[1] = -fy / l; u.misc[2] = -fz / l; }
+            [e setRenderPipelineState:g_ispipe];
+            [e setVertexBytes:&u length:sizeof u atIndex:1];
+            [e setVertexBuffer:buf offset:(NSUInteger)st->first * 64 atIndex:2];
+            [e setFragmentBytes:&u length:sizeof u atIndex:0];
+            [e setFragmentTexture:m->ibase atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)st->n];
+            continue;
+        }
+        [e setRenderPipelineState:g_spipe];
+        for (int s2 = 0; s2 < m->nsub[NLOD - 1]; s2++) {
+            esub *sb = &m->lod[NLOD - 1][s2];
+            emat *mt = &a->m[sb->mat < a->nm ? sb->mat : 0];
+            u.mat[0] = (float)mt->clip;
+            u.mat[1] = mt->clip ? 0.0f : rock_asset(a);   /* natural rock: moss and soil where it faces up */
+            [e setVertexBuffer:sb->vb offset:0 atIndex:0];
+            [e setVertexBytes:&u length:sizeof u atIndex:1];
+            [e setVertexBuffer:buf offset:(NSUInteger)st->first * 64 atIndex:2];
+            [e setFragmentBytes:&u length:sizeof u atIndex:0];
+            [e setFragmentTexture:mt->base atIndex:0];
+            [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:(NSUInteger)sb->ni indexType:MTLIndexTypeUInt32
+                         indexBuffer:sb->ib indexBufferOffset:0 instanceCount:(NSUInteger)st->n];
         }
     }
 }

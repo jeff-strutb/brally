@@ -29,6 +29,7 @@
 void hglide_tri_h(const float *a, const float *b, const float *c, int noz, int view);
 void hglide_tri_shadow(const float *a, const float *b, const float *c);
 void hfx_set_cam(const float *P, float sx, float tx, float sy, float ty);
+void hter_seam(void);   /* host_terrain.m */
 int hfx_on(void);
 unsigned hglide_swaps(void);
 
@@ -170,6 +171,9 @@ static void tri(u32 ia, u32 ib, u32 ic, int flat, int noz)
     if (out && (noz || view == 1 || !hfx_on()))
         return;                          /* all outside one plane */
     if (hfx_on()) fx_camera(noz, view); else g_cur_main = 0;
+    /* the Remastered landscape goes in once per view, before that view's
+     * first depth-buffered triangle: after the backdrop, under everything */
+    if (!noz && view != 1 && hfx_on()) hter_seam();
     corner(va, a, a);
     corner(vb, b, flat ? a : b);
     corner(vc, c, flat ? a : c);

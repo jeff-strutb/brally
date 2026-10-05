@@ -311,9 +311,30 @@ void hscript_files(const char *save)
     fclose(f);
 }
 
+/* BR_SIMLOG=1: every 10th frame, what the race simulation holds for each
+ * driver (g_aBrRaceDriver 0x10AF07F8, stride 0x80): position, running lap
+ * time, lap and gate -- two runs of one script under BR_VCLOCK compared line
+ * by line show whether anything drawn differently reached the game */
+static void simlog(void)
+{
+    static int on = -1;
+    int d;
+    if (on < 0) on = getenv("BR_SIMLOG") != NULL;
+    if (!on || g_frame % 10) return;
+    fprintf(stderr, "sim %u", g_frame);
+    for (d = 0; d < 8; d++) {
+        u32 a = 0x10AF07F8u + (u32)d * 0x80u;
+        if (!W_LD(u32, a, 0x60)) continue;
+        fprintf(stderr, " | %d %.4f %.4f %.4f %.4f %d %d", d, W_LD(f32, a, 0x00), W_LD(f32, a, 0x04), W_LD(f32, a, 0x08),
+                W_LD(f32, a, 0x30), (int)W_LD(u32, a, 0x40), (int)W_LD(u32, a, 0x4C));
+    }
+    fprintf(stderr, "\n");
+}
+
 void happ_frame(void)
 {
     int i;
+    simlog();
     trace_window();
     dump_window();
     if (!g_loaded) load();
