@@ -338,20 +338,16 @@ void BrCarEntInit(BrCarEnt *e)
  * span crosses (and how many times gate 0); where d runs out, interpolate
  * the point into D_8031B750, count the part-span's gate too, and keep the
  * segment and point.
- * RESIDUE (74, 156/158 instructions): register allocation in the final
- * span.  The ROM keeps gate 0's address in s7 and 0x14 in fp through the
- * loop, then re-materialises gate 0 and holds the point and D_8031B750 in
- * s1/s7 across the interpolation; ours swaps s7/fp and spills the point.
- * Landed: gate 0 as its own symbol (D_80025C98), the gate by index k. */
-/* @t4-pass 0x80228E4C 1 2026-10-03 compiles 117 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80228E4C 2 2026-10-03 compiles 118 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80228E4C */
+ * Each arm declares its own gate index k, so the frame keeps no homes
+ * (0x48).  The span test compares against gate 0 as its own symbol
+ * (D_80025C98), held in s7; the interpolated part-span tests k == 0, so
+ * that address is re-materialised there and s7 holds D_8031B750 across the
+ * interpolation, as in the ROM. */
 /* @implements 0x80228E4C tgr BrPathGates */
 void BrPathGates(BrPathSeg *seg, float d)
 {
   int i;
   float len;
-  int k;
 
   D_8028B82C = 0;
   D_8028B830 = 0;
@@ -369,10 +365,10 @@ void BrPathGates(BrPathSeg *seg, float d)
       if (len < d) {
         d -= len;
         if (D_80025C00.nGates != 0) {
-          k = (D_8028B82C + 1) % D_80025C00.nGates;
+          int k = (D_8028B82C + 1) % D_80025C00.nGates;
           if (BrSegmentsOverlapXY(D_80025C00.gate[k].b, D_80025C00.gate[k].a, &seg->pt[i].pos, &seg->pt[i + 1].pos)) {
             D_8028B82C++;
-            if (&D_80025C00.gate[k] == D_80025C98) {
+            if (D_80025C98 == &D_80025C00.gate[k]) {
               D_8028B830++;
             }
           }
@@ -380,10 +376,10 @@ void BrPathGates(BrPathSeg *seg, float d)
       } else {
         BrVec3Lerp(&D_8031B750, &seg->pt[i + 1].pos, &seg->pt[i].pos, d / len);
         if (D_80025C00.nGates != 0) {
-          k = (D_8028B82C + 1) % D_80025C00.nGates;
+          int k = (D_8028B82C + 1) % D_80025C00.nGates;
           if (BrSegmentsOverlapXY(D_80025C00.gate[k].b, D_80025C00.gate[k].a, &seg->pt[i].pos, &D_8031B750)) {
             D_8028B82C++;
-            if (&D_80025C00.gate[k] == D_80025C98) {
+            if (k == 0) {
               D_8028B830++;
             }
           }
