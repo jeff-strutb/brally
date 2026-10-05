@@ -264,7 +264,7 @@
 <rect x="1151.3" y="123.7" width="103.7" height="84.0" fill="#3f6f7a"><title>(unnamed)  0x8022D97C  2916B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="208.3" width="102.0" height="74.0" fill="#58a6ff"><title>(unnamed)  0x80229700  2528B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1016.5" y="208.3" width="92.4" height="74.0" fill="#58a6ff"><title>(unnamed)  0x80226488  2292B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1109.5" y="208.3" width="73.2" height="74.0" fill="#58a6ff"><title>(unnamed)  0x80222D54  1820B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1109.5" y="208.3" width="73.2" height="74.0" fill="#3fb950"><title>(unnamed)  0x80222D54  1820B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1183.3" y="208.3" width="71.6" height="74.0" fill="#58a6ff"><title>(unnamed)  0x80221170  1780B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="282.9" width="57.9" height="72.8" fill="#3fb950"><title>(unnamed)  0x8022C9FC  1420B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="356.3" width="57.9" height="72.6" fill="#58a6ff"><title>(unnamed)  0x8022F968  1416B  [unfiled 0x8022xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 495 &#183; T3 codegen-only 72 &#183; 159,544/457,392 bytes exact (34.9%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 496 &#183; T3 codegen-only 71 &#183; 161,364/457,392 bytes exact (35.3%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
