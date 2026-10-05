@@ -1,0 +1,22 @@
+# Resume log
+
+*Recorded 2026-09-27.*
+
+> verbatim RESUME bullets for 2026-09-25..27 moved out of the notes index to keep the index small
+
+- **2026-09-27 M1 **: BrMtxInvert is C++ (6 insns off) + BrMat4FromCarState (1 fxch) + BrDpAppMsgHandle (zero web broken by a FLOAT zero store) -> T3 via A5 --objects; new T3s need lockstep reloc rows [m1-session-2026-09-27](m1-session-2026-09-27.md).
+- **2026-09-27 M1  (collresp lane)**: CrExact + ContactKick T4 - per-leaf ADDRESSING FORM flips canonical x87 roles; commutative ties flip in 256-DECLARATION BANDS of symbol-table size (pads measure, <windows.h> commits); unnamed CSE vs named local; a competing named float copy HOMES another float; TU-state edits must re-anchor reloc_overrides [m1-session-2026-09-27](m1-session-2026-09-27.md).
+- **2026-09-27 M1 **: 0x10040EB0 T4 (one-shared-return layout + global re-read); BrMtxInvert = verbatim Graphics Gems, term order is TU state (co-file tu_039); t3.py integer const-add A3 rule; A5 --only fold/force/negative-control traps [m1-session-2026-09-27](m1-session-2026-09-27.md).
+- **2026-09-27 M1  (drawing lane, 6 T4)**: PARENTHESES are a VC5 codegen lever (TexLerp 373->0); frequency-weighted zero-store promotion; per-use scratch locals fix slot packing; pointer-vs-index sites reorder stores; <dsound.h> TU state; x87 copy choice follows DECL order; judge x87 variants by symbolic stack TRACE not bytes; one-row pointer store fixes accumulator layout (C9E0 84->12, QuatMul 166->14) [m1-session-2026-09-27](m1-session-2026-09-27.md).
+- **2026-09-27 N64 boot→menu lane**: coverage-ranked worklist + IDO levers (0.0f, byte globals, bool chains, pointer walks→indexed, linked high-RAM buffers, re-read vs local) [n64-ido-levers-2026-09-27](../../../tgrally/decomp/levers/n64-ido-levers-2026-09-27.md).
+- **2026-09-27 M1 **: PeerPump+PeerRank T4 - 4 T4. SR walker anchor = pointer-vs-index per access site; TU POSITION (any function ahead in the .cpp fixes cross-jump/epilogue tail-dup: file the real predecessor); root vc50.idb corrupt (C1073) [m1-session-2026-09-27](m1-session-2026-09-27.md).
+- **2026-09-26 M1 **: literal-vs-extern float constant (extern aliases stores → x87 won't hoist); BrRbIntegrateState was C++ (standalone .cpp + big header, /TP alone inert) [m1-session-2026-09-26](m1-session-2026-09-26.md).
+- **2026-09-26 M1 **: LookAt T4 via `0.0f - a*b...` float-zero negation; t3.py promoted-zero A3 rule; global-in-loop-bound lever; A7 owed for LightDirs [m1-session-2026-09-26](m1-session-2026-09-26.md).
+- **2026-09-26 M1 **: exit/tail structure (separate returns vs break-to-shared-tail) + increment ORDER homes param slots; jump-table map rows; zero-PROMOTION class open [m1-session-2026-09-26](m1-session-2026-09-26.md).
+- **2026-09-26 M1 hand sessions**: float local / decl order / zero-register polarity / /Od local NAMES; x87 "TU-state" rows fell to SPELLING (field-into-temp, literal vs extern, inline CSE) - pad-test first; sibling spelling first [m1-hand-levers-2026-09-26](../levers/m1-hand-levers-2026-09-26.md).
+- **2026-09-25: 0x1005D060 BrAiScanCorridor T4 (C++ /Gi)** - /Gi join-reload order = source/obj PATH LENGTH + idb chain; verify via serial O2-Gi chain, never root vc50.idb (C1073) [aicorridor-gi-t4-2026-09-25](../functions/aicorridor-gi-t4-2026-09-25.md).
+- **2026-09-25: 0x10006BA0 EncodeDelta T4 under VC5 - VC4.2 verdict REFUTED**; unsigned-param narrowing + preamble-size heap tie-break for `|` roles [encodedelta-vc5-t4-2026-09-25](../levers/encodedelta-vc5-t4-2026-09-25.md).
+- **2026-09-25: 0x10009010 BrDpAppMsgHandle** -- call-tail residue SOLVED by a linker-folded TWIN callee (VC5 tail merge compares callee symbol; C2 RE + IL surgery); zero web still open, blocks T3+T4; IL-capture method [dpappmsg-callmerge-zeroweb-2026-09-25](../levers/dpappmsg-callmerge-zeroweb-2026-09-25.md).
+- **2026-09-25: 0x10011300 BrPaceNoteEmit T4 - was C++**: `[g+off]` SIB order no C spelling reaches = C++ TU; `/TP` micro-repro before more C sweeps [pacenote-cpp-t4-2026-09-25](../levers/pacenote-cpp-t4-2026-09-25.md).
+- **2026-09-25: ALL T3/T4 OUT OF slice*.c, byte-identical** - snapshot compare, position sweep for TU state, fileaudit now fails T3-in-batch; worktree image gate needs main's obj_img_* cache [refile-byte-identity-2026-09-25](../toolchain/refile-byte-identity-2026-09-25.md).
+- **2026-09-25: the nine port-trap functions** -- 4 T4, 5 T2 with residue notes; VC5 levers (dead inline flips roles, in-place conversion pun, while-loop kills SR) [nine-port-gaps-2026-09-25](../../port/nine-port-gaps-2026-09-25.md).
