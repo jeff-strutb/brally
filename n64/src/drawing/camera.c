@@ -54,34 +54,34 @@ extern int D_8028A8AC;
  * the eye plane (|w| <= 0.001) put the corners r / w either side of it
  * (x flipped for a mirrored view), in pixels from the view's centre (y up);
  * lo gets the lower corner, hi the upper.
- * RESIDUE (28, same 114 instructions): the ROM spills the half-sizes to
- * 0x24/0x20, two words below where ours land (0x2C/0x28), with nothing
- * stored in between; and its temporaries are numbered differently from the
- * first load.  The unused float[4] reproduces the 16-byte hole above cx. */
-/* @t4-pass 0x80233E10 1 2026-10-03 compiles 30 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80233E10 2 2026-10-03 compiles 30 best 28 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80233E10 */
+ * The view's width and height are locals of their own (with inv and s
+ * they fill the four words above cx), the centre is offset by the halved
+ * size before the half-sizes are kept, and the mirror test is a
+ * subtraction. */
 /* @implements 0x80233E10 tgr BrProjectExtent */
 void BrProjectExtent(float pos[3], int r, short *lo, short *hi)
 {
   float p[4];
   float q[4];
-  float spare[4];
+  int w;
+  int h;
+  float inv;
+  float s;
   int cx;
   int cy;
   int hw;
   int hh;
-  float inv;
-  float s;
 
-  hw = D_8031B2C8[D_8028AAEC].w >> 1;
-  hh = D_8031B2C8[D_8028AAEC].h >> 1;
-  cx = D_8031B2C8[D_8028AAEC].x + hw;
-  cy = D_8031B2C8[D_8028AAEC].y + hh;
+  w = D_8031B2C8[D_8028AAEC].w;
+  h = D_8031B2C8[D_8028AAEC].h;
+  cx = D_8031B2C8[D_8028AAEC].x + (w >> 1);
+  cy = D_8031B2C8[D_8028AAEC].y + (h >> 1);
+  hw = w >> 1;
+  hh = h >> 1;
   BrMat4TransformPoint4(p, pos, D_8031AA50);
   if (!(p[3] <= 0.001f && -0.001f <= p[3])) {
     inv = 1.0f / p[3];
-    if (D_8028A8A8 != D_8028A8AC) {
+    if (D_8028A8AC - D_8028A8A8) {
       p[0] *= -inv;
     } else {
       p[0] *= inv;
