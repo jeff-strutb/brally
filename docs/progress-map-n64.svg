@@ -3,7 +3,7 @@
 <text x="3.0" y="10.5" font-size="10" fill="#8b949e">unfiled 0x8020xxxx</text>
 <rect x="1.5" y="15.5" width="264.4" height="254.5" fill="#3fb950"><title>(unnamed)  0x8020082C  22448B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="1.5" y="270.6" width="264.4" height="183.5" fill="#3fb950"><title>(unnamed)  0x8020D004  16200B  [unfiled 0x8020xxxx]</title></rect>
-<rect x="266.5" y="15.5" width="201.0" height="110.3" fill="#58a6ff"><title>(unnamed)  0x8020686C  7428B  [unfiled 0x8020xxxx]</title></rect>
+<rect x="266.5" y="15.5" width="201.0" height="110.3" fill="#3fb950"><title>(unnamed)  0x8020686C  7428B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="126.4" width="139.7" height="115.5" fill="#3fb950"><title>(unnamed)  0x8020AD5C  5408B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="406.8" y="126.4" width="60.7" height="115.5" fill="#3fb950"><title>(unnamed)  0x80209434  2364B  [unfiled 0x8020xxxx]</title></rect>
 <rect x="266.5" y="242.5" width="72.2" height="89.0" fill="#3fb950"><title>(unnamed)  0x8020C6D0  2164B  [unfiled 0x8020xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 500 &#183; T3 codegen-only 67 &#183; 216,888/457,392 bytes exact (47.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 501 &#183; T3 codegen-only 66 &#183; 224,316/457,392 bytes exact (49.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
