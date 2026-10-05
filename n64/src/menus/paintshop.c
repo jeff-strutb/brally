@@ -1327,12 +1327,9 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
  * midpoint circle walk at twice the resolution adds, on every other step,
  * the two spans above the band and the two below it.  The corners are
  * worked in the parameters, inset by the radius after the band.
- * RESIDUE (122): the ROM keeps the half steps in fp/s6 and the right edge in
- * s7; ours homes the half steps on the stack, which moves the span bounds'
- * registers. */
-/* @t4-pass 0x8024FBC8 1 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024FBC8 2 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024FBC8 */
+ * As BrPaintDisc: each corner span's start and end are locals set before
+ * its loop, the half-widths are read as (a >> 1) and (b >> 1), a starts at
+ * 0 before err = -b, and the walk steps err += a++ and err -= b--. */
 /* @implements 0x8024FBC8 tgr BrPaintFillRoundRect */
 void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1343,8 +1340,8 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
   int x;
   int a;
   int b;
-  int ha;
-  int hb;
+  int e;
+  int s;
   int err;
 
   sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
@@ -1370,28 +1367,34 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
   x1 -= r;
   sy1 -= r;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b; a++) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
-      for (x = sx0 - ha; x < ha + x1; x++) {
-        BrPaintPlot(x, sy0 - hb, D_8028DB58);
+      s = sx0 - (a >> 1);
+      e = (a >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy0 - (b >> 1), D_8028DB58);
       }
-      for (x = sx0 - hb; x < hb + x1; x++) {
-        BrPaintPlot(x, sy0 - ha, D_8028DB58);
+      s = sx0 - (b >> 1);
+      e = (b >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy0 - (a >> 1), D_8028DB58);
       }
-      for (x = sx0 - ha; x < ha + x1; x++) {
-        BrPaintPlot(x, sy1 + hb, D_8028DB58);
+      s = sx0 - (a >> 1);
+      e = (a >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy1 + (b >> 1), D_8028DB58);
       }
-      for (x = sx0 - hb; x < hb + x1; x++) {
-        BrPaintPlot(x, sy1 + ha, D_8028DB58);
+      s = sx0 - (b >> 1);
+      e = (b >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy1 + (a >> 1), D_8028DB58);
       }
     }
-    err += a;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
