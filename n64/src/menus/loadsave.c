@@ -2,12 +2,15 @@
  * the time-attack ghost car or the options, with every Controller Pak
  * message the game can show on the way.
  *
- * BrLoadSaveScreen is compiled without IDO's global optimiser (over the
- * -Olimit threshold): its locals are declared in the order of the original's
- * frame, and its label loop and text rows use the compiler's own temporaries
- * (0x38/0x34), as the original does.  The box runs it with no pak and with an
- * empty pak (save, overwrite, options, ghost, load); the pak error screens
- * other than "not found" / "no pak" are not reached yet.
+ * BrLoadSaveScreen goes through IDO's global optimiser.  Its locals are
+ * declared in the order of the original's frame; the screen's row, state and
+ * pak flags are function-static (.data, then .bss after D_80316420), and the
+ * file-scope state it shares with the race and frame loop is defined here.
+ * The mode byte D_802724F4 is copied into a local for its compare chains;
+ * the last compare reads the copy through an expression (mode | 0), so uopt
+ * orders the constant first as the ROM has it.  The box runs it
+ * with no pak and with an empty pak (save, overwrite, options, ghost, load);
+ * the pak error screens other than "not found" / "no pak" are not reached yet.
  */
 #include "tgr/common.h"
 #include "tgr/car.h"
@@ -44,22 +47,11 @@ typedef struct OSPfs {          /* libultra's Controller Pak handle (0x68 bytes)
 extern OSPfs D_80369EC0[4];     /* one per port */
 extern OSPfs D_8031A3F8[4];     /* the Rumble Pak's, one per port */
 extern unsigned char D_803163E0[4][32];  /* the id of the pak last used on each port */
-extern unsigned char D_80316420[4];      /* a pak has been used on the port */
+unsigned char D_80316420[2];            /* a pak has been used on the port (ports 2-3 run on into the statics) */
 extern unsigned char D_8031B1E8[4];      /* the port has a Rumble Pak */
 extern char D_80272D48[];       /* the serial interface's message queue */
 
 extern short D_802A4BE8;        /* a mode change is under way */
-extern unsigned char D_802724F8;  /* the screen has been set up */
-extern unsigned char D_80316422;  /* data was loaded */
-extern unsigned char D_80316423;  /* the menu is live (not behind a message) */
-extern unsigned char D_80316428;  /* frames the fade has been done */
-extern unsigned char D_802724F4;  /* 0 the load/save menu, 1 save the season, 2 save the ghost */
-extern unsigned char D_802724FC;  /* the Rumble Pak was taken out for this */
-extern int D_802724F0;          /* the last Controller Pak status */
-extern unsigned char D_80272550; /* the row: load/save season, ghost, options */
-extern unsigned char D_80272554; /* the screen's state */
-extern unsigned char *D_80272500;  /* the transfer buffer */
-extern int D_80316424;          /* the open file */
 extern int D_80271FA8;          /* the port of the controlling pad */
 extern int D_8028AAB0;          /* screen width */
 extern int D_8028AAB4;          /* screen height */
@@ -141,15 +133,18 @@ void BrPadStickToButtons(BrPadRec *pad);
  * car settings; show the result or the error and wait for a button; offer to
  * put the Rumble Pak back.  When it has faded out it starts the loaded
  * championship or time attack, or returns to where it came from. */
-/* @t4-pass 0x80211D70 1 2026-09-28 compiles 21 best 2740 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80211D70 2 2026-09-28 compiles 21 best 2740 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80211D70 */
+int D_802724F0 = 0;                     /* the last Controller Pak status */
+unsigned char D_802724F4 = 0;           /* 0 the load/save menu, 1 save the season, 2 save the ghost */
+unsigned char D_802724F8 = 0;           /* the screen has been set up */
+unsigned char D_802724FC = 0;           /* the Rumble Pak was taken out for this */
+unsigned char *D_80272500 = 0;          /* the transfer buffer */
+
 /* @implements 0x80211D70 tgr BrLoadSaveScreen */
 void BrLoadSaveScreen(void)
 {
   /* declared in the order of the original's frame (first = highest slot) */
   int i;
-  int unusedD8;
+  int mode;
   int h;
   int unusedD0;
   int unusedCC;
@@ -178,6 +173,12 @@ void BrLoadSaveScreen(void)
     "LOAD OPTIONS", "SAVE OPTIONS"
   };
   int newSize;
+  static unsigned char D_80272550 = 0;  /* the row: load/save season, ghost, options */
+  static unsigned char D_80272554 = 1;  /* the screen's state */
+  static unsigned char D_80316422;      /* data was loaded */
+  static unsigned char D_80316423;      /* the menu is live (not behind a message) */
+  static int D_80316424;                /* the open file */
+  static unsigned char D_80316428;      /* frames the fade has been done */
 
   D_802A4BE8 = 0;
   if (D_802724F8 == 0) {
@@ -200,9 +201,9 @@ void BrLoadSaveScreen(void)
     D_80272500 = (unsigned char *)BrIfaceMemAlloc(0x3A00);
     if (D_802724F4 == 0) {
       D_80272550 = 0;
-    } else if (D_802724F4 == 1) {
+    } else if ((mode = D_802724F4) == 1) {
       D_80272550 = 1;
-    } else if (D_802724F4 == 2) {
+    } else if (mode == 2) {
       D_80272550 = 3;
     }
     D_80272554 = 0;
@@ -245,16 +246,16 @@ void BrLoadSaveScreen(void)
   if (D_802724F4 == 0) {
     BrTextSetFont(16);
     for (i = 0; i != 6; i++) {
-      if (D_80316423 == 0) {
+      if (D_80316423 != 0) {
         if (i == D_80272550) {
-          BrTextSetColours(0x80, 0x80, 0x80, 0x84, 0x7C, 0);
+          BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
         } else {
-          BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
+          BrTextSetColours(0xFF, 0xF5, 0, 200, 0, 0);
         }
       } else if (i == D_80272550) {
-        BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+        BrTextSetColours(0x80, 0x80, 0x80, 0x84, 0x7C, 0);
       } else {
-        BrTextSetColours(0xFF, 0xF5, 0, 200, 0, 0);
+        BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
       }
       BrTextPrint(labels[i], 158, 87 + i * 18);
     }
@@ -266,15 +267,15 @@ void BrLoadSaveScreen(void)
     BrTextPrint("%wwGo Back", 176, D_8028AAB4 * 19 / 20 - 3);
   } else {
     BrTextSetFont(20);
-    if (D_80316423 == 0) {
-      BrTextSetColours(0x80, 0x80, 0x80, 0x84, 0x7C, 0);
-    } else {
+    if (D_80316423 != 0) {
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    } else {
+      BrTextSetColours(0x80, 0x80, 0x80, 0x84, 0x7C, 0);
     }
-    if (D_802724F4 == 1) {
+    if ((mode = D_802724F4) == 1) {
       BrTextPrint("SAVE SEASON DATA?", 158, 128);
       D_80272550 = 1;
-    } else if (D_802724F4 == 2) {
+    } else if (mode == 2) {
       BrTextPrint("SAVE GHOST CAR DATA?", 158, 128);
       D_80272550 = 3;
     }
@@ -339,40 +340,42 @@ void BrLoadSaveScreen(void)
     } else {
       osSyncPrintf("\nInitializing controller pak...\n");
       D_802724F0 = osPfsInitPak(D_80272D48, PFS, D_80271FA8);
-      if (D_802724F0 == 0) {
+      if (D_802724F0 != 0) {
+        if (D_802724F0 == 10) {
+          if (osMotorInit(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+            osMotorStop(&D_8031A3F8[D_80271FA8]);
+            D_802724F0 = 9999;
+            D_802724FC = 1;
+            D_80272554 = 12;
+          } else {
+            D_802724F0 = 0;
+            D_80272554 = 5;
+          }
+        } else {
+          D_8031B1E8[D_80271FA8] = 0;
+          D_80272554 = 12;
+        }
+      } else if (D_802724F0 == 0) {
         D_8031B1E8[D_80271FA8] = 0;
         if (D_80316420[D_80271FA8] == 0) {
           D_80316420[D_80271FA8] = 1;
           memcpy(D_803163E0[D_80271FA8], D_80369EC0[D_80271FA8].id, 32);
           D_80272554 = 7;
-        } else if (bcmp(D_803163E0[D_80271FA8], D_80369EC0[D_80271FA8].id, 32) == 0) {
-          D_80272554 = 7;
-        } else {
+        } else if (bcmp(D_803163E0[D_80271FA8], D_80369EC0[D_80271FA8].id, 32) != 0) {
           memcpy(D_803163E0[D_80271FA8], D_80369EC0[D_80271FA8].id, 32);
           D_80272554 = 6;
-        }
-      } else if (D_802724F0 == 10) {
-        if (osMotorInit(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
-          osMotorStop(&D_8031A3F8[D_80271FA8]);
-          D_802724F0 = 9999;
-          D_802724FC = 1;
-          D_80272554 = 12;
         } else {
-          D_802724F0 = 0;
-          D_80272554 = 5;
+          D_80272554 = 7;
         }
-      } else {
-        D_8031B1E8[D_80271FA8] = 0;
-        D_80272554 = 12;
       }
     }
     break;
   case 5:
     D_802724F0 = osPfsRepairId(PFS);
-    if (D_802724F0 == 0) {
-      D_80272554 = 4;
-    } else {
+    if (D_802724F0 != 0) {
       D_80272554 = 12;
+    } else {
+      D_80272554 = 4;
     }
     break;
   case 6:                       /* a different pak */
@@ -435,12 +438,14 @@ void BrLoadSaveScreen(void)
       } else if (D_80272550 == 4) {
         osSyncPrintf("Loading Options...\n");
       }
-      if (D_80272550 == 4) {
-        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, 0x80, D_80272500);
-      } else {
+      if (D_80272550 != 4) {
         D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, size, D_80272500);
+      } else {
+        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, 0x80, D_80272500);
       }
-      if (D_802724F0 == 0) {
+      if (D_802724F0 != 0) {
+        D_80272554 = 12;
+      } else {
         if (D_80272550 == 0) {
           if (D_802724F4 == 0) {
             opts[0] = D_8031B760[D_80271FA8 ^ 1].season->xd4;
@@ -469,7 +474,7 @@ void BrLoadSaveScreen(void)
           osSyncPrintf("Extracting ghost data...\n");
           D_80270784 = func_8021CB4C(D_80307F00, 0xDE5C, D_80272500, 2);
           D_8028B940 = D_80307F00[0];
-          D_8031B760[0].season->xce |= 1 << D_8028B940;
+          D_8031B760[0].season->xce |= 1 << D_80307F00[0];
           D_8031B760[0].season->unlocked |= 1 << D_80307F00[1];
           osSyncPrintf("Done!\n");
           if (D_802724FC == 0) {
@@ -495,8 +500,6 @@ void BrLoadSaveScreen(void)
             D_80272554 = 12;
           }
         }
-      } else {
-        D_80272554 = 12;
       }
     }
     break;
@@ -577,10 +580,7 @@ void BrLoadSaveScreen(void)
       osSyncPrintf("Compressing ghost data...\n");
       newSize = func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2);
       osSyncPrintf("new size = %d\n", newSize);
-      if (newSize == -1) {
-        D_802724F0 = -99999;
-        D_80272554 = 12;
-      } else {
+      if (newSize != -1) {
         osSyncPrintf("Saving ghost data to controller pak...\n");
         D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
         if (D_802724F0 == 0) {
@@ -589,12 +589,17 @@ void BrLoadSaveScreen(void)
         } else {
           D_80272554 = 12;
         }
+      } else {
+        D_802724F0 = -99999;
+        D_80272554 = 12;
       }
     } else if (D_80272550 == 5) {
       osSyncPrintf("Saving options...\n");
       memcpy(D_80272500, D_802723D0, 12);
       D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x80, D_80272500);
-      if (D_802724F0 == 0) {
+      if (D_802724F0 != 0) {
+        D_80272554 = 12;
+      } else {
         opts[0] = D_8031B760[D_80271FA8].season->xd4;
         opts[1] = D_8031B760[D_80271FA8].season->xd8;
         opts[2] = D_8031B760[D_80271FA8].season->xdc;
@@ -608,8 +613,6 @@ void BrLoadSaveScreen(void)
         } else {
           D_80272554 = 12;
         }
-      } else {
-        D_80272554 = 12;
       }
     }
     break;
@@ -629,9 +632,9 @@ void BrLoadSaveScreen(void)
     case 11:
       func_80246F90(0x94, 0xD8, 0x158, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("CONTROLLER PAK NOT FOUND.", 82, 124);
-      if (D_80272550 == 0 || D_80272550 == 2 || D_80272550 == 4) {
+      if ((unusedD0 = D_80272550) == 0 || D_80272550 == 2 || D_80272550 == 4) {
         BrTextPrint("DATA CANNOT BE LOADED.", 82, 138);
-      } else if (D_80272550 == 1 || D_80272550 == 3 || D_80272550 == 5) {
+      } else if (unusedD0 == 1 || unusedD0 == 3 || unusedD0 == 5) {
         BrTextPrint("DATA CANNOT BE SAVED.", 82, 138);
       }
       break;
@@ -688,11 +691,11 @@ void BrLoadSaveScreen(void)
       BrTextPrint("HAS BEEN DETECTED!", 103, 138);
       break;
     case 5:
-      if (D_80272550 == 0 || D_80272550 == 2 || D_80272550 == 4) {
+      if ((unusedCC = D_80272550) == 0 || D_80272550 == 2 || D_80272550 == 4) {
         func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("SAVED DATA NOT FOUND", 94, 124);
         BrTextPrint("IN CONTROLLER PAK.", 94, 138);
-      } else if (D_80272550 == 1 || D_80272550 == 3 || D_80272550 == 5) {
+      } else if (unusedCC == 1 || unusedCC == 3 || unusedCC == 5) {
         func_80246F90(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("UNABLE TO SAVE DATA", 99, 124);
         BrTextPrint("TO CONTROLLER PAK.", 99, 138);
@@ -711,21 +714,25 @@ void BrLoadSaveScreen(void)
       BrTextPrint("HAS BEEN DETECTED!", 96, 138);
       break;
     }
-    if (D_802724F0 == 9999) {
-      if (PAD->pressed & 0x10) {
-        BrPadConsume(PAD, 0x10);
+    if (D_802724F0 != 9999) {
+      if (PAD->pressed & 0x8030) {
+        BrPadConsume(PAD, 0x8030);
         D_802724F0 = 0;
-        D_80272554 = 4;
-      } else if (PAD->pressed & 0x20) {
-        BrPadConsume(PAD, 0x20);
-        D_802724F0 = 0;
-        BrSfxFadeTo(1.0f, 0.2f);
-        BrMusicFadeTo(1.0f, 0.2f);
-        D_80272554 = 1;
+        if (D_802724F0 == 2) {
+          D_80272554 = 4;
+        } else {
+          D_80272554 = 1;
+        }
       }
-    } else if (PAD->pressed & 0x8030) {
-      BrPadConsume(PAD, 0x8030);
+    } else if (PAD->pressed & 0x10) {
+      BrPadConsume(PAD, 0x10);
       D_802724F0 = 0;
+      D_80272554 = 4;
+    } else if (PAD->pressed & 0x20) {
+      BrPadConsume(PAD, 0x20);
+      D_802724F0 = 0;
+      BrSfxFadeTo(1.0f, 0.2f);
+      BrMusicFadeTo(1.0f, 0.2f);
       D_80272554 = 1;
     }
     break;
@@ -790,17 +797,17 @@ void BrLoadSaveScreen(void)
     if (PAD->pressed & 0x8030) {
       BrPadConsume(PAD, 0x8030);
       if (D_802724F4 == 0) {
-        if (D_802724FC == 0) {
+        if (D_802724FC != 0) {
+          D_80272554 = 14;
+        } else {
           BrSfxFadeTo(1.0f, 0.2f);
           BrMusicFadeTo(1.0f, 0.2f);
           D_80272554 = 1;
-        } else {
-          D_80272554 = 14;
         }
-      } else if (D_802724FC == 0) {
-        D_80272554 = 15;
-      } else {
+      } else if (D_802724FC != 0) {
         D_80272554 = 14;
+      } else {
+        D_80272554 = 15;
       }
     }
     break;
@@ -873,12 +880,15 @@ void BrLoadSaveScreen(void)
       if (D_802724F4 == 0) {
         D_802A4BE8 = 1;
         BrModeSet((int)BrMainMenu);
-      } else if (D_802724F4 == 1) {
-        D_802A4BE8 = 1;
-        BrModeSet((int)func_80209434);
-      } else if (D_802724F4 == 2) {
-        D_802A4BE8 = 1;
-        BrModeSet((int)BrMainMenu);
+      } else {
+        mode = D_802724F4;
+        if (D_802724F4 == 1) {
+          D_802A4BE8 = 1;
+          BrModeSet((int)func_80209434);
+        } else if ((mode | 0) == 2) {
+          D_802A4BE8 = 1;
+          BrModeSet((int)BrMainMenu);
+        }
       }
     }
   }
