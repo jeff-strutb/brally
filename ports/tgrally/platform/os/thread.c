@@ -64,6 +64,50 @@ static int s_finished;
 
 uint64_t tgr_count(void) { return s_count; }
 uint32_t tgr_frame(void) { return s_frame; }
+volatile int tgr_paused;                /* set by the host loop while the window is not in front */
+
+/* TGR_STATS: once a second of retraces, how they kept time and what reached
+ * the window: retraces and frames finished, the worst gap between retraces,
+ * the time spent presenting, and the audio the host has buffered */
+extern uint32_t tgr_rcp_frames;
+extern uint64_t tgr_rcp_end_ns, tgr_rcp_end_max_ns;
+int tgr_audio_buffered_ms(void);
+
+static void stats(void)
+{
+    static int on = -1;
+    static uint64_t t0, last, worst;
+    static uint32_t f0, r0;
+    static uint64_t c0;
+    uint64_t now;
+    if (on < 0)
+        on = getenv("TGR_STATS") != NULL;
+    if (!on)
+        return;
+    now = host_ticks_ns();
+    if (last && now - last > worst)
+        worst = now - last;
+    last = now;
+    if (!t0) {
+        t0 = now;
+        f0 = s_frame;
+        c0 = s_count;
+        r0 = tgr_rcp_frames;
+        return;
+    }
+    if (s_frame - f0 >= 60) {
+        uint32_t frames = tgr_rcp_frames - r0;
+        fprintf(stderr, "stats: %u retraces (%.3f s of N64 time) in %.3f s, %u frames, worst gap %.1f ms, present %.2f ms avg %.1f max, audio %d ms\n",
+                s_frame - f0, (s_count - c0) / 46875000.0, (now - t0) / 1e9, frames, worst / 1e6,
+                frames ? tgr_rcp_end_ns / 1e6 / frames : 0.0, tgr_rcp_end_max_ns / 1e6, tgr_audio_buffered_ms());
+        t0 = now;
+        f0 = s_frame;
+        c0 = s_count;
+        r0 = tgr_rcp_frames;
+        worst = 0;
+        tgr_rcp_end_ns = tgr_rcp_end_max_ns = 0;
+    }
+}
 void tgr_os_lock(void)   { host_mutex_lock(G); }
 void tgr_os_unlock(void) { host_mutex_unlock(G); }
 
@@ -178,10 +222,26 @@ void tgr_post_mesg_at(uint64_t when, OSMesgQueue *mq, OSMesg msg)
     pend(p);
 }
 
+/* the next retrace.  The hardware's VI interrupts every 1/60 s whatever else
+ * falls due at that tick; n64box.py (the oracle the headless comparisons run
+ * against) recomputes the next one from the count, so an event falling
+ * exactly on a retrace's tick moves past it and that retrace is lost (one in
+ * four with this game's timers: its clock then runs 4/3 fast against its
+ * frames).  Headless runs keep the oracle's rule, to stay comparable with it;
+ * play keeps the hardware's. */
+static uint64_t s_vi_due = TGR_TICKS_PER_FRAME;
+
+static uint64_t next_retrace(void)
+{
+    if (g_tgr.headless)
+        return (s_count / TGR_TICKS_PER_FRAME + 1) * TGR_TICKS_PER_FRAME;
+    return s_vi_due;
+}
+
 /* nothing can run: deliver the next thing the hardware would do */
 static void advance_time(void)
 {
-    uint64_t next_vi = (s_count / TGR_TICKS_PER_FRAME + 1) * TGR_TICKS_PER_FRAME;
+    uint64_t next_vi = next_retrace();
     if (s_npending && s_pending[0].when <= next_vi) {
         Pending p = s_pending[0];
         memmove(s_pending, s_pending + 1, (size_t)(--s_npending) * sizeof *s_pending);
@@ -202,20 +262,35 @@ static void advance_time(void)
     }
     /* the next vertical retrace */
     s_count = next_vi;
+    s_vi_due = next_vi + TGR_TICKS_PER_FRAME;
     s_frame++;
     if (!g_tgr.headless) {
+        /* the window is in the background: the N64's time stands still */
+        if (tgr_paused) {
+            host_mutex_unlock(G);
+            while (tgr_paused && !s_finished)
+                host_sleep_ms(10);
+            host_mutex_lock(G);
+            s_wall0 = host_ticks_ns() - (uint64_t)(s_frame - 1) * 1000000000ull / 60;
+        }
         /* keep pace with the wall clock: 60 retraces a second */
         uint64_t due = s_wall0 + (uint64_t)s_frame * 1000000000ull / 60;
         uint64_t now = host_ticks_ns();
         if (now < due) {
+            /* sleep to within a millisecond of it, then wait out the rest: a
+               millisecond's rounding would make the retraces uneven */
             host_mutex_unlock(G);
-            host_sleep_ms((uint32_t)((due - now) / 1000000));
+            while (due > host_ticks_ns() + 1500000ull)
+                host_sleep_ms(1);
+            while (host_ticks_ns() < due)
+                ;
             host_mutex_lock(G);
         } else if (now - due > 200000000ull) {
             s_wall0 = now - (uint64_t)s_frame * 1000000000ull / 60;     /* fell behind: do not race */
         }
     }
     tgr_vi_retrace();
+    stats();
     if (g_tgr.frames && s_frame >= (uint32_t)g_tgr.frames) {
         s_finished = 1;
         host_cond_broadcast(s_done);
@@ -256,6 +331,7 @@ static void reschedule(void)
 static void *thread_main(void *v)
 {
     TThread *t = (TThread *)v;
+    host_thread_interactive();                        /* the retraces are paced from these threads */
     host_mutex_lock(G);
     while (s_cur != t)
         host_cond_wait(t->cv, G, 0xFFFFFFFFu);

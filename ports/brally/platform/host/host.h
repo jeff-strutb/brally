@@ -45,6 +45,9 @@ void         host_cond_free(host_cond *c);
 host_thread *host_thread_start(void *(*fn)(void *), void *arg);
 void         host_thread_exit(void);
 uintptr_t    host_thread_self(void);
+/* the calling thread keeps time for the game (paces frames, feeds audio):
+   ask the OS to wake it on time (no timer coalescing) */
+void         host_thread_interactive(void);
 
 /* ---- files ------------------------------------------------------------------ */
 typedef struct host_dir host_dir;
@@ -107,6 +110,7 @@ void         host_stream_close(host_stream *s);
 /* ---- game controllers ------------------------------------------------------------- */
 /* the first game controller, in the layout DirectInput gives an XInput pad:
  *   x, y     left stick, -1..1, y positive downward
+ *   rx, ry   right stick, likewise
  *   z        right trigger minus left trigger
  *   buttons  0 A  1 B  2 X  3 Y  4 LB  5 RB  6 view  7 menu  8 L3  9 R3
  *            10 LT  11 RT (past half)  12-15 d-pad up/right/down/left
@@ -114,6 +118,7 @@ void         host_stream_close(host_stream *s);
  * 0 when none is connected (the state then reads centred) */
 typedef struct host_pad {
     float    x, y, z;
+    float    rx, ry;
     unsigned buttons;
     int      pov;
 } host_pad;

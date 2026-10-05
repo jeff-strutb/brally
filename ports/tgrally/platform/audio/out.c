@@ -17,11 +17,34 @@ static double s_pos, s_step = 1.0;
 static int s_open, s_devrate = 48000;
 static host_mutex *s_m;
 
+/* the device's clock is not the game's: over a long session the buffered
+ * audio would creep.  Its average over a few seconds is held at what it
+ * settled to once the game started, by playing up to 0.2% faster or slower
+ * (inaudible), so the latency stays the N64's own: the two buffers the game
+ * keeps queued on its audio interface. */
+static double s_avg = -1, s_target = -1, s_trim = 1.0;
+static uint64_t s_played;
+
+static void trim(void)
+{
+    double have = (double)(s_w - s_r), err;
+    s_avg = s_avg < 0 ? have : s_avg + (have - s_avg) * 0.002;
+    if (s_target < 0) {
+        if (s_played > (uint64_t)s_devrate * 5)       /* settled: the game has been queueing for 5 s */
+            s_target = s_avg;
+        return;
+    }
+    err = (s_avg - s_target) / (s_target > 1 ? s_target : 1);
+    s_trim = 1.0 + (err > 1 ? 1 : err < -1 ? -1 : err) * 0.002;
+}
+
 static void cb(float *lr, int frames, void *user)
 {
     int i;
     (void)user;
     host_mutex_lock(s_m);
+    s_played += (uint64_t)frames;
+    trim();
     for (i = 0; i < frames; i++) {
         uint32_t have = s_w - s_r;
         if (have < 2) {
@@ -33,7 +56,7 @@ static void cb(float *lr, int frames, void *user)
             lr[2 * i] = s_ring[k][0];
             lr[2 * i + 1] = s_ring[k][1];
         }
-        s_pos += s_step;
+        s_pos += s_step * s_trim;
         while (s_pos >= 1.0 && s_w != s_r) {
             s_pos -= 1.0;
             s_r++;
@@ -48,6 +71,12 @@ void tgr_audio_init(void)
     if (g_tgr.headless || getenv("TGR_NOSOUND"))
         return;
     s_open = host_audio_open(s_devrate, cb, NULL) != 0;
+}
+
+/* how much the host has yet to play, in milliseconds (TGR_STATS) */
+int tgr_audio_buffered_ms(void)
+{
+    return s_open ? (int)((uint64_t)(s_w - s_r) * 1000 / (uint32_t)(s_devrate * (s_step > 0 ? s_step : 1))) : -1;
 }
 
 void tgr_audio_buffer(const int16_t *lr, int frames, int rate)

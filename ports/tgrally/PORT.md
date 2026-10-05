@@ -84,6 +84,35 @@ its definition exactly (`tools/abicheck.py`, `tools/protofix.py`).
 | `platform/audio/` | the game's software mixer (`mixer.s` in the decomp) in C, and the audio interface's buffers out to the host |
 | host | `ports/brally/platform/host/` (window, input, audio out, time, files) |
 
+## Playing
+
+`package_app.sh` builds `Top Gear Rally.app` (Metal, the builder's ROM inside).
+Saves are a Controller Pak in port 1, kept in
+`~/Library/Application Support/Top Gear Rally/controller-pak-1.bin`.
+
+| N64 | game controller | keyboard |
+|---|---|---|
+| stick | left stick (to the N64's octagonal gate: 80 at the cardinal points, 70 on each axis at the diagonals) | arrows |
+| A, B | A, B | X or Return, Z |
+| C buttons | right stick; X is C-left, Y is C-up | I J K L |
+| Z | left trigger | Space |
+| L, R | shoulders (right trigger is R too) | Q, W or E |
+| START | menu | Escape or P |
+| D-pad | d-pad | |
+
+The window scales the N64's 4:3 picture to any size; View > Enter Full Screen
+(Ctrl-Cmd-F). In the background the game is paused: the N64's clock stops.
+
+Time is the console's: 60 retraces a second against the wall clock, the
+N64's count advancing exactly a retrace's worth (781,250) each, and audio
+played as the game queues it on its audio interface (two buffers, as the N64
+kept), trimmed by up to 0.2% to the output device's clock. Headless runs keep
+`n64box.py`'s scheduling instead, where an event due on a retrace's tick
+moves past it (a retrace lost one in four with this game's timers), so that
+they stay comparable with it. `TGR_STATS=1` reports, each second, the
+retraces and the N64 time they covered, frames drawn, the worst gap between
+retraces, the time spent presenting and the audio buffered.
+
 ## Verification
 
 `n64/tools/n64box.py` runs the original ROM headless (the CPU under Unicorn,

@@ -54,6 +54,14 @@ void host_init(int argc, char **argv)
             [app addItemWithTitle:[NSString stringWithFormat:@"Quit %s", s_app_title] action:@selector(terminate:) keyEquivalent:@"q"];
             [item setSubmenu:app];
             [bar addItem:item];
+            {                                         /* View: full screen (the window's own action) */
+                NSMenu *view = [[NSMenu alloc] initWithTitle:@"View"];
+                NSMenuItem *vi = [NSMenuItem new], *fs;
+                fs = [view addItemWithTitle:@"Enter Full Screen" action:@selector(toggleFullScreen:) keyEquivalent:@"f"];
+                [fs setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
+                [vi setSubmenu:view];
+                [bar addItem:vi];
+            }
             [NSApp setMainMenu:bar];
         }
         [NSApp finishLaunching];
@@ -601,6 +609,8 @@ int host_pad_read(host_pad *o)
         o->x = g.leftThumbstick.xAxis.value;
         o->y = -g.leftThumbstick.yAxis.value;
         o->z = g.rightTrigger.value - g.leftTrigger.value;
+        o->rx = g.rightThumbstick.xAxis.value;
+        o->ry = -g.rightThumbstick.yAxis.value;
         if (g.buttonA.pressed) b |= 1u << 0;
         if (g.buttonB.pressed) b |= 1u << 1;
         if (g.buttonX.pressed) b |= 1u << 2;

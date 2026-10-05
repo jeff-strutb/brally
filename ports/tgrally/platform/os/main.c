@@ -18,6 +18,8 @@ size_t g_romlen;
 void BrBoot(void);                  /* src/startup/boot.c */
 void tgr_script_load(const char *path);
 void tgr_input_key(int vk, int down);
+void tgr_input_release(void);
+extern volatile int tgr_paused;
 
 static int load_rom(const char *path)
 {
@@ -170,6 +172,12 @@ int main(int argc, char **argv)
             if (host_poll_event(&ev, 10)) {
                 if (ev.type == HOST_EV_CLOSE)
                     break;
+                if (ev.type == HOST_EV_FOCUS) {   /* in the background: paused, nothing held */
+                    tgr_os_lock();
+                    tgr_input_release();
+                    tgr_os_unlock();
+                    tgr_paused = !ev.down;
+                }
                 if (ev.type == HOST_EV_KEY) {
                     tgr_os_lock();
                     tgr_input_key(ev.vk, ev.down);

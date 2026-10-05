@@ -111,6 +111,13 @@ host_thread *host_thread_start(void *(*fn)(void *), void *arg)
 void host_thread_exit(void) { pthread_exit(NULL); }
 uintptr_t host_thread_self(void) { return (uintptr_t)pthread_self(); }
 
+void host_thread_interactive(void)
+{
+#ifdef __APPLE__
+    pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+#endif
+}
+
 /* ---- files ------------------------------------------------------------------- */
 struct host_dir { DIR *d; char path[1024]; };
 

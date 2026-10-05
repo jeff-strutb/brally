@@ -587,6 +587,10 @@ int host_pad_read(host_pad *o)
     if (o->x < -1) o->x = -1;
     if (o->y < -1) o->y = -1;
     o->z = (g->bRightTrigger - g->bLeftTrigger) / 255.0f;
+    o->rx = g->sThumbRX / 32767.0f;
+    o->ry = -g->sThumbRY / 32767.0f;
+    if (o->rx < -1) o->rx = -1;
+    if (o->ry < -1) o->ry = -1;
     if (g->wButtons & XINPUT_GAMEPAD_A) b |= 1u << 0;
     if (g->wButtons & XINPUT_GAMEPAD_B) b |= 1u << 1;
     if (g->wButtons & XINPUT_GAMEPAD_X) b |= 1u << 2;

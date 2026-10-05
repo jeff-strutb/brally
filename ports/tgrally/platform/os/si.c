@@ -6,6 +6,7 @@
  * same input at the same frames as the original under n64box. */
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include "host.h"
 #include "plat.h"
@@ -125,6 +126,34 @@ void tgr_input_key(int vk, int down)
         s_keys &= (uint16_t)~b;
 }
 
+/* everything released (the window lost the keyboard: its key-ups go elsewhere) */
+void tgr_input_release(void)
+{
+    s_keys = 0;
+    s_kx = s_ky = 0;
+}
+
+/* a modern stick (a circle, -1..1) as the N64's: past a small dead zone, the
+ * travel rescaled to the full range and reaching the N64 stick's octagonal
+ * gate, 80 at the four cardinal points and 70 on each axis at the diagonals
+ * (a diagonal on a round stick would otherwise only reach 57) */
+static void n64_stick(float fx, float fy, int *ox, int *oy)
+{
+    const float dz = 0.12f;
+    float r = sqrtf(fx * fx + fy * fy), ax = fabsf(fx), ay = fabsf(fy), t, g, k;
+    *ox = *oy = 0;
+    if (r <= dz)
+        return;
+    /* the gate's edge in this octant runs from (80, 0) to (70, 70), the line
+       x = 80 - y / 7 (or mirrored); met by the stick's direction y = t x, it
+       lies 80 / (1 + t / 7) along x: the octagon's radius that way */
+    t = ax >= ay ? ay / ax : ax / ay;
+    g = 80.0f / (1.0f + t / 7.0f) * sqrtf(1.0f + t * t);
+    k = (r > 1 ? 1 : (r - dz) / (1 - dz)) * g / r;   /* the travel past the dead zone, to the gate */
+    *ox = (int)lroundf(fx * k);
+    *oy = (int)lroundf(fy * k);
+}
+
 void tgr_input_frame(uint32_t frame)
 {
     int p, i;
@@ -145,10 +174,16 @@ void tgr_input_frame(uint32_t frame)
         int x = s_kx, y = s_ky;
         uint16_t b = s_keys;
         if (host_pad_read(&hp)) {
-            if (hp.x > 0.1f || hp.x < -0.1f)
-                x = (int)(hp.x * 80.0f);
-            if (hp.y > 0.1f || hp.y < -0.1f)
-                y = (int)(-hp.y * 80.0f);
+            int px, py;
+            n64_stick(hp.x, -hp.y, &px, &py);
+            if (px || py) {
+                x = px;
+                y = py;
+            }
+            if (hp.rx > 0.5f) b |= B_CR;              /* the right stick: the C buttons */
+            if (hp.rx < -0.5f) b |= B_CL;
+            if (hp.ry > 0.5f) b |= B_CD;
+            if (hp.ry < -0.5f) b |= B_CU;
             if (hp.buttons & 1) b |= B_A;
             if (hp.buttons & 2) b |= B_B;
             if (hp.buttons & 4) b |= B_CL;
@@ -298,7 +333,6 @@ static void pak_load(void)
     if (fread(magic, 1, 8, f) == 8 && !memcmp(magic, "TGRPAK1\n", 8)) {
         n = get32(f);
         for (i = 0; i < n && i < PAK_NOTES; i++) {
-            s_notes[i].used = 1;
             s_notes[i].company = (uint16_t)get32(f);
             s_notes[i].game = get32(f);
             if (fread(s_notes[i].name, 1, 16, f) != 16 || fread(s_notes[i].ext, 1, 4, f) != 4)
@@ -309,6 +343,11 @@ static void pak_load(void)
             s_notes[i].data = (uint8_t *)calloc(1, (size_t)s_notes[i].size);
             if (fread(s_notes[i].data, 1, (size_t)s_notes[i].size, f) != (size_t)s_notes[i].size)
                 break;
+            s_notes[i].used = 1;                      /* only a note read whole */
+        }
+        if (i < PAK_NOTES && !s_notes[i].used) {      /* a file cut short: its last note is dropped */
+            free(s_notes[i].data);
+            memset(&s_notes[i], 0, sizeof s_notes[i]);
         }
     }
     fclose(f);
@@ -319,8 +358,16 @@ static void pak_load(void)
 void tgr_pak_init(void)
 {
     const char *dir;
-    if (s_scripted)
+    if (s_scripted) {
+        /* TGR_PAK_FILE: the scripted run's pak kept in that file (a test of the
+           saves themselves; the script still plugs and unplugs it) */
+        const char *e = getenv("TGR_PAK_FILE");
+        if (e) {
+            snprintf(s_pak_path, sizeof s_pak_path, "%s", e);
+            pak_load();
+        }
         return;
+    }
     dir = host_save_dir();
     if (!dir)
         return;

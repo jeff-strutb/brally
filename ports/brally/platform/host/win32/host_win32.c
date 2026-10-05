@@ -97,6 +97,7 @@ host_thread *host_thread_start(void *(*fn)(void *), void *arg)
 
 void host_thread_exit(void) { ExitThread(0); }
 uintptr_t host_thread_self(void) { return (uintptr_t)GetCurrentThreadId(); }
+void host_thread_interactive(void) { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL); }
 
 /* ---- files ------------------------------------------------------------------- */
 struct host_dir {

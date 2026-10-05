@@ -30,7 +30,22 @@
  *                        triangles of each frame (to find what draws a region) */
 static int s_log, s_only = -1, s_skip;
 int tgr_rcp_tri;
-uint32_t tgr_vi_ctrl(void);                         /* platform/os/io.c */                 /* the frame's triangle number (TGR_PIXEL reports it) */
+uint32_t tgr_vi_ctrl(void);                         /* platform/os/io.c */
+uint64_t host_ticks_ns(void);
+uint32_t tgr_rcp_frames;                            /* frames finished (TGR_STATS) */
+uint64_t tgr_rcp_end_ns, tgr_rcp_end_max_ns;        /* time in rdr_frame_end: the present */
+
+static void frame_end(void)
+{
+    uint64_t t0 = host_ticks_ns(), t;
+    rdr_vi(tgr_vi_ctrl());
+    rdr_frame_end();
+    t = host_ticks_ns() - t0;
+    tgr_rcp_frames++;
+    tgr_rcp_end_ns += t;
+    if (t > tgr_rcp_end_max_ns)
+        tgr_rcp_end_max_ns = t;
+}                 /* the frame's triangle number (TGR_PIXEL reports it) */
 static const char *s_texdump;
 
 /* ---- memory ---------------------------------------------------------------- */
@@ -1055,8 +1070,7 @@ static void run(uint32_t dl)
             if (s_cimg != s_zimg) {
                 int w = s_cimg_w, h = w * 3 / 4;
                 if (s_frame_open && (w != s_fb_w || h != s_fb_h)) {
-                    rdr_vi(tgr_vi_ctrl());
-                    rdr_frame_end();
+                    frame_end();
                     s_frame_open = 0;
                 }
                 s_fb_w = w;
@@ -1092,8 +1106,7 @@ void tgr_rcp_task(uint32_t dl)
     }
     run(dl);
     if (s_frame_open) {
-        rdr_vi(tgr_vi_ctrl());
-        rdr_frame_end();
+        frame_end();
         s_frame_open = 0;
     }
 }
