@@ -203,17 +203,21 @@ void BrWeatherStep(void)
  * inverse and the projection; one in front of the camera, on screen and
  * at least 2 units across is drawn as a textured rectangle, 24x36 (rain)
  * or 128x128 (snow) over its distance.
- * RESIDUE (gap 145, 11 short): ours keeps the camera matrix's address in
- * s0 and 28.0 in f20 across the calls, where the ROM re-forms the address
- * at each use and holds only 1.0; the rain direction sits at sp+0x60 in
- * the ROM's frame. */
-/* @t4-pass 0x8023A784 1 2026-10-03 compiles 26 best 584 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8023A784 2 2026-10-03 compiles 26 best 584 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8023A784 */
+ * Source facts: the particle loop reaches the camera matrix through the
+ * pointer m, so each row element is a load of its own; it counts with k,
+ * and the point's z goes into w.  The streak's direction d is declared in
+ * the rain block, and its colour byte is written as (k << 4) | k at every
+ * store.  Both mirror tests are D_8028A8A8 ^ D_8028A8AC.  The rectangle's
+ * three packet pointers are cleared before the size tests: uopt numbers
+ * them there, ahead of py, which gives them a0..a2 and py a3.  Their
+ * stores share one source line, as the macro's would.  n, j, row, col, x0,
+ * y0 and c are never read; they hold their frame slots. */
 /* @implements 0x8023A784 tgr BrWeatherDraw */
 void BrWeatherDraw(void)
 {
+  int n;
   short (*pt)[3];
+  BrCar *car;
   float sx;
   float sy;
   float mirror;
@@ -225,7 +229,6 @@ void BrWeatherDraw(void)
   float y;
   float fx;
   float fy;
-  float fz;
   float w;
   float tx;
   float ty;
@@ -234,7 +237,10 @@ void BrWeatherDraw(void)
   int px;
   int py;
   unsigned char c;
-  float d[3];
+  float (*m)[4];
+  int j;
+  int row;
+  int col;
 
   if (D_8028AA84 == 0 && D_8028AA8C == 0) {
     return;
@@ -250,7 +256,12 @@ void BrWeatherDraw(void)
   }
   gDPPipeSync(D_8028A858++);
   gRaw(D_8028A858++, 0xba001402, 0);
-  gRaw(D_8028A858++, 0xbb000001, 0xffffffff);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xbb000001;
+    _g->words.w1 = 0xffffffff;
+  }
   gRaw(D_8028A858++, 0xba000c02, D_8028A898);
   gRaw(D_8028A858++, 0xfcffffff, 0xfffdf2f9);
   gRaw(D_8028A858++, 0xb900031d, 0x504240);
@@ -264,12 +275,32 @@ void BrWeatherDraw(void)
       _g->words.w1 = (unsigned int)&D_802A3790;
     }
   }
-  gRaw(D_8028A858++, 0xf5900000, 0x07018060);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5900000;
+    _g->words.w1 = 0x07018060;
+  }
   gDPLoadSync(D_8028A858++);
-  gRaw(D_8028A858++, 0xf3000000, 0x077ff100);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf3000000;
+    _g->words.w1 = 0x077ff100;
+  }
   gDPPipeSync(D_8028A858++);
-  gRaw(D_8028A858++, 0xf5881000, 0x00018060);
-  gRaw(D_8028A858++, 0xf2000000, 0x000fc0fc);
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf5881000;
+    _g->words.w1 = 0x00018060;
+  }
+  {
+    Gfx *_g = D_8028A858++;
+
+    _g->words.w0 = 0xf2000000;
+    _g->words.w1 = 0x000fc0fc;
+  }
   gRaw(D_8028A858++, 0xba000e02, 0);
   gRaw(D_8028A858++, 0xba001301, 0);
   if (D_8028AA84 != 0) {
@@ -277,7 +308,8 @@ void BrWeatherDraw(void)
   } else {
     gRaw(D_8028A858++, 0xfa00ffff, 0x788088ff);
   }
-  BrMat4Inverse(D_8031AB10, D_8028AAF4->mtx0);
+  car = D_8028AAF4;
+  BrMat4Inverse(D_8031AB10, car->mtx0);
   D_8031AB10[3][2] = 0.0f;
   D_8031AB50[0][2] = 6.1037019e-05f;
   D_8031AB50[1][0] = 6.1037019e-05f;
@@ -298,43 +330,44 @@ void BrWeatherDraw(void)
   D_8031AB50[3][3] = 1.0f;
   BrMat4Mul(D_8031AB10, D_8031AB10, D_8031AB50);
   if (D_8028AA8C != 0) {
+    float d[3];
+
     BrFill64(D_80364A80[D_8028AAEC], 0x1000, 0);
     BrVec3Project(d, D_803634E0[D_8028AAEC], D_8031AB10);
     BrVec3Normalise(d);
-    if (D_8028A8A8 != D_8028A8AC) {
+    if (D_8028A8A8 ^ D_8028A8AC) {
       d[0] = -d[0];
     }
-    y = d[1] * 28.0f + 32.0f;
     x = 32.0f - d[0] * 28.0f;
+    y = d[1] * 28.0f + 32.0f;
     for (k = 0; k < 16; k++) {
-      y += -d[1] * 3.5f;
       x += d[0] * 3.5f;
+      y += -d[1] * 3.5f;
+      ix = (int)x;
       iy = (int)y;
       if (iy > 1 && iy < 62) {
-        ix = (int)x;
         if (ix > 1 && ix < 62) {
-          c = (k << 4) | k;
-          D_80364A80[D_8028AAEC][iy - 2][ix - 1] = c;
-          D_80364A80[D_8028AAEC][iy - 2][ix] = c;
-          D_80364A80[D_8028AAEC][iy - 2][ix + 1] = c;
-          D_80364A80[D_8028AAEC][iy - 1][ix - 2] = c;
-          D_80364A80[D_8028AAEC][iy - 1][ix - 1] = c;
-          D_80364A80[D_8028AAEC][iy - 1][ix] = c;
-          D_80364A80[D_8028AAEC][iy - 1][ix + 1] = c;
-          D_80364A80[D_8028AAEC][iy - 1][ix + 2] = c;
-          D_80364A80[D_8028AAEC][iy][ix - 2] = c;
-          D_80364A80[D_8028AAEC][iy][ix - 1] = c;
-          D_80364A80[D_8028AAEC][iy][ix] = c;
-          D_80364A80[D_8028AAEC][iy][ix + 1] = c;
-          D_80364A80[D_8028AAEC][iy][ix + 2] = c;
-          D_80364A80[D_8028AAEC][iy + 1][ix - 2] = c;
-          D_80364A80[D_8028AAEC][iy + 1][ix - 1] = c;
-          D_80364A80[D_8028AAEC][iy + 1][ix] = c;
-          D_80364A80[D_8028AAEC][iy + 1][ix + 1] = c;
-          D_80364A80[D_8028AAEC][iy + 1][ix + 2] = c;
-          D_80364A80[D_8028AAEC][iy + 2][ix - 1] = c;
-          D_80364A80[D_8028AAEC][iy + 2][ix] = c;
-          D_80364A80[D_8028AAEC][iy + 2][ix + 1] = c;
+          D_80364A80[D_8028AAEC][iy - 2][ix - 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 2][ix] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 2][ix + 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 1][ix - 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 1][ix - 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 1][ix] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 1][ix + 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy - 1][ix + 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy][ix - 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy][ix - 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy][ix] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy][ix + 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy][ix + 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 1][ix - 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 1][ix - 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 1][ix] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 1][ix + 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 1][ix + 2] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 2][ix - 1] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 2][ix] = (k << 4) | k;
+          D_80364A80[D_8028AAEC][iy + 2][ix + 1] = (k << 4) | k;
         }
       }
     }
@@ -345,20 +378,27 @@ void BrWeatherDraw(void)
     sx = 24.0f;
     sy = 36.0f;
   } else {
-    sx = sy = 128.0f;
+    sy = sx = 128.0f;
   }
-  if (D_8028A8A8 != D_8028A8AC) {
+  if (D_8028A8A8 ^ D_8028A8AC) {
     mirror = -640.0f;
   } else {
     mirror = 640.0f;
   }
-  for (i = 0; i < D_8028C804; i++) {
-    fx = pt[i][0];
-    fy = pt[i][1];
-    fz = pt[i][2];
-    tx = D_8031AB10[3][0] + (fx * D_8031AB10[0][0] + fy * D_8031AB10[1][0] + fz * D_8031AB10[2][0]);
-    ty = D_8031AB10[3][1] + (fx * D_8031AB10[0][1] + fy * D_8031AB10[1][1] + fz * D_8031AB10[2][1]);
-    w = D_8031AB10[3][3] + (fx * D_8031AB10[0][3] + fy * D_8031AB10[1][3] + fz * D_8031AB10[2][3]);
+  m = D_8031AB10;
+  for (k = 0; k < D_8028C804; k++) {
+    int x0;
+    int y0;
+    Gfx *g1;
+    Gfx *g2;
+    Gfx *g3;
+
+    fx = pt[k][0];
+    fy = pt[k][1];
+    w = pt[k][2];
+    tx = (fx * m[0][0] + fy * m[1][0] + w * m[2][0]) + m[3][0];
+    ty = (fx * m[0][1] + fy * m[1][1] + w * m[2][1]) + m[3][1];
+    w = (fx * m[0][3] + fy * m[1][3] + w * m[2][3]) + m[3][3];
     if (w < 0.1f) {
       continue;
     }
@@ -371,6 +411,10 @@ void BrWeatherDraw(void)
     if (tx < -1.0f || 1.0f < tx) {
       continue;
     }
+    px = tx * mirror;
+    g1 = NULL;
+    g2 = NULL;
+    g3 = NULL;
     hw = sx * w;
     if (hw < 2) {
       continue;
@@ -379,10 +423,18 @@ void BrWeatherDraw(void)
     if (hh < 2) {
       continue;
     }
-    px = tx * mirror;
     py = ty * 480.0f;
-    gSPTextureRectangle(D_8028A858++, px + 0x280, py + 0x1e0, px + hw + 0x280, py + hh + 0x1e0, 0, 0, 0x7e0,
-                        0x3f000 / hw, -0x3f000 / hh);
+    g1 = D_8028A858++;                                                                      \
+    g1->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(px + hw + 0x280, 12, 12) |          \
+                    _SHIFTL(py + hh + 0x1e0, 0, 12));                                       \
+    g1->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(px + 0x280, 12, 12) | _SHIFTL(py + 0x1e0, 0, 12)); \
+    g2 = D_8028A858++;                                                                      \
+    g2->words.w0 = _SHIFTL(G_RDPHALF_1, 24, 8);                                             \
+    g2->words.w1 = (unsigned int)(_SHIFTL(0, 16, 16) | _SHIFTL(0x7e0, 0, 16));              \
+    g3 = D_8028A858++;                                                                      \
+    g3->words.w0 = _SHIFTL(G_RDPHALF_2, 24, 8);                                             \
+    g3->words.w1 = (unsigned int)(_SHIFTL(0x3f000 / hw, 16, 16) | _SHIFTL(-0x3f000 / hh, 0, 16));
+
   }
   gDPPipeSync(D_8028A858++);
   gRaw(D_8028A858++, 0xba001301, 0x80000);
