@@ -1056,43 +1056,30 @@ void BrStub80228E44(int arg0)
  * stepping 0.034 from slot * 0.137 (then cleared again with their
  * partners), the lane kinds to 2, the targets to i * 0.15, the 144 path
  * nodes emptied and 36 flags set to 2.
- * RESIDUE (83): the ROM loads 0.034 before 0.137 (so its literal pool
- * order differs too) and finishes the lane chain before the other small
- * loops; ours interleaves them.  Each small loop needs its own counter or
- * IDO leaves it rolled. */
-/* @t4-pass 0x802288D4 1 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802288D4 2 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802288D4 3 2026-09-26 compiles 16 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802288D4 */
+ * Each lane is the previous one plus 0.034, written out, so each value is
+ * its own temporary (f0, f2, f12, f10) as in the ROM; the other small
+ * arrays share one counter loop, and the node loop steps the row pointer
+ * before the counter. */
 /* @implements 0x802288D4 tgr BrAiLaneSetup */
 void BrAiLaneSetup(BrAiCar *a)
 {
   int i;
-  int j;
   int k;
-  int m;
-  int q;
-  float x;
   BrAiNode *n;
   short (*p)[3];
 
-  x = a->slot * 0.137f;
-  for (j = 0; j < 4; j++) {
-    a->lane[j] = x;
-    x += 0.034f;
-  }
+  a->lane[0] = a->slot * 0.137f;
+  a->lane[1] = a->lane[0] + 0.034f;
+  a->lane[2] = a->lane[1] + 0.034f;
+  a->lane[3] = a->lane[2] + 0.034f;
   for (k = 0; k < 4; k++) {
-    a->x1090[k] = 0;
     a->x1070[k] = 2;
+    a->x1090[k] = 0;
+    a->lane[k] = 0.0f;
+    a->x1020[k] = 0.15f * k;
+    a->x1080[k] = 0.0f;
   }
-  for (m = 0; m < 4; m++) {
-    a->x1020[m] = 0.15f * m;
-  }
-  for (q = 0; q < 4; q++) {
-    a->lane[q] = 0.0f;
-    a->x1080[q] = 0.0f;
-  }
-  for (i = 0, p = a->x19d0, n = a->node; i < 0x90; i++, p++, n++) {
+  for (p = a->x19d0, n = a->node, i = 0; i < 0x90; p++, i++, n++) {
     (*p)[0] = (*p)[1] = (*p)[2] = 0;
     n->x0[0] = 0;
     n->x0[1] = 0;
