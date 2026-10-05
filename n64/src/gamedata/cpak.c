@@ -14,7 +14,7 @@ int BrSfxFadeDone(void);
 void BrTextHighlightOff(void);
 void BrTextAlignCentre(void);
 void BrTextAlignLeft(void);
-int BrTextSetColours();
+void BrTextSetColours();
 void BrTextSetFont(int param_1);
 void BrTextPrint();
 void BrImageDrawAt(int *param_1,int param_2,int param_3);
@@ -188,12 +188,8 @@ fail:
  * 0xB8: the unused ints hold the slots of h and y, and hBase is a byte the
  * ROM reads without ever setting (the "loaded" box's height when the screen
  * was not entered from a save).
- * RESIDUE (30): three temporaries numbered the other way round -- the fade
- * counter's v0/v1, the error code's v0/v1 for the message switch, and the
- * text row's a2/a3 in the "loaded" box. */
-/* @t4-pass 0x80214E0C 5 2026-10-03 compiles 121 best 30 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80214E0C 6 2026-10-03 compiles 119 best 30 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80214E0C */
+ * BrTextSetColours is void (an int result would hold v0 in the block that
+ * starts the error switch) and BrTextPrint takes three arguments. */
 /* @implements 0x80214E0C tgr BrCpakCheck */
 int BrCpakCheck(int kind, unsigned char quiet)
 {
@@ -560,7 +556,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
-      BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1, (h + 32) >> 1);
+      BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
       break;
     case 1:
@@ -570,7 +566,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
-      BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1, (h + 32) >> 1);
+      BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
       break;
     case 2:
