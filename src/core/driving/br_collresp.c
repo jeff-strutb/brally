@@ -108,6 +108,61 @@ BrMat4 *BrCollRespFrameMat(BrCollRespFrame *pF)
     return (BrMat4 *)(void *)&pF->a[3];
 }
 
+/* ==================================================================== */
+/* 0x10066950 -- the exact test, for the classify's -1                   */
+/* ==================================================================== */
+/* WHAT IT DOES: the expensive answer when the cheap classify said -1: the
+ * triangle meets the unit cube if any edge passes through it, or else if
+ * the cube's diagonal that points along the normal pierces the triangle.
+ * The diagonal is s = sign(n) per axis (+-1 INTS, `fild`ed where used);
+ * t = dot(n, v0) / dot(n, s) places the hit on it, |t| <= 0.5 keeps it
+ * inside the cube (a NaN keeps going too: `test ah,0x41` + `jne`), and the
+ * point t*s is handed to the point-in-triangle test.  A zero denominator
+ * gives an infinity the window test rejects -- no guard, none needed.
+ *
+ * Byte-exact 2026-09-27.  Four source facts decide the x87 schedule:
+ * the normal is read through the struct (`pN->x`) in the denominator and
+ * through `n[]` in the numerator; v0 is its own BrVec3 pointer local; both
+ * dot products are written flat (`a + b + c`, no inner parentheses); and
+ * the function's position in this file (see the placement note below).
+ * Without them (float)s[1] stays in a register instead of
+ * being spilled to pN's arg slot, the frame is 0x18 not 0x1c, and the
+ * y/z and n0/v0 load roles swap. */
+/* Defined ahead of the frame helpers: BrCrExact is position-sensitive (it
+ * was exact only with BrCollRespTipKick ahead of it), and this slot keeps
+ * it exact with TipKick defined after the collision tests. */
+/* @implements 0x10066950 glide BrCrExact */
+static int BrCrExact(const float aV[9], const BrVec3 *pN)
+{
+    const float *n = &pN->x;
+    const BrVec3 *v0 = (const BrVec3 *)(const void *)aV;
+    int          s[3];
+    BrVec3       P;
+    float        t;
+    int          i;
+
+    for (i = 0; i < 3; ++i) {
+        if (BrCollRespSegBox((const BrVec3 *)(const void *)(aV + i * 3),
+                             (const BrVec3 *)(const void *)
+                             (aV + ((i + 1) % 3) * 3)) != 0) {
+            return 1;
+        }
+    }
+    for (i = 0; i < 3; ++i) {
+        s[i] = !((&pN->x)[i] >= BR_CR_ZERO_F) ? -1 : 1;
+    }
+    t = (n[0] * v0->x + n[1] * v0->y + n[2] * v0->z)
+      / (pN->x * s[0] + pN->y * s[1] + pN->z * s[2]);
+    if (!((t - BR_CR_FACE_LO) * (t - BR_CR_FACE_HI) <= BR_CR_ZERO_D)) {
+        return 0;
+    }
+    P.x = t * s[0];
+    P.y = t * s[1];
+    P.z = t * s[2];
+    return BrCollRespPointInTri(aV, pN, &P);
+}
+
+
 void BrCollRespBuildBoxMatrix(BrCollRespFrame *pF, const BrMat4 *pBody,
                               float sx, float sy, float sz)
 {
@@ -236,171 +291,7 @@ int BrPodNop();                           /* 0x10008D60, the trace stub     */
 #define BR_TIP_SIGN(x) ((x) == DAT_10077a78 ? DAT_10077a78 \
                         : ((x) > DAT_10077a78 ? DAT_10077a7c : DAT_10077a80))
 
-/* Matching transcription 2026-09-13 (replaces the loop-form port in the
- * matching build): 1782/1782 B, 512/512 insns, register-blind multiset 0+0,
- * 63 positional diffs in four masked regions.  Levers that landed: the wheel
- * pointer is ONE variable assigned INSIDE the arm from a re-read of
- * `child[k]` (the test reads through the field; the original's block-1 skip
- * path reloads the uninitialised pointer from the slot `best` shares -- do
- * not initialise it); `count` is folded to `= 1` in block 1 by VC5 itself;
- * block 1 compares `t` against the GLOBAL ceiling DAT_10077b70, blocks 2-4
- * against `best` (`best >= t`); the z term needs `(double)f1E8 - f1E4 * K`
- * (fld f1E8 first, then the product, fsubp) -- the plain float form is
- * canonicalised to `fsubr [f1E8]`; the absolute value of `vn` is the
- * two-read conditional BR_TIP_ABS inside the compare (a store-form abs CSEs
- * the load); the +-0.1 kick is float stores, zeros are float stores (int
- * zeros form a zero web); the angular-velocity updates go through the body,
- * `pState` only feeds the last call.  The wheel dot `vn` MUST be grouped
- * `(nx*wx + ny*wy) + nz*wz`: the flat sum is re-associated to (t1+t3)+t2 and
- * emitted sequentially around the `add esp`/`sub esp` pair (-4 insns, the
- * four `fxch` of the preload shape); `x + (y + z)` restores the shape, the
- * explicit left group also restores the term order.
- * RESIDUE (allocation only): the `count` reload web is ecx in the original,
- * eax here (3 rows); `p` and `w` sit swapped in the frame (0x24/0x18 vs
- * 0x18/0x24); in the chassis dot `s` the original loads the normal first in
- * the two esi-based products (`fld ny; fmul m01`), ours loads the matrix
- * element first -- same association (ny*m01 + nz*m02) + nx*m00, same count.
- * DEAD for `s` (byte-identical or worse): every term permutation and
- * parenthesisation, operand swaps inside the products, a running sum, the
- * normal as plain members / a float[3] / a BrGroundHit / a BrGroundHit
- * pointer / a BrVec3 pointer / `(&hit.nx)[k]` / `((float *)&hit.nx)[k]`, the
- * matrix as BrMat4 via the body / via pM (un-folds to [ebp+k], -6 B) / a
- * named-scalar view cast from `&pBody->m` / `(&m.m[0][0])[k]`, a dead early
- * read of m01/m02; corpus MISS on both dot shapes.  DEAD for the colouring:
- * `count` as unsigned/long, `++count`, `+= 1`, `= count + 1`, declared first
- * or last; `w`/`p` declaration order, one declaration either order, an
- * early reference to `w` (+8 B), `best` declared last.
- * @t4-pass 0x10066D70 1 2026-09-13 probes 23 bytes 1782 insns 512 regions 4 rows 8 census no  (vn shape: 11 spellings, 12 groupings)
- * @t4-pass 0x10066D70 2 2026-09-13 probes 17 bytes 1782 insns 512 regions 4 rows 8 census yes  (s operand order: corpus MISS, symbol/offset/shape mechanism probes)
- * @t4-pass 0x10066D70 3 2026-09-13 probes 12 bytes 1782 insns 512 regions 4 rows 8 census no  (count web, p/w slot order)
- */
-/* WHAT IT DOES: after rebuilding the body matrix from the saved state, walks
- * the four wheels: for every wheel with a ground contact it places the box
- * corner on that wheel's side (half extents, signed by the wheel's world
- * point, z lowered by half the z extent), transforms it to world, measures
- * its distance from the wheel's ground plane (made positive) and keeps the
- * smallest, remembering the last contacting wheel.  With exactly one or two
- * wheels touching and the corner within the stand distance, it takes the
- * corner's body-frame velocity, projects it on the last wheel's plane normal
- * and, if the corner is nearly at rest, kicks the saved angular velocity by
- * twice a small pitch vector (sign from the chassis plane's alignment with
- * the car's own axis), then refreshes the quaternion derivative.  Returns 1
- * when the kick was applied. */
-/* @t3 0x10066D70 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1782/1782 insns 512/512 rows 4+4 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 3 zero-movement 2 3
- * Residue is allocation only: the `count` reload web coloured eax for ecx
- * (3 rows), the p/w frame slot pair swapped, and the operand order inside
- * the two esi-based products of the chassis dot `s`.  Dossier and dead
- * list are the comment block above this one.
- * Do not reopen before the end-grind. */
-/* @implements 0x10066D70 glide BrCollRespTipKick */
-int BrCollRespTipKick(BrTipView *pBody)
-{
-    BrRbState *pState;
-    BrMat4    *pM;
-    BrTipView *pW;
-    BrVec3    *pN;
-    int        count;
-    float      best;
-    BrVec3     p;
-    BrVec3     w;
-    float      t;
-    float      vn;
-    float      s;
-
-    pM = &pBody->m;
-    pState = &pBody->state;
-    BrRbBuildMatrix(pM, pState);
-    count = 0;
-    best = 100.0f;
-
-    if (pBody->child[0]->f1B4 != 0) {
-        pW = pBody->child[0];
-        count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
-        BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
-        else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
-        if (DAT_10077b70 >= t)
-            best = t;
-    }
-    if (pBody->child[1]->f1B4 != 0) {
-        pW = pBody->child[1];
-        count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
-        BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
-        else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
-        if (best >= t)
-            best = t;
-    }
-    if (pBody->child[2]->f1B4 != 0) {
-        pW = pBody->child[2];
-        count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
-        BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
-        else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
-        if (best >= t)
-            best = t;
-    }
-    if (pBody->child[3]->f1B4 != 0) {
-        pW = pBody->child[3];
-        count++;
-        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
-        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
-        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
-        BrMat4TransformPoint(&w, pM, &p);
-        pN = (BrVec3 *)&pW->hit.nx;
-        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
-            t = -BrPlaneEval(pN, pW->hit.d, &w);
-        else
-            t = BrPlaneEval(pN, pW->hit.d, &w);
-        if (best >= t)
-            best = t;
-    }
-
-    if (count > 2 || count < 1)
-        return 0;
-    BrPodNop(DAT_100b5210, (double)best);
-    if (best > DAT_10077b78)
-        return 0;
-    BrRbVelAtPoint(&w, (const BrRbBodyFull *)pBody, &p);
-    vn = (pW->hit.nx * w.x + pW->hit.ny * w.y) + pW->hit.nz * w.z;
-    BrPodNop(DAT_100b51fc, (double)vn);
-    if (BR_TIP_ABS(vn) > DAT_10077af4)
-        return 0;
-    s = pBody->hit.nx * pM->m[0][0] + pBody->hit.nz * pBody->m.m[0][2]
-      + pBody->hit.ny * pBody->m.m[0][1];
-    p.x = 0.0f;
-    p.y = 0.1f;
-    if (s <= DAT_10077a78)
-        p.y = -0.1f;
-    p.z = 0.0f;
-    BrPodNop(DAT_100b51e4, (double)s);
-    BrMat4MulVec3Transposed(&w, pM, &p);
-    pBody->state.angVel.x = pBody->state.angVel.x - w.x * DAT_10077a84;
-    pBody->state.angVel.y = pBody->state.angVel.y - w.y * DAT_10077a84;
-    pBody->state.angVel.z = pBody->state.angVel.z - w.z * DAT_10077a84;
-    BrRbQuatDerivative(pState);
-    return 1;
-}
+int BrCollRespTipKick(BrTipView *pBody);
 
 /* ==================================================================== */
 /* 0x10066260 -- the 26-plane outcode classify                           */
@@ -718,56 +609,9 @@ int BrCollRespSegBox(const BrVec3 *pA, const BrVec3 *pB)
     return 1;
 }
 
-/* ==================================================================== */
-/* 0x10066950 -- the exact test, for the classify's -1                   */
-/* ==================================================================== */
-/* WHAT IT DOES: the expensive answer when the cheap classify said -1: the
- * triangle meets the unit cube if any edge passes through it, or else if
- * the cube's diagonal that points along the normal pierces the triangle.
- * The diagonal is s = sign(n) per axis (+-1 INTS, `fild`ed where used);
- * t = dot(n, v0) / dot(n, s) places the hit on it, |t| <= 0.5 keeps it
- * inside the cube (a NaN keeps going too: `test ah,0x41` + `jne`), and the
- * point t*s is handed to the point-in-triangle test.  A zero denominator
- * gives an infinity the window test rejects -- no guard, none needed.
- *
- * Byte-exact 2026-09-27.  Four source facts decide the x87 schedule:
- * the normal is read through the struct (`pN->x`) in the denominator and
- * through `n[]` in the numerator; v0 is its own BrVec3 pointer local; both
- * dot products are written flat (`a + b + c`, no inner parentheses); and
- * the function sits here, after SegBox and ahead of PointInTri, as in the
- * original.  Without them (float)s[1] stays in a register instead of
- * being spilled to pN's arg slot, the frame is 0x18 not 0x1c, and the
- * y/z and n0/v0 load roles swap. */
-/* @implements 0x10066950 glide BrCrExact */
-static int BrCrExact(const float aV[9], const BrVec3 *pN)
-{
-    const float *n = &pN->x;
-    const BrVec3 *v0 = (const BrVec3 *)(const void *)aV;
-    int          s[3];
-    BrVec3       P;
-    float        t;
-    int          i;
-
-    for (i = 0; i < 3; ++i) {
-        if (BrCollRespSegBox((const BrVec3 *)(const void *)(aV + i * 3),
-                             (const BrVec3 *)(const void *)
-                             (aV + ((i + 1) % 3) * 3)) != 0) {
-            return 1;
-        }
-    }
-    for (i = 0; i < 3; ++i) {
-        s[i] = !((&pN->x)[i] >= BR_CR_ZERO_F) ? -1 : 1;
-    }
-    t = (n[0] * v0->x + n[1] * v0->y + n[2] * v0->z)
-      / (pN->x * s[0] + pN->y * s[1] + pN->z * s[2]);
-    if (!((t - BR_CR_FACE_LO) * (t - BR_CR_FACE_HI) <= BR_CR_ZERO_D)) {
-        return 0;
-    }
-    P.x = t * s[0];
-    P.y = t * s[1];
-    P.z = t * s[2];
-    return BrCollRespPointInTri(aV, pN, &P);
-}
+/* Redeclared here, where the original defines it: removing this line
+ * moves BrCollRespTipKick's x87 operand roles. */
+static int BrCrExact(const float aV[9], const BrVec3 *pN);
 
 /* ==================================================================== */
 /* 0x10066610 -- point in triangle, by 2D crossing count                 */
@@ -886,6 +730,163 @@ int BrCollRespPointInTri(const float aV[9], const BrVec3 *pN,
     }
     return acc;
 }
+
+/* Matching transcription 2026-09-13 (replaces the loop-form port in the
+ * matching build): 1782/1782 B, 512/512 insns, register-blind multiset 0+0,
+ * 63 positional diffs in four masked regions.  Levers that landed: the wheel
+ * pointer is ONE variable assigned INSIDE the arm from a re-read of
+ * `child[k]` (the test reads through the field; the original's block-1 skip
+ * path reloads the uninitialised pointer from the slot `best` shares -- do
+ * not initialise it); `count` is folded to `= 1` in block 1 by VC5 itself;
+ * block 1 compares `t` against the GLOBAL ceiling DAT_10077b70, blocks 2-4
+ * against `best` (`best >= t`); the z term needs `(double)f1E8 - f1E4 * K`
+ * (fld f1E8 first, then the product, fsubp) -- the plain float form is
+ * canonicalised to `fsubr [f1E8]`; the absolute value of `vn` is the
+ * two-read conditional BR_TIP_ABS inside the compare (a store-form abs CSEs
+ * the load); the +-0.1 kick is float stores, zeros are float stores (int
+ * zeros form a zero web); the angular-velocity updates go through the body,
+ * `pState` only feeds the last call.  The wheel dot `vn` MUST be grouped
+ * `(nx*wx + ny*wy) + nz*wz`: the flat sum is re-associated to (t1+t3)+t2 and
+ * emitted sequentially around the `add esp`/`sub esp` pair (-4 insns, the
+ * four `fxch` of the preload shape); `x + (y + z)` restores the shape, the
+ * explicit left group also restores the term order.
+ * The last three rows fell to the N64 build's shape of this function
+ * (BrCollRespTipKick in n64/src/driving/collresp.c) plus placement:
+ * `count++` comes before the wheel pointer in each arm (the original's
+ * ecx web), the kick vector is written whole in both arms of the sign test
+ * (enough references to p to put it below w in the frame), the chassis dot
+ * is the plain m00*nx + m01*ny + m02*nz, and the function is defined after
+ * BrCollRespPointInTri: VC5's x87 operand roles for the chassis dot follow
+ * the preceding definitions, and only a slot after the collision tests
+ * loads the normal first as the original does.
+ * @t4-pass 0x10066D70 1 2026-09-13 probes 23 bytes 1782 insns 512 regions 4 rows 8 census no  (vn shape: 11 spellings, 12 groupings)
+ * @t4-pass 0x10066D70 2 2026-09-13 probes 17 bytes 1782 insns 512 regions 4 rows 8 census yes  (s operand order: corpus MISS, symbol/offset/shape mechanism probes)
+ * @t4-pass 0x10066D70 3 2026-09-13 probes 12 bytes 1782 insns 512 regions 4 rows 8 census no  (count web, p/w slot order)
+ */
+/* WHAT IT DOES: after rebuilding the body matrix from the saved state, walks
+ * the four wheels: for every wheel with a ground contact it places the box
+ * corner on that wheel's side (half extents, signed by the wheel's world
+ * point, z lowered by half the z extent), transforms it to world, measures
+ * its distance from the wheel's ground plane (made positive) and keeps the
+ * smallest, remembering the last contacting wheel.  With exactly one or two
+ * wheels touching and the corner within the stand distance, it takes the
+ * corner's body-frame velocity, projects it on the last wheel's plane normal
+ * and, if the corner is nearly at rest, kicks the saved angular velocity by
+ * twice a small pitch vector (sign from the chassis plane's alignment with
+ * the car's own axis), then refreshes the quaternion derivative.  Returns 1
+ * when the kick was applied. */
+/* @implements 0x10066D70 glide BrCollRespTipKick */
+int BrCollRespTipKick(BrTipView *pBody)
+{
+    BrRbState *pState;
+    BrMat4    *pM;
+    BrTipView *pW;
+    BrVec3    *pN;
+    int        count;
+    float      best;
+    BrVec3     p;
+    BrVec3     w;
+    float      t;
+    float      vn;
+    float      s;
+
+    pM = &pBody->m;
+    pState = &pBody->state;
+    BrRbBuildMatrix(pM, pState);
+    count = 0;
+    best = 100.0f;
+
+    if (pBody->child[0]->f1B4 != 0) {
+        count++;
+        pW = pBody->child[0];
+        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        BrMat4TransformPoint(&w, pM, &p);
+        pN = (BrVec3 *)&pW->hit.nx;
+        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
+            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        else
+            t = BrPlaneEval(pN, pW->hit.d, &w);
+        if (DAT_10077b70 >= t)
+            best = t;
+    }
+    if (pBody->child[1]->f1B4 != 0) {
+        count++;
+        pW = pBody->child[1];
+        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        BrMat4TransformPoint(&w, pM, &p);
+        pN = (BrVec3 *)&pW->hit.nx;
+        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
+            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        else
+            t = BrPlaneEval(pN, pW->hit.d, &w);
+        if (best >= t)
+            best = t;
+    }
+    if (pBody->child[2]->f1B4 != 0) {
+        count++;
+        pW = pBody->child[2];
+        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        BrMat4TransformPoint(&w, pM, &p);
+        pN = (BrVec3 *)&pW->hit.nx;
+        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
+            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        else
+            t = BrPlaneEval(pN, pW->hit.d, &w);
+        if (best >= t)
+            best = t;
+    }
+    if (pBody->child[3]->f1B4 != 0) {
+        count++;
+        pW = pBody->child[3];
+        p.x = (pBody->f1DC * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.x);
+        p.y = (pBody->f1E0 * DAT_10077ac8) * BR_TIP_SIGN(pW->f78.y);
+        p.z = (double)pBody->f1E8 - pBody->f1E4 * DAT_10077ac8;
+        BrMat4TransformPoint(&w, pM, &p);
+        pN = (BrVec3 *)&pW->hit.nx;
+        if (BrPlaneEval(pN, pW->hit.d, &w) < DAT_10077a78)
+            t = -BrPlaneEval(pN, pW->hit.d, &w);
+        else
+            t = BrPlaneEval(pN, pW->hit.d, &w);
+        if (best >= t)
+            best = t;
+    }
+
+    if (count > 2 || count < 1)
+        return 0;
+    BrPodNop(DAT_100b5210, (double)best);
+    if (best > DAT_10077b78)
+        return 0;
+    BrRbVelAtPoint(&w, (const BrRbBodyFull *)pBody, &p);
+    vn = (pW->hit.nx * w.x + pW->hit.ny * w.y) + pW->hit.nz * w.z;
+    BrPodNop(DAT_100b51fc, (double)vn);
+    if (BR_TIP_ABS(vn) > DAT_10077af4)
+        return 0;
+    s = pM->m[0][0] * pBody->hit.nx + pBody->m.m[0][1] * pBody->hit.ny
+      + pBody->m.m[0][2] * pBody->hit.nz;
+    if (s > DAT_10077a78) {
+        p.x = 0.0f;
+        p.y = 0.1f;
+        p.z = 0.0f;
+    } else {
+        p.x = 0.0f;
+        p.y = -0.1f;
+        p.z = 0.0f;
+    }
+    BrPodNop(DAT_100b51e4, (double)s);
+    BrMat4MulVec3Transposed(&w, pM, &p);
+    pBody->state.angVel.x = pBody->state.angVel.x - w.x * DAT_10077a84;
+    pBody->state.angVel.y = pBody->state.angVel.y - w.y * DAT_10077a84;
+    pBody->state.angVel.z = pBody->state.angVel.z - w.z * DAT_10077a84;
+    BrRbQuatDerivative(pState);
+    return 1;
+}
+
 
 /* 0x10066AA0 -- classify, and resolve the inconclusive answer. */
 /* WHAT IT DOES: decides whether a triangle touches the car's collision box.
@@ -1016,3 +1017,5 @@ int BrCollRespBroadPhase(const BrRbBodyFull *pBody, const BrMat4 *pMatBox)
     return n;
 }
 #undef BR_CR_GATHER_ONE
+
+

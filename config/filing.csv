@@ -1419,3 +1419,4 @@ glide_va,name,module,basis,file
 0x10029510,BrGbiTexScanLoadBlock,drawing,filed,src/core/drawing/br_gbihandlers.c
 0x1001EC30,BrDlsTileSizeDecode,drawing,filed,src/core/drawing/br_dlshared.c
 0x10010FB0,BrPanelDlBuild,drawing,filed,src/core/drawing/br_paneldl.c
+0x10066D70,BrCollRespTipKick,driving,filed,src/core/driving/br_collresp.c
