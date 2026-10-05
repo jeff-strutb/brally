@@ -136,7 +136,7 @@ def main():
                 bt.print_rotation(fn, brace)
             if a.ids:
                 bt.print_ids(fn)
-        shutil.copy(obj, f'{HERE}/last.obj')
+        pass
     finally:
         for p in procs:
             if p.poll() is None:
