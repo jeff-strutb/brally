@@ -60,8 +60,8 @@ void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrRaceGateStep(BrRaceEnt *e);
 #define VEC3_COPY(d, s)                                                 \
 {                                                                       \
-  float *_s = (float *)(s);                                             \
   float *_d = (float *)(d);                                             \
+  float *_s = (float *)(s);                                             \
                                                                         \
   _d[0] = _s[0];                                                        \
   _d[1] = _s[1];                                                        \
@@ -79,25 +79,20 @@ void BrRaceGateStep(BrRaceEnt *e);
  * segment where its distance falls, advanced by the watched car's speed (or
  * a fixed step), then takes the walk's route, point and position, derives
  * its velocity and runs the timing gates.
- * RESIDUE (334, 32 bytes short): the ROM copies the car's position with
- * both addresses in registers (src = car + 0x30, dst = car + 0xF50) and each
- * load stored before the next, as if it could not tell the two apart; every
- * spelling tried here folds the offsets.  The frame is 0x60 against 0x58
- * here, with the path fraction spilled at 0x30. */
-/* @t4-pass 0x8022C9FC 1 2026-09-29 compiles 99 best 334 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8022C9FC 2 2026-09-29 compiles 99 best 334 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8022C9FC */
+ * The position saves read both addresses through e->car, so the store
+ * through one may change the other and each load is stored before the
+ * next.  The held-at-start arm keeps its own car and control locals; the
+ * path fraction is built up in place in a local of the carless arm. */
 /* @implements 0x8022C9FC tgr BrGhostPlaybackStep */
 void BrGhostPlaybackStep(BrRaceEnt *e)
 {
   BrCar *car;
   unsigned int flags;
-  float t;
   void (*ctl)(BrCar *);
 
   if (e->car != 0 && TGR_PTR(BrCar *, e->car)->xed8 == TGR_FA(BrCtlAi) && D_8026FF18 != 5) {
     *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) &= 0xF000000;
-    ((float *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[8] = 0.0f;
+    ((float *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[8] = 0;
   }
   if (D_8026FF10 != 0) {
     D_802A4920[0].x8 = 0;
@@ -113,23 +108,25 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
     return;
   }
   flags = e->flags;
-  car = TGR_PTR(BrCar *, e->car);
   if (flags & 1) {
-    if (car != 0) {
-      *TGR_PTR(unsigned int *, car->pad) |= 0x40000;
+    if (e->car != 0) {
+      BrCar *car;
+      void (*ctl)(BrCar *);
+
+      *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) |= 0x40000;
       TGR_PTR(BrCar *, e->car)->xe40 = 0;
+      VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
       car = TGR_PTR(BrCar *, e->car);
-      VEC3_COPY(&car->posPrev, car->mtx0[3]);
-      ctl = TGR_FN(void (*)(BrCar *), TGR_PTR(BrCar *, e->car)->xed8);
+      ctl = TGR_FN(void (*)(BrCar *), car->xed8);
       if (ctl != 0) {
-        ctl(TGR_PTR(BrCar *, e->car));
+        ctl(car);
       }
       TGR_PTR(BrCar *, e->car)->xe40 = 0;
     }
   } else if (flags & 2) {
-    if (car != 0) {
+    if (e->car != 0) {
       if (D_8026FF18 != 0 || e->x64 < D_8026FF08) {
-        *TGR_PTR(unsigned int *, car->pad) = 0xC0000;
+        *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) = 0xC0000;
         ((signed char *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[0x24] = -0x7F;
         ((float *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[8] = -1.0f;
       }
@@ -140,16 +137,16 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
           TGR_PTR(BrCar *, e->car)->x2064 = 0.0f;
         }
       }
+      VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
       car = TGR_PTR(BrCar *, e->car);
-      VEC3_COPY(&car->posPrev, car->mtx0[3]);
-      ctl = TGR_FN(void (*)(BrCar *), TGR_PTR(BrCar *, e->car)->xed8);
+      ctl = TGR_FN(void (*)(BrCar *), car->xed8);
       if (ctl != 0) {
-        ctl(TGR_PTR(BrCar *, e->car));
+        ctl(car);
       }
     }
-  } else if (car != 0) {
-    if (car->colour[3] == 2) {
-      car->x2064 += D_8028AAD8 * D_802A9D54;
+  } else if (e->car != 0) {
+    if (TGR_PTR(BrCar *, e->car)->colour[3] == 2) {
+      TGR_PTR(BrCar *, e->car)->x2064 += D_8028AAD8 * D_802A9D54;
       if (D_8026FF18 == 2 && e->x64 != 0) {
         if (TGR_PTR(BrCar *, e->car)->x2064 > 0.375f) {
           TGR_PTR(BrCar *, e->car)->x2064 = 0.375f;
@@ -159,23 +156,25 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
         TGR_PTR(BrCar *, e->car)->colour[3] = 0;
       }
     }
+    VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
     car = TGR_PTR(BrCar *, e->car);
-    VEC3_COPY(&car->posPrev, car->mtx0[3]);
-    ctl = TGR_FN(void (*)(BrCar *), TGR_PTR(BrCar *, e->car)->xed8);
+    ctl = TGR_FN(void (*)(BrCar *), car->xed8);
     if (ctl != 0) {
-      ctl(TGR_PTR(BrCar *, e->car));
+      ctl(car);
     }
-    car = TGR_PTR(BrCar *, e->car);
-    car->xfe4[1] = car->xfe4[1] + car->xfe4[0] * D_8028AAD8;
+    TGR_PTR(BrCar *, e->car)->xfe4[1] += TGR_PTR(BrCar *, e->car)->xfe4[0] * D_8028AAD8;
   } else {
+    float t;
+
     e->posPrev.x = e->pos.x;
     e->posPrev.y = e->pos.y;
     e->posPrev.z = e->pos.z;
-    t = ((BEF(D_80025C70->pt[0].dist) * (e->x44 + 1) - e->progress) - BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt + 1].dist)) /
-        (BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt].dist) - BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt + 1].dist));
+    t = BEF(D_80025C70->pt[0].dist) * (e->x44 + 1) - e->progress;
+    t -= BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt + 1].dist);
+    t /= BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt].dist) - BEF(TGR_PTR(BrRoute *, e->route)->pt[e->pt + 1].dist);
     if (D_8031B760[D_8026FF08 + e->group].link != 0) {
       BrPathWalk(TGR_PTR(BrRoute *, e->route), e->pt, t, BrVec3Length(&D_8031B760[D_8026FF08 + e->group].velfd8) * D_8028AAD8);
-      e->progress = e->progress + BrVec3Length(&D_8031B760[D_8026FF08 + e->group].velfd8) * D_8028AAD8;
+      e->progress += BrVec3Length(&D_8031B760[D_8026FF08 + e->group].velfd8) * D_8028AAD8;
     } else {
       BrPathWalk(TGR_PTR(BrRoute *, e->route), e->pt, t, 2.22f);
       e->progress = e->progress + D_802A9D58;

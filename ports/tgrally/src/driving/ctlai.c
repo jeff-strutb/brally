@@ -306,20 +306,16 @@ void BrCarEntInit(BrCarEnt *e)
  * span crosses (and how many times gate 0); where d runs out, interpolate
  * the point into D_8031B750, count the part-span's gate too, and keep the
  * segment and point.
- * RESIDUE (74, 156/158 instructions): register allocation in the final
- * span.  The ROM keeps gate 0's address in s7 and 0x14 in fp through the
- * loop, then re-materialises gate 0 and holds the point and D_8031B750 in
- * s1/s7 across the interpolation; ours swaps s7/fp and spills the point.
- * Landed: gate 0 as its own symbol (D_80025C98), the gate by index k. */
-/* @t4-pass 0x80228E4C 1 2026-10-03 compiles 117 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80228E4C 2 2026-10-03 compiles 118 best 74 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80228E4C */
+ * Each arm declares its own gate index k, so the frame keeps no homes
+ * (0x48).  The span test compares against gate 0 as its own symbol
+ * (D_80025C98), held in s7; the interpolated part-span tests k == 0, so
+ * that address is re-materialised there and s7 holds D_8031B750 across the
+ * interpolation, as in the ROM. */
 /* @implements 0x80228E4C tgr BrPathGates */
 void BrPathGates(BrPathSeg *seg, float d)
 {
   int i;
   float len;
-  int k;
 
   D_8028B82C = 0;
   D_8028B830 = 0;
@@ -337,10 +333,10 @@ void BrPathGates(BrPathSeg *seg, float d)
       if (len < d) {
         d -= len;
         if (BES32(D_80025C00.nGates) != 0) {
-          k = (D_8028B82C + 1) % BES32(D_80025C00.nGates);
+          int k = (D_8028B82C + 1) % BES32(D_80025C00.nGates);
           if (BrSegmentsOverlapXY(BRF(D_80025C00.gate[k].b), BRF(D_80025C00.gate[k].a), BRV(&seg->pt[i].pos), BRV(&seg->pt[i + 1].pos))) {
             D_8028B82C++;
-            if (&D_80025C00.gate[k] == D_80025C98) {
+            if (D_80025C98 == &D_80025C00.gate[k]) {
               D_8028B830++;
             }
           }
@@ -348,10 +344,10 @@ void BrPathGates(BrPathSeg *seg, float d)
       } else {
         BrVec3Lerp(&D_8031B750, BRV(&seg->pt[i + 1].pos), BRV(&seg->pt[i].pos), d / len);
         if (BES32(D_80025C00.nGates) != 0) {
-          k = (D_8028B82C + 1) % BES32(D_80025C00.nGates);
+          int k = (D_8028B82C + 1) % BES32(D_80025C00.nGates);
           if (BrSegmentsOverlapXY(BRF(D_80025C00.gate[k].b), BRF(D_80025C00.gate[k].a), BRV(&seg->pt[i].pos), &D_8031B750)) {
             D_8028B82C++;
-            if (&D_80025C00.gate[k] == D_80025C98) {
+            if (k == 0) {
               D_8028B830++;
             }
           }
@@ -1018,43 +1014,30 @@ void BrStub80228E44(int arg0)
  * stepping 0.034 from slot * 0.137 (then cleared again with their
  * partners), the lane kinds to 2, the targets to i * 0.15, the 144 path
  * nodes emptied and 36 flags set to 2.
- * RESIDUE (83): the ROM loads 0.034 before 0.137 (so its literal pool
- * order differs too) and finishes the lane chain before the other small
- * loops; ours interleaves them.  Each small loop needs its own counter or
- * IDO leaves it rolled. */
-/* @t4-pass 0x802288D4 1 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802288D4 2 2026-09-26 compiles 17 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802288D4 3 2026-09-26 compiles 16 best 144 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802288D4 */
+ * Each lane is the previous one plus 0.034, written out, so each value is
+ * its own temporary (f0, f2, f12, f10) as in the ROM; the other small
+ * arrays share one counter loop, and the node loop steps the row pointer
+ * before the counter. */
 /* @implements 0x802288D4 tgr BrAiLaneSetup */
 void BrAiLaneSetup(BrAiCar *a)
 {
   int i;
-  int j;
   int k;
-  int m;
-  int q;
-  float x;
   BrAiNode *n;
   short (*p)[3];
 
-  x = a->slot * 0.137f;
-  for (j = 0; j < 4; j++) {
-    a->lane[j] = x;
-    x += 0.034f;
-  }
+  a->lane[0] = a->slot * 0.137f;
+  a->lane[1] = a->lane[0] + 0.034f;
+  a->lane[2] = a->lane[1] + 0.034f;
+  a->lane[3] = a->lane[2] + 0.034f;
   for (k = 0; k < 4; k++) {
-    a->x1090[k] = 0;
     a->x1070[k] = 2;
+    a->x1090[k] = 0;
+    a->lane[k] = 0.0f;
+    a->x1020[k] = 0.15f * k;
+    a->x1080[k] = 0.0f;
   }
-  for (m = 0; m < 4; m++) {
-    a->x1020[m] = 0.15f * m;
-  }
-  for (q = 0; q < 4; q++) {
-    a->lane[q] = 0.0f;
-    a->x1080[q] = 0.0f;
-  }
-  for (i = 0, p = a->x19d0, n = a->node; i < 0x90; i++, p++, n++) {
+  for (p = a->x19d0, n = a->node, i = 0; i < 0x90; p++, i++, n++) {
     (*p)[0] = (*p)[1] = (*p)[2] = 0;
     n->x0[0] = 0;
     n->x0[1] = 0;

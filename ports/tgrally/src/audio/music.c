@@ -568,27 +568,26 @@ void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int
 /* WHAT IT DOES: Keep the music voices' samples looping: a channel with an
  * instrument whose voice has run past the end of the sample jumps back by
  * the loop length, or falls silent if the sample does not loop.
- * RESIDUE (26): temporaries one register later than the ROM's, and the
- * loop/stop arms laid the other way round. */
-/* @t4-pass 0x80256D3C 1 2026-09-29 compiles 26 best 26 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80256D3C 2 2026-09-29 compiles 26 best 26 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80256D3C */
+ * The instrument number is an int, and the sample is indexed from the
+ * table at each use rather than held in a pointer, so the end address is
+ * the busier web and is coloured first, as the ROM has it (v1), and the
+ * sample address second (a2). */
 /* @implements 0x80256D3C tgr BrMusicLoopSamples */
 void BrMusicLoopSamples(void)
 {
   int i;
-  unsigned char n;
-  BrSample *smp;
+  int n;
+  unsigned int end;
 
   for (i = 0; i < D_802A49C0; i++) {
     n = D_80378DD0[i].smp;
     if (n != 0) {
-      smp = D_803787D0[n - 1];
-      if (BE32(smp->len) + tgr_addr32(smp) + 0x28 < D_802A4798[i].pos) {
-        if (smp->loops != 0) {
-          D_802A4798[i].pos -= BE32(smp->loopLen);
-        } else {
+      end = tgr_addr32(D_803787D0[n - 1]) + BE32(D_803787D0[n - 1]->len) + 0x28;
+      if (end < D_802A4798[i].pos) {
+        if (D_803787D0[n - 1]->loops == 0) {
           D_802A4798[i].rate = 0;
+        } else {
+          D_802A4798[i].pos -= BE32(D_803787D0[n - 1]->loopLen);
         }
       }
     }

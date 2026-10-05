@@ -103,22 +103,19 @@ void BrCheatToggleAA68(void)
 /* WHAT IT DOES: Record a change of the held buttons in the controller's
  * 128-entry history ring, and run every cheat whose button sequence
  * matches the newest entries.
- * RESIDUE (11): register naming only -- the ROM keeps the sequence
- * pointer in a2, ours in a0 (and one move/addiu pair swaps with it).  The
- * head's decrement-and-store through pad->pos and the compare-then-advance
- * loop took it from 33; declaration order, statement order in the loop
- * head, the table start spelling and 295 permuter compiles leave 11. */
-/* @t4-pass 0x80255048 1 2026-09-29 compiles 25 best 11 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80255048 2 2026-09-29 compiles 25 best 11 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80255048 */
+ * The sequence is indexed (seq[k]) rather than walked with a second
+ * pointer, so seq stays live across the match loop and interferes with the
+ * history and the code read from it, which puts it in a2 as the ROM has it;
+ * IDO still strength-reduces the index to a pointer. */
 /* @implements 0x80255048 tgr BrCheatInput */
 void BrCheatInput(BrPadHistory *pad)
 {
   BrCheat *c;
-  be16_t *seq;                  /* the sequences are .data the lift does not reach: */
-  be16_t *p;                    /* big-endian, as the cartridge has them */
+  be16_t *seq;                  /* the sequences are .data the lift does not reach:
+                                   big-endian, as the cartridge has them */
   unsigned short *h;
   unsigned int i;
+  int k;
 
   if ((unsigned short)pad->pressed != pad->hist[pad->pos]) {
     pad->pos = (pad->pos - 1) & 0x7f;
@@ -128,12 +125,12 @@ void BrCheatInput(BrPadHistory *pad)
     while (seq != 0) {
       i = pad->pos;
       h = pad->hist;
-      p = seq;
-      while (BE16(*p) != 0xffff) {
-        if (BE16(*p) != h[i]) {
+      k = 0;
+      while (BE16(seq[k]) != 0xffff) {
+        if (BE16(seq[k]) != h[i]) {
           goto next;
         }
-        p++;
+        k++;
         i = (i + 1) & 0x7f;
       }
       TGR_FN(void (*)(void), c->fn)();

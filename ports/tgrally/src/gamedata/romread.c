@@ -270,12 +270,10 @@ void BrStreamInit(BrUnpack *s, unsigned char *buf)
  * reads go through a `void *` prototype so the static length can live in a
  * register, and the read position steps past each length word before its
  * DMA, as the ROM does; the size matches, which keeps the car-sound unpack
- * at frame 2917 of the races in step with the ROM.
- * RESIDUE: the ROM keeps the heap-end address in s4 where ours holds the
- * constant ~1 there. */
-/* @t4-pass 0x8021CD30 1 2026-10-04 compiles 120 best 136 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021CD30 2 2026-10-04 compiles 120 best 136 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021CD30 */
+ * at frame 2917 of the races in step with the ROM.  Two of the even-size
+ * masks are taken on an int, so the ~1 constant is two smaller webs that
+ * the allocator rematerialises; the heap pointers are cleared in one chain,
+ * which gives the heap end the use count that ranks it into s4. */
 /* @implements 0x8021CD30 tgr BrRomUnpack */
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
 {
@@ -323,7 +321,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   t0 = osGetCount();
   for (;;) {
     prev = D_8031B348;
-    if (((D_8031B348 + 5) & ~1) < left) {
+    if (((int)(D_8031B348 + 5) & ~1) < left) {
       if (rom & 1) {
         rom++;
       }
@@ -332,7 +330,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       rom += 4;
       osInvalDCache(buf + half, 16000);
       osPiStartDma(BrRomDmaSlot(), 0, 0, rom, buf + half, (D_8031B348 + 1) & ~1, &D_80319F88);
-      rom += (D_8031B348 + 1) & ~1;
+      rom += (int)(D_8031B348 + 1) & ~1;
     } else {
       BrRomWaitAll();
     }
@@ -348,11 +346,10 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       }
       BrInflate(dst, &out, buf + half, prev);
       if (s != 0) {
-        D_80368AC4 = 0;
-        D_80368AC0 = 0;
+        D_80368AC0 = D_80368AC4 = 0;
       }
-      left -= (prev + 5) & ~1;
       dst += out;
+      left -= (prev + 5) & ~1;
       if (left == 0) {
         break;
       }
@@ -365,12 +362,12 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   (unsigned long long)t0 * 1000000 / osClockRate;
   if (s != 0) {
     s->pos = rom;
+    s->dst = tgr_addr32(dst);
     s->left = left;
     s->total = total;
-    s->dst = tgr_addr32(dst);
+    s->size = size;
     s->half = half;
     s->buf = tgr_addr32(buf);
-    s->size = size;
     s->len = D_8031B348;
   }
   return size;

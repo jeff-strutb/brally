@@ -294,14 +294,10 @@ typedef struct BrCamView {      /* the lens offsets in a car's model buffer */
  * geometry flags, the viewport, texturing off, the colour image and the
  * depth image; then set the VI's dither and gamma features.  The high-res
  * frame buffers sit below the low-res pair, computed from the two link
- * symbols as integers.
- * RESIDUE (198): register naming only -- the instruction sequence is the
- * ROM's with registers ignored; every temporary is one number later from
- * the first block on, and the view table base lands in v1, not v0.  200
- * permuter compiles do not move it. */
-/* @t4-pass 0x80219470 1 2026-10-03 compiles 121 best 198 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80219470 2 2026-10-03 compiles 116 best 198 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80219470 */
+ * symbols as integers.  The resolution test is a subtraction (as is the
+ * changed-flag test below): its value takes a temporary, which the
+ * ROM's register numbering counts.  The split-screen width is computed in
+ * one step, so the view table base outranks it for v0. */
 /* @implements 0x80219470 tgr BrFrameBegin */
 void BrFrameBegin(int hires)
 {
@@ -309,7 +305,7 @@ void BrFrameBegin(int hires)
   int w;
   int h;
 
-  if (hires != D_8028A850) {
+  if (hires - D_8028A850) {
     D_8028A84C = 1;
     D_8028A850 = hires;
   }
@@ -326,10 +322,9 @@ void BrFrameBegin(int hires)
     x = 8;
     D_8031B2C8[1].x = x;
     D_8031B2C8[1].y = (D_8028AAB4 >> 1) + 1;
-    w = D_8028AAB0;
+    w = D_8028AAB0 - 0x60;
     h = (D_8028AAB4 >> 1) - 8;
     D_8031B2C8[1].h = h;
-    w -= 0x60;
     D_8031B2C8[1].w = w;
     D_8031B2C8[0].x = x;
     D_8031B2C8[0].y = x;
@@ -350,7 +345,7 @@ void BrFrameBegin(int hires)
       }
     }
   }
-  D_8028A858 = &D_8028A848[D_8028A85C][0x40];
+  D_8028A858 = D_8028A848[D_8028A85C] + 0x40;
   if (D_8028AA68 != 0) {
     D_8028A898 = 0x2000;
   } else {
@@ -1307,14 +1302,10 @@ void BrSchedInit(void)
  * save, run the message screen until it is dismissed (its reason in
  * 0x80270840); a pak in port 2 is initialised too; holding B at boot runs
  * the debug screen first.
- * The consume call takes pad 1's record through an int cast, which keeps
- * IDO from sharing the test's load with it.
- * RESIDUE (4): ours still forms the pad's address before the test and loads
- * through it; the ROM loads the word with lui/lw and builds the address in
- * the branch. */
-/* @t4-pass 0x8021C188 1 2026-10-03 compiles 119 best 47 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8021C188 2 2026-10-03 compiles 118 best 47 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8021C188 */
+ * The B test reads pad 1's pressed word through its absent field
+ * (0x8036A908, 0x28 further on), so the load has its own base: the ROM
+ * loads the word with lui/lw and builds the record's address for the
+ * consume call separately, where one symbol for both lets IDO share them. */
 /* @implements 0x8021C188 tgr BrBootCheck */
 void BrBootCheck(void)
 {

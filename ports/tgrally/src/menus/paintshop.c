@@ -645,11 +645,9 @@ void BrPaintKeyboard(void)
 }
 
 /* WHAT IT DOES: Move the paint shop cursor from the stick once it is pushed
- * past the dead zone, unless the cursor is locked. */
-/* @t4-pass 0x8024BE78 1 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024BE78 2 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024BE78 3 2026-09-26 compiles 16 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024BE78 */
+ * past the dead zone, unless the cursor is locked.  The x arms re-point pad
+ * at the controller; the y arms read the controller directly, so pad's one
+ * web stays the top-level pointer (a0) and the cursor's address takes v1. */
 /* @implements 0x8024BE78 tgr BrPaintStickMove */
 void BrPaintStickMove(void)
 {
@@ -675,11 +673,9 @@ void BrPaintStickMove(void)
     a = pad->axis[1] < 0.0 ? -pad->axis[1] : pad->axis[1];
     if (a >= D_802AB210) {
       if (BrPaintCursorInRect((int *)&D_8028DB94) != 0 && D_8028DBC4 == 0) {
-        pad = &PADS[D_8028DBBC];
-        D_8028D110.y -= (int)(pad->axis[1] * 6.0f);
+        D_8028D110.y -= (int)(PADS[D_8028DBBC].axis[1] * 6.0f);
       } else {
-        pad = &PADS[D_8028DBBC];
-        D_8028D110.y -= (int)(pad->axis[1] * 12.0f);
+        D_8028D110.y -= (int)(PADS[D_8028DBBC].axis[1] * 12.0f);
       }
     } else if (pad->pressed & 0x402) {
       D_8028D110.y++;
@@ -1319,12 +1315,9 @@ void BrPaintFrameRect(int sx0, int sy0, int sx1, int sy1)
  * midpoint circle walk at twice the resolution adds, on every other step,
  * the two spans above the band and the two below it.  The corners are
  * worked in the parameters, inset by the radius after the band.
- * RESIDUE (122): the ROM keeps the half steps in fp/s6 and the right edge in
- * s7; ours homes the half steps on the stack, which moves the span bounds'
- * registers. */
-/* @t4-pass 0x8024FBC8 1 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024FBC8 2 2026-10-03 compiles 30 best 122 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024FBC8 */
+ * As BrPaintDisc: each corner span's start and end are locals set before
+ * its loop, the half-widths are read as (a >> 1) and (b >> 1), a starts at
+ * 0 before err = -b, and the walk steps err += a++ and err -= b--. */
 /* @implements 0x8024FBC8 tgr BrPaintFillRoundRect */
 void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
@@ -1335,8 +1328,8 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
   int x;
   int a;
   int b;
-  int ha;
-  int hb;
+  int e;
+  int s;
   int err;
 
   sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
@@ -1362,28 +1355,34 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
   x1 -= r;
   sy1 -= r;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b; a++) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
-      for (x = sx0 - ha; x < ha + x1; x++) {
-        BrPaintPlot(x, sy0 - hb, D_8028DB58);
+      s = sx0 - (a >> 1);
+      e = (a >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy0 - (b >> 1), D_8028DB58);
       }
-      for (x = sx0 - hb; x < hb + x1; x++) {
-        BrPaintPlot(x, sy0 - ha, D_8028DB58);
+      s = sx0 - (b >> 1);
+      e = (b >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy0 - (a >> 1), D_8028DB58);
       }
-      for (x = sx0 - ha; x < ha + x1; x++) {
-        BrPaintPlot(x, sy1 + hb, D_8028DB58);
+      s = sx0 - (a >> 1);
+      e = (a >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy1 + (b >> 1), D_8028DB58);
       }
-      for (x = sx0 - hb; x < hb + x1; x++) {
-        BrPaintPlot(x, sy1 + ha, D_8028DB58);
+      s = sx0 - (b >> 1);
+      e = (b >> 1) + x1;
+      for (x = s; x < e; x++) {
+        BrPaintPlot(x, sy1 + (a >> 1), D_8028DB58);
       }
     }
-    err += a;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
@@ -1396,63 +1395,50 @@ void BrPaintFillRoundRect(int sx0, int sy0, int sx1, int sy1)
  * twice the resolution, each octant point a run as long as the brush (a
  * texel inward for the larger brushes).  The corners are worked in the
  * parameters, inset by the radius after the edges.
- * RESIDUE (496): the ROM holds the radius twice in its frame and keeps the
- * corners in their stack homes; ours keeps more in saved registers, which
- * reorders the edge loops' setup. */
-/* @t4-pass 0x8024FEB8 1 2026-10-03 compiles 31 best 494 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024FEB8 2 2026-10-03 compiles 31 best 494 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024FEB8 */
+ * The far corner is the sx1 parameter itself (no local copy), the half
+ * brush is read straight from the table, the radius is the shorter side's
+ * quarter plus a quarter brush in one expression, and the corner walk reads
+ * (a >> 1) and (b >> 1) at each use with a starting at 0 before err = -b,
+ * stepping err += a++ and err -= b--. */
 /* @implements 0x8024FEB8 tgr BrPaintFrameRoundRect */
 void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
 {
-  int x1;
   int t;
-  int bw;
   int hw;
-  int q;
-  int r;
+  int unused;                   /* declared, never used: the frame holds it */
   int x;
   int y;
+  int r;
   int a;
   int b;
-  int err;
-  int ha;
-  int hb;
   int k;
+  int err;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  x1 = (sx1 - D_8028DB94.x) >> 2;
-  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
-  if (x1 < sx0) {
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (sx1 < sx0) {
     t = sx0;
-    sx0 = x1;
-    x1 = t;
+    sx0 = sx1;
+    sx1 = t;
   }
   if (sy1 < sy0) {
     t = sy0;
     sy0 = sy1;
     sy1 = t;
   }
-  bw = D_8028D4A0[D_8028DAC0].w;
-  r = sy1 - sy0;
-  hw = bw >> 1;
-  if (x1 - sx0 < r) {
-    r = x1 - sx0;
-  }
-  q = hw >> 1;
-  r = (r >> 2) + q;
+  hw = D_8028D4A0[D_8028DAC0].w >> 1;
+  r = ((sx1 - sx0 < sy1 - sy0 ? sx1 - sx0 : sy1 - sy0) >> 2) + (hw >> 1);
   if (hw == 0) {
     for (y = sy0 + r; y < sy1 - r; y++) {
       BrPaintPlot(sx0, y, D_8028DB58);
     }
     for (y = sy0 + r; y < sy1 - r; y++) {
-      BrPaintPlot(x1, y, D_8028DB58);
+      BrPaintPlot(sx1, y, D_8028DB58);
     }
-    for (x = sx0 + r; x < x1 - r; x++) {
+    for (x = sx0 + r; x < sx1 - r; x++) {
       BrPaintPlot(x, sy1, D_8028DB58);
     }
-    for (x = sx0 + r; x < x1 - r; x++) {
+    for (x = sx0 + r; x < sx1 - r; x++) {
       BrPaintPlot(x, sy0, D_8028DB58);
     }
   } else {
@@ -1462,98 +1448,95 @@ void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
       }
     }
     for (y = sy0 + r; y <= sy1 - r; y++) {
-      for (x = x1 - hw; x < x1 + hw; x++) {
+      for (x = sx1 - hw; x < sx1 + hw; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
     for (y = sy1 - hw; y < sy1 + hw; y++) {
-      for (x = sx0 + r; x <= x1 - r; x++) {
+      for (x = sx0 + r; x <= sx1 - r; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
     for (y = sy0 - hw; y < sy0 + hw; y++) {
-      for (x = sx0 + r; x <= x1 - r; x++) {
+      for (x = sx0 + r; x <= sx1 - r; x++) {
         BrPaintPlot(x, y, D_8028DB58);
       }
     }
   }
   sx0 += r;
-  x1 -= r;
+  sx1 -= r;
   sy0 += r;
   sy1 -= r;
   if (D_8028DAC0 > 2) {
     sx0--;
     sy0--;
   }
-  r += q;
+  r += hw >> 1;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b;) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
       if (hw == 0) {
-        BrPaintPlot(sx0 - ha, sy0 - hb, D_8028DB58);
+        BrPaintPlot(sx0 - (a >> 1), sy0 - (b >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - ha, sy0 - hb + k, D_8028DB58);
+          BrPaintPlot(sx0 - (a >> 1), sy0 - (b >> 1) + k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - ha, hb + sy1, D_8028DB58);
+        BrPaintPlot(sx0 - (a >> 1), (b >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - ha, hb + sy1 - k, D_8028DB58);
+          BrPaintPlot(sx0 - (a >> 1), (b >> 1) + sy1 - k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(ha + x1, hb + sy1, D_8028DB58);
+        BrPaintPlot((a >> 1) + sx1, (b >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(ha + x1, hb + sy1 - k, D_8028DB58);
+          BrPaintPlot((a >> 1) + sx1, (b >> 1) + sy1 - k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(ha + x1, sy0 - hb, D_8028DB58);
+        BrPaintPlot((a >> 1) + sx1, sy0 - (b >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(ha + x1, sy0 - hb + k, D_8028DB58);
+          BrPaintPlot((a >> 1) + sx1, sy0 - (b >> 1) + k, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(hb + x1, ha + sy1, D_8028DB58);
+        BrPaintPlot((b >> 1) + sx1, (a >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(hb + x1 - k, ha + sy1, D_8028DB58);
+          BrPaintPlot((b >> 1) + sx1 - k, (a >> 1) + sy1, D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(hb + x1, sy0 - ha, D_8028DB58);
+        BrPaintPlot((b >> 1) + sx1, sy0 - (a >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(hb + x1 - k, sy0 - ha, D_8028DB58);
+          BrPaintPlot((b >> 1) + sx1 - k, sy0 - (a >> 1), D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - hb, sy0 - ha, D_8028DB58);
+        BrPaintPlot(sx0 - (b >> 1), sy0 - (a >> 1), D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - hb + k, sy0 - ha, D_8028DB58);
+          BrPaintPlot(sx0 - (b >> 1) + k, sy0 - (a >> 1), D_8028DB58);
         }
       }
       if (hw == 0) {
-        BrPaintPlot(sx0 - hb, ha + sy1, D_8028DB58);
+        BrPaintPlot(sx0 - (b >> 1), (a >> 1) + sy1, D_8028DB58);
       } else {
         for (k = 0; k < hw * 2; k++) {
-          BrPaintPlot(sx0 - hb + k, ha + sy1, D_8028DB58);
+          BrPaintPlot(sx0 - (b >> 1) + k, (a >> 1) + sy1, D_8028DB58);
         }
       }
     }
-    err += a;
-    a++;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
@@ -1868,49 +1851,54 @@ void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
  * centred on (x, y) -- in texels, or in screen pixels over the paint area
  * when asked (a quarter scale, y flipped) -- as horizontal spans from a
  * midpoint circle walk.
- * RESIDUE (131): the ROM keeps x and the walk state in stack homes and
- * reuses the span bounds; ours holds x in a saved register. */
-/* @t4-pass 0x8025159C 1 2026-10-03 compiles 31 best 131 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025159C 2 2026-10-03 compiles 30 best 131 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8025159C */
+ * Each span's start and end are their own locals (s, e), set before the
+ * loop, so IDO keeps the start in a register and spills the end as the ROM
+ * does; the half-widths are read as (a >> 1) and (b >> 1) at each use; the
+ * walk steps err += a++ and err -= b--; the screen conversion is written on
+ * one line (x then y), which orders the two stores y first as in the ROM. */
 /* @implements 0x8025159C tgr BrPaintDisc */
 void BrPaintDisc(int x, int y, int r, unsigned char screen)
 {
   int i;
-  int ha;
-  int hb;
-  int j;
+  int e;
+  int unused;                   /* declared, never used: the frame holds it */
+  int s;
   int a;
   int b;
   int err;
 
   if (screen) {
-    x = (x - D_8028DB94.x) >> 2;
-    y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
+    x = (x - D_8028DB94.x) >> 2; y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
   }
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b; a++) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
-      for (i = x - ha; i <= x + ha; i++) {
-        BrPaintPlot(i, y + hb, D_8028DB58);
+      s = x - (a >> 1);
+      e = x + (a >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y + (b >> 1), D_8028DB58);
       }
-      for (i = x - hb; i <= x + hb; i++) {
-        BrPaintPlot(i, y + ha, D_8028DB58);
+      s = x - (b >> 1);
+      e = x + (b >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y + (a >> 1), D_8028DB58);
       }
-      for (i = x - ha; i <= x + ha; i++) {
-        BrPaintPlot(i, y - hb, D_8028DB58);
+      s = x - (a >> 1);
+      e = x + (a >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y - (b >> 1), D_8028DB58);
       }
-      for (i = x - hb; i <= x + hb; i++) {
-        BrPaintPlot(i, y - ha, D_8028DB58);
+      s = x - (b >> 1);
+      e = x + (b >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y - (a >> 1), D_8028DB58);
       }
     }
-    err += a;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
@@ -2271,19 +2259,16 @@ void BrPaintDashLine(int x0, int y0, int x1, int y1)
  * right and left edges finished with a 2-pixel stub at the bottom.
  * The colour is never set when no dash is drawn before a stub, so the stub
  * takes whatever byte sits in c's home (sp+0x59, after c1 and c2); t holds
- * y1 - 1 for the two stubs.
- * RESIDUE (60): saved-register choice -- the ROM keeps on, x, y in s1, s2,
- * s3 (ours x, y, on) and toggles on as (on + 1) & 1 straight into its
- * register; declaration order and every toggle spelling leave it. */
-/* @t4-pass 0x80251CD4 1 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80251CD4 2 2026-09-29 compiles 26 best 60 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80251CD4 */
+ * y1 - 1 for the two stubs.  on is a byte toggled by an increment and a
+ * mask.  t is first set to the vertical dash bound and never read with it:
+ * that assignment numbers the y1 - 4 bound before x1 - 4, and the two tie
+ * for the last saved registers, so it gives them the ROM's s6/s7. */
 /* @implements 0x80251CD4 tgr BrPaintDashRect */
 void BrPaintDashRect(int x0, int y0, int x1, int y1)
 {
   int x;
+  unsigned char on;
   int y;
-  int on;
   char c1;                      /* c1, c2: declared, never used; */
   char c2;                      /* they put c at sp+0x59 */
   unsigned char c;
@@ -2309,9 +2294,11 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
     y0 = y1;
     y1 = y;
   }
+  t = y1 - 4;
   if (x0 < x1 - 4) {
     for (x = x0; x < x1 - 4; x += 4) {
-      on ^= 1;
+      on++;
+      on &= 1;
       c = on ? D_8028DAB8 : D_8028DABC;
       BrFillRect(x, y0, 4, 1, c, c, c);
     }
@@ -2319,19 +2306,22 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
   }
   c = slot;
   for (y = y0; y < y1 - 4; y += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x1, y, 1, 4, c, c, c);
   }
   t = y1 - 1;
   BrFillRect(x1, t, 1, 2, c, c, c);
   for (x = x0; x < x1 - 4; x += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y1, 4, 1, c, c, c);
   }
   for (y = y0; y < y1 - 4; y += 4) {
-    on ^= 1;
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x0, y, 1, 4, c, c, c);
   }

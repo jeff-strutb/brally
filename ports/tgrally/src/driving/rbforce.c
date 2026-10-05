@@ -643,12 +643,10 @@ void BrRbSolveAccel(BrRbBody *b)
  * force (given in world or body axes; any other kind adds a stale value)
  * goes into the force sum and, unless the body does not rotate, its moment
  * about the body's centre into the torque sum.
- * RESIDUE (25): float temporaries rotate one register off from the
- * world-axes copy on (f10 vs f16); operand orders swept, 394 permuter
- * compiles leave it. */
-/* @t4-pass 0x802594BC 1 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802594BC 2 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802594BC */
+ * The cross product is written r[i] * f[j] - r[j] * f[i] and the sums in
+ * the operand orders the ROM's temporaries need: ugen runs each function
+ * twice and its second pass starts from the float free list the first pass
+ * left. */
 /* @implements 0x802594BC tgr BrRbAddForces */
 void BrRbAddForces(BrRbBody *b)
 {
@@ -670,7 +668,7 @@ void BrRbAddForces(BrRbBody *b)
     }
     b->force[0] = b->force[0] + f[0];
     b->force[1] = b->force[1] + f[1];
-    b->force[2] = f[2] + b->force[2];
+    b->force[2] = b->force[2] + f[2];
     if (b->kind != 2) {
       BrMat4RotateVecT(r, b->m, a->at);
       t[0] = r[1] * f[2] - f[1] * r[2];
@@ -688,11 +686,10 @@ void BrRbAddForces(BrRbBody *b)
  * into the wheel's force sum, and while the wheel is on the ground the
  * moment of its flat (x, y) part about the wheel's mounting point goes into
  * the car body's torque.
- * RESIDUE (42): the float-register rotation of BrRbAddForces, from the
- * body-axes copy on; 298 permuter compiles leave it. */
-/* @t4-pass 0x80259634 1 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80259634 2 2026-09-29 compiles 26 best 42 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80259634 */
+ * The cross product is written r[i] * g[j] - r[j] * g[i] and the sums with
+ * the stored value first where the ROM has it: ugen runs each function
+ * twice and the second pass starts from the float free list the first left,
+ * so these operand orders name every float temporary from the first copy. */
 /* @implements 0x80259634 tgr BrRbAddWheelForces */
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
 {
@@ -718,7 +715,7 @@ void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
     flat[2] = 0.0f;
     BrMat4RotateVecT(g, b->m, flat);
     w->force[0] = w->force[0] + f[0];
-    w->force[1] = f[1] + w->force[1];
+    w->force[1] = w->force[1] + f[1];
     w->force[2] = w->force[2] + f[2];
     if (0 != w->x1b4) {
       p[0] = w->m[3][0];
@@ -730,7 +727,7 @@ void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
       t[2] = r[0] * g[1] - g[0] * r[1];
       b->torque[0] = t[0] + b->torque[0];
       b->torque[1] = b->torque[1] + t[1];
-      b->torque[2] = t[2] + b->torque[2];
+      b->torque[2] = b->torque[2] + t[2];
     }
   }
 }

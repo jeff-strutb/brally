@@ -16,10 +16,9 @@ extern Gfx *D_8028A858;
 
 /* WHAT IT DOES: Draw one of the car-select screen's stat bars at (x, y),
  * w by h, in fill mode: a dark frame, the empty bar inset by 3 pixels, and
- * the filled part as the given fraction of its width. */
-/* @t4-pass 0x8020C460 1 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020C460 2 2026-10-03 compiles 114 best 121 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8020C460 */
+ * the filled part as the given fraction of its width.
+ * The box is inset by updating x, y, w and h in place, and the filled width
+ * is w = w * frac before its pipe sync, as the ROM computes them. */
 /* @implements 0x8020C460 tgr BrCarStatBarDraw */
 void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
 {
@@ -30,12 +29,16 @@ void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
   gDPSetFillColor(D_8028A858++, 1);
   gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
   x += 3;
+  y += 3;
+  w -= 6;
+  h -= 6;
   gDPPipeSync(D_8028A858++);
   gDPSetFillColor(D_8028A858++, 0x1c1);
-  gDPFillRectangle(D_8028A858++, x, y + 3, x + w - 6, y + h - 3);
+  gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
+  w = w * frac;
   gDPPipeSync(D_8028A858++);
   gDPSetFillColor(D_8028A858++, 0x781);
-  gDPFillRectangle(D_8028A858++, x, y + 3, x + (int)((w - 6) * frac), y + h - 3);
+  gDPFillRectangle(D_8028A858++, x, y, x + w, y + h);
 }
 
 /* WHAT IT DOES: Tell whether car n may be picked on the car-select screen:
