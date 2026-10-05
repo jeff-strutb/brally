@@ -160,14 +160,15 @@ static void load_vertices(uint32_t a, int n, int v0)
             if (s_geom & G_TEXTURE_GEN) {
                 float dx = n[0] * lk[0][0] + n[1] * lk[0][1] + n[2] * lk[0][2];
                 float dy = n[0] * lk[1][0] + n[1] * lk[1][1] + n[2] * lk[1][2];
-                if (s_geom & G_TEXTURE_GEN_LINEAR) {
-                    dx = acosf(dx < -1 ? -1 : dx > 1 ? 1 : dx) / 3.14159265f * 2 - 1;
-                    dy = acosf(dy < -1 ? -1 : dy > 1 ? 1 : dy) / 3.14159265f * 2 - 1;
-                    dx = -dx;
-                    dy = -dy;
+                if (s_geom & G_TEXTURE_GEN_LINEAR) {  /* the microcode's arc-cosine form */
+                    dx = acosf(-(dx < -1 ? -1 : dx > 1 ? 1 : dx)) / 4.0f;
+                    dy = acosf(-(dy < -1 ? -1 : dy > 1 ? 1 : dy)) / 4.0f;
+                } else {
+                    dx = (dx + 1.0f) / 4.0f;
+                    dy = (dy + 1.0f) / 4.0f;
                 }
-                s = (dx + 1.0f) / 4.0f * s_tex.ss;
-                t = (dy + 1.0f) / 4.0f * s_tex.ts;
+                s = dx * s_tex.ss;
+                t = dy * s_tex.ts;
                 v->v.s = s / 32.0f;
                 v->v.t = t / 32.0f;
             }
@@ -506,8 +507,12 @@ static void state(RdrState *st, int tile0)
     st->prim_lod_frac = s_prim_lod;
     if (uses_texel(st, 0))
         fill_tile(&st->tile[0], tile0);
-    if (st->cycle == 2 && uses_texel(st, 1))
-        fill_tile(&st->tile[1], (tile0 + 1) & 7);
+    if (st->cycle == 2 && uses_texel(st, 1)) {
+        /* the second texel is the next tile, except with texture LOD on and
+           no further level (G_TEXTURE's level 0): then the same tile */
+        int lod = (s_omh >> 16) & 1;
+        fill_tile(&st->tile[1], (lod && s_tex.level == 0) ? tile0 : (tile0 + 1) & 7);
+    }
     st->filter = ((s_omh >> 12) & 3) == 2;
     bl = s_oml >> 16;
     /* cycle 1's blender: P * A + M * B */
@@ -589,6 +594,12 @@ static void triangle(int a, int b, int c)
                 s_tile[s_tex.tile].tmem, s_tile[s_tex.tile].pal, s_tile[s_tex.tile].uls, s_tile[s_tex.tile].ult,
                 s_tile[s_tex.tile].lrs, s_tile[s_tex.tile].lrt, s_tile[s_tex.tile].masks, s_tile[s_tex.tile].maskt,
                 s_tile[s_tex.tile].shifts, s_tile[s_tex.tile].shiftt, v[0]->v.s, v[0]->v.t, s_timg),
+        fprintf(stderr, "    tile%d+1 fmt %d siz %d line %d tmem %d pal %d uls %d ult %d lrs %d lrt %d mask %d/%d shift %d/%d tex1 %dx%d\n",
+                (s_tex.tile + 1) & 7, s_tile[(s_tex.tile + 1) & 7].fmt, s_tile[(s_tex.tile + 1) & 7].siz,
+                s_tile[(s_tex.tile + 1) & 7].line, s_tile[(s_tex.tile + 1) & 7].tmem, s_tile[(s_tex.tile + 1) & 7].pal,
+                s_tile[(s_tex.tile + 1) & 7].uls, s_tile[(s_tex.tile + 1) & 7].ult, s_tile[(s_tex.tile + 1) & 7].lrs,
+                s_tile[(s_tex.tile + 1) & 7].lrt, s_tile[(s_tex.tile + 1) & 7].masks, s_tile[(s_tex.tile + 1) & 7].maskt,
+                s_tile[(s_tex.tile + 1) & 7].shifts, s_tile[(s_tex.tile + 1) & 7].shiftt, st.tile[1].w, st.tile[1].h),
         fprintf(stderr, "    fog %.2f %.2f %.2f %.2f blend %.2f\n", s_fogc[0], s_fogc[1], s_fogc[2], s_fogc[3], s_blendc[3]),
         fprintf(stderr, "    prim %.2f %.2f %.2f %.2f env %.2f %.2f %.2f %.2f texscale %04X %04X st %.1f,%.1f %.1f,%.1f %.1f,%.1f lookat %d %d %d / %d %d %d\n",
                 s_prim[0], s_prim[1], s_prim[2], s_prim[3], s_env[0], s_env[1], s_env[2], s_env[3], s_tex.ss, s_tex.ts,
@@ -605,7 +616,12 @@ static void triangle(int a, int b, int c)
     {
         static int count;
         static uint32_t frame = 0xFFFFFFFF;
-        if (frame != tgr_frame()) { frame = tgr_frame(); count = 0; }
+        if (frame != tgr_frame()) {
+            frame = tgr_frame();
+            count = 0;
+            if (s_log)
+                fprintf(stderr, "frame %u\n", frame);
+        }
         count++;
         if ((s_only >= 0 && count > s_only) || count <= s_skip)
             return;
