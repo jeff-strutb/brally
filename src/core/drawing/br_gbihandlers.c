@@ -128,6 +128,7 @@ extern int DAT_105ccfd0;   /* numLights    */
 extern BrGfxWords *DAT_106e7710;  /* DL write cursor */
 extern int         DAT_106ec798;  /* fade rectIdx    */
 extern int         DAT_106e7718;  /* otherModeH      */
+void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd);
 
 /* The routines this file and br_dl.c BOTH used to transcribe.  Same original
  * function, one host body -- see br_dlshared.h. */
@@ -652,49 +653,6 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
     g_brTexScanState = 7;
 }
 
-/* 0x10029FA0  G_LOADBLOCK */
-/* WHAT IT DOES: during the texture-load hunt, copies the texture's pixels
- * into a staging buffer so the texture cache can be offered them later. It
- * records the size the command asked for even though the copy itself is
- * clamped to the buffer, which the original was not. */
-/* RESIDUE (46 masked diffs, T3a, REGNORM 0+0, one byte SHORT): the two
- * command words are homed in each other's registers, and ours puts the
- * one that gets the short `and eax,imm32` encoding on the other side.
- * Every instruction is the original's. */
-/* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
-/* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t3 0x10029510 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 93/94 insns 27/27 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is register colouring only: identical register-blind instruction
- * multiset (rows 0+0), 1 masked region, 1 B short on encoding;
- * every row pairs under t3.py's canonical classes.  Effort: 2 counted
- * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
- * comment block above.  Do not reopen before the end-grind. */
-/* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
-extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
-extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
-void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
-{
-    int32_t  d;
-    uint32_t len;
-    uint8_t *src;
-
-    if (g_brTexScanState != 2)
-        return;
-
-    src = (uint8_t *)g_brTexScanTimgAddr;
-    d = (int32_t)((pCmd->w1 >> 12) & 0xFFFu) -
-        (int32_t)((pCmd->w0 >> 12) & 0xFFFu);
-    DAT_105d17f0 = (uint32_t)src;
-    len = (uint32_t)(d + d + 2);
-    DAT_10697a54 = (int32_t)len;
-    memcpy(g_brTexScanStage, src, len);
-    g_brTexScanState = 3;
-}
-
 /* 0x1002A1A0  G_SETOTHERMODE_L */
 /* WHAT IT DOES: during the texture-load hunt, watches for changes to the
  * blending mode and works out whether the material being set up is one that
@@ -848,6 +806,40 @@ static void br16_combine(BrGfxWords *pOut, int t13, int t9, int t5, int t1)
                         0, 0, 0, t5,
                         0, 0, 0, t9,
                         0, 0, 0, t13);
+}
+
+/* 0x10029FA0  G_LOADBLOCK */
+/* WHAT IT DOES: during the texture-load hunt, copies the texture's pixels
+ * into a staging buffer so the texture cache can be offered them later. It
+ * records the size the command asked for even though the copy itself is
+ * clamped to the buffer, which the original was not. */
+/* Placement is load-bearing: defined here, after br16_combine and with its
+ * prototype in the declaration block at the top of the file, VC5 homes w1 in
+ * ecx and w0 in edx as the original does; at its address-order slot after
+ * BrGbiTexScanLoadTlut the two words swap registers. The length is written
+ * straight into its global and read back for the copy, which gives the
+ * original's eax for the byte remainder. */
+/* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
+/* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
+extern uint32_t DAT_105d17f0;          /* stageSrc, 0x105D17F0 */
+extern int32_t  DAT_10697a54;          /* stageLen, 0x10697A54 */
+void BrGbiTexScanLoadBlock(const BrGfxWords *pCmd)
+{
+    uint32_t len;
+    uint8_t *src;
+
+    if (g_brTexScanState != 2)
+        return;
+
+    src = (uint8_t *)g_brTexScanTimgAddr;
+    DAT_10697a54 = (int32_t)((((pCmd->w1 >> 12) & 0xFFFu) -
+                              ((pCmd->w0 >> 12) & 0xFFFu) + 1) << 1);
+    DAT_105d17f0 = (uint32_t)src;
+    len = (uint32_t)DAT_10697a54;
+    memcpy(g_brTexScanStage, src, len);
+    g_brTexScanState = 3;
 }
 
 /* 0x1002AF10 */
