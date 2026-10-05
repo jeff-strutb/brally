@@ -1876,49 +1876,54 @@ void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
  * centred on (x, y) -- in texels, or in screen pixels over the paint area
  * when asked (a quarter scale, y flipped) -- as horizontal spans from a
  * midpoint circle walk.
- * RESIDUE (131): the ROM keeps x and the walk state in stack homes and
- * reuses the span bounds; ours holds x in a saved register. */
-/* @t4-pass 0x8025159C 1 2026-10-03 compiles 31 best 131 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025159C 2 2026-10-03 compiles 30 best 131 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8025159C */
+ * Each span's start and end are their own locals (s, e), set before the
+ * loop, so IDO keeps the start in a register and spills the end as the ROM
+ * does; the half-widths are read as (a >> 1) and (b >> 1) at each use; the
+ * walk steps err += a++ and err -= b--; the screen conversion is written on
+ * one line (x then y), which orders the two stores y first as in the ROM. */
 /* @implements 0x8025159C tgr BrPaintDisc */
 void BrPaintDisc(int x, int y, int r, unsigned char screen)
 {
   int i;
-  int ha;
-  int hb;
-  int j;
+  int e;
+  int unused;                   /* declared, never used: the frame holds it */
+  int s;
   int a;
   int b;
   int err;
 
   if (screen) {
-    x = (x - D_8028DB94.x) >> 2;
-    y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
+    x = (x - D_8028DB94.x) >> 2; y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
   }
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b; a++) {
+  for (; a <= b;) {
     if (!(a & 1)) {
-      ha = a >> 1;
-      hb = b >> 1;
-      for (i = x - ha; i <= x + ha; i++) {
-        BrPaintPlot(i, y + hb, D_8028DB58);
+      s = x - (a >> 1);
+      e = x + (a >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y + (b >> 1), D_8028DB58);
       }
-      for (i = x - hb; i <= x + hb; i++) {
-        BrPaintPlot(i, y + ha, D_8028DB58);
+      s = x - (b >> 1);
+      e = x + (b >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y + (a >> 1), D_8028DB58);
       }
-      for (i = x - ha; i <= x + ha; i++) {
-        BrPaintPlot(i, y - hb, D_8028DB58);
+      s = x - (a >> 1);
+      e = x + (a >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y - (b >> 1), D_8028DB58);
       }
-      for (i = x - hb; i <= x + hb; i++) {
-        BrPaintPlot(i, y - ha, D_8028DB58);
+      s = x - (b >> 1);
+      e = x + (b >> 1);
+      for (i = s; i <= e; i++) {
+        BrPaintPlot(i, y - (a >> 1), D_8028DB58);
       }
     }
-    err += a;
+    err += a++;
     if (err >= 0) {
-      err -= b;
-      b--;
+      err -= b--;
     }
   }
 }
