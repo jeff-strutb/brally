@@ -20,8 +20,8 @@ typedef struct TgrConfig {
     int  frames;            /* stop after this many retraces (0: never) */
     const char *script;     /* scripted pad input (n64box's format) */
     const char *trace;      /* write the per-retrace trace (n64box's log) here */
-    const char *shot_dir;   /* save frames as PNGs here */
-    int  shot_every;        /* ... every N retraces */
+    const char *shot_dir;   /* save frames as PNGs here: */
+    const char *shot_at;    /* ... at these retraces (a comma list; named shots, never periodic) */
 } TgrConfig;
 extern TgrConfig g_tgr;
 
@@ -53,6 +53,7 @@ int  tgr_pads(void);                        /* controllers plugged in */
 
 /* ---- the RCP (gfx/) -------------------------------------------------------- */
 void tgr_gfx_task(uint32_t dl);             /* run a display list (original address) */
+void tgr_rcp_task(uint32_t dl);             /* draw it (gfx/rcp.c, onto render/rdr.h) */
 void tgr_dump_state(const char *path, uint32_t dl);  /* game memory as the original holds it, to a file */
 void tgr_gfx_swap(uint32_t fb);             /* the framebuffer osViSwapBuffer shows */
 void tgr_gfx_present(void);                 /* the retrace: show it */

@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "plat.h"
+#include "../render/rdr.h"
+#include "brr_png.h"
+#include "host.h"
 #include "sha1.h"
 #include "tgr_syms.h"
 #include "tgr_core.h"
@@ -122,7 +125,39 @@ void tgr_gfx_task(uint32_t dl)
         dl_digest(dl, d);
         tgr_trace("gfx", "%s", d);
     }
+    if (!g_tgr.headless || g_tgr.shot_dir)     /* drawn only if a window or a shot will show it */
+        tgr_rcp_task(dl);
 }
 
 void tgr_gfx_swap(uint32_t fb) { s_fb = fb; }
-void tgr_gfx_present(void) {}
+
+/* a named screenshot: --shots DIR --shot-at F1,F2,... */
+static int shot_wanted(uint32_t frame)
+{
+    const char *p = g_tgr.shot_at;
+    while (p && *p) {
+        if ((uint32_t)strtoul(p, NULL, 10) == frame)
+            return 1;
+        p = strchr(p, ',');
+        if (p)
+            p++;
+    }
+    return 0;
+}
+
+/* the retrace: the last finished frame to the window, and a shot if one is asked for */
+void tgr_gfx_present(void)
+{
+    int w, h;
+    const uint32_t *px = rdr_frame_pixels(&w, &h);
+    uint32_t f = tgr_frame();
+    if (!px || !w)
+        return;
+    if (g_tgr.shot_dir && shot_wanted(f)) {
+        char path[512];
+        snprintf(path, sizeof path, "%s/frame%05u.png", g_tgr.shot_dir, f);
+        brr_png_write(path, (const uint8_t *)px, w, h, w * 4, BRR_PNG_BGRA);
+    }
+    if (!g_tgr.headless)
+        host_present(px, w, h);
+}

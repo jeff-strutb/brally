@@ -69,7 +69,7 @@ static void usage(void)
 {
     fprintf(stderr,
             "usage: tgrally [--rom FILE] [--headless] [--frames N] [--script FILE] [--trace FILE]\n"
-            "               [--shots DIR] [--shot-every N]\n");
+            "               [--shots DIR --shot-at F1,F2,...]\n");
     exit(2);
 }
 
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--script") && i + 1 < argc) g_tgr.script = argv[++i];
         else if (!strcmp(argv[i], "--trace") && i + 1 < argc) g_tgr.trace = argv[++i];
         else if (!strcmp(argv[i], "--shots") && i + 1 < argc) g_tgr.shot_dir = argv[++i];
-        else if (!strcmp(argv[i], "--shot-every") && i + 1 < argc) g_tgr.shot_every = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--shot-at") && i + 1 < argc) g_tgr.shot_at = argv[++i];
         else usage();
     }
     if (!g_tgr.rom_path)
