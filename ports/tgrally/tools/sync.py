@@ -107,6 +107,7 @@ def finish(to, files):
     words, pointer casts) are rewritten where the compiler flags them; then
     the stamp moves"""
     paths = [os.path.join(SRC, f) for f in files if f.endswith('.c')]
+    paths = [p for p in paths if os.path.exists(p)]   # a file the decomp deleted
     if paths:
         subprocess.run([sys.executable, os.path.join(ROOT, 'ports/tgrally/tools/errfix.py')] + paths, cwd=ROOT)
     subprocess.run([sys.executable, os.path.join(ROOT, 'ports/tgrally/tools/abicheck.py')], cwd=ROOT)

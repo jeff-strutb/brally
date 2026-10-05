@@ -54,5 +54,7 @@ for s in $SRCS; do
   $CC -c $PFLAGS $XF "$s" -o "$o"
   OBJS="$OBJS $o"
 done
-$CC ${LDFLAGS_TGR} -o $OUT/tgrally $OUT/obj/*.o $OUT/plat/tgr_syms.o $OUT/plat/arena.o $OUT/plat/romdata.o $OBJS $LIBS
+# the core objects of the TUs build.sh compiled (not a stale one of a deleted TU)
+CORE=$(sed "s#ports/tgrally/src/##; s#/#__#g; s#^#$OUT/obj/#; s#\$#.o#" $OUT/tus.txt)
+$CC ${LDFLAGS_TGR} -o $OUT/tgrally $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $OUT/plat/romdata.o $OBJS $LIBS
 echo "linked $OUT/tgrally (host $HOST, renderer $RENDER)"
