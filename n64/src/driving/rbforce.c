@@ -644,12 +644,10 @@ void BrRbSolveAccel(BrRbBody *b)
  * force (given in world or body axes; any other kind adds a stale value)
  * goes into the force sum and, unless the body does not rotate, its moment
  * about the body's centre into the torque sum.
- * RESIDUE (25): float temporaries rotate one register off from the
- * world-axes copy on (f10 vs f16); operand orders swept, 394 permuter
- * compiles leave it. */
-/* @t4-pass 0x802594BC 1 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x802594BC 2 2026-09-29 compiles 26 best 25 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x802594BC */
+ * The cross product is written r[i] * f[j] - r[j] * f[i] and the sums in
+ * the operand orders the ROM's temporaries need: ugen runs each function
+ * twice and its second pass starts from the float free list the first pass
+ * left. */
 /* @implements 0x802594BC tgr BrRbAddForces */
 void BrRbAddForces(BrRbBody *b)
 {
@@ -671,13 +669,13 @@ void BrRbAddForces(BrRbBody *b)
     }
     b->force[0] = b->force[0] + f[0];
     b->force[1] = b->force[1] + f[1];
-    b->force[2] = f[2] + b->force[2];
+    b->force[2] = b->force[2] + f[2];
     if (b->kind != 2) {
       func_80258758(r, b->m, a->at);
-      t[0] = r[1] * f[2] - f[1] * r[2];
-      t[1] = r[2] * f[0] - f[2] * r[0];
-      t[2] = r[0] * f[1] - f[0] * r[1];
-      b->torque[0] = t[0] + b->torque[0];
+      t[0] = r[1] * f[2] - r[2] * f[1];
+      t[1] = r[2] * f[0] - r[0] * f[2];
+      t[2] = r[0] * f[1] - r[1] * f[0];
+      b->torque[0] = b->torque[0] + t[0];
       b->torque[1] = b->torque[1] + t[1];
       b->torque[2] = b->torque[2] + t[2];
     }
