@@ -1390,8 +1390,8 @@
 <rect x="697.3" y="285.5" width="3.9" height="2.3" fill="#6e5494"><title>_controlfp_thunk  0x00401DF6  6B  [EXE: brally.exe]</title></rect>
 <rect x="697.3" y="288.4" width="2.8" height="1.3" fill="#3fb950"><title>_matherr  0x00401DD0  3B  [EXE: brally.exe]</title></rect>
 <rect x="700.7" y="288.4" width="0.5" height="1.3" fill="#3fb950"><title>CRT_empty  0x00401DE0  1B  [EXE: brally.exe]</title></rect>
-<text x="609.6" y="302.3" font-size="10" fill="#8b949e">br_ctlinput</text>
-<rect x="608.1" y="307.3" width="93.1" height="74.0" fill="#58a6ff"><title>BrCtlInputApply  0x1005AFF0  3210B  [core/driving/br_ctlinput]</title></rect>
+<text x="609.6" y="302.3" font-size="10" fill="#8b949e">BrCtlInputApply_1005AFF0</text>
+<rect x="608.1" y="307.3" width="93.1" height="74.0" fill="#58a6ff"><title>(unnamed)  0x1005AFF0  3210B  [core/driving/BrCtlInputApply_1005AFF0]</title></rect>
 <text x="609.6" y="394.0" font-size="10" fill="#8b949e">br_cartrackload</text>
 <rect x="608.1" y="399.0" width="47.6" height="73.5" fill="#58a6ff"><title>BrRcaFixup  0x10030770  1641B  [core/gamedata/br_cartrackload]</title></rect>
 <rect x="656.3" y="399.0" width="44.9" height="73.5" fill="#3fb950"><title>BrGlTrackHdrRead  0x10031B80  1549B  [core/gamedata/br_cartrackload]</title></rect>
