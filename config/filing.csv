@@ -176,6 +176,7 @@ glide_va,name,module,basis,file
 0x10009C00,BrDPlayBootInit,net,filed,src/core/net/br_dplay.c
 0x10009C10,BrCarDrawWheels,drawing,filed,src/core/drawing/br_drawcar.c
 0x10009FC0,BrCarVisibilityUpdate,drawing,filed,src/core/drawing/br_drawcar.c
+0x1000A110,BrCarDrawVehicle,drawing,filed,src/core/drawing/br_drawcar.c
 0x1000BEB0,BrCarDrawBody,drawing,filed,src/core/drawing/br_drawcar.c
 0x1000C4E0,BrRippleApply_1000C4E0,drawing,neighbour,src/core/drawing/BrRippleApply_1000C4E0.cpp
 0x1000C9C0,BrNodeChainReset_1000F460,drawing,filed,src/core/drawing/br_textmode.c
