@@ -4,38 +4,25 @@
  * this one latches the pending selection into the current one on entry,
  * carries a selector filled with the named-and-numbered slot labels of the
  * current profile and a three-photo strip positioned from two globals. */
-/* @t3 0x1004CBA0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 3671/3671 insns 1091/1091 rows 3+3 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
- * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form), the wall
- * certified on 0x1004AEE0 / 0x1004BE00 / 0x1004DA00 / 0x100498A0. Dossier
- * below; dead list and schedule census in 0x1004AEE0.cpp.
- * Do not reopen before the end-grind. */
 /* @implements 0x1004CBA0 glide FUN_1004cba0
  * @cpp_kind free
  * @cpp_symbol ?FUN_1004cba0@@YAHPAVGameUi@@@Z
  *
  * 3671 B cdecl EH-frame menu-page builder, 0x100425E0 family (same class
- * layouts and the three family levers). Skeleton from
- * tools/gen_menubuilder.py --partial; the hand blocks read from the asm:
+ * layouts and the three family levers). The hand blocks read from the asm:
  *   - the selector list is filled from the slot count of the current
  *     profile (`DAT_100b301c[g_brSel5C10].n`): label = string 0x37 +
  *     DAT_100acad8 + the upper-cased decimal index (strcpy/strcat are the
  *     inlined intrinsics), added through the selector's +0x10 slot, the
  *     for-loop's `i + 1` CSE'd with its own increment;
  *   - the photo trio (fx/fy from DAT_100aabc8/cc, xi in edi across all
- *     three pages, fy stepped by DAT_10077664 on pages 1-2), spelled as
- *     in 0x1004AEE0.cpp / 0x100498A0.cpp.
+ *     three pages, fy stepped by 33 on pages 1-2).
  *
- * Residue (34 diffs, 3637 of 3671 B exact): photo1's ten-instruction tail,
- * the same Pentium-pairing schedule of an identical instruction multiset
- * certified on 0x1004AEE0 / 0x1004BE00 / 0x1004DA00 / 0x100498A0 (dossier
- * and dead list in 0x1004AEE0.cpp). The original issues [fld fy][yi
- * reload + xi copy][fsub]; ours issues the fsub right after the fld.
- *
- * @t4-pass 0x1004CBA0 1 2026-09-13 probes 122 bytes 3671 insns 1091 regions 1 rows 6 census no  (generated: all 120 orders of {fy, f50, f58, f5C, f2968} after the xi cast, plus a late temp-float step and f5C-before-fy; best 32 = f50 before fy, none 0)
- * @t4-pass 0x1004CBA0 2 2026-09-13 probes 22 bytes 3671 insns 1091 regions 1 rows 6 census yes  (22 compiler options incl. /Gi /Op /G3 /G4 /G5 /Ow /Ob1 /Ob2 /Ox /O1 /Oa /Os /Ot /Oy- /Za /Gf /Gy /Gr /Ge, all 34 or worse; corpus query MISS at +0x59f len 12; residue byte-identical to 0x1004AEE0's certified census)
+ * The y offsets are float literals from the unit's constant pool: VC5
+ * emits `a + 33.0f` as `fsub [-33.0]`. A literal load carries no alias
+ * edge to the stores through p, so on photo page 1 the fy step follows
+ * the rect stores, as written, and the yi reload wins its priority tie
+ * with the fsub (see FUN_100498a0.cpp).
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
@@ -228,9 +215,6 @@ int FUN_1003a910();
 int FUN_100404f0();
 int br23_num_common();
 extern char  g_aBr39B720;
-extern float DAT_10077658;
-extern float DAT_1007765c;
-extern float DAT_10077664;
 extern int   DAT_100aabc8;
 extern int   DAT_100aabcc;
 extern char  g_brSel5C10;        /* 0x10AC5C10 */
@@ -309,7 +293,7 @@ int FUN_1004cba0(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
+    p->s38(parent, cont->f338, cont->f33C + 95.0f, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrPhaseActivate_100460A0;
     p->w1E20C = 3;
@@ -321,7 +305,7 @@ int FUN_1004cba0(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
+    p->s38(parent, cont->f338, cont->f33C + 114.0f, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)FUN_100404f0;
     p->w1E20C = 3;
@@ -341,10 +325,10 @@ int FUN_1004cba0(GameUi *parent)
     yi = (int)fy;
     p->f54 = yi;
     xi = (int)fx;
-    fy = fy - DAT_10077664;
     p->f50 = xi;
     p->f58 = xi + 0x7f;
     p->f5C = yi + 0x21;
+    fy = fy + 33.0f;
     p->f2968 = 0;
     p->w2A42 = 0x79;
     cont->w14 += 1;
@@ -357,7 +341,7 @@ int FUN_1004cba0(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOpt3FA0;
     yi = (int)fy;
-    fy = fy - DAT_10077664;
+    fy = fy + 33.0f;
     p->f54 = yi;
     p->f50 = xi;
     p->f58 = xi + 0x7f;

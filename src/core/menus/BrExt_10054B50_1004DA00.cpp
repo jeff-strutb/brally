@@ -3,47 +3,20 @@
  * made. One of a family of page builders, each laying out its own screen,
  * positioning its controls from computed coordinates rather than a fixed
  * table. */
-/* @t3 0x1004DA00 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 3394/3394 insns 1002/1002 rows 3+3 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * Residue: photo1's ten-instruction Pentium-pairing schedule (identical
- * multiset; the 3+3 rows are the EH frame's fs:[0] reloc form). Dossier
- * below; dead list and schedule census in 0x1004AEE0.cpp.
- * Do not reopen before the end-grind. */
 /* @implements 0x1004da00 glide BrExt_10054B50
  * @cpp_kind free
  * @cpp_symbol ?BrExt_10054B50@@YAHPAVGameUi@@@Z
  *
- * 3394 B cdecl EH-frame menu-page builder. Emitted by
- * tools/gen_menubuilder.py from the Ghidra draft; the class
- * layouts and the three family levers come from the hand-solved
- * 0x100425E0 / 0x10048160 (char bool after the slot store, raw
- * float pushes for simple lvalues, w14-then-w344 tails).
+ * 3394 B cdecl EH-frame menu-page builder. The class layouts and the
+ * three family levers come from the hand-solved 0x100425E0 / 0x10048160
+ * (char bool after the slot store, raw float pushes for simple lvalues,
+ * w14-then-w344 tails).
  *
- * Residue: 34 diffs, ALL in photo1's ten-instruction tail -- the third
- * function with byte-identical residue there (0x1004AEE0, 0x1004BE00,
- * this one). The original issues [fld fy][yi reload + xi copy][fsub][lea +
- * add][f50 + f58][f5C + f2968][fstp][w2A42 + inc]; ours issues the fsub
- * right after the fld (the xi copy lands at its first use, so the fy
- * statement is IR-first) and the lea waits a cycle after the copy (AGI),
- * so f5C overtakes f58. Identical instruction multiset. The full dead list
- * and the pairing-schedule census (2026-09-12) are in 0x1004AEE0.cpp.
- *
- * @t4-pass 0x1004DA00 1 2026-09-12 probes 240 bytes 3394 insns 1002 regions 1 rows 6 census no  (generated: all 240 orders of {xi, fy, f50, f58, f5C, f2968}; best 32 = f50 before fy, none 0)
- * @t4-pass 0x1004DA00 2 2026-09-12 probes 27 bytes 3394 insns 1002 regions 1 rows 6 census yes  (27 compiler options incl. /Gi /Op /G5 /Ow /Ob2, all 34 or worse; corpus query MISS at +0x3d0 len 8; residue byte-identical to 0x1004AEE0's certified census)
- *
- * DEAD PROBE (2026-09-03, this file): moving `fy -= K` to sit between
- * `f2968` and `w2A42` -- the one slot the 0x1004AEE0 dead list left
- * ambiguous -- makes it WORSE, 34 -> 59. Every placement is now covered.
- * Do not re-probe the fy-update position.
- *
- * DEAD PROBE 2: naming the two derived ints (`x2 = xi + 0x7f; y2 = yi +
- * 0x21;`) BEFORE the three stores, which is literally the original's
- * instruction order (lea, add, store 50/58/5C), also stays at 34. VC5 folds
- * the temps back into the stores and re-schedules identically. The window
- * gates FIVE functions -- 0x1004AEE0, 0x1004BE00, 0x1004DA00, 0x100498A0,
- * 0x1004CBA0, 18,395 B -- so it is worth a fresh IDEA, but not another
- * permutation of this statement list.
+ * The y offsets are float literals from the unit's constant pool: VC5
+ * emits `a + 33.0f` as `fsub [-33.0]`. A literal load carries no alias
+ * edge to the stores through p, so on photo page 1 the fy step follows
+ * the rect stores, as written, and the yi reload wins its priority tie
+ * with the fsub (see FUN_100498a0.cpp).
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
@@ -206,7 +179,6 @@ typedef int (*CtlFn)(BrCtl *);
 extern "C" {
 extern int DAT_100aabc8;
 extern int DAT_100aabcc;
-extern float DAT_10077664;
 int BrMenuLatchPending();
 int BrMenuText1300();
 int BrMenuText1670();
@@ -227,8 +199,6 @@ extern char  DAT_100aaca8;
 extern char  DAT_10396f08;
 int FUN_10039f60();
 int FUN_1003a910();
-extern float DAT_10077658;
-extern float DAT_1007765c;
 char *BrStrGet(int);
 void FUN_100378c0(int);
 }
@@ -276,7 +246,7 @@ int BrExt_10054B50(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_10077658, 0x102001, 2, 5, 1, -1);
+    p->s38(parent, cont->f338, cont->f33C + 95.0f, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrPhaseLeave_10047290;
     p->w1E20C = 3;
@@ -288,7 +258,7 @@ int BrExt_10054B50(GameUi *parent)
     bad = (p == 0);
     if (bad)
         FUN_100378c0(4);
-    p->s38(parent, cont->f338, cont->f33C - DAT_1007765c, 0x102001, 2, 5, 1, -1);
+    p->s38(parent, cont->f338, cont->f33C + 114.0f, 0x102001, 2, 5, 1, -1);
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrUiHook81_100470E0;
     p->w1E20C = 3;
@@ -308,10 +278,10 @@ int BrExt_10054B50(GameUi *parent)
     yi = (int)fy;
     p->f054 = yi;
     xi = (int)fx;
-    fy = fy - DAT_10077664;
     p->f050 = xi;
     p->f058 = xi + 0x7f;
     p->f05C = yi + 0x21;
+    fy = fy + 33.0f;
     p->f2968 = 0;
     p->w2A42 = 0x79;
     cont->w14 += 1;
@@ -324,7 +294,7 @@ int BrExt_10054B50(GameUi *parent)
     p->pfn0C = (CtlFn)BrSub10047360;
     p->pfn08 = (CtlFn)BrOpt3FA0;
     yi = (int)fy;
-    fy = fy - DAT_10077664;
+    fy = fy + 33.0f;
     p->f054 = yi;
     p->f050 = xi;
     p->f058 = xi + 0x7f;

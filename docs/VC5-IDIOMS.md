@@ -3887,12 +3887,9 @@ each part's shape is source, not schedule:
    0x1004ABE0 `ebx` holds zero for the first two entries and is clobbered by
    the +0x34 vcall's vtable load before the third. Do not split the source.
 
-STILL PARKED: 0x1004AEE0's photo1 tail (34 diffs). With the above applied
-the ONLY divergence in 3862 bytes is a ten-instruction window where the
-original computes both derived ints (`lea`, `add`) before its three stores
-and sinks the `fstp` past `f2968`, while ours interleaves and sinks the
-`+0x58` store instead. Identical multiset, T3a. Photos 2 and 3, and every
-other byte, are exact.
+The photo1 tail that stayed parked here was solved on 2026-10-05: the y
+step is a float literal, not a global. See "The menu-builder photo tail:
+the step is a constant-pool literal" below.
 
 ## An x87 preload depth is not a constant: it is set by the block before it
 *(0x1000EAF0, 2026-09-03; this RETRACTS an earlier entry of mine that called
@@ -7931,24 +7928,33 @@ Same function: `lo - (hi - lo) * n * k` is reassociated by VC5 to
 the original's `fmulp; fmul k` order.  Flat products reassociate; a paren
 around the first product does not fold away.
 
-## The menu-builder photo tail is a Pentium-pairing schedule, not a spelling (three functions, T3)
-*(2026-09-12, 0x1004AEE0 / 0x1004BE00 / 0x1004DA00, 34 diffs each, identical multiset, all other bytes exact)*
+## The menu-builder photo tail: the step is a constant-pool literal (five functions, T4)
+*(2026-10-05, 0x100498A0 / 0x1004AEE0 / 0x1004CBA0 / 0x1004BE00 / 0x1004DA00; this RETRACTS the 2026-09-12 "Pentium-pairing schedule, not a spelling" verdict)*
 
 The original issues `fld fy | yi-reload + xi-copy | fsub | lea + add | f50
-+ f58 | f5C + f2968 | fstp | w2A42 + inc`.  Ours issues the fsub right after
-the fld because the copy `mov ebx,eax` is placed at xi's FIRST USE, so the
-fy statement is IR-first and takes the slot; the lea then waits one cycle
-after the copy (address-generation interlock) and the add/f5C overtake it.
-Any statement that uses xi before the fy update either carries a store
-(issued before the fsub too: the "R shape", 32) or is folded (temps,
-chains, CSE spellings, an inline helper in nine shapes).  The only shape
-that put the reload and copy ahead of the fsub was a helper with the step
-passed BY VALUE, which pays an extra `fld [step]`.  726 probes on
-0x1004AEE0 (240 statement orders, 96 chained/temp orders, 246 temp-before-
-fy orders, 34 compiler options, corpus MISS at +0x477): certified @t3,
-dossier and dead list in 0x1004AEE0.cpp.  `t3.py` now measures C++ rows
-(report_cpp.csv overrides the stale C twin; the EH frame's `fs:[0]` reloc
-form pairs with the literal).
++ f58 | f5C + f2968 | fstp | w2A42 + inc`. The source read the step from
+`DAT_10077664`, but 0x10077640..0x10077668 is a compiler constant pool
+(0.5, 0.001, -19, -38, -57, -76, -95, -114, -133, -33, 19): the step is the
+literal 33, and VC5 emits `fy + 33.0f` as `fsub [-33.0]`. The `cont->f33C
+- DAT_...` offsets are literals from the same pool (`+ 95.0f`, `+ 19.0f`,
+`- 19.0f`, ...).
+
+Why the spelling decides the schedule (measured with a hooked C2 that logs
+the scheduler's DAG and ready list, `FUN_0043be83` / `FUN_0043ca68`):
+- Priority is `height << 13` plus `0x10000` for a memory read (or an x87
+  store); the ready list breaks ties by IR order.
+- A read of a GLOBAL gets alias edges from every earlier store through a
+  pointer and to every later one. With the global, the fy update had to
+  precede the rect stores, and then the fsub (height 12) tied the yi
+  reload (height 12) and won on IR order. A literal load has no alias
+  edges.
+- With the literal, the fy update is written after the rect stores, the
+  reload comes first in IR, wins the tie, and the copy pairs with it.
+
+Source: `xi = (int)fx; p->f50 = xi; p->f58 = xi + 0x7f; p->f5C = yi +
+0x21; fy = fy + 33.0f;`. General lesson: an `fsub`/`fadd` whose operand sits
+among other float constants in `.rdata` is a literal; spelling it as a
+global changes the dependence graph even when the bytes look identical.
 
 ## The settings-cycler family: step the GLOBAL, call inside each arm, re-read the global for the index (0x1003DB50, 0x1003C6D0, 0x1003C950)
 
