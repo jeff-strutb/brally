@@ -222,26 +222,15 @@ void tgr_post_mesg_at(uint64_t when, OSMesgQueue *mq, OSMesg msg)
     pend(p);
 }
 
-/* the next retrace.  The hardware's VI interrupts every 1/60 s whatever else
- * falls due at that tick; n64box.py (the oracle the headless comparisons run
- * against) recomputes the next one from the count, so an event falling
- * exactly on a retrace's tick moves past it and that retrace is lost (one in
- * four with this game's timers: its clock then runs 4/3 fast against its
- * frames).  Headless runs keep the oracle's rule, to stay comparable with it;
- * play keeps the hardware's. */
+/* the next retrace: the VI interrupts every 1/60 s whatever else falls due on
+ * that tick (an event due exactly on it is delivered first, then the retrace),
+ * as n64box.py has it too */
 static uint64_t s_vi_due = TGR_TICKS_PER_FRAME;
-
-static uint64_t next_retrace(void)
-{
-    if (g_tgr.headless)
-        return (s_count / TGR_TICKS_PER_FRAME + 1) * TGR_TICKS_PER_FRAME;
-    return s_vi_due;
-}
 
 /* nothing can run: deliver the next thing the hardware would do */
 static void advance_time(void)
 {
-    uint64_t next_vi = next_retrace();
+    uint64_t next_vi = s_vi_due;
     if (s_npending && s_pending[0].when <= next_vi) {
         Pending p = s_pending[0];
         memmove(s_pending, s_pending + 1, (size_t)(--s_npending) * sizeof *s_pending);
