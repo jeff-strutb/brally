@@ -692,13 +692,11 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * contact in body+0x200 (to 40).  Returns 1 if any contact responded.  The
  * PC twin is BrCrRespWalk.
  * Both dot products group as the ROM does: a + (b + c).
- * RESIDUE (~340): register priority -- the ROM keeps the addresses of all
- * three plane globals in saved registers and homes m in its argument slot;
- * ours keeps m and loads D_802A4A2C by address each time, which moves every
- * saved register and temp after it.  Frame, slots and control flow match. */
-/* @t4-pass 0x8025DFCC 1 2026-09-29 compiles 26 best 342 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025DFCC 2 2026-09-29 compiles 26 best 342 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8025DFCC */
+ * The loop skips a plane the cube does not touch with continue; the axis
+ * test asks whether any normal component exceeds 0.999 (the edge-to-face
+ * case is the else); each half-extent sign is a conditional expression; the
+ * plane offset and the push-out distance add the first two products and
+ * then the third; the last two angular copies share a line. */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
@@ -734,86 +732,72 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
     e2[0] = v[6] - v[0];
     e2[1] = v[7] - v[1];
     e2[2] = v[8] - v[2];
-    nrm[0] = e1[1] * e2[2] - e2[1] * e1[2];
-    nrm[1] = e1[2] * e2[0] - e2[2] * e1[0];
-    nrm[2] = e1[0] * e2[1] - e2[0] * e1[1];
-    if (BrTriCubeTest(v, nrm) != 0) {
-      BrVec3NormaliseF(nrm);
-      flag = 1;
-      D_802A4A28 = 0;
-      cnt++;
-      planeD = v[2] * nrm[2] + (nrm[0] * v[0] + nrm[1] * v[1]);
-      if (D_8026FF18 == 4) {
-        if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) <= 0.999f
-            && (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) <= 0.999f
-            && (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) <= 0.999f) {
-          if ((planeD < 0.0f ? -planeD : planeD) < 0.5f) {
-            osSyncPrintf("Triangle Edge to CubeFace\n");
-            spin = 0;
-            D_802A4A28 = 2;
-          }
-        } else {
-          D_802A4A28 = 1;
-          osSyncPrintf("Wank CT1 case\n");
-          spin = 1;
-        }
+    nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];
+    nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];
+    nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];
+    if (BrTriCubeTest(v, nrm) == 0) {
+      continue;
+    }
+    BrVec3NormaliseF(nrm);
+    flag = 1;
+    D_802A4A28 = 0;
+    cnt++;
+    planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+    if (D_8026FF18 == 4) {
+      if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) > 0.999f
+          || (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) > 0.999f
+          || (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) > 0.999f) {
+        D_802A4A28 = 1;
+        osSyncPrintf("Wank CT1 case\n");
+        spin = 1;
+      } else if ((planeD < 0.0f ? -planeD : planeD) < 0.5f) {
+        osSyncPrintf("Triangle Edge to CubeFace\n");
+        spin = 0;
+        D_802A4A28 = 2;
       }
-      osSyncPrintf("Cube Edge to Triangle Face\n");
-      e1[0] = nrm[0] * planeD;
-      e1[1] = nrm[1] * planeD;
-      e1[2] = nrm[2] * planeD;
-      if (e1[0] < 0) {
-        sgn = -1;
-      } else {
-        sgn = 1;
-      }
-      sign[0] = sgn * 0.5f;
-      if (e1[1] < 0) {
-        sgn = -1;
-      } else {
-        sgn = 1;
-      }
-      sign[1] = sgn * 0.5f;
-      if (e1[2] < 0) {
-        sgn = -1;
-      } else {
-        sgn = 1;
-      }
-      sign[2] = sgn * 0.5f;
-      D_8037EAA8[0] = sign[0] * b->f1DC;
-      D_8037EAA8[1] = sign[1] * b->f1E0;
-      D_8037EAA8[2] = sign[2] * b->f1E4 + b->f1E8;
-      D_802A4A2C = pP;
-      BrCrPlaneResolve(b, nrm, planeD, sign, v);
-      if (b->m[2][2] > 0.5f) {
-        flag = 0;
-      }
-      if (flag) {
-        osSyncPrintf("Resistive collision %10.3f\n", b->m[2][2]);
-      }
-      if (D_802A4A28 != 1) {
-        r = BrCrImpulseSolve(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
-      } else {
-        r = BrCrContactKick(b, D_802A4A2C, flag, spin);
-      }
-      if (r != 0) {
-        ret = 1;
-        dp[0] = b->cur[0] - b->state[0];
-        dp[1] = b->cur[1] - b->state[1];
-        dp[2] = b->cur[2] - b->state[2];
-        d = (pP->n[2] * dp[2] + (dp[0] * pP->n[0] + dp[1] * pP->n[1])) * 1.1;
-        dp[0] = pP->n[0] * d;
-        dp[1] = pP->n[1] * d;
-        dp[2] = pP->n[2] * d;
-        b->cur[0] = b->cur[0] - dp[0];
-        b->cur[1] = b->cur[1] - dp[1];
-        b->cur[2] = b->cur[2] - dp[2];
-        b->cur[6] = b->state[6];
-        b->cur[7] = b->state[7];
-        b->cur[8] = b->state[8];
-        BrRbQuatDerivative(b->cur);
-        BrQuatToMat(b->m, b->cur);
-      }
+    }
+    osSyncPrintf("Cube Edge to Triangle Face\n");
+    e1[0] = nrm[0] * planeD;
+    e1[1] = nrm[1] * planeD;
+    e1[2] = nrm[2] * planeD;
+    sgn = e1[0] < 0 ? -1 : 1;
+    sign[0] = sgn * 0.5f;
+    sgn = e1[1] < 0 ? -1 : 1;
+    sign[1] = sgn * 0.5f;
+    sgn = e1[2] < 0 ? -1 : 1;
+    sign[2] = sgn * 0.5f;
+    D_8037EAA8[0] = sign[0] * b->f1DC;
+    D_8037EAA8[1] = sign[1] * b->f1E0;
+    D_8037EAA8[2] = sign[2] * b->f1E4 + b->f1E8;
+    D_802A4A2C = pP;
+    BrCrPlaneResolve(b, nrm, planeD, sign, v);
+    if (b->m[2][2] > 0.5f) {
+      flag = 0;
+    }
+    if (flag) {
+      osSyncPrintf("Resistive collision %10.3f\n", b->m[2][2]);
+    }
+    if (D_802A4A28 != 1) {
+      r = BrCrImpulseSolve(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
+    } else {
+      r = BrCrContactKick(b, D_802A4A2C, flag, spin);
+    }
+    if (r != 0) {
+      ret = 1;
+      dp[0] = b->cur[0] - b->state[0];
+      dp[1] = b->cur[1] - b->state[1];
+      dp[2] = b->cur[2] - b->state[2];
+      d = ((dp[0] * pP->n[0] + dp[1] * pP->n[1]) + dp[2] * pP->n[2]) * 1.1;
+      dp[0] = pP->n[0] * d;
+      dp[1] = pP->n[1] * d;
+      dp[2] = pP->n[2] * d;
+      b->cur[0] = b->cur[0] - dp[0];
+      b->cur[1] = b->cur[1] - dp[1];
+      b->cur[2] = b->cur[2] - dp[2];
+      b->cur[6] = b->state[6];
+      b->cur[7] = b->state[7]; b->cur[8] = b->state[8];
+      BrRbQuatDerivative(b->cur);
+      BrQuatToMat(b->m, b->cur);
     }
   }
   if (cnt == 0) {
