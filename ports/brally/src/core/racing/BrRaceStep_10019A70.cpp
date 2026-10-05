@@ -5,35 +5,15 @@
  * and the replay-advance timer. One C++ TU (member-call heavy, no EH frame).
  *
  * The largest single function in BRGlide (11,223 B, 131 calls). */
-/* @t3 0x10019A70 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 10952/11223 insns 2920/2939 rows 341+322 regions 69 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is register colouring/scheduling, behaviour-neutral: A5 proves
- * same-in/same-out (EQUIV-MODULO-FP over valid-state seeding -- every race
- * state, gating-flag combos, live-driver pointer graph). The byte gap is one
- * prologue scheduler tie-break (idx reuses eax vs a fresh reg) colouring the
- * whole function, FIRSTDIV +0xD; the O2y measure variant inflates the rows
- * (frameless fn, sweep-variant artifact). Dossier: memory bracestep-wall.
- * Do not reopen before the end-grind. */
 /* @implements 0x10019A70 glide BrRaceStep
  * @cpp_symbol _BrRaceStep
  *
- * T3 candidate (behavioural). Complete block-by-block transcription of all
- * 2,939 instructions. Behaviourally verified EQUIV-MODULO-FP by the A5 image
- * oracle on valid-state seeding (tools/oracle_profiles.py) across every race
- * state, the gating-flag combinations and a live-driver pointer graph -- same
- * inputs, same outputs. One real bug the byte view hid was found and fixed by
- * the oracle: g_226A44 (the je-skips-when-zero driver loop) was transcribed
- * `==0`; it is `!=0`.
- *
- * NOT byte-exact (T4): residue is register colouring, cpp_score FIRSTDIV +0xD,
- * driven by one prologue scheduler tie-break (idx reuses eax vs a fresh reg)
- * that colours the whole function. Behaviour-neutral. See docs and the
- * bracestep dossier. Do not reopen the colouring before the end-grind.
- *
- *
- * @t4-pass 0x10019A70 1 2026-09-15 probes 14 bytes 10944 insns 2913 regions 65 rows 682 census no  (region-1 register grind: the idx-reuses-eax prologue scheduler tie-break; cache-removal lever -- re-reading g_0B3858 snapped zero->ebp; delta/count reorder; inf[1] single-read; #pragma intrinsic(memcpy) so copies inline as rep movsd; delta/count/idx declaration permutations. FIRSTDIV held +0xD -- colouring wall.)
- * @t4-pass 0x10019A70 2 2026-09-15 probes 11 bytes 10944 insns 2913 regions 65 rows 682 census yes  (write-slot census + 4-variant sweep confirm the residue is register allocation/scheduling, not missing/wrong code -- the A5 oracle proves same-in/same-out incl. the g_226A44 branch fix; numbers unmoved.) */
+ * The decomp's body is byte-exact (193bdbda). Carried from it, each checked
+ * against the original instructions: the pause menu's option 5 sets mode 2
+ * (ebx is 2 at 0x1001bedf); the select keys call 0x10059DE0/0x10059DC0 for
+ * option 2 and 0x10059E50/0x10059E30 for option 3; the leader search clears
+ * every record of every entrant; the sound-offer loop reads each view's car
+ * (0x1001b968 steps ebx by 0x58). */
 #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
 #include "br_mat.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
@@ -953,8 +933,8 @@ Lb887:  /* 0x1001b887 */
         int v = 0;
         if (g_brMode0AA8B4 > 0) {                           /* 0x1001b8c9 leader-attach loop */
             do {
-                /* every pass reads the FIRST view's car */
-                const BrMat4 *active = (const BrMat4 *)g_aBrRaceCar[g_aBrView[0].iCar].pMatA;
+                /* each pass reads its own view's car (ebx steps 0x58) */
+                const BrMat4 *active = (const BrMat4 *)g_aBrRaceCar[g_aBrView[v].iCar].pMatA;
                 if ((*(int *)&g_brRaceBeginAirplane) != 0 && (*(int *)&g_brRaceBeginAirArmed) != 0) {
                     BrSndNearestOfferTrack((*(int *)&g_brRaceBeginAirplane),
                                            (const BrVec3 *)&BrRaceInst((*(int *)&g_brRaceBeginAirplane))[12], active);
@@ -1073,7 +1053,7 @@ Lb887:  /* 0x1001b887 */
                             if (g_brRaceRules.mode == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
                             break;
                         case 5:  /* 0x1001bedf */
-                            loc10 = 1; (*(int *)&g_BrX06909B4) = 1; DAT_105bc8dc = 1;
+                            loc10 = 2; (*(int *)&g_BrX06909B4) = 2; DAT_105bc8dc = 1;
                             break;
                         case 2: case 3: default: break;   /* 0x1001befc */
                         }
@@ -1096,12 +1076,12 @@ Lb887:  /* 0x1001b887 */
                     if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % 6;
                 }
                 if (f & 1) {
-                    if (DAT_105bc8dc == 2)      BrUiSelBDec();
-                    else if (DAT_105bc8dc == 3) BrUiSelADec();
+                    if (DAT_105bc8dc == 2)      BrUiSelADec();
+                    else if (DAT_105bc8dc == 3) BrUiSelBDec();
                 }
                 if (f & 2) {
-                    if (DAT_105bc8dc == 2)      BrUiSelBInc();
-                    else if (DAT_105bc8dc == 3) BrUiSelAInc();
+                    if (DAT_105bc8dc == 2)      BrUiSelAInc();
+                    else if (DAT_105bc8dc == 3) BrUiSelBInc();
                 }
                 i++;
             } while (i < (*(int *)&g_brRaceNEntrant));
@@ -1207,14 +1187,14 @@ Lb887:  /* 0x1001b887 */
                             g_aBrRaceLeaderLen[k2] = d->aLen[best];
                         } while (k2 < n);
                     }
-                    if ((*(int *)&g_brRaceNEntrant) > 0) {           /* 0x1001c305 report + clear */
-                        int j = 0;
-                        do {
-                            BrRaceCtl *c = g_aBrRaceCar[j].pCtl;
-                            BrPodNop(&g_0A978C, 0, j, &c->aLen[0]);
-                            c->apRec[j] = 0;
-                            j++;
-                        } while (j < (*(int *)&g_brRaceNEntrant));
+                    {                                    /* 0x1001c305 report + clear, every entrant's every record */
+                        int c0, j;
+                        for (c0 = 0; c0 < (*(int *)&g_brRaceNEntrant); c0++) {
+                            for (j = 0; j < (*(int *)&g_brRaceNEntrant); j++) {
+                                BrPodNop(&g_0A978C, c0, j, &g_aBrRaceCar[c0].pCtl->aLen[0]);
+                                g_aBrRaceCar[c0].pCtl->apRec[j] = 0;
+                            }
+                        }
                     }
                     BrPodNop(&g_0A9768, (*(int *)&g_brRaceBeginBestCar), DAT_105ccb68[2]);   /* 0x1001c351 */
                     goto Lc45c_1;
