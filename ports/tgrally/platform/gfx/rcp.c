@@ -114,10 +114,22 @@ static void m4_load(M4 *r, uint32_t a)
         }
 }
 
+/* the RSP keeps the MVP in DMEM as s15.16 halves (integer parts, then
+ * fractions), and a forced matrix overwrites those halves a quarter at a
+ * time: kept here as the fixed-point words so a quarter replaces exactly
+ * the halves it carries */
+static int32_t s_mvp_fx[16];
+
 static void mvp_update(void)
 {
-    if (!s_mvp_forced)
-        m4_mul(&s_mvp, &s_mv[s_mvn], &s_proj);
+    int i;
+    if (s_mvp_forced)
+        return;
+    m4_mul(&s_mvp, &s_mv[s_mvn], &s_proj);
+    for (i = 0; i < 16; i++) {
+        double f = floor((double)s_mvp.m[i / 4][i % 4] * 65536.0);
+        s_mvp_fx[i] = f >= 2147483647.0 ? INT32_MAX : f <= -2147483648.0 ? INT32_MIN : (int32_t)f;
+    }
 }
 
 /* a light's direction in model space (the modelview's transpose applied) */
@@ -699,7 +711,6 @@ static void triangle(int a, int b, int c)
     Vtx *v[3];
     RdrState st;
     RdrVtx out[3];
-    float cross, ax, ay, bx, by, cx, cy;
     int k, skip;
     if (a >= 32 || b >= 32 || c >= 32)
         return;
@@ -711,14 +722,17 @@ static void triangle(int a, int b, int c)
             fprintf(stderr, "offscreen clip %d %d %d\n", v[0]->clip, v[1]->clip, v[2]->clip);
         return;                                       /* wholly off one side */
     }
-    if (!(v[0]->clip & 16) && !(v[1]->clip & 16) && !(v[2]->clip & 16)) {
-        ax = v[0]->v.x / v[0]->v.w; ay = v[0]->v.y / v[0]->v.w;
-        bx = v[1]->v.x / v[1]->v.w; by = v[1]->v.y / v[1]->v.w;
-        cx = v[2]->v.x / v[2]->v.w; cy = v[2]->v.y / v[2]->v.w;
-        cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);   /* screen y down */
-        if (((s_geom & G_CULL_BACK) && cross >= 0) || ((s_geom & G_CULL_FRONT) && cross <= 0)) {
+    {
+        /* the facing, from the homogeneous coordinates: det(x, y, w) is the
+           screen-space cross product times w0 w1 w2, so it is the same test
+           in front of the camera, and it still holds for a triangle reaching
+           behind it (what the RSP's clipper hands on keeps that facing) */
+        const RdrVtx *p = &v[0]->v, *q = &v[1]->v, *r = &v[2]->v;
+        float det = p->x * (q->y * r->w - r->y * q->w) - p->y * (q->x * r->w - r->x * q->w) +
+                    p->w * (q->x * r->y - r->x * q->y);
+        if (((s_geom & G_CULL_BACK) && det >= 0) || ((s_geom & G_CULL_FRONT) && det <= 0)) {
             if (s_log)                                /* screen y runs down: clockwise is < 0 */
-                fprintf(stderr, "culled geom %08X cross %g y %.0f %.0f %.0f\n", s_geom, cross, ay, by, cy);
+                fprintf(stderr, "culled geom %08X det %g w %.2f %.2f %.2f\n", s_geom, det, p->w, q->w, r->w);
             return;
         }
     }
@@ -738,10 +752,11 @@ static void triangle(int a, int b, int c)
     frame_open();
     state(&st, s_tex.tile);
     if (s_log)
-        fprintf(stderr, "tri #%d geom %08X omh %08X oml %08X cc %06X %08X tex %d %dx%d tex1 %d y %.2f %.2f %.2f w %.1f x %.1f %.1f %.1f\n",
+        fprintf(stderr, "tri #%d geom %08X omh %08X oml %08X cc %06X %08X tex %d %dx%d tex1 %d y %.2f %.2f %.2f w %.1f x %.1f %.1f %.1f zw %.3f %.3f %.3f w %.2f %.2f %.2f\n",
                 tgr_rcp_tri, s_geom, s_omh, s_oml, s_cc0, s_cc1, st.tile[0].tex, st.tile[0].w, st.tile[0].h, st.tile[1].tex,
                 v[0]->v.y / v[0]->v.w, v[1]->v.y / v[1]->v.w, v[2]->v.y / v[2]->v.w, v[0]->v.w,
-                v[0]->v.x / v[0]->v.w, v[1]->v.x / v[1]->v.w, v[2]->v.x / v[2]->v.w),
+                v[0]->v.x / v[0]->v.w, v[1]->v.x / v[1]->v.w, v[2]->v.x / v[2]->v.w,
+                v[0]->v.z / v[0]->v.w, v[1]->v.z / v[1]->v.w, v[2]->v.z / v[2]->v.w, v[0]->v.w, v[1]->v.w, v[2]->v.w),
         fprintf(stderr, "    tile%d fmt %d siz %d line %d tmem %d pal %d uls %d ult %d lrs %d lrt %d mask %d/%d shift %d/%d s %.1f t %.1f timg %X\n",
                 s_tex.tile, s_tile[s_tex.tile].fmt, s_tile[s_tex.tile].siz, s_tile[s_tex.tile].line,
                 s_tile[s_tex.tile].tmem, s_tile[s_tex.tile].pal, s_tile[s_tex.tile].uls, s_tile[s_tex.tile].ult,
@@ -891,6 +906,10 @@ static void run(uint32_t dl)
             }
             s_mvp_forced = 0;
             mvp_update();
+            if (s_log)
+                fprintf(stderr, "mtx p %d depth %d  %.3f %.3f %.3f %.3f | %.3f %.3f %.3f %.3f | %.3f %.3f %.3f %.3f | %.3f %.3f %.3f %.3f\n",
+                        p, s_mvn, m.m[0][0], m.m[0][1], m.m[0][2], m.m[0][3], m.m[1][0], m.m[1][1], m.m[1][2], m.m[1][3],
+                        m.m[2][0], m.m[2][1], m.m[2][2], m.m[2][3], m.m[3][0], m.m[3][1], m.m[3][2], m.m[3][3]);
             break;
         }
         case 0x03: {                                  /* G_MOVEMEM */
@@ -920,15 +939,14 @@ static void run(uint32_t dl)
                 int q = quarter[(idx - 0x98) / 2], j;
                 for (j = 0; j < 8; j++) {
                     int e = q * 8 + j;               /* element e of the 32 halves */
-                    if (e < 16) {
-                        float frac = s_mvp.m[e / 4][e % 4] - floorf(s_mvp.m[e / 4][e % 4]);
-                        s_mvp.m[e / 4][e % 4] = (int16_t)rd16(a + j * 2) + frac;
-                    } else {
-                        int f = e - 16;
-                        float whole = floorf(s_mvp.m[f / 4][f % 4]);
-                        s_mvp.m[f / 4][f % 4] = whole + rd16(a + j * 2) / 65536.0f;
-                    }
+                    uint32_t h = rd16(a + j * 2);
+                    if (e < 16)
+                        s_mvp_fx[e] = (int32_t)((uint32_t)s_mvp_fx[e] & 0xFFFF) | (int32_t)(h << 16);
+                    else
+                        s_mvp_fx[e - 16] = (int32_t)(((uint32_t)s_mvp_fx[e - 16] & 0xFFFF0000u) | h);
                 }
+                for (j = 0; j < 16; j++)
+                    s_mvp.m[j / 4][j % 4] = (float)(s_mvp_fx[j] / 65536.0);
                 s_mvp_forced = 1;
             }
             break;
@@ -961,7 +979,10 @@ static void run(uint32_t dl)
             int sh = (w0 >> 8) & 0xFF, len = w0 & 0xFF;
             uint32_t mask = (len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1)) << sh;
             uint32_t *m = op == 0xB9 ? &s_oml : &s_omh;
-            *m = (*m & ~mask) | (w1 & mask);
+            /* F3DEX 1.x clears the field and ORs in the whole word: bits of
+               the data outside the field land too (the dust's render mode,
+               0x0F0A0233 at shift 3, sets dithered alpha compare that way) */
+            *m = (*m & ~mask) | w1;
             break;
         }
         case 0xBB:                                    /* G_TEXTURE */
@@ -997,6 +1018,8 @@ static void run(uint32_t dl)
         case 0xBD:                                    /* G_POPMTX */
             if (s_mvn > 0)
                 s_mvn--;
+            if (s_log)
+                fprintf(stderr, "popmtx depth %d\n", s_mvn);
             s_mvp_forced = 0;
             mvp_update();
             break;
@@ -1104,6 +1127,8 @@ void tgr_rcp_task(uint32_t dl)
         if (!inited)
             return;
     }
+    s_mvn = 0;                                        /* each task starts the matrix stack at the
+                                                         task's dram_stack base */
     run(dl);
     if (s_frame_open) {
         frame_end();

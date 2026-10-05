@@ -25,7 +25,10 @@ static const char *k_shader =
 "struct VOut { float4 pos [[position]]; float2 st; float4 rgba; };\n"
 "struct Tile { float4 org; int4 size; int4 wrap; int4 cl; };\n"
 "struct U { int4 cc[4]; float4 prim, env, fog, blendc; float plod, scale; int cycle, filter, fog_blend;\n"
-"           int alpha_cmp, ntex, balpha, lodn; float2 fb; Tile tile[10]; };\n"
+"           int alpha_cmp, ntex, balpha, lodn, seed, pad0; float2 fb; Tile tile[10]; };\n"
+"float noise8(float2 p, int seed) {   /* the RDP's per-pixel random value, 0..1, new each frame */\n"
+"  uint h = uint(p.x) * 1973u + uint(p.y) * 9277u + uint(seed) * 26699u; h = (h ^ (h >> 13)) * 1274126177u;\n"
+"  return float((h ^ (h >> 16)) & 255u) / 255.0; }\n"
 "vertex VOut vs(VIn v [[stage_in]], constant U &u [[buffer(1)]]) {\n"
 "  VOut o; float w = v.pos.w;\n"
 "  o.pos = float4(v.pos.x / u.fb.x * 2.0 - w, w - v.pos.y / u.fb.y * 2.0, (v.pos.z + w) * 0.5, w);\n"
@@ -83,6 +86,7 @@ static const char *k_shader =
 "               inp(a.z, comb, t0, t1, i.rgba, u, lfrac).a + inp(a.w, comb, t0, t1, i.rgba, u, lfrac).a;\n"
 "    comb = clamp(float4(rgb, al), 0.0, 1.0); }\n"
 "  if (u.alpha_cmp == 1 && comb.a < u.blendc.a) discard_fragment();\n"
+"  if (u.alpha_cmp == 2 && comb.a < noise8(floor(i.pos.xy / u.scale), u.seed)) discard_fragment();\n"
 "  if (u.alpha_cmp == 3 && comb.a < 0.5) discard_fragment();\n"
 "  if (u.alpha_cmp == 4 && comb.a < 1.0 / 255.0) discard_fragment();\n"
 "  if (u.fog_blend != 0) comb.rgb = mix(comb.rgb, u.fog.rgb, i.rgba.a);\n"
@@ -103,7 +107,7 @@ typedef struct {
     simd_float4 prim, env, fog, blendc;
     float plod, scale;                                /* scale: target pixels per N64 pixel */
     int cycle, filter, fog_blend;
-    int alpha_cmp, ntex, balpha, lodn;
+    int alpha_cmp, ntex, balpha, lodn, seed, pad0;
     simd_float2 fb;
     TileU tile[10];
 } Uniforms;
@@ -257,8 +261,11 @@ static float target_scale(int fb_w)
     return k < 0.25f ? 0.25f : k > 16 ? 16 : k;
 }
 
+static uint32_t s_frames;                              /* the noise's seed */
+
 void rdr_frame_begin(int fb_w, int fb_h)
 {
+    s_frames++;
     @autoreleasepool {
         float k = target_scale(fb_w);
         int tw = (int)(fb_w * k + 0.5f), th = (int)(fb_h * k + 0.5f);
@@ -338,6 +345,7 @@ static void uniforms(const RdrState *st, Uniforms *u)
     u->alpha_cmp = st->alpha_compare;
     u->balpha = st->blend_alpha;
     u->fb = (simd_float2){ (float)s_fb_w, (float)s_fb_h };
+    u->seed = (int)s_frames;
     u->lodn = st->lod_levels;
     for (k = 0; k < 10; k++) {
         const RdrTile *t = k < 2 ? &st->tile[k] : &st->lod[k - 2];
