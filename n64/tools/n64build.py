@@ -270,10 +270,15 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
         lo = theirs[lo_i] & 0xffff if lo_i < len(theirs) else 0
         return ((hi << 16) + sext16(lo)) & 0xffffffff
 
-    def section_base(secname):
+    def section_base(secname, near=None):
         """ROM VA of this object's section secname, from the first of this
         function's %hi/%lo pairs against it whose ROM pair decodes into the
-        image; None when the function has none."""
+        image; None when the function has none.  With near, from the pair
+        whose own addend is closest to near instead: a file's .rodata need
+        not be one block in the ROM (its strings and its late float/jump
+        table literals can sit apart when the original file held more), so a
+        pointer into the strings is placed by a pair into the strings."""
+        best = None
         for (o, t, sj) in rels:
             ss = obj.syms[sj]
             if t != 5 or ss['type'] != 3 or obj.secs[ss['shndx']]['name'] != secname:
@@ -286,8 +291,11 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
             add = ((hw & 0xffff) << 16) + sext16(lw & 0xffff)
             rv = rom_pair_addr((o - start) // 4, (lo_o - start) // 4)
             if rom.in_image(rv):
-                return (rv - add) & 0xffffffff
-        return None
+                if near is None:
+                    return (rv - add) & 0xffffffff
+                if best is None or abs(add - near) < best[0]:
+                    best = (abs(add - near), (rv - add) & 0xffffffff)
+        return None if best is None else best[1]
 
     LOAD_WIDTH = {0x20: 1, 0x24: 1, 0x28: 1, 0x21: 2, 0x25: 2, 0x29: 2, 0x23: 4, 0x2B: 4,
                   0x31: 4, 0x39: 4, 0x35: 8, 0x3D: 8}
@@ -346,7 +354,7 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                     # a pointer initialiser into another section of this
                     # object (a string in .rodata): that section's ROM base,
                     # as this function's own %hi/%lo pairs against it place it
-                    b = section_base(obj.secs[ss['shndx']]['name'])
+                    b = section_base(obj.secs[ss['shndx']]['name'], near=tgt)
                     want = None if b is None else (b + tgt) & 0xffffffff
                 else:
                     want = None
