@@ -107,13 +107,12 @@ void BrCreditsDrawCars(void)
  * buttons held). A or Start skips to the legal text, a second press (or
  * 24.2 s) fades out, then the main menu after a press, else the attract race.
  * Source facts: logo and model pointers are file statics, the clock, banks
- * and flags function statics; ROM file offsets are link-time symbols; the
- * 0xB0 frame matters (zlib reads below it on the first frame).
- * RESIDUE (1459, same size): the sound calls' short arguments sit in other
- * temporaries, and each model load reloads the stored pointer. */
-/* @t4-pass 0x8020686C 3 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020686C 4 2026-10-03 compiles 41 best 1459 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8020686C */
+ * and flags function statics; ROM file offsets are link-time symbols passed
+ * as pointers; the 0xB0 frame matters (zlib reads below it on the first
+ * frame).  The frame is the declaration order: i and mtx at function scope,
+ * then each gbi macro's block temporary and the block locals (the voices,
+ * the fade level v, the caption alpha a) in source order; the flight
+ * distances are conditional expressions, not locals. */
 /* @implements 0x8020686C tgr BrIntroScreen */
 void BrIntroScreen(void)
 {
@@ -132,13 +131,8 @@ void BrIntroScreen(void)
   extern int D_80315ECC;
   extern int D_80315ED0;
   extern int D_80315ED4;                  /* a button was pressed: go to the main menu */
-  Mtx *mtx;
-  float z;
-  int unused[4];                 /* holds the ROM's 0xB0 frame: zlib reads below it */
-  int a;
-  int v;
   int i;
-  BrPadRec *pad;
+  Mtx *mtx;
 
   if (D_80270810 == 0) {
     BrFadeTo(1.0f, 0.2f);
@@ -233,12 +227,12 @@ void BrIntroScreen(void)
                            D_80315E9C * 1.5707964f * D_80315E9C * D_80315E9C * D_80315E9C * 0.0625f + -3.1415927f,
                            0.03125f);
     } else if (D_80315E9C < 6.0f) {
-      if (D_80315E9C > 3.5f) {
-        z = (D_80315E9C - 3.5f) * (D_80315E9C - 3.5f) * 256.0f;
-      } else {
-        z = 0.0f;
-      }
-      BrMenuIconDrawScaled(D_80315E80, z, 0.0f, -50.0f, -1.5707964f, 0.03125f);
+      BrMenuIconDrawScaled(D_80315E80,
+                           (D_80315E9C > 3.5f ? (D_80315E9C - 3.5f) * (D_80315E9C - 3.5f) * 256.0f : 0.0f),
+                           0.0f,
+                           -50.0f,
+                           -1.5707964f,
+                           0.03125f);
       if (D_80315E9C > 3.5f) {
         if (D_80315EB4 < 2) {
           D_80315EB0 = BrSfxFreeVoice();
@@ -249,6 +243,8 @@ void BrIntroScreen(void)
           }
           D_80315EB4 = 2;
         } else {
+          int v;
+
           v = (D_80315E9C - 3.5f) * 32.0f;
           if (v > 20) {
             v = 20;
@@ -260,13 +256,12 @@ void BrIntroScreen(void)
   }
 
   if (D_80315E9C >= 4.0f) {
+    int a;
+
     if (D_80315E9C < 6.0f) {
       a = 200 - (int)((6.0f - D_80315E9C) * 255.0 * 4.0);
     } else {
-      a = 200;
-      if (D_80315E9C > 7.5f) {
-        a = 200 - (int)((D_80315E9C - 7.5f) * 255.0 * 4.0);
-      }
+      a = D_80315E9C > 7.5f ? 200 - (int)((D_80315E9C - 7.5f) * 255.0 * 4.0) : 200;
     }
     if (a > 0) {
       BrTextSetColours(a, a, a, a, a, a);
@@ -302,12 +297,12 @@ void BrIntroScreen(void)
                                -3.1415927f,
                            0.03125f);
     } else if (D_80315E9C < 10.0f) {
-      if (D_80315E9C > 7.5f) {
-        z = (D_80315E9C - 7.5f) * (D_80315E9C - 7.5f) * 256.0f;
-      } else {
-        z = 0.0f;
-      }
-      BrMenuIconDrawScaled(D_80315E84, z, 0.0f, -50.0f, -1.5707964f, 0.03125f);
+      BrMenuIconDrawScaled(D_80315E84,
+                           (D_80315E9C > 7.5f ? (D_80315E9C - 7.5f) * (D_80315E9C - 7.5f) * 256.0f : 0.0f),
+                           0.0f,
+                           -50.0f,
+                           -1.5707964f,
+                           0.03125f);
       if (D_80315E9C > 7.5f) {
         if (D_80315EC0 < 2) {
           D_80315EBC = BrSfxFreeVoice();
@@ -318,6 +313,8 @@ void BrIntroScreen(void)
           }
           D_80315EC0 = 2;
         } else {
+          int v;
+
           v = (D_80315E9C - 7.5f) * 32.0f;
           if (v > 20) {
             v = 20;
@@ -329,13 +326,12 @@ void BrIntroScreen(void)
   }
 
   if (D_80315E9C >= 8.0f) {
+    int a;
+
     if (D_80315E9C < 10.0f) {
       a = 200 - (int)((10.0f - D_80315E9C) * 255.0 * 4.0);
     } else {
-      a = 200;
-      if (D_80315E9C > 11.5f) {
-        a = 200 - (int)((D_80315E9C - 11.5f) * 255.0 * 4.0);
-      }
+      a = D_80315E9C > 11.5f ? 200 - (int)((D_80315E9C - 11.5f) * 255.0 * 4.0) : 200;
     }
     if (a > 0) {
       BrTextSetColours(a, a, a, a, a, a);
@@ -371,12 +367,12 @@ void BrIntroScreen(void)
                                -3.1415927f,
                            0.03125f);
     } else if (D_80315E9C < 13.0f) {
-      if (D_80315E9C > 11.5f) {
-        z = (D_80315E9C - 11.5f) * (D_80315E9C - 11.5f) * 256.0f;
-      } else {
-        z = 0.0f;
-      }
-      BrMenuIconDrawScaled(D_80315E88, z, 0.0f, -50.0f, -1.5707964f, 0.03125f);
+      BrMenuIconDrawScaled(D_80315E88,
+                           (D_80315E9C > 11.5f ? (D_80315E9C - 11.5f) * (D_80315E9C - 11.5f) * 256.0f : 0.0f),
+                           0.0f,
+                           -50.0f,
+                           -1.5707964f,
+                           0.03125f);
       if (D_80315E9C > 11.5f) {
         if (D_80315ECC < 2) {
           D_80315EC8 = BrSfxFreeVoice();
@@ -387,6 +383,8 @@ void BrIntroScreen(void)
           }
           D_80315ECC = 2;
         } else {
+          int v;
+
           v = (D_80315E9C - 11.5f) * 32.0f;
           if (v > 20) {
             v = 20;
@@ -413,41 +411,43 @@ void BrIntroScreen(void)
     if (D_80315E9C > 15.0f) {
       BrScissorSet(40, 100, 250, 50);
     }
-    if (D_80315E9C < 15.0f) {
-      z = (sqrtf(3.0f) - sqrtf(D_80315E9C - 12.0f)) * 300.0f;
-    } else {
-      z = -0.0f;
-    }
-    BrMenuIconDrawScaled(D_80315E8C, 0.0f, 0.0f, z, sqrtf(D_80315E9C - 12.0f) * 0.01f + -1.5707964f, 0.05f);
+    BrMenuIconDrawScaled(D_80315E8C,
+                         0.0f,
+                         0.0f,
+                         (D_80315E9C < 15.0f ? (sqrtf(3.0f) - sqrtf(D_80315E9C - 12.0f)) * 300.0f : -0.0f),
+                         sqrtf(D_80315E9C - 12.0f) * 0.01f + -1.5707964f,
+                         0.05f);
     gSPPopMatrix(D_8028A858++, 0);
     BrScissorSet(0, 0, 320, 240);
   }
   if (D_80315E9C > 13.0f) {
     D_80271D98 = 1;
-    if (D_80315E9C < 15.0f) {
-      z = (sqrtf(2.0f) - sqrtf(D_80315E9C - 13.0f)) * 500.0f;
-    } else {
-      z = 0.0f;
-    }
-    BrMenuIconDrawScaled(D_80315E90, 0.0f, 0.0f, z, -1.5707964f, 0.083333336f);
+    BrMenuIconDrawScaled(D_80315E90,
+                         0.0f,
+                         0.0f,
+                         (D_80315E9C < 15.0f ? (sqrtf(2.0f) - sqrtf(D_80315E9C - 13.0f)) * 500.0f : 0.0f),
+                         -1.5707964f,
+                         0.083333336f);
   }
   if (D_80315E9C > 15.2f) {
-    if (D_80315E9C < 16.2f) {
-      z = (sqrtf(1.000001f) - sqrtf(D_80315E9C - 15.2f)) * 500.0f;
-    } else {
-      z = 0.0f;
-    }
-    BrMenuIconDrawScaled(D_80315E98, 0.0f, 0.0f, z, -1.5707964f, 0.083333336f);
+    BrMenuIconDrawScaled(D_80315E98,
+                         0.0f,
+                         0.0f,
+                         (D_80315E9C < 16.2f ? (sqrtf(1.000001f) - sqrtf(D_80315E9C - 15.2f)) * 500.0f : 0.0f),
+                         -1.5707964f,
+                         0.083333336f);
   }
   if (D_80315E9C > 15.0f) {
-    if (D_80315E9C < 16.0f) {
-      z = (sqrtf(1.0f) - sqrtf(D_80315E9C - 15.0f)) * 500.0f;
-    } else {
-      z = 0.0f;
-    }
-    BrMenuIconDrawScaled(D_80315E94, 0.0f, 0.0f, z, -1.5707964f, 0.083333336f);
+    BrMenuIconDrawScaled(D_80315E94,
+                         0.0f,
+                         0.0f,
+                         (D_80315E9C < 16.0f ? (sqrtf(1.0f) - sqrtf(D_80315E9C - 15.0f)) * 500.0f : 0.0f),
+                         -1.5707964f,
+                         0.083333336f);
   }
   if (D_80315E9C > 17.2f) {
+    int a;
+
     a = (D_80315E9C - 17.2f) * 255.0 * 4.0;
     if (a > 200) {
       a = 200;
@@ -479,10 +479,11 @@ void BrIntroScreen(void)
   if (BrFadeIsOut() != 0) {
     if (BrFadeAtTarget() != 0) {
       D_80270810 = 0;
-      for (i = 0; i < 5; i++) {
-        D_802A4920[i].pitch = 0;
-        D_802A4920[i].level = 0;
-      }
+      D_802A4920[0].level = D_802A4920[0].pitch = 0;
+      D_802A4920[1].level = D_802A4920[1].pitch = 0;
+      D_802A4920[2].level = D_802A4920[2].pitch = 0;
+      D_802A4920[3].level = D_802A4920[3].pitch = 0;
+      D_802A4920[4].level = D_802A4920[4].pitch = 0;
       BrScreenFlush3Layout1();
       if (D_80315ED4 != 0) {
         BrModeSet(BrMainMenu);
@@ -495,9 +496,9 @@ void BrIntroScreen(void)
   if (D_80315ED4 != 0 && D_80315E9C > 19.2f) {
     goto fade;
   }
-  for (pad = D_8036A8E0; pad != &D_8036A8E0[2]; pad++) {
-    if (pad->pressed & 0xC010) {
-      BrPadConsume(pad, 0xC010);
+  for (i = 0; i != 2; i++) {
+    if (D_8036A8E0[i].pressed & 0xC010) {
+      BrPadConsume(&D_8036A8E0[i], 0xC010);
       D_80315ED4 = 1;
       if (D_8027081C != 0) {
         goto fade;

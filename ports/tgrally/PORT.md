@@ -33,6 +33,17 @@ resolved by hand, keeping the decomp's new code and the port's conversions;
 the merged files and moves the stamp. After a sync, rebuild and run the
 suite. `n64/src` itself is never edited for the port.
 
+A function M2 restructures (arms swapped, blocks moved) is better rebuilt
+than merged hunk by hunk: take the decomp's file and re-apply the port's
+conversions, which can be read off as the diff from `n64/src` at the fork
+commit to the port's file. Code that moved merges cleanly in its new place
+without its conversions, so after any sync check that no line the port had
+converted survives verbatim. Data the decomp now defines in a TU (an
+initialised global, a function static) stays a declaration here:
+`tools/globals.py` defines it in the arena and lifts its value from the ROM,
+and `tools/staticlift.py` turns function statics into their address symbols.
+gbi commands written as raw `words.w0`/`w1` stores need `tgr_wr32`.
+
 Of the library code the decomp fenced, the pure parts the game calls come
 along (libultra's `gu` matrix and trigonometry routines, zlib's inflater).
 libultra's formatted output is in `platform/libc/xprintf.c`, because its

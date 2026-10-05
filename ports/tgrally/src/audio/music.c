@@ -50,6 +50,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf);
 unsigned char *BrModRowRead(unsigned char *p);
 void BrModReset(void);
 extern int D_802A49C0;
+extern unsigned char D_80378FB2;      /* D_80378FA0.restart, declared on its own */
 extern unsigned char *D_803789D0[];     /* the module's patterns (row count at +5, rows at +9) */
 extern int D_80378F98;
 extern float D_802A49D4[12];
@@ -90,7 +91,7 @@ void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
 /* -- end declarations -- */
 
-#define LE16(p) ((p)[0] + (p)[1] * 0x100)
+#define LE16(p) ((p)[1] * 0x100 + (p)[0])
 #define LE32(p) ((p)[0] + (p)[1] * 0x100 + (p)[2] * 0x10000 + (p)[3] * 0x1000000)
 
 /* WHAT IT DOES: Load a FastTracker II module into the player: song
@@ -101,99 +102,99 @@ void BrRumbleUpdate(int);
  * delta-coded 8-bit data decoded, and 0x4B0 bytes appended -- silence for
  * a one-shot sample, the loop repeated for a forward loop (16-bit and
  * ping-pong samples are refused).  Prints its progress.
- * RESIDUE (340): the ROM re-reads every little-endian field at each use
- * (its sums ordered byte 3, 0, 1, 2) and holds only s0-s3; ours keeps the
- * pattern length's bytes live across the copy loop.  The ROM also stores
- * the restart order through an absolute address but reads it back through
- * the state struct. */
-/* @t4-pass 0x80256720 1 2026-10-03 compiles 25 best 340 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80256720 2 2026-10-03 compiles 25 best 340 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80256720 */
+ * The pattern walk has its own pointer, handed to p for the instruments;
+ * the order count is re-read from the state struct each pass; the restart
+ * byte is stored through its own symbol and read back through the struct;
+ * the 0x28-byte header loop counts from its own initialiser (so IDO does
+ * not unroll it) and the instrument types are a switch. */
 /* @implements 0x80256720 tgr BrModLoad */
 void BrModLoad(unsigned char *xm, unsigned char *buf)
 {
   unsigned char *src;
-  unsigned char *dst;
   unsigned int i;
-  unsigned int j;
-  unsigned int npat;
-  unsigned int ninst;
-  unsigned int len;
-  unsigned int hdr;
   unsigned char *p;
   unsigned char *q;
-  unsigned char acc;
+  unsigned int npat;
+  unsigned int ninst;
+  unsigned int j;
+  unsigned int hdr;
+  int acc;
   unsigned char type;
+  unsigned int len;
+  unsigned char *pat;
+  unsigned char *start;
 
+  start = buf;
   D_80378FA0.order = tgr_addr32(buf);
   D_80378FA0.len = xm[0x40];
   src = xm + 0x50;
   D_80378FA0.x0 = xm[0x4c];
-  dst = buf;
   D_802A49C0 = xm[0x44];
   for (i = 0; i < D_80378FA0.len; i++) {
-    *dst++ = *src++;
+    *buf++ = *src++;
   }
-  dst = TGR_PTR(unsigned char *, (tgr_addr32((dst + 3)) & ~3));
+  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
   osSyncPrintf("Length = %d\n", D_80378FA0.len);
-  D_80378FA0.restart = xm[0x42];
+  D_80378FB2 = xm[0x42];
   osSyncPrintf("Restartfrom = %d\n", D_80378FA0.restart);
   npat = xm[0x46];
   osSyncPrintf("%d Patterns found\n", npat);
   ninst = xm[0x48];
   osSyncPrintf("%d Instruments found\n", ninst);
   hdr = tgr_rd32(xm + 0x3c);              /* the word as the N64 loaded it */
-  p = xm + (hdr >> 24) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + (hdr << 24) + 0x3c;
+  pat = xm + 0x3c + (((hdr >> 24) & 0xff) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + ((hdr & 0xff) << 24));
   for (i = 0; i < npat; i++) {
-    D_803789D0[i] = dst;
-    len = LE32(p) + LE16(p + 7);
-    src = p;
+    D_803789D0[i] = buf;
+    len = LE16(pat + 7) + LE32(pat);
+    src = pat;
     for (j = 0; j < len; j++) {
-      *dst++ = *src++;
+      *buf++ = *src++;
     }
-    p += LE32(p) + LE16(p + 7);
+    pat = pat + (LE16(pat + 7) + LE32(pat));
   }
-  dst = TGR_PTR(unsigned char *, (tgr_addr32((dst + 3)) & ~3));
+  p = pat;
+  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
   osSyncPrintf("Now doSamples");
   for (i = 0; i < ninst; i++) {
     osSyncPrintf(".");
-    j = 0;
-    acc = 0;
     q = p + LE32(p);
     if (p[0x1b] > 0) {
       len = LE32(q);
-      D_803787D0[i] = (BrSample *)dst;
-      for (src = q; j < 0x28; j++) {
-        *dst++ = *src++;
+      D_803787D0[i] = (BrSample *)buf;
+      for (src = q, j = 0; j < 0x28; j++) {
+        *buf++ = *src++;
       }
       SET32(D_803787D0[i]->len, LE32(q));
       SET32(D_803787D0[i]->loopLen, LE32(q + 8));
       src = q + 0x28;
+      acc = 0;
       for (j = 0; j < len; j++) {
-        acc += *src++;
-        *dst++ = acc;
+        acc = *src++ + acc;
+        *buf++ = acc;
       }
       type = q[0xe];
-      if (type == 0) {
+      switch (type) {
+      case 0:
+        for (j = 0; j < 0x4b0; j++) *buf++ = 0;
+        break;
+      case 1:
+        src = buf - LE32(q + 8);
         for (j = 0; j < 0x4b0; j++) {
-          *dst++ = 0;
+          *buf++ = *src++;
         }
-      } else if (type == 1) {
-        src = dst - LE32(q + 8);
-        for (j = 0; j < 0x4b0; j++) {
-          *dst++ = *src++;
-        }
-      } else {
+        break;
+      default:
         osSyncPrintf("WANKER fuck off no 16bit, no Ping fucking pong\n");
+        break;
       }
-      dst = TGR_PTR(unsigned char *, (tgr_addr32((dst + 3)) & ~3));
+      buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
       p = q + len + 0x28;
     } else {
       D_803787D0[i] = 0;
       p = q;
     }
   }
-  osSyncPrintf("\n\nSample Space used = %d bytes\n", dst - buf);
+  osSyncPrintf("\n\nSample Space used = %d bytes\n", buf - start);
 }
 
 /* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the

@@ -286,6 +286,15 @@ typedef struct BrHilite { int x1, y1, x2, y2; } BrHilite;
     gDPSetTileSize(pkt, tile, (hilite)->x1 & 0xfff, (hilite)->y1 & 0xfff, \
                    ((((width) - 1) * 4) + (hilite)->x1) & 0xfff,       \
                    ((((height) - 1) * 4) + (hilite)->y1) & 0xfff)
+#define VEC3_COPY(d, s)                                                 \
+{                                                                       \
+  float *_d = (float *)(d);                                             \
+  float *_s = (float *)(s);                                             \
+                                                                        \
+  _d[0] = _s[0];                                                        \
+  _d[1] = _s[1];                                                        \
+  _d[2] = _s[2];                                                        \
+}
 #define G(a, b) { Gfx *g_ = D_8028A858++; tgr_wr32(&g_->words.w0, (unsigned int)(a)); tgr_wr32(&g_->words.w1, TGR_W1(b)); }
 extern unsigned int D_80351C90[];       /* per slot: the level of detail drawn */
 extern int D_8028AA9C;                  /* the least detail to draw */
@@ -348,35 +357,39 @@ void guLookAtHiliteF(float mf[4][4], void *l, void *h, float xEye, float yEye, f
  * wheels for a ghost), the brake lamps' and the indicators' colours patched
  * into their palettes, the near details, the shadow decal when the light is
  * right, the chrome pass with its scrolling environment map, the windows, and
- * the wheels.  PC twin: BrCarDrawVehicle. */
-/* @t4-pass 0x80230554 1 2026-10-03 compiles 120 best 2266 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x80230554 2 2026-10-03 compiles 120 best 2266 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x80230554 */
+ * the wheels.  PC twin: BrCarDrawVehicle.
+ * The view-mode flag is read into a local and tested once more by an empty
+ * if after the lights flag is set; the empty test costs no code but splits
+ * the block, which is what puts the flag in v0. */
 /* @implements 0x80230554 tgr BrCarDraw */
 void BrCarDraw(BrCar *car, int lodBias)
 {
   int lod;
   int tunnel;
   float dist;
-  float near;
+  float nearPad;
   void *hilite;
   int reflect;
   int look;
   unsigned int colA;
   unsigned int colB;
+  int mode;
+  unsigned char *cls;
   float div;
-  int scroll;
+  int tpal;
   int lights;
   int k;
+  unsigned char c[4];
   int tw;
   int th;
   int cw;
   int ch;
-  unsigned char c[4];
   unsigned short *pal;
-  int unused344[8];
+  int unused344[4];
   BrVec3 toCam;
-  int unused32C[3];
+  float x;
+  float y;
+  float z;
   float atZ;
   float atX;
   float eye[3];
@@ -401,11 +414,10 @@ void BrCarDraw(BrCar *car, int lodBias)
   if (D_8028AB0C == 2) {
     if (dist < 40.0f) {
       lod = 0;
+    } else if (dist < 80.0f) {
+      lod = 1;
     } else {
       lod = 2;
-      if (dist < 80.0f) {
-        lod = 1;
-      }
     }
     if (lod < D_8028AA9C) {
       lod = D_8028AA9C;
@@ -437,42 +449,45 @@ void BrCarDraw(BrCar *car, int lodBias)
     c[0] = tgr_f2u((unsigned int)D_8028AB40 / div);
     c[1] = tgr_f2u((unsigned int)D_8028AB44 / div);
     c[2] = tgr_f2u((unsigned int)D_8028AB48 / div);
-    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    colA = c[0] << 24 | c[1] << 16 | c[2] << 8;
     c[0] = D_8028AB4C;
-    c[2] = D_8028AB54;
     c[1] = D_8028AB50;
-    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[2] = D_8028AB54;
+    colB = c[0] << 24 | c[1] << 16 | c[2] << 8;
   } else if (tunnel != 0) {
     c[0] = 0;
     c[1] = 0;
     c[2] = 0;
-    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    colA = c[0] << 24 | c[1] << 16 | c[2] << 8;
     c[0] = (D_8028AB4C << 2) / 5;
     c[1] = (D_8028AB50 << 2) / 5;
     c[2] = (D_8028AB54 << 2) / 5;
-    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    colB = c[0] << 24 | c[1] << 16 | c[2] << 8;
   } else {
     c[0] = D_8028AB40;
-    c[2] = D_8028AB48;
     c[1] = D_8028AB44;
-    colA = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[2] = D_8028AB48;
+    colA = c[0] << 24 | c[1] << 16 | c[2] << 8;
     c[0] = D_8028AB4C;
-    c[2] = D_8028AB54;
     c[1] = D_8028AB50;
-    colB = c[2] << 8 | c[0] << 24 | c[1] << 16;
+    c[2] = D_8028AB54;
+    colB = c[0] << 24 | c[1] << 16 | c[2] << 8;
   }
   gSPMatrix(D_8028A858++, D_80351CA0[car->slot], 6);
   gSPMatrix(D_8028A858++, D_8028A878, 3);
   if (D_8028AA80 != 0) {
-    if ((BrCarCam *)D_8028AAF4 == &D_8028AAF0->cams[3]) {
+    if (&D_8028AAF0->cams[3] == (BrCarCam *)D_8028AAF4) {
       BrVec3Negate(&D_80351D08, D_8028AAF4);
     } else {
       BrVec3Negate(&D_80351D08, D_8028AAF0);
     }
   } else {
-    D_80351D08.x = D_8031B338[0];
-    D_80351D08.y = D_8031B338[1];
-    D_80351D08.z = D_8031B338[2];
+    x = D_8031B338[0];
+    y = D_8031B338[1];
+    z = D_8031B338[2];
+    D_80351D08.x = x;
+    D_80351D08.y = y;
+    D_80351D08.z = z;
   }
   BrVec3Normalise(&D_80351D08);
   D_80351D18.x = D_80351D08.x;
@@ -480,17 +495,15 @@ void BrCarDraw(BrCar *car, int lodBias)
   D_80351D18.z = D_80351D08.z;
   BrVec3Sub(&toCam, (BrVec3 *)D_8028AAF4->mtx0[3], (BrVec3 *)car->mtx0[3]);
   div = BrVec3Length(&toCam);
-  if (div == 0.0f) {
+  if (div == 0) {
     BrVec3Negate(&toCam, D_8028AAF4);
   } else {
     BrVec3DivBy(&toCam, div);
   }
   BrVec3Midpoint(&D_80351D18, &toCam, &D_80351D18);
   div = BrVec3Length(&D_80351D18);
-  if (div == 0.0f) {
-    D_80351D18.x = D_8028AAF4->mtx0[2][0];
-    D_80351D18.y = D_8028AAF4->mtx0[2][1];
-    D_80351D18.z = D_8028AAF4->mtx0[2][2];
+  if (div == 0) {
+    VEC3_COPY(&D_80351D18, D_8028AAF4->mtx0[2]);
   } else {
     BrVec3DivBy(&D_80351D18, div);
   }
@@ -513,10 +526,10 @@ void BrCarDraw(BrCar *car, int lodBias)
   if (eye[0] == 0.0f && eye[1] == 0.0f) {
     eye[0] = D_802A9EDC;
   }
-  guLookAtReflectF(D_8031AB10, TGR_PTR(void *, reflect), eye[0], eye[1], 0, 0, 0, 0, 0, 0, 1.0f);
+  guLookAtReflectF(D_8031AB10, TGR_PTR(void *, reflect), eye[0], eye[1], 0.0f, 0, 0, 0, 0, 0, 1.0f);
   guLookAtHiliteF(D_8031AB10, TGR_PTR(void *, look), hilite, D_8028AAF4->mtx0[3][0], D_8028AAF4->mtx0[3][1],
                   D_8028AAF4->mtx0[3][2], car->mtx0[3][0] + atX, car->mtx0[3][1], car->mtx0[3][2] + atZ,
-                  0, 0, 1.0f, D_80351D18.x, D_80351D18.y, D_80351D18.z, D_80351D18.x, D_80351D18.y,
+                  0.0f, 0.0f, 1.0f, D_80351D18.x, D_80351D18.y, D_80351D18.z, D_80351D18.x, D_80351D18.y,
                   D_80351D18.z, 64, 64);
   if (10.0f < dist) {
     gSPDisplayList(D_8028A858++, D_8028A9C8);
@@ -525,12 +538,12 @@ void BrCarDraw(BrCar *car, int lodBias)
   }
   if (D_8028AA80 != 0 || D_8028AA8C != 0) {
     ((BrLights1 *)D_80351C10)[car->slot] = *(BrLights1 *)D_8028A9F0;
-    ((BrLights1 *)D_80351C10)[car->slot].dir[0] = -(int)(D_8028AAF0->mtx0[0][0] * 120.0f);
-    ((BrLights1 *)D_80351C10)[car->slot].dir[1] = -(int)(D_8028AAF0->mtx0[0][1] * 120.0f);
-    ((BrLights1 *)D_80351C10)[car->slot].dir[2] = -(int)(D_8028AAF0->mtx0[0][2] * 120.0f);
+    ((BrLights1 *)D_80351C10)[car->slot].dir[0] = -(signed char)(int)(D_8028AAF0->mtx0[0][0] * 120.0f);
+    ((BrLights1 *)D_80351C10)[car->slot].dir[1] = -(signed char)(int)(D_8028AAF0->mtx0[0][1] * 120.0f);
+    ((BrLights1 *)D_80351C10)[car->slot].dir[2] = -(signed char)(int)(D_8028AAF0->mtx0[0][2] * 120.0f);
     gSPNumLights(D_8028A858++, 1);
     gSPLight(D_8028A858++, ((BrLights1 *)D_80351C10)[car->slot].col, 1);
-    gSPLight(D_8028A858++, &D_80351C10[car->slot * 0x18], 2);
+    gSPLight(D_8028A858++, ((BrLights1 *)D_80351C10)[car->slot].amb, 2);
   } else {
     gSPNumLights(D_8028A858++, 1);
     gSPLight(D_8028A858++, D_8028A9F8, 1);
@@ -538,7 +551,12 @@ void BrCarDraw(BrCar *car, int lodBias)
   }
   gDPPipeSync(D_8028A858++);
   gDPSetTextureLOD(D_8028A858++, 0x10000);
-  gSPSetGeometryMode(D_8028A858++, 0x20205);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, 0xB7000000);
+    tgr_wr32(&_g->words.w1, 0x20205);
+  }
   if (D_8028AA78 != 0) {
     gSPSetGeometryMode(D_8028A858++, 0x10000);
     if (car->colour[3] == 2) {
@@ -549,8 +567,8 @@ void BrCarDraw(BrCar *car, int lodBias)
   } else {
     D_8028C300 = 0x0C080000;
   }
-  gSPSetGeometryMode(D_8028A858++, D_8028A8AC != D_8028A8A8 ? 0x1000 : 0x2000);
-  gSPClearGeometryMode(D_8028A858++, D_8028A8AC != D_8028A8A8 ? 0x2000 : 0x1000);
+  gSPSetGeometryMode(D_8028A858++, D_8028A8AC - D_8028A8A8 ? 0x1000 : 0x2000);
+  gSPClearGeometryMode(D_8028A858++, D_8028A8AC - D_8028A8A8 ? 0x2000 : 0x1000);
   if (car->colour[3] == 2) {
     D_8028C304 = 0x011049D8;
   } else if ((dist < 100.0f) != 0) {
@@ -614,7 +632,10 @@ void BrCarDraw(BrCar *car, int lodBias)
     gDPSetTile(D_8028A858++, 0, 0, 0, 0x1F0, 6, 0, 0, 0, 0, 0, 0, 0);
     gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 5, 0, 0, 0, 0, 0, 0, 0);
   }
-  lights = D_8028AA80 != 0 || D_8028AA8C != 0;
+  mode = D_8028AA80;
+  lights = mode != 0 || D_8028AA8C != 0;
+  if (mode != 0) {
+  }
   pal = BEPTR(unsigned short *, BR_CARPARTS(D_8028AB08)[D_8028AB08->decalPart[10]].b);
   if (pal != 0) {
     for (k = 12; k < 16; k++) {
@@ -641,8 +662,8 @@ void BrCarDraw(BrCar *car, int lodBias)
       tgr_wr16(&pal[8], 0xF904);
     } else {
       tgr_wr16(&pal[14], 0x9001);
-      tgr_wr16(&pal[9], 0xA001);
       tgr_wr16(&pal[13], tgr_rd16(&pal[15]));
+      tgr_wr16(&pal[9], 0xA001);
       tgr_wr16(&pal[8], tgr_rd16(&pal[10]));
     }
     tgr_wr16(&pal[12], 0x7981);
@@ -667,7 +688,12 @@ void BrCarDraw(BrCar *car, int lodBias)
     if (0.0 < BrVec3Dot((BrVec3 *)car->mtx0[2], &rel)) {
       BrTexLoad(6, BEPTR(void *, D_8028AB08->parts));
       gDPPipeSync(D_8028A858++);
-      gDPSetCycleType(D_8028A858++, 0x100000);
+      {
+        Gfx *_g = (Gfx *)(D_8028A858++);
+
+        tgr_wr32(&_g->words.w0, 0xBA001402);
+        tgr_wr32(&_g->words.w1, 0x100000);
+      }
       gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
       gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF838);
       gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
@@ -683,15 +709,24 @@ void BrCarDraw(BrCar *car, int lodBias)
       }
     }
   }
-  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && (BrCarCam *)D_8028AAF4 == &D_8028AAF0->cams[3]) {
+  {
+    float near;
+    int scroll;
+
+  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && &D_8028AAF0->cams[3] == (BrCarCam *)D_8028AAF4) {
     near = dist < 120.0f;
   } else {
     near = dist < 50.0f;
   }
-  if (D_8028A8A8 == 0 && near && car->colour[3] != 2 && lod * 10 < 10) {
+  if (D_8028A8A8 == 0 && near && car->colour[3] != 2 && lod < 1) {
     BrTexLoad(3, BEPTR(void *, D_8028AB08->parts));
     gDPPipeSync(D_8028A858++);
-    gDPSetCycleType(D_8028A858++, 0x100000);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      tgr_wr32(&_g->words.w0, 0xBA001402);
+      tgr_wr32(&_g->words.w1, 0x100000);
+    }
     gDPSetRenderMode(D_8028A858++, D_8028C300, D_8028C304);
     gDPSetCombine(D_8028A858++, 0x127FFF, 0xFFFFF838);
     gMoveWd(D_8028A858++, 0x0A, 0x00, colA);
@@ -716,10 +751,36 @@ void BrCarDraw(BrCar *car, int lodBias)
     gDPSetTextureFilter(D_8028A858++, D_8028A898);
     gDPSetPrimColor(D_8028A858++, 0, 0, 0xFF, 0xFF, 0xCC, 0xFF);
     gDPSetCombine(D_8028A858++, 0xFFFFFF, 0xFFFDF2F9);
-    gDPSetRenderMode(D_8028A858++, 0x00504F50, 0);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      tgr_wr32(&_g->words.w0, 0xB900031D);
+      tgr_wr32(&_g->words.w1, 0x00504F50);
+    }
     gDPTileSync(D_8028A858++);
     gDPSetTextureLUT(D_8028A858++, 0);
-    gDPLoadTextureBlock_4b(D_8028A858++, D_8028AA80 ? &D_802A2170 : &D_802A1968, 4, tw, th, 0, 0, 0, 6, 6, 0, 0);
+    gDPSetTextureImage(D_8028A858++, 4, 2, 1, D_8028AA80 ? &D_802A2170 : &D_802A1968);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      tgr_wr32(&_g->words.w0, 0xF5900000);
+      tgr_wr32(&_g->words.w1, 0x07018060);
+    }
+    gDPLoadSync(D_8028A858++);
+    gDPLoadBlock(D_8028A858++, 7, 0, 0, (((tw) * (th) + 3) >> 2) - 1, CALC_DXT_4b(tw));
+    gDPPipeSync(D_8028A858++);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(4, 21, 3) | _SHIFTL(0, 19, 2) |
+                     _SHIFTL((((tw) >> 1) + 7) >> 3, 9, 9) | _SHIFTL(0, 0, 9));
+      tgr_wr32(&_g->words.w1, _SHIFTL(0, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(0, 18, 2) | _SHIFTL(6, 14, 4) |
+                     _SHIFTL(0, 10, 4) | _SHIFTL(0, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4));
+    }
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILESIZE, 24, 8) | _SHIFTL(0, 12, 12) | _SHIFTL(0, 0, 12));
+      tgr_wr32(&_g->words.w1, _SHIFTL(0, 24, 3) | _SHIFTL(((tw) - 1) << 2, 12, 12) | _SHIFTL(((th) - 1) << 2, 0, 12));
+    }
     gDPSetColorDither(D_8028A858++, 0xC0);
     gDPSetHilite1Tile(D_8028A858++, 0, (BrHilite *)hilite, 64, 64);
     if (BE32(D_8028AB08->dl[lod][9]) != 0) {
@@ -729,10 +790,16 @@ void BrCarDraw(BrCar *car, int lodBias)
   }
   gDPPipeSync(D_8028A858++);
   gDPSetCycleType(D_8028A858++, 0x100000);
-  gSPSetGeometryMode(D_8028A858++, (D_8028DDCC == 0 ? 0 : 0x80000) | 0x40000);
-  gSPTexture(D_8028A858++, 0x0800, 0x1000, 0, 0, 1);
+  gSPSetGeometryMode(D_8028A858++, (D_8028DDCC != 0 ? 0x80000 : 0) | 0x40000);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, 0xBB000001);
+    tgr_wr32(&_g->words.w1, 0x08001000);
+  }
   gDPSetTextureFilter(D_8028A858++, D_8028A898);
   gDPSetCombine(D_8028A858++, 0x167E2C, 0x55FEF379);
+  cls = D_8028C32C;
   if (D_8028AA78 != 0) {
     if (tunnel != 0) {
       gDPSetEnvColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, (D_8028AB2C >> 3) + 0xDF);
@@ -746,13 +813,40 @@ void BrCarDraw(BrCar *car, int lodBias)
   gDPTileSync(D_8028A858++);
   gDPSetTextureLUT(D_8028A858++, 0);
   cw = 32;
+  tpal = 0;
   ch = 128;
-  gDPLoadTextureBlock_4b(D_8028A858++, D_8028C308[D_8028C32C[D_8028C328 * 2 + *(int *)car->pad1dc8]], 2, cw, ch, 0,
-                         0, 0, 5, 7, 15, 15);
+  gDPSetTextureImage(D_8028A858++, 2, 2, 1, D_8028C308[((unsigned char (*)[2])cls)[D_8028C328][*(int *)car->pad1dc8]]);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, 0xF5500000);
+    tgr_wr32(&_g->words.w1, 0x0701FC5F);
+  }
   gDPLoadSync(D_8028A858++);
-  gDPLoadTLUT_pal16(D_8028A858++, 0, D_8028C318[D_8028C32C[D_8028C328 * 2 + *(int *)car->pad1dc8]]);
+  gDPLoadBlock(D_8028A858++, 7, 0, 0, (((tw) * (th) + 3) >> 2) - 1, CALC_DXT_4b(cw));
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(2, 21, 3) | _SHIFTL(0, 19, 2) |
+                   _SHIFTL((((cw) >> 1) + 7) >> 3, 9, 9) | _SHIFTL(0, 0, 9));
+    tgr_wr32(&_g->words.w1, _SHIFTL(0, 24, 3) | _SHIFTL(tpal, 20, 4) | _SHIFTL(0, 18, 2) | _SHIFTL(7, 14, 4) |
+                   _SHIFTL(15, 10, 4) | _SHIFTL(0, 8, 2) | _SHIFTL(5, 4, 4) | _SHIFTL(15, 0, 4));
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILESIZE, 24, 8) | _SHIFTL(0, 12, 12) | _SHIFTL(0, 0, 12));
+    tgr_wr32(&_g->words.w1, _SHIFTL(0, 24, 3) | _SHIFTL(((cw) - 1) << 2, 12, 12) | _SHIFTL(((ch) - 1) << 2, 0, 12));
+  }
+  gDPLoadSync(D_8028A858++);
+  gDPSetTextureImage(D_8028A858++, 0, 2, 1, D_8028C318[((unsigned char (*)[2])cls)[D_8028C328][*(int *)car->pad1dc8]]);
+  gDPTileSync(D_8028A858++);
+  gDPSetTile(D_8028A858++, 0, 0, 0, (256 + (((tpal) & 0xf) * 16)), 7, 0, 0, 0, 0, 0, 0, 0);
+  gDPLoadSync(D_8028A858++);
+  gDPLoadTLUTCmd(D_8028A858++, 7, 15);
+  gDPPipeSync(D_8028A858++);
   gDPSetTextureLUT(D_8028A858++, 0x8000);
-  scroll = 0x1F - (0x40 - (int)(D_8028AAF0->heading * tw * D_802A9EE0));
+  scroll = tw - (int)(D_8028AAF0->heading * tw * D_802A9EE0);
+  scroll = 0x1F - scroll;
   gDPSetTileSize(D_8028A858++, 0, scroll + 2, 2, scroll + 0x7E, 0x1FE);
   gDPPipeSync(D_8028A858++);
   gMoveWd(D_8028A858++, 0x0A, 0x00, 0);
@@ -782,6 +876,7 @@ void BrCarDraw(BrCar *car, int lodBias)
   gDPSetCycleType(D_8028A858++, 0);
   gDPSetCombine(D_8028A858++, 0x121824, 0xFF33FFFF);
   D_8028AA3C += (int)tgr_rd32(D_8028AB08);     /* the model's first word, big-endian */
+  }
 }
 
 

@@ -1,8 +1,8 @@
 /* carselect.c -- the car-select screen
  */
 #include "tgr/common.h"
-#include "tgr/romimage.h"
 #include "tgr/gbi.h"
+#include "tgr/romimage.h"
 
 /* -- declarations -- */
 int BrCarModelPresent(int param_1);
@@ -266,34 +266,6 @@ extern MenuItem *D_802722A4[];  /* the weathers */
 extern int D_80272238;          /* the screen has been set up */
 extern int D_80272074;          /* the screen shows the race results */
 extern int D_80272070;          /* the screen is the paint shop's car select */
-extern int D_80316250;
-extern int D_80316258[2];       /* each player's model slot (0-3; slot ^ 2 is the other) */
-extern float D_80316260[2];     /* each player's car sliding in (-1..1, 0 at rest) */
-extern float D_80316268[2];     /* each player's turntable angle */
-extern MenuItem **D_80316270[2];  /* each player's current setup list */
-extern int D_80316278[2];       /* the choice in it */
-extern int D_80316280[2];       /* the previous choice */
-extern int D_80316288[2];       /* choices in the list */
-extern char *D_80316290[2];     /* the list's title */
-extern int D_80316298;          /* going ahead (not back) */
-extern unsigned char *D_8031629C;  /* the two sound banks for the screen */
-extern int D_803162A0;
-extern unsigned char *D_803162A4;
-extern int D_803162A8;
-extern int D_803162AC;          /* frames the title is still drawn */
-extern int D_803162B0[2];       /* each player's step: 0 car, 1-4 setup, 5 decals, 6 ready */
-extern int D_803162B8;          /* loading decals from the pak */
-extern int D_803162BC;          /* for this player */
-extern int D_803162C0;          /* the load's status */
-extern unsigned char D_803162C4;  /* the load has finished */
-extern int D_803162FC;          /* the season's round, race, state, the track and */
-extern int D_80316300;          /* the difficulty when the results were entered */
-extern int D_80316304;
-extern int D_80316308;
-extern int D_8031630C;
-extern int D_80316310;          /* the season results have been kept */
-extern int D_80316314;          /* the results page */
-extern char D_80316318[];
 extern BrCarModelRec D_8028AE0C[];  /* car n's record (0x60 bytes) */
 extern int D_8028AE08;          /* cars */
 extern int D_8028AAD4;
@@ -319,11 +291,19 @@ extern int D_80270850;
 extern unsigned char D_802724F4;
 extern int D_80271FA0;          /* the paint shop's player */
 extern BrRound D_8028B944[];
-typedef struct BrRaceSnd { TgrAddr p; int x4; int x8; int xc; int x10; int x14; } BrRaceSnd;
+typedef struct BrRaceSnd {      /* a sound channel (0x18 bytes) */
+  TgrAddr p;
+  int x4;
+  unsigned long long pitch;     /* 0x08  32.32 playback ratio */
+  int x10;
+  unsigned int level;           /* 0x14  left << 16 | right */
+} BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];  /* six sound channels */
 extern char D_802A4A08[];
-extern int D_8031B2D8;          /* the cars the two views follow */
-extern int D_8031B2EC;
+#define D_001BF480 0x1BF480       /* a ROM offset */
+#define D_001BFEC0 0x1BFEC0       /* a ROM offset */
+typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
+extern BrViewRect D_8031B2C8[2];  /* the two views; x10 is the car each follows */
 void BrCarDefaultColour(BrCar *car);
 void BrCarCamStep(void *car);
 void BrCtlAi(void *car);
@@ -414,17 +394,45 @@ void BrLoadSaveScreen(void);
  * out to the race, paint shop, menus, season screens or pak save.  The
  * branches run in the order of the file's literals in the ROM, so stored
  * title and message pointers are the ROM's; six scalars declared above buf
- * put buf/time at the ROM's 0xE8/0xC4. */
-/* @t4-pass 0x8020D004 1 2026-10-03 compiles 120 best 4007 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020D004 2 2026-10-03 compiles 121 best 4007 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020D004 3 2026-10-03 compiles 60 best 3903 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020D004 4 2026-10-03 compiles 60 best 3903 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020D004 5 2026-10-04 compiles 15 best 3872 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020D004 6 2026-10-04 compiles 15 best 3872 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8020D004 */
+ * put buf/time at the ROM's 0xE8/0xC4.
+ * The screen's state is function-static (the ROM stores each value back
+ * after it is read), declared in address order with the unused slots kept.
+ * BrRomUnpack returns its length, so v0 is live after the call and the
+ * sound-bank clearing loop takes v1/a0 for its pointers and v0 for the
+ * bound. */
 /* @implements 0x8020D004 tgr BrCarSelect */
 void BrCarSelect(void)
 {
+  extern int D_80316250;
+  extern int D_80316254;
+  extern int D_80316258[2];       /* each player's model slot (0-3; slot ^ 2 is the other) */
+  extern float D_80316260[2];     /* each player's car sliding in (-1..1, 0 at rest) */
+  extern float D_80316268[2];     /* each player's turntable angle */
+  extern MenuItem ** D_80316270[2];  /* each player's current setup list */
+  extern int D_80316278[2];       /* the choice in it */
+  extern int D_80316280[2];       /* the previous choice */
+  extern int D_80316288[2];       /* choices in the list */
+  extern char * D_80316290[2];     /* the list's title */
+  extern int D_80316298;          /* going ahead (not back) */
+  extern unsigned char * D_8031629C;  /* the two sound banks for the screen */
+  extern int D_803162A0;
+  extern unsigned char * D_803162A4;
+  extern int D_803162A8;
+  extern int D_803162AC;          /* frames the title is still drawn */
+  extern int D_803162B0[2];       /* each player's step: 0 car, 1-4 setup, 5 decals, 6 ready */
+  extern int D_803162B8;          /* loading decals from the pak */
+  extern int D_803162BC;          /* for this player */
+  extern int D_803162C0;          /* the load's status */
+  extern unsigned char D_803162C4;  /* the load has finished */
+  extern int D_803162C8[13];
+  extern int D_803162FC;          /* the season's round, race, state, the track and */
+  extern int D_80316300;          /* the difficulty when the results were entered */
+  extern int D_80316304;
+  extern int D_80316308;
+  extern int D_8031630C;
+  extern int D_80316310;          /* the season results have been kept */
+  extern int D_80316314;          /* the results page */
+  extern char D_80316318[80];
   int p;
   int n;
   int i;
@@ -433,18 +441,18 @@ void BrCarSelect(void)
   BrCar *car;
   char buf[256];
   char time[36];
-  BrPadRec *pad;
   unsigned int round;
   unsigned int race;
-  unsigned int tr;
+  int tr;
   unsigned int pl;
   int x;
   int total;
   int a;
   int back;
+  short v;
+  BrPadRec *pad;
   float spin;
   float dt;
-  char *mirror;
 
   if (D_80272238 == 0) {
     D_80316250 = D_8028AAD4;
@@ -453,23 +461,23 @@ void BrCarSelect(void)
     BrMusicFadeTo(1.0f, 0.2f);
     D_803162FC = TGR_PTR(BrSeason *, CAR(0)->season)->round;
     D_80316300 = TGR_PTR(BrSeason *, CAR(0)->season)->race;
-    D_8031630C = D_8028C800;
     D_80316304 = TGR_PTR(BrSeason *, CAR(0)->season)->state;
+    D_80316308 = D_8028B940;
+    D_8031630C = D_8028C800;
     D_80316310 = 0;
     D_8028C328 = 0;
     D_80316268[0] = 0.0f;
     D_80316268[1] = 1.0f;
-    D_80316308 = D_8028B940;
     for (p = 0; p < D_8026FF08; p++) {
       if (D_80272074 == 0) {
         BrCarDefaultColour(CAR(p));
         CAR(p)->xed8 = TGR_FA(BrCarCamStep);
       }
       D_80316258[p] = p;
+      D_80316260[p] = 0;
       D_803162B0[p] = 0;
       CAR(p)->x2000 = 0;
       *(int *)((char *)CAR(p) + 0x2044) = 0;
-      D_80316260[p] = 0.0f;
       D_803162B8 = 0;
     }
     if (D_80272074 == 0) {
@@ -482,8 +490,8 @@ void BrCarSelect(void)
     if (D_80272074 == 0) {
       for (p = 0; p < D_8026FF08; p++) {
         BrCarPickKind(CAR(p));
+        CAR(p)->x2058 = CAR(p)->kind;
         n = CAR(p)->kind;
-        CAR(p)->x2058 = n;
         while (BrCarSelectable(n) == 0) {
           n = (n + 1) % D_8028AE08;
         }
@@ -501,6 +509,22 @@ void BrCarSelect(void)
     CAR(1)->mtx0[0][0] = 1.0f;
     CAR(1)->mtx0[1][1] = 1.0f;
     CAR(1)->mtx0[2][2] = 1.0f;
+    CAR(0)->mtx0[0][2] = 0.0f;
+    CAR(0)->mtx0[0][1] = 0.0f;
+    CAR(0)->mtx0[1][2] = 0.0f;
+    CAR(0)->mtx0[1][0] = 0.0f;
+    CAR(0)->mtx0[2][1] = 0.0f;
+    CAR(0)->mtx0[2][0] = 0.0f;
+    CAR(0)->mtx0[3][1] = 0.0f;
+    CAR(0)->mtx0[3][0] = 0.0f;
+    CAR(1)->mtx0[0][2] = 0.0f;
+    CAR(1)->mtx0[0][1] = 0.0f;
+    CAR(1)->mtx0[1][2] = 0.0f;
+    CAR(1)->mtx0[1][0] = 0.0f;
+    CAR(1)->mtx0[2][1] = 0.0f;
+    CAR(1)->mtx0[2][0] = 0.0f;
+    CAR(1)->mtx0[3][1] = 0.0f;
+    CAR(1)->mtx0[3][0] = 0.0f;
     if (D_8026FF08 == 2 && D_80272074 == 0) {
       CAR(0)->cams[3].mtx[3][0] = 15.0f;
       CAR(0)->cams[3].mtx[3][1] = 15.0f;
@@ -510,27 +534,11 @@ void BrCarSelect(void)
       CAR(0)->cams[3].mtx[3][1] = 10.0f;
       CAR(0)->cams[3].mtx[3][2] = 5.0f;
     }
-    CAR(0)->mtx0[0][1] = 0.0f;
-    CAR(0)->mtx0[0][2] = 0.0f;
-    CAR(0)->mtx0[1][0] = 0.0f;
-    CAR(0)->mtx0[1][2] = 0.0f;
-    CAR(0)->mtx0[2][0] = 0.0f;
-    CAR(0)->mtx0[2][1] = 0.0f;
-    CAR(0)->mtx0[3][0] = 0.0f;
-    CAR(0)->mtx0[3][1] = 0.0f;
-    CAR(1)->mtx0[0][1] = 0.0f;
-    CAR(1)->mtx0[0][2] = 0.0f;
-    CAR(1)->mtx0[1][0] = 0.0f;
-    CAR(1)->mtx0[1][2] = 0.0f;
-    CAR(1)->mtx0[2][0] = 0.0f;
-    CAR(1)->mtx0[2][1] = 0.0f;
-    CAR(1)->mtx0[3][0] = 0.0f;
-    CAR(1)->mtx0[3][1] = 0.0f;
     BrVec3Scale((BrVec3 *)CAR(0)->cams[3].mtx[0], (BrVec3 *)CAR(0)->cams[3].mtx[3], -1.0f);
     BrVec3Normalise((BrVec3 *)CAR(0)->cams[3].mtx[0]);
-    CAR(0)->cams[3].mtx[2][2] = 1.0f;
     CAR(0)->cams[3].mtx[2][0] = 0.0f;
     CAR(0)->cams[3].mtx[2][1] = 0.0f;
+    CAR(0)->cams[3].mtx[2][2] = 1.0f;
     BrVec3Cross((BrVec3 *)CAR(0)->cams[3].mtx[1], (BrVec3 *)CAR(0)->cams[3].mtx[2],
                 (BrVec3 *)CAR(0)->cams[3].mtx[0]);
     BrVec3Cross((BrVec3 *)CAR(0)->cams[3].mtx[2], (BrVec3 *)CAR(0)->cams[3].mtx[0],
@@ -546,23 +554,21 @@ void BrCarSelect(void)
     BrRomFileUnpack(&D_80271D70, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_80271D84, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_8027205C, BrIfaceMemAlloc);
-    D_803162A0 = BrRomReadSize(0x1BF480);
+    D_803162A0 = BrRomReadSize((int)D_001BF480);
     D_8031629C = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_803162A0 + 0x100));
-    BrRomUnpack(D_8031629C, 0x1BF480, 0);
-    D_803162A8 = BrRomReadSize(0x1BFEC0);
+    BrRomUnpack(D_8031629C, (int)D_001BF480, 0);
+    D_803162A8 = BrRomReadSize((int)D_001BFEC0);
     D_803162A4 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_803162A8 + 0x100));
-    BrRomUnpack(D_803162A4, 0x1BFEC0, 0);
-    for (i = 0; i != 0x100; i++) {
-      D_8031629C[D_803162A0 + i] = 0;
-      D_803162A4[D_803162A8 + i] = 0;
+    BrRomUnpack(D_803162A4, (int)D_001BFEC0, 0);
+    for (p = 0; p != 0x100; p++) {
+      D_8031629C[D_803162A0 + p] = 0;
+      D_803162A4[D_803162A8 + p] = 0;
     }
     BrDecalMemInit();
     D_803162AC = 2;
     D_80272238 = 1;
-    D_80316270[1] = D_802720B4;
-    D_80316270[0] = D_802720B4;
-    D_80316278[1] = 0;
-    D_80316278[0] = 0;
+    D_80316270[0] = D_80316270[1] = D_802720B4;
+    D_80316278[0] = D_80316278[1] = 0;
     D_80316314 = 0;
   }
 
@@ -577,14 +583,14 @@ void BrCarSelect(void)
   BrFogSetup();
   BrFrameTintSetup();
   BrPerfMark(0, 0, 0, 200, 0xFF);
-  D_8031B2D8 = 0;
-  D_8031B2EC = 1;
+  D_8031B2C8[0].x10 = 0;
+  D_8031B2C8[1].x10 = 1;
   D_803162AC = 2;
   BrZBufferClear();
-  if (D_80272074 == 0) {
-    BrRomImageDraw(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0x50, 0, 0, 0xFF, 4);
-  } else {
+  if (D_80272074 != 0) {
     BrRomImageDraw(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0, 0x82, 0x8C, 0xFF, 4);
+  } else {
+    BrRomImageDraw(&D_80272048, 0, 0, 320, 240, 0, 0, 0, 0xFF, 0x50, 0, 0, 0xFF, 4);
   }
   if (D_803162AC == 0 && BrFadeAtTarget() != 0) {
     BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
@@ -615,7 +621,7 @@ void BrCarSelect(void)
   for (p = 0; p < D_8026FF08; p++) {
     if (D_803162B0[p] == 6) {
       if (D_80272070 == 0 && D_80272074 == 0) {
-        D_80316258[p] = (CAR(p)->xe58 << 1) ^ p ^ 2;
+        D_80316258[p] = (CAR(p)->xe58 << 1) ^ (p ^ 2);
       }
     } else if (D_803162B0[p] == 5) {
       if (D_80316278[p] == 0) {
@@ -631,13 +637,14 @@ void BrCarSelect(void)
       }
     }
   }
-  D_8028AA84 = 0;
-  D_8028AA78 = 0;
-  D_8028AA8C = 0;
-  D_8028AA80 = 0;
+  D_8028AA80 = D_8028AA8C = D_8028AA78 = D_8028AA84 = 0;
 #define ICON(p, idx) ((D_803162B0[p] == 0 || D_803162B0[p] == 6) ? 0 : D_80316270[p][D_80316278[idx]]->icon)
 #define ICON2(p, idx) ((D_803162B0[p] == 0 || D_803162B0[p] == 6) ? 0 : D_80316270[p][D_80316280[idx]]->icon)
-  if (D_80272074 == 0) {
+  if (D_80272074 != 0) {
+    BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), D_80316314 == 1, 0, 0x3B, D_8028AAB0, D_8028AAB4,
+                  D_80316260[0], D_803162B0[0] == 6, D_80316258[D_80316314 == 1],
+                  D_80316258[D_80316314 == 1] ^ 2, 12.0f, D_80316268[0]);
+  } else {
     if (D_8026FF08 == 1) {
       BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), 0, 0, 0x2D, D_8028AAB0, D_8028AAB4, D_80316260[0],
                     D_803162B0[0] == 6, D_80316258[0], D_80316258[0] ^ 2, 8.0f, D_80316268[0]);
@@ -647,10 +654,6 @@ void BrCarSelect(void)
       BrCarViewDraw(TGR_PTR(BrModel *, ICON(1, 1)), TGR_PTR(BrModel *, ICON2(1, 1)), 1, 0, 0x47, D_8028AAB0, D_8028AAB4, D_80316260[1],
                     D_803162B0[1] == 6, D_80316258[1], D_80316258[1] ^ 2, 12.0f, D_80316268[1]);
     }
-  } else {
-    BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), D_80316314 == 1, 0, 0x3B, D_8028AAB0, D_8028AAB4,
-                  D_80316260[0], D_803162B0[0] == 6, D_80316258[D_80316314 == 1],
-                  D_80316258[D_80316314 == 1] ^ 2, 12.0f, D_80316268[0]);
   }
   BrScreenCameraSet((float)D_8028AAB0, (float)D_8028AAB4);
   BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
@@ -663,9 +666,8 @@ void BrCarSelect(void)
     BrTextSetFont(30);
     if (D_80272074 != 0) {
       if (D_80316314 == 0 || D_80316314 == 1) {
-        tr = D_80316308 < 5 ? D_80316308 : D_80316308 - 5;
-        sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", TGR_PTR(const char *, D_80271D1C[tr]->item.label),
-                TGR_PTR(const char *, D_802722A4[D_8031630C]->label));
+        sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", TGR_PTR(const char *, D_80271D1C[D_80316308 >= 5 ? D_80316308 - 5 : D_80316308]->item.label), TGR_PTR(const char *, D_802722A4[D_8031630C]->label));
+
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
       } else {
         sprintf(buf, "%%ry%s", TGR_PTR(char *, *(TgrAddr *)&D_8028B944[D_803162FC]));
@@ -682,17 +684,17 @@ void BrCarSelect(void)
   }
 
   /* ---- each player's panel, or the results ---- */
-  race = D_80316300;
-  round = D_803162FC;
   if (D_80272074 != 0) {
     y = 0x4F;
-    i = 0;
+    race = D_80316300;
+    round = D_803162FC;
+    p = 0;
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextSetFont(20);
     if (D_80316314 == 0 || D_80316314 == 1) {
       /* a player's race: the place, then each lap and the race time */
-      pl = D_80316314 != 0;
+      pl = D_80316314 == 0 ? 0 : 1;
       if (D_8026FF08 >= 2) {
         car = CAR(pl);
         if (car->laps < D_8028B304) {
@@ -703,7 +705,7 @@ void BrCarSelect(void)
       } else {
         if (D_8026FF18 == 0) {
           car = CAR(pl);
-          k = *(unsigned char *)((char *)TGR_PTR(BrSeason *, CAR(pl)->season) + round * 4 + race + 6);
+          k = TGR_PTR(BrSeason *, CAR(pl)->season)->place[round][race];
           sprintf(D_80316318, "%%ry%s Place - %d Point%s", D_80271FE0[k], D_802707AC[k],
                   D_802707AC[k] == 1 ? "" : "s");
         } else {
@@ -718,9 +720,9 @@ void BrCarSelect(void)
       BrTextPrint(D_80316318, D_8028AAB0 / 2, D_8028AAB4 * 19 / 64 - 4);
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
       BrTextSetFont(10);
-      for (i = 0; i <= D_8028B304; i++) {
+      for (; p <= D_8028B304; p++) {
         BrTextAlignLeft();
-        if (i == D_8028B304) {
+        if (p == D_8028B304) {
           y += 2;
           if (car->lapTime == TGR_PTR(BrSeason *, CAR(0)->season)->xe8[D_80316308]) {
             BrTextPrint("  %yyRECORD TIME!", D_8028AAB0 * 11 / 16, y);
@@ -728,15 +730,15 @@ void BrCarSelect(void)
           sprintf(D_80316318, "Race time:");
           BrTimeFormat(time, car->lapTime);
         } else {
-          sprintf(D_80316318, "Lap %d time:", i + 1);
-          if (i < car->laps) {
-            BrTimeFormat(time, car->lapTimes[i]);
+          sprintf(D_80316318, "Lap %d time:", p + 1);
+          if (p < car->laps) {
+            BrTimeFormat(time, CAR(pl)->lapTimes[p]);
           } else {
             sprintf(time, "--    ");
           }
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 5 / 16, y);
-        if (i < car->laps && i == car->xf9c) {
+        if (p < car->laps && p == car->xf9c) {
           if (car->xf98 == TGR_PTR(BrSeason *, CAR(0)->season)->x8c[D_80316308]) {
             BrTextPrint("  %yyRECORD LAP!", D_8028AAB0 * 11 / 16, y);
           } else {
@@ -753,8 +755,8 @@ void BrCarSelect(void)
       BrTextSetFont(12);
       y = 0x62 - D_802707C0 * 120 / 20;
       BrTextAlignCentre();
-      for (i = 0; i < D_802707C0; i++) {
-        BrTextPrint(D_80315DB0[i], D_8028AAB0 / 2, y);
+      for (p = 0; p < D_802707C0; p++) {
+        BrTextPrint(D_80315DB0[p], D_8028AAB0 / 2, y);
         y += 12;
       }
     } else {
@@ -763,8 +765,8 @@ void BrCarSelect(void)
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
       BrTextSetFont(10);
       x = 0;
-      for (i = 0; i < D_8028B944[round].x8; i++) {
-        if (D_8028B944[round].races[i][0] < 5) {
+      for (p = 0; p < D_8028B944[round].x8; p++) {
+        if (D_8028B944[round].races[p][0] < 5) {
           if (D_80316304 & 1) {
             x = D_8028AAB0 / 16;
             break;
@@ -775,8 +777,8 @@ void BrCarSelect(void)
         }
       }
       total = 0;
-      for (i = 0; i < D_8028B944[round].x8; i++) {
-        tr = D_8028B944[round].races[i][0];
+      for (p = 0; p < D_8028B944[round].x8; p++) {
+        tr = D_8028B944[round].races[p][0];
         if (D_80316304 & 1) {
           if (tr < 5) {
             tr += 5;
@@ -786,30 +788,29 @@ void BrCarSelect(void)
         }
         BrTextAlignLeft();
         sprintf(D_80316318, "%s/%s", TGR_PTR(const char *, D_80271D1C[tr]->item.label),
-                TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[i][1]]->label));
+                D_802722A4[D_8028B944[round].races[p][1]]->label);
         BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y);
         BrTextAlignCentre();
-        if ((int)race < i) {
-          sprintf(D_80316318, "--");
+        if (p <= (int)race) {
+          BrTimeFormat(D_80316318, TGR_PTR(BrSeason *, CAR(0)->season)->times[round][p]);
         } else {
-          BrTimeFormat(D_80316318, ((float *)TGR_PTR(BrSeason *, CAR(0)->season))[round * 4 + i + 0xB]);
+          sprintf(D_80316318, "--");
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 17 / 32 + x, y);
-        BrTextPrint((int)race < i ? "--"
-                                  : D_80271FE0[*(unsigned char *)((char *)TGR_PTR(BrSeason *, CAR(0)->season) + i
-                                                                 + round * 4 + 6)],
+        BrTextPrint(p <= (int)race ? D_80271FE0[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]] : "--",
                     D_8028AAB0 * 21 / 32 + x, y);
         BrTextAlignRight();
-        if (i <= (int)race) {
-          k = D_802707AC[*(unsigned char *)((char *)TGR_PTR(BrSeason *, CAR(0)->season) + i + round * 4 + 6)];
-          sprintf(D_80316318, "%d PTS", k);
-          total += k;
+        if (p <= (int)race) {
+          sprintf(D_80316318, "%d PTS",
+                  D_802707AC[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]]);
+          total += D_802707AC[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]];
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 13 / 16 + x, y);
         y += 10;
       }
+      y += 2;
       sprintf(D_80316318, "TOTAL:    %d PTS ", total);
-      BrTextPrint(D_80316318, D_8028AAB0 * 13 / 16 + x, y + 2);
+      BrTextPrint(D_80316318, D_8028AAB0 * 13 / 16 + x, y);
     }
   } else {
     if (D_8026FF08 == 2) {
@@ -832,14 +833,14 @@ void BrCarSelect(void)
       BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 3 / 5);
       BrTextSetFont(8);
       BrTextAlignLeft();
-      if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
+      if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
         BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 19);
         BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 28);
         BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 37);
         BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 45);
         BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 54);
       }
-      if (D_803162B0[1] == 5 && D_80316278[1] != 1 && D_80316260[1] == 0.0f) {
+      if (D_803162B0[1] == 5 && D_80316278[1] != 1 && D_80316260[1] == 0) {
         BrTextPrint("%wwIf you wish to use", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 19);
         BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 28);
         BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 37);
@@ -895,7 +896,7 @@ void BrCarSelect(void)
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
         BrTextSetFont(8);
         BrTextAlignCentre();
-        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0.0f) {
+        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
           BrTextPrint("%wwIf you wish to use the Rumble Pak, you should", D_8028AAB0 / 2,
                       D_8028AAB4 * 3 / 8 - 6);
           BrTextPrint("%wwensure that it is plugged in before pressing A.", D_8028AAB0 / 2,
@@ -922,10 +923,10 @@ void BrCarSelect(void)
     }
   }
   if (D_803162AC != 0 || BrFadeIsOut() != 0 || BrFadeIsIn() != 0) {
-    if (D_80272074 == 0) {
-      BrFrontPromptSelect();
-    } else {
+    if (D_80272074 != 0) {
       BrFrontPromptContinue();
+    } else {
+      BrFrontPromptSelect();
     }
   }
   BrFadeBarsDraw();
@@ -950,23 +951,79 @@ void BrCarSelect(void)
       }
     }
     if (D_803162C4 != 0) {
-      if (D_803162C0 == 0) {
+      if (D_803162C0 != 0) {
+        D_80316288[D_803162BC] = D_802721EC - 1;
+        D_803162C0 = 0;
+      } else {
         D_80316288[D_803162BC] = D_802721EC;
         D_80316280[D_803162BC] = D_80316278[D_803162BC];
         D_80316278[D_803162BC] = (D_80316278[D_803162BC] + 1) % D_802721EC;
         D_80316260[D_803162BC] = 1.0f;
         BrCarColourFromModel(CAR(D_803162BC), &D_803C8000[D_803162BC]);
-      } else {
-        D_80316288[D_803162BC] = D_802721EC - 1;
-        D_803162C0 = 0;
       }
     }
   }
   BrFrameEnd();
 
   /* ---- the pads ---- */
-  if (BrFadeIsOut() == 0) {
-    if (D_803162B8 == 0) {
+  if (BrFadeIsOut() != 0) {
+    if (BrFadeAtTarget() != 0) {
+      /* faded out: on to the next screen */
+      D_80272238 = 0;
+      BrScreenFlush3Layout1();
+      for (back = 0; back < 6; back++) {
+        D_802A4920[back].level = 0;
+        D_802A4920[back].x10 = 0;
+        D_802A4920[back].pitch = 0;
+        D_802A4920[back].p = tgr_addr32(D_802A4A08);
+      }
+      if (D_80316298 != 0) {
+        if (D_80272074 != 0) {
+          if (D_8026FF18 == 0) {
+            D_8026FF08 = 1;
+            D_80270850 = TGR_PTR(BrSeason *, CAR(0)->season)->race != 0;
+            if (D_803162FC == TGR_PTR(BrSeason *, CAR(0)->season)->round) {
+              BrSeasonPickRace();
+              D_802724F4 = 1;
+              BrModeSet(BrLoadSaveScreen);
+            } else {
+              BrScreenFlush2Layout0();
+              D_8026FF18 = 5;
+              BrModeSet(BrRaceTick);
+            }
+          } else if (D_8026FF18 == 2 && D_802707A8 != 0) {
+            D_802724F4 = 2;
+            BrModeSet(BrLoadSaveScreen);
+          } else {
+            BrModeSet(BrMainMenu);
+          }
+        } else if (D_80272070 != 0) {
+          BrModeSet(BrPaintShopScreen);
+        } else {
+          BrScreenFlush2Layout0();
+          BrModeSet(BrRaceTick);
+        }
+      } else if (D_80272074 != 0) {
+        if (D_8026FF18 == 0 && D_80316310 == 0) {
+          BrSeasonRaceDone();
+        }
+        BrModeSet(BrMainMenu);
+      } else if (D_80272070 != 0) {
+        BrModeSet(BrMainMenu);
+      } else if (D_8026FF18 == 0 || D_8026FF18 == 2) {
+        D_80270850 = 1;
+        BrModeSet(BrTrackSelectScreen);
+      } else {
+        BrModeSet(BrWeatherScreen);
+      }
+    }
+  } else {
+    if (D_803162B8 != 0) {
+      if (D_803162C4 != 0) {
+        D_803162C4 = 0;
+        D_803162B8 = 0;
+      }
+    } else {
       if (D_80272070 != 0) {
         /* the paint shop's player drives the screen */
         ((BrPadRec *)TGR_PTR(unsigned int *, CAR(0)->pad))->pressed = ((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_80271FA0)->pad))->pressed;
@@ -976,343 +1033,278 @@ void BrCarSelect(void)
       for (p = 0; p < D_8026FF08; p++) {
         car = CAR(p);
         back = 1;
-        if (D_80272074 == 0) {
-          BrPadStickToButtons(tgr_addr32((BrPadRec *)TGR_PTR(unsigned int *, car->pad)));
-        } else {
+        if (D_80272074 != 0) {
           ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed &= ~0xF;
+        } else {
+          BrPadStickToButtons(tgr_addr32((BrPadRec *)TGR_PTR(unsigned int *, car->pad)));
         }
-        pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
         if (D_803162B0[p] == 6) {
-          if (pad->pressed & 0x20) {
-            D_803162B0[p] = 5;
-            BrPadConsume(pad, 0x20);
+          if (((BrPadRec *)TGR_PTR(unsigned int *, CAR(p)->pad))->pressed & 0x20) {
+            D_803162B0[p]--;
+            BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, CAR(p)->pad), 0x20);
           }
-          continue;
-        }
-        if (D_80316260[p] != 0.0f) {
-          continue;
-        }
-        /* the car (step 0): left and right pick the next selectable car */
-        if (D_803162B0[p] == 0) {
-          if (pad->pressed & 4) {
-            n = car->x2058;
-            do {
-              car->x2058 = (car->x2058 + D_8028AE08 - 1) % D_8028AE08;
-            } while (BrCarSelectable(car->x2058) == 0);
-            if (n != car->x2058) {
-              D_80316260[p] = 1.0f;
-              goto newcar;
-            }
-            pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
-          }
-          if (pad->pressed & 1) {
-            n = car->x2058;
-            do {
-              car->x2058 = (car->x2058 + 1) % D_8028AE08;
-            } while (BrCarSelectable(car->x2058) == 0);
-            if (n != car->x2058) {
-              D_80316260[p] = -1.0f;
-            newcar:
-              k = BrSfxFreeVoice();
-              if (k != -1) {
-                BrSfxVoiceStart((short)k, tgr_addr32(D_8031629C), D_803162A0, 0);
-              }
-              D_80316258[p] ^= 2;
-              BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->x2058, p);
-            }
-          }
-        }
-        /* the colour, on the car and on the decals */
-        if (D_803162B0[p] == 0 || D_803162B0[p] == 5) {
-          if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 0x400) {
-            BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, car->pad), 0x400);
-            if (TGR_PTR(BrSeason *, car->season)->unlocked & 0x8000) {
-              car->x2068 ^= 1;
-            }
-          }
-          a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
-          if (a & 8) {
-            if (a & 0x800) {
-              if (car->colour[0] < 0xFC) {
-                car->colour[0] += 4;
-              } else {
-                car->colour[0] = 0xFF;
-              }
-              a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
-            }
-            if (a & 0x100) {
-              if (car->colour[1] < 0xFC) {
-                car->colour[1] += 4;
-              } else {
-                car->colour[1] = 0xFF;
-              }
-              a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
-            }
-            if (a & 0x200) {
-              if (car->colour[2] < 0xFC) {
-                car->colour[2] += 4;
-              } else {
-                car->colour[2] = 0xFF;
+        } else if (D_80316260[p] == 0) {
+          /* the car (step 0): left and right pick the next selectable car */
+          if (D_803162B0[p] == 0) {
+            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 4) {
+              n = car->x2058;
+              do {
+                car->x2058 = (car->x2058 + D_8028AE08 - 1) % D_8028AE08;
+              } while (BrCarSelectable(car->x2058) == 0);
+              if (n != car->x2058) {
+                D_80316260[p] = 1.0f;
+                goto newcar;
               }
             }
-            BrEntPaintTexture(TGR_PTR(void *, (int)car->model), car->colour[0] >> 3, car->colour[1] >> 3,
-                              car->colour[2] >> 3);
+            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 1) {
+              n = car->x2058;
+              do {
+                car->x2058 = (car->x2058 + 1) % D_8028AE08;
+              } while (BrCarSelectable(car->x2058) == 0);
+              if (n != car->x2058) {
+                D_80316260[p] = -1.0f;
+              newcar:
+                v = BrSfxFreeVoice();
+                if (v != -1) {
+                  BrSfxVoiceStart(v, tgr_addr32(D_8031629C), D_803162A0, 0);
+                }
+                D_80316258[p] ^= 2;
+                BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->x2058, p);
+              }
+            }
+          }
+          /* the colour, on the car and on the decals */
+          if (D_803162B0[p] == 0 || D_803162B0[p] == 5) {
+            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 0x400) {
+              BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, car->pad), 0x400);
+              if (TGR_PTR(BrSeason *, car->season)->unlocked & 0x8000) {
+                car->x2068 ^= 1;
+              }
+            }
             a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
-          }
-          if (a & 2) {
-            if (a & 0x800) {
-              if (car->colour[0] < 4) {
-                car->colour[0] = 0;
-              } else {
-                car->colour[0] -= 4;
+            if (a & 8) {
+              if (a & 0x800) {
+                if (CAR(p)->colour[0] < 0xFC) {
+                  CAR(p)->colour[0] += 4;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                } else {
+                  CAR(p)->colour[0] = 0xFF;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                }
               }
+              if (a & 0x100) {
+                if (CAR(p)->colour[1] < 0xFC) {
+                  CAR(p)->colour[1] += 4;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                } else {
+                  CAR(p)->colour[1] = 0xFF;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                }
+              }
+              if (a & 0x200) {
+                if (CAR(p)->colour[2] < 0xFC) {
+                  CAR(p)->colour[2] += 4;
+                } else {
+                  CAR(p)->colour[2] = 0xFF;
+                }
+              }
+              BrEntPaintTexture(TGR_PTR(void *, (int)car->model), CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+                                CAR(p)->colour[2] >> 3);
               a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
             }
-            if (a & 0x100) {
-              if (car->colour[1] < 4) {
-                car->colour[1] = 0;
-              } else {
-                car->colour[1] -= 4;
+            if (a & 2) {
+              if (a & 0x800) {
+                if (CAR(p)->colour[0] >= 4) {
+                  CAR(p)->colour[0] -= 4;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                } else {
+                  CAR(p)->colour[0] = 0;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                }
               }
-              a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+              if (a & 0x100) {
+                if (CAR(p)->colour[1] >= 4) {
+                  CAR(p)->colour[1] -= 4;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                } else {
+                  CAR(p)->colour[1] = 0;
+                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                }
+              }
+              if (a & 0x200) {
+                if (CAR(p)->colour[2] >= 4) {
+                  CAR(p)->colour[2] -= 4;
+                } else {
+                  CAR(p)->colour[2] = 0;
+                }
+              }
+              BrEntPaintTexture(TGR_PTR(void *, (int)car->model), CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+                                CAR(p)->colour[2] >> 3);
             }
-            if (a & 0x200) {
-              if (car->colour[2] < 4) {
-                car->colour[2] = 0;
-              } else {
-                car->colour[2] -= 4;
+          }
+          /* the setup choice (steps 1-5): left and right */
+          if (D_803162B0[p] != 0) {
+            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 4) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
+              D_80316260[p] = 1.0f;
+              goto tick;
+            }
+            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 1) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + 1) % D_80316288[p];
+              D_80316260[p] = -1.0f;
+            tick:
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, tgr_addr32(D_8031629C), D_803162A0, 0);
               }
             }
-            BrEntPaintTexture(TGR_PTR(void *, (int)car->model), car->colour[0] >> 3, car->colour[1] >> 3,
-                              car->colour[2] >> 3);
           }
-        }
-        /* the setup choice (steps 1-5): left and right */
-        pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
-        if (D_803162B0[p] != 0) {
-          if (pad->pressed & 4) {
-            D_80316280[p] = D_80316278[p];
-            D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
-            D_80316260[p] = 1.0f;
-            goto tick;
-          }
-          if (pad->pressed & 1) {
-            D_80316280[p] = D_80316278[p];
-            D_80316278[p] = (D_80316278[p] + 1) % D_80316288[p];
-            D_80316260[p] = -1.0f;
-          tick:
-            k = BrSfxFreeVoice();
-            if (k != -1) {
-              BrSfxVoiceStart((short)k, tgr_addr32(D_8031629C), D_803162A0, 0);
+          pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
+          if (pad->pressed & 0x20) {
+            /* back */
+            BrPadConsume(pad, 0x20);
+            if (D_803162B0[p] == 0) {
+              D_80316298 = 0;
+              BrSfxFadeTo(0.0f, 0.2f);
+              BrFadeTo(0.0f, 0.2f);
+            } else {
+              D_803162B0[p]--;
+              switch (D_803162B0[p]) {
+              case 1:
+                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd4;
+                SETUP(p, D_802720B4, D_802720C4, "Handling");
+                break;
+              case 2:
+                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd8;
+                SETUP(p, D_802720F0, D_802720FC, "Transmission");
+                break;
+              case 3:
+                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xdc;
+                SETUP(p, D_8027213C, D_8027214C, "Tires");
+                break;
+              case 4:
+                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xe0;
+                SETUP(p, D_8027218C, D_8027219C, "Suspension");
+                break;
+              case 5:
+                D_80316278[p] = 0;
+                D_80316290[p] = "Decals";
+                break;
+              }
+              D_80316280[p] = D_80316278[p];
             }
-            pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
-          }
-        }
-        if (pad->pressed & 0x20) {
-          /* back */
-          BrPadConsume(pad, 0x20);
-          n = D_803162B0[p];
-          if (n == 0) {
-            D_80316298 = 0;
-            BrSfxFadeTo(0.0f, 0.2f);
-            BrFadeTo(0.0f, 0.2f);
-            back = 1;
-          } else {
-            D_803162B0[p] = n - 1;
-            switch (n) {
-            case 2:
+            goto sound;
+          } else if (pad->pressed & 0xC010) {
+            /* on to the next step */
+            BrPadConsume(pad, 0xC010);
+            switch (D_803162B0[p]) {
+            case 0:
+              car->kind = car->x2058;
               D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd4;
               SETUP(p, D_802720B4, D_802720C4, "Handling");
               break;
-            case 3:
+            case 1:
+              TGR_PTR(BrSeason *, car->season)->xd4 = D_80316278[p];
               D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd8;
               SETUP(p, D_802720F0, D_802720FC, "Transmission");
               break;
-            case 4:
+            case 2:
+              TGR_PTR(BrSeason *, car->season)->xd8 = D_80316278[p];
               D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xdc;
               SETUP(p, D_8027213C, D_8027214C, "Tires");
               break;
-            case 5:
+            case 3:
+              TGR_PTR(BrSeason *, car->season)->xdc = D_80316278[p];
               D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xe0;
               SETUP(p, D_8027218C, D_8027219C, "Suspension");
               break;
-            case 6:
+            case 4:
+              TGR_PTR(BrSeason *, car->season)->xe0 = D_80316278[p];
               D_80316278[p] = 0;
+              D_80316270[p] = D_802721DC;
+              if (car->kind < 9) {
+                D_80316288[p] = D_802721EC - 1;
+              } else {
+                D_80316288[p] = D_802721EC - 2;
+              }
               D_80316290[p] = "Decals";
+              D_80316258[p] = p ^ 2;
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, tgr_addr32(D_803162A4), D_803162A8, 0);
+              }
+              back = 0;
+              BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->kind, p);
+              while (BrEntLoadModel(STREAM(D_80316258[p])) != 0) {
+              }
+              BrCarModelStream(STREAM(D_80316258[p] ^ 2), D_80316258[p] ^ 2, car->kind, p);
+              break;
+            case 5:
+              if (D_80316278[p] == 1) {
+                D_803162B8 = 1;
+                D_803162C4 = 0;
+                D_803162C0 = 0;
+                D_803162BC = p;
+                goto sound;
+              }
+              car->xe58 = D_80316278[p] == 2;
               break;
             }
             D_80316280[p] = D_80316278[p];
-          }
-        } else if (pad->pressed & 0xC010) {
-          /* on to the next step */
-          BrPadConsume(pad, 0xC010);
-          switch (D_803162B0[p]) {
-          case 0:
-            car->kind = car->x2058;
-            D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd4;
-            SETUP(p, D_802720B4, D_802720C4, "Handling");
-            break;
-          case 1:
-            TGR_PTR(BrSeason *, car->season)->xd4 = D_80316278[p];
-            D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd8;
-            SETUP(p, D_802720F0, D_802720FC, "Transmission");
-            break;
-          case 2:
-            TGR_PTR(BrSeason *, car->season)->xd8 = D_80316278[p];
-            D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xdc;
-            SETUP(p, D_8027213C, D_8027214C, "Tires");
-            break;
-          case 3:
-            TGR_PTR(BrSeason *, car->season)->xdc = D_80316278[p];
-            D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xe0;
-            SETUP(p, D_8027218C, D_8027219C, "Suspension");
-            break;
-          case 4:
-            TGR_PTR(BrSeason *, car->season)->xe0 = D_80316278[p];
-            D_80316278[p] = 0;
-            D_80316270[p] = D_802721DC;
-            if (car->kind < 9) {
+            if ((((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 0x4000) || D_80272070 != 0 || D_80272074 != 0) {
+              /* START: straight to ready (or the next results page) */
               D_80316288[p] = D_802721EC - 1;
-            } else {
-              D_80316288[p] = D_802721EC - 2;
-            }
-            D_80316290[p] = "Decals";
-            D_80316258[p] = p ^ 2;
-            k = BrSfxFreeVoice();
-            if (k != -1) {
-              BrSfxVoiceStart((short)k, tgr_addr32(D_803162A4), D_803162A8, 0);
-            }
-            back = 0;
-            BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->kind, p);
-            while (BrEntLoadModel(STREAM(D_80316258[p])) != 0) {
-            }
-            BrCarModelStream(STREAM(D_80316258[p] ^ 2), D_80316258[p] ^ 2, car->kind, p);
-            break;
-          case 5:
-            if (D_80316278[p] == 1) {
-              D_803162B8 = 1;
-              D_803162C4 = 0;
-              D_803162C0 = 0;
-              D_803162BC = p;
-              goto sound;
-            }
-            car->xe58 = D_80316278[p] == 2;
-            break;
-          }
-          D_80316280[p] = D_80316278[p];
-          pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
-          if ((pad->pressed & 0x4000) == 0 && D_80272070 == 0 && D_80272074 == 0) {
-            D_803162B0[p]++;
-          } else {
-            /* START: straight to ready (or the next results page) */
-            D_80316288[p] = D_802721EC - 1;
-            D_80316278[p] = 0;
-            D_80316280[p] = 0;
-            n = D_80316314;
-            if (D_80272074 == 0) {
-              D_803162B0[p] = 6;
-            } else {
-              k = D_80316314 + 1;
-              if (k == 1 && D_8026FF08 != 2) {
-                k = D_80316314 + 2;
-              }
-              if (k == 2 && D_8026FF18 != 0) {
-                k = 4;
-              }
-              D_80316314 = k;
-              if (k == 3) {
-                BrSeasonRaceDone();
-                D_80316310 = 1;
-                if (D_802707C0 == 0) {
+              D_80316278[p] = 0;
+              D_80316280[p] = 0;
+              if (D_80272074 != 0) {
+                y = D_80316314;
+                D_80316314++;
+                if (D_80316314 == 1 && D_8026FF08 != 2) {
                   D_80316314++;
                 }
+                if (D_80316314 == 2 && D_8026FF18 != 0) {
+                  D_80316314 = 4;
+                }
+                if (D_80316314 == 3) {
+                  BrSeasonRaceDone();
+                  D_80316310 = 1;
+                  if (D_802707C0 == 0) {
+                    D_80316314++;
+                  }
+                }
+                if (D_80316314 == 4) {
+                  D_803162B0[0] = D_803162B0[1] = 6;
+                  D_80316314 = y;
+                }
+              } else {
+                D_803162B0[p] = 6;
               }
-              if (D_80316314 == 4) {
-                D_803162B0[1] = 6;
-                D_803162B0[0] = 6;
-                D_80316314 = n;
+            } else {
+              D_803162B0[p]++;
+            }
+            for (n = 0; n < D_8026FF08; n++) {
+              if (D_803162B0[n] != 6) {
+                goto sound;
+              }
+            }
+            D_80316298 = 1;
+            BrSfxFadeTo(0.0f, 0.2f);
+            if (D_80272070 == 0) {
+              BrMusicFadeTo(0.0f, 0.2f);
+            }
+            BrFadeTo(0.0f, 0.2f);
+          sound:
+            if (back) {
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, tgr_addr32(D_803162A4), D_803162A8, 0);
               }
             }
           }
-          for (i = 0; i < D_8026FF08; i++) {
-            if (D_803162B0[i] != 6) {
-              goto sound;
-            }
-          }
-          D_80316298 = 1;
-          BrSfxFadeTo(0.0f, 0.2f);
-          if (D_80272070 == 0) {
-            BrMusicFadeTo(0.0f, 0.2f);
-          }
-          BrFadeTo(0.0f, 0.2f);
-        } else {
-          continue;
-        }
-      sound:
-        if (back) {
-          k = BrSfxFreeVoice();
-          if (k != -1) {
-            BrSfxVoiceStart((short)k, tgr_addr32(D_803162A4), D_803162A8, 0);
-          }
         }
       }
-    } else if (D_803162C4 != 0) {
-      D_803162C4 = 0;
-      D_803162B8 = 0;
-    }
-  } else if (BrFadeAtTarget() != 0) {
-    /* faded out: on to the next screen */
-    D_80272238 = 0;
-    BrScreenFlush3Layout1();
-    for (i = 0; i < 6; i++) {
-      D_802A4920[i].x14 = 0;
-      D_802A4920[i].x10 = 0;
-      D_802A4920[i].x8 = 0;
-      D_802A4920[i].xc = 0;
-      D_802A4920[i].p = tgr_addr32(D_802A4A08);
-    }
-    if (D_80316298 == 0) {
-      if (D_80272074 == 0) {
-        if (D_80272070 == 0) {
-          if (D_8026FF18 == 0 || D_8026FF18 == 2) {
-            D_80270850 = 1;
-            BrModeSet(BrTrackSelectScreen);
-          } else {
-            BrModeSet(BrWeatherScreen);
-          }
-        } else {
-          BrModeSet(BrMainMenu);
-        }
-      } else {
-        if (D_8026FF18 == 0 && D_80316310 == 0) {
-          BrSeasonRaceDone();
-        }
-        BrModeSet(BrMainMenu);
-      }
-    } else if (D_80272074 == 0) {
-      if (D_80272070 == 0) {
-        BrScreenFlush2Layout0();
-        BrModeSet(BrRaceTick);
-      } else {
-        BrModeSet(BrPaintShopScreen);
-      }
-    } else if (D_8026FF18 == 0) {
-      D_8026FF08 = 1;
-      D_80270850 = TGR_PTR(BrSeason *, CAR(0)->season)->race != 0;
-      if (D_803162FC == TGR_PTR(BrSeason *, CAR(0)->season)->round) {
-        BrSeasonPickRace();
-        D_802724F4 = 1;
-        BrModeSet(BrLoadSaveScreen);
-      } else {
-        BrScreenFlush2Layout0();
-        D_8026FF18 = 5;
-        BrModeSet(BrRaceTick);
-      }
-    } else if (D_8026FF18 == 2 && D_802707A8 != 0) {
-      D_802724F4 = 2;
-      BrModeSet(BrLoadSaveScreen);
-    } else {
-      BrModeSet(BrMainMenu);
     }
   }
 }

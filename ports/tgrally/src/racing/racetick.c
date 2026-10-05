@@ -64,8 +64,7 @@ extern BrTip D_8026FFB4[];
 typedef struct BrRaceSnd {      /* 0x18 bytes, six of them */
   TgrAddr p;  /* void * */
   int x4;
-  int x8;
-  int xc;
+  long long x8;
   int x10;
   int x14;
 } BrRaceSnd;
@@ -127,7 +126,10 @@ typedef struct BrAirplane {     /* the airplane some tracks fly over the course 
 } BrAirplane;
 extern BrAirplane D_8026FF64;
 #define PLANE (&D_8026FF64)
-extern int D_80315DF8[];        /* the waterfalls' objects */
+typedef struct BrWaterfall {    /* a waterfall: its track object */
+  int obj;
+} BrWaterfall;
+extern BrWaterfall D_80315DF8[];
 extern int D_8031B2D8;
 extern int D_8031B2EC;
 extern int D_8028AB0C;          /* views on screen */
@@ -323,11 +325,6 @@ void BrTriCacheReset(void);
  * screen has faded out picks the next game mode: the replay, results, the
  * next race or the menus.
  */
-/* @t3 0x8020082C */
-/* @t4-pass 0x8020082C 1 2026-09-28 compiles 16 best 5248 moved 28  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 2 2026-09-28 compiles 31 best 5247 moved 1  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 3 2026-09-28 compiles 31 best 5245 moved 2  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8020082C 4 2026-09-28 compiles 31 best 5245 moved 0  (n64/tools/n64permute.py) */
 /* @implements 0x8020082C tgr BrRaceTick */
 void BrRaceTick(void)
 {
@@ -375,8 +372,6 @@ void BrRaceTick(void)
   int kb4;
   int kb8;
   int kbc;
-  int pad78;                    /* two more slots at the bottom of the original's */
-  int pad74;                    /* frame (a compiler spill uses 0x74) */
 
   if (D_802707C8 == 0) {
     D_8028A884 = 1;
@@ -415,7 +410,7 @@ void BrRaceTick(void)
           PAD(i)->rec[1] = 0;
         }
       }
-      D_8027078C = D_80270788 == 0;
+      D_8027078C = !D_80270788;
       break;
     case 1:
       D_8028B7F0 = 2;
@@ -513,7 +508,7 @@ void BrRaceTick(void)
     if (D_8026FF18 == 5) {
       D_8028A8AC = 0;
     } else {
-      D_8028A8AC = (((MenuItem *)D_80271D1C[D_8028B940])->flags & 0x10) != 0;
+      D_8028A8AC = !!(((MenuItem *)D_80271D1C[D_8028B940])->flags & 0x10);
     }
     if (D_8026FF18 != 4 && D_80270788 == 0) {
       BrRumbleProbe();
@@ -541,17 +536,19 @@ void BrRaceTick(void)
                        PLANE->left = BES32(D_80025C00.specials[i].obj));
           break;
         case 5:
-          osSyncPrintf("airplanePathRight = %08x\n",
-                       PLANE->right = BES32(D_80025C00.specials[i].obj));
+          PLANE->right = BES32(D_80025C00.specials[i].obj);
+          osSyncPrintf("airplanePathRight = %08x\n", PLANE->right);
           break;
         case 3:
-          osSyncPrintf("airplane = %d\n", PLANE->obj = BES32(D_80025C00.specials[i].obj));
+          PLANE->obj = BES32(D_80025C00.specials[i].obj);
+          osSyncPrintf("airplane = %d\n", PLANE->obj);
           break;
         case 6:
-          osSyncPrintf("airplanetrigger = %d\n", PLANE->trigger = BES32(D_80025C00.specials[i].obj));
+          PLANE->trigger = BES32(D_80025C00.specials[i].obj);
+          osSyncPrintf("airplanetrigger = %d\n", PLANE->trigger);
           break;
         case 7:
-          D_80315DF8[D_802707C4] = BES32(D_80025C00.specials[i].obj);
+          D_80315DF8[D_802707C4].obj = BES32(D_80025C00.specials[i].obj);
           D_802707C4++;
           osSyncPrintf("waterfall = %d\n", BES32(D_80025C00.specials[i].obj));
           break;
@@ -573,14 +570,17 @@ void BrRaceTick(void)
       }
       PLANE->lap = D_8028B304 - 1;
     }
-    if (D_80270788 == 0) {
-      D_8031B2C8[0].car = 0;
-      D_8028AB0C = D_8026FF08;
-    } else {
+    if (D_80270788 != 0) {
       D_8028AB0C = 1;
-      D_8031B2C8[0].car = D_80315E40;
+    } else {
+      D_8028AB0C = D_8026FF08;
     }
-    D_8031B2C8[1].car = D_8031B2C8[0].car == 0;
+    if (D_80270788 != 0) {
+      D_8031B2C8[0].car = D_80315E40;
+    } else {
+      D_8031B2C8[0].car = 0;
+    }
+    D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
       D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
       D_8028B7F8 = 180;
@@ -644,14 +644,12 @@ void BrRaceTick(void)
                           D_8031B760[i].colour[1] >> 3, D_8031B760[i].colour[2] >> 3);
       }
     }
-    if (D_80270788 == 0) {
-      if (D_8026FF18 == 5) {
-        D_802F7EF8 = 4;
-      } else {
-        D_802F7EF8 = 0;
-      }
-    } else {
+    if (D_80270788 != 0) {
       D_802F7EF8 = 4;
+    } else if (D_8026FF18 == 5) {
+      D_802F7EF8 = 4;
+    } else {
+      D_802F7EF8 = 0;
     }
     D_80315E78 = D_802707D0[D_802F7EF8].state;
     D_802F7EF0 = D_802707D0[D_802F7EF8].secs;
@@ -702,39 +700,40 @@ void BrRaceTick(void)
   if (D_80270788 != 0 && D_80315E78 == 4) {
     if (D_8026FF18 == 1) {
       if (D_8031B2C8[0].car == D_80315E40) {
-        if (PAD(D_80315E40)->ghostLen == PAD(D_80315E40)->ghostPos) {
+        if (PAD(D_80315E40)->ghostPos == PAD(D_80315E40)->ghostLen) {
           if (D_8026FF08 == 1) {
-            goto replay_over;
-          }
-          if (PAD(D_80315E40)->ghostLen + 240 == PAD(D_80315E40 == 0)->ghostPos) {
+          replay_over:
+            if (D_802707CC == 0) {
+              D_802707CC = 1;
+              D_8027078C = 0;
+              BrSfxFadeTo(0.0f, 0.2f);
+              BrFadeTo(0.0f, 0.2f);
+            }
+          } else if (PAD(!D_80315E40)->ghostPos == PAD(D_80315E40)->ghostLen + 240) {
             D_8031B2C8[1].car = D_80315E40;
-            D_8031B2C8[0].car = D_80315E40 == 0;
+            D_8031B2C8[0].car = !D_8031B2C8[1].car;
             goto other_view;
           }
         }
       } else {
       other_view:
-        if (PAD(D_80315E40 == 0)->ghostLen == PAD(D_80315E40 == 0)->ghostPos) {
-        replay_over:
-          if (D_802707CC == 0) {
-            D_802707CC = 1;
-            D_8027078C = 0;
-            BrSfxFadeTo(0.0f, 0.2f);
-            BrFadeTo(0.0f, 0.2f);
-          }
+        if (PAD(!D_80315E40)->ghostPos == PAD(!D_80315E40)->ghostLen) {
+          goto replay_over;
         }
       }
-    } else if (PAD(0)->ghostLen == PAD(0)->ghostPos && D_802707CC == 0) {
-      D_802707CC = 1;
-      D_8027078C = 0;
-      BrSfxFadeTo(0.0f, 0.2f);
-      BrFadeTo(0.0f, 0.2f);
+    } else if (PAD(0)->ghostPos == PAD(0)->ghostLen) {
+      if (D_802707CC == 0) {
+        D_802707CC = 1;
+        D_8027078C = 0;
+        BrSfxFadeTo(0.0f, 0.2f);
+        BrFadeTo(0.0f, 0.2f);
+      }
     }
   }
   BrClockTick();
   D_8026FF58 = 0;
-  D_8026FF5C = 0;
   paused = D_8026FF10;
+  D_8026FF5C = 0;
 
   /* the start lights and the race state */
   if (D_80315E78 < 3) {
@@ -751,12 +750,16 @@ void BrRaceTick(void)
           car->xfa4 = D_80271D1C[D_8028B940]->limit[car->xe34][s].secs;
         }
         car->msgATime = 1.0f;
-        if (D_80315E78 == 0) {
+        switch (D_80315E78) {
+        case 0:
           D_8026FF58 = -1;
           D_802F7EF4 = 0;
-        } else if (D_80315E78 != 1 && D_80315E78 == 2) {
+          break;
+        case 1:
+          break;
+        case 2:
           D_8026FF58 = 1;
-          if (D_802F7EF0 < D_80270794[D_802F7EF4]) {
+          if (D_80270794[D_802F7EF4] > D_802F7EF0) {
             D_802F7EF4++;
             if (D_802F7EF4 == 4) {
               BrSfxSrcBeep2();
@@ -764,11 +767,18 @@ void BrRaceTick(void)
               BrSfxSrcBeep();
             }
           }
+          break;
         }
       }
     }
     D_8026FF60 = 0.0f;
-    goto timer;
+  timer:
+    if (D_8026FF10 == 0 && (D_802F7EF0 -= D_8028AAD8) < 0.0f) {
+    advance:
+      D_802F7EF8++;
+      D_80315E78 = D_802707D0[D_802F7EF8].state;
+      D_802F7EF0 = D_802707D0[D_802F7EF8].secs;
+    }
   } else if (D_80315E78 == 3) {
     D_8026FF58 = 1;
     D_8026FF5C = 1;
@@ -781,9 +791,9 @@ void BrRaceTick(void)
   } else if (D_80315E78 == 4) {
     running = 1;
     if (((D_8026FF18 == 4
-          && ((D_8026FF1C == 2 && 140.0f < D_8031B760[0].lapTime)
-              || (D_8026FF1C != 2 && 39.6f < D_8031B760[0].lapTime)))
-         || (D_8026FF18 == 5 && 16.0f < D_8031B760[0].lapTime))
+          && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
+              || (D_8026FF1C != 2 && D_8031B760[0].lapTime > 39.6f)))
+         || (D_8026FF18 == 5 && D_8031B760[0].lapTime > 16.0f))
         && BrFadeIsOut() == 0) {
       BrFadeTo(0.0f, 0.2f);
       BrSfxFadeTo(0.0f, 0.2f);
@@ -793,44 +803,46 @@ void BrRaceTick(void)
       running = 0;
     }
     for (i = 0; i < D_8026FF08; i++) {
-      if ((D_803239A0[i].flags & 2) == 0) {
+      if ((D_803239A0[i].flags & 2) != 0) {
+        if (D_8026FF18 == 2 && PAD(i)->rec[i] != 0) {
+          osSyncPrintf("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
+          for (k50 = 0; k50 < PAD(i)->recLen[i]; k50 += 2) {
+            osSyncPrintf("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
+          }
+          if (i == 0
+              && (PAD(i)->recLen[i] < D_80270784 || D_80307F00[0] != D_8028B940
+                  || D_80270784 < 9)) {
+            osSyncPrintf("%d: %d<%d=%d || %d!=%d=%d || %d<=%d=%d\n", i, PAD(i)->recLen[i],
+                         D_80270784, PAD(i)->recLen[i] < D_80270784, D_80307F00[0], D_8028B940,
+                         D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
+            D_80270784 = PAD(i)->recLen[i];
+            memcpy(D_80307F00, TGR_PTR(unsigned char *, PAD(i)->rec[i]), D_80270784);
+            D_8031B760[i].msgA = tgr_addr32("NEW RECORD!");
+            D_8031B760[i].msgATime = 1.0f;
+            BrTimeFormat(D_8031B760[i].xfc0, D_8031B760[i].lapTime);
+            D_8031B760[i].msgB = tgr_addr32(D_8031B760[i].xfc0);
+            D_8031B760[i].msgBTime = 1.0f;
+            D_802707A8 = 1;
+          }
+          PAD(i)->rec[i] = 0;
+        } else if (D_8026FF18 == 1) {
+          for (k54 = 0; k54 < D_8026FF08; k54++) {
+            PAD(i)->recKeep[k54] = PAD(i)->recLen[k54];
+          }
+        }
+      } else {
         running = 0;
-      } else if (D_8026FF18 == 2 && PAD(i)->rec[i] != 0) {
-        osSyncPrintf("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
-        for (k50 = 0; k50 < PAD(i)->recLen[i]; k50 += 2) {
-          osSyncPrintf("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
-        }
-        if (i == 0
-            && (PAD(0)->recLen[0] < D_80270784 || D_80307F00[0] != D_8028B940
-                || D_80270784 < 9)) {
-          osSyncPrintf("%d: %d<%d=%d || %d!=%d=%d || %d<=%d=%d\n", 0, PAD(0)->recLen[0],
-                       D_80270784, PAD(0)->recLen[0] < D_80270784, D_80307F00[0], D_8028B940,
-                       D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
-          D_80270784 = PAD(i)->recLen[i];
-          memcpy(D_80307F00, TGR_PTR(unsigned char *, PAD(i)->rec[i]), D_80270784);
-          D_8031B760[0].msgA = tgr_addr32("NEW RECORD!");
-          D_8031B760[0].msgATime = 1.0f;
-          BrTimeFormat(D_8031B760[0].xfc0, D_8031B760[0].lapTime);
-          D_8031B760[0].msgB = tgr_addr32(D_8031B760[0].xfc0);
-          D_8031B760[0].msgBTime = 1.0f;
-          D_802707A8 = 1;
-        }
-        PAD(i)->rec[i] = 0;
-      } else if (D_8026FF18 == 1) {
-        for (k54 = 0; k54 < D_8026FF08; k54++) {
-          PAD(i)->recKeep[k54] = PAD(i)->recLen[k54];
-        }
       }
     }
     if (running == 0) {
-      if (D_8026FF18 != 1 || D_8026FF08 != 1 || D_8031B760[0].xfa4 != 0.0f) {
+      if (D_8026FF18 == 1 && D_8026FF08 == 1 && D_8031B760[0].xfa4 == 0.0) {
+        D_8027078C = 0;
+        D_8031B760[0].msgA = D_8031B760[1].msgA = tgr_addr32("%ryTIME UP!");
+        D_8031B760[1].msgATime = 2.0f;
+        D_8031B760[0].msgATime = D_8031B760[1].msgATime;
+      } else {
         goto draw;
       }
-      D_8027078C = 0;
-      D_8031B760[1].msgA = tgr_addr32("%ryTIME UP!");
-      D_8031B760[0].msgA = D_8031B760[1].msgA;
-      D_8031B760[1].msgATime = 2.0f;
-      D_8031B760[0].msgATime = 2.0f;
     }
     goto advance;
   } else if (D_80315E78 == 5) {
@@ -847,14 +859,6 @@ void BrRaceTick(void)
     }
     BrFadeTo(0.0f, 0.2f);
     D_802707CC = 1;
-  }
-  goto draw;
-timer:
-  if (D_8026FF10 == 0 && (D_802F7EF0 -= D_8028AAD8) < 0.0f) {
-  advance:
-    D_802F7EF8++;
-    D_80315E78 = D_802707D0[D_802F7EF8].state;
-    D_802F7EF0 = D_802707D0[D_802F7EF8].secs;
   }
 
 draw:
@@ -905,22 +909,25 @@ draw:
       case 2:
         guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 0.0f, 1.0f, 0.0f);
       spin:
-        br_mat4_from(om, (const bef_t (*)[4])OBJ(BES32(D_80025C00.specials[i].obj))->m);
+        br_mat4_from(om, (const bef_t (*)[4])OBJ(BES32((D_80025C00.specials + i)->obj))->m);
         guMtxCatF(D_8031AB10, om, om);
-        br_mat4_to(OBJ(BES32(D_80025C00.specials[i].obj))->m, om);
-        SET16(OBJ(BES32(D_80025C00.specials[i].obj))->flags, BE16(OBJ(BES32(D_80025C00.specials[i].obj))->flags) & 0xDFFF);
+        br_mat4_to(OBJ(BES32((D_80025C00.specials + i)->obj))->m, om);
+        SET16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags, BE16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags) & 0xDFFF);
         break;
       case 3:
         if (PLANE->obj == 0 || PLANE->sent == 0) {
           break;
         }
-        if (D_8028B940 == 1 || D_8028B940 == 6) {
-          f = 18.0f * D_8028AAD8;
-        } else {
-          f = D_8028AAD8 * 50.0f;
+        switch (D_8028B940) {
+        case 1:
+        case 6:
+          PLANE->dist += D_8028AAD8 * 18.0f;
+          break;
+        default:
+          PLANE->dist += D_8028AAD8 * 50.0f;
+          break;
         }
-        PLANE->dist += f;
-        while (PLANE->segLen < PLANE->dist) {
+        while (PLANE->dist > PLANE->segLen) {
           PLANE->dist -= PLANE->segLen;
           PLANE->point++;
           if (PLANE->point >= PLANE->count) {
@@ -974,7 +981,7 @@ draw:
           br_vec3_from(&pr.x, &RIGHT[PLANE->point - 1]);
           BrVec3Lerp(&b, &pl, &pr, f);
           BrVec3Midpoint((BrVec3 *)om[3], &a, &b);
-          if (0.5f < f) {
+          if (f > 0.5f) {
             BrVec3Lerp((BrVec3 *)om[0], &PLANE->next, &PLANE->dir, f - 0.5f);
           } else {
             BrVec3Lerp((BrVec3 *)om[0], &PLANE->dir, &PLANE->prev, f + 0.5f);
@@ -1000,13 +1007,13 @@ draw:
   BrSndNearestInvalidate();
   for (j = 0; j < D_8028AB0C; j++) {
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8031B760[D_8031B2C8[j].car].cam);
+    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
     if (PLANE->obj != 0 && PLANE->sent != 0) {
       br_vec3_from(&pl.x, (const BrVec3be *)OBJ(PLANE->obj)->m[3]);   /* copied by the offer */
       BrSndNearestOfferTrack(PLANE->obj, &pl, D_8028AAF4);
     }
     for (i = 0; D_8028AAF4 != 0 && i < D_802707C4; i++) {
-      br_vec3_from(&pl.x, (const BrVec3be *)OBJ(D_80315DF8[i])->m[3]);
+      br_vec3_from(&pl.x, (const BrVec3be *)OBJ((D_80315DF8 + i)->obj)->m[3]);
       BrSndNearestOfferDefault(PLANE->obj, &pl, D_8028AAF4);
     }
     BrStub8022BA98(tgr_addr32(D_8028AAF4));
@@ -1017,15 +1024,13 @@ draw:
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrVtxPoolsReset();
   BrZBufferClear();
-  if (D_80315E38 == 0 && D_8028AA5C == 0) {
-    if (D_8031B2C8[0].w < 304) {
-      BrGfxFillRect(D_8031B2C8[0].w + D_8031B2C8[0].x, 8, 304 - D_8031B2C8[0].w, 224, 0, 0, 0);
-    }
-  } else {
+  if (D_80315E38 != 0 || D_8028AA5C != 0) {
     BrScreenClear(0, 0, 0);
     if (D_80315E38 != 0) {
       D_80315E38--;
     }
+  } else if (D_8031B2C8[0].w < 304) {
+    BrGfxFillRect(D_8031B2C8[0].x + D_8031B2C8[0].w, 8, 304 - D_8031B2C8[0].w, 224, 0, 0, 0);
   }
   if (D_8028AB0C != D_80315E74) {
     D_80315E38 = 2;
@@ -1036,21 +1041,21 @@ draw:
   for (j = 0; j < D_8028AB0C; j++) {
     BrPerfMark(0, 0, 0, 0, 0xFF);
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8031B760[D_8031B2C8[j].car].cam);
+    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
     D_8028AAEC = j;
     BrGroundRay(0, 0, D_8028AAF4->mtx[3], D_8031B248, &D_8028AB00, D_8031B288, &D_8028AB04,
                   &D_8028AAF8, &D_8028AAFC);
     BrViewportSet(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h, 1);
-    if (D_8028AB0C < 2) {
-      BrFrustumSet(D_8028AAF4, D_8028AAF4->fov, D_8028AAC8, (float)D_8031B2C8[j].w,
-                    (float)D_8031B2C8[j].h);
-      BrCameraSet(D_8028AAF4->mtx, D_8028AAF4->fov, D_8028AAC8, (float)D_8031B2C8[j].w,
-                  (float)D_8031B2C8[j].h);
-    } else {
+    if (D_8028AB0C >= 2) {
       BrFrustumSet(D_8028AAF4, D_8028AAF4->fov * 0.7f, D_8028AAC8 * 0.65f,
                     (float)D_8031B2C8[j].w, (float)D_8031B2C8[j].h);
       BrCameraSet(D_8028AAF4->mtx, D_8028AAF4->fov * 0.7f, D_8028AAC8 * 0.65f,
                   (float)D_8031B2C8[j].w, (float)D_8031B2C8[j].h);
+    } else {
+      BrFrustumSet(D_8028AAF4, D_8028AAF4->fov, D_8028AAC8, (float)D_8031B2C8[j].w,
+                    (float)D_8031B2C8[j].h);
+      BrCameraSet(D_8028AAF4->mtx, D_8028AAF4->fov, D_8028AAC8, (float)D_8031B2C8[j].w,
+                  (float)D_8031B2C8[j].h);
     }
     BrFogSetup();
     BrFrameTintSetup();
@@ -1058,10 +1063,10 @@ draw:
     BrSkyDraw();
     BrScreenFlashClear();
     BrGridSpanFrustum();
-    if (D_8028AA80 == 0) {
-      D_8028C328 = 1;
-    } else {
+    if (D_8028AA80 != 0) {
       D_8028C328 = 2;
+    } else {
+      D_8028C328 = 1;
     }
     for (i = 0; i < D_8028B7F4; i++) {
       BrCarVisibility(&D_8031B760[i]);
@@ -1115,8 +1120,7 @@ draw:
     BrScreenCameraSet((float)D_8031B2C8[j].w, (float)D_8031B2C8[j].h);
     BrViewportFull(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h, 1);
     /* the rear-view mirror, in the bumper view of a single player */
-    if (D_8028AAF4 == &D_8028AAF0->cams[2] && D_8028AB0C == 1 && D_8028AA54 != 0) {
-      saved = D_8028AAF4;
+    if (&D_8028AAF0->cams[2] == D_8028AAF4 && D_8028AB0C == 1 && D_8028AA54 != 0) {
       if (D_8028AA54 == 1) {
         mw = D_8031B2C8[j].w / 4;
       } else if (D_8028AA54 == 2) {
@@ -1125,10 +1129,10 @@ draw:
         mw = D_8031B2C8[j].w * 3 / 8 + 2;
       }
       mh = mw >> 2;
-      D_8028AAF4 = &D_8028AAF0->cam4;
-      my = D_8031B2C8[j].h / 16 + D_8031B2C8[j].y;
-      mx = ((D_8031B2C8[j].w - mw) >> 1) + D_8031B2C8[j].x;
-      D_8028AAF0->cam = tgr_addr32(D_8028AAF4);
+      mx = D_8031B2C8[j].x + ((D_8031B2C8[j].w - mw) >> 1);
+      my = D_8031B2C8[j].y + D_8031B2C8[j].h / 16;
+      saved = D_8028AAF4;
+      D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cam4));
       BrViewportSet(mx, my, -mw, mh, 1);
       BrZBufferClearRect(mx, my, mw, mh);
       BrFrustumSet(D_8028AAF4, D_8028AAF4->fov, D_8028AAC8 * 0.2f, (float)mw, (float)mh);
@@ -1190,20 +1194,7 @@ draw:
         BrTextPrint("%ryCHAMPION!", 160, 210);
       }
     } else if (D_8028AA6C != 0 && D_8026FF18 != 4) {
-      if (D_80270788 == 0) {
-        if (D_8028AAF4 == &D_8028AAF0->cams[3]) {
-          if (TGR_PTR(struct BrCarLink *, D_8028AAF0->link)->flags & 2) {
-            BrHudPositionDraw();
-          }
-        } else {
-          BrPerfMark(0, 0xFF, 0, 0, 0xFF);
-          BrHudDraw();
-          BrPerfMark(0, 0, 0x82, 0, 0xFF);
-          if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
-            BrStub8023870C();
-          }
-        }
-      } else {
+      if (D_80270788 != 0) {
         BrTextHighlightOff();
         BrTextAlignLeft();
         BrTextSetFont(15);
@@ -1211,6 +1202,17 @@ draw:
         BrTextPrint("%wwA to restart", 28, D_8028AAB4 - 24);
         BrTextAlignRight();
         BrTextPrint("%wwSTART to exit", D_8028AAB0 - 28, D_8028AAB4 - 24);
+      } else {
+        if (&D_8028AAF0->cams[3] != D_8028AAF4) {
+          BrPerfMark(0, 0xFF, 0, 0, 0xFF);
+          BrHudDraw();
+          BrPerfMark(0, 0, 0x82, 0, 0xFF);
+          if (&D_8028AAF0->cams[2] != D_8028AAF4) {
+            BrStub8023870C();
+          }
+        } else if (TGR_PTR(struct BrCarLink *, D_8028AAF0->link)->flags & 2) {
+          BrHudPositionDraw();
+        }
       }
     }
     BrViewOutline(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h);
@@ -1219,50 +1221,7 @@ draw:
   BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
 
   /* input: skip the demo, pause, or the pause menu */
-  if (D_8026FF10 == 0) {
-    if (D_8026FF18 == 4 || D_8026FF18 == 5) {
-      if (BrFadeIsOut() == 0) {
-        for (i = 0; i < 2; i++) {
-          if (D_8036A8E0[i].pressed & 0xC010) {
-            BrPadConsume(&D_8036A8E0[i], 0xC010);
-            D_80315E70 = 1;
-            D_802707CC = 1;
-            D_8027078C = 0;
-            BrSfxFadeTo(0.0f, 0.2f);
-            BrFadeTo(0.0f, 0.2f);
-          }
-        }
-      }
-    } else {
-      for (i = 0; i < D_8026FF08; i++) {
-        if (PAD(i)->pressed & 0x4000) {
-          if (D_80270788 == 0) {
-            paused = 1;
-            D_8026FF14 = 0;
-          } else {
-            BrFadeTo(0.0f, 0.2f);
-            D_8027078C = 0;
-            D_802707CC = 1;
-          }
-          BrSfxFadeTo(0.0f, 0.2f);
-          BrMusicFadeTo(0.0f, 0.2f);
-          BrPadConsume(PAD(0), 0x4000);
-          BrPadConsume(PAD(1), 0x4000);
-          break;
-        }
-        if (PAD(i)->pressed & 0x10) {
-          if (D_80270788 != 0) {
-            BrFadeTo(0.0f, 0.2f);
-            D_8027078C = 1;
-            D_802707CC = 1;
-          }
-          BrPadConsume(PAD(0), 0x10);
-          BrPadConsume(PAD(1), 0x10);
-          break;
-        }
-      }
-    }
-  } else {
+  if (D_8026FF10 != 0) {
     for (i = 0; i < D_8026FF08; i++) {
       BrPadStickToButtons(tgr_addr32(PAD(i)));
       if (PAD(i)->pressed & 0x20) {
@@ -1276,22 +1235,26 @@ draw:
         if (D_8026FF14 != 0 || (PAD(i)->pressed & 0x10) == 0) {
           BrPadConsume(PAD(i), 0xC010);
         }
-        if (D_8026FF14 == 0) {
+        switch (D_8026FF14) {
+        case 0:
           BrSfxFadeTo(1.0f, 0.2f);
           BrMusicFadeTo(1.0f, 0.2f);
           D_80315E38 = 2;
           paused = 0;
-        } else if (D_8026FF14 == 1) {
+          break;
+        case 1:
           BrFadeTo(0.0f, 0.2f);
           D_802707CC = 0;
           D_8027078C = 0;
           D_802707C8 = 0;
-        } else if (D_8026FF14 == 4) {
+          break;
+        case 4:
           BrFadeTo(0.0f, 0.2f);
           BrSfxFadeTo(0.0f, 0.2f);
           BrMusicFadeTo(0.0f, 0.2f);
-          D_802707CC = 1;
           D_8027078C = 0;
+          D_802707CC = 1;
+          break;
         }
       }
       if (PAD(i)->pressed & 8) {
@@ -1310,25 +1273,31 @@ draw:
         if (D_8026FF14 != 0) {
           BrPadConsume(PAD(i), 4);
         }
-        if (D_8026FF14 == 2) {
+        switch (D_8026FF14) {
+        case 2:
           BrMusicVolumeDown();
-        } else if (D_8026FF14 == 3) {
+          break;
+        case 3:
           BrSfxVolumeDown();
+          break;
         }
       }
       if (PAD(i)->pressed & 1) {
         if (D_8026FF14 != 0) {
           BrPadConsume(PAD(i), 1);
         }
-        if (D_8026FF14 == 2) {
+        switch (D_8026FF14) {
+        case 2:
           BrMusicVolumeUp();
-        } else if (D_8026FF14 == 3) {
+          break;
+        case 3:
           BrSfxVolumeUp();
+          break;
         }
       }
     }
     {
-      x = (D_8031B2C8[0].w >> 1) + D_8031B2C8[0].x;
+      x = D_8031B2C8[0].x + (D_8031B2C8[0].w >> 1);
       BrScreenDim(0.33f);
       BrTextHighlightOff();
       BrTextAlignCentre();
@@ -1349,6 +1318,49 @@ draw:
       BrTextPrint(D_8026FF14 == 4 ? "%y1Exit to Main Menu" : "%ryExit to Main Menu", x, y);
       y += 20;
     }
+  } else {
+    if (D_8026FF18 == 4 || D_8026FF18 == 5) {
+      if (BrFadeIsOut() == 0) {
+        for (i = 0; i < 2; i++) {
+          if (D_8036A8E0[i].pressed & 0xC010) {
+            BrPadConsume(&D_8036A8E0[i], 0xC010);
+            D_80315E70 = 1;
+            D_802707CC = 1;
+            D_8027078C = 0;
+            BrSfxFadeTo(0.0f, 0.2f);
+            BrFadeTo(0.0f, 0.2f);
+          }
+        }
+      }
+    } else {
+      for (i = 0; i < D_8026FF08; i++) {
+        if (PAD(i)->pressed & 0x4000) {
+          if (D_80270788 != 0) {
+            BrFadeTo(0.0f, 0.2f);
+            D_8027078C = 0;
+            D_802707CC = 1;
+          } else {
+            paused = 1;
+            D_8026FF14 = 0;
+          }
+          BrSfxFadeTo(0.0f, 0.2f);
+          BrMusicFadeTo(0.0f, 0.2f);
+          BrPadConsume(PAD(0), 0x4000);
+          BrPadConsume(PAD(1), 0x4000);
+          break;
+        }
+        if (PAD(i)->pressed & 0x10) {
+          if (D_80270788 != 0) {
+            BrFadeTo(0.0f, 0.2f);
+            D_8027078C = 1;
+            D_802707CC = 1;
+          }
+          BrPadConsume(PAD(0), 0x10);
+          BrPadConsume(PAD(1), 0x10);
+          break;
+        }
+      }
+    }
   }
 
   /* the attract demo's captions */
@@ -1356,7 +1368,7 @@ draw:
     BrRaceCueRewind();
     BrRaceCueDraw();
   } else if (D_8026FF18 == 4 && D_8026FF1C == 1 && D_8026FFB4[D_80315E6C].title != 0) {
-    if (0.5f < D_80315E68) {
+    if (D_80315E68 > 0.5f) {
       BrTextHighlightOff();
       BrTextAlignCentre();
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -1367,7 +1379,7 @@ draw:
       }
       y0 = 132 - i * 40 / 4;
       if (TGR_PTR(char *, D_8026FFB4[D_80315E6C].title)[0] == 0) {
-        y0 = 127 - i * 40 / 4;
+        y0 -= 5;
       }
       while (--i >= 0) {
         BrTextSetFont(20);
@@ -1378,8 +1390,8 @@ draw:
     }
     D_80315E68 += D_8028AAD8;
     if (D_8026FFB4[D_80315E6C].secs < D_80315E68) {
-      D_80315E6C++;
       D_80315E68 = 0.0f;
+      D_80315E6C++;
     }
   }
   BrFadeBarsDraw();
@@ -1405,46 +1417,17 @@ draw:
       D_802A4920[kb8].x14 = 0;
       D_802A4920[kb8].x10 = 0;
       D_802A4920[kb8].x8 = 0;
-      D_802A4920[kb8].xc = 0;
       D_802A4920[kb8].p = tgr_addr32(D_802A4A08);
     }
     D_8028AB10 = 0;
     if (D_802707CC != 0) {
-      if (D_8027078C == 0) {
-        BrScreenFlush2Layout1();
-        D_8028A8AC = 0;
-        if (D_8026FF18 == 5) {
-          if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round == 0) {
-            BrDemoRaceStartC();
-          } else {
-          next_race:
-            D_8026FF18 = 0;
-            BrSeasonPickRace();
-            D_802724F4 = 1;
-            BrModeSet(BrLoadSaveScreen);
-          }
-        } else if (D_8026FF18 == 4 && D_8026FF1C == 2) {
-          goto next_race;
-        } else if (D_80270790 == 0 || (D_8026FF18 != 2 && D_8026FF18 != 1 && D_8026FF18 != 0)) {
-          if (D_8026FF18 == 4 && D_8026FF1C == 1) {
-            BrModeSet(BrOptionsScreen);
-          } else if (D_8026FF18 == 4 && D_8026FF1C == 0 && D_80315E70 == 0) {
-            BrModeSet(BrIntroScreen);
-          } else {
-            BrModeSet(BrMainMenu);
-          }
-        } else {
-          BrRaceResultRestore();
-          BrModeSet(BrResultsRun);
-        }
-        D_80270788 = 0;
-      } else {
+      if (D_8027078C != 0) {
         /* the instant replay plays the best lap's recordings */
         if (D_80270788 == 0) {
           D_80315E3C = PAD(0)->recLen[0];
           D_80315E40 = 0;
           for (i = 1; i < D_8026FF08; i++) {
-            if (PAD(i)->recLen[i] < D_80315E3C) {
+            if (D_80315E3C > PAD(i)->recLen[i]) {
               D_80315E3C = PAD(i)->recLen[i];
               D_80315E40 = i;
             }
@@ -1462,6 +1445,34 @@ draw:
           osSyncPrintf("bestNumber = %d, bestIndex = %d\n", D_80315E40, D_80315E3C);
         }
         D_80270788 = 1;
+      } else {
+        BrScreenFlush2Layout1();
+        D_8028A8AC = 0;
+        if (D_8026FF18 == 5) {
+          if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round != 0) {
+          next_race:
+            D_8026FF18 = 0;
+            BrSeasonPickRace();
+            D_802724F4 = 1;
+            BrModeSet(BrLoadSaveScreen);
+          } else {
+            BrDemoRaceStartC();
+          }
+        } else if (D_8026FF18 == 4 && D_8026FF1C == 2) {
+          goto next_race;
+        } else if (D_80270790 != 0 && (D_8026FF18 == 2 || D_8026FF18 == 1 || D_8026FF18 == 0)) {
+          BrRaceResultRestore();
+          BrModeSet(BrResultsRun);
+        } else {
+          if (D_8026FF18 == 4 && D_8026FF1C == 1) {
+            BrModeSet(BrOptionsScreen);
+          } else if (D_8026FF18 == 4 && D_8026FF1C == 0 && D_80315E70 == 0) {
+            BrModeSet(BrIntroScreen);
+          } else {
+            BrModeSet(BrMainMenu);
+          }
+        }
+        D_80270788 = 0;
       }
       D_802707C8 = 0;
     }
@@ -1471,12 +1482,11 @@ draw:
     }
   }
   if (D_8026FF10 != paused) {
-    if (paused == 0) {
-      BrVarLoadSmall();
-      D_8026FF10 = paused;
-    } else {
+    if (paused != 0) {
       BrVarSaveSmall();
-      D_8026FF10 = paused;
+    } else {
+      BrVarLoadSmall();
     }
+    D_8026FF10 = paused;
   }
 }
