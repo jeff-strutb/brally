@@ -657,11 +657,9 @@ void BrPaintKeyboard(void)
 }
 
 /* WHAT IT DOES: Move the paint shop cursor from the stick once it is pushed
- * past the dead zone, unless the cursor is locked. */
-/* @t4-pass 0x8024BE78 1 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024BE78 2 2026-09-26 compiles 17 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8024BE78 3 2026-09-26 compiles 16 best 219 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8024BE78 */
+ * past the dead zone, unless the cursor is locked.  The x arms re-point pad
+ * at the controller; the y arms read the controller directly, so pad's one
+ * web stays the top-level pointer (a0) and the cursor's address takes v1. */
 /* @implements 0x8024BE78 tgr BrPaintStickMove */
 void BrPaintStickMove(void)
 {
@@ -687,11 +685,9 @@ void BrPaintStickMove(void)
     a = pad->axis[1] < 0.0 ? -pad->axis[1] : pad->axis[1];
     if (a >= D_802AB210) {
       if (BrPaintCursorInRect((int *)&D_8028DB94) != 0 && D_8028DBC4 == 0) {
-        pad = &PADS[D_8028DBBC];
-        D_8028D110.y -= (int)(pad->axis[1] * 6.0f);
+        D_8028D110.y -= (int)(PADS[D_8028DBBC].axis[1] * 6.0f);
       } else {
-        pad = &PADS[D_8028DBBC];
-        D_8028D110.y -= (int)(pad->axis[1] * 12.0f);
+        D_8028D110.y -= (int)(PADS[D_8028DBBC].axis[1] * 12.0f);
       }
     } else if (pad->pressed & 0x402) {
       D_8028D110.y++;
