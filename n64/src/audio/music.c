@@ -370,22 +370,20 @@ extern int D_802A4A04;
  * the portamento in period space (period = K / rate, clamped at 1; a tone
  * portamento stops at its target), and slide the volume within 0..64.
  * The arpeggio index is bumped and masked in two stores; the target test
- * puts the clamping arm first.
- * RESIDUE (81): temp-register numbering only (register-blind gap 2); 96
- * declaration orders and 394 permuter compiles leave it. */
-/* @t4-pass 0x8025721C 1 2026-10-03 compiles 26 best 81 moved 0  (n64/tools/n64permute.py) */
-/* @t4-pass 0x8025721C 2 2026-10-03 compiles 26 best 81 moved 0  (n64/tools/n64permute.py) */
-/* @t3 0x8025721C */
+ * puts the clamping arm first.  The arpeggio note is an unsigned short
+ * local read through the index in place, so the allocator colours it
+ * before anything else in that block (the ROM's v1). */
 /* @implements 0x8025721C tgr BrModTick */
 void BrModTick(void)
 {
   int i;
   unsigned char *pat;
-  int idx;
+  int idx;                       /* unused: the ROM's frame keeps its home */
   long long per;
   short v;
   unsigned int smp;
   long long r;
+  unsigned short n;
 
   if (--D_80378FA0.x2 == 0) {
     D_80378FA0.x2 = D_80378FA0.x0;
@@ -404,8 +402,8 @@ void BrModTick(void)
   for (i = 0; i < D_802A49C0; i++) {
     smp = D_80378DD0[i].smp;
     if (D_80378DD0[i].arpOn != 0 && smp != 0 && D_802A4798[i].rate != 0) {
-      idx = D_80378DD0[i].arpIdx;
-      D_802A4798[i].rate = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].arp[idx]) & 0xffff];
+      n = D_80378DD0[i].arp[D_80378DD0[i].arpIdx] + D_803787D0[smp - 1]->relNote;
+      D_802A4798[i].rate = (&D_80379568[0][0])[n];
       D_80378DD0[i].arpIdx++;
       D_80378DD0[i].arpIdx &= 3;
     }
@@ -430,7 +428,7 @@ void BrModTick(void)
       }
     }
     if (D_80378DD0[i].slide != 0) {
-      v = D_80378DD0[i].slide + D_80378DD0[i].vol;
+      v = D_80378DD0[i].vol + D_80378DD0[i].slide;
       if (v < 0) {
         v = 0;
       } else if (v > 64) {
@@ -438,7 +436,7 @@ void BrModTick(void)
       }
       D_80378DD0[i].vol = v;
       if (smp != 0) {
-        D_802A4798[i].baseVol = (D_80378DD0[i].vol * D_803787D0[smp - 1]->vol) >> 6;
+        D_802A4798[i].baseVol = (D_803787D0[smp - 1]->vol * D_80378DD0[i].vol) >> 6;
       }
     }
   }
