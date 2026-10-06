@@ -90,6 +90,12 @@ void host_window_lock_aspect(int lock);
 /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
 int  host_poll_event(host_event *ev, uint32_t wait_ms);
 void host_message_box(const char *text, const char *caption);
+/* what a GPU renderer draws into: the window's HWND on Windows, its
+ * CAMetalLayer on macOS; NULL without a window */
+void *host_window_handle(void);
+/* the window's drawing area in pixels, the layer kept to it on macOS (0 x 0
+ * without a window) */
+void host_window_pixels(int *w, int *h);
 /* a finished frame of ARGB pixels (0xAARRGGBB), top row first, for the window */
 void host_present(const uint32_t *argb, int w, int h);
 

@@ -35,16 +35,21 @@ lipo -create $B/brally-macos-arm64/brally64 $B/brally-macos-x86_64/brally64 -out
 lipo -create $B/tgrally-macos-arm64/tgrally $B/tgrally-macos-x86_64/tgrally -output $B/payload-macos/tgrally
 strip -S $B/payload-macos/brally64 $B/payload-macos/tgrally
 
-CC=$WINCC OUT=$B/brally-windows HOST=windows RENDER=soft IMAGE=runtime GFLAG=-g0 ports/brally/link64.sh | tail -1
-CC=$WINCC OUT=$B/tgrally-windows HOST=windows RENDER=soft ROMDATA=file GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
-x86_64-w64-mingw32-strip -o $B/payload-windows/brally64.exe $B/brally-windows/brally64.exe
-x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally.exe $B/tgrally-windows/tgrally.exe
+# Windows: each game drawn with Vulkan (the GPU, as Metal on the Mac) and, for
+# a PC without a Vulkan driver, in software; the builder picks
+for R in vulkan soft; do
+    S=; [ $R = soft ] && S=-soft
+    CC=$WINCC OUT=$B/brally-windows-$R HOST=windows RENDER=$R IMAGE=runtime GFLAG=-g0 ports/brally/link64.sh | tail -1
+    CC=$WINCC OUT=$B/tgrally-windows-$R HOST=windows RENDER=$R ROMDATA=file GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
+    x86_64-w64-mingw32-strip -o $B/payload-windows/brally64$S.exe $B/brally-windows-$R/brally64.exe
+    x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally$S.exe $B/tgrally-windows-$R/tgrally.exe
+done
 
 # x86-64 game code must not assume 16-byte alignment of the original's data
 $PY builder/check_alignment.py $B/brally-macos-x86_64/obj $B/tgrally-macos-x86_64/obj \
-    $B/brally-windows/obj $B/tgrally-windows/obj
+    $B/brally-windows-vulkan/obj $B/tgrally-windows-vulkan/obj
 $PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally \
-    $B/payload-windows/brally64.exe $B/payload-windows/tgrally.exe
+    $B/payload-windows/*.exe
 
 # ---- macOS: Rally Builder.app -------------------------------------------------------------------
 APP="$B/mac/Rally Builder.app"
@@ -83,6 +88,6 @@ x86_64-w64-mingw32-gcc -municode -mwindows -static -s -o "$B/win/Rally Builder/R
     $OBJS $B/win/builder.res.o -lcomctl32 -lole32 -lshell32 -luuid
 # the games beside it as plain files: the builder copies them, it carries no
 # executable inside itself
-cp $B/payload-windows/brally64.exe $B/payload-windows/tgrally.exe "$B/win/Rally Builder/games/"
+cp $B/payload-windows/*.exe "$B/win/Rally Builder/games/"
 (cd $B/win && zip -qrX "$PWD/../dist/RallyBuilder-$VERSION-Windows.zip" "Rally Builder")
 ls -la $DIST

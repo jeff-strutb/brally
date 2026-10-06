@@ -46,13 +46,56 @@ static int s_result;
 static void to8(const wchar_t *w, char *out, int n) { WideCharToMultiByte(CP_UTF8, 0, w, -1, out, n, NULL, NULL); }
 static void to16(const char *s, wchar_t *out, int n) { MultiByteToWideChar(CP_UTF8, 0, s, -1, out, n); }
 
+/* 1 when this PC has a Vulkan device the games can draw with: then the
+ * games' Vulkan builds go in, else their software-rendered ones (a build
+ * linked to vulkan-1.dll does not start without it) */
+typedef void *(__stdcall *vk_gipa)(void *, const char *);
+typedef int (__stdcall *vk_create)(const void *, const void *, void **);
+typedef int (__stdcall *vk_enum)(void *, uint32_t *, void *);
+typedef void (__stdcall *vk_destroy)(void *, const void *);
+static int vulkan_usable(void)
+{
+    static int known = -1;
+    struct { int sType; const void *pNext; uint32_t flags; const void *app; uint32_t nl; const char *const *l;
+             uint32_t ne; const char *const *e; } ci;
+    struct { int sType; const void *pNext; const char *name; uint32_t ver; const char *eng; uint32_t ever;
+             uint32_t api; } app;
+    HMODULE m;
+    vk_gipa gipa;
+    vk_create create;
+    void *inst = NULL;
+    uint32_t n = 0;
+    if (known >= 0)
+        return known;
+    known = 0;
+    if (!(m = LoadLibraryW(L"vulkan-1.dll")) || !(gipa = (vk_gipa)(void *)GetProcAddress(m, "vkGetInstanceProcAddr")))
+        return 0;
+    create = (vk_create)gipa(NULL, "vkCreateInstance");
+    memset(&app, 0, sizeof app);
+    app.sType = 0;                                 /* VK_STRUCTURE_TYPE_APPLICATION_INFO */
+    app.api = 1u << 22;                            /* VK_API_VERSION_1_0 */
+    memset(&ci, 0, sizeof ci);
+    ci.sType = 1;                                  /* VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO */
+    ci.app = &app;
+    if (create && create(&ci, NULL, &inst) == 0 && inst) {
+        vk_enum en = (vk_enum)gipa(inst, "vkEnumeratePhysicalDevices");
+        vk_destroy de = (vk_destroy)gipa(inst, "vkDestroyInstance");
+        if (en && en(inst, &n, NULL) == 0 && n > 0)
+            known = 1;
+        if (de)
+            de(inst, NULL);
+    }
+    return known;
+}
+
 int rb_host_payload(const char *name, const char *path, char *err, size_t errlen)
 {
     wchar_t src[MAX_PATH], dst[2048], *s;
     GetModuleFileNameW(NULL, src, MAX_PATH);
     if ((s = wcsrchr(src, L'\\')) != NULL)
         *s = 0;
-    swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs.exe", name);
+    swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs%ls.exe", name,
+             vulkan_usable() ? L"" : L"-soft");
     to16(path, dst, 2048);
     if (!CopyFileW(src, dst, FALSE)) {
         snprintf(err, errlen, "the builder's games folder is missing %s.exe; unzip the whole download and run the "

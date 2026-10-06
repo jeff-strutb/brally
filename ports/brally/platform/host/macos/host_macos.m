@@ -400,6 +400,10 @@ CAMetalLayer *host_macos_metal_layer(void)
     return ml;
 }
 
+void host_macos_layer_fit(int *w, int *h);
+void *host_window_handle(void) { return (__bridge void *)host_macos_metal_layer(); }
+void host_window_pixels(int *w, int *h) { host_macos_layer_fit(w, h); }
+
 /* the Metal layer's drawable kept at the view's size in pixels, so a
  * renderer draws one pixel per window pixel; *w x *h is that size */
 void host_macos_layer_fit(int *w, int *h)

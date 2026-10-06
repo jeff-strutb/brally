@@ -41,14 +41,11 @@
 #include "glide_spv.h"
 
 #if defined(__APPLE__)
-void *host_macos_metal_layer(void);              /* host_macos.m: the view's CAMetalLayer */
-void host_macos_layer_fit(int *w, int *h);       /* host_macos.m: drawable = the view in pixels */
 #elif defined(_WIN32)
 /* the Windows host's window and module (host/windows), as plain pointers:
  * this file never includes windows.h (in the platform build that name is
  * the game's own Win32 surface), so the surface call is looked up and its
  * create-info spelled here, field for field VkWin32SurfaceCreateInfoKHR */
-void *host_win32_window(void);
 void *host_win32_instance(void);
 typedef struct br_win32_surface_info {
     VkStructureType sType;
@@ -139,7 +136,7 @@ static VkSurfaceKHR     s_surface;
 static VkSwapchainKHR   s_swap;
 static VkImage         *s_swap_img;
 static uint32_t         s_nswap, s_swap_w, s_swap_h;
-static VkSemaphore      s_sem_acquire, s_sem_done;
+static VkSemaphore      s_sem_acquire, *s_sem_done;   /* done: one per swapchain image, as a present may still hold it */
 /* the present: the frame scaled into s_up (the window's size) by the sharp
  * bilinear shader, then copied to the swapchain image */
 static VkImage          s_up;
@@ -835,11 +832,16 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, co
 /* ---- the window ---------------------------------------------------------------------- */
 static void swap_destroy(void)
 {
+    uint32_t i;
     if (s_swap) {
         vkDeviceWaitIdle(s_dev);
         vkDestroySwapchainKHR(s_dev, s_swap, NULL);
         s_swap = VK_NULL_HANDLE;
     }
+    for (i = 0; s_sem_done && i < s_nswap; i++)
+        vkDestroySemaphore(s_dev, s_sem_done[i], NULL);
+    free(s_sem_done);
+    s_sem_done = NULL;
     free(s_swap_img);
     s_swap_img = NULL;
     s_nswap = 0;
@@ -893,6 +895,14 @@ static int swap_make(void)
     vkGetSwapchainImagesKHR(s_dev, s_swap, &s_nswap, NULL);
     s_swap_img = (VkImage *)calloc(s_nswap, sizeof *s_swap_img);
     vkGetSwapchainImagesKHR(s_dev, s_swap, &s_nswap, s_swap_img);
+    s_sem_done = (VkSemaphore *)calloc(s_nswap, sizeof *s_sem_done);
+    for (i = 0; i < s_nswap; i++) {
+        VkSemaphoreCreateInfo sci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        if (!VK_OK(vkCreateSemaphore(s_dev, &sci, NULL, &s_sem_done[i]))) {
+            swap_destroy();
+            return 0;
+        }
+    }
     return 1;
 }
 
@@ -900,7 +910,7 @@ static int surface_make(void)
 {
 #if defined(__APPLE__)
     VkMetalSurfaceCreateInfoEXT si = { VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT };
-    si.pLayer = host_macos_metal_layer();
+    si.pLayer = host_window_handle();               /* the view's CAMetalLayer */
     return si.pLayer && vkCreateMetalSurfaceEXT(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
 #elif defined(_WIN32)
     br_win32_surface_info si;
@@ -908,7 +918,7 @@ static int surface_make(void)
     memset(&si, 0, sizeof si);
     si.sType = BR_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     si.hinstance = host_win32_instance();
-    si.hwnd = host_win32_window();
+    si.hwnd = host_window_handle();
     return fn && si.hwnd && fn(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
 #else
     return 0;
@@ -931,7 +941,7 @@ static int make_instance(void)
     VkInstanceCreateInfo ci = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     VkExtensionProperties ext[64];
     uint32_t n = 64;
-    const char *want[4];
+    const char *want[5];
     uint32_t nw = 0;
     vkEnumerateInstanceExtensionProperties(NULL, &n, ext);
 #if defined(__APPLE__)
@@ -949,6 +959,8 @@ static int make_instance(void)
     if (has_ext(ext, n, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
         want[nw++] = VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
         ci.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        if (has_ext(ext, n, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
+            want[nw++] = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;   /* its device side needs it */
     }
     app.pApplicationName = "Boss Rally";
     app.apiVersion = VK_API_VERSION_1_0;
@@ -1323,8 +1335,7 @@ int brr_open(int width, int height)
     ai.commandBufferCount = 1;
     if (!VK_OK(vkAllocateCommandBuffers(s_dev, &ai, &s_cmd)) ||
         !VK_OK(vkCreateFence(s_dev, &fi, NULL, &s_fence)) ||
-        !VK_OK(vkCreateSemaphore(s_dev, &si, NULL, &s_sem_acquire)) ||
-        !VK_OK(vkCreateSemaphore(s_dev, &si, NULL, &s_sem_done)))
+        !VK_OK(vkCreateSemaphore(s_dev, &si, NULL, &s_sem_acquire)))
         return 0;
     if (!make_targets() || !make_layouts() ||
         !make_ring(&s_ubo, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) ||
@@ -1614,7 +1625,7 @@ void brr_present(void)
 #ifdef __APPLE__
         {                                           /* the swapchain follows the window's pixels */
             int fw, fh;
-            host_macos_layer_fit(&fw, &fh);
+            host_window_pixels(&fw, &fh);
             if (s_swap && fw > 0 && ((uint32_t)fw != s_swap_w || (uint32_t)fh != s_swap_h))
                 swap_destroy();
         }
@@ -1657,7 +1668,7 @@ void brr_present(void)
         si.pWaitSemaphores = &s_sem_acquire;
         si.pWaitDstStageMask = &wait_st;
         si.signalSemaphoreCount = 1;
-        si.pSignalSemaphores = &s_sem_done;
+        si.pSignalSemaphores = &s_sem_done[img];
     }
     vkQueueSubmit(s_queue, 1, &si, s_fence);
     s_submitted = 1;
@@ -1665,7 +1676,7 @@ void brr_present(void)
         VkPresentInfoKHR pr = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
         VkResult r;
         pr.waitSemaphoreCount = 1;
-        pr.pWaitSemaphores = &s_sem_done;
+        pr.pWaitSemaphores = &s_sem_done[img];
         pr.swapchainCount = 1;
         pr.pSwapchains = &s_swap;
         pr.pImageIndices = &img;

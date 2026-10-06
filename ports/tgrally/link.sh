@@ -3,7 +3,8 @@
 # generated from the source (tools/globals.py), the platform layer, and one
 # host (shared with the Boss Rally port: ports/brally/platform/host).
 #   env: HOST    null (default, headless) | macos | windows
-#        RENDER  null (default) | soft | metal (needs HOST=macos)
+#        RENDER  null (default) | soft | metal (needs HOST=macos) | vulkan (Windows; on
+#                macOS through MoltenVK: VULKAN_SDK, else Homebrew's)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
 #                tgrally.exe: host/win32 replaces host/posix
 #        OUT     build directory (default build/tgrally/null-null/HOST-RENDER)
@@ -61,8 +62,24 @@ case "$RENDER" in
   null)  SRCS="$SRCS $P/render/null/rdr_null.c";;
   soft)  SRCS="$SRCS $P/render/soft/rdr_soft.c";;
   metal) SRCS="$SRCS $P/render/metal/rdr_metal.m";;
+  vulkan) SRCS="$SRCS $P/render/vulkan/rdr_vulkan.c";;
   *) echo "link: unknown RENDER $RENDER" >&2; exit 2;;
 esac
+VKLIBS=
+if [ "$RENDER" = vulkan ]; then
+  VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
+  PFLAGS="$PFLAGS -I$VK/include"
+  if [ -n "$EXE" ]; then
+    # Windows: vulkan-1.dll through an import library made from the functions
+    # the renderer calls (no Vulkan SDK needed to build)
+    { echo "LIBRARY vulkan-1.dll"; echo "EXPORTS"
+      grep -o 'vk[A-Z][A-Za-z0-9]*(' $P/render/vulkan/rdr_vulkan.c | tr -d '(' | sort -u; } > $OUT/vulkan-1.def
+    x86_64-w64-mingw32-dlltool -d $OUT/vulkan-1.def -l $OUT/libvulkan-1.a
+    VKLIBS="-L$OUT -lvulkan-1"
+  else
+    VKLIBS="-L$VK/lib -lvulkan"
+  fi
+fi
 LIBS="$ZLIB"
 case "$HOST" in
   null)  SRCS="$SRCS $H/null/host_null.c";;
@@ -90,5 +107,5 @@ if [ -n "$EXE" ]; then          # Windows: name, version and manifest
   $H/windows/game_rc.sh "Top Gear Rally" "Top Gear Rally.exe" $OUT/plat/game.res.o
   OBJS="$OBJS $OUT/plat/game.res.o"
 fi
-$LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $OSLIBS
+$LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/tgrally$EXE (host $HOST, renderer $RENDER)"

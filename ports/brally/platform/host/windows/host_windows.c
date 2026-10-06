@@ -369,6 +369,16 @@ void host_window_close(void)
 
 /* the window and module, for a renderer that draws into it (render/vulkan) */
 void *host_win32_window(void) { return s_win; }
+void *host_window_handle(void) { return s_win; }
+void host_window_pixels(int *w, int *h)
+{
+    RECT r;
+    *w = *h = 0;
+    if (s_win && GetClientRect(s_win, &r)) {
+        *w = r.right;
+        *h = r.bottom;
+    }
+}
 void *host_win32_instance(void) { return GetModuleHandleA(NULL); }
 
 /* the window can be any shape; the renderer letterboxes what does not fill it */
