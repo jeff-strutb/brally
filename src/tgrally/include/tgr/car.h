@@ -106,7 +106,11 @@ typedef struct BrCar {
     float xdf0;                 /* 0xDF0 */
     float xdf4;                 /* 0xDF4  scales the exhaust smoke (0.001 per unit) */
     char xdf8[0x1c];            /* 0xDF8  from the kind table */
-    float xe14[5];              /* 0xE14  from the kind table */
+    float xe14;                 /* 0xE14  from the kind table: the torque curve's rpm^3 term */
+    float xe18;                 /* 0xE18  rpm^2 term */
+    float xe1c;                 /* 0xE1C  rpm term */
+    float xe20;                 /* 0xE20  constant term */
+    float xe24;                 /* 0xE24  the wheel-to-engine rpm scale */
     int xe28[2];                /* 0xE28  from the kind table */
     int xe30;                   /* 0xE30 */
     int xe34;                   /* 0xE34  from the kind table */
