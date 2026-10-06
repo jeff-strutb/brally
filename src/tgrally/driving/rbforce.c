@@ -248,6 +248,8 @@ float sinf(float x);
 float cosf(float x);
 #define ABS(x) ((x) < 0 ? -(x) : (x))
 #define SIGN(x) ((x) == 0 ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
+#define SIGNF(x) ((x) == 0 ? 0.0 : ((x) > 0.0f ? 1.0 : -1.0))
+#define SIGNB(x) ((x) == 0.0f ? 0. : ((x) > 0.0f ? 1. : -1.))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The axle constraint on a car body: each axle's drive slip
@@ -260,14 +262,10 @@ float cosf(float x);
  * slide; then the same for the rear axle along its steered heading; the
  * two axle velocities set the body's forward, lateral and yaw velocity
  * (when either axle ran), and the visual roll eases toward the side
- * force.  The PC twin is BrCarPhysDriveMatch (br_cardrive.c).
- * RESIDUE (965): the ROM keeps the body pointer and most locals in its
- * 0x158 frame, reloading after every store; not -Olimit, not -O1.  A dead
- * {1, 0, 0} array (frame 0x98) sits in the slide-flag block. */
-/* @t4-pass 0x80259D14 1 2026-10-03 compiles 26 best 966 moved 10  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80259D14 2 2026-10-03 compiles 26 best 965 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80259D14 3 2026-10-03 compiles 31 best 965 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80259D14 */
+ * force.  The PC twin is BrCarPhysDriveMatch (br_cardrive.c).  A dead
+ * {1, 0, 0} array (frame 0x98) sits in the slide-flag block.  The zeros are
+ * three different constants to the compiler: int 0, 0.0f and 0.f (the
+ * sign-flip reset and the rear axle's pt[2]). */
 /* @implements 0x80259D14 tgr BrCarAxleGrip */
 void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned char *slipFp,
                    unsigned char *slipRp)
@@ -278,58 +276,66 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   float vB[3];
   float vA[3];
   float w[3];
+  int u0[4];                    /* unused: the frame has them */
+  double k;
+  int n;
+  float grip;
+  int idx;
   float sv[3];
   float side;
   int ran;
-  unsigned char sC;
-  unsigned char sD;
   unsigned char sA;
   unsigned char sB;
+  unsigned char sC;
+  unsigned char sD;
+  float lo;                       /* unused: the frame has it */
   float slipF;
   float slipR;
   float g;
   short row;
+  float hi;                       /* unused: the frame has it */
   float hold;
   float s;
   float v;
   float m4;
   float sp;
   float t;
-  float save[3];
-  int idx;
-  float lat[3];
 
   ran = 0;
   side = 0.0f;
-  if (b->sub[0]->x19c == 0) {
+  n = b->sub[0]->x19c;
+  if (n == 0) {
     b->sub[0]->x1b4 = 0;
   }
-  if (b->sub[1]->x19c == 0) {
+  n = b->sub[1]->x19c;
+  if (n == 0) {
     b->sub[1]->x1b4 = 0;
   }
-  if (b->sub[2]->x19c == 0) {
+  n = b->sub[2]->x19c;
+  if (n == 0) {
     b->sub[2]->x1b4 = 0;
   }
-  if (b->sub[3]->x19c == 0) {
+  n = b->sub[3]->x19c;
+  if (n == 0) {
     b->sub[3]->x1b4 = 0;
   }
-  slipF = SIGN(b->sub[2]->spin) * -ABS(b->sub[2]->brake) * 2.0;
+  k = 2.0;
+  slipF = -ABS(b->sub[2]->brake) * SIGNF(b->sub[2]->spin) * k;
   slipF /= b->sub[2]->inertia;
-  slipR = SIGN(b->sub[0]->spin) * -ABS(b->sub[0]->brake) * 2.0;
+  slipR = -ABS(b->sub[0]->brake) * SIGNF(b->sub[0]->spin) * k;
   slipR /= b->sub[0]->inertia;
-  m4 = b->mass / 4.0f;
+  m4 = b->mass / 4;
   slipF /= m4;
   slipR /= m4;
   slipF *= dt * dt;
   slipR *= dt * dt;
   if (ABS(slipF) > 1.0f) {
-    slipF = SIGN(slipF) * 1.5;
+    slipF = SIGNF(slipF) * 1.5f;
   }
   if (ABS(slipR) > 1.0f) {
-    slipR = SIGN(slipR) * 1.5;
+    slipR = SIGN(slipR) * 1.5f;
   }
-  pt[2] = 0.0f;
-  pt[1] = 0.0f;
+  pt[1] = pt[2] = 0.0f;
   pt[0] = b->sub[0]->f78[0];
   BrRbVelAtPoint(tmpA, b, pt);
   func_802586C0(vA, b->m, tmpA);
@@ -343,10 +349,9 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   }
   b->slide = 0;
   row <<= 3;
-  if ((b->sub[0]->x1b4 == 0 && b->sub[1]->x1b4 == 0) || (b->sub[2]->x1b4 == 0 && b->sub[3]->x1b4 == 0)) {
-    *slipFp = 0;
-  } else {
-    s = ABS(*gripF) + ABS(vA[1]) * b->mass / dt;
+  if ((b->sub[0]->x1b4 != 0 || b->sub[1]->x1b4 != 0) && (b->sub[2]->x1b4 != 0 || b->sub[3]->x1b4 != 0)) {
+    idx = ((sA + sB + 1) >> 1) + row;
+    s = ABS(vA[1]) * b->mass / dt + ABS(*gripF);
     ran = 1;
     hold = 8000.0f;
     if (ABS(slipF) > 0.0001) {
@@ -358,24 +363,26 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
       hold = 5600.0f;
     }
     *slipFp = 0;
-    idx = ((sA + sB + 1) >> 1) + row;
-    v = s;
-    if (D_802A4A98[idx] < s) {
-      v = D_802A4A98[idx];
+    grip = D_802A4A38[idx];
+    grip -= 0.002 * (b->tyres - 1);
+    lo = D_802A4AF8[idx];
+    v = D_802A4A98[idx];
+    g = s;
+    if (v < s) {
+      g = v;
     }
-    if (v < D_802A4AF8[idx]) {
-      v = D_802A4AF8[idx];
+    if (g < lo) {
+      g = lo;
     }
-    g = D_802A4AF8[idx] / v * 20.0f * (float)(D_802A4A38[idx] - 0.002 * (b->tyres - 1));
+    g = lo / g * 20.0f * grip;
     if (b->sub[2]->steer == 0) {
       g = 1.5 * g;
     }
     if (ABS(g) > 1.0f) {
-      g = 1.0f;
+      g = 1;
     }
     if (s < hold) {
-      side = 0.0f;
-      vA[1] = 0.0f;
+      side = vA[1] = 0.0f;
     } else {
       sp = sqrtf(b->vel[0] * b->vel[0] + b->vel[1] * b->vel[1] + b->vel[2] * b->vel[2]);
       if (sp < 27.0f) {
@@ -404,47 +411,59 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     t = vA[0];
     vA[0] = vA[0] - slipR;
     if (ABS(vA[0]) > 1e-05f) {
-      if (SIGN(vA[0]) != SIGN(t)) {
-        vA[0] = 0.0f;
+      if (SIGNF(vA[0]) != SIGNF(t)) {
+        vA[0] = 0.f;
       }
     }
+  } else {
+    *slipFp = 0;
   }
   pt[0] = b->sub[2]->f78[0];
   BrRbVelAtPoint(tmpB, b, pt);
   func_802586C0(vB, b->m, tmpB);
   if ((b->sub[2]->x1b4 != 0 || b->sub[3]->x1b4 != 0) && (b->sub[0]->x1b4 != 0 || b->sub[1]->x1b4 != 0)) {
+    float d;
+    float save[3];
+    float lat[3];
+    int u3[8];
+
     ran = 1;
     pt[0] = cosf(b->sub[2]->steer);
     pt[1] = sinf(b->sub[2]->steer);
-    pt[2] = 0.0f;
+    pt[2] = 0.f;
+    d = pt[0] * vB[0] + pt[1] * vB[1] + pt[2] * vB[2];
     save[0] = vB[0];
     save[1] = vB[1];
     save[2] = vB[2];
-    t = pt[0] * vB[0] + pt[1] * vB[1] + pt[2] * vB[2];
-    vB[0] = pt[0] * t;
-    vB[1] = pt[1] * t;
-    vB[2] = pt[2] * t;
+    vB[0] = pt[0] * d;
+    vB[1] = pt[1] * d;
+    vB[2] = pt[2] * d;
     lat[0] = save[0] - vB[0];
     lat[1] = save[1] - vB[1];
     lat[2] = save[2] - vB[2];
     sp = sqrtf(lat[0] * lat[0] + lat[1] * lat[1] + lat[2] * lat[2]);
-    s = ABS(*gripR) + sp * b->mass / dt + 10000.0f * (ABS(slipF) > 0.0001);
-    hold = 8000.0f;
+    v = ABS(*gripR) + sp * b->mass / dt;
+    g = 8000.0f;
+    v += 10000.0f * (ABS(slipF) > 0.0001);
     if (*slipRp != 0) {
-      hold = hold * 0.7;
+      g = g * 0.7;
     }
     *slipRp = 0;
-    if (hold < s) {
+    if (g < v) {
       idx = ((sC + sD + 1) >> 1) + row;
-      v = s;
-      if (D_802A4A98[idx] < s) {
-        v = D_802A4A98[idx];
+      grip = D_802A4A38[idx];
+      grip -= 0.002f * (b->tyres - 1);
+      lo = D_802A4AF8[idx];
+      s = D_802A4A98[idx];
+      g = v;
+      if (s < v) {
+        g = s;
       }
-      if (v < D_802A4AF8[idx]) {
-        v = D_802A4AF8[idx];
+      if (g < lo) {
+        g = lo;
       }
-      g = D_802A4AF8[idx] / v * 20.0f * (D_802A4A38[idx] - 0.002f * (b->tyres - 1));
-      if (b->sub[2]->steer == 0) {
+      g = lo / g * 20.0f * grip;
+      if (b->sub[2]->steer == 0.0f) {
         g = g * 1.5;
       }
       if (ABS(g) > 1.0f) {
@@ -467,9 +486,9 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     }
   }
   if (ran != 0) {
-    sv[0] = (vA[0] + vB[0]) / 2.0f;
+    sv[0] = (vB[0] + vA[0]) / 2;
     sv[2] = (vA[1] - vB[1]) / (b->sub[0]->f78[0] - b->sub[2]->f78[0]);
-    sv[1] = vA[1] - sv[2] * b->sub[0]->f78[0];
+    sv[1] = vA[1] - b->sub[0]->f78[0] * sv[2];
     func_802586C0(w, b->m, b->angVel);
     w[2] = sv[2];
     func_80258758(b->angVel, b->m, w);
@@ -479,12 +498,13 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     func_80258758(b->vel, b->m, w);
   }
   if (ABS(side) > 0.5f) {
-    side = SIGN(side) * 0.5;
+    side = SIGNB(side) * 0.5;
   }
-  t = side / 0.5f * -4.0f;
-  if (ABS(b->angle - t) < 0.26666668f) {
-    b->angle = t;
-  } else if (b->angle < t) {
+  side /= 0.5f;
+  side *= -4.0f;
+  if (ABS(b->angle - side) < 0.26666668f) {
+    b->angle = side;
+  } else if (b->angle < side) {
     b->angle = b->angle + 0.26666668f;
   } else {
     b->angle = b->angle - 0.26666668f;
