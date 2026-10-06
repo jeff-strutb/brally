@@ -161,9 +161,19 @@ def score_one(src_path, va, impl_name):
 
     best = None
     last_err = []
+    chain = set(v for _f, v in cpp_score.gi_chain())
     for i, opt in enumerate(cpp_score.DEFAULT_OPTS):
         tag = 'sweep_%08X_%d' % (va, i)
-        obj, errs, _out = cpp_score.compile_cpp(src_path, tag, opt)
+        if opt == cpp_score.GI_OPT:
+            # /Gi objects are built once per sweep, as the chain (main)
+            if va not in chain:
+                continue
+            obj = os.path.join(cpp_score.OBJ_DIR, '%s_%s.obj' % (
+                os.path.splitext(os.path.basename(src_path))[0], tag))
+            errs = [] if os.path.exists(obj) else ['the /Gi chain did not build this row']
+            obj = obj if not errs else None
+        else:
+            obj, errs, _out = cpp_score.compile_cpp(src_path, tag, opt)
         if obj is None:
             last_err = errs
             continue
@@ -304,6 +314,15 @@ def main():
         merge_report([], set())
         summarise([])
         return 0
+
+    # The /Gi chain first, whole, whenever a swept file holds a chain row:
+    # its objects depend on the chain's order, so it is never built in part.
+    chain_files = set(f for f, _v in cpp_score.gi_chain())
+    if chain_files & set(os.path.relpath(s, ROOT) for s in srcs):
+        print('building the /Gi chain (%d rows)' % len(cpp_score.gi_chain()), flush=True)
+        for va, (obj, errs) in sorted(cpp_score.build_gi_chain().items()):
+            if obj is None:
+                print('  0x%08X: %s' % (va, '; '.join(errs)), flush=True)
 
     jobs = max(1, args.jobs)
     print('cpp_sweep  %d file%s  (%d worker%s)'

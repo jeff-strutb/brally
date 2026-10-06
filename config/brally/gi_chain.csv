@@ -1,0 +1,13 @@
+file,va,name
+src/brally/core/controls/BrCtrlCfgAssign_10062B80.cpp,0x10062B80,BrCtrlCfgAssign
+src/brally/core/drawing/BrRippleApply_1000C4E0.cpp,0x1000C4E0,BrRippleApply_1000C4E0
+src/brally/core/drawing/BrSprFontDrawAt_100541B0.cpp,0x100541B0,BrSprFontDrawAt_100541B0
+src/brally/core/drawing/BrSprFontDrawB_10054280.cpp,0x10054280,BrSprFontDrawB_10054280
+src/brally/core/drawing/BrSprFontDraw_1005B2B0_100540D0.cpp,0x100540D0,BrSprFontDraw_1005B2B0
+src/brally/core/driving/BrAiScanCorridorRecurse_1005D060.cpp,0x1005D060,BrAiScanCorridor
+src/brally/core/menus/BrHudLayoutInit_10054730.cpp,0x10054730,BrHudLayoutInit_10054730
+src/brally/core/menus/BrPhaseEnterPlaceholder_1004B430_10044860.cpp,0x10044860,BrPhaseEnterPlaceholder_1004B430
+src/brally/core/menus/BrSaveSlotDelete_10054E20.cpp,0x10054E20,BrSaveSlotDelete_10054E20
+src/brally/core/net/FUN_100038f0.cpp,0x100038F0,FUN_100038f0
+src/brally/core/racing/BrCarStartInit_1005E7B0.cpp,0x1005E7B0,BrCarStartInit_1005E7B0
+src/brally/core/racing/BrRaceStep_10019A70.cpp,0x10019A70,BrRaceStep

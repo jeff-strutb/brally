@@ -37,3 +37,22 @@ Related: [inline-int-return-temp-idiom](../levers/inline-int-return-temp-idiom.m
   build/brally/win32/match/obj_cpp (image_build_t3 reads them, never recompiles), non-Gi
   in parallel, the O2-Gi rows serially in (file, va) order with a fresh
   worktree-root vc50.idb; verify all O2-Gi rows reproduce before building.
+
+**2026-10-05: the chain is now the tool's own build, and it no longer depends
+on where the checkout lives.** Measured: /Gi output depends on the path text
+cl sees (source, object and database paths, not only their lengths); a fresh
+serial chain at the old paths left 0x1005D060 6 bytes off, so the exact
+object in the cache could not be rebuilt. Now tools/toolchains/wine.sh maps
+R: to the repository (Wine names the working directory by its most specific
+drive), config/brally/gi_chain.csv lists the chain, and cpp_sweep builds it
+whole, serially, in that order, from a fresh database at
+`R:\build\brally\win32\match\vc50.pdb` before scoring anything. Built this
+way every O2 Gi row that matched is byte-exact, 0x1005D060 included; with the
+database in other natural places (`...\win32\`, `...\win32\gi\`, `...\idb\`)
+0x1005D060 is 6 bytes off, and with a fresh database per compile 0x10054730
+and 0x10019A70 also miss. Plain C and non-/Gi C++ objects do not depend on
+the paths (a full recompile under R: assembles byte-identical images). A /Gi
+compile outside the chain (cpp_score probes) uses its own fresh database
+under `build/brally/win32/match/gi_probe/`. A new /Gi row joins the chain by
+adding it to gi_chain.csv; that changes the chain, so sweep every chain row
+after.

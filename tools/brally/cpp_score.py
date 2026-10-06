@@ -39,6 +39,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import fcntl
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
@@ -86,7 +87,51 @@ def _ensure_gx_md(opt):
     return ' '.join(parts)
 
 
-def compile_cpp(src_path, tag, opt):
+# /Gi (incremental) codegen reads the program database cl keeps for it, so a
+# /Gi object depends on what was compiled before it in that database and on
+# the exact path strings cl sees, the database's own included.  The /Gi rows
+# are therefore built as ONE chain: the rows in config/brally/gi_chain.csv,
+# in that order, serially, from a fresh database at one fixed name under the
+# fixed R: root (tools/toolchains/wine.sh maps R: to the repository).  The
+# chain's objects depend on nothing but the sources.  Measured 2026-10-05:
+# built this way every O2 Gi row that matched compiles byte-exact, including
+# 0x1005D060, which a fresh build at the old paths left 6 bytes off.
+GI_DIR = os.path.join(ROOT, 'build', 'brally', 'win32', 'match')
+GI_PDB = 'R:\\build\\brally\\win32\\match\\vc50.pdb'
+GI_CHAIN = os.path.join(ROOT, 'config', 'brally', 'gi_chain.csv')
+GI_OPT = '/O2 /Gi /GX /MD'
+
+
+def gi_chain():
+    """[(rel_src, va)] in chain order."""
+    import csv
+    if not os.path.exists(GI_CHAIN):
+        return []
+    return [(r['file'], int(r['va'], 16)) for r in csv.DictReader(open(GI_CHAIN))]
+
+
+def gi_tag(va):
+    return 'sweep_%08X_%d' % (va, DEFAULT_OPTS.index(GI_OPT))
+
+
+def build_gi_chain():
+    """Compile the whole /Gi chain from a fresh database.  Returns
+    {va: (obj or None, errors)}."""
+    os.makedirs(GI_DIR, exist_ok=True)
+    out = {}
+    with open(os.path.join(GI_DIR, 'gi.lock'), 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        for ext in ('.idb', '.pdb'):
+            p = os.path.join(GI_DIR, 'vc50' + ext)
+            if os.path.exists(p):
+                os.unlink(p)
+        for rel, va in gi_chain():
+            obj, errs, _out = compile_cpp(os.path.join(ROOT, rel), gi_tag(va), GI_OPT, _chain=True)
+            out[va] = (obj, errs)
+    return out
+
+
+def compile_cpp(src_path, tag, opt, _chain=False):
     """Compile a .cpp TU with cl /GX. Same wine/cl path as compile_variant.
 
     Own obj dir (build/brally/win32/match/obj_cpp/) so a live C session's obj_* is
@@ -108,12 +153,31 @@ def compile_cpp(src_path, tag, opt):
            + ['/W3', '/I', 'src/brally/include',
               '/I', 'tools/toolchains/msvc5-compat', '/I', 'tools/toolchains/msvc5/include',
               '/DBR_MATCHING_BUILD', '/c', rel_src, '/Fo' + rel_obj])
+    probe_lock = None
+    if '/GI' in opt.upper().split():
+        if _chain:
+            cmd = cmd[:-3] + ['/Fd' + GI_PDB] + cmd[-3:]
+        else:
+            # outside the chain (a probe): a fresh private database each
+            # time, so the result is repeatable; it is not the chain's result
+            pdir = os.path.join(GI_DIR, 'gi_probe')
+            os.makedirs(pdir, exist_ok=True)
+            probe_lock = open(os.path.join(pdir, 'lock'), 'w')
+            fcntl.flock(probe_lock, fcntl.LOCK_EX)
+            for ext in ('.idb', '.pdb'):
+                if os.path.exists(os.path.join(pdir, 'vc50' + ext)):
+                    os.unlink(os.path.join(pdir, 'vc50' + ext))
+            cmd = cmd[:-3] + ['/Fd' + GI_PDB.replace('vc50.pdb', 'gi_probe\\vc50.pdb')] + cmd[-3:]
     try:
         p = winerun.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=180)
         out = (p.stdout or '') + (p.stderr or '')
     except subprocess.TimeoutExpired:
         return None, ['cl.exe timed out'], ''
+    finally:
+        if probe_lock:
+            fcntl.flock(probe_lock, fcntl.LOCK_UN)
+            probe_lock.close()
     if not os.path.exists(obj):
         err = [l.strip() for l in out.splitlines() if 'error' in l.lower()]
         return None, err[:8] or ['no obj, no diagnostic'], out
