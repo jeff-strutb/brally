@@ -35,13 +35,13 @@ def show(commit, path):
     return r.stdout if r.returncode == 0 else None
 
 
-# the decomp tree, now and before 2026-10-05 (src/tgrally)
-TREES = ('src/tgrally', 'src/tgrally')
+# the decomp tree, now and before 2026-10-05 (n64/src)
+TREES = ('src/tgrally', 'n64/src')
 
 
 def rel_of(path):
     """The path under the decomp's source tree; its headers (src/tgrally/include,
-    formerly src/tgrally/include) are not port source and stay out."""
+    formerly n64/include) are not port source and stay out."""
     if path.startswith('src/tgrally/include/'):
         return None
     for t in TREES:

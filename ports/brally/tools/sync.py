@@ -4,7 +4,7 @@
 ports/brally/src and ports/brally/include are the decomp's src/brally/ (core,
 exe) and src/brally/include/ as of the commit in ports/brally/src/FORKED-FROM,
 retyped for 64 bits on top.  Before 2026-10-05 the decomp kept the same trees
-at src/brally/ and src/brally/include/; both spellings map onto the core's own layout.  Most
+at src/ and include/; both spellings map onto the core's own layout.  Most
 decomp work after the fork is byte shape (M2: functions respelled to match
 byte for byte, bodies moved into the C++ lane), which never has to flow into
 the core.  A blind three-way merge of that work is wrong: the decomp's
@@ -33,9 +33,9 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT = os.path.join(ROOT, 'ports/brally')
-STAMP = os.path.join(PORT, 'src/brally/FORKED-FROM')
+STAMP = os.path.join(PORT, 'src/FORKED-FROM')
 # decomp pathspecs, the current layout and the one before 2026-10-05
-TREES = ('src/brally', 'src/brally/core', 'src/brally/exe', 'include')
+TREES = ('src/brally', 'src/core', 'src/exe', 'include')
 
 
 def port_rel(path):
@@ -43,13 +43,13 @@ def port_rel(path):
     if path.startswith('src/brally/include/'):
         return path[len('src/brally/'):]
     if path.startswith('src/brally/'):
-        return 'src/brally/' + path[len('src/brally/'):]
+        return 'src/' + path[len('src/brally/'):]
     return path
 
 
 def decomp_path(commit, rel):
     """The decomp's path at COMMIT of the core file REL (either layout)."""
-    new = 'src/brally/' + rel[len('src/brally/'):] if rel.startswith('src/brally/') else 'src/brally/' + rel
+    new = 'src/brally/' + rel[len('src/'):] if rel.startswith('src/') else 'src/brally/' + rel
     return new if show(commit, new) is not None else rel
 EXTS = ('.c', '.cpp', '.h')
 # a top-level function definition or prototype: `type name(params)`

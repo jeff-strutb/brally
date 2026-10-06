@@ -345,11 +345,11 @@ def spec_for(rel):
 
 def port_view(rel):
     """Where a decomp file sits in the generated port tree: the port keeps the
-    decomp's earlier shape, src/brally/core/... and src/brally/include/..."""
+    decomp's earlier shape, src/core/... and include/..."""
     if rel.startswith('src/brally/include/'):
         return rel[len('src/brally/'):]
     if rel.startswith('src/brally/'):
-        return 'src/brally/' + rel[len('src/brally/'):]
+        return 'src/' + rel[len('src/brally/'):]
     return rel
 
 
