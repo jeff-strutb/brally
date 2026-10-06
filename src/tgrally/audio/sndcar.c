@@ -39,7 +39,7 @@ extern BrCar D_8031B760[];
 extern int D_8026FF08;                  /* human players */
 extern int D_8026FF10;                  /* set: silence the channels */
 extern int D_8028AB0C;                  /* views on screen */
-extern int D_8028C800;                  /* the weather */
+extern unsigned int D_8028C800;         /* the weather */
 extern BrTrackObj *D_80025C60;          /* the track's objects */
 extern BrSurfSnd D_8028BC04[];          /* the surface loops */
 extern short D_802A4BEC[2];             /* the rumble pulse per player: on, */
@@ -66,18 +66,21 @@ float BrVec3Length(BrVec3 *v);
  * 16 hits; with neither, the rolling loop, loud as the speed. Car 0 starts
  * the loop when it changes and writes its pitch and level; the listener is
  * kept for next frame's Doppler. PC twin: BrSndCarStep.
- * Source facts: the knock bytes read once into n; the state range tests as
- * the skip condition (0, <4, <8, <8, <13 in turn); an unused int first sizes
- * the 0x78 frame.
- * RESIDUE (838): the impact compare keeps n in v0 with a copy in v1 where
- * ours uses one register, and the temporaries rotate after it. */
-/* @t4-pass 0x8022BCB4 1 2026-09-29 compiles 100 best 837 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022BCB4 2 2026-09-29 compiles 100 best 837 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022BCB4 */
+ * Source facts: each knock byte is copied into m for the store while the
+ * tests read the byte itself. The impact arms reload m before their break,
+ * so the default edge keeps the copy. The state tests are structured ifs
+ * rather than gotos, so the rolling clamp, the impact and the knock skips
+ * join in one block, and xf38 is loaded there on every entry. The weather is
+ * compared as unsigned, which keeps its 3 out of the knock's constant. k is
+ * the slot shifted left, so the slot index used by the impact arms numbers
+ * after ch, and ch's spill slot is 0x2c. The engine channel stores at the
+ * end index D_802A4920 by k + 1, which lets the scheduler lift the stack
+ * loads above them. The RPM factor is a float of its own.
+ */
 /* @implements 0x8022BCB4 tgr BrSndCarStep */
 void BrSndCarStep(BrCar *car)
 {
-  int u;
+  float u;
   float f;
   int k;
   BrCar *view;
@@ -89,11 +92,12 @@ void BrSndCarStep(BrCar *car)
   int prev;
   int ground;
   int n;
+  int m;
   BrVec3 *pos;
   BrRaceSnd *ch;
   float *p;
   view = &D_8031B760[D_8031B2C8[0].car];
-  k = car->slot * 2;
+  k = car->slot << 1;
   if (D_8026FF10 != 0 || car->link == 0) {
     D_802A4920[k].level = 0;
     D_802A4920[k].pitch = 0;
@@ -102,12 +106,12 @@ void BrSndCarStep(BrCar *car)
   remote = 0;
   if (D_8028AB0C == 1) {
     lst = view->cam;
-    if (car->xf48 != 0 || view->xf48 != 0) {
+    if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0) {
       remote = 1;
     }
   } else {
     lst = car->cam;
-    if (car->xf48 != 0 || view->xf48 != 0 || D_8031B760[D_8031B2C8[1].car].xf48 != 0) {
+    if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0 || D_8031B760[D_8031B2C8[1].car].xf48 != 0) {
       remote = 1;
     }
   }
@@ -115,15 +119,15 @@ void BrSndCarStep(BrCar *car)
   car->xf44 = BrSndDoppler(pos, &car->posPrev, (BrVec3 *)lst->mtx[3], &car->posStart);
   BrSndPan(pos, lst, &r, &l, &vol, 0);
   if (car->xdf4 > 0.0f) {
-    f = car->xdf4 * 0.5f * 0.0007142857f * 11000.0f;
+    u = car->xdf4 * 0.5f * 0.0007142857f * 11000.0f;
   } else {
-    f = car->xdf4 * -0.5f * 0.0007142857f * 11000.0f;
+    u = car->xdf4 * -0.5f * 0.0007142857f * 11000.0f;
   }
-  f = car->xf44 * f;
+  f = car->xf44 * u;
   if (f > 100000.0f) {
-    f = 0.0f;
-  } else if (f < 0.0f) {
-    f = 0.0f;
+    f = 0;
+  } else if (f < 0) {
+    f = 0;
   }
   if (car->slot == 0) {
     if (D_80025C60[car->x1fc0[0]].flags & 0x10) {
@@ -139,14 +143,14 @@ void BrSndCarStep(BrCar *car)
   }
   ch = &D_802A4920[k];
   prev = car->xf38;
-  if (ch[1].pitch == 0 || (car->sndImpact == 0 && prev >= 4 && prev < 8)) {
+  if (ch[1].pitch == 0 || (car->sndImpact == 0 && car->xf38 >= 4 && car->xf38 < 8)) {
     car->xf38 = 0;
     car->xf3c = 0;
     car->xf40 = 0;
   }
-  n = car->sndHitA;
-  if (car->xf3c < n || (n != 0 && car->xf40 < 100)) {
-    car->xf3c = n;
+  m = car->sndHitA;
+  if (car->xf3c < car->sndHitA || (car->sndHitA != 0 && car->xf40 < 100)) {
+    car->xf3c = m;
     car->xf38 = 1;
     car->xf40 = 100;
     if (car->slot < D_8026FF08) {
@@ -159,9 +163,9 @@ void BrSndCarStep(BrCar *car)
     }
   }
   car->sndHitA = 0;
-  n = car->sndHitB;
-  if (car->xf3c < n || (n != 0 && car->xf40 < 90)) {
-    car->xf3c = n;
+  m = car->sndHitB;
+  if (car->xf3c < car->sndHitB || (car->sndHitB != 0 && car->xf40 < 90)) {
+    car->xf3c = m;
     car->xf38 = 2;
     car->xf40 = 90;
     if (car->slot < D_8026FF08) {
@@ -174,9 +178,9 @@ void BrSndCarStep(BrCar *car)
     }
   }
   car->sndHitB = 0;
-  n = car->sndHitC;
-  if (car->xf3c < n || (n != 0 && car->xf40 < 80)) {
-    car->xf3c = n;
+  m = car->sndHitC;
+  if (car->xf3c < car->sndHitC || (car->sndHitC != 0 && car->xf40 < 80)) {
+    car->xf3c = m;
     car->xf38 = 3;
     car->xf40 = 80;
     if (car->slot < D_8026FF08) {
@@ -189,137 +193,139 @@ void BrSndCarStep(BrCar *car)
     }
   }
   car->sndHitC = 0;
-  if (car->xf38 != 0 && (car->xf38 < 4 || car->xf38 > 7) && (car->xf38 < 8 || car->xf38 > 12)) {
-    goto level;
-  }
-  car->x34a = 0;
-  ground = -1;
-  if (car->wheels[1].x13c != 0) {
-    ground = car->wheels[1].surface;
-  }
-  n = car->sndImpact;
-  if (car->xf3c < n || (n != 0 && (car->xf40 < 40 || (n != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)))) {
-    car->xf3c = n;
-    if (D_8028C800 == 3) {
-      switch (ground) {
-      case 0:
-      case 1:
-      case 2:
-      case 3:
-        car->xf38 = 7;
-        car->xf3c = n >> 1;
-        break;
-      case 4:
-        car->xf38 = 7;
-        car->xf3c = 0;
-        break;
+  if (!(car->xf38 != 0 && (car->xf38 < 4 || car->xf38 > 7) && (car->xf38 < 8 || car->xf38 > 12))) {
+    car->x34a = 0;
+    ground = -1;
+    if (car->wheels[1].x13c != 0) {
+      ground = car->wheels[1].surface;
+    }
+    m = car->sndImpact;
+    if (car->xf3c < car->sndImpact || (car->sndImpact != 0 && car->xf40 < 40) ||
+        (car->sndImpact != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)) {
+      car->xf3c = m;
+      if (D_8028C800 == 3) {
+        switch (ground) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+          car->xf38 = 7;
+          car->xf3c = m >> 1;
+          break;
+        case 4:
+          car->xf38 = 7;
+          car->xf3c = 0;
+          break;
+        }
+      } else {
+        switch (ground) {
+        case 0:
+        case 3:
+          if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
+            D_802A4BFC[car->slot] = 0;
+            D_802A4BF0[car->slot] = 0;
+            D_802A4BF4[car->slot] = 1;
+            D_802A4BF8[car->slot] = 9;
+            D_802A4C00[car->slot] = 10;
+            D_802A4BEC[car->slot] = 1;
+          }
+          car->xf38 = 7;
+          m = car->sndImpact;
+          break;
+        case 1:
+          if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
+            D_802A4BFC[car->slot] = 0;
+            D_802A4BF0[car->slot] = 0;
+            D_802A4BF4[car->slot] = 1;
+            D_802A4BF8[car->slot] = 14;
+            D_802A4C00[car->slot] = 15;
+            D_802A4BEC[car->slot] = 1;
+          }
+          car->xf38 = 5;
+          m = car->sndImpact;
+          break;
+        case 2:
+          if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
+            D_802A4BFC[car->slot] = 0;
+            D_802A4BF0[car->slot] = 0;
+            D_802A4BF4[car->slot] = 1;
+            D_802A4BF8[car->slot] = 12;
+            D_802A4C00[car->slot] = 13;
+            D_802A4BEC[car->slot] = 1;
+          }
+          car->xf38 = 4;
+          m = car->sndImpact;
+          break;
+        case 4:
+          car->xf38 = 12;
+          m = car->sndImpact;
+          break;
+        }
+        car->xf3c = m >> 1;
       }
+      car->xf40 = 40;
+      if (car->sndHits++ > 16) {
+        car->sndHits = 16;
+      }
+      car->xf3c *= car->sndHits;
+      car->xf3c /= 12;
     } else {
-      switch (ground) {
-      case 0:
-      case 3:
-        if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
-          D_802A4BFC[car->slot] = 0;
-          D_802A4BF0[car->slot] = 0;
-          D_802A4BF4[car->slot] = 1;
-          D_802A4BF8[car->slot] = 9;
-          D_802A4C00[car->slot] = 10;
-          D_802A4BEC[car->slot] = 1;
+      car->sndHits = 0;
+    }
+    if (!(car->xf38 != 0 && (car->xf38 < 8 || car->xf38 > 12))) {
+      if (D_8028C800 == 3) {
+        switch (ground) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+          car->xf38 = 11;
+          break;
+        case 4:
+          car->xf38 = 10;
+          break;
+        default:
+          car->xf38 = 0;
+          break;
         }
-        car->xf38 = 7;
-        break;
-      case 1:
-        if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
-          D_802A4BFC[car->slot] = 0;
-          D_802A4BF0[car->slot] = 0;
-          D_802A4BF4[car->slot] = 1;
-          D_802A4BF8[car->slot] = 14;
-          D_802A4C00[car->slot] = 15;
-          D_802A4BEC[car->slot] = 1;
+      } else {
+        switch (ground) {
+        case 0:
+        case 3:
+          car->xf38 = 10;
+          break;
+        case 1:
+          car->xf38 = 8;
+          break;
+        case 2:
+          car->xf38 = 9;
+          break;
+        case 4:
+          car->xf38 = 12;
+          break;
+        default:
+          car->xf38 = 0;
+          break;
         }
-        car->xf38 = 5;
-        break;
-      case 2:
-        if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
-          D_802A4BFC[car->slot] = 0;
-          D_802A4BF0[car->slot] = 0;
-          D_802A4BF4[car->slot] = 1;
-          D_802A4BF8[car->slot] = 12;
-          D_802A4C00[car->slot] = 13;
-          D_802A4BEC[car->slot] = 1;
-        }
-        car->xf38 = 4;
-        break;
-      case 4:
-        car->xf38 = 12;
-        break;
       }
-      car->xf3c = car->sndImpact >> 1;
-    }
-    car->xf40 = 40;
-    if (car->sndHits++ > 16) {
-      car->sndHits = 16;
-    }
-    car->xf3c *= car->sndHits;
-    car->xf3c /= 12;
-  } else {
-    car->sndHits = 0;
-  }
-  if (car->xf38 != 0 && (car->xf38 < 8 || car->xf38 > 12)) {
-    goto level;
-  }
-  if (D_8028C800 == 3) {
-    switch (ground) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-      car->xf38 = 11;
-      break;
-    case 4:
-      car->xf38 = 10;
-      break;
-    default:
-      car->xf38 = 0;
-      break;
-    }
-  } else {
-    switch (ground) {
-    case 0:
-    case 3:
-      car->xf38 = 10;
-      break;
-    case 1:
-      car->xf38 = 8;
-      break;
-    case 2:
-      car->xf38 = 9;
-      break;
-    case 4:
-      car->xf38 = 12;
-      break;
-    default:
-      car->xf38 = 0;
-      break;
+      car->xf40 = 1;
+      car->xf3c = BrVec3Length(&car->velfd8) * 64.0f / 27.0f;
+      if (car->xf3c > 64) {
+        car->xf3c = 64;
+      }
     }
   }
-  car->xf40 = 1;
-  car->xf3c = BrVec3Length(&car->velfd8) * 64.0f / 27.0f;
-  if (car->xf3c > 64) {
-    car->xf3c = 64;
-  }
-level:
   if (car->xf38 == 0) {
     if (ch == &D_802A4920[0]) {
-      ch[1].level = 0;
-      ch[1].pitch = 0;
+      D_802A4920[k + 1].level = 0;
+      D_802A4920[k + 1].pitch = 0;
     }
   } else {
     f = car->xf44 * 11000.0f;
     if (f > 20000.0f) {
-      f = 0.0f;
-    } else if (f < 0.0f) {
-      f = 0.0f;
+      f = 0;
+    } else if (f < 0) {
+      f = 0;
     }
     if (car->xf38 != prev && k == 0) {
       BrSfxVoicePlay(k + 1, D_8028BC04[car->xf38].start, D_8028BC04[car->xf38].len,
@@ -327,12 +333,12 @@ level:
     }
     if (remote == 0 && ch == &D_802A4920[0]) {
       n = (car->xf3c * vol) >> 7;
-      ch[1].pitch = f * 9.090909e-05f * 4294967296.0;
+      D_802A4920[k + 1].pitch = f * 9.090909e-05f * 4294967296.0;
       f = n;
-      ch[1].level = ((int)(f * r) << 16) + l * f;
+      D_802A4920[k + 1].level = ((int)(f * r) << 16) + l * f;
     }
   }
-  if (1 == D_8028AB0C) {
+  if (D_8028AB0C == 1) {
     p = view->cam->mtx[3];
     car->posStart.x = p[0];
     car->posStart.y = p[1];
