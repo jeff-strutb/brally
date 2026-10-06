@@ -11,7 +11,7 @@ typedef struct BrImage {        /* as drawing/image.c (0x30 bytes) */
   int x8;
   unsigned char siz;
   char pad0d[3];
-  int w;                        /* 0x10 */
+  unsigned int w;               /* 0x10 */
   unsigned int h;               /* 0x14 */
   unsigned int stripH;          /* 0x18 */
   int x;                        /* 0x1C */
@@ -49,14 +49,6 @@ extern unsigned short D_8028DD98;       /* one bit per empty note */
 extern OSPfs D_80369EC0[4];
 extern OSPfs D_8031A3F8[4];
 extern unsigned char D_803163E0[];      /* the pak's id when it was last read */
-static unsigned char D_8036A060;        /* the note list has been read */
-static unsigned char D_8036A061;        /* the note under the cursor */
-static unsigned char D_8036A062;        /* the first note in use */
-static unsigned char D_8036A063;        /* the last note in use */
-static int D_8036A064;                  /* notes in use */
-static int D_8036A068;                  /* free bytes */
-static OSPfsState D_8036A070[16];       /* the notes */
-static unsigned char D_8036A270;        /* the manager's state */
 void BrFrontReturnToTitle(void);
 void BrZBufferClear(void);
 void BrScreenClear(int r, int g, int b);
@@ -123,29 +115,44 @@ extern short D_8028F2A0[][7][3];   /* the 3 by 7 font, its own colours */
  * the cursor to a neighbouring one, 6 the new-pak box, 7 fade out -- and
  * finally the pages used/free line and the button prompts.  Once faded out
  * blank two frames and go back to the title.
- * RESIDUE: the ROM re-forms each note-state global's address with lui at
- * every access and keeps y, x and the note pointer in a larger frame (0xC8);
- * ours hoists those addresses into saved registers. */
-/* @t4-pass 0x802534DC 1 2026-10-03 compiles 31 best 1055 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802534DC 2 2026-10-03 compiles 30 best 1055 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802534DC */
+ * The note-state flags are function statics (a fresh lui at every access).
+ * The rows are i * 9 + y with y set to 0x3f before the first loop: the
+ * constant reaches the row expression only by propagation, so uopt numbers
+ * it after everything it reads, which orders loop 2's hoisted terms and the
+ * spill slots as the ROM has them.  The empty tests read i between the
+ * first-free and last-free loops (so i = 0 is not copied into the first
+ * loop's exits) and read the last note after the cursor is moved in case 5
+ * (which lengthens that value's range so the empty-note mask outranks it for
+ * a0).  bx is computed before ty, which colours bx first. */
 /* @implements 0x802534DC tgr BrPakManager */
 void BrPakManager(void)
 {
+  static unsigned char D_8036A060;        /* the note list has been read */
+  static unsigned char D_8036A061;        /* the note under the cursor */
+  static unsigned char D_8036A062;        /* the first note in use */
+  static unsigned char D_8036A063;        /* the last note in use */
+  static int D_8036A064;                  /* notes in use */
+  static int D_8036A068;                  /* free bytes */
+  static OSPfsState D_8036A070[16];       /* the notes */
+  static unsigned char D_8036A270;        /* the manager's state */
   int y;
   int i;
   int k;
   int w;
   int x;
+  int ox;
+  int u0[4];                    /* unused: the frame has them */
   int by;
   int ty;
   int bx;
+  int u1[2];                    /* unused: the frame has them */
   char c;
   OSPfsState *st;
   int maxFiles;
   unsigned char pattern;
   char num[11];
   unsigned char name[28];
+  int u2;                       /* unused: the frame has it */
 
   D_802A4BE8 = 0;
   if (D_8028DD94 == 0) {
@@ -196,21 +203,18 @@ void BrPakManager(void)
     } else {
       BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
     }
-    BrTextPrint(num, 0x52, y);
-    y += 9;
+    BrTextPrint(num, 0x52, i * 9 + y);
   }
   if (D_8036A060 != 0 && D_8036A270 != 4) {
     for (i = 0; i < 16; i++) {
       if ((D_8028DD98 & (1 << i)) == 0) {
-        y = i * 9 + 0x3f;
-        st = &D_8036A070[i];
         for (k = 0; k < 16; k++) {
           name[k] = BrPaintCharset(D_8036A070[i].name[k]);
           if (name[k] == 0) {
             break;
           }
         }
-        c = BrPaintCharset(st->ext[0]);
+        c = BrPaintCharset(D_8036A070[i].ext[0]);
         if (c != 0) {
           name[k] = ' ';
           name[k + 1] = '.';
@@ -225,10 +229,10 @@ void BrPakManager(void)
         } else {
           BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
         }
-        BrTextPrint((char *)name, 0x62, y);
-        sprintf(num, "%d", st->size >> 8);
+        BrTextPrint((char *)name, 0x62, i * 9 + y);
+        sprintf(num, "%d", D_8036A070[i].size >> 8);
         BrTextAlignRight();
-        BrTextPrint(num, 0xf4, y);
+        BrTextPrint(num, 0xf4, i * 9 + y);
       }
     }
   }
@@ -280,6 +284,7 @@ void BrPakManager(void)
       }
     }
     D_8036A063 = 0;
+    if (i != 0);
     for (i = 0; i < 16; i++) {
       if ((D_8028DD98 & (1 << i)) == 0) {
         D_8036A063 = i;
@@ -305,17 +310,17 @@ void BrPakManager(void)
     BrPadStickToButtons(&D_8036A8E0[0]);
     if (D_8036A8E0[0].pressed & 8) {
       BrPadConsume(&D_8036A8E0[0], 8);
-      if (D_8036A064 != 0 && D_8036A062 != D_8036A061) {
+      if (D_8036A064 != 0 && D_8036A061 != D_8036A062) {
         D_8036A061--;
-        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A062 != D_8036A061) {
+        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A061 != D_8036A062) {
           D_8036A061--;
         }
       }
     } else if (D_8036A8E0[0].pressed & 2) {
       BrPadConsume(&D_8036A8E0[0], 2);
-      if (D_8036A064 != 0 && D_8036A063 != D_8036A061) {
+      if (D_8036A064 != 0 && D_8036A061 != D_8036A063) {
         D_8036A061++;
-        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A063 != D_8036A061) {
+        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A061 != D_8036A063) {
           D_8036A061++;
         }
       }
@@ -335,9 +340,8 @@ void BrPakManager(void)
     } else {
       w = 0x134;
     }
-    x = (0x280 - w) >> 1;
     by = 0x110 - D_8028D0B0.h;
-    func_80246F90(x, 200, w, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
+    func_80246F90((0x280 - w) >> 1, 200, w, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignCentre();
     BrTextHighlightOff();
     BrTextSetFont(12);
@@ -345,11 +349,12 @@ void BrPakManager(void)
     BrTextPrint((char *)name, 0x9f, 0x73);
     BrTextAlignLeft();
     BrTextSetFont(10);
+    ox = ((0x280 - w) >> 1) + 0x38;
+    bx = ((0x280 - w) >> 1) + w - 0x9c;
     ty = (by + 0x12) >> 1;
-    BrTextPrint("%wwOK", (x + 0x38 + D_8028D0B0.w + 7U) >> 1, ty);
-    bx = x + w - 0x9c;
+    BrTextPrint("%wwOK", (ox + D_8028D0B0.w + 7U) >> 1, ty);
     BrTextPrint("%wwCANCEL", (bx + D_8028D0E0.w + 7U) >> 1, ty);
-    BrImageDrawAt(&D_8028D0B0, x + 0x38, by);
+    BrImageDrawAt(&D_8028D0B0, ox, by);
     BrImageDrawAt(&D_8028D0E0, bx, by);
     if (D_8036A8E0[0].pressed & 0x10) {
       BrPadConsume(&D_8036A8E0[0], 0x10);
@@ -386,7 +391,7 @@ void BrPakManager(void)
       if (D_8036A064 > 0) {
         D_8036A064--;
       }
-      if (D_8036A063 == D_8036A061) {
+      if (D_8036A061 == D_8036A063) {
         D_8036A063--;
         while ((D_8028DD98 & (1 << D_8036A063)) && D_8036A063 != 0) {
           D_8036A063--;
@@ -396,17 +401,19 @@ void BrPakManager(void)
           D_8036A061--;
         }
       } else {
-        if (D_8036A062 == D_8036A061) {
+        if (D_8036A061 == D_8036A062) {
           D_8036A062++;
-          while ((D_8028DD98 & (1 << D_8036A062)) && D_8036A063 != D_8036A062) {
+          while ((D_8028DD98 & (1 << D_8036A062)) && D_8036A062 != D_8036A063) {
             D_8036A062++;
           }
         }
         D_8036A061++;
-        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A063 != D_8036A061) {
+        while ((D_8028DD98 & (1 << D_8036A061)) && D_8036A061 != D_8036A063) {
           D_8036A061++;
         }
+        if (D_8036A063 != 0);
       }
+      if (D_8036A063 != 0);
       D_8036A270 = 2;
     } else if (D_802724F0 == 2) {
       D_8036A270 = 6;
@@ -433,6 +440,8 @@ void BrPakManager(void)
   case 7:
     BrFadeTo(0.0f, 0.2f);
     D_8036A270 = 8;
+    break;
+  case 8:
     break;
   }
   BrTextAlignLeft();
