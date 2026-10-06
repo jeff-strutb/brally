@@ -23,7 +23,7 @@ def _rx(b64, flags=0):
     return re.compile(base64.b64decode(b64).decode(), flags)
 
 WORDS = _rx('Y2xhdWRlfGFudGhyb3BpY3xvcGVuYWl8Y2hhdC0/Z3B0fGdwdC0/WzAtOV1bYS16MC05Ll0qfGdyb2t8Z2VtaW5pfGNvcGlsb3R8bGxtcz98bGFyZ2UgbGFuZ3VhZ2UgbW9kZWxzP3xsYW5ndWFnZSBtb2RlbHM/fGFydGlmaWNpYWwgaW50ZWxsaWdlbmNlfHN1Yi0/YWdlbnRzP3xhZ2VudHM/fHNjcmF0Y2hwYWRzP3xjby1hdXRob3JlZC1ieXxnZW5lcmF0ZWQgd2l0aHxvcmlnaW5zZXNzaW9uaWR8dG9vbC1yZXN1bHRzfGNsYXVkZVwubWR8c29ubmV0fG9wdXN8ZmFibGU=')
-WORDS = re.compile(r'(?i)\b(?:' + WORDS.pattern + r')\b')
+WORDS = re.compile(r'(?i)(?<!user-)\b(?:' + WORDS.pattern + r')\b')
 TOOL = _rx('XGIoPzphbnxieXx2aWF8d2l0aHx1c2luZ3xvdXIpIEFJXGIoPyEgKD86Y2FyfGNhcnN8c2xvdHxzbG90c3xvbmV8b25lc3xkcml2ZXJ8ZHJpdmVyc3xvcHBvbmVudHxvcHBvbmVudHN8ZW50aXR5fGVudGl0aWVzfHBsYXllcnxwbGF5ZXJzfHJhY2VyfHJhY2Vyc3xnbG9iYWx8Z2xvYmFscykpfFxiQUlbLSBdKD86YXNzaXN0ZWR8Z2VuZXJhdGVkfHdyaXR0ZW58YXV0aG9yZWR8bW9kZWxzP3xhZ2VudHM/fHRvb2xzP3x0b29saW5nfGFzc2lzdGFudHM/fHBhc3N8c2Vzc2lvbnM/fGhlbHBlcnM/KVxi', re.I)
 BIN = re.compile(base64.b64decode('KD9pKWMycGF8anVtYmZ8Y29udGVudGF1dGh8Y2xhdWRlfGFudGhyb3BpY3xvcGVuYWl8dHJhaW5lZEFsZ29yaXRobWljTWVkaWE='))
 PATHS = _rx('KD9pKV4oPzpcLmNsYXVkZXxjbGF1ZGVcLm1kKSQ=')

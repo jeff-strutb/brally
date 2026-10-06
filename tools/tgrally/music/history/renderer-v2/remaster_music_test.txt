@@ -1,0 +1,10 @@
+# main menu with Remastered off, then ~ on for a while, then ~ off
+sleep 400
+mark before
+keycode 0x32
+sleep 900
+mark remastered_on
+keycode 0x32
+sleep 500
+mark remastered_off
+quit

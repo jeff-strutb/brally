@@ -1,0 +1,6 @@
+sleep 300
+version
+sleep 300
+keycode 0x32
+sleep 600
+quit
