@@ -339,7 +339,13 @@ static void spawn(TThread *t)
 }
 
 /* ---- the OS calls ------------------------------------------------------------ */
-void osInitialize(void) {}
+/* the only thing of libultra's osInitialize the game can see: osClockRate is
+ * left at the count's rate, 3/4 of the CPU's (initialize.c) */
+void osInitialize(void)
+{
+    extern uint64_t osClockRate;
+    osClockRate = osClockRate * 3 / 4;
+}
 
 void osCreateThread(OSThread *t, OSId id, void (*entry)(void *), void *arg, void *sp, OSPri pri)
 {

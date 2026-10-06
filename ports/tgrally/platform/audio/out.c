@@ -1,9 +1,9 @@
 /* out.c: the audio interface's buffers to the host's output.
  *
- * Each buffer the game queues (osAiSetNextBuffer) is 16-bit stereo,
- * big-endian as the N64's RAM held it, at the rate the game set.  It goes
- * into a ring the host's audio callback drains, resampled to the device's
- * rate.  The game paces itself on the modelled interface (os/io.c), never on
+ * The audio interface (os/io.c) hands over what it has played of the
+ * buffers the game queued: 16-bit stereo, big-endian as the N64's RAM held
+ * it, at the rate the game set.  It goes into a ring the host's audio
+ * callback drains, resampled to the device's rate.  The game paces itself on the modelled interface (os/io.c), never on
  * this ring, so audio cannot change what the game does. */
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +11,7 @@
 #include "plat.h"
 
 #define RING (1 << 16)              /* stereo frames */
+#define LEAD_MS 60                  /* the host's cushion against the wall clock's jitter */
 static float s_ring[RING][2];
 static volatile uint32_t s_w, s_r;
 static double s_pos, s_step = 1.0;
@@ -20,8 +21,7 @@ static host_mutex *s_m;
 /* the device's clock is not the game's: over a long session the buffered
  * audio would creep.  Its average over a few seconds is held at what it
  * settled to once the game started, by playing up to 0.2% faster or slower
- * (inaudible), so the latency stays the N64's own: the two buffers the game
- * keeps queued on its audio interface. */
+ * (inaudible), so the latency stays the N64's own plus LEAD_MS. */
 static double s_avg = -1, s_target = -1, s_trim = 1.0;
 static uint64_t s_played;
 
@@ -87,6 +87,11 @@ void tgr_audio_buffer(const int16_t *lr, int frames, int rate)
         return;
     host_mutex_lock(s_m);
     s_step = (double)rate / s_devrate;
+    if (s_w - s_r < 2) {                /* starting, or the game was paused: lead with silence */
+        uint32_t lead = (uint32_t)rate * LEAD_MS / 1000;
+        for (i = 0; i < (int)lead; i++, s_w++)
+            s_ring[s_w & (RING - 1)][0] = s_ring[s_w & (RING - 1)][1] = 0.0f;
+    }
     for (i = 0; i < frames; i++) {
         uint32_t k;
         if (s_w - s_r >= RING - 1)

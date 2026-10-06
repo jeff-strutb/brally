@@ -122,8 +122,9 @@ The window scales the N64's 4:3 picture to any size; View > Enter Full Screen
 
 Time is the console's: 60 retraces a second against the wall clock, the
 N64's count advancing exactly a retrace's worth (781,250) each, and audio
-played as the game queues it on its audio interface (two buffers, as the N64
-kept), trimmed by up to 0.2% to the output device's clock. `TGR_STATS=1` reports, each second, the
+played as the audio interface reads it from RAM (the game mixes into one ring
+only 46 ms ahead of the DMA, so a buffer is not final when it is queued),
+60 ms behind, trimmed by up to 0.2% to the output device's clock. `TGR_STATS=1` reports, each second, the
 retraces and the N64 time they covered, frames drawn, the worst gap between
 retraces, the time spent presenting and the audio buffered.
 

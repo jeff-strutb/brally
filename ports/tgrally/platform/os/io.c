@@ -124,25 +124,40 @@ void osSpTaskStartGo(OSTask *task) { (void)task; }
 
 /* ---- the audio interface: buffers played at the set rate, 4 bytes a sample -- */
 #define AI_CLOCK 48681812u
-static struct { uint64_t start; uint32_t n; } s_aiq[2];
+static struct { uint64_t start; uint32_t n; const uint8_t *buf; } s_aiq[2];
 static int s_ain;
 static uint32_t s_airate;
+static uint32_t s_aifed;                        /* bytes of s_aiq[0] the host has */
 
 static uint64_t ai_ticks(uint32_t bytes)
 {
     return (uint64_t)bytes * 46875000ull / ((uint64_t)(s_airate ? s_airate : 1) * 4);
 }
 
+/* The DMA reads a buffer from RAM as it plays, not when it is queued: TGR
+ * queues one ring over and over and mixes into it only 46 ms ahead of the
+ * read position, so the host is given each stretch as the AI has played it,
+ * read from RAM now.  The mixer only ever writes ahead of the read position,
+ * so what the AI played since the last call is what the hardware played. */
 static void ai_update(void)
 {
     while (s_ain && s_airate) {
-        uint64_t played = (tgr_count() - s_aiq[0].start) * s_airate * 4 / 46875000ull;
+        uint64_t now = tgr_count();
+        uint64_t played = now > s_aiq[0].start ? (now - s_aiq[0].start) * s_airate * 4 / 46875000ull : 0;
         uint64_t end;
+        if (played > s_aiq[0].n)
+            played = s_aiq[0].n;
+        played &= ~3ull;
+        if (played > s_aifed) {
+            tgr_audio_buffer((const int16_t *)(s_aiq[0].buf + s_aifed), (int)((played - s_aifed) / 4), (int)s_airate);
+            s_aifed = (uint32_t)played;
+        }
         if (played < s_aiq[0].n)
             break;
         end = s_aiq[0].start + ai_ticks(s_aiq[0].n);
         s_aiq[0] = s_aiq[1];
         s_ain--;
+        s_aifed = 0;
         if (s_ain)
             s_aiq[0].start = end;               /* it began when its predecessor ended */
     }
@@ -185,6 +200,7 @@ int32_t osAiSetNextBuffer(void *buf, uint32_t size)
     }
     s_aiq[s_ain].start = start;
     s_aiq[s_ain].n = size;
+    s_aiq[s_ain].buf = (const uint8_t *)buf;
     s_ain++;
     if (g_tgr.trace) {
         Sha1 h;
@@ -194,7 +210,6 @@ int32_t osAiSetNextBuffer(void *buf, uint32_t size)
         sha1_hex16(&h, d);
         tgr_trace("ai", "%s", d);
     }
-    tgr_audio_buffer((const int16_t *)buf, (int)(size / 4), (int)s_airate);
     return 0;
 }
 

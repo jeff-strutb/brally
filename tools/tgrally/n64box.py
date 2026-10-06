@@ -333,7 +333,7 @@ class Box:
     # ---------------------------------------------------------------- HLE
     def install_hle(self):
         H = self.hle
-        H[0x80265D90] = ('osInitialize', lambda: self.ret())
+        H[0x80265D90] = ('osInitialize', self.os_initialize)
         H[0x80265670] = ('osCreateThread', self.os_create_thread)
         H[0x802657C0] = ('osStartThread', self.os_start_thread)
         H[0x802668F0] = ('osSetThreadPri', self.os_set_thread_pri)
@@ -579,6 +579,15 @@ class Box:
         self.ai_q.append((start, n))
         self.log.append((self.frame, 'ai', hashlib.sha1(self.read(self.arg(0), n)).hexdigest()[:16]))
         self.ret(0)
+
+    def os_initialize(self):
+        # the ROM's osInitialize leaves osClockRate (0x802A6140, u64) at 3/4
+        # of its value: the count's rate, 46,875,000.  Its other work (PIF,
+        # exception vectors, caches) is the box's own.
+        rate = (self.r32(0x802A6140) << 32 | self.r32(0x802A6144)) * 3 // 4
+        self.w32(0x802A6140, rate >> 32)
+        self.w32(0x802A6144, rate & 0xffffffff)
+        self.ret()
 
     def os_set_timer(self):
         # osSetTimer(t, OSTime countdown, OSTime interval, mq, msg): the u64s
