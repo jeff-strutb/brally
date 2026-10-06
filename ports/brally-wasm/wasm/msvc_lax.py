@@ -17,6 +17,8 @@ until the text compiles:
   C++ `T x[];`                 -> `extern T x[];`
   C++ operator new(unsigned)   declaration dropped (implicitly declared)
   C++ void* = function         explicit (void *) cast
+  C++ ambiguous overload       the call goes through the extern C function's
+                               type, as MSVC resolves it (pow(double, float))
   x87 `fld a / fistp b`        `b = w_fistp(a)` (round-to-nearest, as x87)
   x87 `fild a / fstp b`        `b = a` (the same int-to-b conversion)
   SEH __try/__except/__finally the guarded body runs; the handler never
@@ -251,6 +253,30 @@ def main():
             if msg.startswith('definition of variable with array type needs'):
                 lines[ln] = 'extern ' + lines[ln]
                 log.append('extern array line %d' % (ln + 1))
+                fixed = True
+                break
+            m = re.match(r"call to '(\w+)' is ambiguous", msg)
+            if m:
+                # MSVC 5 takes the CRT's extern C function over the header's
+                # inline overloads (pow(double, float) -> pow(double, double),
+                # a call to __CIpow in its object): call it through that type
+                name = m.group(1)
+                ext = None
+                for d in diags[i:]:
+                    if d[2] != 'note':
+                        break
+                    decl = lines[int(d[0]) - 1]
+                    if 'inline' not in decl:
+                        ext = re.match(r'\s*(.*?)\b(?:__cdecl\s+)?' + name + r'\s*(\([^)]*\))', decl)
+                        break
+                k = lines[ln].find(name, col)
+                if ext is None or k < 0:
+                    sys.stderr.write(err)
+                    sys.exit(1)
+                rt = ext.group(1).replace('__cdecl', '').strip()
+                lines[ln] = (lines[ln][:k] + '((%s (*)%s)%s)' % (rt, ext.group(2), name)
+                             + lines[ln][k + len(name):])
+                log.append('extern C call %s line %d (ambiguous)' % (name, ln + 1))
                 fixed = True
                 break
             if "'operator new' takes type size_t" in msg:
