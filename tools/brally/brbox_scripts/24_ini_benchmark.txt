@@ -1,4 +1,5 @@
 # BossRally.ini RunBenchmark=1: whatever the benchmark mode does from boot.
+# expect: exit 1  (the benchmark times 440 frames, then the original calls exit(1))
 files ini_bench
 sleep 1500
 shot bench

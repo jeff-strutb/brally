@@ -53,6 +53,8 @@ timeout_run() {
     n=$(basename "$d")
     exec > "$d/result.txt" 2>&1
     last=$(grep 'script: frame' "$d/log.txt" | tail -1 | cut -c1-80)
+    # a script may state the exit code the original ends with: '# expect: exit N'
+    want=$(sed -n 's/^# expect: exit \([0-9][0-9]*\).*/\1/p' "$d/script.txt" | head -1)
     peer=
     if [ -f "$d/save/peer/peer.log" ]; then
         peer="; peer: $(grep -E 'script: end at|timed out' "$d/save/peer/peer.log" | tail -1)"
@@ -61,6 +63,8 @@ timeout_run() {
         echo "$n: ok ($(grep 'script: end at' "$d/log.txt")$peer)"
     elif [ $rc -eq 0 ]; then
         echo "$n: ok (the game quit with 0 after $last)"
+    elif [ -n "$want" ] && [ $rc -eq "$want" ]; then
+        echo "$n: ok (the game quit with $rc, as the script expects of the original, after $last)"
     else
         echo "$n: rc=$rc last: $last $(grep -E 'timed out|never drawn|not supported|cannot' "$d/log.txt" | head -1)"
         if [ $rc -ge 129 ] && [ $rc -ne 143 ]; then
