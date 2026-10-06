@@ -144,10 +144,10 @@ by the RDP, stack residue in `BrTexLoad`) out of the display-list digest.
 | `tools/fncheck.py` | the game's state at the k-th call of any game function |
 | `tools/watch.py` | which of the original's instructions write an address |
 
-Known difference: `BrPaintDashRect` reads an uninitialised byte (`c`, at
-sp+0x59 in the ROM) when a dashed rectangle is under four pixels wide; the
-ROM gets whatever earlier functions left at that stack address. The port
-models the function's own spill only, so the paint shop scripts that draw
-such a rectangle after another function wrote that byte differ in one dash's
-colour (`paint_shapes`, `paint_walk`, `paint_walk2`). Every other script is
-identical to the original, display lists, swaps and audio.
+`BrPaintDashRect` reads an uninitialised byte (`c`, at sp+0x59 in the ROM)
+when a dashed rectangle is under four pixels wide, and gets whatever the last
+function to reach that stack address left there. The port keeps that byte
+(`tgr_dash_slot`, paintshop.c) and stores it where the ROM does: the paint
+shop's setup, `BrPaintFillRect`, the style menus' panels and `BrPakMessage`
+(each saves a word whose second byte lands there). Every script is identical
+to the original: display lists, swaps and audio.

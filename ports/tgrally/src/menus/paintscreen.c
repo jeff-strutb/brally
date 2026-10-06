@@ -177,6 +177,7 @@ void BrPadConsume(unsigned int *pad, unsigned int bits);
 void BrPakMessage(int msg, char op, char mode);
 int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu, unsigned char *done);
 void BrPaintClick(void);
+extern unsigned char tgr_dash_slot;
 void BrPaintStickMove(void);
 void BrPaintColourMix(void);
 void BrPaintBrushSelect(void);
@@ -408,6 +409,7 @@ void BrPaintShopScreen(void)
       BrAllocPaintShopGfxMem(D_8028DB34[i]);
       BrAllocPaintShopGfxMem(D_8028DB44[i]);
     }
+    tgr_dash_slot = (0x8028DB44 >> 16) & 0xFF;  /* BrRomUnpack saved s2, &D_8028DB44 (paintshop.c) */
     D_8028DB7C = TGR_PTR(unsigned char *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->mask) + D_8028DB68));
     D_8028DB88 = BE16(BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].w);
     D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].tex);

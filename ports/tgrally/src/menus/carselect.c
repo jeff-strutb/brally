@@ -788,7 +788,7 @@ void BrCarSelect(void)
         }
         BrTextAlignLeft();
         sprintf(D_80316318, "%s/%s", TGR_PTR(const char *, D_80271D1C[tr]->item.label),
-                D_802722A4[D_8028B944[round].races[p][1]]->label);
+                TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[p][1]]->label));
         BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y);
         BrTextAlignCentre();
         if (p <= (int)race) {

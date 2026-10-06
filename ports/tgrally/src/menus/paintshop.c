@@ -65,6 +65,8 @@ void BrPaintPlot(int x, int y, unsigned char c);
 void BrPaintDisc(int x, int y, int r, unsigned char screen);
 extern Gfx *D_8028A858;
 extern int D_8028A850;
+extern unsigned char tgr_dash_slot;     /* see its definition, before BrPaintFillRect */
+void tgr_dash_slot_bevel(int w);
 extern int D_8028A898;                 /* the texture filter mode */
 extern BrCar *D_8028AAF0;               /* the car shown */
 extern BrCarCam *D_8028AAF4;            /* its camera */
@@ -379,7 +381,10 @@ void BrPakMessage(int msg, char op, char mode)
     BrTextPrint("CONTROLLER PAK", 0x6e, ty);
     BrTextPrint("IS NONFUNCTIONAL", 0x6e, ty + 14);
     break;
+  default:
+    return;
   }
+  tgr_dash_slot = 0x2A;         /* every case printed a literal at 0x802AA6xx (see tgr_dash_slot) */
 }
 
 /* WHAT IT DOES: The character for index i of the name-entry character set
@@ -1062,6 +1067,7 @@ void BrPaintStyleSelect(void)
     }
   }
   BrBevelPanel(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  tgr_dash_slot_bevel(0x11e);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 140);
@@ -1214,6 +1220,28 @@ void BrPaintPlot(int x, int y, unsigned char c)
   }
 }
 
+/* The stack byte BrPaintDashRect's c lives in (ROM sp+0x59 of its frame,
+ * 0x80318B01 in the paint shop).  BrPaintDashRect reloads c from it without
+ * storing when its first loop does not run, so c is whatever the last
+ * function to reach that address left there.  In the paint shop scripts
+ * those are (each the second byte of the word it saves):
+ *   BrPaintDashRect itself: its own spill of c;
+ *   BrPaintFillRect from BrPaintClick: BrPaintClick's s3, &D_8028DB60;
+ *   BrBevelPanel from BrPaintStyleSelect / BrPaintOvalStyleSelect: the
+ *     home of its width argument (halved when D_8028A850 is 0);
+ *   BrTextEmitString under BrPakMessage's BrTextPrint calls: the home of
+ *     the string pointer, a literal at 0x802AA6xx;
+ *   BrRomUnpack in the paint shop's setup: BrPaintShopScreen's s2, last
+ *     &D_8028DB44.
+ * The port keeps the byte here and stores it where the ROM does. */
+unsigned char tgr_dash_slot;
+
+/* the byte BrBevelPanel's prologue leaves in its width argument's home */
+void tgr_dash_slot_bevel(int w)
+{
+  tgr_dash_slot = ((D_8028A850 != 0 ? w : w >> 1) >> 16) & 0xFF;
+}
+
 /* WHAT IT DOES: Fill the decal texels under a screen rectangle (either
  * corner order) with the chosen colour: screen to texel is a quarter, with
  * y turned upside down.  Each corner's two conversions share a source line
@@ -1228,6 +1256,7 @@ void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
   int t;
   int y;
 
+  tgr_dash_slot = (0x8028DB60 >> 16) & 0xFF;  /* the saved s3's second byte (see tgr_dash_slot) */
   x0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
   x1 = (sx1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
   if (x1 < x0) {
@@ -1587,6 +1616,7 @@ void BrPaintOvalStyleSelect(void)
     }
   }
   BrBevelPanel(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+  tgr_dash_slot_bevel(0xe4);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 139);
@@ -2272,12 +2302,6 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
   char c1;                      /* c1, c2: declared, never used; */
   char c2;                      /* they put c at sp+0x59 */
   unsigned char c;
-  static unsigned char slot;    /* c's stack slot (sp+0x59): the ROM spills c there after
-                                   the first loop, when that loop ran, and reloads it;
-                                   when it did not, the reload reads what the slot held.
-                                   The port keeps the spill; other functions' writes to
-                                   that stack byte (BrPaintFillRect's frame, e.g.) are
-                                   not modelled, a known difference (PORT.md) */
   int t;
 
   on = 0;
@@ -2302,9 +2326,9 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
       c = on ? D_8028DAB8 : D_8028DABC;
       BrFillRect(x, y0, 4, 1, c, c, c);
     }
-    slot = c;
+    tgr_dash_slot = c;
   }
-  c = slot;
+  c = tgr_dash_slot;        /* uninitialised when the loop did not run: see tgr_dash_slot */
   for (y = y0; y < y1 - 4; y += 4) {
     on++;
     on &= 1;
