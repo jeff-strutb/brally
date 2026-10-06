@@ -44,7 +44,7 @@ residue ~10 insns; the deciding difference is that orig starts the
 colourB pack while colourA still occupies edx (accumulator moves to ecx).
 
 ## 6. VC4.2 cross-check (this TU): NOT the compiler for BRGlide
-tools/msvc42 cl.exe /O2 on this TU: all four byte-exact-under-5.0
+tools/toolchains/msvc42 cl.exe /O2 on this TU: all four byte-exact-under-5.0
 functions come out smaller and structurally different (BrGuMtxStore 39B
 vs 47B, BrCarDrawWheels 807B vs 932B, BrCarDrawBody 1357B vs 1576B), and
 BrCarDrawVehicle loses the interleaved-push prologue and the ebp

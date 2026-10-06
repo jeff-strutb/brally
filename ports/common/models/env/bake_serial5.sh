@@ -10,7 +10,7 @@ while read a t0 t1 t2; do
         [ "$free" -ge 32 ] && break
         echo "$a waiting: ${free} GB free"; sleep 30
     done
-    /usr/bin/time -l blender -b --python ports/macos/tools/remaster_env_bake.py -- \
+    /usr/bin/time -l blender -b --python ports/brally-wasm/tools/remaster_env_bake.py -- \
         ports/common/models/env/polyhaven/models/$a/${a}_4k.blend $a ports/common/models $t0 $t1 $t2 \
         > ports/common/models/env/logs/$a.log 2>&1
     echo "$a exit $? $(grep -c BAKE_OK ports/common/models/env/logs/$a.log) ok, peak $(awk '/maximum resident/ {print int($1/1073741824)}' ports/common/models/env/logs/$a.log) GB"

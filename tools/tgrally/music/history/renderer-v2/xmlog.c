@@ -41,13 +41,13 @@
  * period_of_note() had the wrong octave divisor and two of the six modules
  * played two octaves sharp, with a clean census the whole time.
  *
- * tools/xm_oracle.py is the check. It scores this file against libopenmpt --
+ * tools/tgrally/xm_oracle.py is the check. It scores this file against libopenmpt --
  * OpenMPT's replayer, validated against FastTracker II itself, and what
  * MilkyTracker and VLC use -- as windowed correlation, so a wrong effect shows
  * up as a few bad windows with a timestamp to read the rows at.
  *
  *     brew install libopenmpt
- *     python3 tools/xm_oracle.py --per-channel <module.xm>
+ *     python3 tools/tgrally/xm_oracle.py --per-channel <module.xm>
  *
  * Scores on the six ROM modules as of 2026-09-03 (median correlation over 0.25s
  * windows), which is the baseline any change here has to beat:

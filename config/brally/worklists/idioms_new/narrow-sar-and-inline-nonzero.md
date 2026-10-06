@@ -41,7 +41,7 @@ does). So 33+0 hides two residues:
   MUTUALLY EXCLUSIVE under VC5 / VS97 SP3 / VC6 RTM across 18 spellings.
   Assignment-in-arg gives narrow shift but push-late; pure-expression arg
   gives push-early but wide (32-bit) shift. See the 40-line note in
-  `src/core/cpp/0x10006510.cpp`. Hypothesis: a 4th (VC4.2-era) front end.
+  `src/brally/core/cpp/0x10006510.cpp`. Hypothesis: a 4th (VC4.2-era) front end.
 - **thiscall edx.** WriteBits (0x1006D0B0) is `this` in ecx + both args on
   the stack, callee-cleaned (`ret 8`) = a C++ member. The C `__fastcall`
   dead-edx shim costs one `xor edx,edx` per site (the 33 EXTRA). The C++
