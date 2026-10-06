@@ -338,8 +338,21 @@ static float blend_f(int k, int src, rgba s, rgba d, int ch)
     }
 }
 
-/* Glide's fog table entry i stands for w = 2^(3 + i/4) / (8 - i%4) */
-static float fog_w(int i) { return (float)(pow(2.0, 3.0 + (double)(i >> 2)) / (8 - (i & 3))); }
+/* Glide's fog table entry i stands for w = 2^(3 + i/4) / (8 - i%4); made
+ * once, since fog_table runs per pixel (pow there is a libm call per entry,
+ * and mingw-w64's lowers to an x87 ldexp) */
+static float fog_w(int i)
+{
+    static float w[64];
+    static int made;
+    if (!made) {
+        int k;
+        for (k = 0; k < 64; k++)
+            w[k] = (float)(pow(2.0, 3.0 + (double)(k >> 2)) / (8 - (k & 3)));
+        made = 1;
+    }
+    return w[i];
+}
 
 static float fog_table(const brr_state *st, float w)
 {

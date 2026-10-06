@@ -102,6 +102,21 @@ void host_init(int argc, char **argv)
 
 const char *host_music_dir(void) { return is_dir(s_music) ? s_music : NULL; }
 
+const char *host_resource_dir(void)
+{
+    static char res[1024];
+    const char *e = getenv("BR_RESDIR");
+    if (e)
+        return e;
+    if (!res[0]) {
+        @autoreleasepool {
+            NSString *r = [[NSBundle mainBundle] resourcePath];
+            snprintf(res, sizeof res, "%s", r ? [r fileSystemRepresentation] : ".");
+        }
+    }
+    return res;
+}
+
 void host_shutdown(void)
 {
     host_audio_close();

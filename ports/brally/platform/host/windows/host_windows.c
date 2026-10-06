@@ -117,6 +117,17 @@ void host_shutdown(void)
 const char *host_game_dir(void) { return s_game; }
 const char *host_cd_dir(void)   { return s_cd; }
 const char *host_save_dir(void) { return s_save; }
+
+const char *host_resource_dir(void)
+{
+    static char here[MAX_PATH];
+    const char *e = getenv("BR_RESDIR");
+    if (e)
+        return e;
+    if (!here[0])
+        exe_dir(here, sizeof here);
+    return here;
+}
 const char *host_music_dir(void) { return is_dir(s_music) ? s_music : NULL; }
 
 /* ---- the event queue the window fills and host_poll_event drains ------------------- */

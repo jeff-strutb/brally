@@ -25,10 +25,14 @@ typedef struct TgrConfig {
 extern TgrConfig g_tgr;
 
 /* the cartridge's data, from ROM 0x70AB0 to its end (the initialised data and
- * the assets the game streams in), taken from the builder's ROM at build time
- * (tools/assets.py) and assembled into the executable: no ROM at run time */
+ * the assets the game streams in), taken from the builder's ROM: assembled
+ * into the executable at build time (tools/assets.py, ROMDATA=embed), or
+ * written beside the game by the release builder and read at start-up
+ * (ROMDATA=file, os/romdata.c). No ROM at run time either way */
 #define TGR_ROMDATA_BASE 0x70AB0u
-extern const uint8_t tgr_romdata[], tgr_romdata_end[];
+#define TGR_ROMDATA_SIZE 0x78F550u                  /* an 8 MB cartridge, less 0x70AB0 */
+extern const uint8_t *tgr_romdata, *tgr_romdata_end;
+int tgr_romdata_load(void);                         /* 1 when the data is in place */
 /* ROM bytes [off, off + n) into dst; what lies outside the data reads as zero */
 void tgr_rom_read(uint32_t off, void *dst, uint32_t n);
 

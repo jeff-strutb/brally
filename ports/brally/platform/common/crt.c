@@ -448,6 +448,86 @@ int br_rand(void)
     return (int)((s_holdrand >> 16) & 0x7FFF);
 }
 
+/* MSVC's qsort (VC5 qsort.c): partition around the middle element with an
+ * explicit stack, selection sort below 9 elements. The algorithm, not just
+ * a sort: ties land where the original's land (tools/brally/brbox_imports.py
+ * models the same one for the oracle). */
+static void qs_swap(char *a, char *b, size_t width)
+{
+    char t;
+    if (a != b)
+        while (width--) {
+            t = *a;
+            *a++ = *b;
+            *b++ = t;
+        }
+}
+
+void br_qsort(void *base, size_t num, size_t width, int (*comp)(const void *, const void *))
+{
+    char *lostk[32], *histk[32];
+    char *lo, *hi, *mid, *loguy, *higuy, *p, *max;
+    size_t size;
+    int sp = 0;
+    if (num < 2 || width == 0)
+        return;
+    lo = (char *)base;
+    hi = (char *)base + width * (num - 1);
+recurse:
+    size = (size_t)(hi - lo) / width + 1;
+    if (size <= 8) {
+        while (hi > lo) {
+            max = lo;
+            for (p = lo + width; p <= hi; p += width)
+                if (comp(p, max) > 0)
+                    max = p;
+            qs_swap(max, hi, width);
+            hi -= width;
+        }
+    } else {
+        mid = lo + (size / 2) * width;
+        qs_swap(mid, lo, width);
+        loguy = lo;
+        higuy = hi + width;
+        for (;;) {
+            do
+                loguy += width;
+            while (loguy <= hi && comp(loguy, lo) <= 0);
+            do
+                higuy -= width;
+            while (higuy > lo && comp(higuy, lo) >= 0);
+            if (higuy < loguy)
+                break;
+            qs_swap(loguy, higuy, width);
+        }
+        qs_swap(lo, higuy, width);
+        if (higuy - 1 - lo >= hi - loguy) {
+            if (lo + width < higuy) {
+                lostk[sp] = lo;
+                histk[sp++] = higuy - width;
+            }
+            if (loguy < hi) {
+                lo = loguy;
+                goto recurse;
+            }
+        } else {
+            if (loguy < hi) {
+                lostk[sp] = loguy;
+                histk[sp++] = hi;
+            }
+            if (lo + width < higuy) {
+                hi = higuy - width;
+                goto recurse;
+            }
+        }
+    }
+    if (--sp >= 0) {
+        lo = lostk[sp];
+        hi = histk[sp];
+        goto recurse;
+    }
+}
+
 /* ---- exit handlers, operator new/delete, __ftol ------------------------------------ */
 typedef int (*BrCrtOnExitFn)(void);
 static BrCrtOnExitFn s_onexit[64];

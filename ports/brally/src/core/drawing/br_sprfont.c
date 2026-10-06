@@ -213,17 +213,19 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
 /* thiscall + 4 stack args (`ret 0x10`).  Struct-typed extras so edx stays
  * free for the kind chain (dummy-edx fastcall stole it and `add ecx,imm`
  * cost the extra byte). */
-typedef struct { short v; } BrGlyphI16;
-typedef struct { float v; } BrGlyphF32;
-typedef struct { int v; }   BrGlyphI32;
+/* The port takes the four as plain scalars: the font's vtable slot +0x18
+ * binds this function directly and is called as (short, float, float, int).
+ * The original's one-member struct spelling passes a float in an integer
+ * register under the Windows x64 convention, so x and y arrived as garbage
+ * there and every glyph was drawn at the top-left corner. */
 /* @t4-pass 0x10054550 1 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10054550 2 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* WHAT IT DOES: draw one character of the FIRST sprite font at the given
  * screen position; the text box's kind picks which sprite sheet the glyph
  * comes from. Always reports success. */
 /* @implements 0x10054550 glide BrSprFontGlyphA_1005B730 */
-int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
-    BrGlyphF32 x, BrGlyphF32 y, BrGlyphI32 unused)
+int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, short iGlyph,
+    float x, float y, int unused)
 {short sheet;unsigned char k;sheet = 0;k = pBox->f08;if (k == 0) {
         sheet = 2;
     } else if (k == 1) {
@@ -232,7 +234,7 @@ int __fastcall BrSprFontGlyphA_1005B730(BrTextBox *pBox, BrGlyphI16 iGlyph,
         sheet = 4;
     } else if (k == 4) {
         sheet = 0x34;
-    }BrSprFontDraw((int)x.v, (int)y.v, sheet, g_aBrSprRectA[iGlyph.v],
+    }BrSprFontDraw((int)x, (int)y, sheet, g_aBrSprRectA[iGlyph],
                  g_aBrUiSprite[sheet].fBlit);return 1;}
 
 /* WHAT IT DOES: draw one character of the SECOND sprite font at the given

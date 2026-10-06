@@ -69,6 +69,12 @@ int  br_rand(void);
 void br_srand(unsigned int seed);
 #define rand  br_rand
 #define srand br_srand
+
+/* The game's qsort is the MSVC runtime's too: with equal keys the order it
+ * leaves is part of the game's behaviour (the scene's visible-cell sort ties
+ * on distance), and every host C library breaks ties its own way. */
+void br_qsort(void *base, size_t num, size_t width, int (*comp)(const void *, const void *));
+#define qsort br_qsort
 #undef  RAND_MAX
 #define RAND_MAX 0x7FFF
 

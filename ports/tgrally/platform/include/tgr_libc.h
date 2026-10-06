@@ -10,5 +10,16 @@ int tgr_vsprintf(char *dst, const char *fmt, va_list ap);
 
 #ifdef TGR_CORE
 #define sprintf tgr_sprintf
+#ifdef _WIN32
+/* libultra's BSD memory calls, which the Windows C library lacks
+ * (platform/libc/bstring.c), declared as a BSD libc does */
+#include <stddef.h>
+void bcopy(const void *src, void *dst, size_t len);
+void bzero(void *p, size_t len);
+int  bcmp(const void *a, const void *b, size_t len);
+/* the controller status field libultra names errno, which this C library
+ * makes a macro */
+#undef errno
+#endif
 #endif
 #endif

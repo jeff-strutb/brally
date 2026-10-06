@@ -37,6 +37,12 @@ void host_init(int argc, char **argv)
 
 void host_shutdown(void) {}
 
+const char *host_resource_dir(void)
+{
+    const char *e = getenv("BR_RESDIR");
+    return e ? e : ".";
+}
+
 const char *host_game_dir(void) { return s_game; }
 const char *host_cd_dir(void)   { return s_cd; }
 const char *host_save_dir(void) { return s_save; }

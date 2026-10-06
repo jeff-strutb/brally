@@ -61,6 +61,9 @@ int         host_mkdir(const char *path);
 const char *host_game_dir(void);
 const char *host_cd_dir(void);
 const char *host_save_dir(void);
+/* where the program's own files are: a macOS app's Resources, else the
+ * executable's folder (BR_RESDIR overrides) */
+const char *host_resource_dir(void);
 
 /* ---- window and input --------------------------------------------------------- */
 enum {

@@ -1,6 +1,6 @@
 /* main.c: the process.  What the N64 did from power-on: the cartridge's data
- * put in place (here: built into the executable, tools/assets.py, and lifted
- * into the arena), then the game's entry point, BrBoot, on the first game
+ * put in place (here: built into the executable or read from romdata.bin,
+ * os/romdata.c, and lifted into the arena), then the game's entry point, BrBoot, on the first game
  * thread; the host's own thread runs the window, input and presentation. */
 #include <stdarg.h>
 #include <stdio.h>
@@ -52,6 +52,12 @@ int main(int argc, char **argv)
     host_init(argc, argv);
     if (g_tgr.script)
         tgr_script_load(g_tgr.script);
+    if (!tgr_romdata_load()) {
+        if (!g_tgr.headless)
+            host_message_box("The game's data (romdata.bin) is missing or damaged. "
+                             "Build the game again with the release builder.", "Top Gear Rally");
+        return 1;
+    }
     tgr_pak_init();
     tgr_addr_init();
     tgr_lift();

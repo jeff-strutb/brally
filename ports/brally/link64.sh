@@ -7,6 +7,9 @@
 #               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
 #               on macOS it runs on MoltenVK)
 #        DLL    the user's BRGlide.dll (default reference/brally/orig/BRGlide.dll)
+#        IMAGE  embed (default) | runtime: the lifted data's bytes are read at
+#               start-up from the CD root's BRGlide.dll instead of compiled in
+#               (datalift.py --runtime-image; what the release builder ships)
 #        CC     a compiler targeting Windows (x86_64-w64-mingw32) builds
 #               brally64.exe: host/win32 replaces host/posix, LDCXX links
 #               (default x86_64-w64-mingw32-g++)
@@ -21,7 +24,7 @@ export OUT
 CC=${CC:-clang}
 P=ports/brally/platform
 PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common"
-case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/src/brally/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
+case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
 mkdir -p $OUT/plat
 
 ports/brally/build64.sh
@@ -30,13 +33,13 @@ if grep -q '^FAIL' $OUT/compile.txt; then
   echo "link64: core TUs failed to compile; not linking" >&2
   exit 1
 fi
-python3 ports/brally/tools/datalift.py ${DLL:+--dll "$DLL"} >/dev/null
+python3 ports/brally/tools/datalift.py ${DLL:+--dll "$DLL"} $([ "${IMAGE:-embed}" = runtime ] && echo --runtime-image) >/dev/null
 ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 # the script commands that read the game (core types, so core flags)
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
-      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c \
+      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c \
       $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in

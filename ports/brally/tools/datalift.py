@@ -25,7 +25,13 @@ Anything that cannot be expressed is listed in build/brally/null-soft/gen/
 datalift.txt: an address no core symbol covers, a pointer the original
 stored without a relocation.
 
-Usage: datalift.py [--dll reference/brally/orig/BRGlide.dll]
+With --runtime-image the bytes themselves stay out of the build: k_img is
+read at start-up from the BRGlide.dll on the game's CD root (host_cd_dir),
+through the file runs of the sections that map the range, and checked
+against the size and digest this build was made from. A release is built
+this way, so the executable carries none of the original's data.
+
+Usage: datalift.py [--dll reference/brally/orig/BRGlide.dll] [--runtime-image]
 """
 import bisect
 import json
@@ -45,6 +51,7 @@ ROOT = vm.ROOT
 LO, HI = 0x10077000, 0x100BCE00
 GLOBALS_C = 'ports/brally/src/core/data/br_globals.c'
 OUT = os.environ.get('OUT', 'build/brally/null-soft') + '/gen'
+RUNTIME_IMAGE = False       # --runtime-image: k_img read from the CD's BRGlide.dll at start-up
 
 SCALAR = {'char': 1, 'signed char': 1, 'unsigned char': 1, '_Bool': 1, 'bool': 1,
           'short': 2, 'unsigned short': 2, 'int': 4, 'unsigned int': 4,
@@ -691,6 +698,41 @@ class Lift:
                                % (ret, fn, params, body))
         return 'br_vthunk_%s' % fn
 
+    def image_runs(self, lo, hi):
+        """[(offset in [lo, hi), file offset, n)]: the file bytes image() maps"""
+        runs = []
+        for name, rva, vsz, raw, rsz in self.pe.secs:
+            va = self.pe.base + rva
+            a, b = max(lo, va), min(hi, va + max(vsz, rsz))
+            n = max(0, min(b, va + rsz) - a)
+            if a < b and n:
+                runs.append((a - lo, raw + (a - va), n))
+        return runs
+
+    def write_image(self, f, blob):
+        if not RUNTIME_IMAGE:
+            f.write('static const unsigned char k_img[0x%X] = {\n' % len(blob))
+            for i in range(0, len(blob), 24):
+                f.write('    ' + ','.join(str(b) for b in blob[i:i + 24]) + ',\n')
+            f.write('};\n\n')
+            return
+        h = 0xcbf29ce484222325
+        for b in blob:
+            h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+        f.write('/* the image is read at start-up from the CD root\'s BRGlide.dll\n'
+                ' * (--runtime-image, platform/common/data_image.c) */\n'
+                'typedef struct { unsigned img, file, n; } plat_image_run;\n'
+                'const unsigned char *plat_data_image(const plat_image_run *runs, int nruns, unsigned size,\n'
+                '                                     long dll_size, unsigned long long digest);\n'
+                'static const unsigned char *k_img;\n'
+                'static const plat_image_run k_img_runs[] = {\n')
+        runs = self.image_runs(LO, HI)
+        for a, o, n in runs:
+            f.write('    { 0x%X, 0x%X, 0x%X },\n' % (a, o, n))
+        f.write('};\n\n')
+        self.image_call = ('    k_img = plat_data_image(k_img_runs, %d, 0x%X, %d, 0x%016Xull);\n'
+                           % (len(runs), len(blob), len(self.pe.d), h))
+
     def write(self, lifted):
         os.makedirs(OUT, exist_ok=True)
         blob = self.img
@@ -704,10 +746,7 @@ class Lift:
             for n in sorted(self.syms.used):
                 f.write('extern char br_sym_%s[] BR_SYM("%s");\n' % (n, n))
             f.write('\n')
-            f.write('static const unsigned char k_img[0x%X] = {\n' % len(blob))
-            for i in range(0, len(blob), 24):
-                f.write('    ' + ','.join(str(b) for b in blob[i:i + 24]) + ',\n')
-            f.write('};\n\n')
+            self.write_image(f, blob)
             for a, b in self.pool:
                 f.write('static unsigned char k_pool_%08X[%d];   /* 0x%08X..0x%08X, from the image */\n' % (a, b - a, a, b))
             f.write('\n')
@@ -773,6 +812,8 @@ class Lift:
                 f.write('    ((void (*)(void))%s)();\n' % fn)
             f.write('}\n\n')
             f.write('void br_data_lift(void)\n{\n')
+            if RUNTIME_IMAGE:
+                f.write(self.image_call)
             for a, b in self.pool:
                 f.write('    memcpy(k_pool_%08X, k_img + 0x%X, %d);\n' % (a, a - LO, b - a))
             f.write('\n'.join(self.out))
@@ -786,4 +827,5 @@ if __name__ == '__main__':
     dll = 'reference/brally/orig/BRGlide.dll'
     if '--dll' in sys.argv:
         dll = sys.argv[sys.argv.index('--dll') + 1]
+    RUNTIME_IMAGE = '--runtime-image' in sys.argv
     Lift(dll).run()
