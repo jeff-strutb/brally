@@ -10,6 +10,11 @@ the decompiled PC source compiled for Apple Silicon and drawn through Metal.
 Right: Top Gear Rally's Coastline in the native N64 build ([ports/tgrally](ports/tgrally/PORT.md)),
 the decompiled ROM source compiled for Apple Silicon, with the RCP's display lists drawn through Metal.*
 
+**Play it:** download **Rally Builder** for macOS or Windows from
+[Releases](https://github.com/jeff-strutb/brally/releases/latest). It builds a
+native copy of either game from your own BIN/CUE or ROM, checked by MD5; no game
+data ships with it ([builder/](builder/README.md)).
+
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
 **Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 

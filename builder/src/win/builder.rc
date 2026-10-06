@@ -1,0 +1,33 @@
+/* builder.rc: the Windows builder's resources. payload.h (written by
+ * builder/build.sh) names the two game executables built for it and the
+ * version. */
+#include <windows.h>
+#include "payload.h"
+
+1 RT_MANIFEST "builder.manifest"
+
+BRALLY64 RCDATA RB_PAYLOAD_BRALLY
+TGRALLY  RCDATA RB_PAYLOAD_TGRALLY
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     RB_VER_MAJOR, RB_VER_MINOR, 0, 0
+PRODUCTVERSION  RB_VER_MAJOR, RB_VER_MINOR, 0, 0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "FileDescription", "Rally Builder"
+      VALUE "ProductName", "Rally Builder"
+      VALUE "FileVersion", RB_VERSION_STR
+      VALUE "ProductVersion", RB_VERSION_STR
+      VALUE "OriginalFilename", "RallyBuilder.exe"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
