@@ -18,6 +18,8 @@ CFLAGS="-O2 ${GFLAG:--g} -ftrivial-auto-var-init=${AUTOINIT:-zero} -Wno-everythi
 # ... and the Win32 emulation takes private names (tools/brally/winnames.py)
 case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) CFLAGS="-include ports/brally/platform/include/br_winemu.h $CFLAGS -Ddllimport=";; esac
 export CFLAGS
+case "$($CC -dumpmachine 2>/dev/null)" in x86_64*) BR_ALIGN8=1;; *) BR_ALIGN8=0;; esac
+export BR_ALIGN8
 # one file: build64.sh FILE...  (prints OK/FAIL and the errors)
 if [ $# -gt 0 ]; then
   for f in "$@"; do ports/brally/cc64.sh "$f"; n=$(echo "$f" | sed 's#ports/brally/src/core/##; s#/#__#g'); grep -A3 "error:" $OUT/obj/$n.err | head -${ERRS:-12}; done

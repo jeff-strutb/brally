@@ -38,6 +38,9 @@ CC=$WINCC OUT=$B/tgrally-windows HOST=windows RENDER=soft ROMDATA=file GFLAG=-g0
 x86_64-w64-mingw32-strip -o $B/payload-windows/brally64.exe $B/brally-windows/brally64.exe
 x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally.exe $B/tgrally-windows/tgrally.exe
 
+# x86-64 game code must not assume 16-byte alignment of the original's data
+$PY builder/check_alignment.py $B/brally-macos-x86_64/obj $B/tgrally-macos-x86_64/obj \
+    $B/brally-windows/obj $B/tgrally-windows/obj
 $PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally \
     $B/payload-windows/brally64.exe $B/payload-windows/tgrally.exe
 

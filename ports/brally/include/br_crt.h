@@ -106,4 +106,18 @@ void plat_text_emit(const char *psz);   /* script_game.c: what the frame drew */
 }  /* BR_CLINK_END */
 #endif
 
+/* The original's data keeps its layout: globals are offsets into blocks at
+ * the original's relative addresses (br_globals.c BR_BLOCK_AT), which promise
+ * only natural alignment. On x86-64 clang takes any array of 16 bytes or more
+ * to be 16-byte aligned, extern or not, and uses movaps on it, which faults on
+ * a real x86 CPU when the address is 8 mod 16 (Rosetta, and so Wine on a Mac,
+ * does not check). An explicit alignment replaces that assumption, so every
+ * extern a C file declares says 8: no x86 instruction needs more of anything
+ * below 16. C++ files keep `extern "C"`, which the macro would break: cc64.sh
+ * gives their externs the same attribute after preprocessing. arm64 makes no
+ * such assumption. */
+#if defined(__x86_64__) && !defined(__cplusplus)
+#define extern extern __attribute__((aligned(8)))
+#endif
+
 #endif /* BR_CRT_H */
