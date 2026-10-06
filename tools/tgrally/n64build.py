@@ -333,6 +333,16 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                     cut = a
         if width:
             cut = min(cut, addend + width)
+        elif cut == len(blob) and len(blob) % 16 == 0:
+            # reached by address (an initialiser template, say) and running to
+            # the section's end: IDO pads every section to 16 bytes, the ROM
+            # link packs the next file's data straight after, so the zero
+            # bytes of that last pad are not this literal's
+            end = max([o + 4 for (o, t, sj) in obj.rels.get(si, []) if t == 2 and addend <= o < cut] +
+                      [k + 1 for k in range(addend, cut) if blob[k]] + [addend + 4])
+            end = (end + 3) & ~3
+            if cut - end < 16:
+                cut = end
         seg = blob[addend:cut]
         # R_MIPS_32 relocs inside [addend, cut): jump tables (against .text)
         # and pointer initialisers (against a symbol)

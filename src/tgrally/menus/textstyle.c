@@ -68,13 +68,9 @@ void BrPadStickToButtons(BrPadRec *pad);
  * picker (sixteen palette swatches in two rows, the current one framed;
  * left/right walk a row, up/down switch rows, A keeps the colour, B
  * restores it); A on normal closes, B cancels.
- * RESIDUE (144): the picker's SELECT x (0xe6) sits in a spill temp at
- * sp+0x4C in the ROM; holding it in a one-int array gives the same
- * instructions but a local slot at sp+0x54, and the temp registers after
- * it rename. */
-/* @t4-pass 0x8024E128 1 2026-10-03 compiles 26 best 144 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024E128 2 2026-10-03 compiles 26 best 144 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024E128 */
+ * The A button's x is one char variable: 0xd6 in the style view, stepped
+ * by 0x10 for the picker, so the picker keeps it in a register past the
+ * draws instead of folding it into the SELECT label's x. */
 /* @implements 0x8024E128 tgr BrPaintTextStyleMenu */
 void BrPaintTextStyleMenu(void)
 {
@@ -84,7 +80,7 @@ void BrPaintTextStyleMenu(void)
   unsigned int i;
   int yb;
   int ty;
-  int x;
+  char x;
   int r[2][4];
   int sw[16][5];
   char *names[2] = { "NORMAL TEXT", "DROP-SHADOW TEXT" };
@@ -102,8 +98,7 @@ void BrPaintTextStyleMenu(void)
   }
   r[0][0] = 0xf0;
   r[1][0] = 0x150;
-  r[0][1] = 0xb8;
-  r[1][1] = 0xb8;
+  r[1][1] = 0xb8; r[0][1] = 0xb8;
   r[0][2] = r[1][2] = 0x40;
   r[0][3] = r[1][3] = 0x40;
   for (i = 0; (int)i < 2; i++) {
@@ -119,6 +114,7 @@ void BrPaintTextStyleMenu(void)
                   D_80369B98[D_8028DB5C].r, D_80369B98[D_8028DB5C].g, D_80369B98[D_8028DB5C].b);
   BrImageDrawPart(&D_8028D2C0, 0xa0, 0, 0x10, 0x10, r[1][0] + 5, r[1][1] + 8, 0x30, 0x30,
                   D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g, D_80369B98[D_8028DB58].b);
+  x = 0xd6;
   if (D_8028DBE4 == 0) {
     BrBevelPanel(0xc6, r[0][1] + r[0][3] + 0x11, 0xf4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
     BrTextSetFont(11);
@@ -129,9 +125,9 @@ void BrPaintTextStyleMenu(void)
     yb = 0x14a - D_8028D0B0.w;
     ty = (yb + 0x12) >> 1;
     bx = 0x160 - D_8028D0E0.h;
-    BrTextPrint("%wwSELECT", ((unsigned int)D_8028D0B0.w + 0xdc) >> 1, ty);
+    BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
-    BrImageDrawAt(&D_8028D0B0, 0xd6, yb);
+    BrImageDrawAt(&D_8028D0B0, x, yb);
     BrImageDrawAt(&D_8028D0E0, bx, yb);
     BrPadStickToButtons(&PADS[D_8028DBBC]);
     if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
@@ -156,14 +152,14 @@ void BrPaintTextStyleMenu(void)
     yb = 0x182 - D_8028D0B0.h;
     bx = 0x16e - D_8028D0E0.h;
     {
-    int ax[1];
-    ax[0] = 0xe6;
-    BrImageDrawAt(&D_8028D0B0, ax[0], yb);
+    int u3[1];
+    x += 0x10;
+    BrImageDrawAt(&D_8028D0B0, x, yb);
     BrImageDrawAt(&D_8028D0E0, bx, yb);
     BrTextSetFont(10);
     BrTextAlignLeft();
     ty = (yb + 0x12) >> 1;
-    BrTextPrint("%wwSELECT", (ax[0] + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
+    BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
     }
     BrPadStickToButtons(&PADS[D_8028DBBC]);
