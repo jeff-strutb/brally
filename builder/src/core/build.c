@@ -8,7 +8,7 @@
  *   Top Gear Rally.app/Contents/MacOS/tgrally
  *                     /Contents/Resources/romdata.bin
  * Windows: a folder
- *   Boss Rally\Boss Rally.exe, disc\, music\cd\
+ *   Boss Rally\Boss Rally.exe, icon.ico, disc\, music\cd\
  *   Top Gear Rally\Top Gear Rally.exe, romdata.bin
  *
  * The build is made in a hidden folder beside its destination and renamed
@@ -387,8 +387,18 @@ static int build_br(ctx *c)
         if (!rb_ico_to_icns(path, icon, c->err, c->errlen))
             return 0;
 #else
-        if (!rb_set_exe_icon(c->exe, path, c->err, c->errlen))
-            return 0;
+        {   /* the game sets its window's icon from this at start-up */
+            char ico[2048];
+            size_t n;
+            void *d = rb_read_file(path, &n);
+            rb_join(ico, sizeof ico, c->root, "icon.ico");
+            if (!d || !rb_write_file(ico, d, n)) {
+                free(d);
+                rb_err(c->err, c->errlen, "cannot write %s", ico);
+                return 0;
+            }
+            free(d);
+        }
 #endif
     }
     return plist(c, "Boss Rally", "brally64", "com.strutb.bossrally64", "11.0", icon[0] ? "BossRally" : NULL) && finish(c);

@@ -23,8 +23,8 @@ and the 12 CD audio tracks as FLAC; Top Gear Rally gets the cartridge from ROM
 |---|---|
 | `src/core/` | portable C: MD5, the cue sheet and ISO 9660 (Joliet) reader, a FLAC encoder, icon conversion, the build itself (`build.c`) |
 | `src/mac/` | the AppKit front end and the app's Info.plist |
-| `src/win/` | the Win32 front end, its manifest and resources (the game executables ride along as RCDATA) |
-| `build.sh` | builds both builders into `build/builder/dist/` |
+| `src/win/` | the Win32 front end, its manifest and version resources |
+| `build.sh` | builds both builders into `build/builder/dist/`: the macOS app, and a Windows zip of the exe with the game executables beside it in `games\` |
 | `release.sh` | builds and publishes them as a GitHub release |
 | `version.py` | the release version: the lower of the two decompilations' M2 progress, two decimals, rounded down |
 | `check_payload.py` | proves the shipped game executables carry none of the games' data |
@@ -32,7 +32,7 @@ and the 12 CD audio tracks as FLAC; Top Gear Rally gets the cartridge from ROM
 ## Building
 
 ```sh
-builder/build.sh                 # build/builder/dist/RallyBuilder-VERSION-{macOS.zip,Windows.exe}
+builder/build.sh                 # build/builder/dist/RallyBuilder-VERSION-{macOS,Windows}.zip
 builder/release.sh --dry-run     # the release notes and files, nothing published
 builder/release.sh               # tag vVERSION at HEAD (already pushed) and publish
 ```

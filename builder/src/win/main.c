@@ -5,7 +5,7 @@
  *   3 the build (core/build.c), with progress
  *   4 the result: the game's folder, or what went wrong
  *
- * The game executables ride along as RCDATA resources (builder.rc).
+ * The game executables are plain files in the games folder beside it.
  *
  * Arguments fill in the choices for a scripted run, and --build starts it:
  *   --game br|tgr  --dest DIR  --bin FILE  --cue FILE  --rom FILE  --build */
@@ -48,26 +48,17 @@ static void to16(const char *s, wchar_t *out, int n) { MultiByteToWideChar(CP_UT
 
 int rb_host_payload(const char *name, const char *path, char *err, size_t errlen)
 {
-    HRSRC r = FindResourceA(NULL, strcmp(name, "brally64") ? "TGRALLY" : "BRALLY64", (LPCSTR)RT_RCDATA);
-    HGLOBAL g = r ? LoadResource(NULL, r) : NULL;
-    const void *p = g ? LockResource(g) : NULL;
-    DWORD n = r ? SizeofResource(NULL, r) : 0;
-    wchar_t w[2048];
-    HANDLE f;
-    DWORD put = 0;
-    if (!p || !n) {
-        snprintf(err, errlen, "the builder is missing its copy of the game (%s); download it again", name);
+    wchar_t src[MAX_PATH], dst[2048], *s;
+    GetModuleFileNameW(NULL, src, MAX_PATH);
+    if ((s = wcsrchr(src, L'\\')) != NULL)
+        *s = 0;
+    swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs.exe", name);
+    to16(path, dst, 2048);
+    if (!CopyFileW(src, dst, FALSE)) {
+        snprintf(err, errlen, "the builder's games folder is missing %s.exe; unzip the whole download and run the "
+                 "builder from that folder", name);
         return 0;
     }
-    to16(path, w, 2048);
-    f = CreateFileW(w, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (f == INVALID_HANDLE_VALUE || !WriteFile(f, p, n, &put, NULL) || put != n) {
-        if (f != INVALID_HANDLE_VALUE)
-            CloseHandle(f);
-        snprintf(err, errlen, "cannot write %s", path);
-        return 0;
-    }
-    CloseHandle(f);
     return 1;
 }
 

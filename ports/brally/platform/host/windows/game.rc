@@ -1,0 +1,32 @@
+/* game.rc: what a Windows build of either port says about itself: its
+ * name and version, and a manifest (no elevation). game_rc.h, written by the
+ * link script, names the game. */
+#include <windows.h>
+#include "game_rc.h"
+
+1 RT_MANIFEST "game.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     GAME_VER_MAJOR, GAME_VER_MINOR, 0, 0
+PRODUCTVERSION  GAME_VER_MAJOR, GAME_VER_MINOR, 0, 0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Strut B, LLC"
+      VALUE "FileDescription", GAME_NAME
+      VALUE "ProductName", GAME_NAME
+      VALUE "FileVersion", GAME_VERSION
+      VALUE "ProductVersion", GAME_VERSION
+      VALUE "InternalName", GAME_EXE
+      VALUE "OriginalFilename", GAME_EXE
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

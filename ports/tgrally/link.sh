@@ -86,5 +86,9 @@ for s in $SRCS; do
 done
 # the core objects of the TUs build.sh compiled (not a stale one of a deleted TU)
 CORE=$(sed "s#ports/tgrally/src/##; s#/#__#g; s#^#$OUT/obj/#; s#\$#.o#" $OUT/tus.txt)
+if [ -n "$EXE" ]; then          # Windows: name, version and manifest
+  $H/windows/game_rc.sh "Top Gear Rally" "Top Gear Rally.exe" $OUT/plat/game.res.o
+  OBJS="$OBJS $OUT/plat/game.res.o"
+fi
 $LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $OSLIBS
 echo "linked $OUT/tgrally$EXE (host $HOST, renderer $RENDER)"

@@ -2,7 +2,8 @@
 # builder/build.sh: build Rally Builder for macOS and Windows.
 #
 #   build/builder/dist/RallyBuilder-VERSION-macOS.zip    Rally Builder.app, universal
-#   build/builder/dist/RallyBuilder-VERSION-Windows.exe  one exe, x64
+#   build/builder/dist/RallyBuilder-VERSION-Windows.zip  Rally Builder\RallyBuilder.exe
+#                                                        and games\ (the payload), x64
 #
 # Each carries the two games' executables (the payload) built with none of the
 # games' data in them: ports/brally with IMAGE=runtime, ports/tgrally with
@@ -16,6 +17,7 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 [ -x $PY ] || PY=python3
 VERSION=${VERSION:-$($PY builder/version.py)}
+export VERSION                     # the game executables' version info too (Windows)
 B=build/builder
 DIST=$B/dist
 WINCC=$PWD/ports/brally/tools/wincc.sh
@@ -64,20 +66,23 @@ ditto -c -k --keepParent "$APP" $DIST/RallyBuilder-$VERSION-macOS.zip
 MAJOR=${VERSION%%.*}
 MINOR=$(echo "${VERSION#*.}" | sed 's/^0*\([0-9]\)/\1/')
 cat > $B/win/payload.h <<EOF
-#define RB_PAYLOAD_BRALLY "$PWD/$B/payload-windows/brally64.exe"
-#define RB_PAYLOAD_TGRALLY "$PWD/$B/payload-windows/tgrally.exe"
 #define RB_VER_MAJOR $MAJOR
 #define RB_VER_MINOR $MINOR
 #define RB_VERSION_STR "$VERSION"
 EOF
 x86_64-w64-mingw32-windres -I$B/win -Ibuilder/src/win builder/src/win/builder.rc -O coff -o $B/win/builder.res.o
-rm -f $DIST/RallyBuilder-*-Windows.exe
+rm -rf $DIST/RallyBuilder-*-Windows.* "$B/win/Rally Builder"
+mkdir -p "$B/win/Rally Builder/games"
 OBJS=
 for s in builder/src/core/*.c builder/src/win/main.c; do
     o=$B/win/$(basename $s .c).o
     $WINCC -O2 -Wall -DUNICODE -D_UNICODE -DRB_VERSION="\"$VERSION\"" -Ibuilder/src/core -c $s -o $o
     OBJS="$OBJS $o"
 done
-x86_64-w64-mingw32-gcc -municode -mwindows -static -s -o $DIST/RallyBuilder-$VERSION-Windows.exe \
+x86_64-w64-mingw32-gcc -municode -mwindows -static -s -o "$B/win/Rally Builder/RallyBuilder.exe" \
     $OBJS $B/win/builder.res.o -lcomctl32 -lole32 -lshell32 -luuid
+# the games beside it as plain files: the builder copies them, it carries no
+# executable inside itself
+cp $B/payload-windows/brally64.exe $B/payload-windows/tgrally.exe "$B/win/Rally Builder/games/"
+(cd $B/win && zip -qrX "$PWD/../dist/RallyBuilder-$VERSION-Windows.zip" "Rally Builder")
 ls -la $DIST

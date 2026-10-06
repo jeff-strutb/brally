@@ -43,10 +43,6 @@ int rb_flac_encode(FILE *f, uint64_t frames, const char *path, rb_progress cb, v
 /* ---- icons (icon.c) ------------------------------------------------------------------ */
 /* an .ico's largest image as an .icns (PNG entries, nearest-neighbour scaled) */
 int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen);
-#ifdef _WIN32
-/* the .ico's images as the exe's icon resource */
-int rb_set_exe_icon(const char *exe, const char *ico, char *err, size_t errlen);
-#endif
 
 void rb_err(char *err, size_t errlen, const char *fmt, ...);
 

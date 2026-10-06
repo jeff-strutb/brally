@@ -3,15 +3,12 @@
  * The disc carries one 32x32 16-colour image. On macOS it becomes an .icns
  * of PNGs at every size, each a nearest-neighbour upscale (a smoothing
  * filter turns 32 pixels to mush at 1024), the ICO's AND mask as alpha, as
- * ports/brally/tools/mkicns.py does. On Windows the .ico's images go into the
- * exe as its icon resource. */
+ * ports/brally/tools/mkicns.py does. (On Windows the game loads the .ico
+ * itself.) */
 #include <stdlib.h>
 #include <string.h>
 #include "rb_int.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 static uint32_t rd16(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8; }
 static uint32_t rd32(const uint8_t *p) { return rd16(p) | rd16(p + 2) << 16; }
@@ -278,67 +275,3 @@ int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen)
         rb_err(err, errlen, "cannot write %s", icns);
     return ok;
 }
-
-#ifdef _WIN32
-#pragma pack(push, 2)
-typedef struct { BYTE w, h, colors, reserved; WORD planes, bpp; DWORD bytes; WORD id; } GRPENT;
-#pragma pack(pop)
-
-static wchar_t *wide_path(const char *s)
-{
-    int n = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
-    wchar_t *w = malloc(sizeof(wchar_t) * (size_t)(n > 0 ? n : 1));
-    if (w)
-        MultiByteToWideChar(CP_UTF8, 0, s, -1, w, n > 0 ? n : 1);
-    return w;
-}
-
-int rb_set_exe_icon(const char *exe, const char *ico, char *err, size_t errlen)
-{
-    size_t n;
-    uint8_t *d = rb_read_file(ico, &n), *grp;
-    wchar_t *w;
-    HANDLE u;
-    uint32_t cnt, i;
-    int ok = 1;
-    if (!d || n < 6 || !(cnt = rd16(d + 4)) || n < 6 + 16 * cnt) {
-        free(d);
-        rb_err(err, errlen, "the disc's icon is unreadable");
-        return 0;
-    }
-    w = wide_path(exe);
-    u = w ? BeginUpdateResourceW(w, FALSE) : NULL;
-    free(w);
-    if (!u) {
-        free(d);
-        rb_err(err, errlen, "cannot set the game's icon");
-        return 0;
-    }
-    grp = calloc(1, 6 + sizeof(GRPENT) * cnt);
-    memcpy(grp, d, 6);
-    for (i = 0; i < cnt && ok; i++) {
-        const uint8_t *e = d + 6 + 16 * i;
-        GRPENT g;
-        uint32_t size = rd32(e + 8), off = rd32(e + 12);
-        if ((uint64_t)off + size > n) {
-            ok = 0;
-            break;
-        }
-        memcpy(&g, e, 8);
-        g.bytes = size;
-        g.id = (WORD)(i + 1);
-        memcpy(grp + 6 + sizeof(GRPENT) * i, &g, sizeof g);
-        ok = UpdateResourceW(u, (LPCWSTR)RT_ICON, MAKEINTRESOURCEW(i + 1), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
-                             (void *)(d + off), size) != 0;
-    }
-    if (ok)
-        ok = UpdateResourceW(u, (LPCWSTR)RT_GROUP_ICON, MAKEINTRESOURCEW(1), MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
-                             grp, (DWORD)(6 + sizeof(GRPENT) * cnt)) != 0;
-    ok = EndUpdateResourceW(u, !ok) && ok;
-    free(grp);
-    free(d);
-    if (!ok)
-        rb_err(err, errlen, "cannot set the game's icon");
-    return ok;
-}
-#endif

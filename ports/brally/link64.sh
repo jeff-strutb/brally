@@ -79,5 +79,9 @@ for s in $SRCS; do
   fi
   OBJS="$OBJS $o"
 done
+if [ -n "$EXE" ]; then          # Windows: name, version and manifest
+  ports/brally/platform/host/windows/game_rc.sh "Boss Rally" "Boss Rally.exe" $OUT/plat/game.res.o
+  OBJS="$OBJS $OUT/plat/game.res.o"
+fi
 $LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/brally64$EXE (host $HOST, renderer $RENDER)"

@@ -19,7 +19,7 @@ VERSION=$($PY builder/version.py)
 TAG=v$VERSION
 DIST=build/builder/dist
 MAC=$DIST/RallyBuilder-$VERSION-macOS.zip
-WIN=$DIST/RallyBuilder-$VERSION-Windows.exe
+WIN=$DIST/RallyBuilder-$VERSION-Windows.zip
 
 if [ -n "$(git status --porcelain -- builder ports)" ]; then
     echo "release: builder/ or ports/ has uncommitted changes; commit them first" >&2
@@ -46,7 +46,7 @@ $(cat $NOTES.m2)
 
 ### Download
 - **macOS** (11 or later; Top Gear Rally needs 12. Apple silicon and Intel): \`RallyBuilder-$VERSION-macOS.zip\`. Unzip and open Rally Builder. It is not notarized: if macOS refuses to open it, Control-click it and choose Open, or allow it in System Settings, Privacy & Security.
-- **Windows** (10 or later, 64-bit): \`RallyBuilder-$VERSION-Windows.exe\`. It is not signed: if SmartScreen stops it, choose More info, then Run anyway.
+- **Windows** (10 or later, 64-bit): \`RallyBuilder-$VERSION-Windows.zip\`. Unzip it and run \`RallyBuilder.exe\` from the unzipped folder (the \`games\` folder beside it holds the games' code). It is not signed: if SmartScreen stops it, choose More info, then Run anyway.
 
 ### What it needs
 | Game | Your dump | MD5 |

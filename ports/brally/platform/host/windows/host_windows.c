@@ -272,6 +272,18 @@ int host_window_open(int width, int height, const char *title)
                           r.right - r.left, r.bottom - r.top, NULL, NULL, wc.hInstance, NULL);
     if (!s_win)
         return 0;
+    {   /* the window's icon: icon.ico beside the exe, when the release
+         * builder put one there (the disc's own icon); the exe carries none */
+        char ico[MAX_PATH + 16];
+        HANDLE big, small;
+        snprintf(ico, sizeof ico, "%s\\icon.ico", host_resource_dir());
+        big = LoadImageA(NULL, ico, IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_LOADFROMFILE);
+        small = LoadImageA(NULL, ico, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE);
+        if (big)
+            SendMessageA(s_win, WM_SETICON, ICON_BIG, (LPARAM)big);
+        if (small)
+            SendMessageA(s_win, WM_SETICON, ICON_SMALL, (LPARAM)small);
+    }
     ShowWindow(s_win, SW_SHOW);
     SetForegroundWindow(s_win);
     return 1;
