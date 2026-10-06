@@ -162,9 +162,9 @@ typedef struct BrCar {
     float xfa4;                 /* 0xFA4  a countdown (mode 1 only) */
     float xfa8;                 /* 0xFA8  grid row distance back, the ranking key */
     int xfac;                   /* 0xFAC */
-    int msgA;                   /* 0xFB0  first message and its timer */
+    char *msgA;                 /* 0xFB0  first message and its timer */
     float msgATime;             /* 0xFB4 */
-    int msgB;                   /* 0xFB8  second message and its timer */
+    char *msgB;                 /* 0xFB8  second message and its timer */
     float msgBTime;             /* 0xFBC */
     char xfc0[0x14];            /* 0xFC0  text for msgB (a formatted time) */
     int xfd4;                   /* 0xFD4 */

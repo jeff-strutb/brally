@@ -836,10 +836,10 @@ void BrRaceTick(void)
                          D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
             D_80270784 = PAD(i)->recLen[i];
             memcpy(D_80307F00, PAD(i)->rec[i], D_80270784);
-            D_8031B760[i].msgA = (int)"NEW RECORD!";
+            D_8031B760[i].msgA = "NEW RECORD!";
             D_8031B760[i].msgATime = 1.0f;
             BrTimeFormat(D_8031B760[i].xfc0, D_8031B760[i].lapTime);
-            D_8031B760[i].msgB = (int)D_8031B760[i].xfc0;
+            D_8031B760[i].msgB = D_8031B760[i].xfc0;
             D_8031B760[i].msgBTime = 1.0f;
             D_802707A8 = 1;
           }
@@ -856,7 +856,7 @@ void BrRaceTick(void)
     if (running == 0) {
       if (D_8026FF18 == 1 && D_8026FF08 == 1 && D_8031B760[0].xfa4 == 0.0) {
         D_8027078C = 0;
-        D_8031B760[0].msgA = D_8031B760[1].msgA = (int)"%ryTIME UP!";
+        D_8031B760[0].msgA = D_8031B760[1].msgA = "%ryTIME UP!";
         D_8031B760[1].msgATime = 2.0f;
         D_8031B760[0].msgATime = D_8031B760[1].msgATime;
       } else {

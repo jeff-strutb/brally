@@ -61,7 +61,7 @@ typedef struct BrTrackHdr {
 extern BrTrackHdr *D_80025C70;
 extern int D_8026FF08;                  /* players */
 extern int D_8026FF18;                  /* game mode */
-int osSyncPrintf(char *fmt, ...);
+void osSyncPrintf(char *fmt, ...);
 float BrVec3Dist(BrVec3 *pA, BrVec3 *pB);
 void BrVec3Sub(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
 void BrVec3Direction(float *pOut, BrVec3 *pA, BrVec3 *pB);
@@ -391,15 +391,9 @@ void BrCarSlotSwap(BrCar *me)
  * already earned.  The PC twin is BrRaceGateStep.
  * Frame: the ROM's 0x80 with every named slot in place (iCur 0x68, iNext
  * 0x64, tLap 0x60, ratio 0x54, i 0x4C); the checkpoint loop indexes the
- * entities (no pointer local) and unused ints hold the other slots.
- * RESIDUE (626): compiler temporaries (0x34/0x40 for the ROM's 0x30/0x3C),
- * &D_8026FF08 kept in a register through the lap block in the ROM, and the
- * iNext test's branch.  A5 equivalent, but A7 differs on a checkpoint frame
- * (views_coast_manual 4521): the register choice changes what callees save
- * on the stack, which survives to the retrace -- not T3 until it matches. */
-/* @t4-pass 0x8022A0E0 1 2026-09-29 compiles 120 best 622 moved 9  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022A0E0 2 2026-09-29 compiles 120 best 622 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022A0E0 */
+ * entities (no pointer local) and unused ints hold the other slots.  The
+ * lap block sits inside `if (iNext == 0)` rather than behind a goto, so the
+ * standings test reads the game mode in place. */
 /* @implements 0x8022A0E0 tgr BrRaceGateStep */
 void BrRaceGateStep(BrRaceEnt *drv)
 {
@@ -416,6 +410,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
   float ratio;
   int unused50;
   int i;
+  int unused48;
   short w;
 
   if (D_80025C00.nGates == 0) {
@@ -473,91 +468,89 @@ void BrRaceGateStep(BrRaceEnt *drv)
   if (drv->x48 < drv->x4c) {
     drv->x48 = drv->x4c;
     osSyncPrintf("moved ahead one gate, getting %f seconds\n", D_80025C00.gates[iNext].award);
-    if (iNext != 0) {
-      goto positions;
-    }
-    if (drv->laps < D_8028B304) {
-      msg = 0;
-      if (drv->x34 == 0.0f || tLap < drv->x34) {
-        drv->x34 = tLap;
-        if (drv->x64 < D_8026FF08) {
-          drv->car->xf9c = drv->laps;
-          if (D_8031B760[0].season->x8c[D_8028B940] == 0.0f ||
-              drv->x34 < D_8031B760[0].season->x8c[D_8028B940]) {
-            D_8031B760[0].season->x8c[D_8028B940] = drv->x34;
-            msg = "%ryNEW LAP RECORD!";
-          } else if (drv->laps != 0) {
-            msg = "%ryBEST LAP!";
+    if (iNext == 0) {
+      if (drv->laps < D_8028B304) {
+        msg = 0;
+        if (drv->x34 == 0.0f || tLap < drv->x34) {
+          drv->x34 = tLap;
+          if (drv->x64 < D_8026FF08) {
+            drv->car->xf9c = drv->laps;
+            if (D_8031B760[0].season->x8c[D_8028B940] == 0.0f ||
+                drv->x34 < D_8031B760[0].season->x8c[D_8028B940]) {
+              D_8031B760[0].season->x8c[D_8028B940] = drv->x34;
+              msg = "%ryNEW LAP RECORD!";
+            } else if (drv->laps != 0) {
+              msg = "%ryBEST LAP!";
+            }
+          }
+        }
+        if (car != 0) {
+          osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
+          car->lapTimes[drv->laps] = tLap;
+        }
+        drv->raceTime -= tLap;
+        drv->laps++;
+        drv->x44 = drv->laps;
+        if (D_8026FF18 == 3) {
+          if (drv->laps == 1) {
+            osSyncPrintf("lapping %d back to 0 (a)\n", drv->x64);
+            drv->laps--;
+            drv->x44--;
+            drv->x48 -= D_80025C00.nGates;
+            drv->x4c -= D_80025C00.nGates;
+            if (D_80025C00.hdr != 0) {
+              drv->progress -= D_80025C00.hdr->lapLen;
+            }
+          }
+        } else if (car != 0) {
+          osSyncPrintf("******* LAP #%d ********\n", drv->laps);
+          sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
+          car->msgA = car->xfc0;
+          car->msgATime = 1.0f;
+          if (msg != 0) {
+            car->msgB = msg;
+            car->msgBTime = 1.0f;
           }
         }
       }
-      if (car != 0) {
-        osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
-        car->lapTimes[drv->laps] = tLap;
-      }
-      drv->raceTime -= tLap;
-      drv->laps++;
-      drv->x44 = drv->laps;
-      if (D_8026FF18 == 3) {
-        if (drv->laps == 1) {
-          osSyncPrintf("lapping %d back to 0 (a)\n", drv->x64);
-          drv->laps--;
-          drv->x44--;
-          drv->x48 -= D_80025C00.nGates;
-          drv->x4c -= D_80025C00.nGates;
-          if (D_80025C00.hdr != 0) {
-            drv->progress -= D_80025C00.hdr->lapLen;
-          }
-        }
-      } else if (car != 0) {
-        osSyncPrintf("******* LAP #%d ********\n", drv->laps);
-        sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
-        car->msgA = (int)car->xfc0;
-        car->msgATime = 1.0f;
-        if (msg != 0) {
-          car->msgB = (int)msg;
-          car->msgBTime = 1.0f;
-        }
-      }
-    }
-    if (drv->laps == D_8028B304) {
-      drv->flags |= 2;
-      if (car != 0) {
-        static char *places[20] = {
-          "%ryFirst!", "%rySecond!", "%ryThird!", "%ryFourth", "%ryFifth", "%rySixth",
-          "%ry7th", "%ry8th", "%ry9th", "%ry10th", "%ry11th", "%ry12th", "%ry13th",
-          "%ry14th", "%ry15th", "%ry16th", "%ry17th", "%ry18th", "%ry19th", "%ry20th",
-        };
+      if (drv->laps == D_8028B304) {
+        drv->flags |= 2;
+        if (car != 0) {
+          static char *places[20] = {
+            "%ryFirst!", "%rySecond!", "%ryThird!", "%ryFourth", "%ryFifth", "%rySixth",
+            "%ry7th", "%ry8th", "%ry9th", "%ry10th", "%ry11th", "%ry12th", "%ry13th",
+            "%ry14th", "%ry15th", "%ry16th", "%ry17th", "%ry18th", "%ry19th", "%ry20th",
+          };
 
-        car->x2064 = 0.9f;
-        car->lapTime = car->lapTime - drv->raceTime;
-        drv->raceTime = 0.0f;
-        car->xfac = D_8028B300;
-        car->msgA = (int)places[D_8028B300];
-        car->msgATime = 5.0f;
-        if (drv->x64 < D_8026FF08 && D_8028B304 == 3) {
-          if (D_8031B760[0].season->xe8[D_8028B940] == 0.0f ||
-              car->lapTime < D_8031B760[0].season->xe8[D_8028B940]) {
-            D_8031B760[0].season->xe8[D_8028B940] = car->lapTime;
-            car->msgB = (int)"%ryNEW COURSE RECORD!";
-            car->msgATime = 1.5f;
-            car->msgBTime = 3.5f;
+          car->x2064 = 0.9f;
+          car->lapTime = car->lapTime - drv->raceTime;
+          drv->raceTime = 0.0f;
+          car->xfac = D_8028B300;
+          car->msgA = places[D_8028B300];
+          car->msgATime = 5.0f;
+          if (drv->x64 < D_8026FF08 && D_8028B304 == 3) {
+            if (D_8031B760[0].season->xe8[D_8028B940] == 0.0f ||
+                car->lapTime < D_8031B760[0].season->xe8[D_8028B940]) {
+              D_8031B760[0].season->xe8[D_8028B940] = car->lapTime;
+              car->msgATime = 1.5f;
+              car->msgB = "%ryNEW COURSE RECORD!";
+              car->msgBTime = 3.5f;
+            }
           }
         }
+        D_8028B300++;
+        goto tail;
       }
-      D_8028B300++;
-      goto tail;
     }
-  positions:
     if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < drv->car->xfa4) {
       if (D_80270788 == 0) {
         BrSfxSrcBeep();
       }
       d = D_8031B760[0].xfa8 - D_8031B760[1].xfa8;
-      if (d < 0.0f) {
+      if (d < 0) {
         d = -d;
       }
-      ratio = drv->car->xfe4[1] / (2.24f * drv->car->lapTime);
+      ratio = drv->car->xfe4[1] / (drv->car->lapTime * 2.24f);
       if (ratio != 0.0f) {
         ratio = d / ratio;
       } else {
@@ -565,31 +558,31 @@ void BrRaceGateStep(BrRaceEnt *drv)
       }
       for (i = 0; i < D_8026FF08; i++) {
         c = D_803239A0[i].car;
-        c->msgA = (int)"%ryCheck Point!";
+        c->msgA = "%ryCheck Point!";
         c->msgATime = 0.4f;
         w = D_8028C800 - 1;
         if (w >= 3 || w < 0) {
           w = 0;
         }
-        c->xfa4 = c->xfa4 + D_80271D1C[D_8028B940]->award[D_8031B760[0].xe34][w][iNext];
+        c->xfa4 += D_80271D1C[D_8028B940]->award[D_8031B760[0].xe34][w][iNext];
         if (D_8026FF08 == 1) {
           sprintf(c->xfc0, "%%ry");
           BrTimeFormat(c->xfc0 + 3, c->xfa4);
           sprintf(c->xfc0 + strlen(c->xfc0), " Left");
-          c->msgB = (int)c->xfc0;
+          c->msgB = c->xfc0;
           c->msgBTime = 0.9f;
         } else if (c->lapTime != 0.0f) {
           sprintf(c->xfc0, "%%ry");
           BrTimeFormat(c->xfc0 + 3, ratio);
           if (c->xfac != 0) {
             if (120.0f < ratio) {
-              c->msgB = (int)"%ryYou're way behind!";
+              c->msgB = "%ryYou're way behind!";
             }
             sprintf(c->xfc0 + strlen(c->xfc0), " Behind");
-            c->msgB = (int)c->xfc0;
+            c->msgB = c->xfc0;
           } else {
             sprintf(c->xfc0 + strlen(c->xfc0), " Ahead");
-            c->msgB = (int)c->xfc0;
+            c->msgB = c->xfc0;
           }
           c->msgBTime = 0.9f;
         }
@@ -625,10 +618,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (car != 0) {
       osSyncPrintf("******* LAP #%d ********\n", drv->laps);
       sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
-      car->msgA = (int)car->xfc0;
+      car->msgA = car->xfc0;
       car->msgATime = 1.0f;
       if (msg != 0) {
-        car->msgB = (int)msg;
+        car->msgB = msg;
         car->msgBTime = 1.0f;
       }
     }

@@ -331,11 +331,11 @@ void BrWrongWayCheck(BrCar *car)
       car->wrongWay++;
       if (car->wrongWay >= 32 && (car->wrongWay & 0x10) == 0x10) {
         if (car->msgA == 0) {
-          car->msgA = (int)D_8028B308;
+          car->msgA = D_8028B308;
           car->msgB = 0;
           car->msgATime = 0.25f;
         }
-      } else if (car->msgA == (int)D_8028B308) {
+      } else if (car->msgA == D_8028B308) {
         car->msgB = 0;
         car->msgA = 0;
       }
