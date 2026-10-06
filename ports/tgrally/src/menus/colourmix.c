@@ -4,18 +4,10 @@
  * the other paint-shop functions'.
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 #include "tgr/image.h"
-typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
-  unsigned int pressed;
-  unsigned int held;
-  int repeat[4];
-  float axis[2];
-  char pad20[0x15c - 0x20];
-} BrPadRec;
-extern char D_8036A8E0;
-#define PADS ((BrPadRec *)&D_8036A8E0)
 typedef struct BrMixSwatch {    /* a palette entry, as the mixer reads it (0x14) */
   int x, y, w, h;
   unsigned char c[3];           /* 0x10  red, green, blue */
@@ -40,7 +32,7 @@ extern unsigned char D_8028DB58;        /* the chosen palette colour */
 extern unsigned char D_8028DBB4;        /* the paint shop's step */
 extern unsigned char D_8028DBBC;        /* the controller */
 extern unsigned char D_8028DBD4;        /* the mixer is open */
-extern unsigned char D_8028DCE0;        /* the channel being mixed */
+extern unsigned char D_8028DCE0;         /* the channel being mixed (the arena: tools/globals.py) */
 extern BrImage D_8028D0B0;              /* the A button */
 extern BrImage D_8028D0E0;              /* the B button */
 void BrBevelPanel(int, int, int, int, int, char, char, unsigned char, unsigned char, unsigned char);
@@ -66,16 +58,19 @@ void BrPadStickRepeatNeg(unsigned int *pressed, int *timer, float *axis, unsigne
  * car's body and shade parts.  A keeps the colour, B restores it.
  * The shade part's palette gets its first entry written twice and its
  * second never, as in the ROM.
- * RESIDUE (gap 96, 4 short): the ROM keeps the pad pointer for the two
- * stick-repeat calls in s0 and re-reads the channel byte before stepping
- * it up or down; the locals sit 0x10 lower in the frame. */
-/* @t4-pass 0x8024B144 1 2026-10-03 compiles 26 best 527 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024B144 2 2026-10-03 compiles 26 best 527 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024B144 */
+ * The channel is tested by name and stepped through chan, so the step
+ * reads it again rather than reusing the tested value. */
 /* @implements 0x8024B144 tgr BrPaintColourMix */
 void BrPaintColourMix(void)
 {
-  int u0[6];
+  unsigned int i;
+  int y;
+  int ty;
+  int v;
+  char **name;
+  float mag;
+  unsigned char *chan;
+  int u0[3];
   int bx;
   int yb;
   int u1[6];
@@ -83,15 +78,13 @@ void BrPaintColourMix(void)
   char buf[12];
   unsigned char bar[3][3] = { { 0xff, 0, 0 }, { 0, 0xff, 0 }, { 0, 0, 0xff } };
   char *names[3] = { "R", "G", "B" };
-  unsigned int i;
-  int y;
-  int v;
-  BrPadRec *pad;
+  int u2[2];
   unsigned int ch;
 
+  chan = &D_8028DCE0;
   bx = 0x151 - D_8028D0E0.w;
-  yb = 0x122 - D_8028D0B0.h;
   step = 0;
+  yb = 0x122 - D_8028D0B0.h;
   BrBevelPanel(0xad, 0xb6, 0x126, 0x74, 3, 0, 0, 0x80, 0x80, 0x80);
   BrBevelPanel(0xbb, 0xc2, 0x3c, 0x3c, 1, 0, 1, D_80369B98[D_8028DB58].c[0], D_80369B98[D_8028DB58].c[1],
                D_80369B98[D_8028DB58].c[2]);
@@ -117,7 +110,7 @@ void BrPaintColourMix(void)
       }
     }
   }
-  for (i = 0, y = 0x68; (int)i < 3; i++, y += 0xb) {
+  for (i = 0, name = names, ty = 0x68; (int)i < 3; i++, name++, ty += 0xb) {
     if (i == D_8028DCE0) {
       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xff, 0);
     } else {
@@ -125,48 +118,46 @@ void BrPaintColourMix(void)
     }
     BrTextSetFont(11);
     BrTextAlignLeft();
-    BrTextPrint(names[i], 0x83, y);
+    BrTextPrint(*name, 0x83, ty);
     BrTextSetFont(10);
     BrTextAlignRight();
     sprintf(buf, "%d", D_80369B98[D_8028DB58].c[i]);
-    BrTextPrint(buf, 0xe2, y);
+    BrTextPrint(buf, 0xe2, ty);
   }
   BrImageDrawAt(&D_8028D0B0, 0xe5, yb);
   BrImageDrawAt(&D_8028D0E0, bx, yb);
   BrTextAlignLeft();
   BrTextSetFont(10);
-  y = (yb + 0x12) >> 1;
-  BrTextPrint("%wwOK", ((unsigned int)D_8028D0B0.w + 0xeb) >> 1, y);
-  BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, y);
-  pad = &PADS[D_8028DBBC];
-  BrPadStickRepeatPos(&pad->pressed, &pad->repeat[0], &pad->axis[1], 8);
-  pad = &PADS[D_8028DBBC];
-  BrPadStickRepeatNeg(&pad->pressed, &pad->repeat[1], &pad->axis[1], 2);
-  pad = &PADS[D_8028DBBC];
-  if ((pad->axis[0] < 0.0 ? -pad->axis[0] : pad->axis[0]) >= 0.1f) {
-    step = pad->axis[0] * 10.0f;
-  } else if (pad->pressed & 1) {
+  ty = (yb + 0x12) >> 1;
+  BrTextPrint("%wwOK", ((unsigned int)D_8028D0B0.w + 0xeb) >> 1, ty);
+  BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
+  BrPadStickRepeatPos(&D_8036A8E0[D_8028DBBC].pressed, &D_8036A8E0[D_8028DBBC].repeat[0], &D_8036A8E0[D_8028DBBC].axis[1], 8);
+  BrPadStickRepeatNeg(&D_8036A8E0[D_8028DBBC].pressed, &D_8036A8E0[D_8028DBBC].repeat[1], &D_8036A8E0[D_8028DBBC].axis[1], 2);
+  mag = D_8036A8E0[D_8028DBBC].axis[0] < 0.0 ? -D_8036A8E0[D_8028DBBC].axis[0] : D_8036A8E0[D_8028DBBC].axis[0];
+  if (mag >= 0.1f) {
+    step = D_8036A8E0[D_8028DBBC].axis[0] * 10.0f;
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 1) {
     step = 4;
-  } else if (pad->pressed & 4) {
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 4) {
     step = -4;
-  } else if (pad->pressed & 0x200) {
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 0x200) {
     step = 1;
-  } else if (pad->pressed & 0x800) {
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 0x800) {
     step = -1;
   }
-  if (pad->pressed & 0x402) {
-    BrPadConsume(&pad->pressed, 0x402);
+  if (D_8036A8E0[D_8028DBBC].pressed & 0x402) {
+    BrPadConsume(&D_8036A8E0[D_8028DBBC].pressed, 0x402);
     if (D_8028DCE0 == 2) {
-      D_8028DCE0 = 0;
+      *chan = 0;
     } else {
-      D_8028DCE0++;
+      (*chan)++;
     }
-  } else if (pad->pressed & 0x108) {
-    BrPadConsume(&pad->pressed, 0x108);
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 0x108) {
+    BrPadConsume(&D_8036A8E0[D_8028DBBC].pressed, 0x108);
     if (D_8028DCE0 == 0) {
-      D_8028DCE0 = 2;
+      *chan = 2;
     } else {
-      D_8028DCE0--;
+      (*chan)--;
     }
   }
   if (D_8028DB58 == 1) {
@@ -216,14 +207,13 @@ void BrPaintColourMix(void)
       BEPTR(unsigned short *, BEPTR(BrMixPart *, D_8028AB08->parts)[D_8028AB08->shadePart].tlut)[0] = D_8028DB90[0];   /* a raw copy between palettes */
     }
   }
-  pad = &PADS[D_8028DBBC];
-  if (pad->pressed & 0x10) {
-    BrPadConsume(&pad->pressed, 0x10);
-    D_8028DBD4 = 0;
+  if (D_8036A8E0[D_8028DBBC].pressed & 0x10) {
+    BrPadConsume(&D_8036A8E0[D_8028DBBC].pressed, 0x10);
     D_8028DCE0 = 0;
+    D_8028DBD4 = 0;
     D_8028DBB4++;
-  } else if (pad->pressed & 0x20) {
-    BrPadConsume(&pad->pressed, 0x20);
+  } else if (D_8036A8E0[D_8028DBBC].pressed & 0x20) {
+    BrPadConsume(&D_8036A8E0[D_8028DBBC].pressed, 0x20);
     tgr_wr16(&D_8028DB90[D_8028DB58], ((D_80369DA8[0] & 0xf8) << 8) | ((D_80369DA8[1] & 0xf8) << 3) | ((D_80369DA8[2] & 0xf8) >> 2) | (tgr_rd16(&D_8028DB90[D_8028DB58]) & 1));
     for (i = 0; i < 3; i++) {
       D_80369B98[D_8028DB58].c[i] = D_80369DA8[i];

@@ -489,9 +489,6 @@ void BrPadConsume(BrPadRec *pad, unsigned int bits);
  * report.  Sets *done when the caller may leave; returns the pak status on
  * an error.  (Run by the box with an empty pak: save, load, overwrite; the
  * pak errors, a new pak and the Rumble Pak swap are not reached.) */
-/* @t4-pass 0x80248F88 1 2026-09-28 compiles 21 best 1862 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80248F88 2 2026-09-28 compiles 21 best 1862 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80248F88 */
 /* @implements 0x80248F88 tgr BrDecalPakTransfer */
 int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu,
                        unsigned char *done)
@@ -526,7 +523,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
   unsigned short *pal;
   int n;
   int x2;
-  int x3;
+  int tx;
   unsigned char pakBits;
   unsigned char name[16] = {
     0x2D, 0x28, 0x29, 0x0F, 0x20, 0x1E, 0x1A, 0x2B, 0x0F, 0x1D, 0x1E, 0x1C, 0x1A, 0x25, 0x2C, 0x00
@@ -731,10 +728,12 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     BrTextHighlightOff();
     BrTextSetFont(13);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    tx = 114;
     if (op == OP_LOAD) {
-      BrTextPrint("LOADING DECALS...", 114, ty);
+      BrTextPrint("LOADING DECALS...", tx, ty);
     } else {
-      BrTextPrint("SAVING DECALS...", 115, ty);
+      tx++;
+      BrTextPrint("SAVING DECALS...", tx, ty);
     }
     BrBevelPanel(0xE6, top + 0x34, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
     if (D_80369E62++ > 1) {

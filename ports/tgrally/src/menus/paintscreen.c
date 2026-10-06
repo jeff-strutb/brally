@@ -21,7 +21,7 @@ typedef struct BrGlyph {        /* a keyboard key (0x1C) */
   int kernR;
 } BrGlyph;
 typedef struct BrPaintSwatch {  /* a palette entry (0x14) */
-  int x, y, w, h;
+  unsigned int x, y, w, h;
   unsigned char r, g, b;
 } BrPaintSwatch;
 typedef struct BrPaintPart {    /* a model part (0x24) */
@@ -54,7 +54,7 @@ extern int D_8028B7F4;
 extern int D_8028C328;
 extern int D_8028C334;
 extern short D_802A4BE8;
-extern unsigned char D_8028DC80;        /* the screen has been set up */
+extern signed char D_8028DC80;        /* the screen has been set up */
 extern int D_802724F0;                  /* the Controller Pak transfer under way */
 extern BrPaintModel *D_8028AB08;        /* the car model being painted */
 extern Gfx *D_8028A858;
@@ -206,20 +206,18 @@ void BrPaintExitPrompt(void);
  * the paint shop and go back to the front end.
  * The car's rows are set through a row pointer and the grid index goes
  * through an unsigned temporary, as the ROM's register use shows; i and r
- * are the counters of every loop, and the empty test of them after the
- * first-time block keeps them in s0/s1, so the saved registers at each call
- * hold what the ROM's do (a callee's dead stack is read later on).
- * RESIDUE: the picture loop keeps its bound where the ROM keeps 0xe, and
- * the frame's last block stores i where the ROM does not (4 more words). */
-/* @t4-pass 0x80243260 1 2026-10-04 compiles 120 best 1544 moved 4  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80243260 2 2026-10-04 compiles 120 best 1544 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80243260 */
+ * are the counters of every loop.  The paint area is centred through
+ * half-differences (dx, dy) and the eyedropper's cell is shifted into i and
+ * r before the call, as the ROM's temporaries show; the screen flag is a
+ * signed byte tested as unsigned, which keeps its 1 apart from the
+ * eyedropper's flags; the empty test of r after the second palette half's
+ * y lets the shared y value take v0 ahead of the first half's address. */
 /* @implements 0x80243260 tgr BrPaintShopScreen */
 void BrPaintShopScreen(void)
 {
   int u0[5];                    /* u0, u1: unused; they place done at sp+0xF3 as in */
   unsigned char done;           /* the ROM (the Pak transfer keeps a pointer to it) */
-  int u1[20];
+  int u1[13];
   int i;
   int k;
   int r;
@@ -228,29 +226,47 @@ void BrPaintShopScreen(void)
   float *v;
   BrCar *car;
   unsigned int n;
+  int dx;
+  int dy;
+  BrPaintRect *area;
 
+  area = &D_8028D470;
   done = 0;
   D_802A4BE8 = 0;
-  if (D_8028DC80 == 0) {
+  if ((unsigned char)D_8028DC80 == 0) {
     D_8028C328 = 0;
     D_8028DBBC = D_80271FA8;
     D_8028B7F4 = 1;
     BrCarDefaultColour(&D_8031B760[D_8028DBBC]);
     car = &D_8031B760[D_8028DBBC];
     car->xed8 = TGR_FA(BrCarCamStep);
-    BrEntLoadRecord(&D_8031B760[D_8028DBBC], D_8028DBBC, D_8031B760[D_8028DBBC].kind = D_8031B760[0].kind);
+    n = D_8028DBBC;
+    D_8031B760[n].kind = D_8031B760[0].kind;
+    BrEntLoadRecord(&D_8031B760[n], n, D_8031B760[n].kind);
     D_8028AB08 = (BrPaintModel *)TGR_PTR(char *, D_8031B760[D_8028DBBC].model);
-    v = D_8031B760[D_8028DBBC].mtx0[3];
-    v[2] = v[1] = v[0] = 0.0f;
-    v = D_8031B760[D_8028DBBC].mtx0[2];
-    v[2] = 1.0f;
-    v[1] = v[0] = 0.0f;
-    v = D_8031B760[D_8028DBBC].mtx0[0];
-    v[1] = 1.0f;
-    v[2] = v[0] = 0.0f;
-    v = D_8031B760[D_8028DBBC].mtx0[1];
-    v[2] = v[1] = 0.0f;
-    v[0] = -1.0f;
+    {
+      float *p = D_8031B760[D_8028DBBC].mtx0[3];
+
+      p[2] = p[1] = p[0] = 0.0f;
+    }
+    {
+      float *p = D_8031B760[D_8028DBBC].mtx0[2];
+
+      p[2] = 1.0f;
+      p[1] = p[0] = 0.0f;
+    }
+    {
+      float *p = D_8031B760[D_8028DBBC].mtx0[0];
+
+      p[1] = 1.0f;
+      p[2] = p[0] = 0.0f;
+    }
+    {
+      float *p = D_8031B760[D_8028DBBC].mtx0[1];
+
+      p[2] = p[1] = 0.0f;
+      p[0] = -1.0f;
+    }
     if (D_8031B760[D_8028DBBC].kind == 10) {
       v = D_8031B760[D_8028DBBC].cams[3].mtx[3];
       v[1] = v[0] = 7.3f;
@@ -293,8 +309,8 @@ void BrPaintShopScreen(void)
     D_8028CDB0.x = D_8028CD50.x;
     D_8028CDB0.y = D_8028CD50.y;
     BrAllocPaintShopGfxMem(&D_8028CDE0);
-    D_8028CDE0.y = D_8028CD80.y + 8;
     D_8028CDE0.x = D_8028CD80.x;
+    D_8028CDE0.y = D_8028CD80.y + 8;
     for (i = 0; i < 10; i++) {
       switch (i) {
       case 0:
@@ -350,26 +366,28 @@ void BrPaintShopScreen(void)
     D_80369CD8[0].x = D_8028D470.x;
     D_80369CD8[0].y = D_8028D470.y + D_8028D470.h + 6;
     D_80369CD8[0].w = 0x20;
-    D_8028D480.x = D_80369CD8[0].w + D_80369CD8[0].x + 2;
     D_80369CD8[0].h = 0x5e;
-    D_8028D490.x = D_8028D480.x + D_8028D480.w + 0xe;
+    D_8028D480.x = D_80369CD8[0].w + D_80369CD8->x + 2;
     D_8028D480.y = D_80369CD8[0].y;
+    D_8028D490.x = D_8028D480.x + D_8028D480.w + 0xe;
     D_8028D490.y = D_80369CD8[0].y;
-    y = D_80369CD8[0].y + D_8028D480.h + 2;
+    if (r) {
+    }
+    y = D_8028D490.y + D_8028D480.h + 2;
     for (r = 0; r < 3; r++) {
-      x = D_8028D480.x;
       for (i = 0; i < 4; i++) {
         n = (r << 2) + i;
-        D_80369CD8[n + 1].x = x;
-        x += 0x4a;
+        D_80369CD8[n + 1].x = D_8028D480.x + i * 0x4a;
         D_80369CD8[n + 1].w = 0x48;
         D_80369CD8[n + 1].h = 0x16;
         D_80369CD8[n + 1].y = y;
       }
       y += 0x18;
     }
-    D_8028CE40.y = D_8028CE10.y = D_80369CD8[0].y + 4;
-    D_8028CE40.x = D_8028CE10.x = D_80369CD8[0].x;
+    D_8028CE10.y = D_80369CD8[0].y + 4;
+    D_8028CE40.y = D_80369CD8[0].y + 4;
+    D_8028CE10.x = D_80369CD8[0].x;
+    D_8028CE40.x = D_80369CD8[0].x;
     BrAllocPaintShopGfxMem(&D_8028CE10);
     BrAllocPaintShopGfxMem(&D_8028CE40);
     for (i = 1; i < 13; i++) {
@@ -410,12 +428,12 @@ void BrPaintShopScreen(void)
       BrAllocPaintShopGfxMem(D_8028DB44[i]);
     }
     tgr_dash_slot = (0x8028DB44 >> 16) & 0xFF;  /* BrRomUnpack saved s2, &D_8028DB44 (paintshop.c) */
+    D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].tex);
     D_8028DB7C = TGR_PTR(unsigned char *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->mask) + D_8028DB68));
     D_8028DB88 = BE16(BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].w);
-    D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].tex);
     D_8028DB8C = BE16(BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].h);
-    D_8028DB08 = D_8028DB0C[D_8028DB68];
     D_8028DB90 = BEPTR(unsigned short *, BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].tlut);
+    D_8028DB08 = D_8028DB0C[D_8028DB68];
     D_8028D4F0[0].x = D_8028CE10.x;
     D_8028D4F0[0].y = D_8028CE10.y;
     for (i = 1; i < 5; i++) {
@@ -429,27 +447,28 @@ void BrPaintShopScreen(void)
       D_80369B98[i].y = D_8028D480.y + 4;
     }
     for (i = 2; i < 16; i++) {
-      D_80369B98[i].x = D_8028D490.x + 4 + (i - 2) * 0x10;
       D_80369B98[i].w = 0x10;
       D_80369B98[i].h = 0xe;
-      D_80369B98[i].y = D_8028D490.y + 4;
+      D_80369B98[i].x = D_8028D490.x + 4 + (i - 2) * 0x10;
+      D_80369B98[i].y = (&D_8028D470)[2].y + 4;
     }
     BrPaintPaletteLoad();
     for (r = 0; r < 5; r++) {
       for (i = 0; i < 10; i++) {
-        D_8028D540[i + r * 10].x0 = D_8028D260.x + (D_8028D290.drawW + 4) * i;
-        D_8028D540[i + r * 10].x4 = D_8028D260.y + (D_8028D290.drawH + 4) * r;
+        k = r * 10 + i;
+        D_8028D540[k].x0 = D_8028D260.x + (D_8028D290.drawW + 4) * i;
+        D_8028D540[k].x4 = D_8028D260.y + (D_8028D290.drawH + 4) * r;
       }
     }
     D_8028DB94.w = D_8028DB88 * 4;
     D_8028DB94.h = D_8028DB8C * 4;
-    D_8028DB94.x = D_8028D470.x + ((D_8028D470.w - D_8028DB88 * 4) >> 1);
-    D_8028DB94.y = D_8028D470.y + ((D_8028D470.h - D_8028DB8C * 4) >> 1);
+    dx = (D_8028D470.w - D_8028DB94.w) >> 1;
+    dy = (D_8028D470.h - D_8028DB94.h) >> 1;
+    D_8028DB94.x = D_8028D470.x + dx;
+    D_8028DB94.y = D_8028D470.y + dy;
     D_8028DC80 = 1;
     D_802724F0 = 0;
     BrFadeTo(1.0f, 0.2f);
-  }
-  if (i || r) {
   }
   BrClockTick();
   BrFadeStep();
@@ -473,7 +492,7 @@ void BrPaintShopScreen(void)
   }
   BrImageDrawTinted(&D_8028CDB0, 0xff, 0xff, 0xff);
   BrImageDrawTinted(&D_8028CDE0, 0xc0, 0, 0);
-  BrFillRect(D_8028D470.x, D_8028D470.y, D_8028D470.w, D_8028D470.h, 0, 0, 0);
+  BrFillRect(area->x, area->y, area->w, area->h, 0, 0, 0);
   BrTexLoad(D_8028AB08->decal[D_8028DB68], BEPTR(BrPaintPart *, D_8028AB08->parts));
   BrTexRectFlipDraw(D_8028DB88, D_8028DB8C, D_8028DB94.x, D_8028DB94.y, D_8028DB94.w, D_8028DB94.h);
   BrPaintPaletteDraw();
@@ -621,9 +640,11 @@ void BrPaintShopScreen(void)
   BrFrameEnd();
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
     if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC0 == 0 && D_8028DBC4 == 0) {
-      i = D_8028D110.x - D_8028DB94.x;
-      r = D_8028DB94.y + D_8028DB94.h - D_8028D110.y;
-      D_8028DB58 = BrPaintGet(i >> 2, r >> 2);
+      i = D_8028D110.x;
+      r = D_8028D110.y;
+      i = (i - D_8028DB94.x) >> 2;
+      r = (D_8028DB94.y + D_8028DB94.h - r) >> 2;
+      D_8028DB58 = BrPaintGet(i, r);
       D_8028DBEC = 1;
     } else if (D_8028DBC0 != 0 || D_8028DBC4 != 0) {
       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);

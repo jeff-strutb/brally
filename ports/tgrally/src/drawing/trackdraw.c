@@ -133,8 +133,8 @@ void BrProjectExtent(BrVec3 *v, int n, short *min, short *max);
 /* -- declarations: BrTrackShadowDraw -- */
 extern unsigned int *D_8028C75C;  /* the shadow display list: next command, */
 extern unsigned int *D_8028C760;  /* its start */
-extern short *D_8028C764;       /* the shadow vertices: next, */
-extern short *D_8028C768;       /* and their start */
+extern Vtx *D_8028C764;         /* the shadow vertices: next, */
+extern Vtx *D_8028C768;         /* and their start */
 extern int D_802A3790;          /* the shadow texture */
 extern int D_8028AA60;          /* clipping off */
 extern unsigned char D_8028AB20;  /* the fog colour */
@@ -154,8 +154,6 @@ void BrCopy16(void *dst, unsigned int src);
 
 
 #define G(a, b) { Gfx *g_ = D_8028A858++; tgr_wr32(&g_->words.w0, (a)); tgr_wr32(&g_->words.w1, TGR_W1(b)); }
-/* all three corners of a triangle word lie off the same edge of the shadow */
-#define TRIOUT(W) (clip[((W) >> 1) & 0x1F] & clip[((W) >> 9) & 0x1F] & clip[((W) >> 17) & 0x1F])
 
 /* WHAT IT DOES: Draw one track object.  Normally just its display list.  With
  * car shadows falling on it (cars is the object's cell's shadow mask, and not
@@ -169,58 +167,112 @@ void BrCopy16(void *dst, unsigned int src);
  * triangles wholly off one edge dropped -- until the shadow buffers run out.
  * pass picks the second render mode (no lit fog on the first pass, in rain
  * or at night).  PC twin: BrObjDlBuild. */
-/* @t4-pass 0x80234050 1 2026-10-03 compiles 120 best 950 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80234050 2 2026-10-03 compiles 120 best 950 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80234050 */
 /* @implements 0x80234050 tgr BrTrackShadowDraw */
 void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
 {
-  BrTrackObj *obj;
   unsigned int *cmd;
-  unsigned int *dl;
-  unsigned int *mark;
   unsigned int *save;
-  short *vtx;
-  short *vtxBase;
-  unsigned int c;
+  int c;
   unsigned int c2;
-  unsigned int n;
+  int n;
+  int i;
+  Vtx *vtx;
   unsigned char *fl;
   unsigned char f;
-  unsigned char clip[164];
-  BrCar *car;
+  unsigned int w;
+  Gfx **gp;
   BrCarModel *model;
-  float s0;
-  float s1;
   float k;
-  float m00, m10, m20, m30, m01, m11, m21, m31;
-  int i;
+  unsigned int *dl;
+  BrTrackObj *obj;
+  unsigned int *start;
 
-  vtx = D_8028C764;
   dl = D_8028C75C;
+  gp = &D_8028A858;
+  vtx = D_8028C764;
   obj = &BR_TRACKOBJS()[idx];
-  cmd = BEPTR(unsigned int *, obj->dl);
+  start = BEPTR(unsigned int *, obj->dl);
   if (cars != 0 && D_8028AAF4 != &D_8028AAF0->cam4 && (BE16(obj->flags) & 0x200) == 0) {
     BrPerfMark(0, 0x50, 0xFA, 0x50, 0xFF);
-    G(0xBB001001, 0xFFFFFFFF);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xBB001001);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFFFFFFFF));
+    }
     G(0xE8000000, 0);
-    G(0xFA001700, 0xFF0000FF);
-    G(0x06000000, cmd);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xFA001700);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFF0000FF));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0x06000000);
+      tgr_wr32(&g_->words.w1, TGR_W1(start));
+    }
     G(0xE7000000, 0);
     G(0xBA001402, 0);
-    G(0xFD900000, &D_802A3790);
-    G(0xF5900000, 0x07018060);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xFD900000);
+      tgr_wr32(&g_->words.w1, TGR_W1(&D_802A3790));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xF5900000);
+      tgr_wr32(&g_->words.w1, TGR_W1(0x07018060));
+    }
     G(0xE6000000, 0);
-    G(0xF3000000, 0x077FF100);
-    G(0xF5881000, 0x0009BE6F);
-    G(0xF2000000, 0x000FC0FC);
-    G(0xBB000001, 0xFFFFFFFF);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xF3000000);
+      tgr_wr32(&g_->words.w1, TGR_W1(0x077FF100));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xF5881000);
+      tgr_wr32(&g_->words.w1, TGR_W1(0x0009BE6F));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xF2000000);
+      tgr_wr32(&g_->words.w1, TGR_W1(0x000FC0FC));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xBB000001);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFFFFFFFF));
+    }
     G(0xBA001001, 0);
-    G(0xFA001700, 0xFF0000FF);
-    if (pass == 0 || D_8028AA80 != 0 || D_8028AA8C != 0) {
-      G(0xB900031D, 0x00504F50);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xFA001700);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFF0000FF));
+    }
+    if (pass != 0 && D_8028AA80 == 0 && D_8028AA8C == 0) {
+      {
+        Gfx *g_ = D_8028A858++;
+
+        tgr_wr32(&g_->words.w0, 0xB900031D);
+        tgr_wr32(&g_->words.w1, TGR_W1(0x00504B50));
+      }
     } else {
-      G(0xB900031D, 0x00504B50);
+      {
+        Gfx *g_ = D_8028A858++;
+
+        tgr_wr32(&g_->words.w0, 0xB900031D);
+        tgr_wr32(&g_->words.w1, TGR_W1(0x00504F50));
+      }
     }
     G(0xB9000002, 1);
     G(0xF9000000, 8);
@@ -233,62 +285,112 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       BrScissorSet(D_8031B2C8[D_8028AAEC].x, D_8031B2C8[D_8028AAEC].y, D_8031B2C8[D_8028AAEC].w,
                    D_8031B2C8[D_8028AAEC].h);
     }
-    G(0xBA000602, D_8028A8A0);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xBA000602);
+      tgr_wr32(&g_->words.w1, TGR_W1(D_8028A8A0));
+    }
     G(0xF9000000, 0);
     if (D_8028AA78 != 0) {
       G(0xB7000000, 0x00030004);
     } else {
       G(0xB7000000, 0x00020004);
     }
-    G(0xBA001001, D_8028AA44 != 0 ? 0x10000 : 0);
-    G(0xFA001700, 0xFF0000FF);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xBA001001);
+      tgr_wr32(&g_->words.w1, TGR_W1(D_8028AA44 != 0 ? 0x10000 : 0));
+    }
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xFA001700);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFF0000FF));
+    }
     G(0xBA001402, 0x00100000);
     G(0xB900031D, D_8028C74C | D_8028C750);
     G(0xFC26A004, 0x1FFC93F8);
     D_8028AA10 += BE16(obj->vtxs) * 3;
     D_8028AA08 += BE16(obj->tris) * 3;
     D_8028AA38 += BE16(obj->x52) * 3;
-    mark = 0;
-    vtxBase = 0;
+    {
+      unsigned char clip[32];
+      unsigned int *mark;
+      float s0;
+      float s1;
+      float a;
+      Vtx *vtxBase;
+      unsigned int *p;
+      float b;
+      float d;
+      float e;
+      unsigned int src;
+      unsigned char *cl;
+      float len2;
+      float vx;
+      float vy;
+      float vz;
+      float sz;
+      float m00, m10, m20, m30, m01, m11, m21, m31;
+
+      cl = clip;
+      mark = 0;
+      vtxBase = 0;
     for (i = 0; cars != 0; i++, cars = (int)cars >> 1) {
       if ((cars & 1) == 0 ||
           ((D_8028AAF4 == &D_8028AAF0->cams[0] || D_8028AAF4 == &D_8028AAF0->cams[2]) &&
            i == D_8028AAF0->slot)) {
         continue;
       }
-      car = &D_8031B760[i];
-      tgr_wr32(&dl[0], 0xE7000000);
-      tgr_wr32(&dl[1], 0);
-      tgr_wr32(&dl[2], 0xFB000000);
-      tgr_wr32(&dl[3], BrFloatToInt(car->fog * 255.0f) & 0xFF | D_8028AB20 << 24 | D_8028AB24 << 16 | D_8028AB28 << 8);
-      D_8035D1C0.x = car->mtx0[0][0];
-      D_8035D1C0.y = car->mtx0[0][1];
+      p = dl;
+      tgr_wr32(&p[0], 0xE7000000);
+      tgr_wr32(&p[1], 0);
+      p += 2;
+      {
+        Gfx *g_ = (Gfx *)p;
+
+        p += 2;
+        tgr_wr32(&g_->words.w0, 0xFB000000);
+        tgr_wr32(&g_->words.w1, TGR_W1((_SHIFTL(D_8028AB20, 24, 8) | _SHIFTL(D_8028AB24, 16, 8) | _SHIFTL(D_8028AB28, 8, 8) | _SHIFTL(BrFloatToInt(D_8031B760[i].fog * 255.0f), 0, 8))));
+      }
+      cmd = start;
+      dl = p;
+      D_8035D1C0.x = D_8031B760[i].mtx0[0][0];
+      D_8035D1C0.y = D_8031B760[i].mtx0[0][1];
+      D_8035D1C0.z = D_8031B760[i].mtx0[0][2];
       if (D_8035D1C0.x == 0.0f && D_8035D1C0.y == 0.0f) {
-        D_8035D1C0.x = car->mtx0[2][0];
-        D_8035D1C0.y = car->mtx0[2][1];
+        D_8035D1C0.x = D_8031B760[i].mtx0[2][0];
+        D_8035D1C0.y = D_8031B760[i].mtx0[2][1];
+        D_8035D1C0.z = D_8031B760[i].mtx0[2][2];
       }
       D_8035D1C0.z = 0;
       s0 = BrVec3LenXY(&D_8035D1C0);
       if (s0 < 0.5f) {
         s0 = 0.5f;
       }
-      s1 = BrVec3LenXY((BrVec3 *)car->mtx0[1]);
+      s1 = BrVec3LenXY((BrVec3 *)D_8031B760[i].mtx0[1]);
       if (s1 < 0.5f) {
         s1 = 0.5f;
       }
-      model = (BrCarModel *)TGR_PTR(char *, car->model);
+      model = (BrCarModel *)TGR_PTR(char *, D_8031B760[i].model);
       s0 = D_802AA004 / BEF(model->wheel[0][0]) / s0;
       s1 = D_802AA008 / BEF(model->wheel[0][1]) / s1;
       BrVec3Normalise(&D_8035D1C0);
+      a = D_8035D1C0.x * s0;
+      b = -D_8035D1C0.y * s0;
+      d = D_8035D1C0.x * s1;
+      e = -D_8035D1C0.y * s1;
       br_mat4_from((float (*)[4])D_8031AB10, (const bef_t (*)[4])obj->m);
-      D_8031AB10[3][0] -= car->mtx0[3][0];
-      D_8031AB10[3][1] -= car->mtx0[3][1];
-      D_8031AB50[0] = D_8035D1C0.x * s0;
-      D_8031AB50[4] = -(-D_8035D1C0.y * s0);
+      D_8031AB10[3][0] -= D_8031B760[i].mtx0[3][0];
+      D_8031AB10[3][1] -= D_8031B760[i].mtx0[3][1];
+      D_8031AB50[0] = a;
+      D_8031AB50[4] = -b;
       D_8031AB50[8] = 0;
       D_8031AB50[12] = 512.0f;
-      D_8031AB50[1] = -D_8035D1C0.y * s1;
-      D_8031AB50[5] = D_8035D1C0.x * s1;
+      D_8031AB50[1] = e;
+      D_8031AB50[5] = d;
       D_8031AB50[9] = 0;
       D_8031AB50[13] = 512.0f;
       D_8031AB50[2] = 0;
@@ -300,11 +402,11 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       D_8031AB50[11] = 0;
       D_8031AB50[15] = 1.0f;
       BrMat4Mul(D_8031AB10, D_8031AB10, D_8031AB50);
-      k = D_8031AB10[3][3] + (D_8031AB10[0][3] + D_8031AB10[1][3] + D_8031AB10[2][3]);
-      if (k == 0.0f) {
-        k = 1.0f;
-      } else {
+      k = D_8031AB10[0][3] + D_8031AB10[1][3] + D_8031AB10[2][3] + D_8031AB10[3][3];
+      if (k != 0.0f) {
         k = 1.0f / k;
+      } else {
+        k = 1.0f;
       }
       D_8031AB10[0][0] *= k;
       D_8031AB10[1][0] *= k;
@@ -314,21 +416,97 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       D_8031AB10[1][1] *= k;
       D_8031AB10[2][1] *= k;
       D_8031AB10[3][1] *= k;
-      dl += 4;
       if (D_8028AA60 == 0) {
-        save = (unsigned int *)D_8028A858;
-        D_8028A858 = (Gfx *)dl;
-        BrScissorSet(((short *)car->pad2050)[0], ((short *)car->pad2050)[3],
-                     ((short *)car->pad2050)[2] - ((short *)car->pad2050)[0],
-                     ((short *)car->pad2050)[1] - ((short *)car->pad2050)[3]);
+        save = (unsigned int *)*gp;
+        *gp = (Gfx *)p;
+        BrScissorSet(((short *)D_8031B760[i].pad2050)[0], ((short *)D_8031B760[i].pad2050)[3], ((short *)D_8031B760[i].pad2050)[2] - ((short *)D_8031B760[i].pad2050)[0], ((short *)D_8031B760[i].pad2050)[1] - ((short *)D_8031B760[i].pad2050)[3]);
         dl = (unsigned int *)D_8028A858;
         D_8028A858 = (Gfx *)save;
       }
-      cmd = BEPTR(unsigned int *, obj->dl);
-      while ((dl - D_8028C760) < 0x3C9) {
-        c = tgr_rd32(&cmd[0]);
-        switch (c >> 24) {
+      for (;;) {
+        if ((dl - D_8028C760) >= 0x3C9) {
+          break;
+        }
+        switch (tgr_rd32(&cmd[0]) >> 24) {
+        case 0xB1:
+          if (D_8028AA60 != 0) {
+            tgr_wr32(&dl[0], tgr_rd32(&cmd[0]));
+            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
+            dl += 2;
+            cmd += 2;
+            break;
+          }
+          c2 = tgr_rd32(&cmd[0]) >> 1;
+          f = cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          if (f) {
+            c2 = tgr_rd32(&cmd[1]);
+            c2 >>= 1;
+            f = cl[c2 & 0x1F];
+            c2 >>= 8;
+            f &= cl[c2 & 0x1F];
+            c2 >>= 8;
+            f &= cl[c2 & 0x1F];
+            if (f) {
+              cmd += 2;
+              break;
+            }
+            tgr_wr32(&dl[0], 0xBF000000);
+            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]) & 0xFFFFFF);
+            dl += 2;
+            cmd += 2;
+            break;
+          }
+          c2 = tgr_rd32(&cmd[1]);
+          c2 >>= 1;
+          f = cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          if (f) {
+            tgr_wr32(&dl[0], 0xBF000000);
+            tgr_wr32(&dl[1], tgr_rd32(&cmd[0]) & 0xFFFFFF);
+            dl += 2;
+            cmd += 2;
+            break;
+          }
+          tgr_wr32(&dl[0], tgr_rd32(&cmd[0]));
+          tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
+          dl += 2;
+          cmd += 2;
+          break;
+        case 0xB8:
+          goto done;
+        case 0xBF:
+          if (D_8028AA60 != 0) {
+            tgr_wr32(&dl[0], tgr_rd32(&cmd[0]));
+            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
+            dl += 2;
+            cmd += 2;
+            break;
+          }
+          c2 = tgr_rd32(&cmd[1]);
+          c2 >>= 1;
+          f = cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          c2 >>= 8;
+          f &= cl[c2 & 0x1F];
+          if (f) {
+            cmd += 2;
+            break;
+          }
+          tgr_wr32(&dl[0], tgr_rd32(&cmd[0]));
+          tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
+          dl += 2;
+          cmd += 2;
+          break;
         case 0x04:
+          c = tgr_rd32(&cmd[0]) >> 10;
           m00 = D_8031AB10[0][0];
           m10 = D_8031AB10[1][0];
           m20 = D_8031AB10[2][0];
@@ -338,90 +516,52 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
           m21 = D_8031AB10[2][1];
           m31 = D_8031AB10[3][1];
           if (dl == mark) {
-            dl -= 2;
             vtx = vtxBase;
+            dl -= 2;
           }
-          tgr_wr32(&dl[0], c);
-          n = (c >> 10) & 0x3F;
-          if ((vtx + n * 8 - D_8028C768) / 8 > 1000) {
+          c &= 0x3F;
+          n = c;
+          tgr_wr32(dl++, tgr_rd32(&cmd[0]));
+          cmd++;
+          if (vtx + n - D_8028C768 > 1000) {
+            dl--;
             goto next;
           }
-          if (n > 32) {
-            BrFatal("BAD VTX DL");
-          }
-          c2 = tgr_rd32(&cmd[1]);
-          cmd += 2;
-          tgr_wr32(&dl[1], tgr_addr32(vtx));
-          dl += 2;
-          mark = dl;
+          fl = clip;
           vtxBase = vtx;
-          for (fl = clip; n != 0; n--) {
-            BrCopy16(vtx, c2);
-            c2 += 0x10;
-            tgr_wr16(&vtx[4], (short)(int)((short)tgr_rd16(&vtx[0]) * m00 + (short)tgr_rd16(&vtx[1]) * m10 + (short)tgr_rd16(&vtx[2]) * m20 + m30));
-            tgr_wr16(&vtx[5], (short)(int)((short)tgr_rd16(&vtx[0]) * m01 + (short)tgr_rd16(&vtx[1]) * m11 + (short)tgr_rd16(&vtx[2]) * m21 + m31));
-            if ((short)tgr_rd16(&vtx[4]) < 0) {
-              f = 1;
-            } else if ((short)tgr_rd16(&vtx[4]) < 0x400) {
-              f = 0;
-            } else {
-              f = 2;
+          do {
+            if (c > 32) {
+              BrFatal("BAD VTX DL");
             }
-            if ((short)tgr_rd16(&vtx[5]) < 0) {
+          } while (0);
+          src = tgr_rd32(cmd++);
+          c = tgr_addr32(vtx);
+          tgr_wr32(dl++, c);
+          mark = dl;
+          while (n--) {
+            BrCopy16(vtx, src);
+            src += 0x10;
+            vx = (short)BE16(vtx->v.ob[0]);
+            vy = (short)BE16(vtx->v.ob[1]);
+            vz = (short)BE16(vtx->v.ob[2]);
+            SET16(vtx->v.tc[0], (short)(int)(vx * m00 + vy * m10 + vz * m20 + m30));
+            SET16(vtx->v.tc[1], (short)(int)(vx * m01 + vy * m11 + vz * m21 + m31));
+            c = (short)BE16(vtx->v.tc[0]);
+            if (c < 0) {
+              f = 1;
+            } else if (c >= 0x400) {
+              f = 2;
+            } else {
+              f = 0;
+            }
+            if ((short)BE16(vtx->v.tc[1]) < 0) {
               f |= 4;
-            } else if ((short)tgr_rd16(&vtx[5]) >= 0x1000) {
+            } else if ((short)BE16(vtx->v.tc[1]) >= 0x1000) {
               f |= 8;
             }
             *fl++ = f;
-            vtx += 8;
+            vtx++;
           }
-          break;
-        case 0xB1:
-          if (D_8028AA60 != 0) {
-            tgr_wr32(&dl[0], c);
-            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
-            dl += 2;
-            cmd += 2;
-            break;
-          }
-          if (TRIOUT(c) == 0) {
-            c2 = tgr_rd32(&cmd[1]);
-            if (TRIOUT(c2) == 0) {
-              tgr_wr32(&dl[0], c);
-              tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
-              dl += 2;
-            } else {
-              tgr_wr32(&dl[0], 0xBF000000);
-              tgr_wr32(&dl[1], tgr_rd32(&cmd[0]) & 0xFFFFFF);
-              dl += 2;
-            }
-          } else {
-            c2 = tgr_rd32(&cmd[1]);
-            if (TRIOUT(c2) == 0) {
-              tgr_wr32(&dl[0], 0xBF000000);
-              tgr_wr32(&dl[1], tgr_rd32(&cmd[1]) & 0xFFFFFF);
-              dl += 2;
-            }
-          }
-          cmd += 2;
-          break;
-        case 0xB8:
-          goto done;
-        case 0xBF:
-          if (D_8028AA60 != 0) {
-            tgr_wr32(&dl[0], c);
-            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
-            dl += 2;
-            cmd += 2;
-            break;
-          }
-          c2 = tgr_rd32(&cmd[1]);
-          if (TRIOUT(c2) == 0) {
-            tgr_wr32(&dl[0], c);
-            tgr_wr32(&dl[1], tgr_rd32(&cmd[1]));
-            dl += 2;
-          }
-          cmd += 2;
           break;
         default:
           cmd += 2;
@@ -430,24 +570,31 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       }
     done:
       if (dl == mark) {
-        dl -= 2;
         vtx = vtxBase;
+        dl -= 2;
       }
     next:;
     }
-    tgr_wr32(&dl[0], 0xB8000000);
-    tgr_wr32(&dl[1], 0);
+      tgr_wr32(&dl[0], 0xB8000000);
+      tgr_wr32(&dl[1], 0);
+      dl += 2;
+    }
     BrPerfMark(0, 0xFF, 0x80, 0x80, 0xFF);
-    D_8028C764 = vtx;
-    D_8028C75C = dl + 2;
   } else {
-    G(0xBB001001, 0xFFFFFFFF);
+    {
+      Gfx *g_ = D_8028A858++;
+
+      tgr_wr32(&g_->words.w0, 0xBB001001);
+      tgr_wr32(&g_->words.w1, TGR_W1(0xFFFFFFFF));
+    }
     G(0xE8000000, 0);
-    G(0x06000000, cmd);
+    G(0x06000000, start);
     D_8028AA10 += BE16(obj->vtxs);
     D_8028AA08 += BE16(obj->tris);
     D_8028AA38 += BE16(obj->x52);
   }
+  D_8028C764 = vtx;
+  D_8028C75C = dl;
 }
 
 

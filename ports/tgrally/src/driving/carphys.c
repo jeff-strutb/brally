@@ -206,7 +206,7 @@ extern short D_8028B730;
 extern int D_8026FF18;                  /* game mode */
 float sqrtf(float x);
 void BrMat4RotateVec(float out[3], float m[4][4], BrVec3 *v);
-void BrPadConsume(BrDrivePad *pad, unsigned int bit);
+void BrPadConsume(BrDrivePad *pad, int bit);
 /* -- end declarations -- */
 
 #define SGN(x) ((x) == 0.0f ? 0.0f : ((x) > 0.0f ? 1.0f : -1.0f))
@@ -224,54 +224,40 @@ void BrPadConsume(BrDrivePad *pad, unsigned int bit);
  * engine speed from the driven wheels' spin through the gear ratio (or
  * revved freely in neutral), clamped and slewed by at most 400; the
  * handbrake sets the brake force.  The PC twin is BrCtlInputApply (a
- * different tuning of the same idea).
- * RESIDUE (753): the ROM computes x / 2.0f as a divide where ours becomes
- * a multiply by 0.5, keeps the steering target in f14 (ours f18) and its
- * frame is 0x10 smaller; the sign tests and the gearbox follow the same
- * flow. */
-/* @t4-pass 0x80222050 1 2026-09-29 compiles 121 best 753 moved 13  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80222050 2 2026-09-29 compiles 121 best 753 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80222050 */
+ * different tuning of the same idea). */
 /* @implements 0x80222050 tgr BrCarDriveInput */
 void BrCarDriveInput(BrCar *car)
 {
-  float v[3];
   float rate;
-  float x;
-  float old;
   float s;
-  float a;
   float t;
+  float a;
   float sp;
   float lim;
-  float hi;
+  float v[3];
+  float x;
   float lo;
   float tgt;
-  float cur;
-  float bonus;
-  float torque;
-  unsigned int flags;
-  int k;
-  int g;
-  int tltc;
-  short ch;
   int ctlt;
+  float old;
+  unsigned int flags;
+  short k;
+  int g;
 
   s = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->steer;
   if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->kind == 4) {
     a = s < 0.0f ? -s : s;
-    t = SGN(s);
-    car->xdf0 = -(sqrtf(sqrtf(sqrtf(a) * a) * sqrtf(a)) * t) * 10.0f * 3.1415927f / 180.0f;
+    car->xdf0 = -(SGN(s) * sqrtf(sqrtf(a) * sqrtf(sqrtf(a) * a))) * 10.0f * 3.1415927f / 180.0f;
   } else {
     if (0.0f < s) {
       s = s - 0.07f;
       if (s < 0.0f) {
-        s = 0.0f;
+        s = 0;
       }
     } else {
       s = s + 0.07f;
       if (0.0f < s) {
-        s = 0.0f;
+        s = 0;
       }
     }
     sp = car->xfe4[0];
@@ -295,9 +281,9 @@ void BrCarDriveInput(BrCar *car)
     switch (car->xe68) {
     case 0:
       D_8028B720 = 14.0f;
+      D_8028B724 = 0.01f;
       D_8028B728 = 6.0f;
       D_8028B72C = 10.0f;
-      D_8028B724 = 0.01f;
       D_8028B730 = 0;
       k = D_8028B730;
       x = D_8028B728;
@@ -306,8 +292,8 @@ void BrCarDriveInput(BrCar *car)
       D_8028B720 = 14.0f;
       D_8028B724 = 0.01f;
       D_8028B728 = 6.0f;
-      D_8028B730 = 0;
       D_8028B72C = 10.0f;
+      D_8028B730 = 0;
       k = D_8028B730;
       x = 3.0f;
       break;
@@ -321,70 +307,64 @@ void BrCarDriveInput(BrCar *car)
       x = D_8028B728;
       break;
     }
-    lim = D_8028B720 - t / 90.0f * D_8028B72C;
     rate = D_8028B724;
-    a = s < 0.0f ? -s : s;
-    if (a < 0.001f) {
+    lim = D_8028B720 - t / 90.0f * D_8028B72C;
+    if ((s < 0.0f ? -s : s) < 0.001f) {
       tgt = 0.0f;
-      hi = lim * 3.1415927f / 180.0f;
+      t = lim * 3.1415927f / 180.0f;
       lo = -lim * 3.1415927f / 180.0f;
     } else if (s < -0.75f) {
-      hi = lim * 3.1415927f / 180.0f;
+      t = lim * 3.1415927f / 180.0f;
       lo = -lim * 3.1415927f / 180.0f;
-      tgt = hi;
+      tgt = t;
     } else if (0.75f < s) {
       lo = -lim * 3.1415927f / 180.0f;
-      hi = lim * 3.1415927f / 180.0f;
+      t = lim * 3.1415927f / 180.0f;
       tgt = lo;
     } else {
-      x = x - k * (x / 2.0f) * (sp / 200.0f);
+      x = x - k * (x / 2) * (sp / 200.0f);
       tgt = -s * (x * 3.1415927f / 180.0f);
-      hi = lim * 3.1415927f / 180.0f;
+      t = lim * 3.1415927f / 180.0f;
       lo = -lim * 3.1415927f / 180.0f;
     }
-    if (hi < tgt) {
-      tgt = hi;
+    if (t < tgt) {
+      tgt = t;
     }
     if (tgt < lo) {
       tgt = lo;
     }
-    cur = car->xdf0;
-    ch = SGN(cur) != SGN(tgt) || (0.0f < cur && tgt < cur) || (cur < 0.0f && cur < tgt);
-    if (cur == 0.0f) {
-      ch = 0;
+    k = SGN(tgt) != SGN(car->xdf0) || (0.0f < car->xdf0 && tgt < car->xdf0) || (car->xdf0 < 0.0f && car->xdf0 < tgt);
+    if (car->xdf0 == 0.0f) {
+      k = 0;
       *(signed char *)CP_AT(car, 0xE51) = 0;
-      cur = car->xdf0;
     }
-    tltc = tgt < cur;
-    ctlt = cur < tgt;
-    if (tltc && *(signed char *)CP_AT(car, 0xE51) < 0) {
-      ch = 1;
+    g = tgt < car->xdf0;
+    ctlt = car->xdf0 < tgt;
+    if (g && *(signed char *)CP_AT(car, 0xE51) < 0) {
+      k = 1;
     }
     if (ctlt && *(signed char *)CP_AT(car, 0xE51) > 0) {
-      ch = 1;
+      k = 1;
     }
-    if (ch) {
-      *(signed char *)CP_AT(car, 0xE51) = tltc ? -1 : 1;
-      cur = car->xdf0;
+    if (k) {
+      *(signed char *)CP_AT(car, 0xE51) = g ? -1 : 1;
       rate = 1.0f;
-      if (SGN(tgt) != SGN(cur)) {
+      if (SGN(car->xdf0) != SGN(tgt)) {
         tgt = 0.0f;
       }
     } else {
       *(signed char *)CP_AT(car, 0xE51) = 0;
-      cur = car->xdf0;
     }
-    a = cur < tgt ? -(cur - tgt) : cur - tgt;
-    if (a < rate) {
+    if ((car->xdf0 < tgt ? -(car->xdf0 - tgt) : car->xdf0 - tgt) < rate) {
       car->xdf0 = tgt;
-    } else if (tgt < cur) {
-      car->xdf0 = cur - rate;
+    } else if (tgt < car->xdf0) {
+      car->xdf0 = car->xdf0 - rate;
     } else {
-      car->xdf0 = cur + rate;
+      car->xdf0 = car->xdf0 + rate;
     }
   }
   old = car->xdf4;
-  if (old < 800.0f) {
+  if (car->xdf4 < 800.0f) {
     car->xdf4 = 800.0f;
   }
   if (car->xe30 != 0) {
@@ -399,36 +379,35 @@ void BrCarDriveInput(BrCar *car)
     BrPadConsume((BrDrivePad *)TGR_PTR(unsigned int *, car->pad), 0x200000);
     car->xe40--;
     flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
-  } else if (car->xe40 < car->xe28[0] && ((flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags) & 0x100000) &&
-             !(flags & 0x20000)) {
-    BrPadConsume((BrDrivePad *)TGR_PTR(unsigned int *, car->pad), 0x100000);
-    car->xe40++;
-    flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
   } else {
     flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
-  }
-  bonus = 0.0f;
-  if (D_8026FF18 == 1 && car->xfac == 1) {
-    a = D_8031B760[car->slot ^ 1].xfa8 < car->xfa8 ? -(D_8031B760[car->slot ^ 1].xfa8 - car->xfa8)
-                                                   : D_8031B760[car->slot ^ 1].xfa8 - car->xfa8;
-    a = a * 0.5f;
-    bonus = a - 18.0f;
-    if (a < 18.0f) {
-      bonus = 0.0f;
-    } else if (30.0f < bonus) {
-      bonus = 30.0f;
+    if (car->xe40 < car->xe28[0] && (flags & 0x100000) && !(flags & 0x20000)) {
+      BrPadConsume((BrDrivePad *)TGR_PTR(unsigned int *, car->pad), 0x100000);
+      car->xe40++;
+      flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
     }
   }
-  torque = car->xe14[0] * car->xdf4 * car->xdf4 * car->xdf4 + car->xe14[1] * car->xdf4 * car->xdf4 +
-           car->xe14[2] * car->xdf4 + car->xe14[3] + bonus;
+  lo = 0.0f;
+  if (D_8026FF18 == 1 && car->xfac == 1) {
+    a = (D_8031B760[car->slot ^ 1].xfa8 < car->xfa8 ? -(D_8031B760[car->slot ^ 1].xfa8 - car->xfa8)
+                                                    : D_8031B760[car->slot ^ 1].xfa8 - car->xfa8) * 0.5f;
+    lo = a - 18.0f;
+    if (a < 18.0f) {
+      lo = 0.0f;
+    } else if (30.0f < lo) {
+      lo = 30.0f;
+    }
+  }
+  t = car->xe14 * car->xdf4 * car->xdf4 * car->xdf4 + car->xe18 * car->xdf4 * car->xdf4 +
+      car->xe1c * car->xdf4 + car->xe20 + lo;
   if (car->xe30 == 0) {
-    torque = torque * 1.03;
+    t = t * 1.03;
   }
   if (!(flags & 0x10000)) {
-    torque = 0.0f;
+    t = 0.0f;
   }
   g = 0;
-  car->xe38 = torque * 7.0f;
+  car->xe38 = t * 7.0f;
   if (TGR_PTR(struct BrCarLink *, car->link)->flags & 1) {
     car->xe40 = 0;
   } else {
@@ -439,7 +418,7 @@ void BrCarDriveInput(BrCar *car)
     }
   }
   if (g != 0) {
-    car->xdf4 = car->xdf8[g] * (-(*(float *)CP_AT(car, 0x71C) / 6.2831855f) * 60.0f * car->xe14[4]);
+    car->xdf4 = (-(*(float *)CP_AT(car, 0x71C) / 6.2831855f) * 60.0f * car->xe24) * ((float *)car->xdf8)[g];
   } else {
     if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x10000) {
       car->xdf4 += 300.0f;
@@ -457,13 +436,12 @@ void BrCarDriveInput(BrCar *car)
   if (8000.0f < car->xdf4) {
     car->xdf4 = 8000.0f;
   }
-  t = car->xdf4 - old;
-  a = t < 0.0f ? -t : t;
-  if (400.0f < a) {
-    t = SGN(t) * 400.0f;
+  lim = car->xdf4 - old;
+  if (400.0f < (lim < 0.0f ? -lim : lim)) {
+    lim = SGN(lim) * 400.0f;
   }
-  car->xe3c = 0.0f;
-  car->xdf4 = old + t;
+  car->xdf4 = old + lim;
+  car->xe3c = 0;
   if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x40000) {
     car->xe3c = -140000.0f;
   }

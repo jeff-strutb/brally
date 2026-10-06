@@ -124,60 +124,65 @@ void BrRaceDrawLayers(void)
  * a quad swept from the rest angle towards the full-revs angle by the RPM
  * (with a little random shake), or a palette bar whose colours light up to
  * the revs, the unlit ones dimmed or ghosted.  PC twin: BrHudDrawDial.
- * RESIDUE (813, 864 of the ROM's 866 instructions): the ROM's frame is 0xF0
- * with x, y, the key and the frame at 0xEC..0xD8 and the needle pointer and
- * radii at 0x7C..0x74 (wide unused gaps between), where ours is 0xD8 with
- * register choices following. */
-/* @t4-pass 0x80237980 1 2026-10-03 compiles 120 best 811 moved 2  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80237980 2 2026-10-03 compiles 120 best 811 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80237980 */
+ * Byte-exact. The locals follow the ROM's registers: the lamp position and
+ * size go through lx, ly, lw and lh, which the allocator puts straight into
+ * the argument registers, the three-quarter dial height has its own dh, and
+ * the palette bar's needle count, lit length and end reuse ly. A changed
+ * key jumps into the lamp read inside if (frame != the cached frame), so
+ * the cache test branches straight to the draw. The needle angle starts at
+ * the rest angle and is reduced with -=, which makes the revs the
+ * multiply's first operand. The display list blocks and the block-scoped
+ * locals give the 0xF0 frame. */
 /* @implements 0x80237980 tgr BrHudDialDraw */
 void BrHudDialDraw(void)
 {
   int x;
   int y;
   unsigned int key;
-  int frame;
-  unsigned int v;
-  float rev;
+  int v;
   float a;
-  float tip;
-  float base;
+  int frame;
   float fx;
   float fy;
-  BrHudVtx *q;
-  int first;
   int lit;
-  int end;
   be16_t *src;
   be16_t *dst;
+  BrHudImg *img;
+  int lx;
+  int ly;
+  int lw;
+  int lh;
+  int dh;
+  int u0[3];                   /* unused, like fx, fy, lit, src and dst: the frame has them */
 
-  y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - D_8028C7A8[D_8028AAEC].h - 4;
   x = 296 - D_8028C7A8[D_8028AAEC].w;
-  frame = 0;
+  y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - D_8028C7A8[D_8028AAEC].h - 4;
   if (0.0f <= D_8028AAF0->xe38) {
     frame = D_8028AAF0->xe40 + 1;
+  } else {
+    frame = 0;
   }
   key = D_8028AAF0->kind | D_8028AA80 << 8;
   if (key != D_8028C790[D_8028AAEC]) {
     D_8028C7A8[D_8028AAEC].w = D_8028AE0C[D_8028AAF0->kind].dialW;
     D_8028C7A8[D_8028AAEC].h = D_8028AE0C[D_8028AAF0->kind].dialH;
     BrRomRead(TGR_PTR(unsigned short *, D_8028C7A8[D_8028AAEC].data), D_8028AE0C[D_8028AAF0->kind].dialRom + 0x400,
-              D_8028C7A8[D_8028AAEC].h * D_8028C7A8[D_8028AAEC].w);
+              D_8028C7A8[D_8028AAEC].w * D_8028C7A8[D_8028AAEC].h);
     BrRomRead(D_80361530[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200,
               0x200);
     D_8028C7D0[D_8028AAEC].w = D_8028AE0C[D_8028AAF0->kind].lampW;
     D_8028C7D0[D_8028AAEC].h = D_8028AE0C[D_8028AAF0->kind].lampH;
     D_8028C790[D_8028AAEC] = key;
-  } else if (frame == D_8028C798[D_8028AAEC]) {
-    goto draw;
+    goto read;
   }
-  BrRomRead(TGR_PTR(unsigned short *, D_8028C7D0[D_8028AAEC].data),
-            D_8028C7A8[D_8028AAEC].h * D_8028C7A8[D_8028AAEC].w + D_8028AE0C[D_8028AAF0->kind].dialRom +
-                D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w * frame + 0x400,
-            D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w);
-  D_8028C798[D_8028AAEC] = frame;
-draw:
+  if (frame != D_8028C798[D_8028AAEC]) {
+  read:
+    BrRomRead(TGR_PTR(unsigned short *, D_8028C7D0[D_8028AAEC].data),
+              D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w * frame +
+                  (D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028C7A8[D_8028AAEC].w * D_8028C7A8[D_8028AAEC].h) + 0x400,
+              D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w);
+    D_8028C798[D_8028AAEC] = frame;
+  }
   gRaw(D_8028A858++, 0xE7000000, 0);
   gRaw(D_8028A858++, 0xFD100000, D_80361530[D_8028AAEC]);
   gRaw(D_8028A858++, 0xE8000000, 0);
@@ -186,118 +191,121 @@ draw:
   gRaw(D_8028A858++, 0xF0000000, 0x073FC000);
   gRaw(D_8028A858++, 0xE7000000, 0);
   if (D_8028AB0C == 1) {
-    BrRomImageDraw(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w, D_8028C7A8[D_8028AAEC].h,
-                  0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
-    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX + x,
-                  D_8028AE0C[D_8028AAF0->kind].lampY + y, D_8028C7D0[D_8028AAEC].w,
-                  D_8028C7D0[D_8028AAEC].h, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    img = &D_8028C7A8[D_8028AAEC];
+    BrRomImageDraw(img, x, y, img->w, img->h, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    lx = D_8028AE0C[D_8028AAF0->kind].lampX + x;
+    ly = D_8028AE0C[D_8028AAF0->kind].lampY + y;
+    lh = D_8028C7D0[D_8028AAEC].h;
+    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], lx, ly, D_8028C7D0[D_8028AAEC].w, lh, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF,
+                  0xFF, 0);
   } else {
     x += D_8028C7A8[D_8028AAEC].w / 4;
     y += D_8028C7A8[D_8028AAEC].h / 4;
-    BrRomImageDraw(&D_8028C7A8[D_8028AAEC], x, y, D_8028C7A8[D_8028AAEC].w * 3 / 4,
-                  D_8028C7A8[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
-    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].lampX * 3 / 4 + x,
-                  D_8028AE0C[D_8028AAF0->kind].lampY * 3 / 4 + y, D_8028C7D0[D_8028AAEC].w * 3 / 4,
-                  D_8028C7D0[D_8028AAEC].h * 3 / 4, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    lw = D_8028C7A8[D_8028AAEC].w * 3 / 4;
+    dh = D_8028C7A8[D_8028AAEC].h * 3 / 4;
+    BrRomImageDraw(&D_8028C7A8[D_8028AAEC], x, y, lw, dh, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
+    lx = D_8028AE0C[D_8028AAF0->kind].lampX * 3 / 4 + x;
+    ly = D_8028AE0C[D_8028AAF0->kind].lampY * 3 / 4 + y;
+    lw = D_8028C7D0[D_8028AAEC].w * 3 / 4;
+    lh = D_8028C7D0[D_8028AAEC].h * 3 / 4;
+    BrRomImageDraw(&D_8028C7D0[D_8028AAEC], lx, ly, lw, lh, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0);
   }
-  if (D_8026FF10 == 0) {
-    v = BrRandStep() & 0x7F;
-  } else {
-    v = 0x40;
-  }
-  rev = (float)v + D_8028AAF0->xdf4;
-  if (D_8028AE0C[D_8028AAF0->kind].dialMode == 0) {
-    q = D_80361B30[D_8028A85C][D_8028AAEC];
-    if (2 == D_8028AB0C) {
-      x += D_8028AE0C[D_8028AAF0->kind].needleX * 3 / 4;
-      y += D_8028AE0C[D_8028AAF0->kind].needleY * 3 / 4;
-      tip = 15.0f;
-      base = 5.0f;
+  {
+    float rev;
+    BrHudVtx *q;
+    float tip;
+    float base;
+
+    if (D_8026FF10 != 0) {
+      v = 0x40;
     } else {
-      x += D_8028AE0C[D_8028AAF0->kind].needleX;
-      y += D_8028AE0C[D_8028AAF0->kind].needleY;
-      tip = 20.0f;
-      base = 7.0f;
+      v = BrRandStep() & 0x7F;
     }
-    a = D_8028AE0C[D_8028AAF0->kind].needleRest;
-    if (0.0f < rev) {
-      a = a - rev * (a - D_8028AE0C[D_8028AAF0->kind].needleMax) / 8000.0f;
-    }
-    fx = (float)x;
-    fy = (float)(240 - y);
-    SET16(q[0].x, (short)(cosf(a - 0.05f) * tip + fx));
-    SET16(q[0].z, (short)(0));
-    SET16(q[0].y, (short)(sinf(a - 0.05f) * tip + fy));
-    SET16(q[1].x, (short)(cosf(a + 0.05f) * tip + fx));
-    SET16(q[1].z, (short)(0));
-    SET16(q[1].y, (short)(sinf(a + 0.05f) * tip + fy));
-    SET16(q[2].x, (short)(cosf(a + 0.3f) * base + fx));
-    SET16(q[2].z, (short)(0));
-    SET16(q[2].y, (short)(sinf(a + 0.3f) * base + fy));
-    SET16(q[3].x, (short)(cosf(a - 0.3f) * base + fx));
-    SET16(q[3].z, (short)(0));
-    q[0].r = 0;
-    q[0].g = 0xFF;
-    q[0].b = 0;
-    q[0].a = 0xFF;
-    q[1].r = 0;
-    q[1].g = 0xFF;
-    q[1].b = 0;
-    q[1].a = 0xFF;
-    q[2].r = 0;
-    q[2].g = 0xFF;
-    q[2].b = 0;
-    q[2].a = 0xFF;
-    q[3].r = 0;
-    q[3].g = 0xFF;
-    q[3].b = 0;
-    q[3].a = 0xFF;
-    SET16(q[3].y, (short)(sinf(a - 0.3f) * base + fy));
-    gRaw(D_8028A858++, 0xE7000000, 0);
-    gRaw(D_8028A858++, 0xBA001402, 0);
-    gRaw(D_8028A858++, 0xFCFFFFFF, 0xFFFE793C);
-    gRaw(D_8028A858++, 0xB900031D, 0x00552048);
-    gRaw(D_8028A858++, 0xB6000000, 0x00033000);
-    gRaw(D_8028A858++, 0xB7000000, 4);
-    gRaw(D_8028A858++, 0x0400103F, q);
-    gRaw(D_8028A858++, 0xB1000204, 0x0406);
-    gRaw(D_8028A858++, 0xE7000000, 0);
-  } else if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1 || D_8028AE0C[D_8028AAF0->kind].dialMode == 2) {
-    first = (0x100 - D_8028AE0C[D_8028AAF0->kind].needleX) & ~3;
-    BrRomRead(&D_80361930[first], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200 + first * 2,
-              (0x100 - first) * 2);
-    lit = rev / 8000.0 * (D_8028AE0C[D_8028AAF0->kind].needleX + 1) - 0.5f;
-    first = 0x100 - D_8028AE0C[D_8028AAF0->kind].needleX;
-    end = first;
-    if (lit >= 0) {
-      end = lit + first;
-    }
-    if (end > 0x100) {
-      end = 0x100;
-    }
-    if (first < end) {
-      src = &D_80361930[first];
-      dst = &D_80361530[D_8028AAEC][first];
-      do {
-        *dst++ = *src++;
-      } while (src < &D_80361930[end]);
-    }
-    if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1) {
-      if (end < 0x100) {
-        src = &D_80361930[end];
-        dst = &D_80361530[D_8028AAEC][end];
-        do {
-          SET16(*dst, (BE16(*src) >> 3) & 0x18C6 | 1);
-          dst++, src++;
-        } while (src < &D_80361930[0x100]);
+    rev = (float)v + D_8028AAF0->xdf4;
+    if (D_8028AE0C[D_8028AAF0->kind].dialMode == 0) {
+      q = D_80361B30[D_8028A85C][D_8028AAEC];
+      if (2 == D_8028AB0C) {
+        x += D_8028AE0C[D_8028AAF0->kind].needleX * 3 / 4;
+        y += D_8028AE0C[D_8028AAF0->kind].needleY * 3 / 4;
+        tip = 15.0f;
+        base = 5.0f;
+      } else {
+        x += D_8028AE0C[D_8028AAF0->kind].needleX;
+        y += D_8028AE0C[D_8028AAF0->kind].needleY;
+        tip = 20.0f;
+        base = 7.0f;
       }
-    } else if (end < 0x100) {
-      src = &D_80361930[end];
-      dst = &D_80361530[D_8028AAEC][end];
-      do {
-        SET16(*dst, BE16(*src) & 0xFFFE);
-        dst++, src++;
-      } while (src < &D_80361930[0x100]);
+      y = 240 - y;
+      a = D_8028AE0C[D_8028AAF0->kind].needleRest;
+      if (0.0f < rev) {
+        a -= rev * (D_8028AE0C[D_8028AAF0->kind].needleRest - D_8028AE0C[D_8028AAF0->kind].needleMax) / 8000.0f;
+      }
+      SET16(q[0].x, (short)(cosf(a - 0.05f) * tip + (float)x));
+      SET16(q[0].y, (short)(sinf(a - 0.05f) * tip + (float)y));
+      SET16(q[0].z, (short)(0));
+      SET16(q[1].x, (short)(cosf(a + 0.05f) * tip + (float)x));
+      SET16(q[1].y, (short)(sinf(a + 0.05f) * tip + (float)y));
+      SET16(q[1].z, (short)(0));
+      SET16(q[2].x, (short)(cosf(a + 0.3f) * base + (float)x));
+      SET16(q[2].y, (short)(sinf(a + 0.3f) * base + (float)y));
+      SET16(q[2].z, (short)(0));
+      SET16(q[3].x, (short)(cosf(a - 0.3f) * base + (float)x));
+      SET16(q[3].y, (short)(sinf(a - 0.3f) * base + (float)y));
+      SET16(q[3].z, (short)(0));
+      q[0].r = 0;
+      q[0].g = 0xFF;
+      q[0].b = 0;
+      q[0].a = 0xFF;
+      q[1].r = 0;
+      q[1].g = 0xFF;
+      q[1].b = 0;
+      q[1].a = 0xFF;
+      q[2].r = 0;
+      q[2].g = 0xFF;
+      q[2].b = 0;
+      q[2].a = 0xFF;
+      q[3].r = 0;
+      q[3].g = 0xFF;
+      q[3].b = 0;
+      q[3].a = 0xFF;
+      gRaw(D_8028A858++, 0xE7000000, 0);
+      gRaw(D_8028A858++, 0xBA001402, 0);
+      gRaw(D_8028A858++, 0xFCFFFFFF, 0xFFFE793C);
+      gRaw(D_8028A858++, 0xB900031D, 0x00552048);
+      gRaw(D_8028A858++, 0xB6000000, 0x00033000);
+      gRaw(D_8028A858++, 0xB7000000, 4);
+      gRaw(D_8028A858++, 0x0400103F, q);
+      gRaw(D_8028A858++, 0xB1000204, 0x0406);
+      gRaw(D_8028A858++, 0xE7000000, 0);
+    } else if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1 || D_8028AE0C[D_8028AAF0->kind].dialMode == 2) {
+      int first;
+
+      first = (0x100 - D_8028AE0C[D_8028AAF0->kind].needleX) & ~3;
+      BrRomRead(&D_80361930[first], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200 + first * 2,
+                (0x100 - first) * 2);
+      ly = D_8028AE0C[D_8028AAF0->kind].needleX;
+      first = 0x100 - ly;
+      ly = rev / 8000.0 * (float)(ly + 1) - 0.5f;
+      if (ly < 0) {
+        ly = 0;
+      }
+      ly += first;
+      if (ly > 0x100) {
+        ly = 0x100;
+      }
+      for (; first < ly; first++) {
+        D_80361530[D_8028AAEC][first] = D_80361930[first];
+      }
+      first = ly;
+      if (D_8028AE0C[D_8028AAF0->kind].dialMode == 1) {
+        for (; first < 0x100; first++) {
+          SET16(D_80361530[D_8028AAEC][first], (BE16(D_80361930[first]) >> 3) & 0x18C6 | 1);
+        }
+      } else {
+        for (; first < 0x100; first++) {
+          SET16(D_80361530[D_8028AAEC][first], BE16(D_80361930[first]) & 0xFFFE);
+        }
+      }
     }
   }
 }
