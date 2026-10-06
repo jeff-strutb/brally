@@ -165,6 +165,29 @@ static int strcasecmp_ascii(const char *a, const char *b)
     return tolower((unsigned char)*a) - tolower((unsigned char)*b);
 }
 
+/* What the port reads from the data track, and nothing else: the disc also
+ * carries the original's programs and installers (SETUP.EXE, iasinst.exe,
+ * the DirectX redistributable ...), which the native game never runs and
+ * which a virus scanner may object to. The folders hold only data (bitmaps,
+ * sounds, tracks, cars). Taken from every brbox scenario run with the port's
+ * file log (BR_FILELOG) and the names the game's code can open: the two
+ * intro files are the title screen's demo races. Boss.ico is the build's
+ * icon. */
+static const char *const KEEP_DIRS[] = { "Images", "Paint", "cargfx", "cars", "sfx", "tracks" };
+static const char *const KEEP_FILES[] = { "BRGlide.dll", "BRString.dll", "BossRally.pod", "RallyCredits.dat",
+                                          "RallyIntro1.dat", "RallyIntro2.dat", "RallyOutro.dat", "loading.img",
+                                          "splash.img", "Boss.ico" };
+
+static int kept(const char *name, int dir)
+{
+    const char *const *l = dir ? KEEP_DIRS : KEEP_FILES;
+    size_t i, n = dir ? sizeof KEEP_DIRS / sizeof *KEEP_DIRS : sizeof KEEP_FILES / sizeof *KEEP_FILES;
+    for (i = 0; i < n; i++)
+        if (!strcasecmp_ascii(name, l[i]))
+            return 1;
+    return 0;
+}
+
 typedef struct walk {
     iso *s;
     const char *out;
@@ -245,14 +268,14 @@ static int walk_dir(walk *w, uint32_t lba, uint32_t size, const char *dir, int d
         if (!(d[i + 32] == 1 && (d[i + 33] == 0 || d[i + 33] == 1))) {   /* not . or .. */
             rec_name(w->s, d + i + 33, d[i + 32], name, sizeof name);
             rb_join(path, sizeof path, dir, name);
-            if (d[i + 25] & 2) {
-                if (!(depth == 0 && !strcasecmp_ascii(name, "directx"))) {
-                    if (w->pass && !rb_mkdirs(path)) {
-                        rb_err(w->err, w->errlen, "cannot make the folder %s", path);
-                        ok = 0;
-                    } else {
-                        ok = walk_dir(w, clba, csize, path, depth + 1);
-                    }
+            if (depth == 0 && !kept(name, d[i + 25] & 2)) {
+                /* not something the game reads */
+            } else if (d[i + 25] & 2) {
+                if (w->pass && !rb_mkdirs(path)) {
+                    rb_err(w->err, w->errlen, "cannot make the folder %s", path);
+                    ok = 0;
+                } else {
+                    ok = walk_dir(w, clba, csize, path, depth + 1);
                 }
             } else if (w->pass) {
                 ok = copy_file(w, clba, csize, path);

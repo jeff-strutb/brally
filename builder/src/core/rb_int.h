@@ -30,7 +30,7 @@ int      rb_set_exec(const char *path);               /* chmod 755 (POSIX) */
 typedef struct rb_track { int number, audio; uint32_t start, count; } rb_track;   /* sectors */
 typedef struct rb_cue { char file[1024]; int ntracks; rb_track t[99]; } rb_cue;
 int rb_cue_parse(const char *path, rb_cue *cue, uint64_t bin_size, char *err, size_t errlen);
-/* the data track's files into dir (directx/ left out) */
+/* the files of the data track the game reads into dir (disc.c KEEP_*) */
 int rb_extract_data_track(const char *bin, const char *dir, rb_progress cb, void *ctx, double lo, double hi,
                           volatile int *cancel, char *err, size_t errlen);
 

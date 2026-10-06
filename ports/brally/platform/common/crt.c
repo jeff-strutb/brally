@@ -144,7 +144,25 @@ static int exists(const char *host)
     return 0;
 }
 
-int plat_path(const char *game, char *host, size_t n)
+/* BR_FILELOG=PATH: every file the game resolves, one host path per line,
+ * appended (which of the disc's files a run reads) */
+static void filelog(const char *host)
+{
+    static FILE *f;
+    static int init;
+    if (!init) {
+        const char *p = getenv("BR_FILELOG");
+        init = 1;
+        if (p)
+            f = fopen(p, "a");
+    }
+    if (f) {
+        fprintf(f, "%s\n", host);
+        fflush(f);
+    }
+}
+
+static int plat_path_find(const char *game, char *host, size_t n)
 {
     char c[520];
     const char *rel;
@@ -160,6 +178,14 @@ int plat_path(const char *game, char *host, size_t n)
         return 1;
     }
     return ci_find(host_cd_dir(), rel, host, n);
+}
+
+int plat_path(const char *game, char *host, size_t n)
+{
+    int r = plat_path_find(game, host, n);
+    if (r)
+        filelog(host);
+    return r;
 }
 
 void plat_path_new(const char *game, char *host, size_t n)
@@ -363,6 +389,11 @@ intptr_t _findfirst(const char *spec, struct _finddata_t *fd)
         snprintf(f->dir, sizeof f->dir, "%s", host_cd_dir());
     else if (ci_find(host_cd_dir(), rel, host, sizeof host))
         snprintf(f->dir, sizeof f->dir, "%s", host);
+    if (f->dir[0]) {
+        char what[1100];
+        snprintf(what, sizeof what, "%s/%s", f->dir, f->pat);    /* a listing: the folder and its pattern */
+        filelog(what);
+    }
     f->d = host_dir_open(host_save_dir());
     if (find_next(f, fd) != 0) {
         if (f->d)

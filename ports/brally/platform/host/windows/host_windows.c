@@ -36,6 +36,7 @@
 #include <mfreadwrite.h>
 #include <shlobj.h>
 #include <xinput.h>
+#include <cpuid.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -69,6 +70,75 @@ static void exe_dir(char *out, size_t n)
         *s = 0;
 }
 
+/* ---- the log ------------------------------------------------------------------------ */
+/* A GUI exe has no console, so what the game and the platform report goes to
+ * log.txt in the save folder (new each run), with what this machine is and,
+ * for the first two minutes, a line a second on how the window kept up:
+ * frames presented and the time drawing them, message waits, whether Windows
+ * judged the window hung. BR_LOGFILE names another file; 0 keeps stderr. */
+static HWND s_win;
+static uint64_t s_stat_t0, s_stat_end, s_pres_ns, s_pres_max, s_wait_ns;
+static unsigned s_pres_n, s_poll_n;
+
+static void log_open(void)
+{
+    char path[MAX_PATH + 16], cpu[49];
+    const char *e = getenv("BR_LOGFILE");
+    unsigned r[4];
+    int i;
+    OSVERSIONINFOW v;
+    LONG (WINAPI *rtl)(OSVERSIONINFOW *);
+    LONG (WINAPI *ntres)(ULONG *, ULONG *, ULONG *);
+    ULONG lo = 0, hi = 0, cur = 0;
+    if (e && e[0] == '0')
+        return;
+    if (e)
+        snprintf(path, sizeof path, "%s", e);
+    else
+        snprintf(path, sizeof path, "%s\\log.txt", s_save);
+    if (!freopen(path, "w", stderr))
+        return;
+    setvbuf(stderr, NULL, _IONBF, 0);
+    memset(cpu, 0, sizeof cpu);
+    for (i = 0; i < 3; i++) {
+        __cpuid(0x80000002 + i, r[0], r[1], r[2], r[3]);
+        memcpy(cpu + 16 * i, r, 16);
+    }
+    memset(&v, 0, sizeof v);
+    v.dwOSVersionInfoSize = sizeof v;
+    rtl = (LONG (WINAPI *)(OSVERSIONINFOW *))(void *)GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion");
+    if (rtl)
+        rtl(&v);
+    ntres = (LONG (WINAPI *)(ULONG *, ULONG *, ULONG *))(void *)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryTimerResolution");
+    if (ntres)
+        ntres(&lo, &hi, &cur);
+    fprintf(stderr, "host: %s on Windows %lu.%lu.%lu, %lu logical processors, timer %.1f ms (finest %.1f)\n", cpu,
+            v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber, (unsigned long)GetActiveProcessorCount(ALL_PROCESSOR_GROUPS),
+            cur / 1e4, hi / 1e4);
+    s_stat_end = host_ticks_ns() + 120000000000ull;
+}
+
+static void host_stats(void)
+{
+    uint64_t now = host_ticks_ns();
+    RECT r;
+    if (!s_stat_end || now > s_stat_end)
+        return;
+    if (!s_stat_t0) {
+        s_stat_t0 = now;
+        return;
+    }
+    if (now - s_stat_t0 < 1000000000ull)
+        return;
+    GetClientRect(s_win, &r);
+    fprintf(stderr, "host: %.2f s: %u presents, %.2f ms avg %.1f max drawing them, %u polls, %.0f ms waiting, window %ldx%ld, hung %d\n",
+            (now - s_stat_t0) / 1e9, s_pres_n, s_pres_n ? s_pres_ns / 1e6 / s_pres_n : 0.0, s_pres_max / 1e6, s_poll_n,
+            s_wait_ns / 1e6, (long)r.right, (long)r.bottom, s_win ? (int)IsHungAppWindow(s_win) : -1);
+    s_stat_t0 = now;
+    s_pres_n = s_poll_n = 0;
+    s_pres_ns = s_pres_max = s_wait_ns = 0;
+}
+
 void host_init(int argc, char **argv)
 {
     const char *e;
@@ -96,6 +166,7 @@ void host_init(int argc, char **argv)
             snprintf(s_save, sizeof s_save, "%s\\save", here);
     }
     host_mkdir(s_save);
+    log_open();
     e = getenv("BR_MUSICDIR");
     if (e)
         snprintf(s_music, sizeof s_music, "%s", e);
@@ -166,7 +237,6 @@ static void key_event(WPARAM vk, LPARAM lp, int down)
 }
 
 /* ---- the window ----------------------------------------------------------------- */
-static HWND s_win;
 static int s_w = 640, s_h = 480;
 
 static void client_point(LPARAM lp, int *x, int *y)
@@ -334,15 +404,25 @@ void host_present(const uint32_t *argb, int w, int h)
     }
     ox = (r.right - dw) / 2;
     oy = (r.bottom - dh) / 2;
-    dc = GetDC(s_win);
-    SetStretchBltMode(dc, COLORONCOLOR);
-    StretchDIBits(dc, ox, oy, dw, dh, 0, 0, w, h, argb, &bi, DIB_RGB_COLORS, SRCCOPY);
-    ReleaseDC(s_win, dc);
+    {
+        uint64_t t = host_ticks_ns();
+        dc = GetDC(s_win);
+        SetStretchBltMode(dc, COLORONCOLOR);
+        StretchDIBits(dc, ox, oy, dw, dh, 0, 0, w, h, argb, &bi, DIB_RGB_COLORS, SRCCOPY);
+        ReleaseDC(s_win, dc);
+        t = host_ticks_ns() - t;
+        s_pres_n++;
+        s_pres_ns += t;
+        if (t > s_pres_max)
+            s_pres_max = t;
+    }
+    host_stats();
 }
 
 int host_poll_event(host_event *ev, uint32_t wait_ms)
 {
     MSG m;
+    s_poll_n++;
     while (s_qh == s_qt) {
         if (PeekMessageA(&m, NULL, 0, 0, PM_REMOVE)) {
             TranslateMessage(&m);
@@ -351,9 +431,14 @@ int host_poll_event(host_event *ev, uint32_t wait_ms)
         }
         if (wait_ms == 0)
             return 0;
-        if (MsgWaitForMultipleObjects(0, NULL, FALSE, wait_ms == 0xFFFFFFFFu ? INFINITE : wait_ms,
-                                      QS_ALLINPUT) == WAIT_TIMEOUT)
-            return 0;
+        {
+            uint64_t t = host_ticks_ns();
+            DWORD r = MsgWaitForMultipleObjects(0, NULL, FALSE, wait_ms == 0xFFFFFFFFu ? INFINITE : wait_ms, QS_ALLINPUT);
+            s_wait_ns += host_ticks_ns() - t;
+            host_stats();
+            if (r == WAIT_TIMEOUT)
+                return 0;
+        }
         wait_ms = 0;
     }
     *ev = s_q[s_qh];

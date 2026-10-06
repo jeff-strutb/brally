@@ -49,6 +49,10 @@ int main(int argc, char **argv)
         else usage();
     }
     host_set_app_name("Top Gear Rally", "Top Gear Rally");
+#ifdef _WIN32
+    if (!g_tgr.headless && !getenv("TGR_STATS"))
+        _putenv("TGR_STATS=1");        /* the timing report goes to the log (host/windows) */
+#endif
     host_init(argc, argv);
     if (g_tgr.script)
         tgr_script_load(g_tgr.script);
