@@ -27,13 +27,16 @@ register-allocation walls. Pairing is not by shared strings (7 usable, not
 
 `tools/brally/refcheck.py` must say Glide-keyed. Tools honour `BR_REF` / `BR_MAP`.
 
-## 1. Bit-exact under MSVC 5.0; the same source cross-compiles as the port
+## 1. Bit-exact under MSVC 5.0; the ports adapt, the decomp does not
 
-Do not reorder matching to make something run. Do keep the port buildable.
-The decomp sources hold only what MSVC compiles: no `BR_MATCHING_BUILD` /
-`_MSC_VER` conditionals (the hook refuses one). A port difference is a spec
-in the port's patch tree. Refactors of either side are checked with
-`tools/brally/ppgate.py` (MSVC tokens) and the port's `portpp.py` (port tokens).
+Do not reorder matching to make something run. The decomp sources hold only
+what MSVC compiles: no `BR_MATCHING_BUILD` / `_MSC_VER` conditionals (the hook
+refuses one). The ports carry their own differences: ports/brally is a retyped
+64-bit fork (ports/brally/tools/sync.py reports what to carry over), and
+ports/brally-wasm compiles the MSVC arm as it is. A refactor of the decomp is
+checked with `tools/brally/ppgate.py` (MSVC tokens unchanged).
+(Until 2026-10-05 a legacy macOS harness also compiled the decomp through
+per-file port specs; it was retired with the address-batch slices it ran on.)
 
 ## 2. `@implements` means the bytes diff clean. Nothing else.
 
@@ -60,9 +63,9 @@ python3 tools/brally/fileaudit.py        # ratchets: undescribed 0, batches 0, s
 ```
 
 The pre-commit hook refuses a new `@implements` without `WHAT IT DOES:`, a new
-`sliceN_MM.c`, or a new VA in an existing batch. After a refile:
-`python3 tools/brally/portcheck.py --baseline main`. The sweep compiles nothing for a
-file with no `@implements`.
+`sliceN_MM.c`, or a new VA in an existing batch. After a refile, sweep both
+files and keep the move only if nothing regressed. The sweep compiles nothing
+for a file with no `@implements`.
 
 ## 7. Commit every verified match immediately. Use pathspecs. Never stage behind a revert.
 

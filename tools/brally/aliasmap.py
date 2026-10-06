@@ -92,7 +92,7 @@ WHAT IT CANNOT SEE
 CALIBRATION
 ===========
 
-`--selftest` runs the tool against the five known instances.  Three of the five are RESOLVED in the current tree, so they
+`--selftest` runs the tool against the four known instances.  They are resolved in the current tree, so they
 cannot be rediscovered by observation; the honest test is to reinstate each
 shape and confirm the tool flags it, which --selftest does with in-memory
 mutations of the source text.  It prints per-case PASS/MISS and an overall
@@ -102,7 +102,7 @@ says so and says which case is missed and why.
 
 USAGE
     tools/brally/aliasmap.py                 # the sweep
-    tools/brally/aliasmap.py --selftest      # calibration against the five known cases
+    tools/brally/aliasmap.py --selftest      # calibration against the four known cases
     tools/brally/aliasmap.py --addr 0x10AA2904
     tools/brally/aliasmap.py --pair          # (re)derive the Glide/D3D global pairing
     tools/brally/aliasmap.py --transpose     # one host name, several addresses
@@ -120,11 +120,9 @@ PORT = os.path.join(ROOT, "port")
 
 # ---------------------------------------------------------------- the corpus
 
-# Declarations are looked for here.  tests/brally/ is scanned for TRAFFIC but not
-# for declarations: a test that defines storage for a global it links against
-# is not a competing model of the original, it is a link fixture.
+# Declarations and traffic are looked for in the decomp tree.
 DECL_DIRS = ["src/brally/include", "src/brally"]
-TRAFFIC_DIRS = ["src/brally/include", "src/brally", "tests/brally"]
+TRAFFIC_DIRS = ["src/brally/include", "src/brally"]
 
 
 def walk(dirs):
@@ -670,11 +668,6 @@ CAL = [
          mutate=("src/brally/include/br_sfxsrc.h",
                  "extern BrSfxChan g_aBrSfxChanApplied[BR_SFX_CHANNELS];",
                  "/* deleted by aliasmap --selftest */")),
-    dict(label="3 0x106C0964 three names", addr=0x106C0964,
-         mutate=("ports/brally-wasm/include/slice8_83.h",
-                 "/* 0x106C0964 and friends",
-                 "extern void *g_brHook6C0964;   /* 0x106C0964 */\n"
-                 "/* 0x106C0964 and friends")),
     dict(label="4 0x10AA2904 three objects", addr=0x10AA2904, mutate=None),
     dict(label="5 phase struct two models", addr=0x10AA2904, mutate=None,
          # Reached only indirectly: BrPhase_ and BrUiPhase are two models of a
@@ -687,7 +680,7 @@ CAL = [
 def selftest():
     known = load_globals()
     files = walk(DECL_DIRS)
-    print("CALIBRATION -- the five known instances")
+    print("CALIBRATION -- the four known instances")
     print("=" * 78)
     results = []
     for case in CAL:

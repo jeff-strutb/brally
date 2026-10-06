@@ -48,9 +48,9 @@ Non-goals:
   original's own design: it interpolates between snapshots (section 4.3).
 - Audio. It is gated on a user decision (`ports/README.md`,
   `docs/brally/port/music-decision.md`). Ask before writing any.
-- The native 64-bit lane (`build.sh`, `ports/brally-wasm/metal/`). That lane is later
-  work. Its `br_gfx_metal.m` 3D path already batches GBI-level draws
-  (`BrGfx3dDraw`) and is prior art to borrow from, not the target.
+- The native 64-bit port (`ports/brally`), which has its own platform layer.
+  (The older clang harness's `br_gfx_metal.m`, retired 2026-10-05 and in git
+  history, batched GBI-level draws and is prior art, not the target.)
 
 ## 3. The seam: native overrides of game functions
 

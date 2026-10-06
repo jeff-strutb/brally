@@ -211,7 +211,7 @@ offset.
 .venv/bin/python tools/brally/claim_lane.py release <TOKEN>
 ```
 
-After a refile: `portcheck.py --baseline main`. Report T4 bytes and T1->T2
+Report T4 bytes and T1->T2
 promotions, each with its denominator. Matched and parked separately.
 
 ## Bookkeeping that bites

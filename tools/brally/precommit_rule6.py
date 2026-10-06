@@ -86,9 +86,9 @@ def tag_vas_now(path):
         return set(m.group(1).upper() for m in TAG.finditer(f.read()))
 
 
-# src/brally/ and src/brally/include/ are what MSVC compiles and nothing else: a Mac-port
-# difference is a spec in ports/brally-wasm/patch/ (ports/brally-wasm/tools/portgen.py),
-# never a conditional on the build.  Judged on the lines the commit adds.
+# src/brally/ and src/brally/include/ are what MSVC compiles and nothing else: a port
+# difference belongs in the port (ports/brally is a fork), never a conditional on
+# the build.  Judged on the lines the commit adds.
 PORT_COND = re.compile(r'^\s*#\s*(if|ifdef|ifndef|elif)\b.*\b(BR_MATCHING_BUILD|_MSC_VER)\b')
 
 
@@ -134,9 +134,8 @@ def main():
         print('add a build conditional:\n')
         for rel, ln in conds:
             print('  PORT CONDITIONAL  %s:%d' % (rel, ln))
-        print('\nWrite the matching code unconditionally. Whatever the Mac port')
-        print('must do differently goes in ports/brally-wasm/patch/<path>.port -- see')
-        print('ports/brally-wasm/tools/portgen.py for the format.\n')
+        print('\nWrite the matching code unconditionally. Whatever a port must do')
+        print('differently goes in that port (ports/brally is a fork of the core).\n')
     if not bad and not batches and not filed_into_batch:
         return 1 if conds else 0
 

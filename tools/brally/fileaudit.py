@@ -56,7 +56,8 @@ from filing import (FILING, is_slice, load_report, module_of,  # noqa: E402
 # duplicated, so the file moved intact rather than being taken apart.
 # 56 -> 0 on 2026-09-28: none held a matched body any more -- every function
 # left was the port's BRD3D-era transcription or a dead copy of a body matched
-# in its module -- so all 56 moved out of src/brally/ to ports/brally-wasm/legacy/.
+# in its module -- so all 56 moved out of src/ to a legacy port folder (2026-09-28),
+# which was retired with its harness on 2026-10-05.
 BASELINE = 0
 # Functions without a WHAT IT DOES: comment. 0 = every tagged function in
 # every lane must carry one; the next match without a description FAILS.

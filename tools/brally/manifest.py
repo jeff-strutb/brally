@@ -89,18 +89,9 @@ def manifest():
 
 
 def legacy():
-    """isported.py's inferred index, kept only until the manifest covers it."""
-    sys.path.insert(0, os.path.dirname(__file__))
-    try:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            'isp', os.path.join(os.path.dirname(__file__), 'isported.py'))
-        isp = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(isp)
-        return isp.definitions()
-    except Exception as e:
-        print("  (legacy detector unavailable: %s)" % e)
-        return {}
+    """The inferred index came from isported.py over the legacy port tree,
+    both retired on 2026-10-05; the manifest is the only source now."""
+    return {}
 
 
 def pairs():

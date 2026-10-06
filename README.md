@@ -221,9 +221,8 @@ A function is not done until it says what it does and lives in its module.
 a `WHAT IT DOES:` comment, creates a `sliceN_MM.c`, or adds a new VA to an
 existing address batch. `tools/brally/fileaudit.py` is a ratchet across all three
 lanes (undescribed 0, batches 58, stranded 11) and fails on a bad `@t3` tag.
-After a refile: `python3 tools/brally/portcheck.py --baseline main`: the sweep only
-compiles `/DBR_MATCHING_BUILD`. Moving byte-exact code can change it; sweep
-both files and keep the move only if nothing regressed.
+Moving byte-exact code can change its codegen: after a refile, sweep both
+files and keep the move only if nothing regressed.
 
 ### Architecture
 
@@ -238,7 +237,6 @@ derived platform code, not byte-matched.
     tools/tgrally/               the N64 lane's tools; the soundtrack tools
     tools/common/                git hooks, provenance check
     tools/toolchains/            MSVC 5.0, Wine, IDO 5.3 (staged by setup.sh)
-    tests/brally/                unit tests (build.sh)
     docs/{brally,tgrally}/       procedure, rules, and everything the work learned
     ports/brally/                the native 64-bit port: a retyped fork of the core
                                  plus a cross-platform layer (macOS, Windows)
@@ -269,11 +267,11 @@ Further reading: [docs/brally/ARCHITECTURE.md](docs/brally/ARCHITECTURE.md), [do
 - **`sh tools/brally/build_match.sh`**: compiles with the original compiler and diffs; each
   function reports MATCH or DIFF with the first divergence. `tools/brally/pe_patch.py`
   patches matches back into the DLL for drop-in testing.
-- **`./build.sh`**: builds the portable core natively with clang, with its unit
-  tests and the older partial harness `build/brally`. Modules and tests are
-  auto-discovered. `./tools/regress.sh` runs every suite. The playable
-  builds are separate: the [native port](#native-port-64-bit-cross-platform)
-  (macOS, Windows, headless) and the [Remastered Mac port](docs/brally/remaster/REMASTER.md)'s 32-bit lane.
+- The playable builds are the [native port](#native-port-64-bit-cross-platform)
+  (macOS, Windows, headless; its scenario suite is `ports/brally/tools/suite.sh`)
+  and the [Remastered Mac port](docs/brally/remaster/REMASTER.md)'s 32-bit lane
+  (`sh ports/brally-wasm/wasm/build_wasm.sh`, packaged by
+  `ports/brally-wasm/wasm/package_app.sh`).
 
 ### Reference data (you supply; none tracked in git)
 
