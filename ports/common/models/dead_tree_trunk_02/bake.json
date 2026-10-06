@@ -1,0 +1,76 @@
+{
+ "asset": "dead_tree_trunk_02",
+ "source": "dead_tree_trunk_02_4k.blend",
+ "targets": [
+  40000,
+  10000,
+  2500
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 83128,
+   "lods": [
+    {
+     "tris": 41564,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 41564
+      }
+     ]
+    },
+    {
+     "tris": 10390,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 10390
+      }
+     ]
+    },
+    {
+     "tris": 2500,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2500
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.0540249347686768,
+     -0.5631135106086731,
+     -7.233023643493652e-05
+    ],
+    [
+     1.9976637363433838,
+     0.49266013503074646,
+     1.055400013923645
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "dead_tree_trunk_02",
+   "images": {
+    "rough": "dead_tree_trunk_02_rough.png",
+    "normal": "dead_tree_trunk_02_nor_gl.png",
+    "base": "dead_tree_trunk_02_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

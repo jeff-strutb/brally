@@ -1,0 +1,266 @@
+{
+ "asset": "pine_sapling_small",
+ "source": "pine_sapling_small_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 142506,
+   "lods": [
+    {
+     "tris": 142506,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 540
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 141966
+      }
+     ]
+    },
+    {
+     "tris": 142506,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 540
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 141966
+      }
+     ]
+    },
+    {
+     "tris": 142506,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 540
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 141966
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.39444172382354736,
+     -0.3621176481246948,
+     0.0
+    ],
+    [
+     0.39323189854621887,
+     0.3653036653995514,
+     1.2989574670791626
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     843
+    ],
+    "half": 0.4023305583000183,
+    "height": 1.324936616420746,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 122235,
+   "lods": [
+    {
+     "tris": 122235,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 486
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 121749
+      }
+     ]
+    },
+    {
+     "tris": 122235,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 486
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 121749
+      }
+     ]
+    },
+    {
+     "tris": 122235,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 486
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 121749
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.29722416400909424,
+     -0.42978155612945557,
+     0.0
+    ],
+    [
+     0.2315371036529541,
+     0.3005649745464325,
+     1.0456082820892334
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     623
+    ],
+    "half": 0.43837718725204466,
+    "height": 1.0665204477310182,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 133403,
+   "lods": [
+    {
+     "tris": 133403,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 528
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 132875
+      }
+     ]
+    },
+    {
+     "tris": 133403,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 528
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 132875
+      }
+     ]
+    },
+    {
+     "tris": 133403,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 528
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 132875
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.25004255771636963,
+     -0.2832089960575104,
+     0.0
+    ],
+    [
+     0.2627434730529785,
+     0.2967565357685089,
+     0.9613255858421326
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     829
+    ],
+    "half": 0.3026916664838791,
+    "height": 0.9805520975589752,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "pine_sapling_small_bark",
+   "images": {
+    "rough": "pine_sapling_small_bark_rough.png",
+    "normal": "pine_sapling_small_bark_nor_gl.png",
+    "base": "pine_sapling_small_bark_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "pine_sapling_small_twig",
+   "images": {
+    "base": "pine_sapling_small_twig_diff.png",
+    "rough": "pine_sapling_small_twig_rough.png",
+    "normal": "pine_sapling_small_twig_nor_gl.png",
+    "alpha": "pine_sapling_small_twig_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

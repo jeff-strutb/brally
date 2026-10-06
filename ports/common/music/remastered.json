@@ -1,0 +1,41 @@
+{
+ "title": {
+  "file": "remastered_title.flac",
+  "loop_start": 8478720,
+  "loop_end": 16957440,
+  "gain_db": -1.36
+ },
+ "race": [
+  {
+   "file": "remastered_desert.flac",
+   "loop_start": 12533760,
+   "loop_end": 21749760,
+   "gain_db": -1.23
+  },
+  {
+   "file": "remastered_mountain.flac",
+   "loop_start": 10106880,
+   "loop_end": 19875840,
+   "gain_db": -1.53
+  },
+  {
+   "file": "remastered_coastline.flac",
+   "loop_start": 9953280,
+   "loop_end": 18800640,
+   "gain_db": -1.61
+  },
+  {
+   "file": "remastered_stripmine.flac",
+   "loop_start": 8570880,
+   "loop_end": 17141760,
+   "gain_db": -1.47
+  },
+  {
+   "file": "remastered_jungle.flac",
+   "loop_start": 10444800,
+   "loop_end": 19353600,
+   "gain_db": -1.71
+  }
+ ],
+ "about": "Remastered N64 soundtrack: the ROM modules' performance played with modern instruments and mixed in stereo. Each file is the song once plus the looping section again; play [0, loop_end) then [loop_start, loop_end) repeatedly. gain_db levels it with the PC CD tracks (-15.6 LUFS)."
+}

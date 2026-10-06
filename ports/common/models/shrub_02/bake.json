@@ -1,0 +1,265 @@
+{
+ "asset": "shrub_02",
+ "source": "shrub_02_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 7590,
+   "lods": [
+    {
+     "tris": 7590,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 7590
+      }
+     ]
+    },
+    {
+     "tris": 7590,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 7590
+      }
+     ]
+    },
+    {
+     "tris": 2335,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2335
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5062768459320068,
+     -0.5654045343399048,
+     0.0
+    ],
+    [
+     0.5598375201225281,
+     0.7680509090423584,
+     1.372435450553894
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     457
+    ],
+    "half": 0.7834119272232056,
+    "height": 1.399884159564972,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 5242,
+   "lods": [
+    {
+     "tris": 5242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 5242
+      }
+     ]
+    },
+    {
+     "tris": 5242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 5242
+      }
+     ]
+    },
+    {
+     "tris": 1603,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 1603
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.49189603328704834,
+     -0.5329816341400146,
+     4.656612873077393e-10
+    ],
+    [
+     0.4102623760700226,
+     0.5070579051971436,
+     1.224005103111267
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     588
+    ],
+    "half": 0.543641266822815,
+    "height": 1.2484852051734925,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 9234,
+   "lods": [
+    {
+     "tris": 9234,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 9234
+      }
+     ]
+    },
+    {
+     "tris": 9234,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 9234
+      }
+     ]
+    },
+    {
+     "tris": 2824,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 2824
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5744341611862183,
+     -0.9254869222640991,
+     -1.862645149230957e-09
+    ],
+    [
+     0.861221432685852,
+     0.9313174486160278,
+     1.0683579444885254
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     294
+    ],
+    "half": 0.9499437975883485,
+    "height": 1.089725103378296,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  },
+  {
+   "name": "d",
+   "src_tris": 5188,
+   "lods": [
+    {
+     "tris": 5188,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 5188
+      }
+     ]
+    },
+    {
+     "tris": 5188,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 5188
+      }
+     ]
+    },
+    {
+     "tris": 1591,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 1591
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.43082141876220703,
+     -0.3645058870315552,
+     -3.725290298461914e-09
+    ],
+    [
+     0.4469623565673828,
+     0.5277142524719238,
+     0.9988587498664856
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     485
+    ],
+    "half": 0.5382685375213623,
+    "height": 1.0188359248638152,
+    "base": "d_imp_base.png",
+    "nrm": "d_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "shrub_02",
+   "images": {
+    "alpha": "shrub_02_alpha.png",
+    "normal": "shrub_02_nor_gl.png",
+    "rough": "shrub_02_rough.png",
+    "base": "shrub_02_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

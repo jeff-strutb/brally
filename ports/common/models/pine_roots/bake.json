@@ -1,0 +1,139 @@
+{
+ "asset": "pine_roots",
+ "source": "pine_roots_4k.blend",
+ "targets": [
+  30000,
+  8000,
+  2000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 81625,
+   "lods": [
+    {
+     "tris": 30000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 30000
+      }
+     ]
+    },
+    {
+     "tris": 7999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 7999
+      }
+     ]
+    },
+    {
+     "tris": 2000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.8600755333900452,
+     -0.43074148893356323,
+     8.777529001235962e-05
+    ],
+    [
+     0.879324197769165,
+     0.3952048420906067,
+     0.14437200129032135
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 81068,
+   "lods": [
+    {
+     "tris": 30000,
+     "files": [
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 30000
+      }
+     ]
+    },
+    {
+     "tris": 7999,
+     "files": [
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 7999
+      }
+     ]
+    },
+    {
+     "tris": 1999,
+     "files": [
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 1999
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.820171058177948,
+     -0.518957793712616,
+     4.616007208824158e-05
+    ],
+    [
+     0.808841347694397,
+     0.4739309251308441,
+     0.14806067943572998
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "pine_roots_a",
+   "images": {
+    "base": "pine_roots_a_diff.png",
+    "rough": "pine_roots_a_rough.png",
+    "normal": "pine_roots_a_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "pine_roots_b",
+   "images": {
+    "base": "pine_roots_b_diff.png",
+    "rough": "pine_roots_b_rough.png",
+    "normal": "pine_roots_b_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

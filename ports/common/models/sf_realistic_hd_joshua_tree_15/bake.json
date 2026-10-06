@@ -1,0 +1,427 @@
+{
+ "asset": "sf_realistic_hd_joshua_tree_15",
+ "source": "sf_realistic_hd_joshua_tree_15.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 462845,
+   "lods": [
+    {
+     "tris": 462845,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 24599
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 2233
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 1852
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 50316
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 202
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 1628
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 166948
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 195227
+      },
+      {
+       "mat": 8,
+       "file": "a_lod0_m8.rcm",
+       "tris": 8480
+      },
+      {
+       "mat": 9,
+       "file": "a_lod0_m9.rcm",
+       "tris": 3696
+      },
+      {
+       "mat": 10,
+       "file": "a_lod0_m10.rcm",
+       "tris": 3872
+      },
+      {
+       "mat": 11,
+       "file": "a_lod0_m11.rcm",
+       "tris": 3792
+      }
+     ]
+    },
+    {
+     "tris": 462845,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 24599
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 2233
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 1852
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 50316
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 202
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 1628
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 166948
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 195227
+      },
+      {
+       "mat": 8,
+       "file": "a_lod1_m8.rcm",
+       "tris": 8480
+      },
+      {
+       "mat": 9,
+       "file": "a_lod1_m9.rcm",
+       "tris": 3696
+      },
+      {
+       "mat": 10,
+       "file": "a_lod1_m10.rcm",
+       "tris": 3872
+      },
+      {
+       "mat": 11,
+       "file": "a_lod1_m11.rcm",
+       "tris": 3792
+      }
+     ]
+    },
+    {
+     "tris": 462845,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 24599
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 2233
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 1852
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 50316
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 202
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 1628
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 166948
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 195227
+      },
+      {
+       "mat": 8,
+       "file": "a_lod2_m8.rcm",
+       "tris": 8480
+      },
+      {
+       "mat": 9,
+       "file": "a_lod2_m9.rcm",
+       "tris": 3696
+      },
+      {
+       "mat": 10,
+       "file": "a_lod2_m10.rcm",
+       "tris": 3872
+      },
+      {
+       "mat": 11,
+       "file": "a_lod2_m11.rcm",
+       "tris": 3792
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.7885138988494873,
+     -2.2198023796081543,
+     0.0
+    ],
+    [
+     2.392806053161621,
+     2.6832377910614014,
+     4.4222025871276855
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     406
+    ],
+    "half": 2.844284176826477,
+    "height": 4.51064663887024,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Yucca_brev_bark",
+   "images": {
+    "base": "Yucca_brev_bark_baseColor.png",
+    "normal": "Yucca_brev_bark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_bloom",
+   "images": {
+    "base": "Yucca_brev_bloom_baseColor.png",
+    "normal": "Yucca_brev_bloom_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_crownshaft_01",
+   "images": {
+    "base": "Yucca_brev_crownshaft_01_baseColor.png",
+    "normal": "Yucca_brev_crownshaft_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_flower_01",
+   "images": {
+    "base": "Yucca_brev_flower_01_baseColor.png",
+    "alpha_from": "Yucca_brev_flower_01_baseColor.png",
+    "normal": "Yucca_brev_flower_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01_H2",
+   "images": {
+    "base": "Yucca_brev_leaf_01_H2_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01_H3",
+   "images": {
+    "base": "Yucca_brev_leaf_01_H3_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01",
+   "images": {
+    "base": "Yucca_brev_leaf_01_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_02b",
+   "images": {
+    "base": "Yucca_brev_leaf_02b_baseColor.png",
+    "normal": "Yucca_brev_leaf_02b_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_sepal_01",
+   "images": {
+    "base": "Yucca_brev_sepal_01_baseColor.png",
+    "alpha_from": "Yucca_brev_sepal_01_baseColor.png",
+    "normal": "Yucca_brev_sepal_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m8_base.png",
+    "orm": "m8_orm.png",
+    "nrm": "m8_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_sepal_02",
+   "images": {
+    "base": "Yucca_brev_sepal_02_baseColor.png",
+    "alpha_from": "Yucca_brev_sepal_02_baseColor.png",
+    "normal": "Yucca_brev_sepal_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m9_base.png",
+    "orm": "m9_orm.png",
+    "nrm": "m9_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_sepal_03",
+   "images": {
+    "base": "Yucca_brev_sepal_03_baseColor.png",
+    "alpha_from": "Yucca_brev_sepal_03_baseColor.png",
+    "normal": "Yucca_brev_sepal_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m10_base.png",
+    "orm": "m10_orm.png",
+    "nrm": "m10_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_sepal_04",
+   "images": {
+    "base": "Yucca_brev_sepal_04_baseColor.png",
+    "alpha_from": "Yucca_brev_sepal_04_baseColor.png",
+    "normal": "Yucca_brev_sepal_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m11_base.png",
+    "orm": "m11_orm.png",
+    "nrm": "m11_nrm.png"
+   }
+  }
+ ]
+}

@@ -1,0 +1,180 @@
+{
+ "asset": "sf_ceiba_pentandra_tree",
+ "source": "sf_ceiba_pentandra_tree.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 1622318,
+   "lods": [
+    {
+     "tris": 1622318,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 2829
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 158782
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 16867
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 1443840
+      }
+     ]
+    },
+    {
+     "tris": 1622318,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 2829
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 158782
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 16867
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 1443840
+      }
+     ]
+    },
+    {
+     "tris": 1622318,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2829
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 158782
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 16867
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 1443840
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -38.12098693847656,
+     -40.03073501586914,
+     0.0
+    ],
+    [
+     39.10051727294922,
+     38.11446762084961,
+     95.47464752197266
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     611
+    ],
+    "half": 40.83134971618652,
+    "height": 97.38414047241211,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Cap_02",
+   "images": {
+    "base": "Cap_02_diffuse.png",
+    "normal": "Cap_02_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "KapokBark",
+   "images": {
+    "base": "KapokBark_diffuse.png",
+    "normal": "KapokBark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "KapokBranch",
+   "images": {
+    "base": "KapokBranch_diffuse.png",
+    "normal": "KapokBranch_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "KapokLeaf_1",
+   "images": {
+    "base": "KapokLeaf_1_diffuse.png",
+    "alpha_from": "KapokLeaf_1_diffuse.png",
+    "gltf_mr": "KapokLeaf_1_specularGlossiness.png.001",
+    "normal": "KapokLeaf_1_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  }
+ ]
+}

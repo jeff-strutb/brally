@@ -1,0 +1,266 @@
+{
+ "asset": "fir_sapling",
+ "source": "fir_sapling_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 157402,
+   "lods": [
+    {
+     "tris": 157402,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 546
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 156856
+      }
+     ]
+    },
+    {
+     "tris": 157402,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 546
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 156856
+      }
+     ]
+    },
+    {
+     "tris": 157402,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 546
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 156856
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.4148578345775604,
+     -0.3619648814201355,
+     0.0
+    ],
+    [
+     0.44628870487213135,
+     0.4602712392807007,
+     1.300737977027893
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     723
+    ],
+    "half": 0.4694766640663147,
+    "height": 1.326752736568451,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 150876,
+   "lods": [
+    {
+     "tris": 150876,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 510
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 150366
+      }
+     ]
+    },
+    {
+     "tris": 150876,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 510
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 150366
+      }
+     ]
+    },
+    {
+     "tris": 150876,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 510
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 150366
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.30632448196411133,
+     -0.3636254668235779,
+     0.0
+    ],
+    [
+     0.33358657360076904,
+     0.45393484830856323,
+     0.9515935182571411
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     537
+    ],
+    "half": 0.4630135452747345,
+    "height": 0.970625388622284,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 124743,
+   "lods": [
+    {
+     "tris": 124743,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 384
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 124359
+      }
+     ]
+    },
+    {
+     "tris": 124743,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 384
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 124359
+      }
+     ]
+    },
+    {
+     "tris": 124743,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 384
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 124359
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.2947291135787964,
+     -0.3016982674598694,
+     0.0
+    ],
+    [
+     0.32746028900146484,
+     0.33230695128440857,
+     0.7357000112533569
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     567
+    ],
+    "half": 0.33895309031009674,
+    "height": 0.7504140114784241,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "fir_sapling_branches",
+   "images": {
+    "rough": "fir_sapling_branches_rough.png",
+    "normal": "fir_sapling_branches_nor_gl.png",
+    "base": "fir_sapling_branches_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "fir_sapling_twigs",
+   "images": {
+    "rough": "fir_sapling_twigs_rough.png",
+    "normal": "fir_sapling_twigs_nor_gl.png",
+    "base": "fir_sapling_twigs_diff.png",
+    "alpha": "fir_sapling_twigs_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

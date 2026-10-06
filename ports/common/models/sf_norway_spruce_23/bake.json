@@ -1,0 +1,1237 @@
+{
+ "asset": "sf_norway_spruce_23",
+ "source": "sf_norway_spruce_23.blend",
+ "targets": [
+  55000,
+  42000,
+  30000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 98899,
+   "lods": [
+    {
+     "tris": 54459,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 4712
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 5853
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 9338
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 866
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 3540
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 7786
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 1640
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 3904
+      },
+      {
+       "mat": 8,
+       "file": "a_lod0_m8.rcm",
+       "tris": 15276
+      },
+      {
+       "mat": 9,
+       "file": "a_lod0_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_lod0_m10.rcm",
+       "tris": 1360
+      }
+     ]
+    },
+    {
+     "tris": 41582,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 1213
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 3036
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 4935
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 3372
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 7334
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 1036
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 3848
+      },
+      {
+       "mat": 8,
+       "file": "a_lod1_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_lod1_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_lod1_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 37393,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 150
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 1434
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 3591
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 7310
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_lod2_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_lod2_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_lod2_m10.rcm",
+       "tris": 680
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.644091248512268,
+     -1.6977121829986572,
+     1.3265889720059931e-08
+    ],
+    [
+     1.800887942314148,
+     1.6376335620880127,
+     15.872299194335938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2256
+    ],
+    "half": 1.8369057011604308,
+    "height": 16.18974517822266,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD1",
+   "src_tris": 54459,
+   "lods": [
+    {
+     "tris": 54459,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod0_m0.rcm",
+       "tris": 4712
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod0_m1.rcm",
+       "tris": 5853
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod0_m2.rcm",
+       "tris": 9338
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod0_m3.rcm",
+       "tris": 866
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod0_m4.rcm",
+       "tris": 3540
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod0_m5.rcm",
+       "tris": 7786
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod0_m6.rcm",
+       "tris": 1640
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod0_m7.rcm",
+       "tris": 3904
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod0_m8.rcm",
+       "tris": 15276
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod0_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod0_m10.rcm",
+       "tris": 1360
+      }
+     ]
+    },
+    {
+     "tris": 54459,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod1_m0.rcm",
+       "tris": 4712
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod1_m1.rcm",
+       "tris": 5853
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod1_m2.rcm",
+       "tris": 9338
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod1_m3.rcm",
+       "tris": 866
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod1_m4.rcm",
+       "tris": 3540
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod1_m5.rcm",
+       "tris": 7786
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod1_m6.rcm",
+       "tris": 1640
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod1_m7.rcm",
+       "tris": 3904
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod1_m8.rcm",
+       "tris": 15276
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod1_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod1_m10.rcm",
+       "tris": 1360
+      }
+     ]
+    },
+    {
+     "tris": 54459,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod2_m0.rcm",
+       "tris": 4712
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod2_m1.rcm",
+       "tris": 5853
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod2_m2.rcm",
+       "tris": 9338
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod2_m3.rcm",
+       "tris": 866
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod2_m4.rcm",
+       "tris": 3540
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod2_m5.rcm",
+       "tris": 7786
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod2_m6.rcm",
+       "tris": 1640
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod2_m7.rcm",
+       "tris": 3904
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod2_m8.rcm",
+       "tris": 15276
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod2_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod2_m10.rcm",
+       "tris": 1360
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6700531244277954,
+     -1.7002485990524292,
+     0.0
+    ],
+    [
+     1.7749260663986206,
+     1.6350971460342407,
+     15.872299194335938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2289
+    ],
+    "half": 1.810424587726593,
+    "height": 16.18974517822266,
+    "base": "a_LOD1_imp_base.png",
+    "nrm": "a_LOD1_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD2",
+   "src_tris": 41582,
+   "lods": [
+    {
+     "tris": 41582,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod0_m0.rcm",
+       "tris": 1213
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod0_m1.rcm",
+       "tris": 3036
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod0_m2.rcm",
+       "tris": 4935
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod0_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod0_m4.rcm",
+       "tris": 3372
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod0_m5.rcm",
+       "tris": 7334
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod0_m6.rcm",
+       "tris": 1036
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod0_m7.rcm",
+       "tris": 3848
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod0_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod0_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod0_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 41582,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod1_m0.rcm",
+       "tris": 1213
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod1_m1.rcm",
+       "tris": 3036
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod1_m2.rcm",
+       "tris": 4935
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod1_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod1_m4.rcm",
+       "tris": 3372
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod1_m5.rcm",
+       "tris": 7334
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod1_m6.rcm",
+       "tris": 1036
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod1_m7.rcm",
+       "tris": 3848
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod1_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod1_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod1_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 41582,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod2_m0.rcm",
+       "tris": 1213
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod2_m1.rcm",
+       "tris": 3036
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod2_m2.rcm",
+       "tris": 4935
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod2_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod2_m4.rcm",
+       "tris": 3372
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod2_m5.rcm",
+       "tris": 7334
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod2_m6.rcm",
+       "tris": 1036
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod2_m7.rcm",
+       "tris": 3848
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod2_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod2_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod2_m10.rcm",
+       "tris": 680
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6742022037506104,
+     -1.7005300521850586,
+     0.0
+    ],
+    [
+     1.7707769870758057,
+     1.6348156929016113,
+     15.872299194335938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2295
+    ],
+    "half": 1.8061925268173218,
+    "height": 16.18974517822266,
+    "base": "a_LOD2_imp_base.png",
+    "nrm": "a_LOD2_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD3",
+   "src_tris": 37996,
+   "lods": [
+    {
+     "tris": 37996,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod0_m0.rcm",
+       "tris": 339
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod0_m1.rcm",
+       "tris": 1662
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod0_m2.rcm",
+       "tris": 3771
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod0_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod0_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod0_m5.rcm",
+       "tris": 7316
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod0_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod0_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod0_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod0_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod0_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 37996,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod1_m0.rcm",
+       "tris": 339
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod1_m1.rcm",
+       "tris": 1662
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod1_m2.rcm",
+       "tris": 3771
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod1_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod1_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod1_m5.rcm",
+       "tris": 7316
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod1_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod1_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod1_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod1_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod1_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 37996,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod2_m0.rcm",
+       "tris": 339
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod2_m1.rcm",
+       "tris": 1662
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod2_m2.rcm",
+       "tris": 3771
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod2_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod2_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod2_m5.rcm",
+       "tris": 7316
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod2_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod2_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod2_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod2_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod2_m10.rcm",
+       "tris": 680
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6754014492034912,
+     -1.7009049654006958,
+     0.0
+    ],
+    [
+     1.7695777416229248,
+     1.6344407796859741,
+     15.872299194335938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2296
+    ],
+    "half": 1.8049692964553834,
+    "height": 16.18974517822266,
+    "base": "a_LOD3_imp_base.png",
+    "nrm": "a_LOD3_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD4",
+   "src_tris": 37393,
+   "lods": [
+    {
+     "tris": 37393,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod0_m0.rcm",
+       "tris": 150
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod0_m1.rcm",
+       "tris": 1434
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod0_m2.rcm",
+       "tris": 3591
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod0_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod0_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod0_m5.rcm",
+       "tris": 7310
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod0_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod0_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod0_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod0_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod0_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 37393,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod1_m0.rcm",
+       "tris": 150
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod1_m1.rcm",
+       "tris": 1434
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod1_m2.rcm",
+       "tris": 3591
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod1_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod1_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod1_m5.rcm",
+       "tris": 7310
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod1_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod1_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod1_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod1_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod1_m10.rcm",
+       "tris": 680
+      }
+     ]
+    },
+    {
+     "tris": 37393,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod2_m0.rcm",
+       "tris": 150
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod2_m1.rcm",
+       "tris": 1434
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod2_m2.rcm",
+       "tris": 3591
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod2_m3.rcm",
+       "tris": 864
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod2_m4.rcm",
+       "tris": 3352
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod2_m5.rcm",
+       "tris": 7310
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod2_m6.rcm",
+       "tris": 904
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod2_m7.rcm",
+       "tris": 3844
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod2_m8.rcm",
+       "tris": 15080
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod2_m9.rcm",
+       "tris": 184
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod2_m10.rcm",
+       "tris": 680
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.675719976425171,
+     -1.7009220123291016,
+     0.0
+    ],
+    [
+     1.7692592144012451,
+     1.6344237327575684,
+     15.872299194335938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2297
+    ],
+    "half": 1.80464439868927,
+    "height": 16.18974517822266,
+    "base": "a_LOD4_imp_base.png",
+    "nrm": "a_LOD4_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Picea_abies_bark_2",
+   "images": {
+    "base": "Picea_abies_bark_2_baseColor.png",
+    "normal": "Picea_abies_bark_2_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_abies_brch_dead",
+   "images": {
+    "base": "Picea_abies_brch_dead_baseColor.png",
+    "normal": "Picea_abies_brch_dead_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_branch",
+   "images": {
+    "base": "Picea_branch_baseColor.png",
+    "normal": "Picea_branch_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_brch_cut_02",
+   "images": {
+    "base": "Picea_brch_cut_02_baseColor.png",
+    "normal": "Picea_brch_cut_02_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_1_dead",
+   "images": {
+    "base": "Picea_fol_1_dead_baseColor.png",
+    "alpha_from": "Picea_fol_1_dead_baseColor.png",
+    "normal": "Picea_fol_1_dead_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_1",
+   "images": {
+    "base": "Picea_fol_1_baseColor.png",
+    "alpha_from": "Picea_fol_1_baseColor.png",
+    "normal": "Picea_fol_1_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_1_dying",
+   "images": {
+    "base": "Picea_fol_1_dying_baseColor.png",
+    "alpha_from": "Picea_fol_1_dying_baseColor.png",
+    "normal": "Picea_fol_1_dying_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_2_short_dead",
+   "images": {
+    "base": "Picea_fol_2_short_dead_baseColor.png",
+    "alpha_from": "Picea_fol_2_short_dead_baseColor.png",
+    "normal": "Picea_fol_2_short_dead_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_2_short",
+   "images": {
+    "base": "Picea_fol_2_short_baseColor.png",
+    "alpha_from": "Picea_fol_2_short_baseColor.png",
+    "normal": "Picea_fol_2_short_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m8_base.png",
+    "orm": "m8_orm.png",
+    "nrm": "m8_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_2_short_dying",
+   "images": {
+    "base": "Picea_fol_2_short_dying_baseColor.png",
+    "alpha_from": "Picea_fol_2_short_dying_baseColor.png",
+    "normal": "Picea_fol_2_short_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m9_base.png",
+    "orm": "m9_orm.png",
+    "nrm": "m9_nrm.png"
+   }
+  },
+  {
+   "name": "Picea_fol_2",
+   "images": {
+    "base": "Picea_fol_2_baseColor.png",
+    "alpha_from": "Picea_fol_2_baseColor.png",
+    "normal": "Picea_fol_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m10_base.png",
+    "orm": "m10_orm.png",
+    "nrm": "m10_nrm.png"
+   }
+  }
+ ]
+}

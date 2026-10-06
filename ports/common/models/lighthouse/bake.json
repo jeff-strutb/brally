@@ -1,0 +1,169 @@
+{
+ "asset": "lighthouse",
+ "source": "landmark",
+ "variants": [
+  {
+   "name": "tower",
+   "lods": [
+    {
+     "tris": 300000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tower_lod0_m0.rcm",
+       "tris": 300000
+      }
+     ]
+    },
+    {
+     "tris": 60000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tower_lod1_m0.rcm",
+       "tris": 60000
+      }
+     ]
+    },
+    {
+     "tris": 12000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tower_lod2_m0.rcm",
+       "tris": 12000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.32355934381484985,
+     -0.33101168274879456,
+     0.0
+    ],
+    [
+     0.32355934381484985,
+     0.33101168274879456,
+     1.9028090238571167
+    ]
+   ],
+   "lantern_z": [
+    1.475,
+    1.617
+   ]
+  },
+  {
+   "name": "optic",
+   "lods": [
+    {
+     "tris": 149999,
+     "files": [
+      {
+       "mat": 1,
+       "file": "optic_lod0_m1.rcm",
+       "tris": 58950
+      },
+      {
+       "mat": 2,
+       "file": "optic_lod0_m2.rcm",
+       "tris": 91049
+      }
+     ]
+    },
+    {
+     "tris": 29999,
+     "files": [
+      {
+       "mat": 1,
+       "file": "optic_lod1_m1.rcm",
+       "tris": 12845
+      },
+      {
+       "mat": 2,
+       "file": "optic_lod1_m2.rcm",
+       "tris": 17154
+      }
+     ]
+    },
+    {
+     "tris": 5999,
+     "files": [
+      {
+       "mat": 1,
+       "file": "optic_lod2_m1.rcm",
+       "tris": 2909
+      },
+      {
+       "mat": 2,
+       "file": "optic_lod2_m2.rcm",
+       "tris": 3090
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.4515886604785919,
+     -0.45038893818855286,
+     0.0
+    ],
+    [
+     0.4515886604785919,
+     0.45038893818855286,
+     1.9174504280090332
+    ]
+   ],
+   "glass_z": [
+    0.5271742343902588,
+    1.7237634658813477
+   ],
+   "beams": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     -1,
+     0,
+     0
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "tower",
+   "alpha_clip": false,
+   "two_sided": false,
+   "blend": "OPAQUE",
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   },
+   "maxdim": 2048,
+   "src_texture": "tower"
+  },
+  {
+   "name": "optic",
+   "alpha_clip": false,
+   "two_sided": false,
+   "blend": "OPAQUE",
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png"
+   },
+   "maxdim": 1024,
+   "src_texture": "optic"
+  },
+  {
+   "name": "optic_glass",
+   "alpha_clip": false,
+   "two_sided": true,
+   "blend": "BLEND",
+   "glass": true,
+   "textures": {}
+  }
+ ]
+}

@@ -1,0 +1,104 @@
+{
+ "asset": "guardrail",
+ "source": "guardrail.blend",
+ "targets": [
+  2000,
+  2000,
+  2000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 188,
+   "lods": [
+    {
+     "tris": 188,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 164
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 188,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 164
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 188,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 164
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 24
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.0399999618530273,
+     -0.3614810109138489,
+     0.0
+    ],
+    [
+     1.0399999618530273,
+     0.07451897859573364,
+     1.028249979019165
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "guardrail_steel",
+   "images": {
+    "base": "corrugated_iron_diff_4k.jpg",
+    "rough": "corrugated_iron_rough_4k.jpg"
+   },
+   "alpha_clip": false,
+   "two_sided": false,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   }
+  },
+  {
+   "name": "guardrail_post",
+   "images": {
+    "base": "rough_wood_diff_4k.jpg",
+    "rough": "rough_wood_rough_4k.jpg",
+    "normal": "rough_wood_nor_gl_4k.png"
+   },
+   "alpha_clip": false,
+   "two_sided": false,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

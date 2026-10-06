@@ -1,0 +1,1601 @@
+{
+ "asset": "sf_male_fern_46",
+ "source": "sf_male_fern_46.blend",
+ "targets": [
+  30000,
+  12000,
+  5000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 101504,
+   "lods": [
+    {
+     "tris": 21628,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 441
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 420
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 15868
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_lod0_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_lod0_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_lod0_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_lod0_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_lod0_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_lod0_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_lod0_m14.rcm",
+       "tris": 417
+      }
+     ]
+    },
+    {
+     "tris": 12504,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 182
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_lod1_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_lod1_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_lod1_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_lod1_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_lod1_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_lod1_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_lod1_m14.rcm",
+       "tris": 279
+      }
+     ]
+    },
+    {
+     "tris": 12426,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 104
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_lod2_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_lod2_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_lod2_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_lod2_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_lod2_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_lod2_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_lod2_m14.rcm",
+       "tris": 279
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07399250566959381,
+     -0.161553755402565,
+     5.960464477539063e-08
+    ],
+    [
+     0.15223774313926697,
+     0.1344616562128067,
+     0.5062217712402344
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     802
+    ],
+    "half": 0.1647848305106163,
+    "height": 0.516346206665039,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD1",
+   "src_tris": 44914,
+   "lods": [
+    {
+     "tris": 44914,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod0_m1.rcm",
+       "tris": 1132
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod0_m2.rcm",
+       "tris": 972
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod0_m3.rcm",
+       "tris": 37204
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod0_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod0_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod0_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod0_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod0_m8.rcm",
+       "tris": 432
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod0_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod0_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD1_lod0_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD1_lod0_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD1_lod0_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD1_lod0_m14.rcm",
+       "tris": 1052
+      }
+     ]
+    },
+    {
+     "tris": 44914,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod1_m1.rcm",
+       "tris": 1132
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod1_m2.rcm",
+       "tris": 972
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod1_m3.rcm",
+       "tris": 37204
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod1_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod1_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod1_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod1_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod1_m8.rcm",
+       "tris": 432
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod1_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod1_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD1_lod1_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD1_lod1_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD1_lod1_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD1_lod1_m14.rcm",
+       "tris": 1052
+      }
+     ]
+    },
+    {
+     "tris": 44914,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod2_m1.rcm",
+       "tris": 1132
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod2_m2.rcm",
+       "tris": 972
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod2_m3.rcm",
+       "tris": 37204
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod2_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod2_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod2_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod2_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD1_lod2_m8.rcm",
+       "tris": 432
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD1_lod2_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD1_lod2_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD1_lod2_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD1_lod2_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD1_lod2_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD1_lod2_m14.rcm",
+       "tris": 1052
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07391941547393799,
+     -0.1616537868976593,
+     0.0
+    ],
+    [
+     0.15230146050453186,
+     0.1343616247177124,
+     0.5062217116355896
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     802
+    ],
+    "half": 0.1648868626356125,
+    "height": 0.5163461458683014,
+    "base": "a_LOD1_imp_base.png",
+    "nrm": "a_LOD1_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD2",
+   "src_tris": 21628,
+   "lods": [
+    {
+     "tris": 21628,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod0_m1.rcm",
+       "tris": 441
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod0_m2.rcm",
+       "tris": 420
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod0_m3.rcm",
+       "tris": 15868
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod0_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod0_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod0_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod0_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod0_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod0_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod0_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD2_lod0_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD2_lod0_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD2_lod0_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD2_lod0_m14.rcm",
+       "tris": 417
+      }
+     ]
+    },
+    {
+     "tris": 21628,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod1_m1.rcm",
+       "tris": 441
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod1_m2.rcm",
+       "tris": 420
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod1_m3.rcm",
+       "tris": 15868
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod1_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod1_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod1_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod1_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod1_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod1_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod1_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD2_lod1_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD2_lod1_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD2_lod1_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD2_lod1_m14.rcm",
+       "tris": 417
+      }
+     ]
+    },
+    {
+     "tris": 21628,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod2_m1.rcm",
+       "tris": 441
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod2_m2.rcm",
+       "tris": 420
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod2_m3.rcm",
+       "tris": 15868
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod2_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod2_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod2_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod2_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD2_lod2_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD2_lod2_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD2_lod2_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD2_lod2_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD2_lod2_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD2_lod2_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD2_lod2_m14.rcm",
+       "tris": 417
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07410123944282532,
+     -0.16144390404224396,
+     0.0
+    ],
+    [
+     0.15212900936603546,
+     0.13457150757312775,
+     0.5062217116355896
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     803
+    ],
+    "half": 0.16467278212308883,
+    "height": 0.5163461458683014,
+    "base": "a_LOD2_imp_base.png",
+    "nrm": "a_LOD2_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD3",
+   "src_tris": 12504,
+   "lods": [
+    {
+     "tris": 12504,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod0_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod0_m2.rcm",
+       "tris": 182
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod0_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod0_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod0_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod0_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod0_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod0_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod0_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod0_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD3_lod0_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD3_lod0_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD3_lod0_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD3_lod0_m14.rcm",
+       "tris": 279
+      }
+     ]
+    },
+    {
+     "tris": 12504,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod1_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod1_m2.rcm",
+       "tris": 182
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod1_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod1_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod1_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod1_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod1_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod1_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod1_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod1_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD3_lod1_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD3_lod1_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD3_lod1_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD3_lod1_m14.rcm",
+       "tris": 279
+      }
+     ]
+    },
+    {
+     "tris": 12504,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod2_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod2_m2.rcm",
+       "tris": 182
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod2_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod2_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod2_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod2_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod2_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD3_lod2_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD3_lod2_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD3_lod2_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD3_lod2_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD3_lod2_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD3_lod2_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD3_lod2_m14.rcm",
+       "tris": 279
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07670863717794418,
+     -0.16138160228729248,
+     0.0
+    ],
+    [
+     0.1495216190814972,
+     0.13463380932807922,
+     0.5062217116355896
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     803
+    ],
+    "half": 0.16460923433303834,
+    "height": 0.5163461458683014,
+    "base": "a_LOD3_imp_base.png",
+    "nrm": "a_LOD3_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD4",
+   "src_tris": 12426,
+   "lods": [
+    {
+     "tris": 12426,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod0_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod0_m2.rcm",
+       "tris": 104
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod0_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod0_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod0_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod0_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod0_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod0_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod0_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod0_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD4_lod0_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD4_lod0_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD4_lod0_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD4_lod0_m14.rcm",
+       "tris": 279
+      }
+     ]
+    },
+    {
+     "tris": 12426,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod1_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod1_m2.rcm",
+       "tris": 104
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod1_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod1_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod1_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod1_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod1_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod1_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod1_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod1_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD4_lod1_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD4_lod1_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD4_lod1_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD4_lod1_m14.rcm",
+       "tris": 279
+      }
+     ]
+    },
+    {
+     "tris": 12426,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod2_m1.rcm",
+       "tris": 285
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod2_m2.rcm",
+       "tris": 104
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod2_m3.rcm",
+       "tris": 7276
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD4_lod2_m4.rcm",
+       "tris": 720
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD4_lod2_m5.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD4_lod2_m6.rcm",
+       "tris": 594
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD4_lod2_m7.rcm",
+       "tris": 480
+      },
+      {
+       "mat": 8,
+       "file": "a_LOD4_lod2_m8.rcm",
+       "tris": 360
+      },
+      {
+       "mat": 9,
+       "file": "a_LOD4_lod2_m9.rcm",
+       "tris": 248
+      },
+      {
+       "mat": 10,
+       "file": "a_LOD4_lod2_m10.rcm",
+       "tris": 212
+      },
+      {
+       "mat": 11,
+       "file": "a_LOD4_lod2_m11.rcm",
+       "tris": 364
+      },
+      {
+       "mat": 12,
+       "file": "a_LOD4_lod2_m12.rcm",
+       "tris": 232
+      },
+      {
+       "mat": 13,
+       "file": "a_LOD4_lod2_m13.rcm",
+       "tris": 312
+      },
+      {
+       "mat": 14,
+       "file": "a_LOD4_lod2_m14.rcm",
+       "tris": 279
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07677578181028366,
+     -0.16138143837451935,
+     0.0
+    ],
+    [
+     0.14945447444915771,
+     0.13463397324085236,
+     0.5062217116355896
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     803
+    ],
+    "half": 0.16460906714200974,
+    "height": 0.5163461458683014,
+    "base": "a_LOD4_imp_base.png",
+    "nrm": "a_LOD4_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Dryopteris_lf_left_2",
+   "images": {
+    "base": "Dryopteris_lf_left_2_baseColor.png",
+    "alpha_from": "Dryopteris_lf_left_2_baseColor.png",
+    "normal": "Dryopteris_lf_left_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_stalk",
+   "images": {
+    "base": "Dryopteris_stalk_baseColor.png",
+    "normal": "Dryopteris_stalk_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_trunk",
+   "images": {
+    "base": "Dryopteris_trunk_baseColor.png",
+    "normal": "Dryopteris_trunk_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_scale",
+   "images": {
+    "base": "Dryopteris_scale_baseColor.png",
+    "alpha_from": "Dryopteris_scale_baseColor.png",
+    "normal": "Dryopteris_scale_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_root_01",
+   "images": {
+    "base": "Dryopteris_root_01_baseColor.png",
+    "normal": "Dryopteris_root_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_root_02",
+   "images": {
+    "base": "Dryopteris_root_02_baseColor.png",
+    "normal": "Dryopteris_root_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_root_03",
+   "images": {
+    "base": "Dryopteris_root_03_baseColor.png",
+    "normal": "Dryopteris_root_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_right_2",
+   "images": {
+    "base": "Dryopteris_lf_right_2_baseColor.png",
+    "alpha_from": "Dryopteris_lf_right_2_baseColor.png",
+    "normal": "Dryopteris_lf_right_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_left_3",
+   "images": {
+    "base": "Dryopteris_lf_left_3_baseColor.png",
+    "alpha_from": "Dryopteris_lf_left_3_baseColor.png",
+    "normal": "Dryopteris_lf_left_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m8_base.png",
+    "orm": "m8_orm.png",
+    "nrm": "m8_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_right_3",
+   "images": {
+    "base": "Dryopteris_lf_right_3_baseColor.png",
+    "alpha_from": "Dryopteris_lf_right_3_baseColor.png",
+    "normal": "Dryopteris_lf_right_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m9_base.png",
+    "orm": "m9_orm.png",
+    "nrm": "m9_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_left_6",
+   "images": {
+    "base": "Dryopteris_lf_left_6_baseColor.png",
+    "alpha_from": "Dryopteris_lf_left_6_baseColor.png",
+    "normal": "Dryopteris_lf_left_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m10_base.png",
+    "orm": "m10_orm.png",
+    "nrm": "m10_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_left_5",
+   "images": {
+    "base": "Dryopteris_lf_left_5_baseColor.png",
+    "alpha_from": "Dryopteris_lf_left_5_baseColor.png",
+    "normal": "Dryopteris_lf_left_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m11_base.png",
+    "orm": "m11_orm.png",
+    "nrm": "m11_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_right_6",
+   "images": {
+    "base": "Dryopteris_lf_right_6_baseColor.png",
+    "alpha_from": "Dryopteris_lf_right_6_baseColor.png",
+    "normal": "Dryopteris_lf_right_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m12_base.png",
+    "orm": "m12_orm.png",
+    "nrm": "m12_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_lf_right_5",
+   "images": {
+    "base": "Dryopteris_lf_right_5_baseColor.png",
+    "alpha_from": "Dryopteris_lf_right_5_baseColor.png",
+    "normal": "Dryopteris_lf_right_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m13_base.png",
+    "orm": "m13_orm.png",
+    "nrm": "m13_nrm.png"
+   }
+  },
+  {
+   "name": "Dryopteris_stalk_1",
+   "images": {
+    "base": "Dryopteris_stalk_1_baseColor.png",
+    "normal": "Dryopteris_stalk_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m14_base.png",
+    "orm": "m14_orm.png",
+    "nrm": "m14_nrm.png"
+   }
+  }
+ ]
+}

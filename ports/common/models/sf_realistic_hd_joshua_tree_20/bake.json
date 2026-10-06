@@ -1,0 +1,237 @@
+{
+ "asset": "sf_realistic_hd_joshua_tree_20",
+ "source": "sf_realistic_hd_joshua_tree_20.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 430233,
+   "lods": [
+    {
+     "tris": 150000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 8116
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 1145
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 120
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 487
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 48687
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 91445
+      }
+     ]
+    },
+    {
+     "tris": 40000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 2292
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 273
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 29
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 138
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 10945
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 26323
+      }
+     ]
+    },
+    {
+     "tris": 10000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1156
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 84
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 9
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 44
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 4513
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 4194
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.8211264610290527,
+     -2.4213509559631348,
+     -0.0036902758292853832
+    ],
+    [
+     2.6384224891662598,
+     2.206804037094116,
+     5.774787425994873
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     524
+    ],
+    "half": 2.877548990249634,
+    "height": 5.890283174514771,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Yucca_brev_bark",
+   "images": {
+    "base": "Yucca_brev_bark_baseColor.png",
+    "normal": "Yucca_brev_bark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_crownshaft_01",
+   "images": {
+    "base": "Yucca_brev_crownshaft_01_baseColor.png",
+    "normal": "Yucca_brev_crownshaft_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01_H2",
+   "images": {
+    "base": "Yucca_brev_leaf_01_H2_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01_H3",
+   "images": {
+    "base": "Yucca_brev_leaf_01_H3_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_01",
+   "images": {
+    "base": "Yucca_brev_leaf_01_baseColor.png",
+    "normal": "Yucca_brev_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Yucca_brev_leaf_02b",
+   "images": {
+    "base": "Yucca_brev_leaf_02b_baseColor.png",
+    "normal": "Yucca_brev_leaf_02b_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  }
+ ]
+}

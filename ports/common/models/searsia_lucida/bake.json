@@ -1,0 +1,648 @@
+{
+ "asset": "searsia_lucida",
+ "source": "searsia_lucida_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 113405,
+   "lods": [
+    {
+     "tris": 113405,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 73282
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 31680
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 8443
+      }
+     ]
+    },
+    {
+     "tris": 113405,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 73282
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 31680
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 8443
+      }
+     ]
+    },
+    {
+     "tris": 53424,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 42864
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 10560
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.9763098955154419,
+     -1.0516242980957031,
+     0.0
+    ],
+    [
+     0.8296980857849121,
+     0.9140301942825317,
+     2.3389196395874023
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     569
+    ],
+    "half": 1.072656784057617,
+    "height": 2.3856980323791506,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 88629,
+   "lods": [
+    {
+     "tris": 88629,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 62886
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 19752
+      },
+      {
+       "mat": 2,
+       "file": "b_lod0_m2.rcm",
+       "tris": 5991
+      }
+     ]
+    },
+    {
+     "tris": 88629,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 62886
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 19752
+      },
+      {
+       "mat": 2,
+       "file": "b_lod1_m2.rcm",
+       "tris": 5991
+      }
+     ]
+    },
+    {
+     "tris": 46988,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 37112
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 9876
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6951618790626526,
+     -0.6946417689323425,
+     0.0
+    ],
+    [
+     0.7687197923660278,
+     0.8291047811508179,
+     1.9941118955612183
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     616
+    ],
+    "half": 0.8456868767738343,
+    "height": 2.0339941334724427,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 77603,
+   "lods": [
+    {
+     "tris": 77603,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 49351
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 23760
+      },
+      {
+       "mat": 2,
+       "file": "c_lod0_m2.rcm",
+       "tris": 4492
+      }
+     ]
+    },
+    {
+     "tris": 77603,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 49351
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 23760
+      },
+      {
+       "mat": 2,
+       "file": "c_lod1_m2.rcm",
+       "tris": 4492
+      }
+     ]
+    },
+    {
+     "tris": 37121,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 29201
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 7920
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6803261041641235,
+     -0.6356296539306641,
+     0.0
+    ],
+    [
+     0.8285936117172241,
+     0.6136600971221924,
+     1.679840326309204
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     519
+    ],
+    "half": 0.8451654839515687,
+    "height": 1.7134371328353881,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  },
+  {
+   "name": "d",
+   "src_tris": 56320,
+   "lods": [
+    {
+     "tris": 56320,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 36125
+      },
+      {
+       "mat": 1,
+       "file": "d_lod0_m1.rcm",
+       "tris": 17820
+      },
+      {
+       "mat": 2,
+       "file": "d_lod0_m2.rcm",
+       "tris": 2375
+      }
+     ]
+    },
+    {
+     "tris": 56320,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 36125
+      },
+      {
+       "mat": 1,
+       "file": "d_lod1_m1.rcm",
+       "tris": 17820
+      },
+      {
+       "mat": 2,
+       "file": "d_lod1_m2.rcm",
+       "tris": 2375
+      }
+     ]
+    },
+    {
+     "tris": 27359,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 21419
+      },
+      {
+       "mat": 1,
+       "file": "d_lod2_m1.rcm",
+       "tris": 5940
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5829241871833801,
+     -0.5622072219848633,
+     0.0
+    ],
+    [
+     0.5123828649520874,
+     0.39170390367507935,
+     1.423598051071167
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     625
+    ],
+    "half": 0.5945826709270478,
+    "height": 1.4520700120925905,
+    "base": "d_imp_base.png",
+    "nrm": "d_imp_nrm.png"
+   }
+  },
+  {
+   "name": "e",
+   "src_tris": 27701,
+   "lods": [
+    {
+     "tris": 27701,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 17936
+      },
+      {
+       "mat": 1,
+       "file": "e_lod0_m1.rcm",
+       "tris": 8544
+      },
+      {
+       "mat": 2,
+       "file": "e_lod0_m2.rcm",
+       "tris": 1221
+      }
+     ]
+    },
+    {
+     "tris": 27701,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 17936
+      },
+      {
+       "mat": 1,
+       "file": "e_lod1_m1.rcm",
+       "tris": 8544
+      },
+      {
+       "mat": 2,
+       "file": "e_lod1_m2.rcm",
+       "tris": 1221
+      }
+     ]
+    },
+    {
+     "tris": 13434,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 10586
+      },
+      {
+       "mat": 1,
+       "file": "e_lod2_m1.rcm",
+       "tris": 2848
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5505391955375671,
+     -0.38402456045150757,
+     0.0
+    ],
+    [
+     0.48340898752212524,
+     0.33184611797332764,
+     1.0249980688095093
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     477
+    ],
+    "half": 0.5615499794483185,
+    "height": 1.0454980301856995,
+    "base": "e_imp_base.png",
+    "nrm": "e_imp_nrm.png"
+   }
+  },
+  {
+   "name": "f",
+   "src_tris": 7232,
+   "lods": [
+    {
+     "tris": 7232,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod0_m0.rcm",
+       "tris": 4471
+      },
+      {
+       "mat": 1,
+       "file": "f_lod0_m1.rcm",
+       "tris": 2064
+      },
+      {
+       "mat": 2,
+       "file": "f_lod0_m2.rcm",
+       "tris": 697
+      }
+     ]
+    },
+    {
+     "tris": 7232,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod1_m0.rcm",
+       "tris": 4471
+      },
+      {
+       "mat": 1,
+       "file": "f_lod1_m1.rcm",
+       "tris": 2064
+      },
+      {
+       "mat": 2,
+       "file": "f_lod1_m2.rcm",
+       "tris": 697
+      }
+     ]
+    },
+    {
+     "tris": 3331,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod2_m0.rcm",
+       "tris": 2643
+      },
+      {
+       "mat": 1,
+       "file": "f_lod2_m1.rcm",
+       "tris": 688
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.33553314208984375,
+     -0.2292601466178894,
+     0.0
+    ],
+    [
+     0.3221125900745392,
+     0.25394412875175476,
+     0.7386047840118408
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     564
+    ],
+    "half": 0.34224380493164064,
+    "height": 0.7533768796920777,
+    "base": "f_imp_base.png",
+    "nrm": "f_imp_nrm.png"
+   }
+  },
+  {
+   "name": "g",
+   "src_tris": 6302,
+   "lods": [
+    {
+     "tris": 6302,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod0_m0.rcm",
+       "tris": 3815
+      },
+      {
+       "mat": 1,
+       "file": "g_lod0_m1.rcm",
+       "tris": 1872
+      },
+      {
+       "mat": 2,
+       "file": "g_lod0_m2.rcm",
+       "tris": 615
+      }
+     ]
+    },
+    {
+     "tris": 6302,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod1_m0.rcm",
+       "tris": 3815
+      },
+      {
+       "mat": 1,
+       "file": "g_lod1_m1.rcm",
+       "tris": 1872
+      },
+      {
+       "mat": 2,
+       "file": "g_lod1_m2.rcm",
+       "tris": 615
+      }
+     ]
+    },
+    {
+     "tris": 2885,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod2_m0.rcm",
+       "tris": 2261
+      },
+      {
+       "mat": 1,
+       "file": "g_lod2_m1.rcm",
+       "tris": 624
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.19697117805480957,
+     -0.1942516565322876,
+     0.0
+    ],
+    [
+     0.18474507331848145,
+     0.1306689977645874,
+     0.7868369221687317
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1023
+    ],
+    "half": 0.20091060161590577,
+    "height": 0.8025736606121063,
+    "base": "g_imp_base.png",
+    "nrm": "g_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "searsia_lucida",
+   "images": {
+    "base": "searsia_lucida_diff.png",
+    "rough": "searsia_lucida_rough.png",
+    "normal": "searsia_lucida_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "searsia_lucida_leaves",
+   "images": {
+    "base": "searsia_lucida_diff.png",
+    "rough": "searsia_lucida_rough.png",
+    "normal": "searsia_lucida_nor_gl.png",
+    "alpha": "searsia_lucida_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "searsia_lucida_twigs",
+   "images": {
+    "alpha": "searsia_lucida_alpha.png",
+    "base": "searsia_lucida_diff.png",
+    "rough": "searsia_lucida_rough.png",
+    "normal": "searsia_lucida_nor_gl.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

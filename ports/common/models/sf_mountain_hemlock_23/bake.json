@@ -1,0 +1,791 @@
+{
+ "asset": "sf_mountain_hemlock_23",
+ "source": "sf_mountain_hemlock_23.blend",
+ "targets": [
+  55000,
+  42000,
+  30000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 135772,
+   "lods": [
+    {
+     "tris": 40808,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 3728
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 1459
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 2073
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 1677
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 29520
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 1592
+      }
+     ]
+    },
+    {
+     "tris": 40808,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 3728
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 1459
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 2073
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 1677
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 29520
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 1592
+      }
+     ]
+    },
+    {
+     "tris": 19726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2262
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 816
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 1149
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 909
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 13256
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 575
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6846797466278076,
+     -1.5959869623184204,
+     4.117555363336578e-08
+    ],
+    [
+     1.2291516065597534,
+     1.6820696592330933,
+     14.700621604919434
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2234
+    ],
+    "half": 1.7183733415603637,
+    "height": 14.994634037017823,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD1",
+   "src_tris": 71539,
+   "lods": [
+    {
+     "tris": 71539,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod0_m0.rcm",
+       "tris": 7489
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod0_m1.rcm",
+       "tris": 444
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod0_m2.rcm",
+       "tris": 553
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod0_m3.rcm",
+       "tris": 3373
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod0_m4.rcm",
+       "tris": 4403
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod0_m5.rcm",
+       "tris": 3671
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod0_m6.rcm",
+       "tris": 45944
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod0_m7.rcm",
+       "tris": 5662
+      }
+     ]
+    },
+    {
+     "tris": 71539,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod1_m0.rcm",
+       "tris": 7489
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod1_m1.rcm",
+       "tris": 444
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod1_m2.rcm",
+       "tris": 553
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod1_m3.rcm",
+       "tris": 3373
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod1_m4.rcm",
+       "tris": 4403
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod1_m5.rcm",
+       "tris": 3671
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod1_m6.rcm",
+       "tris": 45944
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod1_m7.rcm",
+       "tris": 5662
+      }
+     ]
+    },
+    {
+     "tris": 71539,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod2_m0.rcm",
+       "tris": 7489
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod2_m1.rcm",
+       "tris": 444
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod2_m2.rcm",
+       "tris": 553
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod2_m3.rcm",
+       "tris": 3373
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD1_lod2_m4.rcm",
+       "tris": 4403
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD1_lod2_m5.rcm",
+       "tris": 3671
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD1_lod2_m6.rcm",
+       "tris": 45944
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD1_lod2_m7.rcm",
+       "tris": 5662
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6819462776184082,
+     -1.5845646858215332,
+     0.0
+    ],
+    [
+     1.2318850755691528,
+     1.6934919357299805,
+     14.700621604919434
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2222
+    ],
+    "half": 1.7273617744445802,
+    "height": 14.994634037017823,
+    "base": "a_LOD1_imp_base.png",
+    "nrm": "a_LOD1_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD2",
+   "src_tris": 40808,
+   "lods": [
+    {
+     "tris": 40808,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod0_m0.rcm",
+       "tris": 3728
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod0_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod0_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod0_m3.rcm",
+       "tris": 1459
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod0_m4.rcm",
+       "tris": 2073
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod0_m5.rcm",
+       "tris": 1677
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod0_m6.rcm",
+       "tris": 29520
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod0_m7.rcm",
+       "tris": 1592
+      }
+     ]
+    },
+    {
+     "tris": 40808,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod1_m0.rcm",
+       "tris": 3728
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod1_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod1_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod1_m3.rcm",
+       "tris": 1459
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod1_m4.rcm",
+       "tris": 2073
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod1_m5.rcm",
+       "tris": 1677
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod1_m6.rcm",
+       "tris": 29520
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod1_m7.rcm",
+       "tris": 1592
+      }
+     ]
+    },
+    {
+     "tris": 40808,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod2_m0.rcm",
+       "tris": 3728
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod2_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod2_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod2_m3.rcm",
+       "tris": 1459
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD2_lod2_m4.rcm",
+       "tris": 2073
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD2_lod2_m5.rcm",
+       "tris": 1677
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD2_lod2_m6.rcm",
+       "tris": 29520
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD2_lod2_m7.rcm",
+       "tris": 1592
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6829665899276733,
+     -1.5828341245651245,
+     0.0
+    ],
+    [
+     1.2308647632598877,
+     1.6952224969863892,
+     14.700621604919434
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2220
+    ],
+    "half": 1.729126946926117,
+    "height": 14.994634037017823,
+    "base": "a_LOD2_imp_base.png",
+    "nrm": "a_LOD2_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD3",
+   "src_tris": 19726,
+   "lods": [
+    {
+     "tris": 19726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod0_m0.rcm",
+       "tris": 2262
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod0_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod0_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod0_m3.rcm",
+       "tris": 816
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod0_m4.rcm",
+       "tris": 1149
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod0_m5.rcm",
+       "tris": 909
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod0_m6.rcm",
+       "tris": 13256
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod0_m7.rcm",
+       "tris": 575
+      }
+     ]
+    },
+    {
+     "tris": 19726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod1_m0.rcm",
+       "tris": 2262
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod1_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod1_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod1_m3.rcm",
+       "tris": 816
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod1_m4.rcm",
+       "tris": 1149
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod1_m5.rcm",
+       "tris": 909
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod1_m6.rcm",
+       "tris": 13256
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod1_m7.rcm",
+       "tris": 575
+      }
+     ]
+    },
+    {
+     "tris": 19726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod2_m0.rcm",
+       "tris": 2262
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod2_m1.rcm",
+       "tris": 372
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod2_m2.rcm",
+       "tris": 387
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod2_m3.rcm",
+       "tris": 816
+      },
+      {
+       "mat": 4,
+       "file": "a_LOD3_lod2_m4.rcm",
+       "tris": 1149
+      },
+      {
+       "mat": 5,
+       "file": "a_LOD3_lod2_m5.rcm",
+       "tris": 909
+      },
+      {
+       "mat": 6,
+       "file": "a_LOD3_lod2_m6.rcm",
+       "tris": 13256
+      },
+      {
+       "mat": 7,
+       "file": "a_LOD3_lod2_m7.rcm",
+       "tris": 575
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6861144304275513,
+     -1.5905935764312744,
+     0.0
+    ],
+    [
+     1.2277169227600098,
+     1.6874630451202393,
+     14.700621604919434
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     2230
+    ],
+    "half": 1.721212306022644,
+    "height": 14.994634037017823,
+    "base": "a_LOD3_imp_base.png",
+    "nrm": "a_LOD3_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Tsuga_branch",
+   "images": {
+    "base": "Tsuga_branch_baseColor.png",
+    "normal": "Tsuga_branch_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_brch_cut_1",
+   "images": {
+    "base": "Tsuga_brch_cut_1_baseColor.png",
+    "normal": "Tsuga_brch_cut_1_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_brch_cut_2",
+   "images": {
+    "base": "Tsuga_brch_cut_2_baseColor.png",
+    "normal": "Tsuga_brch_cut_2_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_dead_brch_1",
+   "images": {
+    "base": "Tsuga_dead_brch_1_baseColor.png",
+    "normal": "Tsuga_dead_brch_1_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_dead_brch_2",
+   "images": {
+    "base": "Tsuga_dead_brch_2_baseColor.png",
+    "normal": "Tsuga_dead_brch_1_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_dead_brch_3",
+   "images": {
+    "base": "Tsuga_dead_brch_3_baseColor.png",
+    "normal": "Tsuga_dead_brch_1_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_fol_01",
+   "images": {
+    "base": "Tsuga_fol_01_baseColor.png",
+    "alpha_from": "Tsuga_fol_01_baseColor.png",
+    "normal": "Tsuga_fol_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Tsuga_trunk_01",
+   "images": {
+    "base": "Tsuga_trunk_01_baseColor.png",
+    "normal": "Tsuga_trunk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  }
+ ]
+}

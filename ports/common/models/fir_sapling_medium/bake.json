@@ -1,0 +1,326 @@
+{
+ "asset": "fir_sapling_medium",
+ "source": "fir_sapling_medium_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 685046,
+   "lods": [
+    {
+     "tris": 685046,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 8490
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 674746
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 19016,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 8490
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 8716
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 14752,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 8490
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 4452
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.690662384033203,
+     -2.8051791191101074,
+     0.0
+    ],
+    [
+     2.297227144241333,
+     2.470693826675415,
+     8.826326370239258
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     805
+    ],
+    "half": 2.8612827014923097,
+    "height": 9.002852897644043,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 420822,
+   "lods": [
+    {
+     "tris": 420822,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 3710
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 415302
+      },
+      {
+       "mat": 2,
+       "file": "b_lod0_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 420822,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 3710
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 415302
+      },
+      {
+       "mat": 2,
+       "file": "b_lod1_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 8761,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 3710
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 3241
+      },
+      {
+       "mat": 2,
+       "file": "b_lod2_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.2312307357788086,
+     -1.9255105257034302,
+     0.0
+    ],
+    [
+     2.037384033203125,
+     2.032388925552368,
+     7.795253276824951
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     894
+    ],
+    "half": 2.2758553504943846,
+    "height": 7.951158342361451,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 427645,
+   "lods": [
+    {
+     "tris": 427645,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 3780
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 422055
+      },
+      {
+       "mat": 2,
+       "file": "c_lod0_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 427645,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 3780
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 422055
+      },
+      {
+       "mat": 2,
+       "file": "c_lod1_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    },
+    {
+     "tris": 8393,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 3780
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 2803
+      },
+      {
+       "mat": 2,
+       "file": "c_lod2_m2.rcm",
+       "tris": 1810
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.2908411026000977,
+     -2.013253927230835,
+     0.0
+    ],
+    [
+     2.01568603515625,
+     2.0000498294830322,
+     5.906752109527588
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     660
+    ],
+    "half": 2.3366579246520995,
+    "height": 6.02488715171814,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "fir_sapling_medium_branches",
+   "images": {
+    "normal": "fir_sapling_medium_branches_nor_gl.png",
+    "base": "fir_sapling_medium_branches_diff.png",
+    "rough": "fir_sapling_medium_branches_rough.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "fir_sapling_medium_twigs",
+   "images": {
+    "rough": "fir_sapling_medium_twigs_rough.png",
+    "base": "fir_sapling_medium_twigs_diff.png",
+    "alpha": "fir_sapling_medium_twigs_alpha.png",
+    "normal": "fir_sapling_medium_twigs_nor_gl.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "fir_sapling_medium_branches_dead",
+   "images": {
+    "base": "fir_sapling_medium_branches_diff.png",
+    "rough": "fir_sapling_medium_branches_rough.png",
+    "normal": "fir_sapling_medium_branches_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

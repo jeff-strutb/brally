@@ -1,0 +1,2045 @@
+{
+ "asset": "grass_bermuda_01",
+ "source": "grass_bermuda_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "dead_a",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_a_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_a_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_a_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04060173034667969,
+     -0.05131320282816887,
+     0.0
+    ],
+    [
+     0.027136266231536865,
+     0.03299694508314133,
+     0.02474112994968891
+    ]
+   ]
+  },
+  {
+   "name": "dead_b",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_b_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_b_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "dead_b_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02667611837387085,
+     -0.019041357561945915,
+     0.0
+    ],
+    [
+     0.04342418909072876,
+     0.03598478436470032,
+     0.04334356635808945
+    ]
+   ]
+  },
+  {
+   "name": "flattened_a",
+   "src_tris": 19,
+   "lods": [
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "flattened_a_lod0_m0.rcm",
+       "tris": 19
+      }
+     ]
+    },
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "flattened_a_lod1_m0.rcm",
+       "tris": 19
+      }
+     ]
+    },
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "flattened_a_lod2_m0.rcm",
+       "tris": 19
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02076059579849243,
+     -0.03703255206346512,
+     0.0
+    ],
+    [
+     0.02317744493484497,
+     0.032220713794231415,
+     0.043633755296468735
+    ]
+   ]
+  },
+  {
+   "name": "geometry_dead_a",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_a_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_a_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_a_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04060173034667969,
+     -0.05131320282816887,
+     0.0
+    ],
+    [
+     0.027136266231536865,
+     0.03299694508314133,
+     0.02474112994968891
+    ]
+   ]
+  },
+  {
+   "name": "geometry_dead_b",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_b_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_b_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_dead_b_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02667611837387085,
+     -0.019041357561945915,
+     0.0
+    ],
+    [
+     0.04342418909072876,
+     0.03598478436470032,
+     0.04334356635808945
+    ]
+   ]
+  },
+  {
+   "name": "geometry_flattened_a",
+   "src_tris": 19,
+   "lods": [
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_flattened_a_lod0_m0.rcm",
+       "tris": 19
+      }
+     ]
+    },
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_flattened_a_lod1_m0.rcm",
+       "tris": 19
+      }
+     ]
+    },
+    {
+     "tris": 19,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_flattened_a_lod2_m0.rcm",
+       "tris": 19
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02076059579849243,
+     -0.03703255206346512,
+     0.0
+    ],
+    [
+     0.02317744493484497,
+     0.032220713794231415,
+     0.043633755296468735
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_a",
+   "src_tris": 17,
+   "lods": [
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_a_lod0_m0.rcm",
+       "tris": 17
+      }
+     ]
+    },
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_a_lod1_m0.rcm",
+       "tris": 17
+      }
+     ]
+    },
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_a_lod2_m0.rcm",
+       "tris": 17
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.013645052909851074,
+     -0.01467498391866684,
+     0.0
+    ],
+    [
+     0.02486717700958252,
+     0.013892349787056446,
+     0.09775002300739288
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_b",
+   "src_tris": 8,
+   "lods": [
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_b_lod0_m0.rcm",
+       "tris": 8
+      }
+     ]
+    },
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_b_lod1_m0.rcm",
+       "tris": 8
+      }
+     ]
+    },
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_b_lod2_m0.rcm",
+       "tris": 8
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02800065279006958,
+     -0.010998375713825226,
+     0.0
+    ],
+    [
+     0.0231630802154541,
+     0.010865973308682442,
+     0.0745726078748703
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_c",
+   "src_tris": 20,
+   "lods": [
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_c_lod0_m0.rcm",
+       "tris": 20
+      }
+     ]
+    },
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_c_lod1_m0.rcm",
+       "tris": 20
+      }
+     ]
+    },
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_c_lod2_m0.rcm",
+       "tris": 20
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03294501453638077,
+     -0.04231342300772667,
+     0.0
+    ],
+    [
+     0.024036407470703125,
+     0.04930547624826431,
+     0.06667335331439972
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_d",
+   "src_tris": 14,
+   "lods": [
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_d_lod0_m0.rcm",
+       "tris": 14
+      }
+     ]
+    },
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_d_lod1_m0.rcm",
+       "tris": 14
+      }
+     ]
+    },
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_d_lod2_m0.rcm",
+       "tris": 14
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03566163778305054,
+     -0.005056497175246477,
+     0.0
+    ],
+    [
+     0.019311964511871338,
+     0.011242788285017014,
+     0.10206569731235504
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_e",
+   "src_tris": 24,
+   "lods": [
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_e_lod0_m0.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_e_lod1_m0.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_e_lod2_m0.rcm",
+       "tris": 24
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04111891984939575,
+     -0.024806680157780647,
+     0.0
+    ],
+    [
+     0.024917513132095337,
+     0.012068577110767365,
+     0.0826614648103714
+    ]
+   ]
+  },
+  {
+   "name": "geometry_medium_f",
+   "src_tris": 30,
+   "lods": [
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_f_lod0_m0.rcm",
+       "tris": 30
+      }
+     ]
+    },
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_f_lod1_m0.rcm",
+       "tris": 30
+      }
+     ]
+    },
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_medium_f_lod2_m0.rcm",
+       "tris": 30
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.014077708125114441,
+     -0.014173062518239021,
+     0.0
+    ],
+    [
+     0.02662314474582672,
+     0.01192953996360302,
+     0.11300424486398697
+    ]
+   ]
+  },
+  {
+   "name": "geometry_seedling_a",
+   "src_tris": 147,
+   "lods": [
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_a_lod0_m0.rcm",
+       "tris": 147
+      }
+     ]
+    },
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_a_lod1_m0.rcm",
+       "tris": 147
+      }
+     ]
+    },
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_a_lod2_m0.rcm",
+       "tris": 147
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.029437750577926636,
+     -0.02218252792954445,
+     0.0
+    ],
+    [
+     0.03839728236198425,
+     0.02339867688715458,
+     0.1508864462375641
+    ]
+   ]
+  },
+  {
+   "name": "geometry_seedling_b",
+   "src_tris": 140,
+   "lods": [
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_b_lod0_m0.rcm",
+       "tris": 140
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_b_lod1_m0.rcm",
+       "tris": 140
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_b_lod2_m0.rcm",
+       "tris": 140
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0383971631526947,
+     -0.023661231622099876,
+     0.0
+    ],
+    [
+     0.0381980836391449,
+     0.02560531347990036,
+     0.127205029129982
+    ]
+   ]
+  },
+  {
+   "name": "geometry_seedling_c",
+   "src_tris": 128,
+   "lods": [
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_c_lod0_m0.rcm",
+       "tris": 128
+      }
+     ]
+    },
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_c_lod1_m0.rcm",
+       "tris": 128
+      }
+     ]
+    },
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_c_lod2_m0.rcm",
+       "tris": 128
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.01870816946029663,
+     -0.02212505415081978,
+     0.0
+    ],
+    [
+     0.01845407485961914,
+     0.02238691970705986,
+     0.09225825220346451
+    ]
+   ]
+  },
+  {
+   "name": "geometry_seedling_d",
+   "src_tris": 268,
+   "lods": [
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_d_lod0_m0.rcm",
+       "tris": 268
+      }
+     ]
+    },
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_d_lod1_m0.rcm",
+       "tris": 268
+      }
+     ]
+    },
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_seedling_d_lod2_m0.rcm",
+       "tris": 268
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.039865076541900635,
+     -0.040581103414297104,
+     0.0
+    ],
+    [
+     0.029781997203826904,
+     0.042552679777145386,
+     0.15218901634216309
+    ]
+   ]
+  },
+  {
+   "name": "geometry_single_a",
+   "src_tris": 15,
+   "lods": [
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_a_lod0_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_a_lod1_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_a_lod2_m0.rcm",
+       "tris": 15
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.00179213285446167,
+     -0.006896589882671833,
+     0.0
+    ],
+    [
+     0.0017830729484558105,
+     0.006800010800361633,
+     0.14941485226154327
+    ]
+   ]
+  },
+  {
+   "name": "geometry_single_b",
+   "src_tris": 15,
+   "lods": [
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_b_lod0_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_b_lod1_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_single_b_lod2_m0.rcm",
+       "tris": 15
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0017921924591064453,
+     -0.006896586157381535,
+     0.0
+    ],
+    [
+     0.0017830133438110352,
+     0.006800010800361633,
+     0.14941483736038208
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_a",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_a_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_a_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_a_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03855660557746887,
+     -0.013213112950325012,
+     0.0
+    ],
+    [
+     0.041308820247650146,
+     0.014540759846568108,
+     0.03223959356546402
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_b",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_b_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_b_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_b_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03942294418811798,
+     -0.017829246819019318,
+     0.0
+    ],
+    [
+     0.04326452314853668,
+     0.018204474821686745,
+     0.04585026204586029
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_c",
+   "src_tris": 18,
+   "lods": [
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_c_lod0_m0.rcm",
+       "tris": 18
+      }
+     ]
+    },
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_c_lod1_m0.rcm",
+       "tris": 18
+      }
+     ]
+    },
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_c_lod2_m0.rcm",
+       "tris": 18
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.025011837482452393,
+     -0.020373458042740822,
+     0.0
+    ],
+    [
+     0.028987780213356018,
+     0.021092461422085762,
+     0.055165212601423264
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_d",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_d_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_d_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_d_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02451075240969658,
+     -0.01845076121389866,
+     0.0
+    ],
+    [
+     0.03370094671845436,
+     0.015018325299024582,
+     0.05464456230401993
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_e",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_e_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_e_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_e_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.014140158891677856,
+     -0.006848175544291735,
+     0.0
+    ],
+    [
+     0.01457175612449646,
+     0.010814540088176727,
+     0.09073731303215027
+    ]
+   ]
+  },
+  {
+   "name": "geometry_small_f",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_f_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_f_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "geometry_small_f_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.019435584545135498,
+     -0.00975084863603115,
+     0.0
+    ],
+    [
+     0.016102135181427002,
+     0.014862014912068844,
+     0.06905271857976913
+    ]
+   ]
+  },
+  {
+   "name": "medium_a",
+   "src_tris": 17,
+   "lods": [
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod0_m0.rcm",
+       "tris": 17
+      }
+     ]
+    },
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod1_m0.rcm",
+       "tris": 17
+      }
+     ]
+    },
+    {
+     "tris": 17,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod2_m0.rcm",
+       "tris": 17
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.013645052909851074,
+     -0.01467498391866684,
+     0.0
+    ],
+    [
+     0.02486717700958252,
+     0.013892349787056446,
+     0.09775002300739288
+    ]
+   ]
+  },
+  {
+   "name": "medium_b",
+   "src_tris": 8,
+   "lods": [
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod0_m0.rcm",
+       "tris": 8
+      }
+     ]
+    },
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod1_m0.rcm",
+       "tris": 8
+      }
+     ]
+    },
+    {
+     "tris": 8,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod2_m0.rcm",
+       "tris": 8
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02800065279006958,
+     -0.010998375713825226,
+     0.0
+    ],
+    [
+     0.0231630802154541,
+     0.010865973308682442,
+     0.0745726078748703
+    ]
+   ]
+  },
+  {
+   "name": "medium_c",
+   "src_tris": 20,
+   "lods": [
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_c_lod0_m0.rcm",
+       "tris": 20
+      }
+     ]
+    },
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_c_lod1_m0.rcm",
+       "tris": 20
+      }
+     ]
+    },
+    {
+     "tris": 20,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_c_lod2_m0.rcm",
+       "tris": 20
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03294501453638077,
+     -0.04231342300772667,
+     0.0
+    ],
+    [
+     0.024036407470703125,
+     0.04930547624826431,
+     0.06667335331439972
+    ]
+   ]
+  },
+  {
+   "name": "medium_d",
+   "src_tris": 14,
+   "lods": [
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_d_lod0_m0.rcm",
+       "tris": 14
+      }
+     ]
+    },
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_d_lod1_m0.rcm",
+       "tris": 14
+      }
+     ]
+    },
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_d_lod2_m0.rcm",
+       "tris": 14
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03566163778305054,
+     -0.005056497175246477,
+     0.0
+    ],
+    [
+     0.019311964511871338,
+     0.011242788285017014,
+     0.10206569731235504
+    ]
+   ]
+  },
+  {
+   "name": "medium_e",
+   "src_tris": 24,
+   "lods": [
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_e_lod0_m0.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_e_lod1_m0.rcm",
+       "tris": 24
+      }
+     ]
+    },
+    {
+     "tris": 24,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_e_lod2_m0.rcm",
+       "tris": 24
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04111891984939575,
+     -0.024806680157780647,
+     0.0
+    ],
+    [
+     0.024917513132095337,
+     0.012068577110767365,
+     0.0826614648103714
+    ]
+   ]
+  },
+  {
+   "name": "medium_f",
+   "src_tris": 30,
+   "lods": [
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_f_lod0_m0.rcm",
+       "tris": 30
+      }
+     ]
+    },
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_f_lod1_m0.rcm",
+       "tris": 30
+      }
+     ]
+    },
+    {
+     "tris": 30,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_f_lod2_m0.rcm",
+       "tris": 30
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.014077708125114441,
+     -0.014173062518239021,
+     0.0
+    ],
+    [
+     0.02662314474582672,
+     0.01192953996360302,
+     0.11300424486398697
+    ]
+   ]
+  },
+  {
+   "name": "seedling_a",
+   "src_tris": 147,
+   "lods": [
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_a_lod0_m0.rcm",
+       "tris": 147
+      }
+     ]
+    },
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_a_lod1_m0.rcm",
+       "tris": 147
+      }
+     ]
+    },
+    {
+     "tris": 147,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_a_lod2_m0.rcm",
+       "tris": 147
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.029437750577926636,
+     -0.02218252792954445,
+     0.0
+    ],
+    [
+     0.03839728236198425,
+     0.02339867688715458,
+     0.1508864462375641
+    ]
+   ]
+  },
+  {
+   "name": "seedling_b",
+   "src_tris": 140,
+   "lods": [
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_b_lod0_m0.rcm",
+       "tris": 140
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_b_lod1_m0.rcm",
+       "tris": 140
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_b_lod2_m0.rcm",
+       "tris": 140
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0383971631526947,
+     -0.023661231622099876,
+     0.0
+    ],
+    [
+     0.0381980836391449,
+     0.02560531347990036,
+     0.127205029129982
+    ]
+   ]
+  },
+  {
+   "name": "seedling_c",
+   "src_tris": 128,
+   "lods": [
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_c_lod0_m0.rcm",
+       "tris": 128
+      }
+     ]
+    },
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_c_lod1_m0.rcm",
+       "tris": 128
+      }
+     ]
+    },
+    {
+     "tris": 128,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_c_lod2_m0.rcm",
+       "tris": 128
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.01870816946029663,
+     -0.02212505415081978,
+     0.0
+    ],
+    [
+     0.01845407485961914,
+     0.02238691970705986,
+     0.09225825220346451
+    ]
+   ]
+  },
+  {
+   "name": "seedling_d",
+   "src_tris": 268,
+   "lods": [
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_d_lod0_m0.rcm",
+       "tris": 268
+      }
+     ]
+    },
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_d_lod1_m0.rcm",
+       "tris": 268
+      }
+     ]
+    },
+    {
+     "tris": 268,
+     "files": [
+      {
+       "mat": 0,
+       "file": "seedling_d_lod2_m0.rcm",
+       "tris": 268
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.039865076541900635,
+     -0.040581103414297104,
+     0.0
+    ],
+    [
+     0.029781997203826904,
+     0.042552679777145386,
+     0.15218901634216309
+    ]
+   ]
+  },
+  {
+   "name": "single_a",
+   "src_tris": 15,
+   "lods": [
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_a_lod0_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_a_lod1_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_a_lod2_m0.rcm",
+       "tris": 15
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.00179213285446167,
+     -0.006896589882671833,
+     0.0
+    ],
+    [
+     0.0017830729484558105,
+     0.006800010800361633,
+     0.14941485226154327
+    ]
+   ]
+  },
+  {
+   "name": "single_b",
+   "src_tris": 15,
+   "lods": [
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_b_lod0_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_b_lod1_m0.rcm",
+       "tris": 15
+      }
+     ]
+    },
+    {
+     "tris": 15,
+     "files": [
+      {
+       "mat": 0,
+       "file": "single_b_lod2_m0.rcm",
+       "tris": 15
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0017921924591064453,
+     -0.006896586157381535,
+     0.0
+    ],
+    [
+     0.0017830133438110352,
+     0.006800010800361633,
+     0.14941483736038208
+    ]
+   ]
+  },
+  {
+   "name": "small_a",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03855660557746887,
+     -0.013213112950325012,
+     0.0
+    ],
+    [
+     0.041308820247650146,
+     0.014540759846568108,
+     0.03223959356546402
+    ]
+   ]
+  },
+  {
+   "name": "small_b",
+   "src_tris": 12,
+   "lods": [
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod0_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod1_m0.rcm",
+       "tris": 12
+      }
+     ]
+    },
+    {
+     "tris": 12,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod2_m0.rcm",
+       "tris": 12
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03942294418811798,
+     -0.017829246819019318,
+     0.0
+    ],
+    [
+     0.04326452314853668,
+     0.018204474821686745,
+     0.04585026204586029
+    ]
+   ]
+  },
+  {
+   "name": "small_c",
+   "src_tris": 18,
+   "lods": [
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_c_lod0_m0.rcm",
+       "tris": 18
+      }
+     ]
+    },
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_c_lod1_m0.rcm",
+       "tris": 18
+      }
+     ]
+    },
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_c_lod2_m0.rcm",
+       "tris": 18
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.025011837482452393,
+     -0.020373458042740822,
+     0.0
+    ],
+    [
+     0.028987780213356018,
+     0.021092461422085762,
+     0.055165212601423264
+    ]
+   ]
+  },
+  {
+   "name": "small_d",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_d_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_d_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_d_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.02451075240969658,
+     -0.01845076121389866,
+     0.0
+    ],
+    [
+     0.03370094671845436,
+     0.015018325299024582,
+     0.05464456230401993
+    ]
+   ]
+  },
+  {
+   "name": "small_e",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_e_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_e_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_e_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.014140158891677856,
+     -0.006848175544291735,
+     0.0
+    ],
+    [
+     0.01457175612449646,
+     0.010814540088176727,
+     0.09073731303215027
+    ]
+   ]
+  },
+  {
+   "name": "small_f",
+   "src_tris": 10,
+   "lods": [
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_f_lod0_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_f_lod1_m0.rcm",
+       "tris": 10
+      }
+     ]
+    },
+    {
+     "tris": 10,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_f_lod2_m0.rcm",
+       "tris": 10
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.019435584545135498,
+     -0.00975084863603115,
+     0.0
+    ],
+    [
+     0.016102135181427002,
+     0.014862014912068844,
+     0.06905271857976913
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "grass_bermuda_01",
+   "images": {
+    "base": "grass_bermuda_01_diff.png",
+    "rough": "grass_bermuda_01_rough.png",
+    "normal": "grass_bermuda_01_nor_gl.png",
+    "alpha": "grass_bermuda_01_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

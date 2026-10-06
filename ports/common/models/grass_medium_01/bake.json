@@ -1,0 +1,845 @@
+{
+ "asset": "grass_medium_01",
+ "source": "grass_medium_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "large_a",
+   "src_tris": 6422,
+   "lods": [
+    {
+     "tris": 6422,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_a_lod0_m0.rcm",
+       "tris": 6422
+      }
+     ]
+    },
+    {
+     "tris": 6422,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_a_lod1_m0.rcm",
+       "tris": 6422
+      }
+     ]
+    },
+    {
+     "tris": 1011,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_a_lod2_m0.rcm",
+       "tris": 1011
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.14371824264526367,
+     -0.16987013816833496,
+     0.0
+    ],
+    [
+     0.17329072952270508,
+     0.15668867528438568,
+     0.1466887891292572
+    ]
+   ]
+  },
+  {
+   "name": "large_b",
+   "src_tris": 4626,
+   "lods": [
+    {
+     "tris": 4626,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_b_lod0_m0.rcm",
+       "tris": 4626
+      }
+     ]
+    },
+    {
+     "tris": 4626,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_b_lod1_m0.rcm",
+       "tris": 4626
+      }
+     ]
+    },
+    {
+     "tris": 890,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_b_lod2_m0.rcm",
+       "tris": 890
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.15086889266967773,
+     -0.14199498295783997,
+     0.0
+    ],
+    [
+     0.13322865962982178,
+     0.13374489545822144,
+     0.1692626178264618
+    ]
+   ]
+  },
+  {
+   "name": "large_c",
+   "src_tris": 5945,
+   "lods": [
+    {
+     "tris": 5945,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_c_lod0_m0.rcm",
+       "tris": 5945
+      }
+     ]
+    },
+    {
+     "tris": 5945,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_c_lod1_m0.rcm",
+       "tris": 5945
+      }
+     ]
+    },
+    {
+     "tris": 1032,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_c_lod2_m0.rcm",
+       "tris": 1032
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.14468932151794434,
+     -0.11548494547605515,
+     0.0
+    ],
+    [
+     0.1341017484664917,
+     0.13958492875099182,
+     0.14234741032123566
+    ]
+   ]
+  },
+  {
+   "name": "mid_a",
+   "src_tris": 2287,
+   "lods": [
+    {
+     "tris": 2287,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_a_lod0_m0.rcm",
+       "tris": 2287
+      }
+     ]
+    },
+    {
+     "tris": 2287,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_a_lod1_m0.rcm",
+       "tris": 2287
+      }
+     ]
+    },
+    {
+     "tris": 659,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_a_lod2_m0.rcm",
+       "tris": 659
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.11277580261230469,
+     -0.1080789864063263,
+     0.0
+    ],
+    [
+     0.10283946990966797,
+     0.11329889297485352,
+     0.21774429082870483
+    ]
+   ]
+  },
+  {
+   "name": "mid_b",
+   "src_tris": 1257,
+   "lods": [
+    {
+     "tris": 1257,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_b_lod0_m0.rcm",
+       "tris": 1257
+      }
+     ]
+    },
+    {
+     "tris": 1257,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_b_lod1_m0.rcm",
+       "tris": 1257
+      }
+     ]
+    },
+    {
+     "tris": 334,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_b_lod2_m0.rcm",
+       "tris": 334
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08202266693115234,
+     -0.11356603354215622,
+     0.0
+    ],
+    [
+     0.1057661771774292,
+     0.08746256679296494,
+     0.17772157490253448
+    ]
+   ]
+  },
+  {
+   "name": "mid_c",
+   "src_tris": 1466,
+   "lods": [
+    {
+     "tris": 1466,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_c_lod0_m0.rcm",
+       "tris": 1466
+      }
+     ]
+    },
+    {
+     "tris": 1466,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_c_lod1_m0.rcm",
+       "tris": 1466
+      }
+     ]
+    },
+    {
+     "tris": 348,
+     "files": [
+      {
+       "mat": 0,
+       "file": "mid_c_lod2_m0.rcm",
+       "tris": 348
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.09221261739730835,
+     -0.09210576117038727,
+     0.0
+    ],
+    [
+     0.10011786222457886,
+     0.11074970662593842,
+     0.1446356624364853
+    ]
+   ]
+  },
+  {
+   "name": "small_a",
+   "src_tris": 833,
+   "lods": [
+    {
+     "tris": 833,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod0_m0.rcm",
+       "tris": 833
+      }
+     ]
+    },
+    {
+     "tris": 833,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod1_m0.rcm",
+       "tris": 833
+      }
+     ]
+    },
+    {
+     "tris": 493,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod2_m0.rcm",
+       "tris": 493
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07353440672159195,
+     -0.0817098319530487,
+     0.0
+    ],
+    [
+     0.11130569875240326,
+     0.0806032121181488,
+     0.14042668044567108
+    ]
+   ]
+  },
+  {
+   "name": "small_b",
+   "src_tris": 653,
+   "lods": [
+    {
+     "tris": 653,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod0_m0.rcm",
+       "tris": 653
+      }
+     ]
+    },
+    {
+     "tris": 653,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod1_m0.rcm",
+       "tris": 653
+      }
+     ]
+    },
+    {
+     "tris": 283,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod2_m0.rcm",
+       "tris": 283
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08486038446426392,
+     -0.09272754192352295,
+     0.0
+    ],
+    [
+     0.08109632134437561,
+     0.0971645787358284,
+     0.09989527612924576
+    ]
+   ]
+  },
+  {
+   "name": "tall_a",
+   "src_tris": 290,
+   "lods": [
+    {
+     "tris": 290,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod0_m0.rcm",
+       "tris": 290
+      }
+     ]
+    },
+    {
+     "tris": 290,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod1_m0.rcm",
+       "tris": 290
+      }
+     ]
+    },
+    {
+     "tris": 121,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod2_m0.rcm",
+       "tris": 121
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08919280767440796,
+     -0.0949140265583992,
+     0.0
+    ],
+    [
+     0.07176357507705688,
+     0.06361745297908783,
+     0.3225463926792145
+    ]
+   ]
+  },
+  {
+   "name": "tall_b",
+   "src_tris": 310,
+   "lods": [
+    {
+     "tris": 310,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod0_m0.rcm",
+       "tris": 310
+      }
+     ]
+    },
+    {
+     "tris": 310,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod1_m0.rcm",
+       "tris": 310
+      }
+     ]
+    },
+    {
+     "tris": 164,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod2_m0.rcm",
+       "tris": 164
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08083081245422363,
+     -0.0667940154671669,
+     0.0
+    ],
+    [
+     0.06911766529083252,
+     0.06799566000699997,
+     0.28566300868988037
+    ]
+   ]
+  },
+  {
+   "name": "tall_c",
+   "src_tris": 340,
+   "lods": [
+    {
+     "tris": 340,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_c_lod0_m0.rcm",
+       "tris": 340
+      }
+     ]
+    },
+    {
+     "tris": 340,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_c_lod1_m0.rcm",
+       "tris": 340
+      }
+     ]
+    },
+    {
+     "tris": 162,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_c_lod2_m0.rcm",
+       "tris": 162
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.060117244720458984,
+     -0.07351231575012207,
+     0.0
+    ],
+    [
+     0.09291362762451172,
+     0.05464458093047142,
+     0.2362561821937561
+    ]
+   ]
+  },
+  {
+   "name": "tiny_a",
+   "src_tris": 79,
+   "lods": [
+    {
+     "tris": 79,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_a_lod0_m0.rcm",
+       "tris": 79
+      }
+     ]
+    },
+    {
+     "tris": 79,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_a_lod1_m0.rcm",
+       "tris": 79
+      }
+     ]
+    },
+    {
+     "tris": 35,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_a_lod2_m0.rcm",
+       "tris": 35
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.027453899383544922,
+     -0.025358935818076134,
+     0.0
+    ],
+    [
+     0.03989386558532715,
+     0.04840982332825661,
+     0.11245334148406982
+    ]
+   ]
+  },
+  {
+   "name": "tiny_b",
+   "src_tris": 28,
+   "lods": [
+    {
+     "tris": 28,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_b_lod0_m0.rcm",
+       "tris": 28
+      }
+     ]
+    },
+    {
+     "tris": 28,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_b_lod1_m0.rcm",
+       "tris": 28
+      }
+     ]
+    },
+    {
+     "tris": 13,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_b_lod2_m0.rcm",
+       "tris": 13
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0071315765380859375,
+     -0.012382352724671364,
+     0.0
+    ],
+    [
+     0.01643824577331543,
+     0.022016381844878197,
+     0.060208480805158615
+    ]
+   ]
+  },
+  {
+   "name": "tiny_c",
+   "src_tris": 40,
+   "lods": [
+    {
+     "tris": 40,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_c_lod0_m0.rcm",
+       "tris": 40
+      }
+     ]
+    },
+    {
+     "tris": 40,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_c_lod1_m0.rcm",
+       "tris": 40
+      }
+     ]
+    },
+    {
+     "tris": 18,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_c_lod2_m0.rcm",
+       "tris": 18
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.005517482757568359,
+     -0.021684441715478897,
+     0.0
+    ],
+    [
+     0.010514020919799805,
+     0.007319330703467131,
+     0.08238869905471802
+    ]
+   ]
+  },
+  {
+   "name": "tiny_d",
+   "src_tris": 32,
+   "lods": [
+    {
+     "tris": 32,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_d_lod0_m0.rcm",
+       "tris": 32
+      }
+     ]
+    },
+    {
+     "tris": 32,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_d_lod1_m0.rcm",
+       "tris": 32
+      }
+     ]
+    },
+    {
+     "tris": 14,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_d_lod2_m0.rcm",
+       "tris": 14
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.009934186935424805,
+     -0.035800956189632416,
+     0.0
+    ],
+    [
+     0.03310561180114746,
+     0.052781522274017334,
+     0.04782668501138687
+    ]
+   ]
+  },
+  {
+   "name": "tiny_e",
+   "src_tris": 62,
+   "lods": [
+    {
+     "tris": 62,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_e_lod0_m0.rcm",
+       "tris": 62
+      }
+     ]
+    },
+    {
+     "tris": 62,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_e_lod1_m0.rcm",
+       "tris": 62
+      }
+     ]
+    },
+    {
+     "tris": 34,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_e_lod2_m0.rcm",
+       "tris": 34
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.037509918212890625,
+     -0.04242207854986191,
+     0.0
+    ],
+    [
+     0.04775571823120117,
+     0.03172985091805458,
+     0.04945078864693642
+    ]
+   ]
+  },
+  {
+   "name": "tiny_f",
+   "src_tris": 60,
+   "lods": [
+    {
+     "tris": 60,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_f_lod0_m0.rcm",
+       "tris": 60
+      }
+     ]
+    },
+    {
+     "tris": 60,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_f_lod1_m0.rcm",
+       "tris": 60
+      }
+     ]
+    },
+    {
+     "tris": 37,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tiny_f_lod2_m0.rcm",
+       "tris": 37
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.031598806381225586,
+     -0.03224775195121765,
+     0.0
+    ],
+    [
+     0.023597002029418945,
+     0.03664239123463631,
+     0.047074805945158005
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "grass_medium_01",
+   "images": {
+    "normal": "grass_medium_01_nor_gl.png",
+    "alpha": "grass_medium_01_alpha.png",
+    "rough": "grass_medium_01_rough.png",
+    "base": "grass_medium_01_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

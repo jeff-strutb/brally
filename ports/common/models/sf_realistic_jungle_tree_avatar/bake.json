@@ -1,0 +1,121 @@
+{
+ "asset": "sf_realistic_jungle_tree_avatar",
+ "source": "sf_realistic_jungle_tree_avatar.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 711064,
+   "lods": [
+    {
+     "tris": 711064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 429740
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 281324
+      }
+     ]
+    },
+    {
+     "tris": 711064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 429740
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 281324
+      }
+     ]
+    },
+    {
+     "tris": 711064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 429740
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 281324
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -32.062103271484375,
+     -31.203392028808594,
+     0.0
+    ],
+    [
+     37.24652099609375,
+     36.63855743408203,
+     63.76658630371094
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     438
+    ],
+    "half": 37.99145141601563,
+    "height": 65.04191802978515,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Ash_Tree_pjylD2.002",
+   "images": {
+    "base": "Ash_Tree_pjylD2.001_baseColor.png",
+    "alpha_from": "Ash_Tree_pjylD2.001_baseColor.png",
+    "gltf_mr": "Ash_Tree_pjylD2.001_metallicRoughness.png",
+    "normal": "Ash_Tree_pjylD2.001_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Material.022",
+   "images": {
+    "base": "Material.022_baseColor.jpeg",
+    "gltf_mr": "Material.022_metallicRoughness.png",
+    "normal": "Material.022_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

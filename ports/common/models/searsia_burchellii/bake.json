@@ -1,0 +1,312 @@
+{
+ "asset": "searsia_burchellii",
+ "source": "searsia_burchellii_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "large",
+   "src_tris": 361558,
+   "lods": [
+    {
+     "tris": 361558,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_lod0_m0.rcm",
+       "tris": 123624
+      },
+      {
+       "mat": 1,
+       "file": "large_lod0_m1.rcm",
+       "tris": 197888
+      },
+      {
+       "mat": 2,
+       "file": "large_lod0_m2.rcm",
+       "tris": 40046
+      }
+     ]
+    },
+    {
+     "tris": 361558,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_lod1_m0.rcm",
+       "tris": 123624
+      },
+      {
+       "mat": 1,
+       "file": "large_lod1_m1.rcm",
+       "tris": 197888
+      },
+      {
+       "mat": 2,
+       "file": "large_lod1_m2.rcm",
+       "tris": 40046
+      }
+     ]
+    },
+    {
+     "tris": 205254,
+     "files": [
+      {
+       "mat": 0,
+       "file": "large_lod2_m0.rcm",
+       "tris": 48022
+      },
+      {
+       "mat": 1,
+       "file": "large_lod2_m1.rcm",
+       "tris": 157232
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.2473108768463135,
+     -2.6704821586608887,
+     0.0
+    ],
+    [
+     1.910832405090332,
+     2.378049850463867,
+     3.2390406131744385
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     311
+    ],
+    "half": 2.7238918018341063,
+    "height": 3.3038214254379272,
+    "base": "large_imp_base.png",
+    "nrm": "large_imp_nrm.png"
+   }
+  },
+  {
+   "name": "medium",
+   "src_tris": 210262,
+   "lods": [
+    {
+     "tris": 210262,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_lod0_m0.rcm",
+       "tris": 75260
+      },
+      {
+       "mat": 1,
+       "file": "medium_lod0_m1.rcm",
+       "tris": 96730
+      },
+      {
+       "mat": 2,
+       "file": "medium_lod0_m2.rcm",
+       "tris": 38272
+      }
+     ]
+    },
+    {
+     "tris": 210262,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_lod1_m0.rcm",
+       "tris": 75260
+      },
+      {
+       "mat": 1,
+       "file": "medium_lod1_m1.rcm",
+       "tris": 96730
+      },
+      {
+       "mat": 2,
+       "file": "medium_lod1_m2.rcm",
+       "tris": 38272
+      }
+     ]
+    },
+    {
+     "tris": 108003,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_lod2_m0.rcm",
+       "tris": 29054
+      },
+      {
+       "mat": 1,
+       "file": "medium_lod2_m1.rcm",
+       "tris": 78949
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.8904956579208374,
+     -1.4804645776748657,
+     0.0
+    ],
+    [
+     1.684908151626587,
+     1.1337186098098755,
+     2.5874338150024414
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     350
+    ],
+    "half": 1.9283055710792543,
+    "height": 2.63918249130249,
+    "base": "medium_imp_base.png",
+    "nrm": "medium_imp_nrm.png"
+   }
+  },
+  {
+   "name": "small",
+   "src_tris": 44516,
+   "lods": [
+    {
+     "tris": 44516,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_lod0_m0.rcm",
+       "tris": 13726
+      },
+      {
+       "mat": 1,
+       "file": "small_lod0_m1.rcm",
+       "tris": 24690
+      },
+      {
+       "mat": 2,
+       "file": "small_lod0_m2.rcm",
+       "tris": 6100
+      }
+     ]
+    },
+    {
+     "tris": 44516,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_lod1_m0.rcm",
+       "tris": 13726
+      },
+      {
+       "mat": 1,
+       "file": "small_lod1_m1.rcm",
+       "tris": 24690
+      },
+      {
+       "mat": 2,
+       "file": "small_lod1_m2.rcm",
+       "tris": 6100
+      }
+     ]
+    },
+    {
+     "tris": 24814,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_lod2_m0.rcm",
+       "tris": 5272
+      },
+      {
+       "mat": 1,
+       "file": "small_lod2_m1.rcm",
+       "tris": 19542
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.8695430755615234,
+     -1.1426303386688232,
+     0.0
+    ],
+    [
+     0.7853946685791016,
+     1.1304938793182373,
+     1.9357479810714722
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     434
+    ],
+    "half": 1.1654829454421998,
+    "height": 1.9744629406929017,
+    "base": "small_imp_base.png",
+    "nrm": "small_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "searsia_burchellii_leaves",
+   "images": {
+    "base": "searsia_burchellii_diff.png",
+    "rough": "searsia_burchellii_rough.png",
+    "normal": "searsia_burchellii_nor_gl.png",
+    "alpha": "searsia_burchellii_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "searsia_burchellii",
+   "images": {
+    "base": "searsia_burchellii_diff.png",
+    "rough": "searsia_burchellii_rough.png",
+    "normal": "searsia_burchellii_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "searsia_burchellii_twigs",
+   "images": {
+    "base": "searsia_burchellii_diff.png",
+    "rough": "searsia_burchellii_rough.png",
+    "normal": "searsia_burchellii_nor_gl.png",
+    "alpha": "searsia_burchellii_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

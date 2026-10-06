@@ -1,0 +1,76 @@
+{
+ "asset": "sand_rocks_small_01",
+ "source": "sand_rocks_small_01_4k.blend",
+ "targets": [
+  60000,
+  15000,
+  3000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 739469,
+   "lods": [
+    {
+     "tris": 59998,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 59998
+      }
+     ]
+    },
+    {
+     "tris": 14999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 14999
+      }
+     ]
+    },
+    {
+     "tris": 2999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2999
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.4575612545013428,
+     -1.9629250764846802,
+     -0.001347668468952179
+    ],
+    [
+     2.1686127185821533,
+     1.9216992855072021,
+     0.5348002910614014
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "sand_rocks_small_01",
+   "images": {
+    "base": "sand_rocks_small_01_diff.png",
+    "rough": "sand_rocks_small_01_rough.png",
+    "normal": "sand_rocks_small_01_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

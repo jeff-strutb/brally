@@ -1,0 +1,76 @@
+{
+ "asset": "namaqualand_cliff_01",
+ "source": "namaqualand_cliff_01_4k.blend",
+ "targets": [
+  20000,
+  5000,
+  1200
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 94369,
+   "lods": [
+    {
+     "tris": 11794,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 11794
+      }
+     ]
+    },
+    {
+     "tris": 5000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 5000
+      }
+     ]
+    },
+    {
+     "tris": 1199,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1199
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -4.349035739898682,
+     -1.3764781951904297,
+     0.0
+    ],
+    [
+     3.9300079345703125,
+     3.0106277465820312,
+     4.9606032371521
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "namaqualand_cliff_01",
+   "images": {
+    "base": "namaqualand_cliff_01_diff.png",
+    "rough": "namaqualand_cliff_01_rough.png",
+    "normal": "namaqualand_cliff_01_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

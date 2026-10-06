@@ -1,0 +1,76 @@
+{
+ "asset": "tree_stump_01",
+ "source": "tree_stump_01_4k.blend",
+ "targets": [
+  30000,
+  8000,
+  2000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 41046,
+   "lods": [
+    {
+     "tris": 29999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 29999
+      }
+     ]
+    },
+    {
+     "tris": 7999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 7999
+      }
+     ]
+    },
+    {
+     "tris": 1999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1999
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.7289241552352905,
+     -0.780062735080719,
+     8.296966552734375e-05
+    ],
+    [
+     0.6967191100120544,
+     0.8102515935897827,
+     0.5725328326225281
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "tree_stump_01",
+   "images": {
+    "rough": "tree_stump_01_rough.png",
+    "normal": "tree_stump_01_nor_gl.png",
+    "base": "tree_stump_01_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

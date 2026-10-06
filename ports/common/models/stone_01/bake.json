@@ -1,0 +1,76 @@
+{
+ "asset": "stone_01",
+ "source": "stone_01_4k.blend",
+ "targets": [
+  60000,
+  15000,
+  3000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 53520,
+   "lods": [
+    {
+     "tris": 53520,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 53520
+      }
+     ]
+    },
+    {
+     "tris": 13380,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 13380
+      }
+     ]
+    },
+    {
+     "tris": 3344,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 3344
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07890257239341736,
+     -0.041099872440099716,
+     0.0
+    ],
+    [
+     0.0679621696472168,
+     0.047956433147192,
+     0.07179516553878784
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "stone_01",
+   "images": {
+    "normal": "stone_01_nor_gl.png",
+    "rough": "stone_01_rough.png",
+    "base": "stone_01_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

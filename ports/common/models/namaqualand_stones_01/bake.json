@@ -1,0 +1,268 @@
+{
+ "asset": "namaqualand_stones_01",
+ "source": "namaqualand_stones_01_4k.blend",
+ "targets": [
+  60000,
+  15000,
+  3000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 24220,
+   "lods": [
+    {
+     "tris": 24220,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 24220
+      }
+     ]
+    },
+    {
+     "tris": 4974,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 4974
+      }
+     ]
+    },
+    {
+     "tris": 2486,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2486
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03770935535430908,
+     -0.02940969541668892,
+     0.0
+    ],
+    [
+     0.038553595542907715,
+     0.03367052599787712,
+     0.0380173996090889
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 9086,
+   "lods": [
+    {
+     "tris": 9086,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 9086
+      }
+     ]
+    },
+    {
+     "tris": 9086,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 9086
+      }
+     ]
+    },
+    {
+     "tris": 2270,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 2270
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07044070959091187,
+     -0.04433271288871765,
+     0.0
+    ],
+    [
+     0.08051741123199463,
+     0.03637698292732239,
+     0.08396583795547485
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 19794,
+   "lods": [
+    {
+     "tris": 19794,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 19794
+      }
+     ]
+    },
+    {
+     "tris": 4064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 4064
+      }
+     ]
+    },
+    {
+     "tris": 2032,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 2032
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04223203659057617,
+     -0.049839697778224945,
+     0.0
+    ],
+    [
+     0.06161785125732422,
+     0.048066396266222,
+     0.05715116485953331
+    ]
+   ]
+  },
+  {
+   "name": "d",
+   "src_tris": 5864,
+   "lods": [
+    {
+     "tris": 5864,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 5864
+      }
+     ]
+    },
+    {
+     "tris": 5864,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 5864
+      }
+     ]
+    },
+    {
+     "tris": 2932,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 2932
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.057970717549324036,
+     -0.0367552675306797,
+     0.0
+    ],
+    [
+     0.056601449847221375,
+     0.04544048383831978,
+     0.03684576600790024
+    ]
+   ]
+  },
+  {
+   "name": "e",
+   "src_tris": 11160,
+   "lods": [
+    {
+     "tris": 11160,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 11160
+      }
+     ]
+    },
+    {
+     "tris": 11160,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 11160
+      }
+     ]
+    },
+    {
+     "tris": 2790,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 2790
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.05869220569729805,
+     -0.050263773649930954,
+     0.0
+    ],
+    [
+     0.052254628390073776,
+     0.06179731711745262,
+     0.07673144340515137
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "namaqualand_stones_01",
+   "images": {
+    "base": "namaqualand_stones_01_diff.png",
+    "rough": "namaqualand_stones_01_rough.png",
+    "normal": "namaqualand_stones_01_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "asset": "boulder_01",
+ "source": "boulder_01_4k.blend",
+ "targets": [
+  40000,
+  10000,
+  2500
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 66122,
+   "lods": [
+    {
+     "tris": 33060,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 33060
+      }
+     ]
+    },
+    {
+     "tris": 8264,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 8264
+      }
+     ]
+    },
+    {
+     "tris": 2500,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2500
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.7195512652397156,
+     -0.8404753804206848,
+     0.0003977864980697632
+    ],
+    [
+     0.5528766512870789,
+     0.9899495840072632,
+     1.0035569667816162
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "boulder_01",
+   "images": {
+    "base": "boulder_01_diff.png",
+    "rough": "boulder_01_rough.png",
+    "normal": "boulder_01_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

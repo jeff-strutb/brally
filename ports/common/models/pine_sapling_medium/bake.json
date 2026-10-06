@@ -1,0 +1,326 @@
+{
+ "asset": "pine_sapling_medium",
+ "source": "pine_sapling_medium_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 2662894,
+   "lods": [
+    {
+     "tris": 310969,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 11592
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 296990
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 310969,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 11592
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 296990
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 147358,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 11592
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 133379
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.7651782035827637,
+     -2.485682487487793,
+     0.0
+    ],
+    [
+     2.402318239212036,
+     2.2576851844787598,
+     11.496668815612793
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1064
+    ],
+    "half": 2.820481767654419,
+    "height": 11.72660219192505,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 1872357,
+   "lods": [
+    {
+     "tris": 219797,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 8794
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 208616
+      },
+      {
+       "mat": 2,
+       "file": "b_lod0_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 219797,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 8794
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 208616
+      },
+      {
+       "mat": 2,
+       "file": "b_lod1_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 104850,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 8794
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 93669
+      },
+      {
+       "mat": 2,
+       "file": "b_lod2_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.2427871227264404,
+     -2.719033718109131,
+     0.0
+    ],
+    [
+     2.5081753730773926,
+     2.7432596683502197,
+     9.113075256347656
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     850
+    ],
+    "half": 2.7981248617172243,
+    "height": 9.29533676147461,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 1502888,
+   "lods": [
+    {
+     "tris": 176453,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 6756
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 167310
+      },
+      {
+       "mat": 2,
+       "file": "c_lod0_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 176453,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 6756
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 167310
+      },
+      {
+       "mat": 2,
+       "file": "c_lod1_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    },
+    {
+     "tris": 84226,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 6756
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 75083
+      },
+      {
+       "mat": 2,
+       "file": "c_lod2_m2.rcm",
+       "tris": 2387
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.0634689331054688,
+     -1.8283103704452515,
+     0.0
+    ],
+    [
+     1.785508155822754,
+     1.6999541521072388,
+     7.029196262359619
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     872
+    ],
+    "half": 2.104738311767578,
+    "height": 7.169780187606811,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "pine_sapling_medium_bark",
+   "images": {
+    "base": "pine_sapling_medium_bark_diff.png",
+    "rough": "pine_sapling_medium_bark_rough.png",
+    "normal": "pine_sapling_medium_bark_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "pine_sapling_medium_twig",
+   "images": {
+    "base": "pine_sapling_medium_twig_diff.png",
+    "rough": "pine_sapling_medium_twig_rough.png",
+    "normal": "pine_sapling_medium_twig_nor_gl.png",
+    "alpha": "pine_sapling_medium_twig_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "pine_sapling_medium_dead_branches",
+   "images": {
+    "base": "pine_sapling_medium_bark_diff.png",
+    "rough": "pine_sapling_medium_bark_rough.png",
+    "normal": "pine_sapling_medium_bark_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

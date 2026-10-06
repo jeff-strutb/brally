@@ -1,0 +1,317 @@
+{
+ "asset": "nettle_plant",
+ "source": "nettle_plant_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "medium_a",
+   "src_tris": 5896,
+   "lods": [
+    {
+     "tris": 5896,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod0_m0.rcm",
+       "tris": 5896
+      }
+     ]
+    },
+    {
+     "tris": 5896,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod1_m0.rcm",
+       "tris": 5896
+      }
+     ]
+    },
+    {
+     "tris": 509,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_a_lod2_m0.rcm",
+       "tris": 509
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.03400599956512451,
+     -0.037063196301460266,
+     0.0
+    ],
+    [
+     0.043280601501464844,
+     0.05200010538101196,
+     0.1314907819032669
+    ]
+   ]
+  },
+  {
+   "name": "medium_b",
+   "src_tris": 5664,
+   "lods": [
+    {
+     "tris": 5664,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod0_m0.rcm",
+       "tris": 5664
+      }
+     ]
+    },
+    {
+     "tris": 5664,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod1_m0.rcm",
+       "tris": 5664
+      }
+     ]
+    },
+    {
+     "tris": 455,
+     "files": [
+      {
+       "mat": 0,
+       "file": "medium_b_lod2_m0.rcm",
+       "tris": 455
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.027977406978607178,
+     -0.03175850585103035,
+     0.0
+    ],
+    [
+     0.037505388259887695,
+     0.03440633416175842,
+     0.10457506030797958
+    ]
+   ]
+  },
+  {
+   "name": "small_a",
+   "src_tris": 3592,
+   "lods": [
+    {
+     "tris": 3592,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod0_m0.rcm",
+       "tris": 3592
+      }
+     ]
+    },
+    {
+     "tris": 3592,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod1_m0.rcm",
+       "tris": 3592
+      }
+     ]
+    },
+    {
+     "tris": 312,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_a_lod2_m0.rcm",
+       "tris": 312
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.029950976371765137,
+     -0.02230362594127655,
+     0.0
+    ],
+    [
+     0.03424161672592163,
+     0.021154332906007767,
+     0.06256603449583054
+    ]
+   ]
+  },
+  {
+   "name": "small_b",
+   "src_tris": 1088,
+   "lods": [
+    {
+     "tris": 1088,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod0_m0.rcm",
+       "tris": 1088
+      }
+     ]
+    },
+    {
+     "tris": 1088,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod1_m0.rcm",
+       "tris": 1088
+      }
+     ]
+    },
+    {
+     "tris": 71,
+     "files": [
+      {
+       "mat": 0,
+       "file": "small_b_lod2_m0.rcm",
+       "tris": 71
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.029333114624023438,
+     -0.022609006613492966,
+     0.0
+    ],
+    [
+     0.030392706394195557,
+     0.015900064259767532,
+     0.02172185853123665
+    ]
+   ]
+  },
+  {
+   "name": "tall_a",
+   "src_tris": 6984,
+   "lods": [
+    {
+     "tris": 6984,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod0_m0.rcm",
+       "tris": 6984
+      }
+     ]
+    },
+    {
+     "tris": 6984,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod1_m0.rcm",
+       "tris": 6984
+      }
+     ]
+    },
+    {
+     "tris": 582,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_a_lod2_m0.rcm",
+       "tris": 582
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.05375314876437187,
+     -0.04429709538817406,
+     0.0
+    ],
+    [
+     0.0498381033539772,
+     0.045760415494441986,
+     0.21677492558956146
+    ]
+   ]
+  },
+  {
+   "name": "tall_b",
+   "src_tris": 8080,
+   "lods": [
+    {
+     "tris": 8080,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod0_m0.rcm",
+       "tris": 8080
+      }
+     ]
+    },
+    {
+     "tris": 8080,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod1_m0.rcm",
+       "tris": 8080
+      }
+     ]
+    },
+    {
+     "tris": 671,
+     "files": [
+      {
+       "mat": 0,
+       "file": "tall_b_lod2_m0.rcm",
+       "tris": 671
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.04026798903942108,
+     -0.05138058587908745,
+     0.0
+    ],
+    [
+     0.04205542802810669,
+     0.043302834033966064,
+     0.192728191614151
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "nettle_plant",
+   "images": {
+    "rough": "nettle_plant_rough.png",
+    "normal": "nettle_plant_nor_gl.png",
+    "alpha": "nettle_plant_alpha.png",
+    "base": "nettle_plant_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

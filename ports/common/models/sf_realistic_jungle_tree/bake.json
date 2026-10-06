@@ -1,0 +1,315 @@
+{
+ "asset": "sf_realistic_jungle_tree",
+ "source": "sf_realistic_jungle_tree.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 2324820,
+   "lods": [
+    {
+     "tris": 2324820,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 79690
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 145849
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 244069
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 149904
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 1344961
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 342357
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 12780
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 5210
+      }
+     ]
+    },
+    {
+     "tris": 2324820,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 79690
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 145849
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 244069
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 149904
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 1344961
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 342357
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 12780
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 5210
+      }
+     ]
+    },
+    {
+     "tris": 2324820,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 79690
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 145849
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 244069
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 149904
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 1344961
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 342357
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 12780
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 5210
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -16.11790657043457,
+     -16.229516983032227,
+     0.0
+    ],
+    [
+     15.083799362182617,
+     17.06688117980957,
+     29.81121063232422
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     447
+    ],
+    "half": 17.408218803405763,
+    "height": 30.407434844970705,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Banyan_Bark_tfhjaeju.004",
+   "images": {
+    "base": "Banyan_Bark_tfhjaeju.004_baseColor.jpeg",
+    "gltf_mr": "Banyan_Bark_tfhjaeju.004_metallicRoughness.png",
+    "normal": "Banyan_Bark_tfhjaeju.004_normal.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Banyan_Bark_tfhjaeju.005",
+   "images": {
+    "base": "Banyan_Bark_tfhjaeju.004_baseColor.jpeg",
+    "gltf_mr": "Banyan_Bark_tfhjaeju.004_metallicRoughness.png",
+    "normal": "Banyan_Bark_tfhjaeju.004_normal.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Chestnut_sefbdevh2.004",
+   "images": {
+    "base": "Chestnut_sefbdevh2.004_baseColor.png",
+    "alpha_from": "Chestnut_sefbdevh2.004_baseColor.png",
+    "gltf_mr": "Chestnut_sefbdevh2.004_metallicRoughness.png",
+    "normal": "Chestnut_sefbdevh2.004_normal.jpeg"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Devils_Ivy_pcobcdbh2.001",
+   "images": {
+    "base": "Devils_Ivy_pcobcdbh2.001_baseColor.png",
+    "alpha_from": "Devils_Ivy_pcobcdbh2.001_baseColor.png",
+    "gltf_mr": "Devils_Ivy_pcobcdbh2.001_metallicRoughness.png",
+    "normal": "Devils_Ivy_pcobcdbh2.001_normal.jpeg"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Dwarf_Umbrella_pbul42.004",
+   "images": {
+    "base": "Dwarf_Umbrella_pbul42.004_baseColor.png",
+    "alpha_from": "Dwarf_Umbrella_pbul42.004_baseColor.png",
+    "gltf_mr": "Dwarf_Umbrella_pbul42.004_metallicRoughness.png",
+    "normal": "Dwarf_Umbrella_pbul42.004_normal.jpeg"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Hawthorn_Bark_ukjjfgsdy.001",
+   "images": {
+    "base": "Hawthorn_Bark_ukjjfgsdy.001_baseColor.jpeg",
+    "gltf_mr": "Hawthorn_Bark_ukjjfgsdy.001_metallicRoughness.png",
+    "normal": "Hawthorn_Bark_ukjjfgsdy.001_normal.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Material.004",
+   "images": {
+    "base": "Material.004_baseColor.png",
+    "alpha_from": "Material.004_baseColor.png",
+    "gltf_mr": "Material.004_metallicRoughness.png",
+    "normal": "Material.004_normal.jpeg"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Swiss_Cheese_ojllG2.001",
+   "images": {
+    "base": "Swiss_Cheese_ojllG2.001_baseColor.png",
+    "alpha_from": "Swiss_Cheese_ojllG2.001_baseColor.png",
+    "gltf_mr": "Swiss_Cheese_ojllG2.001_metallicRoughness.png",
+    "normal": "Swiss_Cheese_ojllG2.001_normal.jpeg"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  }
+ ]
+}

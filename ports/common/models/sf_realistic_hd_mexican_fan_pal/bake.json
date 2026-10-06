@@ -1,0 +1,735 @@
+{
+ "asset": "sf_realistic_hd_mexican_fan_pal",
+ "source": "sf_realistic_hd_mexican_fan_pal.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 218115,
+   "lods": [
+    {
+     "tris": 218115,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 2952
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 6000
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 3960
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 9600
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 5040
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 5220
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 3592
+      },
+      {
+       "mat": 7,
+       "file": "a_lod0_m7.rcm",
+       "tris": 1360
+      },
+      {
+       "mat": 8,
+       "file": "a_lod0_m8.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 9,
+       "file": "a_lod0_m9.rcm",
+       "tris": 712
+      },
+      {
+       "mat": 10,
+       "file": "a_lod0_m10.rcm",
+       "tris": 3528
+      },
+      {
+       "mat": 11,
+       "file": "a_lod0_m11.rcm",
+       "tris": 1232
+      },
+      {
+       "mat": 12,
+       "file": "a_lod0_m12.rcm",
+       "tris": 576
+      },
+      {
+       "mat": 13,
+       "file": "a_lod0_m13.rcm",
+       "tris": 784
+      },
+      {
+       "mat": 14,
+       "file": "a_lod0_m14.rcm",
+       "tris": 42372
+      },
+      {
+       "mat": 15,
+       "file": "a_lod0_m15.rcm",
+       "tris": 42548
+      },
+      {
+       "mat": 16,
+       "file": "a_lod0_m16.rcm",
+       "tris": 40656
+      },
+      {
+       "mat": 17,
+       "file": "a_lod0_m17.rcm",
+       "tris": 13388
+      },
+      {
+       "mat": 18,
+       "file": "a_lod0_m18.rcm",
+       "tris": 370
+      },
+      {
+       "mat": 19,
+       "file": "a_lod0_m19.rcm",
+       "tris": 10730
+      },
+      {
+       "mat": 20,
+       "file": "a_lod0_m20.rcm",
+       "tris": 1864
+      },
+      {
+       "mat": 21,
+       "file": "a_lod0_m21.rcm",
+       "tris": 21127
+      }
+     ]
+    },
+    {
+     "tris": 218115,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 2952
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 6000
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 3960
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 9600
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 5040
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 5220
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 3592
+      },
+      {
+       "mat": 7,
+       "file": "a_lod1_m7.rcm",
+       "tris": 1360
+      },
+      {
+       "mat": 8,
+       "file": "a_lod1_m8.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 9,
+       "file": "a_lod1_m9.rcm",
+       "tris": 712
+      },
+      {
+       "mat": 10,
+       "file": "a_lod1_m10.rcm",
+       "tris": 3528
+      },
+      {
+       "mat": 11,
+       "file": "a_lod1_m11.rcm",
+       "tris": 1232
+      },
+      {
+       "mat": 12,
+       "file": "a_lod1_m12.rcm",
+       "tris": 576
+      },
+      {
+       "mat": 13,
+       "file": "a_lod1_m13.rcm",
+       "tris": 784
+      },
+      {
+       "mat": 14,
+       "file": "a_lod1_m14.rcm",
+       "tris": 42372
+      },
+      {
+       "mat": 15,
+       "file": "a_lod1_m15.rcm",
+       "tris": 42548
+      },
+      {
+       "mat": 16,
+       "file": "a_lod1_m16.rcm",
+       "tris": 40656
+      },
+      {
+       "mat": 17,
+       "file": "a_lod1_m17.rcm",
+       "tris": 13388
+      },
+      {
+       "mat": 18,
+       "file": "a_lod1_m18.rcm",
+       "tris": 370
+      },
+      {
+       "mat": 19,
+       "file": "a_lod1_m19.rcm",
+       "tris": 10730
+      },
+      {
+       "mat": 20,
+       "file": "a_lod1_m20.rcm",
+       "tris": 1864
+      },
+      {
+       "mat": 21,
+       "file": "a_lod1_m21.rcm",
+       "tris": 21127
+      }
+     ]
+    },
+    {
+     "tris": 218115,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 2952
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 6000
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 3960
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 9600
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 5040
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 5220
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 3592
+      },
+      {
+       "mat": 7,
+       "file": "a_lod2_m7.rcm",
+       "tris": 1360
+      },
+      {
+       "mat": 8,
+       "file": "a_lod2_m8.rcm",
+       "tris": 504
+      },
+      {
+       "mat": 9,
+       "file": "a_lod2_m9.rcm",
+       "tris": 712
+      },
+      {
+       "mat": 10,
+       "file": "a_lod2_m10.rcm",
+       "tris": 3528
+      },
+      {
+       "mat": 11,
+       "file": "a_lod2_m11.rcm",
+       "tris": 1232
+      },
+      {
+       "mat": 12,
+       "file": "a_lod2_m12.rcm",
+       "tris": 576
+      },
+      {
+       "mat": 13,
+       "file": "a_lod2_m13.rcm",
+       "tris": 784
+      },
+      {
+       "mat": 14,
+       "file": "a_lod2_m14.rcm",
+       "tris": 42372
+      },
+      {
+       "mat": 15,
+       "file": "a_lod2_m15.rcm",
+       "tris": 42548
+      },
+      {
+       "mat": 16,
+       "file": "a_lod2_m16.rcm",
+       "tris": 40656
+      },
+      {
+       "mat": 17,
+       "file": "a_lod2_m17.rcm",
+       "tris": 13388
+      },
+      {
+       "mat": 18,
+       "file": "a_lod2_m18.rcm",
+       "tris": 370
+      },
+      {
+       "mat": 19,
+       "file": "a_lod2_m19.rcm",
+       "tris": 10730
+      },
+      {
+       "mat": 20,
+       "file": "a_lod2_m20.rcm",
+       "tris": 1864
+      },
+      {
+       "mat": 21,
+       "file": "a_lod2_m21.rcm",
+       "tris": 21127
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.915740966796875,
+     -1.9263370037078857,
+     0.0
+    ],
+    [
+     1.9790904521942139,
+     1.912155032157898,
+     13.380931854248047
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1731
+    ],
+    "half": 2.0186722612380983,
+    "height": 13.648550491333008,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Wahs_crownshaft",
+   "images": {
+    "base": "Wahs_crownshaft_baseColor.png",
+    "normal": "Wahs_crownshaft_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_cut_stalk_01",
+   "images": {
+    "base": "Wash_cut_stalk_01_baseColor.png",
+    "normal": "Wash_cut_stalk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_cut_stalk_02",
+   "images": {
+    "base": "Wash_cut_stalk_02_baseColor.png",
+    "normal": "Wash_cut_stalk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_cut_stalk_03",
+   "images": {
+    "base": "Wash_cut_stalk_03_baseColor.png",
+    "normal": "Wash_cut_stalk_03_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_cut_stalk_04",
+   "images": {
+    "base": "Wash_cut_stalk_04_baseColor.png",
+    "normal": "Wash_cut_stalk_03_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_cut_stalk_cap",
+   "images": {
+    "base": "Wash_cut_stalk_cap_baseColor.png",
+    "normal": "Wash_cut_stalk_cap_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_1a",
+   "images": {
+    "base": "Wash_fur_1a_baseColor.png",
+    "alpha_from": "Wash_fur_1a_baseColor.png",
+    "normal": "Wash_fur_1b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_1b",
+   "images": {
+    "base": "Wash_fur_1b_baseColor.png",
+    "alpha_from": "Wash_fur_1b_baseColor.png",
+    "normal": "Wash_fur_1b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m7_base.png",
+    "orm": "m7_orm.png",
+    "nrm": "m7_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_1c",
+   "images": {
+    "base": "Wash_fur_1c_baseColor.png",
+    "alpha_from": "Wash_fur_1c_baseColor.png",
+    "normal": "Wash_fur_1b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m8_base.png",
+    "orm": "m8_orm.png",
+    "nrm": "m8_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_1d",
+   "images": {
+    "base": "Wash_fur_1d_baseColor.png",
+    "alpha_from": "Wash_fur_1d_baseColor.png",
+    "normal": "Wash_fur_1b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m9_base.png",
+    "orm": "m9_orm.png",
+    "nrm": "m9_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_2a",
+   "images": {
+    "base": "Wash_fur_2a_baseColor.png",
+    "alpha_from": "Wash_fur_2a_baseColor.png",
+    "normal": "Wash_fur_2b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m10_base.png",
+    "orm": "m10_orm.png",
+    "nrm": "m10_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_2b",
+   "images": {
+    "base": "Wash_fur_2b_baseColor.png",
+    "alpha_from": "Wash_fur_2b_baseColor.png",
+    "normal": "Wash_fur_2b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m11_base.png",
+    "orm": "m11_orm.png",
+    "nrm": "m11_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_2c",
+   "images": {
+    "base": "Wash_fur_2c_baseColor.png",
+    "alpha_from": "Wash_fur_2c_baseColor.png",
+    "normal": "Wash_fur_2b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m12_base.png",
+    "orm": "m12_orm.png",
+    "nrm": "m12_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_fur_2d",
+   "images": {
+    "base": "Wash_fur_2d_baseColor.png",
+    "alpha_from": "Wash_fur_2d_baseColor.png",
+    "normal": "Wash_fur_2b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m13_base.png",
+    "orm": "m13_orm.png",
+    "nrm": "m13_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_01",
+   "images": {
+    "base": "Wash_leaf_01_baseColor.png",
+    "normal": "Wash_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m14_base.png",
+    "orm": "m14_orm.png",
+    "nrm": "m14_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_02",
+   "images": {
+    "base": "Wash_leaf_02_baseColor.png",
+    "normal": "Wash_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m15_base.png",
+    "orm": "m15_orm.png",
+    "nrm": "m15_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_03",
+   "images": {
+    "base": "Wash_leaf_03_baseColor.png",
+    "normal": "Wash_leaf_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m16_base.png",
+    "orm": "m16_orm.png",
+    "nrm": "m16_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_stalk_01",
+   "images": {
+    "base": "Wash_leaf_stalk_01_baseColor.png",
+    "normal": "Wash_leaf_stalk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m17_base.png",
+    "orm": "m17_orm.png",
+    "nrm": "m17_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_stalk_02",
+   "images": {
+    "base": "Wash_leaf_stalk_02_baseColor.png",
+    "normal": "Wash_leaf_stalk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m18_base.png",
+    "orm": "m18_orm.png",
+    "nrm": "m18_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_leaf_stalk_06",
+   "images": {
+    "base": "Wash_leaf_stalk_06_baseColor.png",
+    "normal": "Wash_leaf_stalk_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m19_base.png",
+    "orm": "m19_orm.png",
+    "nrm": "m19_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_rob_spines",
+   "images": {
+    "base": "Wash_rob_spines_baseColor.png",
+    "alpha_from": "Wash_rob_spines_baseColor.png",
+    "normal": "Wash_rob_spines_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m20_base.png",
+    "orm": "m20_orm.png",
+    "nrm": "m20_nrm.png"
+   }
+  },
+  {
+   "name": "Wash_trunk",
+   "images": {
+    "base": "Wash_trunk_baseColor.png",
+    "normal": "Wash_trunk_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m21_base.png",
+    "orm": "m21_orm.png",
+    "nrm": "m21_nrm.png"
+   }
+  }
+ ]
+}

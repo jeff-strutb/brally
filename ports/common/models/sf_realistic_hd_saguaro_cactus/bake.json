@@ -1,0 +1,149 @@
+{
+ "asset": "sf_realistic_hd_saguaro_cactus",
+ "source": "sf_realistic_hd_saguaro_cactus.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 104684,
+   "lods": [
+    {
+     "tris": 104684,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 70908
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 6912
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 26864
+      }
+     ]
+    },
+    {
+     "tris": 104684,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 70908
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 6912
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 26864
+      }
+     ]
+    },
+    {
+     "tris": 104684,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 70908
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 6912
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 26864
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.6856168508529663,
+     -1.649734616279602,
+     0.0
+    ],
+    [
+     1.6576133966445923,
+     1.0669413805007935,
+     7.668173313140869
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1165
+    ],
+    "half": 1.7193291878700256,
+    "height": 7.8215367794036865,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Cactus_spines_01",
+   "images": {
+    "base": "Cactus_spines_01_baseColor.png",
+    "alpha_from": "Cactus_spines_01_baseColor.png",
+    "normal": "Cactus_spines_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Carnegiea_bark_01",
+   "images": {
+    "base": "Carnegiea_bark_01_baseColor.png",
+    "normal": "Carnegiea_bark_01_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Carnegiea_bark_03",
+   "images": {
+    "base": "Carnegiea_bark_03_baseColor.png",
+    "normal": "Carnegiea_bark_03_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

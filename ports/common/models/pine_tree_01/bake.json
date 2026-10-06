@@ -1,0 +1,416 @@
+{
+ "asset": "pine_tree_01",
+ "source": "pine_tree_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 6951524,
+   "lods": [
+    {
+     "tris": 826950,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 13468
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 42166
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 770604
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 712
+      }
+     ]
+    },
+    {
+     "tris": 416451,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 23710
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 42166
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 345915
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 4660
+      }
+     ]
+    },
+    {
+     "tris": 416451,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 23710
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 42166
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 345915
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 4660
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -3.824099540710449,
+     -4.259129524230957,
+     -2.8602778911590576e-05
+    ],
+    [
+     3.777740955352783,
+     4.040144920349121,
+     20.39678382873535
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1226
+    ],
+    "half": 4.344312114715576,
+    "height": 20.804719505310057,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 4234432,
+   "lods": [
+    {
+     "tris": 514976,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 8539
+      },
+      {
+       "mat": 2,
+       "file": "b_lod0_m2.rcm",
+       "tris": 466240
+      },
+      {
+       "mat": 3,
+       "file": "b_lod0_m3.rcm",
+       "tris": 810
+      },
+      {
+       "mat": 4,
+       "file": "b_lod0_m4.rcm",
+       "tris": 39387
+      }
+     ]
+    },
+    {
+     "tris": 514976,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 8539
+      },
+      {
+       "mat": 2,
+       "file": "b_lod1_m2.rcm",
+       "tris": 466240
+      },
+      {
+       "mat": 3,
+       "file": "b_lod1_m3.rcm",
+       "tris": 810
+      },
+      {
+       "mat": 4,
+       "file": "b_lod1_m4.rcm",
+       "tris": 39387
+      }
+     ]
+    },
+    {
+     "tris": 267343,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 14046
+      },
+      {
+       "mat": 2,
+       "file": "b_lod2_m2.rcm",
+       "tris": 209250
+      },
+      {
+       "mat": 3,
+       "file": "b_lod2_m3.rcm",
+       "tris": 4660
+      },
+      {
+       "mat": 4,
+       "file": "b_lod2_m4.rcm",
+       "tris": 39387
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -3.9477877616882324,
+     -3.9751834869384766,
+     0.0
+    ],
+    [
+     3.2770743370056152,
+     3.640054225921631,
+     14.88011360168457
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     958
+    ],
+    "half": 4.054687156677246,
+    "height": 15.177715873718261,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 5996296,
+   "lods": [
+    {
+     "tris": 703318,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 11804
+      },
+      {
+       "mat": 2,
+       "file": "c_lod0_m2.rcm",
+       "tris": 667640
+      },
+      {
+       "mat": 3,
+       "file": "c_lod0_m3.rcm",
+       "tris": 741
+      },
+      {
+       "mat": 5,
+       "file": "c_lod0_m5.rcm",
+       "tris": 23133
+      }
+     ]
+    },
+    {
+     "tris": 347991,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 20438
+      },
+      {
+       "mat": 2,
+       "file": "c_lod1_m2.rcm",
+       "tris": 299760
+      },
+      {
+       "mat": 3,
+       "file": "c_lod1_m3.rcm",
+       "tris": 4660
+      },
+      {
+       "mat": 5,
+       "file": "c_lod1_m5.rcm",
+       "tris": 23133
+      }
+     ]
+    },
+    {
+     "tris": 347991,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 20438
+      },
+      {
+       "mat": 2,
+       "file": "c_lod2_m2.rcm",
+       "tris": 299760
+      },
+      {
+       "mat": 3,
+       "file": "c_lod2_m3.rcm",
+       "tris": 4660
+      },
+      {
+       "mat": 5,
+       "file": "c_lod2_m5.rcm",
+       "tris": 23133
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -3.7295475006103516,
+     -3.4959051609039307,
+     0.0
+    ],
+    [
+     3.890993118286133,
+     4.390528202056885,
+     17.55060577392578
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     1023
+    ],
+    "half": 4.478338766098022,
+    "height": 17.901617889404296,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "pine_tree_01_bark",
+   "images": {
+    "rough": "pine_tree_01_bark_rough.png",
+    "normal": "pine_tree_01_bark_nor_gl.png",
+    "base": "pine_tree_01_bark_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "pine_tree_01_trunk_a",
+   "images": {
+    "base": "pine_tree_01_trunk_a_diff.png",
+    "rough": "pine_tree_01_trunk_a_rough.png",
+    "normal": "pine_tree_01_trunk_a_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "pine_tree_01_twig",
+   "images": {
+    "alpha": "pine_tree_01_twig_alpha.png",
+    "normal": "pine_tree_01_twig_nor_gl.png",
+    "rough": "pine_tree_01_twig_rough.png",
+    "base": "pine_tree_01_twig_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "pine_tree_01_dead_branches",
+   "images": {
+    "base": "pine_tree_01_bark_diff.png",
+    "rough": "pine_tree_01_bark_rough.png",
+    "normal": "pine_tree_01_bark_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "pine_tree_01_trunk_b",
+   "images": {
+    "rough": "pine_tree_01_trunk_b_rough.png",
+    "normal": "pine_tree_01_trunk_b_nor_gl.png",
+    "base": "pine_tree_01_trunk_b_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "pine_tree_01_trunk_c",
+   "images": {
+    "base": "pine_tree_01_trunk_c_diff.png",
+    "rough": "pine_tree_01_trunk_c_rough.png",
+    "normal": "pine_tree_01_trunk_c_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  }
+ ]
+}

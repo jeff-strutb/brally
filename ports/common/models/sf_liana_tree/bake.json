@@ -1,0 +1,113 @@
+{
+ "asset": "sf_liana_tree",
+ "source": "sf_liana_tree.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 49999,
+   "lods": [
+    {
+     "tris": 49999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 27408
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 22591
+      }
+     ]
+    },
+    {
+     "tris": 40000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 19890
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 20110
+      }
+     ]
+    },
+    {
+     "tris": 9999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 5411
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 4588
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -3.9256086349487305,
+     -5.739626884460449,
+     0.0
+    ],
+    [
+     4.278319835662842,
+     6.907561302185059,
+     5.6563897132873535
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     210
+    ],
+    "half": 7.04571252822876,
+    "height": 5.7695175075531,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Arbre_2",
+   "images": {
+    "base": "Arbre_2_diffuse.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   }
+  },
+  {
+   "name": "Arbre_21",
+   "images": {
+    "base": "Arbre_21_diffuse.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png"
+   }
+  }
+ ]
+}

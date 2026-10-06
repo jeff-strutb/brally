@@ -72,3 +72,4 @@ temp*
 # MSVC incremental-build databases (the build keeps them under build/)
 *.idb
 *.pdb
+!ports/common/**/candidates/*.json

@@ -1,0 +1,265 @@
+{
+ "asset": "shrub_04",
+ "source": "shrub_04_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 3726,
+   "lods": [
+    {
+     "tris": 3726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 3726
+      }
+     ]
+    },
+    {
+     "tris": 3726,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 3726
+      }
+     ]
+    },
+    {
+     "tris": 931,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 931
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.05419876426458359,
+     -0.06196228414773941,
+     0.0
+    ],
+    [
+     0.08166630566120148,
+     0.04663775861263275,
+     0.1950489729642868
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     611
+    ],
+    "half": 0.08329963177442551,
+    "height": 0.19894995242357255,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 6589,
+   "lods": [
+    {
+     "tris": 6589,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 6589
+      }
+     ]
+    },
+    {
+     "tris": 6589,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 6589
+      }
+     ]
+    },
+    {
+     "tris": 1646,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 1646
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08631326258182526,
+     -0.09206702560186386,
+     0.0
+    ],
+    [
+     0.056484296917915344,
+     0.07435324788093567,
+     0.20770247280597687
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     578
+    ],
+    "half": 0.09390836611390115,
+    "height": 0.21185652226209642,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 6177,
+   "lods": [
+    {
+     "tris": 6177,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 6177
+      }
+     ]
+    },
+    {
+     "tris": 6177,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 6177
+      }
+     ]
+    },
+    {
+     "tris": 1542,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 1542
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08678320050239563,
+     -0.08024471253156662,
+     0.0
+    ],
+    [
+     0.06936770677566528,
+     0.08832520991563797,
+     0.2804490327835083
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     813
+    ],
+    "half": 0.09009171411395073,
+    "height": 0.28605801343917847,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  },
+  {
+   "name": "d",
+   "src_tris": 10835,
+   "lods": [
+    {
+     "tris": 10835,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 10835
+      }
+     ]
+    },
+    {
+     "tris": 10835,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 10835
+      }
+     ]
+    },
+    {
+     "tris": 2708,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 2708
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.12060630321502686,
+     -0.08957035839557648,
+     0.0
+    ],
+    [
+     0.09724175930023193,
+     0.09734981507062912,
+     0.2733580768108368
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     580
+    ],
+    "half": 0.1230184292793274,
+    "height": 0.27882523834705353,
+    "base": "d_imp_base.png",
+    "nrm": "d_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "shrub_04",
+   "images": {
+    "base": "shrub_04_diff.png",
+    "normal": "shrub_04_nor_gl.png",
+    "alpha": "shrub_04_alpha.png",
+    "rough": "shrub_04_rough.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

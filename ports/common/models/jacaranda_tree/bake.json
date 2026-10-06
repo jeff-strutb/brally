@@ -1,0 +1,148 @@
+{
+ "asset": "jacaranda_tree",
+ "source": "jacaranda_tree_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 3863832,
+   "lods": [
+    {
+     "tris": 1844336,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 614375
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 28744
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 1201217
+      }
+     ]
+    },
+    {
+     "tris": 1844336,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 614375
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 28744
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 1201217
+      }
+     ]
+    },
+    {
+     "tris": 1844336,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 614375
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 28744
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 1201217
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -13.343121528625488,
+     -9.738456726074219,
+     -0.0026420801877975464
+    ],
+    [
+     11.073927879333496,
+     9.416117668151855,
+     19.470468521118164
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     374
+    ],
+    "half": 13.609983959197999,
+    "height": 19.859877891540528,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "jacaranda_tree_branches",
+   "images": {
+    "normal": "jacaranda_tree_branches_nor_gl.png",
+    "rough": "jacaranda_tree_branches_rough.png",
+    "base": "jacaranda_tree_branches_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "jacaranda_tree_trunk",
+   "images": {
+    "base": "jacaranda_tree_trunk_diff.png",
+    "rough": "jacaranda_tree_trunk_rough.png",
+    "normal": "jacaranda_tree_trunk_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "jacaranda_tree_leaves",
+   "images": {
+    "base": "jacaranda_tree_leaves_diff.png",
+    "rough": "jacaranda_tree_leaves_rough.png",
+    "alpha": "jacaranda_tree_leaves_alpha.png",
+    "normal": "jacaranda_tree_leaves_nor_gl.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}

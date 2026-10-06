@@ -1,0 +1,364 @@
+{
+ "asset": "rock_moss_set_02",
+ "source": "rock_moss_set_02_4k.blend",
+ "targets": [
+  60000,
+  15000,
+  3000
+ ],
+ "variants": [
+  {
+   "name": "rock07",
+   "src_tris": 9826,
+   "lods": [
+    {
+     "tris": 9826,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock07_lod0_m0.rcm",
+       "tris": 9826
+      }
+     ]
+    },
+    {
+     "tris": 9826,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock07_lod1_m0.rcm",
+       "tris": 9826
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock07_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.8922245502471924,
+     -0.6026076078414917,
+     0.0
+    ],
+    [
+     0.8007838726043701,
+     0.6125383973121643,
+     0.7447943687438965
+    ]
+   ]
+  },
+  {
+   "name": "rock08",
+   "src_tris": 8000,
+   "lods": [
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock08_lod0_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock08_lod1_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock08_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5346400141716003,
+     -0.539520800113678,
+     0.0
+    ],
+    [
+     0.671691358089447,
+     0.444125235080719,
+     0.52867192029953
+    ]
+   ]
+  },
+  {
+   "name": "rock09",
+   "src_tris": 7894,
+   "lods": [
+    {
+     "tris": 7894,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock09_lod0_m0.rcm",
+       "tris": 7894
+      }
+     ]
+    },
+    {
+     "tris": 7894,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock09_lod1_m0.rcm",
+       "tris": 7894
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock09_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.7779536247253418,
+     -0.48538464307785034,
+     0.0
+    ],
+    [
+     0.8509746789932251,
+     0.5260849595069885,
+     0.6098546981811523
+    ]
+   ]
+  },
+  {
+   "name": "rock10",
+   "src_tris": 8000,
+   "lods": [
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock10_lod0_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock10_lod1_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock10_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.0639867782592773,
+     -0.767073929309845,
+     0.0
+    ],
+    [
+     1.1389367580413818,
+     0.7845620512962341,
+     0.76845383644104
+    ]
+   ]
+  },
+  {
+   "name": "rock11",
+   "src_tris": 8000,
+   "lods": [
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock11_lod0_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 8000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock11_lod1_m0.rcm",
+       "tris": 8000
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock11_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.9855587482452393,
+     -0.7919691205024719,
+     0.0
+    ],
+    [
+     0.9681396484375,
+     0.7369133234024048,
+     1.3105237483978271
+    ]
+   ]
+  },
+  {
+   "name": "rock12",
+   "src_tris": 7999,
+   "lods": [
+    {
+     "tris": 7999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock12_lod0_m0.rcm",
+       "tris": 7999
+      }
+     ]
+    },
+    {
+     "tris": 7999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock12_lod1_m0.rcm",
+       "tris": 7999
+      }
+     ]
+    },
+    {
+     "tris": 2999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock12_lod2_m0.rcm",
+       "tris": 2999
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.7580254077911377,
+     -0.7171337604522705,
+     0.0
+    ],
+    [
+     0.8215271234512329,
+     0.7263227701187134,
+     0.7360103130340576
+    ]
+   ]
+  },
+  {
+   "name": "rock13",
+   "src_tris": 7928,
+   "lods": [
+    {
+     "tris": 7928,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock13_lod0_m0.rcm",
+       "tris": 7928
+      }
+     ]
+    },
+    {
+     "tris": 7928,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock13_lod1_m0.rcm",
+       "tris": 7928
+      }
+     ]
+    },
+    {
+     "tris": 3000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "rock13_lod2_m0.rcm",
+       "tris": 3000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -1.0842987298965454,
+     -0.4675626754760742,
+     0.0
+    ],
+    [
+     1.0071306228637695,
+     0.6707192659378052,
+     1.2564328908920288
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rock_moss_set_02",
+   "images": {
+    "base": "rock_moss_set_02_diff.png",
+    "rough": "rock_moss_set_02_rough.png",
+    "normal": "rock_moss_set_02_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

@@ -1,0 +1,119 @@
+{
+ "asset": "sf_linden_tree",
+ "source": "sf_linden_tree.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 46236,
+   "lods": [
+    {
+     "tris": 46236,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 16689
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 29547
+      }
+     ]
+    },
+    {
+     "tris": 46236,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 16689
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 29547
+      }
+     ]
+    },
+    {
+     "tris": 46236,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 16689
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 29547
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -4.53239631652832,
+     -4.9993414878845215,
+     0.0
+    ],
+    [
+     5.588685035705566,
+     5.404218673706055,
+     18.038803100585938
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     826
+    ],
+    "half": 5.7004587364196775,
+    "height": 18.399579162597657,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "M_Bark.005",
+   "images": {
+    "base": "M_Bark.005_baseColor.png",
+    "normal": "M_Bark.005_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "M_Branch.005",
+   "images": {
+    "base": "M_Branch.005_baseColor.png",
+    "alpha_from": "M_Branch.005_baseColor.png",
+    "normal": "M_Branch.005_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

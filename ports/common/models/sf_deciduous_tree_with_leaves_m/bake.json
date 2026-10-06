@@ -1,0 +1,265 @@
+{
+ "asset": "sf_deciduous_tree_with_leaves_m",
+ "source": "sf_deciduous_tree_with_leaves_m.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 65611,
+   "lods": [
+    {
+     "tris": 65611,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 7435
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 9664
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 10272
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 8672
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 10336
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 9088
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 10144
+      }
+     ]
+    },
+    {
+     "tris": 65611,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 7435
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 9664
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 10272
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 8672
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 10336
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 9088
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 10144
+      }
+     ]
+    },
+    {
+     "tris": 65611,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 7435
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 9664
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 10272
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 8672
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 10336
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 9088
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 10144
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -7.831192493438721,
+     -7.806429862976074,
+     0.0
+    ],
+    [
+     8.683096885681152,
+     8.688426971435547,
+     15.449446678161621
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     455
+    ],
+    "half": 8.862195510864257,
+    "height": 15.758435611724854,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "nature_bark_linden_01_l_0001.jpg",
+   "images": {
+    "base": "nature_bark_linden_01_l_0001.jpg_baseColor.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0001.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0001.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0001.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0002.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0002.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0002.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0003.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0003.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0003.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0004.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0004.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0004.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0005.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0005.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0005.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png"
+   }
+  },
+  {
+   "name": "nature_leaves_standard_01_l_0006.jpg",
+   "images": {
+    "base": "nature_leaves_standard_01_l_0006.jpg_baseColor.png",
+    "alpha_from": "nature_leaves_standard_01_l_0006.jpg_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png"
+   }
+  }
+ ]
+}

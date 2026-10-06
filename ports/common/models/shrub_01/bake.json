@@ -1,0 +1,560 @@
+{
+ "asset": "shrub_01",
+ "source": "shrub_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 8780,
+   "lods": [
+    {
+     "tris": 8780,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 8780
+      }
+     ]
+    },
+    {
+     "tris": 8780,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 8780
+      }
+     ]
+    },
+    {
+     "tris": 664,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 664
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.11045527458190918,
+     -0.09338090568780899,
+     0.0
+    ],
+    [
+     0.12070566415786743,
+     0.11270884424448013,
+     0.37206438183784485
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     789
+    ],
+    "half": 0.12311977744102479,
+    "height": 0.37950566947460174,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 6064,
+   "lods": [
+    {
+     "tris": 6064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 6064
+      }
+     ]
+    },
+    {
+     "tris": 6064,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 6064
+      }
+     ]
+    },
+    {
+     "tris": 440,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 440
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08400985598564148,
+     -0.09567282348871231,
+     0.0
+    ],
+    [
+     0.09789499640464783,
+     0.07938186079263687,
+     0.33232811093330383
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     869
+    ],
+    "half": 0.09985289633274079,
+    "height": 0.33897467315196994,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 5348,
+   "lods": [
+    {
+     "tris": 5348,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 5348
+      }
+     ]
+    },
+    {
+     "tris": 5348,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 5348
+      }
+     ]
+    },
+    {
+     "tris": 406,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 406
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07801315933465958,
+     -0.09482283145189285,
+     0.0
+    ],
+    [
+     0.08265215903520584,
+     0.08026721328496933,
+     0.29396408796310425
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     794
+    ],
+    "half": 0.09671928808093071,
+    "height": 0.29984336972236636,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  },
+  {
+   "name": "d",
+   "src_tris": 4040,
+   "lods": [
+    {
+     "tris": 4040,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 4040
+      }
+     ]
+    },
+    {
+     "tris": 4040,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 4040
+      }
+     ]
+    },
+    {
+     "tris": 327,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 327
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.07473397254943848,
+     -0.06931473314762115,
+     0.0
+    ],
+    [
+     0.0606408417224884,
+     0.08301713317632675,
+     0.20063595473766327
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     619
+    ],
+    "half": 0.08467747583985329,
+    "height": 0.20464867383241653,
+    "base": "d_imp_base.png",
+    "nrm": "d_imp_nrm.png"
+   }
+  },
+  {
+   "name": "e",
+   "src_tris": 3836,
+   "lods": [
+    {
+     "tris": 3836,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 3836
+      }
+     ]
+    },
+    {
+     "tris": 3836,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 3836
+      }
+     ]
+    },
+    {
+     "tris": 313,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 313
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.046222805976867676,
+     -0.057960640639066696,
+     0.0
+    ],
+    [
+     0.048229873180389404,
+     0.051000624895095825,
+     0.18295155465602875
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     808
+    ],
+    "half": 0.05911985345184803,
+    "height": 0.18661058574914932,
+    "base": "e_imp_base.png",
+    "nrm": "e_imp_nrm.png"
+   }
+  },
+  {
+   "name": "f",
+   "src_tris": 2676,
+   "lods": [
+    {
+     "tris": 2676,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod0_m0.rcm",
+       "tris": 2676
+      }
+     ]
+    },
+    {
+     "tris": 2676,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod1_m0.rcm",
+       "tris": 2676
+      }
+     ]
+    },
+    {
+     "tris": 220,
+     "files": [
+      {
+       "mat": 0,
+       "file": "f_lod2_m0.rcm",
+       "tris": 220
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.051088154315948486,
+     -0.048187680542469025,
+     0.0
+    ],
+    [
+     0.0407109260559082,
+     0.049483880400657654,
+     0.11556646972894669
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     579
+    ],
+    "half": 0.052109917402267454,
+    "height": 0.11787779912352563,
+    "base": "f_imp_base.png",
+    "nrm": "f_imp_nrm.png"
+   }
+  },
+  {
+   "name": "g",
+   "src_tris": 31548,
+   "lods": [
+    {
+     "tris": 31548,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod0_m0.rcm",
+       "tris": 31548
+      }
+     ]
+    },
+    {
+     "tris": 31548,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod1_m0.rcm",
+       "tris": 31548
+      }
+     ]
+    },
+    {
+     "tris": 3539,
+     "files": [
+      {
+       "mat": 0,
+       "file": "g_lod2_m0.rcm",
+       "tris": 3539
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0643002986907959,
+     -0.04057299718260765,
+     0.0
+    ],
+    [
+     0.04933345317840576,
+     0.0736016035079956,
+     0.24923217296600342
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     867
+    ],
+    "half": 0.07507363557815552,
+    "height": 0.2542168164253235,
+    "base": "g_imp_base.png",
+    "nrm": "g_imp_nrm.png"
+   }
+  },
+  {
+   "name": "h",
+   "src_tris": 57521,
+   "lods": [
+    {
+     "tris": 57521,
+     "files": [
+      {
+       "mat": 0,
+       "file": "h_lod0_m0.rcm",
+       "tris": 57521
+      }
+     ]
+    },
+    {
+     "tris": 57521,
+     "files": [
+      {
+       "mat": 0,
+       "file": "h_lod1_m0.rcm",
+       "tris": 57521
+      }
+     ]
+    },
+    {
+     "tris": 6409,
+     "files": [
+      {
+       "mat": 0,
+       "file": "h_lod2_m0.rcm",
+       "tris": 6409
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.12817716598510742,
+     -0.0977042093873024,
+     0.0
+    ],
+    [
+     0.10392093658447266,
+     0.10397639125585556,
+     0.3951091766357422
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     789
+    ],
+    "half": 0.13074070930480958,
+    "height": 0.403011360168457,
+    "base": "h_imp_base.png",
+    "nrm": "h_imp_nrm.png"
+   }
+  },
+  {
+   "name": "i",
+   "src_tris": 36199,
+   "lods": [
+    {
+     "tris": 36199,
+     "files": [
+      {
+       "mat": 0,
+       "file": "i_lod0_m0.rcm",
+       "tris": 36199
+      }
+     ]
+    },
+    {
+     "tris": 36199,
+     "files": [
+      {
+       "mat": 0,
+       "file": "i_lod1_m0.rcm",
+       "tris": 36199
+      }
+     ]
+    },
+    {
+     "tris": 3983,
+     "files": [
+      {
+       "mat": 0,
+       "file": "i_lod2_m0.rcm",
+       "tris": 3983
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08963954448699951,
+     -0.09503576159477234,
+     0.0
+    ],
+    [
+     0.08686912059783936,
+     0.08001892268657684,
+     0.3460131585597992
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     932
+    ],
+    "half": 0.09693647682666778,
+    "height": 0.3529334217309952,
+    "base": "i_imp_base.png",
+    "nrm": "i_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "shrub_01",
+   "images": {
+    "rough": "shrub_01_rough.png",
+    "normal": "shrub_01_nor_gl.png",
+    "alpha": "shrub_01_alpha.png",
+    "base": "shrub_01_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

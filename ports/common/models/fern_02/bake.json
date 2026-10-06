@@ -1,0 +1,221 @@
+{
+ "asset": "fern_02",
+ "source": "fern_02_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 784,
+   "lods": [
+    {
+     "tris": 784,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 784
+      }
+     ]
+    },
+    {
+     "tris": 784,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 784
+      }
+     ]
+    },
+    {
+     "tris": 784,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 784
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.32542940974235535,
+     -0.3337203860282898,
+     0.0
+    ],
+    [
+     0.22651121020317078,
+     0.27970069646835327,
+     0.28680354356765747
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 2384,
+   "lods": [
+    {
+     "tris": 2384,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 2384
+      }
+     ]
+    },
+    {
+     "tris": 2384,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 2384
+      }
+     ]
+    },
+    {
+     "tris": 2384,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 2384
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5345003604888916,
+     -0.47086793184280396,
+     0.0
+    ],
+    [
+     0.45524704456329346,
+     0.4228217899799347,
+     0.427694708108902
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 2248,
+   "lods": [
+    {
+     "tris": 2248,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 2248
+      }
+     ]
+    },
+    {
+     "tris": 2248,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 2248
+      }
+     ]
+    },
+    {
+     "tris": 2248,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 2248
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.4226076602935791,
+     -0.3689402639865875,
+     0.0
+    ],
+    [
+     0.45171815156936646,
+     0.39628541469573975,
+     0.3490203619003296
+    ]
+   ]
+  },
+  {
+   "name": "d",
+   "src_tris": 816,
+   "lods": [
+    {
+     "tris": 816,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 816
+      }
+     ]
+    },
+    {
+     "tris": 816,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 816
+      }
+     ]
+    },
+    {
+     "tris": 816,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 816
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.2737619876861572,
+     -0.23973965644836426,
+     0.0
+    ],
+    [
+     0.2990201711654663,
+     0.3535386323928833,
+     0.2130875587463379
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "fern_02",
+   "images": {
+    "normal": "fern_02_nor_gl.png",
+    "alpha": "fern_02_alpha.png",
+    "base": "fern_02_diff.png",
+    "rough": "fern_02_rough.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

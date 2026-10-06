@@ -1,0 +1,600 @@
+{
+ "asset": "sf_polypody_fern_25",
+ "source": "sf_polypody_fern_25.blend",
+ "targets": [
+  30000,
+  12000,
+  5000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 19113,
+   "lods": [
+    {
+     "tris": 19113,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 8889
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 3360
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 6432
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 432
+      }
+     ]
+    },
+    {
+     "tris": 8454,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 3342
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 1680
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 3216
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 216
+      }
+     ]
+    },
+    {
+     "tris": 4242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1686
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 108
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6662106513977051,
+     -0.2935153543949127,
+     0.0
+    ],
+    [
+     0.6640045642852783,
+     0.09290573745965958,
+     0.9605298042297363
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     369
+    ],
+    "half": 0.6795348644256592,
+    "height": 0.9797404003143311,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD1",
+   "src_tris": 8454,
+   "lods": [
+    {
+     "tris": 8454,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod0_m0.rcm",
+       "tris": 3342
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod0_m1.rcm",
+       "tris": 1680
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod0_m2.rcm",
+       "tris": 3216
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod0_m3.rcm",
+       "tris": 216
+      }
+     ]
+    },
+    {
+     "tris": 8454,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod1_m0.rcm",
+       "tris": 3342
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod1_m1.rcm",
+       "tris": 1680
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod1_m2.rcm",
+       "tris": 3216
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod1_m3.rcm",
+       "tris": 216
+      }
+     ]
+    },
+    {
+     "tris": 8454,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD1_lod2_m0.rcm",
+       "tris": 3342
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD1_lod2_m1.rcm",
+       "tris": 1680
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD1_lod2_m2.rcm",
+       "tris": 3216
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD1_lod2_m3.rcm",
+       "tris": 216
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6449184417724609,
+     -0.2847900390625,
+     0.0
+    ],
+    [
+     0.6852967739105225,
+     0.10163091123104095,
+     0.9605294466018677
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     359
+    ],
+    "half": 0.6990027093887329,
+    "height": 0.9797400355339051,
+    "base": "a_LOD1_imp_base.png",
+    "nrm": "a_LOD1_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD2",
+   "src_tris": 4242,
+   "lods": [
+    {
+     "tris": 4242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod0_m0.rcm",
+       "tris": 1686
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod0_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod0_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod0_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 4242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod1_m0.rcm",
+       "tris": 1686
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod1_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod1_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod1_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 4242,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD2_lod2_m0.rcm",
+       "tris": 1686
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD2_lod2_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD2_lod2_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD2_lod2_m3.rcm",
+       "tris": 108
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6439861059188843,
+     -0.28466957807540894,
+     0.0
+    ],
+    [
+     0.6861543655395508,
+     0.10172960162162781,
+     0.9605298042297363
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     358
+    ],
+    "half": 0.6998774528503419,
+    "height": 0.9797404003143311,
+    "base": "a_LOD2_imp_base.png",
+    "nrm": "a_LOD2_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD3",
+   "src_tris": 3444,
+   "lods": [
+    {
+     "tris": 3444,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod0_m0.rcm",
+       "tris": 888
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod0_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod0_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod0_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 3444,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod1_m0.rcm",
+       "tris": 888
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod1_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod1_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod1_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 3444,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD3_lod2_m0.rcm",
+       "tris": 888
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD3_lod2_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD3_lod2_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD3_lod2_m3.rcm",
+       "tris": 108
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6388704776763916,
+     -0.27785372734069824,
+     0.0
+    ],
+    [
+     0.6912699341773987,
+     0.1085454523563385,
+     0.9605298042297363
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     356
+    ],
+    "half": 0.7050953328609467,
+    "height": 0.9797404003143311,
+    "base": "a_LOD3_imp_base.png",
+    "nrm": "a_LOD3_imp_nrm.png"
+   }
+  },
+  {
+   "name": "a_LOD4",
+   "src_tris": 3012,
+   "lods": [
+    {
+     "tris": 3012,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod0_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod0_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod0_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod0_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 3012,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod1_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod1_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod1_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod1_m3.rcm",
+       "tris": 108
+      }
+     ]
+    },
+    {
+     "tris": 3012,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_LOD4_lod2_m0.rcm",
+       "tris": 456
+      },
+      {
+       "mat": 1,
+       "file": "a_LOD4_lod2_m1.rcm",
+       "tris": 840
+      },
+      {
+       "mat": 2,
+       "file": "a_LOD4_lod2_m2.rcm",
+       "tris": 1608
+      },
+      {
+       "mat": 3,
+       "file": "a_LOD4_lod2_m3.rcm",
+       "tris": 108
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.6360093355178833,
+     -0.2733618915081024,
+     0.0
+    ],
+    [
+     0.6941311359405518,
+     0.11303728073835373,
+     0.9605298042297363
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     354
+    ],
+    "half": 0.7080137586593628,
+    "height": 0.9797404003143311,
+    "base": "a_LOD4_imp_base.png",
+    "nrm": "a_LOD4_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Polypodium_root",
+   "images": {
+    "base": "Polypodium_root_diffuse.png",
+    "normal": "Polypodium_root_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "Polypodium_01a",
+   "images": {
+    "base": "Polypodium_01a_diffuse.png",
+    "alpha_from": "Polypodium_01a_diffuse.png",
+    "normal": "Polypodium_01b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "Polypodium_01b",
+   "images": {
+    "base": "Polypodium_01b_diffuse.png",
+    "alpha_from": "Polypodium_01b_diffuse.png",
+    "gltf_mr": "Polypodium_01b_specularGlossiness.png.001",
+    "normal": "Polypodium_01b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Polypodium_01c",
+   "images": {
+    "base": "Polypodium_01c_diffuse.png",
+    "alpha_from": "Polypodium_01c_diffuse.png",
+    "normal": "Polypodium_01b_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  }
+ ]
+}

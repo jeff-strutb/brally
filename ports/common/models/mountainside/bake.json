@@ -1,0 +1,76 @@
+{
+ "asset": "mountainside",
+ "source": "mountainside_4k.blend",
+ "targets": [
+  20000,
+  5000,
+  1200
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 153472,
+   "lods": [
+    {
+     "tris": 19182,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 19182
+      }
+     ]
+    },
+    {
+     "tris": 5000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 5000
+      }
+     ]
+    },
+    {
+     "tris": 1200,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1200
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -5.220346450805664,
+     -1.7982505559921265,
+     0.003296881914138794
+    ],
+    [
+     4.994030475616455,
+     3.4563841819763184,
+     10.525979042053223
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "mountainside",
+   "images": {
+    "base": "mountainside_diff.png",
+    "rough": "mountainside_rough.png",
+    "normal": "mountainside_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

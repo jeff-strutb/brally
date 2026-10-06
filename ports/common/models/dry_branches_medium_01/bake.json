@@ -1,0 +1,172 @@
+{
+ "asset": "dry_branches_medium_01",
+ "source": "dry_branches_medium_01_4k.blend",
+ "targets": [
+  16803,
+  6000,
+  1500
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 5933,
+   "lods": [
+    {
+     "tris": 5933,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 5933
+      }
+     ]
+    },
+    {
+     "tris": 5933,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 5933
+      }
+     ]
+    },
+    {
+     "tris": 1499,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1499
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.13700008392333984,
+     -0.6647774577140808,
+     0.0
+    ],
+    [
+     0.18606366217136383,
+     0.6343754529953003,
+     0.3409852981567383
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 5254,
+   "lods": [
+    {
+     "tris": 5254,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 5254
+      }
+     ]
+    },
+    {
+     "tris": 5254,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 5254
+      }
+     ]
+    },
+    {
+     "tris": 1500,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 1500
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.05994910001754761,
+     -0.5840447545051575,
+     0.0
+    ],
+    [
+     0.09121469408273697,
+     0.454459011554718,
+     0.14188739657402039
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 5616,
+   "lods": [
+    {
+     "tris": 5616,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 5616
+      }
+     ]
+    },
+    {
+     "tris": 5616,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 5616
+      }
+     ]
+    },
+    {
+     "tris": 1500,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 1500
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.06864944100379944,
+     -0.37239521741867065,
+     0.0
+    ],
+    [
+     0.06191954016685486,
+     0.4047306478023529,
+     0.14325982332229614
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "dry_branches_medium_01",
+   "images": {
+    "normal": "dry_branches_medium_01_nor_gl.png",
+    "base": "dry_branches_medium_01_diff.png",
+    "rough": "dry_branches_medium_01_rough.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

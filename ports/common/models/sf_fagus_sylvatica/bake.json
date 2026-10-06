@@ -1,0 +1,183 @@
+{
+ "asset": "sf_fagus_sylvatica",
+ "source": "sf_fagus_sylvatica.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 2268782,
+   "lods": [
+    {
+     "tris": 2268782,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 83014
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 1200904
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 591392
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 393472
+      }
+     ]
+    },
+    {
+     "tris": 2268782,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 83014
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 1200904
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 591392
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 393472
+      }
+     ]
+    },
+    {
+     "tris": 2268782,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 83014
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 1200904
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 591392
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 393472
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -34.28118896484375,
+     -32.06797409057617,
+     0.0
+    ],
+    [
+     34.89313507080078,
+     31.842397689819336,
+     68.97515869140625
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     506
+    ],
+    "half": 35.590997772216795,
+    "height": 70.35466186523438,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "Cap_02",
+   "images": {
+    "base": "Cap_02_baseColor.png",
+    "normal": "Cap_02_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "EuropeanBeechBark",
+   "images": {
+    "base": "EuropeanBeechBark_baseColor.png",
+    "normal": "EuropeanBeechBark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "EuropeanBeechLeaf_2",
+   "images": {
+    "base": "EuropeanBeechLeaf_2_baseColor.png",
+    "alpha_from": "EuropeanBeechLeaf_2_baseColor.png",
+    "gltf_mr": "EuropeanBeechLeaf_2_metallicRoughness.png",
+    "normal": "EuropeanBeechLeaf_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "EuropeanBeechLeaf_3",
+   "images": {
+    "base": "EuropeanBeechLeaf_3_baseColor.png",
+    "alpha_from": "EuropeanBeechLeaf_3_baseColor.png",
+    "gltf_mr": "EuropeanBeechLeaf_3_metallicRoughness.png",
+    "normal": "EuropeanBeechLeaf_3_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  }
+ ]
+}

@@ -1,0 +1,269 @@
+{
+ "asset": "celandine_01",
+ "source": "celandine_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 622,
+   "lods": [
+    {
+     "tris": 622,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 622
+      }
+     ]
+    },
+    {
+     "tris": 622,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 622
+      }
+     ]
+    },
+    {
+     "tris": 232,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 232
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.1474769115447998,
+     -0.10399115085601807,
+     0.0
+    ],
+    [
+     0.1282498836517334,
+     0.12424462288618088,
+     0.18585163354873657
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 599,
+   "lods": [
+    {
+     "tris": 599,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 599
+      }
+     ]
+    },
+    {
+     "tris": 599,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 599
+      }
+     ]
+    },
+    {
+     "tris": 207,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 207
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.13350558280944824,
+     -0.1498432606458664,
+     0.0
+    ],
+    [
+     0.11820745468139648,
+     0.15681475400924683,
+     0.144528329372406
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 4301,
+   "lods": [
+    {
+     "tris": 4301,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 4301
+      }
+     ]
+    },
+    {
+     "tris": 4301,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 4301
+      }
+     ]
+    },
+    {
+     "tris": 319,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 319
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.12860865890979767,
+     -0.0850420668721199,
+     0.0
+    ],
+    [
+     0.12853850424289703,
+     0.10129790753126144,
+     0.17558737099170685
+    ]
+   ]
+  },
+  {
+   "name": "d",
+   "src_tris": 3002,
+   "lods": [
+    {
+     "tris": 3002,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 3002
+      }
+     ]
+    },
+    {
+     "tris": 3002,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 3002
+      }
+     ]
+    },
+    {
+     "tris": 250,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 250
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.11590510606765747,
+     -0.1450480967760086,
+     0.0
+    ],
+    [
+     0.0708315372467041,
+     0.07787936180830002,
+     0.1494978964328766
+    ]
+   ]
+  },
+  {
+   "name": "e",
+   "src_tris": 442,
+   "lods": [
+    {
+     "tris": 442,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 442
+      }
+     ]
+    },
+    {
+     "tris": 442,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 442
+      }
+     ]
+    },
+    {
+     "tris": 138,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 138
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.1050916314125061,
+     -0.09385073184967041,
+     0.0
+    ],
+    [
+     0.08318817615509033,
+     0.1224551722407341,
+     0.123658187687397
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "celandine_01",
+   "images": {
+    "base": "celandine_01_diff.png",
+    "normal": "celandine_01_nor_gl.png",
+    "alpha": "celandine_01_alpha.png",
+    "rough": "celandine_01_rough.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

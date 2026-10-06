@@ -1,0 +1,76 @@
+{
+ "asset": "rock_face_01",
+ "source": "rock_face_01_4k.blend",
+ "targets": [
+  20000,
+  5000,
+  1200
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 20174,
+   "lods": [
+    {
+     "tris": 20174,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 20174
+      }
+     ]
+    },
+    {
+     "tris": 4999,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 4999
+      }
+     ]
+    },
+    {
+     "tris": 1200,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 1200
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -3.346639633178711,
+     -3.145742177963257,
+     0.0
+    ],
+    [
+     3.761592388153076,
+     2.478562355041504,
+     4.980437278747559
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rock_face_01",
+   "images": {
+    "normal": "rock_face_01_nor_gl.png",
+    "rough": "rock_face_01_rough.png",
+    "base": "rock_face_01_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

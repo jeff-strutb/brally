@@ -1,0 +1,85 @@
+{
+ "asset": "sf_vine_branch_3d_model_free",
+ "source": "sf_vine_branch_3d_model_free.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 17997,
+   "lods": [
+    {
+     "tris": 17997,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 17997
+      }
+     ]
+    },
+    {
+     "tris": 17997,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 17997
+      }
+     ]
+    },
+    {
+     "tris": 10000,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 10000
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.5627305507659912,
+     -0.4708895683288574,
+     0.0
+    ],
+    [
+     0.39423978328704834,
+     0.5291105508804321,
+     1.0
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     455
+    ],
+    "half": 0.5739851617813111,
+    "height": 1.02,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "tripo_mat_7aff31d8-b968-470e-91d8-262d04f32e48",
+   "images": {
+    "base": "tripo_mat_7aff31d8-b968-470e-91d8-262d04f32e48_baseColor.jpeg"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   }
+  }
+ ]
+}

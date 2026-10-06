@@ -1,0 +1,266 @@
+{
+ "asset": "sf_mighty_oak_trees",
+ "source": "sf_mighty_oak_trees.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 70194,
+   "lods": [
+    {
+     "tris": 70194,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 39696
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 30498
+      }
+     ]
+    },
+    {
+     "tris": 70194,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 39696
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 30498
+      }
+     ]
+    },
+    {
+     "tris": 70194,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 39696
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 30498
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -57.398338317871094,
+     -62.1239013671875,
+     0.0
+    ],
+    [
+     56.34528350830078,
+     57.7247314453125,
+     99.7761459350586
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     411
+    ],
+    "half": 63.36637939453125,
+    "height": 101.77166885375976,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  },
+  {
+   "name": "b",
+   "src_tris": 136965,
+   "lods": [
+    {
+     "tris": 136965,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 78240
+      },
+      {
+       "mat": 1,
+       "file": "b_lod0_m1.rcm",
+       "tris": 58725
+      }
+     ]
+    },
+    {
+     "tris": 136965,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 78240
+      },
+      {
+       "mat": 1,
+       "file": "b_lod1_m1.rcm",
+       "tris": 58725
+      }
+     ]
+    },
+    {
+     "tris": 136965,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 78240
+      },
+      {
+       "mat": 1,
+       "file": "b_lod2_m1.rcm",
+       "tris": 58725
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -71.34168243408203,
+     -54.985633850097656,
+     0.0
+    ],
+    [
+     53.165992736816406,
+     60.47422790527344,
+     85.52857208251953
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     307
+    ],
+    "half": 72.76851608276367,
+    "height": 87.23914352416992,
+    "base": "b_imp_base.png",
+    "nrm": "b_imp_nrm.png"
+   }
+  },
+  {
+   "name": "c",
+   "src_tris": 137065,
+   "lods": [
+    {
+     "tris": 137065,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 78112
+      },
+      {
+       "mat": 1,
+       "file": "c_lod0_m1.rcm",
+       "tris": 58953
+      }
+     ]
+    },
+    {
+     "tris": 137065,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 78112
+      },
+      {
+       "mat": 1,
+       "file": "c_lod1_m1.rcm",
+       "tris": 58953
+      }
+     ]
+    },
+    {
+     "tris": 137065,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 78112
+      },
+      {
+       "mat": 1,
+       "file": "c_lod2_m1.rcm",
+       "tris": 58953
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -67.37367248535156,
+     -63.988826751708984,
+     0.0
+    ],
+    [
+     59.68745040893555,
+     59.43293762207031,
+     107.08501434326172
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     407
+    ],
+    "half": 68.7211459350586,
+    "height": 109.22671463012695,
+    "base": "c_imp_base.png",
+    "nrm": "c_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "foliage",
+   "images": {
+    "base": "foliage_baseColor.png",
+    "alpha_from": "foliage_baseColor.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "BLEND",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png"
+   }
+  },
+  {
+   "name": "bark",
+   "images": {
+    "base": "bark_baseColor.png",
+    "gltf_mr": "bark_metallicRoughness.png",
+    "normal": "bark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  }
+ ]
+}

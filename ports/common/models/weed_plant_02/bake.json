@@ -1,0 +1,269 @@
+{
+ "asset": "weed_plant_02",
+ "source": "weed_plant_02_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 2967,
+   "lods": [
+    {
+     "tris": 2967,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 2967
+      }
+     ]
+    },
+    {
+     "tris": 2967,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 2967
+      }
+     ]
+    },
+    {
+     "tris": 153,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 153
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.10007651895284653,
+     -0.16793636977672577,
+     0.0
+    ],
+    [
+     0.11932381242513657,
+     0.12298304587602615,
+     0.07245764136314392
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 2273,
+   "lods": [
+    {
+     "tris": 2273,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 2273
+      }
+     ]
+    },
+    {
+     "tris": 2273,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 2273
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 140
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0860430896282196,
+     -0.09399234503507614,
+     0.0
+    ],
+    [
+     0.10150492191314697,
+     0.10454375296831131,
+     0.0676928460597992
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 1766,
+   "lods": [
+    {
+     "tris": 1766,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 1766
+      }
+     ]
+    },
+    {
+     "tris": 1766,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 1766
+      }
+     ]
+    },
+    {
+     "tris": 110,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 110
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.06447523832321167,
+     -0.07167655974626541,
+     0.0
+    ],
+    [
+     0.07790112495422363,
+     0.0717749148607254,
+     0.05492379516363144
+    ]
+   ]
+  },
+  {
+   "name": "d",
+   "src_tris": 1928,
+   "lods": [
+    {
+     "tris": 1928,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 1928
+      }
+     ]
+    },
+    {
+     "tris": 1928,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 1928
+      }
+     ]
+    },
+    {
+     "tris": 94,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 94
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0808711051940918,
+     -0.05441873520612717,
+     0.0
+    ],
+    [
+     0.07319426536560059,
+     0.0536898672580719,
+     0.038946133106946945
+    ]
+   ]
+  },
+  {
+   "name": "e",
+   "src_tris": 2182,
+   "lods": [
+    {
+     "tris": 2182,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 2182
+      }
+     ]
+    },
+    {
+     "tris": 2182,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 2182
+      }
+     ]
+    },
+    {
+     "tris": 115,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 115
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0760277509689331,
+     -0.029667871072888374,
+     0.0
+    ],
+    [
+     0.04322218894958496,
+     0.031318504363298416,
+     0.04007922112941742
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "weed_plant_02",
+   "images": {
+    "normal": "weed_plant_02_nor_gl.png",
+    "base": "weed_plant_02_diff.png",
+    "rough": "weed_plant_02_rough.png",
+    "alpha": "weed_plant_02_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

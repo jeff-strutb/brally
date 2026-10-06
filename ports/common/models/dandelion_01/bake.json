@@ -1,0 +1,269 @@
+{
+ "asset": "dandelion_01",
+ "source": "dandelion_01_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 23542,
+   "lods": [
+    {
+     "tris": 23542,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 23542
+      }
+     ]
+    },
+    {
+     "tris": 23542,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 23542
+      }
+     ]
+    },
+    {
+     "tris": 260,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 260
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.0950576439499855,
+     -0.14724712073802948,
+     0.0
+    ],
+    [
+     0.12528963387012482,
+     0.11041126400232315,
+     0.1642317920923233
+    ]
+   ]
+  },
+  {
+   "name": "b",
+   "src_tris": 23358,
+   "lods": [
+    {
+     "tris": 23358,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod0_m0.rcm",
+       "tris": 23358
+      }
+     ]
+    },
+    {
+     "tris": 23358,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod1_m0.rcm",
+       "tris": 23358
+      }
+     ]
+    },
+    {
+     "tris": 265,
+     "files": [
+      {
+       "mat": 0,
+       "file": "b_lod2_m0.rcm",
+       "tris": 265
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.10524678230285645,
+     -0.13709990680217743,
+     0.0
+    ],
+    [
+     0.09655189514160156,
+     0.08086168766021729,
+     0.11386951804161072
+    ]
+   ]
+  },
+  {
+   "name": "c",
+   "src_tris": 3180,
+   "lods": [
+    {
+     "tris": 3180,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod0_m0.rcm",
+       "tris": 3180
+      }
+     ]
+    },
+    {
+     "tris": 3180,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod1_m0.rcm",
+       "tris": 3180
+      }
+     ]
+    },
+    {
+     "tris": 156,
+     "files": [
+      {
+       "mat": 0,
+       "file": "c_lod2_m0.rcm",
+       "tris": 156
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.08168530464172363,
+     -0.08220971375703812,
+     0.0
+    ],
+    [
+     0.08818721771240234,
+     0.08491774648427963,
+     0.10094033926725388
+    ]
+   ]
+  },
+  {
+   "name": "d",
+   "src_tris": 2604,
+   "lods": [
+    {
+     "tris": 2604,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod0_m0.rcm",
+       "tris": 2604
+      }
+     ]
+    },
+    {
+     "tris": 2604,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod1_m0.rcm",
+       "tris": 2604
+      }
+     ]
+    },
+    {
+     "tris": 142,
+     "files": [
+      {
+       "mat": 0,
+       "file": "d_lod2_m0.rcm",
+       "tris": 142
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.06230449676513672,
+     -0.062150951474905014,
+     0.0
+    ],
+    [
+     0.059809207916259766,
+     0.08138575404882431,
+     0.055439502000808716
+    ]
+   ]
+  },
+  {
+   "name": "e",
+   "src_tris": 2080,
+   "lods": [
+    {
+     "tris": 2080,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod0_m0.rcm",
+       "tris": 2080
+      }
+     ]
+    },
+    {
+     "tris": 2080,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod1_m0.rcm",
+       "tris": 2080
+      }
+     ]
+    },
+    {
+     "tris": 140,
+     "files": [
+      {
+       "mat": 0,
+       "file": "e_lod2_m0.rcm",
+       "tris": 140
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -0.1114802360534668,
+     -0.11229616403579712,
+     0.0
+    ],
+    [
+     0.10238766670227051,
+     0.09299787878990173,
+     0.04747255519032478
+    ]
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "dandelion_01",
+   "images": {
+    "alpha": "dandelion_01_alpha.png",
+    "normal": "dandelion_01_nor_gl.png",
+    "rough": "dandelion_01_rough.png",
+    "base": "dandelion_01_diff.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  }
+ ]
+}

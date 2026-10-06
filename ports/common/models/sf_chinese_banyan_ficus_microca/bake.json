@@ -1,0 +1,280 @@
+{
+ "asset": "sf_chinese_banyan_ficus_microca",
+ "source": "sf_chinese_banyan_ficus_microca.blend",
+ "targets": [
+  150000,
+  40000,
+  10000
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 111392,
+   "lods": [
+    {
+     "tris": 111392,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 79748
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 15070
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 11970
+      },
+      {
+       "mat": 3,
+       "file": "a_lod0_m3.rcm",
+       "tris": 1584
+      },
+      {
+       "mat": 4,
+       "file": "a_lod0_m4.rcm",
+       "tris": 616
+      },
+      {
+       "mat": 5,
+       "file": "a_lod0_m5.rcm",
+       "tris": 836
+      },
+      {
+       "mat": 6,
+       "file": "a_lod0_m6.rcm",
+       "tris": 1568
+      }
+     ]
+    },
+    {
+     "tris": 111392,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 79748
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 15070
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 11970
+      },
+      {
+       "mat": 3,
+       "file": "a_lod1_m3.rcm",
+       "tris": 1584
+      },
+      {
+       "mat": 4,
+       "file": "a_lod1_m4.rcm",
+       "tris": 616
+      },
+      {
+       "mat": 5,
+       "file": "a_lod1_m5.rcm",
+       "tris": 836
+      },
+      {
+       "mat": 6,
+       "file": "a_lod1_m6.rcm",
+       "tris": 1568
+      }
+     ]
+    },
+    {
+     "tris": 111392,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 79748
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 15070
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 11970
+      },
+      {
+       "mat": 3,
+       "file": "a_lod2_m3.rcm",
+       "tris": 1584
+      },
+      {
+       "mat": 4,
+       "file": "a_lod2_m4.rcm",
+       "tris": 616
+      },
+      {
+       "mat": 5,
+       "file": "a_lod2_m5.rcm",
+       "tris": 836
+      },
+      {
+       "mat": 6,
+       "file": "a_lod2_m6.rcm",
+       "tris": 1568
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -9.367575645446777,
+     -8.759408950805664,
+     0.0
+    ],
+    [
+     8.466702461242676,
+     8.90745735168457,
+     20.276498794555664
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     554
+    ],
+    "half": 9.554927158355714,
+    "height": 20.682028770446777,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "BanyanTreeBark",
+   "images": {
+    "base": "BanyanTreeBark_diffuse.png",
+    "normal": "BanyanTreeBark_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "BanyanTreeLeaves_1",
+   "images": {
+    "base": "BanyanTreeLeaves_1_diffuse.png",
+    "alpha_from": "BanyanTreeLeaves_1_diffuse.png",
+    "gltf_mr": "BanyanTreeLeaves_1_specularGlossiness.png.001",
+    "normal": "BanyanTreeLeaves_1_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "BanyanTreeLeaves_2",
+   "images": {
+    "base": "BanyanTreeLeaves_2_diffuse.png",
+    "alpha_from": "BanyanTreeLeaves_2_diffuse.png",
+    "gltf_mr": "BanyanTreeLeaves_2_specularGlossiness.png.001",
+    "normal": "BanyanTreeLeaves_2_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  },
+  {
+   "name": "Branches_03",
+   "images": {
+    "base": "Branches_03_diffuse.png",
+    "alpha_from": "Branches_03_diffuse.png",
+    "normal": "Branches_03_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m3_base.png",
+    "orm": "m3_orm.png",
+    "nrm": "m3_nrm.png"
+   }
+  },
+  {
+   "name": "Branches_04",
+   "images": {
+    "base": "Branches_04_diffuse.png",
+    "alpha_from": "Branches_04_diffuse.png",
+    "normal": "Branches_04_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m4_base.png",
+    "orm": "m4_orm.png",
+    "nrm": "m4_nrm.png"
+   }
+  },
+  {
+   "name": "Cap_03",
+   "images": {
+    "base": "Cap_03_diffuse.png",
+    "normal": "Cap_03_normal.png"
+   },
+   "blend": "HASHED",
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m5_base.png",
+    "orm": "m5_orm.png",
+    "nrm": "m5_nrm.png"
+   }
+  },
+  {
+   "name": "Vines_01",
+   "images": {
+    "base": "Vines_01_diffuse.png",
+    "alpha_from": "Vines_01_diffuse.png",
+    "gltf_mr": "Vines_01_specularGlossiness.png.001",
+    "normal": "Vines_01_normal.png"
+   },
+   "alpha_out": "Alpha",
+   "blend": "HASHED",
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m6_base.png",
+    "orm": "m6_orm.png",
+    "nrm": "m6_nrm.png"
+   }
+  }
+ ]
+}

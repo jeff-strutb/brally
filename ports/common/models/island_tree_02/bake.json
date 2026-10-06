@@ -1,0 +1,148 @@
+{
+ "asset": "island_tree_02",
+ "source": "island_tree_02_4k.blend",
+ "targets": [
+  900000,
+  450000,
+  0
+ ],
+ "variants": [
+  {
+   "name": "a",
+   "src_tris": 1072213,
+   "lods": [
+    {
+     "tris": 322050,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod0_m0.rcm",
+       "tris": 13648
+      },
+      {
+       "mat": 1,
+       "file": "a_lod0_m1.rcm",
+       "tris": 244369
+      },
+      {
+       "mat": 2,
+       "file": "a_lod0_m2.rcm",
+       "tris": 64033
+      }
+     ]
+    },
+    {
+     "tris": 322050,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod1_m0.rcm",
+       "tris": 13648
+      },
+      {
+       "mat": 1,
+       "file": "a_lod1_m1.rcm",
+       "tris": 244369
+      },
+      {
+       "mat": 2,
+       "file": "a_lod1_m2.rcm",
+       "tris": 64033
+      }
+     ]
+    },
+    {
+     "tris": 322050,
+     "files": [
+      {
+       "mat": 0,
+       "file": "a_lod2_m0.rcm",
+       "tris": 13648
+      },
+      {
+       "mat": 1,
+       "file": "a_lod2_m1.rcm",
+       "tris": 244369
+      },
+      {
+       "mat": 2,
+       "file": "a_lod2_m2.rcm",
+       "tris": 64033
+      }
+     ]
+    }
+   ],
+   "bounds": [
+    [
+     -2.0936896800994873,
+     -1.7721033096313477,
+     0.0
+    ],
+    [
+     2.1000146865844727,
+     2.3064327239990234,
+     3.4089038372039795
+    ]
+   ],
+   "impostor": {
+    "views": 8,
+    "frame": [
+     512,
+     378
+    ],
+    "half": 2.352561378479004,
+    "height": 3.477081913948059,
+    "base": "a_imp_base.png",
+    "nrm": "a_imp_nrm.png"
+   }
+  }
+ ],
+ "materials": [
+  {
+   "name": "island_tree_02",
+   "images": {
+    "base": "island_tree_02_diff.png",
+    "rough": "island_tree_02_rough.png",
+    "normal": "island_tree_02_nor_gl.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m0_base.png",
+    "orm": "m0_orm.png",
+    "nrm": "m0_nrm.png"
+   }
+  },
+  {
+   "name": "island_tree_02_leaves",
+   "images": {
+    "rough": "island_tree_02_leaves_rough.png",
+    "normal": "island_tree_02_leaves_nor_gl.png",
+    "base": "island_tree_02_leaves_diff.png",
+    "alpha": "island_tree_02_leaves_alpha.png"
+   },
+   "alpha_clip": true,
+   "two_sided": true,
+   "textures": {
+    "base": "m1_base.png",
+    "orm": "m1_orm.png",
+    "nrm": "m1_nrm.png"
+   }
+  },
+  {
+   "name": "island_tree_02_branches",
+   "images": {
+    "rough": "island_tree_02_branches_rough.png",
+    "normal": "island_tree_02_branches_nor_gl.png",
+    "base": "island_tree_02_branches_diff.png"
+   },
+   "alpha_clip": false,
+   "two_sided": true,
+   "textures": {
+    "base": "m2_base.png",
+    "orm": "m2_orm.png",
+    "nrm": "m2_nrm.png"
+   }
+  }
+ ]
+}
