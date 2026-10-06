@@ -104,8 +104,12 @@ def check(refslots, yielded, best, orig_path, origdir, rel32):
         nxt = sorted(s['val'] for s in syms if s['sec'] == t['sec'] and s['val'] > t['val'])
         end = min(nxt[0] if nxt else tsec['size'], t['val'] + 256, tsec['size'])
         ours = d[tsec['praw'] + toff: tsec['praw'] + max(toff, end)]
-        if t['name'].startswith('$SG') or t['name'].startswith('??_C'):
-            z = ours.find(b'\0')
+        z = ours.find(b'\0')
+        if t['name'].startswith('$SG') or t['name'].startswith('??_C') or (
+                z > 0 and all(c in b'\t\n\r' or 0x20 <= c < 0x7f for c in ours[:z])):
+            # a string (literal or char array): the object ends at its
+            # terminator; what follows is the compiler's alignment padding,
+            # which the original's linker laid out differently
             ours = ours[:z + 1] if z >= 0 else ours
         elif len(ours) > 4 and not any(ours[4:]):
             ours = ours[:4]

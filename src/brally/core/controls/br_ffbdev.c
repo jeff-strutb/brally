@@ -71,11 +71,16 @@ static const unsigned char kBrIidDevice2A[16] = {
     0xbf, 0xc7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00
 };
 
-/* 0x1007C7A0: DIDATAFORMAT { 0x18, 0x10, DIDF_ABSAXIS, 0x110, 164, rgodf }
- * -- c_dfDIJoystick2. Only its ADDRESS is used, so an opaque stand-in is
- * enough; the real table lives in the DLL's read-only data. */
-static const uint32_t kBrDataFormatJoystick2[6] = {
-    0x18u, 0x10u, 0x1u, 0x110u, 0xa4u, 0u
+/* 0x10074540: DIDATAFORMAT { 0x18, 0x10, DIDF_ABSAXIS, 0x110, 164, rgodf }
+ * -- c_dfDIJoystick2, linked in from dinput.lib. Its 164 DIOBJECTDATAFORMAT
+ * records (16 B each) sit directly below it at 0x10073B00; the last field
+ * points there. The code only passes the table's address. */
+extern const uint8_t g_brDiJoy2Objs[];              /* 0x10073B00 */
+static const struct {
+    uint32_t dwSize, dwObjSize, dwFlags, dwDataSize, dwNumObjs;
+    const void *rgodf;
+} kBrDataFormatJoystick2 = {
+    0x18u, 0x10u, 0x1u, 0x110u, 0xa4u, g_brDiJoy2Objs
 };
 
 /* The literal strings the failure paths hand to OutputDebugStringA. */
@@ -334,7 +339,7 @@ int32_t BR_STDCALL BrFfbEnumDevice(void *pDevInst, void *pvRef)
             return 0;
         }
         pDev = g_brFfb.pDevice;
-        if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) < 0) {
+        if (BrDiDev(pDev)->pfnSetDataFormat(pDev, &kBrDataFormatJoystick2) < 0) {
             BR_DBG_OUT(kBrErrDataFormat);
             pDev = g_brFfb.pDevice;
             BrDiDev(pDev)->pfnRelease(pDev);
