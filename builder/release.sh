@@ -67,6 +67,9 @@ if [ $DRY = 1 ]; then
     exit 0
 fi
 if gh release view $TAG >/dev/null 2>&1; then
+    # the same version again: its tag moves to the source these files are from
+    git tag -f $TAG $REV >/dev/null
+    git push -q -f origin refs/tags/$TAG
     gh release upload $TAG $MAC $WIN --clobber
     gh release edit $TAG --notes-file $NOTES
 else
