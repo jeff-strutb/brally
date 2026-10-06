@@ -31,7 +31,7 @@
 /* BrFontMeasure: prototype in br_funcs.h */
 /* The original takes ONE stack argument and reads its state out of fourteen
  * absolute globals -- br_font.h's BrTextEmit is the port's gathering of them
- * and is the accessor sub-case docs/VC5-IDIOMS.md records. */
+ * and is the accessor sub-case docs/brally/VC5-IDIOMS.md records. */
 /* BrTextEmitString: prototype in br_funcs.h */
 
 #include <stdio.h>
@@ -49,7 +49,7 @@ struct BrGfxWords;
  * PART 1 -- recovery
  * ====================================================================== */
 
-/* --- D3D (orig/BRD3D.dll) ------------------------------------------------
+/* --- D3D (reference/brally/orig/BRD3D.dll) ------------------------------------------------
  * Every address here is quoted from the instruction that loads it; the
  * arithmetic that pins the extents is in br_font.h. */
 #define BR_FONT_VA_CLASSMAP     0x100A5FEFu   /* 0x100189FF, 0x10019424    */
@@ -66,7 +66,7 @@ struct BrGfxWords;
 #define BR_FONT_VA_RAMP_SMALL_A 0x100A7738u   /* 0x10018625 */
 #define BR_FONT_VA_RAMP_SMALL_B 0x100A7878u   /* 0x1001862A */
 
-/* --- Glide (orig/BRGlide.dll) --------------------------------------------
+/* --- Glide (reference/brally/orig/BRGlide.dll) --------------------------------------------
  * Same provenance rule: each is the immediate at the quoted instruction. */
 #define BR_FONT_GVA_CLASSMAP     0x100A58F7u  /* 0x10015FA2, 0x100169DB    */
 #define BR_FONT_GVA_OFF_LARGE    0x100A5978u  /* 0x10015BAA, 0x100169B1    */
@@ -279,7 +279,7 @@ static const uint32_t s_aEnvColour[12] = {
  * pointer and routes every command through a helper.  The original does
  * neither: it takes ONE stack argument (the string), reads each global at its
  * own address, and inlines the eight-byte append at all 43 sites.  Both of
- * those are cause classes docs/VC5-IDIOMS.md names, and between them they are
+ * those are cause classes docs/brally/VC5-IDIOMS.md names, and between them they are
  * the whole 1,097-byte shortfall.
  *
  * The colour codes are a pair of SWITCHES, not a table lookup: the original
@@ -343,7 +343,7 @@ static const uint32_t s_aEnvColour[12] = {
  * allocation.
  * ==========================================================================
  *
- * SOLVED, and each is now an entry in docs/VC5-IDIOMS.md:
+ * SOLVED, and each is now an entry in docs/brally/VC5-IDIOMS.md:
  *   - the fourteen globals, and the ONE stack argument
  *   - the eight-byte append as a macro at all 43 sites
  *   - the colour codes as two SWITCHES, not three hand-written tables
@@ -440,8 +440,8 @@ static const uint32_t s_aEnvColour[12] = {
  * characters, looks each glyph's cell up in the font page, and emits the
  * texture and rectangle commands to paint it at the current pen position,
  * colour and scale. The engine's only text output path. */
-/* @t4-pass 0x10015B10 1 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/crank.py) */
-/* @t4-pass 0x10015B10 2 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/crank.py) */
+/* @t4-pass 0x10015B10 1 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10015B10 2 2026-09-07 probes 119 bytes 3306 insns 875 regions 9 rows 136 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10015B10 3 2026-09-09 probes 11 bytes 3306 insns 752 regions 13 rows 12 census yes
  *   (table-aware gates: insn gap 0, tables byte-equal at +0xbec.  Named/split
  *    window-address temps, stride typing and declaration slot, cls/w typing,
@@ -774,16 +774,16 @@ void BrTextEmitString(const char *psz)
 /* WHAT IT DOES: measure how wide a string would be if drawn, by summing each
  * character's advance at the given scale. Used to centre and right-align
  * text without drawing it first. */
-/* @t4-pass 0x10016980 1 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x10016980 2 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x10016980 3 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10016980 4 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10016980 5 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10016980 1 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10016980 2 2026-09-07 probes 79 bytes 197 insns 79 regions 6 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10016980 3 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10016980 4 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10016980 5 2026-09-10 probes 40 bytes 199 insns 79 regions 5 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10016980 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 199/198 insns 79/79 rows 0+0 regions 5 oracle EQUIVALENT
  * @t3-effort passes 5 zero-movement 4 5
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 40 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10016980 glide BrFontMeasure */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

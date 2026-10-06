@@ -13,7 +13,7 @@
  * the -1 store scheduled into the intrinsic's latency slots. Seven
  * siblings differ only in the phase-source global (byte 145). No EH.
  */
-/* Twin of 0x1003FBE0 BrMenuResetTrackStr (tools/gen_cpptwin.py): identical machine code,
+/* Twin of 0x1003FBE0 BrMenuResetTrackStr (tools/brally/gen_cpptwin.py): identical machine code,
  * only the reloc slots differ. */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */

@@ -15,7 +15,7 @@ commit to tag. One of them (BrCollGridCellAcquire) was the last blocker for
 a frontier function -- tagging it unblocked 0x1006EC30.
 
 **How to apply:** when looking for cheap wins on the frontier, run
-`tools/manifest.py --audit` to find addresses that are "ONLY inferred" (body
+`tools/brally/manifest.py --audit` to find addresses that are "ONLY inferred" (body
 exists, no manifest line). Each is a potential free tag. Also check callee
 lists: if whereis.py says a callee is "not implemented" but grep finds a body
 with the d3d twin's address in a comment, it just needs its tag.

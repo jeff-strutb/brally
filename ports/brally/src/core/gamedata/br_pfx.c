@@ -186,7 +186,7 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
 
 /* Glide match for BrPfxUpdateB0: 0x10033880
  *
- * The port body lives in src/core/slice2_21.c (tagged 0x1003A200 d3d) and
+ * The port body lives in src/brally/core/slice2_21.c (tagged 0x1003A200 d3d) and
  * takes `(BrPfxPool *, const BrPfxEnv *)`.  The original takes NOTHING:
  * its call site at 0x10033BB0 pushes no arguments at all, because dt,
  * the ambient drift, the 32-byte record array and the list heads are
@@ -219,7 +219,7 @@ void __fastcall BrCarPfxSpawn(struct BrDriverCar *pCar)
  *     computes `scale` inline and so meets the adds at a different x87
  *     depth). Permuting the summands does nothing -- VC5 canonicalises
  *     commutative float addition -- but the paren pair moves the
- *     schedule; see docs/VC5-IDIOMS.md.
+ *     schedule; see docs/brally/VC5-IDIOMS.md.
  */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */       /* 0x106E9D8C */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x104ADD40 */
@@ -284,7 +284,7 @@ void BrPfxUpdateB0(void)
 /* Glide match for BrPfxUpdateB4AC: 0x100339C0
  *
  * Third member of the particle-step family, after 0x10033BB0 BrPfxTick
- * and 0x10033880 BrPfxUpdateB0.  The port body in src/core/slice2_21.c
+ * and 0x10033880 BrPfxUpdateB0.  The port body in src/brally/core/slice2_21.c
  * (tagged 0x1003A340 d3d) already had the no-argument globals form; what
  * it still lacked were the two levers that closed BrPfxUpdateB0:
  *
@@ -345,15 +345,15 @@ void BrPfxUpdateB0(void)
 /* WHAT IT DOES: advance two more particle lists by a frame, in the same way
  * BrPfxUpdateB0 handles its own -- ages, moves and fades each particle. The
  * two passes are two separate lists sharing one loop. */
-/* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x100339C0 2 2026-09-07 probes 121 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100339C0 1 2026-09-07 probes 116 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100339C0 2 2026-09-07 probes 121 bytes 396 insns 96 regions 2 rows 1 census yes  (tools/brally/crank.py) */
 /* @t3 0x100339C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 396/398 insns 96/97 rows 1+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
  * residue is allocation/scheduling: 1+0 classified rows, 2 masked regions, 2 B short;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100339C0 glide BrPfxUpdateB4AC */
 void BrPfxUpdateB4AC(void)
@@ -412,14 +412,14 @@ void BrPfxUpdateB4AC(void)
 
 /* Glide match for BrPfxTick: 0x10033BB0
  *
- * The port body lives in src/core/slice2_21.c (tagged 0x1003A530 d3d) and
+ * The port body lives in src/brally/core/slice2_21.c (tagged 0x1003A530 d3d) and
  * carries the aggregate parameters `(pPool, pEnv, pFxEnv, pTick, pSeed)`
  * the port introduced.  The original takes NO arguments at all: the pool,
  * the two mode words, the driver count and the driver-slot table are
  * globals, and the three per-car helpers are __fastcall on the car
  * pointer alone (`mov ecx,[esi]` / `call`).  That parameter list is the
  * whole reason the port body could never converge: see the
- * port-safety/globals-struct class in docs/VC5-IDIOMS.md.
+ * port-safety/globals-struct class in docs/brally/VC5-IDIOMS.md.
  *
  * Shape notes, read off the original:
  *  - the driver table at 0x10AF0858 has a 0x80-byte stride with the car

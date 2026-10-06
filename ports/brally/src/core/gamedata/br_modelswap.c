@@ -93,8 +93,8 @@ static uint16_t BrLd16(const void *pv)
  * number in the file has to be turned back to front, and every address in it
  * corrected to where the data now sits -- header, geometry, animation frames
  * and all. Each finished piece is then handed to the renderer. */
-/* @t4-pass 0x100302A0 1 2026-09-10 probes 60 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
-/* @t4-pass 0x100302A0 2 2026-09-20 probes 14 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/crank.py) */
+/* @t4-pass 0x100302A0 1 2026-09-10 probes 60 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100302A0 2 2026-09-20 probes 14 bytes 1056 insns 370 regions 10 rows 15 census yes  (tools/brally/crank.py) */
 /* @t3 0x100302A0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1056/1062 insns 370/371 rows 8+7 regions 10 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2

@@ -56,7 +56,7 @@
  *   0x10043BF0  BrExt_10043BF0   == slice4_50.c  BrSub10043BF0
  *                (and its listing in the packet ENDS MID-FLOW at 0x10043C25:
  *                 the extent says 59 bytes but the body branches to
- *                 0x10043CB2.  One of config/functions.csv's 37 bad extents.)
+ *                 0x10043CB2.  One of config/brally/functions.csv's 37 bad extents.)
  *   0x10044970  BrOptFn10044970  == slice2_26.c  BrPhaseLeave_10044970
  *
  * 0x100290A0  BrSub_100290A0 -- NOT PORTABLE UNDER ITS DECLARED TYPE.
@@ -138,7 +138,7 @@
  *     0x1008F680 -19   0x1008F684 -38   0x1008F688 -57   0x1008F68C -76
  *     0x1008F690 -95   0x1008F694 -114  0x1008F698 -133  0x1008F69C -33
  *     0x1008F6A4 -0.09090909f (== -1/11 in float)
- *   Read out of orig/BRD3D.dll, not assumed.  slice3_33.h found the same.
+ *   Read out of reference/brally/orig/BRD3D.dll, not assumed.  slice3_33.h found the same.
  * - Every f38 call site in all six builders passes 2 and 5 as its fourth and
  *   fifth arguments.  Every one.
  * - The 0x6594 block the phase constructor allocates twice is slice1_06.h's

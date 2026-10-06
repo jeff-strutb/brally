@@ -5,11 +5,11 @@ Two ranges of BRGlide.dll's memory become one struct each, members in
 original address order:
   data  0x10077000 .. 0x100BCE00   .rdata + initialised .data
   bss   0x100BCE00 .. 0x118EF184   the zero-filled rest of .data
-Every canonical object (build/portable/canon.csv, from unify.py) is a member
+Every canonical object (build/brally/null-soft/canon.csv, from unify.py) is a member
 at its original address; the bytes between are filler members. A filler
 dword is a pointer member exactly where the original holds an address: the
 DLL's base relocations say so for initialised data; for the bss the trace
-(build/portable/trace/objects.csv) does.
+(build/brally/null-soft/trace/objects.csv) does.
 
 This pass checks before anything is generated:
   OVERLAP   two canonical objects claim the same bytes
@@ -18,7 +18,7 @@ This pass checks before anything is generated:
   TYPELESS  a canonical object whose size cannot be determined
 
 Usage: imagemap.py [--range data|bss]
-Output: build/portable/image/<range>_layout.csv, <range>_check.txt
+Output: build/brally/null-soft/image/<range>_layout.csv, <range>_check.txt
 """
 import bisect
 import collections
@@ -127,7 +127,7 @@ def main():
     which = sys.argv[sys.argv.index('--range') + 1] if '--range' in sys.argv else 'data'
     lo, hi = RANGES[which]
     canon = []
-    for r in csv.DictReader(open('build/portable/canon.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/canon.csv')):
         va = int(r['va'], 16)
         if lo <= va < hi:
             sz = size_of(r['type'])
@@ -135,7 +135,7 @@ def main():
                 sz = int(r['size32'])
             canon.append((va, r['name'], r['type'], sz, r['forced'] == '1'))
     canon.sort()
-    pe = pe32.PE('orig/BRGlide.dll')
+    pe = pe32.PE('reference/brally/orig/BRGlide.dll')
     relocs0 = sorted(r for r in pe.relocs() if lo <= r < hi) if which == 'data' else []
     # resolve extents: a weak declaration (bytes, chars, plain ints, an
     # unsized array) ends where the next object begins; a typed table that
@@ -200,14 +200,14 @@ def main():
         k += 1
     if pos < hi:
         out.append((pos, hi - pos, 'gap', '', ''))
-    os.makedirs('build/portable/image', exist_ok=True)
-    with open('build/portable/image/%s_layout.csv' % which, 'w', newline='') as fh:
+    os.makedirs('build/brally/null-soft/image', exist_ok=True)
+    with open('build/brally/null-soft/image/%s_layout.csv' % which, 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['va', 'size', 'kind', 'name', 'type'])
         for va, sz, kd, nm, ty in out:
             w.writerow(['0x%08X' % va, sz, kd, nm, ty])
-    open('build/portable/image/%s_check.txt' % which, 'w').write('\n'.join(check) + '\n')
-    with open('build/portable/image/%s_aliases.csv' % which, 'w', newline='') as fh:
+    open('build/brally/null-soft/image/%s_check.txt' % which, 'w').write('\n'.join(check) + '\n')
+    with open('build/brally/null-soft/image/%s_aliases.csv' % which, 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['va', 'name', 'type', 'size', 'inside'])
         for va, nm, ty, sz, inn in aliases:

@@ -7,11 +7,11 @@
 ## Ghidra auto-decomp pipeline (updated 2026-08-23 late)
 
 Ghidra 12.1 via brew, OpenJDK 21. Project at `/private/tmp/ghidra_brglide/BRGlide_proj`.
-Decompiled corpus: `build/ghidra_decomp/` (2139 .c files, one per glide VA).
+Decompiled corpus: `build/brally/analysis/ghidra_decomp/` (2139 .c files, one per glide VA).
 
-### Engine: tools/ghidra_to_match.py
+### Engine: tools/brally/ghidra_to_match.py
 Clean Ghidra C → wrap → compile (Wine+MSVC5, /O2 and /Od) → diff vs
-`build/match/orig/<va>.bin`. Results merge into `build/ghidra_learnings.csv`.
+`build/brally/win32/match/orig/<va>.bin`. Results merge into `build/brally/analysis/ghidra_learnings.csv`.
 The junk classes in CLOSE (1B fragments, 5/6B thunks, 11B EH funclets  - 
 DIFF(10)×479, DIFF(6)×91 buckets) are NOT veins; unreachable from C.
 
@@ -47,7 +47,7 @@ DIFF(10)×479, DIFF(6)×91 buckets) are NOT veins; unreachable from C.
   This is what found the mid-return root cause. Script shape in notes file.
 
 ### Bulk idiom application (2026-08-23 night): +18 matches in one pass
-tools/sigaudit.py compares frame/epilogue/push signatures of every diff row
+tools/brally/sigaudit.py compares frame/epilogue/push signatures of every diff row
 against orig bytes; structural mismatches on small-diff rows are idiom-fixable.
 Worked: the 6-member DirectPlay send family (tags 2-7, ||-merged return-0
 early-outs, inlined BrComCallLocked68 call), BrStrGet, BrRaceClockReset
@@ -74,15 +74,15 @@ until mid-return/wrapper-split transforms are coded into the engine).
 ### Wide-batch loop (2026-08-25, committed f2421d7 + min-size commit)
 The cadence is now: machine batch → hand-solve one rep per failure class →
 mint a generator → re-batch. NEVER hand-match what a generator could sweep.
-- **Wide run:** `python3 tools/ghidra_to_match.py --refine --max-diffs 200
+- **Wide run:** `python3 tools/brally/ghidra_to_match.py --refine --max-diffs 200
   --min-size 16` (~248 rows, hours, zero tokens; crash-safe - learnings CSV
   written back after every function, biggest-first). First run launched
   2026-08-25; log at `build/refine_wide.log`.
-- **Auto-filer:** `python3 tools/autofile.py` files each MATCH into the
+- **Auto-filer:** `python3 tools/brally/autofile.py` files each MATCH into the
   bracketing slice, verifies via single-file sweep (no regressions allowed),
   commits per function; refusals/flags → `build/autofile_log.csv`. Proven
   end-to-end on 0x10010F80 (reproduced the hand-filed content exactly).
-- **Residue triage:** `python3 tools/ghidra_to_match.py --residue` groups
+- **Residue triage:** `python3 tools/brally/ghidra_to_match.py --residue` groups
   unmatched rows by divergence class (scattered = hill-climbable, needs a
   generator; frame/short/dense = structural, hand-solve one rep).
 - Generators live in `_refine_candidates`; every hand-proven idiom must

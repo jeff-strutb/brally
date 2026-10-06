@@ -22,7 +22,7 @@ deterministic, EQUIVALENT.  A giant orchestrator can need a one-line profile.
 
 ** NEW oracle capability (t3b_env `_declared_va`, committed 28ebe65d):** a
 hand-named callee that no map records now resolves from its SOURCE declaration
-comment `Type Name(args);  /* 0x<VA> ... */` (scanned across src/, cached; the
+comment `Type Name(args);  /* 0x<VA> ... */` (scanned across src/brally/, cached; the
 VA must land in mapped .text or it is refused).  Unblocked BrGroundProbeZ +
 BrMtxPoolAlloc here, and lifted FOUR other certified functions from UNCLASSIFIED
 to EQUIVALENT in the same --certified sweep -- so this is a cheap, broad

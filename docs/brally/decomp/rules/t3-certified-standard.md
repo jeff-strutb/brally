@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-16.*
 
-> RULE: T3 = FUNCTIONALLY EXACT to the original game -- same inputs produce same outputs (behavioral equivalence). NOT a byte-diff verdict. tools/t3.py --qualify formalizes it (Gate 0 completeness, Gate A residue is compiler-choice, Gate B @t4-pass ledger), but the STANDARD ITSELF is same-in/same-out.
+> RULE: T3 = FUNCTIONALLY EXACT to the original game -- same inputs produce same outputs (behavioral equivalence). NOT a byte-diff verdict. tools/brally/t3.py --qualify formalizes it (Gate 0 completeness, Gate A residue is compiler-choice, Gate B @t4-pass ledger), but the STANDARD ITSELF is same-in/same-out.
 
 ** THE STANDARD, STATED BY THE PROJECT (do not re-derive, do not fog it up):
 T3 = FUNCTIONALLY EXACT TO THE ORIGINAL GAME. Same inputs produce the same
@@ -55,7 +55,7 @@ it does not create a "complete-but-not-T3" state. See [do-not-lower-t3-standard]
 **Why:** 31 passes on 0x1000EAF0 bought no bytes while hundreds of T1/T2
 rows waited -- but parking must not become an excuse.
 
-**How to apply:** never certify by judgment; run `tools/t3.py --qualify`,
+**How to apply:** never certify by judgment; run `tools/brally/t3.py --qualify`,
 which refuses to emit a tag until gates 0, A and B all pass. End EVERY pass
 at a near-exact function by appending its `@t4-pass` line. Once Gate A
 passes, cap passes (40 min / 20 probes, grep the dead list first); when the

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Lock / park ledger. Do not pick targets here.
+
+  claim --va VA [VA ...]       -> lock exactly these (what tools/brally/t4lane.py --claim runs)
+  release <TOKEN> [wallVA ...] -> park the listed walls (never re-handed), release the rest
+
+Bare `claim N` is a hard error: the rank-file picker handed out the giants
+(2026-09-07). Matched functions drop out on their own. Stale claims (>90 min)
+are reclaimed."""
+import csv, os, sys, time, uuid, fcntl
+ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPORT=os.path.join(ROOT,'build','brally','win32','match','report.csv')
+CLAIMS=os.path.join(ROOT,'build','brally','win32','match','lane_claims.csv')
+STALE=90*60; FIELDS=['va','name','file','token','ts','status']
+def diffs():
+    with open(REPORT) as f: rows=[r for r in csv.DictReader(f) if r.get('status')=='diff']
+    # Functions matched in the C++ / EXE workstreams still sit as status=diff
+    # in report.csv; drop them so lanes never re-hand a matched function.
+    done=set()
+    for alt in ('report_cpp.csv','report_exe.csv'):
+        p=os.path.join(os.path.dirname(REPORT),alt)
+        if os.path.exists(p):
+            with open(p) as f:
+                done.update((r.get('va') or '').lower() for r in csv.DictReader(f) if r.get('status')=='match')
+    # Hand-certified T3 functions (tools/brally/t3.py) are parked
+    # until the end-grind: complete and verified, not byte-exact, and NOT a
+    # target.  Never hand one out.
+    try:
+        sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
+        from t3 import certified
+        done.update(va for va in certified() if not va.startswith('?'))
+    except Exception:
+        pass
+    # EXCLUDED functions (config/brally/excluded.csv) are never run by the game and
+    # never a target.
+    ex=os.path.join(ROOT,'config','brally','excluded.csv')
+    if os.path.exists(ex):
+        with open(ex) as f: done.update((r.get('va') or '').lower() for r in csv.DictReader(f))
+    return [r for r in rows if r['va'].lower() not in done]
+def load():
+    if not os.path.exists(CLAIMS): return []
+    with open(CLAIMS) as f: return list(csv.DictReader(f))
+def save(rows):
+    os.makedirs(os.path.dirname(CLAIMS),exist_ok=True)
+    with open(CLAIMS,'w',newline='') as f:
+        w=csv.DictWriter(f,fieldnames=FIELDS); w.writeheader()
+        for r in rows: w.writerow({k:r.get(k,'') for k in FIELDS})
+def lock():
+    os.makedirs(os.path.dirname(CLAIMS),exist_ok=True)
+    lk=open(CLAIMS+'.lock','w'); fcntl.flock(lk,fcntl.LOCK_EX); return lk
+def claim(n,big=False,vas=None):
+    """vas: an explicit VA list (from tools/brally/t4lane.py --claim).  A VA in that
+    list that is parked in this ledger is handed out anyway: t4lane decides
+    whether a park is still a hold (rule: a park older than the newest screen
+    is NOT a hold).  A VA currently claimed by a live token is refused."""
+    n=int(n); lk=lock()
+    try:
+        now=time.time(); dr=diffs(); dvas={r['va'] for r in dr}; keep=[]; held=set()
+        want={v.lower() for v in (vas or [])}
+        for c in load():
+            if c['status']=='parked' and c['va'] in dvas:
+                if c['va'].lower() in want: continue     # t4lane overrides a stale park
+                keep.append(c); held.add(c['va'])
+            elif c['status']=='claimed' and (now-float(c['ts']))<STALE: keep.append(c); held.add(c['va'])
+        pool=[r for r in dr if r['va'] not in held]
+        heldl={h.lower() for h in held}
+        # Ranked lanes: tools/brally/fnmatch/triage.py publishes triage_rank.csv
+        # (lower score = better target: SHAPE < mixed < missing-code < coloring
+        # wall). When present, hand out best-first; the held-set already keeps
+        # parallel lanes disjoint. Without it, fall back to rotation.
+        # !! triage_rank.csv is a 2026-08-28 snapshot of 231 rows: once its
+        # SHAPE rows are gone it hands out the GIANTS (score 10007+).  A
+        # byte-exact lane must come in through tools/brally/t4lane.py --claim, which
+        # passes `vas` and never consults the rank file.
+        rank_csv=os.path.join(ROOT,'build','brally','win32','match','triage_rank.csv')
+        if want:
+            byva={r['va'].lower():r for r in pool}
+            pick=[]
+            for v in vas:
+                vl=v.lower()
+                if vl in byva: pick.append(byva[vl])
+                elif vl in heldl: print('REFUSED %s: claimed by a live token'%v)
+                else:
+                    # Pool B: no report row yet (a T1 draft).  Lock it anyway.
+                    pick.append({'va':v.upper().replace('0X','0x'),'name':'-','file':'-'})
+        elif big:
+            # --big: hand out the LARGEST still-diff functions (by original
+            # bytes). The giants carry dossiers/ordering rules -- see the
+            # "Large functions" section of docs/brally/MATCHING.md.
+            pool.sort(key=lambda r:-int(r.get('orig_size') or 0))
+            pick=pool[:n]
+        elif os.path.exists(rank_csv):
+            with open(rank_csv) as f:
+                score={r['va'].lower():int(r['score']) for r in csv.DictReader(f)}
+            pool.sort(key=lambda r:score.get(r['va'].lower(),50000))
+            pick=pool[:n]
+        else:
+            offset=(len([c for c in keep if c['status']=='claimed'])*n)%max(len(pool),1)
+            pick=(pool[offset:]+pool[:offset])[:n]
+        tok=uuid.uuid4().hex[:8]
+        for r in pick: keep.append({'va':r['va'],'name':r['name'],'file':r['file'],'token':tok,'ts':str(now),'status':'claimed'})
+        save(keep); print('TOKEN',tok)
+        for r in pick: print(r['va'],r['name'],r['file'])
+    finally: fcntl.flock(lk,fcntl.LOCK_UN)
+def release(tok,walls):
+    walls=set(walls); lk=lock()
+    try:
+        out=[]
+        for c in load():
+            if c['token']!=tok: out.append(c); continue
+            if c['va'] in walls: c['status']='parked'; c['ts']=str(time.time()); out.append(c)
+        save(out)
+    finally: fcntl.flock(lk,fcntl.LOCK_UN)
+if __name__=='__main__':
+    cmd=sys.argv[1] if len(sys.argv)>1 else 'claim'
+    if cmd=='claim':
+        if '--va' in sys.argv:
+            vas=sys.argv[sys.argv.index('--va')+1:]
+            claim(len(vas), vas=vas)
+        else:
+            sys.stderr.write(
+                'refused: claim_lane.py claim N is retired (2026-08-28 rank file; '
+                'hands out the giants). Lock with: python3 tools/brally/t4lane.py --claim\n'
+                '  (that calls this tool as claim --va ...). release <TOKEN> still works.\n'
+            )
+            sys.exit(2)
+    elif cmd=='release': release(sys.argv[2], sys.argv[3:])
+    else:
+        sys.stderr.write('usage: claim_lane.py claim --va VA [VA ...] | release TOKEN [wallVA ...]\n')
+        sys.exit(2)

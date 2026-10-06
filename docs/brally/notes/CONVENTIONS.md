@@ -38,7 +38,7 @@ real time on this project, and most of them are not obvious.
   and has repeatedly been load-bearing, a dial rendered as a degenerate sliver
   until its two radii turned out to be different constants; and an analog stick
   scaled by 1/80 for months where `.rdata` says 1/70.
-  - `tools/constcheck.py` now does this over the whole tree, so the check is
+  - `tools/brally/constcheck.py` now does this over the whole tree, so the check is
     one command and the DENOMINATOR is reportable. It matches an address-
     annotated float declaration three ways (address in the trailing comment,
     address baked into the name, bare literal with an address comment) and
@@ -149,7 +149,7 @@ present in the original, and aliasing behaviour where the original permits it.
 - Microcode is **F3DEX**: `G_VTX` has `n` in bits[15:10]. **The rest of this
   entry was wrong and is corrected below**, `v0+n` is NOT in bits[7:1], and
   the `16n-1` layout is NOT absent.
-  - Measured in `testdata/bb.rca` and `testdata/ce.rca`: every `G_VTX` is
+  - Measured in `reference/brally/data/bb.rca` and `reference/brally/data/ce.rca`: every `G_VTX` is
     `0x04<<24 | (n<<10) | (16n - 1)` with bits[23:16] zero. `0x040079DF`
     is n=30 and 479 = 16*30-1; `0x040081FF` is n=32 and 511; `0x0400207F`
     is n=8 and 127. So the low ten bits ARE the F3D byte-length field.
@@ -260,7 +260,7 @@ present in the original, and aliasing behaviour where the original permits it.
   entry and is a leftover. Tracks, cars, textures, art and sound are plain files
   in plain directories on the CD (`TRACKS/`, `CARS/`, `CARGFX/`, `IMAGES/`,
   `PAINT/`, `SFX/`), played from the CD; `DATA1.CAB` is 125 KB of setup stub and
-  installs nothing of the game. `tools/extract_iso.py --list` walks the real
+  installs nothing of the game. `tools/brally/extract_iso.py --list` walks the real
   ISO 9660 tree: 2111 files, 116 MB.
 - `.trk`: a raw **big-endian** N64 memory image with a `0x230`-byte header on the
   front. File offset 0 is N64 `0x80025C00`, so the payload at file `0x230` is
@@ -304,14 +304,14 @@ present in the original, and aliasing behaviour where the original permits it.
 - The Glide emitter is `0x10015B10`..`0x100166FA`, **3050 bytes**, then two jump
   tables and their two `0x4A` index tables ending at `0x100167FA`, so it is
   very slightly **bigger** than the D3D one, not a third of its size.
-  `config/functions_glide.csv` used to split it at `0x10015F0B`, a jump target
+  `config/brally/functions_glide.csv` used to split it at `0x10015F0B`, a jump target
   **mid-flow**; it no longer does (see the rebuild note below). Treat a
   suspiciously small Glide extent as a split, not a measurement.
-- `tools/dumpasm.py` **honours** an explicit size argument and prints a NOTE
+- `tools/brally/dumpasm.py` **honours** an explicit size argument and prints a NOTE
   when it disagrees with the map. (It used to discard it silently, which is how
   asking for a wrong 1019 bytes and receiving exactly 1019 read as
   confirmation.)
-- `0x10019140` is **not a function** despite `config/functions.csv` listing it
+- `0x10019140` is **not a function** despite `config/brally/functions.csv` listing it
   as 254 bytes: it is `0x10018590`'s two jump tables plus their two 0x4A-byte
   index tables, sitting in `.text` after the function ends.
 - **Menu navigation runs on the control flag bits at +0x1C, and the "step"
@@ -329,7 +329,7 @@ present in the original, and aliasing behaviour where the original permits it.
   the phase's `+0xBC`. slice6_71's `0x1004F700` computes
   `flags = fAutoSave ? 0x102001 : 0x102011`, the clearest single statement of
   what `0x10` means anywhere in the corpus.
-- **Map extents are wrong in BOTH directions.** `config/functions.csv` gives
+- **Map extents are wrong in BOTH directions.** `config/brally/functions.csv` gives
   `0x10047A60` 161 bytes; it is 587, and the Glide map has it right. That is
   the mirror image of the font emitter, where the Glide map was the short one.
   Check the extent against the other build before trusting either.
@@ -369,19 +369,19 @@ present in the original, and aliasing behaviour where the original permits it.
   cell height IS the measured height. The x is the box's `+0x410`, which
   `BrTextBoxCentreX` has already centred in the style rectangle when a2 bit 0
   is set, which every menu builder passes.
-- `config/functions.csv` (the **D3D** map) is a good index, **not ground truth**.
-  It is still the output of `tools/funcmap.py`, whose extents run "from one
-  start to the next". Measured against flow analysis (`tools/funcmap2.py`,
-  `config/functions_d3d_flow.csv`), 2,451 of its 2,632 entries are exactly
+- `config/brally/functions.csv` (the **D3D** map) is a good index, **not ground truth**.
+  It is still the output of `tools/brally/funcmap.py`, whose extents run "from one
+  start to the next". Measured against flow analysis (`tools/brally/funcmap2.py`,
+  `config/brally/functions_d3d_flow.csv`), 2,451 of its 2,632 entries are exactly
   right and **181 are not**: 49 are not functions at all (jump tables such as
   `0x10019140`, `0x1000C074`, `0x100292BC`; and mid-flow labels such as
   `0x100331FF`, `0x100334D7`, `0x100312BB`), 15 are truncated, 95 are over-long
   by a whole following function, and 22 run on into trailing tables or padding.
   If a listing starts mid-instruction, skip it and say so.
-- `config/functions_glide.csv` **has been rebuilt** by `tools/funcmap2.py` from
+- `config/brally/functions_glide.csv` **has been rebuilt** by `tools/brally/funcmap2.py` from
   call/pointer evidence plus flow, and every byte of `.text` is now accounted
   for as code, switch table, padding or data. Prefer it. The same tool's D3D
-  output is `config/functions_d3d_flow.csv`; `config/functions.csv` has **not**
+  output is `config/brally/functions_d3d_flow.csv`; `config/brally/functions.csv` has **not**
   been replaced, so the two D3D maps disagree, see above for by how much.
 
 ## Aliased storage: a link-clean bug
@@ -448,7 +448,7 @@ to check it is to ask whether anyone has ever tried X. Nobody had.
 
 ## 0x10AA2904, and the sweep that found 350 more
 
-`tools/aliasmap.py` does the address-keyed sweep this section had been doing by
+`tools/brally/aliasmap.py` does the address-keyed sweep this section had been doing by
 hand: it binds host declarations to original addresses through three channels
 (an address in the declaration's own trailing comment, an address baked into
 the identifier, and a lead comment), gates every candidate on the shipped
@@ -459,7 +459,7 @@ five known instances and says which one it misses and why.
 
 Three things it got wrong on the way, all worth keeping:
 
-  - Gating on `config/globals.csv` looked obviously right and drove recall to
+  - Gating on `config/brally/globals.csv` looked obviously right and drove recall to
     3/5. That file is the set of addresses `globals.py` could decode a
     reference to, and it is **missing 0x105D17A4 and 0x1184C088**, two of the
     five calibration cases. Both misses were "no host object here", the
@@ -501,7 +501,7 @@ the five rows whose action is ported. Reinstating just the host's one-line bind
 reproduces the old behaviour exactly, which is how the causal claim was checked
 rather than argued.
 
-**And that mutation SURVIVES `tools/regress.sh`.** 131 suites, 0 failures, with
+**And that mutation SURVIVES `tools/brally/regress.sh`.** 131 suites, 0 failures, with
 the split fully reinstated, because no suite links `port/host`. The unit-level
 assertions added here pin the module and both leaf ranges; the host's bind is
 pinned only by running the harness. A green suite is not evidence that the
@@ -534,8 +534,8 @@ The same thing happens to CODE, and it is harder to see: two modules
 transcribe one original function under the two BUILDS' addresses, so neither
 can find the other by grepping its own number.
 
-Nineteen candidates were produced by grouping `config/ported.csv` through
-`config/shared.csv`'s Glide/D3D pairing. **Eight of them were not duplicates
+Nineteen candidates were produced by grouping `config/brally/ported.csv` through
+`config/brally/shared.csv`'s Glide/D3D pairing. **Eight of them were not duplicates
 at all, and the reason is a property of the pairing data that will keep
 producing false positives.**
 
@@ -639,12 +639,12 @@ whichever number looks more plausible.
 `BRD3D.dll` is the Direct3D build. `BRGlide.dll` is the Glide build, and Glide
 is the intended reference, it was the mature target when this game shipped.
 
-This was got wrong for a long stretch: `tools/dumpasm.py` defaulted to
+This was got wrong for a long stretch: `tools/brally/dumpasm.py` defaulted to
 `BRD3D.dll`, and worker briefs described that file as "the Glide build". Both are
 now corrected, but work done before this point was read off the D3D build.
 
 What that does and does not invalidate, measured rather than assumed
-(`tools/crossdiff.py`, `config/shared.csv`):
+(`tools/brally/crossdiff.py`, `config/brally/shared.csv`):
 
 - **~1,700 functions are shared** between the two builds; those are the real
   decompilation target and reading either binary gives the same answer.
@@ -670,10 +670,10 @@ extent, so the number moves when either side is re-derived:
 The old pair's 1,712 is not evidence of correctness: both maps came from the
 same tool, so the same extent bug applied to both binaries produces the same
 wrong extent on both sides and the hashes still match. The mixed rows are lower
-precisely because one side has been fixed. `config/shared.csv` as shipped is the
-second row, keyed to `config/functions.csv`, which has not been replaced, so
+precisely because one side has been fixed. `config/brally/shared.csv` as shipped is the
+second row, keyed to `config/brally/functions.csv`, which has not been replaced, so
 its `d3d_only` bucket is currently **wider than the truth by roughly 90
-functions**. Re-running `crossdiff` with `BR_MAP_D3D=config/functions_d3d_flow.csv`
+functions**. Re-running `crossdiff` with `BR_MAP_D3D=config/brally/functions_d3d_flow.csv`
 gives the fourth row.
 
 Glide's smaller function count is not, as was once assumed, a sign of a
@@ -681,7 +681,7 @@ deficient map: 2,140 against D3D's 2,818 on 82.7% of the `.text`, and the gap
 is the statically linked CRT that Glide does not carry.
 
 Before trusting any renderer-adjacent port, check the address against
-`config/shared.csv`. If it is not `shared`, re-derive it from `BRGlide.dll`.
+`config/brally/shared.csv`. If it is not `shared`, re-derive it from `BRGlide.dll`.
 
 ### Measured divergence in the text path
 
@@ -733,13 +733,13 @@ bytes was the wrong test twice over, first on blank prefixes, then on a format
 difference. The right test was to search for the *transformed* bytes.
 
 **"The Glide emitter is 1019 bytes, a third of D3D's 2992."** It is about 3050
-bytes, slightly LARGER. `config/functions_glide.csv` splits it in two at
+bytes, slightly LARGER. `config/brally/functions_glide.csv` splits it in two at
 `0x10015F0B`, which is a jump target in the middle of the function, and
-`tools/dumpasm.py` silently ignored its size argument and used the map's extent.
+`tools/brally/dumpasm.py` silently ignored its size argument and used the map's extent.
 Asking for 1019 bytes and receiving exactly 1019 read as confirmation. It was
 the tool agreeing with the map, and the map was wrong.
 
-`tools/dumpasm.py` now honours an explicit size and prints a NOTE when it
+`tools/brally/dumpasm.py` now honours an explicit size and prints a NOTE when it
 disagrees with the map.
 
 **The rule that would have caught both: a measurement that merely agrees with
@@ -774,9 +774,9 @@ independently pinned extents agree that row 0 is the bottom.
 
 ## The function maps, and how the sweep-derived one lied
 
-`config/functions.csv` (D3D) and `config/functions_glide.csv` are now derived by
-**recursive descent with flow-determined extents** (`tools/funcmap2.py`). The
-previous sweep-derived D3D map is kept as `config/functions_d3d_sweep.csv` so
+`config/brally/functions.csv` (D3D) and `config/brally/functions_glide.csv` are now derived by
+**recursive descent with flow-determined extents** (`tools/brally/funcmap2.py`). The
+previous sweep-derived D3D map is kept as `config/brally/functions_d3d_sweep.csv` so
 the two can be compared.
 
 The old generator seeded entry points by **scanning `.text` linearly for `0xE8`
@@ -821,7 +821,7 @@ function.
 
 ## Renderer slots: one dispatch slot, two implementations, and only one ported
 
-`config/shared.csv` has a class `renderer` with `matched_by = slot`. It means
+`config/brally/shared.csv` has a class `renderer` with `matched_by = slot`. It means
 the two builds put **genuinely different code** behind the same dispatch slot
 -- crossdiff paired them by their aligned CALL SITES, not by their bodies.
 These are not "the port picked the wrong constant". There are two
@@ -893,7 +893,7 @@ The reason the grep missed: `slice1_03.c` records the **D3D** addresses
 it was written. The Glide addresses (`0x1001F0D0` &c.) appear nowhere in the
 tree. Same functions, different numbers, and no textual overlap at all.
 
-`config/shared.csv` pairs them, that is what it is for. Before concluding an
+`config/brally/shared.csv` pairs them, that is what it is for. Before concluding an
 address is unported, look it up there and grep the paired address too.
 
 This is the same failure the project has now hit roughly thirty times in
@@ -976,9 +976,9 @@ the next reader can check the claim instead of inheriting it.
 Three binaries can answer a question about this game. They are NOT equal, and
 the order matters whenever they disagree:
 
-  1. **orig/BRGlide.dll**. THE reference. Glide was the mature target when the
+  1. **reference/brally/orig/BRGlide.dll**. THE reference. Glide was the mature target when the
      PC game shipped. Anything renderer-adjacent must come from here.
-  2. **orig/BRD3D.dll**, the same 1999 game, other backend. Authoritative for
+  2. **reference/brally/orig/BRD3D.dll**, the same 1999 game, other backend. Authoritative for
      the 1,809 functions classed `shared`, since either build gives the same
      answer there. For the rest it is the wrong renderer.
   3. **Top Gear Rally (N64, 1997)**, a DIFFERENT, EARLIER game by the same
@@ -1084,7 +1084,7 @@ have died instantly on one spot check, grep a function you know exists and
 confirm the detector sees it. That check costs one command. Not running it
 cost two workers most of a run each.
 
-THIRD: never encode one naming convention. tools/hookaudit.py now looks three
+THIRD: never encode one naming convention. tools/brally/hookaudit.py now looks three
 ways (annotated declaration, banner-comment definition, address-in-name) and
 matches BOTH `->pXXXX =` and `.pXXXX =`, because the host writes its slots with
 a dot and the first version only understood arrows.
@@ -1159,7 +1159,7 @@ same direction, under-reporting what the tree already has:
     functions that already existed.
   - `grep -rl 0xADDR port/` counts a MENTION in a comment as a port. It is what
     produced "nine of eleven boot callees absent" when the answer is eleven.
-  - tools/isported.py itself was wrong FOUR TIMES on one address before it was
+  - tools/brally/isported.py itself was wrong FOUR TIMES on one address before it was
     right: a `[^*]*` that cannot cross a line; a `.*?` that ran from a mention
     through a banner's end and attached the address to the next function; a
     greedy prefix that captured a different address from later on the same

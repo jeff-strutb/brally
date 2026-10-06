@@ -52,7 +52,7 @@ Related: [matching-progress](../log/matching-progress.md), [divergence-class-tri
 ## 2026-09-03: the GLOBALS-STRUCT parameter is the concrete form of this
 *(six byte-exact matches in one pass, all from the same fix)*
 
-src/core/slice2_23.c's port bodies take `(BrUiObj *pObj, BrUiGlobals *pG)`
+src/brally/core/slice2_23.c's port bodies take `(BrUiObj *pObj, BrUiGlobals *pG)`
 and reach every global through `pG->...`. The originals are cdecl with ONE
 argument and direct global addresses. That single difference is the whole
 gap -- six extra `mov r,[r+disp]`, an extra push, an extra call, ~130
@@ -60,7 +60,7 @@ diffs on a 147-byte function.
 
 **The fix is already a convention in that file**, from an earlier session:
 the port body keeps its name but loses its `@implements`, gaining the
-comment `port-only body; Glide match is src/core/generated/<VA>.c`, and a
+comment `port-only body; Glide match is src/brally/core/generated/<VA>.c`, and a
 separate per-VA TU carries the tag with direct externs. Look for that
 comment next door before assuming a function is unclaimed. Byte-exact this
 way, all first compile: 0x100386B0, 0x100381D0, 0x100391F0, plus the
@@ -68,7 +68,7 @@ way, all first compile: 0x100386B0, 0x100381D0, 0x100391F0, plus the
 
 **Screening gotcha that cost time:** these functions are tagged by their
 D3D VA, so `git grep "implements <glide VA>"` finds NOTHING and they look
-unclaimed. Check build/match/report.csv (which resolves d3d tags to glide
+unclaimed. Check build/brally/win32/match/report.csv (which resolves d3d tags to glide
 VAs) instead, or you will write a duplicate TU as I did twice.
 
 **Bookkeeping:** matching one in the cpp lane leaves the slice's d3d tag
@@ -80,7 +80,7 @@ image change. Do the cleanup in the same commit as the match.
 ## 2026-09-03 (later): the blocker is in slice3_32.c too, and the stale-tag
 ## cleanup is worth as much as the matches
 
-Second file with the same shape: src/core/slice3_32.c's port bodies also
+Second file with the same shape: src/brally/core/slice3_32.c's port bodies also
 take a globals-struct pointer the originals do not have. Same fix, same
 result -- byte-exact first compile on 0x10041100, 0x10041160, 0x10040DD0,
 0x10040D80, plus 0x10038E10 and 0x10039870 in slice2_23.c.
@@ -91,7 +91,7 @@ uniq -c` finds the files; then for each of that file's `diff` rows in
 report.csv check `report_cpp.csv` for a `match` row on the same VA. Nine of
 slice3_32.c's fourteen diffs were ALREADY matched in the C++ lane and were
 just stale d3d tags; converting them to
-`/* port-only body; Glide match is src/core/cpp/<VA>.cpp */` dropped the C
+`/* port-only body; Glide match is src/brally/core/cpp/<VA>.cpp */` dropped the C
 residue by nine with no image change. Do this before assuming a file has
 real work left -- across both files the cleanup removed 15 phantom rows
 (residue 359 -> 337) while the actual matches numbered 8.
@@ -120,14 +120,14 @@ documents the original's behaviour correctly and only the SHAPE is wrong.
 ## 2026-09-03 (session 14): the particle-step family, and the ONE-LINE screen
 ## that finds form 1 without reading any source
 
-Three more in src/core/slice2_21.c, all form 1: BrPfxTick (0x10033BB0, 219 B),
+Three more in src/brally/core/slice2_21.c, all form 1: BrPfxTick (0x10033BB0, 219 B),
 BrPfxUpdateB0 (0x10033880, 315 B) - both BYTE-EXACT - and BrPfxUpdateB4AC
 (0x100339C0, 398 B, parked one instruction short). The port bodies take
 `(BrPfxPool *, const BrPfxEnv *, const BrCarFxEnv *, const BrPfxTickEnv *,
 uint32_t *)`; every original takes NOTHING.
 
 **The screen that decides form 1 in seconds, with no source reading: look at
-the CALL SITE in the original.** `tools/dumpasm.py <caller VA>` - if the call
+the CALL SITE in the original.** `tools/brally/dumpasm.py <caller VA>` - if the call
 is a bare `call rel32` with no pushes in front of it, the callee is
 `void f(void)` however many parameters the port body declares. In this family
 one disassembly of BrPfxTick settled the signatures of four functions at once
@@ -137,7 +137,7 @@ certain than the `grep "Globals \*p"` screen, which only catches the
 struct-named form.
 
 **Two levers finished these once the parameters were gone; both are now in
-docs/VC5-IDIOMS.md:**
+docs/brally/VC5-IDIOMS.md:**
  - respell `array[idx].field` in EVERY statement - hoisting the record into a
    `Rec *p` local cost 19 bytes and ten instructions on a function whose
    statements were all already correct (regnorm 48+21 -> 18+8);
@@ -148,8 +148,8 @@ docs/VC5-IDIOMS.md:**
 
 **Placement convention confirmed:** the port body keeps its name, loses its
 `@implements`, and gains `port-only body; Glide match is
-src/core/generated/<VA>.c`; the new per-VA TU under `src/core/generated/`
+src/brally/core/generated/<VA>.c`; the new per-VA TU under `src/brally/core/generated/`
 carries the glide tag, direct externs, and its own callee prototypes. A
 duplicate definition of the same symbol across the two TUs is fine - the
 matching build is compile-only and image_build resolves by symbol name.
-`tools/match_sweep.py <new file>` auto-files and auto-commits a MATCH.
+`tools/brally/match_sweep.py <new file>` auto-files and auto-commits a MATCH.

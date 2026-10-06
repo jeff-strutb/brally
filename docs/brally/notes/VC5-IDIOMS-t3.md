@@ -1,6 +1,6 @@
 # VC5 idioms - task 3 (0x10071710 / 0x10014960 / 0x10040EB0 / 0x1001CF90)
 
-Proven against BRGlide.dll this session. Merge into `docs/VC5-IDIOMS.md`.
+Proven against BRGlide.dll this session. Merge into `docs/brally/VC5-IDIOMS.md`.
 Infer source from the bytes; never permute spellings.
 
 ## Proven MATCH

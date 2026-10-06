@@ -5,9 +5,9 @@
  *
  * WHY THIS FUNCTION MATTERS OUT OF PROPORTION TO ITS SIZE
  *
- * ARCHITECTURE.md establishes that 86% of this engine is reachable only
+ * docs/brally/ARCHITECTURE.md establishes that 86% of this engine is reachable only
  * through stored function pointers: it installs roughly 1,148 hooks at run
- * time and dispatches through them. tools/hookmap.py ranks the installers, and
+ * time and dispatches through them. tools/brally/hookmap.py ranks the installers, and
  * this is one of the densest -- THIRTEEN hooks in 285 bytes, almost nothing but
  * stores.
  *

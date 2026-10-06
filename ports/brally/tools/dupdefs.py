@@ -2,7 +2,7 @@
 """One body per original function: the placed one.
 
 A name defined (with a body, at file scope) in more than one core file is
-kept only in the file build/wasm/placement.csv places it from; the other
+kept only in the file build/brally/wasm32/placement.csv places it from; the other
 bodies -- earlier or D3D transcriptions of the same function -- are removed,
 file-statics included, with their static prototypes. This is what the
 32-bit lane does (w2c.py func_ref): a reference by name binds to the placed
@@ -46,7 +46,7 @@ def bodies(s):
 
 def main():
     os.chdir(ROOT)
-    place = {r['name']: 'ports/brally/' + r['src'] for r in csv.DictReader(open('build/wasm/placement.csv'))}
+    place = {r['name']: 'ports/brally/' + r['src'] for r in csv.DictReader(open('build/brally/wasm32/placement.csv'))}
     where = collections.defaultdict(list)
     texts = {}
     for f in sorted(glob.glob('ports/brally/src/core/**/*.c*', recursive=True)):

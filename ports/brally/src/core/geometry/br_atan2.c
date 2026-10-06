@@ -2,10 +2,10 @@
  *
  * RESPONSIBILITY: geometry -- the arithmetic that moves positions around.
  *
- * Moved here out of src/core/slice2_21.c (an address batch, not a module),
+ * Moved here out of src/brally/core/slice2_21.c (an address batch, not a module),
  * whose preamble -- the port-name shims, slice2_21.h, <string.h> and the
  * .rdata constant table -- is carried over VERBATIM below, because a TU's
- * surroundings decide its codegen (docs/VC5-IDIOMS.md).
+ * surroundings decide its codegen (docs/brally/VC5-IDIOMS.md).
  */
 #define BrSpanTestPoint BrSpanTestPoint_port
 #define BrPfxReset      BrPfxReset_port

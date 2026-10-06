@@ -1,0 +1,28 @@
+# Port deviations for src/brally/core/net/br_dplayenum.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop var:g_brPAA29D4
+@drop var:DAT_10ac5bf0
+@drop var:DAT_100aabe8
+@drop proto:FUN_100361a0
+@drop type:BrDpI
+@drop type:e
+@drop type:c
+@drop type:BrSessionGuid
+@drop proto:BrNetEnumSessionCb
+@drop include:<string.h>
+@drop var:DAT_10077500
+@drop var:DAT_10077504
+@drop var:DAT_10077508
+@drop var:DAT_1007750c
+@drop var:DAT_10ac5bcc
+@drop var:DAT_10ac5d30
+@drop var:DAT_10ac5d2c
+@drop var:DAT_10ac5bd8
+@drop var:g_brP680584
+@drop proto:BrSub1003D070
+@drop proto:FUN_10036130
+@drop type:BrDpEnumSessionsFn
+@drop fn:BrNetEnumSessionsStart

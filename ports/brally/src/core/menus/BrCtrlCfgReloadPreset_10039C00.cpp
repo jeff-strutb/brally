@@ -17,7 +17,7 @@
  * ecx setup, and its only way to keep the second arg off edx is a struct-
  * typed wrapper, which is a copy (`mov eax,N; push eax`), not an immediate --
  * +31 bytes over the original.  A real thiscall member call pushes the int
- * constant directly.  Same tell as BrVt8A70CallPair (src/core/cpp/0x10008A70).
+ * constant directly.  Same tell as BrVt8A70CallPair (src/brally/core/cpp/0x10008A70).
  */
 #define _CRTIMP __declspec(dllimport)
 #include "br_ctrltoggle.h"   /* port: the Toggle Remaster action */

@@ -4,7 +4,7 @@
 
 > Sweep scorer blind spots (statics, decoration), the --help footgun, dumpasm gaps, glide/d3d twin addressing, and the scratch-object trick.
 
-**1. Symbol decoration. FIXED (2026-08-19).** `tools/match_diff.py` keyed COFF
+**1. Symbol decoration. FIXED (2026-08-19).** `tools/brally/match_diff.py` keyed COFF
 symbols with `lstrip('_')`, which undecorates cdecl and nothing else - fastcall
 is `@Name@N`, stdcall is `_Name@N`. Any non-cdecl function reported
 `not_in_obj` and could never score. Replaced with an `undecorate` helper.
@@ -16,9 +16,9 @@ This is one source of drift between the sweep total and hand-verified counts.
 
 **3. glide/d3d twins.** A function tagged `@implements <glide-va>` is scored by
 the sweep at THAT address, which may not be the address you diffed by hand.
-Some glide addresses are not in `config/functions.csv` at all, so the function
+Some glide addresses are not in `config/brally/functions.csv` at all, so the function
 is unmeasurable either way (`BrExt_1007AC00`). ALWAYS diff the address the tag
-names when reconciling counts; use `config/shared.csv` to find the twin.
+names when reconciling counts; use `config/brally/shared.csv` to find the twin.
 
 **Consequence of 2+3: hand-verified counts run AHEAD of the sweep total.** The
 sweep is the number to plan from; state both if they differ rather than picking
@@ -31,15 +31,15 @@ A killed run does no damage (the report is written only at the end) but it
 truncates `.obj` files mid-write - re-run the single-file sweep afterwards.
 
 **5. THE SCRATCH-OBJECT TRICK - use this, it removes the main blocker.** A full
-sweep owns `build/match/obj_O2` and `obj_Od`, so single-file sweeps race it.
-You do NOT have to wait: compile by hand to `build/match/obj_TEST/` and objdiff
+sweep owns `build/brally/win32/match/obj_O2` and `obj_Od`, so single-file sweeps race it.
+You do NOT have to wait: compile by hand to `build/brally/win32/match/obj_TEST/` and objdiff
 that.
 
 ```
-sh tools/wine.sh tools/msvc5/bin/cl.exe /nologo /O2 /W3 /I include \
-  /I tools/msvc5-compat /I tools/msvc5/include /DBR_MATCHING_BUILD \
-  /c src/core/FILE.c '/Fobuild\match\obj_TEST\FILE.obj'
-.venv/bin/python tools/objdiff.py build/match/obj_TEST/FILE.obj _Name 0xVA
+sh tools/toolchains/wine.sh tools/toolchains/msvc5/bin/cl.exe /nologo /O2 /W3 /I src/brally/include \
+  /I tools/toolchains/msvc5-compat /I tools/toolchains/msvc5/include /DBR_MATCHING_BUILD \
+  /c src/brally/core/FILE.c '/Fobuild\match\obj_TEST\FILE.obj'
+.venv/bin/python tools/brally/objdiff.py build/brally/win32/match/obj_TEST/FILE.obj _Name 0xVA
 ```
 
 Note the `/Fo` backslashes and the repo-relative paths - cl.exe reads a leading
@@ -67,7 +67,7 @@ both; if any tool ever matches COFF names again, use
 
 ## image_build is the reconciliation authority
 Three strictness levels exist: scorer-match (report.csv), name-resolvable,
-image-placed. `python3 tools/image_build.py` must show claims == placed and
+image-placed. `python3 tools/brally/image_build.py` must show claims == placed and
 0 differing bytes; per-file STATIC targets are reference-filled and counted on
 their own line. Header-comment addresses are NOT a valid map source - proven
 stale/D3D-space by a 1,094-byte image diff.

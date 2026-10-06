@@ -28,7 +28,7 @@
  * `8a 44 07 09`; /Gi flips the emitter's base/index choice and the bytes
  * diff clean.  No source change; the 23-probe /O2 ledger run that
  * preceded the re-sweep moved nothing.  Same resolution as 0x100540D0 and
- * 0x100541B0 (docs/VC5-IDIOMS.md, /Gi entry).
+ * 0x100541B0 (docs/brally/VC5-IDIOMS.md, /Gi entry).
  */
 #define _CRTIMP __declspec(dllimport)
 

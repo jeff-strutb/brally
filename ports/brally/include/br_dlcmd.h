@@ -80,11 +80,11 @@
  *
  * THE 0xF7 / RallyMain TRAP
  * ----------------------------------------------------------------------
- * `tools/whereis.py 0x1001E9F0` answers "shared 0x1001CC00 (d3d) ... [read as
+ * `tools/brally/whereis.py 0x1001E9F0` answers "shared 0x1001CC00 (d3d) ... [read as
  * a GLIDE address]", and port/include/br_boot.h documents 0x1001CC00 as
  * RallyMain -- BRGlide's only export.  Both are true and they are different
  * functions: 0x1001CC00 names RallyMain in the GLIDE image and the fill-colour
- * handler in the D3D image.  tools/isported.py says so explicitly now (it was
+ * handler in the D3D image.  tools/brally/isported.py says so explicitly now (it was
  * corrected for exactly this case); before that it reported this handler as
  * "PORTED as BrAppArgs".  Never resolve a counterpart address without saying
  * which build you read it in.
@@ -248,7 +248,7 @@ typedef struct BrDlCmd {
      * w1 (segment fixup, then the vertex cache) and leaves w0 untouched, so
      * whatever is on disc is what the handler sees.
      *
-     * On disc, byte 2 is ZERO.  Scanning testdata/bb.rca and ce.rca for
+     * On disc, byte 2 is ZERO.  Scanning reference/brally/data/bb.rca and ce.rca for
      * 8-aligned commands with opcode 0x04 and 1 <= n <= 32 gives 191 hits; the
      * 8 with a non-zero byte 2 all have n == 1 and junk w1, i.e. they are
      * payload bytes the raw scan mistook for commands.  Every plausible G_VTX

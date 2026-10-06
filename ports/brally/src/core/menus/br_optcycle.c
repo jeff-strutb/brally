@@ -552,7 +552,7 @@ int BrOptCycleAA2A00(void)
 
 /* WHAT IT DOES: opens one of the menu screens, building it the first time
  * and reusing it afterwards. Which screen this is was not established. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003C7B0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003C7B0.cpp */
 int BrOptOpen296C(BrGameObj *pUnused);
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
@@ -644,14 +644,14 @@ int BrOptCycleAA2A0C(void)
 /* WHAT IT DOES: leaves the current menu screen: it tells the screen to
  * close, resets a couple of race settings in single-player, saves the
  * settings block and returns to the caller with "stop here". */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CCB0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003CCB0.cpp */
 /* BrOpt3760: prototype in br_funcs.h */
 
 /* 0x100437D0 */
 /* WHAT IT DOES: backs out of a network screen when the connection has gone
  * away -- it closes the screen and tears the session down. If the
  * connection is still up it does nothing at all. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CD20.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003CD20.cpp */
 /* BrOpt37D0: prototype in br_funcs.h */
 
 /* 0x10043810 */
@@ -660,7 +660,7 @@ int BrOptCycleAA2A0C(void)
  * connected player whether anybody else is present, and on the way out
  * closes the lobby and plays a sound. Most of the function is the several
  * different ways of leaving. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003CD60.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003CD60.cpp */
 /* BrOpt3810: prototype in br_funcs.h */
 
 /* ==========================================================================
@@ -669,7 +669,7 @@ int BrOptCycleAA2A0C(void)
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D220.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003D220.cpp */
 /* BrOptOpen2940: prototype in br_funcs.h */
 
 /* WHAT IT DOES: opens another menu screen the same way. Which screen this
@@ -683,21 +683,21 @@ int BrOptCycleAA2A0C(void)
  * after finding an existing one -- so it also starts the network connection
  * attempt on every call, not just the first, provided the game is in a mode
  * that wants one. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D3C0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003D3C0.cpp */
 /* BrOptOpen2948: prototype in br_funcs.h */
 
 /* ==========================================================================
  * 0x10043F50 .. 0x100440B0
  * ========================================================================== */
 
-/* 0x10043F50. Returns 0. Glide match is src/core/cpp/0x1003D4A0.cpp
+/* 0x10043F50. Returns 0. Glide match is src/brally/core/cpp/0x1003D4A0.cpp
  * (C++ virtual thiscall; C __fastcall edx-slot colours vtbl into edx). */
 /* WHAT IT DOES: leaves the current screen for the one behind it,
  * remembering which play mode was in force. The screen being left is told
  * to close first. */
 /* BrOpt3F50: the placed body is BrOpt3F50_1003D4A0.cpp */
 
-/* 0x10043FC0. Returns 0. Glide match is src/core/cpp/0x1003D510.cpp. */
+/* 0x10043FC0. Returns 0. Glide match is src/brally/core/cpp/0x1003D510.cpp. */
 /* WHAT IT DOES: leaves the current screen for the one behind it and clears
  * two globals belonging to the screen being closed. */
 /* BrOpt3FC0: the placed body is BrOpt3FC0_1003D510.cpp */
@@ -725,7 +725,7 @@ int BrOptCycleAA2A0C(void)
 
 /* WHAT IT DOES: opens another menu screen, building it once and reusing it.
  * Which screen this is was not established. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D620.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003D620.cpp */
 /* BrOptOpen294C: prototype in br_funcs.h */
 
 /* 0x10044280 */
@@ -733,17 +733,17 @@ int BrOptCycleAA2A0C(void)
  * screen for it. It refuses to go ahead when the player has not typed a
  * long enough name in one of the modes, and falls back to setting the
  * connection up first if there is nothing to join yet. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
 /* BrOptOpen2950A: prototype in br_funcs.h */
 
 /* 0x100443E0 */
 /* WHAT IT DOES: the hosting counterpart: marks this machine as the host and
  * opens the same lobby screen, with the host's own set of controls attached
  * to it. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003D930.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003D930.cpp */
 /* BrOptOpen2950B: prototype in br_funcs.h */
 
-/* 0x100444C0. Returns 0. Glide match is src/core/cpp/0x1003DA10.cpp. */
+/* 0x100444C0. Returns 0. Glide match is src/brally/core/cpp/0x1003DA10.cpp. */
 /* WHAT IT DOES: leaves the network lobby and goes back to the screen behind
  * it, dropping the lobby's screens and, in the two modes that need it,
  * tearing the connection down and starting a fresh one. */
@@ -790,7 +790,7 @@ int BrOptCycleAA2A18(void)
 /* WHAT IT DOES: opens the screen the game shows once a network race is
  * agreed on, switches the game into that mode, and, if this machine is the
  * host, starts hosting the session at that point. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003DC20.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003DC20.cpp */
 /* BrOptOpen2954: prototype in br_funcs.h */
 
 /* ==========================================================================

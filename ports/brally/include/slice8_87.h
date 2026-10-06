@@ -20,7 +20,7 @@
  * recorded below rather than quietly settled.
  *
  * ---------------------------------------------------------------------------
- * PRE-FLIGHT, tools/whereis.py, run on all sixteen addresses of the brief
+ * PRE-FLIGHT, tools/brally/whereis.py, run on all sixteen addresses of the brief
  * BEFORE a line was written.  Four of its answers contradict the brief.
  *
  *   D3D addr    Glide partner  where the body already was
@@ -43,7 +43,7 @@
  *   0x1003FE80  0x100393C0     slice2_23.c BrUiText1003FE80   -> ported here
  *
  * (1) 0x1003EC30 IS ALREADY PORTED over the canonical control, and is WIRED
- *     here rather than transcribed a third time.  config/shared.csv pairs
+ *     here rather than transcribed a third time.  config/brally/shared.csv pairs
  *     BOTH 0x1003EB10 and 0x1003EC30 to Glide 0x10038250 "matched by
  *     body+ptrsite", and slice2_23.c:491 says the same in prose: "0x1003EB10
  *     and 0x1003EC30 are byte-for-byte the same routine emitted twice".
@@ -54,23 +54,23 @@
  * (2) 0x1003ECB0 IS NOT TRANSCRIBED, and the reason is NOT the one
  *     slice8_85.h gives.  Three separate findings, in order of weight:
  *
- *     a. IT DOES NOT EXIST IN THE REFERENCE BUILD.  config/shared.csv's row
+ *     a. IT DOES NOT EXIST IN THE REFERENCE BUILD.  config/brally/shared.csv's row
  *        is `0x1003ECB0,,91,unknown,,` -- an empty glide_va and class
  *        `unknown`.  Every Glide function in the surrounding extent
  *        (0x10038220, 0x10038250, 0x100382A0, 0x100382D0, 0x10038320,
  *        0x10038350, 0x10038380) is already the partner of a DIFFERENT D3D
  *        address, so this is not an unmatched pairing waiting to be found:
- *        BRGlide.dll has no such routine.  The brief names orig/BRGlide.dll
+ *        BRGlide.dll has no such routine.  The brief names reference/brally/orig/BRGlide.dll
  *        as the reference and Glide as the mature target; a D3D-only body has
  *        no reference text to transcribe from.
  *     b. ITS ONE CALLEE IS UNPORTABLE HERE.  The body (read from
- *        orig/BRD3D.dll) is
+ *        reference/brally/orig/BRD3D.dll) is
  *            i = 0x10AA2A2C; 0x10AA2860 = i;
  *            p = *(void **)(0x10AA29F0 + 0x1DE48 + 8*i);
  *            r = 0x1007A7D0(p); 0x118AC238 = r;
  *            memcpy(0x10B4E6F8, (char *)r + 4, 16);
  *            0x10046620(pCtl); return 0;
- *        0x1007A7D0 is classed `d3d_only` by config/shared.csv ("reached from
+ *        0x1007A7D0 is classed `d3d_only` by config/brally/shared.csv ("reached from
  *        a renderer entry point; no caller that exists in BRGlide"), is not
  *        in port/host/br_stubs.c, and is itself a linked-list walk over
  *        0x104BBE20 (next at +0x330, 16-byte key at +0x04) that tail-calls a
@@ -107,7 +107,7 @@
  * ---------------------------------------------------------------------------
  * REFERENCE BINARY
  *
- * Every body below was read out of orig/BRGlide.dll with tools/dumpasm.py at
+ * Every body below was read out of reference/brally/orig/BRGlide.dll with tools/brally/dumpasm.py at
  * the GLIDE address in the table above, and cross-read against BRD3D.dll only
  * where the two disagree (CONFLICT 1).  The .rdata tables were extracted from
  * BOTH images and compared dword for dword; they are identical.

@@ -1,4 +1,4 @@
-/* stdint.h for lp64audit.py: tools/msvc5-compat/stdint.h with pointer-width intptr_t. */
+/* stdint.h for lp64audit.py: tools/toolchains/msvc5-compat/stdint.h with pointer-width intptr_t. */
 #ifndef _STDINT_H_SHIM
 #define _STDINT_H_SHIM
 

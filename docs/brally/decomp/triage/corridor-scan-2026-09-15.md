@@ -5,7 +5,7 @@
 > 0x1005D060 BrAiScanCorridor (the eight-deep corridor lookahead, br_ai.h rule 8's binding gap) fully reverse-engineered and transcribed to T2 in br_ctlai.c; byte-exact is blocked in the C lane by the recursive-thiscall-with-computed-args wall -- it needs a C++ member rewrite.
 
 **0x1005D060 BrAiScanCorridor is DONE at the reverse-engineering level and
-committed as a T2 transcription (c2f33418, src/core/driving/br_ctlai.c, under
+committed as a T2 transcription (c2f33418, src/brally/core/driving/br_ctlai.c, under
 `#ifdef BR_MATCHING_BUILD`, NO @implements).** It fills the corridor-scan
 "binding gap" br_ai.h rule 8 names. First-pass sweep: 848/856 B (-8), INSNS
 +12, RAW 82+70, REGNORM 29+17. Structure is faithful and complete.
@@ -37,7 +37,7 @@ exactly" -- computed multi-arg recursion is NOT). The rest of the residue is
 prologue register-colouring (which reg carries the zero; null-branch slot
 numbering) -- allocator, not source ([parked-is-not-walled](parked-is-not-walled.md)).
 
-**NEXT LEVER (byte-exact T4):** rewrite as a C++ member in src/core/cpp/, so
+**NEXT LEVER (byte-exact T4):** rewrite as a C++ member in src/brally/core/cpp/, so
 the recursion is `this->Scan(depth+1, mid+1, node)` with int args pushed from
 registers and edx naturally free. The committed C body is the exact reference
 -- copy its logic, keep the array/struct offsets. This is a real T4/T3 shot.

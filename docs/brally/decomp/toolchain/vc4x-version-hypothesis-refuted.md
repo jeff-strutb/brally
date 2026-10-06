@@ -9,7 +9,7 @@ to need a 4.x compiler *below* 4.2 to go byte-exact ([vc42-is-the-real-compiler]
 On 2026-09-21 the project lead supplied the actual VC++ 4.0/4.1/4.2 media (reference/msvc/*.7z),
 so I tested it directly. **The version hypothesis is refuted.**
 
-Staged under tools/msvc40, tools/msvc41 (gitignored, beside tools/msvc42). All /O2:
+Staged under tools/toolchains/msvc40, tools/toolchains/msvc41 (gitignored, beside tools/toolchains/msvc42). All /O2:
 - VC4.0 Pro `cl 10.00.5270` → 913 B
 - VC4.0 Std `cl 10.00.6002` → 1091 B (frame-based, worse)
 - VC4.1 `cl 10.10.6038` → 913 B - **byte-identical to 4.0 Pro**

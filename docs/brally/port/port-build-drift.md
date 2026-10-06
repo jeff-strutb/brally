@@ -6,7 +6,7 @@
 
 ## RE-BROKEN 2026-09-21: one compile error, fresh drift
 
-`./build.sh` stops at `src/core/controls/br_inputpoll.c:203`  - 
+`./build.sh` stops at `src/brally/core/controls/br_inputpoll.c:203`  - 
 `__declspec(dllimport) short __stdcall GetAsyncKeyState(int)` is unguarded and
 clang rejects `__declspec`. Guard it behind `BR_MATCHING_BUILD`/`_WIN32`. This
 is exactly the drift class below: a function was rematched (BrInputPoll
@@ -52,13 +52,13 @@ test_rca_fixup (glide 32-bit-pointer record model, unrunnable on 64-bit).
 
 ## Port build vs test drift (found 2026-08-27, original entry)
 
-`./build.sh` compiles the PORT target (clang over `src/core` via
-`find src/core -name '*.c'`). Two facts, both verified:
+`./build.sh` compiles the PORT target (clang over `src/brally/core` via
+`find src/brally/core -name '*.c'`). Two facts, both verified:
 
 - **Port SOURCE builds clean.** The integration files are invisible/guarded:
-  `src/core/cpp/*.cpp` (`.cpp` isn't matched by `-name '*.c'`), `src/exe/**`
-  (outside `src/core`, and `#ifdef BR_MATCHING_BUILD`-guarded),
-  `src/core/generated/*.c` (all `BR_MATCHING_BUILD`-guarded). One real source
+  `src/brally/core/cpp/*.cpp` (`.cpp` isn't matched by `-name '*.c'`), `src/brally/exe/**`
+  (outside `src/brally/core`, and `#ifdef BR_MATCHING_BUILD`-guarded),
+  `src/brally/core/generated/*.c` (all `BR_MATCHING_BUILD`-guarded). One real source
   bug fixed: `br_dl.c` `br_dl_skip` is byte-exact as 1-param (`return p+8`) but
   the handler table dispatches `(pDl,p)` - added a 2-param `br_dl_skip_h`
   wrapper for the table, guarded the 1-param original for BR_MATCHING_BUILD
@@ -68,13 +68,13 @@ test_rca_fixup (glide 32-bit-pointer record model, unrunnable on 64-bit).
   refined to their byte-exact prototypes (e.g. `BrRcaFixupRecord(void *pRec)`,
   1-param), the port tests written for the OLD interfaces (e.g.
   `BrRcaFixupRecord(&ctx, rec)`, 2-arg) stopped compiling.
-  `tests/test_slice2_16.c` alone has 20 errors ("too many arguments"); the
+  `tests/brally/test_slice2_16.c` alone has 20 errors ("too many arguments"); the
   build stops there, so more test files are likely broken beyond it. **The
   README's old "137 / 137 green" was historical, not live** - corrected in the
   README 2026-08-27.
 
 **OPEN CLEANUP TASK:** reconcile the port tests to the current matched
-signatures (read include/<slice>.h for the live prototype, update the test's
+signatures (read src/brally/include/<slice>.h for the live prototype, update the test's
 calls + setup - often a logic change, not mechanical, since a dropped param
 means the data moved into a struct). Do this per test file; `./build.sh` stops
 at the first broken one, so fix-and-rebuild iteratively to surface the rest.

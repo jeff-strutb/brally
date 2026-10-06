@@ -71,7 +71,7 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
  * @t3-effort passes 2 zero-movement 1 2
  * Behaviour is the original's: the differential oracle agrees on the return,
  * every touched global and every side effect across 64 seeded car states
- * (tools/t3b_verify.py EQUIVALENT), and the instruction count is exact
+ * (tools/brally/t3b_verify.py EQUIVALENT), and the instruction count is exact
  * (405/405).  Residue is register allocation plus the x87 operand-role wall:
  *   1. The original walks TWO separate stride-4 induction pointers -- the
  *      wheel-record pointer array (apW, [esp+0x28]) and the SoA cursor (pSoa,
@@ -85,7 +85,7 @@ static const unsigned aWheelOff[4] = { 0x994u, 0x57Cu, 0x370u, 0x788u };
  *      commutative-subtract operand-role fork (docs: x87 wall).  Neither
  *      component temps nor statement reordering moves it.
  * Minor: one int->float uses fild qword where the original uses fild dword, and
- * one zeroing is sub r,r vs xor r,r.  Slot census (tools/slotcensus.py) shows
+ * one zeroing is sub r,r vs xor r,r.  Slot census (tools/brally/slotcensus.py) shows
  * matched per-slot write/read balance -- no dropped store.  Do not reopen
  * before the end-grind. */
 /* @implements 0x10039200 d3d BrCarWheelFx */

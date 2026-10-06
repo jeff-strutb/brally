@@ -89,7 +89,7 @@ void BR_THISCALL1 BrBitStreamAlignWrite(BrBitStream *pBs)
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
- * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
+ * hand passes (tools/brally/fnmatch/fn.py variants); the dead-probe list is in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10073B60 d3d BrBitStreamInit */
 /* thiscall, two stack args.  Both extra arguments are structs so neither
@@ -174,7 +174,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
 /* WHAT IT DOES: reads the next three bytes as a single number, most
  * significant byte first. */
 /* @t4-pass 0x1006CE50 1 2026-09-09 probes 10 bytes 43 insns 18 regions 1 rows 3 census no  (hand, fn.py variants: index-through-cursor lever from ReadU16 and 9 tail spellings, all inert or worse) */
-/* @t4-pass 0x1006CE50 2 2026-09-10 probes 40 bytes 43 insns 18 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006CE50 2 2026-09-10 probes 40 bytes 43 insns 18 regions 1 rows 3 census yes  (tools/brally/crank.py) */
 /* @t3 0x1006CE50 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 43/44 insns 18/17 rows 1+2 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
@@ -185,7 +185,7 @@ unsigned int BR_THISCALL1 BrBitStreamReadU16(BrBitStream *pBs)
  * numbers: 12 hand probes on 2026-09-10 (commuted or, index-through-cursor,
  * uint and uchar temps either side of the cursor store, p += 2, split shift --
  * every one inert or worse) and 40 crank compiles accepting no lever; every
- * candidate and score is in build/match/crank.log.  The corpus is a MISS on
+ * candidate and score is in build/brally/win32/match/crank.log.  The corpus is a MISS on
  * the 7-instruction run at the divergence, so no proven spelling exists to
  * copy.  Do not reopen before the end-grind. */
 /* @implements 0x10073C10 d3d BrBitStreamReadU24 */
@@ -217,8 +217,8 @@ unsigned int BR_THISCALL1 BrBitStreamReadU24(BrBitStream *pBs)
  * sign bit is undefined in C99. */
 /* WHAT IT DOES: reads the next four bytes as a single signed number, most
  * significant byte first. */
-/* @t4-pass 0x1006CE80 1 2026-09-13 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006ce80 2 2026-09-20 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006CE80 1 2026-09-13 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006ce80 2 2026-09-20 probes 66 bytes 61 insns 26 regions 1 rows 11 census yes  (tools/brally/crank.py) */
 /* @t3 0x1006CE80 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 61/73 insns 26/25 rows 5+6 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
@@ -250,7 +250,7 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
      * proved `and r32,0xff` spells an unfoldable uchar narrowing
      * (ISMBBYTE.C) -- VC5 canonicalises the mask back to xor+mov.  All 9
      * CRT dirty-widen sites anchor the byte with an 8-bit test first
-     * (docs/VC5-IDIOMS.md tail); no anchor-free form exists in 690
+     * (docs/brally/VC5-IDIOMS.md tail); no anchor-free form exists in 690
      * proven CRT functions. */
     v = pBs->pBuf[i + 1];
     p = pBs->pBuf + i;
@@ -309,7 +309,7 @@ int BR_THISCALL1 BrBitStreamReadS32(BrBitStream *pBs)
  * them, advancing the read position. The primitive underneath every
  * compressed format the game reads. */
 /* port-only body; the Glide match is
- * src/core/gamedata/BrBitStreamReadBits_1006CED0.cpp (a __thiscall method). */
+ * src/brally/core/gamedata/BrBitStreamReadBits_1006CED0.cpp (a __thiscall method). */
 typedef struct { int n; } BrBitStreamReadArg;
 /* RESIDUE (12 regnorm, +20 bytes): the original is frameless with ONE stack
  * local -- `push ecx` for the dead `consumed` counter -- and keeps the
@@ -324,7 +324,7 @@ typedef struct { int n; } BrBitStreamReadArg;
  * AND into the mask variable (`mask &= byte; v = mask >> shift`); and all
  * five sweep variants (/O2 wins). The remaining SIB shape --
  * `[byteIndex + pBuf]` where the original has `[pBuf + byteIndex]` -- is the
- * known emitter residue, see docs/VC5-IDIOMS.md. */
+ * known emitter residue, see docs/brally/VC5-IDIOMS.md. */
 /* BrBitStreamReadBits: the placed body is BrBitStreamReadBits_1006CED0.cpp */
 
 /* 0x10073D40  __thiscall, no stack args. Signed compare (setge). */

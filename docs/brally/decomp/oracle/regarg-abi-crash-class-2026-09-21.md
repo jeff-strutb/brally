@@ -28,7 +28,7 @@ placed body does not write that register in the preceding window. 47 raw
 hits → 2 real after those two exclusions and byte-identical pass-throughs.
 Script: regarg_screen.py (session scratch 2026-09-21; recreate from this
 description if gone - ~100 lines, capstone + PE .text walk of
-orig/BRGlide.dll vs build/image/BRGlide.T3.dll).
+reference/brally/orig/BRGlide.dll vs build/brally/win32/image/BRGlide.T3.dll).
 
 **Second sweep (same day, commit 764c51a1) found a SECOND class: twin
 placement.** Five VAs had a report.csv row from a C twin AND the certified
@@ -46,7 +46,7 @@ walk vs caller writes-since-last-clobber; B = `add esp` right after a
 EXACT function bounds - +32 spillover false-positives).
 
 **The screens are now PERMANENT gate stages (commit 0f504e29):**
-`tools/t3abi.py`, run by `image_build_t3.py` on the final placed bytes;
+`tools/brally/t3abi.py`, run by `image_build_t3.py` on the final placed bytes;
 any flag fails the CONTRACT-VALID gate, so a new T3 function cannot ship
 a convention error. Acceptance is reference-derived (pass-through = the
 reference caller of the same target in the same function also leaves the
@@ -61,7 +61,7 @@ the ABI screen is the check that covers them.
 not a call site.** Both hardware dumps had a KERNEL32 return address at
 [esp] - the callee was never CALLED; BrGlNavPoll (0x10059410) was placed
 with its last 4 bytes cut off under the `TRUNCATION ADMITTED` /
-config/t3_slot_ok.csv escape, its third arm lost `add esp,0x10; ret 4`,
+config/brally/t3_slot_ok.csv escape, its third arm lost `add esp,0x10; ret 4`,
 and execution FELL THROUGH the nop padding into 0x100597C0 with ecx zeroed
 by the preceding 0x10059060 call. **Read the return address in a Win9x
 fault dump FIRST: a return address outside the module means the faulting

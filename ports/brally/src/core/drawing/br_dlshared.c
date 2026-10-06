@@ -26,8 +26,8 @@
  * texture the next drawings will use, and works out that rectangle's width
  * and height in texture pixels. Sign is kept throughout, so a rectangle
  * given back to front stays back to front rather than becoming enormous. */
-/* @t4-pass 0x1001EC30 1 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001EC30 1 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001EC30 2 2026-09-07 probes 33 bytes 178 insns 45 regions 5 rows 2 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1001EC30 3 2026-09-09 probes 10 bytes 178 insns 45 regions 4 rows 0 census no  (hand, fn.py variants: decl orders, mask/shift/guard spellings, q local, register hint, all inert or worse) */
 /* @t4-pass 0x1001EC30 4 2026-09-09 probes 11 bytes 178 insns 45 regions 4 rows 0 census yes  (hand, fn.py variants: word temp, param copy, return/diff spellings, all inert; corpus MISS at +0x1 len 12 -- the between-pushes parameter load is proven nowhere) */
 /* @t3 0x1001EC30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

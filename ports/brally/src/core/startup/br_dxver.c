@@ -111,7 +111,7 @@
  *     copies. Our cl allocates the same register in both, they become
  *     byte-identical, and it tail-merges them: `jl` to the shared tail
  *     instead of `jge` over an inline block. That is -24 bytes, one
- *     epilogue and one Release. See docs/VC5-IDIOMS.md, "Cross-jumping: our
+ *     epilogue and one Release. See docs/brally/VC5-IDIOMS.md, "Cross-jumping: our
  *     cl merges identical error tails, the original does not" -- probed
  *     dead there, and the nested `if (hr >= 0)` rewrite is not available
  *     here because the failure arm IS the fall-through tail, so nesting
@@ -167,12 +167,12 @@
  * the addresses in the margin below are where each decision is made.
  *
  * NOTE ON THIS COMMENT'S SHAPE: it opens with the address as its first token
- * on purpose. tools/isported.py's "banner over a body" detector requires that,
+ * on purpose. tools/brally/isported.py's "banner over a body" detector requires that,
  * and with a decorative rule line first it reported this very function as
  * unported -- which is precisely the false negative that tool exists to
  * prevent. Validated by running it after writing this. */
-/* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001D8A0 1 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001D8A0 2 2026-09-07 probes 104 bytes 898 insns 302 regions 16 rows 26 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1001D8A0 3 2026-09-24 probes 51 bytes 898 insns 302 regions 16 rows 56 census no  (handle/proc local declaration orders, locals before or after the five COM pointers, reusing one variable for both GetProcAddress results; nothing moved) */
 /* @t4-pass 0x1001D8A0 4 2026-09-24 probes 245 bytes 898 insns 302 regions 16 rows 56 census yes  (census: the rows are the constant-0 register (edi in the original, live only until the DirectDraw probe, then reused to cache GetProcAddress/LoadLibraryA; ours holds 0 in ebx throughout and caches no imports) -- probed NULL-initialiser forms: in declarations, as statements before/after GetVersionEx, chained, literal 0, all 120 orders of the five pointers both ways; nothing moved) */
 /* @t3 0x1001D8A0 2026-09-24 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

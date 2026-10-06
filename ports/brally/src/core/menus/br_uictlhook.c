@@ -16,8 +16,8 @@
  * why delegation is not available, the five conflicts it reports, and the
  * slots it deliberately leaves NULL.
  *
- * Transcribed from orig/BRGlide.dll where the pairing in config/shared.csv is
- * a body match, and from orig/BRD3D.dll for the six 0x100440xx one-liners and
+ * Transcribed from reference/brally/orig/BRGlide.dll where the pairing in config/brally/shared.csv is
+ * a body match, and from reference/brally/orig/BRD3D.dll for the six 0x100440xx one-liners and
  * for 0x1003ECB0 / 0x1003F050 / 0x1003F0B0 / 0x10040A50 / 0x10040AC0, which
  * have no Glide partner recorded.  Every body was read at the D3D address the
  * builders name, because that is the address slice6_73.c's transcription is
@@ -212,7 +212,7 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
  * control is already flagged as needing to close), takes the box out of edit
  * mode and runs the control's own "something changed" handler. A box that was
  * not being edited in the first place is simply refreshed and left alone. */
-/* port-only body; Glide match is src/core/cpp/0x10038380.cpp */
+/* port-only body; Glide match is src/brally/core/cpp/0x10038380.cpp */
 /* Br85ItemApply: the placed body is Br85ItemApply_10038380.cpp */
 
 /* ==========================================================================
@@ -224,14 +224,14 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
  * then a right end piece. A box whose width comes out negative would draw
  * middle pieces essentially for ever, because the count is treated as
  * unsigned; that is the original's behaviour and is preserved. */
-/* port-only body; Glide match is src/core/cpp/0x10037DC0.cpp */
+/* port-only body; Glide match is src/brally/core/cpp/0x10037DC0.cpp */
 /* BrUiHook85_1003E7A0: the placed body is BrUiHook85_1003E7A0_10037DC0.cpp */
 
 /* (port-only BrUiHook85_1003E980 removed) */
 
 
 /* WHAT IT DOES: draws the music volume bar. */
-/* port-only body; Glide match is src/core/cpp/0x10038000.cpp */
+/* port-only body; Glide match is src/brally/core/cpp/0x10038000.cpp */
 /* BrUiHook85_1003E9E0: the placed body is BrUiHook85_1003E9E0_10038000.cpp */
 
 /* ==========================================================================
@@ -241,13 +241,13 @@ typedef int32_t (*Br85BoxAskFn)(BrTextBox *pThis);
 /* WHAT IT DOES: picks which of two pictures a control is drawn with,
  * depending on which of the two volume rows the player last touched -- the
  * highlight that shows which row the cursor is on. */
-/* @t4-pass 0x10037F70 1 2026-09-10 probes 35 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10037F70 2 2026-09-10 probes 134 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10037F70 1 2026-09-10 probes 35 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10037F70 2 2026-09-10 probes 134 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10037F70 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 44/43 insns 10/10 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/crank.py: 134 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 134 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 /* @n64 0x802649C0 located */
@@ -320,7 +320,7 @@ int32_t BrUiHook85_1003EA40(BrUiCtl_ *pCtl)
  * remembers the answer as the current selection. If the list declines to
  * answer, the previous selection stands. When a name is being edited it also
  * tells the list that the selection has been taken. */
-/* port-only body; Glide match is src/core/cpp/0x10038100.cpp */
+/* port-only body; Glide match is src/brally/core/cpp/0x10038100.cpp */
 int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
 {
     BrTextList *pList = &pCtl->list;
@@ -347,7 +347,7 @@ int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
  * where the cursor is, treating anything outside the twelve as "nowhere", and
  * takes back whatever row the list reports. Note the range check is applied
  * only to what it sends, never to what it stores. */
-/* port-only body; Glide match is src/core/cpp/0x10038350.cpp */
+/* port-only body; Glide match is src/brally/core/cpp/0x10038350.cpp */
 /* BrUiHook85_1003EE20: the placed body is BrUiHook85_1003EE20_10038350.cpp */
 
 /* ==========================================================================
@@ -387,7 +387,7 @@ int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
  * into the game's own store of that name -- but only if it differs by more
  * than capitalisation. This is the shared body; the two hooks that use it
  * differ only in which name they write. */
-/* port-only body; Glide match is src/core/generated/0x10038580.c */
+/* port-only body; Glide match is src/brally/core/generated/0x10038580.c */
 /* Br85TextReadBack: the placed body is br_uihook85.c */
 
 /* (port-only BrUiHook85_1003F050 removed) */
@@ -395,7 +395,7 @@ int32_t BrUiHook85_1003EB10(BrUiCtl_ *pCtl)
 
 /* WHAT IT DOES: reads back what the player typed, into the second of the two
  * name stores. */
-/* port-only body; Glide match is src/core/generated/0x100385F0.c */
+/* port-only body; Glide match is src/brally/core/generated/0x100385F0.c */
 /* BrUiHook85_1003F0B0: the placed body is br_uihook85.c */
 
 /* 0x10040A50 and 0x10040AC0: sprintf("%d", g + 1) into a scratch buffer, copy
@@ -455,7 +455,7 @@ int32_t BrUiHook85_10042AC0(BrUiCtl_ *pCtl)
  * Each is `mov [0x10AA287C], k / push arg / call <one of two> / mov eax,1`.
  * The two callees are 0x10043E70 (open a screen; ignores the argument) and
  * 0x10047360 (choose the kind byte; reads the control).  CONFLICT 5: a body
- * match in config/shared.csv pairs each +0x08 member with its +0x0C sibling
+ * match in config/brally/shared.csv pairs each +0x08 member with its +0x0C sibling
  * because the differing call target normalises away.  They are not the same
  * function and the two arms below are read from the D3D bodies.
  * ========================================================================== */

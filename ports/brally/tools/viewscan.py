@@ -9,7 +9,7 @@ fields, by i386 offset, size and pointer-ness, with every record the
 shared headers define that holds a pointer, and reports the best match.
 viewmerge.py then rewrites the accesses.
 
-Output: build/portable/views.csv
+Output: build/brally/null-soft/views.csv
   file, view, canon, score (matching fields), fields, conflicts
 Usage: viewscan.py [FILE...]
 """
@@ -146,8 +146,8 @@ def main():
     with concurrent.futures.ProcessPoolExecutor(14) as ex:
         for r in ex.map(scan, sorted(files)):
             rows += r
-    os.makedirs('build/portable', exist_ok=True)
-    with open('build/portable/views.csv', 'w', newline='') as fh:
+    os.makedirs('build/brally/null-soft', exist_ok=True)
+    with open('build/brally/null-soft/views.csv', 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['file', 'view', 'canon', 'score', 'fields', 'conflicts'])
         w.writerows(rows)

@@ -1,5 +1,5 @@
 /* br_racestart.h -- RESPONSIBILITY: the rules of a race.  Glide 0x100628B0
- * (D3D 0x10069840, byte-identical, `config/shared.csv` class `shared`), the
+ * (D3D 0x10069840, byte-identical, `config/brally/shared.csv` class `shared`), the
  * function that turns the loading screen into a running race.
  *
  * WHERE IT SITS.  State 3 of the top-level machine (br_boot.h, 0x1001CDD0) is
@@ -177,7 +177,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * The globals nothing else in this port names.  Every one was grepped
  * across port/ before being given storage here (CONVENTIONS.md, "Aliased
  * storage"); none had an owner.  Names are POSITIONAL because their meaning
- * is not established -- ARCHITECTURE.md's warning about naming from
+ * is not established -- docs/brally/ARCHITECTURE.md's warning about naming from
  * inference applies, and a positional name is honest about that.
  * ------------------------------------------------------------------ */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x106EC760 <- 0x10B71A68 */

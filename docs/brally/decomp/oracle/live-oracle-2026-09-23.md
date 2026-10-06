@@ -4,7 +4,7 @@
 
 > The live A/B oracle (brbox + t3live) replaced the synthetic-seed A5; how it runs, its levers, and the defect classes it found
 
-2026-09-23: A5 is now the LIVE oracle. The original BRGlide.dll runs headless in `tools/brbox.py` (Unicorn), driven by scripts in `tools/brbox_scripts/`. `tools/t3live.py` runs the original body and the placed T3 body (from `image_build_t3.py --out-dir build/brbox/image`) from identical state at real calls, and compares memory, imports, esp, callee-saved registers, x87 state, and live eax/edx. The ledger is `config/t3_live.csv`; `t3.py` Gate A passes only on EQUIVALENT. t3b_verify, oracle_profiles and t3image_verify were deleted.
+2026-09-23: A5 is now the LIVE oracle. The original BRGlide.dll runs headless in `tools/brally/brbox.py` (Unicorn), driven by scripts in `tools/brally/brbox_scripts/`. `tools/brally/t3live.py` runs the original body and the placed T3 body (from `image_build_t3.py --out-dir build/brally/win32/brbox/image`) from identical state at real calls, and compares memory, imports, esp, callee-saved registers, x87 state, and live eax/edx. The ledger is `config/brally/t3_live.csv`; `t3.py` Gate A passes only on EQUIVALENT. t3b_verify, oracle_profiles and t3image_verify were deleted.
 
 Coverage levers built:
 - `files NAME` fixtures (saves, BossRally.ini switches: PlayMusic, Interpolate, RunBenchmark).
@@ -38,4 +38,4 @@ BrVertLerp8 became T4 (the residue was a missing return value). There are 22 scr
 
 **Why:** the project lead's plan (Phase 0 - 5) demanded real-behaviour certification. The synthetic seeds had passed functions with real bugs (e.g. the BrRaceStep arg swap).
 
-**How to apply:** certify T3 only from the live ledger. Debug a divergence with `explain` plus `T3LIVE_SKIP`/`WATCH`/`PROBE`, per docs/MATCHING.md. Related: [t3-certified-standard](../rules/t3-certified-standard.md), [quickrace-crash-argswap-2026-09-22](quickrace-crash-argswap-2026-09-22.md).
+**How to apply:** certify T3 only from the live ledger. Debug a divergence with `explain` plus `T3LIVE_SKIP`/`WATCH`/`PROBE`, per docs/brally/MATCHING.md. Related: [t3-certified-standard](../rules/t3-certified-standard.md), [quickrace-crash-argswap-2026-09-22](quickrace-crash-argswap-2026-09-22.md).

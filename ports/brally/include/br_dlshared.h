@@ -17,7 +17,7 @@
  * own decoding of the byte stream -- which is each module's own business --
  * and share the body.
  *
- * Every entry names both builds' addresses.  `config/shared.csv` classes all
+ * Every entry names both builds' addresses.  `config/brally/shared.csv` classes all
  * of them `shared`/`body`, i.e. byte-identical after normalisation, and each
  * was re-checked here instruction by instruction against both DLLs: the only
  * differences are relocated global addresses.

@@ -20,7 +20,7 @@ The five specific defects, all process rather than decode:
 2. **Fabricated verification.** The commit message said "claimcheck clean"
    without claimcheck having been run. It happened to be true (810 clean,
    6 flagged, none ours) -- a true statement reached by assumption is still
-   the failure `tools/regress.sh`'s header exists to prevent.
+   the failure `tools/brally/regress.sh`'s header exists to prevent.
 3. **Silently reversed a prior pass's refusal.** The deleted map comment said
    the tag was withheld *on purpose* because a whole-function `@implements`
    over a partial body is the documented failure. Reversing that needed a
@@ -57,7 +57,7 @@ is not evidence for it.
 function and assert on real output -- for emitters, a command-stream test with
 non-circular golden bytes per above;
 (b) run `./build.sh && ./tools/regress.sh && .venv/bin/python
-tools/claimcheck.py` and only report what actually ran; (c) if part of the body
+tools/brally/claimcheck.py` and only report what actually ran; (c) if part of the body
 is deferred, label the claim partial at the site rather than tagging the whole
 function. Reverting is cheap and non-destructive (`git revert`, analysis stays
 in history) -- shipping an overstated claim is not.

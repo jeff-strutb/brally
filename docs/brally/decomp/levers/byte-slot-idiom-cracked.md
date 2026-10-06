@@ -10,8 +10,8 @@ LOCALS - no array, no volatile, no source `& 0xFF`. The dword+mask is
 VC5's widening when the stored register DIED before the read (calls or
 scheduler kills between); if it survives, VC5 store-forwards and deletes
 the store. Proven by transcribing 0x1001E380 BrGlRectFill fresh to
-byte-exact (914 B, filed in src/core/drawing/br_dlglide.c, sweep 2/2,
-commit 8afdafa). Full mechanics in docs/VC5-IDIOMS.md (three 2026-08-31
+byte-exact (914 B, filed in src/brally/core/drawing/br_dlglide.c, sweep 2/2,
+commit 8afdafa). Full mechanics in docs/brally/VC5-IDIOMS.md (three 2026-08-31
 entries).
 
 **Why:** BrCarDrawVehicle (0x1000A110) sits at REGNORM 46+56 with this
@@ -31,7 +31,7 @@ now harvested: 0x1001E380 BrGlRectFill (byte-exact), 0x10021270
 BrGlGbiCall (byte-exact, FIRST COMPILE), 0x1001E080 BrGlInstall (1 region
 / 3 bytes: inline jne+ret vs near-je to shared tail ret; 6 probes dead,
 tag withheld, permuter bait). All three filed in
-src/core/drawing/br_dlglide.c. Census script inline in the session; redo
+src/brally/core/drawing/br_dlglide.c. Census script inline in the session; redo
 via report.csv diff rows vs @implements claims + shared.csv class.
 
 **DIFF(14) callconv cluster = the EAX-pattern thiscall wall (verified on

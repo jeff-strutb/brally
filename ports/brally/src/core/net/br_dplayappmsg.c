@@ -1,7 +1,7 @@
 /* br_dplayappmsg.c -- the DirectPlay application-message dispatcher
  * (0x10009010).
  *
- * Fresh transcription from build/ghidra_decomp/0x10009010.c against the
+ * Fresh transcription from build/brally/analysis/ghidra_decomp/0x10009010.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
 

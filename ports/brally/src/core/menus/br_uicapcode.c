@@ -10,8 +10,8 @@
  * places the brief and the tree disagree, the four conflicts this module
  * reports and the two slots it leaves NULL.
  *
- * Transcribed from orig/BRGlide.dll -- the project reference -- at the GLIDE
- * address of each pairing, with tools/dumpasm.py.  BRD3D.dll was read for
+ * Transcribed from reference/brally/orig/BRGlide.dll -- the project reference -- at the GLIDE
+ * address of each pairing, with tools/brally/dumpasm.py.  BRD3D.dll was read for
  * exactly two things: to settle what 0x1008C320 is (CONFLICT 1) and to
  * confirm that the seven .rdata tables are identical in both images.
  *

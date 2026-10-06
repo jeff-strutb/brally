@@ -8,7 +8,7 @@
  * @cpp_symbol ?BrPhaseEnterPlaceholder_1004B430@@YAHPAVGameUi@@@Z
  *
  * 2439 B cdecl EH-frame menu-page builder. Scaffolded by
- * tools/gen_menubuilder.py from the Ghidra draft; the class layouts and the
+ * tools/brally/gen_menubuilder.py from the Ghidra draft; the class layouts and the
  * three family levers come from the hand-solved 0x100425E0 / 0x10048160
  * (char bool after the slot store, raw float pushes for simple lvalues,
  * w14-then-w344 tails).

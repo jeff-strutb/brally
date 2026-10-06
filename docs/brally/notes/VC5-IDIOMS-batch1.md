@@ -1,6 +1,6 @@
 # VC5 idioms - batch 1 (structural residue)
 
-Proven against BRGlide.dll this session. Merge into `docs/VC5-IDIOMS.md`.
+Proven against BRGlide.dll this session. Merge into `docs/brally/VC5-IDIOMS.md`.
 Infer source from the bytes; never permute spellings. N64 twins were not
 required for any MATCH in this batch (x86 named the constructs).
 

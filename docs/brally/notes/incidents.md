@@ -6,7 +6,7 @@ These are not current procedure. They are why `the project rules` is short and s
 
 `d98f480` (2026-08-15) and `a7eb7cd` (2026-08-19) both pointed the matcher at
 `BRD3D.dll`. Pairing one binary's bytes with the other's function map
-disassembles the wrong bytes at a right-looking address. `tools/refcheck.py`
+disassembles the wrong bytes at a right-looking address. `tools/brally/refcheck.py`
 fails if the corpus is not Glide-keyed. `BRD3D.dll` statically links ~100 KB
 of CRT; matching it means matching Microsoft's CRT.
 
@@ -19,10 +19,10 @@ hook rejects a new VA in an existing address batch.
 
 ## `claim_lane.py claim N` handed out the giants
 
-Its rank file (`build/match/triage_rank.csv`) is a 2026-08-28 snapshot. Once
+Its rank file (`build/brally/win32/match/triage_rank.csv`) is a 2026-08-28 snapshot. Once
 SHAPE rows were gone it scored FrameDraw, CtlAiBody, ObjDlBuild, Tex3dExpand
 as a "20 small functions" lane (2026-09-07). Lock only through
-`tools/t4lane.py --claim` (`claim --va`). Bare `claim N` is a hard error.
+`tools/brally/t4lane.py --claim` (`claim --va`). Bare `claim N` is a hard error.
 
 ## Colouring walls are not source-permutable
 

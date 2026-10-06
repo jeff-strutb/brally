@@ -1,0 +1,284 @@
+# Port deviations for src/brally/core/drawing/br_tex3d.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_106b7a9c
+@drop fn:br_tex3d_end
+@drop define:br_tex3d_end3
+@after define:br_tex3d_end3
+
+/* ==================================================================== */
+/* 0x10028820 -- the scan                                               */
+/* ==================================================================== */
+
+/* 0x100293D0 == BRD3D 0x10029E60, which slice2_16.c ports as
+ * BrGbiTexScanMark. Nineteen bytes, byte-identical in both images.  TWO HOST
+ * BODIES REMAIN for this and for its caller below, and the reason is stated
+ * rather than left to be found: the two modules disagree about the
+ * REPRESENTATION of a display-list command -- this file writes words
+ * byte-wise into a possibly-unaligned `uint8_t *` (which is what
+ * CONVENTIONS.md requires of a foreign buffer) and slice2_16.c stores through
+ * a `BrGfxWords` overlay.  A shared body would have to pick one, and picking
+ * the byte-wise one changes slice2_16's stores on a big-endian host while
+ * picking the overlay puts an unaligned 32-bit store in this one.
+ *
+ * What HAS been removed is the disagreement: this file had a NULL guard on
+ * the run start that the original does not have and slice2_16.c did not have
+ * either.  See the seam below.
+ *
+ * The run ends at the FIRST command that is not part of the setup grammar;
+ * later ones do not move it. */
+/* WHAT IT DOES: notes where a run of texture-setup commands stops. Only the
+ * first command that ends the run counts; later ones do not move it. */
+/* @implements 0x100293D0 glide br_tex3d_end */
+static void br_tex3d_end(BrTex3d *pTex, uint8_t *p, uint8_t **ppEnd)
+{
+    (void)pTex;
+    if (*ppEnd == NULL)
+        *ppEnd = p;
+}
+#define br_tex3d_end3(pTex, p, ppEnd) br_tex3d_end(pTex, p, ppEnd)
+@end
+@after fn:br_te_unit
+
+/* WHAT IT DOES: turns the N64's packed texture data into the pixels the
+ * Glide card can hold. It walks each level of detail a texture has, reads
+ * one row at a time, undoes the console's habit of swapping every other
+ * row's halves, and writes out one colour per texel -- looking colours up in
+ * a palette, mixing between two colours by brightness, or passing the
+ * colour straight through, whichever the texture's format calls for. It also
+ * duplicates the picture left-right and top-bottom when the texture is
+ * marked as mirrored, and it stops the moment the destination buffer is
+ * full. */
+/* Port reconstruction (not byte-exact). Matching twin is BrTex3dExpand at
+ * 0x100250D0, transcribed separately. */
+void BrTex3dExpand(uint8_t *pOut, int32_t cbOut, int32_t siz,
+                   const uint8_t *pTexels, const uint8_t *pPal, int32_t fmt,
+                   int32_t fMirrorS, int32_t fMirrorT,
+                   int32_t lod, int32_t lodEnd,
+                   const BrTex3dTile *aTile, int32_t flags, int32_t mode,
+                   int32_t hi0, int32_t hi1, int32_t hi2, int32_t hi3,
+                   int32_t lo0, int32_t lo1, int32_t lo2, int32_t lo3,
+                   int32_t maskOdd)
+{
+    BrTexExpSink s;
+    int32_t aHi[4], aLo[4];
+
+    aHi[0] = hi0; aHi[1] = hi1; aHi[2] = hi2; aHi[3] = hi3;
+    aLo[0] = lo0; aLo[1] = lo1; aLo[2] = lo2; aLo[3] = lo3;
+
+    s.p = pOut; s.cb = 0; s.cbMax = cbOut;
+
+    /* 0x100250F5.  The guard is on the FIRST iteration's condition, so an
+     * empty LOD range leaves the buffer untouched. */
+    for (; lod < lodEnd; lod++) {
+        /* 0x1002510D: the tile array is indexed by the ABSOLUTE tile number
+         * and the cursor restarts from the texel base every level. */
+        const BrTex3dTile *pT = &aTile[lod];
+        const uint8_t *pRow = pTexels + (size_t)pT->tmem * 8;
+        int32_t w, h, y, rowElems;
+        int kind, elem, nPer, srcUnit;
+
+        if (siz == 0) {
+            if (fmt == 2) {
+                /* 0x10025148.  Both halves of the test matter: the raw-index
+                 * arm needs bit 1 of the descriptor's +0x260 flags AND the
+                 * level to be exactly 1.  It reads its width, height and
+                 * pitch from tile[1] by a hard-coded displacement rather
+                 * than from tile[lod] -- the same tile, because of the
+                 * guard, so the two spellings cannot disagree. */
+                kind = ((flags & 2) != 0 && lod == 1) ? BR_TE_IDX4 : BR_TE_CI4;
+            } else if (fmt == 4) {
+                kind = (mode == 1) ? BR_TE_I4BLEND : BR_TE_I4;
+            } else {
+                continue;
+            }
+            /* 0x10025169: maskS MINUS ONE, because a 4bpp row is half as
+             * many bytes as it is texels, and the loops below count BYTES. */
+            w = (int32_t)((uint32_t)1 << ((uint32_t)(pT->maskS - 1) & 31u));
+        } else if (siz == 1) {
+            if (fmt == 2)      kind = BR_TE_CI8;
+            else if (fmt == 3) kind = (mode == 1) ? BR_TE_IA8BLEND : BR_TE_AI44;
+            else if (fmt == 4) kind = BR_TE_I8;
+            else               continue;
+            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
+        } else if (siz == 2 && fmt == 0) {
+            kind = BR_TE_RGBA16;
+            w = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskS & 31u));
+        } else {
+            continue;
+        }
+        h = (int32_t)((uint32_t)1 << ((uint32_t)pT->maskT & 31u));
+
+        elem    = (kind == BR_TE_I4 || kind == BR_TE_AI44 ||
+                   kind == BR_TE_I8) ? 1 : 2;
+        nPer    = (kind == BR_TE_CI4 || kind == BR_TE_IDX4 ||
+                   kind == BR_TE_I4BLEND || kind == BR_TE_I4) ? 2 : 1;
+        srcUnit = (kind == BR_TE_RGBA16) ? 2 : 1;
+
+        for (y = 0; y < h; y++) {
+            int fOdd = (y & maskOdd) != 0;
+            int32_t i;
+
+            for (i = 0; i < w; i++) {
+                size_t off = br_tex3d_swiz((size_t)i * (size_t)srcUnit, fOdd);
+                if (br_te_unit(&s, kind, pRow + off, pPal, aHi, aLo)) {
+                    /* 0x10026FEE.  The RGBA16 SWIZZLED loop -- and only that
+                     * one -- tests the row bound BEFORE the budget, so the
+                     * last texel of a row does not abandon the row's mirror
+                     * tail.  Every other arm tests the budget first. */
+                    if (!(kind == BR_TE_RGBA16 && fOdd && i + 1 >= w))
+                        return;
+                }
+            }
+
+            /* 0x10025680: the S mirror re-emits the row just written,
+             * backwards, doubling its width. */
+            if (fMirrorS) {
+                const uint8_t *q = s.p - elem;
+                int32_t k, n = w * nPer;
+                for (k = 0; k < n; k++) {
+                    uint32_t v = br_te_get(q, elem);
+                    q -= elem;
+                    if (br_te_put(&s, v, elem))
+                        return;
+                }
+            }
+
+            /* 0x100256BC: the source pitch is the tile's `line`, added once
+             * per row and NOT clamped up to the row width -- a `line`
+             * narrower than the mask makes consecutive rows overlap, which
+             * is the N64 idiom for a non-power-of-two image. */
+            pRow += (size_t)pT->line;
+        }
+
+        /* 0x100256E8: and the T mirror does the same to whole rows, walking
+         * the finished image backwards a row at a time. */
+        if (fMirrorT && h > 0) {
+            uint8_t *q = s.p;
+            rowElems = (fMirrorS ? 2 : 1) * w * nPer;
+            for (y = 0; y < h; y++) {
+                const uint8_t *p;
+                int32_t k;
+                q -= (size_t)rowElems * (size_t)elem;
+                p = q;
+                for (k = 0; k < rowElems; k++) {
+                    uint32_t v = br_te_get(p, elem);
+                    p += elem;
+                    if (br_te_put(&s, v, elem))
+                        return;
+                }
+            }
+        }
+    }
+}
+@end
+@drop var:DAT_105ccbd0
+@drop var:_DAT_106b7aa4
+@drop var:_DAT_106b7aa8
+@drop var:DAT_118ed1a0
+@drop var:DAT_118ed1b4
+@drop var:DAT_1186c988
+@drop var:s_Out_of_tex_mem__100a9e5c
+@drop proto:FUN_10027290
+@drop proto:FUN_100242e0
+@drop proto:FUN_10027220
+@drop proto:FUN_10024df0
+@drop proto:FUN_100275c0
+@drop proto:FUN_10027710
+@drop proto:FUN_10023d70
+@drop proto:FUN_10028200
+@drop proto:FUN_100283c0
+@drop proto:BrTex3dRecInstall
+@drop proto:br_tex3d_append
+@drop proto:FUN_1006ff50
+@drop type:BrTexReq272
+@drop var:_DAT_10697a48
+@drop var:_DAT_10697a50
+@drop var:DAT_106b7aa0
+@drop var:DAT_10697a4c
+@drop if:#ifndef BR_FUNCPTR_DEFINED
+@drop var:DAT_118ed1d0
+@drop proto:FUN_10027b60
+@drop proto:BrTex3dDownloadAt
+@drop proto:FUN_10027a70
+@drop proto:FUN_10029290
+@drop proto:FUN_10030fd0
+@drop proto:FUN_1005a070
+@drop proto:FUN_10030710
+@drop proto:FUN_100306d0
+@drop proto:FUN_10001000
+@drop proto:grTexCalcMemRequired
+@drop var:DAT_106b7ab0
+@drop var:DAT_106b7a94
+@drop var:DAT_100b8498
+@drop var:DAT_106b7aac
+@drop var:DAT_105d17f0
+@drop var:DAT_106b7a98
+@drop var:DAT_105e17f8
+@drop var:DAT_105e1800
+@drop var:DAT_1066182c
+@drop var:DAT_106b7a78
+@drop var:DAT_105d17e8
+@drop var:DAT_10697a68
+@drop var:DAT_10697a40
+@drop var:DAT_10661828
+@drop var:DAT_1186c968
+@drop type:BrTexTile40
+@drop var:DAT_10697840
+@drop fn:BrTexTileUnpack
+@drop fn:BrTex3dRecCopyHead
+@drop fn:BrTex3dRecSet278
+@drop proto:FUN_10024490
+@drop fn:BrTex3dMipChainLoad
+@drop proto:grTexDownloadMipMap
+@drop var:DAT_105d17ec
+@drop var:DAT_10661844
+@drop var:DAT_10661854
+@drop var:DAT_10661884
+@drop var:DAT_10661888
+@drop var:DAT_1066188c
+@drop var:DAT_10661904
+@drop var:DAT_10661914
+@drop fn:BrTex3dDownloadAt
+@drop fn:BrTex3dReDownload
+@drop fn:BrTex3dReconvert
+@drop var:DAT_105e1828
+@drop var:DAT_10697a60
+@drop proto:FUN_10059fe0
+@drop proto:BrBmpRect4Get
+@drop proto:FUN_1005a500
+@drop proto:BrTexRgbaToArgb1555
+@drop fn:BrTexSlotFetchPixels
+@drop fn:FUN_10027710
+@drop fn:BrTex3dRecInstall
+@drop fn:BrTex3dCreate
+@drop fn:BrTex3dCreateBlank
+@drop proto:FUN_100250d0
+@drop fn:BrTex3dExpandInto
+@drop fn:BrTex3dRegister
+@drop fn:FUN_100298c0
+@drop var:DAT_10697a58
+@drop var:DAT_10697a5c
+@drop var:s_AppendTexture__atdb_100a9e6c
+@drop proto:BrChkRealloc
+@drop var:DAT_105e17fc
+@drop var:DAT_10697a64
+@drop var:DAT_105d17f8
+@drop proto:FUN_10028BB0
+@drop fn:br_tex3d_append
+@drop fn:br_tex3d_seam
+@drop fn:BrTexSizeFromShiftAspect
+@drop fn:BrTexRgbaToArgb1555
+@drop var:DAT_106b7c7c
+@drop var:PTR_DAT_100a9e58
+@drop var:DAT_10697a58#2
+@drop type:BrTexLv
+@drop type:BrTexDesc
+@drop type:BrTexRec
+@drop fn:BrTexInstallRecords
+@drop proto:FUN_1006e1a0
+@drop var:DAT_10697a58#3
+@drop var:DAT_10697a5c#2
+@drop var:DAT_106b7aa0#2
+@drop fn:BrTex3dFreeAll

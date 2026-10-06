@@ -38,6 +38,6 @@ excuse to leave a function in the wrong module -- find the placement.
   br_fade.c/br_fadewipe.c reproduces it.
 
 **Image gates in a clean worktree** ([gi-serial-idb-a7-recipe](../oracle/gi-serial-idb-a7-recipe.md)): symlink
-main's `build/match/obj_img_*` (hash-keyed, freshness-proven) or the T4 gate
+main's `build/brally/win32/match/obj_img_*` (hash-keyed, freshness-proven) or the T4 gate
 recompiles all 370 TUs serially (~20 min instead of 45 s); main's obj_cpp may
 be empty -- compile every report_cpp row (T3 C++ rows too, not just 4/4).

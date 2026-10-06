@@ -27,7 +27,7 @@
  * players can find and join it. If hosting fails it composes an explanatory
  * message and then throws it away without showing it to anyone -- the player
  * sees nothing. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x100357E0.c */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/generated/0x100357E0.c */
 /* BrSub1003C150: prototype in br_funcs.h */
 
 /* 0x1003C260 */
@@ -260,7 +260,7 @@ typedef int (__stdcall *BrDpCreatePlayer)(void *pThis, DWORD *pId,
  * fails.  On success the host's four user words and the session name are
  * copied into the game's globals.  The fetched description is always freed;
  * returns 0 or the DirectPlay error. */
-/* @t4-pass 0x10035DD0 1 2026-09-09 probes 25 bytes 613 insns 186 regions 4 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10035DD0 1 2026-09-09 probes 25 bytes 613 insns 186 regions 4 rows 1 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10035DD0 2 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census no  (hand, fn.py variants: literal/order/amp/cast spellings, all inert) */
 /* @t4-pass 0x10035DD0 3 2026-09-09 probes 10 bytes 613 insns 186 regions 4 rows 1 census yes  (hand, fn.py variants: decl orders, memset/vtable forms, all inert; corpus MISS at +0x50 len 10) */
 /* @t3 0x10035DD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -422,8 +422,8 @@ typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
  * `and esi,0xff`); folding the byte through `b >>= 1; b &= 1` or a byte
  * read of the field spills it (461 B, 5+4).  The and-0xff still does not
  * appear from any spelling; the tree keeps the 455 B form. */
-/* @t4-pass 0x10032320 2 2026-09-13 probes 106 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10032320 3 2026-09-13 probes 220 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10032320 2 2026-09-13 probes 106 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10032320 3 2026-09-13 probes 220 bytes 455 insns 175 regions 1 rows 1 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10032320 4 2026-09-24 probes 12 bytes 461 insns 176 regions 1 rows 0 census no  (hand, after the byte mask moved to the load and the bit after the call reached 461/461: twelve spellings of the mask and the bit -- casts, byte load, %256, <<24>>24, (x&2)>>1, !!, /2, store order; none moved the and/shr schedule) */
 /* @t4-pass 0x10032320 5 2026-09-24 probes 11 bytes 461 insns 176 regions 1 rows 0 census yes  (hand, mechanism experiment: ten permutations of the ten local declarations, i.e. the allocator's candidate order; residue identical in all) */
 /* WHAT IT DOES: connects a lobby-launched game.  Creates the DirectPlay

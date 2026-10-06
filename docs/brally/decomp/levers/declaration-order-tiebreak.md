@@ -21,14 +21,14 @@ re-run" verdicts measured at ONE symbol layout. A lever that reads inert may be
 one index away from its flip.
 
 **How to apply:** when a schedule or allocation is one notch off and every
-expression form is dead, sweep the declaration order (`tools/probe.py` scores one
-variant in ~6 s with every measure at once; `tools/declsweep.py --mode all`
+expression form is dead, sweep the declaration order (`tools/brally/probe.py` scores one
+variant in ~6 s with every measure at once; `tools/brally/declsweep.py --mode all`
 sweeps a declaration through every position): move each local to
 the end/front of its run, then every position. Inert: extern declaration
 order (24/24), unused extra locals (never indexed), renames. Slot PACKING is
 still not declaration-ordered (pDst to the top of the list: byte-identical).
-See docs/VC5-IDIOMS.md "DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK" and
-the 26th-pass entry in src/core/drawing/br_scenedl.c. Related:
+See docs/brally/VC5-IDIOMS.md "DECLARATION ORDER IS AN x87 SCHEDULER TIE-BREAK" and
+the 26th-pass entry in src/brally/core/drawing/br_scenedl.c. Related:
 scenedl-0x1000eaf0-state, [resume-state](../log/resume-state.md), [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md).
 
 ** A SECOND, DIFFERENT MECHANISM (2026-09-05, commit 6836931): the `imul`

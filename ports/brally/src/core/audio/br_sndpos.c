@@ -23,7 +23,7 @@
 #include "slice3_41.h"
 
 /* ---------------------------------------------------------------------
- * Constants read out of BRD3D.dll .rdata with tools/pe.py.  Do not
+ * Constants read out of BRD3D.dll .rdata with tools/brally/pe.py.  Do not
  * "simplify" these -- the decimal forms are the exact float32 values.
  * ------------------------------------------------------------------- */
 #define BR_K_0008F8D0   10.0f                        /* pan clamp, upper   */
@@ -111,7 +111,7 @@ void BrSndPan(const BrVec3 *pSrcPos, const BrMat4 *pListener,
      * the x term's fmul first.  Pulling the y term out into a temp takes it
      * out of the flat sum, so it is evaluated on its own and lands first; the
      * remaining two terms canonicalise as before.  See the sum-of-products
-     * entries in docs/VC5-IDIOMS.md. */
+     * entries in docs/brally/VC5-IDIOMS.md. */
     {
         float ty = pListener->m[1][1] * d.y;
 
@@ -366,7 +366,7 @@ void BrSndNearestOfferTrack(int32_t f8C, const BrVec3 *pPos,
  * Dead probes (fn.py, all inert): shifted term left/right of the add;
  * named lo/hi temps in either order; `* 0x10000` instead of `<< 16` in
  * either order; the halving as a ternary; the halving as two stores. */
-/* @t4-pass 0x10060F40 1 2026-09-13 probes 89 bytes 687 insns 174 regions 6 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10060F40 1 2026-09-13 probes 89 bytes 687 insns 174 regions 6 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10060F40 2 2026-09-21 probes 12 bytes 687 insns 174 regions 6 rows 0 census yes  (packing/halving source levers: hi<<16+=low, low-first temp, low+hi, *0x10000, named lo/hi both orders, vol-cast-once, shift-by-mul, uint-pack, explicit parens, halve ternary, halve two-store -- all inert, register rotation invariant) */
 /* @t3 0x10060F40 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 687/683 insns 174/174 rows 0+0 regions 6 oracle EQUIVALENT

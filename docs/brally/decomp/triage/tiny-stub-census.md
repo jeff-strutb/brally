@@ -5,7 +5,7 @@
 > The <=16B function bucket is 3 classes, not one; 33 real ones landed in tiny_stubs.c
 
 The ≤16B function bucket of BRGlide (747 functions on the glide map,
-`config/functions_glide.csv` - NOT `functions.csv`, which is D3D-keyed, 2818
+`config/brally/functions_glide.csv` - NOT `functions.csv`, which is D3D-keyed, 2818
 rows) is THREE distinct classes. Do not treat it as one "knock out the stubs"
 job - that was the initial wrong assumption.
 
@@ -20,21 +20,21 @@ job - that was the initial wrong assumption.
   Linker-synthesised; `image_build.py` already lays them in at 0 differing
   bytes. Reproduced at the link stage, never as .c. Fence, don't write.
 - **35 genuinely-trivial C** - the only hand-writable ones. **ALL 35 landed
-  byte-exact in `src/core/tiny_stubs.c`** (commits 7014d36 + 49358ba,
+  byte-exact in `src/brally/core/tiny_stubs.c`** (commits 7014d36 + 49358ba,
   2026-08-31). No ≤16B hand-C outstanding.
 
-**The fence (commit 34645d8):** `config/fenced.csv` enumerates the 611
+**The fence (commit 34645d8):** `config/brally/fenced.csv` enumerates the 611
 not-hand-C map entries by instruction signature - 41 import thunks + 3 jump
 stubs (reproduced at link), 481 EH funclets + 80 EH dispatch + 6 EH data
 (reproduced by parent TU try/catch). Conservative: real integer-math helpers
 in the EH region (0x10074580+, `f7f1` div etc.) stay OUTSTANDING, not fenced.
-`tools/coverage.py` subtracts it: **hand-C target = 1,529 fns (glide map 2,140
+`tools/brally/coverage.py` subtracts it: **hand-C target = 1,529 fns (glide map 2,140
 − 611 fenced), 741 byte-exact (48.5%), 788 remaining** - the honest denominator,
-not the 1,664-off-the-D3D-map figure. USE tools/coverage.py for the real
+not the 1,664-off-the-D3D-map figure. USE tools/brally/coverage.py for the real
 remaining-work number.
 
-The 33 proved a full idiom set (all /O2, verified `tools/match_diff.py`
-against `build/match/orig/0x*.bin` which ARE glide-keyed for these VAs):
+The 33 proved a full idiom set (all /O2, verified `tools/brally/match_diff.py`
+against `build/brally/win32/match/orig/0x*.bin` which ARE glide-keyed for these VAs):
 byte/dword setter (`g=imm`), setter-returns-1 (`g=imm;return 1` vs
 `return g=imm`), copy-then-clear (`g2=g1;return 0`), arg-store
 (`return g=x`), float field getter (`p->f` → `fld [eax+0xc]`), pointer clears

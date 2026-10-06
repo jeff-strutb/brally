@@ -14,7 +14,7 @@
  * for the second one, whereas thiscall leaves it on the stack. Those still
  * need a per-call-site trick (a struct-typed parameter is never
  * register-eligible, so it is forced back onto the stack -- see
- * BrSub10060260 in src/core/slice4_52.c) or .cpp compilation.
+ * BrSub10060260 in src/brally/core/slice4_52.c) or .cpp compilation.
  *
  * !! CORRECTED 2026-09-03: this used to say "a struct-typed SECOND parameter",
  * and that is only enough when there are exactly two arguments. __fastcall

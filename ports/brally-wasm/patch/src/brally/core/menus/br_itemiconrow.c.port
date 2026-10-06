@@ -1,0 +1,16 @@
+# Port deviations for src/brally/core/menus/br_itemiconrow.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop include:<stdlib.h>
+@drop include:<stdio.h>
+@drop include:<string.h>
+@drop include:<math.h>
+@drop include:<mmsystem.h>
+@drop include:"br_match.h"
+@drop var:g_brItemIconCount
+@drop type:BrDrawArg
+@drop type:y
+@drop type:BrIconItem
+@drop proto:BrItemDrawIconRow

@@ -1,4 +1,4 @@
-/* T4-ATTEMPT LEDGER for tools/t3.py (rule 12).  One line per pass at
+/* T4-ATTEMPT LEDGER for tools/brally/t3.py (rule 12).  One line per pass at
  * byte-exactness, END-OF-PASS numbers, probes = fresh compiles.  Passes
  * under 10 probes are recorded for honesty and not counted.  Earlier
  * passes (1-25) predate the ledger and are described below, not scored.
@@ -10,7 +10,7 @@
  * @t4-pass 0x1000EAF0 32 2026-09-09 probes 37 bytes 9345 insns 2325 regions 14 rows 43 census yes
  */
 /* THIRTY-SECOND PASS (2026-09-09) -- declaration-order census, zero movement.
- * tools/declsweep.py --mode end, 36 locals in 6 runs + ref.  Eight DIFFERS,
+ * tools/brally/declsweep.py --mode end, 36 locals in 6 runs + ref.  Eight DIFFERS,
  * all worse (more regions or fewer bytes): cHead/nTotal to end of the
  * function-scope list; pView/pPos/pTw to end of the row-pointer run (the
  * twenty-sixth-pass field-order lever, already at the good bucket);
@@ -20,7 +20,7 @@
 /* !!!! THIRTY-FIRST PASS (2026-09-06) -- WALL 4 MEASURED TO ITS FLOOR, AND
  * THE MECHANISM IS KNOWN; THE SOURCE CONSTRUCT IS NOT.  Baseline re-measured
  * 9,345/9,354 B, 2,325/2,328 insns, 14 masked / 24 raw, msetdiff 23+20.
- * Full census in docs/VC5-IDIOMS.md ("When VC5 keeps a scaled index in a
+ * Full census in docs/brally/VC5-IDIOMS.md ("When VC5 keeps a scaled index in a
  * register").  What it settled, so nobody re-derives it:
  *   - The base-less `lea R,[R*4]` feeding `[R + abs32]` occurs at ONE site
  *     in the whole binary (this one).  No corpus spelling exists.
@@ -121,15 +121,15 @@
 /* br_scenedl.c -- 0x1000EAF0, the frame's scene display-list builder.
  *
  * 9,354 bytes -- the second-largest function in BRGlide.dll after the race
- * step.  Called by the frame driver 0x10011FA0 (see include/br_drawcar.h);
+ * step.  Called by the frame driver 0x10011FA0 (see src/brally/include/br_drawcar.h);
  * emits the frame-global DL preamble (fog, combiner, othermode, texture
  * windows), walks the sorted object table at 0x106EED38 (0x54-byte records:
  * a 4x4 matrix, a DL pointer and flag words), transforms and range-checks
  * each object's matrix, then on the mirror/second pass batches the wheel
  * trail quads out of the per-wheel 500-entry rings at 0x10273690.
  *
- * Matching build only -- transcribed from build/ghidra_decomp/0x1000EAF0.c
- * against the disassembly of build/match/orig/0x1000EAF0.bin.
+ * Matching build only -- transcribed from build/brally/analysis/ghidra_decomp/0x1000EAF0.c
+ * against the disassembly of build/brally/win32/match/orig/0x1000EAF0.bin.
  *
  * !!!! TWENTY-SIXTH PASS (2026-09-04) -- A LEVER FROM OUTSIDE THE ADDRESSING,
  * AND IT IS THE ONE EVERY DOSSIER ENTRY BELOW CALLED INERT: DECLARATION
@@ -477,7 +477,7 @@
  * `fld [R + R + 0x54]` pairs and wall 1's fld hoist are where the
  * multiset says the six sit.
  * NINTH PASS found NO further constant defect.  The eighth pass's advice to
- * re-run the register-blind multiset was followed and `tools/msetdiff.py`
+ * re-run the register-blind multiset was followed and `tools/brally/msetdiff.py`
  * had to be fixed first (branch targets and reloc addends were compared
  * literally, so every reloc'd instruction paired as MISSING+EXTRA; 76 rows
  * of noise down to 37 real).  !! Two rows that looked like real defects --
@@ -637,7 +637,7 @@
  *       + 1 + base; i = base;` instead of naming the globals three more
  *       times) moves the reloc-masked byte diff by ONE, 4,669 -> 4,670.
  *   Screens, both negative, do not repeat: this function's frame MATCHES
- *   (`tools/framescreen.py` does not list it), and its `(double)` modelling
+ *   (`tools/brally/framescreen.py` does not list it), and its `(double)` modelling
  *   is real -- all 49 qword spills are `fstp qword ptr [esp]` varargs pushes,
  *   matched exactly in both streams, with no `fld qword` anywhere -- so the
  *   Glide-is-float lever does not apply here.
@@ -1102,13 +1102,13 @@ typedef struct BrWheelRec {
  * slots. Dossier and dead list: this file's header.
  * 2026-09-16: UPGRADED from oracle UNCLASSIFIED to EQUIVALENT.  The A5 image
  * oracle now RUNS this scene-DL builder on valid-state seeding (object count
- * g_0B2F04 bounded small, pointers null-safe; tools/oracle_profiles.py) and
+ * g_0B2F04 bounded small, pointers null-safe; tools/brally/oracle_profiles.py) and
  * proves same-in/same-out across 32 seeds -- return, ~148 global-write bytes,
  * and dispatch all agree, ~93% of insns executed.  So the residue is now
  * behaviourally PROVEN allocation, not merely byte-shape-classified.
  * Do not reopen before the end-grind. */
-/* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000EAF0 7 2026-09-07 probes 150 bytes 9354 insns 2328 regions 25 rows 32 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000EAF0 6 2026-09-07 probes 150 bytes 9349 insns 2327 regions 27 rows 31 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000EAF0 7 2026-09-07 probes 150 bytes 9354 insns 2328 regions 25 rows 32 census yes  (tools/brally/crank.py) */
 /* @implements 0x1000EAF0 glide BrSceneDlBuild */
 void BrSceneDlBuild(struct BrViewRect *param_1, int param_2, unsigned char *param_3, unsigned char *param_4)
 {
@@ -1335,7 +1335,7 @@ draw:
                      * is the original's order at all four rows.  Measured
                      * over all 24 permutations: exactly two outcomes, keyed
                      * on pTw's position alone.  The symbol INDEX is an x87
-                     * scheduler tie-break -- see docs/VC5-IDIOMS.md. */
+                     * scheduler tie-break -- see docs/brally/VC5-IDIOMS.md. */
                     float *pView = (*(float (*)[16])&g_BrCurMat);
                     float *pPos = pObj + 0xc;
                     float *pTy = pObj + 0xd;

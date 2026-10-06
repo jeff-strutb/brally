@@ -3,7 +3,7 @@
 > t3image_verify.py = the placed-bytes A5 sweep (cf1e9f7b); caught precedence split + 22-function silent truncation; t3_slot_ok.csv evidence allowlist; 108 place, 10 retracted shrink lanes
 
 **2026-09-19c (cf1e9f7b), sequel to [lockstep-oracle-arbitration](lockstep-oracle-arbitration.md): the
-self-verification layer.** `tools/t3image_verify.py` reads each T3 span OUT
+self-verification layer.** `tools/brally/t3image_verify.py` reads each T3 span OUT
 OF THE BUILT DLL and runs the A5 comparison -- no recompiling/resolving, so
 no obj-variant mismatch; it tests what ships. First sweep: 70 EQUIVALENT,
 3 identical, 2 DIFF.  ALWAYS run it after a gate before shipping.
@@ -20,7 +20,7 @@ no obj-variant mismatch; it tests what ships. First sweep: 70 EQUIVALENT,
    (BrGbiSizeShift lost its ret; falls into the next fn on the >128 path).
    Gate now measures true code length (strip mixed 90/CC padding in a LOOP
    -- sequential rstrip under-strips) and blocks overhang unless (a) cut
-   bytes byte-identical to image tail, or (b) config/t3_slot_ok.csv records
+   bytes byte-identical to image tail, or (b) config/brally/t3_slot_ok.csv records
    a placed-image A5 EQUIVALENT for that spliced form (11 admitted).
 
 **State: 108/118 place. 10 retracted to ORIGINAL bytes (safe), each a

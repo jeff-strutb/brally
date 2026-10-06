@@ -6,7 +6,7 @@
 
 0x100719D0 BrInputJustPressed was a d3d-slice twin (slice3_45.c, graded via
 shared.csv) diffing 928/1246 B. Hand-transcribed from the Glide asm into its
-real module src/core/controls/br_inputpoll.c (after BrInputPoll) as a
+real module src/brally/core/controls/br_inputpoll.c (after BrInputPoll) as a
 `#ifdef BR_MATCHING_BUILD` arm; slice body demoted to "port-only body" (same
 pattern as BrDiAcquire). Commit 4f95ae10. First straight transcription was
 already 1243/1246, regnorm 6+5.
@@ -28,10 +28,10 @@ body before anything else. See [d3d-twin-glide-transcription](d3d-twin-glide-tra
 
 **Clean A7 rerun from a worktree (needed when committing into a file that
 also holds a T3 function, since A7 goes stale on that file's commit):** see
-[worktree-bootstrap](../toolchain/worktree-bootstrap.md) plus: tools/msvc5 and tools/msvc6 have tracked children
+[worktree-bootstrap](../toolchain/worktree-bootstrap.md) plus: tools/toolchains/msvc5 and tools/brally/msvc6 have tracked children
 (link bin/include/lib individually); use LOCAL empty obj_* dirs and COPIES of
 report*.csv (cpp_sweep rewrites report_cpp.csv); cpp_sweep in parallel drops
 `/Gi` variants (vc50.idb collision) -> compile each report_cpp row's own opt
 serially with cpp_score.compile_cpp(file, 'sweep_%08X_%d', opt); HEAD's
 image_build_t3.py needed collect_dll(jobs=) from an uncommitted image_build.py
-(2026-09-24). Then copy build/image/BRGlide.T3.dll to build/brbox/image/.
+(2026-09-24). Then copy build/brally/win32/image/BRGlide.T3.dll to build/brally/win32/brbox/image/.

@@ -1,8 +1,8 @@
 # BRally.exe - launcher notes (2026-08-27)
 
-BRally.exe is the 8 KB game launcher (`orig/BRally.exe`). `.text` is 3,584
+BRally.exe is the 8 KB game launcher (`reference/brally/orig/BRally.exe`). `.text` is 3,584
 bytes at image base `0x400000`. Entry is `WinMainCRTStartup` at `0x401BF0`.
-39 functions in `config/functions_brally.csv` (the map has 39 rows, not 40).
+39 functions in `config/brally/functions_brally.csv` (the map has 39 rows, not 40).
 
 ## EXE vs DLL (verified against the bytes)
 
@@ -57,7 +57,7 @@ call (`_except_handler3`) compiles to the thunk; 2-arg wrappers do not
 **28 / 39** map entries byte-exact under `/O2` (COFF 16-byte `nop` padding
 after `ret` ignored, same as the DLL comparator). **24 / 24** user
 functions (map sizes sum **2,831 / 3,584** of `.text`, 79.0%). Winning
-TUs: `build/brally_work/0x<VA>.c`. Original bytes: `build/match/orig_brally/`.
+TUs: `build/brally_work/0x<VA>.c`. Original bytes: `build/brally/win32/match/orig_brally/`.
 
 User code is `0x401000`-`0x401BBF` (FreeObjList through GetIniValue). The
 remaining **11 / 39** map entries are CRT / compiler / linker glue - walls,

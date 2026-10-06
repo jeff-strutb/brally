@@ -1,8 +1,8 @@
 # C++ family 2 - `new T` activate + screen builders (2026-08-27)
 
-Harness: same as Task 1 (`build/cpp_work/<VA>.cpp`, `cl /O2 /GX /MD`,
-`python3 tools/cpp_score.py --va <VA>`). Do not `@implements`-tag these in
-`src/` this session.
+Harness: same as Task 1 (`build/brally/win32/cpp_work/<VA>.cpp`, `cl /O2 /GX /MD`,
+`python3 tools/brally/cpp_score.py --va <VA>`). Do not `@implements`-tag these in
+`src/brally/` this session.
 
 ## Matched: 6 activate hooks, 1,264 / 480,853 of `.text` (0.26%)
 
@@ -121,4 +121,4 @@ esi/edi pushes). 439B0/44860 use edi.
 - Do not `return 1` inside both activate arms.
 - Do not invert to `if (slot != 0)`.
 - Do not C-sweep the 80 `__CxxFrameHandler` functions.
-- Do not tag `src/` until a filing session.
+- Do not tag `src/brally/` until a filing session.

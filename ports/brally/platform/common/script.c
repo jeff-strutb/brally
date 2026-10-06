@@ -1,11 +1,11 @@
-/* script.c: replay a brbox scenario script (a .txt in tools/brbox_scripts), for
+/* script.c: replay a brbox scenario script (a .txt in tools/brally/brbox_scripts), for
  * any host.
  *
  *   BR_SCRIPT=<file>   the script
  *   BR_SHOTS=<dir>     where `shot NAME` writes NAME.png (default
- *                      build/portable/shots)
+ *                      build/brally/null-soft/shots)
  *
- * The semantics are the 32-bit lane's (ports/macos/wasm/host/host_script.c)
+ * The semantics are the 32-bit lane's (ports/brally-wasm/wasm/host/host_script.c)
  * so both lanes run the same scenarios and their shots compare: a frame is
  * one entry to BrAppFrame (0x1001CF80), which calls plat_app_frame().
  *
@@ -145,7 +145,7 @@ static void load(void)
     FILE *f;
     int ln = 0;
     s_loaded = 1;
-    snprintf(s_shots, sizeof s_shots, "%s", d ? d : "build/portable/shots");
+    snprintf(s_shots, sizeof s_shots, "%s", d ? d : "build/brally/null-soft/shots");
     if (!path)
         return;
     if (!(f = fopen(path, "r"))) {

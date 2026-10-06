@@ -528,11 +528,11 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                     s_col = c; s_w = t->w; s_h = t->h;
                     for (k = 0; k < t->w * t->h; k++)   /* the colour, opaque */
                         c[k] = 0xFF000000u | (uint32_t)t->px[k * 4] << 16 | (uint32_t)t->px[k * 4 + 1] << 8 | t->px[k * 4 + 2];
-                    snprintf(path, sizeof path, "build/portable/BRR_DUMP_%u.png", st->texture);
+                    snprintf(path, sizeof path, "build/brally/null-soft/BRR_DUMP_%u.png", st->texture);
                     write_png(path);
                     for (k = 0; k < t->w * t->h; k++)   /* alpha as grey, so a glyph sheet reads */
                         c[k] = 0xFF000000u | (uint32_t)t->px[k * 4 + 3] * 0x010101u;
-                    snprintf(path, sizeof path, "build/portable/BRR_DUMP_%u_a.png", st->texture);
+                    snprintf(path, sizeof path, "build/brally/null-soft/BRR_DUMP_%u_a.png", st->texture);
                     write_png(path);
                     s_col = keep; s_w = kw; s_h = kh;
                     free(c);

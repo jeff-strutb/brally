@@ -14,8 +14,8 @@
  * switches the blend off, in which case every frame simply shows the newest
  * snapshot.
  *
- * Transcribed from build/ghidra_decomp/0x100131e0.c against the annotated
- * disassembly of build/match/orig/0x100131E0.bin.  Facts read off the bytes
+ * Transcribed from build/brally/analysis/ghidra_decomp/0x100131e0.c against the annotated
+ * disassembly of build/brally/win32/match/orig/0x100131E0.bin.  Facts read off the bytes
  * rather than the draft:
  *   - 0x1007727C / 0x10077280 / 0x100772A4 / 0x100772A8 are 0.0f, 1.0f,
  *     100.0f and 0.03f in .rdata -- the literal pool of the original TU that
@@ -105,10 +105,10 @@ typedef char br_assert_snapmtx[(sizeof(BrSnapMtx) == 0x44) ? 1 : -1];
  * two snapshots.  Returns 1 when it drew a frame; 0 when nothing new has
  * arrived and the blend already sits on the newest snapshot (the caller
  * then has nothing to show), or when no snapshot pair exists yet. */
-/* @t4-pass 0x100131E0 1 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
-/* @t4-pass 0x100131E0 2 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/crank.py) */
+/* @t4-pass 0x100131E0 1 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100131E0 2 2026-09-07 probes 102 bytes 3532 insns 824 regions 17 rows 340 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x100131E0 3 2026-09-19 probes 11 bytes 3501 insns 817 regions 13 rows 457 census no  (x87/addressing grind: the orig keeps the blend fraction t RESIDENT in an x87 register (fmul st(1)) across every LERP and reaches car fields through hoisted base pointers (lea once, then [reg+imm]); our compile reloads t per component (fmul [t]) and addresses each field by absolute global ([reg+abs]) -- the +bytes. Pointer-macro and row-batch variants shift the shape but VC5 will not reproduce the t-in-register retention from C. Numbers held.) */
-/* @t4-pass 0x100131E0 4 2026-09-19 probes 10 bytes 3501 insns 817 regions 13 rows 457 census yes  (write-slot census (tools/slotcensus.py) + variant sweep confirm the residue is x87 register retention / pointer-vs-index addressing, not missing/wrong code; the A5 oracle proves same-in/same-out across the blend math, the wheels, the integer lock/counter state (exact_regions) and the return, with the timer and frame driver black-boxed identically; numbers unmoved.) */
+/* @t4-pass 0x100131E0 4 2026-09-19 probes 10 bytes 3501 insns 817 regions 13 rows 457 census yes  (write-slot census (tools/brally/slotcensus.py) + variant sweep confirm the residue is x87 register retention / pointer-vs-index addressing, not missing/wrong code; the A5 oracle proves same-in/same-out across the blend math, the wheels, the integer lock/counter state (exact_regions) and the return, with the timer and frame driver black-boxed identically; numbers unmoved.) */
 /* @t3 0x100131E0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 3501/3217 insns 817/856 rows 248+209 regions 13 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
@@ -370,8 +370,8 @@ typedef struct {
  * register), the position/lap slots go to -1, the limit flag comes on, three
  * float accumulators go to 0 and each car's first field is cleared.  Guarded
  * by a done flag so it only ever runs once. */
-/* @t4-pass 0x10013E80 1 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10013E80 2 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013E80 1 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10013E80 2 2026-09-07 probes 22 bytes 128 insns 30 regions 2 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10013E80 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 128/128 insns 30/30 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -379,7 +379,7 @@ typedef struct {
  * multiset (rows 0+0), 2 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10013E80 glide BrRaceBeginResetOnce */
 void BrRaceBeginResetOnce(void)
@@ -427,18 +427,18 @@ void BrRaceBeginResetOnce(void)
  * RESIDUE: register-blind rows 0+0 at 157/157 B -- an eax/ebx transposition
  * plus one scheduling window in the tail, where the original sinks the
  * chosen*0x2E0F0 lea chain below the DAT_104AB500 store and VC5 hoists it. */
-/* @t4-pass 0x10013F20 1 2026-09-07 probes 92 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x10013F20 2 2026-09-07 probes 94 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013F20 1 2026-09-07 probes 92 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10013F20 2 2026-09-07 probes 94 bytes 157 insns 56 regions 3 rows 2 census yes  (tools/brally/crank.py) */
 /* DEAD 2026-09-13 (fn.py, 3 probes): the head assignments in the orders
  * chosen/best/i/flag/cost/cur, cur first, and the declarations reordered to
  * match -- the eax/ebx transposition is unchanged (157/157, 30+30 raw). */
-/* @t4-pass 0x10013F20 3 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10013F20 4 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013F20 3 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10013F20 4 2026-09-20 probes 84 bytes 157 insns 56 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10013F20 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 157/157 insns 56/56 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 84 compiles this pass, levers accepted: mut:reorder_stmts;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 84 compiles this pass, levers accepted: mut:reorder_stmts;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10013F20 glide BrSnapPickSlot */
 int BrSnapPickSlot(void)

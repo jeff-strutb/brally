@@ -1,0 +1,8 @@
+# Port deviations for src/brally/core/drawing/br_gfxrect.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrPtrListContains
+@drop define:_CRTIMP
+@drop undef:BrPtrListContains
+@drop fn:BrNop_1002AB8F
+@drop fn:BrNop_1002AB94

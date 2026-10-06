@@ -126,7 +126,7 @@ void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
      * from +0x50 byte-identical", and that swapping the x-row operand order
      * cost 121 diffs.  None of that reproduces: the function diverges at +0x8
      * in EVERY spelling, and the spellings are indistinguishable because VC5
-     * canonicalises a whole flat float sum-of-products (see docs/VC5-IDIOMS.md,
+     * canonicalises a whole flat float sum-of-products (see docs/brally/VC5-IDIOMS.md,
      * "canonicalises commutative FLOAT addition").
      *
      * DEAD PROBES -- all eleven give byte-identical output, do not re-run:

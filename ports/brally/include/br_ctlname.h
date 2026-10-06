@@ -112,7 +112,7 @@
  * strings" -- which is how this note used to read, and that wider sentence is
  * false: the shipped table's longest entry is id 302 at 180 characters, and
  * seventeen entries are 31 or longer.  None of them reaches this sprintf.
- * Over the recovered resource (testdata/strings.txt, 303 ids):
+ * Over the recovered resource (reference/brally/data/strings.txt, 303 ids):
  *
  *      0xC3 "BUTTON %d"    9      0xC4 "Left"        4
  *      0xC5 "Right"        5      0xC6 "Forward"     7

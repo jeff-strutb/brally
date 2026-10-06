@@ -2,27 +2,27 @@
 
 The three in-scope EXEs (BRally.exe, SetVideo.exe, BossRally.exe) were
 matched as `build/{brally,setvideo,bossrally}_work/<VA>.c`. Those TUs
-are now tree-resident under `src/exe/<exe>/` and counted from
-`build/match/report_exe.csv`. This is **additive**: it does not touch
-the DLL sweep, `build/match/report.csv`, `include/`, or any existing
-`src/` module.
+are now tree-resident under `src/brally/exe/<exe>/` and counted from
+`build/brally/win32/match/report_exe.csv`. This is **additive**: it does not touch
+the DLL sweep, `build/brally/win32/match/report.csv`, `src/brally/include/`, or any existing
+`src/brally/` module.
 
 ## Layout
 
 ```
-src/exe/brally/0x00401000.c     # one function per VA
-src/exe/setvideo/0x00401000.c
-src/exe/bossrally/0x00401000.c
-tools/exe_sweep.py              # EXE-only scorer
-build/match/report_exe.csv      # EXE-only report
-build/match/orig_brally/        # extracted .text (unchanged)
-build/match/orig_setvideo/
-build/match/orig_bossrally/
+src/brally/exe/brally/0x00401000.c     # one function per VA
+src/brally/exe/setvideo/0x00401000.c
+src/brally/exe/bossrally/0x00401000.c
+tools/brally/exe_sweep.py              # EXE-only scorer
+build/brally/win32/match/report_exe.csv      # EXE-only report
+build/brally/win32/match/orig_brally/        # extracted .text (unchanged)
+build/brally/win32/match/orig_setvideo/
+build/brally/win32/match/orig_bossrally/
 ```
 
-Wall attempts stay in the work dirs. `tools/exe_sweep.py --ingest-work`
-copies a work `.c` into `src/exe/` only when `ghidra_to_match._score_source`
-returns 0 against `build/match/orig_<exe>/<VA>.bin`. Score ≠ 0 is excluded.
+Wall attempts stay in the work dirs. `tools/brally/exe_sweep.py --ingest-work`
+copies a work `.c` into `src/brally/exe/` only when `ghidra_to_match._score_source`
+returns 0 against `build/brally/win32/match/orig_<exe>/<VA>.bin`. Score ≠ 0 is excluded.
 
 ## CRT flags (load-bearing)
 
@@ -49,27 +49,27 @@ define is what turns `E8` into `FF 15`.
 ```
 
 The `.exe` in the middle token is load-bearing. `match_sweep.sources`
-walks **all** of `src/` for the substring `@implements`.
+walks **all** of `src/brally/` for the substring `@implements`.
 `match_diff.parse_implements` requires `0xVA word word`; `brally.exe`
 fails that parse (the `.` stops `\w+`), so a DLL full-sweep cannot score
 these TUs against BRGlide orig bins. Do not write
 `@implements 0x00401000 brally FreeObjList` - that *would* parse, look up
-`build/match/orig/0x00401000.bin`, and pollute `report.csv` with `no_orig`.
+`build/brally/win32/match/orig/0x00401000.bin`, and pollute `report.csv` with `no_orig`.
 
-`tools/match_sweep.py` is not modified. A file under `src/exe/` with an
+`tools/brally/match_sweep.py` is not modified. A file under `src/brally/exe/` with an
 `@implements` substring still appears in `sources`; `sweep_file` then
 returns `[]` immediately. Harmless.
 
 ## Counting
 
-`tools/total.py` `score_exe` reads `report_exe.csv` (and will run
+`tools/brally/total.py` `score_exe` reads `report_exe.csv` (and will run
 `exe_sweep.py` once if the report is missing), the same way `score_cpp`
 reads `report_cpp.csv`. It does **not** walk `build/<exe>_work`.
 
 ```
-python3 tools/exe_sweep.py              # src/exe → report_exe.csv
-python3 tools/exe_sweep.py --summary
-python3 tools/total.py                  # EXE line from report_exe.csv
+python3 tools/brally/exe_sweep.py              # src/brally/exe → report_exe.csv
+python3 tools/brally/exe_sweep.py --summary
+python3 tools/brally/total.py                  # EXE line from report_exe.csv
 ```
 
 `exe_matches.csv` remains a `total.py` manifest (exe, va, bytes) for the
@@ -100,8 +100,8 @@ static CRT past `0x401BBF`. See `docs/brally-exe-notes.md`,
 
 1. Land a 0-diff TU in `build/<exe>_work/<VA>.c` (same header convention
    as the existing work files).
-2. `python3 tools/exe_sweep.py --ingest-work` copies it to
-   `src/exe/<exe>/<VA>.c` with the `@implements` tag and refreshes
+2. `python3 tools/brally/exe_sweep.py --ingest-work` copies it to
+   `src/brally/exe/<exe>/<VA>.c` with the `@implements` tag and refreshes
    `report_exe.csv`. Or copy by hand, add the tag, and run `exe_sweep.py`
    on that file.
 3. Do not grind the walls listed in the per-EXE notes.

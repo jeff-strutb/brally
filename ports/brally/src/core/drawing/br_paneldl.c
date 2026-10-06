@@ -3,7 +3,7 @@
 #include "br_addr32.h"
 /* br_paneldl.c -- the car body-panel texture display list (0x10010FB0).
  *
- * Fresh transcription from build/ghidra_decomp/0x10010fb0.c against the
+ * Fresh transcription from build/brally/analysis/ghidra_decomp/0x10010fb0.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
 
@@ -46,7 +46,7 @@ static __inline unsigned int *BrPanelDlAlloc(void)
  * pointer, explicit-deref tests, init order, and a single panel index with
  * every counter derived from it (856 B). */
 /* @t4-pass 0x10010FB0 1 2026-09-13 probes 14 bytes 839 insns 210 regions 1 rows 14 census no  (hand, fn.py variants: alloc idiom, +5 temp, declaration/init/store orders, const pointer, deref tests, single-index loop) */
-/* @t4-pass 0x10010FB0 2 2026-09-13 probes 88 bytes 839 insns 210 regions 5 rows 28 census yes  (tools/crank.py) */
+/* @t4-pass 0x10010FB0 2 2026-09-13 probes 88 bytes 839 insns 210 regions 5 rows 28 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10010FB0 3 2026-09-20 probes 12 bytes 839 insns 210 regions 5 rows 28 census yes  (regrouping (uVar5+5)&0xff to defeat the +5 induction variable moved nothing) */
 /* @t4-pass 0x10010FB0 4 2026-09-20 probes 10 bytes 839 insns 210 regions 5 rows 28 census no   (baseline reconfirm; the panel-loop IV plan + one-fewer frame slot are allocation, per header) */
 /* @t3 0x10010FB0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

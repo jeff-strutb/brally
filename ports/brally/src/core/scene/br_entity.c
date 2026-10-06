@@ -4,7 +4,7 @@
  * linking it to its record in the parallel table, counting the ones in use,
  * and rebinding their graphics handles.
  *
- * Moved here out of the address batches under src/core/; the bodies are the
+ * Moved here out of the address batches under src/brally/core/; the bodies are the
  * text that was matched there, unchanged.
  */
 #include <string.h>
@@ -15,7 +15,7 @@
 #define BrEntityCountActive BrEntityCountActive_cdecl_hdr
 /* slice1_09.h declares this cdecl; the original is thiscall with no stack
  * args.  Hide that prototype so the matching body can use __fastcall --
- * the same split src/core/slice1_09.c made while this lived there. */
+ * the same split src/brally/core/slice1_09.c made while this lived there. */
 #define BrEntityBindAux      BrEntityBindAux_cdecl
 #include "slice1_09.h"   /* BR_ENTITY_* offsets and strides, BrMat4 */
 #include "slice2_12.h"   /* the BrEntityCountActive prototype */
@@ -125,7 +125,7 @@ uint32_t BrEntityCountActive(void)
     return c;
 }
 
-/* ---- moved out of src/core/slice2_19.c's ghidra-matched tail ---------- */
+/* ---- moved out of src/brally/core/slice2_19.c's ghidra-matched tail ---------- */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

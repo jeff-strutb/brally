@@ -18,7 +18,7 @@ vanished from the placed image). Only transcribed (T3) bodies can grow (they
 annex). MSVC5 has no `/Gh`/`_penter` auto-hook (MSVC6-only), so no free
 whole-program trace either.
 
-**The mechanism - `_force_annex` in image_build_t3.py + config/force_annex.csv**
+**The mechanism - `_force_annex` in image_build_t3.py + config/brally/force_annex.csv**
 (`va,file,opt,symbol,name`): spills a listed MATCHED function into the `.t3x`
 annex like an over-slot T3 body - grown body placed whole in the appended
 section, 5-byte `jmp annex` thunk left at the original VA. Resolution: rel32
@@ -36,7 +36,7 @@ the object: no new .rdata section, externals only imports + known funcs.
 
 **BR_TRACE=1 (comprehensive execution tracer, 2026-09-21).** collect_t3 routes
 EVERY transcribed function (both lanes, size>=19) through the annex with a stub
-at its VA, and `BrDiagTrace` (src/core/diag/br_trace.c, __stdcall, stack strings,
+at its VA, and `BrDiagTrace` (src/brally/core/diag/br_trace.c, __stdcall, stack strings,
 imported fopen/fprintf/fclose) appends the VA to brally.log. Any crash's last log
 line = the function it died in; page faults still give the Win98 address. The
 stub MUST be register/flag-transparent: `pushad; pushfd; push VA; call sink;
@@ -50,7 +50,7 @@ flag, so the shipping image is unaffected. Decode brally.log VAs with
 report.csv+report_cpp.csv (va->name).
 
 Reusable for any future byte-locked function that needs diagnostic logging: add
-a row to config/force_annex.csv and the stack-string/imported-call edit. Related
+a row to config/brally/force_annex.csv and the stack-string/imported-call edit. Related
 build-bug crash classes: [jump-table-override-crash-class](jump-table-override-crash-class.md). brally.exe is a
 thin launcher (28 fns: INI + LoadRallyMain + WinMain) - the game (RallyMain) and
 all crashes live in BRGlide.dll, so EXE logging can't see them.
@@ -107,7 +107,7 @@ The crash-EIP filter is the general tool that ended the guessing. See
 bracestep-wall.
 
 ** STALE CPP-SWEEP OBJ - the fix silently didn't ship (cost a cycle).** The
-C++ lane in image_build_t3.collect_t3 READS cached `build/match/obj_cpp/
+C++ lane in image_build_t3.collect_t3 READS cached `build/brally/win32/match/obj_cpp/
 <base>_sweep_<VA>_<ti>.obj` and NEVER rebuilds them from source (recompile flag
 not consulted there; the T4 "0 reused, 354 rebuilt" line is the C backbone
 only). After editing a .cpp lane source you MUST regenerate its sweep objs

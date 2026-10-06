@@ -2,14 +2,14 @@
 """Build-time data lift: the original's initialised data, from the user's DLL.
 
 The decompilation's matching build takes .rdata and initialised .data from
-the original binary (tools/image_build.py); the source holds code, not those
+the original binary (tools/brally/image_build.py); the source holds code, not those
 bytes. The 64-bit core gets the same bytes the same way: at build time, from
 the user's own BRGlide.dll, into a generated file under build/ that is never
 committed.
 
-For every global src/core/data/br_globals.c defines at an address in the
+For every global src/brally/core/data/br_globals.c defines at an address in the
 initialised range (0x10077000..0x100BCE00) this emits, into
-build/portable/gen/br_data.c, the statements that give it the original's
+build/brally/null-soft/gen/br_data.c, the statements that give it the original's
 value inside `void br_data_lift(void)`:
 
   - a pointer-free object whose layout is the same at both widths (and the
@@ -21,11 +21,11 @@ value inside `void br_data_lift(void)`:
     layouts.
 
 The lifted vtables g_brVtbl_<VA> (br_vtables.h) are defined here too.
-Anything that cannot be expressed is listed in build/portable/gen/
+Anything that cannot be expressed is listed in build/brally/null-soft/gen/
 datalift.txt: an address no core symbol covers, a pointer the original
 stored without a relocation.
 
-Usage: datalift.py [--dll orig/BRGlide.dll]
+Usage: datalift.py [--dll reference/brally/orig/BRGlide.dll]
 """
 import bisect
 import json
@@ -44,7 +44,7 @@ import globfold  # noqa: E402
 ROOT = vm.ROOT
 LO, HI = 0x10077000, 0x100BCE00
 GLOBALS_C = 'ports/brally/src/core/data/br_globals.c'
-OUT = os.environ.get('OUT', 'build/portable') + '/gen'
+OUT = os.environ.get('OUT', 'build/brally/null-soft') + '/gen'
 
 SCALAR = {'char': 1, 'signed char': 1, 'unsigned char': 1, '_Bool': 1, 'bool': 1,
           'short': 2, 'unsigned short': 2, 'int': 4, 'unsigned int': 4,
@@ -267,7 +267,7 @@ class Syms:
                     if len(p) == 3:
                         defined.add(p[2].lstrip('_'))
         self.defined = defined
-        for line in open('build/wasm/placement.csv'):
+        for line in open('build/brally/wasm32/placement.csv'):
             p = line.strip().split(',')
             if len(p) >= 2 and p[0].startswith('0x') and p[1] in defined:
                 self.fn[int(p[0], 16)] = p[1]
@@ -783,7 +783,7 @@ class Lift:
 
 
 if __name__ == '__main__':
-    dll = 'orig/BRGlide.dll'
+    dll = 'reference/brally/orig/BRGlide.dll'
     if '--dll' in sys.argv:
         dll = sys.argv[sys.argv.index('--dll') + 1]
     Lift(dll).run()

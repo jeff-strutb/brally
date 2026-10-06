@@ -53,10 +53,10 @@
  * the TMU's low water-mark and if that would pass 2MB or the TMU's max,
  * the high water-mark. Returns the new slot index, or -1 if the table is
  * full (1024) or the TMU is out of memory. */
-/* @t4-pass 0x10028200 1 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028200 2 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028200 3 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028200 4 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028200 1 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10028200 2 2026-09-07 probes 150 bytes 436 insns 108 regions 2 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10028200 3 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10028200 4 2026-09-10 probes 30 bytes 430 insns 105 regions 3 rows 3 census yes  (tools/brally/crank.py) */
 /* @t3 0x10028200 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 430/441 insns 105/108 rows 3+0 regions 3 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
@@ -67,7 +67,7 @@
  * original's fall-through-on-jb layout; the `>= ... goto fail` spelling
  * inverts the branch and unanchors 115 B.
  * 30 compiles in the last pass, levers accepted: none that survived the
- * cluster rule; every candidate and score is in build/match/crank.log.
+ * cluster rule; every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10028200 glide FUN_10028200 */
 int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,

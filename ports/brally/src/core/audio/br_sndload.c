@@ -120,9 +120,9 @@ fail:
  * mmioAdvance as it empties, and takes what it read off the chunk's
  * remaining size.  Reports how many bytes it stored; a 0xE103 (end of
  * file) with nothing stored if the file ran out, or the WINMM error. */
-/* @t4-pass 0x100701B0 1 2026-09-07 probes 122 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x100701B0 2 2026-09-07 probes 92 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x100701B0 3 2026-09-07 probes 93 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100701B0 1 2026-09-07 probes 122 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100701B0 2 2026-09-07 probes 92 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100701B0 3 2026-09-07 probes 93 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x100701B0 4 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census no  (hand, fn.py variants: copy/loop/guard/decl spellings, all inert or worse) */
 /* @t4-pass 0x100701B0 5 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census yes  (hand, fn.py variants: operand orders, casts, index forms, all inert; corpus query at +0xb0) */
 /* @t3 0x100701B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -213,9 +213,9 @@ fail:
  * the voice argument's slot holds the file handle once the voice pointer
  * has been copied out, and the format argument's slot receives the byte
  * count the reader hands back. */
-/* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10070280 2 2026-09-07 probes 100 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10070280 3 2026-09-07 probes 84 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10070280 2 2026-09-07 probes 100 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10070280 3 2026-09-07 probes 84 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10070280 4 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census no  (hand, fn.py variants: copy-init order/statement forms, decl orders, literal spellings, all inert or worse) */
 /* @t4-pass 0x10070280 5 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census yes  (hand, fn.py variants: TU position sweep -- both other slots inert -- plus name-swap allocation-hint and cast respellings, all inert) */
 /* @t3 0x10070280 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

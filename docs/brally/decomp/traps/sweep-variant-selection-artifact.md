@@ -4,7 +4,7 @@
 
 > match_sweep picks the RAW-BYTE-min variant, so a frameless original can be recorded on a dead-end /Oy- (ebp-frame) or /Op-bloated variant that is register-blind-worse and can NEVER byte-match -- this corrupts t3.py's A1/A2/A3/A4 and fakes 'missing code' signals. Check the variant before trusting any gate on a large x87 function.
 
-**Found 2026-09-15 re-triaging the five-largest.** `tools/match_sweep.py`
+**Found 2026-09-15 re-triaging the five-largest.** `tools/brally/match_sweep.py`
 ranks variants by `key = (match?, raw_byte_diffs, |size gap|)` (score +
 best-selection, ~line 260/325). VARIANTS include `O2y = /O2 /Oy-` (frame
 pointer KEPT, ebp frame) and `O2p = /O2 /Op`. For a FRAMELESS original
@@ -31,7 +31,7 @@ recorded variant):**
 the original's prologue (`sub esp` = frameless) against the recorded variant's.
 If the recorded variant is /Oy- (push ebp) on a frameless original, or /Op when
 plain O2 is register-blind-closer, RE-MEASURE against O2 with
-`tools/msetdiff.py build/match/orig/<VA>.bin build/match/obj_O2/<file>.obj
+`tools/brally/msetdiff.py build/brally/win32/match/orig/<VA>.bin build/brally/win32/match/obj_O2/<file>.obj
 <sym>`. An "A1/A4 fail = missing code" signal on such a function is very likely
 a variant artifact, not transcription work. Only 0x1000CBA0 objdl has genuine
 SEMANTIC residue under O2 (shr 8 vs shr 0x10, missing and 0x1f, indexed byte

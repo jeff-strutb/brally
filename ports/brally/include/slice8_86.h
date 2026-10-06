@@ -17,7 +17,7 @@
  *
  * A COUNTING TRAP WORTH RECORDING, because it inverted the ranking on the
  * first pass and would have sent this packet at the wrong function.
- * config/shared.csv pairs a D3D address with a Glide one. If you then look
+ * config/brally/shared.csv pairs a D3D address with a Glide one. If you then look
  * BOTH addresses up in BOTH binaries you are counting a number that is a
  * valid address in the other image too, and it names a different function
  * there. Done that way, `BrExt_10041AC0` came out top of the demand list with
@@ -153,7 +153,7 @@ extern const BrPlatOs86 *g_pBrPlatOs86;
  * `BrUiPhase *`), and it asked for an adjudication rather than a cast.
  *
  * ADJUDICATION, from Glide 0x100439B0 (== D3D 0x1004A580, `body` match in
- * config/shared.csv, 3746 bytes on both sides):
+ * config/brally/shared.csv, 3746 bytes on both sides):
  *
  *   100439B0  push -1                 \
  *   100439B2  push 0x1007536D          | SEH frame: 12 bytes

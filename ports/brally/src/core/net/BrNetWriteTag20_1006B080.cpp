@@ -8,7 +8,7 @@
 /* @implements 0x1006B080 glide BrNetWriteTag20
  * @cpp_symbol _BrNetWriteTag20
  *
- * The C transcription (src/core/net/br_netpkt.c, same VA) is shape-exact
+ * The C transcription (src/brally/core/net/br_netpkt.c, same VA) is shape-exact
  * except for the byte argument of the stream writer: the original pushes
  * `kind | 0x20` with the upper three bytes of eax still dirty, which MSVC
  * emits only when the thiscall callee's parameter is a BYTE type.  C cannot

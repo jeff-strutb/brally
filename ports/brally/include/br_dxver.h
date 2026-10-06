@@ -12,7 +12,7 @@
  * THE ONE FUNCTION
  *
  *   0x1001D8A0  (Glide, 924 bytes)   == 0x10030210 (D3D), `shared` in
- *                                      config/shared.csv, so either build
+ *                                      config/brally/shared.csv, so either build
  *                                      answers and no arbitration is needed.
  *
  * It is the DirectX SDK's `GetDXVersion` sample routine, adapted: two out

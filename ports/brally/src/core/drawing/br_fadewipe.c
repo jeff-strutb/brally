@@ -231,7 +231,7 @@ int BrFadeRelease(void)
  * 0x100A81C0 / 0x100A81C4), the destinations d3d 0x105754FC / 0x10575500.
  * Note the crossed order -- the WIDTH goes to the HIGHER destination.  The
  * 16-byte `jmp +0x0b` / 11-nop link-stage preamble in front of the body is in
- * config/preambles.csv and is never spelled here. */
+ * config/brally/preambles.csv and is never spelled here. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -265,10 +265,10 @@ void BrFadeLatch(void)
  * a limited number of frames' worth of bars once the wipe has run out of
  * travel. */
 /* @implements 0x1002B340 d3d BrFadeDrawBars */
-/* @t4-pass 0x100183B0 1 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x100183B0 2 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x100183B0 3 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x100183B0 4 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x100183B0 1 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100183B0 2 2026-09-07 probes 80 bytes 800 insns 216 regions 4 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100183B0 3 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100183B0 4 2026-09-10 probes 30 bytes 800 insns 220 regions 6 rows 2 census yes  (tools/brally/crank.py) */
 /* @t3 0x100183B0 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 800/803 insns 220/222 rows 2+0 regions 6 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
@@ -279,7 +279,7 @@ void BrFadeLatch(void)
  * away), bars is read into a local whose decrement writes back, and pos2
  * reaches the bar command from the local the test already loaded.
  * 30 compiles in the last pass, levers accepted: none; every candidate and
- * score is in build/match/crank.log.
+ * score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x100183B0 glide BrFadeDrawBars */
 /* The original takes NO ARGUMENT: it reads eleven standalone globals, exactly
@@ -511,8 +511,8 @@ void BrFadeDrawBars(void)
  * arm (sub eax,esi vs edi and the paired adds/cmp).  Statement-order probes
  * move the toggle between the load window and the arithmetic window but
  * never clear both -- allocator-residue class. */
-/* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x100186E0 2 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100186E0 2 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x100186E0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 685/685 insns 165/165 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2

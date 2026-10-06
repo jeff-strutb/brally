@@ -1,0 +1,15 @@
+# Port deviations for src/brally/core/racing/br_idleloop.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_106e7738
+@drop var:DAT_106e79d0
+@drop var:DAT_106ea388
+@drop var:DAT_106ea410
+@drop var:DAT_106ea430
+@drop var:DAT_106ecb48
+@drop var:DAT_106ed650
+@drop proto:BrPodNop
+@drop proto:BrStubTrue
+@drop fn:BrIdleLoop_1002DD30
+@drop fn:BrIdleLoop_1002DD9A

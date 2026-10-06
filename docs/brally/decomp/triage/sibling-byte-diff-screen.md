@@ -8,7 +8,7 @@ Before writing a line of C for a suspected family, **diff the extracted
 original bins against each other**, grouped by identical size:
 
 ```python
-# for each size class in build/match/orig with no report.csv row,
+# for each size class in build/brally/win32/match/orig with no report.csv row,
 # count differing bytes against the first member
 ```
 
@@ -33,4 +33,4 @@ with parameters; work out what the differing bytes select (a field offset, an
 immediate, a call target) and write the body once as a macro whose argument is
 that thing. Do NOT factor it as a function taking a callback - that emits an
 indirect call the original does not have. See [parked-is-not-walled](parked-is-not-walled.md) and
-the clip-plane entry in the repo's `docs/VC5-IDIOMS.md`.
+the clip-plane entry in the repo's `docs/brally/VC5-IDIOMS.md`.

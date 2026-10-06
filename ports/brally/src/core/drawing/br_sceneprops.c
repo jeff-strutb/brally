@@ -46,7 +46,7 @@
 /* The matched bytes need the state block FILE-STATIC in this TU, as it was
  * in slice2_17.c: against an external g_s17, /O2 reschedules every pGfx
  * bump (1776 -> 1648 bytes).  The image resolves each of these references
- * by address (config/reloc_overrides.csv, keyed by function and offset,
+ * by address (config/brally/reloc_overrides.csv, keyed by function and offset,
  * not by symbol), so the matching arm names a TU-static block of the same
  * layout.  The port has no #else arm to change: it uses the shared g_s17. */
 
@@ -56,12 +56,12 @@
  * (`mov edx,[ecx*4+0x100a9930]`). BrS17State models all three as pointers,
  * which costs a load at every use and rotates the whole allocation.
  *
- * PROPER FIX (header, serialised -- not done here): in include/slice2_17.h
+ * PROPER FIX (header, serialised -- not done here): in src/brally/include/slice2_17.h
  * make them objects --
  *      const uint32_t *pColAA5D0;  ->  const uint32_t colAA5D0[4];
  *      BrMat4 *pLightMtx;          ->  BrMat4 lightMtx;
  *      BrMat4 *pTransMtx;          ->  BrMat4 transMtx;
- * and drop the three assignments in tests/test_slice2_17.c. Until then the
+ * and drop the three assignments in tests/brally/test_slice2_17.c. Until then the
  * matching build models them locally and the PORT IS LEFT EXACTLY AS IT
  * WAS -- do not delete the #else arm. */
 /* The four prop brightness levels (64, 128, 192, 255 grey) the lamp and
@@ -79,7 +79,7 @@
  * `test ah,4`. Two adjacent unsigned char members do not reproduce that --
  * VC5 narrows each use to its own byte load and the word never gets CSEd.
  *
- * PROPER FIX (header, serialised -- not done here): in include/slice2_17.h
+ * PROPER FIX (header, serialised -- not done here): in src/brally/include/slice2_17.h
  * replace
  *      unsigned char f04;  unsigned char f05;
  * with

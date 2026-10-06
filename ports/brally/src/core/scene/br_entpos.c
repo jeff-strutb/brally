@@ -5,7 +5,7 @@
  * struct from slice1_05.h's same-named one in br_entity.c, so the two cannot
  * share a translation unit.
  *
- * Moved here out of src/core/slice3_45.c (an address batch, not a module).
+ * Moved here out of src/brally/core/slice3_45.c (an address batch, not a module).
  */
 #include "br_match.h"
 #include "slice3_41.h"   /* BrDriverCar, the canonical record */

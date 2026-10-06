@@ -2,14 +2,14 @@
 
 Status: done as planned (2026-10-03). The core builds and plays on macOS
 (Metal or Vulkan) and builds for Windows (Vulkan), and matches the macOS
-32-bit lane (`ports/macos/wasm/`) tick for tick under `BR_VCLOCK`. That lane
+32-bit lane (`ports/brally-wasm/wasm/`) tick for tick under `BR_VCLOCK`. That lane
 stays the home of the Remastered lighting, car, skies and music until they
 move over. The README's "Native port" section describes the result; this
 file is the design it was built to.
 
 ## Goal
 
-One native build of `src/core` that any 64-bit C compiler can build, with a
+One native build of `src/brally/core` that any 64-bit C compiler can build, with a
 thin platform layer under it:
 
 | OS | renderer | status |
@@ -29,8 +29,8 @@ measures each one from the compiler's own view of the tree. Run it for the
 current counts (never copy a count from here):
 
 ```sh
-.venv/bin/python ports/brally/tools/lp64audit.py   # needs build/wasm from build_wasm.sh
-cat build/lp64audit/summary.txt
+.venv/bin/python ports/brally/tools/lp64audit.py   # needs build/brally/wasm32 from build_wasm.sh
+cat build/brally/analysis/lp64audit/summary.txt
 ```
 
 1. **The original image's data.** The 32-bit lane loads BRGlide.dll's own
@@ -64,12 +64,12 @@ clang fuses multiply-add, which rounds differently.
 ## How the core is made
 
 The core is a one-time copy of the decomp: `ports/brally/src` and
-`ports/brally/include`, taken from the commit in `src/FORKED-FROM`, and edited
+`ports/brally/include`, taken from the commit in `src/brally/FORKED-FROM`, and edited
 directly. Every function is certified to behave as the original does, so
-later matching work in `src/` (byte shape, not behaviour) never has to flow
-into it. `src/` and `include/` stay exactly what MSVC 5.0 compiles.
+later matching work in `src/brally/` (byte shape, not behaviour) never has to flow
+into it. `src/brally/` and `src/brally/include/` stay exactly what MSVC 5.0 compiles.
 
-`tools/sync.py` catches the core up: it lists every decomp commit since
+`tools/brally/sync.py` catches the core up: it lists every decomp commit since
 `FORKED-FROM` with the files it touched, each function whose signature
 changed, and each file the decomp added, removed or renamed. A change of
 behaviour, signature, a global's identity or a file name is carried by hand
@@ -102,7 +102,7 @@ Each OS's platform layer implements it.
 4. **Disc data.** N64-format models, tracks and display lists keep their
    4-byte address slots, holding 32-bit offsets into one asset arena, read
    through one accessor.
-5. **Link and platform layer.** Move `ports/macos/wasm/host` and `native`
+5. **Link and platform layer.** Move `ports/brally-wasm/wasm/host` and `native`
    from guest memory to real pointers behind `win32.h` and the Glide API.
    Metal first. The renderer interface stays neutral between graphics APIs,
    and Remastered shaders have one source translated per API.

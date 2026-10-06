@@ -56,7 +56,7 @@ def main():
     objs = sorted({m.group('obj') for _, m in hits})
     # one probe TU that sees every record involved
     hdrs = sorted({D[o][2] for o in objs if o in D})
-    probe = os.path.join(ROOT, 'build/portable/bytefix_probe.c')
+    probe = os.path.join(ROOT, 'build/brally/null-soft/bytefix_probe.c')
     with open(probe, 'w') as fh:
         for h in hdrs:
             fh.write('#include "%s"\n' % h)

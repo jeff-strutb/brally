@@ -1,0 +1,21 @@
+# Port deviations for src/brally/core/audio/br_sndrace.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop proto:FUN_1006c290
+@drop var:DAT_100b2f04
+@drop var:DAT_100b32b0
+@drop var:DAT_100b32bc
+@drop var:DAT_100b32c0
+@drop var:DAT_10af3bb0
+@drop var:DAT_10b71338
+@drop var:DAT_10b713e0
+@drop var:DAT_10b71488
+@drop var:DAT_10b71530
+@drop var:DAT_10b71534
+@drop var:g_BrCtrlCfg
+@drop proto:BrFfbInit
+@drop proto:BrSfxSrcPlaySilent
+@drop proto:BrSndBankClear
+@drop proto:BrSndBankSetCar
+@drop fn:FUN_10061310

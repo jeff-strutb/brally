@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-18.*
 
-> tools/reloc_pair.py recovers unresolvable T3 reloc addresses from the original body by instruction-shape pairing; 81/118 T3 place (d203f757); selftest 329/329, exposed stale D3D map rows; remaining 37 blockers classified
+> tools/brally/reloc_pair.py recovers unresolvable T3 reloc addresses from the original body by instruction-shape pairing; 81/118 T3 place (d203f757); selftest 329/329, exposed stale D3D map rows; remaining 37 blockers classified
 
 **2026-09-18 (d203f757), sequel to [t3-image-reference-fill-unsound](t3-image-reference-fill-unsound.md):** T3
 image placement went 56 → 81 of 118 via three levers, all evidence-gated:
@@ -15,14 +15,14 @@ image placement went 56 → 81 of 118 via three levers, all evidence-gated:
    `resolve_bytes`, pure refactor - the `$L` SEH dummy stays oracle-only,
    never in an image) feeds `compiled_functions(extra_sites=)` per-site
    values. (+4)
-3. **`tools/reloc_pair.py` - THE NEW LEVER:** recovers a hand-named
+3. **`tools/brally/reloc_pair.py` - THE NEW LEVER:** recovers a hand-named
    static/global's address from the ORIGINAL body's own dwords by
    register-blind instruction-shape pairing. Forced assignments only:
    per-key count match, one symbol + one implied address per group,
    whole-function conservation, section validation, known-address decoy
    refusal, cross-function agreement. (+9)
 
-**Evidence protocol:** `.venv/bin/python tools/reloc_pair.py --selftest` =
+**Evidence protocol:** `.venv/bin/python tools/brally/reloc_pair.py --selftest` =
 leave-one-out over every certified T3 row. 329 recoveries; 324 agree with the
 maps; the 5 "disagreements" all reproduce the original image's own dword  - 
 they are STALE D3D-SPACE MAP ROWS (g_220C40, g_br0AB3D8, BrSub10071130
@@ -78,5 +78,5 @@ D3D-suffixed `g_<HEX>` name whose decode lands inside a Glide section
 poisons augment_maps the same way whenever the learned map lacks the key  - 
 br_cd.c siblings g_220CD0/g_220C3C/g_220CD8/g_0940A4/g_0940A8/g_575470/
 g_575454, br_optcycle.c g_br0AA010/g_br0AB3E0/g_br0B4050/g_br22AF18, and
-include/slice2_25.h:333's stale decl comment. Each rename needs its own
+src/brally/include/slice2_25.h:333's stale decl comment. Each rename needs its own
 byte verification (globals_shared.csv gives the expected Glide twin).

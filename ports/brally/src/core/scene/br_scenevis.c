@@ -157,8 +157,8 @@ typedef struct BrViewRect {
  * velocity), normalises it, and pushes its byte-packed direction into a
  * four-deep history; finally clamps every driver's projected box to the
  * current view rectangle. */
-/* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000e320 2 2026-09-20 probes 20 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000e320 2 2026-09-20 probes 20 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/brally/crank.py) */
 /* @t3 0x1000E320 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1992/1992 insns 543/543 rows 10+10 regions 2 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2

@@ -8,12 +8,12 @@
  *
  * The dispatcher, 0x10001320:
  *
- * src/core/menus/br_uispr.c carries a `BrUiSprClip()` tagged at this address,
+ * src/brally/core/menus/br_uispr.c carries a `BrUiSprClip()` tagged at this address,
  * but that is only the geometry HALF of the original: the port factored the
  * clip out into a predicate returning w/h through `int32_t *` out-parameters,
  * and left the two blit calls to its caller.  The original is one function --
  * clip, then compute both surface pointers, then dispatch to the keyed blit
- * (0x10001440) or the plain one (0x100013F0).  `tools/claimcheck.py` flags it
+ * (0x10001440) or the plain one (0x100013F0).  `tools/brally/claimcheck.py` flags it
  * as "orig calls 2, port 0"; that flag was right.
  *
  * Signature, read off the frame (`sub esp,8` + four saves, args from
@@ -71,8 +71,8 @@
 
 /* WHAT IT DOES: copy a rectangle of pixels from one off-screen picture to
  * another at a given position. The blitter behind the front end's sprites. */
-/* @t4-pass 0x10001320 1 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10001320 2 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10001320 1 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10001320 2 2026-09-07 probes 83 bytes 206 insns 85 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10001320 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 206/206 insns 85/85 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -80,7 +80,7 @@
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10001320 glide BrUiSprBlit */
 void BrUiSprBlit(BrSurf *pDst, int x, int y, BrSurf *pSrc,

@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-21.*
 
-> RESOLVED via the C++ lane - 0x1003FA00 BrPhaseLeave is implemented in src/core/cpp/0x1003FA00.cpp. EAX-vtable-pattern (C++ thiscall) functions aren't a wall; they belong in the C++ lane, not matched in C. Keep the EAX-vs-EDX thiscall analysis.
+> RESOLVED via the C++ lane - 0x1003FA00 BrPhaseLeave is implemented in src/brally/core/cpp/0x1003FA00.cpp. EAX-vtable-pattern (C++ thiscall) functions aren't a wall; they belong in the C++ lane, not matched in C. Keep the EAX-vs-EDX thiscall analysis.
 
 `BrPhaseLeave_10046560` (Glide VA `0x1003FA00`) has 13 remaining diffs after
 inlining `Br31LeavePrologue` and using direct globals. The stuck diffs are in the

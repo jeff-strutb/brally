@@ -9,7 +9,7 @@
  *   0x1005B2B0 -> Glide 0x100540D0   walk the string
  *   0x10047360 -> Glide 0x100407B0   choose the kind byte
  *
- * All five are `shared` in config/shared.csv, so the two builds agree.
+ * All five are `shared` in config/brally/shared.csv, so the two builds agree.
  *
  * ==========================================================================
  * 0x10047360 EXISTS TWICE IN THIS TREE, AND THAT IS DELIBERATE
@@ -101,8 +101,8 @@ const BrUiSprite *BrUiSpriteAt(int32_t i)
  * two sheets of big square pictures -- by laying each sheet out as a fixed
  * grid. Everything that later draws a letter or a picture just asks for cell
  * number N and gets the rectangle from here. */
-/* @t4-pass 0x10058540 1 2026-09-07 probes 56 bytes 309 insns 112 regions 4 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10058540 2 2026-09-07 probes 56 bytes 309 insns 112 regions 4 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10058540 1 2026-09-07 probes 56 bytes 309 insns 112 regions 4 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10058540 2 2026-09-07 probes 56 bytes 309 insns 112 regions 4 rows 0 census yes  (tools/brally/crank.py) */
 /* @implements 0x10058540 glide BrSprFontRectInit_1005F800 */
 void BrSprFontRectInit_1005F800(void)
 {
@@ -216,8 +216,8 @@ static int32_t BrSprSheetBlitFlags(int32_t iSheet)
 typedef struct { short v; } BrGlyphI16;
 typedef struct { float v; } BrGlyphF32;
 typedef struct { int v; }   BrGlyphI32;
-/* @t4-pass 0x10054550 1 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10054550 2 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10054550 1 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10054550 2 2026-09-07 probes 42 bytes 113 insns 36 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* WHAT IT DOES: draw one character of the FIRST sprite font at the given
  * screen position; the text box's kind picks which sprite sheet the glyph
  * comes from. Always reports success. */
@@ -333,7 +333,7 @@ void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
  * asked to work out its centred starting point instead. */
 /* THE TAG IS ON THE WRONG BODY -- read this before touching 0x1005B2B0.
  *
- * 0x1005B2B0 (glide 0x100540D0) is 212 bytes, and config/shared.csv pairs the
+ * 0x1005B2B0 (glide 0x100540D0) is 212 bytes, and config/brally/shared.csv pairs the
  * two by BODY, not by slot, so both really are that size.  What lives there is
  * the whole DRAW routine: the pen-start below is its first thirty bytes,
  * inlined, and the rest is the character loop.  The twelve-line function this
@@ -355,7 +355,7 @@ void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
  *     slots `void (*)(BrTextBox *)` because their arity was unknown; a LOCAL
  *     __fastcall view of the vtable with struct-typed stack arguments is how
  *     to reach them without touching that shared header (see the thiscall
- *     entry in docs/VC5-IDIOMS.md -- this is now known to work through a
+ *     entry in docs/brally/VC5-IDIOMS.md -- this is now known to work through a
  *     function pointer).
  *   - BrSprGlyphClassify is INLINED (VC5 inlines no static helper), and the
  *     index arithmetic is 16-bit: `movsx cx, al` then `sub ecx, 0x20`.
@@ -364,7 +364,7 @@ void BrSprFontGlyphB_1005B7A0_port(int32_t iGlyph, float x, float y,
  *     and sprite at +4 -- while slice3_39.h's BrGlyphMetric is eight bytes at
  *     0x100AC6E4.  A third table, or a wider one; it needs its own type
  *     before this body can be written. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100540D0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x100540D0.cpp */
 float BrSprFontPenStart_1005B2B0(BrTextBox *pBox);
 
 /* BrSprFontDraw_1005B2B0: the placed body is BrSprFontDraw_1005B2B0_100540D0.cpp */

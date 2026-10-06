@@ -48,7 +48,7 @@
  *
  * HOW A TEXTURE REACHES THE BIND OPCODE
  * ----------------------------------------------------------------------
- * A shipped .rca contains NO 0xDC at all -- measured, testdata/bb.rca has 84
+ * A shipped .rca contains NO 0xDC at all -- measured, reference/brally/data/bb.rca has 84
  * 0xFD, 24 0xF3, 15 0xF0, 6 0xF5, 6 0xF2 and zero 0xDC -- yet this
  * interpreter has no handler for any of those and textures plainly appear.
  * The resolution is that the 0xDC is WRITTEN INTO THE LIST AT LOAD TIME, over
@@ -153,7 +153,7 @@
  *   case (siz 0, fmt 3 -> 11), where the real third case is I4; and the
  *   parenthesis about the models was a guess that nobody had decoded.
  *
- *   DECODED, over all nineteen shipped assets in testdata/ (16 .rca cars, two
+ *   DECODED, over all nineteen shipped assets in reference/brally/data/ (16 .rca cars, two
  *   .trk tracks, BossRally.pod).  Every G_SETTILE (0xF5) sitting in the
  *   canonical texture-load idiom -- a G_SETTIMG, a load (0xF3/0xF4/0xF0),
  *   this 0xF5, then a 0xF2 G_SETTILESIZE, syncs only in between -- was

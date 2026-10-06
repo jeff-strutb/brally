@@ -2,12 +2,12 @@
 
 *Recorded 2026-08-28.*
 
-> Only 7% (40/580) of the diff residue is a true coloring wall; 223 are complete transcriptions with a >=70% structural gap. The 'coloring, move on' verdict was applied far beyond the evidence. Rank with tools/fnmatch/triage.py.
+> Only 7% (40/580) of the diff residue is a true coloring wall; 223 are complete transcriptions with a >=70% structural gap. The 'coloring, move on' verdict was applied far beyond the evidence. Rank with tools/brally/fnmatch/triage.py.
 
-**2026-08-28, after [brtex3dexpand-wall-broken](../functions/brtex3dexpand-wall-broken.md).** `tools/fnmatch/triage.py`
+**2026-08-28, after [brtex3dexpand-wall-broken](../functions/brtex3dexpand-wall-broken.md).** `tools/brally/fnmatch/triage.py`
 measures how much of a function's gap SURVIVES normalising every GP register
 to one name, and ranks complete transcriptions ahead of the missing-code
-class. Over the 580 `status=diff` rows in `build/match/report.csv`:
+class. Over the 580 `status=diff` rows in `build/brally/win32/match/report.csv`:
 
 | verdict | count | share |
 |---|---:|---:|
@@ -41,7 +41,7 @@ counter-fold cracked.
 The 189 MISSING-CODE rows are the separate, already-known
 [inlined-helper-match-class](inlined-helper-match-class.md) workstream - do not mix them in.
 
-**CAVEAT:** triage.py reads `build/match/obj_*/`, only as fresh as the last
+**CAVEAT:** triage.py reads `build/brally/win32/match/obj_*/`, only as fresh as the last
 sweep that touched each file. A row that looks wrong for a function you just
 edited is a stale .obj (BrTex3dExpand's own row was stale when this ran).
 

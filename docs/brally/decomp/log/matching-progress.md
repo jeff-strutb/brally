@@ -16,9 +16,9 @@ as "folded into callers, or the tag's name is wrong" -- there is now a THIRD
 cause: correctly-written functions the scorer structurally could not see. See
 [match-tooling-gotchas](../traps/match-tooling-gotchas.md). Re-sweep before trusting the 30.
 
-Run `python3 tools/match_sweep.py` for the full count -- it compiles every
+Run `python3 tools/brally/match_sweep.py` for the full count -- it compiles every
 tagged file at /O2 AND /Od, takes the better per function, and writes
-`build/match/report.csv`. Of the 84 matches, 71 are /O2 and 12 are /Od.
+`build/brally/win32/match/report.csv`. Of the 84 matches, 71 are /O2 and 12 are /Od.
 
 **CONFIRMED TWICE (2026-08-20): the no-cascade law is real.** Laying BrDriverCar
 out at its true 0x2B68 offsets -- a correct, compiler-asserted fix to a struct
@@ -46,7 +46,7 @@ internal padding (0x438 -> 0x434) and aText[3] then pulls everything after it
 **Byte-diff counts are a bad ranking metric.** Once sizes differ, one inserted
 instruction near the top desynchronises everything after it, so a 95%-correct
 function reads as "234 bytes wrong". It measures how EARLY the first
-divergence is, not how much is wrong. `tools/objdiff.py` (needs `.venv`) gives
+divergence is, not how much is wrong. `tools/brally/objdiff.py` (needs `.venv`) gives
 the real instruction-level side-by-side and diagnoses a function in seconds --
 that is the working tool, and it already existed. Do not build a ranker.
 
@@ -137,9 +137,9 @@ links slice5_61, etc.
 **How to resume:**
 ```
 cd /Users/jeffreywilbur/projects/strutb/brally
-sh build.sh && sh tools/regress.sh   # verify port (136/136)
+sh build.sh && sh tools/brally/regress.sh   # verify port (136/136)
 # Full matching recompile + count:
-sh build_match.sh  # or the manual loop below
+sh tools/brally/build_match.sh  # or the manual loop below
 ```
 
 **Parallelizable:** yes, each function/file is independent. Multiple

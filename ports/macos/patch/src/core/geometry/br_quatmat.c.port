@@ -1,8 +1,0 @@
-# Port deviations for src/core/geometry/br_quatmat.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop type:BrMat4
-@drop proto:BrMat4FromCarState
-@after proto:BrMat4FromCarState
-#include "slice3_42.h"
-@end

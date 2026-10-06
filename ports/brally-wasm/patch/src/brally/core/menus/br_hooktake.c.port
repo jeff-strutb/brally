@@ -1,0 +1,47 @@
+# Port deviations for src/brally/core/menus/br_hooktake.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrVtxExpand
+@drop define:BrVtxCacheInsert
+@drop define:BrVtxCacheResolve
+@drop define:BrSelLookup
+@drop define:BrPtrListAdd
+@drop define:BrF3DVtxFixup
+@drop undef:BrVtxExpand
+@drop undef:BrVtxCacheInsert
+@drop undef:BrVtxCacheResolve
+@drop undef:BrSelLookup
+@drop undef:BrPtrListAdd
+@drop undef:BrF3DVtxFixup
+@drop proto:FUN_10030f40
+@drop var:DAT_106e79c8
+@drop fn:BrHookTakeA
+@drop var:DAT_106ea390
+@drop fn:BrHookTakeB
+@after fn:BrHookTakeB
+
+
+/* 0x10034C88 */
+/* WHAT IT DOES: purpose unclear. Observably it raises one flag and hands back
+ * the value of a counter, ignoring the pointer it is passed -- the routine the
+ * original called with it does not read it either. */
+/* @implements 0x10034C88 d3d BrHookTakeA */
+uint32_t BrHookTakeA(BrHooks *pH, const void *pSrc)
+{
+    (void)pSrc;                 /* the callee 0x100378A0 ignores it */
+    pH->f7C44 = 1;
+    return pH->g0938;
+}
+
+/* 0x10034CA8 */
+/* WHAT IT DOES: the twin of the routine above -- same raised flag, same
+ * ignored argument, but it returns a different counter. Purpose equally
+ * unclear. */
+/* @implements 0x10034CA8 d3d BrHookTakeB */
+uint32_t BrHookTakeB(BrHooks *pH, const void *pSrc)
+{
+    (void)pSrc;
+    pH->f7C44 = 1;
+    return pH->g3300;
+}
+@end

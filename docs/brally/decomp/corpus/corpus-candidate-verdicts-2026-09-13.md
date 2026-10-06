@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-13.*
 
-> SECOND external corpus (--corpus ext2, ext2 leak, VC5) LIVE: 88/1515 byte-exact incl. x87 span generators; rebuild + query commands inside; staging under build/external/ext2. Plus 2026-09-13 candidate REJECTIONS: devilution (VC6), frogger-psx (GCC/MIPS), Frogger 2 (VC6-era), Army Men (VC4.2, anomaly-TU niche). Filter: same compiler as reference + per-function byte-certifiable.
+> SECOND external corpus (--corpus ext2, ext2 leak, VC5) LIVE: 88/1515 byte-exact incl. x87 span generators; rebuild + query commands inside; staging under build/brally/analysis/corpus/ext2. Plus 2026-09-13 candidate REJECTIONS: devilution (VC6), frogger-psx (GCC/MIPS), Frogger 2 (VC6-era), Army Men (VC4.2, anomaly-TU niche). Filter: same compiler as reference + per-function byte-certifiable.
 
 **The filter (proved by [ext-corpus-2026-09-13](ext-corpus-2026-09-13.md)):** a corpus pays only when it is
 (a) the SAME compiler as the reference binary (VC5 for BRGlide, IDO for `n64/`)
@@ -18,7 +18,7 @@ Checked 2026-09-13, all REJECTED for the main lane:
 - **Frogger 2 dev archive (hiddenpalace)** - PC final Sept 2000 = VC6-era.
   N64 material is IDO/KMC but `n64/`'s blocker is string pairing, not idioms.
 - **Army Men 1998 leak (archive.org `armymen_202209`, 338 MB RAR)**  - 
-  **VC 4.2**: both shipped EXEs in `src/RunTime/` are PE linker 4.20
+  **VC 4.2**: both shipped EXEs in `src/brally/RunTime/` are PE linker 4.20
   (built 1998-04-18), makefile is DevStudio 4.20 with `/Gr /MD /W3 /GX /Zi /O2`.
   Rejected for the main lane. **Niche option:** vendor source + shipped /O2
   EXE + debug EXE with .pdb = a ready same-compiler corpus for our single
@@ -27,9 +27,9 @@ Checked 2026-09-13, all REJECTED for the main lane:
   (v4) directly, no unrar needed.
 
 ** BUILT - the ext2 corpus is LIVE as `--corpus ext2`** (corpus.py c926c18;
-builder build/external/ext2corpus.py, git-ignored). **RULE: the game's
+builder build/brally/analysis/corpus/ext2corpus.py, git-ignored). **RULE: the game's
 name NEVER goes in the repo - in-tree it is only "ext2"**, same secrecy as
-C2/ext. Staging: build/external/ext2/{src, ext2.exe, tomb21->src symlink};
+C2/ext. Staging: build/brally/analysis/corpus/ext2/{src, ext2.exe, tomb21->src symlink};
 retail ext2.exe extracted from the project lead's PC disc rip at reference/ext2
 (MODE1 bin/cue -> ISO -> InstallShield5 data1.cab; IS5 cab = file table at
 cab_descriptor+0xC, data_offset absolute, ONE raw-deflate stream per file,
@@ -42,7 +42,7 @@ generator - our wall's domain; 20 game logic), 334 nolocate = SOURCE DRIFT
 (tree is 1998-2000 vintage vs 1997-10-31 EXE; BACKUP/ = May-1998, game/ =
 TR3-era). **DX5-UNLOCKED FINAL: 88/1515 byte-exact, 4070 instructions
 indexed** - DX5 SDK headers fetched by HTTP-range ISO9660 walk of archive.org
-`ms-dx5-sdk` (no 278 MB download) into build/external/ext2/dx5inc, passed as
+`ms-dx5-sdk` (no 278 MB download) into build/brally/analysis/corpus/ext2/dx5inc, passed as
 the FIRST -I so they shadow the compiler's DX3-era copies. Opened the whole
 specific/ renderer lane (35 matches incl. 730 B do_detail_option) and 13 in
 3dsystem (all four xgen_* span generators, VAs 0x00402b80-0x00402fd0).
@@ -54,10 +54,10 @@ build). All four parked x87 rows MISS in ext2 at every window probed.
 
 **Use / rebuild (everything .venv/bin/python, from repo root):**
 ```
-tools/corpus.py find --corpus ext2 --from <VA> --at <off> --len 12 --source
-tools/corpus.py show --corpus ext2 --va 0x004xxxxx --at 0xOFF
-build/external/ext2corpus.py --jobs 8      # re-score (also --only <tu.c>)
-tools/corpus.py build --corpus ext2        # re-index after a re-score
+tools/brally/corpus.py find --corpus ext2 --from <VA> --at <off> --len 12 --source
+tools/brally/corpus.py show --corpus ext2 --va 0x004xxxxx --at 0xOFF
+build/brally/analysis/corpus/ext2corpus.py --jobs 8      # re-score (also --only <tu.c>)
+tools/brally/corpus.py build --corpus ext2        # re-index after a re-score
 ```
 Same gotcha as ext: a 2-token pattern needs `--exact --min-len 2`. If the
 git-ignored staging is ever lost: source 7z re-extracts with bsdtar (item in

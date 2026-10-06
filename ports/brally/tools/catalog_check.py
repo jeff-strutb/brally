@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the record specs against what the running game did.
 
-build/portable/trace/objects.csv (trace_report.py) says, for every global
+build/brally/null-soft/trace/objects.csv (trace_report.py) says, for every global
 object and offset the game touched, the access width and whether the value
 there was ever an address. Every global canonical object whose type is an
 array of (or one) spec'd record is checked field by field:
@@ -18,7 +18,7 @@ offset is listed: those are pointer slots (or tables of them) whose type
 must be a pointer type.
 
 Usage: catalog_check.py [RECORD...]
-Output: build/portable/trace/catalog_check.txt
+Output: build/brally/null-soft/trace/catalog_check.txt
 """
 import collections
 import csv
@@ -45,7 +45,7 @@ def main():
     out = []
     per = collections.defaultdict(dict)
     nonrec = collections.defaultdict(list)
-    for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
         m = re.match(r'^(\w+)<(\w+)>$', r['object'])
         o, w = int(r['offset'], 16), int(r['width'])
         if m:
@@ -70,8 +70,8 @@ def main():
                 out.append('%-15s %s+0x%04X %s (%s)  %s' % ('POINTER-UNSEEN', rec, o, path, fty, sites))
     for ob, offs in sorted(nonrec.items()):
         out.append('%-15s %s  offsets %s' % ('GLOBAL-PTRS', ob, ' '.join('0x%X' % o for o in sorted(set(offs))[:12])))
-    os.makedirs('build/portable/trace', exist_ok=True)
-    open('build/portable/trace/catalog_check.txt', 'w').write('\n'.join(out) + '\n')
+    os.makedirs('build/brally/null-soft/trace', exist_ok=True)
+    open('build/brally/null-soft/trace/catalog_check.txt', 'w').write('\n'.join(out) + '\n')
     c = collections.Counter(l.split()[0] for l in out)
     print('catalog check: %s' % dict(c))
 

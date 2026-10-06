@@ -43,7 +43,7 @@
  * cross-slice block rather than in any header. Without it the port arm below
  * calls it implicitly (C4013) and leaves an undefined external -- a link
  * failure match_sweep.py cannot see, because it only compiles the matching
- * configuration. Found by tools/portcheck.py. */
+ * configuration. Found by tools/brally/portcheck.py. */
 /* BrSub1007A940: prototype in br_funcs.h */
 
 /* 0x10058F90 (Glide) / 0x1007AC00 (D3D)
@@ -57,7 +57,7 @@
  *         call 0x1007A840 / test eax,eax / jne +1 / ret
  *         call 0x1007A940 / neg / sbb / neg / ret
  *
- * config/shared.csv pairs 0x1007A940 with 0x10058E20 as `shared`/`body` --
+ * config/brally/shared.csv pairs 0x1007A940 with 0x10058E20 as `shared`/`body` --
  * byte-identical, so the CALLEE is the same routine in both builds.  The gate
  * is not: 0x1007A840 is class `unknown` with no glide_va, and a scan of
  * BRGlide.dll finds no counterpart of its 244-byte body.  It enumerates

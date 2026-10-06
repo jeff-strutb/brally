@@ -1,0 +1,33 @@
+# Port deviations for src/brally/core/drawing/br_screensize.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrPtrListContains
+@drop define:_CRTIMP
+@drop undef:BrPtrListContains
+@drop var:DAT_105ccfe0
+@drop var:g_BrFpsScreenH
+@drop fn:THUNK_1001E200
+@drop var:DAT_105d17b8
+@drop var:g_BrFpsScreenW
+@drop fn:THUNK_1001E1E0
+@drop var:_DAT_105ccd48
+@drop var:g_BrFpsScreenW#2
+@drop fn:THUNK_1001E220
+@drop var:_DAT_105ccfdc
+@drop var:g_BrFpsScreenH#2
+@drop fn:THUNK_1001E250
+@drop var:_DAT_105cd9f8
+@drop var:g_BrFpsScreenW#3
+@drop fn:THUNK_1001E280
+@drop var:_DAT_105cd9fc
+@drop var:g_BrFpsScreenH#3
+@drop fn:THUNK_1001E2B0
+@drop define:_CRTIMP#2
+@drop define:BrTextBoxDeleteDtor
+@drop define:BrTextBoxMeasureA
+@drop define:BrTextBoxMeasureB
+@drop define:BrTextBoxInit
+@drop undef:BrTextBoxInit
+@drop undef:BrTextBoxDeleteDtor
+@drop undef:BrTextBoxMeasureA
+@drop undef:BrTextBoxMeasureB

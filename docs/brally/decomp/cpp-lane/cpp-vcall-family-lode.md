@@ -8,7 +8,7 @@
 frame class by prologue bytes found the real families. The big payer is the
 **UI/phase C++ vcall family** (GameObj +0x2AE8 pSub / +0x2B5C item / +0x3838
 sel), spread across frame, dense, scattered, long AND short stamps. 25 new
-byte-exact TUs in `src/core/cpp/` in one session, nearly all FIRST COMPILE
+byte-exact TUs in `src/brally/core/cpp/` in one session, nearly all FIRST COMPILE
 from the 0x1003D4A0-style skeleton (residue 254 → 219; C++ workstream 80 →
 104 match).
 
@@ -18,7 +18,7 @@ shape produces. Screen candidates by ORIGINAL BYTES (thiscall receiver
 `8b f1`/`8b ce`, vcall `8b 11 ff 52`/`8b 01 ff 50`, pSub `8b 88 e8 2a 00 00`,
 EH `6a ff`) before trusting the class label.
 
-**2026-09-01 later - the screen is now a tool:** `tools/cpp_screen.py`
+**2026-09-01 later - the screen is now a tool:** `tools/brally/cpp_screen.py`
 mechanizes the byte screen (eax-vcall, this+ret-imm, CSEd-vtbl = strong;
 bare this-ecx = weak/fastcall-representable). Run of the 211-row residue:
 **52 strong**, and they include ALL the multi-KB short/error shells
@@ -42,7 +42,7 @@ Also landed: 0x100415D0 (738B page Frame), 0x100414B0/0x10041940/
 jump-threading lever), 0x10041F50 (1668B Close+delete teardown ladder).**
 
 **How to apply next session:**
-- `python3 tools/gen_cpptwin.py` after ANY new C++ TU lands - reloc-masked
+- `python3 tools/brally/gen_cpptwin.py` after ANY new C++ TU lands - reloc-masked
   twin stamper, +7 free so far ([vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md) entry).
 - Remaining family members (screened, unmatched): 0x1003CD60 (490B BrOpt3810),
   0x10041980, 0x10041F50, 0x10041DD0, 0x10036220, 0x1001CE20 BrAppStateSetMode,
@@ -58,7 +58,7 @@ jump-threading lever), 0x10041F50 (1668B Close+delete teardown ladder).**
 
 
 **2026-09-03 session - the family is NOT dry, but its cheap half is.**
-`tools/cpp_screen.py` still lists 37 unmatched CPP-strong VAs. Landed
+`tools/brally/cpp_screen.py` still lists 37 unmatched CPP-strong VAs. Landed
 byte-exact: 0x1003DEC0 (178 B phase-leave, sibling of 0x1003DF80 - clone
 that TU and change the swap slot / the doubled 0x10-flag clear),
 0x10058D00 (53 B chain insert), 0x10055330 (117 B point-in-rect + flag
@@ -91,12 +91,12 @@ byte +0x08, label char[0x401] at +0x09, then w40A/w40C/f410/f414/f418/
 w41C/f420/a424[4]/f434 - summing to exactly 0x438.** The owner embeds it
 at +0x2B5C (an ARRAY of 3: the EH unwind fragments 0x10075030/0x10075060
 destroy 3 x 0x438 there). 0x10054E20's slot array is the SAME record.
-Copy the class decl from src/core/cpp/0x10041300.cpp.
+Copy the class decl from src/brally/core/cpp/0x10041300.cpp.
 
 **A byte screen for this family** (scratch recscan.py pattern): look
 for the displacement dwords `5c 2b 00 00` (+0x2B5C item base),
 `65 2b 00 00` (+0x2B65 label), `66 2f`/`68 2f` (+0x2F66/+0x2F68) and
-`e8 2a 00 00` (+0x2AE8 pSub) in build/match/orig/*.bin. That found **31
+`e8 2a 00 00` (+0x2AE8 pSub) in build/brally/win32/match/orig/*.bin. That found **31
 unmatched members**, most of them 70-360 B. Five fell immediately:
 0x10041300, 0x10037EF0, 0x100380B0, 0x10037E60 (all byte-exact), plus
 0x1003AB00 parked on 2 bytes. Remaining and untouched: 0x1003AA10(238),
@@ -158,7 +158,7 @@ diffs (push register), 0x10038F40 at 10 (index-arm register rotation).
 **0x10038F40 also produced the float-vs-int typing tell** - see
 [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md); that one change was worth 415 diffs.
 
-`tools/gen_uilabel.py` screens the 100-byte "catalogue string into the item
+`tools/brally/gen_uilabel.py` screens the 100-byte "catalogue string into the item
 label" shape by a byte template derived from the hand-solved members. It
 reports the family CLOSED at 8/8 and **swept no new functions** -- keep it
 as a regression screen, do not count it as leverage.
@@ -176,7 +176,7 @@ diffs worth the same treatment: 0x10039870(277) 0x10038E10(180).
 (1091 B), 0x100458D0 (1565 B), 0x100451F0 (1749 B), 0x10048F10 (2433 B).
 
 **Method, and it is nearly mechanical:** copy the class block out of an
-already-matched sibling (src/core/cpp/0x100425E0.cpp is the reference --
+already-matched sibling (src/brally/core/cpp/0x100425E0.cpp is the reference --
 GameUi / the 0x348 page / the 0x1E214 BrCtl), then transcribe the Ghidra
 draft entry by entry. Each entry is
     p = new BrCtl; cont->a18[cont->w14] = p;
@@ -206,10 +206,10 @@ transcript.
 
 ## 2026-09-03 (session 10) - the builders are now GENERATED
 
-`tools/gen_menubuilder.py` emits a byte-exact TU straight from the Ghidra
+`tools/brally/gen_menubuilder.py` emits a byte-exact TU straight from the Ghidra
 draft: it parses the draft's statements, renders the family's three levers
 (char bool after the slot store, raw float pushes, w14-then-w344 tails),
-and pulls the class block out of src/core/cpp/0x10048F10.cpp. Seven
+and pulls the class block out of src/brally/core/cpp/0x10048F10.cpp. Seven
 byte-exact out of it in one pass, 6,526 bytes: 0x10043050, 0x10043370,
 0x10043690, 0x10046620, 0x1004A840, 0x10052610, 0x100469B0.
 
@@ -219,7 +219,7 @@ the whole family. Extend it only for shapes you have verified.
 
 Screen for members with:
     grep -c $'\x68\x14\xe2\x01\x00'   # push 0x1E214 == new BrCtl
-over build/match/orig/*.bin, skipping VAs already matched. 26 were
+over build/brally/win32/match/orig/*.bin, skipping VAs already matched. 26 were
 unmatched at the start of this session.
 
 **The remaining ~14 bail for real reasons** and want hand work: a
@@ -236,7 +236,7 @@ a constant-register fork (see its TU header).
 +5 byte-exact, 9,028 bytes: 0x10053590 (1932), 0x10052A60 (2863),
 0x1004FEA0 (1532), 0x10050AC0 (2701) and the extensions that got there.
 
-`tools/gen_menubuilder.py` now also handles: the root-object prologue
+`tools/brally/gen_menubuilder.py` now also handles: the root-object prologue
 vcall (+0xC0 / +0xC4 tables), the selector's +0x04 / +0x14 hook slots, the
 dropdown FILL LOOP (collapsed to one marker, shape verified on
 0x10048F10), the SUBLINK trio, hook slots at +0x10 / +0x18, global int
@@ -248,7 +248,7 @@ deliberately UNCOMPILABLE `@@UNHANDLED@@` so a half-generated file can
 never pass for a finished one. Fill those in from the asm, then score.
 0x1004FEA0 took seven fills and matched first try; 0x10050AC0 took eleven.
 
-Two things the fills taught, both now in docs/VC5-IDIOMS.md:
+Two things the fills taught, both now in docs/brally/VC5-IDIOMS.md:
  - a conditional CAPTION duplicates the whole s34/BrStrGet call in each
    arm. A shared id variable makes VC5 go branchless (`neg/sbb`).
  - a mode conditional can wrap SEVERAL entries; get its extent from the
@@ -266,9 +266,9 @@ park). 0x10046E70 stays parked on its constant-register fork.
 
 **2026-09-03 (session 12) - the "still untouched, no known hazard" list was
 STALE; screen it before working it.** 0x10055C50 (238 B) had been byte-exact
-in the C lane the whole time (`src/core/generated/0x10055C50.c`) - it is a
+in the C lane the whole time (`src/brally/core/generated/0x10055C50.c`) - it is a
 plain `__stdcall` free function, no `this`, and the current
-`tools/cpp_screen.py` run does not list it either. Always cross the list
+`tools/brally/cpp_screen.py` run does not list it either. Always cross the list
 against BOTH report.csv and report_cpp.csv first; the one-liner is in the
 session-12 notes of [resume-state](../log/resume-state.md).
 
@@ -299,7 +299,7 @@ so far)**. Two of those generate END TO END with no fills.
 
 **The unlock was realising BrCtl EMBEDS the 0x438 item record at +0x2B5C**  - 
 the same record the item-label family manipulates. Once the reference class
-(src/core/cpp/0x10048F10.cpp) carried it as `Item2B5C m2B5C`, the label
+(src/brally/core/cpp/0x10048F10.cpp) carried it as `Item2B5C m2B5C`, the label
 strcpy, the rect written twice (control +0x50 AND item a424), and the
 measured width `w41C = (a424[2] - a424[0]) - 0x10` all became named fields
 and the generator could collapse them.
@@ -322,7 +322,7 @@ a uVar.
 
 **Session 2026-09-03 - the PHOTO BLOCK is solved, and the photo PARK is
 now a three-function wall.** 0x1004ABE0 (760 B) fell FIRST COMPILE and is
-the reference for the block; full write-up in docs/VC5-IDIOMS.md ("photo
+the reference for the block; full write-up in docs/brally/VC5-IDIOMS.md ("photo
 control block"). Three levers: the two strided array loops are ordinary
 INDEXED for loops over contiguous ranges (0..14, 15..23) that VC5
 strength-reduces into the pointer walks you see; the ftol rect is stored
@@ -358,7 +358,7 @@ Also solved this session:
 **THE FAMILY IS NOW DRY for countable matches.** Every remaining member is
 either filled-and-parked or carries the photo trio (so it inherits the
 photo1 park). Standing order from here is SHAPE targets from
-tools/fnmatch/triage.py.
+tools/brally/fnmatch/triage.py.
 
  - 0x10044860 (2439 B) - the generator used to BAIL ("draft has no
    recognisable entry point") because Ghidra types the parent as
@@ -428,10 +428,10 @@ one.
 
 ## 2026-09-03 (session 14) - THE STRONG LIST IS EXHAUSTED. Screened, not guessed.
 
-`tools/cpp_screen.py` (run it under `.venv/bin/python3` - it needs capstone)
+`tools/brally/cpp_screen.py` (run it under `.venv/bin/python3` - it needs capstone)
 reports **22 strong of 174 screened**. Every one of those 22 is now either
 byte-exact or carries a dead-probe list in its TU header. Verified row by row
-against `src/core/cpp/<VA>.cpp` + `build/match/report_cpp.csv`:
+against `src/brally/core/cpp/<VA>.cpp` + `build/brally/win32/match/report_cpp.csv`:
 
 - 0x10054070 BrUiTick (86 B) is at **4 diffs, register-blind 0** - a scratch-pair
   rotation in the delta computation. Its recomp "96 vs 86" is PADDING, not
@@ -454,7 +454,7 @@ particle-step functions fell to it in this session, two byte-exact.
 
 ## 2026-09-03 (lane d29628ed) - THE FAMILY IS DRY, confirmed by re-screen
 
-`tools/cpp_screen.py` (needs `.venv/bin/python`, capstone) lists **22 strong**
+`tools/brally/cpp_screen.py` (needs `.venv/bin/python`, capstone) lists **22 strong**
 rows. Every one is now matched, filled-and-parked with its own dead-probe
 list, or carries the photo trio and inherits its 34-diff park. The single
 untouched member is **0x100541B0 (196 B)**, and 0x100540D0's header already
@@ -463,8 +463,8 @@ parked at 4 diffs on a scratch-pair rotation, and 0x1000C4E0 / 0x10059410  -
 listed as "untouched" in the session-13 notes - are NOT: the first is a C++
 row at 782 diffs, the second is a C-lane row in br_uinav.c.
 
-Standing order from here is SHAPE targets from `tools/fnmatch/triage.py`, but
-run `tools/claimcheck.py` FIRST - see [unswept-tu-bookkeeping-class](../traps/unswept-tu-bookkeeping-class.md).
+Standing order from here is SHAPE targets from `tools/brally/fnmatch/triage.py`, but
+run `tools/brally/claimcheck.py` FIRST - see [unswept-tu-bookkeeping-class](../traps/unswept-tu-bookkeeping-class.md).
 
 
 ## 2026-09-05 (session 20) - the SAVE-SLOT TRIO is the live seam, not the vcall list
@@ -473,16 +473,16 @@ run `tools/claimcheck.py` FIRST - see [unswept-tu-bookkeeping-class](../traps/un
 runs). The paying seam was the untagged cdecl siblings AROUND the family:
 the record lists' save-slot callbacks at 0x1003B130..0x1003BDE0 plus the
 save-file writers/readers at 0x100695C0..0x1006A080. **+6 byte-exact:**
-0x1003B580 / 0x1003BCA0 (probes, src/core/menus/br_saveprobe.c),
+0x1003B580 / 0x1003BCA0 (probes, src/brally/core/menus/br_saveprobe.c),
 0x1003B350 / 0x1003BAC0 (name commits, br_savename.c), 0x10069DE0 (ghost
-writer, src/core/settings/br_ghostsave.c, first compile), and 0x10008AB0
+writer, src/brally/core/settings/br_ghostsave.c, first compile), and 0x10008AB0
 BrPodOpen in the C++ lane (push imm to a this-in-ecx callee - C twin retired).
 Parked, each with a dead-probe list in its header: 0x1003B6D0 (one frame
 slot), 0x1003BDE0 (register pair), 0x1003B130 (7 B schedule), 0x100695C0
 season reader (open-block layout + `bool` return → C++ front end),
 0x10039620 (C++ TU, 572/563, one cross-jump asymmetry).
 
-Levers that decided these (all in docs/VC5-IDIOMS.md): extern arrays not
+Levers that decided these (all in docs/brally/VC5-IDIOMS.md): extern arrays not
 literals for scanned strings; if/else + ONE return so saves sink past a
 guard; header pointer and display name declared as ONE struct so a reload
 stays below a strcpy tail; frame layout is size-sorted with spilled scalars

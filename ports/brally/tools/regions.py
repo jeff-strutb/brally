@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """The original's memory regions the 64-bit core does not declare.
 
-From build/portable/trace/objects.csv: every access that ran past the object
+From build/brally/null-soft/trace/objects.csv: every access that ran past the object
 the core declares at that address (OVERRUN:<object>) belongs to an
 undeclared region starting there. Each region's extent: from the object's
 address through the highest byte the game touched, then on to the next
-address any original code references on its own (build/wasm/sites.csv) --
+address any original code references on its own (build/brally/wasm32/sites.csv) --
 nothing between two referenced addresses can belong to anything else.
 
-Output build/portable/trace/regions.csv: base object, VA, measured end,
+Output build/brally/null-soft/trace/regions.csv: base object, VA, measured end,
 bounded end, how many offsets held addresses, and the source files that
 touch it (the clue to what it is: loaded file data stays bytes, a pool of
 game records needs its record type).
@@ -29,10 +29,10 @@ def main():
     for r in csv.DictReader(open('ports/brally/types/globals.csv')):
         if r['va']:
             va_of.setdefault(r['name'], int(r['va'], 16))
-    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/wasm/sites.csv'))
+    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))
                    if r['addend'] == '0' and 0x10077000 <= int(r['va'], 16) < 0x118F2000})
     agg = collections.defaultdict(lambda: {'hi': 0, 'ptr': 0, 'n': 0, 'files': collections.Counter()})
-    for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
         if not r['object'].startswith('OVERRUN:'):
             continue
         a = agg[r['object'][8:]]
@@ -52,7 +52,7 @@ def main():
         rows.append((va, nm, a['hi'], bound - va, inside, a['n'], a['ptr'],
                      ' '.join('%s(%d)' % (f.split('/')[-1], c) for f, c in a['files'].most_common(4))))
     rows.sort()
-    with open('build/portable/trace/regions.csv', 'w', newline='') as fh:
+    with open('build/brally/null-soft/trace/regions.csv', 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['va', 'base', 'touched', 'bounded', 'refs_inside', 'offsets', 'address_offsets', 'files'])
         for va, nm, hi, b, ins, n, p, fl in rows:

@@ -61,7 +61,7 @@ happen (or not)._
 | 3 | Menu navigates by keyboard *within a screen*, in a live window | ✅ done (selection moves + activate fires; it does not yet walk between finished screens, see milestone 4) |
 | 4 | Screens open from locally extracted assets | 🟡 Time Attack & Championship reach real screens; Multiplayer / Quick Race / Options build empty or reach stubs (pending host wiring + a phase-struct retype) |
 | 5 | Load into a race (track load, cars placed) | 🟡 race-step one-time arm ~55% transcribed; entry path exists |
-| 6 | Driving, the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER now being drained: the per-frame race render (`0x10011FA0`) is untranscribed, and its 50 direct callees are being ported one at a time from the Glide side. 33 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **13 to port**, 11 boundary-clean, 2 unaligned starts to resolve first. First drained this pass: `BrSceneAccumReset` (`0x10017F60`, the per-frame accumulator clear). Enumerated work-queue: [config/render_frontier.csv](config/render_frontier.csv) |
+| 6 | Driving, the per-frame physics + render loop | 🟡 PHYSICS done: the OBB collision **response** is transcribed and now wired into `BrCarPhysAdvance`'s substep loop, so cars no longer fall through the world (`0x10067710` + solver + the `f1E8` box lift). RENDER now being drained: the per-frame race render (`0x10011FA0`) is untranscribed, and its 50 direct callees are being ported one at a time from the Glide side. 33 are ported (HUD/text/fade/camera/gfx, mostly via D3D twins) and 4 are bare-ret stubs omitted at the call site, leaving **13 to port**, 11 boundary-clean, 2 unaligned starts to resolve first. First drained this pass: `BrSceneAccumReset` (`0x10017F60`, the per-frame accumulator clear). Enumerated work-queue: [config/brally/render_frontier.csv](config/brally/render_frontier.csv) |
 | 7 | Full race: HUD, audio, results | 🔴 not yet |
 
 `░░░░░░░░` overall: the front end is reached and navigable; the per-frame race
@@ -94,26 +94,26 @@ compiler directory:
 
 This installs Wine via Homebrew (stripping the Gatekeeper quarantine that causes
 the deprecation warning - Wine works fine), extracts the original function bytes
-from the DLL, and creates `tools/msvc5/`. If you have the VC5 ISO, mount it and
+from the DLL, and creates `tools/toolchains/msvc5/`. If you have the VC5 ISO, mount it and
 the setup script tells you which files to copy. The compiler files are ~15 MB:
 
-    tools/msvc5/
+    tools/toolchains/msvc5/
       bin/          cl.exe, c1.dll, c2.exe, link.exe, mspdb50.dll
-      include/      CRT and Win32 SDK headers
+      src/brally/include/      CRT and Win32 SDK headers
       lib/          CRT and Win32 libraries
 
 Once set up:
 
 ```
 ./build_match.sh                        # compile + diff all decomped functions
-./build_match.sh src/core/br_bits.c     # compile + diff one file
+./build_match.sh src/brally/core/br_bits.c     # compile + diff one file
 ```
 
 Each function reports MATCH (byte-identical) or DIFF (with a hex dump of the
 first divergence). Verified functions can be patched into the original DLL:
 
 ```
-python3 tools/pe_patch.py orig/BRD3D.dll build/match/verified/ build/BRD3D_patched.dll
+python3 tools/brally/pe_patch.py reference/brally/orig/BRD3D.dll build/brally/win32/match/verified/ build/BRD3D_patched.dll
 ```
 
 Verified from a clean clone on macOS 26 / Apple Silicon.
@@ -160,16 +160,16 @@ divergent functions, read the **Glide** side. The game emits N64 F3DEX display
 lists either way, the producer is shared, only the consumer differs, and the
 Glide consumer is the better model of what the game intends to draw.
 
-`config/functions_glide.csv` already exists; `tools/crossdiff.py` pairs the two
+`config/brally/functions_glide.csv` already exists; `tools/brally/crossdiff.py` pairs the two
 builds function-for-function.
 
-    orig/       pristine binaries + sha256 (the match target)
-    tools/      analysis and build tooling (Python + capstone, in .venv)
-    config/     generated maps: functions, names, strings, shared-code classification
+    reference/brally/orig/       pristine binaries + sha256 (the match target)
+    tools/brally/      analysis and build tooling (Python + capstone, in .venv)
+    config/brally/     generated maps: functions, names, strings, shared-code classification
     asm/        annotated disassembly, one file per 64KB of .text
-    src/        the decomp: core/ (matching C) + backends/ (platform-specific)
-    include/    headers
-    tests/      test suites
+    src/brally/        the decomp: core/ (matching C) + backends/ (platform-specific)
+    src/brally/include/    headers
+    tests/brally/      test suites
 
 ## Status
 
@@ -202,14 +202,14 @@ figure in this file used the wrong denominator.
 | `BRally.exe` | 3,584 | 39 | reads `BossRally.ini`, `LoadLibrary`s the renderer DLL, calls `RallyMain`. **Launcher** |
 | `BRGlide.dll` | 481,280 | ~2,700 | **the game** |
 
-Maps: `config/functions_boot.csv`, `functions_bossrally.csv`,
+Maps: `config/brally/functions_boot.csv`, `functions_bossrally.csv`,
 `functions_brally.csv`, `functions_glide.csv`.
 
 ### The entry point IS ported, this section was stale (corrected 2026-08-17)
 
 `RallyMain` is `BRGlide.dll`'s only export and the whole game's entry point
 Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
-(`src/core/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
+(`src/brally/core/startup/br_boot.c`, `0 → 4 → 3 → 1 → 2`), and so is its spine.
 **Verified by `@implements` bodies plus passing suites, not by grep:**
 
 | callee | what | where | test |
@@ -227,14 +227,14 @@ Glide `0x1001CC00`, 324 bytes. Its five-state machine is transcribed
 Still on the counted frontier (`br_bootfrontier.c`), not stood in for:
 `0x10007F10`, `0x10007F40`, `0x10009C00` (DirectPlay init).
 
-Earlier revisions of this section (and `tools/isported.py`, which is
+Earlier revisions of this section (and `tools/brally/isported.py`, which is
 comment-shape heuristics and **not authoritative**, use `whereis.py`) claimed
 all eleven callees absent. They were wrong: nine of twelve are ported and
 green. `RallyMain` is therefore **not** the frontier. The real next gate is
 milestone 6, the per-frame race loop and the OBB collision **response**, the
 reason cars fall through the world. **That whole unit is now transcribed end to
-end** in `src/core/driving/br_collrespsolve.c`, all four functions oracle-
-verified against `tools/x87emu.py` executing their real opcode streams, pinned
+end** in `src/brally/core/driving/br_collrespsolve.c`, all four functions oracle-
+verified against `tools/brally/x87emu.py` executing their real opcode streams, pinned
 by golden vectors and mutation-tested: the contact-plane resolver `0x10067470`,
 the impulse solver `0x10065C80`, the impulse-free contact "kick" `0x10065980`,
 and the walker `0x10067710` that drives them per contact. **The response is now
@@ -253,13 +253,13 @@ They measure different things and only one of them is coverage.
 
 | | |
 |---|---|
-| Modules | 121, organised by concern under `src/core/`, see `src/core/README.md` |
+| Modules | 121, organised by concern under `src/brally/core/`, see `src/brally/core/README.md` |
 | ...still named after an address batch | **62** (`sliceN_MM.c`, loose at the top level) |
 | Test suites | 105, 0 failures |
 | Screen builders running | **16 of 16** (`./build/brally -all`) |
-| Unported functions stubbed so the host links | **50** (`src/backends/macos/br_stubs.c`) |
+| Unported functions stubbed so the host links | **50** (`src/brally/backends/macos/br_stubs.c`) |
 | UI hook slots filled | 99 of 108 |
-| Functions classed present in both renderer builds | 1,955 (`config/shared.csv`) |
+| Functions classed present in both renderer builds | 1,955 (`config/brally/shared.csv`) |
 
 **None of these is a completion measure.** "16 of 16 builders run clean" means
 nothing crashed, several of those builders lead to placeholders. "105 suites
@@ -293,7 +293,7 @@ on the sample means the honest range is **26-38%**.
 Mostly it is not. The 34% was measured with a detector that has since been
 shown to miss ~85 definitions outright (its regexes required whitespace before
 the function name, so `BrCtrlCfg *BrCtrlCfgCtor(...)` never matched) and, after
-`src/core` was organised into folders, to miss half the tree as well (a
+`src/brally/core` was organised into folders, to miss half the tree as well (a
 non-recursive glob). Replaying that old detector against today's tree gives
 150,422 bytes, *lower* than the number it produced before the reorganisation,
 because the reorganisation degraded it further.
@@ -416,7 +416,7 @@ differ from the original until its owning module is ported.
 
 ### Read this before trusting any number above
 
-`config/functions.csv` has **three confirmed failure modes**, all found during analysis:
+`config/brally/functions.csv` has **three confirmed failure modes**, all found during analysis:
 1. **Invents entries**, `0x100331FF`, `0x100334D7`, `0x100312BB` are
    mid-instruction, not function starts.
 2. **Misses entries**, e.g. `0x1002C2B0`, `0x100311E4`, `0x10031212`,
@@ -435,21 +435,21 @@ non-obvious and each one has cost real time.
 
 ## Tooling
 
-- `tools/pe.py`. PE/COFF reader (sections, imports, exports, base relocations).
-- `tools/funcmap.py`, function discovery. Seeds from entry point, exports, every
+- `tools/brally/pe.py`. PE/COFF reader (sections, imports, exports, base relocations).
+- `tools/brally/funcmap.py`, function discovery. Seeds from entry point, exports, every
   direct `CALL` target, and every relocated dword pointing into `.text`. Recursive
   descent from each seed; switch tables recovered from `jmp [reg*4+disp]` where the
   table entries are themselves relocated. Address-taken pointers are only accepted as
   function *starts* if they follow inter-function padding or a terminator instruction
   without that filter, switch-table entries get mistaken for functions.
-- `tools/names.py`, recovers names from function-scoped diagnostic strings
+- `tools/brally/names.py`, recovers names from function-scoped diagnostic strings
   (`CHK_FReadOpen:`, `DDraw_DoInit:`, …). Ceiling is 21 such strings → 15 names.
-- `tools/crossdiff.py`, matches functions between the two DLLs by instruction-mnemonic
+- `tools/brally/crossdiff.py`, matches functions between the two DLLs by instruction-mnemonic
   fingerprint (raw bytes don't match; addresses and register allocation differ).
-- `tools/dumpasm.py`, annotated disassembly with resolved call targets, inlined string
+- `tools/brally/dumpasm.py`, annotated disassembly with resolved call targets, inlined string
   literals, import names, and `g_<rva>` tags for globals.
 
-Run anything with `.venv/bin/python tools/<x>.py`.
+Run anything with `.venv/bin/python tools/brally/<x>.py`.
 
 ## Known-good names so far
 
@@ -465,7 +465,7 @@ compiler (MSVC 5.0 / Visual Studio 97, via Wine) and also cross-compiling to
 macOS/Metal with clang. The matching build is the verification path; the port
 build is a platform target.
 
-    src/core/           the decomp - matching C, shared by both builds
+    src/brally/core/           the decomp - matching C, shared by both builds
       startup/          bring the game up and take it down
       driving/          how a car behaves (physics, collision)
       drawing/          display lists, textures, fonts, sprites
@@ -479,30 +479,30 @@ build is a platform target.
       audio/            sound and music
       *.c               unfiled address-batch modules (sliceN_MM.c)
 
-    src/backends/
+    src/brally/backends/
       d3d/              original D3D renderer calls (matching build)
       glide/            original Glide renderer calls (matching build)
       metal/            macOS port renderer
       win32/            original Win32 platform calls (matching build)
       macos/            macOS host wiring, stubs, entry point
 
-    include/            headers
-    tests/              test suites
-    tools/              analysis and build tooling
+    src/brally/include/            headers
+    tests/brally/              test suites
+    tools/brally/              analysis and build tooling
 
 The original game already had this architecture: `BRD3D.dll` and `BRGlide.dll`
 are the same core with two renderer backends. The ~1,739 shared functions are
-the platform-agnostic game core in `src/core/`; the ~73 divergent functions are
-renderer-specific and live in `src/backends/`.
+the platform-agnostic game core in `src/brally/core/`; the ~73 divergent functions are
+renderer-specific and live in `src/brally/backends/`.
 
 ### Verification
 
 `@implements` means the function compiles to **byte-identical output** under
-MSVC 5.0, verified by `tools/match_diff.py` against the original DLL's
-extracted bytes. The matching build (`build_match.sh`) compiles each source
+MSVC 5.0, verified by `tools/brally/match_diff.py` against the original DLL's
+extracted bytes. The matching build (`tools/brally/build_match.sh`) compiles each source
 file, parses the COFF symbol table, and diffs function-by-function.
 
-Verified functions can be patched into the original DLL with `tools/pe_patch.py`
+Verified functions can be patched into the original DLL with `tools/brally/pe_patch.py`
 to produce a hybrid binary for drop-in testing on Windows.
 
 ### Accuracy first; playability is the consequence, not the target
@@ -739,14 +739,14 @@ A link of **all 46 modules** into one binary was attempted. Results:
   names. My earlier warning about this was wrong; recorded so nobody spends
   effort on a non-problem.
 - **304 undefined symbols**, the real, measured integration debt. Full list in
-  regenerable with `tools/linkqueue.py`. These are cross-slice references to functions
+  regenerable with `tools/brally/linkqueue.py`. These are cross-slice references to functions
   that are declared (usually as `/* XSLICE */`) but implemented nowhere yet.
 
 This supersedes an earlier crude grep-based audit that reported "115 phantom
 declarations". That number counted any address not mentioned in a `.c` and was
 an upper bound, not a finding. **Use the link, not the grep.**
 
-`tools/linkqueue.py` regenerates the outstanding list: every name on it is a
+`tools/brally/linkqueue.py` regenerates the outstanding list: every name on it is a
 function some module already calls but nothing defines yet.
 
 **Naming debt: 53 addresses carry more than one function name** (e.g. `0x10032873`
@@ -773,7 +773,7 @@ module its own test binary, so slice modules are never linked together. The
 collision will surface only when everything is linked into one game binary.
 
 Resolution when that happens: promote shared globals into a single owning
-translation unit (`src/core/gamedata/br_globals.c`) with `extern` declarations elsewhere.
+translation unit (`src/brally/core/gamedata/br_globals.c`) with `extern` declarations elsewhere.
 Do NOT resolve it by renaming per-module, that would create N copies of what
 is one object in the original, and the aliasing is load-bearing (see the
 `0x10AA288C` dual-role entry above).
@@ -796,7 +796,7 @@ Also confirmed: `0x10069A60` is really **10 bytes** (`mov ecx` + `jmp`, then fiv
 absent from the map entirely. So the map's *sizes* are wrong too, not just its
 entry set, an over-long extent silently hides a following function.
 
-Net: treat `config/functions.csv` as a good starting index, not ground truth.
+Net: treat `config/brally/functions.csv` as a good starting index, not ground truth.
 
 ### Adjudicated cross-slice conflicts (integration)
 
@@ -819,7 +819,7 @@ map's mid-function entries), so this rests on a later pass's reading plus the
 literal argument values, which are self-consistent. Treat as high-confidence,
 not proven-by-me.
 
-### RESOLVED, canonical phase layout is now `include/br_phase.h`
+### RESOLVED, canonical phase layout is now `src/brally/include/br_phase.h`
 
 `BrPhase_` there is the merged superset (promoted from slice3_32's `BrPhaseFull`,
 which had already reconciled the destructor at `0x10048870` and the vtable at
@@ -864,16 +864,16 @@ wrong shape; `slice2_26.h`'s `void(*)(void *pEntity)` is right.
 
 ### Analysis tooling
 
-`tools/modules.py`, topological work order (callees before callers), 513
+`tools/brally/modules.py`, topological work order (callees before callers), 513
 shared leaves with no prerequisites, 1255 address-contiguous module clusters.
-`tools/globals.py`, 2569 referenced globals, 213 identified as arrays via
+`tools/brally/globals.py`, 2569 referenced globals, 213 identified as arrays via
 indexed-access scale; this is what unblocks the global-dependent core.
 
     ./build.sh
-    ./build/test_pod testdata/BossRally.pod
+    ./build/test_pod reference/brally/data/BossRally.pod
     ./build/test_rca
     ./build/test_n64tex
-    ./build/test_gfx testdata/splash.img build/out.ppm
+    ./build/test_gfx reference/brally/data/splash.img build/out.ppm
     ./build/brview                    # windowed viewer, Esc to quit
 
 ### .rca car definitions
@@ -959,7 +959,7 @@ splash.img have bit 0 set, and 51200 of 51200 pixels in loading.img have bit 15
 set. A real colour LSB/MSB would sit near 50%. **TODO:** replace with the flag
 the original passes, once the loader referencing those filenames is decompiled.
 
-Deviations from the original are documented at each site in `src/core/gamedata/br_pod.c`.
+Deviations from the original are documented at each site in `src/brally/core/gamedata/br_pod.c`.
 Two original bugs were deliberately *not* reproduced: bounds checks that
 reported and then indexed anyway, and a name-length check that ran after the
 copy it was meant to guard.
@@ -968,7 +968,7 @@ copy it was meant to guard.
 
 ### What the analysis says the port actually costs
 
-`tools/apiboundary.py` aligns the two builds' call graphs to find every call site
+`tools/brally/apiboundary.py` aligns the two builds' call graphs to find every call site
 where BRD3D and BRGlide diverge, one logical operation, two implementations.
 That set *is* the platform API:
 
@@ -990,9 +990,9 @@ it. Anything else CRT-shaped near the top deserves the same suspicion.
 interface and make Metal its first backend. The original proves the seam is
 real, it already shipped two backends behind one core.
 
-    src/core/           decompiled game logic (matching C)
-    src/backends/metal/ Metal backend (Objective-C)
-    src/backends/macos/ macOS host wiring, stubs
+    src/brally/core/           decompiled game logic (matching C)
+    src/brally/backends/metal/ Metal backend (Objective-C)
+    src/brally/backends/macos/ macOS host wiring, stubs
 
 ### Toolchain on this machine
 
@@ -1051,7 +1051,7 @@ real, it already shipped two backends behind one core.
 - Function *boundaries* are inferred, not authoritative. Extents run from one detected
   start to the next; a missed start silently merges two functions. One such bug was
   found and fixed (thiscall `ret imm16` endings); others likely remain.
-- The `d3d_only` / `shared` classification in `config/shared.csv` is a heuristic
+- The `d3d_only` / `shared` classification in `config/brally/shared.csv` is a heuristic
   fingerprint match, not proof.
 
 ---
@@ -1077,13 +1077,13 @@ so 256 is silence.
 
 The port plays neither Redbook nor XM. It plays FLAC produced locally:
 
-    python tools/extract_cdaudio.py reference/brally/BossRally.cue        build/audio/cd
-    python tools/extract_xm.py "reference/tgrally/Top Gear Rally (USA).z64" build/audio/n64
+    python tools/brally/extract_cdaudio.py reference/brally/BossRally.cue        build/audio/cd
+    python tools/tgrally/extract_xm.py "reference/tgrally/Top Gear Rally (USA).z64" build/audio/n64
 
 Both are idempotent; a re-run extracts nothing. The N64 modules are not raw in
 the ROM, they sit in a chunked-zlib container (big-endian `u32` total, `u32`
 unpacked size, then length-prefixed zlib streams of <=16000 bytes, **2-byte**
-aligned). `tools/xm_render.c` renders them, since ffmpeg here has no libopenmpt.
+aligned). `tools/tgrally/xm_render.c` renders them, since ffmpeg here has no libopenmpt.
 
 **Fidelity caveat on the XM path:** the renderer is from-scratch and validated
 structurally (every effect used by all six modules is implemented; anything
@@ -1107,7 +1107,7 @@ The build **extracts what it needs from originals the builder supplies**:
     reference/tgrally/*.z64                 Top Gear Rally ROM    (you provide)
 
 A fresh clone plus your own legally-obtained copies is sufficient to produce
-everything. Extraction tooling lives in `tools/`, is reusable and idempotent, and
+everything. Extraction tooling lives in `tools/brally/`, is reusable and idempotent, and
 is not a set of one-off scripts whose output someone ships.
 
 This covers the soundtrack in particular. The retail PC game streams Redbook CD
@@ -1123,14 +1123,14 @@ whoever owns a copy.
 To build and run the tests you need a retail copy of Boss Rally (PC, 1999) and must
 populate:
 
-    orig/       BRD3D.dll, BRGlide.dll   (BRD3D.dll is the core decompilation
+    reference/brally/orig/       BRD3D.dll, BRGlide.dll   (BRD3D.dll is the core decompilation
                 target, sha256 29af141ebd44bbcc79a9e58ca9cba62936792d6750c2e8b9
                 df1a3805ae684b99. BRGlide.dll is the RENDERER reference; see the
                 note at the top of this file.)
-    testdata/   BossRally.pod, splash.img, loading.img, ce.rca, bb.rca,
+    reference/brally/data/   BossRally.pod, splash.img, loading.img, ce.rca, bb.rca,
                 cargfx/skytexdesert.ci4 + .lut4
 
-Without `testdata/` the tree still compiles; the suites that read retail files fail
+Without `reference/brally/data/` the tree still compiles; the suites that read retail files fail
 at runtime, which is the intended signal rather than a silent pass.
 
 NOTE TO FUTURE MAINTAINERS: this section was once added directly to the git

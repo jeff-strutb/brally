@@ -9,30 +9,30 @@ and does not replace `the project rules`.
 
 The tagged small-gap pool is worked out and parked with honest notes. The
 count moves on **T1 intake**: functions that exist only as a machine draft in
-`build/ghidra_decomp/<va>.c` (or `build/ghidra_work/<va>.refined.c`). Take
+`build/brally/analysis/ghidra_decomp/<va>.c` (or `build/brally/analysis/ghidra_work/<va>.refined.c`). Take
 them **smallest first**. A 100-250 byte leaf goes byte-exact in 4-6 probes;
 the first compile is already size-exact more often than not.
 
 ## Session start (in order, every tool through `.venv/bin/python`)
 
-    tools/refcheck.py            # must say Glide-keyed
-    tools/install_hooks.py       # idempotent
-    tools/tiers.py               # the denominator; note T1/T4
-    tools/claimcheck.py          # six FLAGGED d3d delegators are known; 0 duplicates is the bar
-    tools/fileaudit.py           # note the baselines (11 / 58 / 0)
-    git status --short src/      # another session's uncommitted files: do not touch those
-    tools/tiers.py --list T1     # sorted by size DESCENDING; read it from the bottom
+    tools/brally/refcheck.py            # must say Glide-keyed
+    tools/common/install_hooks.py       # idempotent
+    tools/brally/tiers.py               # the denominator; note T1/T4
+    tools/brally/claimcheck.py          # six FLAGGED d3d delegators are known; 0 duplicates is the bar
+    tools/brally/fileaudit.py           # note the baselines (11 / 58 / 0)
+    git status --short src/brally/      # another session's uncommitted files: do not touch those
+    tools/brally/tiers.py --list T1     # sorted by size DESCENDING; read it from the bottom
 
 ## Screening a T1 row (two minutes each, batch ten at a time)
 
 For each candidate VA, one shell loop:
 
-- `ls src/core/cpp/<VA>.cpp` and `grep <VA> build/match/report_cpp.csv` -- if
+- `ls src/brally/core/cpp/<VA>.cpp` and `grep <VA> build/brally/win32/match/report_cpp.csv` -- if
   either hits, the C++ lane owns it. Skip.
-- `grep -ic <VA> build/match/lane_claims.csv` -- claimed or parked. Skip.
-- `xxd -l 6 -p build/match/orig/<VA>.bin` -- `6aff`...`fs:[0]` prologue is a
+- `grep -ic <VA> build/brally/win32/match/lane_claims.csv` -- claimed or parked. Skip.
+- `xxd -l 6 -p build/brally/win32/match/orig/<VA>.bin` -- `6aff`...`fs:[0]` prologue is a
   C++ EH frame; an odd address is a merged/split map row. Skip both.
-- `tools/dumpasm.py <VA>` and the draft, side by side. Reject on sight:
+- `tools/brally/dumpasm.py <VA>` and the draft, side by side. Reject on sight:
   x87 stack juggling (`fxch` chains), 16-bit register arithmetic (`movsx cx`,
   `test cx,cx`), byte-lane packing with `mov ah/dh`. Those are byte-slot /
   colouring walls and the notes say so already.
@@ -42,29 +42,29 @@ arithmetic, struct field traffic, one or two float compares.
 
 ## The loop for one function
 
-1. Find the module. `grep -i "^0x<prefix>" config/filing.csv` for the
-   neighbours; the port twin (grep the VA in `src/` and `include/`) often
+1. Find the module. `grep -i "^0x<prefix>" config/brally/filing.csv` for the
+   neighbours; the port twin (grep the VA in `src/brally/` and `src/brally/include/`) often
    names the module and already has the field names. A new `br_*.c` module
    file is fine; a new `sliceN_MM.c` or a new tag in an old one is refused
    by the hook.
 2. Transcribe from the draft into that file, matching-arm only
    (`#ifdef BR_MATCHING_BUILD`), declaring callees and globals locally with
-   the names already in `config/globals_learned.csv` (a new name is learned
+   the names already in `config/brally/globals_learned.csv` (a new name is learned
    on the first match; two names for one address is normal). Write the
    `WHAT IT DOES:` comment and the `@implements <VA> glide <Name>` tag in the
    same edit -- the hook refuses one without the other.
-3. `tools/match_sweep.py <file.c>` (~12 s). Read EVERY row of that file in
-   `build/match/report.csv`, not the totals.
-4. If diff: `tools/fnmatch/fn.py <VA> --detail regnorm 30` for the shape
+3. `tools/brally/match_sweep.py <file.c>` (~12 s). Read EVERY row of that file in
+   `build/brally/win32/match/report.csv`, not the totals.
+4. If diff: `tools/brally/fnmatch/fn.py <VA> --detail regnorm 30` for the shape
    summary, then **always** the side-by-side:
 
-       tools/sbs.py build/match/obj_<opt>/<file>.obj <Name> <VA>
+       tools/brally/sbs.py build/brally/win32/match/obj_<opt>/<file>.obj <Name> <VA>
 
    `<opt>` is the report row's column (O2/Od/O2y/O2p); fn.py rewrites
    `obj_O2`. The flagged rows tell you WHERE. The summary misled twice in
    one lane; the dump never did.
 5. Probe with `fn.py <VA> --make <tag>` then edit
-   `build/match/t3d/fn_<VA>_<tag>.c` and `fn.py <VA> --var <tag>`. ~10 s a
+   `build/brally/win32/match/t3d/fn_<VA>_<tag>.c` and `fn.py <VA> --var <tag>`. ~10 s a
    probe. Generate several variants from one Python heredoc and score them in
    one loop. **Budget: six probes.** Past that, write the residue note
    (what diverges, every dead probe) into the function's comment, append its
@@ -74,7 +74,7 @@ arithmetic, struct field traffic, one or two float compares.
    `git commit -m "<VA> <Name> byte-exact: <the source fact>" -- <file>`.
    Never a bare commit; another session commits with pathspecs and takes a
    shared file's whole working state.
-7. Any newly proven construct goes to the TAIL of `docs/VC5-IDIOMS.md` in
+7. Any newly proven construct goes to the TAIL of `docs/brally/VC5-IDIOMS.md` in
    the same sitting, with the dead probes listed.
 
 ## Levers that closed functions in this lane (details in VC5-IDIOMS.md tail)
@@ -101,11 +101,11 @@ arithmetic, struct field traffic, one or two float compares.
 
 ## Bookkeeping that bit
 
-- `tools/filing.py` with no arguments rewrites `config/filing.csv` from
+- `tools/brally/filing.py` with no arguments rewrites `config/brally/filing.csv` from
   `report.csv` and DROPS any row whose VA is not in report.csv -- another
   session's in-flight functions. Diff before committing:
 
-      git diff -- config/filing.csv | awk '/^-0x/{split($0,a,",");d[substr(a[1],2)]++} /^\+0x/{split($0,a,",");p[substr(a[1],2)]++} END{for(k in d) if(!(k in p)) print "LOST", k; for(k in p) if(!(k in d)) print "NEW", k}'
+      git diff -- config/brally/filing.csv | awk '/^-0x/{split($0,a,",");d[substr(a[1],2)]++} /^\+0x/{split($0,a,",");p[substr(a[1],2)]++} END{for(k in d) if(!(k in p)) print "LOST", k; for(k in p) if(!(k in d)) print "NEW", k}'
 
   Re-add LOST rows by hand (the file is CRLF; write with `newline=''`).
 - The other session's pathspec commit can swallow your filing.csv rewrite.
@@ -122,10 +122,10 @@ arithmetic, struct field traffic, one or two float compares.
 
 ## End of session
 
-    tools/filing.py            # then the LOST check above, then commit filing.csv
-    tools/image_build.py       # must say IMAGE GATE PASSED, 0 differing bytes, all four binaries
-    tools/fileaudit.py         # baselines unchanged
-    tools/claim_lane.py release <TOKEN>
+    tools/brally/filing.py            # then the LOST check above, then commit filing.csv
+    tools/brally/image_build.py       # must say IMAGE GATE PASSED, 0 differing bytes, all four binaries
+    tools/brally/fileaudit.py         # baselines unchanged
+    tools/brally/claim_lane.py release <TOKEN>
 
 Report the byte-exact count with its denominator (tiers.py T4 of the hand-C
 target; total.py for all lanes), list matched and parked separately, and say
@@ -134,7 +134,7 @@ which strictness each claim is.
 ## Where the lane stands (2026-09-05)
 
 Done: 0x100023F0 0x10035BE0 0x10032530 0x1006AAF0 0x1002B3F0 0x10003530
-0x100154A0 0x10002310 0x10031960. Parked T2 in `src/core/audio/br_sndload.c`:
+0x100154A0 0x10002310 0x10031960. Parked T2 in `src/brally/core/audio/br_sndload.c`:
 0x100701B0 (8 B, block layout), 0x10070280 (43 B, two copies' registers).
 
 Next smallest unscreened T1 rows, with the reason each was deferred:

@@ -2,7 +2,7 @@
 """The true prototype of every original function, in one header.
 
 A function's definition is the truth. This reads every core definition of a
-function the verified build placed (build/wasm/placement.csv) from clang's
+function the verified build placed (build/brally/wasm32/placement.csv) from clang's
 syntax tree and writes its prototype -- types spelled through struct tags so
 the header needs only forward declarations -- to
 ports/brally/include/br_funcs.h, which every core file includes. Prototypes
@@ -91,11 +91,11 @@ def tags_of(t):
 
 def main():
     os.chdir(ROOT)
-    rows = list(csv.DictReader(open('build/wasm/placement.csv')))
+    rows = list(csv.DictReader(open('build/brally/wasm32/placement.csv')))
     place = {r['name'] for r in rows}
     home = {r['name']: os.path.join('ports/brally', r['src']) for r in rows}
-    if os.path.exists('build/portable/method_fwd.csv'):
-        place |= {r['forwarder'] for r in csv.DictReader(open('build/portable/method_fwd.csv'))}
+    if os.path.exists('build/brally/null-soft/method_fwd.csv'):
+        place |= {r['forwarder'] for r in csv.DictReader(open('build/brally/null-soft/method_fwd.csv'))}
     files = sorted(os.path.relpath(os.path.join(dp, fn), ROOT)
                    for dp, _, fns in os.walk('ports/brally/src/core') for fn in fns if fn.endswith(('.c', '.cpp')))
     with concurrent.futures.ThreadPoolExecutor(os.cpu_count()) as ex:
@@ -217,7 +217,7 @@ def main():
             open(p, 'w', encoding='latin-1').write(t)
             purged += len(edits)
     print('stray prototypes removed: %d' % purged)
-    with open(os.path.join(ROOT, 'build/portable/funcproto_skipped.txt'), 'w') as fh:
+    with open(os.path.join(ROOT, 'build/brally/null-soft/funcproto_skipped.txt'), 'w') as fh:
         for nm in sorted(why):
             fh.write('%s: %s\n' % (nm, why[nm]))
     print('true prototypes: %d (%d left to their own headers)' % (len(protos), len(skipped)))

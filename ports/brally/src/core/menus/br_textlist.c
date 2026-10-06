@@ -44,7 +44,7 @@
 /* -- Ghidra-matched functions --------------------------- */
 /* operator_delete: prototype in br_funcs.h */
 /* BrObj54710Dtor: prototype in br_funcs.h */
-/* Lives in src/core/menus/br_textbox.c; BrObj54710Dtor still takes its
+/* Lives in src/brally/core/menus/br_textbox.c; BrObj54710Dtor still takes its
  * address as the vector destructor's element dtor. */
 /* BrVtInit53EE0: prototype in br_funcs.h */
 /* BrEhVecDtor: prototype in br_funcs.h */
@@ -139,7 +139,7 @@ int32_t BR_THISCALL1 BrTextListSetBlob(BrTextList *pList, BrBlobSrcArg pSrc,
     return 1;
 }
 
-/* 0x100AAD08: the UI sprite table, 24-byte entries (see include/br_uispr.h).
+/* 0x100AAD08: the UI sprite table, 24-byte entries (see src/brally/include/br_uispr.h).
  * +0x00 is read as a WORD and pushed as-is, so the callee's third parameter
  * is declared short here; +0x04 is the source rect, +0x14 the blit flag. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

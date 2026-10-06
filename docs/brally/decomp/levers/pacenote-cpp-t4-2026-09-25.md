@@ -13,7 +13,7 @@ like C. But every list read was `[g + n*32 + disp]` with the freshly loaded
 global as SIB base. The C front end always emits the offset as base under
 every spelling, preamble size and decl order; the C++ front end emits the
 original order (with a preamble in the tie-break window: `<stdio.h>`). Filed
-as `src/core/drawing/BrPaceNoteEmit_10011300.cpp` with `extern "C"`.
+as `src/brally/core/drawing/BrPaceNoteEmit_10011300.cpp` with `extern "C"`.
 
 **Why:** "no EH / no thiscall" does NOT prove C. Operand-role residue that
 survives all C levers is worth one `/TP` compile of a micro-repro.

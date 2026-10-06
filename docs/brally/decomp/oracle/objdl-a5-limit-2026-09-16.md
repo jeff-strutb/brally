@@ -83,7 +83,7 @@ output is (a) an INTEGER display-list command buffer and (b) transformed vertice
 Dwords in those ranges are compared EXACTLY by the A5 oracle, never float-masked.
 REQUIRED for any function whose output is integer command/data buffers (DL
 builders, packet writers). Mark the integer arenas + counters exact; leave FLOAT
-arenas (vertex/matrix) tolerant. Wired in tools/t3b_verify.py `_classify_diff` +
+arenas (vertex/matrix) tolerant. Wired in tools/brally/t3b_verify.py `_classify_diff` +
 `verify_img`; field on oracle_profiles.Profile. No regressions (certified 0 DIFF).
 
 ** ALWAYS negative-control a new profile** ([brtex3dexpand-t3-2026-09-16](../functions/brtex3dexpand-t3-2026-09-16.md)):

@@ -16,11 +16,11 @@ places only where pairing CONFIRMED or CORRECTED it anywhere (pooled phase A
 → phase B), else the function blocks.
 
 **The lane machinery (all committed):**
-- `config/reloc_overrides.csv` = the per-site hand channel; `fill_function`
+- `config/brally/reloc_overrides.csv` = the per-site hand channel; `fill_function`
   AND the T3 gate consume it (values are FINAL SLOT DWORDS: REL32 rows store
   the displacement). Offsets may be 0x-hex. `BR_UNRES=1` names every
   blocking slot; `BR_DUMP_SITES=f` exports a build's final site values.
-- `tools/lockstep_rows.py`: full-stream or block-wise (SequenceMatcher,
+- `tools/brally/lockstep_rows.py`: full-stream or block-wise (SequenceMatcher,
   blocks ≥4, boundary guard) positional recovery - site i = original insn
   i's operand. ~950 rows.
 - **THE ARBITER: `t3b_verify.py <va>` tests the PLACED values** (fill honours
@@ -59,8 +59,8 @@ seeding profile would settle it. x87emu gained stosw.  raced-gate note: the
 parallel session's lanes (BrObjDlBuild + BrSnapInterpDraw now CERTIFIED by
 them - ObjDlBuild's "not certifiable" verdict is DEAD) race the gate; EXIT=2
 verdicts cover their in-flight rows, re-run when the tree is still.  wine
-slowdowns: a dying wineserver costs ~40x - `tools/wine/...bin/wineserver -p`
-with WINEPREFIX=build/wineprefix persists it.
+slowdowns: a dying wineserver costs ~40x - `tools/toolchains/wine/...bin/wineserver -p`
+with WINEPREFIX=build/toolchains/wineprefix persists it.
 
 **Superseded 2026-09-19b - the five WERE respelled (kept for the method):**
 - BrCtrlCfgAssign 0x10062B80 + BrMenuTime0C00 0x1003A140: source calls

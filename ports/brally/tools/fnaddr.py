@@ -4,7 +4,7 @@
 Decompiled code sometimes stores a function as its original address
 (`g_pfn = 0x10023b70;`). For every literal in the original code range that
 clang reports meeting a pointer type, the literal becomes the function placed
-at that address (build/wasm/placement.csv), cast to the type the code expects.
+at that address (build/brally/wasm32/placement.csv), cast to the type the code expects.
 
 Usage: fnaddr.py [FILE...]   (default: the failing files of the last build)
 """
@@ -24,9 +24,9 @@ TEXT_LO, TEXT_HI = 0x10001000, 0x10077000
 def main():
     os.chdir(ROOT)
     place = {}
-    for r in csv.DictReader(open('build/wasm/placement.csv')):
+    for r in csv.DictReader(open('build/brally/wasm32/placement.csv')):
         place[int(r['va'], 16)] = r['name']
-    files = sys.argv[1:] or [l.split(None, 1)[1].strip() for l in open('build/portable/compile.txt')
+    files = sys.argv[1:] or [l.split(None, 1)[1].strip() for l in open('build/brally/null-soft/compile.txt')
                              if l.startswith('FAIL ')]
     total, missing = 0, set()
     for f in files:

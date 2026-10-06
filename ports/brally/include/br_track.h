@@ -15,7 +15,7 @@
  *     IMAGES/   *.bmp  menu art          PAINT/   *.bmp  car liveries
  *     SFX/      *.wav
  *
- * `tools/extract_iso.py --list` walks the real ISO 9660 tree and prints all of
+ * `tools/brally/extract_iso.py --list` walks the real ISO 9660 tree and prints all of
  * it. 2111 files, 116 MB, on the MODE1/2352 data track.
  *
  * THE FORMAT
@@ -44,7 +44,7 @@
  *   0x10018A70/A90  face array     stride 0x08, four u16
  *   0x10018B40/B60  section array  stride 0x24  (NOT PORTED -- see below)
  *   0x10018A50      u16 run swapper
- * All of these are `shared` in config/shared.csv except 0x100311C0 and
+ * All of these are `shared` in config/brally/shared.csv except 0x100311C0 and
  * 0x10031030, which the Glide map has and the D3D map does not list at the
  * same address.
  *

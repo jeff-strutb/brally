@@ -1,0 +1,10 @@
+# Port deviations for src/brally/core/drawing/br_sprblit.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop include:<string.h>
+@drop include:"br_surf.h"
+@drop proto:BrUiSprBlitRows
+@drop proto:BrUiSprBlitKeyed
+@drop fn:BrUiSprBlit
+@drop fn:BrUiSprBlitRows
+@drop fn:BrUiSprBlitKeyed

@@ -22,7 +22,7 @@ Seed rewrite: 0-stack site MATCHES (`__fastcall` BR_THISCALL1). 1-stack
 site emits `xor edx,edx` from `__fastcall(this, 0, 1)`. Orig is
 `push 1; call [eax]` with edx untouched. 23 → 14, all 14 the xor+je
 cascade. VC5 C cannot spell thiscall-with-stack-args at a **call site**
-(`include/br_match.h`: dummy edx is a callee idiom). Struct-stack trick
+(`src/brally/include/br_match.h`: dummy edx is a callee idiom). Struct-stack trick
 is worse (17). Dummy=vtable is 12, eax-vs-edx coloring. 13 siblings at
 DIFF(14)/DIFF(18). Not C-generator-tractable.
 

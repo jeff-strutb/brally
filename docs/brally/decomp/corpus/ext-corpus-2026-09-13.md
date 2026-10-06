@@ -4,10 +4,10 @@
 
 > External same-compiler corpus (--corpus ext) LIVE, 1588/3956 byte-exact; x87 operand-role wall independently confirmed with a 116 B micro-TU laboratory function; supersedes ext-corpus-blocked-on-exe
 
-**2026-09-13: the external corpus is LIVE.** `--corpus ext` in tools/corpus.py
-(committed 2e17883, verdicts in docs/VC5-IDIOMS.md tail, 43f66af). Built from
+**2026-09-13: the external corpus is LIVE.** `--corpus ext` in tools/brally/corpus.py
+(committed 2e17883, verdicts in docs/brally/VC5-IDIOMS.md tail, 43f66af). Built from
 the C2 project (madebr/ext) - **that name NEVER goes in our tree (PROJECT
-RULE)**; in-tree everything is "ext", staged under `build/external/`
+RULE)**; in-tree everything is "ext", staged under `build/brally/analysis/corpus/`
 (git-ignored): `ext/` clone, `c2/CARMA2_HW_GOG.EXE` (sha256 9b896c2c…,
 extracted from the project lead's GOG installer by my scratch Inno 5.5.0
 extractor - the retail disc and 1.02 patch are BOTH SafeDisc-wrapped and
@@ -18,8 +18,8 @@ against the EXE with reloc masking + tail guard).
 **Numbers:** 1588/3956 annotated functions byte-exact under OUR cl (RTM
 7022; their project pins SP3 - indistinguishable again). 529 compile_fail
 (missing DirectX-ish includes, never chased), 1829 diff (their unmatched
-rows). Rebuild: `.venv/bin/python build/external/extcorpus.py` then
-`tools/corpus.py build --corpus ext`. refcheck stays Glide-keyed (rule 0
+rows). Rebuild: `.venv/bin/python build/brally/analysis/corpus/extcorpus.py` then
+`tools/brally/corpus.py build --corpus ext`. refcheck stays Glide-keyed (rule 0
 checked after).
 
 ** THE PAYOFF - the x87 operand-role wall is now independently confirmed
@@ -28,7 +28,7 @@ KNOWN SOURCE: 34Mul 20/404 off (param-homing order + B/C role swap), ApplyP
 10/116 off (pair-swapped fld order), TApplyFV 106/107 (only the ret byte).
 True source reproduces everything but the operand roles ⇒ scheduling
 decision, not a spelling. **Micro-TU sweep target = the ApplyP shape (116 B,
-source at build/external/ext/src/brender/core/math/matrix34.c), NOT our
+source at build/brally/analysis/corpus/ext/src/brender/core/math/matrix34.c), NOT our
 big carriers.** Queries: all four of our parked runs (0x1006DD20,
 0x10029D70, 0x1006D530, 0x1002A050) MISS in ext at every window; accumulate
 tail `fxch st(2); faddp st(1); fxch st(1)` PROVEN = flat 3-term MAC macro

@@ -1,6 +1,6 @@
 /* br_quatmat.c -- a car's orientation quaternion + position -> its 4x4 matrix.
  *
- * Glide 0x10062640 stands alone in its translation unit (config/tu_map.csv
+ * Glide 0x10062640 stands alone in its translation unit (config/brally/tu_map.csv
  * tu_047).  BrCarState's f00 is the quaternion's scalar, f04..f0C its vector
  * part, f10..f18 the position (slice3_42.h).
  *
@@ -63,7 +63,7 @@ static __inline float BrSq(float a)
  * body it replaced paired the rounded and unrounded copies of y*xs the other
  * way round and was 1 ulp off on 566 of 2000 random inputs; this one is
  * bit-identical on all 2000 (differential emulation against 0x10062640).
- * Placed as the /O2 compile (config/t3_variant_c.csv).  Do not reopen
+ * Placed as the /O2 compile (config/brally/t3_variant_c.csv).  Do not reopen
  * before the end-grind. */
 /* @t4-pass 0x10062640 1 2026-09-27 probes 45 bytes 365 insns 126 regions 1 rows 1 census yes  (hand: preamble census -- int pads 0-76, 5 system headers, C and /TP) */
 /* @t4-pass 0x10062640 2 2026-09-27 probes 82 bytes 365 insns 126 regions 1 rows 1 census no  (hand: operand orders, sign forms, copy variables, statement placement of the y*xs / w*zs pair) */

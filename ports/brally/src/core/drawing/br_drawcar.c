@@ -54,7 +54,7 @@
  *     spelling of this function can add.  The wall is real.
  *
  * Read off the GLIDE build, which is this project's reference.  Both
- * functions here are classed `shared` in config/shared.csv, so the D3D
+ * functions here are classed `shared` in config/brally/shared.csv, so the D3D
  * twins (0x1000C6E0 and 0x1000CBE0) are the same code under other numbers.
  */
 /* Header is (const void *, void *).  Original is a 4x4 int copy
@@ -481,7 +481,7 @@ set_flags:
  * g_4B16A0 the BACK-facing one; each term is (align - 0.95) * 750 / dist^2
  * above a 0.95 alignment threshold, and the two are mutually exclusive per
  * car.  The glow arithmetic sits in the file's stack-aliasing region and was
- * transcribed against tools/x87emu.py, not hand-derived (see the golden
+ * transcribed against tools/brally/x87emu.py, not hand-derived (see the golden
  * vectors in test_br_drawcar.c).
  *
  * The record and its model are reached by raw byte offset, the write-back
@@ -497,8 +497,8 @@ set_flags:
 /* WHAT IT DOES: draws the solid shell of one car and, for the other racers,
  * adds a little bloom wherever their headlights point roughly at or away from
  * the camera, so oncoming and receding cars glow. */
-/* @t4-pass 0x1000BEB0 1 2026-09-07 probes 108 bytes 1488 insns 399 regions 8 rows 59 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000BEB0 2 2026-09-07 probes 108 bytes 1488 insns 399 regions 8 rows 59 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000BEB0 1 2026-09-07 probes 108 bytes 1488 insns 399 regions 8 rows 59 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000BEB0 2 2026-09-07 probes 108 bytes 1488 insns 399 regions 8 rows 59 census yes  (tools/brally/crank.py) */
 /* @implements 0x1000BEB0 glide BrCarDrawBody */
 void BrCarDrawBody(void *pCar)
 {
@@ -774,7 +774,7 @@ void BrCarDrawBody(void *pCar)
  * 7577 bytes.  The whole residue is encoding/allocation.  Region 1 is the
  * frame itself (`sub esp,0x48` vs orig `0x4c`); close that first, every
  * later region's displacements move with it.  Read the recomp's frame map
- * from a `/FAcs` listing (recipe in docs/VC5-IDIOMS.md) rather than
+ * from a `/FAcs` listing (recipe in docs/brally/VC5-IDIOMS.md) rather than
  * inferring it -- displacement histograms cannot be compared across two
  * builds whose frame sizes differ, and that is how the pack[0]/pack[1] claim
  * corrected below went wrong.
@@ -804,7 +804,7 @@ void BrCarDrawBody(void *pCar)
  * colour if/else (their whole live range) is byte-identical -- it does not
  * move them out of the arg slots into byte slots.
  *
- * WORKLIST 2026-09-03, from `tools/msetdiff.py` (register-blind instruction
+ * WORKLIST 2026-09-03, from `tools/brally/msetdiff.py` (register-blind instruction
  * multiset, relocs masked, small immediates KEPT).  The region count cannot
  * see any of this -- divergence.py wildcards imm32 -- and the two builds
  * have EQUAL instruction counts, so these are byte-vs-dword storage choices,
@@ -900,7 +900,7 @@ void BrCarDrawBody(void *pCar)
  * IS INFLATED, AND THIS FUNCTION IS THE ONE THAT EXPOSED IT.  `fn.py` and
  * `triage.py` did not mask reloc'd operands (only `msetdiff.py` did), so
  * every absolutely-addressed instruction was counted TWICE.  Fixed
- * 2026-09-03; see the note in tools/fnmatch/fn.py.
+ * 2026-09-03; see the note in tools/brally/fnmatch/fn.py.
  *   Found by reading the dominant family rather than trusting it: REGNORM
  *   reported `mov R,[R*I]` x8 EXTRA against `mov R,[R*I+I]` x8 MISSING, and
  *   disassembling both streams side by side shows FOURTEEN scaled-index
@@ -924,7 +924,7 @@ void BrCarDrawBody(void *pCar)
  *   is the oracle for; nobody has looked at it here.
  *
  * !! SESSION 17 (2026-09-03) -- THE BYTE-LANE WALL, ATTACKED WITH THE CORPUS
- * QUERY (tools/corpus.py).  No closure, but the search space is now bounded
+ * QUERY (tools/brally/corpus.py).  No closure, but the search space is now bounded
  * by evidence instead of by guesswork, and that is worth more than the probe.
  *   !! THE CONSTRUCT IS NOT PROVEN ANYWHERE IN THE TREE.  Asked over the 1,036
  *   byte-exact functions, NEITHER `mov R,[esp+S]; and R,0xff; or R,R` NOR
@@ -1114,7 +1114,7 @@ void BrCarDrawBody(void *pCar)
  *     that worked in arm 3): BYTE-IDENTICAL here.  Regions 2/3 stay
  *     canonicalisation, not allocation.
  * SESSION 12 SCREENS, both negative, so nobody re-runs them: this function's
- * frame now MATCHES (`tools/framescreen.py` no longer lists it), and it has
+ * frame now MATCHES (`tools/brally/framescreen.py` no longer lists it), and it has
  * no `(double)` modelling and no qword spills, so the Glide-is-float lever
  * does not apply here.
  *
@@ -1250,7 +1250,7 @@ void BrCarDrawBody(void *pCar)
  * five are byte-identical to the current form.  The byte lane follows
  * VC5's evaluation order (simpler subtree first), which no commutative or
  * statement-level spelling reaches; see the canonicalisation entry in
- * docs/VC5-IDIOMS.md.
+ * docs/brally/VC5-IDIOMS.md.
  *
  * Frame: `sub esp, 0x4c; push ebx; mov ebx, pCar; push ebp; xor ebp,ebp`.
  * ebp is the zero register (154 uses: `push ebp` for TK_ZERO / put w1=0).
@@ -1261,8 +1261,8 @@ void BrCarDrawBody(void *pCar)
 /* WHAT IT DOES: draw one car -- picks the level of detail from how far away
  * it is, sets up its colours and lighting, and emits the body and wheels.
  * The top of car rendering, called once per visible car per frame. */
-/* @t4-pass 0x1000A110 1 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000A110 2 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000A110 1 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000A110 2 2026-09-07 probes 150 bytes 7561 insns 1839 regions 29 rows 10 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1000A110 3 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census no  (guard polarity, float/spec/index commutes, statement orders, join or-commute: 9 byte-identical, 1 regression) */
 /* @t4-pass 0x1000A110 4 2026-09-09 probes 10 bytes 7560 insns 1839 regions 29 rows 12 census yes  (compare/negate-guard swaps, decl splits/orders, mode-flag commute, cast removal: 9 byte-identical, 1 region-count wobble at identical bytes.  Census: full-length mnemonic histograms equal except and 24/22, or 28/26 -- exactly the classified byte-compose group; call 48/48, fdiv/fmul/fild/imul/shl/ret all equal) */
 /* @t3 0x1000A110 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -1276,7 +1276,7 @@ void BrCarDrawBody(void *pCar)
  * 29 masked regions is allocation echo at delta 0.
  * RECERTIFIED 2026-09-28.  The body was right; its placement was not.  The
  * rain arm (BrG_6C661C set) loads G before R, and the two hand rows in
- * config/reloc_overrides.csv for +0x2B9 / +0x2D7 bound those sites in the
+ * config/brally/reloc_overrides.csv for +0x2B9 / +0x2D7 bound those sites in the
  * ORIGINAL's load order -- R's address to G's site and vice versa -- so in
  * rain the car light colour went out with its top two bytes swapped
  * (EEDDFF00 for DDEEFF00).  Sunny runs never show it: there the bytes are
@@ -1607,7 +1607,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
          * `mov edx,[esp+0x68]` after 16 pushes) where the look-at call above
          * pushed [esp+0x30].  Passing pLights here made the angles call
          * overwrite the look-at pair and left the second block unwritten --
-         * found by the live oracle (tools/t3live.py) on a real race frame. */
+         * found by the live oracle (tools/brally/t3live.py) on a real race frame. */
         BrLightDirsAndAngles(&g_BrDrawCombined, (BrLightPair *)br_ptr32(specMem), pSkyAng,
             pCam[12], pCam[13], pCam[14],
             pCarF[12] + eyeScale, pCarF[13],
@@ -1814,7 +1814,7 @@ void BrCarDrawVehicle(void *pCar, int32_t lodBias)
              * three, which is exactly the original's block layout; selecting
              * into one variable and calling once gives a single shared push
              * pair and loses two instructions.  Same lever as the branch-
-             * selected DL emits (docs/VC5-IDIOMS.md).
+             * selected DL emits (docs/brally/VC5-IDIOMS.md).
              * Orig calls the hook UNCONDITIONALLY and reads dlBase (model+0x80)
              * at the call site, not hoisted -- the null-check was a port-safety
              * addition the original never had. */

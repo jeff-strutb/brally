@@ -2,7 +2,7 @@
 
 *Recorded 2026-08-28.*
 
-> The combined match count spans THREE report CSVs (DLL-C, C++, EXE) reconciled by tools/total.py. As of 2026-08-27: 706 functions match (570 DLL-C + 36 C++ + 100 EXE).
+> The combined match count spans THREE report CSVs (DLL-C, C++, EXE) reconciled by tools/brally/total.py. As of 2026-08-27: 706 functions match (570 DLL-C + 36 C++ + 100 EXE).
 
 ## The count is now THREE binaries × three scorers - total.py reconciles them
 
@@ -11,12 +11,12 @@ from its own scorer, plus a reconciler:
 
 | CSV | scorer / sweep | scope | status col |
 |---|---|---|---|
-| `build/match/report.csv` | `match_sweep.py` (cl C, /O2+/Od) | BRGlide.dll C | `$4` |
-| `build/match/report_cpp.csv` | `cpp_sweep.py` → `cpp_score.py` (cl /GX) | BRGlide.dll C++ EH | `$4` |
-| `build/match/report_exe.csv` | `exe_sweep.py` | BRally/SetVideo/BossRally | **`$5`** (leading `exe` col) |
+| `build/brally/win32/match/report.csv` | `match_sweep.py` (cl C, /O2+/Od) | BRGlide.dll C | `$4` |
+| `build/brally/win32/match/report_cpp.csv` | `cpp_sweep.py` → `cpp_score.py` (cl /GX) | BRGlide.dll C++ EH | `$4` |
+| `build/brally/win32/match/report_exe.csv` | `exe_sweep.py` | BRally/SetVideo/BossRally | **`$5`** (leading `exe` col) |
 
-**`python3 tools/total.py`** re-scores and reconciles all three, and writes the
-manifests `build/match/cpp_matches.csv` and `build/match/exe_matches.csv` that
+**`python3 tools/brally/total.py`** re-scores and reconciles all three, and writes the
+manifests `build/brally/win32/match/cpp_matches.csv` and `build/brally/win32/match/exe_matches.csv` that
 `progressmap.py` reads. It is the authoritative combined number.
 
 **As of 2026-08-27 (later): 741 functions match** - 599 DLL-C + 39 C++ + 103
@@ -25,7 +25,7 @@ EXE; **0 compile errors**. (Watch the EXE CSV's extra leading column  -
 
 ## report.csv is a GITIGNORED LOCAL artifact - source files are the truth
 
-`build/match/report.csv` (and the cpp/exe reports) are NOT the durable record  - 
+`build/brally/win32/match/report.csv` (and the cpp/exe reports) are NOT the durable record  - 
 they are regenerated locally by the sweeps. The COMMITTED `.c`/`.cpp` files are
 the source of truth. To audit for lost/unbanked matches: cross-reference each
 `match` row's `file` against `git ls-files` - any match whose source is
@@ -56,7 +56,7 @@ proper purge is re-sweeping those slices when the pipeline is quiet.
 `progressmap.py` now distinguishes **fenced** CRT (linked, never a decomp
 target - purple `#6e5494`) from real **todo** (gray). `CRT_START` per EXE
 (brally 0x401BC0, setvideo 0x402D20, bossrally 0x401BC0) marks everything above
-it as fenced. C++ matches render green grouped as `src/core/cpp/(C++ EH)`; each
+it as fenced. C++ matches render green grouped as `src/brally/core/cpp/(C++ EH)`; each
 EXE is its own region `EXE: <name>.exe`. Result on last run: 100 match /
 477 fenced / 19 todo across the EXE map. Fenced ≠ unfinished - it is CRT we
 deliberately do not decompile (see [glide-is-the-reference](../rules/glide-is-the-reference.md), rule: standard

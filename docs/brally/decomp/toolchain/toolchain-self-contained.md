@@ -2,7 +2,7 @@
 
 *Recorded 2026-08-20.*
 
-> The matching-build toolchain must live inside the repo - Wine downloaded to tools/, MSVC extracted from the ISO. Never install to the host.
+> The matching-build toolchain must live inside the repo - Wine downloaded to tools/brally/, MSVC extracted from the ISO. Never install to the host.
 
 **HARD REQUIREMENT (project lead, 2026-08-19):** the matching-build toolchain is
 staged INSIDE the repo. Never `brew install` Wine, never install to
@@ -11,21 +11,21 @@ staged INSIDE the repo. Never `brew install` Wine, never install to
 `setup.sh` now does both halves automatically:
 
 - **Wine** - downloads a pinned, sha256-checksummed portable macOS build
-  (11.0_1, Gcenx/macOS_Wine_builds) into `tools/wine/`. x86_64, runs under
+  (11.0_1, Gcenx/macOS_Wine_builds) into `tools/toolchains/wine/`. x86_64, runs under
   Rosetta 2 on Apple Silicon. Pinned deliberately: bumping Wine means
   re-verifying every matched function.
 - **MSVC 5.0** - mounts `reference/msvc/VCPP-5.00.iso` with `hdiutil` and
   copies `DEVSTUDIO/VC/{BIN,INCLUDE,LIB}` plus `SHAREDIDE/BIN/MSPDB50.DLL`
-  into `tools/msvc5/`. Compiler ends up at `tools/msvc5/bin/cl.exe`.
+  into `tools/toolchains/msvc5/`. Compiler ends up at `tools/toolchains/msvc5/bin/cl.exe`.
 
-`tools/wine.sh` is the wrapper everything calls. It picks the repo-local Wine
+`tools/toolchains/wine.sh` is the wrapper everything calls. It picks the repo-local Wine
 (falling back to PATH only if absent) and sets `WINEPREFIX` to
-`build/wineprefix` so `~/.wine` is never touched. It also sets `WINEDEBUG=-all`,
+`build/toolchains/wineprefix` so `~/.wine` is never touched. It also sets `WINEDEBUG=-all`,
 which silences the MoltenVK banner Wine otherwise prints on every compile.
 
-**`tools/msvc5-compat/` is tracked in git and must stay that way.** It holds
+**`tools/toolchains/msvc5-compat/` is tracked in git and must stay that way.** It holds
 hand-written `stdint.h` / `stdbool.h` shims (VC5 predates C99). A previous
-session put them inside `tools/msvc5/include/`, where re-extracting the ISO
+session put them inside `tools/toolchains/msvc5/include/`, where re-extracting the ISO
 silently destroys them - the symptom is a `stdint.h` fatal error. Both
 build paths add it to the include path AHEAD of the VC5 headers.
 

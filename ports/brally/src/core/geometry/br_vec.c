@@ -41,7 +41,7 @@
  * `pA->x = pA->x + pB->x` are byte-identical under IDO too, so the compound
  * form is unproven either way -- it just does not matter to either target.
  * Method: tools/tgrally/n64match.py; see the commutative-addition entry in
- * docs/VC5-IDIOMS.md. */
+ * docs/brally/VC5-IDIOMS.md. */
 void BrVec3AddTo(BrVec3 *pA, const BrVec3 *pB)
 {
     pA->x += pB->x;
@@ -134,9 +134,9 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
 
 /* WHAT IT DOES: scale a vector by a number into a separate output, leaving
  * the input alone. */
-/* @t4-pass 0x10034360 1 2026-09-07 probes 39 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10034360 2 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10034360 3 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10034360 1 2026-09-07 probes 39 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10034360 2 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10034360 3 2026-09-07 probes 27 bytes 37 insns 12 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10034360 4 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: s-first/temps/elem-ptr/mul-eq; zyx worse; corpus MISS at +0x8) */
 /* @t4-pass 0x10034360 5 2026-09-09 probes 10 bytes 37 insns 12 regions 1 rows 4 census yes  (hand, fn.py variants: statement order, out-temp, splits, parens; out-temp and y-first worse) */
 /* @t3 0x10034360 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -159,7 +159,7 @@ void BrVec3Sub(BrVec3 *pOut, const BrVec3 *pA, const BrVec3 *pB)
  * scalar itself; and a `const float *p = &pV->x` element pointer. These were
  * run because a NAMED TEMP had just broken the sum-of-products canonicaliser
  * on 0x10060C30 BrSndPan -- it does not carry over, and the reason is the
- * boundary now recorded in docs/VC5-IDIOMS.md: the temp lever needs a flat SUM
+ * boundary now recorded in docs/brally/VC5-IDIOMS.md: the temp lever needs a flat SUM
  * to lift a term OUT of. Each component here is a lone two-operand multiply,
  * and a lone commutative fmul is genuinely out of reach from source. */
 /* N64 CANNOT SETTLE THIS ONE -- a negative result, recorded so it is not

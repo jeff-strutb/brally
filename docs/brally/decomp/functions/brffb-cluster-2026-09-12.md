@@ -66,7 +66,7 @@ showed Od 946 B from a pre-__stdcall compile; the O2 truth was 256);
 match_sweep's cache keys on file CONTENT, so `touch` does nothing - use
 `--force`. A peer or the project lead committed my in-flight __inline edit with a correct
 message mid-session (shared tree, [parallel-session-clobber](../traps/parallel-session-clobber.md));
-include/br_carphys.h had a peer's uncommitted edit. fileaudit's 7 violations =
+src/brally/include/br_carphys.h had a peer's uncommitted edit. fileaudit's 7 violations =
 the stranded drift 18-vs-11 that PREDATES 09-10.
 
 Related: [pool-refresh-method-2026-09-10](../triage/pool-refresh-method-2026-09-10.md), [com-vtable-levers-2026-09-10](../cpp-lane/com-vtable-levers-2026-09-10.md),

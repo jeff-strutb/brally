@@ -251,7 +251,7 @@ BrSegMap s_seg;   /* not static: slice2_20.c's remaining track fixups share it *
  * +0x8098/0x809C pair order; a q alias in the DL loop; the +0x8090 swap
  * after the +0x8094 rebase; the descriptor index widened; crank's full
  * mut/stmt/decl/comm/samebase list (filepos cannot compile this TU's
- * dependencies).  !! crank's parked endpoint (build/ghidra_work/
+ * dependencies).  !! crank's parked endpoint (build/brally/analysis/ghidra_work/
  * 0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND -- it reads the
  * record count at +0x8010 BEFORE the BR_LD32BE that byte-swaps it, so its
  * gain is not a transcription; do not land it.  Corpus: MISS at +0x19.
@@ -461,7 +461,7 @@ void BrRcaFixup(void *pvFile)
  * means "however long the file is". A positive size is used as given, with
  * no check against either the file's real length or the buffer's, and a
  * missing file is complained about and then read from anyway. */
-/* port-only body; Glide match is src/core/generated/0x10030F50.c */
+/* port-only body; Glide match is src/brally/core/generated/0x10030F50.c */
 /* BrFileReadInto: the placed body is br_chkfile.c */
 
 /* ==========================================================================
@@ -477,7 +477,7 @@ void BrRcaFixup(void *pvFile)
 
 /* BUILD DIVERGENCE -- THE EXTENSION, and the port had the wrong one.
  *
- * The two builds are the same routine (config/shared.csv pairs them, matched
+ * The two builds are the same routine (config/brally/shared.csv pairs them, matched
  * by callsite) with ONE string changed, and each string exists in only one
  * image:
  *
@@ -488,7 +488,7 @@ void BrRcaFixup(void *pvFile)
  * edit between the builds and not one shared constant read twice.
  *
  * WHICH ONE IS RIGHT IS NOT A COIN FLIP -- THE DISC SETTLES IT.  The extracted
- * assets under testdata/tracks/ are `desert.hnt` and `coast.hnt`, and there is
+ * assets under reference/brally/data/tracks/ are `desert.hnt` and `coast.hnt`, and there is
  * no `.hnd` anywhere on the disc.  So the shipped data is what the Glide build
  * asks for, and a D3D build run against this disc would open a file that does
  * not exist.  Glide is this project's declared reference (CONVENTIONS.md,
@@ -502,7 +502,7 @@ void BrRcaFixup(void *pvFile)
 /* WHAT IT DOES: loads a track's handling file -- the physics settings for
  * driving on it. It builds the track's path, swaps the extension for the
  * handling one, and hands it on to be read. */
-/* port-only body; Glide match is src/core/generated/0x10031140.c */
+/* port-only body; Glide match is src/brally/core/generated/0x10031140.c */
 /* BrTrackLoadHandling: the placed body is br_track.c */
 
 /* ==========================================================================
@@ -513,7 +513,7 @@ void BrRcaFixup(void *pvFile)
  * counts and sizes get their bytes reversed, and every reference in it is
  * rebased onto real memory. One word in the middle is skipped entirely,
  * which is the only gap in the whole header and is in the original. */
-/* NOT TAGGED -- port-only body. config/shared.csv maps d3d 0x10038510 to
+/* NOT TAGGED -- port-only body. config/brally/shared.csv maps d3d 0x10038510 to
  * Glide 0x10031B80, and BrGlTrackHdrRead below is the real transcription of
  * that address (1552 bytes against 1549, instruction multiset exact). This
  * body is the port's: helpers out of line and the swaps written as range
@@ -581,8 +581,8 @@ void BrRcaFixup(void *pvFile)
  *   `q` dropped (all inert).  `int` temps: +236 B, +124 insns. */
 /* WHAT IT DOES: read a track file's header and fill in the pointers to each
  * of its sections. The map of what is where in the file, built once at load. */
-/* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10031B80 2 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10031B80 1 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10031B80 2 2026-09-07 probes 150 bytes 1549 insns 495 regions 12 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10031B80 3 2026-09-09 probes 29 bytes 1549 insns 495 regions 10 rows 0 census yes  (hand: corpus MISS at +0x464/+0x4f0/+0x2e4/+0x319; pointer-site, BE-pair and loop mechanism sweep -- lever 1 landed) */
 /* @t4-pass 0x10031B80 4 2026-09-09 probes 18 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: counter-expression loops + parameter-expression h -- levers 2 and 3 landed) */
 /* @t4-pass 0x10031B80 5 2026-09-09 probes 17 bytes 1549 insns 495 regions 4 rows 0 census yes  (hand: the four BE-pair sites, casts/temps/accumulators/store forms/declaration order -- zero movement) */

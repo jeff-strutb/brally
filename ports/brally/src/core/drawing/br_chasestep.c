@@ -146,8 +146,8 @@ typedef struct BrPtrArg { void *p; } BrPtrArg;
  * (no edx), `k` ternary, tail-merged lift call sites, the frame copy in the
  * arg expression, demo branch polarity, pAxZ/pUp/pLook locals, the dead 0.02
  * height store. */
-/* @t4-pass 0x10001CF0 2 2026-09-20 probes 14 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/crank.py) */
-/* @t4-pass 0x10001CF0 3 2026-09-20 probes 12 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/crank.py) */
+/* @t4-pass 0x10001CF0 2 2026-09-20 probes 14 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10001CF0 3 2026-09-20 probes 12 bytes 1578 insns 408 regions 7 rows 43 census yes  (tools/brally/crank.py) */
 /* @t3 0x10001CF0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1578/1567 insns 408/403 rows 19+24 regions 7 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 2 3

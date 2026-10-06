@@ -47,7 +47,7 @@ def split_args(s, i):
 
 def main():
     os.chdir(ROOT)
-    files = sys.argv[1:] or [l.split(None, 1)[1].strip() for l in open('build/portable/compile.txt')
+    files = sys.argv[1:] or [l.split(None, 1)[1].strip() for l in open('build/brally/null-soft/compile.txt')
                              if l.startswith('FAIL ')]
     total, few = 0, 0
     for f in files:

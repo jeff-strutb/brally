@@ -1,0 +1,189 @@
+va,name,verdict,calls,captured,contexts,detail,date
+0x100011c0,BrSurfBlt24,EQUIVALENT,4648,144,24,10_boot: 6 real call(s) agree,2026-09-24
+0x10001320,BrUiSprBlit,EQUIVALENT,993275,144,24,10_boot: 6 real call(s) agree,2026-09-24
+0x100014a0,BrSurfSetColourKey,EQUIVALENT,4640,144,24,10_boot: 6 real call(s) agree,2026-09-24
+0x10001cf0,BrCamChaseStep,EQUIVALENT,85747,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10002460,BrRaceSelFromMenu,EQUIVALENT,6,6,6,21_quickrace_finish: 1 real call(s) agree,2026-09-24
+0x10002580,BrCdEarChannelOpen,EQUIVALENT,24,24,24,10_boot: 1 real call(s) agree,2026-09-24
+0x10003050,BrCdStopReleaseMsg,EQUIVALENT,1,1,1,80_quit: 1 real call(s) agree,2026-09-24
+0x100030b0,BrCdStopReleaseMci,EQUIVALENT,1,1,1,22_ini_cdmusic: 1 real call(s) agree,2026-09-24
+0x10003430,BrFChkFRead,EQUIVALENT,330,99,25,10_boot: 3 real call(s) agree,2026-09-24
+0x100038f0,FUN_100038f0,EQUIVALENT,2143,18,5,61_mp_race: 6 real call(s) agree,2026-09-24
+0x10005810,BrGhostPickBlend,EQUIVALENT,7638,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
+0x10006510,BrCarStateEncode,EQUIVALENT,635,18,3,61_mp_race: 6 real call(s) agree,2026-09-24
+0x10007750,BrCarStateDecodeDelta,EQUIVALENT,1762,9,2,61_mp_race: 9 real call(s) agree [not placed in the image; object mode],2026-09-26
+0x10007d50,BrCarStateLerp,EQUIVALENT,10398,18,11,61_mp_race: 6 real call(s) agree,2026-09-24
+0x10009010,BrDpAppMsgHandle,EQUIVALENT,2056,21,3,"21 real call(s) agree (61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
+0x100096a0,BrDPlaySysMsgLog,EQUIVALENT,2,2,2,61_mp_race: 1 real call(s) agree,2026-09-24
+0x1000a110,BrCarDrawVehicle,EQUIVALENT,41409,120,21,"28_weather_rain 37_bonus_rain 20_quickrace_drive: all real calls agree after the rain-arm reloc override fix (2026-09-28; the rain colour bytes were role-swapped)",2026-09-28
+0x1000c9e0,FUN_1000c9e0,EQUIVALENT,20702,63,8,"63 real call(s) agree (20_quickrace_drive: 7, 21_quickrace_finish: 8, 27_quickrace_snow: 7, 40_timeattack: 8, 50_championship: 9, 61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects)",2026-09-27
+0x1000cb20,BrViewBuffersRebase,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1000cba0,BrObjDlBuild,EQUIVALENT,447137,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1000df00,BrPolyClipPlane,EQUIVALENT,703,6,4,23_ini_swshadow: 6 real call(s) agree,2026-09-24
+0x1000e320,BrSceneVisPrepare,EQUIVALENT,18960,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1000eaf0,BrSceneDlBuild,EQUIVALENT,37960,90,40,20_quickrace_drive: 4 real call(s) agree,2026-09-24
+0x10010fb0,BrPanelDlBuild,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10011fa0,BrFrameDraw,EQUIVALENT,19100,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100131e0,BrSnapInterpDraw,EQUIVALENT,19221,120,39,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10013e80,BrRaceBeginResetOnce,EQUIVALENT,25,25,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x10013f20,BrSnapPickSlot,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10013fd0,BrGfxDrawTexRect,EQUIVALENT,35810,114,38,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10014960,BrSub_100173F0,EQUIVALENT,17905,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10015300,BrHudDraw,EQUIVALENT,18019,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10015b10,BrTextEmitString,EQUIVALENT,202926,120,56,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10016980,BrFontMeasure,EQUIVALENT,141645,120,39,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10017110,BrEnvEmit,EQUIVALENT,18980,120,20,"36_amazon_fog_car11 34_desert_snow_car9 20_quickrace_drive: all real calls agree after pinning the float rounding points (2026-09-28; was a quarter-pixel off)",2026-09-28
+0x10017910,BrEarLoad,EQUIVALENT,24,24,24,10_boot: 1 real call(s) agree,2026-09-24
+0x10017e30,BrWindowEarStartup,EQUIVALENT,48,48,48,10_boot: 2 real call(s) agree,2026-09-24
+0x100182f0,BrCursorPairSet,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x100183b0,BrFadeDrawBars,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100186e0,BrFadeTick,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018a50,BrSwapU16Array,EQUIVALENT,126,120,120,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018b60,BrRcaFixupRecord,EQUIVALENT,4813,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018d50,BrRcaSwapMesh,EQUIVALENT,2648,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10018ef0,BrVtxExpand,EQUIVALENT,20634,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10019930,BrRaceCueLayout,EQUIVALENT,1,1,1,25_cheats: 1 real call(s) agree,2026-09-24
+0x10019a70,BrRaceStep,EQUIVALENT,76894,120,20,20_quickrace_drive: 6 real call(s) agree [original not containable: timeout no return within 30.0s (eip 7E010102)],2026-09-24
+0x1001c9d0,BrSelLookup,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
+0x1001ca30,BrCarDamageTick,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
+0x1001d1b0,BrScenePropsDraw,EQUIVALENT,2509,119,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1001d8a0,BrDxDetect,EQUIVALENT,18,18,18,"10_boot object mode: the real call plus 17 forced environments (GetVersionEx fail / NT3 / NT4 +- DInput / NT5 / other platform; DDraw load, proc, create, QI DDraw2, DInput load/proc, SetCooperativeLevel, CreateSurface, surface QI 3/4 failures) -- all agree; planted bugs caught",2026-09-24
+0x1001dd00,BrVec3dCross,EQUIVALENT,762458,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1001e080,BrGlInstall,EQUIVALENT,25,25,25,10_boot: 1 real call(s) agree,2026-09-24
+0x1001ec30,BrDlsTileSizeDecode,EQUIVALENT,688715,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1001f2b0,BrClipPlaneWPlusF04,EQUIVALENT,970325,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1001fa30,BrDlCmdTri2,EQUIVALENT,1000020,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10020d70,BrDlCmdTri2NoZ,EQUIVALENT,17911,114,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10021c70,BrDlVtxLit,EQUIVALENT,101870,18,3,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10022600,BrDlVtxGen,EQUIVALENT,14800,30,5,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-24
+0x10022bf0,BrDlVtxGenLin,EQUIVALENT,22234,118,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10023b70,BrFramePresent,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10023d70,FUN_10023d70,EQUIVALENT,9923,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x100250d0,BrTex3dExpand,EQUIVALENT,10838,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x100271f0,BrTex3dTexel,EQUIVALENT,1000020,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10027290,BrGbiSizeShift,EQUIVALENT,1815,145,125,10_boot: 5 real call(s) agree,2026-09-24
+0x10027a10,br_tex3d_append,EQUIVALENT,9923,125,25,10_boot: 1 real call(s) agree,2026-09-24
+0x10027a70,FUN_10027a70,EQUIVALENT,37243,125,45,10_boot: 1 real call(s) agree,2026-09-24
+0x10027e10,BrTex3dMipChainLoad,EQUIVALENT,340,77,20,20_quickrace_drive: 4 real call(s) agree,2026-09-24
+0x10027f00,BrGbiBlit,EQUIVALENT,239,125,125,10_boot: 1 real call(s) agree,2026-09-24
+0x10028200,FUN_10028200,EQUIVALENT,9964,125,45,10_boot: 1 real call(s) agree,2026-09-24
+0x10028620,BrTexSlotFetchPixels,EQUIVALENT,931,102,51,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10028bb0,BrTex3dRegister,EQUIVALENT,26694,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029420,BrGbiTexScanSetImg,EQUIVALENT,31365,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029480,BrGbiTexScanLoadTlut,EQUIVALENT,4671,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029510,BrGbiTexScanLoadBlock,EQUIVALENT,26694,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10029b50,BrTexInit,EQUIVALENT,69,67,65,10_boot: 1 real call(s) agree,2026-09-24
+0x10029cd0,BrTex3dFreeAll,EQUIVALENT,46,43,42,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x10029ec0,BrMat4Frustum,EQUIVALENT,18980,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1002a200,BrLightDirsAndAngles,EQUIVALENT,207,6,1,20_quickrace_drive: 6 real call(s) agree [not placed in the image; object mode],2026-09-26
+0x1002f640,BrBitLatchTake,EQUIVALENT,15,15,14,21_quickrace_finish: 2 real call(s) agree,2026-09-24
+0x1002f790,FUN_1002f790,EQUIVALENT,2946,12,6,61_mp_race: 6 real call(s) agree,2026-09-24
+0x100302a0,BrModelSwap,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x100306d0,BrPendListAdd,EQUIVALENT,322,89,20,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x10030770,BrRcaFixup,EQUIVALENT,41,25,19,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x10030fd0,BrKeyTableFind,EQUIVALENT,227,6,1,26_lowtexmem: 6 real call(s) agree,2026-09-24
+0x100316d0,BrTrackFixupRec54,EQUIVALENT,14070,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10031b80,BrGlTrackHdrRead,EQUIVALENT,21,21,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x10032320,BrDpLobbyConnect,EQUIVALENT,26,26,26,10_boot: 1 real call(s) agree,2026-09-24
+0x100326a0,BrCarSub9020,EQUIVALENT,2688,6,1,27_quickrace_snow: 6 real call(s) agree,2026-09-24
+0x10032880,BrCarWheelFx,EQUIVALENT,162258,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10032e40,BrCarTrailStep,EQUIVALENT,75598,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100339c0,BrPfxUpdateB4AC,EQUIVALENT,74478,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034360,BrVec3Scale,EQUIVALENT,223741,120,57,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034390,BrVec3ScaleBy,EQUIVALENT,421388,120,47,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034660,BrVec3MulAdd,EQUIVALENT,868175,120,64,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100346a0,BrVec3MulAddTo,EQUIVALENT,478307,120,46,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034a70,BrMtxXfmDir3,EQUIVALENT,14070,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10034b70,BrMtxInvert,EQUIVALENT,3890,36,5,"36 real call(s) agree (20_quickrace_drive: 7, 40_timeattack: 8, 61_mp_race: 7, 63_mp_join: 7, 64_mp_dropout: 7; --objects)",2026-09-27
+0x10035c50,BrNetSessionHost,EQUIVALENT,3,3,3,60_multiplayer: 1 real call(s) agree,2026-09-24
+0x10035dd0,BrDpSessionJoin,EQUIVALENT,1,1,1,63_mp_join: 1 real call(s) agree,2026-09-24
+0x10036300,BrNetEnumSessionsStart,EQUIVALENT,393,32,12,60_multiplayer: 5 real call(s) agree,2026-09-24
+0x10036810,BrComGetAlloc,EQUIVALENT,9,9,5,21_quickrace_finish: 2 real call(s) agree,2026-09-24
+0x10036a30,FUN_10036a30,EQUIVALENT,9,9,5,21_quickrace_finish: 2 real call(s) agree,2026-09-24
+0x10036b20,BrDpAddressBuild,EQUIVALENT,8,7,6,60_multiplayer: 2 real call(s) agree,2026-09-24
+0x10037c90,BrSub1003E680,EQUIVALENT,17,17,17,"targeted runs (t3live --only --objects, build/brally/win32/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 22_ini_cdmusic 23_ini_swshadow 25_cheats 26_lowtexmem 27_quickrace_snow 30_options 31_ffb_wheel 32_video_modes 40_timeattack 45_timeattack_save 46_timeattack_load 50_championship 55_season_save 56_season_load; original body 100% instruction-covered; negative control (planted live store 0x10AC5C28=1) DIVERGENT",2026-09-27
+0x10037f70,BrUiHook85_1003E950,EQUIVALENT,155,6,1,30_options: 6 real call(s) agree,2026-09-24
+0x10038860,BrOptAvailB,EQUIVALENT,56,43,22,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x10038ca0,BrUiText1003F760,EQUIVALENT,2208,100,19,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x10038f40,BrItemSetPickLabel_10038F40,EQUIVALENT,8411,119,21,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x100393c0,BrItemSetModeLabel_100393C0,EQUIVALENT,8509,125,22,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x10039c70,BrMenuCap0730,EQUIVALENT,8309,113,20,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x1003a140,BrItemSetSplitTime_1003A140,EQUIVALENT,158,16,3,50_championship: 5 real call(s) agree,2026-09-24
+0x1003a2b0,BrMenuTime0D70_1003A2B0,EQUIVALENT,46,5,1,50_championship: 5 real call(s) agree,2026-09-26
+0x1003aa10,BrItemSetTotal_1003AA10,EQUIVALENT,316,18,3,50_championship: 6 real call(s) agree,2026-09-24
+0x1003ab00,BrItemSetRemaining_1003AB00,EQUIVALENT,158,16,3,50_championship: 5 real call(s) agree,2026-09-24
+0x1003b130,BrSaveResumeAutoSave,EQUIVALENT,1,1,1,56_season_load: 1 real call(s) agree,2026-09-24
+0x1003b6d0,BrSaveBeginRallySeason,EQUIVALENT,1,1,1,56_season_load: 1 real call(s) agree,2026-09-24
+0x1003bde0,BrSaveBeginTimeAttack,EQUIVALENT,1,1,1,46_timeattack_load: 1 real call(s) agree,2026-09-24
+0x10040a90,BrCheatCodeScan,EQUIVALENT,42,5,1,25_cheats: 5 real call(s) agree,2026-09-24
+0x100498a0,FUN_100498a0,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
+0x1004aee0,BrExt_10052030,EQUIVALENT,3,3,3,50_championship: 1 real call(s) agree,2026-09-24
+0x1004be00,FUN_1004be00,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
+0x1004cba0,FUN_1004cba0,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
+0x1004da00,BrExt_10054B50,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
+0x100553b0,BrSlotScrollStep_100553B0,EQUIVALENT,6866,84,14,30_options: 6 real call(s) agree,2026-09-24
+0x100583c0,FUN_100583c0,EQUIVALENT,32,32,24,10_boot: 1 real call(s) agree,2026-09-24
+0x10058680,BrSeasonApply,EQUIVALENT,2,2,2,50_championship: 1 real call(s) agree,2026-09-24
+0x10058e20,BrVidModeListFill,EQUIVALENT,1,1,1,32_video_modes: 1 real call(s) agree,2026-09-24
+0x10058fd0,BrMenuSub1005FF60,EQUIVALENT,24312,144,24,10_boot: 6 real call(s) agree,2026-09-24
+0x100590d0,BrSub100590D0,EQUIVALENT,706,99,25,10_boot: 3 real call(s) agree,2026-09-24
+0x10059410,BrGlNavPoll,EQUIVALENT,24302,144,24,10_boot: 6 real call(s) agree,2026-09-24
+0x1005a300,BrImgMulByTexture,EQUIVALENT,504,100,20,20_quickrace_drive: 5 real call(s) agree,2026-09-24
+0x1005a490,BrLiveryLoadDamageBmps,EQUIVALENT,25,25,25,10_boot: 1 real call(s) agree,2026-09-24
+0x1005aff0,BrCtlInputApply,EQUIVALENT,164534,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005bcc0,BrSub10062C50,EQUIVALENT,110,63,22,20_quickrace_drive: 3 real call(s) agree,2026-09-24
+0x1005c450,BrZeroRegions,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005c490,BrRaceCarPickIndex,EQUIVALENT,352,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005c8b0,FUN_1005c8b0,EQUIVALENT,76899,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005d3c0,BrCarPathEval,EQUIVALENT,73923,66,11,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005d770,BrCtlAiBody,EQUIVALENT,80325,73,13,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005e7b0,BrCarStartInit_1005E7B0,EQUIVALENT,7,7,4,20_quickrace_drive/21_quickrace_finish/40_timeattack/61_mp_race: 7 real call(s) agree,2026-09-24
+0x1005f310,BrRaceGridPlace,EQUIVALENT,92,30,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x1005f580,BrRankAssign,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1005f6c0,BrLapSaveRestore,EQUIVALENT,30774,18,3,50_championship: 6 real call(s) agree,2026-09-24
+0x100608f0,BrVarSave,EQUIVALENT,6,6,6,21_quickrace_finish: 1 real call(s) agree,2026-09-24
+0x10060970,BrVarLoad,EQUIVALENT,5,5,5,21_quickrace_finish: 1 real call(s) agree,2026-09-24
+0x10060a30,BrRaceSaveLastLapInfo,EQUIVALENT,66233,157,20,"targeted runs (t3live --only --objects, build/brally/win32/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 22_ini_cdmusic 23_ini_swshadow 25_cheats 26_lowtexmem 27_quickrace_snow 30_options 31_ffb_wheel 32_video_modes 40_timeattack 45_timeattack_save 46_timeattack_load 50_championship 55_season_save 56_season_load 61_mp_race 63_mp_join 64_mp_dropout 70_credits; original body 100% instruction-covered; forced loop-path captures (guards evaluated at entry) 21_quickrace_finish 9/9 + 50_championship 1/1 SAME; negative control (planted 0x3841) DIVERGENT",2026-09-27
+0x10060f40,BrSndNearestCommit,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10061470,BrSndCarStep,EQUIVALENT,168960,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10061f60,BrGhostPlaybackStep,EQUIVALENT,203560,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10062640,BrMat4FromCarState,EQUIVALENT,7637,24,3,"24 real call(s) agree (61_mp_race: 8, 63_mp_join: 8, 64_mp_dropout: 8; --objects; rounding-point body)",2026-09-27
+0x10062b80,BrCtrlCfgAssign,EQUIVALENT,2,2,1,30_options: 2 real call(s) agree,2026-09-24
+0x10063a60,BrReplayRecord,EQUIVALENT,158283,109,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10063dd0,BrCollRespReset,EQUIVALENT,25,25,20,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x100643e0,BrRbVelAtBodyPoint,EQUIVALENT,364466,108,18,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100644c0,BrRbVelAtPoint,EQUIVALENT,237769,117,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100645a0,BrCarPhysDriveMatch,EQUIVALENT,150575,109,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100656f0,FUN_100656F0,EQUIVALENT,901491,120,23,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10065c80,BrCrImpulseSolve,EQUIVALENT,34072,101,21,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10066610,BrCollRespPointInTri,EQUIVALENT,55270,49,6,"targeted runs (t3live --only, build/brally/win32/brbox/live/only): 20_quickrace_drive 21_quickrace_finish 27_quickrace_snow 40_timeattack 50_championship 61_mp_race",2026-09-27
+0x10066d70,BrCollRespTipKick,EQUIVALENT,366462,111,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10067710,BrCrRespWalk,EQUIVALENT,366462,111,19,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100684f0,BrCarPhysSpring,EQUIVALENT,152831,115,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10068900,BrObbOverlap,EQUIVALENT,47402,90,16,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10068f80,BrCarCarCollide,EQUIVALENT,602300,75,19,20_quickrace_drive: 4 real call(s) agree,2026-09-24
+0x100695c0,BrSeasonLoad,EQUIVALENT,22,22,21,20_quickrace_drive: 1 real call(s) agree,2026-09-24
+0x10069a80,BrGhostLoad,EQUIVALENT,3,3,3,25_cheats: 1 real call(s) agree,2026-09-24
+0x1006a080,BrSaveLoad,EQUIVALENT,42,40,40,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x1006b0e0,BrNetPeerSendPass,EQUIVALENT,231,16,3,60_multiplayer: 4 real call(s) agree,2026-09-24
+0x1006b240,BrSndVoiceCreate,EQUIVALENT,682,107,25,10_boot: 3 real call(s) agree,2026-09-24
+0x1006b440,BrSndVoiceApplyVolume,EQUIVALENT,27525,132,28,10_boot: 3 real call(s) agree,2026-09-24
+0x1006c290,BrSfxBankLoad,EQUIVALENT,58,54,53,10_boot: 1 real call(s) agree,2026-09-24
+0x1006cda0,BrBitStreamInit,EQUIVALENT,5059,18,5,61_mp_race: 6 real call(s) agree,2026-09-24
+0x1006ce50,BrBitStreamReadU24,EQUIVALENT,5205,18,10,61_mp_race: 6 real call(s) agree,2026-09-24
+0x1006ce80,BrBitStreamReadS32,EQUIVALENT,40,15,5,61_mp_race: 6 real call(s) agree,2026-09-24
+0x1006d0b0,BrBitStreamWriteBits_1006D0B0,EQUIVALENT,52027,18,18,61_mp_race: 6 real call(s) agree,2026-09-24
+0x1006d6b0,BrRbBuildMatrix,EQUIVALENT,1058331,197,149,"197 real call(s) agree (20_quickrace_drive: 22, 21_quickrace_finish: 26, 27_quickrace_snow: 22, 40_timeattack: 22, 50_championship: 27, 61_mp_race: 26, 63_mp_join: 26, 64_mp_dropout: 26; --objects)",2026-09-27
+0x1006de70,BrMat3Solve,EQUIVALENT,5409,53,8,"53 real call(s) agree (20_quickrace_drive: 6, 21_quickrace_finish: 7, 27_quickrace_snow: 7, 40_timeattack: 7, 50_championship: 8, 61_mp_race: 6, 63_mp_join: 6, 64_mp_dropout: 6; --objects)",2026-09-27
+0x1006e5c0,BrCarTrackLocate,EQUIVALENT,164952,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1006ec30,FUN_1006ec30,EQUIVALENT,183514,120,40,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1006f170,BrCarStep,EQUIVALENT,164654,120,35,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x1006f720,BrEntSetHeading,EQUIVALENT,41,37,20,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x1006fd50,BrEntitySetIndex,EQUIVALENT,129,73,47,20_quickrace_drive: 2 real call(s) agree,2026-09-24
+0x100701b0,BrWavReadData,EQUIVALENT,575,103,25,10_boot: 3 real call(s) agree,2026-09-24
+0x10070280,BrWavLoad,EQUIVALENT,682,107,25,10_boot: 3 real call(s) agree,2026-09-24
+0x100706d0,BrInputPoll,EQUIVALENT,76774,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x10072210,BrFfbUpdateSpring,EQUIVALENT,76773,120,20,20_quickrace_drive: 6 real call(s) agree,2026-09-24
+0x100723d0,BrFfbEnumDevice,EQUIVALENT,1,1,1,31_ffb_wheel: 1 real call(s) agree,2026-09-24
+0x100724c0,BrFfbInit,EQUIVALENT,2,2,2,30_options: 1 real call(s) agree,2026-09-24
+0x10072680,BrFfbSetup,EQUIVALENT,1,1,1,31_ffb_wheel: 1 real call(s) agree [not placed in the image; object mode],2026-09-26

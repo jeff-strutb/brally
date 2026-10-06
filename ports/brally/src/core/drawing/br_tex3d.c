@@ -136,7 +136,7 @@ void br_tex3d_end(uint8_t *p)
  * taking the two bytes the N64's way round, it rotates the value by one bit,
  * which moves the transparency bit from the bottom of the N64's layout to
  * the top of the layout the rest of this code uses. */
-/* The standalone 0x100271F0 body is scored from src/core/drawing/br_texel.c
+/* The standalone 0x100271F0 body is scored from src/brally/core/drawing/br_texel.c
  * (BrTex3dTexel); this static copy is what VC5 inlines into the callers
  * below, exactly as the original does. */
 /* (port-only br_tex3d_texel removed) */
@@ -167,7 +167,7 @@ void br_tex3d_end(uint8_t *p)
 
 /* WHICH BUILD THIS IS, BECAUSE THE SLOT HOLDS TWO DIFFERENT FUNCTIONS.
  *
- * config/shared.csv classes 0x100250D0 (Glide) / 0x10025AB0 (D3D) as
+ * config/brally/shared.csv classes 0x100250D0 (Glide) / 0x10025AB0 (D3D) as
  * `renderer`, matched by SLOT: crossdiff paired them by their call sites,
  * not by their bodies.  The bodies really do differ, and the difference is
  * the destination pixel format, measured rather than assumed:
@@ -406,8 +406,8 @@ void BrTex3dRecSet278(int param_1,int param_2)
  * field (+0x40/+0x44) from the aspect ratio, then per level from the global
  * start LOD copy/convert (0x10024490) and advance both cursors by that
  * level's byte size; returns the source bytes consumed. */
-/* @t4-pass 0x10027E10 2 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027E10 3 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027E10 2 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027E10 3 2026-09-07 probes 150 bytes 227 insns 83 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10027E10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 227/227 insns 83/83 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 2 3
@@ -415,7 +415,7 @@ void BrTex3dRecSet278(int param_1,int param_2)
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 2 and 3);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027E10 glide BrTex3dMipChainLoad */
 
@@ -568,8 +568,8 @@ void BrTex3dReconvert(int param_1)
  * stored before the two zeros (439 B, register-blind 0+0 but the scheduler
  * stores x*2 before loading h where the original loads both first). */
 /* @t4-pass 0x10028620 1 2026-09-09 probes 8 bytes 440 insns 144 regions 2 rows 3 census no  (hand) */
-/* @t4-pass 0x10028620 2 2026-09-13 probes 99 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028620 3 2026-09-20 probes 63 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028620 2 2026-09-13 probes 99 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10028620 3 2026-09-20 probes 63 bytes 439 insns 143 regions 3 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10028620 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 439/440 insns 143/143 rows 0+0 regions 3 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 2 3
@@ -959,12 +959,12 @@ int BrTex3dExpandInto(unsigned short *param_1,unsigned char *param_2,uint8_t *pa
  * directly (`call [0x118F069C]`) -- functionally identical, but x87emu modelled
  * the import on the direct call and BLACK-BOXED it on the thunk tail-call, so
  * the two sides read a different grTexCalcMemRequired result and our build
- * walked a resample it should not.  Fixed in tools/x87emu.py (a `jmp [slot]`
+ * walked a resample it should not.  Fixed in tools/brally/x87emu.py (a `jmp [slot]`
  * into a modelled import now runs the model and returns to the caller); the
  * certified sweep shows zero regressions.  Residue is byte-shape only, incl.
  * that thunk-vs-direct import call form. */
-/* @t4-pass 0x10028BB0 1 2026-09-07 probes 150 bytes 1746 insns 528 regions 8 rows 32 census yes  (tools/crank.py) */
-/* @t4-pass 0x10028BB0 2 2026-09-07 probes 150 bytes 1746 insns 528 regions 7 rows 32 census yes  (tools/crank.py) */
+/* @t4-pass 0x10028BB0 1 2026-09-07 probes 150 bytes 1746 insns 528 regions 8 rows 32 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10028BB0 2 2026-09-07 probes 150 bytes 1746 insns 528 regions 7 rows 32 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10028BB0 3 2026-09-21 probes 10 bytes 1751 insns 529 regions 7 rows 33 census yes  (oracle thunk-import fix unblocked A5; residue is byte-shape, no source move) */
 /* @t4-pass 0x10028BB0 4 2026-09-21 probes 10 bytes 1751 insns 529 regions 7 rows 33 census no   (baseline reconfirm at the current numbers) */
 /* @t3 0x10028BB0 2026-09-21 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -1260,8 +1260,8 @@ int FUN_100298c0(int param_1,const void *param_2,const void *param_3)
 /* WHAT IT DOES: grow the 0x2B4-stride texture table by 256 slots through
  * BrChkRealloc when full, then post-increment the live count and return
  * the old index. */
-/* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027A10 1 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027A10 2 2026-09-07 probes 58 bytes 83 insns 25 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10027A10 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 83/85 insns 25/25 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
@@ -1269,7 +1269,7 @@ int FUN_100298c0(int param_1,const void *param_2,const void *param_3)
  * multiset (rows 0+0), 1 masked region, 2 B short on encoding;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10027A10 glide br_tex3d_append */
 
@@ -1472,8 +1472,8 @@ void BrTexInstallRecords(BrTexRec *pRecs, int n)
  * (+0x26C set) it frees the four per-record buffers at +0x280..+0x28C, then
  * frees the table itself and zeros its counts.  BrTexInit installs it in the
  * texture hook table (slot 0x118ED1E8). */
-/* @t4-pass 0x10029CD0 1 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029CD0 2 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029CD0 1 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10029CD0 2 2026-09-07 probes 86 bytes 153 insns 50 regions 5 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10029CD0 3 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census no  (hand, fn.py variants: dead-init removal, loop shape rewrites, pre/post increments, cast and order spellings, all inert) */
 /* @t4-pass 0x10029CD0 4 2026-09-09 probes 10 bytes 153 insns 50 regions 4 rows 0 census yes  (hand, fn.py variants: inline slot load, goto-loop, unsigned off, store/free respellings, all inert or worse; corpus query at +0x0) */
 /* @t3 0x10029CD0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

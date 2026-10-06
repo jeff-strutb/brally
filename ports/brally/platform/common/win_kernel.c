@@ -281,7 +281,7 @@ void WINAPI LeaveCriticalSection(LPCRITICAL_SECTION cs) { host_mutex_unlock((hos
 
 /* ---- time ------------------------------------------------------------------------------ */
 /* BR_VCLOCK=ms: virtual time, kept the way the wasm lane keeps it
- * (ports/macos/wasm/host/host_win.c) so the two lanes run a script frame for
+ * (ports/brally-wasm/wasm/host/host_win.c) so the two lanes run a script frame for
  * frame: a clock read on the main thread costs ms, Sleep(n) there costs n
  * instead of sleeping, a message wait costs its wait; other threads read the
  * clock without moving it. The counter then runs at the wasm lane's 1 MHz

@@ -120,7 +120,7 @@
  *    integer to `void *`. That cast is the conflict, not a solution to it:
  *    br_phase.h should type the argument `int32_t`.
  *
- * 5. tools/whereis.py REPORTS A FALSE IDENTITY for this family. It pairs
+ * 5. tools/brally/whereis.py REPORTS A FALSE IDENTITY for this family. It pairs
  *    0x10044C70, 0x10046710 and 0x10047060 all to Glide 0x1003E1C0 "matched by
  *    body", because its normalisation masks the global addresses -- and the
  *    global addresses are the ONLY thing that differs between these three
@@ -184,9 +184,9 @@
  * ---------------------------------------------------------------------------
  * REFERENCE BINARY
  *
- * Every listing quoted below was read with tools/dumpasm.py. The addresses in
- * this family are D3D addresses, so BR_REF=orig/BRD3D.dll was used to read
- * them and orig/BRGlide.dll (the project reference) to cross-check the shape;
+ * Every listing quoted below was read with tools/brally/dumpasm.py. The addresses in
+ * this family are D3D addresses, so BR_REF=reference/brally/orig/BRD3D.dll was used to read
+ * them and reference/brally/orig/BRGlide.dll (the project reference) to cross-check the shape;
  * see CONFLICT 5 for what the cross-check found.
  * ---------------------------------------------------------------------------
  */

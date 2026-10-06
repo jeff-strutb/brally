@@ -1,0 +1,44 @@
+# Port deviations for src/brally/core/audio/br_sfx.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:g_0B6540
+@drop var:g_0B6C00
+@drop var:g_0B6C48
+@after var:g_0B6C48
+
+BrSndBankCarSlot g_0B6540[8];
+BrSndBankCarSlot g_0B6C00[8];
+BrSndBankCarSlot g_0B6C48[8];
+@end
+@drop var:BrSndG0B5DE8
+@drop var:BrSndG18290FC
+@drop var:BrSndPDS
+@drop var:g_aBrSndBankVoice
+@drop type:BrSfxDSBuf
+@drop type:BrSfxDSBufVtbl
+@drop type:struct BrSfxDSBuf
+@drop type:BrSfxVoice
+@drop proto:BrSndVoiceBufIsPlaying
+@drop fn:BrSndVoiceIsPlaying
+@drop fn:BrSndVoiceBufIsPlaying
+@drop fn:BrSndBankClear
+@drop proto:BrSndBankSetCar
+@drop var:DAT_100b32b0
+@drop var:DAT_100b32bc
+@drop var:DAT_100b32c0
+@drop proto:BrSfxCarBankLoad
+@drop fn:BrSfxCarBankInit
+@drop var:DAT_100b55f8
+@drop var:DAT_100b5cb8
+@drop var:DAT_100b5d00
+@drop var:DAT_1184c260
+@drop var:DAT_100b8140
+@drop var:DAT_100b81a8
+@drop var:g_aBrCfgSfxDir
+@drop proto:BrSndVoiceLoad
+@drop fn:BrSfxBankLoad
+@drop var:DAT_100b64a8
+@drop var:DAT_100b64a0
+@drop var:DAT_100b6498
+@drop fn:BrSfxCarBankLoad

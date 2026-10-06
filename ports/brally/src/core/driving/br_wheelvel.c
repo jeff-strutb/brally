@@ -3,7 +3,7 @@
 /* br_wheelvel.c -- driving: the per-wheel suspension-height step.
  *
  * Filed out of the address batch slice6_76.c.  The damper 0x10068600 that
- * used to sit here moved to src/core/driving/br_carphys.c (its module, with
+ * used to sit here moved to src/brally/core/driving/br_carphys.c (its module, with
  * the other three force generators) as BrCarPhysDamper.
  */
 

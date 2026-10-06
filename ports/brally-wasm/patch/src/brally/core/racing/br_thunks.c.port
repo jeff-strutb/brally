@@ -1,0 +1,5 @@
+# Port deviations for src/brally/core/racing/br_thunks.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop proto:FUN_1006e590
+@drop fn:BrThunk5C440

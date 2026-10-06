@@ -7,7 +7,7 @@
 2026-09-29: Jungle (xm_17FD10) remastered in stereo and APPROVED by the project lead ("fucking nailed it"). Output and full renderer in `reference/tgrally/XM/remaster/` (renderer/ has code, NAM models, cab IR, README).
 
 Method that worked:
-- Log the XM performance with a patched copy of tools/xm_render.c (XM_EVENTLOG: per channel per tick note start, playback rate, final volume, pan); render instruments from that, not by swapping samples in the module.
+- Log the XM performance with a patched copy of tools/tgrally/xm_render.c (XM_EVENTLOG: per channel per tick note start, playback rate, final volume, pan); render instruments from that, not by swapping samples in the module.
 - Tune everything to A440 ET: the ROM samples are detuned up to 46 cents from each other; that was the "dissonance".
 - Chord voicings transcribed from each ROM sample (NNLS harmonic fit), moved into playable guitar shapes.
 - Guitars: CC0 FSBS clean DI -> NAM capture (own PyTorch inference of .nam v0.5 WaveNet; Helga B 5150 BlockLetter) -> Science Amplification V30 SM57 IR, double-tracked L/R.

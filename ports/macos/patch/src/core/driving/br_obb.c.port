@@ -1,5 +1,0 @@
-# Port deviations for src/core/driving/br_obb.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop var:_DAT_10077a78
-@drop fn:BrObbOverlap

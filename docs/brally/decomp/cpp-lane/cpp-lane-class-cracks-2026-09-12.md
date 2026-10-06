@@ -38,16 +38,16 @@ dead-lists.  The 09-09 harvest of 17 READY rows does not recur.
 4. **`add R,-K` in place = a CSE'd `v - K` spelled at every use** (never a
    `v -= K` / `v = .. - K` statement): 0x10037DC0 parked 16 diffs -> byte-
    exact in ONE probe, also fixing the y/n register swap and the two spill
-   slots.  All four are on the tail of docs/VC5-IDIOMS.md.
+   slots.  All four are on the tail of docs/brally/VC5-IDIOMS.md.
 5. **Positive guard puts the failure exit at the tail** (`if (n <= 0x100)
    {...; return 1;} return 0;`) -- reconfirmed on 0x1006AEB0.
 
 **Tooling for the cpp lane (fn.py does not read it):** compile a variant
-with `sh tools/wine.sh tools/msvc5/bin/cl.exe /nologo /O2 /GX /MD /W3 /I
-include /I tools/msvc5-compat /I tools/msvc5/include /DBR_MATCHING_BUILD
-/c build/match/t3d/cp_<tag>.cpp /Fo<obj>` (the obj path must be INSIDE the
+with `sh tools/toolchains/wine.sh tools/toolchains/msvc5/bin/cl.exe /nologo /O2 /GX /MD /W3 /I
+include /I tools/toolchains/msvc5-compat /I tools/toolchains/msvc5/include /DBR_MATCHING_BUILD
+/c build/brally/win32/match/t3d/cp_<tag>.cpp /Fo<obj>` (the obj path must be INSIDE the
 repo, backslashed; a scratch path silently produces no obj), then
-`divergence.py <obj> orig/<VA>.bin <symbol>` -- the symbol is the MANGLED
+`divergence.py <obj> reference/brally/orig/<VA>.bin <symbol>` -- the symbol is the MANGLED
 name for methods/free C++ functions (read it off the obj with
 parse_coff_obj), `_Name` only under extern "C".   divergence.py's 4th
 positional is CONTEXT, not the key; and its "1 region" can be a lost sync
@@ -79,7 +79,7 @@ combination was never measured.  (b) **Index form beats the volatile
 pointer walk** on 0x10058540 (4 grid loops, A4-only): `tab[i][k]` lets VC5
 build the biased cursor itself AND keeps `inc; cmp; jl` after the stores;
 `top` (div) before `left` (mod); the fourth loop bounded `i + 15 < 24`.
-Both on the tail of docs/VC5-IDIOMS.md.  Dead today (in the dossiers):
+Both on the tail of docs/brally/VC5-IDIOMS.md.  Dead today (in the dossiers):
 0x10038CA0 five index-temp spellings, 0x10054070 ten declaration/statement
 orders of the delta pair, 0x10058900 five head statement orders,
 0x10028620 two zero-rectangle orders, 0x10013FD0 two tile-word orders.

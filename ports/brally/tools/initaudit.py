@@ -10,7 +10,7 @@ verified (a Glide relocation names it: the data lift will supply the
 original's bytes there) or not (the initialiser is the only truth).
 
 Usage: initaudit.py
-Output: build/portable/initaudit.csv
+Output: build/brally/null-soft/initaudit.csv
 """
 import csv
 import glob
@@ -70,10 +70,10 @@ def defs(src):
 
 def main():
     os.chdir(ROOT)
-    verified = {r['name'] for r in csv.DictReader(open('build/wasm/sites.csv'))}
-    canon = {r['name'] for r in csv.DictReader(open('build/portable/canon.csv'))}
+    verified = {r['name'] for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))}
+    canon = {r['name'] for r in csv.DictReader(open('build/brally/null-soft/canon.csv'))}
     rows = []
-    for f in sorted(glob.glob('src/core/**/*.c*', recursive=True)):
+    for f in sorted(glob.glob('src/brally/core/**/*.c*', recursive=True)):
         fork = 'ports/brally/' + f
         if not os.path.exists(fork):
             continue
@@ -83,7 +83,7 @@ def main():
             if kept:
                 continue
             rows.append((f, name, name in verified, name in canon, text))
-    with open('build/portable/initaudit.csv', 'w', newline='') as fh:
+    with open('build/brally/null-soft/initaudit.csv', 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['file', 'name', 'address_verified', 'canonical', 'original'])
         w.writerows(rows)

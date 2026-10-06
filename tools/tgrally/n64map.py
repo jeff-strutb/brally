@@ -10,7 +10,7 @@ bars can never disagree.  Rendering reuses tools/progressmap.render_svg
 verbatim, so both lanes' maps stay pixel-for-pixel consistent; this file only
 translates N64 tiers into the shapes that renderer expects.
 
-    python3 tools/tgrally/n64map.py --svg docs/progress-map-n64.svg
+    python3 tools/tgrally/n64map.py --svg docs/tgrally/progress-map.svg
     python3 tools/tgrally/n64map.py --svg <path> --no-build   # skip the fresh build
 """
 import csv
@@ -18,7 +18,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(ROOT, 'tools'))
+sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'tgrally'))
 import progressmap as pm            # noqa: E402  -- squarify/layout/render_svg
 import n64tiers as nt               # noqa: E402  -- classify()
@@ -61,7 +61,7 @@ def build_funcs(fresh=True):
 def main():
     argv = sys.argv[1:]
     out = argv[argv.index('--svg') + 1] if '--svg' in argv \
-        else os.path.join(ROOT, 'docs', 'progress-map-n64.svg')
+        else os.path.join(ROOT, 'docs', 'tgrally', 'progress-map.svg')
     funcs = build_funcs(fresh='--no-build' not in argv)
     pm.render_svg(funcs, out)
 

@@ -197,7 +197,7 @@ int BrCdTrackResume(void)
   return 1;
 }
 
-/* !! MAP DEFECT, and it is what blocks these two.  config/functions_glide.csv
+/* !! MAP DEFECT, and it is what blocks these two.  config/brally/functions_glide.csv
  * lists 0x10002EB0 and 0x10002F10 as 86 bytes each.  They are not: each is a
  * 14-byte DISPATCHER followed by 16-byte alignment padding and then a
  * SEPARATE function that only the dispatcher reaches, by tail jump.
@@ -213,9 +213,9 @@ int BrCdTrackResume(void)
  * ENTRY, and the map had no row for either -- it merged each into the
  * dispatcher above it because nothing CALLS them, only jumps.  Two C
  * functions cannot be one symbol, so no spelling of a single 86-byte
- * function could ever have matched.  FIXED 2026-09-03: config/functions_glide.csv
+ * function could ever have matched.  FIXED 2026-09-03: config/brally/functions_glide.csv
  * now carries 0x10002EB0/32, 0x10002ED0/54, 0x10002F10/32, 0x10002F30/54 and
- * build/match/orig/ was re-extracted for the four.  All four are byte-exact.
+ * build/brally/win32/match/orig/ was re-extracted for the four.  All four are byte-exact.
  * The dispatcher's 32 bytes INCLUDE the 13 alignment nops, which MSVC emits
  * inside the first function, not the second.
  *
@@ -282,7 +282,7 @@ int BrCdResume(void)
   return BrCdResumeMsg();
 }
 
-/* The third member of the same map defect.  config/functions_glide.csv
+/* The third member of the same map defect.  config/brally/functions_glide.csv
  * carried 0x10002F70 as ONE 180-byte row; it is the same dispatcher shape as
  * pause/resume above -- 14 bytes + 18 alignment nops (32), then the
  * message-transport body at 0x10002F90 (47 bytes + nops, 64) and the MCI
@@ -343,18 +343,18 @@ int BrCdStop(void)
  * count by one and clears the channel (unless the disc is missing, which is a
  * silent success); when that was the last reference it releases the fade.
  * Reports whether the clear was accepted. */
-/* @t4-pass 0x10003050 2 2026-09-07 probes 73 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 3 2026-09-07 probes 58 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 4 2026-09-07 probes 57 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 5 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 6 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 7 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10003050 8 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10003050 2 2026-09-07 probes 73 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 3 2026-09-07 probes 58 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 4 2026-09-07 probes 57 bytes 83 insns 29 regions 1 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 5 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 6 2026-09-10 probes 60 bytes 83 insns 29 regions 1 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 7 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10003050 8 2026-09-10 probes 40 bytes 84 insns 29 regions 3 rows 1 census yes  (tools/brally/crank.py) */
 /* @t3 0x10003050 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 84/96 insns 29/30 rows 1+0 regions 3 oracle EQUIVALENT
  * @t3-effort passes 7 zero-movement 7 8
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 40 compiles this pass, levers accepted: mut:split_add:g_brCdPlaying > mut:hoist_sink:-1;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10003050 glide BrCdStopReleaseMsg */
 /* RESIDUE (2026-09-06): body complete and correct; ignoring the 11 trailing
@@ -388,8 +388,8 @@ static int BrCdStopReleaseMsg(void)
 /* WHAT IT DOES: end one reference to MCI-played music files.  Drops the play
  * count by one and sends the STOP command; when that was the last reference it
  * closes the device.  Reports whether both commands were accepted. */
-/* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100030B0 3 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100030B0 4 2026-09-07 probes 51 bytes 105 insns 43 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x100030B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 105/105 insns 43/43 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 3 4
@@ -397,7 +397,7 @@ static int BrCdStopReleaseMsg(void)
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100030B0 glide BrCdStopReleaseMci */
 /* RESIDUE (2026-09-07): body complete and correct; REGNORM 0+0, +0 bytes.

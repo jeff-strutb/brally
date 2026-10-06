@@ -4,7 +4,7 @@
 
 > 2026-09-25 the nine functions the mac port trapped on -- 4 T4, 5 T2 with residue; VC5 levers found (dead inline flips roles, in-place conversion pun, while-loop kills SR, propagated const vector)
 
-The nine functions the wasm port trapped on (listed in ports/macos/wasm/FINDINGS.csv) were hand-transcribed from the Glide bytes on 2026-09-25:
+The nine functions the wasm port trapped on (listed in ports/brally-wasm/wasm/FINDINGS.csv) were hand-transcribed from the Glide bytes on 2026-09-25:
 - **T4:** 0x10028820 BrGbiTexScanRun, 0x100335A0 BrCarPfxSpawn (gamedata/br_pfx.c), 0x10059A80 BrCarGhostApply, 0x1000E150 BrScrPtKeepNearest (drawing/br_vertlerp.c).
 - **T2**, committed, each with a residue note in its source: 0x1000C9E0 (br_textmode.c, 4+4), 0x1005A500 (br_imgtint.c, 2+1), 0x10068070 + 0x100682C0 (br_wheelvel.c, 12+12 and 2+2), 0x100686D0 (scene/br_collgrid.c, 4+4).
 - None of the five passes T3 Gate A yet: A2 needs rows ≤ ~4 and A3 needs every row classified.

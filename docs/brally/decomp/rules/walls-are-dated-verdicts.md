@@ -23,7 +23,7 @@ levers discovered after it.
   lever the parking note predates. Check the note's date against the idiom
   dictionary's tail; anything newer than the note is untested on that row.
 - Current re-triage queue for the TU-state lever (micro-at-states
-  diagnostic, ~15 compiles at build/external/lab/lab.py, then TU
+  diagnostic, ~15 compiles at build/brally/analysis/corpus/lab/lab.py, then TU
   composition/position in-tree): the five largest ([five-largest-2026-09-13b](../log/five-largest-2026-09-13b.md):
   0x1000E320, 0x10032E40, 0x10001CF0, 0x10068F80, 0x10068900), 0x1006D530,
   0x10029D70, 0x1002A050, 0x100271F0's and-before-byte-move, the fresh-xor
@@ -43,7 +43,7 @@ reading a dossier ("do not probe") and STOPPING, instead of testing it against
 the session's levers, and - worse - leaving behaviourally-EQUIVALENT rows
 parked as T2 when they were one gate-run from a deliverable. Concrete:
 screened the 21 reg 1-12 T2 rows; instead of grinding walls, ran
-`tools/t3.py --qualify` and found 4 already PASS 0+A+B with A5 EQUIVALENT
+`tools/brally/t3.py --qualify` and found 4 already PASS 0+A+B with A5 EQUIVALENT
 (BrTex3dTexel 0x100271F0, BrSurfSetColourKey 0x100014A0, BrRaceCarPickIndex
 0x1005C490, BrGfxDrawTexRect 0x10013FD0) - certified + committed on the spot,
 T3 141->146. **Lesson: the deliverable next to a "wall" is often the T3 cert,

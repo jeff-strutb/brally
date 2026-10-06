@@ -399,7 +399,7 @@ void BrMenuAutoSaveName(void)
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10040730 d3d BrMenuCap0730 */
 int32_t BrMenuCap0730(BrMenuItem *pItem)
@@ -924,23 +924,23 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
 
 /* WHAT IT DOES: the same lap-time readout as 0x10040C00, from a second
  * stored table. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/menus/BrMenuTime0D70_1003A2B0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/menus/BrMenuTime0D70_1003A2B0.cpp */
 /* BrMenuTime0D70: prototype in br_funcs.h */
 
 /* WHAT IT DOES: put a lap time onto this row from a chosen slot -- 0, 1
  * or 2 index a table; 3 means the live time instead. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A420.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003A420.cpp */
 /* BrMenuTime0EE0: prototype in br_funcs.h */
 
 /* (port-only BrMenuFillLapTime removed) */
 
 
 /* WHAT IT DOES: format one stored lap time onto this row as m:ss.hh. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A580.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003A580.cpp */
 /* BrMenuTime1040: prototype in br_funcs.h */
 
 /* WHAT IT DOES: format a second stored lap time onto this row as m:ss.hh. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003A6D0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003A6D0.cpp */
 /* BrMenuTime1180: prototype in br_funcs.h */
 
 /* WHAT IT DOES: put this stage's name on the row, in capitals.  The

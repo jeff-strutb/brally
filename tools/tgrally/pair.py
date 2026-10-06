@@ -88,7 +88,7 @@ def pc_strings(d, secs):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--csv', default=os.path.join(ROOT, 'build/tgrally/n64/pairs.csv'))
-    ap.add_argument('--dll', default=os.path.join(ROOT, 'orig/BRGlide.dll'))
+    ap.add_argument('--dll', default=os.path.join(ROOT, 'reference/brally/orig/BRGlide.dll'))
     ap.add_argument('--min-len', type=int, default=MIN_LEN)
     args = ap.parse_args()
 

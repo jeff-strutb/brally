@@ -75,8 +75,8 @@ void BrMat3Mul(BrMat3 *pOut, const BrMat3 *pA, const BrMat3 *pB)
  * writes x to pOut.  No singularity guard -- a singular matrix yields +-inf or
  * NaN, exactly as the original.  Confirmed equivalent to the original bytes by
  * an x87 emulation of 0x1006DE70 over random and structured inputs. */
-/* @t4-pass 0x1006DE70 1 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006DE70 2 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006DE70 1 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006DE70 2 2026-09-07 probes 86 bytes 419 insns 162 regions 1 rows 38 census yes  (tools/brally/crank.py) */
 /* @t3 0x1006DE70 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 579/417 insns 203/164 rows 48+87 regions 1 oracle EQUIVALENT
  * @t3-effort passes 6 zero-movement 5 6
@@ -188,7 +188,7 @@ void BrMat3Solve(BrVec3 *pOut, const BrMat3 *pM, const BrVec3 *pV)
  * orientation afterwards so accumulated rounding does not slowly distort the
  * body. Speed and spin are carried across unchanged, since the previous step
  * already updated them. */
-/* port-only body; Glide match is src/core/driving/BrRbIntegrateState_1006D850.cpp
+/* port-only body; Glide match is src/brally/core/driving/BrRbIntegrateState_1006D850.cpp
  * (the original is C++: see that file). */
 /* FLOAT, not double. The double model here was written for the D3D twin's
  * codegen -- BrRbBuildMatrix below records the same correction -- and the
@@ -283,8 +283,8 @@ void BrRbQuatDerivative(BrRbState *pS)
  * scratch experiment, 2026-08-22), so the DAG is canonicalised and the slot
  * count is an allocator-internal decision.  /Ox, /O1, /Og/Ot, /O2/Oy- all
  * land farther away. */
-/* @t4-pass 0x1006D6B0 1 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006D6B0 2 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006D6B0 1 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006D6B0 2 2026-09-07 probes 64 bytes 397 insns 132 regions 3 rows 12 census yes  (tools/brally/crank.py) */
 /* @t3 0x1006D6B0 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 559/405 insns 176/136 rows 41+81 regions 1 oracle EQUIVALENT
  * @t3-effort passes 6 zero-movement 5 6
@@ -349,7 +349,7 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
     BrStub8B80_1p();
 }
 
-/* 0x10074870 BrRbInitInertia now lives in src/core/driving/br_rbinertia.c. */
+/* 0x10074870 BrRbInitInertia now lives in src/brally/core/driving/br_rbinertia.c. */
 
 /* ==========================================================================
  * 0x10074870 (glide 0x1006DAD0) -- the body's inertia setup.
@@ -362,7 +362,7 @@ void BrRbBuildMatrix(BrMat4 *pM, const BrRbState *pS)
  * the address from the original.  It sits LAST in the file: ahead of
  * BrRbQuatDerivative / BrRbBuildMatrix it moves their codegen (TU state).
  *
- * Float constants read out of orig/BRD3D.dll .rdata with tools/pe.py rather
+ * Float constants read out of reference/brally/orig/BRD3D.dll .rdata with tools/brally/pe.py rather
  * than assumed:  0x1008FC54 = 0x3DAAAAAB = 1/12 (the correctly rounded
  * float); in-line immediates 0x3F800000 = 1.0f, 0x3F000000 = 0.5f,
  * 0x3E322D0E = 0.174f.

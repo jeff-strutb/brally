@@ -10,7 +10,7 @@
  * clamp-through-global pattern: negative result reloads the global,
  * non-negative writes it back. 0x10038250 is a byte-identical twin. No EH.
  */
-/* Twin of 0x10038100 BrUiHook85_1003EB10 (tools/gen_cpptwin.py): identical machine code,
+/* Twin of 0x10038100 BrUiHook85_1003EB10 (tools/brally/gen_cpptwin.py): identical machine code,
  * only the reloc slots differ. */
 #define _CRTIMP __declspec(dllimport)
 

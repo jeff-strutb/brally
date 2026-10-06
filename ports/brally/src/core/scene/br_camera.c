@@ -3,7 +3,7 @@
  * RESPONSIBILITY: what is in the world and where -- the view volume other
  * code asks "is this worth drawing?" against.
  *
- * Moved here out of src/core/slice2_19.c (an address batch, not a module).
+ * Moved here out of src/brally/core/slice2_19.c (an address batch, not a module).
  * The camera globals it fills stay defined there; slice2_19.h declares them.
  */
 #include "br_vec.h"   /* br_globals: its objects */

@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-21.*
 
-> SUPERSEDED 2026-09-16 - 0x100250D0 BrTex3dExpand is CERTIFIED T3 (br_tex3d_expand.c); the byte-grind here (630->88 shapes etc.) is moot, A5 supersedes byte-shape. Keep only for the T4 mechanism lessons (counter-fold, phi role-swap, LICM) and tools/fnmatch/sites.py.
+> SUPERSEDED 2026-09-16 - 0x100250D0 BrTex3dExpand is CERTIFIED T3 (br_tex3d_expand.c); the byte-grind here (630->88 shapes etc.) is moot, A5 supersedes byte-shape. Keep only for the T4 mechanism lessons (counter-fold, phi role-swap, LICM) and tools/brally/fnmatch/sites.py.
 
  2026-09-03: EVERY REGION COUNT IN THIS NOTE AND IN THE FILE HEADER
 WAS MEASURED ON TWO THIRDS OF THE FUNCTION -- divergence.py lost sync at
@@ -10,7 +10,7 @@ orig+0x15b8 and stopped. Real map: 31 regions at --key 10, 52 at --key 6,
 largest reliable block -50 at 0x1a4c. See [lost-sync-region-trap](../traps/lost-sync-region-trap.md).
 
 **2026-08-28 (14 parallel workers over two runs).**
-0x100250D0 BrTex3dExpand, `src/core/drawing/br_tex3d_expand.c`, 8480 B.
+0x100250D0 BrTex3dExpand, `src/brally/core/drawing/br_tex3d_expand.c`, 8480 B.
 Commits `51853cb`, `1ec54af`, `be0009a`, `2137308` (+ `d088b47`, `14025e7`,
 `78c9d3f` tooling/docs). 22 parallel workers over three runs.
 `@implements` still OFF.
@@ -81,12 +81,12 @@ target with an entry jmp over it; no C spelling found yet -- qc probed and
 failed, read tasks/w5r7cz3w8.output). Permuter (FREE, local CPU) restarted
 from the new base, 8 workers, 10h window. Resume the worker grind only when
 budget allows: regenerate the worklist first
-(`python3 tools/fnmatch/sites.py build/match/orig/0x100250D0.bin
-build/match/t3d/v_<tag>.obj BrTex3dExpand 0x100250D0`).
+(`python3 tools/brally/fnmatch/sites.py build/brally/win32/match/orig/0x100250D0.bin
+build/brally/win32/match/t3d/v_<tag>.obj BrTex3dExpand 0x100250D0`).
 
 ## SESSION 4 (2026-09-01, by hand)
 
-Masked divergence regions (`tools/divergence.py --mask-slots`, /O2 obj)
+Masked divergence regions (`tools/brally/divergence.py --mask-slots`, /O2 obj)
 49 -> 32; 8464/8480 B; insns 2415/2407. Commits d6b63e2, 354c0e5, 9b3f109,
 86a8392. Levers (all in docs/idioms-A.md session-4 + file header):
 IDX4 width = reused param_9 (dead arg slot 0x9c); the doubling ternary had
@@ -203,6 +203,6 @@ loop body; `(unsigned char)` cast present vs absent; `uVar19 = bI4inten` vs
 `uVar19 = (unsigned int)bI4inten`.
 
 Full dossier incl. all measured negatives: `docs/idioms-A.md`.
-Idioms: `docs/VC5-IDIOMS.md`. Harness: [fnmatch-harness](../toolchain/fnmatch-harness.md).
+Idioms: `docs/brally/VC5-IDIOMS.md`. Harness: [fnmatch-harness](../toolchain/fnmatch-harness.md).
 Resume: `continue BrTex3dExpand; read docs/idioms-A.md, score with
-sh tools/fnmatch/vdiff.sh <tag>`
+sh tools/brally/fnmatch/vdiff.sh <tag>`

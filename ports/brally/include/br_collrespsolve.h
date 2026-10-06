@@ -1,6 +1,6 @@
 /* br_collrespsolve.h -- the OBB collision RESPONSE.
  *
- * REFERENCE IS orig/BRGlide.dll.  This module owns 0x10067710 (the response
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  This module owns 0x10067710 (the response
  * walker) and its impulse solver 0x10065C80, plus the two helpers they drive
  * (0x10067470 the contact-plane resolver, 0x10065980).  They are kept in one
  * file because they communicate through a bank of file-scope globals
@@ -8,7 +8,7 @@
  * br_collresp.h for how the broad phase feeds this consumer.
  *
  * Every function here is transcribed against the disassembly and pinned to
- * golden vectors produced by tools/x87emu.py executing the real opcode stream
+ * golden vectors produced by tools/brally/x87emu.py executing the real opcode stream
  * (see test_br_collrespsolve.c).  The equivalence is per-function, not "it
  * links" and not "the car settles".
  */

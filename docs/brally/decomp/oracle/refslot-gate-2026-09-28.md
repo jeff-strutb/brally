@@ -2,14 +2,14 @@
 
 *Recorded 2026-09-28.*
 
-> 2026-09-28 the M2 image gate now checks the relocation slots it fills from the original (tools/refslot_check.py); DAT_ and @cpp_symbol names resolve by name; struct-of-scattered-globals and C++ stand-in callees fixed; how to fix without breaking bytes
+> 2026-09-28 the M2 image gate now checks the relocation slots it fills from the original (tools/brally/refslot_check.py); DAT_ and @cpp_symbol names resolve by name; struct-of-scattered-globals and C++ stand-in callees fixed; how to fix without breaking bytes
 
 What changed (2026-09-28, commits 9481a4c5..14411bea):
-- `tools/refslot_check.py` runs inside `tools/image_build.py` for BRGlide: every slot filled from the
+- `tools/brally/refslot_check.py` runs inside `tools/brally/image_build.py` for BRGlide: every slot filled from the
   original's dword is checked (own-.text labels by offset, literals/initialised data by content,
   every symbol -> ONE original base). Any finding FAILS the gate. audit.py C3 proves it can fail.
 - `reloc_fill.resolve` reads `DAT_XXXXXXXX` addresses from the name; `relocmap.load_maps` adds every
-  C++ body's `@cpp_symbol`; `config/globals_glide.csv` (surveyed names) now exists. audit C/C2.
+  C++ body's `@cpp_symbol`; `config/brally/globals_glide.csv` (surveyed names) now exists. audit C/C2.
 - Fixed: 2 certified T3 (BrCarDrawVehicle rain byte swap = reloc_overrides role-swap rows;
   BrEnvEmit x87 rounding = volatile floats at the original's store points); 4 data-table bytes fenced
   (T4 1311->1307); string/float literal contents; struct gatherings (g_s17, g_br73, g_menu, g_hud,

@@ -38,7 +38,7 @@ typedef struct { int a, b, c, d; } BrSessionGuid;
  * timeout) it tells the lobby list widget about the game, copies the 16-byte
  * session id, and hands that id to the join helper. Returns 1 to keep
  * enumerating, 0 if there is no lobby object or DirectPlay timed out. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10036220.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x10036220.cpp */
 /* BrNetEnumSessionCb: prototype in br_funcs.h */
 
 /* ------------------------------------------------------------------ */

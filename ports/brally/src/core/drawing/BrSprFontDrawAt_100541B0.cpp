@@ -26,7 +26,7 @@
  * choice on the loop's char read (`8a 44 07 09`, base=this), which was the
  * one residue under plain /O2; no source change.  The 23-probe ledger run
  * under /O2 that preceded the re-sweep moved nothing -- the SIB order is a
- * per-TU option, not a source shape (docs/VC5-IDIOMS.md, /Gi entry).
+ * per-TU option, not a source shape (docs/brally/VC5-IDIOMS.md, /Gi entry).
  */
 #define _CRTIMP __declspec(dllimport)
 

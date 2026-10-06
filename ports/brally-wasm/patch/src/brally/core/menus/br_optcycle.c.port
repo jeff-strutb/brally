@@ -1,0 +1,405 @@
+# Port deviations for src/brally/core/menus/br_optcycle.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:GlobalHandle
+@drop var:GlobalUnlock
+@drop var:GlobalFree
+@after var:GlobalFree
+
+
+/* _itoa is Microsoft's, and the port's clang has no such function. Supply it
+ * here rather than rewrite the call site: that call site is matched source and
+ * the original really does `call dword ptr [__imp__itoa]`, so changing it
+ * would trade a port problem for a matching problem.
+ *
+ * Radix 10 is the only one this module reaches, but a base-10-only stub named
+ * `_itoa` would answer wrongly and silently for any other radix a later port
+ * lands on -- so this is the whole function. MSVC's semantics: the sign is
+ * only honoured for radix 10; every other radix reads the value as unsigned. */
+static char *_itoa(int value, char *buf, int radix)
+{
+    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+    char tmp[36];
+    int i = 0, j = 0, neg = 0;
+    unsigned u;
+
+    if (radix < 2 || radix > 36) { buf[0] = '\0'; return buf; }
+
+    if (value < 0 && radix == 10) { neg = 1; u = (unsigned)(-(long)value); }
+    else                          { u = (unsigned)value; }
+
+    do { tmp[i++] = digits[u % (unsigned)radix]; u /= (unsigned)radix; } while (u);
+    if (neg) tmp[i++] = '-';
+
+    while (i > 0) buf[j++] = tmp[--i];
+    buf[j] = '\0';
+    return buf;
+}
+@end
+@drop proto:BrOptOpen296C
+@after proto:BrOptOpen296C
+
+/* ==========================================================================
+ * 0x10043260, 0x10043330, 0x100434C0 -- screen installers
+ * ========================================================================== */
+
+/* WHAT IT DOES: opens one of the menu screens, building it the first time
+ * and reusing it afterwards. Which screen this is was not established. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003C7B0.cpp */
+int BrOptOpen296C(BrGameObj *pUnused)
+{
+    (void)pUnused;
+    return BrOptEnsureObj(&g_brPAA296C, BrOptFn10051990);
+}
+@end
+@drop fn:BrOptCycleAA2A0C
+@after fn:BrOptCycleAA2A0C
+
+/* ==========================================================================
+ * 0x10043400 -- the cycler that skips 1
+ * ========================================================================== */
+
+/* WHAT IT DOES: steps a settings row that has a hole in it: value one is
+ * skipped in both directions, so stepping up goes straight past it and
+ * stepping down does too. The result also selects which of four control
+ * layouts is the active one. */
+/* @implements 0x10043400 d3d BrOptCycleAA2A0C */
+int BrOptCycleAA2A0C(void)
+{
+    int32_t v;
+
+    if (g_brAA33D4 != 0) {
+        v = g_brAA2A0C + 1;
+        g_brAA2A0C = v;
+        if (v >= BR_OPT_AA2A0C_MAX + 1) {
+            v = 0;
+            g_brAA2A0C = 0;
+        }
+        if (v == 1) {           /* stepping up skips 1 -> 2 */
+            v = 2;
+            g_brAA2A0C = v;
+        }
+    } else if (g_brAA33D0 != 0) {
+        v = g_brAA2A0C - 1;
+        g_brAA2A0C = v;
+        if (v < 0) {
+            v = BR_OPT_AA2A0C_MAX;
+            g_brAA2A0C = v;
+        }
+        if (v == 1) {           /* stepping down skips 1 -> 0 */
+            v = 0;
+            g_brAA2A0C = v;
+        }
+    } else {
+        v = g_brAA2A0C;
+    }
+
+    g_brB4E728 = v;
+    v = g_aBrAC520[v];
+    g_brB4E1D0 = v;
+
+    /* The original is a `dec/je` chain over 1, 2, 3 with everything else
+     * falling through to record 0 -- i.e. exactly indexing the four-record
+     * array with anything outside 1..3 clamped to 0. */
+    if (v >= 1 && v <= 3)
+        g_brB4E1D4 = g_aBrB4DF30[v];
+    else
+        g_brB4E1D4 = g_aBrB4DF30[0];
+    return 1;
+}
+@end
+@drop proto:BrOpt3760
+@drop proto:BrOpt37D0
+@drop proto:BrOpt3810
+@drop proto:BrOptOpen2940
+@after proto:BrOptOpen2940
+
+/* ==========================================================================
+ * 0x10043760 .. 0x10043A00 -- transitions and the lobby
+ * ========================================================================== */
+
+/* 0x10043760. Returns 0. */
+/* WHAT IT DOES: leaves the current menu screen: it tells the screen to
+ * close, resets a couple of race settings in single-player, saves the
+ * settings block and returns to the caller with "stop here". */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003CCB0.cpp */
+int BrOpt3760(BrGameObj *pGame)
+{
+    BrGameSub *pSub;
+
+    pSub = pGame->pSub;
+    pSub->f68 = 0;
+    pSub = pGame->pSub;                 /* reloaded by the original */
+    pSub->pVtbl->pfnSlot6(pSub, 0);
+
+    if (g_br0AA010 == 0)
+        g_br0BD3E0 = 3;
+
+    BrSub1003E310();
+    BrSub1006A4A0(g_aBrB4DF30[0], g_aBrB4FBE8);
+    BrSub10041B50();
+    return 0;
+}
+
+/* 0x100437D0 */
+/* WHAT IT DOES: backs out of a network screen when the connection has gone
+ * away -- it closes the screen and tears the session down. If the
+ * connection is still up it does nothing at all. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003CD20.cpp */
+int BrOpt37D0(BrGameObj *pGame)
+{
+    BrGameSub *pSub;
+
+    if (g_brAA2894 != 0 && g_brA9D000 != 0) {
+        pSub = pGame->pSub;
+        pSub->f68 = 0;
+        pSub = pGame->pSub;
+        pSub->pVtbl->pfnSlot6(pSub, 0);
+        BrSub10038F30(0);
+    }
+    return 1;
+}
+
+/* 0x10043810 */
+/* WHAT IT DOES: the once-a-frame handler for the network lobby: it deals
+ * with the player having left or the host having started, notes for each
+ * connected player whether anybody else is present, and on the way out
+ * closes the lobby and plays a sound. Most of the function is the several
+ * different ways of leaving. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003CD60.cpp */
+int BrOpt3810(BrGameObj *pGame)
+{
+    BrGameSub       *pSub;
+    BrOptObj        *pObj;
+    BrDPSessionDesc *pDesc;
+    int              i;
+
+    if (g_brAA2894 != 0) {
+        if (g_brA9D000 == 0) {
+            /* --- 0x10043984 ------------------------------------------- */
+            BrSub10046400(pGame);
+            pObj = g_brPAA2950;
+            if (pObj != NULL) {
+                pObj->pVtbl->f00(pObj, 1);
+                g_brPAA2950 = NULL;
+            }
+            g_brPAA2904 = g_brPAA2948;
+            BrSub1003BF60();
+            g_brAA2898 = 1;
+            if (g_brAA287C == 0 || g_brAA287C == 1)
+                BrSub1003C020();
+            if (g_brAA287C == 2 || g_brAA287C == 3) {
+                if (g_brPAA29D8 != NULL)
+                    g_brPAA29D8->f1C &= ~0x10;
+            }
+            g_brAA2894 = 0;
+            return 0;
+        }
+        pSub = pGame->pSub;
+        pSub->f68 = 0;
+        pSub = pGame->pSub;
+        pSub->pVtbl->pfnSlot6(pSub, 0);
+        BrSub10038F30(0);
+    }
+
+    if (g_brAA2890 != 0) {
+        BrSub10046400(pGame);
+        pObj = g_brPAA2950;
+        if (pObj != NULL) {
+            pObj->pVtbl->f00(pObj, 1);
+            g_brPAA2950 = NULL;
+        }
+        BrOptOpen294C(NULL);
+        BrOptOpen2950B(NULL);
+        BrOptOpen2954(NULL);
+        g_brAA2890 = 0;
+        return 0;
+    }
+
+    /* --- 0x10043899 ----------------------------------------------------- */
+    if (g_brAA2884 != 0) {
+        pDesc = NULL;
+        if (g_brP277B40 != NULL)
+            BrSub1003D0B0(g_brP277B40, &pDesc);
+
+        if (pDesc != NULL) {
+            /* Find the slot whose id matches the UI selection and record
+             * "there is more than one player" in its second field. */
+            for (i = 0; i < BR_SLOT_COUNT; ++i) {
+                if (g_aBrAA2538[i].id == g_brPA9D008->f08) {
+                    g_aBrAA2538[i].a = (pDesc->dwCurrentPlayers > 1) ? 1 : 0;
+                    break;
+                }
+            }
+            BrGlobalUnlock(BrGlobalHandle(pDesc));
+            BrGlobalFree(BrGlobalHandle(pDesc));
+        }
+    }
+
+    if (g_brAA288C == 0)
+        return 1;
+
+    BrSub1003E310();
+    BrSub1006A4A0(g_aBrB4DF30[0], g_aBrB4FBE8);
+    pSub = pGame->pSub;
+    pSub->f68 = 0;
+    pSub = pGame->pSub;
+    pSub->pVtbl->pfnSlot6(pSub, 0);
+    g_brAA285C = 0;
+    BrSub10072AF0(2, 0x200020);
+    g_brAA2854 = 2;
+    return 0;
+}
+
+/* ==========================================================================
+ * 0x10043CD0 .. 0x10043E70 -- more screen installers
+ * ========================================================================== */
+
+/* WHAT IT DOES: opens another menu screen, building it once and reusing it.
+ * Which screen this is was not established. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003D220.cpp */
+int BrOptOpen2940(BrGameObj *pUnused)
+{
+    (void)pUnused;
+    return BrOptEnsureObj(&g_brPAA2940, BrOptFn100558A0);
+}
+@end
+@drop proto:BrOptOpen2948
+@after proto:BrOptOpen2948
+
+/* 0x10043E70. Unlike its siblings the reuse path does NOT return early: it
+ * falls into the same tail as the create path. */
+/* WHAT IT DOES: opens a menu screen and, unlike its siblings, keeps going
+ * after finding an existing one -- so it also starts the network connection
+ * attempt on every call, not just the first, provided the game is in a mode
+ * that wants one. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003D3C0.cpp */
+int BrOptOpen2948(BrGameObj *pUnused)
+{
+    (void)pUnused;
+
+    if (!BrOptEnsureObj(&g_brPAA2948, BrOptFn10056FF0))
+        return 0;
+
+    if (g_brA9CFFC == 0 && g_brA9D000 == 0 &&
+        (g_brAA287C == 0 || g_brAA287C == 1))
+        BrSub1003C020();
+    return 1;
+}
+@end
+@drop proto:BrOptOpen294C
+@drop proto:BrOptOpen2950A
+@drop proto:BrOptOpen2950B
+@after proto:BrOptOpen2950B
+
+/* ==========================================================================
+ * 0x100440D0 .. 0x100446D0
+ * ========================================================================== */
+
+/* WHAT IT DOES: opens another menu screen, building it once and reusing it.
+ * Which screen this is was not established. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003D620.cpp */
+int BrOptOpen294C(BrGameObj *pUnused)
+{
+    (void)pUnused;
+    return BrOptEnsureObj(&g_brPAA294C, BrOptFn100575F0);
+}
+
+/* 0x10044280 */
+/* WHAT IT DOES: joins somebody else's network game and opens the lobby
+ * screen for it. It refuses to go ahead when the player has not typed a
+ * long enough name in one of the modes, and falls back to setting the
+ * connection up first if there is nothing to join yet. */
+/* port-only body; Glide match lane is src/brally/core/cpp/0x1003D7D0.cpp (T2 there: layout residue) */
+int BrOptOpen2950A(BrGameObj *pUnused)
+{
+    int fOpen;
+
+    (void)pUnused;
+
+    g_brAA2884 = 0;
+    g_brAA2898 = 0;
+
+    if (g_brAA2878 == 0) {
+        fOpen = 0;
+        if (g_brAA287C == 2 || g_brAA287C == 3) {
+            g_brAA2898 = 1;
+            /* Mode 2 additionally demands at least seven characters in the
+             * text at 0x10A9CDF0. */
+            if (g_brAA287C == 2 && strlen(g_aBrA9CDF0) < 7)
+                return 1;
+            if (g_brPAA29D8 == NULL) {
+                BrSub1003C1E0();
+                return 1;
+            }
+            if (g_brPAA29D4->f1E164 == 0) {
+                BrSub1003C1E0();
+                return 1;
+            }
+            fOpen = (BrSub1003C260() != 0);
+        } else {
+            fOpen = (BrSub1003C260() != 0);
+        }
+        if (!fOpen)
+            return 1;
+    }
+
+    if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
+        return 0;
+
+    g_brPAA29B8->pfnHook = BrOptFn10044970;
+    return 1;
+}
+
+/* 0x100443E0 */
+/* WHAT IT DOES: the hosting counterpart: marks this machine as the host and
+ * opens the same lobby screen, with the host's own set of controls attached
+ * to it. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003D930.cpp */
+int BrOptOpen2950B(BrGameObj *pUnused)
+{
+    (void)pUnused;
+
+    g_brAA2884 = 1;
+    g_br22AF18 = 2;
+    g_brAA2898 = 0;
+
+    if (!BrOptEnsureObj(&g_brPAA2950, BrOptFn10057C10))
+        return 0;
+
+    g_brPAA29B8->pfnHook = BrOptFn10044A30;
+    return 1;
+}
+@end
+@drop proto:BrOptOpen2954
+@after proto:BrOptOpen2954
+
+/* 0x100446D0 */
+/* WHAT IT DOES: opens the screen the game shows once a network race is
+ * agreed on, switches the game into that mode, and, if this machine is the
+ * host, starts hosting the session at that point. */
+/* port-only body; Glide match is src/brally/core/cpp/0x1003DC20.cpp */
+int BrOptOpen2954(BrGameObj *pUnused)
+{
+    (void)pUnused;
+
+    if (!BrOptEnsureObj(&g_brPAA2954, BrOptFn10058750))
+        return 0;
+
+    g_br0AA010 = 6;
+
+    if (g_brAA2884 != 0) {
+        if (g_brAA2888 == 0) {
+            if (g_brAA287C == 2 || g_brAA287C == 3)
+                BrSub1003C230();
+            BrSub1003C150();
+            g_brAA2888 = 1;
+            BrSub1003CDA0();
+        } else {
+            BrSub1003CDA0();
+        }
+    }
+    return 1;
+}
+@end

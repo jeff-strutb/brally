@@ -172,8 +172,8 @@ void FUN_1000c9e0(BrVisView *pView, const void *pPt, int n, short *pMin,
 /* WHAT IT DOES: point the three per-view scratch buffers at view index
  * 0x106ED67C's slice -- each base is stored to two cursors (base and write
  * head).  Strides 80000 / 32000 / 256000 bytes lower as lea chains. */
-/* @t4-pass 0x1000CB20 1 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000CB20 2 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000CB20 1 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000CB20 2 2026-09-07 probes 38 bytes 96 insns 24 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1000CB20 3 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census no  (hand, fn.py variants: addend order, constant spellings, product/sum locals, store order, all inert or worse) */
 /* @t4-pass 0x1000CB20 4 2026-09-09 probes 10 bytes 96 insns 24 regions 1 rows 2 census yes  (hand, fn.py variants: pair temps, typed/paren/minus forms, shl decompositions, all inert or worse; corpus MISS at +0x33 len 12) */
 /* @t3 0x1000CB20 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

@@ -74,7 +74,7 @@
 #include "br_dl.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include <stddef.h>
-/* TU state.  Traced in the VC5 backend (tools/c2emu.py, docs/VC5-IDIOMS.md
+/* TU state.  Traced in the VC5 backend (tools/brally/c2emu.py, docs/brally/VC5-IDIOMS.md
  * tail): operand order inside each light row is c2's key sort, an XOR hash
  * over symbol indices, so these headers (the symbol count ahead of the
  * function), the order of the file-scope and block-scope externs and the
@@ -114,7 +114,7 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* MVP translation row */
 
 /* Hand-transcribed from the Glide bytes, compiled /O2 /Op like the rest of
- * its original TU (pinned in config/t3_variant_c.csv).  1019/1019 B,
+ * its original TU (pinned in config/brally/t3_variant_c.csv).  1019/1019 B,
  * 289/289 insns; 9 real diff regions, 11 rows (plus two link-time
  * relocation fields).  Source facts carried from the family
  * (br_dlvtx_texgen.c): light records read as bytes, 1-based matrix stack,
@@ -128,7 +128,7 @@ typedef struct { float x, y, z, s, t, n0, n1, n2; } BrDlSrcVtx;
  *    but the schedule needs the direction load one DAG level higher; in
  *    the emulated backend the load order of each pair is an equal-priority
  *    tie broken by tuple order.  Not reached: 2,048 symbol counts x 1,200
- *    local layouts, statement orders, comparator flips (tools/c2emu.py);
+ *    local layouts, statement orders, comparator flips (tools/brally/c2emu.py);
  *  - the ambient block after the normalise call: integer issue order of
  *    `xor edx,edx` / `add esp,4` / `mov bl,[..]`.
  * @t4-pass 0x10023360 1 2026-09-24 probes 74 bytes 1017 insns 288 regions 7 rows 7 census no  (hand, fn.py variants: transform-row term orders, groupings, operand orders, translation position, double casts, x-column kinds, float[4][4] matrix; nothing adopted moved the gate numbers)

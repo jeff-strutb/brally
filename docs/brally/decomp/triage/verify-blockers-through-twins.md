@@ -20,7 +20,7 @@ without re-verification.
 1. `grep @implements X` in port/src/ (direct glide tag)
 2. Look up X in shared.csv column 2 (glide) to find the d3d twin in column 1
 3. `grep @implements <d3d_twin>` in port/src/
-4. Check config/ported.csv for both addresses
+4. Check config/brally/ported.csv for both addresses
 5. If none found, it's genuinely unported
 
 Never trust a blocker list from a previous session without re-running this

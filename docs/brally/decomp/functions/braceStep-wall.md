@@ -2,17 +2,17 @@
 
 *Recorded 2026-09-21.*
 
-> SUPERSEDED 2026-09-15 - 0x10019A70 BrRaceStep (11,223B) is CERTIFIED T3 (src/core/cpp/0x10019A70.cpp). No longer a wall. Keep for the register-grind/frameless-prologue lessons; the 'never one C function / diverges at prologue' verdict is dead.
+> SUPERSEDED 2026-09-15 - 0x10019A70 BrRaceStep (11,223B) is CERTIFIED T3 (src/brally/core/cpp/0x10019A70.cpp). No longer a wall. Keep for the register-grind/frameless-prologue lessons; the 'never one C function / diverges at prologue' verdict is dead.
 
-> **SUPERSEDED 2026-09-15: CERTIFIED T3** (`src/core/cpp/0x10019A70.cpp`,
+> **SUPERSEDED 2026-09-15: CERTIFIED T3** (`src/brally/core/cpp/0x10019A70.cpp`,
 > `@t3 0x10019A70`). The "structural wall / never one C function" verdict below
 > is dead. Kept only for the frameless-prologue and register-grind lessons.
 
 **0x10019A70 (11,223 bytes, 131 calls) - the largest single function, the
 per-frame race step (clock, first-frame setup, race/HUD/pause/camera/limiter).**
 
-** 2026-09-15 DONE: CERTIFIED T3 BY tools/t3.py --qualify (not by judgment).**
-Filed at src/core/cpp/0x10019A70.cpp with @implements + @t3 tag (oracle
+** 2026-09-15 DONE: CERTIFIED T3 BY tools/brally/t3.py --qualify (not by judgment).**
+Filed at src/brally/core/cpp/0x10019A70.cpp with @implements + @t3 tag (oracle
 EQUIV-MODULO-FP). GATE 0+A PASS (A5 authoritative, supersedes byte-shape),
 GATE B PASS (2 @t4-pass ledger lines at the measured numbers). The oracle runs
 NATIVELY (no scratch harness) via the integrated valid-state seeding +
@@ -52,7 +52,7 @@ REAL T3 evidence (behavioural, per the project lead's standard), not judgment.
 ** TOOLING NOW WIRED IN (2026-09-15, uncommitted, NO regressions -- 125 @t3
 tags still validate, certified fns still EQUIVALENT). The oracle renders
 EQUIV-MODULO-FP for BrRaceStep NATIVELY (no scratch harness):**
-- tools/oracle_profiles.py: per-VA valid-state seeding profiles (BrRaceStep:
+- tools/brally/oracle_profiles.py: per-VA valid-state seeding profiles (BrRaceStep:
   null-safe pointers + varied state/gating flags + driver pointer-arrays ->
   zeroed scratch). Auto-applied in t3b_verify.verify_img.
 - t3b_env.py: address_in_name learns the project naming conventions (g_<HEX> ->
@@ -68,7 +68,7 @@ EQUIV-MODULO-FP for BrRaceStep NATIVELY (no scratch harness):**
   memmove, string ops, mem-dest arith, REG16, setCC, on-demand disasm, icall
   boundary + wild-mem tolerance).
  REMAINING for the actual @t3 TAG (normal filing, not tooling): (1) file
-race.cpp into src/core/racing/ so t3.py --qualify gets a report.csv row + a
+race.cpp into src/brally/core/racing/ so t3.py --qualify gets a report.csv row + a
 greppable prototype (the void sig); (2) Gate B @t4-pass ledger. (3) get the
 oracle RELAXATIONS reviewed before committing -- wild-mem tolerance / icall
 black-boxing are sound for the fn-under-test but are my code, unreviewed.
@@ -89,7 +89,7 @@ A1/A2/A4 as fallback only) so the tool's gate matches the behavioural standard.
 NOT byte-exact either (T4): register colouring, FIRSTDIV +0xD, prologue tie-break.
 
 ** A5 ORACLE EXTENDED (2026-09-15, uncommitted) so it can RUN orchestrators:**
-tools/x87emu.py + tools/t3b_verify.py + tools/t3b_env.py gained: indirect calls
+tools/brally/x87emu.py + tools/brally/t3b_verify.py + tools/brally/t3b_env.py gained: indirect calls
 (`call [slot]` -- function pointers + modeled imports), 64-bit CRT helpers
 (_allmul 0x10074680, _alldiv 0x100748B0, _aulldiv 0x10074610), memmove import
 (IAT 0x118F04FC), x86 string ops (rep stosd/stosb/movsd/movsb, scasb), memory-
@@ -121,7 +121,7 @@ Diagnostic from a full-body compile attempt (~7,200 diffs, NOT tagged):
   fixed 2026-08-24 by dropping the `@` in the descriptive mention.
 
 **2026-09-15 update (project lead directed a full-body multi-turn hand grind, no
-generators).** Corrections + levers from live probing under `tools/probe.py`
+generators).** Corrections + levers from live probing under `tools/brally/probe.py`
 (`/O2 /W3`, the correct flags - plain /O2 is already frameless, so the old
 "emits push ebp/mov ebp,esp" worry is moot):
 - Region-1-only reconstruction compiles to `push esi; push edi` (2 callee-saved,
@@ -142,13 +142,13 @@ generators).** Corrections + levers from live probing under `tools/probe.py`
   WITHOUT reversing every field. Frame-delta ring at top: g_5CCB90 last tick,
   g_0A935C idx, g_0A9358 count, g_5BC900[] deltas, g_5CCB7C accum, g_5BCAE4 ctr.
 - Working scaffold + notes live in the session scratch (race.cpp). Orig bytes:
-  build/match/orig/0x10019A70.bin.
+  build/brally/win32/match/orig/0x10019A70.bin.
 -  2026-09-15 CORRECTION: it is a C++ TU. NO EH frame on this fn (cpp_score
   reports "FuncInfo structural: MATCH (no EH)" under /GX), but the body has 172
   ecx/thiscall sites, many with STACK args (callee-clean) -> the C __fastcall
   idiom only covers zero-extra-arg thiscalls; thiscall-with-args needs real C++
   member calls. So the probe is C++, not C. probe.py is C-only (hardcoded .c);
-  use instead: `tools/cpp_score.py --va 0x10019A70 --src race.cpp --name
+  use instead: `tools/brally/cpp_score.py --va 0x10019A70 --src race.cpp --name
   BrRaceStep --opt "/O2 /GX /MD"` (extern "C" the target so the symbol stays
   BrRaceStep). Member callees = methods of a catch-all `struct Obj` (no vtable,
   cast any this to Obj*); polymorphic-arity cdecl callees = `extern "C" int
@@ -208,7 +208,7 @@ generators).** Corrections + levers from live probing under `tools/probe.py`
   the original reuses ONE set of esp slots 0x20-0x3c.
    2026-09-15 phase-2 progress: coalescing vec temps to a shared set dropped the
   frame 0x60 -> 0x3c (recomp `83 ec 3c ...`, 8 B / 2 dwords over 0x34). /FAcs
-  equate listing (build/match/obj_cpp/frameprobe.cod) pinpoints the 2 extra:
+  equate listing (build/brally/win32/match/obj_cpp/frameprobe.cod) pinpoints the 2 extra:
   loc10$=-60 and loc14$=-56 each hold a DEDICATED slot; everything else coalesced
   (loc18/loc1c share with rem/b$/n block locals; v2c=-36,v20=-24,v38=-12 pack
   -36..-4). Removing fn/newB88 (via direct sub_1002E317 calls + split Lc45c_0/_1
@@ -226,7 +226,7 @@ generators).** Corrections + levers from live probing under `tools/probe.py`
   ebx/ebp -> no spill -> frame `83 ec 34` EXACT. FIRSTDIV jumped +0x2 -> +0xD
   (prologue byte-identical).  LESSON (project lead was right, no "wall"): codegen IS
   controllable from source -- keep values off callee-saved regs by not reusing
-  them across calls. Method: read the /FAcs equates + `tools/divergence.py <obj>
+  them across calls. Method: read the /FAcs equates + `tools/brally/divergence.py <obj>
   <bin> BrRaceStep --mask-slots --key 8` region map, fix source per region.
   NOW: byte-exact grind, 51 register-blind structural regions + ~106-insn deficit
   + tail reorder (c583 block 191 B never-compared, my ret lands last vs orig's ret

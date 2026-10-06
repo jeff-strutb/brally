@@ -2,22 +2,22 @@
 
 *Recorded 2026-09-08.*
 
-> tools/crank.py is the unattended byte-exact cranker (2026-09-07) -- how to run it, what it did on day one, and the loop it needs a person for (miss -> hand-solve one -> new lever)
+> tools/brally/crank.py is the unattended byte-exact cranker (2026-09-07) -- how to run it, what it did on day one, and the loop it needs a person for (miss -> hand-solve one -> new lever)
 
-**tools/crank.py (2026-09-07)** is the zero-token churner the project lead asked for
+**tools/brally/crank.py (2026-09-07)** is the zero-token churner the project lead asked for
 ("a script that sits and churns away and byte-exacts functions using my
 computer power"). Deterministic lever sweep in the function's OWN TU,
 scored register-blind; match -> sweep -> commit -> filing.csv (with
 dropped-row restore); miss -> corpus census -> `@t4-pass` line ->
 `t3.py --qualify` -> tag if it passes. Learns: per-lever accept stats
 order the levers, samebase record bases remembered
-(build/match/crank_records.csv), tried candidates per file hash never
+(build/brally/win32/match/crank_records.csv), tried candidates per file hash never
 recompiled (crank_state.json). Never commits into a sliceN file: writes
-build/match/crank_refile.txt for the HAND move (rule 6).
+build/brally/win32/match/crank_refile.txt for the HAND move (rule 6).
 
-**Run it:** `nohup .venv/bin/python tools/crank.py --all --max-bytes 1000 --workers 10 --loop > build/match/crank_daemon.log 2>&1 &`
-(14 cores; ~6 s/compile/worker). Progress: `tail -f build/match/crank.log`.
-Stop: `pkill -f tools/crank.py`. Never two daemons at once.
+**Run it:** `nohup .venv/bin/python tools/brally/crank.py --all --max-bytes 1000 --workers 10 --loop > build/brally/win32/match/crank_daemon.log 2>&1 &`
+(14 cores; ~6 s/compile/worker). Progress: `tail -f build/brally/win32/match/crank.log`.
+Stop: `pkill -f tools/brally/crank.py`. Never two daemons at once.
 
 **Day one (2026-09-07):** 32 register-only rows, 6.5 h single worker:
 4 byte-exact (0x100283C0 samebase; 0x100345F0 filepos:front;

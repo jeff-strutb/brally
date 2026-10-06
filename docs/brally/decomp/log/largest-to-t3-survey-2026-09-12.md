@@ -75,6 +75,6 @@ Related: [gate-a-distance-survey-2026-09-10](gate-a-distance-survey-2026-09-10.m
   insns.
 -  "Are the stuck large C functions really C++?" - MEASURED NO for the front
   end: br_ctlai.c compiled whole under VC5's C1XX (extern "C" wrapper,
-  build/match/t3d/ctlai_cpp.cpp) gives IDENTICAL bytes/insns (3863/1084) and
+  build/brally/win32/match/t3d/ctlai_cpp.cpp) gives IDENTICAL bytes/insns (3863/1084) and
   48 regions vs C's 47. The allocation walls are not front-end artifacts.
   (EH fns and the bitstream family remain genuinely C++ and already routed.)

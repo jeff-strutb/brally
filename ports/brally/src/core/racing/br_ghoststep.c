@@ -75,7 +75,7 @@
  * the playback record in ecx (`mov ecx,esi; call` in the original); the
  * void(void) decl here left ecx dead at the call.  The 48-seed EQUIVALENT
  * did not see it because the gate helper was black-boxed.  Caught by the
- * image gate's ABI screen (tools/t3abi.py), fixed with BR_THISCALL1. */
+ * image gate's ABI screen (tools/brally/t3abi.py), fixed with BR_THISCALL1. */
 /* @implements 0x10061F60 glide BrGhostPlaybackStep */
 void BR_THISCALL1 BrGhostPlaybackStep(BrDriver *param_1)
 {

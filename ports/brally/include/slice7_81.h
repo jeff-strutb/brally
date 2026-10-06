@@ -138,8 +138,8 @@
  * ---------------------------------------------------------------------------
  * REFERENCE BINARY
  *
- * Read from orig/BRGlide.dll (the reference) and cross-checked against
- * orig/BRD3D.dll. config/shared.csv classes the whole family `shared`; the
+ * Read from reference/brally/orig/BRGlide.dll (the reference) and cross-checked against
+ * reference/brally/orig/BRD3D.dll. config/brally/shared.csv classes the whole family `shared`; the
  * pairs used are 0x10045AA0<->0x1003EF40, 0x10045C90<->0x1003F130,
  * 0x1003E680<->0x10037C90 and 0x1003E510<->0x10037B20. The two listings for
  * 0x10045AA0 are instruction-for-instruction identical, differing only in the

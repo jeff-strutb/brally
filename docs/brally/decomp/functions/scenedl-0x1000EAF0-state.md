@@ -4,7 +4,7 @@
 
 > SUPERSEDED 2026-09-16 - 0x1000EAF0 BrSceneDlBuild is CERTIFIED T3 (br_scenedl.c). The 'one pass short of T3 / open walls 1-6' verdict is obsolete. Keep the reverse-engineering detail on the scene DL builder; the byte-Gate-A framing is dead.
 
-** ONE PASS SHORT OF T3 (project rule 11b/12, 2026-09-06): `tools/t3.py
+** ONE PASS SHORT OF T3 (project rule 11b/12, 2026-09-06): `tools/brally/t3.py
 --qualify` gates 0 and A PASS (insn gap 3/11.6, rows 43/58.2, 0 unpaired, no
 lost-sync, oracle UNCLASSIFIED); Gate B FAILS -- the `@t4-pass` ledger in the
 file header has one counted zero-movement pass (31, 85 probes) and needs two
@@ -18,7 +18,7 @@ tag the tool emits. Then it is parked.**
 missing / 20 extra. Unchanged from pass 30; nothing landed in the tree.
  Re-measure before quoting.
 
-** THE FILE HEADER IS THE DOSSIER, not this note.** `src/core/drawing/
+** THE FILE HEADER IS THE DOSSIER, not this note.** `src/brally/core/drawing/
 br_scenedl.c` carries 31 passes with ~130 measured-dead probe variants.
 Re-running one is the most expensive mistake available on this function.
 
@@ -34,10 +34,10 @@ spill (multiset 23 -> 15 missing) but VC5 then keeps ring in ebx across the
 call and evicts iWheel, and the original provably recomputes ring per arm
 (no ring store at the loop top; the else-arm recomputes too). VC5 does not
 rematerialise. So the source has a per-arm ring plus an unknown trigger.
-Full census: docs/VC5-IDIOMS.md "When VC5 keeps a scaled index in a
-register". Harness: `tools/probe.py <variant.c> <tag>` (~6 s, every measure
+Full census: docs/brally/VC5-IDIOMS.md "When VC5 keeps a scaled index in a
+register". Harness: `tools/brally/probe.py <variant.c> <tag>` (~6 s, every measure
 at once); scratch-TU rule experiments compile in ~3 s via
-`build/match/t3d/exp_*.c`.
+`build/brally/win32/match/t3d/exp_*.c`.
 
 **Open walls, header numbering:** wall 1 C4-hoist notch (0xd9a, 4 sites);
 wall 3 wheel-record address form (0x1be7/0x1c1c); wall 4 (0x1dc7, -15 B,

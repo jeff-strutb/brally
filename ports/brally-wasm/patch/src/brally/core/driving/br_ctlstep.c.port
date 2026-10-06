@@ -1,0 +1,10 @@
+# Port deviations for src/brally/core/driving/br_ctlstep.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrCarInitTables
+@drop define:BrCarClear29C8
+@drop define:BrZeroRegions
+@drop undef:BrCarInitTables
+@drop undef:BrCarClear29C8
+@drop undef:BrZeroRegions
+@drop proto:BrZeroRegions

@@ -10,7 +10,7 @@ BrCpakCheck (src/tgrally/gamedata/cpak.c) went 30 -> 0 on 2026-10-05, commit 09e
 
 **How it was found (reading tools only, no search):**
 - `n64alloc trace`, then `CDX_DETAIL_WEB=<web>` prints `[CDX] intf` neighbours with their assigned colours. If forbidden0 has v0 and no neighbour is assigned v0, it's a hard block conflict: look for calls with an int return in the web's blocks.
-- `decomp-workbench capture make tools/ido53 DIR --phase uopt`, build with TGR_CC, and decode `before-8-*` (cfe's ucode). `vreg ... (38,4,off)` shows cfe temps and which statements reuse the same slot (= one uopt web).
+- `decomp-workbench capture make tools/toolchains/ido53 DIR --phase uopt`, build with TGR_CC, and decode `before-8-*` (cfe's ucode). `vreg ... (38,4,off)` shows cfe temps and which statements reuse the same slot (= one uopt web).
 
 **Also:** a 4-argument call to a 3-argument function (an old a3 workaround) made a3 an argument register. The real 3-arg call frees a3 for the CSE temp the ROM has there.
 

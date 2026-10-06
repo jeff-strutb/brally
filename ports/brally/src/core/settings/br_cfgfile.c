@@ -85,8 +85,8 @@ typedef char br_cfgfile_assert_profile
  * settings already in memory. It checks the file's magic word and version
  * first, and works through a temporary copy so a partly-read file cannot
  * leave the live settings half-updated. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is the C++ method in
- * src/core/settings/BrCtrlCfgReadFile_10063060.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is the C++ method in
+ * src/brally/core/settings/BrCtrlCfgReadFile_10063060.cpp */
 /* BrCtrlCfgReadFile: prototype in br_funcs.h */
 
 /* ======================================================================

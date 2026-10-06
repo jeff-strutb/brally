@@ -6,7 +6,7 @@
 
 **RULE, stated 2026-09-03:** "Our export should be 1:1 not make assumptions
 on ANYTHING." Said of the CD-audio export, but meant generally - it applies to
-every extractor in `tools/`.
+every extractor in `tools/brally/`.
 
 No fades. No invented endings. No per-file normalisation. No trimming, no
 padding, no "it sounds better this way". If an edit is genuinely unavoidable
@@ -22,9 +22,9 @@ restart at an order position *partway into the song*, so the fade wrote over the
 loop and the rip could not be looped at all. One module returns to 69.1s. That
 loss was invisible until someone went looking for the loop point.
 
-**How to apply:** `tools/extract_cdaudio.py` is the reference implementation  - 
+**How to apply:** `tools/brally/extract_cdaudio.py` is the reference implementation  - 
 it copies sectors, decides nothing, hashes the PCM. Anything that renders rather
-than copies (`tools/extract_xm.py`) has to justify each departure from that in
+than copies (`tools/tgrally/extract_xm.py`) has to justify each departure from that in
 its docstring. Convenience options like `--passes` and `--fade-ms` may exist for
 making a standalone listening copy, but they must never be the default: a
 listening copy is an opinion and a rip is not. Push every playback decision  - 

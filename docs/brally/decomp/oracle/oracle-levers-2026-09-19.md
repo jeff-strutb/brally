@@ -15,7 +15,7 @@ once then `[reg+imm]`; ours reloads t and uses `[reg+abs]`). crank tried 102x
 ** THREE REUSABLE A5-ORACLE LEVERS (all committed, all sound -- a bad world
 surfaces as spurious DIFFs, NEVER a false EQUIVALENT):**
 
-1. **Overlay cap (tools/t3b_env.neighbour_after + t3b_verify).** The oracle used
+1. **Overlay cap (tools/brally/t3b_env.neighbour_after + t3b_verify).** The oracle used
    to REFUSE ("substituted bytes bury <neighbour>") when a recompile a few bytes
    longer than the original would, overlaid at va, bury the next function's
    entry. Now it CAPS the recomp overlay at that neighbour and runs. The overlay
@@ -25,7 +25,7 @@ surfaces as spurious DIFFs, NEVER a false EQUIVALENT):**
    transcription (recomp > orig) -- a whole class the oracle previously punted as
    UNCLASSIFIED. Re-run `t3b_verify` on old "substituted bytes bury" parks.
 
-2. **Integer-operand x87 ops in tools/x87emu.py: `fiadd/fisub/fisubr/fimul/
+2. **Integer-operand x87 ops in tools/brally/x87emu.py: `fiadd/fisub/fisubr/fimul/
    fidiv/fidivr`** (read a signed 16/32-bit int from memory, widen, apply to
    st0). Mirrors `fild`. Any function doing `(float) * intmem` / int-to-float
    arithmetic in x87 hit "unhandled fisub" before.

@@ -37,7 +37,7 @@
 #undef BrEntSetPos
 
 /* ====================================================================== */
-/* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
+/* Constants read out of reference/brally/orig/BRD3D.dll .rdata (do not re-derive)          */
 /* ====================================================================== */
 
 /* LAYOUT: BrDiv10000 sits ahead of the .rdata constants (in slice3_45.c it
@@ -156,7 +156,7 @@ typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
  * which Windows requires again every time the game comes back to the
  * foreground. It reports whether it succeeded, and says "no" harmlessly if
  * there is no such device. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x100706B0.c */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/generated/0x100706B0.c */
 /* BrDiAcquire: prototype in br_funcs.h */
 
 /* 0x10078BC0 */
@@ -164,12 +164,12 @@ typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
  * game have finished with it as asked for it in the first place -- it counts
  * users rather than shutting down on the first call. An extra call after the
  * count has already reached zero does nothing at all. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x10071EB0.c */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/generated/0x10071EB0.c */
 /* BrDiKeyboardShutdown: prototype in br_funcs.h */
 
 /* 0x10078C30 BrDiSetPropRange, 0x10078C80 BrDiSetPropDword,
  * 0x10078ED0 BrFfbCommitDuration and 0x100790B0 BrFfbSetSpringCoeff moved to
- * src/core/controls/br_dicmd.c. They were the only users of BR_DI_SETPROP and
+ * src/brally/core/controls/br_dicmd.c. They were the only users of BR_DI_SETPROP and
  * BR_DI_SETPARAMS above; the macros are left here so this file's preamble is
  * unchanged. The globals they read stay defined here, and slice3_45.h
  * declares all four for the callers that remain (BrFfbUpdateSpring below

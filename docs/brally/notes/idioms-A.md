@@ -1,6 +1,6 @@
 # 0x100250D0 BrTex3dExpand - two walls broken
 
-`src/core/drawing/br_tex3d_expand.c`, 8480 B, 2407 insns. Second/third
+`src/brally/core/drawing/br_tex3d_expand.c`, 8480 B, 2407 insns. Second/third
 largest function in `BRGlide.dll`.
 
 ## State (2026-08-28)
@@ -91,12 +91,12 @@ forward-copy, palette, colour-interp, 4-way unrolled) and across the 8-bit
 output arms in the 1-byte form (`+= 1`, walking a real `unsigned char *`):
 **+1152 → +64 bytes, +234 → +24 instructions.**
 
-Generalised as `tools/gen_countfold.py` and wired into `_refine_candidates` as
+Generalised as `tools/brally/gen_countfold.py` and wired into `_refine_candidates` as
 the `countfold` candidate. Unaided it fires on 12 of the 16 sites for
 −160 B / −24 insns; the 4 it skips have a `puVar9`/`puVar21` ping-pong that
 needs the exit-path values proved by hand. **Bulk payoff outside this function
 is currently ZERO** - the `X + N >= Y` guard shape does not occur anywhere in
-the 2139-file `build/ghidra_decomp/` corpus. Keep the generator anyway: it is
+the 2139-file `build/brally/analysis/ghidra_decomp/` corpus. Keep the generator anyway: it is
 free in the candidate list and it is where the knowledge lives.
 
 ## Four independent classes landed alongside it
@@ -153,8 +153,8 @@ what moved the first divergence from +0x11 to +0x14.
 
 Use the **register-blind** multiset diff, not the raw one:
 
-    sh tools/fnmatch/vdiff.sh <TAG>             # scorecard
-    sh tools/fnmatch/vdiff.sh <TAG> "" regnorm 30
+    sh tools/brally/fnmatch/vdiff.sh <TAG>             # scorecard
+    sh tools/brally/fnmatch/vdiff.sh <TAG> "" regnorm 30
 
 Raw read 1097 extra / 863 missing on the pre-transform file - a wall. Register
 normalised it read 432 / 198: roughly 650 of that "difference" was ONE global
@@ -213,7 +213,7 @@ measured, do not re-run.
 Remaining misalignment (~478 of 2407 in-order, 95 register-blind shapes):
 the blend swizzled bodies (~192 insns, orig 0x10025af1-0x10025d05) and the
 IA8 arm (~158 insns, orig 0x100266ea-0x100268e0) - both want the same
-region-retranscription treatment. Worklist: tools/fnmatch/sites.py.
+region-retranscription treatment. Worklist: tools/brally/fnmatch/sites.py.
 
 ## Honest state: size is solved, allocation is not
 
@@ -252,7 +252,7 @@ orig's, which perturbs displacement bytes throughout - high leverage, not a
 
 ## Session 4 (2026-09-01, by hand, no workers)
 
-Masked divergence regions (`tools/divergence.py --mask-slots`) 49 -> 32,
+Masked divergence regions (`tools/brally/divergence.py --mask-slots`) 49 -> 32,
 insns 2406 -> 2415, bytes 8416 -> 8464 (orig 8480). Commits d6b63e2, 354c0e5,
 9b3f109 and the bank after them.
 

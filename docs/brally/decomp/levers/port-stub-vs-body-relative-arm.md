@@ -32,7 +32,7 @@ t3b_verify UNCLASSIFIED reasons hit this session, each a quick fix:
   = an out-of-line call the original inlines. `fabsf(x)` where x<0 is proven =
   `-x` (orig `fchs`); a static ftol-byte wrapper = inline `(uint8_t)(int)x`
   (orig `call __ftol`, which the oracle knows). Fixing these was also byte-real.
-- "_g_<global>: no known address" = add one row to `config/globals_hand.csv`
+- "_g_<global>: no known address" = add one row to `config/brally/globals_hand.csv`
   (symbol,addr,refs,corroborated,class,sources); base addr = the first field's
   address (the-annex learned CSV regen wipes hand rows - hand file only).
 

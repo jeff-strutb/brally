@@ -2,7 +2,7 @@
  * is a change of GLIDE raster state.  See br_dlglide.h for what this module is
  * and how each fact in it was established.
  *
- * Every address literal below is from orig/BRGlide.dll, which CONVENTIONS.md
+ * Every address literal below is from reference/brally/orig/BRGlide.dll, which CONVENTIONS.md
  * names as the reference.  Where the D3D build's handler at the same table
  * slot is a different function, that is called out at the site.
  *
@@ -73,7 +73,7 @@
 /* ==================================================================== */
 /* opcode 0xDD -- re-aim that texture                                   */
 /* ==================================================================== */
-/* THE TRACE.  Shared with D3D 0x1001BE10 (config/shared.csv, by body).
+/* THE TRACE.  Shared with D3D 0x1001BE10 (config/brally/shared.csv, by body).
  *
  *   1001E305  mov  ecx,[esi]          w0
  *   1001E307  mov  eax,[esi+4]        w1
@@ -170,7 +170,7 @@
 /* ==================================================================== */
 /* opcodes 0xE2 and 0xED -- set the clip window, two conventions        */
 /* ==================================================================== */
-/* THE TRACE.  Both Glide-only (neither is in config/shared.csv), and the two are
+/* THE TRACE.  Both Glide-only (neither is in config/brally/shared.csv), and the two are
  * SAME handler over two coordinate conventions -- exactly the relationship
  * 0xE1 has with 0xF6.  The split is confirmed independently in BRD3D.dll,
  * whose 0xE2 (0x1001CE70) shifts by 12 and masks 0xFFF while its 0xED
@@ -246,7 +246,7 @@
  * would give one original address two host definitions -- the failure
  * CONVENTIONS.md's "Aliased storage" section is about. */
 /* DELEGATED, NOT TRANSCRIBED.  The address is written without a leading
- * banner on purpose: tools/isported.py attributes a banner whose first
+ * banner on purpose: tools/brally/isported.py attributes a banner whose first
  * token is an address to the function beneath it, and this function is a
  * counted frontier, not a port.  Opcode 0xF2 is 178 bytes at Glide
  * 0x1001EC30 and its transcription is br_dl.c's br_dl_settilesize; this
@@ -569,7 +569,7 @@ void BrGlGbiCall(uint32_t w1)
  * br_objlife.c is DIFFERENT CODE.)
  *
  * ONE residue region of 3 bytes, and it is the documented CROSS-JUMPING
- * class (see docs/VC5-IDIOMS.md): the function has no frame, so both exits
+ * class (see docs/brally/VC5-IDIOMS.md): the function has no frame, so both exits
  * are a bare `ret`, and our cl merges them -- a 6-byte near `je` to the
  * tail -- where the original duplicated the ret and jumped over it with a
  * 2-byte `jne`.  All 40 other instructions are byte-identical.
@@ -580,25 +580,25 @@ void BrGlGbiCall(uint32_t w1)
  * NOW TAGGED, 2026-09-03.  It was withheld, which left the function
  * invisible to triage while a FALSE TWIN claimed the same address:
  * br_objlife.c's BrInstall_1001BAE0 carried `@implements 0x1001BAE0 d3d`,
- * and config/shared.csv maps that to Glide 0x1001E080.  The D3D function
+ * and config/brally/shared.csv maps that to Glide 0x1001E080.  The D3D function
  * is 26 bytes of two pointer stores; this one is 173 bytes of 3dfx
  * bring-up.  Same renderer slot, different code.  That tag is now
  * @d3donly. */
-/* @t4-pass 0x1001E080 1 2026-09-07 probes 22 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001E080 2 2026-09-07 probes 23 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001E080 1 2026-09-07 probes 22 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001E080 2 2026-09-07 probes 23 bytes 176 insns 40 regions 1 rows 7 census yes  (tools/brally/crank.py) */
 /* WHAT IT DOES: bring the 3dfx card up: installs the frame-flip hooks,
  * initialises Glide, and returns without opening a window if no Voodoo
  * hardware is present -- which is how the game discovers it must fall back. */
-/* @t4-pass 0x1001E080 3 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001E080 4 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001E080 5 2026-09-10 probes 43 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001E080 3 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001E080 4 2026-09-10 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001E080 5 2026-09-10 probes 43 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/brally/crank.py) */
 /* @t3 0x1001E080 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 176/173 insns 40/41 rows 2+1 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 5 zero-movement 4 5
- * residue after tools/crank.py: 43 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 43 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
-/* @t4-pass 0x1001E080 6 2026-09-19 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001E080 6 2026-09-19 probes 23 bytes 176 insns 40 regions 1 rows 3 census yes  (tools/brally/crank.py) */
 /* @implements 0x1001E080 glide BrGlInstall */
 void BrGlInstall(void)
 {

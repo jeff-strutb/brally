@@ -29,13 +29,13 @@ void BrLogFatalPrintf(const char *pFmt, ...)
 #if defined(BR_FATAL_LOG)
     /* Compiled out of the byte-exact build (the T4 image gate grades this
      * function against the original); the T3 play image's force-annex
-     * compile defines BR_FATAL_LOG (tools/image_build_t3.py, mode 'log'). */
+     * compile defines BR_FATAL_LOG (tools/brally/image_build_t3.py, mode 'log'). */
     {   /* DIAGNOSTIC (permanent): the original formats this fatal message
          * and discards it, so a clean exit(1) leaves no trace of WHY.  Append
          * it to a log.  Strings are built on the stack (no new .rdata, which
          * the fixed image has no room for) and only already-imported CRT
          * calls are used.  The body is spilled into the annex by the image
-         * builder (config/force_annex.csv) so growing it past its slot is
+         * builder (config/brally/force_annex.csv) so growing it past its slot is
          * fine. */
         char  nm[12];
         char  md[2];

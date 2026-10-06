@@ -1,0 +1,66 @@
+# Port deviations for src/brally/core/net/br_dplaysession.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:g_brUinAA2880
+@drop define:BR73_NAA2880
+@drop var:g_brUiapJoinBlob
+@drop define:BR73_APJOINBLOB
+@drop fn:BrSub1003D030
+@drop var:g_brAA287C
+@drop var:g_aBrA9C0B8
+@drop fn:BrSub1003CFC0
+@drop include:<windows.h>
+@drop var:DAT_10ac315c
+@drop fn:BrGlobalFreeAll
+@drop var:DAT_10078898
+@drop var:DAT_10078878
+@drop var:DAT_10078868
+@drop var:DAT_10078888
+@drop var:DAT_10ac3080
+@drop var:DAT_10ac3148
+@drop var:DAT_10ac3158
+@drop type:BrSessionGuid
+@drop fn:BrNetSessionStore
+@drop var:DAT_10ac4090
+@drop var:DAT_1007750c
+@drop var:DAT_100b3014
+@drop var:DAT_10226e80
+@drop var:DAT_10ac5d70
+@drop var:DAT_100abdf8
+@drop var:DAT_10b71648
+@drop type:BrDpDesc2
+@drop type:BrDpOpenFn
+@drop type:BrDpCreatePlayerFn
+@after type:BrDpCreatePlayerFn
+/* g_br73 is the port's gathering of separate originals.  The matching build
+ * names the ones used here as the globals they are (config/brally/globals_glide.csv),
+ * so each relocation resolves to its own variable. */
+#define BR73_NAA2880 g_br73.nAA2880
+#define BR73_APJOINBLOB g_br73.apJoinBlob
+
+/* ==========================================================================
+ * 0x1003D030 -- the 16-byte join blob
+ * ========================================================================== */
+
+/* WHAT IT DOES: fetches the small identifying blob for the network game the
+ * player has highlighted, which is what the join attempt hands to DirectPlay
+ * to say which session it wants. It reports success even when there was
+ * nothing to fetch, so the caller cannot tell the difference. */
+/* @implements 0x1003D030 d3d BrSub1003D030 */
+int32_t BrSub1003D030(void *pBlob)
+{
+    const void *pSrc;
+
+    if (BR73_APJOINBLOB == NULL) {
+        return 0;
+    }
+    pSrc = BR73_APJOINBLOB[BR73_NAA2880];
+    if (pSrc == NULL) {
+        return 0;
+    }
+    /* four dword copies in the original */
+    memcpy(pBlob, pSrc, 16);
+    return 0;
+}
+@end

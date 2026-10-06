@@ -2,9 +2,9 @@
  *
  *   0x1005D770  3858 B   BrCtlAiBody   (D3D 0x10064700, `shared`)
  *
- * One original function, transcribed from orig/BRGlide.dll.  br_ctlstep.c
+ * One original function, transcribed from reference/brally/orig/BRGlide.dll.  br_ctlstep.c
  * holds the nine-byte thunk 0x1005E690 BrCtlAi that tail-calls it, and
- * include/br_ai.h carries a section-by-section reading of what every block
+ * src/brally/include/br_ai.h carries a section-by-section reading of what every block
  * is for (the numbered rules there are cited below by number).  The helpers
  * br_ai.c ports from this function (BrAiLookahead, BrAiAdvanceTarget, ...)
  * are NOT called from here: the original has them in line, and VC5 inlines
@@ -116,7 +116,7 @@
  *     `lat = curve;` once after the join, to force the shared store:
  *     identical output, the temp is folded away.  R3 is not reachable by
  *     naming the value.
- *   - tools/corpus.py find --from 0x1005D770 --at 0x8f --len 12: MISS --
+ *   - tools/brally/corpus.py find --from 0x1005D770 --at 0x8f --len 12: MISS --
  *     but the MISS was an artefact of querying a 12-instruction run with
  *     the interleaved stores in it.  The 2-instruction fold-then-lea shape
  *     IS proven (0x10030710, 0x100140B0, 0x10017F80) and the field-pointer
@@ -262,7 +262,7 @@ typedef struct BrAiMenuRec {
  * arrives in a float slot only so that thiscall's edx stays free and the
  * callee clears its own three arguments -- its bits are an int, read back as
  * one here (see BR_AI_SCAN and the arg struct notes above). */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/driving/BrAiScanCorridorRecurse_1005D060.cpp
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/driving/BrAiScanCorridorRecurse_1005D060.cpp
  * (byte-exact as a C++ thiscall member under /O2 /Gi).  History below.
  * 0x1005D060 glide BrAiScanCorridor -- TRANSCRIBED, NOT YET BYTE-EXACT (T2).
  * Fills the corridor-scan "binding gap" named in br_ai.h rule 8.  First-pass
@@ -283,7 +283,7 @@ typedef struct BrAiMenuRec {
  * colouring (which register carries the zero; null-branch slot numbering) --
  * allocator, not source.
  *
- * NEXT LEVER (byte-exact): rewrite as a C++ member in src/core/cpp/, so the
+ * NEXT LEVER (byte-exact): rewrite as a C++ member in src/brally/core/cpp/, so the
  * recursion is `this->Scan(depth+1, mid+1, node)` with int args pushed from
  * registers and edx naturally free.  Probes tried here: field-pointer vs
  * inline aPt[mid] access (inert, VC5 folds +0x40 either way); dropping the
@@ -741,7 +741,7 @@ stepped:
                  * conditional fmul + fstp st/fld [pool] clamp run is proven
                  * NOWHERE in the solved tree (only the leading 4-insn float
                  * compare matches).  Unproven construct -- park, do not
-                 * permute further (docs/MATCHING.md corpus rule). */
+                 * permute further (docs/brally/MATCHING.md corpus rule). */
                 if (0.4f < k)
                     k = 0.4f;
                 f = k * offset;

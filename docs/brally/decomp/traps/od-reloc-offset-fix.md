@@ -4,7 +4,7 @@
 
 > /Od COFF objects had broken reloc masking - offsets were section-relative but comparison used function-relative indices
 
-`parse_coff_obj` in `tools/match_diff.py` stored reloc offsets as section-relative
+`parse_coff_obj` in `tools/brally/match_diff.py` stored reloc offsets as section-relative
 (`r_vaddr` from the section's reloc table). With `/O2` COMDAT each function IS its
 own section (`value=0`), so section-relative == function-relative - correct by
 accident. With `/Od` all functions share one `.text` section; a function at offset

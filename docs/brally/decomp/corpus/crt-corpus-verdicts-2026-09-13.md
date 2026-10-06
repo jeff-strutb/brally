@@ -4,14 +4,14 @@
 
 > CRT corpus (--corpus crt, 690/734 byte-exact) verdicts on the four unproven byte/string shapes - all four parked rows CONFIRMED walls, do not re-probe
 
-The CRT proven-idiom corpus is live: `tools/crtcorpus.py` scores vendored
+The CRT proven-idiom corpus is live: `tools/brally/crtcorpus.py` scores vendored
 DEVSTUDIO/VC/CRT/SRC against LIBC.LIB; `corpus.py find/show --corpus crt`
 queries it. 690/734 C-source CRT functions byte-exact; retail flags
 (`-Zelp8 -W3 -WX -GFy -GB -Gi- -O2`) and plain `/O2 /W3` give the IDENTICAL
 match set - the extra retail flags are codegen-inert on this corpus. The 378
 remaining LIBC functions are hand-asm (INTEL/*.asm), no C source to score.
 
-Verdicts (2026-09-13, all in docs/VC5-IDIOMS.md tail, commit 39bd6eb):
+Verdicts (2026-09-13, all in docs/brally/VC5-IDIOMS.md tail, commit 39bd6eb):
 - **Dirty byte widen** (`mov dl,[m]; and edx,0xff`): proven 9× but EVERY
   site has `test r8,r8; je` between load and widen (MBCS `while(*s){ if
   (_ISLEADBYTE(*s++))`). No anchor-free form in 690 functions. The `& 0xff`
@@ -32,4 +32,4 @@ adjacency with a register-aware disasm of the shipped obj
 Also: found the working tree carrying an uncommitted REVERT of committed
 work (crtcorpus.py/crtlib.py deleted, corpus.py stripped) - restored from
 HEAD via pathspec checkout; [parallel-session-clobber](../traps/parallel-session-clobber.md) applies to
-tools/, not just docs.
+tools/brally/, not just docs.

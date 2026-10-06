@@ -1,8 +1,8 @@
 /* br_racestep.h -- 0x10019A70, THE RACE STEP, and the two per-driver passes
  * it drives.
  *
- * REFERENCE IS orig/BRGlide.dll.  Every address below was checked with
- * tools/whereis.py before a line was written.
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  Every address below was checked with
+ * tools/brally/whereis.py before a line was written.
  *
  * ======================================================================
  * WHAT 0x10019A70 IS

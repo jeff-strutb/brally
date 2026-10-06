@@ -10,29 +10,29 @@
 (TimeAttack `<n>.grf`, RallySeason `<n>.brf`) and the save-file writers/readers.
 Plain cdecl C, first-compile territory; the C++ vcall family next to it is dry.
 
-**Exact (6):** 0x1003B580, 0x1003BCA0 (probes, `src/core/menus/br_saveprobe.c`);
+**Exact (6):** 0x1003B580, 0x1003BCA0 (probes, `src/brally/core/menus/br_saveprobe.c`);
 0x1003B350, 0x1003BAC0 (name commits, `br_savename.c`); 0x10069DE0 (ghost
-writer, `src/core/settings/br_ghostsave.c`); 0x10008AB0 BrPodOpen
-(`src/core/cpp/0x10008AB0.cpp`, C twin retired in ghidra_batch.c).
+writer, `src/brally/core/settings/br_ghostsave.c`); 0x10008AB0 BrPodOpen
+(`src/brally/core/cpp/0x10008AB0.cpp`, C twin retired in ghidra_batch.c).
 
 **Parked, dead-probe lists in each header - read before touching:**
-- 0x1003B6D0 / 0x1003BDE0 / 0x1003B130 in `src/core/menus/br_savebegin.c`
+- 0x1003B6D0 / 0x1003BDE0 / 0x1003B130 in `src/brally/core/menus/br_savebegin.c`
   (one frame slot; one register pair; a 7-byte schedule). 20 slot spellings dead.
-- 0x100695C0 season reader `src/core/settings/br_seasonload.c`: open block
+- 0x100695C0 season reader `src/brally/core/settings/br_seasonload.c`: open block
   laid inline in every C spelling, and `setne al` without zeroing = C++ `bool`.
   A bool .cpp of the same body scored WORSE (653) - needs a fresh C++ read.
-- 0x10039620 `src/core/cpp/0x10039620.cpp`: 572/563, one cross-jump asymmetry.
+- 0x10039620 `src/brally/core/cpp/0x10039620.cpp`: 572/563, one cross-jump asymmetry.
 
 **Done 2026-09-06 (both transcribed instruction-complete, committed, PARKED on
 allocation/layout walls - NOT byte-exact):**
-- 0x10069A80 ghost reader -> `src/core/cpp/0x10069A80.cpp` BrGhostLoad, a C++
+- 0x10069A80 ghost reader -> `src/brally/core/cpp/0x10069A80.cpp` BrGhostLoad, a C++
   bool free TU (mangled `?BrGhostLoad@@YA_NPADH@Z`). 848/828, register-blind +
   block-order = 0. Two coupled residues, dead-listed in the header: VC5 pulls
   the large install block up as fall-through (same wall the season reader
   carries) + an fp/0xc register tie. The C++ lane DID kill the bool residue;
   block layout is NOT reachable by control-flow spelling (flat early-goto ==
   nested Ghidra shape, byte-identical).
-- 0x1006A080 five-way loader -> `src/core/settings/br_saveload.c` BrSaveLoad,
+- 0x1006A080 five-way loader -> `src/brally/core/settings/br_saveload.c` BrSaveLoad,
   plain C char. 608/641, register-blind 2+16. Root: the original REMATERIALISES
   the second arg (loads [arg] twice); VC5 CSEs it into ebx, making arg a 5th
   callee-saved value -> `mode` spills -> the tail epilogues become identical and

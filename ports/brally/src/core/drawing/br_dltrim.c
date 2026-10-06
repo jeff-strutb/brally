@@ -26,7 +26,7 @@
  *
  * THE SNAP IS INLINE ASM.  Quarter-pixel snapping rounds through a bare
  * `fistp` with no control-word change, which VC5 cannot emit from C (every
- * `(int)float` is a `__ftol` call; docs/VC5-IDIOMS.md).  The original
+ * `(int)float` is a `__ftol` call; docs/brally/VC5-IDIOMS.md).  The original
  * therefore carried an `__asm` block, and that is also why all four keep an
  * EBP frame while their unclipped siblings (0x1001FF60, 0x10020460) do not:
  * VC5 does not omit the frame pointer in a function containing inline asm.
@@ -225,7 +225,7 @@ void NAME ARGS                                                              \
  * !! AND ARM ORDER IS THE WHOLE THING: `if (cVerts >= 3) { emit } else {
  * fail: giveup }` -- same control-flow graph, same goto, label still inside
  * an arm -- reverts exactly to the 633-byte defect.  The FAILURE arm has to
- * be the one the compiler lays first.  See docs/VC5-IDIOMS.md, "a lone
+ * be the one the compiler lays first.  See docs/brally/VC5-IDIOMS.md, "a lone
  * if (x) F else S is failure-first".
  *
  * DEAD, do not re-run (all /O2 /Op, all give the give-up block at the END

@@ -34,8 +34,8 @@
  * read the live size on every frame.
  *
  * These are also the six functions that carry a 16-byte link-stage preamble
- * (jmp +0x0b, then nops) recorded in config/preambles.csv -- see
- * tools/image_build.py, which has to lay that preamble down verbatim or the
+ * (jmp +0x0b, then nops) recorded in config/brally/preambles.csv -- see
+ * tools/brally/image_build.py, which has to lay that preamble down verbatim or the
  * whole function reads as differing.
  * ========================================================================== */
 

@@ -1,6 +1,6 @@
 #include "br_addr32.h"
 /* br_dl.c -- the display-list machine.  See br_dl.h for what this is and how
- * it was established.  Every address literal is from orig/BRGlide.dll, which
+ * it was established.  Every address literal is from reference/brally/orig/BRGlide.dll, which
  * CONVENTIONS.md names as the reference; where the D3D build's handler is a
  * different function the divergence is called out at the site.
  *
@@ -251,7 +251,7 @@ const uint8_t *br_dl_skip(const uint8_t *p)
  * normals painted as colour; the file does NOT hold lit colours. */
 
 /* --- 0x100344D0, and a deliberate second copy -------------------------
- * The normalise 0x10021DB8 calls is BRD3D 0x1003AE50 -- config/shared.csv
+ * The normalise 0x10021DB8 calls is BRD3D 0x1003AE50 -- config/brally/shared.csv
  * pairs the two as ONE shared 141-byte function -- and slice2_21.c ALREADY
  * PORTS IT, as BrVec3NormaliseGuard (not BrVec3Normalise: slice1_09 owns that
  * name for the unguarded 0x10074180).  CONVENTIONS.md says to reuse, and the
@@ -259,7 +259,7 @@ const uint8_t *br_dl_skip(const uint8_t *p)
  *
  * It does not link.  slice2_21.c needs BrSqrtF, whose only definition is in
  * slice4_53.c, which needs roughly the whole game; adding it to
- * build.d/test_br_dl.deps turns a five-object test into an unlinkable one.
+ * tests/brally/deps/test_br_dl.deps turns a five-object test into an unlinkable one.
  * So this is a SECOND HOST COPY of one original function, on purpose, and the
  * mitigation is that it is stated here rather than discovered later.  It is
  * arithmetically identical, including the two things that are easy to get
@@ -302,7 +302,7 @@ void br_dl_normalise(BrVec3 *pV)
      * this one is genuinely /O2: /O2 49 diffs, /O2 /Op 128, /O2 /Oy- 117,
      * /Od 122.
      *
-     * CLOSED 2026-09-04 -- it was the `ptr[0]` ranking (docs/VC5-IDIOMS.md):
+     * CLOSED 2026-09-04 -- it was the `ptr[0]` ranking (docs/brally/VC5-IDIOMS.md):
      * `pV->x` is an offset-0 operand and VC5 ranks that above the register
      * copy of the reciprocal, so it `fld`s the field and multiplies by
      * st(i); y and z at +4/+8 lose that ranking and become memory operands
@@ -407,8 +407,8 @@ void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
  * texture coordinates are being generated, and whether decal mode is in
  * force. The port reports the original's address rather than installing a
  * function, so the choice stays checkable. */
-/* @t4-pass 0x1001FD70 1 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/crank.py) */
-/* @t4-pass 0x1001FD70 2 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001FD70 1 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1001FD70 2 2026-09-07 probes 50 bytes 365 insns 80 regions 2 rows 42 census yes  (tools/brally/crank.py) */
 /* @implements 0x1001FD70 glide BrDlVtxRoutine */
 /* The port kept only the tail of this function -- the routine SELECTION --
  * and turned it into a value-returning query. The original takes no
@@ -424,7 +424,7 @@ void br_dl_light_vertex(const BrDlLvIn *pIn, BrDlLvOut *pOut)
  *    0x100A9D1C, chosen by bit 0x200, on every one of the four exits.
  *
  * That is 53 of the 80 instructions and all three of the calls
- * tools/claimcheck.py flagged as "orig calls 3, port 0".
+ * tools/brally/claimcheck.py flagged as "orig calls 3, port 0".
  *
  * RESIDUE (6+6 regnorm, -6 bytes, 80 instructions against 80): the original
  * loads the OLD mode first and xors the new one INTO it
@@ -563,7 +563,7 @@ side:
  * through by depth to get perspective, applies the viewport scale and
  * offset, stores the vertex's colour, and snaps the result to the nearest
  * quarter of a pixel -- the resolution the hardware rasteriser works at. */
-/* port-only body; the Glide match is src/core/drawing/br_dlproject.c */
+/* port-only body; the Glide match is src/brally/core/drawing/br_dlproject.c */
 /* br_dl_project: the placed body is br_dlproject.c */
 
 /* ---- 0x04 G_VTX ----------------------------------------------------
@@ -1067,7 +1067,7 @@ const uint8_t *br_dl_fillcolour(const uint8_t *p)
  * drawing is not taking its colour from a texture or from vertex shading.
  * The four channels are kept on a 0-to-255 scale, unlike the environment
  * colour below. */
-/* port-only body; Glide match is src/core/generated/0x1001EA80.c */
+/* port-only body; Glide match is src/brally/core/generated/0x1001EA80.c */
 /* br_dl_prim: the placed body is br_dlcmd.c */
 /* WHAT IT DOES: sets the environment colour, the second flat colour the
  * pixel combiner can mix in. Unlike the primitive colour this one is scaled

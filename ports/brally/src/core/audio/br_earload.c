@@ -1,6 +1,6 @@
 /* br_earload.c -- the EAR sound-DLL loader (0x10017910).
  *
- * Fresh transcription from build/ghidra_decomp/0x10017910.c against the
+ * Fresh transcription from build/brally/analysis/ghidra_decomp/0x10017910.c against the
  * original bytes, 2026-09-13.  Matching arm only; the port keeps its own
  * loader (slice1_04).
  */

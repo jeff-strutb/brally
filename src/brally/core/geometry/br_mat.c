@@ -1,0 +1,510 @@
+/* br_mat.c -- matrix math decompiled from BRD3D.dll. See br_mat.h.
+ *
+ * Both routines accumulate directly into the output (the original zeroes
+ * out[i] then does `fadd [eax]; fstp [eax]` each step), so out must not alias
+ * v. The original has the same constraint.
+ */
+/* The original is /MD: CRT calls go through the import table (FF 15). */
+#define _CRTIMP __declspec(dllimport)
+#include "br_mat.h"
+#include "br_match.h"   /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+
+/* WHAT IT DOES: rotate a direction by a matrix -- the top-left 3x3 only, so
+ * the matrix's translation is IGNORED and this moves directions, not points.
+ * Turning a car-local direction into a world one is the everyday use. */
+/* @implements 0x10074720 d3d BrMat4MulVec3 */
+void BrMat4MulVec3(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
+{
+    const float *v = &pV->x;
+    float *o = &pOut->x;
+    int i, k;
+
+    for (i = 0; i < 3; i++) {
+        o[i] = 0.0f;
+        for (k = 0; k < 3; k++)
+            o[i] += pM->m[i][k] * v[k];
+    }
+}
+
+/* WHAT IT DOES: the inverse of BrMat4MulVec3 for a rotation matrix -- rotate
+ * a direction by the matrix's TRANSPOSE, which takes a world direction back
+ * into the object's own frame. Only an inverse while the matrix is a pure
+ * rotation; a scaled one gives the wrong answer. */
+/* @implements 0x10074770 d3d BrMat4MulVec3Transposed */
+/* NOT MATCHING, and not for a reason source order can fix.  All 67 bytes line
+ * up except which side of the inner commutative multiply becomes the memory
+ * operand:
+ *     original   fld dword ptr [ecx]   fmul dword ptr [edx]
+ *     ours       fld dword ptr [edx]   fmul dword ptr [ecx]
+ * VC5 canonicalises commutative fmul operands, so swapping them in the source
+ * does nothing -- verified on BrVec3Dot and BrVec3Div as well, three
+ * independent confirmations.  Whichever operand the compiler picks is an
+ * internal decision, the same class as the register allocation that blocks
+ * BrVec3Dot.  Do not spend time reordering the arithmetic here.
+ *
+ * Worth noting for whoever takes this on: this ONE behaviour appears to be
+ * the sole remaining divergence across much of the float-math cluster, so
+ * unlike the struct-layout fix it is a genuine cascade candidate if a lever
+ * for it is ever found. */
+void BrMat4MulVec3Transposed(BrVec3 *pOut, const BrMat4 *pM, const BrVec3 *pV)
+{
+    const float *v = &pV->x;
+    float *o = &pOut->x;
+    int i, k;
+
+    for (i = 0; i < 3; i++) {
+        o[i] = 0.0f;
+        for (k = 0; k < 3; k++) {
+            /* The matrix element is named so that it is the operand FETCHED,
+             * with the vector component as the memory operand of the fmul --
+             * `fld [ecx]; fmul [edx]`, which is what the original does.
+             * Writing the product directly gets the two the other way round:
+             * VC5 canonicalises commutative fmul operands, so operand order
+             * in the source cannot decide it, but which value is a named
+             * temporary can. */
+            float m = pM->m[k][i];
+            o[i] += m * v[k];
+        }
+    }
+}
+
+/* @implements 0x100349C0 glide BrVec3Project */
+/* @n64 0x80225038 located */
+/* WHAT IT DOES: projects the point pV through the 4x4 matrix pM using the
+ * row-vector convention (v' = v * M, no translation row -- see below) and then
+ * divides all three components by the resulting w.  This is the vertex ->
+ * clip/screen projection the render frontier uses (caller 0x10017110 runs a
+ * vertex array through g_6E78F0 with it).  GLIDE-ONLY: no D3D twin exists.
+ *
+ * THREE FAITHFULNESS POINTS, all read straight off the x87 sequence:
+ *  1. Only the linear 3x3 and the projection column (m[*][3]) participate.  The
+ *     translation row m[3][0..2] is NOT added to the x/y/z numerators; only
+ *     m[3][3] is added to w.  That is what the original computes -- it assumes a
+ *     pure projection matrix -- so it is reproduced verbatim, not "fixed".
+ *  2. The x column's products are ISSUED in a different order from y and z
+ *     (x: m10*vy, m20*vz, then m00*vx from memory; y/z: m0k*vx, m1k*vy,
+ *     m2k*vz).  That is MSVC scheduling the first column around the divide,
+ *     NOT a source difference -- all three rows are written the same way here,
+ *     and every reordering of a flat float sum compiles identically (see the
+ *     dead-probe list below).  Do not read source grouping off this asm.
+ *  3. The divisor g_0775F0 is 1.0f (same constant br_dl.c divides by), and the
+ *     original forms it as `fdivr` (1.0 / w), so the reciprocal is taken once
+ *     and then multiplied in -- reproduced as `1.0 / w`.
+ * Intermediates are held in double, which models the x87 registers at their
+ * 53-bit precision (PC=2, CONVENTIONS.md); only the stores to pOut round to
+ * float, exactly as the original's `fstp dword`. */
+void BrVec3Project(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
+{
+    float vx = pV->x, vy = pV->y, vz = pV->z;
+    const float (*m)[4] = pM->m;
+    float w = m[0][3] * vx + m[1][3] * vy + m[2][3] * vz + m[3][3];
+    float r = 1.0f / w;                /* g_0775F0 == 1.0f, taken via fdivr */
+
+    /* PARKED T3a.  RE-MEASURED AGAIN 2026-09-03 (second pass, later in the
+     * day) and it is now BETTER than the line below claimed -- that line said
+     * "recomp 163 B / 69 insns vs orig 165 B / 70, one `fxch` apart", and the
+     * current tree is 165 B / 70 insns against 165 / 70 with a register-blind
+     * multiset difference of ZERO (RAW 0+0, REGNORM 0+0).  Every instruction
+     * the original has, in the same count, with 23 bytes differing.
+     *
+     * All 23 are x87 preload ORDER.  The original issues
+     *   vx, vy, m03, m13, vz, ... m23   and this tree issues
+     *   vy, vz, m13, m23, vx, ... m03
+     * -- the same six loads rotated by one -- and the `fmul st(N)` / `fld
+     * st(N)` indices that follow are forced by that rotation, not chosen.
+     * The source cannot reach it: VC5 canonicalises the whole flat float
+     * sum-of-products, so all eleven orderings below are byte-identical.
+     * Nothing left here is source-shaped.  Do not reopen without a NEW
+     * mechanism (a compiler flag or patch level), not another permutation.
+     *
+     * !! THE OLD NOTE HERE WAS STALE AND IS RETRACTED.  It claimed a 30-byte
+     * residue confined to 0x28-0x4F with "the first 0x28 bytes and everything
+     * from +0x50 byte-identical", and that swapping the x-row operand order
+     * cost 121 diffs.  None of that reproduces: the function diverges at +0x8
+     * in EVERY spelling, and the spellings are indistinguishable because VC5
+     * canonicalises a whole flat float sum-of-products (see docs/brally/VC5-IDIOMS.md,
+     * "canonicalises commutative FLOAT addition").
+     *
+     * DEAD PROBES -- all eleven give byte-identical output, do not re-run:
+     *   w chain order: m03*vx-first, m33-first, vector-operand-first
+     *   x row order:   m00-first, m10-first, vx*m00 form
+     *   outer scale:   (...)*r and r*(...)
+     *   temps:         named x numerator; w inlined into the reciprocal;
+     *                  declaration order of the vector and matrix locals
+     *   access form:   `const float (*m)[4]` local vs `pM->m[i][k]`;
+     *                  `float *o = &pOut->x` output cursor
+     *   the self-prototype in br_mat.h hidden at the include
+     * WORSE, measured: right-leaning grouping `a + (b + c)` (125); dividing
+     * by w three times instead of one reciprocal (-6 B, regnorm 4+9); hoisting
+     * the numerators into locals (+68 B); reversing the three stores (+34 B);
+     * dropping the vx/vy/vz locals (-10 B / -8 insns -- VC5 re-CSEs the loads);
+     * double-typed intermediates (regnorm 1+2). */
+    pOut->x = (m[0][0] * vx + m[1][0] * vy + m[2][0] * vz) * r;
+    pOut->y = (m[0][1] * vx + m[1][1] * vy + m[2][1] * vz) * r;
+    pOut->z = (m[0][2] * vx + m[1][2] * vy + m[2][2] * vz) * r;
+}
+
+/* Source first -- see the warning in br_mat.h. The original copies 4 rows of
+ * 4 dwords using a displacement trick (ecx = src - dst, then [ecx+eax]);
+ * that is just how MSVC strength-reduced two pointers into one. */
+void BrMat4Copy(const BrMat4 *pSrc, BrMat4 *pDst)
+{
+    int i, k;
+    for (i = 0; i < 4; i++)
+        for (k = 0; k < 4; k++)
+            pDst->m[i][k] = pSrc->m[i][k];
+}
+
+/* 0x100307D0 -- stores 0x3F800000 (1.0f) on the diagonal and zero elsewhere,
+ * fully unrolled in the original. */
+/* @n64 0x80260FD0 exact */
+void BrMat4Identity(BrMat4 *pM)
+{
+    int i, k;
+    for (i = 0; i < 4; i++)
+        for (k = 0; k < 4; k++)
+            pM->m[i][k] = (i == k) ? 1.0f : 0.0f;
+}
+
+/* 0x10030810 -- see br_mat.h. The original computes the three differences
+ * once each and divides by them repeatedly (fdiv against stack scratch),
+ * which is what the expressions below reproduce. */
+/* WHAT IT DOES: builds the camera's projection matrix from the six edges of
+ * the viewing box -- what the player can see and how far into the distance.
+ * A degenerate box, where two opposite edges are equal, leaves the matrix
+ * untouched and reports failure rather than producing nonsense. */
+/* @t4-pass 0x10029EC0 1 2026-09-10 probes 12 bytes 288 insns 91 regions 2 rows 0 census no  (hand, fn.py variants: difference-temp order, no temps, guard operand order, -1.0f store position, an (n+n) temp, a BrMat4 * local, a zero local, float * and float (*)[4] element pointers, a goto-chained guard; all inert or worse) */
+/* @t4-pass 0x10029EC0 2 2026-09-10 probes 11 bytes 288 insns 91 regions 2 rows 0 census yes  (hand, position sweep over every slot in br_mat.c plus end-of-TU -- position is completely inert here, unlike BrVec3dCross; census below) */
+/* @implements 0x10030810 d3d BrMat4Frustum */
+int BrMat4Frustum(BrMat4 *pM, float l, float r, float b, float t,
+                  float n, float f)
+{
+    float dx, dy, dz;
+
+    /* The guards are exact equality compares, in this order. A degenerate
+     * frustum leaves the matrix untouched; orig `push str; call [__imp_printf];
+     * add esp,4; ret` so eax is printf's return, not a literal 1. */
+    if (l == r || t == b || n == f) {
+        return printf("Error: guFrustumF(): unable to compute matrix\n");
+    }
+
+    dx = r - l;
+    dy = t - b;
+    dz = f - n;
+
+    /* COLUMN BY COLUMN, and the zero stores are what prove it: the original
+     * writes +0x10, +0x30, +0x04, +0x34, +0x08, +0x18, +0x0c, +0x1c, then the
+     * -1.0 at +0x2c, then +0x3c -- which is m[1][0], m[3][0], m[0][1],
+     * m[3][1], m[0][2], m[1][2], m[0][3], m[1][3], m[2][3], m[3][3], i.e. the
+     * four columns in order.  Written row by row the same 91 instructions come
+     * out in a different order and two bytes short. */
+    pM->m[0][0] = (n + n) / dx;
+    pM->m[1][0] = 0.0f;
+    pM->m[2][0] = (r + l) / dx;
+    pM->m[3][0] = 0.0f;
+
+    pM->m[0][1] = 0.0f;
+    pM->m[1][1] = (n + n) / dy;
+    pM->m[2][1] = (t + b) / dy;
+    pM->m[3][1] = 0.0f;
+
+    pM->m[0][2] = 0.0f;
+    pM->m[1][2] = 0.0f;
+    pM->m[2][2] = -(f + n) / dz;
+    /* `f * n + f * n`, not `(f + f) * n`: the original forms the PRODUCT
+     * first (`fmul [esp+0x18]` on the first `f`) and doubles it with a later
+     * `fadd st,st`.  Bit-identical either way -- doubling is exact, so both
+     * spellings are 2*fl(f*n) -- but only this one puts the multiply ahead of
+     * the double, which is what the x87 stream says happened. */
+    pM->m[3][2] = -(f * n + f * n) / dz;
+
+    pM->m[0][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][3] = -1.0f;
+    pM->m[3][3] = 0.0f;
+    /* No return value on this path: the original falls off the end with the
+     * matrix pointer still in eax.  A `return 0` claims eax for the zero and
+     * moves the pointer to ecx, relabelling every store. */
+}
+
+/* 0x10030930 -- see br_mat.h. 0x1008F4A8 holds pi/360. */
+#define BR_PI_OVER_360 0.0087266462599716477
+
+int BrMat4Perspective(BrMat4 *pM, unsigned short *pPerspNorm,
+                      float fovyDegrees, float aspect, float n, float f)
+{
+    float ty = (float)tan((double)fovyDegrees * BR_PI_OVER_360);
+    float h  = n * ty;
+    float w  = h * aspect;
+    int rc;
+
+    rc = BrMat4Frustum(pM, -w, w, -h, h, n, f);
+    if (pPerspNorm != NULL)
+        *pPerspNorm = 1;          /* hardcoded in the original */
+    return rc;
+}
+
+/* 0x100306C0 */
+/* WHAT IT DOES: multiplies two 4x4 transforms together, which is how the game
+ * combines a rotation with a position, or an object's placing with the camera.
+ * If the answer is being written back over one of the inputs it works through a
+ * scratch copy.  (The compiler schedules the two paths' sums in different
+ * orders, so the two routes can disagree in the last bit or two.) */
+/* @implements 0x100306C0 d3d BrMat4Mul */
+void BrMat4Mul(const BrMat4 *pA, const BrMat4 *pB, BrMat4 *pOut)
+{
+    /* The counters are declared BEFORE tmp.  VC5 orders the terms of each
+     * sum from its symbol table, so this declaration order is what fixes
+     * the strength-reduction anchor (row 2) and the operand-load order in
+     * both nests; with tmp first, both come out on row 3. */
+    int i, j;
+    BrMat4 tmp;
+
+    if (pA == NULL || pB == NULL)
+        return;
+    /* pOut is deliberately NOT checked -- see the header. */
+
+    /* TWO separate loop nests, not one nest with a flag: the original
+     * branches once (both compares jump into the scratch path, the direct
+     * path is the fallthrough) and each path carries its own rolled 4x4
+     * loop. */
+    if (pA != pOut && pB != pOut) {
+        for (i = 0; i < 4; ++i) {
+            for (j = 0; j < 4; ++j) {
+                pOut->m[i][j] = pA->m[i][0] * pB->m[0][j]
+                              + pA->m[i][1] * pB->m[1][j]
+                              + pA->m[i][2] * pB->m[2][j]
+                              + pA->m[i][3] * pB->m[3][j];
+            }
+        }
+        return;
+    }
+
+    for (i = 0; i < 4; ++i) {
+        for (j = 0; j < 4; ++j) {
+            tmp.m[i][j] = pA->m[i][0] * pB->m[0][j]
+                        + pA->m[i][1] * pB->m[1][j]
+                        + pA->m[i][2] * pB->m[2][j]
+                        + pA->m[i][3] * pB->m[3][j];
+        }
+    }
+    *pOut = tmp;                /* `rep movsd` of 16 dwords in the original */
+}
+
+/* 0x1002A957 */
+/* WHAT IT DOES: finds the largest magnitude among twelve numbers, ignoring
+ * sign, and never returns less than zero. */
+/* @implements 0x1002A957 glide BrFloat12MaxAbs */
+/* @implements 0x100312A7 d3d BrFloat12MaxAbs */
+/* @n64 0x80217420 located */
+float BrFloat12MaxAbs(const float *pv)
+{
+    /* This TU compiles /Od /Op.  Under /Od the frame slot each local gets
+     * follows its NAME (the symbol-table hash), not its declaration order,
+     * and a local declared in an inner block always gets the deepest slot.
+     * The original's frame -- -4 high, -8 pLim, -0xC pVal, -0x10 zero,
+     * -0x14 fCur, -0x18 bottom -- needs fCur at function scope and these
+     * names; they were found by compiling ~300k name sets.  The other two
+     * /Od facts: the cursor step is `(fCur = *pVal++)` inside the condition
+     * (the postfix add lands between fnstsw and test), and the tail is two
+     * returns, not a ternary (which would add a seventh slot). */
+    float high;
+    float bottom;
+    float zero;
+    const float *pVal;
+    const float *pLim;
+    float fCur;
+
+    high = 0.0f;
+    bottom = 0.0f;
+    zero = 0.0f;
+    pVal = pv;
+    pLim = pv + 12;
+
+    while (pVal < pLim) {
+        if ((fCur = *pVal++) < zero) {
+            if (bottom > fCur)
+                bottom = fCur;
+        } else {
+            if (high < fCur)
+                high = fCur;
+        }
+    }
+    bottom = -bottom;
+    if (bottom > high)
+        return bottom;
+    return high;
+}
+
+/* Defined in slice2_17.c; BrMat4RotateAxis builds its frame with it. */
+void BrMat4LookAt(BrMat4 *pM,
+                  float xEye, float yEye, float zEye,
+                  float xAt,  float yAt,  float zAt,
+                  float xUp,  float yUp,  float zUp);
+#ifndef BR_DEG_TO_RAD
+#define BR_DEG_TO_RAD      0.017453292519943295
+#endif
+
+/* The three degenerate tests are `fcomp v, 0.0` reading C3 only, so an
+ * unordered compare (NaN) also counts as "equal to zero". */
+static int s17_is_zero_or_nan(float v)
+{
+    return !(v < 0.0f) && !(v > 0.0f);
+}
+
+static void s17_identity(BrMat4 *pM)
+{
+    int i, j;
+
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            pM->m[i][j] = (i == j) ? 1.0f : 0.0f;
+}
+
+/* 0x10030EE0 */
+/* WHAT IT DOES: builds the transform that turns things a given number of
+ * degrees about any axis you name. It does it by building a frame of reference
+ * around the axis, spinning flat inside that frame, and then undoing the frame.
+ * An axis of zero length -- or one containing a not-a-number -- yields the
+ * do-nothing transform instead. */
+/* @implements 0x10030EE0 d3d BrMat4RotateAxis */
+/* The original inlines both port helpers: the zero test is `x == 0.0`
+ * against a DOUBLE zero (fcomp qword + test ah,0x40 -- C3, which an
+ * unordered compare also sets, so a NaN component counts as zero exactly as
+ * s17_is_zero_or_nan says), and the identity is sixteen explicit stores. */
+void BrMat4RotateAxis(BrMat4 *pM, float degrees, float x, float y, float z)
+{
+    BrMat4 basis, basisT, rot;
+    double ang;
+    float c, s;
+    int i, j;
+
+    if (x == 0.0 && y == 0.0 && z == 0.0) {
+        pM->m[0][0] = 1.0f; pM->m[0][1] = 0.0f; pM->m[0][2] = 0.0f; pM->m[0][3] = 0.0f;
+        pM->m[1][0] = 0.0f; pM->m[1][1] = 1.0f; pM->m[1][2] = 0.0f; pM->m[1][3] = 0.0f;
+        pM->m[2][0] = 0.0f; pM->m[2][1] = 0.0f; pM->m[2][2] = 1.0f; pM->m[2][3] = 0.0f;
+        pM->m[3][0] = 0.0f; pM->m[3][1] = 0.0f; pM->m[3][2] = 0.0f; pM->m[3][3] = 1.0f;
+        return;
+    }
+
+    /* up = (y, z, x): a cyclic shift of the axis, not a fixed world up. */
+    BrMat4LookAt(&basis, x, y, z, 0.0f, 0.0f, 0.0f, y, z, x);
+
+    basis.m[0][3] = 0.0f;
+    basis.m[1][3] = 0.0f;
+    basis.m[2][3] = 0.0f;
+    basis.m[3][0] = 0.0f;
+    basis.m[3][1] = 0.0f;
+    basis.m[3][2] = 0.0f;
+    basis.m[3][3] = 1.0f;
+
+    for (i = 0; i < 4; ++i)
+        for (j = 0; j < 4; ++j)
+            basisT.m[i][j] = basis.m[j][i];
+
+    ang = (double)degrees * BR_DEG_TO_RAD;
+    s = (float)sin(ang);
+    c = (float)cos(ang);
+
+    rot.m[0][0] =  c;    rot.m[0][1] = s;    rot.m[0][2] = 0.0f; rot.m[0][3] = 0.0f;
+    rot.m[1][0] = -s;    rot.m[1][1] = c;    rot.m[1][2] = 0.0f; rot.m[1][3] = 0.0f;
+    rot.m[2][0] = 0.0f;  rot.m[2][1] = 0.0f; rot.m[2][2] = 1.0f; rot.m[2][3] = 0.0f;
+    rot.m[3][0] = 0.0f;  rot.m[3][1] = 0.0f; rot.m[3][2] = 0.0f; rot.m[3][3] = 1.0f;
+
+    BrMat4Mul(&basis, &rot, pM);
+    BrMat4Mul(pM, &basisT, pM);     /* aliased -- BrMat4Mul handles it */
+}
+
+/* 0x100310F0 -- the original moves sy and sz as integers (plain `mov`, since
+ * copying a float bit pattern needs no FPU) and only sx goes through
+ * fld/fstp. Semantically identical. */
+/* WHAT IT DOES: builds a matrix that scales by a different amount along each
+ * axis, clearing everything else first. */
+/* @implements 0x100310F0 d3d BrMat4Scale */
+void BrMat4Scale(BrMat4 *pM, float sx, float sy, float sz)
+{
+    /* orig flds sx and integer-moves sy/sz.  Written ROW BY ROW, exactly
+     * like BrMat4Translate below: the zero stores that separate sy from sz
+     * in the source are what make VC5 load sz into the SAME register it
+     * just freed storing sy, instead of hoisting both loads into two
+     * registers.  Grouping the diagonal first costs those two bytes. */
+    pM->m[0][0] = sx;
+    pM->m[0][1] = 0.0f;
+    pM->m[0][2] = 0.0f;
+    pM->m[0][3] = 0.0f;
+    pM->m[1][0] = 0.0f;
+    pM->m[1][1] = sy;
+    pM->m[1][2] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][0] = 0.0f;
+    pM->m[2][1] = 0.0f;
+    pM->m[2][2] = sz;
+    pM->m[2][3] = 0.0f;
+    pM->m[3][0] = 0.0f;
+    pM->m[3][1] = 0.0f;
+    pM->m[3][2] = 0.0f;
+    pM->m[3][3] = 1.0f;
+}
+
+/* WHAT IT DOES: builds a move matrix -- applying it shifts a point by
+ * (dx, dy, dz) and leaves its orientation alone.  The identity with the
+ * offsets written into the bottom row; the twin of BrMat4Scale above. */
+/* @implements 0x1002A7F0 glide BrMat4Translate */
+void BrMat4Translate(BrMat4 *pM, float dx, float dy, float dz)
+{
+    pM->m[0][0] = 1.0f;
+    pM->m[0][1] = 0.0f;
+    pM->m[0][2] = 0.0f;
+    pM->m[0][3] = 0.0f;
+    pM->m[1][0] = 0.0f;
+    pM->m[1][1] = 1.0f;
+    pM->m[1][2] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[2][0] = 0.0f;
+    pM->m[2][1] = 0.0f;
+    pM->m[2][2] = 1.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[3][0] = dx;
+    pM->m[3][1] = dy;
+    pM->m[3][2] = dz;
+    pM->m[3][3] = 1.0f;
+}
+
+/* 0x1003B470 */
+/* WHAT IT DOES: combines two transforms into one. It builds the answer in a
+ * scratch copy first, so it is safe to write the result back over either of the
+ * things being multiplied. */
+/* @implements 0x1003B470 d3d BrMtxMul */
+void BrMtxMul(BrMat4 *pOut, const BrMat4 *pA, const BrMat4 *pB)
+{
+    BrMat4 t;   /* the original's 64-byte stack temp: aliasing is safe */
+    int i, j, k;
+
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            /* Store 0 then reload: the original is `mov dword [esi],0; fld [esi]`,
+             * not `fld` of a 0.0f constant. */
+            t.m[i][j] = 0.0f;
+            for (k = 0; k < 4; k++)
+                t.m[i][j] = t.m[i][j] + pA->m[i][k] * pB->m[k][j];
+        }
+    }
+    *pOut = t;
+}
+
+/* 0x10075340 */
+/* WHAT IT DOES: resets the last column of a 4x4 transform to the plain "no
+ * perspective" values, undoing anything that had been left there. */
+/* @implements 0x10075340 d3d BrMat4SetLastColumn */
+/* @n64 0x8021EB30 exact */
+void BR_THISCALL1 BrMat4SetLastColumn(BrMat4 *pM)
+{
+    pM->m[3][3] = 1.0f;
+    pM->m[2][3] = 0.0f;
+    pM->m[1][3] = 0.0f;
+    pM->m[0][3] = 0.0f;
+}

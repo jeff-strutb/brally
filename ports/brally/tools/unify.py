@@ -217,7 +217,7 @@ def main():
                 pass
             return plan
     # the canonical objects, for imagemap.py (the original data image)
-    with open(os.path.join(ROOT, 'build/portable/canon.csv'), 'w', newline='') as fh:
+    with open(os.path.join(ROOT, 'build/brally/null-soft/canon.csv'), 'w', newline='') as fh:
         cw = csv.writer(fh)
         cw.writerow(['va', 'name', 'type', 'size32', 'forced'])
         for va, c, _ in plan:
@@ -297,7 +297,7 @@ def layout_changes():
     global _CHANGES
     if _CHANGES is None:
         _CHANGES = {}
-        p = os.path.join(ROOT, 'build/lp64audit/layout.csv')
+        p = os.path.join(ROOT, 'build/brally/analysis/lp64audit/layout.csv')
         if os.path.exists(p):
             for r in csv.DictReader(open(p)):
                 _CHANGES[r['record'].split(' ', 1)[-1]] = r['i686'] != r['llp64']
@@ -534,8 +534,8 @@ def write(plan, hdr_for):
         fh.write('\n')
         for h, d in defs:
             fh.write(d + '\n')
-    open(os.path.join(ROOT, 'build/portable/unified.txt'), 'w').write('\n'.join(sorted(unified)) + '\n')
-    with open(os.path.join(ROOT, 'build/portable/homes.csv'), 'w') as fh:
+    open(os.path.join(ROOT, 'build/brally/null-soft/unified.txt'), 'w').write('\n'.join(sorted(unified)) + '\n')
+    with open(os.path.join(ROOT, 'build/brally/null-soft/homes.csv'), 'w') as fh:
         for nm, h in sorted(homes.items()):
             fh.write('%s,%s\n' % (nm, os.path.basename(h)))
     if '--no-remove' not in sys.argv:
@@ -634,7 +634,7 @@ def alias_headers(plan, macros):
             path = os.path.join(dp, fn)
             rel = os.path.relpath(path, ROOT)
             s = open(path, encoding='latin-1').read()
-            incs = set(re.findall(r'#\s*include\s*"([^"]+)"', s))
+            incs = set(re.findall(r'#\s*src/brally/include\s*"([^"]+)"', s))
             used = set(names_rx.findall(s))
             # names used through macros in included headers: every name a
             # header this file includes mentions in its code
@@ -795,13 +795,13 @@ def add_home_includes(homes):
                     if re.search(r'\b%s\b' % re.escape(m.group(1)), code):
                         seen += '\n' + m.group(2)
             need = sorted(h for h, r in rx.items() if r.search(seen)
-                          and not re.search(r'#\s*include\s*"%s"' % re.escape(h), body))
+                          and not re.search(r'#\s*src/brally/include\s*"%s"' % re.escape(h), body))
             at, depth, pos = None, 0, 0
             in_c = False
             for line in body.split('\n'):
                 t = line.strip()
                 if not in_c:
-                    if depth == 0 and re.match(r'#\s*include\b', t):
+                    if depth == 0 and re.match(r'#\s*src/brally/include\b', t):
                         at = pos
                         break
                     if re.match(r'#\s*if', t):

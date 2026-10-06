@@ -5,11 +5,11 @@
 Parallel sessions in this repo do not merely move HEAD under you. Twice in one
 session (2026-09-03) one destroyed work outright:
 
-1. **An uncommitted edit to `src/core/slice6_76.c` vanished** while I was
-   probing it. A `tools/refile_group.py` run in another session rewrote the
+1. **An uncommitted edit to `src/brally/core/slice6_76.c` vanished** while I was
+   probing it. A `tools/brally/refile_group.py` run in another session rewrote the
    file wholesale; my new function was simply gone, with no conflict and no
    warning. HEAD had moved 7746938 → 8607a8f in the meantime.
-2. **A COMMITTED section of `docs/VC5-IDIOMS.md` was deleted.** Commit
+2. **A COMMITTED section of `docs/brally/VC5-IDIOMS.md` was deleted.** Commit
    `4f477a9` appended a 63-line idiom entry; commit `59ac8ed` (another
    session, ~10 minutes later) rewrote the file from a copy it had read
    BEFORE mine landed - 48 insertions, 88 deletions, my whole entry among
@@ -24,21 +24,21 @@ their write is discarded. Being committed protects history, not the file.
   through another probe cycle. This is what the commit-every-match rule
   already says; the new fact is that the loss mode is silent deletion, not a
   merge conflict.
-- **After appending to a shared doc (`docs/VC5-IDIOMS.md`, `README.md`,
+- **After appending to a shared doc (`docs/brally/VC5-IDIOMS.md`, `README.md`,
   `docs/the notes index`), re-grep for your text before ending the session.** If it
   is gone, recover it with `git show <your-sha>:<path>` and re-append; do not
   retype it.
 - **Never rewrite a shared CSV or doc from a full read** - my own
-  `config/filing.csv` rewrite flipped 872 lines from CRLF to LF and had to be
+  `config/brally/filing.csv` rewrite flipped 872 lines from CRLF to LF and had to be
   fixed in a follow-up commit. Splice the one line in, preserving the file's
   line endings (`b"\r\n"`), and check `git show --stat`.
 - Always `git commit -m "..." -- <paths>` (never a bare commit), and
-  `git status --short src/` before taking a target.
+  `git status --short src/brally/` before taking a target.
 
 ## Two more modes, 2026-09-03 session 2 - and one of them corrupts a COMMIT MESSAGE
 
 3. **A REVERT THAT DOES NOT MOVE HEAD.** Twice in one session my edits to
-   `src/core/drawing/br_dlcmd.c` vanished and `git status` went **clean** with
+   `src/brally/core/drawing/br_dlcmd.c` vanished and `git status` went **clean** with
    HEAD **unchanged** - the file was simply back at its HEAD content. Both of
    the modes above involved HEAD moving, so "did HEAD move?" is NOT a
    sufficient check. The only reliable test is to `grep the file for your own
@@ -52,7 +52,7 @@ their write is discarded. Being committed protects history, not the file.
 
 ** A PATHSPEC COMMIT IS NOT THE PROTECTION THE INDEX IMPLIES.**
 `git commit -m "..." -- <path>` still takes that path's **whole working-tree
-state**, not your hunk. `config/filing.csv` was already dirty with another
+state**, not your hunk. `config/brally/filing.csv` was already dirty with another
 session's module reassignments; my one-line splice was correct, but commit
 `caefe5d` swept **40 of their lines** in under my message. The pathspec stops
 *other files* riding along; it does nothing about *other people's changes in

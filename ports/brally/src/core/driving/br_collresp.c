@@ -1,6 +1,6 @@
 /* br_collresp.c -- the collision half of 0x10067C30.
  *
- * Transcribed from orig/BRGlide.dll:
+ * Transcribed from reference/brally/orig/BRGlide.dll:
  *
  *   0x10066D70  1782 B   BrCollRespTipKick   the 1-or-2-wheel pitch kick
  *   0x1006DDD0   156 B   the overlapped call BrCollRespBuildBoxMatrix wraps
@@ -363,7 +363,7 @@ static unsigned BrCrCorner(const float aV[3], unsigned mask)
          * a flat float sum); parenthesising the FIRST operand is the only
          * thing that moves the pair.  Without it this function is 2 bytes
          * out and, worse, reads `match` in report.csv while the image gate
-         * fails -- see docs/VC5-IDIOMS.md, "the leading-operand paren". */
+         * fails -- see docs/brally/VC5-IDIOMS.md, "the leading-operand paren". */
         t = ((aV[2]) + aV[1]) + aV[0];
         if ((mask & 0x01u) != 0u && !((double)t <= BR_CR_CORNER_HI)) {
             out |= 0x01u;
@@ -410,7 +410,7 @@ int BrCollRespBoxClassify(const float aV[9])
 
     /* ---- stage 1, the six faces.  0x10066272..0x100662FD ------------- */
     /* Written out per component rather than through BrCrSide: a static
-     * helper is never auto-inlined under /O2 (docs/VC5-IDIOMS.md), and the
+     * helper is never auto-inlined under /O2 (docs/brally/VC5-IDIOMS.md), and the
      * original's `fcom HI ... fcomp LO` pair is one load compared twice. */
     mask = 0xFFFFFFFFu;
     for (i = 0; i < 3; ++i) {
@@ -702,8 +702,8 @@ static int BrCrExact(const float aV[9], const BrVec3 *pN)
  * inlined Lt/Gt helpers with float or double params (1024); the four cross
  * locals in all 24 orders or inline; if/else, else-if and continue arm
  * structures; the whole file vs a standalone TU. */
-/* @t4-pass 0x10066610 1 2026-09-07 probes 150 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
-/* @t4-pass 0x10066610 2 2026-09-07 probes 131 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/crank.py) */
+/* @t4-pass 0x10066610 1 2026-09-07 probes 150 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10066610 2 2026-09-07 probes 131 bytes 485 insns 174 regions 5 rows 14 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10066610 3 2026-09-27 probes 1404 bytes 486 insns 176 regions 3 rows 2 census yes  (hand, after the (double) compares: 4th-compare forms and casts x !(>=) (1024), cross-local orders x arm structures (300+80); mechanism micro-test: fld/fld/fcompp only for (double) or named-float operands) */
 /* @t4-pass 0x10066610 4 2026-09-27 probes 1030 bytes 486 insns 176 regions 3 rows 2 census no  (hand: inlined Lt/Gt helpers, float and double params, x4 forms (1024); function order in the TU; standalone TU vs whole file) */
 /* @t3 0x10066610 2026-09-27 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

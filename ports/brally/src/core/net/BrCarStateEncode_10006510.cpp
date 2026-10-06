@@ -16,7 +16,7 @@
  * each of ~30 write sites the original pushes nBits BEFORE the quantiser
  * call (in-place right-to-left argument evaluation) AND shifts the returned
  * value at 16-bit width (`sar ax,8; movsx ecx,ax`).  Six controlled
- * experiments (build/match/sched.cpp probes, 2026-08-29) pin VC5's rules:
+ * experiments (build/brally/win32/match/sched.cpp probes, 2026-08-29) pin VC5's rules:
  *   pure expression arg  -> push-early BUT movsx-then-sar32 (wide shift)
  *   assignment-in-arg    -> sar ax + movsx (narrow) BUT push-late
  *     (any side effect in an arg makes VC5 pre-evaluate it before pushes;
@@ -32,9 +32,9 @@
  * (BrCountedNetSend 0x10004A40 is the clean witness), consistent with the
  * rule.  LEADING HYPOTHESIS: the shipped binaries (March 1999, VS97 SP3
  * era) were compiled by an SP-patched front end.  TESTED AND DISPROVEN
- * 2026-08-30: VS97 SP3 (vs97sp3 @ archive.org; staged tools/msvc5/bin-sp3,
+ * 2026-08-30: VS97 SP3 (vs97sp3 @ archive.org; staged tools/toolchains/msvc5/bin-sp3,
  * C1XX/C2 dated 1997-11-03) and VC6 RTM 12.00.8168 (vs6.iso @ archive.org;
- * staged tools/msvc6/) both apply EXACTLY the same two rules -- assignment
+ * staged tools/brally/msvc6/) both apply EXACTLY the same two rules -- assignment
  * pre-evaluation and assignment-gated narrowing -- byte-for-byte on the
  * two-form battery.  Also probed and negative: struct-by-value returns
  * (the member still promotes AND the return temp counts as a side effect),
@@ -59,7 +59,7 @@
  * the sessions documented above plus a 2026-09-13 option pass (/Gi, /G5,
  * /Op, /Ob0, /Oa, /Ow, /Gf, /Gy, /GF, /Zp1: all 151 except /Ob0, worse).
  *
- * @t4-pass 0x10006510 1 2026-08-29 probes 15 bytes 1018 insns 350 regions 4 rows 0 census yes  (build/match/sched.cpp: six controlled push/narrow experiments, 15+ spellings)
+ * @t4-pass 0x10006510 1 2026-08-29 probes 15 bytes 1018 insns 350 regions 4 rows 0 census yes  (build/brally/win32/match/sched.cpp: six controlled push/narrow experiments, 15+ spellings)
  * @t4-pass 0x10006510 2 2026-08-30 probes 54 bytes 1018 insns 350 regions 4 rows 0 census yes  (18 spellings x 3 front ends: VC5 RTM, VS97 SP3, VC6 RTM; struct returns; D3D twin check)
  * @t4-pass 0x10006510 3 2026-09-13 probes 11 bytes 1018 insns 350 regions 4 rows 0 census no  (option sweep incl. /Gi -- the flag that flips commutative canonicalisation elsewhere is inert here)
  */

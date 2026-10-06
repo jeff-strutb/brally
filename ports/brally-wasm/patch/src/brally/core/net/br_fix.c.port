@@ -1,0 +1,82 @@
+# Port deviations for src/brally/core/net/br_fix.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop fn:BrFixUnpackS6Q7Neg
+@drop fn:BrFixUnpackS16Q15Neg
+@drop fn:BrFixUnpackU8Angle
+@drop fn:BrFixUnpackU8Range
+@drop fn:BrFixUnpackLevel
+@drop fn:BrFixUnpackU32Q13
+@drop fn:BrFixUnpackS24Q1
+@drop fn:BrFixUnpackS16Q7
+@drop fn:BrFixUnpackS16Q8
+@drop fn:BrFixUnpackS8Q3
+@drop var:DAT_100770cc
+@drop var:DAT_10077114
+@drop var:DAT_10077118
+@drop fn:BrFixDecodeRecord_10007AA0
+@drop fn:BrFixPackU24Q13
+@drop fn:BrFixPackS24Q1
+@drop fn:BrFixPackS16Q7
+@after fn:BrFixPackS16Q7
+
+/* 0x100066E0.  Constants: 0x1008F0EC = -8192.0f, 0x1008F0D0 = 0.5f,
+ * 0x1008F0F0 = 0.0 (double), 0x1008F0F8 = 16777215.0 (double).
+ *
+ * The clamp happens on the FLOAT, before __ftol, so the int conversion can
+ * never overflow here. The low guard is written as "C0 set", which x87 also
+ * sets for unordered, so a NaN input lands on 0 -- kept via !(d >= 0.0). */
+/* WHAT IT DOES: packs a position coordinate into a 24-bit whole number for
+ * the network, rounding to nearest with halves going up and pinning the
+ * result inside what 24 bits can hold. The pinning happens before the
+ * conversion, so it can never overflow. */
+/* @implements 0x100066E0 d3d BrFixPackU24Q13 */
+int32_t BrFixPackU24Q13(float v)
+{
+    double d = BrFloor(0.5 - (double)v * -8192.0);
+
+    if (!(d >= 0.0))
+        d = 0.0;
+    if (d > 16777215.0)
+        d = 16777215.0;
+    return BrFtol(d);
+}
+
+/* 0x10006730.  0x1008F100 = -2.0f. Clamp is on the INTEGER, after __ftol, and
+ * with signed compares (jge/jle). */
+/* WHAT IT DOES: packs a signed value at half-unit resolution into 24 bits
+ * for the network, pinned to that range. */
+/* @implements 0x10006730 d3d BrFixPackS24Q1 */
+int32_t BrFixPackS24Q1(float v)
+{
+    /* Host: the cast is undefined once the scaled value leaves int32, and
+     * ARM64 saturates where __ftol wraps. The clamp below is applied to the
+     * INTEGER, so it sees the wrapped value -- go through BrFtol to keep it. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -2.0f));
+
+    if (r < -8388608)
+        r = -8388608;
+    if (r > 8388607)
+        r = 8388607;
+    return r;
+}
+
+/* 0x10006770.  0x1008F104 = -128.0f. Clamp is on the integer, as above. */
+/* WHAT IT DOES: packs a signed height into 16 bits at 1/128 resolution for
+ * the network, pinned to that range. */
+/* @implements 0x10006770 d3d BrFixPackS16Q7 */
+int32_t BrFixPackS16Q7(float v)
+{
+    /* Host: __ftol's low-dword wrap, which the integer clamp below relies on.
+     * 1.0e9 scales to ~1.28e11 -- fits in int64, so it wraps NEGATIVE and
+     * clamps to -32768 rather than saturating to +32767. */
+    int32_t r = BrFtol(BrFloor(0.5f - v * -128.0f));
+
+    if (r < -32768)
+        r = -32768;
+    if (r > 32767)
+        r = 32767;
+    return r;
+}
+@end

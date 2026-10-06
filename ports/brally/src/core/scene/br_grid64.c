@@ -3,7 +3,7 @@
  * RESPONSIBILITY: scene -- the track's spatial tables (see br_collgrid.c for
  * the fine collision grid this one sits above).
  *
- * Moved here out of src/core/slice1_01.c (an address batch, not a module),
+ * Moved here out of src/brally/core/slice1_01.c (an address batch, not a module),
  * whose preamble is carried over verbatim below.  In the matching build the
  * header's port prototype (three arguments) is renamed out of the way: the
  * original takes (x, y) and reads the grid base from a global.

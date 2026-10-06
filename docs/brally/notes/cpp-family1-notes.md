@@ -1,7 +1,7 @@
 # C++ family 1 - 201 B `new Phase` UI installers (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
-`/O2 /GX /MD`. Do not `@implements`-tag these in `src/` this session.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
+`/O2 /GX /MD`. Do not `@implements`-tag these in `src/brally/` this session.
 
 These are **not destructors**. Unwind is `operator delete` (maxState=1):
 `new Phase` if the ctor throws. Bodies are the C `BrOptEnsureObj` /

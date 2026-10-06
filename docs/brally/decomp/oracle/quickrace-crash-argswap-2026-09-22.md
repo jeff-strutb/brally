@@ -39,7 +39,7 @@ running-VM VHD via vhdfat.py), golden.log/broken.log.
 
 **Build gotcha (cost a full cycle):** BrRaceStep is a C++-lane row
 (report_cpp.csv, opt O2y). image_build_t3.py reads the CACHED
-`build/match/obj_cpp/<base>_sweep_<VA>_<ti>.obj` and does NOT recompile on
+`build/brally/win32/match/obj_cpp/<base>_sweep_<VA>_<ti>.obj` and does NOT recompile on
 source edit. After editing a C++-lane .cpp, regenerate all 4 opt objs
 first: `cpp_score.compile_cpp(src,'sweep_%08X_%d'%(va,i),DEFAULT_OPTS[i])`
 for i in 0..3, THEN build. Related: [image-gate-builds-what-it-grades](../traps/image-gate-builds-what-it-grades.md).

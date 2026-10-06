@@ -7,7 +7,7 @@ approach or guesses at specs each session.
 **What this covers:** functions with a real STRUCTURAL gap - wrong or missing
 code relative to the original. **What it does not cover:** pure
 register-allocation/scheduling walls. Those are measured, logged in the
-file's `@t4-pass` ledger, and certified T3 by `tools/t3.py --qualify` once
+file's `@t4-pass` ledger, and certified T3 by `tools/brally/t3.py --qualify` once
 its gates are met (project rule 12) - the project has proven (permuter
 0/95, refine batch 0/258, verdict in commit 5a4a338) that no C spelling
 flips them. `./grind.sh` runs the
@@ -21,7 +21,7 @@ closes nothing you can plan on.
     T2   in progress - real in-tree code, but logic still differs (or is
          unconfirmed)
     T3   certified - functionally DONE (nothing missing, nothing not
-         understood), not byte-exact. Decided ONLY by `tools/t3.py --qualify
+         understood), not byte-exact. Decided ONLY by `tools/brally/t3.py --qualify
          <VA>`: Gate 0 (purpose comment, no TODO/stub/guess markers), Gate A
          (insn gap, register-blind rows, every residue row pairs as a
          compiler decision, no lost-sync, oracle not DIFF) and Gate B (a
@@ -35,20 +35,20 @@ closes nothing you can plan on.
 
     Your job moves functions UP this ladder: T1→T2 (transcribe into the tree),
     T2→T3 (make it behave right, reshape to the original's
-    instructions, certify with tools/t3.py), T3→T4 (usually falls out; else the end-grind).
+    instructions, certify with tools/brally/t3.py), T3→T4 (usually falls out; else the end-grind).
 
 Hard rules (from the project rules - do not violate):
 1. Byte-exact against the original is the ONLY definition of done. Never
    propose dropping byte-exactness.
-2. Read `docs/VC5-IDIOMS.md` before matching. Add every newly proven idiom back
+2. Read `docs/brally/VC5-IDIOMS.md` before matching. Add every newly proven idiom back
    to it. Each idiom is solved once.
 3. The reference binary is **BRGlide.dll** (Glide), never BRD3D.dll. Verify
-   with `python3 tools/refcheck.py` if unsure.
+   with `python3 tools/brally/refcheck.py` if unsure.
 4. Commit every byte-exact match immediately, on its own. Never batch, never
    stage behind a revert.
-5. File each matched function into its real module (`src/core/<area>/…`) as you
+5. File each matched function into its real module (`src/brally/core/<area>/…`) as you
    go.
-6. Shared headers under `include/` are serialized - never edit them in parallel
+6. Shared headers under `src/brally/include/` are serialized - never edit them in parallel
    with another worker. Split parallel work by `.c` file only.
 7. **The cadence that compounds:** hand-solve ONE representative of a failure
    class → if the class is homogeneous, mint a generator/transform → re-batch
@@ -64,13 +64,13 @@ Hard rules (from the project rules - do not violate):
 - **EH screen.** If the original's prologue is `push -1 … fs:[0]` (a C++/SEH
   exception frame), the function is UNREACHABLE from C - it belongs to the
   separate C++ EH workstream. Check the first bytes of
-  `build/match/orig/<VA>.bin` before accepting a target; skip and note it.
+  `build/brally/win32/match/orig/<VA>.bin` before accepting a target; skip and note it.
 - **Compile-variant check.** The sweep proves each TU under one of FOUR flag
   sets: `/O2`, `/Od`, `/O2 /Oy-`, `/O2 /Op`. Look up your function's row in
-  `build/match/report.csv` (the `opt` column: O2/Od/O2y/O2p) FIRST. The fast scorer
+  `build/brally/win32/match/report.csv` (the `opt` column: O2/Od/O2y/O2p) FIRST. The fast scorer
   `fn.py` compiles `/O2` only - on an `/Od`, `/Oy-`, or `/Op` TU its diff is
   partly phantom. For those, trust the one-file sweep
-  (`python3 tools/match_sweep.py <file.c>`, ~12s) as the scoreboard and use
+  (`python3 tools/brally/match_sweep.py <file.c>`, ~12s) as the scoreboard and use
   fn.py output only qualitatively. (`/O2 /Op` matters on float-heavy TUs:
   without it MSVC5 defers float stores and the multiset gap is huge for a
   source that is actually correct.)
@@ -85,7 +85,7 @@ touching them, or you will re-run probes already proven dead:
 
 - **0x1000EAF0** (9,354 B): gates 0 and A pass; **one zero-movement pass
   short of T3** (rule 11b). 31 passes and ~130 dead probes live in the header
-  of `src/core/drawing/br_scenedl.c` and `docs/VC5-IDIOMS.md`; the next pass
+  of `src/brally/core/drawing/br_scenedl.c` and `docs/brally/VC5-IDIOMS.md`; the next pass
   is capped and ends by writing its `@t4-pass` line.
 - **0x100250D0 BrTex3dExpand** (8,480 B): size wall solved; shape residue
   only. Read its idiom entries before probing. ‼ Read it at `--key 10`: it has
@@ -96,8 +96,8 @@ touching them, or you will re-run probes already proven dead:
 
 Multiple workers coordinate through the claim ledger, not by guessing:
 
-    python3 tools/t4lane.py --claim            # byte-exact lane: pick from the tree AND lock (TOKEN)
-    python3 tools/claim_lane.py release <TOKEN> [wallVA ...]   # park walls, free the rest
+    python3 tools/brally/t4lane.py --claim            # byte-exact lane: pick from the tree AND lock (TOKEN)
+    python3 tools/brally/claim_lane.py release <TOKEN> [wallVA ...]   # park walls, free the rest
 
 ‼ Do not lock with `claim_lane.py claim N` for a byte-exact lane. Its
 ranking file is a 2026-08-28 snapshot; with the SHAPE rows gone it hands out
@@ -106,7 +106,7 @@ primaries through `claim_lane.py claim --va ...`. A park older than the
 newest screen (2026-09-06) is not a hold: t4lane lists it LIVE, flagged
 `[park <date> predates screens]`, and `--claim` overrides the park.
 
-Lanes are RANKED: triage.py publishes `build/match/triage_rank.csv` and claim
+Lanes are RANKED: triage.py publishes `build/brally/win32/match/triage_rank.csv` and claim
 hands out best-first (SHAPE targets, then mixed, then missing-code; coloring
 walls last). Refresh the ranking at session start - it goes stale as matches
 land. Claims go stale after 90 min, matched functions drop out automatically.
@@ -116,21 +116,21 @@ never re-handed.
 ## The loop (one function)
 
     # 0. Setup, once per session
-    python3 tools/refcheck.py            # must say corpus is Glide-keyed
+    python3 tools/brally/refcheck.py            # must say corpus is Glide-keyed
 
     # 1. Pick a target (see "Target selection" below)
-    python3 tools/fnmatch/triage.py            # ranked residue, register-blind
+    python3 tools/brally/fnmatch/triage.py            # ranked residue, register-blind
 
     # 2. See the exact instruction-level gap (by VA or name)
-    python3 tools/fnmatch/fn.py <VA> --detail regnorm 30
+    python3 tools/brally/fnmatch/fn.py <VA> --detail regnorm 30
 
     # 3. Read the diff, classify it (see "Diff decision tree"), edit the .c
     #    that owns the function. Iterate step 2 - ~2s compile+score cycle.
     #    For risky edits use a private variant so you don't disturb the tree:
-    python3 tools/fnmatch/fn.py <VA> --make w1     # copy the .c to a variant
-    python3 tools/fnmatch/fn.py <VA> --var w1 --detail regnorm 30
+    python3 tools/brally/fnmatch/fn.py <VA> --make w1     # copy the .c to a variant
+    python3 tools/brally/fnmatch/fn.py <VA> --var w1 --detail regnorm 30
 
-    # 3a. ON A BIG FUNCTION use tools/probe.py instead: ONE compile, ~6s, and
+    # 3a. ON A BIG FUNCTION use tools/brally/probe.py instead: ONE compile, ~6s, and
     #     EVERY measure printed together - bytes/instructions, both prologues
     #     side by side, the masked AND raw divergence maps with --deltas and
     #     their lost-sync lines, the register-blind multiset, and the /FAcs
@@ -139,7 +139,7 @@ never re-handed.
     #     lost-sync gap opened, a FIRSTDIV "regression" that was a slot
     #     renumbering. Read them together or not at all.
     cp <file.c> /tmp/v1.c        # never probe the tree file itself
-    .venv/bin/python tools/probe.py /tmp/v1.c v1 --va <VA> --sym <Name> [--key 10] [--full]
+    .venv/bin/python tools/brally/probe.py /tmp/v1.c v1 --va <VA> --sym <Name> [--key 10] [--full]
 
     # 3aa. When a schedule or an allocation is one notch off and every
     #      expression form in the dossier is dead, sweep the DECLARATION ORDER
@@ -147,11 +147,11 @@ never re-handed.
     #      the symbol's absolute INDEX decides an x87 completion order between
     #      comparable float products read through pointer locals, and the
     #      LATER-declared of two named factors becomes the `imul` destination.
-    #      Both proven byte-for-byte 2026-09-04/05; see docs/VC5-IDIOMS.md.
-    .venv/bin/python tools/declsweep.py <base.c> <VA> <Name> <tag> --mode all
+    #      Both proven byte-for-byte 2026-09-04/05; see docs/brally/VC5-IDIOMS.md.
+    .venv/bin/python tools/brally/declsweep.py <base.c> <VA> <Name> <tag> --mode all
 
     # 3b. When the shape gap is closed but bytes still differ, check behavior:
-    python3 tools/t3b_verify.py <VA>    # EQUIVALENT / DIFF / UNCLASSIFIED
+    python3 tools/brally/t3b_verify.py <VA>    # EQUIVALENT / DIFF / UNCLASSIFIED
     #    DIFF on a shape-matched function = you introduced (or found) a real
     #    logic bug - fix it before anything else.
 
@@ -169,25 +169,25 @@ commit.
 Every T1 function already has a machine draft and reference bytes - nobody
 reads raw asm from scratch:
 
-- draft C: `build/ghidra_decomp/<VA>.c` (refined candidates, when the batch
-  produced one: `build/ghidra_work/<VA>.refined.c`)
-- original bytes: `build/match/orig/<VA>.bin`
-- name/size/module hints: `config/functions_glide.csv`
+- draft C: `build/brally/analysis/ghidra_decomp/<VA>.c` (refined candidates, when the batch
+  produced one: `build/brally/analysis/ghidra_work/<VA>.refined.c`)
+- original bytes: `build/brally/win32/match/orig/<VA>.bin`
+- name/size/module hints: `config/brally/functions_glide.csv`
 
 Procedure: start from the draft, rewrite it into real C (fix Ghidra-isms  - 
-see the Ghidra entries in `docs/VC5-IDIOMS.md`; >2 artifact classes in a
+see the Ghidra entries in `docs/brally/VC5-IDIOMS.md`; >2 artifact classes in a
 region means retranscribe that region fresh from the original asm, don't
 patch artifact-by-artifact). Place the function in the module that owns its
 neighbors (`git grep` nearby VAs), give it an `@implements <VA> glide <Name>`
 comment, and run the one-file sweep - the sweep discovers new `@implements`
 tags on its own; no registration step. From there it is a normal T2 target
-for the loop above. `tools/autofile.py` automates exactly this for refined
+for the loop above. `tools/brally/autofile.py` automates exactly this for refined
 candidates that already score byte-exact - check it hasn't already got your
 function before hand-filing.
 
 ## Target selection - rank by register-blind gap, NEVER raw diff count
 
-For a byte-exact lane, do not pick by hand at all: `tools/t4lane.py` prints
+For a byte-exact lane, do not pick by hand at all: `tools/brally/t4lane.py` prints
 the session's targets from the tree (register-only T2 rows by translation
 unit, held rows with the reason and age of their park, and the smallest
 untouched drafts after the mechanical screen). The lane spec that consumes
@@ -206,10 +206,10 @@ it is handed to the session directly, not kept in the repo.
   consult the N64 twin (below) early.
 - Low struct% (`coloring wall - real`): T3 territory. Confirm with the
   oracle if reachable, record the residue note, append the `@t4-pass` line,
-  run `tools/t3.py --qualify`, move on. Do not grind.
+  run `tools/brally/t3.py --qualify`, move on. Do not grind.
 - **‼ Two screens before you take ANY target, both learned the hard way:**
-  1. **Does the C++ workstream already own it?** `ls src/core/cpp/<VA>.cpp`
-     and grep `build/match/report_cpp.csv`. Those functions carry no
+  1. **Does the C++ workstream already own it?** `ls src/brally/core/cpp/<VA>.cpp`
+     and grep `build/brally/win32/match/report_cpp.csv`. Those functions carry no
      `@implements` tag, so tools keyed on `report.csv` show them as untouched.
      On 2026-09-03 `tiers.py --list T1` offered a nine-member 66-byte `BrOpt*`
      family that reads exactly like a fresh cause group; every member was
@@ -220,13 +220,13 @@ it is handed to the session directly, not kept in the repo.
      reads `[ebp±N]` without establishing ebp, an odd (unaligned) address, or
      a CRT helper such as `_chkstk` is linker/CRT output, not a decomp
      target. Fourteen such rows sat in the hand-C target until 2026-09-03.
-     Add them to `config/fenced.csv` with the evidence rather than working
+     Add them to `config/brally/fenced.csv` with the evidence rather than working
      them.
 - **‼ The small-reggap TAGGED pool is worked out (2026-09-03).** `claim 20`
   returns nothing, every SHAPE row at reggap <= 7 is parked, and un-parking
   them mostly finds a thorough dead-probe note already in the file header  - 
   several written the same week. Do not plan a lane on that pool. **T1 intake
-  is where the byte-exact count moves**: `python3 tools/tiers.py --list T1`,
+  is where the byte-exact count moves**: `python3 tools/brally/tiers.py --list T1`,
   274 functions, every one with a machine draft. A small self-contained leaf
   taken from a draft can go byte-exact on the FIRST compile - one did this
   session, in about the time a single parked function's probe cycle takes.
@@ -236,7 +236,7 @@ it is handed to the session directly, not kept in the repo.
   historically swept ~0 siblings (re-confirmed 2026-09-01: full re-batch 0/258).
   Real families are CAUSE groups found by screening ORIGINAL BYTES for a shared
   construct - e.g. the C++ vcall/twin lode (~25 byte-exact in one session,
-  `tools/gen_cpptwin.py` stamps siblings after each new TU), thiscall twins,
+  `tools/brally/gen_cpptwin.py` stamps siblings after each new TU), thiscall twins,
   /Od twins, globals-form siblings. Mint a transform only after you have SEEN
   the same cause twice (rule 7); otherwise just bank the hand-solve.
 
@@ -258,14 +258,14 @@ recomp lacks). Then:
 - **EXTRA/MISSING differ only in operand SOURCE** - e.g. `fld [R]`+`fmul
   [esp+S]` vs the reverse, identical op counts → SCHEDULING/ALLOCATION, not
   structural, even when `struct%` scored it high (stack vs pointer operands
-  normalise to different tokens). **STOP. This is allocation residue. Run `tools/t3.py --qualify`; if Gate A passes and Gate B is met, certify T3 and park it.**
+  normalise to different tokens). **STOP. This is allocation residue. Run `tools/brally/t3.py --qualify`; if Gate A passes and Gate B is met, certify T3 and park it.**
   Do not burn tokens permuting spellings - proven unreachable from source.
 - **A whole-function register rotation** (every eax↔esi etc.) → a SYMPTOM of
   one earlier source-shape fork, not a wall. Find the earliest divergence and
   fix the construct there; the rotation dissolves.
 
 Proven idioms (widths, signedness, thiscall, store order, byte-slot locals,
-etc.) live in `docs/VC5-IDIOMS.md` - check there before inventing a fix, and
+etc.) live in `docs/brally/VC5-IDIOMS.md` - check there before inventing a fix, and
 record any new one you prove.
 
 ## When blocked on WHAT THE SOURCE SAYS
@@ -282,7 +282,7 @@ ORACLE for structure; useless for register allocation.
 - Turns out to be allocation/scheduling residue → leave the residue note,
   append the `@t4-pass` line with the end-of-pass numbers (a pass counts
   toward Gate B only if it made ten or more fresh compiles), run
-  `tools/t3.py --qualify`. If gates 0, A and B all pass, paste the tag it
+  `tools/brally/t3.py --qualify`. If gates 0, A and B all pass, paste the tag it
   emits: certification is mandatory then. Otherwise it stays T2; pick the
   next.
 - Genuinely stuck on structure after a real attempt → leave an HONEST residue
@@ -296,7 +296,7 @@ ORACLE for structure; useless for register allocation.
 ## The final gate
 
 Per-function matches are necessary, not sufficient: `python3
-tools/image_build.py` assembles the real DLL from every matched claim and
+tools/brally/image_build.py` assembles the real DLL from every matched claim and
 diffs the image (currently 0 differing bytes). Run it at the end of a session
 that landed matches - an image regression means a claim is wrong even though
 its function-level diff is clean.
@@ -305,6 +305,6 @@ its function-level diff is clean.
 
 State the count with its denominator (e.g. "739 → 740 byte-exact of 1,529
 hand-C targets"), what the source defect was, which module you filed it in,
-and any idiom added to `docs/VC5-IDIOMS.md` or transform proposed. Never mix
+and any idiom added to `docs/brally/VC5-IDIOMS.md` or transform proposed. Never mix
 strictness levels (byte-exact vs behaviorally-equivalent vs shape-matched are
 three different claims - say which one you have).

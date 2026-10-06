@@ -1,0 +1,12 @@
+# Port deviations for src/brally/core/driving/br_carghostapply.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:DAT_10077770
+@drop var:DAT_10077778
+@drop proto:FUN_10062640
+@drop proto:FUN_1006d530
+@drop define:CI
+@drop define:CF
+@drop define:CB
+@drop fn:BrCarGhostApply_10059A80

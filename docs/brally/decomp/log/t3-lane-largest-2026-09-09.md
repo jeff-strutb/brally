@@ -5,7 +5,7 @@
 > 2026-09-09 T3 lane on the LARGEST unfinished functions: +1 byte-exact (BrRaceGateStep 2,538 B) and +3 T3-certified (BrInputPoll 4,145 B, BrGlTrackHdrRead 1,549 B, BrScenePropsDraw 1,768 B); two gate-tool artefacts fixed; the per-function probe harness pattern that made 100+ compiles cheap.
 
 **Method that paid (reuse it):** rank report.csv diff rows by orig_size, run
-`tools/t3.py --qualify <VA>` on each large one FIRST -- it is read-only and
+`tools/brally/t3.py --qualify <VA>` on each large one FIRST -- it is read-only and
 says exactly which gate fails. Two of the "semantic" A3 failures were TOOL
 artefacts, not code: (1) msetdiff normalised a reloc'd imm32 as `0` when the
 displacement had already become `A` (phantom 1+1 on 0x1005FF00; fixed
@@ -28,7 +28,7 @@ each scored by `fn.py --var`. ~10 s per compile, 8-12 probes per call.
 TU that shares the line (seven port bodies in slice2_20.c got a `#define h`);
 restrict to the function span and check `git diff -U0` before the sweep.
 
-**Levers found (all in docs/VC5-IDIOMS.md tail):** two-operand add
+**Levers found (all in docs/brally/VC5-IDIOMS.md tail):** two-operand add
 destination = the LATER-DECLARED of two NAMED operands (0x1005FF00,
 byte-exact in 11 compiles after 5 sessions of single-operand spellings);
 named pointers/pointer locals are scheduler symbols, expressions of the

@@ -24,7 +24,7 @@ FP tuple). Ready list sorted by priority desc, TIES BY IR ORDER (node+0x36).
 height = max(edge latency + succ height) + 1. schedmd.c FUN_0045c651 is the
 x87 stack pass, not the scheduler.
 
-**Trace kit:** build/match/probe_bd4988/c2cap/hs/ (mk.py patches C2 into C2P.EXE
+**Trace kit:** build/brally/win32/match/probe_bd4988/c2cap/hs/ (mk.py patches C2 into C2P.EXE
 with hooks on 0x43c94d region start, 0x43ca68 ready insert, 0x43d0b8 issue,
 call 0x41751a -> DAG dump of nodes + edges/latencies; run.sh SRC TAG compiles
 via c2wrap /B2 with C2PATCH=1; dag.py LOG REGION MINSEQ prints a region's DAG).

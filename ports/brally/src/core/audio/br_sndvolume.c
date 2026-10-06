@@ -96,7 +96,7 @@ int FUN_1006aaf0();
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrDelta_100713A0: prototype in br_funcs.h */
-/* Body in src/core/racing/br_secondtick.c; the starter below spawns it. */
+/* Body in src/brally/core/racing/br_secondtick.c; the starter below spawns it. */
 /* BrSecondTickLoop: prototype in br_funcs.h */
 #include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -138,14 +138,14 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  *       too, so the operand-kind lever that closed 0x1000EAF0's wheel
  *       pointer does not reach a single-use parameter.
  * The next lever has to come from outside the statement spelling. */
-/* @t4-pass 0x1006B440 1 2026-09-07 probes 58 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 2 2026-09-07 probes 59 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 3 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 4 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 5 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 6 2026-09-10 probes 59 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 7 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B440 8 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006B440 1 2026-09-07 probes 58 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 2 2026-09-07 probes 59 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 3 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 4 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 5 2026-09-10 probes 60 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 6 2026-09-10 probes 59 bytes 81 insns 30 regions 1 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 7 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B440 8 2026-09-10 probes 40 bytes 84 insns 31 regions 2 rows 4 census yes  (tools/brally/crank.py) */
 /* WHAT IT DOES: sets how loud one playing sound is, by handing DirectSound
  * the voice's own level scaled by the game's master volume -- and jumping
  * straight to full silence when the master volume is zero. */

@@ -1,6 +1,6 @@
 /* br_hudentrants.c -- the multiplayer entrant list on the HUD (0x10014E00).
  *
- * Fresh transcription from build/ghidra_decomp/0x10014e00.c against the
+ * Fresh transcription from build/brally/analysis/ghidra_decomp/0x10014e00.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
 

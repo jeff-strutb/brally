@@ -1,0 +1,27 @@
+# Port deviations for src/brally/core/drawing/br_livery.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrCarInitTables
+@drop define:BrCarClear29C8
+@drop define:BrZeroRegions
+@drop undef:BrCarInitTables
+@drop undef:BrCarClear29C8
+@drop undef:BrZeroRegions
+@drop proto:BrZeroRegions
+@drop var:DAT_100ad7d8
+@drop var:DAT_100ad7e8
+@drop var:DAT_100b22d8
+@drop fn:FUN_10059fe0
+@drop var:g_brDamageBmp
+@drop var:free
+@drop proto:FUN_1005a420
+@drop proto:FUN_1005a6b0
+@drop fn:FUN_1005a6a0
+@drop fn:FUN_1005a6b0
+@drop var:pFmt
+@drop var:s_Paint_damage_d_bmp_100b2e58
+@drop proto:BrBmpLoadRgba
+@drop fn:BrLiveryLoadDamageBmps
+@drop fn:BrLiveryLoadDamage
+@drop var:DAT_100ad7d8#2
+@drop fn:FUN_1005a420

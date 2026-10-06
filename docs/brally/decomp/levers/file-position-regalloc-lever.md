@@ -26,5 +26,5 @@ concluding it is a coloring wall. Placement within the module .c has no
 correctness or filing consequence, so end-of-TU is a free win. This is
 distinct from [declaration-order-tiebreak](declaration-order-tiebreak.md) (a LOCAL lever); reach for file
 position only after the local levers are confirmed inert. Full write-up:
-docs/VC5-IDIOMS.md, "File POSITION as the last register-allocation lever".
+docs/brally/VC5-IDIOMS.md, "File POSITION as the last register-allocation lever".
 Companion idiom same function: `*src++` (not indexed) to consume a byte quad.

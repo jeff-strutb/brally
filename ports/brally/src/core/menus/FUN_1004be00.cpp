@@ -14,12 +14,12 @@
  * @cpp_symbol ?FUN_1004be00@@YAHPAVGameUi@@@Z
  *
  * 3475 B cdecl EH-frame menu-page builder. Scaffolded by
- * tools/gen_menubuilder.py from the Ghidra draft; the class layouts and
+ * tools/brally/gen_menubuilder.py from the Ghidra draft; the class layouts and
  * the three family levers come from the hand-solved 0x100425E0 /
  * 0x10048160 (char bool after the slot store, raw float pushes for simple
  * lvalues, w14-then-w344 tails). The photo trio was filled from the block
  * solved byte-exact on 0x1004ABE0 -- see the "photo control block" entry in
- * docs/VC5-IDIOMS.md for why the rect is stored +0x54 first.
+ * docs/brally/VC5-IDIOMS.md for why the rect is stored +0x54 first.
  *
  * Residue: 34 diffs, ALL in photo1's ten-instruction tail -- the original
  * issues [fld fy][yi reload + xi copy][fsub][lea + add][f50 + f58][f5C +

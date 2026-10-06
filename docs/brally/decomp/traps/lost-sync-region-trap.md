@@ -5,7 +5,7 @@
 > divergence.py used to STOP at an unresyncable block and still print a region total - every 0x100250D0 region map before 2026-09-03 covered only two thirds of the function
 
  MEASUREMENT TRAP, found and fixed 2026-09-03 (commit b72676b).
-`tools/divergence.py` searched only 400 instructions ahead for a resync. Past
+`tools/brally/divergence.py` searched only 400 instructions ahead for a resync. Past
 that it printed `... lost sync at orig+X`, **stopped**, and still printed a
 region total - so the number looked complete and was not.
 

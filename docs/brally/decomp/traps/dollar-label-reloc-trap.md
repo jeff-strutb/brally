@@ -8,11 +8,11 @@ MSVC5 emits `$L<n>` (C++ EH handler thunk + funclets, into `.text$x`), `$T<n>`
 (EH temp) and `$SG<n>` (string literal) as COFF symbols. **The number is a
 per-TU counter - the same name means a different address in every object.**
 
-Fixed 2026-09-03 (commit `a8bf973`). `config/globals_learned.csv` had learned
+Fixed 2026-09-03 (commit `a8bf973`). `config/brally/globals_learned.csv` had learned
 `$L459` from 0x10029290's TU; 0x10053590 reuses the name for its own EH
 handler, so `reloc_fill.resolve` answered 0x100293B4 where the original
 pushes 0x100765D4 - **3 differing bytes in the image gate on a function whose
-`report_cpp.csv` row reads `match … 4/4`**. `tools/reloc_learn.py`'s agreement
+`report_cpp.csv` row reads `match … 4/4`**. `tools/brally/reloc_learn.py`'s agreement
 guard is blind to this by construction: a label seen in exactly one object
 "agrees" with itself and is written as corroborated.
 

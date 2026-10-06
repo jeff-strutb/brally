@@ -1,0 +1,30 @@
+# Port deviations for src/brally/core/drawing/br_hudentrants.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<stdio.h>
+@drop proto:BrSetGlobal_ABB30
+@drop proto:BrSub_10019280
+@drop proto:BrNetSlotGetF02CBiased
+@drop proto:BrSub100714D0
+@drop proto:BrSub10071510
+@drop proto:BrNetSlotGetF974
+@drop proto:BrHudFormatGapString
+@drop proto:BrTextDraw
+@drop var:DAT_100bcc04
+@drop var:DAT_10226a48
+@drop var:g_brRaceNCar
+@drop var:DAT_118eeee0
+@drop var:g_brRaceReplay
+@drop var:s___55_d__100a6ba0
+@drop var:s___55_s_100a6b98
+@drop var:s___y1_d__100a6c34
+@drop var:s___ry_d__100a6c2c
+@drop var:s___11_d__100a6c3c
+@drop var:s___11_s_100a6bd4
+@drop var:s___x_02x_02x_02x_s__s_100a6bbc
+@drop var:s___x_02x_02x_02x_s_100a6ba8
+@drop var:s___11_s__dms__c_c_100a6c18
+@drop var:s___x_02x_02x_02x_s__s__dms__c_c_100a6bf8
+@drop var:s___x_02x_02x_02x_s__dms__c_c_100a6bdc
+@drop fn:BrHudDrawEntrants

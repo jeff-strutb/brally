@@ -1,0 +1,81 @@
+# Port deviations for src/brally/core/controls/br_dik.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop type:int32_t
+@drop type:int32_t#2
+@drop var:g_pBrDik18ABDD0
+@drop fn:BrDikGetDeviceState
+@drop define:BR_CHARMAP_SCAN
+@drop var:g_BrCharMapImage
+@drop define:g_BrCharMap
+@after define:g_BrCharMap
+
+/* ==========================================================================
+ * 0x100771B0
+ * ========================================================================== */
+/* WHAT IT DOES: reads which keys are down right now. If the game has lost the
+ * keyboard to another program in the meantime it quietly grabs it back and
+ * reads again. When there is no keyboard device at all it reports what looks
+ * like success and leaves the caller's buffer holding whatever was in it
+ * before, so keys can appear stuck. */
+
+/* WHAT IT DOES: read the whole keyboard state array from DirectInput in one
+ * go. Reports failure without touching the caller's buffer when there is no
+ * device. */
+/* @implements 0x10070490 glide BrDikGetDeviceState */
+int32_t BrDikGetDeviceState(uint8_t *pState)
+{
+    Br72Env     *pE = g_pBr72Env;
+    BrDInputDev *pDev = pE->pDik18ABDD0;
+    int32_t      hr;
+
+    if (pDev == NULL) {
+        /* GOTCHA: a POSITIVE 1, so a caller testing `>= 0` proceeds with
+         * whatever was already in the buffer. */
+        return 1;
+    }
+
+    hr = pDev->pVtbl->GetDeviceState(pDev, 0x100u, pState);
+    if (hr < 0 && hr == BR72_DIERR_NOTACQUIRED) {
+        pDev = pE->pDik18ABDD0;             /* the original re-reads it */
+        hr = pDev->pVtbl->Acquire(pDev);
+        if (hr >= 0) {
+            pDev = pE->pDik18ABDD0;         /* and again */
+            hr = pDev->pVtbl->GetDeviceState(pDev, 0x100u, pState);
+        }
+        /* GOTCHA: when the re-acquire fails, ITS hresult is returned, not
+         * DIERR_NOTACQUIRED. */
+    }
+    return hr;
+}
+
+/* WHAT IT DOES: translates a typed key into the character it should produce,
+ * by walking a table until it finds a match and taking the first one. Keys
+ * that are not in the table produce nothing -- and a handful of keys, Tab
+ * among them, produce something only because the walk runs off the end of the
+ * real table and keeps going through the data that happens to follow it. */
+/* The matching build scans the image's own region: 784 eight-byte records
+ * from 0x100AC5F8 to 0x100ADE78, the bound the original compares against.
+ * The port's g_BrCharMap holds the 113 codes that region can actually match
+ * (see slice3_39.h); ending the matching loop at ITS end named an address
+ * 904 bytes in, and the function read as byte-exact only because the image
+ * gate copied the original's bound. */
+#define BR_CHARMAP_SCAN BR_CHARMAP_COUNT
+@end
+@drop undef:g_BrCharMap
+@drop type:BrSub10060750Arg
+@drop type:BrSub10060750Vtbl
+@drop type:BrSub10060750Iface
+@drop type:BrSub10060750Phase
+@drop var:g_brPhaseAA2904
+@drop var:g_BrAA33E0
+@drop fn:BrSub10060750
+@drop var:DAT_118eeeec
+@drop var:DAT_10b71530
+@drop var:DAT_10b71534
+@drop var:DAT_10b713e0
+@drop proto:FUN_100724c0
+@drop proto:BrDiAcquire
+@drop type:CC_std_1
+@drop type:CC_std_3
+@drop fn:BrJoyScanAny

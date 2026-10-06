@@ -51,7 +51,7 @@
  * residue is allocation/scheduling: 2+0 classified rows, 2 masked regions, 4 B short;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x100633E0 d3d BrZeroRegions */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* list head, 0x100B2F08 */

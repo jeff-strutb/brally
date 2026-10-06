@@ -64,9 +64,9 @@ void BrNetPktStamp(void *pPkt)
  * nibble, its low field in the bottom -- and reports success. If the field
  * would not fit it writes nothing and reports failure, so a half-written
  * field can never go out. */
-/* @t4-pass 0x1006B080 2 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B080 3 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/crank.py) */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1006B080.cpp */
+/* @t4-pass 0x1006B080 2 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B080 3 2026-09-07 probes 48 bytes 99 insns 35 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1006B080.cpp */
 /* RESIDUE (2026-09-06): +4 insns / +16 B, REGNORM 4+0. The C body is
  * complete and correct; the wall is the SAME construct C cannot spell that
  * parks its family (BrNetWriteTagC0 / BrNetWriteRaceOpts in ghidra_batch.c):
@@ -101,7 +101,7 @@ typedef struct { unsigned int v; } BrU32Arg;
 /* @t4-pass 0x1006AEB0 1 2026-09-08 probes 1 bytes 304 insns 0 regions 1 rows 0 census no
  * PARKED T2. Same U8 thiscall wall as BrNetWriteTag20 in this file: MSVC
  * homes each byte arg; orig pushes eax with dirty high bytes. Do not grind. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1006AEB0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1006AEB0.cpp */
 /* BrNetWritePlayerRec: prototype in br_funcs.h */
 
 /* Hand-matched from disassembly: 0x1006CD80

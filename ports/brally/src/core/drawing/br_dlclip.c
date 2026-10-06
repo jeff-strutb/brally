@@ -8,7 +8,7 @@
  * plane, which needs no second operand).  A function pointer would emit a
  * `call [reg]` the original does not have, so the matching build spells the
  * body ONCE as a macro and instantiates it seven times -- the same
- * hand-inlining recipe docs/VC5-IDIOMS.md records under "Inlining a helper by
+ * hand-inlining recipe docs/brally/VC5-IDIOMS.md records under "Inlining a helper by
  * hand: use a MACRO".
  *
  * THE SEVEN, and what pins each one.  The whole family was proved to be one
@@ -48,7 +48,7 @@
  * anything about them can be called unreachable.
  *
  * The lever that picks the leading operand is the redundant paren round the
- * FIRST operand (`((v)->f18) + (v)->f04`; docs/VC5-IDIOMS.md, "((a) + b) + c
+ * FIRST operand (`((v)->f18) + (v)->f04`; docs/brally/VC5-IDIOMS.md, "((a) + b) + c
  * picks the fld operand").  It has a COST: at the dPrev site it also sinks
  * that site's `fadd` past four unrelated instructions.  So it is usable at
  * the dCur site and not at the dPrev site -- which is exactly why NEAR (needs
@@ -230,7 +230,7 @@ void NAME(BrClipList *pList)                                                  \
 #define BRCLIP_W_MINUS_Z(v)  ((v)->f18 - (v)->f0C)
 
 /* Same value, but the redundant paren round the FIRST operand makes VC5 lead
- * the pair with it (see docs/VC5-IDIOMS.md, "((a) + b) + c picks the fld
+ * the pair with it (see docs/brally/VC5-IDIOMS.md, "((a) + b) + c picks the fld
  * operand").  Used at ONE site only, where the original's order differs. */
 #define BRCLIP_Z_PLUS_W_LEAD(v)   (((v)->f0C) + (v)->f18)
 #define BRCLIP_W_PLUS_X_LEAD(v)   (((v)->f18) + (v)->f04)

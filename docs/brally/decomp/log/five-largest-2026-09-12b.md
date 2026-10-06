@@ -4,7 +4,7 @@
 
 > 2026-09-12 evening: project lead demanded 5 of the largest to T4/T3 with no excuses. Result: 2 byte-exact (0x10046E70 2114 B, 0x10044860 2439 B) + the 34-diff photo-tail trio certified @t3 (0x1004AEE0 3862 B, 0x1004BE00 3475 B, 0x1004DA00 3394 B). Two tool changes: /Gi as a 4th C++ sweep shape, t3.py measures C++ rows.
 
-**The lane that paid: C++ page builders in src/core/cpp/ with 34 diffs and
+**The lane that paid: C++ page builders in src/brally/core/cpp/ with 34 diffs and
 3/4 pieces** -- the largest rows with real headroom were NOT the walled C
 rows the earlier survey re-qualified; they were C++ EH rows invisible to
 t3.py (which read only report.csv).

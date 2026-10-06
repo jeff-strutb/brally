@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """sync.py -- what the decomp has done since the 64-bit core forked from it.
 
-ports/brally/src and ports/brally/include are src/ and include/ as of the
-commit in ports/brally/src/FORKED-FROM, retyped for 64 bits on top.  Most
+ports/brally/src and ports/brally/include are the decomp's src/brally/ (core,
+exe) and src/brally/include/ as of the commit in ports/brally/src/FORKED-FROM,
+retyped for 64 bits on top.  Before 2026-10-05 the decomp kept the same trees
+at src/brally/ and src/brally/include/; both spellings map onto the core's own layout.  Most
 decomp work after the fork is byte shape (M2: functions respelled to match
 byte for byte, bodies moved into the C++ lane), which never has to flow into
 the core.  A blind three-way merge of that work is wrong: the decomp's
@@ -31,8 +33,24 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 PORT = os.path.join(ROOT, 'ports/brally')
-STAMP = os.path.join(PORT, 'src/FORKED-FROM')
-TREES = ('src', 'include')
+STAMP = os.path.join(PORT, 'src/brally/FORKED-FROM')
+# decomp pathspecs, the current layout and the one before 2026-10-05
+TREES = ('src/brally', 'src/brally/core', 'src/brally/exe', 'include')
+
+
+def port_rel(path):
+    """A decomp path (either layout) as the core's path under ports/brally."""
+    if path.startswith('src/brally/include/'):
+        return path[len('src/brally/'):]
+    if path.startswith('src/brally/'):
+        return 'src/brally/' + path[len('src/brally/'):]
+    return path
+
+
+def decomp_path(commit, rel):
+    """The decomp's path at COMMIT of the core file REL (either layout)."""
+    new = 'src/brally/' + rel[len('src/brally/'):] if rel.startswith('src/brally/') else 'src/brally/' + rel
+    return new if show(commit, new) is not None else rel
 EXTS = ('.c', '.cpp', '.h')
 # a top-level function definition or prototype: `type name(params)`
 SIG = re.compile(r'^(?!static\b|typedef\b|#|\s|/|\*)([A-Za-z_][\w \t\*]*?[\s\*])(\w+)\s*\(([^;{)]*)\)\s*;?\s*$', re.M)
@@ -74,7 +92,7 @@ def report(base, to):
         if st.startswith('D'):
             print('  REMOVED %s' % old)
             continue
-        if st.startswith('R'):
+        if st.startswith('R') and port_rel(old) != port_rel(new):
             print('  RENAMED %s -> %s' % (old, new))
         a, b = sigs(show(base, old)), sigs(show(to, new))
         for name in sorted(set(a) & set(b)):
@@ -83,8 +101,9 @@ def report(base, to):
 
 
 def merge(base, to, path):
+    path = port_rel(path)
     ours = os.path.join(PORT, path)
-    old, new = show(base, path), show(to, path)
+    old, new = show(base, decomp_path(base, path)), show(to, decomp_path(to, path))
     if old is None or new is None or not os.path.exists(ours):
         raise SystemExit('sync: %s is not in the fork base, the target and the core' % path)
     with tempfile.TemporaryDirectory() as d:

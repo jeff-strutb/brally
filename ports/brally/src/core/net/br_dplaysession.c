@@ -18,7 +18,7 @@
 
 #include "slice6_73.h"
 /* g_br73 is the port's gathering of separate originals.  The matching build
- * names the ones used here as the globals they are (config/globals_glide.csv),
+ * names the ones used here as the globals they are (config/brally/globals_glide.csv),
  * so each relocation resolves to its own variable. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5BD8 */
 #define BR73_NAA2880 (*(int32_t *)&g_5BD8)

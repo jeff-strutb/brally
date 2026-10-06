@@ -14,9 +14,9 @@
 #
 # Source: --bin BossRally.BIN with its .cue beside it (default
 # reference/brally/). ffmpeg on PATH (FLAC encoder for the CD audio).
-# The extract is cached in build/app64/extract, keyed on the MD5 of the
+# The extract is cached in build/brally/macos-metal/extract, keyed on the MD5 of the
 # image and cue; an extract of the same disc already made for the 32-bit
-# app (build/app/extract) is cloned instead of ripped again.
+# app (build/brally/wasm32/app/extract) is cloned instead of ripped again.
 #
 # Usage: ports/brally/package_app.sh [--bin X] [--no-build]
 set -e
@@ -40,7 +40,7 @@ done
 [ -f "$BIN" ] || { echo "package_app: no disc image at $BIN" >&2; exit 1; }
 [ -n "$CUE" ] || { echo "package_app: no .cue beside $BIN (the soundtrack needs it)" >&2; exit 1; }
 
-OUT=build/app64
+OUT=build/brally/macos-metal
 EX=$OUT/extract
 APP="$OUT/Boss Rally 64.app"
 mkdir -p $OUT
@@ -49,18 +49,18 @@ mkdir -p $OUT
 KEY="3 $(md5 -q "$BIN" "$CUE" | tr '\n' ' ')"   # 3: the extract's layout
 if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     rm -rf $EX
-    if [ -f build/app/extract/.complete ] && [ "$(cat build/app/extract/.complete)" = "$KEY" ]; then
-        echo "extract: cloned from build/app/extract"
+    if [ -f build/brally/wasm32/app/extract/.complete ] && [ "$(cat build/brally/wasm32/app/extract/.complete)" = "$KEY" ]; then
+        echo "extract: cloned from build/brally/wasm32/app/extract"
         mkdir -p $EX/music
-        cp -Rc build/app/extract/disc $EX/disc 2>/dev/null || cp -R build/app/extract/disc $EX/disc
-        cp -Rc build/app/extract/music/cd $EX/music/cd 2>/dev/null || cp -R build/app/extract/music/cd $EX/music/cd
+        cp -Rc build/brally/wasm32/app/extract/disc $EX/disc 2>/dev/null || cp -R build/brally/wasm32/app/extract/disc $EX/disc
+        cp -Rc build/brally/wasm32/app/extract/music/cd $EX/music/cd 2>/dev/null || cp -R build/brally/wasm32/app/extract/music/cd $EX/music/cd
     else
         command -v ffmpeg >/dev/null || { echo "package_app: ffmpeg not on PATH (FLAC encoder)" >&2; exit 1; }
         mkdir -p $EX/music
         echo "extract: data track <- $BIN"
-        $PY tools/extract_disc.py "$BIN" $EX/disc
+        $PY tools/brally/extract_disc.py "$BIN" $EX/disc
         echo "extract: CD audio <- $CUE"
-        $PY tools/extract_cdaudio.py -q "$CUE" $EX/music/cd
+        $PY tools/brally/extract_cdaudio.py -q "$CUE" $EX/music/cd
     fi
     # the stamp goes last: a run that died partway claims nothing
     echo "$KEY" > $EX/.complete
@@ -71,7 +71,7 @@ fi
 ls $EX/music/cd/track02.* >/dev/null 2>&1 || { echo "package_app: CD audio incomplete" >&2; exit 1; }
 
 # ---- build -------------------------------------------------------------------
-BINOUT=build/portable_app
+BINOUT=build/brally/macos-metal
 if [ $BUILD = 1 ]; then
     OUT=$BINOUT HOST=macos RENDER=metal GFLAG=-g0 DLL=$EX/disc/BRGlide.dll ports/brally/link64.sh
 fi

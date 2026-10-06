@@ -41,7 +41,7 @@
 /* BrStubTrue: prototype in br_funcs.h */
 
 /* The two service loops this hands to the pool starter; they live in
- * src/core/racing/br_idleloop.c. */
+ * src/brally/core/racing/br_idleloop.c. */
 /* BrIdleLoop_1002DD30: prototype in br_funcs.h */
 /* BrIdleLoop_1002DD9A: prototype in br_funcs.h */
 

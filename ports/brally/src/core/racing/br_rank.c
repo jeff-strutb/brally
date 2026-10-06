@@ -77,12 +77,12 @@ int BrRankCmpKey(const void *pA, const void *pB)
  * cursor-key + indexed-idx (kept: positional DIFFS 22 -> 16).  Gate 0+A
  * PASS; parked for Gate B's counted ledger.
  * PASS; the counted ledger and its dead list are in this file's header. */
-/* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005F580 4 2026-09-10 probes 250 bytes 259 insns 92 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x1005F580 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 259/259 insns 92/92 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 3 zero-movement 3 4
- * residue after tools/crank.py: 250 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 250 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x1005F580 glide BrRankAssign */
 

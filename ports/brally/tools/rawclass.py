@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Which raw-offset accesses are wrong on a 64-bit build.
 
-A raw access (`*(T *)(base + K)`, build/portable/raw.csv from rawscan.py)
+A raw access (`*(T *)(base + K)`, build/brally/null-soft/raw.csv from rawscan.py)
 is correct on LP64 exactly when the object it reaches keeps its 32-bit
 byte layout there: a file image, a packet, a pixel buffer -- anything that
-never holds an address. The trace (build/portable/trace/, trace_report.py)
+never holds an address. The trace (build/brally/null-soft/trace/, trace_report.py)
 says, for every access site of the running 32-bit game, which objects it
 touched and whether each object ever held an address at any offset.
 
 Each raw access line in a ports/brally core file is mapped to the line of
-the original source (src/core/..., what the traced build compiled) by a
+the original source (src/brally/core/..., what the traced build compiled) by a
 diff of the two files, then classified:
 
   TYPE      a touched object held an address somewhere: its 64-bit layout
@@ -22,7 +22,7 @@ A trailing ~ marks a line inside a block the port rewrote, matched to the
 original by position: confirm by reading both.
 
 Usage: rawclass.py
-Output: build/portable/rawclass.csv, summary on stdout
+Output: build/brally/null-soft/rawclass.csv, summary on stdout
 """
 import collections
 import csv
@@ -60,11 +60,11 @@ def line_map(port, orig):
 def main():
     os.chdir(ROOT)
     held = set()
-    for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
         if r['holds_address'] == 'yes':
             held.add(re.sub(r'<\w+>$', '', r['object']))
     canon = {}
-    for r in csv.DictReader(open('build/portable/canon.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/canon.csv')):
         canon[r['name']] = r['type']
     gptr = {}
 
@@ -80,7 +80,7 @@ def main():
         return gptr[nm]
 
     by_line = collections.defaultdict(set)     # (src file, line) -> touched objects
-    for r in csv.DictReader(open('build/portable/trace/sites.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/sites.csv')):
         m = re.match(r'^(.*?):(\d+):', r['loc'])
         if not m:
             continue
@@ -89,7 +89,7 @@ def main():
             by_line[(m.group(1), int(m.group(2)))].add(re.sub(r'\+0x[0-9A-Fa-f]+$', '', t))
     maps = {}
     out = []
-    for r in csv.DictReader(open('build/portable/raw.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/raw.csv')):
         f = r['file']
         rel = f[len('ports/brally/'):]
         cls, why = 'UNTRACED', ''
@@ -113,7 +113,7 @@ def main():
                     cls += '~'
         out.append(dict(r, cls=cls, why=why))
     keys = list(out[0].keys()) if out else []
-    with open('build/portable/rawclass.csv', 'w', newline='') as fh:
+    with open('build/brally/null-soft/rawclass.csv', 'w', newline='') as fh:
         w = csv.DictWriter(fh, keys)
         w.writeheader()
         w.writerows(out)

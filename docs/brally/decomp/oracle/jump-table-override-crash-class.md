@@ -8,9 +8,9 @@
 is byte-different from the original, so its inline switch jump tables live at
 different offsets. The exact per-body target is `va + label_offset` from the
 object symbol table (`reloc_pair.jump_table_slots`, a same-section `$L` DIR32
-slot). But `tools/lockstep_rows.py` emitted a `config/reloc_overrides.csv` row
+slot). But `tools/brally/lockstep_rows.py` emitted a `config/brally/reloc_overrides.csv` row
 for those slots copying the ORIGINAL operand (the original table VA), and the
-override channel in `tools/image_build_t3.py` applied LAST and UNGUARDED - so the
+override channel in `tools/brally/image_build_t3.py` applied LAST and UNGUARDED - so the
 placed body's `jmp [table]` pointed into the ORIGINAL layout, landing
 mid-instruction in the byte-different body → invalid opcode / page fault. Menus
 never hit the switch; each race mode hits a different case, so the crash EIP

@@ -1,0 +1,6 @@
+# Port deviations for src/brally/core/audio/br_input.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop proto:FUN_10037720
+@drop fn:BrInputOrPlaybackActive

@@ -56,7 +56,7 @@
  *     local declaration order permuted
  *   flags: /O2, /Ox, /O2 /Op (71), /O2 /Ob1, /O2 /Gy, /O1 (163), /Od, /O2 /Oy-
  *
- * See docs/VC5-IDIOMS.md "SIB base/index order" for the counter-evidence:
+ * See docs/brally/VC5-IDIOMS.md "SIB base/index order" for the counter-evidence:
  * our cl DOES emit base=pointer (0x1006D000, 0x10054390), but only when
  * the base is a pointer VALUE in a register, never for `this`+const.
  */

@@ -2,8 +2,8 @@
 
 The port plays the Top Gear Rally soundtrack as lossless audio. The N64 build
 stores it as six FastTracker II modules, zlib-packed in the ROM;
-`tools/extract_xm.py` finds and unpacks them, `tools/xm_render.c` renders them,
-ffmpeg encodes FLAC. Output goes to **`testdata/music_xm`** - the directory
+`tools/tgrally/extract_xm.py` finds and unpacks them, `tools/tgrally/xm_render.c` renders them,
+ffmpeg encodes FLAC. Output goes to **`reference/brally/data/music_xm`** - the directory
 `setup.sh` uses, and therefore the one everything downstream reads. Exporting
 anywhere else leaves the stale copy in place and looks, from outside, exactly
 like a run that did nothing. That happened this session.
@@ -48,15 +48,15 @@ transposition:
 
     8363 * 1712 / amiga(n)  ==  8363 * 2^((4608 - (7680 - n*64)) / 768)
 
-## The oracle: `tools/xm_oracle.py`
+## The oracle: `tools/tgrally/xm_oracle.py`
 
 Scores `xm_render.c` against **libopenmpt** - OpenMPT's replayer, validated
 against FastTracker II itself, and what MilkyTracker and VLC use.
 
     brew install libopenmpt
-    python3 tools/extract_xm.py "<rom>" testdata/music_xm --keep-xm
-    python3 tools/xm_oracle.py testdata/music_xm/*.xm
-    python3 tools/xm_oracle.py --per-channel testdata/music_xm/xm_0EBC00.xm
+    python3 tools/tgrally/extract_xm.py "<rom>" reference/brally/data/music_xm --keep-xm
+    python3 tools/tgrally/xm_oracle.py reference/brally/data/music_xm/*.xm
+    python3 tools/tgrally/xm_oracle.py --per-channel reference/brally/data/music_xm/xm_0EBC00.xm
 
 Design points worth not re-deriving:
 

@@ -341,7 +341,7 @@ BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
 /* 0x10022350 -- AND IT IS *NOT* A DUPLICATE OF br_dl.c's
  * br_dl_light_vertex, whatever the pairing table says.
  *
- * config/shared.csv pairs this with BRGlide 0x10022AC0 as `shared`, matched
+ * config/brally/shared.csv pairs this with BRGlide 0x10022AC0 as `shared`, matched
  * by `shape` -- the weakest class it has, a similarity rather than a byte
  * match. Compared instruction by instruction the two are the same routine
  * with ONE constant changed, three times over:
@@ -385,7 +385,7 @@ BrGfxWords *BrGbiMatrix(BrGfxWords *pCmd)
 /* WHAT IT DOES: handles the drawing command that hands the renderer a ready-
  * made combined transform matrix outright, replacing whatever the matrix
  * commands had built up. */
-/* port-only body; Glide match is src/core/generated/0x10023900.c */
+/* port-only body; Glide match is src/brally/core/generated/0x10023900.c */
 
 /* 0x10024150  G_MOVEMEM.
  *
@@ -463,8 +463,8 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
  * size of the image a load is about to read from, and -- if a run was not
  * already in progress -- marks this command as where the run begins. */
 /* @implements 0x10029EB0 d3d BrGbiTexScanSetImg */
-/* @t4-pass 0x10029420 1 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029420 2 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029420 1 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10029420 2 2026-09-07 probes 53 bytes 83 insns 24 regions 2 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10029420 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 83/83 insns 24/24 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -472,7 +472,7 @@ BrGfxWords *BrGbiMoveMemMatrix(BrGfxWords *pCmd)
  * multiset (rows 0+0), 2 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10029420 glide BrGbiTexScanSetImg */
 void BrGbiTexScanSetImg(BrGfxWords *pCmd)
@@ -498,14 +498,14 @@ void BrGbiTexScanSetImg(BrGfxWords *pCmd)
  * the source image into the palette buffer. The number of bytes comes
  * straight from the command and is not checked, here or in the original. */
 /* @implements 0x10029F10 d3d BrGbiTexScanLoadTlut */
-/* @t4-pass 0x10029480 1 2026-09-07 probes 25 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029480 2 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029480 3 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029480 1 2026-09-07 probes 25 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10029480 2 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10029480 3 2026-09-07 probes 62 bytes 109 insns 34 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10029480 2026-09-07 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 109/109 insns 34/34 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 3 zero-movement 2 3
- * residue after tools/crank.py: 62 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 62 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10029480 glide BrGbiTexScanLoadTlut */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* tlut dest, 0x100A9E58 */
@@ -530,7 +530,7 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
 
     /* The source pointer is read HERE, not at the top: the original loads the
      * destination global first and the timg pointer only when the length is
-     * done, and that order is what puts the copy's src/dst in the original's
+     * done, and that order is what puts the copy's src/brally/dst in the original's
      * registers. */
     src = (uint8_t *)g_brTexScanTimgAddr;
     g_brTexScanSrcSeen = src;
@@ -548,8 +548,8 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
  * one that gets the short `and eax,imm32` encoding on the other side.
  * Every instruction is the original's. */
 /* @implements 0x10029FA0 d3d BrGbiTexScanLoadBlock */
-/* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10029510 1 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10029510 2 2026-09-07 probes 67 bytes 93 insns 27 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10029510 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 93/94 insns 27/27 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -557,7 +557,7 @@ void BrGbiTexScanLoadTlut(const BrGfxWords *pCmd)
  * multiset (rows 0+0), 1 masked region, 1 B short on encoding;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10029510 glide BrGbiTexScanLoadBlock */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */          /* stageSrc, 0x105D17F0 */
@@ -662,8 +662,8 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
  * Textures have to be powers of two, so this is how an odd width or height
  * gets rounded up. Anything above 128 is capped, and anything of 1 or less
  * gives zero. */
-/* @t4-pass 0x10027290 1 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027290 2 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027290 1 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027290 2 2026-09-07 probes 50 bytes 97 insns 34 regions 8 rows 0 census yes  (tools/brally/crank.py) */
 /* DEAD 2026-09-09: branchy-tail respellings (returns adjacent/reversed,
  * r=8-first, r initialised at declaration, ternary, reversed compare, a
  * copy local for the whole chain, unsigned param with per-site casts, K&R
@@ -681,8 +681,8 @@ void BrGbiTexScanOtherModeL(const BrGfxWords *pCmd)
  * cmp/mov/jle).  A5 oracle EQUIVALENT on 64 inputs; behavioural verdict
  * outranks the byte residue.  Dead probes: the comment block above.
  * Do not reopen before the end-grind. */
-/* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027290 5 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027290 6 2026-09-19 probes 26 bytes 94 insns 35 regions 1 rows 7 census yes  (tools/brally/crank.py) */
 /* @implements 0x10027290 glide BrGbiSizeShift */
 int BrGbiSizeShift(int n)
 {
@@ -719,11 +719,11 @@ int BrGbiSizeShift(int n)
  * multiset (rows 0+0), 2 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 4 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 3 and 4);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10028BF0 d3d BrGbiBlit */
-/* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027F00 1 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027F00 2 2026-09-07 probes 18 bytes 124 insns 52 regions 3 rows 0 census yes  (tools/brally/crank.py) */
 /* DEAD 2026-09-09 (all at 124 B RAW 6+6 REGNORM 0+0 -- a three-register
  * role rotation esi/edi/ebx): named locals for a3, a5, the shift or the
  * texels-per-word result; 8* on the left; pitch declared first; both
@@ -829,7 +829,7 @@ void BrFadeDrawSprite(const uint32_t *pRecs, float alpha)
          * original and differs only in reaching its second operand base-only,
          * which is what makes this allocation and not source -- see the
          * "INTEGER adds of two fields of the SAME struct" entry in
-         * docs/VC5-IDIOMS.md. */
+         * docs/brally/VC5-IDIOMS.md. */
         s = pr->y1;
         d = pr->y0;
         b = pr->x1;

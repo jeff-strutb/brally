@@ -13,7 +13,7 @@
  * `66 83 7e 12 18` (the gate) hits twice in Glide and once in D3D;
  * `80 e2 fc` (the green mask in the 565 packer) and `81 e1 f8 ff 00 00` (the
  * key packer) hit in Glide only.  So there is nothing to cross-check against
- * for these, and config/shared.csv reports them unpaired for the same reason.
+ * for these, and config/brally/shared.csv reports them unpaired for the same reason.
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -91,8 +91,8 @@ void BrSurfFree(BrSurf *pSurf)
  * renderer uses and flipping the picture the right way up, since Windows
  * stores bitmaps bottom row first. A zero-width or zero-height picture copies
  * nothing rather than running away. */
-/* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x100011C0 1 2026-09-07 probes 53 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100011C0 2 2026-09-07 probes 52 bytes 121 insns 48 regions 3 rows 6 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x100011C0 3 2026-09-13 probes 14 bytes 117 insns 48 regions 3 rows 0 census no  (hand, fn.py variants: acc-first OR, 32-bit acc, single-expression acc, rows after the guard, rows before the guard, guard on rows, named hi term, declaration order, masked reads, x/loop spellings; all 117/48/0+0) */
 /* @t4-pass 0x100011C0 4 2026-09-13 probes 10 bytes 117 insns 48 regions 3 rows 0 census yes  (slot census: one written slot, cy's spent slot holding the row counter; fn.py variants around it: int rows, rows-- statement, != 0 test, stride-first product, explicit pBits sums, !cy / x guards, *pDst++ store, indexed first read; all 117/48/0+0) */
 /* @t3 0x100011C0 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -194,9 +194,9 @@ BrSurf *BrSurfFromBitmap(const BrGdiBitmap *pbm)
  * colour is skipped when the image is drawn. The colour is given in the
  * ordinary Windows form and stored in the reduced form the renderer compares
  * against. */
-/* @t4-pass 0x100014A0 1 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x100014A0 2 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x100014A0 3 2026-09-13 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x100014A0 1 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100014A0 2 2026-09-07 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100014A0 3 2026-09-13 probes 78 bytes 51 insns 16 regions 1 rows 2 census yes  (tools/brally/crank.py) */
 /* @t3 0x100014A0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 51/51 insns 16/16 rows 1+1 regions 1 oracle EQUIVALENT
  * @t3-effort passes 3 zero-movement 2 3

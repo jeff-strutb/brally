@@ -87,10 +87,10 @@ typedef struct {
  * key pressed -- and, on a full match, calls that word's handler.  An empty
  * code word matches trivially and always fires.  Scanning continues through
  * the whole table, so more than one word can trigger in a single call. */
-/* @t4-pass 0x10040A90 1 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10040A90 2 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10040A90 3 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10040A90 4 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10040A90 1 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10040A90 2 2026-09-07 probes 50 bytes 91 insns 37 regions 5 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10040A90 3 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10040A90 4 2026-09-20 probes 50 bytes 91 insns 37 regions 4 rows 7 census yes  (tools/brally/crank.py) */
 /* @t3 0x10040A90 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 91/91 insns 37/38 rows 4+3 regions 4 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4

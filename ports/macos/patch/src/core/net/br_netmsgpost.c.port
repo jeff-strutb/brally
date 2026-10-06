@@ -1,9 +1,0 @@
-# Port deviations for src/core/net/br_netmsgpost.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop define:_CRTIMP
-@drop include:<windows.h>
-@drop var:DAT_1021c9b0
-@drop var:DAT_10226a38
-@drop var:DAT_10226a54
-@drop fn:FUN_100038a0

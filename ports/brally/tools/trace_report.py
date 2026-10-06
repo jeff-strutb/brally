@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Turn the traced build's memory trace into what each source site touched.
 
-Inputs (from BR_TRACE_BUILD=1 ports/macos/wasm/build_wasm.sh and scripted
-runs of build/wasm_trace/brally):
-  build/wasm_trace/trace_sites.csv   site -> object, code offset, kind, width
-  build/wasm_trace/trace.bin         per-site counts, address samples, values
-  build/wasm_trace/obj/*.o           line tables (DWARF) of each object
+Inputs (from BR_TRACE_BUILD=1 ports/brally-wasm/wasm/build_wasm.sh and scripted
+runs of build/brally/wasm32-trace/brally):
+  build/brally/wasm32-trace/trace_sites.csv   site -> object, code offset, kind, width
+  build/brally/wasm32-trace/trace.bin         per-site counts, address samples, values
+  build/brally/wasm32-trace/obj/*.o           line tables (DWARF) of each object
 Address maps: ports/brally/types/globals.csv (original globals by address).
 
-Output build/portable/trace/:
+Output build/brally/null-soft/trace/:
   sites.csv     one row per executed load/store: source file:line:col,
                 kind, width, count, the objects and offsets it touched,
                 how many of its 4-byte values were addresses (and to what)
@@ -69,7 +69,7 @@ def line_table(obj):
 
 def main():
     os.chdir(ROOT)
-    T = 'build/wasm_trace'
+    T = 'build/brally/wasm32-trace'
     sites = list(csv.DictReader(open(os.path.join(T, 'trace_sites.csv'))))
     data = open(os.path.join(T, 'trace.bin'), 'rb').read()
     n = struct.unpack_from('<I', data, 0)[0]
@@ -83,12 +83,12 @@ def main():
     lax_cache = {}
 
     def remap(lc):
-        m = re.match(r'build/wasm_trace/lax/(.*)\.i:(\d+):(\d+)$', lc)
+        m = re.match(r'build/brally/wasm32-trace/lax/(.*)\.i:(\d+):(\d+)$', lc)
         if not m:
             return lc
         src = m.group(1).replace('__', '/')
         if src not in lax_cache:
-            ii = open('build/wasm_trace/lax/%s.i' % m.group(1), encoding='latin-1').read().split('\n')
+            ii = open('build/brally/wasm32-trace/lax/%s.i' % m.group(1), encoding='latin-1').read().split('\n')
             orig = open(src, encoding='latin-1').read().split('\n') if os.path.exists(src) else []
             idx = collections.defaultdict(list)
             for k2, l2 in enumerate(orig):
@@ -160,7 +160,7 @@ def main():
     # an object's extent never runs past the next address any original
     # code references on its own (a byte array declared huge in one file
     # would otherwise swallow its neighbours)
-    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/wasm/sites.csv'))
+    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))
                    if r['addend'] == '0' and 0x10077000 <= int(r['va'], 16) < 0x118F2000})
     capped = []
     for va, end, nm, rec, esz, isbytes in canon:
@@ -197,7 +197,7 @@ def main():
             return '%s<%s>' % (nm, rec), (ea - va) % esz
         return nm, ea - va
 
-    out = os.path.join('build/portable/trace')
+    out = os.path.join('build/brally/null-soft/trace')
     os.makedirs(out, exist_ok=True)
     objects = collections.defaultdict(lambda: collections.defaultdict(
         lambda: {'w': set(), 'ptr': 0, 'n': 0, 'sites': set()}))

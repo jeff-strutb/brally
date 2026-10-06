@@ -154,7 +154,7 @@
  *    `(void *)(size_t)1`; if the slot is ever retyped, this is the call site
  *    that changes.
  *
- * 5. config/shared.csv pairs 0x10044050 AND 0x10044070 to the SAME Glide
+ * 5. config/brally/shared.csv pairs 0x10044050 AND 0x10044070 to the SAME Glide
  *    address 0x1003D5A0, and likewise 0x10044010/0x10044030 to 0x1003D560 and
  *    0x10044090/0x100440B0 to 0x1003D5E0.  They are NOT the same function:
  *    each pair differs only in its tail call (0x10043E70 vs 0x10047360), which

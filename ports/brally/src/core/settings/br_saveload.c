@@ -40,7 +40,7 @@
  * (the 14-instruction / 33-byte deficit).  Rematerialise-vs-copy is a low-level
  * codegen choice with no source handle found.
  *
- * DEAD, do not re-run (each measured with tools/fnmatch/fn.py --detail regnorm):
+ * DEAD, do not re-run (each measured with tools/brally/fnmatch/fn.py --detail regnorm):
  *   - `arg` typed char* (Ghidra's param type): inert, still CSEs (2+16);
  *   - Ghidra's literal comma-operator form with a char* count (`if (mode==2 ||
  *     (path=arg, cnt=arg, mode==3))`): 1+16, FIRSTDIV worse (+0x4);
@@ -73,9 +73,9 @@
  * it); any other mode opens the second argument as a path.  Returns the sub-
  * loader's result for modes 0/1/4, 1/0 for the config read, and -- when the
  * file will not open -- whether the second argument's low byte was non-zero. */
-/* @t4-pass 0x1006A080 1 2026-09-07 probes 150 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006A080 2 2026-09-07 probes 149 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006A080 3 2026-09-13 probes 131 bytes 606 insns 206 regions 14 rows 18 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006A080 1 2026-09-07 probes 150 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006A080 2 2026-09-07 probes 149 bytes 636 insns 220 regions 8 rows 10 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006A080 3 2026-09-13 probes 131 bytes 606 insns 206 regions 14 rows 18 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1006A080 4 2026-09-20 probes 12 bytes 606 insns 206 regions 14 rows 18 census yes  (default-arm path=/count= assignment-order swap: inert, matches the dead list) */
 /* @t4-pass 0x1006A080 5 2026-09-20 probes 10 bytes 606 insns 206 regions 14 rows 18 census no   (baseline reconfirm; the CSE-vs-rematerialise arg cascade has no source handle) */
 /* @t3 0x1006A080 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

@@ -1,0 +1,12 @@
+# Port deviations for src/brally/core/net/br_peerreset.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop type:BrPeerRec
+@drop var:DAT_117b3250
+@drop var:DAT_117b324c
+@drop var:DAT_11849e58
+@drop var:g_aBrPeer71
+@drop var:g_aBr178FEF8
+@drop fn:FUN_1006a330

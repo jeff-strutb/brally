@@ -31,8 +31,8 @@ typedef int (*funcptr)();
 
 /* Forward declarations for unknown functions/globals */
 /* The collision grid: four cells of 150 BrCollPlane records (32 bytes each,
- * include/slice1_08.h) at 0x11773698, then the 200-node contact pool at
- * 0x117781B0 (include/br_collresp.h). Only the first seven dwords of a plane
+ * src/brally/include/slice1_08.h) at 0x11773698, then the 200-node contact pool at
+ * 0x117781B0 (src/brally/include/br_collresp.h). Only the first seven dwords of a plane
  * are cleared; the triangle index / flags word at +0x1C is left alone. */
 typedef struct BrCollPlaneZ {
   float nx, ny, nz;
@@ -71,7 +71,7 @@ typedef struct BrCollNodeZ {
  * 828,800,82c,804,830,838,834,83c then 198,844,840), the down-counted 150
  * inner loop, the `eax-4` biased plane pointer, both pointer-bound outer
  * loops, the 8-byte node loop -- is byte-for-byte identical.
- * tools/corpus.py: NO solved function anywhere in the tree contains a run of
+ * tools/brally/corpus.py: NO solved function anywhere in the tree contains a run of
  * three of these instructions, so there is no proven spelling to copy.
  * DEAD PROBES (all still 132 bytes, one zero register, under /O2 /Op):
  *   floats assigned 0.0f / 0.0 / (float)0.0; all-int declarations; the
@@ -91,10 +91,10 @@ typedef struct BrCollNodeZ {
  * four cells of the collision grid (150 plane records each), the 200-node
  * contact pool, the contact list head and its bump cursor, and the handful
  * of accumulators next to them. */
-/* @t4-pass 0x10063DD0 1 2026-09-07 probes 58 bytes 132 insns 33 regions 1 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063DD0 2 2026-09-07 probes 58 bytes 132 insns 33 regions 1 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063DD0 3 2026-09-20 probes 40 bytes 136 insns 33 regions 1 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063DD0 4 2026-09-20 probes 58 bytes 136 insns 33 regions 1 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10063DD0 1 2026-09-07 probes 58 bytes 132 insns 33 regions 1 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063DD0 2 2026-09-07 probes 58 bytes 132 insns 33 regions 1 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063DD0 3 2026-09-20 probes 40 bytes 136 insns 33 regions 1 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063DD0 4 2026-09-20 probes 58 bytes 136 insns 33 regions 1 rows 7 census yes  (tools/brally/crank.py) */
 /* @t3 0x10063DD0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 136/134 insns 33/34 rows 4+3 regions 1 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4

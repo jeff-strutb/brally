@@ -9,7 +9,7 @@
  * Byte-for-byte the shape of BrItemDrawIconRow (0x10037FA0.cpp) over the
  * other volume level global; see that file for the vcall-imm8 and the
  * `x + i * 0xc` strength-reduction levers.  The C body in
- * src/core/menus/br_uictlhook.c is tagged at the D3D twin. */
+ * src/brally/core/menus/br_uictlhook.c is tagged at the D3D twin. */
 class BrIconItem {
 public:
     virtual void s0();

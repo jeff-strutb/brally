@@ -98,10 +98,10 @@ static BrLerpNode g_aBrPolyPool[BR_POLY_POOL_NODES];
  * that fall outside, and puts a new corner exactly where the outline crosses
  * the edge. Calling it four times -- once per side -- is how a triangle gets
  * cut down to what actually fits on screen. */
-/* @t4-pass 0x1000DF00 1 2026-09-07 probes 97 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000DF00 2 2026-09-07 probes 92 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000DF00 3 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x1000DF00 4 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000DF00 1 2026-09-07 probes 97 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000DF00 2 2026-09-07 probes 92 bytes 359 insns 132 regions 5 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000DF00 3 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1000DF00 4 2026-09-10 probes 30 bytes 339 insns 127 regions 3 rows 2 census yes  (tools/brally/crank.py) */
 /* @t3 0x1000DF00 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 339/347 insns 127/129 rows 2+0 regions 3 oracle UNCLASSIFIED
  * @t3-effort passes 4 zero-movement 3 4
@@ -112,7 +112,7 @@ static BrLerpNode g_aBrPolyPool[BR_POLY_POOL_NODES];
  * shared by both arms through a goto, and the look-ahead starts AS p so
  * the null case reuses p instead of materialising a zero.
  * 30 compiles in the last pass, levers accepted: none that survived the
- * cluster rule; every candidate and score is in build/match/crank.log.
+ * cluster rule; every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x1000DF00 glide BrPolyClipPlane */
 void BrPolyClipPlane(BrPolyList *pList, BrPolyDistFn pfnDist)

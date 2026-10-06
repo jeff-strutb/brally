@@ -72,7 +72,7 @@ above `_<Name> PROC NEAR` it prints every local's frame offset as
 `_name$ = <offset>` - the recomp side of the slot-map work three dossiers
 are grinding on. It immediately falsified br_drawcar.c's standing claim
 that pack0/pack1 sat in fresh dwords (`_pack0$ = 8` - already in the reused
-arg slots). Recipe in docs/VC5-IDIOMS.md. Do not infer slots from
+arg slots). Recipe in docs/brally/VC5-IDIOMS.md. Do not infer slots from
 displacement histograms across two builds with different frame sizes.
 
 ## 2026-09-03b: measure a spelling on ALL siblings that share one allocator
@@ -117,7 +117,7 @@ catch it either. The region count had scored all four as MATCHING through
 eight passes of grinding. Fixing it: reloc-masked byte diff 3,855 -> 3,727,
 instruction count to exactly 2,328 = 2,328.
 
-Built `tools/msetdiff.py` for this - register-blind instruction-multiset
+Built `tools/brally/msetdiff.py` for this - register-blind instruction-multiset
 diff that normalises registers (32/16/8), esp displacements and relocs but
 KEEPS small immediates. **Run it on any function that has stalled.** The
 signature it catches: a region count that will not move while the
@@ -140,7 +140,7 @@ compiler-internal walls, not lack of effort.
 
 ## 2026-09-03: three EMITTER-level residues in one session (C++ lane)
 
-Full entries with dead-probe lists are in `docs/VC5-IDIOMS.md`; the short
+Full entries with dead-probe lists are in `docs/brally/VC5-IDIOMS.md`; the short
 form, because these are recognition patterns you want before you start
 probing:
 
@@ -199,7 +199,7 @@ thrice-read value) and `fsubr st(1)` (operate against the copy still on
 the stack). Unnamed, VC5 re-associates and spills.
 Signature of a missing name: `fld [const]; fmul st(1)` where the original
 has `fmul [const]`, plus spill slots the original does not use.
-Full entry in docs/VC5-IDIOMS.md. This does not repeal the tangled-DAG
+Full entry in docs/brally/VC5-IDIOMS.md. This does not repeal the tangled-DAG
 wall (0x1000EAF0, BrVec3Project) but it is cheap and it should be tried
 BEFORE calling any float function a coloring wall.
 
@@ -248,7 +248,7 @@ RELOADS a field the source just stored to, and there VC5's store-to-load
 forwarding does the caching, so re-writing the access does not undo it.
 
 
-## 2026-09-03 (lane d29628ed) - three entries added to docs/VC5-IDIOMS.md
+## 2026-09-03 (lane d29628ed) - three entries added to docs/brally/VC5-IDIOMS.md
 
 1. **The commutative-float canonicalisation covers a WHOLE FLAT
    SUM-OF-PRODUCTS, not one add.** Eleven spellings of a 4x4 projection

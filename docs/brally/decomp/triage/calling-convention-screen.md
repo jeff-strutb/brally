@@ -52,7 +52,7 @@ and its dossier records a deliberate collapsed-loop DEVIATION -- the original
 wraps the body in a 28-iteration loop whose extra passes cannot change anything
 -- which blocks byte-exactness on its own.
 
-**Multi-argument thiscall recipe** (`include/br_match.h` explains why): wrap
+**Multi-argument thiscall recipe** (`src/brally/include/br_match.h` explains why): wrap
 EVERY argument after `this` in its own 4-byte struct and declare the function
 `BR_THISCALL1` (`__fastcall`). `__fastcall` *skips* a struct when handing out
 ecx/edx rather than stopping at it, so wrapping only the second argument lets
@@ -61,7 +61,7 @@ its own is a no-op marker - never redefine it.
 
 **Attribution, when several sessions share the tree:** every session commits as
 the same git user, so `git log --author` and blame CANNOT tell them apart. The
-only reliable record of whose work a row is is `build/match/lane_claims.csv` --
+only reliable record of whose work a row is is `build/brally/win32/match/lane_claims.csv` --
 check which token held the VA, never who authored the commit. I inferred
 ownership of a row from its commits on 2026-09-10 and was wrong.
 

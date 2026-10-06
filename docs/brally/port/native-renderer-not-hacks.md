@@ -15,7 +15,7 @@ binary's behaviour is the wrong layer; trial-and-error tuning of that shim waste
 and pops windows over the project lead's play session.
 
 **How to apply:** for Mac port quality issues (latency, pacing, resolution, input),
-design the native path in ports/macos from the source (renderer that consumes the
+design the native path in ports/brally-wasm from the source (renderer that consumes the
 game's display lists directly, a frame loop the port owns) -- plan from reading code,
 not from repeated game launches. Never launch windowed test runs while the project lead may be
 playing without saying so. Related: [macos-port-32bit-wasm-lane](macos-port-32bit-wasm-lane.md),

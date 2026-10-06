@@ -1,6 +1,6 @@
 /* br_hudscene.c -- drawing: the in-race overlay, the per-frame scene setup
  * and the weather steppers. Was slice2_15.c (pass-15 packet,
- * 0x10016A60-0x1001CCA0); see slice2_15.h, which stays in include/ because
+ * 0x10016A60-0x1001CCA0); see slice2_15.h, which stays in src/brally/include/ because
  * seven other translation units include it.
  *
  * RESPONSIBILITY: drawing/ -- turn geometry and images into pixels.
@@ -252,8 +252,8 @@ static __inline const BrHudSprite *BrHudSpriteAt(int32_t i)
  * and size -- the workhorse behind every dashboard graphic and menu image. It
  * points the hardware at the picture, tells it how much of it to use, and then
  * asks for the rectangle. */
-/* @t4-pass 0x10013FD0 1 2026-09-13 probes 128 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10013FD0 2 2026-09-13 probes 284 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10013FD0 1 2026-09-13 probes 128 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10013FD0 2 2026-09-13 probes 284 bytes 212 insns 56 regions 1 rows 1 census yes  (tools/brally/crank.py) */
 /* @t3 0x10013FD0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 212/217 insns 56/57 rows 1+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
@@ -1053,8 +1053,8 @@ void BrWeatherRandomiseParticles(void)
  * strength wander randomly rather than being set anywhere -- the direction
  * wraps round the compass and the strength is held between half and full -- and
  * the result is turned into the horizontal push the snow is blown by. */
-/* @t4-pass 0x10016AA0 1 2026-09-07 probes 94 bytes 303 insns 69 regions 2 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x10016AA0 2 2026-09-07 probes 89 bytes 303 insns 69 regions 2 rows 4 census yes  (tools/crank.py) */
+/* @t4-pass 0x10016AA0 1 2026-09-07 probes 94 bytes 303 insns 69 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10016AA0 2 2026-09-07 probes 89 bytes 303 insns 69 regions 2 rows 4 census yes  (tools/brally/crank.py) */
 /* @implements 0x10016AA0 glide BrWeatherStepWind */
 /* @implements 0x100194E0 d3d BrWeatherStepWind */
 void BrWeatherStepWind(void)

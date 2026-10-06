@@ -4,7 +4,7 @@
 
 > 0x1005AFF0 BrCtlInputApply re-transcribed (C++ lane, 46d1eac6), 3 insns from T4. Levers: volatile keeps a dead store; frame slots = refcount sort; per-case block-local signs; header prefix fixes operand order; VC5 tail cross-jump + FUN_0043d16c re-duplication at <=20 B is the open residue.
 
-Banked 2026-10-05 as T3 (commit 46d1eac6, src/core/driving/BrCtlInputApply_1005AFF0.cpp,
+Banked 2026-10-05 as T3 (commit 46d1eac6, src/brally/core/driving/BrCtlInputApply_1005AFF0.cpp,
 `BrCar::CtlInputApply`, C twin in br_ctlinput.c retired to a prototype). Live oracle
 EQUIVALENT on 20_quickrace_drive; A7 whole-image run still owed after the commit.
 

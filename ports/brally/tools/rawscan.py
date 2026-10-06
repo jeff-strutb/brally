@@ -12,7 +12,7 @@ address (an integer-to-pointer conversion of the load): that marks a
 pointer field.
 
 Usage: rawscan.py [--jobs N] [FILE...]      (default: every core file)
-Output: build/portable/raw.csv, build/portable/raw_bases.csv
+Output: build/brally/null-soft/raw.csv, build/brally/null-soft/raw_bases.csv
 """
 import argparse
 import concurrent.futures
@@ -23,7 +23,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-OUT = os.path.join(ROOT, 'build', 'portable')
+OUT = os.path.join(ROOT, 'build', 'brally', 'null-soft')
 FLAGS = ['-fsyntax-only', '-D_FORTIFY_SOURCE=0', '-w', '-ferror-limit=0', '-fms-extensions', '-fdeclspec',
          '-Wno-return-mismatch', '-Wno-error=incompatible-pointer-types',
          '-Wno-error=incompatible-function-pointer-types', '-Iports/brally/platform/include', '-Iports/brally/include',

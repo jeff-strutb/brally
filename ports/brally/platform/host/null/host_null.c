@@ -5,9 +5,9 @@
  * up, for tests, and for lockstep against the 32-bit lane.
  *
  * Directories (environment):
- *   BR_CDROOT   the CD's files            (default testdata/disc)
+ *   BR_CDROOT   the CD's files            (default reference/brally/data/disc)
  *   BR_GAMEDIR  the install directory     (default: the CD root)
- *   BR_SAVEDIR  saves and settings        (default build/portable/save)
+ *   BR_SAVEDIR  saves and settings        (default build/brally/null-soft/save)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,13 +25,13 @@ void host_init(int argc, char **argv)
     (void)argc;
     (void)argv;
     e = getenv("BR_CDROOT");
-    snprintf(s_cd, sizeof s_cd, "%s", e ? e : "testdata/disc");
+    snprintf(s_cd, sizeof s_cd, "%s", e ? e : "reference/brally/data/disc");
     e = getenv("BR_GAMEDIR");
     snprintf(s_game, sizeof s_game, "%s", e ? e : s_cd);
     e = getenv("BR_SAVEDIR");
-    snprintf(s_save, sizeof s_save, "%s", e ? e : "build/portable/save");
+    snprintf(s_save, sizeof s_save, "%s", e ? e : "build/brally/null-soft/save");
     host_mkdir("build");
-    host_mkdir("build/portable");
+    host_mkdir("build/brally/null-soft");
     host_mkdir(s_save);
 }
 

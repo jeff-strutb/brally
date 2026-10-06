@@ -10,16 +10,16 @@ fixed (commit 9669b96c):
 
 1. The join gated codegen (T3) status on the function ALSO having a sweep-report
    row (`elif m and va in t3`). Functions filed into their own module
-   (`src/core/cpp/<VA>.cpp`) carry an `@t3` tag but no report row, so they fell
+   (`src/brally/core/cpp/<VA>.cpp`) carry an `@t3` tag but no report row, so they fell
    through to grey. Fixed: T3 is colored from the tag set regardless of the
    report.
-2. `build/match/tier3.csv` is an untracked build artifact nobody commits, so a
+2. `build/brally/win32/match/tier3.csv` is an untracked build artifact nobody commits, so a
    render against a stale copy under-counts. Fixed: the generator now shells out
    to `tiers.py` at load to regenerate it from source `@t3` tags first.
 
 **So a grey box in the map is now trustworthy as genuinely-undone** - before,
 "largest grey box" was mostly a stale-CSV artifact (the top ~7 were all already
-certified). Ground-truth check for any candidate: `grep -rlE "@t3 +0x<VA>" src/`.
+certified). Ground-truth check for any candidate: `grep -rlE "@t3 +0x<VA>" src/brally/`.
 The `codegen` count should equal the distinct source `@t3` tag count.
 
 Same day, `0x1000E320` BrSceneVisPrepare (1992 B) was certified T3 - its

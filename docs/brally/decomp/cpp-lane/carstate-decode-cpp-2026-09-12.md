@@ -6,7 +6,7 @@
 
 **2026-09-12: supply #1 of [pool-refresh-method-2026-09-10](../triage/pool-refresh-method-2026-09-10.md) executed on the
 DECODE half of the bitstream family - 0x10007230 BrCarStateDecode is
-BYTE-EXACT as a C++ TU (src/core/cpp/0x10007230.cpp, cpp_sweep match 4/4),
+BYTE-EXACT as a C++ TU (src/brally/core/cpp/0x10007230.cpp, cpp_sweep match 4/4),
 and 0x10007750 BrCarStateDecodeDelta sits at 844/845 B with register-blind
 multiset 1+1.** The ENCODE pair's VC4.2 wall ([vc42-is-the-real-compiler](../toolchain/vc42-is-the-real-compiler.md))
 does NOT bite on the decode side - no quantiser-argument push-early/narrow
@@ -32,11 +32,11 @@ conflict exists in a reader.
 in-place shift when the source register dies (probed 6 ways, dead list in
 the file header). Park; do not re-grind spellings.
 
-**Toolchain notes:** the cpp lane scores via `tools/cpp_sweep.py <file>` into
+**Toolchain notes:** the cpp lane scores via `tools/brally/cpp_sweep.py <file>` into
 report_cpp.csv (3 flag variants; objs at
-build/match/obj_cpp/<VA>_sweep_<va>_N.obj, symbol UNPREFIXED). fn.py/sbs.py
+build/brally/win32/match/obj_cpp/<VA>_sweep_<va>_N.obj, symbol UNPREFIXED). fn.py/sbs.py
 do not read the cpp lane; multiset via a 15-line capstone script over
-parse_coff_obj.  tools/cpp_twin_retire.py NO LONGER EXISTS
+parse_coff_obj.  tools/brally/cpp_twin_retire.py NO LONGER EXISTS
 ([cpp-twin-retire-chore](cpp-twin-retire-chore.md) is stale) - the C twin keeps its d3d-VA tag, the
 cpp file claims the glide VA; no collision.
 

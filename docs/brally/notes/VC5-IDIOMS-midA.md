@@ -1,7 +1,7 @@
 # VC5 idioms - mid-size unmatched batch A (2026-08-27)
 
 Proven against BRGlide.dll orig bins. Infer source from the bytes; never
-permute spellings. Work lives in `build/ghidra_work/<VA>.c`.
+permute spellings. Work lives in `build/brally/analysis/ghidra_work/<VA>.c`.
 
 BATCH: 0x10054A30 0x1006C990 0x1005E7B0 0x10001510 0x1005D3C0 0x100372B0
 0x10009010 0x100695C0 0x1005D060 0x10011650 0x10011300 0x10010FB0

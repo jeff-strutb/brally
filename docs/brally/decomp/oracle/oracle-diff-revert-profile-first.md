@@ -7,7 +7,7 @@
 Chasing a false A5 `DIFF` cost an entire session on 0x10028BB0 BrTex3dRegister
 (2026-09-21). The committed profile actually gave **EQUIVALENT**; every "DIFF at
 seed 9, memory at 0x1186C988" came from my own un-reverted intermediate edits to
-`tools/oracle_profiles.py` (a p2-seeding change, stub_calls experiments) still on
+`tools/brally/oracle_profiles.py` (a p2-seeding change, stub_calls experiments) still on
 disk when I re-ran `t3b_verify`. A partially-reverted world reruns as a
 DIFFERENT world on each side and manufactures a spurious DIFF.
 
@@ -16,7 +16,7 @@ the last `match_sweep`). Any dirty edit - even one you think you reverted  -
 changes the seeded world.
 
 **How to apply:** before trusting ANY t3b_verify / t3.py --qualify verdict:
-`git status --short tools/oracle_profiles.py src/.../<file>.c` must be clean (or
+`git status --short tools/brally/oracle_profiles.py src/brally/.../<file>.c` must be clean (or
 show only edits you intend). If a verdict surprises you, `git checkout --` the
 profile and the .c, re-run `match_sweep`, and re-verify BEFORE instrumenting.
 A surprising DIFF is a reason to re-check the tree, not to start a deep bug hunt.

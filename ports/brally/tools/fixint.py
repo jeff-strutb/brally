@@ -114,7 +114,7 @@ def main():
     os.chdir(ROOT)
     if not files:
         files = []
-        for ln in open('build/portable/compile.txt'):
+        for ln in open('build/brally/null-soft/compile.txt'):
             if ln.startswith('FAIL '):
                 files.append(ln.split(None, 1)[1].strip())
     total = 0

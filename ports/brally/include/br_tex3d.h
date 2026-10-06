@@ -28,7 +28,7 @@
  * A CLAIM NOBODY DECODED.  br_dl.h used to say CI4/CI8/RGBA16 was "everything
  * the models actually use"; a census of every G_SETTILE in the canonical
  * load idiom across all nineteen shipped assets says otherwise -- RGBA16
- * 1155, CI4 277, I4 32, IA8 16, and CI8 ZERO.  testdata/tracks/desert.trk
+ * 1155, CI4 277, I4 32, IA8 16, and CI8 ZERO.  reference/brally/data/tracks/desert.trk
  * carries five real textures the three arms could not touch (IA8 64x32 and
  * 64x64, I4 16x16 and two 32x8).
  *
@@ -67,7 +67,7 @@
  *
  * which is exactly why the 0xDC handler returns `p + 8*w1`.
  *
- * MEASURED IN THE RETAIL DATA (testdata/ce.rca), the run is
+ * MEASURED IN THE RETAIL DATA (reference/brally/data/ce.rca), the run is
  *
  *     FD SETTIMG(texels)  E6 LOADSYNC  F3 LOADBLOCK
  *     FD SETTIMG(tlut)    F0 LOADTLUT  E7 PIPESYNC
@@ -107,7 +107,7 @@
  * aspect/shift encoding the registrar computes for grTexDownloadMipMap.
  *
  * TWO ARMS ARE REACHED BY SHIPPED DATA AND ARE STILL REFUSED BY THE WRAPPER:
- * IA8 and I4, both in testdata/tracks/desert.trk (see the census above and
+ * IA8 and I4, both in reference/brally/data/tracks/desert.trk (see the census above and
  * in br_dl.h).  That paragraph once named them "IA4/I8/IA8", which was
  * inherited from br_dl.h and wrong twice -- IA4 is a catch-all case in
  * 0x10027220, and I8 occurs in no shipped asset at all.  Both are
@@ -204,7 +204,7 @@ enum {
 /* 0x100250D0, THE EXPANDER, whole -- all nine arms and both mirrors.
  *
  * This is the GLIDE body.  The same dispatch slot holds a DIFFERENT function
- * in BRD3D.dll (0x10025AB0) and config/shared.csv classes the pair
+ * in BRD3D.dll (0x10025AB0) and config/brally/shared.csv classes the pair
  * `renderer`; the two differ in the destination pixel format -- 16-bit
  * stores and an ARGB1555 helper here, 32-bit stores and an ARGB8888 helper
  * there.  See the banner at the definition for the measurement.

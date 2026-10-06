@@ -22,8 +22,8 @@
  * Corpus: no proven spelling to copy. */
 /* @t4-pass 0x100271F0 1 2026-09-13 probes 20 bytes 39 insns 14 regions 1 rows 1 census no  (hand, fn.py variants of the byte swap) */
 /* @t4-pass 0x100271F0 2 2026-09-13 probes 11 bytes 39 insns 14 regions 1 rows 1 census no  (hand, fn.py: uchar lo local + ushort hi, ushort parameter, (uchar)u<<8 | (ushort)(u>>8), a SWAP16 macro, lo reused for the alpha bit (50 B, 2+2), w built as uchar then <<= 8, (uchar)v from the int, int lo/u masks, a byte-lane union (54 B), *0x100, (uchar)(u&0xff) -- the `and eax,0xff` never survives; end-of-TU placement inert) */
-/* @t4-pass 0x100271F0 2 2026-09-13 probes 38 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x100271F0 3 2026-09-13 probes 54 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x100271F0 2 2026-09-13 probes 38 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100271F0 3 2026-09-13 probes 54 bytes 39 insns 14 regions 1 rows 1 census yes  (tools/brally/crank.py) */
 /* @t3 0x100271F0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 39/44 insns 14/15 rows 1+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 2 3

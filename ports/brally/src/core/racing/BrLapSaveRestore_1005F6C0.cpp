@@ -33,7 +33,7 @@
  * @t3-effort passes 2 zero-movement 5 6
  * Residue is one register choice in one store (see RESIDUE above); A5 oracle
  * EQUIVALENT on the C++ object.  Passes 1-4 are in the git history of
- * src/core/racing/br_lapsave.c (C lane, 2076 B). */
+ * src/brally/core/racing/br_lapsave.c (C lane, 2076 B). */
 /* @implements 0x1005F6C0 glide BrLapSaveRestore
  * @cpp_symbol ?LapSaveRestore@BrCar@@QAEXXZ */
 #define _CRTIMP __declspec(dllimport)

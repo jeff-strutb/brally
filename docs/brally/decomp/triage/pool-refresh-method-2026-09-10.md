@@ -12,7 +12,7 @@ compiler-decision class.** ([t3-frontier-map-2026-09-10b](../log/t3-frontier-map
 
 **Why both obvious pools mislead:**
 - `t4lane.py --claim` (Pool B, smallest T1) is dry: every fresh small row is
-  either CPP-lane (`src/core/cpp/<VA>.cpp` scratch exists), already parked in a
+  either CPP-lane (`src/brally/core/cpp/<VA>.cpp` scratch exists), already parked in a
   slice, or a byte-lane/x87 wall (t4lane annotates `N 16-bit ops` / `N fxch`).
 - **`tiers.py --list T1` LIES**: it calls a VA "T1 not started" whenever the
   cpp scratch or draft isn't compiled into the project - even when that VA is
@@ -27,9 +27,9 @@ compiler-decision class.** ([t3-frontier-map-2026-09-10b](../log/t3-frontier-map
 
 **THE DE-DUP FILTER (reusable - build the honest pool with it):**
 1. certified set: `t3.py --vas | tr A-Z a-z | sed 's/^0x//' | sort -u`
-2. from `build/match/report.csv`, take `status==diff` rows, drop certified,
-   drop EH (orig first 2 bytes `6aff` via `xxd -l 2 build/match/orig/0x<VA>.bin`).
-3. **drop rows that already carry a ledger**: `grep -rlE "@t4-pass 0x<VA>|@implements 0x<VA>" src/`.
+2. from `build/brally/win32/match/report.csv`, take `status==diff` rows, drop certified,
+   drop EH (orig first 2 bytes `6aff` via `xxd -l 2 build/brally/win32/match/orig/0x<VA>.bin`).
+3. **drop rows that already carry a ledger**: `grep -rlE "@t4-pass 0x<VA>|@implements 0x<VA>" src/brally/`.
     Match BOTH the glide AND the d3d-twin address - most math/util rows are
    `@implements`-tagged at their d3d twin (BrMat3Mul tagged 0x10074AC0, diffs at
    glide 0x1006DD20), so a glide-only grep falsely calls them fresh.

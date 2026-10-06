@@ -8,7 +8,7 @@
  * the two runtime hook slots at 0x118ED1CC / 0x118ED1D0.  That is the boundary
  * this module owns; the geometry half of the table is br_dl.c's.
  *
- * Slot assignments read out of orig/BRGlide.dll at 0x100A9A58, not inferred:
+ * Slot assignments read out of reference/brally/orig/BRGlide.dll at 0x100A9A58, not inferred:
  *
  *     0xDC -> 0x1001E2E0    30 B    bind texture
  *     0xDD -> 0x1001E300    32 B    re-aim that texture at a new address
@@ -273,7 +273,7 @@ const uint8_t *BrDlGlScissorFrac(BrDlGl *pGl, const uint8_t *p);  /* 0x1001EB50 
 const uint8_t *BrDlGlSetTileSize(BrDlGl *pGl, const uint8_t *p);
 /* ...and note that line carries NO trailing address annotation, unlike the six
  * above it.  That is deliberate: an annotated address is one of the three ways
- * tools/isported.py decides a function IS the port of that address, and this
+ * tools/brally/isported.py decides a function IS the port of that address, and this
  * one is a counted frontier.  Annotating it would report 0x1001EC30 as ported
  * by a function that decodes nothing -- a false PORTED, which CONVENTIONS.md
  * names as the dangerous direction. */

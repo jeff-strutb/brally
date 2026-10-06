@@ -30,7 +30,7 @@ What IS allowed is a class for an **exact identity** with symmetric evidence:
 `push K; pop R` *is* `mov R, K`; a duplicated epilogue *is* the same epilogue;
 a byte-width spill whose dword reload is already an accepted singleton. Each
 one carries its guard in the code comment and every existing `@t3` tag must
-revalidate unchanged (`.venv/bin/python tools/t3.py`) after adding it.
+revalidate unchanged (`.venv/bin/python tools/brally/t3.py`) after adding it.
 
 **2026-09-12, project lead confirmed ("functionally equivalent is
 functionally equivalent"):** the x87 STACK-DUP commutative fold (`fld st;

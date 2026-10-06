@@ -2,7 +2,7 @@
  * it drives.  See br_racestep.h for the mechanism, the address pairs and the
  * blocks of the original that are deliberately not here.
  *
- * Transcribed from orig/BRGlide.dll.  Every branch below carries the address
+ * Transcribed from reference/brally/orig/BRGlide.dll.  Every branch below carries the address
  * of the instruction it is, so the two can be diffed.
  */
 #include "br_coretypes.h"   /* br_globals: its objects */
@@ -134,7 +134,7 @@ void        (*g_pfnBrRaceAiControl)(BrDriverCar *);
  * how a car that has no physics of its own -- an entrant the player never
  * sees driving -- is moved round the circuit. If it runs out of line it leaves
  * the answer untouched rather than reporting an error. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/generated/0x1005ECF0.c
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/generated/0x1005ECF0.c
  * (the original walks relocated node POINTERS and reads the fields in place;
  * the BrAiNodeAt/BrAiPoint_ bounds-checked accessors below are a port
  * addition, as is the local BrVec3 the two lerps write into). */
@@ -249,8 +249,8 @@ void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
  * the car with any lap gates it has just crossed, work out how fast it is
  * actually travelling from how far it moved, and run down a short per-car
  * countdown. Nothing happens at all while the game is paused. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is
- * src/core/racing/BrRaceDriverPost_100623E0.cpp (a __thiscall member). */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is
+ * src/brally/core/racing/BrRaceDriverPost_100623E0.cpp (a __thiscall member). */
 /* BrRaceDriverPost: prototype in br_funcs.h */
 
 /* ==========================================================================
@@ -291,7 +291,7 @@ void BR_THISCALL1 BrRaceDriverAnim(BrDriver *pDrv)
  *
  * WHY IT WAS DROPPED RATHER THAN MOVED OR NARROWED
  *
- *   - NARROWED is not available.  tools/manifest.py's form is
+ *   - NARROWED is not available.  tools/brally/manifest.py's form is
  *     `@implements 0xADDR BUILD SYMBOL` and nothing else; there is no
  *     sub-range or partial syntax anywhere in the tree.  A claim is
  *     whole-function or it is absent.

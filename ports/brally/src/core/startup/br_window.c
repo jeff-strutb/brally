@@ -134,8 +134,8 @@ int BrWindowCreate(void)
  * and resolves its entry points; if that fails the game shows an error box
  * and quits. A counter makes it run once only -- and it is never
  * decremented, so a second call does nothing at all. */
-/* @t4-pass 0x10017E30 1 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10017E30 2 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10017E30 1 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10017E30 2 2026-09-07 probes 68 bytes 211 insns 72 regions 4 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10017E30 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 211/211 insns 72/72 rows 0+0 regions 4 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -143,7 +143,7 @@ int BrWindowCreate(void)
  * multiset (rows 0+0), 4 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10017E30 glide BrWindowEarStartup */
 #include <stdlib.h>

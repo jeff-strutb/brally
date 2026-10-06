@@ -9,7 +9,7 @@
  *
  * Float literals below are the exact values of the 32-bit patterns the
  * original pushes or loads.  The ones read as memory operands were taken out
- * of orig/BRD3D.dll's .rdata with tools/pe.py, not assumed:
+ * of reference/brally/orig/BRD3D.dll's .rdata with tools/brally/pe.py, not assumed:
  *
  *   0x1008F410 =    0.0     0x1008F514 =    2.0
  *   0x1008F3BC =  255.0     0x1008F3C0 =    1/255 (0x3B808081)

@@ -31,7 +31,7 @@ OUT_CSV = os.path.join(ROOT, 'config/tgrally/functions_tgr.csv')
 OUT_MD = os.path.join(ROOT, 'docs/tgrally/decomp/modules.md')
 
 # What each architectural area of the shared engine is, in one line.  These are
-# the src/core/ folder names the PC decomp already files into; the N64 build is
+# the src/brally/core/ folder names the PC decomp already files into; the N64 build is
 # the same engine, so the same areas apply.
 AREAS = {
     'geometry':  'vector, matrix and quaternion math',

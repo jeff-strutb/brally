@@ -28,7 +28,7 @@
  *     0x1008F68C = -76    0x1008F690 = -95    0x1008F694 = -114
  *     0x1008F698 = -133   0x1008F69C = -33
  *
- * (read out of orig/BRD3D.dll .rdata with tools/pe.py, not assumed).
+ * (read out of reference/brally/orig/BRD3D.dll .rdata with tools/brally/pe.py, not assumed).
  *
  * OBJECT LAYOUTS
  * --------------

@@ -20,8 +20,8 @@
  *      TRANSCRIBE them is not the same as declining to SUPPLY them, and
  *      leaving them stubbed left real defects in ported code (see below).
  *
- *   2. THREE TRANSCRIBED BODIES, read out of orig/BRGlide.dll and re-checked
- *      against orig/BRD3D.dll instruction for instruction.
+ *   2. THREE TRANSCRIBED BODIES, read out of reference/brally/orig/BRGlide.dll and re-checked
+ *      against reference/brally/orig/BRD3D.dll instruction for instruction.
  *
  *   3. THREE ADAPTERS onto bodies that ALREADY EXIST under another name.
  *      CONVENTIONS.md's "grep the ADDRESS, not the symbol" rule; a sweep of

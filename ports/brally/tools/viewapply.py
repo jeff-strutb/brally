@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run viewmerge.py for every local view types/viewmap.csv names.
 
-Reads build/portable/views.csv (viewscan.py) for which files declare which
+Reads build/brally/null-soft/views.csv (viewscan.py) for which files declare which
 local records, applies the curated map (a row with a file applies to that
 file only and wins over the name-wide row; an empty canon means "not a
 view"), and prints viewmerge's notes.
@@ -28,7 +28,7 @@ def main():
         else:
             rules[r['view']] = r['canon']
     jobs = []
-    for r in csv.DictReader(open('build/portable/views.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/views.csv')):
         f, v = r['file'], r['view']
         if only and f not in only:
             continue

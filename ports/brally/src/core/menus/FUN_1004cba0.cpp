@@ -18,7 +18,7 @@
  *
  * 3671 B cdecl EH-frame menu-page builder, 0x100425E0 family (same class
  * layouts and the three family levers). Skeleton from
- * tools/gen_menubuilder.py --partial; the hand blocks read from the asm:
+ * tools/brally/gen_menubuilder.py --partial; the hand blocks read from the asm:
  *   - the selector list is filled from the slot count of the current
  *     profile (`DAT_100b301c[g_brSel5C10].n`): label = string 0x37 +
  *     DAT_100acad8 + the upper-cased decimal index (strcpy/strcat are the

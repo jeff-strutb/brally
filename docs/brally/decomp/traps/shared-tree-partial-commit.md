@@ -5,11 +5,11 @@
 > In a shared working tree, `git commit -- <file>` commits the WORKING-TREE version (sweeping in other sessions' uncommitted hunks); pathspecs do NOT protect you - partial-stage your hunks and commit the INDEX.
 
 **When several parallel sessions share ONE working tree, a shared file (e.g.
-tools/t3b_verify.py) shows EVERYONE's uncommitted edits together in
+tools/brally/t3b_verify.py) shows EVERYONE's uncommitted edits together in
 `git status` / `git diff`. Committing your change then has a trap that the
 usual "use pathspecs" rule does NOT cover.**
 
-**Why:** `git commit -- tools/foo.py` commits the WORKING-TREE content of that
+**Why:** `git commit -- tools/brally/foo.py` commits the WORKING-TREE content of that
 path, IGNORING the index. So even after you carefully `git apply --cached` only
 your hunks, a pathspec commit re-includes the other session's uncommitted hunks
 in the same file. I did exactly this once - swept another session's

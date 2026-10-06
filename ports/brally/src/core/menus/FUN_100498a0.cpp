@@ -18,7 +18,7 @@
  * 3993 B cdecl EH-frame menu-page builder, 0x100425E0 family (same class
  * layouts and the three family levers: char bool after the slot store,
  * raw float pushes for simple lvalues, w14-then-w344 tails). Skeleton
- * from tools/gen_menubuilder.py --partial; the three hand blocks read
+ * from tools/brally/gen_menubuilder.py --partial; the three hand blocks read
  * from the asm:
  *   - a selector whose list is filled from the slot count of the current
  *     profile (`DAT_100b301c[g_brSel5C10].n`): each item is the decimal

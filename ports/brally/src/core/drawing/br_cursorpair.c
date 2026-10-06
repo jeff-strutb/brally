@@ -39,7 +39,7 @@
  * residue is allocation/scheduling: 1+0 classified rows, 1 masked region, 3 B short;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * hand passes (tools/fnmatch/fn.py variants); the dead-probe list is in the
+ * hand passes (tools/brally/fnmatch/fn.py variants); the dead-probe list is in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1002B280 d3d BrCursorPairSet */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10575510 */

@@ -5,7 +5,7 @@
 /* @implements 0x1006AEB0 glide BrNetWritePlayerRec
  * @cpp_symbol _BrNetWritePlayerRec
  *
- * The C transcription (src/core/net/br_netpkt.c, same VA) was complete; its
+ * The C transcription (src/brally/core/net/br_netpkt.c, same VA) was complete; its
  * wall was the name-byte write homing to a slot before the push, which only
  * a BYTE-typed thiscall parameter avoids (see 0x1006B080.cpp).  The six raw
  * parameter bytes are forwarded as whole dwords out of their slots

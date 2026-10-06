@@ -1,0 +1,210 @@
+# Port deviations for src/brally/core/drawing/br_texinit.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrTexInit
+@drop define:BrTexChooseLevel
+@drop define:_CRTIMP
+@drop undef:BrTexInit
+@drop undef:BrTexChooseLevel
+@drop include:<stdlib.h>
+@drop var:g_brTex1829844
+@drop var:g_brTex1829848
+@drop var:g_brTex575420
+@drop var:g_brTex0B8C90
+@drop var:g_brTex0A7DFC
+@drop var:g_brTex0A7E00
+@drop var:g_brTex0A7E04
+@drop var:g_brTex0A7E08
+@drop fn:BrTexChooseLevel
+@drop var:g_brTexSlot18AA0A4
+@drop var:g_brTexSlot18AA0A8
+@drop var:g_brTexSlot18AA0AC
+@drop var:g_brTexSlot18AA0B0
+@drop var:g_brTexSlot18AA0B4
+@drop var:g_brTexSlot18AA0B8
+@drop var:g_brTexSlot18AA0BC
+@drop var:g_brTexSlot18AA0C0
+@drop var:g_brTexSlot18AA0C4
+@drop var:g_brTexSlot18AA0C8
+@drop var:g_brTexSlot18AA084
+@drop var:g_brTexSlot18AA0CC
+@drop var:g_brTexSlot18AA0D0
+@drop proto:BrTexHook_10024AB0
+@drop proto:BrTexHook_10025830
+@drop proto:BrTexHook_10027C60
+@drop proto:BrTexHook_10028BF0
+@drop proto:BrTexHook_10028CA0
+@drop proto:BrTexHook_10028E00
+@drop proto:BrTexHook_10028E70
+@drop proto:BrTexHook_10029060
+@drop proto:BrTexHook_100290E0
+@drop proto:BrTexHook_1002A280
+@drop proto:BrTexHook_1002A350
+@drop proto:BrTexHook_1002A430
+@drop proto:BrTexHook_1002A7A0
+@drop var:g_brTex57542C
+@drop var:g_brTex575424
+@drop var:g_brTex575428
+@drop var:g_brTex57543C
+@drop var:g_brTex4D51B8
+@drop var:g_brTex5553F0
+@drop var:g_brTex5553F4
+@drop var:g_brTex5553E8
+@drop var:g_brTex5553E0
+@drop var:g_brTex575414
+@drop proto:BrTexQueryAvail
+@drop proto:BrTexChooseLevelAbs
+@drop proto:BrGbiSolidTexBuildAbs
+@drop proto:BrTexCreateMutex
+@drop proto:FUN_10023d20
+@drop proto:FUN_10024e60
+@drop proto:FUN_100272f0
+@drop proto:FUN_10027f00
+@drop proto:FUN_100284e0
+@drop proto:FUN_100285e0
+@drop proto:FUN_10028620
+@drop proto:FUN_100287e0
+@drop proto:FUN_10028820
+@drop proto:FUN_100297f0
+@drop proto:FUN_100298c0
+@drop proto:FUN_100299a0
+@drop proto:FUN_10029cd0
+@drop proto:FUN_100281c0
+@drop proto:FUN_10072a1a
+@drop proto:FUN_10072a14
+@drop proto:FUN_10029c70
+@drop proto:FUN_1006e180
+@drop var:DAT_118ed1bc
+@drop var:DAT_118ed1c0
+@drop var:DAT_118ed1c4
+@drop var:DAT_118ed1c8
+@drop var:DAT_118ed1cc
+@drop var:DAT_118ed1d0
+@drop var:DAT_118ed1d4
+@drop var:DAT_118ed1d8
+@drop var:DAT_118ed1dc
+@drop var:DAT_118ed1e0
+@drop var:DAT_118ed19c
+@drop var:DAT_118ed1e4
+@drop var:DAT_118ed1e8
+@drop var:DAT_106b7aa0
+@drop var:DAT_10697a58
+@drop var:DAT_10697a5c
+@drop var:DAT_10697a50
+@drop var:DAT_10697a48
+@drop var:DAT_106b7a7c
+@drop fn:BrTexInit
+@after fn:BrTexInit
+
+/* ------------------------------------------------------------------ *
+ * 0x10029B10 -- texture memory to detail level.
+ *
+ *   10029B1B  cmp eax, ecx          texmem vs [0x1186C960]
+ *   10029B1D  jbe 0x10029B45        <=  -> level 2      (UNSIGNED)
+ *   10029B1F  cmp [0x10226E78], 0x2000000
+ *   10029B29  jbe 0x10029B3A        <=  -> level 1
+ *   10029B2B  cmp eax, 0x3D0900
+ *   10029B30  sbb eax, eax          -1 when texmem <  0x3D0900
+ *   10029B32  neg eax                1 when texmem <  0x3D0900, else 0
+ *
+ * `sbb/neg` is easy to read backwards: the borrow is SET when the value is
+ * LESS, so a SMALL card gets level 1 and a large one gets level 0. Higher
+ * level means LESS detail.
+ *
+ * 0x3D0900 is 4,000,000 -- four million bytes, decimal. A reader who assumes
+ * 4 MiB (0x400000) gets a threshold 194,304 bytes low, and no test on typical
+ * hardware would notice.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: decides how much texture detail the game will use, from how
+ * much texture memory the video card has and how much memory the machine
+ * has. A small card, or a machine with 32MB or less, gets less detail. The
+ * threshold is four million bytes, decimal -- not four megabytes, which is a
+ * different number. */
+/* WHAT IT DOES: the same detail-level choice, as a function of the
+ * measured texture memory rather than of the original's globals. */
+/* port-only variant of BrTexChooseLevel (matching build uses the #ifdef branch above) */
+int32_t BrTexChooseLevel(uint32_t texmem)
+{
+    if (texmem <= g_brTexLowThreshold)          /* jbe -- UNSIGNED */
+        return 2;
+    if (g_brTexSysMem <= 0x2000000u)            /* 32 MB of system RAM */
+        return 1;
+    return (texmem < 0x3D0900u) ? 1 : 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * 0x1002A640 -- install the thirteen hooks, then measure the card.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: sets the texture system up: installs the thirteen routines
+ * the rest of the engine calls to work with textures, then measures how much
+ * texture memory the card actually has and picks the detail level to match.
+ * The matching body is the D3D original (absolute slots, two free()s, a
+ * GetAvailableTextureMem query). The port records the same install order
+ * and measures through a host hook so it does not need those addresses. */
+/* WHAT IT DOES: the same setup, recording which hook went in which slot
+ * instead of writing the original's absolute addresses. */
+/* port-only variant of BrTexInit (matching build uses the #ifdef branch above) */
+void BrTexInit(const BrTexInitHost *pHost)
+{
+    uint32_t texmem;
+    int      i;
+
+    /* 0x1002A649..0x1002A6C1. The port cannot write to the original's .data
+     * addresses, so the installation is RECORDED -- which slot received which
+     * function, and in what order. That is what a consumer of this module
+     * needs to know and it is what a test can check; inventing storage at
+     * those addresses would create a second owner for slots that other
+     * modules will eventually declare. */
+    s_cInstalled = 0;
+    for (i = 0; i < BR_TEXINIT_NSLOTS; ++i)
+        s_aInstalled[s_cInstalled++] = s_aSlot[i];
+
+    /* 0x10029BD4 -- BEFORE the measurement, which is easy to get wrong by
+     * reading the listing as "install, measure, then everything else". */
+    ++s_aTail[0];                       /* call 0x100281C0 -- frontier */
+
+    /* 0x10029BDB..0x10029C14. grTexMaxAddress(tmu) - grTexMinAddress(tmu),
+     * summed over the second TMU when 0x105CCBD0 > 1.
+     *
+     * No host means no card: equal min and max, hence texmem 0, which selects
+     * level 2. That is the original's own answer for a card with no texture
+     * memory, not a substitute for one. */
+    texmem = 0;
+    if (pHost != NULL &&
+        pHost->pfnTexMinAddress != NULL && pHost->pfnTexMaxAddress != NULL) {
+        texmem = pHost->pfnTexMaxAddress(pHost->pUser, 0)
+               - pHost->pfnTexMinAddress(pHost->pUser, 0);
+        if (g_brTexTmuCount > 1) {
+            texmem += pHost->pfnTexMaxAddress(pHost->pUser, 1)
+                    - pHost->pfnTexMinAddress(pHost->pUser, 1);
+        }
+    }
+    s_texmem = texmem;
+
+    /* 0x10029C1C, before the level decision. */
+    s_g5E1820 = -1;
+
+    /* 0x10029C22 */
+    s_level = BrTexChooseLevel(texmem);
+
+    /* 0x10029C2C. Both of these are `or edi,0xFFFFFFFF` then stored, i.e. -1
+     * rather than 0 -- the `rep stosd` fills elsewhere in this binary that
+     * write 0xFFFFFFFF are the same idiom, and -1 means "empty" while 0 is a
+     * valid index. Getting it backwards is a documented hazard here. */
+    s_g5E1808 = -1;
+
+    /* 0x10029C3F. free() runs on whatever 0x106B7AA0 held, and the pointer is
+     * cleared AFTER the call -- so a second entry frees nothing rather than
+     * double-freeing. Transcribed rather than skipped because the ordering is
+     * the interesting part. */
+    ++s_cFree;
+
+    /* 0x10029C33..0x10029C5A -- five globals to zero, in the original's
+     * order, which is not ascending. */
+    for (i = 0; i < 5; ++i)
+        s_aZeroed[s_cZeroed++] = s_aZeroTarget[i];
+
+    ++s_aTail[1];                       /* 0x10029C60 call 0x10029C70   */
+    ++s_aTail[2];                       /* 0x10029C65 call 0x1006E180   */
+}
+@end

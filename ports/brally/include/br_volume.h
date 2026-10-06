@@ -39,8 +39,8 @@
  * WHY THAT CANNOT BE ASKED HERE, AND WHY THE ANSWER IS STILL REAL
  *
  * This decomp ships code only. The retail content stays with whoever owns a
- * copy: tools/extract_assets.sh pulls it out of the builder's own bin/cue into
- * testdata/, and none of it is committed. So at runtime there is never a
+ * copy: tools/brally/extract_assets.sh pulls it out of the builder's own bin/cue into
+ * reference/brally/data/, and none of it is committed. So at runtime there is never a
  * physical CD in a drive -- but the disc's contents ARE present, as files.
  *
  * The scan was previously stubbed to 0 in port/host/br_stubs.c, which made
@@ -52,8 +52,8 @@
  * Nothing needs faking, because the disc supplies the exact bytes the strcmp
  * wants. The retail image's ISO 9660 volume identifier is the literal string
  * `Boss Rally` -- in the primary descriptor at lba 16 and again in the Joliet
- * supplementary descriptor at lba 18. tools/extract_iso.py reads that field and
- * tools/extract_assets.sh records it in testdata/assets.manifest.json alongside
+ * supplementary descriptor at lba 18. tools/brally/extract_iso.py reads that field and
+ * tools/brally/extract_assets.sh records it in reference/brally/data/assets.manifest.json alongside
  * the disc's fingerprint and the list of files extracted. This service reports
  * the extracted asset root as a volume carrying that RECORDED label, and the
  * comparison is then the game's own.
@@ -97,13 +97,13 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
  * 0x10037823 compares bytes. */
 #define BR_VOLUME_WANT        "Boss Rally"
 
-/* Written by tools/extract_assets.sh, beside the assets it vouches for --
- * the same placement tools/extract_cdaudio.py uses for cdaudio.manifest.json. */
+/* Written by tools/brally/extract_assets.sh, beside the assets it vouches for --
+ * the same placement tools/brally/extract_cdaudio.py uses for cdaudio.manifest.json. */
 #define BR_VOLUME_MANIFEST    "assets.manifest.json"
 
-/* The extracted asset root. testdata/ is what the rest of the host already
- * reads (br_wireaudio.h's testdata/sfx/, brally.c's testdata/images/). */
-#define BR_VOLUME_ROOT_DEFAULT "testdata"
+/* The extracted asset root. reference/brally/data/ is what the rest of the host already
+ * reads (br_wireaudio.h's reference/brally/data/sfx/, brally.c's reference/brally/data/images/). */
+#define BR_VOLUME_ROOT_DEFAULT "reference/brally/data"
 #define BR_VOLUME_ROOT_ENV     "BR_ASSET_DIR"
 
 /* At most one volume exists today -- there is one asset root. The array shape

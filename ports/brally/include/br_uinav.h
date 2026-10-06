@@ -70,8 +70,8 @@
  * ---------------------------------------------------------------------------
  * REFERENCE BINARY
  *
- * Derived from orig/BRGlide.dll and cross-checked against orig/BRD3D.dll.
- * config/shared.csv classes every address in the table above `shared`, and the
+ * Derived from reference/brally/orig/BRGlide.dll and cross-checked against reference/brally/orig/BRD3D.dll.
+ * config/brally/shared.csv classes every address in the table above `shared`, and the
  * two builds' listings for 0x10047A60 (Glide 0x10040EB0) are identical
  * instruction for instruction, differing only in the global addresses:
  *
@@ -99,8 +99,8 @@
  * D3D addresses are used in the names below, because that is what the rest of
  * this tree uses and what slice3_32.h's BrScrGlobals is keyed on.
  *
- * MAP EXTENT WARNING, measured: config/functions.csv gives 0x10047A60 a size
- * of 161 bytes and config/functions_glide.csv gives 0x10040EB0 a size of 587.
+ * MAP EXTENT WARNING, measured: config/brally/functions.csv gives 0x10047A60 a size
+ * of 161 bytes and config/brally/functions_glide.csv gives 0x10040EB0 a size of 587.
  * The function is 587 bytes in BOTH -- the D3D entry is short, and asking
  * dumpasm for the map's 161 bytes stops in the middle of the first hit test.
  * The Glide extent is the correct one. (CONVENTIONS.md's "treat a suspicious
@@ -394,7 +394,7 @@ int32_t BrUiNavHook_10045AF0(BrUiCtl_ *pCtl);
  * 0x100489A0 -- PHASE vtable +0x0C, __thiscall. ONE FRAME OF ONE PHASE, and
  * the top of the whole chain listed at the top of this header.
  *
- * Derived from BRGlide 0x10041DD0 (config/shared.csv: `shared`, 249 bytes in
+ * Derived from BRGlide 0x10041DD0 (config/brally/shared.csv: `shared`, 249 bytes in
  * both maps, and the two listings agree instruction for instruction apart
  * from the globals):
  *

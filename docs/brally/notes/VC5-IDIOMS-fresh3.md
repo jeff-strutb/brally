@@ -1,7 +1,7 @@
 # VC5 idioms - unmatched-DLL re-attempt batch (2026-08-27)
 
 Proven against BRGlide.dll orig bins. Infer source from the bytes; never
-permute spellings. Work lives in `build/ghidra_work/<VA>.c`.
+permute spellings. Work lives in `build/brally/analysis/ghidra_work/<VA>.c`.
 
 ## Proven MATCH
 

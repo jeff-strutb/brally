@@ -1,0 +1,54 @@
+# Port deviations for src/brally/core/net/br_netlock.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:dwMilliseconds
+@drop var:hMutex
+@drop var:g_brH220DDC
+@drop var:g_br221314
+@drop fn:BrNetLockSetIfZero221314
+@drop var:WaitForSingleObject
+@drop var:ReleaseMutex
+@drop var:g_h1022AF30
+@drop var:g_a10221288
+@drop var:g_i10221318
+@drop fn:BrNetStackPop221288
+@after fn:BrNetStackPop221288
+
+/* ==========================================================================
+ * 0x10004C20
+ * ========================================================================== */
+
+
+/* ==========================================================================
+ * 0x10005D90 -- the free-slot stack
+ * ========================================================================== */
+
+/* DEVIATION -- slice1_02.h. The port routes the identical
+ * WaitForSingleObject(h, INFINITE) / ReleaseMutex(h) pattern through these
+ * two hooks; the matching build reaches KERNEL32 directly, as the original
+ * does. */
+extern void BrNetMutexLock(void *hMutex);
+extern void BrNetMutexUnlock(void *hMutex);
+
+void    *g_h1022AF30;
+int32_t  g_a10221288[16];
+int32_t  g_i10221318;
+
+/* WHAT IT DOES: pops the top free slot number from 0x10221288 under mutex. */
+/* @implements 0x10005D90 d3d BrNetStackPop221288 */
+int32_t BrNetStackPop221288(void)
+{
+    int32_t v;
+
+    BrNetMutexLock(g_h1022AF30);
+    if (g_i10221318 >= 0) {
+        v = g_a10221288[g_i10221318];
+        g_i10221318 = g_i10221318 - 1;
+    } else {
+        v = -1;
+    }
+    BrNetMutexUnlock(g_h1022AF30);
+    return v;
+}
+@end

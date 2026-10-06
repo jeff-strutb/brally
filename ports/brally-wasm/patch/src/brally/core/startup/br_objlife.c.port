@@ -1,0 +1,114 @@
+# Port deviations for src/brally/core/startup/br_objlife.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_690A14
+@drop var:g_690A28
+@drop var:g_1826BD0
+@drop var:g_57543C
+@drop var:g_18AC2D0
+@drop proto:BrExt_1001BAD0
+@after proto:BrExt_1001BAD0
+
+uint32_t g_67D550, g_0A81C8, g_AC300, g_690A14;
+uint32_t g_690A24, g_690A28;
+uint32_t g_0B3A68, g_0B39B0, g_1826BD0;
+uint32_t *g_A9D008, *g_57543C;
+uint32_t g_6C7C44, g_6C7C38, g_18AC2D0;
+
+void BrExt_1001BAD0(void) {}
+@end
+@drop proto:BrExt_10067880
+@drop proto:BrExt_10067900
+@drop proto:BrExt_1007F560
+@drop proto:BrExt_1007F680
+@drop proto:BrExt_10073B40
+@drop proto:BrExt_1003DA90
+@drop proto:BrExt_1007E8B0
+@drop proto:BrExt_10038EB0
+@drop proto:BrExt_10069A80
+@drop proto:BrExt_10035585
+@drop fn:BrExt_1001BAD0
+@drop fn:BrExt_10008B80
+@drop fn:BrExt_1007F560
+@drop fn:BrExt_1007F680
+@after fn:BrExt_1007F680
+void BrExt_1007F560(void *a, int b, int c, void (*d)(void))
+{ (void)a; (void)b; (void)c; (void)d; }
+void BrExt_1007F680(void *a, int b, int c, void (*d)(void), void (*e)(void))
+{ (void)a; (void)b; (void)c; (void)d; (void)e; }
+@end
+@drop fn:BrFlagInit_1002B950
+@after fn:BrFlagInit_1002B950
+/* No stub for BrExt_10043E70: slice5_63.c carries the transcribed body.  The
+ * stub also had the wrong signature -- void * where slice5_63.h and
+ * slice2_26.h both declare int32_t. */
+void BrExt_10045BC0(void *p) { (void)p; }
+void BrExt_100451E0(void *p) { (void)p; }
+void BrExt_10046790(void) {}
+void BrExt_10046750(void) {}
+void BrExt_10046910(void) {}
+void BrExt_10046950(void) {}
+void BrExt_100469F0(void) {}
+void BrExt_10046A30(void) {}
+void BrExt_10046BB0(void) {}
+void BrExt_10002660(void *p) { (void)p; }
+void BrExt_100025F0(void *p) { (void)p; }
+void BrExt_10072B30(void *a, int b, int c) { (void)a; (void)b; (void)c; }
+void BrExt_10072A90(void *a, int b, int c, int d)
+{ (void)a; (void)b; (void)c; (void)d; }
+void BrExt_10024460(void) {}
+void BrExt_1002A640(void) {}
+int  BrExt_10075020(void) { return 0; }
+
+/* WHAT IT DOES: drop a live object pointer and retarget a function slot. */
+/* @implements 0x1002B950 d3d BrFlagInit_1002B950 */
+void BrFlagInit_1002B950(void)
+{
+    g_67D550 = 0;
+    g_0A81C8 = 0x10575540u;
+}
+@end
+@drop fn:BrWrap_10067980
+@drop fn:BrWrap_100679A0
+@after fn:BrWrap_100679A0
+
+/* WHAT IT DOES: fill a 64-byte named buffer. */
+/* @implements 0x10067980 d3d BrWrap_10067980 */
+void BrWrap_10067980(void)
+{
+    BrExt_10067880(&g_0B3A68, (void *)(uintptr_t)0x10AF9848, 0x40);
+}
+
+/* WHAT IT DOES: bind that 64-byte buffer without filling it. */
+/* @implements 0x100679A0 d3d BrWrap_100679A0 */
+void BrWrap_100679A0(void)
+{
+    BrExt_10067900(&g_0B3A68, (void *)(uintptr_t)0x10AF9848);
+}
+@end
+@drop var:DAT_100a7514
+@drop var:DAT_100a7518
+@drop var:DAT_106e7714
+@drop var:DAT_106e9a2c
+@drop proto:FUN_1001dfb0
+@drop proto:grSstWinOpen
+@drop proto:BrGlideResOpen
+@drop proto:FUN_10032500
+@drop if:#ifndef BR_FUNCPTR_DEFINED
+@drop var:DAT_106b7ab4
+@drop var:DAT_10b73528
+@drop var:DAT_10b7352c
+@drop var:DAT_10b73644
+@drop var:DAT_118ed1e8
+@drop var:PTR_FUN_100b849c
+@drop proto:BrPodNop
+@drop proto:BrTexInit
+@drop proto:br_dl_clip_reset
+@drop define:BR_TRY_RES
+@drop fn:BrGlideResOpen
+@drop fn:BrGlideResSet
+@drop fn:BrObjLifeInit
+@drop fn:BrObjLifeInit6A540
+@drop fn:BrRenderStateSet
+@drop fn:BrRenderModeStart
+@drop fn:BrRenderModeRestart

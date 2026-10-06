@@ -592,7 +592,7 @@ def process(f, decisions, absorb, dry, report):
     # a retyped variable needs its record's declaration
     for rec in set(retype.values()):
         hdr = os.path.basename(spec(rec)[0].get('header', ''))
-        if hdr.endswith('.h') and not re.search(r'#\s*include\s*"%s"' % re.escape(hdr), s):
+        if hdr.endswith('.h') and not re.search(r'#\s*src/brally/include\s*"%s"' % re.escape(hdr), s):
             m = re.search(r'^#\s*include[^\n]*\n', s, re.M)
             at = m.end() if m else 0
             edits.append((at, at, '#include "%s"\n' % hdr))

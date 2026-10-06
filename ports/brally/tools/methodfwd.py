@@ -66,7 +66,7 @@ def methods_of(ast, cls):
 def main():
     os.chdir(ROOT)
     done, skipped = 0, []
-    for r in csv.DictReader(open('build/wasm/placement.csv')):
+    for r in csv.DictReader(open('build/brally/wasm32/placement.csv')):
         f = 'ports/brally/' + r['src']
         placed = r['name']
         if not f.endswith('.cpp') or not os.path.exists(f):
@@ -121,7 +121,7 @@ def main():
             if '--dry' not in sys.argv:
                 open(f, 'w', encoding='latin-1').write(new)
             done += 1
-    with open('build/portable/method_fwd.csv', 'w') as fh:
+    with open('build/brally/null-soft/method_fwd.csv', 'w') as fh:
         fh.write('placed,forwarder\n')
         for f in sorted(glob.glob('ports/brally/src/core/**/*.cpp', recursive=True)):
             for m in re.finditer(r'^extern "C" [^\n]*?\b(\w+)_fn\(', open(f, encoding='latin-1').read(), re.M):

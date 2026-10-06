@@ -26,7 +26,7 @@ the gate to milestone 6 (driving).
   Two modes: mode!=2 uses `pEdgeN` directly; mode 2 builds a box-face normal from the
   triangle centroid's MIN-|component| axis (a tournament), signed by centroid.x (a
   preserved quirk). Shared tail: `out = (planeD - dot(pA,V))*pA`.
-- `tools/x87emu.py`: a validated general x86/x87 emulator (byte memory, full flags,
+- `tools/brally/x87emu.py`: a validated general x86/x87 emulator (byte memory, full flags,
   SIB, call/ret, `_ftol` intrinsic, loops, IEEE division). Self-checks against
   `BrMat3Solve` (0x1006DE70), `0x10067470` golden vectors, and looping `BrMat4MulVec3`.
   **This is the verification oracle for all remaining dense-x87 work.**
@@ -40,7 +40,7 @@ the gate to milestone 6 (driving).
 - `0x10067470` BrCrPlaneResolve - DONE (prior session), committed baf1a09.
 - `0x10065C80` BrCrImpulseSolve - **DONE 2026-08-17**, transcribed + oracle-verified +
   golden-pinned + all mutations killed. In br_collrespsolve.c/.h, test_br_collrespsolve.c.
-  build.d/test_br_collrespsolve.deps = just `slice3_44` (test self-stubs slice3_44.o's 4
+  tests/brally/deps/test_br_collrespsolve.deps = just `slice3_44` (test self-stubs slice3_44.o's 4
   rigid-body refs - BrStub8B80_1p/BrGbiCall10075330/BrVec4Normalise/BrMat4MulVec3Transposed  - 
   like test_slice3_44.c does; do NOT link slice3_42/collresp/phys, they drag g_pBrCollGridCount etc).
 - `0x10065980` BrCrContactKick - **DONE 2026-08-17**, transcribed + verified (6000 cases,
@@ -128,7 +128,7 @@ the gate to milestone 6 (driving).
 ## THE BLOCKER - DIAGNOSED AND FIXED 2026-08-17 (was a misdiagnosis):
 The previous note claimed the solver was "not verifiable in isolation" because r/rhs
 needed the walker's per-contact geometry, and that synthetic inputs gave r=0/rhs=0. **That
-was WRONG.** The real cause was a bug in `tools/x87emu.py`: `call`/`ret` used a side
+was WRONG.** The real cause was a bug in `tools/brally/x87emu.py`: `call`/`ret` used a side
 `callstack` and never pushed/popped a return address on the memory stack, so `esp` was 4
 bytes too high inside every nested cdecl callee - each `[esp+N]` stack-arg read landed one
 slot high ([esp+4]→arg2 instead of arg1). The solver's matrix helpers (BrMat4ToMat3Both,
@@ -152,9 +152,9 @@ the ported helpers, generate golden vectors, pin + mutation-test.
 
 ## scratch (EPHEMERAL - session-specific, will NOT survive to a new chat)
 Was at the session scratch dir. Key regenerable pieces: `run_solver.py` harness,
-`asm_<ADDR>.txt` dumps (regenerate with `BR_REF=orig/BRGlide.dll .venv/bin/python
-tools/dumpasm.py 0x<ADDR>`), `walker_funcs.txt` (the 29-func closure), `allconsts.txt`.
-`tools/x87emu.py` IS in-tree and persists - use `load_many(*asm_files)` + `Machine`.
+`asm_<ADDR>.txt` dumps (regenerate with `BR_REF=reference/brally/orig/BRGlide.dll .venv/bin/python
+tools/brally/dumpasm.py 0x<ADDR>`), `walker_funcs.txt` (the 29-func closure), `allconsts.txt`.
+`tools/brally/x87emu.py` IS in-tree and persists - use `load_many(*asm_files)` + `Machine`.
 
 ## Honest ROI note for whoever resumes
 I spent ~3h and produced 1 verified function + the oracle + doc fixes. The remaining

@@ -4,7 +4,7 @@
  * stands in for a shape's footprint: built from the shape's edges
  * (BrSpanBuildHull), and asked whether a point lands on it.
  *
- * Moved here out of src/core/slice2_21.c (an address batch, not a module).
+ * Moved here out of src/brally/core/slice2_21.c (an address batch, not a module).
  */
 /* The original takes the two coordinates only; the port's prototype leads
  * with the volume.  Hide it so the matching body can carry the real shape. */

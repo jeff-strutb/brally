@@ -2,12 +2,12 @@
 
 *Recorded 2026-09-04.*
 
-> tools/image_build.py assembles all matched functions into the real binaries and diffs vs original - the deliverable-level gate the per-function sweep cannot be. Since 2026-09-03 it builds ALL FOUR in-scope binaries into build/image/ and EXITS 1 on any bad claim; reference-filled slots are not evidence.
+> tools/brally/image_build.py assembles all matched functions into the real binaries and diffs vs original - the deliverable-level gate the per-function sweep cannot be. Since 2026-09-03 it builds ALL FOUR in-scope binaries into build/brally/win32/image/ and EXITS 1 on any bad claim; reference-filled slots are not evidence.
 
 ## 2026-09-03 (later): all four binaries, and the gate now EXITS 1
 
-`python3 tools/image_build.py` builds **BRGlide.dll + BRally.exe +
-SetVideo.exe + BossRally.exe** into `build/image/` (drop-in set; BRD3D.dll
+`python3 tools/brally/image_build.py` builds **BRGlide.dll + BRally.exe +
+SetVideo.exe + BossRally.exe** into `build/brally/win32/image/` (drop-in set; BRD3D.dll
 copied verbatim, out of scope). All four green: 0 differing bytes each  - 
 BRGlide 1,022 fns / 163,492 B / 34.00% of .text, BRally 28 / 79.80%,
 SetVideo 41 / 14.00%, BossRally 35 / 10.54%. `--no-write` gates only,
@@ -52,7 +52,7 @@ class-name tags resolve through `cpp_score.find_symbol(prefer=kind)`, and
 cpp_score which symbol was scored and maps that back to the raw name;
 `compiled_functions(only=...)` takes addresses from report_cpp.csv, since
 mangled names are in no surveyed map. Objs are
-`build/match/obj_cpp/<base>_sweep_<VA>_<i>.obj`, where `i` is the index into
+`build/brally/win32/match/obj_cpp/<base>_sweep_<VA>_<i>.obj`, where `i` is the index into
 `cpp_score.DEFAULT_OPTS` - the report records only the short opt tag, so map back
 through `cpp_sweep._opt_tag`.
 
@@ -69,7 +69,7 @@ tool bug. Reconcile inside a single process.
 
 ## image_build.py is the TRUE clean-state gate - not match_sweep
 
-`python3 tools/image_build.py` lays every `status==match` function into a copy
+`python3 tools/brally/image_build.py` lays every `status==match` function into a copy
 of the original BRGlide.dll at its claimed address and diffs the whole image.
 This catches what per-function scoring **structurally cannot**: overlapping
 claims, two names at one address, wrong sizes, and - the one that bit us  - 
@@ -86,7 +86,7 @@ a clean place" at the deliverable level.
 Six thunks (0x1001E1E0/200/220/250/280/2B0) scored `match` in `report.csv` but
 the image showed 188 differing bytes across them. Cause: they carry a 16-byte
 **link-stage preamble** (`e9 0b000000` = jmp +0x0b, then 11 nops) recorded in
-`config/preambles.csv`. `match_sweep.load_orig` STRIPS+verifies that preamble
+`config/brally/preambles.csv`. `match_sweep.load_orig` STRIPS+verifies that preamble
 and matches the compiler's body (which starts at +0x10) - correct. But
 `image_build.compiled_functions` was laying the body at offset 0, misaligning
 the whole function.

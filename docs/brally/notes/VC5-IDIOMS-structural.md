@@ -1,6 +1,6 @@
 # VC5 codegen idioms - structural residue (session notes)
 
-Proven against BRGlide.dll this session. Merge into `docs/VC5-IDIOMS.md`.
+Proven against BRGlide.dll this session. Merge into `docs/brally/VC5-IDIOMS.md`.
 Infer source from the bytes; never permute spellings.
 
 ## Proven this session

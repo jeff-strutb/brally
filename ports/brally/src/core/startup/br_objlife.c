@@ -63,12 +63,12 @@ void BrFlagInit_1002F690(void)
 }
 
 /* WHAT IT DOES: install a constructor and a destructor for a heap object. */
-/* @d3donly 0x1001BAE0 BrInstall_1001BAE0 -- config/shared.csv pairs this with
+/* @d3donly 0x1001BAE0 BrInstall_1001BAE0 -- config/brally/shared.csv pairs this with
  * Glide 0x1001E080, and that pairing is FALSE. The D3D function is 26 bytes:
  * two pointer stores and `mov eax,1; ret`, which is exactly the body below.
  * Glide 0x1001E080 is 173 bytes of 3dfx bring-up (grGlideInit /
  * grSstQueryHardware / grSstSelect and a board-type switch) and is
- * transcribed as BrGlInstall in src/core/drawing/br_dlglide.c. They occupy
+ * transcribed as BrGlInstall in src/brally/core/drawing/br_dlglide.c. They occupy
  * the same renderer slot and share nothing else; verified by disassembling
  * both binaries at both addresses. Tagged @implements here until 2026-09-03,
  * which put a 26-byte body against a 173-byte original in the report and had

@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Find UNMATCHED originals that are byte-close to an already-MATCHED one.
+
+Rule 7's cadence needs cause groups, and the cheapest cause group there is is
+"the same function again with two facts changed".  Twice on 2026-09-05 this
+screen paid immediately: 0x10020460 is 0x1001FF60 with 37 bytes different and
+0x10020900 is 0x1001ECF0 with 37 -- both went byte-exact from the matched
+sibling's source in one pass, where the raw drafts had been sitting in T1.
+
+A pair only means anything at EQUAL SIZE (a different size is a different
+function), so the screen groups by exact byte length and reports, for every
+unmatched original, its nearest matched same-size neighbour and the count of
+differing bytes.  Call displacements and absolute operands differ by
+construction, so a real twin still shows a few dozen: the useful threshold is
+"tens", not "zero".
+
+    .venv/bin/python tools/brally/twinscreen.py             # every hit, closest first
+    .venv/bin/python tools/brally/twinscreen.py --max 80    # only very close pairs
+    .venv/bin/python tools/brally/twinscreen.py --families  # unsolved groups
+
+!! THE FAMILY LANE IS DRAINED, measured 2026-09-05.  --families finds ZERO
+unsolved same-size groups anywhere in BRGlide at a mutual distance of 150
+bytes or less, at any size from 60 bytes up; the five that appear at 300 are
+unrelated functions that happen to share a length.  The pair screen is down
+to six rows, all at 86 diffs or worse on ~100-byte bodies, i.e. also
+unrelated.  So "find another family" is no longer a lane -- the C++ vcall
+lode, the clip planes, the triangle emitters and the trimmers were the
+families this image had.  Re-run this after any batch of matches (a newly
+solved function can make its neighbours reachable), but do not plan a session
+on it.
+"""
+import csv, os, re, sys, glob
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPORT = os.path.join(ROOT, 'build', 'brally', 'win32', 'match', 'report.csv')
+REPORT_CPP = os.path.join(ROOT, 'build', 'brally', 'win32', 'match', 'report_cpp.csv')
+ORIG = os.path.join(ROOT, 'build', 'brally', 'win32', 'match', 'orig')
+
+maxdiff = 200
+minsize = 48
+if '--max' in sys.argv:
+    maxdiff = int(sys.argv[sys.argv.index('--max') + 1])
+if '--min-size' in sys.argv:
+    minsize = int(sys.argv[sys.argv.index('--min-size') + 1])
+
+# linker/CRT output and data rows are not decomp targets; rule 0's fence list
+# is the record of that, and a 6-byte import thunk matching another 6-byte
+# import thunk is noise, not a twin.
+fenced = set()
+fp = os.path.join(ROOT, 'config', 'brally', 'fenced.csv')
+if os.path.exists(fp):
+    for m in re.finditer(r'0x([0-9A-Fa-f]{8})', open(fp).read()):
+        fenced.add(int(m.group(1), 16))
+
+# !! BOTH LANES, or the screen lies.  The C++ EH lane carries ~200 finished
+# functions that no report.csv row mentions, and reading only report.csv
+# reports every one of them as fresh work -- which is exactly how the
+# nine-member BrOpt* family cost a session in 2026-09-03.  The first version
+# of this tool made the same mistake and offered an 18-member C++ family
+# (0x1003E1C0 and siblings) that had been byte-exact for days.
+matched, tagged = {}, set()
+for path in (REPORT, REPORT_CPP):
+    if not os.path.exists(path):
+        continue
+    with open(path, newline='') as fh:
+        for row in csv.reader(fh):
+            if len(row) < 4 or not row[1].startswith('0x'):
+                continue
+            va = int(row[1], 16)
+            tagged.add(va)
+            if row[3] == 'match':
+                matched[va] = (row[2], row[0])
+
+# a function the C++ lane has a TU for is that lane's, matched or not.  The
+# .cpp TUs live throughout src/brally/core (in their module folders), not only under
+# cpp/, and are named for their symbol -- so read the VA from @implements, not
+# the filename.
+_CPP_IMPL = re.compile(r'@implements\s+0x([0-9A-Fa-f]{8})\s')
+for f in glob.glob(os.path.join(ROOT, 'src', 'brally', 'core', '**', '*.cpp'),
+                   recursive=True):
+    with open(f, errors='replace') as fh:
+        m = _CPP_IMPL.search(fh.read())
+    if m:
+        tagged.add(int(m.group(1), 16))
+
+# every extracted original, keyed by exact size
+bysize = {}
+for f in glob.glob(os.path.join(ORIG, '0x*.bin')):
+    va = int(os.path.basename(f)[:10], 16)
+    b = open(f, 'rb').read()
+    bysize.setdefault(len(b), []).append((va, b))
+
+if '--families' in sys.argv:
+    # !! A CAUSE GROUP NEED NOT CONTAIN A MATCHED MEMBER.  The screen above only
+    # finds an unmatched function next to a SOLVED one; a family where nobody
+    # has solved anyone yet is invisible to it, and those are the ones worth
+    # the most -- solve one member by hand, instantiate the rest.  This mode
+    # clusters UNMATCHED, UNTAGGED originals against each other at equal size.
+    fam = []
+    for size, group in sorted(bysize.items()):
+        if size < minsize:
+            continue
+        pool = [(va, b) for va, b in group
+                if va not in tagged and va not in fenced]
+        if len(pool) < 2:
+            continue
+        used = set()
+        for i, (va, b) in enumerate(pool):
+            if va in used:
+                continue
+            members = [va]
+            for va2, b2 in pool[i + 1:]:
+                if va2 in used:
+                    continue
+                if sum(1 for x, y in zip(b, b2) if x != y) <= maxdiff:
+                    members.append(va2)
+                    used.add(va2)
+            if len(members) > 1:
+                used.add(va)
+                fam.append((len(members), size, members))
+    fam.sort(reverse=True)
+    for n, size, members in fam:
+        print('%2d members  %5d B   %s' % (n, size,
+              ' '.join('0x%08X' % v for v in members)))
+    print('\n%d unsolved same-size families (mutual diff <= %d, size >= %d).'
+          % (len(fam), maxdiff, minsize))
+    sys.exit(0)
+
+hits = []
+for size, group in bysize.items():
+    mine = [(va, b) for va, b in group if va in matched]
+    if not mine:
+        continue
+    if size < minsize:
+        continue
+    for va, b in group:
+        if va in tagged or va in fenced:
+            continue
+        best = None
+        for mva, mb in mine:
+            d = sum(1 for x, y in zip(b, mb) if x != y)
+            if best is None or d < best[1]:
+                best = (mva, d)
+        if best and best[1] <= maxdiff:
+            hits.append((best[1], va, size, best[0], matched[best[0]][0],
+                         matched[best[0]][1]))
+
+hits.sort()
+print('%-6s %-12s %-7s %-12s %-28s %s' %
+      ('diff', 'unmatched', 'bytes', 'twin', 'twin name', 'twin file'))
+for d, va, size, mva, name, f in hits:
+    print('%-6d 0x%08X %-7d 0x%08X %-28s %s' % (d, va, size, mva, name, f))
+print('\n%d unmatched originals sit within %d bytes of a MATCHED same-size '
+      'function.' % (len(hits), maxdiff))

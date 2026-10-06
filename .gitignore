@@ -1,4 +1,5 @@
-# Build output
+# Build output: everything under build/ is generated (per game and platform:
+# build/brally/..., build/tgrally/null-null/..., build/toolchains/...).
 build/
 *.o
 *.dSYM/
@@ -12,31 +13,20 @@ __pycache__/
 # ---------------------------------------------------------------------------
 # GAME DATA AND ORIGINAL BINARIES ARE DELIBERATELY NOT TRACKED.
 #
-# This repository holds only our own source: the portable C port, the analysis
-# tooling, and generated metadata. Everything below is copyrighted Boss Rally
-# material that each developer must supply from their own retail copy.
+# This repository holds only our own source: the decompilations, the ports,
+# the analysis tooling, and generated metadata. Copyrighted material (the
+# retail disc and its binaries, the N64 ROM, compiler install media, other
+# games used as idiom corpora) lives under reference/ and each developer
+# supplies it from their own copies.
 #
 # NOTE: git does NOT support trailing comments on a pattern line. Keep every
-# comment on its own line -- an earlier version of this file put them inline
-# and the patterns silently did not match.
+# comment on its own line.
 # ---------------------------------------------------------------------------
-
-# pristine originals: retail CD image and N64 ROM
 reference/
 
-# BRD3D.dll, BRGlide.dll, Boot.exe, BossRally.exe
-orig/
-
-# BossRally.pod, *.rca, *.img, *.ci4/.lut4 taken from the disc
-testdata/
-
-# assets extracted from the N64 ROM (art, XM music)
+# assets extracted from the N64 ROM (art, XM music), disassembly packets
 extracted/
-
-# disassembly generated from BRD3D.dll
 asm/
-
-# generated disassembly packets
 work/
 
 *.z64
@@ -49,29 +39,36 @@ work/
 *.rca
 *.img
 *.xm
-tools/msvc5/*
-!tools/msvc5/crt
-tools/msvc5/crt/*
-!tools/msvc5/crt/src
-tools/msvc42/
-tools/wine/
-reference/msvc/_extract/
 
-# Scratch files -- anything named temp*
+# Toolchains staged by setup.sh. Only our own files in them are tracked: the
+# Wine launcher, the MSVC 5 compatibility headers and the CRT sources.
+tools/toolchains/*
+!tools/toolchains/wine.sh
+!tools/toolchains/msvc5-compat/
+!tools/toolchains/msvc5/
+tools/toolchains/msvc5/*
+!tools/toolchains/msvc5/crt/
+tools/toolchains/msvc5/crt/*
+!tools/toolchains/msvc5/crt/src/
+
+# The Remastered assets (sources, concepts, decimated and packed models,
+# textures, audio) are large and stay out of git. Their recipes are tracked:
+# scripts, notes, per-asset bake settings, manifests and generation prompts.
+ports/common/**
+!ports/common/**/
+!ports/common/assets/**
+!ports/common/**/*.py
+!ports/common/**/*.sh
+!ports/common/**/*.md
+!ports/common/**/bake.json
+!ports/common/**/manifest.json
+!ports/common/**/remastered.json
+!ports/common/**/prompts/*.txt
+!ports/common/**/prompts/*.json
+
+# Scratch files: anything named temp*
 temp*
-tools/ido/
-tools/ido53/
-tools/msvc5sp3/
 
-# MSVC incremental-build databases dropped into the repo root by cl.exe
-vc50.idb
-vc50.pdb
+# MSVC incremental-build databases (the build keeps them under build/)
 *.idb
 *.pdb
-tools/msvc40/
-tools/msvc41/
-
-# the Remastered models (sources, concepts, decimated and packed); large, kept
-# out of git for now
-ports/common/
-tools/glide2x-sdk/

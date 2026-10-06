@@ -4,7 +4,7 @@
  *
  * Filed out of slice2_19.c, whose ENTIRE preamble is carried below verbatim,
  * nothing trimmed -- see the "surrounding TU decides commutative operand
- * order" entry in docs/VC5-IDIOMS.md.
+ * order" entry in docs/brally/VC5-IDIOMS.md.
  *
  * Its recorded module was gamedata, assigned automatically from the BrBit*
  * name prefix; that prefix maps to the bit-STREAM file, and this is input

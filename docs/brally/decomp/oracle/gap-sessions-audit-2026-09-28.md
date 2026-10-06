@@ -4,9 +4,9 @@
 
 > 2026-09-28 gap-session audit -- the 26 brbox scripts missed most real content; A7 on 154 new sessions broke 2 certified T3s (FIXED same day, 10 scripts added); ref-fill masked 64 T4 relocation defects (FIXED, see refslot-gate); EXCLUDED hold, proofs corrected
 
-Measured 2026-09-28 (harness + results in build/brbox/gap/: probe_excl.py, a7.py, refslot_audit.py).
+Measured 2026-09-28 (harness + results in build/brally/win32/brbox/gap/: probe_excl.py, a7.py, refslot_audit.py).
 
-**Coverage gaps in tools/brbox_scripts** (all real retail sessions, none scripted):
+**Coverage gaps in tools/brally/brbox_scripts** (all real retail sessions, none scripted):
 attract demo (90 s idle on menu, mode 4 cine 0), weathers 1 fog / 2 storm / 4 rain (only 0,3 raced),
 13 of 14 tracks (cheats hazel+brielle unlock all; TRACK row cycles 2,1,0,14,13,11..3), 30 of 32 cars
 (all six cheats; car = (1-clicks) mod 32), camera keys END/KP1 and PGDN/KP3 (F1-F4 are TAUNT sounds,

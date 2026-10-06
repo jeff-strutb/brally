@@ -424,7 +424,7 @@ void BrGbiRun(BrGfxWords *pCmd)
  * disassembly, never from a comment.
  *
  * 0x100A7518 is Glide's grSstWinOpen height (480 in the shipped image, read
- * with `fild` because it is an int32).  config/globals_shared.csv pairs it
+ * with `fild` because it is an int32).  config/brally/globals_shared.csv pairs it
  * with D3D 0x100A81C4 at 9 votes, which is exactly BrScreenInfo::cy -- so the
  * port already models it and no new global is needed. */
 /* WHAT IT DOES: handles the drawing command that loads the viewport -- the

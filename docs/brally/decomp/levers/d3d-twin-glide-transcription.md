@@ -5,13 +5,13 @@
 > How to transcribe a Glide twin whose D3D-shaped port body diffs heavily; __fastcall+globals arm, induction pointers, dead-init removal
 
 A whole `sliceN_MM.c` tagged `d3d` is still graded against the GLIDE twin via
-`config/shared.csv` (BR_REF=glide). A `shared,body` row whose Glide twin diffs
+`config/brally/shared.csv` (BR_REF=glide). A `shared,body` row whose Glide twin diffs
 by most of its bytes means the two builds have DIFFERENT shape - usually the
 Glide twin is `__fastcall(pCar)` with `pEnv`/`pSeed` fields as file-scope
 globals, while the D3D port body is multi-arg cdecl. The existing D3D reverse is
 the Rosetta stone: same algorithm, constants, struct offsets, helper calls.
 
-**Fix pattern (mirror `BrCarSub9020` in `src/core/slice4_53.c`):**
+**Fix pattern (mirror `BrCarSub9020` in `src/brally/core/slice4_53.c`):**
 - Keep `@implements <d3d VA> d3d <Name>`. Add a `#ifdef BR_MATCHING_BUILD` arm:
   `void __fastcall <Name>(struct BrCar *pCar)`, `pEnv->x` → `extern` DAT_<addr>
   globals, RNG → `BrRandom` (0x100353D0), truncation → plain `(int)`/`(short)`

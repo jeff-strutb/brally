@@ -13,9 +13,9 @@ Found and fixed while certifying these three T3s (all now pass every gate):
    - Check with the scratch symbolic x87 evaluator (x87sym/x87cmp/x87diff pattern). It rebuilds each binary's float-store expression trees with rounding points.
    - Require IDENTICAL trees before T3.
    - `(double)pSrc->x` restores the original's order in the tu_022 vertex loaders.
-2. **The image must place the compile that is graded.** image_build_t3 used the report's raw-diff winner (plain /O2) and ignored config/t3_variant_c.csv (/O2 /Op). Fixed dd0f8f58.
+2. **The image must place the compile that is graded.** image_build_t3 used the report's raw-diff winner (plain /O2) and ignored config/brally/t3_variant_c.csv (/O2 /Op). Fixed dd0f8f58.
 3. **reloc_pair audit must never override a `DAT_<8hex>` symbol.** Pairing "learned" DAT_104add54 = 0x104add50, so every particle read was 4 bytes low (BrEnvEmit snow). Fixed f8177e97. Hand-coined names keep the override.
-4. **A7 rows must have real frame counts.** A worktree without build/brbox/cd plays 0 frames. Bootstrap = symlink build/brbox/cd, copy build/brbox/saves, check boot plays 300 frames.
+4. **A7 rows must have real frame counts.** A worktree without build/brally/win32/brbox/cd plays 0 frames. Bootstrap = symlink build/brally/win32/brbox/cd, copy build/brally/win32/brbox/saves, check boot plays 300 frames.
    - A peer's fix b71d9162 makes 0 frames fail.
    - Also regenerate ALL C++ sweep objects in a fresh worktree; stale objects block the image. Compile the /Gi rows serially.
 

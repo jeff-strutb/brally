@@ -1,14 +1,14 @@
 # Boss Rally: Measurement and bookkeeping traps
 
-- [counting-reconciliation](counting-reconciliation.md): The combined match count spans THREE report CSVs (DLL-C, C++, EXE) reconciled by tools/total.py. As of 2026-08-27: 706 functions match (570 DLL-C + 36 C++ + 100 EXE).
+- [counting-reconciliation](counting-reconciliation.md): The combined match count spans THREE report CSVs (DLL-C, C++, EXE) reconciled by tools/brally/total.py. As of 2026-08-27: 706 functions match (570 DLL-C + 36 C++ + 100 EXE).
 - [dollar-label-reloc-trap](dollar-label-reloc-trap.md): A '$'-prefixed COFF symbol is a per-TU compiler label and can never be keyed globally; learning one put 3 wrong bytes in the image gate.
-- [filing-py-drops-rows](filing-py-drops-rows.md): tools/filing.py rewrites filing.csv from report.csv and silently DROPS another session's in-flight rows; check for LOST rows before committing.
+- [filing-py-drops-rows](filing-py-drops-rows.md): tools/brally/filing.py rewrites filing.csv from report.csv and silently DROPS another session's in-flight rows; check for LOST rows before committing.
 - [image-gate-builds-what-it-grades](image-gate-builds-what-it-grades.md): image_build.py graded STALE objects with no freshness test until 2026-09-03 (7234422) - it could print '0 differing bytes' on bytes the tree would not produce. Fixed; it now compiles its own objects and has THREE outcomes (FAILED / INCONCLUSIVE / raced exit 2).
 - [instruction-count-padding-trap](instruction-count-padding-trap.md): Recompile instruction counts included 16-byte alignment padding, fabricating EQUAL counts on 0x1000EAF0 and 0x1000A110; fixed 2026-09-03.
 - [lost-sync-region-trap](lost-sync-region-trap.md): divergence.py used to STOP at an unresyncable block and still print a region total - every 0x100250D0 region map before 2026-09-03 covered only two thirds of the function
 - [masked-reloc-operand-swap-2026-09-24](masked-reloc-operand-swap-2026-09-24.md): byte sweep / fn.py mask relocations - a swapped fld [g1]; fmul [g2] pair reads BYTE-EXACT; check every DIR32 vs the original absolute; first declaration in the TU sets the fld side
 - [match-tooling-gotchas](match-tooling-gotchas.md): Sweep scorer blind spots (statics, decoration), the --help footgun, dumpasm gaps, glide/d3d twin addressing, and the scratch-object trick.
-- [obj-cpp-is-not-scratch](obj-cpp-is-not-scratch.md): build/match/obj_cpp is load-bearing -- deleting it silently unplaces every C++ body and breaks the Mac wasm boot
+- [obj-cpp-is-not-scratch](obj-cpp-is-not-scratch.md): build/brally/win32/match/obj_cpp is load-bearing -- deleting it silently unplaces every C++ body and breaks the Mac wasm boot
 - [od-reloc-offset-fix](od-reloc-offset-fix.md): /Od COFF objects had broken reloc masking - offsets were section-relative but comparison used function-relative indices
 - [parallel-session-clobber](parallel-session-clobber.md): A parallel session silently destroys work four ways - a wiped src edit, a deleted committed docs section, a revert that does NOT move HEAD, and its dirty shared file riding along in YOUR commit.
 - [progressmap-t3-undercount-fixed](progressmap-t3-undercount-fixed.md): The treemap under-counted T3 (grey boxes lied); generator fixed 2026-09-20 to color T3 from source tags and self-refresh.

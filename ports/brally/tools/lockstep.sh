@@ -6,14 +6,14 @@
 # reports the first dumped frame whose game state differs (dumpdiff.py
 # --state) and what differs there. One pass of each build per script: the
 # 32-bit lane is the slow one.
-#   env: CORE (default build/portable_null/brally64, a RENDER=null build),
-#        LANE (default build/wasm/brally), MAP (that core's gen/br_data.c)
+#   env: CORE (default build/brally/null-null/brally64, a RENDER=null build),
+#        LANE (default build/brally/wasm32/brally), MAP (that core's gen/br_data.c)
 cd "$(dirname "$0")/../../.."
 s=$1; every=${2:-100}; n=$(basename "$s" .txt)
-CORE=${CORE:-build/portable_null/brally64}
-LANE=${LANE:-build/wasm/brally}
+CORE=${CORE:-build/brally/null-null/brally64}
+LANE=${LANE:-build/brally/wasm32/brally}
 MAP=${MAP:-$(dirname "$CORE")/gen/br_data.c}
-d=build/portable/lockstep/$n
+d=build/brally/null-soft/lockstep/$n
 rm -rf "$d"; mkdir -p "$d/core/save" "$d/core/shots" "$d/core/dumps" "$d/lane/save" "$d/lane/shots" "$d/lane/dumps"
 grep -v '^shot\|^mark' "$s" > "$d/script.txt"
 run() { # name binary

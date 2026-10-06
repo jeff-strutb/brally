@@ -3,23 +3,23 @@
 > **STATUS: the game code in this binary is DONE.** All 42 user functions in
 > `0x401000`-`0x402D20` are byte-exact (7,228 B of code + 228 B of inter-
 > function alignment padding = the whole 7,456-byte span), and
-> `tools/image_build.py` assembles `SetVideo.exe` with **0 differing bytes**.
+> `tools/brally/image_build.py` assembles `SetVideo.exe` with **0 differing bytes**.
 > Everything at/above `0x402D20` is statically-linked MSVC 5.0 CRT (289 map
 > rows, 27,888 B) and is fenced by `CRT_START['setvideo']` in
-> `tools/progressmap.py` - reproduced by linking, not a decomp target, same
+> `tools/brally/progressmap.py` - reproduced by linking, not a decomp target, same
 > category as `BRD3D.dll`'s static CRT under rule 0. There are no interleaved
-> CRT functions below the boundary, so `config/fenced_exe.csv` needs no
+> CRT functions below the boundary, so `config/brally/fenced_exe.csv` needs no
 > SetVideo rows.
 >
 > The map used to split `WinMain` into 12 rows at non-prologue boundaries;
-> `config/functions_setvideo.csv` now carries the single 2,144-byte row
+> `config/brally/functions_setvideo.csv` now carries the single 2,144-byte row
 > (2026-09-03), so the 11 phantom `WinMain_*` / `Write*INI*` entries are gone.
 
-SetVideo.exe is the renderer/display config utility (`orig/SetVideo.exe`,
+SetVideo.exe is the renderer/display config utility (`reference/brally/orig/SetVideo.exe`,
 60,928 bytes). `.text` is **36,864** bytes at image base `0x400000` (the project rules
 quoted 36,476 - raw section size is 0x9000). Entry `WinMainCRTStartup` at
-`0x4038D0`. Map: `config/functions_setvideo.csv` (342 functions, generated
-with `tools/funcmap2.py`; 61 extents cross the next entry - `WinMain` at
+`0x4038D0`. Map: `config/brally/functions_setvideo.csv` (342 functions, generated
+with `tools/brally/funcmap2.py`; 61 extents cross the next entry - `WinMain` at
 `0x402480` is truncated at 930 B mid-function).
 
 ## EXE vs BRally.exe / BRGlide.dll
@@ -108,7 +108,7 @@ not as open work.
 | 0x00402480 | 2144 | WinMain | Three source defects, all in the wizard loop - see the section below. |
 
 WinMain is **one** function. The map used to split it at these non-prologue
-boundaries; those rows were removed from `config/functions_setvideo.csv` on
+boundaries; those rows were removed from `config/brally/functions_setvideo.csv` on
 2026-09-03, but the block map is still the right way to read the body:
 
 | SV VA | what |
@@ -129,7 +129,7 @@ Dialog templates: OK/Cancel `gPlusD ? 0x67 : 0x6c`; radio `gPlusD ? 0x68 : 0x6b`
 
 ### WinMain - the three defects that closed it (2026-09-03, 644 → 0)
 
-The function is `src/exe/setvideo/0x00402480.c`. It stalled at 644 diffs /
+The function is `src/brally/exe/setvideo/0x00402480.c`. It stalled at 644 diffs /
 −16 B for a week on what read like a coloring wall. It was not: three source
 facts, each of which cascaded into the next.
 
@@ -229,14 +229,14 @@ Every number below is a real denominator, per rule 4.
 | **matched total in `.text`** | **42** | **7,251 / 36,864 B (19.7%)** |
 | fenced static CRT, `≥ 0x402D20` | 289 map rows | 27,888 B |
 
-`python3 tools/image_build.py` assembles `SetVideo.exe` from these 42 claims:
+`python3 tools/brally/image_build.py` assembles `SetVideo.exe` from these 42 claims:
 **0 differing bytes**. The 42 count includes the 3 CRT stubs; the 39 game
 functions plus WinMain make up the 7,228 B.
 
 The other **~28 KB** is statically-linked MSVC 5.0 CRT starting at `0x402D20`
 (289 / 331 map rows). Fence, don't match - reproduced by linking, not a
-decomp target (`CRT_START['setvideo']` in `tools/progressmap.py`; no
-`config/fenced_exe.csv` rows are needed because nothing CRT sits *below* the
+decomp target (`CRT_START['setvideo']` in `tools/brally/progressmap.py`; no
+`config/brally/fenced_exe.csv` rows are needed because nothing CRT sits *below* the
 boundary). Early CRT in
 the project lead-region span (`0x402D20`-`0x4038D0` = 2,992 B): `free` / `exit` /
 `fclose` / `fopen` / `sprintf` / `_filbuf` / `ungetc` / `fputs` / `malloc` /
@@ -248,8 +248,8 @@ class as BRally). From `0x403A70` through `_stricmp` at `0x409DF0` is heap,
 stdio, locale, and math. Three tiny CRT stubs already match (`CRT_empty`,
 `_matherr`, `_setdefaultprecision`); the rest is Microsoft's, not game code.
 
-The matched TUs live in `src/exe/setvideo/0x<VA>.c` (the `build/setvideo_work/`
-copies are scratch and may lag). Orig bytes: `build/match/orig_setvideo/`.
+The matched TUs live in `src/brally/exe/setvideo/0x<VA>.c` (the `build/setvideo_work/`
+copies are scratch and may lag). Orig bytes: `build/brally/win32/match/orig_setvideo/`.
 68 / 331 map rows have names.
 
 ## CRT-header rule (SetVideo)

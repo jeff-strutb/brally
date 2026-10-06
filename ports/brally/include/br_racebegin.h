@@ -4,8 +4,8 @@
  * seven small functions that sit immediately below it in .text and are only
  * ever reached from it.
  *
- * REFERENCE IS orig/BRGlide.dll.  Every address below was read out of the
- * listing; `tools/manifest.py` was run on every callee before a line was
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  Every address below was read out of the
+ * listing; `tools/brally/manifest.py` was run on every callee before a line was
  * written.
  *
  * ======================================================================
@@ -193,7 +193,7 @@
  * ======================================================================
  * THE FRONTIER
  * ======================================================================
- * Of the 40-odd distinct callees in this range, `tools/manifest.py` reports
+ * Of the 40-odd distinct callees in this range, `tools/brally/manifest.py` reports
  * exactly THREE as implemented: 0x1002E317 (BrGameStepSet), 0x10031140
  * (BrTrackLoadHandling) and, in the neighbours, nothing.  So the arm is
  * transcribed for its ORDER, its CONDITIONS and its CONSTANTS, and every call

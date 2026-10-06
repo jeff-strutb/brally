@@ -44,10 +44,10 @@ Ten candidate spellings in one file, compiled once (~20s), beats ten 12-second
 file rebuilds - and it reads the answer straight out of the bytes:
 
 ```
-cp variants.c build/match/ && sh tools/wine.sh tools/msvc5/bin/cl.exe \
+cp variants.c build/brally/win32/match/ && sh tools/toolchains/wine.sh tools/toolchains/msvc5/bin/cl.exe \
    /nologo /O2 /c '/Fobuild\match\obj\v.obj' 'build\match\v.c'
 ```
-then `parse_coff_obj` from `tools/match_diff.py` (returns `{name: (bytes,relocset)}`).
+then `parse_coff_obj` from `tools/brally/match_diff.py` (returns `{name: (bytes,relocset)}`).
 cl.exe treats a leading `/` as an option, so the source path must be RELATIVE.
 Mask relocated operands before comparing. **Reproduce the real calling
 convention in the scratch** - a cdecl stand-in for a `__fastcall` original gave

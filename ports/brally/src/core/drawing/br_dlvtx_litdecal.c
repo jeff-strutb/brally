@@ -34,14 +34,14 @@
  *  Consequence: the live oracle (A5) can never reach it, so T3 is closed to
  *  this function; only byte-exact T4 finishes it.
  *  STATUS: EXCLUDED (T4) -- byte-exact 2026-09-28; listed in
- *  config/excluded.csv, outside the completion target.
+ *  config/brally/excluded.csv, outside the completion target.
  */
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include "br_dl.h"
 
 /* TU state.  Three things in this preamble decide codegen (traced in the
- * backend with tools/c2emu.py, docs/VC5-IDIOMS.md tail):
+ * backend with tools/brally/c2emu.py, docs/brally/VC5-IDIOMS.md tail):
  *  - the light rows are written without the redundant inner parentheses
  *    where the original had none: a parenthesised sub-sum becomes a c2
  *    precision node, one more DAG level, which moves the last direction

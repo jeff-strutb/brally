@@ -13,7 +13,7 @@ T2 dossier had it wrong): `nx*wx + ny*wy + nz*wz` flat is re-associated to
 p/w slot pair, the `s` product operand order (every base/kind/pointer/
 named-field spelling byte-identical; matrix via `pM` un-folds to [ebp+k]).
 
-**Tyre pass 0x100651A0 -> T2** (src/core/driving/br_carphys.c, matching arm
+**Tyre pass 0x100651A0 -> T2** (src/brally/core/driving/br_carphys.c, matching arm
 beside the port with the `#define Name Name_port` rename kept ACTIVE for the
 callers). Levers: ONE vector `c` scaled in place then `sn*d + c`; the force
 lands in `a` (dead zero stores + mass*g in a.z); spin as ONE expression (a

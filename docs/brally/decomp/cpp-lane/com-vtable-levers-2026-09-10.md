@@ -17,7 +17,7 @@ reflex is the thing to distrust. ([byte-exact-non-negotiable](../rules/byte-exac
    `long (*pfn)(BrDiObj*, ...)` is __cdecl -> the CALLER cleans -> ours emits
    `add esp,K` after every interface call; the original has none because COM
    methods are __stdcall (callee-cleaned). Fix: `long (BR_STDCALL *pfn)(...)`
-   on every typed slot of every interface vtable. In include/slice3_45.h this
+   on every typed slot of every interface vtable. In src/brally/include/slice3_45.h this
    was the single biggest lever (removed 2 `add esp,0x14`, cascaded the pushes
    into place). BR_STDCALL is `__stdcall` in the matching build and empty in
    the port (br_match.h), so it is safe both ways.

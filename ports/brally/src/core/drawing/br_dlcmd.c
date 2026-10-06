@@ -166,7 +166,7 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x118ED1A4 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */     /* 0x118ED1A8 */
 /* BrDlClipTri: prototype in br_funcs.h */
-/* 0x100729EA is the glide2x grDrawTriangle import thunk (config/fenced.csv),
+/* 0x100729EA is the glide2x grDrawTriangle import thunk (config/brally/fenced.csv),
  * and Glide is __stdcall: no `add esp` follows the call in any original.
  * Declared cdecl it costs an `add esp,0xc` after every draw. */
 /* grDrawTriangle: prototype in br_funcs.h */
@@ -280,9 +280,9 @@ void BrDlVtxFinishTex(BrDlVtx *v, const BrDlClipSt *pSt)
  *     br_dl.c and br_dlcmd.c already use for the quarter-pixel snap.
  *
  * So the next pass is: copy build/probe/tri2_indexform_KEEP.c to a new
- * src/core/drawing/br_dltri2.c, move this tag to it, and work the four
+ * src/brally/core/drawing/br_dltri2.c, move this tag to it, and work the four
  * regions.  Do NOT re-try the pointer form and do NOT put it in this file. */
-/* 2026-09-09: the TAG moved to src/core/drawing/br_dltri2.c (index form,
+/* 2026-09-09: the TAG moved to src/brally/core/drawing/br_dltri2.c (index form,
  * macros duplicated), as this note prescribes.  THE POINTER BODY BELOW IS
  * KEPT ON PURPOSE, untagged, under its own name: removing or renaming it
  * takes 0x10020900 BrDlCmdTri1NoZ from byte-exact to 31 diffs and
@@ -581,7 +581,7 @@ const uint8_t *BrDlCmdTri1(const uint8_t *p)
  * but it takes part in the same declaration walk, and it is the only lever
  * that moved those two bytes (spare int locals, `unsigned` indices, one-line
  * declarations and separated assignments were all probed and are inert or
- * worse).  See docs/VC5-IDIOMS.md, "a float local reorders the integer
+ * worse).  See docs/brally/VC5-IDIOMS.md, "a float local reorders the integer
  * prologue". */
 /* WHAT IT DOES: the G_TRI1 display-list command with the depth buffer off --
  * draw one triangle from the three vertex-pool indices in the command's

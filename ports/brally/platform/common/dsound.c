@@ -5,7 +5,7 @@
  * Play (one-shot or looping), Stop, SetCurrentPosition and GetStatus. Unlock
  * takes the samples as floats and the host's audio callback sums the playing
  * buffers with DirectSound's laws, as the wasm lane does
- * (ports/macos/wasm/host/host_dx.c):
+ * (ports/brally-wasm/wasm/host/host_dx.c):
  *
  *   volume  hundredths of a dB, 0 = as recorded, never amplified;
  *           -10000 (DSBVOLUME_MIN) is silence

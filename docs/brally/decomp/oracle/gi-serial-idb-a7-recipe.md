@@ -16,7 +16,7 @@ Recipe that got A7 26/26 at f8177e97: worktree at HEAD, then symlinks per
 [worktree-bootstrap](../toolchain/worktree-bootstrap.md) and copies of the report*.csv files, then
 cpp_score.compile_cpp for every row (parallel, private /Fd), then the /Gi rows
 serially, then `BR_JOBS=14 image_build_t3.py --jobs 14`, then copy the dll to
-build/brbox/image, then `brbox_diff.py --all` (~15-18 min). Check the frame
+build/brally/win32/brbox/image, then `brbox_diff.py --all` (~15-18 min). Check the frame
 counts, not only IDENTICAL: 0-frame "IDENTICAL" rows were bogus.
 
 **Why:** false T4 regressions and stale C++ objs blocked the image for other
@@ -29,11 +29,11 @@ Related: [inline-int-return-temp-idiom](../levers/inline-int-return-temp-idiom.m
   (/Users/jeffreywilbur/projects/strutb/brally = 43 chars), else /Gi
   BrAiScanCorridor 0x1005D060 comes out 4 bytes off. Used
   /private/tmp/brally_a7_worktree_f917cc_0000 (43) via `git worktree move`.
-- Link build/brbox/cd (the game data) into the worktree, or every script
+- Link build/brally/win32/brbox/cd (the game data) into the worktree, or every script
   "runs" 0 frames with exit(1) and all 26 read DIFFERENT (brbox_diff prints
-  NO RUN). tools/msvc5 has a tracked crt/ subdir: link its other children
+  NO RUN). tools/toolchains/msvc5 has a tracked crt/ subdir: link its other children
   (bin, bin-sp3, include, lib) one by one.
 - C++ objs: compile every report_cpp row into the worktree's own
-  build/match/obj_cpp (image_build_t3 reads them, never recompiles), non-Gi
+  build/brally/win32/match/obj_cpp (image_build_t3 reads them, never recompiles), non-Gi
   in parallel, the O2-Gi rows serially in (file, va) order with a fresh
   worktree-root vc50.idb; verify all O2-Gi rows reproduce before building.

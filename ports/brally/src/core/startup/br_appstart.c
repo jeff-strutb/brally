@@ -4,8 +4,8 @@
  * See br_appstart.h for the key table, the two aliases, and the ESP trace that
  * decides what 0x10007F10 reads.
  *
- * Reference build: orig/BRGlide.dll.  Every address in this file is a Glide
- * address.  config/shared.csv classes all three entry points `shared`:
+ * Reference build: reference/brally/orig/BRGlide.dll.  Every address in this file is a Glide
+ * address.  config/brally/shared.csv classes all three entry points `shared`:
  * 0x10007E80 <- D3D 0x10007B10, 0x10007F10 <- D3D 0x10007BA0,
  * 0x10007F40 <- D3D 0x10007BD0.
  */
@@ -30,7 +30,7 @@ char g_aBrCfgTrackDir [BR_APPCFG_DIR_MAX] = "tracks/";
 char g_aBrCfgCarDir   [BR_APPCFG_DIR_MAX] = "cars/";
 
 /* XSLICE 0x10003680 (D3D 0x10003320) -- CHK_FileExists, already ported in
- * port/src/slice1_01.c under its D3D address.  config/shared.csv row 54 pairs
+ * port/src/slice1_01.c under its D3D address.  config/brally/shared.csv row 54 pairs
  * the two.  Reused rather than re-coined; see CONVENTIONS.md. */
 /* BrChkFileExists: prototype in br_funcs.h */
 

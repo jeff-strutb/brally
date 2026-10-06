@@ -202,7 +202,7 @@ int32_t BrAppStateLoading(void)
  * ready. On a first run there is no choice recorded, so it picks 640x480. If
  * the player has changed the mode it tears the old display down and rebuilds
  * -- which also resets the sound, because that goes with the device. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1001CE20.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1001CE20.cpp */
 /* BrAppStateSetMode: prototype in br_funcs.h */
 
 /* ------------------------------------------------------------------ *
@@ -291,7 +291,7 @@ int32_t BrAppFrame(void)
  * spell in C (`error C4234`). The reachable form is __fastcall with every
  * stack argument wrapped in a one-member struct: structs are never
  * register-eligible, so ecx takes `this`, edx is left alone and the callee
- * pops its own argument. See docs/VC5-IDIOMS.md, "CALLING one is ALSO
+ * pops its own argument. See docs/brally/VC5-IDIOMS.md, "CALLING one is ALSO
  * reachable". */
 typedef struct BrCfgPathArg { const char *psz; } BrCfgPathArg;
 /* BrCfgReadFileT: prototype in br_funcs.h */

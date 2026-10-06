@@ -12,7 +12,7 @@ excuses."  Delivered 9 of 20 in ~90 min; the project lead checked in after an ho
 BrMenuObjCtor (478 B, first compile), 0x10054610 BrTextListInit (218 B,
 first compile -- was a C T2 at 160/218 for weeks), 0x10041B60 BrOptObjCtor
 (309 B, first compile; was a C T2).  Mappings on the tail of
-docs/VC5-IDIOMS.md ("C++ EH constructors and `new` sites").
+docs/brally/VC5-IDIOMS.md ("C++ EH constructors and `new` sites").
 **@t3 (4):** 0x1006D0B0, 0x1003A140 (cpp), 0x10002580 (fresh T1 -> T2 ->
 T3 same session), 0x1001CA30.  Found with `t3.py --qualify --all` ("owe
 passes") plus `--qualify` on every uncertified >400 B T2.
@@ -42,7 +42,7 @@ deferred masking artefact, not a residue.  cl /Gi runs in parallel collide
 on vc50.idb -- run cpp_score variants sequentially.  slice3_44.c had been
 left uncompilable by a 2026-09-13 dossier edit (a `*/` closed early);
 fixed in 4d200a6.  Retire a C twin by replacing its `@implements` line with
-`/* port-only body; Glide match is src/core/cpp/<VA>.cpp */` (no tool).
+`/* port-only body; Glide match is src/brally/core/cpp/<VA>.cpp */` (no tool).
 
 **Next time:** the remaining fresh C++ EH T1 is 0x1002F790 (2517 B packet
 receiver, 60 calls) -- large but the class is deterministic.  Remaining C++

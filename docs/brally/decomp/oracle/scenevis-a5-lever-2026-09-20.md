@@ -13,7 +13,7 @@ schedule, region 2 = commutative 16-bit int-add operand order). The 2026-09-15
 ([walls-are-dated-verdicts](../rules/walls-are-dated-verdicts.md)); the live lever is A5 EQUIVALENT superseding the
 byte gates ([upgrade-byteshape-t3-to-a5-proven](upgrade-byteshape-t3-to-a5-proven.md), [equivalence-oracle-in-image-2026-09-10](equivalence-oracle-in-image-2026-09-10.md)).
 
-**Two reusable levers (both landed in tools/):**
+**Two reusable levers (both landed in tools/brally/):**
 1. **MSVCRT floor/asin now modelled in x87emu.py** (keyed by BRGlide IAT slots
    0x118F059C/0x118F0504). They return a double in st(0) (cdecl, caller-cleaned);
    with no model the callee's following `_ftol` popped an EMPTY x87 stack → the
@@ -77,7 +77,7 @@ known address"; find the real VAs from the original's call sites and annotate
 resolver reads these even inside comments. Fn-pointer globals don't match the
 data regex, so use a paren-free comment hint.
 
- **crank auto-cert REVERTS a valid @t3 tag** when `tools/t3.py` (whole-tree
+ **crank auto-cert REVERTS a valid @t3 tag** when `tools/brally/t3.py` (whole-tree
 validator) trips on unrelated pre-existing bad tags (parallel churn) - it commits
 the @t4-pass ledger line but not the tag. Add the tag by hand from
 `t3.py --qualify` output and commit it yourself; re-`--qualify` the VA to confirm.

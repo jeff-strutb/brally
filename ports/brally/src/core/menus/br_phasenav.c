@@ -264,7 +264,7 @@ typedef struct {
 /* WHAT IT DOES: an adapter, nothing more. Menu rows can only call a routine
  * that takes one argument, so this supplies the shared context that the real
  * leave routine needs alongside it. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003E200.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003E200.cpp */
 static int32_t Br31Thunk_10044CB0(void *pEntity);
 
 /* ==========================================================================
@@ -282,7 +282,7 @@ static int32_t Br31Thunk_10044CB0(void *pEntity);
 /* WHAT IT DOES: brings up a screen that needs the game CD in the drive. It
  * checks for the disc first, and if it is not there it puts up the "please
  * insert Boss Rally CD" message and refuses to open the screen at all. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003ED90.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003ED90.cpp */
 /* BrPhaseActivate_10045900: prototype in br_funcs.h */
 
 /* 0x10045AA0 -- an installer, not an activate, but it lives here in the
@@ -316,14 +316,14 @@ int BrPhaseHook_10045AA0(void *pArg)
 /* 0x10045AF0 */
 /* WHAT IT DOES: brings up the "load championship season" screen, building it
  * the first time and just making it current thereafter. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003EF90.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003EF90.cpp */
 /* @n64 0x8021C814 located */
 /* BrPhaseActivate_10045AF0: prototype in br_funcs.h */
 
 /* 0x10045BC0 */
 /* WHAT IT DOES: brings up the screen the season-save button leads to,
  * building it the first time. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F060.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F060.cpp */
 /* BrPhaseActivate_10045BC0: prototype in br_funcs.h */
 
 /* 0x10045C90 -- pre-declared by slice2_26.h. Two objects; the second is built
@@ -333,19 +333,19 @@ int BrPhaseHook_10045AA0(void *pArg)
  * builds the "are you sure you want to exit the season?" confirmation behind it
  * so it is ready when the player asks to leave. If the screen was already open
  * the confirmation is not rebuilt. It ignores the argument it is handed. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F130.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F130.cpp */
 /* BrExt_10045C90: prototype in br_funcs.h */
 
 /* 0x10045DC0 */
 /* WHAT IT DOES: brings up the season-progress screen, copying the current
  * round number into the slot that screen reads from first. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F260.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F260.cpp */
 /* BrPhaseActivate_10045DC0: prototype in br_funcs.h */
 
 /* 0x10045EA0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if it is not
  * already there. Which screen it is was not established here. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F340.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F340.cpp */
 /* BrPhaseActivate_10045EA0: prototype in br_funcs.h */
 
 /* 0x10045F70 -- the twin of 0x10045C90. */
@@ -353,20 +353,20 @@ int BrPhaseHook_10045AA0(void *pArg)
  * for the first time, also builds a second screen behind it -- the same
  * two-at-once pattern used for a screen and its confirmation. Which pair these
  * are was not established here. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F410.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F410.cpp */
 /* BrPhaseActivate_10045F70: prototype in br_funcs.h */
 
 /* 0x100460A0 */
 /* WHAT IT DOES: brings one particular menu screen up, building it if needed.
  * Which screen it is was not established here. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F540.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F540.cpp */
 /* BrPhaseActivate_100460A0: prototype in br_funcs.h */
 
 /* 0x10046170 */
 /* WHAT IT DOES: brings up a menu screen and switches the background music over
  * to a different track as it does so -- and it does that switch every time,
  * including when the screen was already open. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F610.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F610.cpp */
 /* @n64 0x80248F38 located */
 /* BrPhaseActivate_10046170: prototype in br_funcs.h */
 
@@ -375,7 +375,7 @@ int BrPhaseHook_10045AA0(void *pArg)
  * resetting a good deal of shared state on the way: the menu mode, the season
  * block, a marker byte and two guard flags. The three final set-up steps and
  * the wiring of its exit row happen only when the screen has to be built. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F700.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F700.cpp */
 /* BrPhaseActivate_10046260: prototype in br_funcs.h */
 
 /* 0x10046380 */
@@ -413,7 +413,7 @@ int BrPhaseHook_10046380(void *pArg)
 /* 0x10046400 -- pre-declared by slice2_25.h. */
 /* WHAT IT DOES: leaves a screen, forgetting it and clearing three counters
  * that went with it, and hands the player back to a remembered screen. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003F8A0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003F8A0.cpp */
 /* @n64 0x80264A60 located */
 /* BrSub10046400: prototype in br_funcs.h */
 
@@ -425,14 +425,14 @@ int BrPhaseHook_10046380(void *pArg)
 /* WHAT IT DOES: leaves a screen and, on the way out, switches the wheel's
  * force feedback off -- so this is the exit from a screen that had it
  * running. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003FA00.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003FA00.cpp */
 /* @n64 0x80264B20 located */
 /* BrPhaseLeave_10046560: prototype in br_funcs.h */
 
 /* 0x100466C0 */
 /* WHAT IT DOES: leaves a screen and writes the settings out to disk as it
  * goes, so changes made on it survive. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x1003FB10.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x1003FB10.cpp */
 /* BrPhaseLeave_100466C0: prototype in br_funcs.h */
 
 /* --- the eight LEAVE routines that also reset the player name ------------ */
@@ -452,7 +452,7 @@ int BrPhaseHook_10046380(void *pArg)
  * shared working copy -- but it clears a different, smaller set of state than
  * the seven other name-resetting exits do, so it is not simply another one of
  * them. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10040260.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x10040260.cpp */
 /* BrPhaseLeaveNamed_10046E10: prototype in br_funcs.h */
 
 /* --- the three one-statement gotos ---------------------------------------- */
@@ -511,14 +511,14 @@ int32_t BrPhaseGoto_10047050(void) { BR31_GOTO_CUR = BR31_GOTO_293C; return 0; }
  * the confirmation screen that was sitting behind it. It briefly leaves no
  * screen current at all, which the release runs inside -- so anything that
  * release does sees no current screen. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100403B0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x100403B0.cpp */
 /* BrPhaseLeave_10046F60: prototype in br_funcs.h */
 
 /* 0x10046FD0 */
 /* WHAT IT DOES: leaves a screen and throws away three other screens with it,
  * then returns the player to the root menu. This is the exit that unwinds a
  * whole branch of the menus rather than one step. */
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x10040420.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x10040420.cpp */
 /* BrPhaseLeave_10046FD0: prototype in br_funcs.h */
 
 /* 0x10047120 */

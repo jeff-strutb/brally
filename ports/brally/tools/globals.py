@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rawscan  # noqa: E402
 
 ROOT = rawscan.ROOT
-WB = os.path.join(ROOT, 'build', 'wasm')
+WB = os.path.join(ROOT, 'build', 'brally', 'wasm32')
 LO, HI = 0x10077000, 0x11900000
 
 

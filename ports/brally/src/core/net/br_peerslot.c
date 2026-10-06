@@ -154,8 +154,8 @@ typedef struct BrNetSendBs {
  * loads become [R*K+A]); a named pDp local (worse: ppDp leaves ebp); a
  * named pBs stream pointer (kept, inert); status word signed (needed for
  * the `jl`).  corpus.py has no witness for the call-load-push run. */
-/* @t4-pass 0x1006B0E0 1 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1006B0E0 2 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1006B0E0 1 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1006B0E0 2 2026-09-07 probes 43 bytes 250 insns 85 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x1006B0E0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 250/250 insns 85/85 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -163,7 +163,7 @@ typedef struct BrNetSendBs {
  * multiset (rows 0+0), 1 masked region;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1006B0E0 glide BrNetPeerSendPass */
 int32_t BrNetPeerSendPass(void **ppDp)

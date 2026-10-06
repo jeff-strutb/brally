@@ -9,7 +9,7 @@ object, so a write through one name never reached the neighbour the
 original wrote. globext.py gave each object a private pad up to the next
 address instead, which keeps the code in bounds but not in step.
 
-This rewrites src/core/data/br_globals.c so that every run of neighbouring
+This rewrites src/brally/core/data/br_globals.c so that every run of neighbouring
 globals whose layout is the same at i686 and in the core (no pointers) is one
 block of storage holding the original's bytes, and each name in it is a
 linker symbol at its original offset:
@@ -25,7 +25,7 @@ A run ends at a global whose layout differs (it holds pointers), at one
 defined in another file, and before a gap of more than MAXGAP bytes no one
 names. The data lift copies each block from the image.
 
-Usage: globfold.py [--dry]      (writes build/portable/folds.txt)
+Usage: globfold.py [--dry]      (writes build/brally/null-soft/folds.txt)
 """
 import os
 import re
@@ -149,9 +149,9 @@ def main():
             edits.append((m.start(), semi + 1, 'BR_BLOCK_AT(%08X, %s, 0x%X);' % (first, n, g[n][0] - base)))
     rep.insert(0, '%d blocks hold %d names; %d addresses stop a run' % (len(runs), sum(map(len, runs)), len(stops)))
     rep += ['stop 0x%08X %s' % (va, why) for va, why in sorted(stops.items())]
-    os.makedirs('build/portable', exist_ok=True)
-    open('build/portable/folds.txt', 'w').write('\n'.join(rep) + '\n')
-    print(rep[0], '(build/portable/folds.txt)')
+    os.makedirs('build/brally/null-soft', exist_ok=True)
+    open('build/brally/null-soft/folds.txt', 'w').write('\n'.join(rep) + '\n')
+    print(rep[0], '(build/brally/null-soft/folds.txt)')
     if dry:
         return
     for s, e, r in sorted(edits, reverse=True):

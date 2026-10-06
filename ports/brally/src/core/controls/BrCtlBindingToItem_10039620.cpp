@@ -166,7 +166,7 @@ extern "C" int BrCtlNameFind(int kind, int key)
  * original's layout comes out.  The original's neighbour there is
  * 0x10039580 BrCtlNameFind, now filed above it in this file.
  *
- * DEAD, do not re-run (each scored with tools/cpp_score.py):
+ * DEAD, do not re-run (each scored with tools/brally/cpp_score.py):
  *   - case 0 spellings: nested `Find(0, (uchar)GetB(..))` gives the
  *     original's `and eax,0xff / push eax` but FLIPS THE WHOLE FUNCTION TO
  *     AN EBP FRAME (+13 B, 287 diffs); a byte local (shared or its own) goes

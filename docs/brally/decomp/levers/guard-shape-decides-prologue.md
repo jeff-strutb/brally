@@ -3,7 +3,7 @@
 > A multi-condition entry guard has TWO correct spellings and the return values pick which - && chain vs sequential early returns; got 3 byte-exact in one pass.
 
 Proven 2026-09-03 on the sound-gate family (`BrSndG0B5DE8 && BrSndPDS &&
-BrSndG18290FC`), full write-up in `docs/VC5-IDIOMS.md`.
+BrSndG18290FC`), full write-up in `docs/brally/VC5-IDIOMS.md`.
 
 - **Guard and body return the SAME constant** → three sequential
   `if (x == 0) { return 1; }` early returns. An `&&` chain instead nests the
@@ -16,7 +16,7 @@ BrSndG18290FC`), full write-up in `docs/VC5-IDIOMS.md`.
   `mov eax,1 / pop / pop / ret` copies instead of the original's single `je`
   target, +32 bytes. (0x1006B530 `BrSndChanBind`.)
 
-Screen for the first case with `tools/fnmatch/screen_shrinkwrap.py` (same
+Screen for the first case with `tools/brally/fnmatch/screen_shrinkwrap.py` (same
 push/pop bag, different first-save index). **Zero yield on the tagged pool**  - 
 it is a T1-intake lever, not a family.
 

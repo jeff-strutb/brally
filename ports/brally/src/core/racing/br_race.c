@@ -12,7 +12,7 @@
  * ============ CLOSED 2026-09-09: BYTE-EXACT, 2538/2538, 0 diffs ============
  *
  * The 2-byte residue below fell to the pairwise DECLARATION-ORDER tie-break
- * (docs/VC5-IDIOMS.md, first seen on 0x100250D0's imul): name BOTH add
+ * (docs/brally/VC5-IDIOMS.md, first seen on 0x100250D0's imul): name BOTH add
  * operands -- `(nGates = g_brTrkHdr.nGate)` inside the modulus and
  * `(gate = pDrv->f4C) < 0` in the conjunction, then `gate + nGates` -- and
  * declare `gate` BEFORE `nGates`.  The later-declared symbol is the
@@ -193,7 +193,7 @@ float BrRaceTruncHundredths(float t)
  * Restoring them is transcription, not discovery.
  *
  * Three shapes here are source, not schedule, and each is a rule from
- * docs/VC5-IDIOMS.md:
+ * docs/brally/VC5-IDIOMS.md:
  *
  *   - ONE argument, in ecx: `mov ebp, ecx` and a bare `ret`.  BrRaceRules is
  *     the accessor sub-case -- six separate absolute globals behind one
@@ -259,8 +259,8 @@ __declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
  * heading for, whether it just passed one, lap and split timing, its
  * position against the others, and the messages that result. The rules of
  * the race, per car per frame. */
-/* @t4-pass 0x1005FF00 1 2026-09-07 probes 99 bytes 2538 insns 720 regions 2 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005FF00 2 2026-09-07 probes 99 bytes 2538 insns 720 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005FF00 1 2026-09-07 probes 99 bytes 2538 insns 720 regions 2 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1005FF00 2 2026-09-07 probes 99 bytes 2538 insns 720 regions 2 rows 2 census yes  (tools/brally/crank.py) */
 /* @implements 0x1005FF00 glide BrRaceGateStep */
 void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
 {
@@ -268,7 +268,7 @@ void BR_THISCALL1 BrRaceGateStep(BrDriver *pDrv)
     BrDriverCar *pc;
     /* `gate` BEFORE `nGates`: for `gate + nGates` VC5 makes the LATER-
      * declared symbol the two-operand add's DESTINATION (the pairwise
-     * declaration-order tie-break, docs/VC5-IDIOMS.md), and the original's
+     * declaration-order tie-break, docs/brally/VC5-IDIOMS.md), and the original's
      * destination at 0x10060097 is the gate-count register. */
     int32_t      gate, nGates, q, iCur, iNext, iMode, iBest, i;
     float        tLap, dGap, vScale, fRatio;

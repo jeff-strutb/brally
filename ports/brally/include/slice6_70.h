@@ -257,7 +257,7 @@ extern int32_t (*g_pfnBrDPlayInitConn)(struct BrDPlay *pThis,
 
 
 
-/* Read out of orig/BRD3D.dll .rdata, not assumed (CONTRACT). */
+/* Read out of reference/brally/orig/BRD3D.dll .rdata, not assumed (CONTRACT). */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x100A73C8 "%%y1%s%d/%d" */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x100A73D4 "L"           */
 

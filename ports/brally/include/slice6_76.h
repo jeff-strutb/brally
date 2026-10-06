@@ -12,7 +12,7 @@
  *
  *   1. call sites in the already-ported C tree, counted per stub name;
  *   2. call sites in the IMAGE, by disassembling every function in
- *      config/functions.csv and counting direct `call`/`jmp` targets.
+ *      config/brally/functions.csv and counting direct `call`/`jmp` targets.
  *      That sweep found 1,460 distinct call targets over 7,982 call sites.
  *
  * Measure (2) is the one quoted below, because it counts the demand the whole

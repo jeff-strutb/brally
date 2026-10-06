@@ -16,8 +16,8 @@ FALSE - verified by `@implements` bodies + passing tests:
 - `0x10007E80/0x10063860/0x1006D1A0/0x10063060/0x10056260` also ported.
 - Only 3 init callees remain on the counted frontier: `0x10007F10`, `0x10007F40`, `0x10009C00`.
 
-Lesson: **`tools/isported.py` is comment-shape heuristics and NOT authoritative**
-(it reported all eleven absent). Use `tools/whereis.py` and grep for `@implements`
+Lesson: **`tools/brally/isported.py` is comment-shape heuristics and NOT authoritative**
+(it reported all eleven absent). Use `tools/brally/whereis.py` and grep for `@implements`
 (case-insensitive - source uses UPPERCASE hex, e.g. `0x1006DE70`). The manifest also
 undercounts functions that are implemented but lack an `@implements` tag (BrMat3Solve
 was one). Always query the tree before trusting any coverage/status prose in the README.

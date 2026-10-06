@@ -73,7 +73,7 @@ int32_t BrCarPredictRemote(BrCar *pCar, int32_t slot)
      * `if (!ok) return 0;` VC5 tail-merges the two `return 1`s above into one
      * shared exit and the function comes out 28 bytes short. In this form all
      * four exits are emitted in full, as the original has them. See
-     * docs/VC5-IDIOMS.md, "the last test's polarity decides whether VC5
+     * docs/brally/VC5-IDIOMS.md, "the last test's polarity decides whether VC5
      * tail-merges the earlier returns". */
     if (BrGhostPickBlend(&state, slot)) {
         BrCarGhostApply_10059A80(pCar, &state);

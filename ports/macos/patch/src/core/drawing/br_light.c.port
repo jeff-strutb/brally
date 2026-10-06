@@ -1,9 +1,0 @@
-# Port deviations for src/core/drawing/br_light.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop define:BrPtrListContains
-@drop define:_CRTIMP
-@drop undef:BrPtrListContains
-@drop var:_DAT_10077488
-@drop var:_DAT_10077490
-@drop fn:FUN_1002a490

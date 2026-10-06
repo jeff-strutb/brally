@@ -4,7 +4,7 @@
  * keyboard state in, turning it into "pressed just now" answers, and the
  * device-slot housekeeping around it.
  *
- * Moved here out of the address batches under src/core/; the bodies are the
+ * Moved here out of the address batches under src/brally/core/; the bodies are the
  * text that was matched there, unchanged.
  */
 #include "slice1_10.h"   /* br_globals: its objects */

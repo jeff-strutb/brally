@@ -18,7 +18,7 @@ the commutative fold t3.py already applies to two MEMORY operands.
 Thirteen source spellings are dead (dossier).  Certifying it needs the
 project lead's decision on that fold, not another grind.  [do-not-lower-t3-standard](../rules/do-not-lower-t3-standard.md)
 
-** THE TWO LEVER FAMILIES.  Both are in docs/VC5-IDIOMS.md's tail.**
+** THE TWO LEVER FAMILIES.  Both are in docs/brally/VC5-IDIOMS.md's tail.**
 
 1. **BLOCK LAYOUT.**  A cold arm sits out of line past the epilogue ONLY
    when it sets the join's value itself and `goto`s PAST the join's own
@@ -37,7 +37,7 @@ project lead's decision on that fold, not another grind.  [do-not-lower-t3-stand
 
 ** TOOLING BUILT THIS SESSION (rebuild it, it is what made the day):**
 `scratch/gscore.py <VA> [tag] [-v]` monkeypatches `t3._find_obj` to read
-`build/match/obj_fn_<tag>/fn_<VA>_<tag>.obj` and prints t3.py's REAL gate
+`build/brally/win32/match/obj_fn_<tag>/fn_<VA>_<tag>.obj` and prints t3.py's REAL gate
 line (rows, limit, unpaired, gap, lost, regions, PASS/FAIL list); the
 harness applies each probe to a pristine `fn.py --make` copy and scores it
 with gscore.   The variant object is `obj_fn_<tag>/fn_<VA>_<tag>.obj`, NOT

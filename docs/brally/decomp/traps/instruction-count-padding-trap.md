@@ -4,7 +4,7 @@
 
 > Recompile instruction counts included 16-byte alignment padding, fabricating EQUAL counts on 0x1000EAF0 and 0x1000A110; fixed 2026-09-03.
 
-Until 2026-09-03 `tools/divergence.py` counted the COFF function extent's
+Until 2026-09-03 `tools/brally/divergence.py` counted the COFF function extent's
 16-byte alignment padding (up to 15 trailing `nop`s the extracted original
 does not have) as recompiled code. Three dossiers then recorded an
 instruction-count EQUALITY that never held:
@@ -20,7 +20,7 @@ instruction-count EQUALITY that never held:
 that licenses "the residue is shape, not missing code", which is what sends
 a session to T3a/park instead of hunting for absent code.
 
-**How to apply:** both `divergence.py` and `tools/msetdiff.py` now strip the
+**How to apply:** both `divergence.py` and `tools/brally/msetdiff.py` now strip the
 padding and report it separately. Never quote an equality that has not been
 padding-corrected, and re-check any older one before building on it. Same
 session, `msetdiff.py` also had to learn that the object stores the reloc

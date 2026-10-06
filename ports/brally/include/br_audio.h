@@ -48,7 +48,7 @@
  * WHAT THIS DOES INSTEAD
  * ----------------------
  * The port plays locally produced lossless files -- FLAC, generated on the
- * builder's machine by tools/extract_cdaudio.py and tools/extract_xm.py from
+ * builder's machine by tools/brally/extract_cdaudio.py and tools/tgrally/extract_xm.py from
  * their own disc image and ROM. Neither Redbook CD audio nor a Windows-only
  * middleware DLL is acceptable, so the backend indirection is kept but is now a
  * plain C vtable the platform layer fills in (see BrAudioBackend). Everything in

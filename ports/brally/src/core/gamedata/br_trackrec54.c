@@ -146,14 +146,14 @@ extern void (*g_pfn18AA0CC)(void *pTable, int cRecords);
  *
  * The original UNROLLS all eighteen dword reversals and six u16 swaps
  * inline -- no loop, no helper -- and re-reads the +0x44 slot for both the
- * register call and the texture scan (re-deref idiom, docs/VC5-IDIOMS.md).
+ * register call and the texture scan (re-deref idiom, docs/brally/VC5-IDIOMS.md).
  *
  * NOT MATCHING by 24 bytes in the u16 window +0x1C0..0x1F0: the original
  * loads each pair's LOW byte first, VC5 here loads the highs first.  Three
  * spellings (or-order, statement split) compile byte-identical, so the load
  * order is scheduler-canonical -- allocator-residue class, do not grind. */
-/* @t4-pass 0x100316D0 1 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x100316D0 2 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100316D0 1 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100316D0 2 2026-09-07 probes 107 bytes 563 insns 192 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x100316D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 563/563 insns 192/192 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2

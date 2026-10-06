@@ -4,7 +4,7 @@
 
 > Four A5-oracle resolution advances that let it RUN many more functions - VA-ownership obj selection, demangled Class::Method keying, __ftol/static-CRT-helper VAs, and $T .rdata-constant soundness.
 
-**2026-09-16: four resolution fixes to the A5 oracle (tools/t3b_verify.py,
+**2026-09-16: four resolution fixes to the A5 oracle (tools/brally/t3b_verify.py,
 t3b_env.py), each unblocking a whole class of functions the oracle previously
 refused. Extends [upgrade-byteshape-t3-to-a5-proven](upgrade-byteshape-t3-to-a5-proven.md) and
 [t3-is-not-a-shortcut-for-fresh-transcriptions](t3-is-not-a-shortcut-for-fresh-transcriptions.md) - the work is making the

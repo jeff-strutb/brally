@@ -1,0 +1,51 @@
+# Port deviations for src/brally/core/drawing/br_sceneprops.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrPtrListContains
+@drop define:_CRTIMP
+@drop undef:BrPtrListContains
+@drop var:s17_tuState
+@drop define:g_s17
+@drop var:s17_colAA5D0
+@drop var:s17_lightMtx
+@drop var:s17_transMtx
+@drop define:BRS17_COL
+@drop define:BRS17_LIGHTMTX
+@drop define:BRS17_TRANSMTX
+@after define:BRS17_TRANSMTX
+
+/* ------------------------------------------------------------------ */
+/* Module state.                                                       */
+
+/* g_s17 is declared in slice2_17.h and defined in slice2_17.c. */
+
+
+/* 0x100AA5D0, 0x106C08A0 and 0x106C0860 are fixed STORAGE in the original,
+ * not pointers to storage: BrScenePropsDraw passes their addresses as
+ * immediates (`push 0x106e7930`) and indexes the colour table directly
+ * (`mov edx,[ecx*4+0x100a9930]`). BrS17State models all three as pointers,
+ * which costs a load at every use and rotates the whole allocation.
+ *
+ * PROPER FIX (header, serialised -- not done here): in src/brally/include/slice2_17.h
+ * make them objects --
+ *      const uint32_t *pColAA5D0;  ->  const uint32_t colAA5D0[4];
+ *      BrMat4 *pLightMtx;          ->  BrMat4 lightMtx;
+ *      BrMat4 *pTransMtx;          ->  BrMat4 transMtx;
+ * and drop the three assignments in tests/brally/test_slice2_17.c. Until then the
+ * matching build models them locally and the PORT IS LEFT EXACTLY AS IT
+ * WAS -- do not delete the #else arm. */
+#define BRS17_COL       g_s17.pColAA5D0
+#define BRS17_LIGHTMTX  g_s17.pLightMtx
+#define BRS17_TRANSMTX  g_s17.pTransMtx
+@end
+@drop define:BRS17_THISCALL
+@after define:BRS17_THISCALL
+/* XSLICE 0x100751D0
+ * 0x1002C2A0 tail-jumps into it with the object in ecx and nothing on the
+ * stack: it is a C++ __thiscall method. MSVC 5.0's C front end cannot spell
+ * __thiscall, but for a single pointer argument __fastcall is byte-identical
+ * at the call site (arg1 in ecx, no stack cleanup), so that is what the
+ * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
+ * one-argument function. */
+#define BRS17_THISCALL
+@end

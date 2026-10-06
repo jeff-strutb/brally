@@ -4,7 +4,7 @@
  * br_mat.c and br_mat3.c build and combine matrices; this module applies one
  * to a point or a direction.
  *
- * Moved out of src/core/slice1_09.c (an address batch) unchanged. The
+ * Moved out of src/brally/core/slice1_09.c (an address batch) unchanged. The
  * preamble below is carried over verbatim from that file, including the
  * matching-build renames that have nothing to do with this code: they decide
  * the set of names the translation unit sees, and trimming them changes the
@@ -35,7 +35,7 @@
 #include <math.h>
 #include <stddef.h>
 
-/* 0x1003B3F0. Moved from src/core/slice2_21.c (an address batch) unchanged.
+/* 0x1003B3F0. Moved from src/brally/core/slice2_21.c (an address batch) unchanged.
  * POSITION IN THE TU IS LOAD-BEARING: it must sit FIRST in this file, ahead
  * of both BrMat4TransformPoint4 and BrMat4TransformPoint -- anywhere else
  * the allocator drops a fxch (this residue) or costs one of the other two
@@ -73,7 +73,7 @@ void BrMtxXfmDir3(BrVec3 *pOut, const BrVec3 *pV, const BrMat4 *pM)
 
 /* 0x1003B2A0 -- signature deliberately matches slice2_18.h's XSLICE
  * declaration (a bare `const float *` matrix) so the two link. Moved from
- * src/core/slice2_21.c (an address batch) unchanged. */
+ * src/brally/core/slice2_21.c (an address batch) unchanged. */
 /* WHAT IT DOES: puts a point through a transform -- moving, rotating and
  * scaling it in one step -- and keeps the fourth component, which is what the
  * perspective divide later needs. */

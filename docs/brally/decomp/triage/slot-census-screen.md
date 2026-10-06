@@ -2,9 +2,9 @@
 
 *Recorded 2026-09-05.*
 
-> tools/slotcensus.py - list every write and read of each original stack slot. Two payoffs: it catches "one variable emitting two different values", and a WRITE/READ COUNT ASYMMETRY locates a shared control-flow join (this broke 0x1000A110's 12-session byte-lane wall)
+> tools/brally/slotcensus.py - list every write and read of each original stack slot. Two payoffs: it catches "one variable emitting two different values", and a WRITE/READ COUNT ASYMMETRY locates a shared control-flow join (this broke 0x1000A110's 12-session byte-lane wall)
 
-`tools/slotcensus.py` (added 2026-09-03) prints, per `[esp+N]` slot of an
+`tools/brally/slotcensus.py` (added 2026-09-03) prints, per `[esp+N]` slot of an
 original function, every write and read plus the call that produced the
 written value. Optionally side-by-side with a recompile's obj.
 
@@ -47,7 +47,7 @@ instructions 8 short → 4, bytes 31 → 16, frame intact.
 
  **It is a JOIN lever, not an expression lever** - the identical partial at
 two straight-line sites in the same function is byte-identical, separately and
-together. Full idiom in `docs/VC5-IDIOMS.md`. See also
+together. Full idiom in `docs/brally/VC5-IDIOMS.md`. See also
 [diagnose-dont-hypothesize](diagnose-dont-hypothesize.md): the census found this in one pass on the same
 day a six-worker sweep of *hypothesised* levers returned zero.
 

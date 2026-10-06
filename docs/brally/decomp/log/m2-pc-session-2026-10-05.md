@@ -4,7 +4,7 @@
 
 > PC M2 session (2026-10-05) T3->T4 levers: read a stored value back through its global; posweep AFTER a body change; parked rows with what was tried
 
-PC/BRGlide M2 session (claims in build/match/m2_claims.csv). The project lead asked for PC, not N64, when saying "our T3 functions to T4 (M2)" on 2026-10-05.
+PC/BRGlide M2 session (claims in build/brally/win32/match/m2_claims.csv). The project lead asked for PC, not N64, when saying "our T3 functions to T4 (M2)" on 2026-10-05.
 
 Promoted:
 - BrFramePresent 0x10023B70 (d6bb9e7f): `samples[g_BrFpsGateB] = delta` (index read back from the GLOBAL just stored) instead of `samples[gate]` made VC5 store gate's own zeroed register (`mov [g], ecx`) instead of the shared zero register (esi). Fix for the "constant zero propagated into the store" class.
@@ -19,7 +19,7 @@ Promoted:
 
 Lever generalisation: "read back through the global" changes which register VC5 stores/keeps (BrGlNavPoll got the xor/store pattern this way but tc/f eax/ecx stayed swapped, +2 B).
 
-Session end 2026-10-05: PC T4 1387 -> 1392 (5 promoted), T3 108 -> 103. Candidates saved in build/match/m2_candidates: BrCarDamageTick (co-filed after BrSelLookup = 5 diffs, TU state), BrMat3Solve (N64 body + maths TU = size-exact rn 2+2), BrGhostPlaybackStep (N64 T4 twin's in-place path fraction fixes fdivr/fstp st(0); rn 1+1, index load order left), BrRaceCueLayout d14, BrUiSprBlit d65.
+Session end 2026-10-05: PC T4 1387 -> 1392 (5 promoted), T3 108 -> 103. Candidates saved in build/brally/win32/match/m2_candidates: BrCarDamageTick (co-filed after BrSelLookup = 5 diffs, TU state), BrMat3Solve (N64 body + maths TU = size-exact rn 2+2), BrGhostPlaybackStep (N64 T4 twin's in-place path fraction fixes fdivr/fstp st(0); rn 1+1, index load order left), BrRaceCueLayout d14, BrUiSprBlit d65.
 - BrGhostPlaybackStep lever came from the N64 session's same-day T4 (baa23b5b): re-check N64 T4 twins as the N64 lane promotes rows.
 - C++ rows: score with the file's own variant (/O2 /Gi rows must run JOBS=1 serial); a /O2-vs-/Gi mismatch faked a pad "gain" on BrCarStartInit.
 
@@ -28,6 +28,6 @@ Session end 2026-10-05: PC T4 1387 -> 1392 (5 promoted), T3 108 -> 103. Candidat
 
 Parked (dated 2026-10-05, tried): BrRaceBeginResetOnce 3 diffs (memset [4] store after loop init; 360 orders/forms), BrDlsTileSizeDecode (esi/edi; ~140 forms, co-filing into br_dl/br_dlcmd), BrCarStateLerp (fmul [t] issue order; opts /G4 /G5 /Op, inline lerps), BrGlNavPoll (see above).
 
-Tools: scratch scoreall.py (scores every T3 row via fn.py), vrun.py VA files..., posweep.py / posweep2.py (PW_EARLY=1 earlier positions; fails when decls come later), sbs on build/match/obj_fn_<tag>/fn_<VA>_<tag>.obj (obj_fn_<tag> dirs are shared across VAs; glob with the VA).
+Tools: scratch scoreall.py (scores every T3 row via fn.py), vrun.py VA files..., posweep.py / posweep2.py (PW_EARLY=1 earlier positions; fails when decls come later), sbs on build/brally/win32/match/obj_fn_<tag>/fn_<VA>_<tag>.obj (obj_fn_<tag> dirs are shared across VAs; glob with the VA).
 
 Related: [m2-session-2026-10-04](m2-session-2026-10-04.md), [t3-to-t4-levers-2026-10-04](../levers/t3-to-t4-levers-2026-10-04.md).

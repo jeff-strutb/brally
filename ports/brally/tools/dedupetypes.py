@@ -6,7 +6,7 @@ include. When the 64-bit core includes that header, clang reports the copy
 as a redefinition. If the two definitions are the same apart from comments
 and whitespace, the file's copy is removed; otherwise it is reported.
 
-Usage: dedupetypes.py   (reads build/portable/obj/*.err)
+Usage: dedupetypes.py   (reads build/brally/null-soft/obj/*.err)
 """
 import glob
 import os
@@ -44,7 +44,7 @@ def def_at(path, line):
 def main():
     os.chdir(ROOT)
     pairs = set()
-    for ef in glob.glob('build/portable/obj/*.err'):
+    for ef in glob.glob('build/brally/null-soft/obj/*.err'):
         t = open(ef, errors='replace').read()
         for m in re.finditer(r"^(\S+?):(\d+):\d+: error: redefinition of '(\w+)'\n(?:.*\n){0,3}?"
                              r"(\S+?):(\d+):\d+: note: previous definition is here", t, re.M):

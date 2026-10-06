@@ -4,7 +4,7 @@
 
 > A hand-inlining macro whose parameter is used at several sites forces one spelling on all of them; that constraint reads exactly like a scheduler choice and produced a wrong "not source-reachable" verdict.
 
-Proven 2026-09-03 on the seven clip planes (`src/core/drawing/br_dlclip.c`),
+Proven 2026-09-03 on the seven clip planes (`src/brally/core/drawing/br_dlclip.c`),
 worth +1 byte-exact (0x1001F7B0) and 4 -> 2 diff bytes on 0x1001F2B0.
 
 `BR_CLIP_PLANE(NAME, DIST)` used `DIST` at TWO sites (`dCur` and `dPrev`).
@@ -38,7 +38,7 @@ SITE-DEPENDENT cost - on this body it flips the pair at either site but at
 the `dPrev` site also sinks that site's `fadd` past four instructions. A
 lever with a site-dependent cost is only usable once the sites are separable.
 
-Full write-up and dead-probe list: `docs/VC5-IDIOMS.md`, "A hand-inlining
+Full write-up and dead-probe list: `docs/brally/VC5-IDIOMS.md`, "A hand-inlining
 macro must be spellable PER USE SITE"; residue map in the br_dlclip.c header.
 Screened 2026-09-03: `BR_CLIP_PLANE` is the ONLY function-generating macro in
 the tree, so there are no siblings to sweep - do not re-run that screen.

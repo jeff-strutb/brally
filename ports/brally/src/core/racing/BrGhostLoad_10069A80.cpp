@@ -1,7 +1,7 @@
 /* 0x10069A80 -- settings: read the ".GRF" Time Attack ghost file back in.
- * Twin of the season reader 0x100695C0 (src/core/settings/br_seasonload.c)
+ * Twin of the season reader 0x100695C0 (src/brally/core/settings/br_seasonload.c)
  * and the mirror of the ghost writer 0x10069DE0 (br_ghostsave.c); the ".GRF"
- * format is in include/br_save.h.
+ * format is in src/brally/include/br_save.h.
  *
  * C++ TU because the failure return is `mov al,[arg] / test al,al / setne al`
  * with NO zeroing of eax -- a C++ `bool`, exactly the residue that parks the
@@ -43,7 +43,7 @@
  *      reverse, which alone flips ~40 push/cmp bytes.  Coupled to (1): the
  *      install-inline layout changes fp's live range past the checksum.
  *
- * DEAD, do not re-run (each measured with tools/cpp_score.py, /O2 /GX /MD):
+ * DEAD, do not re-run (each measured with tools/brally/cpp_score.py, /O2 /GX /MD):
  *   - checksum branch as `if (checksum == sum) goto install;` with install
  *     labelled last: VC5 inverts to `jne closefail`, install stays inline (405);
  *   - the faithful nested-if shape (success falls through, one closefail at the

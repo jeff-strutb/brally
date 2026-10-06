@@ -1,0 +1,18 @@
+# Port deviations for src/brally/core/startup/br_random.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_brAC3060
+@drop fn:BrRandom
+@after fn:BrRandom
+
+/* WHAT IT DOES: the game's random number source. Each call moves the shared
+ * generator on one step and hands back the new value, which is always positive
+ * because the generator only ever produces 31 bits (masked by 0x7FFFFFFF). */
+/* @implements 0x100353D0 glide BrRandom */
+/* @implements 0x1003BD50 d3d BrRandom */
+int BrRandom(void)
+{
+    /* The D3D build uses g_brA9BFD0 and 27-bit mask via BrDPlayRandStep. */
+    return (int)BrDPlayRandStep(&g_brA9BFD0);
+}
+@end

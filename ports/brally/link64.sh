@@ -1,25 +1,27 @@
 #!/bin/sh
 # Link the portable 64-bit game: the core (build64.sh), the data lifted from
-# the user's BRGlide.dll (tools/datalift.py, generated under build/), and
+# the user's BRGlide.dll (tools/brally/datalift.py, generated under build/), and
 # the platform layer for one host.
 #   env: HOST   null (default, headless) | macos | windows
 #        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
 #               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
 #               on macOS it runs on MoltenVK)
-#        DLL    the user's BRGlide.dll (default orig/BRGlide.dll)
+#        DLL    the user's BRGlide.dll (default reference/brally/orig/BRGlide.dll)
 #        CC     a compiler targeting Windows (x86_64-w64-mingw32) builds
 #               brally64.exe: host/win32 replaces host/posix, LDCXX links
 #               (default x86_64-w64-mingw32-g++)
-#        WARN / LDFLAGS64  extra compile / link flags (an ASan build: WARN="-fsanitize=address -fsanitize-recover=address" LDFLAGS64=-fsanitize=address OUT=build/portable_asan)
+#        WARN / LDFLAGS64  extra compile / link flags (an ASan build: WARN="-fsanitize=address -fsanitize-recover=address" LDFLAGS64=-fsanitize=address OUT=build/brally/null-asan)
 set -e
 cd "$(dirname "$0")/../.."
-OUT=${OUT:-build/portable}
 HOST=${HOST:-null}
 RENDER=${RENDER:-null}
+OUT=${OUT:-build/brally/$HOST-$RENDER}
+case "$OUT" in build/*) ;; *) echo "link64: OUT must be under build/ (got $OUT)" >&2; exit 2;; esac
+export OUT
 CC=${CC:-clang}
 P=ports/brally/platform
 PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common"
-case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
+case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/src/brally/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
 mkdir -p $OUT/plat
 
 ports/brally/build64.sh

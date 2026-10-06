@@ -22,7 +22,7 @@ headline symptom the whole time.
 **How to apply:**
 
 1. **Never rank residue by raw diff count.** Use the register-blind multiset
-   gap - `tools/fnmatch/`, `regnorm` mode (see [fnmatch-harness](../toolchain/fnmatch-harness.md)). On the
+   gap - `tools/brally/fnmatch/`, `regnorm` mode (see [fnmatch-harness](../toolchain/fnmatch-harness.md)). On the
    pre-fix file, raw read 1097 extra / 863 missing; register-normalised it
    read 432 / 198. Roughly 650 of that "difference" was ONE rotation. Chasing
    the raw number sends you after register allocation; chasing the regnorm

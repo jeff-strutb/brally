@@ -20,8 +20,8 @@
  * probe has mode != 1, that slot is a hit; only when both modes are 1 does
  * it also demand the eight render-state bytes agree. Returns the index, or
  * -1 if nothing matches (including when the table is empty). */
-/* @t4-pass 0x10027A70 1 2026-09-07 probes 86 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/crank.py) */
-/* @t4-pass 0x10027A70 2 2026-09-07 probes 87 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/crank.py) */
+/* @t4-pass 0x10027A70 1 2026-09-07 probes 86 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10027A70 2 2026-09-07 probes 87 bytes 228 insns 63 regions 2 rows 9 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10027A70 3 2026-09-13 probes 10 bytes 235 insns 68 regions 1 rows 0 census no  (hand, fn.py variants: const one, no q, int n, int i, one-first, ++i, increment order, n>i, unsigned char compares, single-expression p init; all 235/68/0+0 except n>i and p-init 1+1) */
 /* @t4-pass 0x10027A70 4 2026-09-13 probes 10 bytes 235 insns 68 regions 1 rows 0 census yes  (slot census: one slot, the pReq read; fn.py variants around it: const q, byte-stride walker, merged one-tests, declaration order, +0x50 byte init, q-before-n, merged head test, uncast return, q inside the loop, p[0]; all 235/68/0+0 except the +0x50 init 1+1) */
 /* @t3 0x10027A70 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

@@ -27,7 +27,7 @@ static const float kBrHalf = 0.5f;   /* initialised in the original source */
 #undef BrEntSetOrientation
 
 /* ====================================================================== */
-/* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
+/* Constants read out of reference/brally/orig/BRD3D.dll .rdata (do not re-derive)          */
 /* ====================================================================== */
 
 /* 0x1008FCA8 = 0x3F000000, exactly 0.5. The quaternion half-angle factor. */

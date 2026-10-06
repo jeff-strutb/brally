@@ -7274,7 +7274,7 @@ extern int DAT_118ef180;  /* 0x118EF180 */
 #endif
 
 /* The other names the decompiled files used for these objects are
- * defined per file (build/portable/alias/<file>.h), each with the type
+ * defined per file (build/brally/null-soft/alias/<file>.h), each with the type
  * that file gave it. */
 
 #endif

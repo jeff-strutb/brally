@@ -92,13 +92,13 @@ typedef void (*BrFlipHook)(void);
  * lays a line of status text over the top, flips the finished image to the
  * screen, and then folds this frame's duration into the running table of
  * frame times the FPS readout averages. */
-/* @t4-pass 0x10023B70 1 2026-09-10 probes 40 bytes 273 insns 78 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10023B70 2 2026-09-10 probes 40 bytes 273 insns 78 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10023B70 1 2026-09-10 probes 40 bytes 273 insns 78 regions 2 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10023B70 2 2026-09-10 probes 40 bytes 273 insns 78 regions 2 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10023B70 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 273/273 insns 78/78 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/crank.py: 40 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 40 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x10023B70 glide BrFramePresent */
 void BrFramePresent(BrGfxWords *pCmd)

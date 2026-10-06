@@ -11,7 +11,7 @@
  * packet that turned out to be ALREADY IMPLEMENTED under a different name and
  * the six that are not tractable.
  *
- * FLOAT CONSTANTS -- read out of the images' .rdata with tools/pe.py, not
+ * FLOAT CONSTANTS -- read out of the images' .rdata with tools/brally/pe.py, not
  * guessed:
  *     BRD3D    0x1008F3EC =  0.25f     (viewport scale/translate, 2.2 fixed)
  *     BRD3D    0x1008F3F0 = -0.25f     (the Y SCALE only)

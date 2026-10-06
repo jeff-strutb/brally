@@ -6,14 +6,14 @@
  * ==========================================================================
  *
  * This module covers BOTH shipped renderers, and they do not store the font
- * the same way.  Per CONVENTIONS.md, `orig/BRGlide.dll` is the reference; the
+ * the same way.  Per CONVENTIONS.md, `reference/brally/orig/BRGlide.dll` is the reference; the
  * D3D reading is kept because it is a legitimate second source for the shared
  * code and because having both lets them be diffed.  Everything below is
  * labelled with the build it was read from, and `BrFont::build` says which one
  * a loaded font came from.
  *
- *   BR_FONT_BUILD_D3D    orig/BRD3D.dll     emitter 0x10018590
- *   BR_FONT_BUILD_GLIDE  orig/BRGlide.dll   emitter 0x10015B10
+ *   BR_FONT_BUILD_D3D    reference/brally/orig/BRD3D.dll     emitter 0x10018590
+ *   BR_FONT_BUILD_GLIDE  reference/brally/orig/BRGlide.dll   emitter 0x10015B10
  *
  * The two blobs hold the SAME font -- proven, not assumed.  For all 53
  * renderable classes in both sizes, every texel of the Glide blob equals the
@@ -23,7 +23,7 @@
  * the Glide section below.
  *
  * ==========================================================================
- * WHERE THE GLYPH PIXELS COME FROM -- D3D (orig/BRD3D.dll)
+ * WHERE THE GLYPH PIXELS COME FROM -- D3D (reference/brally/orig/BRD3D.dll)
  * ==========================================================================
  *
  * They are NOT in a file. They are compiled into the DLL, in `.data`, at the
@@ -85,7 +85,7 @@
  * `+1` in BrFontGlyph) so adjacent glyphs overlap by a pixel.
  *
  * ==========================================================================
- * WHERE THE GLYPH PIXELS COME FROM -- GLIDE (orig/BRGlide.dll)
+ * WHERE THE GLYPH PIXELS COME FROM -- GLIDE (reference/brally/orig/BRGlide.dll)
  * ==========================================================================
  *
  * Also in `.data`, also at the very front (`.data` begins at 0x1007B000 and
@@ -183,7 +183,7 @@
  * br_data.c's convention is to write recovered bytes out as C initialisers.
  * That is right for tables of tens or hundreds of entries; at 72,000 bytes it
  * would be a third of a megabyte of source for data that is already in the
- * tree, byte for byte, in `orig/BRD3D.dll` and `orig/BRGlide.dll`. So this
+ * tree, byte for byte, in `reference/brally/orig/BRD3D.dll` and `reference/brally/orig/BRGlide.dll`. So this
  * module reads the real bytes at the addresses above out of the real image.
  * Nothing is invented and nothing is transcribed by hand -- the addresses,
  * pitches and cell heights above ARE the recovery record, and BrFontLoad
@@ -249,10 +249,10 @@
  *
  * 0x10018590 (D3D, 2992 bytes) and 0x10015B10 (Glide) were read command by
  * command.  A note on the size, because it has already misled once:
- * `config/functions_glide.csv` used to split the Glide emitter into 0x10015B10
+ * `config/brally/functions_glide.csv` used to split the Glide emitter into 0x10015B10
  * (1019 bytes) and 0x10015F0B (2287), and 0x10015F0B is mid-flow -- it is the
  * `add ecx,8` a `je` at 0x10015ED6 jumps to.  The map has since been rebuilt by
- * `tools/funcmap2.py` and now agrees with the reading below; nothing calls
+ * `tools/brally/funcmap2.py` and now agrees with the reading below; nothing calls
  * 0x10015F0B, and the "call" that put it there was the 0xE8 inside a `shr
  * eax,8` at 0x100239FE.  The real function runs 0x10015B10 .. 0x100166FA, i.e.
  * 3050 bytes, followed by two jump tables and their two 0x4A index tables
@@ -317,8 +317,8 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 
 /* Which DLL a font was recovered from.  Selects the texel nibble order, the
  * glyph layout and the emitter's two divergences; see the header comment. */
-#define BR_FONT_BUILD_D3D    0   /* orig/BRD3D.dll   -- IA8,  I high, A low */
-#define BR_FONT_BUILD_GLIDE  1   /* orig/BRGlide.dll -- AI44, A high, I low */
+#define BR_FONT_BUILD_D3D    0   /* reference/brally/orig/BRD3D.dll   -- IA8,  I high, A low */
+#define BR_FONT_BUILD_GLIDE  1   /* reference/brally/orig/BRGlide.dll -- AI44, A high, I low */
 
 /* Classes 0..26 are digits and punctuation, 28..53 are letters (upper and
  * lower share a class), 27 is the gap between the two runs.  55 entries so

@@ -3,7 +3,7 @@
 
 ports/brally/types/globals.csv takes an address from the 32-bit lane's symbol
 map, which mixes verified placements with addresses copied from header
-comments -- some of them the D3D build's. build/wasm/sites.csv is the
+comments -- some of them the D3D build's. build/brally/wasm32/sites.csv is the
 ground truth: every relocation in every placed Glide function, with the
 address the ORIGINAL's dword holds there. For each inventory row:
 
@@ -26,7 +26,7 @@ def main():
     os.chdir(ROOT)
     per_file = collections.defaultdict(set)
     anywhere = collections.defaultdict(set)
-    for r in csv.DictReader(open('build/wasm/sites.csv')):
+    for r in csv.DictReader(open('build/brally/wasm32/sites.csv')):
         if r['addend'] != '0' or r['name'].startswith(('$', '_imp_')):
             continue
         va = int(r['va'], 16)
@@ -44,7 +44,7 @@ def main():
     # one name, several original objects: the files that reach a minority
     # address name their object uniquely (name_VA), in the source and here
     renamed = []
-    fn_names = {r['name'] for r in csv.DictReader(open('build/wasm/placement.csv'))}
+    fn_names = {r['name'] for r in csv.DictReader(open('build/brally/wasm32/placement.csv'))}
     for nm, vas in list(anywhere.items()):
         if len(vas) < 2 or nm in fn_names or any(0x10001000 <= v < 0x10077000 for v in vas):
             continue

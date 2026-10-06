@@ -219,8 +219,8 @@ typedef struct BrInMouse {
  * lets Escape pause or quit, and, in benchmark mode, prints the frame rate
  * after 441 frames and exits.  The two out-parameters carry the analogue
  * steering and throttle amounts read from whichever axis is bound. */
-/* @t4-pass 0x100706D0 1 2026-09-07 probes 129 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x100706D0 2 2026-09-07 probes 130 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x100706D0 1 2026-09-07 probes 129 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100706D0 2 2026-09-07 probes 130 bytes 4145 insns 1185 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x100706D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 4145/4145 insns 1185/1185 rows 0+0 regions 1 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -231,7 +231,7 @@ typedef struct BrInMouse {
  * the mouse-accumulate site then regresses, so the two front ends are
  * mutually exclusive here.  Dossier and dead-probe list: this file's header
  * (a8 series, hand) and the two crank ledgers above; idioms at the tail of
- * docs/VC5-IDIOMS.md.  Do not reopen before the end-grind;
+ * docs/brally/VC5-IDIOMS.md.  Do not reopen before the end-grind;
  * the only live lead is a C1XX spelling for the mouse accumulate. */
 /* @implements 0x100706D0 glide BrInputPoll */
 uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)

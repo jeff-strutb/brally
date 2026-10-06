@@ -2,9 +2,9 @@
 
 *Recorded 2026-09-24.*
 
-> 2026-09-24: 0x10022600 BrDlVtxGen (1212 B) hand-transcribed in src/core/drawing/br_dlvtx_texgen.c, 86 -> 50 mismatched instructions; T3 route (Gate B passed, live oracle EQUIVALENT on 5 scripts / 40 captures). Family-wide levers for the six tu_022 vertex loaders: 1-based matrix stack gives the lea, re-derived pn gives the post-test induction.
+> 2026-09-24: 0x10022600 BrDlVtxGen (1212 B) hand-transcribed in src/brally/core/drawing/br_dlvtx_texgen.c, 86 -> 50 mismatched instructions; T3 route (Gate B passed, live oracle EQUIVALENT on 5 scripts / 40 captures). Family-wide levers for the six tu_022 vertex loaders: 1-based matrix stack gives the lea, re-derived pn gives the post-test induction.
 
-Original TU tu_022 is **/O2 /Op** (fn.py needs `FN_OPTS="/O2 /Op"`; t3.py pins it via config/t3_variant_c.csv).
+Original TU tu_022 is **/O2 /Op** (fn.py needs `FN_OPTS="/O2 /Op"`; t3.py pins it via config/brally/t3_variant_c.csv).
 
 Levers proven on 0x10022600 (each moved a whole class):
 - **Matrix stack is 1-BASED**: `extern BrDlMtx DAT_105ccd50[]; m = DAT_105ccd50[top - 1].m;` → VC5 emits `shl r,6; lea r2,[r+0x105ccd10]` (disp = sym-0x40). Every zero-based spelling gives `add`. Same construct in 0x10021080/21C70/221D0/22BF0/23360 (told session; took them 84->78).

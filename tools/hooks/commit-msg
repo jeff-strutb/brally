@@ -1,4 +1,0 @@
-#!/bin/sh
-# The commit message is held to the same provenance check as the tree:
-# no tool, vendor or workflow vocabulary, no credit trailers, no dashes.
-exec python3 "$(git rev-parse --show-toplevel)/tools/provcheck.py" --msg "$1"

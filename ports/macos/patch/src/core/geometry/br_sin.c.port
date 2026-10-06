@@ -1,8 +1,0 @@
-# Port deviations for src/core/geometry/br_sin.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop define:_CRTIMP
-@drop pragma:#pragma intrinsic(sin)
-@drop fn:BrSinF
-@drop pragma:#pragma intrinsic(sqrt)
-@drop fn:BrSqrtF

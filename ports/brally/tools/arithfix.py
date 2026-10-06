@@ -15,7 +15,7 @@ scalar (the memory is the original's 32-bit layout: buffers, file images,
 pointer-free records). Where T is a record with a spec the site is listed
 instead -- its offset has to become a field (rewrite.py).
 
-Usage: arithfix.py [--dry]      (reads build/portable/arithcheck.csv)
+Usage: arithfix.py [--dry]      (reads build/brally/null-soft/arithcheck.csv)
 """
 import collections
 import csv
@@ -41,7 +41,7 @@ def strip(n):
 
 def main():
     os.chdir(ROOT)
-    rows = list(csv.DictReader(open('build/portable/arithcheck.csv')))
+    rows = list(csv.DictReader(open('build/brally/null-soft/arithcheck.csv')))
     by_file = collections.defaultdict(set)
     for r in rows:
         by_file[r['file']].add((r['func'], r['var']))

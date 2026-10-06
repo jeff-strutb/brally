@@ -145,7 +145,7 @@ extern int BrSub1007A840(void);
  * (both counted from one rather than from zero). Its argument only controls
  * whether it also totals up four numbers from a settings table at the end;
  * everything else happens either way. */
-/* @t4-pass 0x10058900 1 2026-09-13 probes 75 bytes 288 insns 71 regions 3 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10058900 1 2026-09-13 probes 75 bytes 288 insns 71 regions 3 rows 0 census yes  (tools/brally/crank.py) */
 /* @implements 0x1005FBC0 d3d BrExt_1005FBC0 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AA26F4[0], [1] */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */                /* high half of 0x10AA27E0 */

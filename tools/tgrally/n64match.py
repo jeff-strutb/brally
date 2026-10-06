@@ -5,7 +5,7 @@ source lineage built by IDO for MIPS, so a function we already own on the PC
 side can be compiled a second time and looked for in the ROM directly -- which
 pairs it and matches it in one step, with no anchor and no hand work.
 
-  .venv/bin/python tools/tgrally/n64match.py src/core/geometry/br_vec.c
+  .venv/bin/python tools/tgrally/n64match.py src/brally/core/geometry/br_vec.c
   .venv/bin/python tools/tgrally/n64match.py --all --csv build/tgrally/n64/report.csv
 
 Scoring, weakest to strongest:
@@ -20,9 +20,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 
-CC = os.path.join(ROOT, 'tools/ido/cc')
-CC53 = os.path.join(ROOT, 'tools/ido53/cc')
-INC = ['-I' + os.path.join(ROOT, 'include'),
+CC = os.path.join(ROOT, 'tools/toolchains/ido/cc')
+CC53 = os.path.join(ROOT, 'tools/toolchains/ido53/cc')
+INC = ['-I' + os.path.join(ROOT, 'src', 'brally', 'include'),
        '-I' + os.path.join(ROOT, 'src/tgrally/include')]
 CFLAGS = ['-c', '-O2', '-mips2', '-non_shared', '-G', '0', '-w']
 # x86 calling-convention keywords are meaningless on MIPS and appear in headers
@@ -237,7 +237,7 @@ def compile_variants(cfile, cc=CC, variants=VARIANTS):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('files', nargs='*')
-    ap.add_argument('--all', action='store_true', help='every .c under src/core')
+    ap.add_argument('--all', action='store_true', help='every .c under src/brally/core')
     ap.add_argument('--csv')
     ap.add_argument('--ido53', action='store_true')
     ap.add_argument('--opt', help='force one variant, e.g. "-O2"; default '
@@ -248,7 +248,7 @@ def main():
 
     files = list(args.files)
     if args.all:
-        for dp, dn, fn in os.walk(os.path.join(ROOT, 'src')):
+        for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'brally')):
             if 'generated' in dp or '/cpp' in dp:
                 continue
             files += [os.path.join(dp, f) for f in fn if f.endswith('.c')]

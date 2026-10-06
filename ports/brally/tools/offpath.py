@@ -5,7 +5,7 @@
     offpath.py --dump BrDriverCar
 
 Lays the records out with clang in i386 mode (the force-included headers
-plus tools/canon_all.h) and resolves each offset to a member path, so a
+plus tools/brally/canon_all.h) and resolves each offset to a member path, so a
 decompiled `*(int *)(p + 0x29A8)` can be rewritten as `p->field`.
 """
 import os

@@ -13,7 +13,7 @@
 #include "slice3_42.h"
 #include "slice3_41.h"
 
-/* .rdata constant carried from slice3_42.c, read out of orig/BRD3D.dll. */
+/* .rdata constant carried from slice3_42.c, read out of reference/brally/orig/BRD3D.dll. */
 #define BR_K_0008FAA8  30.0f    /* 0x1008FAA8 -- the simulation rate */
 
 /* =====================================================================
@@ -44,15 +44,15 @@
  * that car's slot for the current replay frame. It does nothing if recording
  * is off, if playback is running, or if this car has already filled its
  * allowance of frames -- the recording simply stops rather than wrapping. */
-/* @t4-pass 0x10063A60 1 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063A60 2 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063A60 3 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
-/* @t4-pass 0x10063A60 4 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x10063A60 1 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063A60 2 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 4 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063A60 3 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10063A60 4 2026-09-10 probes 48 bytes 105 insns 32 regions 2 rows 2 census yes  (tools/brally/crank.py) */
 /* @t3 0x10063A60 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 105/103 insns 32/30 rows 0+2 regions 2 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4
- * residue after tools/crank.py: 48 compiles this pass, levers accepted: none;
- * every candidate and score is in build/match/crank.log.
+ * residue after tools/brally/crank.py: 48 compiles this pass, levers accepted: none;
+ * every candidate and score is in build/brally/win32/match/crank.log.
  * Do not reopen before the end-grind. */
 /* @implements 0x1006AAB0 d3d BrReplayRecord */
 void BrReplayRecord(BrDriverCar *pCar)

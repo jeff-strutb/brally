@@ -4,7 +4,7 @@
  * (world -> camera) and 0x1002A200 BrLightDirsAndAngles (the two light
  * directions and the sky scroll angles, built on top of LookAt).
  *
- * Moved here out of src/core/slice2_17.c (an address batch, not a module).
+ * Moved here out of src/brally/core/slice2_17.c (an address batch, not a module).
  * The batch's preamble is carried over as it was -- including the
  * cross-slice extern declarations and the two globals, now as extern
  * declarations -- because the translation unit's symbol table is load-
@@ -50,7 +50,7 @@
 extern BrS17State g_s17;
 
 /* BrScenePropsDraw's fixed storage (0x100AA5D0, 0x106C08A0, 0x106C0860) and
- * its S17PropItem view went with it to src/core/drawing/br_sceneprops.c. */
+ * its S17PropItem view went with it to src/brally/core/drawing/br_sceneprops.c. */
 
 /* 0x106806B0 -- the 0x24-byte frame-timer object 0x100751D0 / 0x10075240
  * operate on. slice8_86.c treats it as an opaque byte image (see its

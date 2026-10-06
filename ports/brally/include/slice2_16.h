@@ -24,7 +24,7 @@
  * ---------------------------------------------------------------------
  * 0x10024150, 0x100242F0 and 0x100290E0 all dispatch through `jmp [reg*4 +
  * table]` with a preceding byte-index table. The disassembly listing does not
- * contain those tables, so they were read directly out of orig/BRD3D.dll
+ * contain those tables, so they were read directly out of reference/brally/orig/BRD3D.dll
  * (.text RVA 0x1000 -> file 0x400). The recovered mappings are reproduced
  * verbatim in the .c file and they agree exactly with libultra's F3D GBI:
  *
@@ -652,12 +652,12 @@ typedef struct BrFadeState {
 
 /* 0x1002AEC0  pos = srcC0; f5754FC = srcC4. The function begins with a
  * `jmp` over eleven nops -- a link-stage pad, recorded in
- * config/preambles.csv rather than spelled in source.
+ * config/brally/preambles.csv rather than spelled in source.
  *
  * PORT-ONLY SIGNATURE.  The original takes no argument and addresses all four
  * values absolutely; srcC0/srcC4 are the grSstWinOpen screen width and
  * height, which is why they are not near the rest of the wipe state.  The
- * byte-exact Glide body is src/core/generated/0x10017F30.c, the same split
+ * byte-exact Glide body is src/brally/core/generated/0x10017F30.c, the same split
  * BrFadeRelease uses. */
 /* BrFadeLatch: prototype in br_funcs.h */
 

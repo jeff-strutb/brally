@@ -1,7 +1,7 @@
 /* br_sfxsrc.c -- the sound-source layer.  See br_sfxsrc.h for the chain, the
  * stack traces and the evidence for what each argument is.
  *
- * Transcribed from orig/BRGlide.dll.  Every branch carries the address of the
+ * Transcribed from reference/brally/orig/BRGlide.dll.  Every branch carries the address of the
  * instruction it is.
  */
 #include "slice2_24.h"   /* br_globals: its objects */

@@ -32,7 +32,7 @@ typedef struct { int32_t v; } BrCtrlKindArg;
 typedef struct { uint32_t v; } BrCtrlKeyArg;
 
 /* =====================================================================
- * .rdata constants, read out of orig/BRD3D.dll rather than assumed.
+ * .rdata constants, read out of reference/brally/orig/BRD3D.dll rather than assumed.
  * ===================================================================== */
 
 #define BR_K_0008FA54   0.0f    /* 0x1008FA54 */
@@ -139,10 +139,10 @@ void BrRbVelAtPoint(BrVec3 *pOut, const BrRbBodyFull *pB, const BrVec3 *pPoint)
 /* WHAT IT DOES: the same question, but about the spot belonging to another
  * body -- how fast is this body moving at the place where that one is
  * attached. */
-/* @t4-pass 0x100643E0 1 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
-/* @t4-pass 0x100643E0 2 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
-/* @t4-pass 0x100643E0 3 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
-/* @t4-pass 0x100643E0 4 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/crank.py) */
+/* @t4-pass 0x100643E0 1 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/brally/crank.py) */
+/* @t4-pass 0x100643E0 2 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/brally/crank.py) */
+/* @t4-pass 0x100643E0 3 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/brally/crank.py) */
+/* @t4-pass 0x100643E0 4 2026-09-10 probes 24 bytes 218 insns 68 regions 0 rows 0 census no  (tools/brally/crank.py) */
 /* @t4-pass 0x100643E0 5 2026-09-10 probes 11 bytes 218 insns 68 regions 0 rows 0 census yes
  * BYTE CENSUS, not a mutation sweep: with the attachment point copied
  * field-wise the whole function is byte-identical except ONE byte -- the

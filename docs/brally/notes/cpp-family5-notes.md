@@ -1,7 +1,7 @@
 # C++ family 5 - small/mid EH (installers, ctors, stack-dtor) (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
-`/O2 /GX /MD`. Do not `@implements`-tag these in `src/` this session.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
+`/O2 /GX /MD`. Do not `@implements`-tag these in `src/brally/` this session.
 
 ## Scoreboard (10 / 10 have sidecar; 1 / 10 is 0-diff `.text`)
 
@@ -180,4 +180,4 @@ recomp still emits `and eax,0xf` / `and ecx,0xff`.
 - Do not C-sweep these 10. `6aff` in the first ~0x20 bytes → `.cpp`.
 - Do not re-probe the 2-diff SIB pair on 0x10041B60 or the ebx/esi hoist on
   0x1003F130 / 0x1003F410.
-- Do not tag `src/` until a filing session.
+- Do not tag `src/brally/` until a filing session.

@@ -4,7 +4,7 @@
 
 > VC++ 4.2 cross-check RUN and FAILED for BRGlide.dll - 5.0 byte-exact functions break under 4.2; keep MSVC 5.0 for the DLL
 
-2026-08-31: Another session staged VC++ 4.2 (tools/msvc42, cl 10.20.6166)
+2026-08-31: Another session staged VC++ 4.2 (tools/toolchains/msvc42, cl 10.20.6166)
 and reported it "breaks a wall cold" on one function, proposing a
 project-wide compiler re-check. The decisive cross-check (do functions
 already byte-exact under 5.0 still match under 4.2?) WAS RUN on
@@ -19,9 +19,9 @@ BrCarDrawVehicle loses the interleaved-push prologue + ebp zero-reg that
 Whatever the 4.2 win was, it was on a DIFFERENT binary or TU (unstated in
 the report; note [setvideo-exe-complete](../functions/setvideo-exe-complete.md) says SetVideo is proven
 VC5 SP3 by 40 matches). 4.2 may matter for one of the other EXEs - check
-per-binary via config/binaries.csv, never assume project-wide.
+per-binary via config/brally/binaries.csv, never assume project-wide.
 
 **How to apply:** if a session proposes switching BRGlide work to
-tools/msvc42, point at this check. To re-verify: compile the TU with
-`sh tools/wine.sh tools/msvc42/bin/CL.EXE` using fn.py's exact flag line
+tools/toolchains/msvc42, point at this check. To re-verify: compile the TU with
+`sh tools/toolchains/wine.sh tools/toolchains/msvc42/bin/CL.EXE` using fn.py's exact flag line
 and divergence.py the known-exact functions first.

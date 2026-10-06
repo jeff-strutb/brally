@@ -31,7 +31,7 @@ typedef struct { int32_t v; } BrCtrlKindArg;
 typedef struct { uint32_t v; } BrCtrlKeyArg;
 
 /* =====================================================================
- * .rdata constants, read out of orig/BRD3D.dll rather than assumed.
+ * .rdata constants, read out of reference/brally/orig/BRD3D.dll rather than assumed.
  * ===================================================================== */
 
 #define BR_K_0008FA54   0.0f    /* 0x1008FA54 */

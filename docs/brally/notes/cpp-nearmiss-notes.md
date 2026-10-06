@@ -1,7 +1,7 @@
 # C++ near-miss push (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
-`/O2 /GX /MD`. Do not `@implements`-tag these in `src/` this session.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
+`/O2 /GX /MD`. Do not `@implements`-tag these in `src/brally/` this session.
 
 ## Scoreboard
 
@@ -162,4 +162,4 @@ keeps Stream at +0x3C in the `sub esp,0x790` region.
 - Do not set Stream sizeof to the unwind displacement 0x760.
 - Do not define Phase/NameList/Stream ctors or dtors in these TUs.
 - Do not C-sweep these. `6aff` in the first ~0x20 bytes → `.cpp`.
-- Do not tag `src/` until a filing session.
+- Do not tag `src/brally/` until a filing session.

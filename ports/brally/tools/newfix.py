@@ -27,12 +27,12 @@ ROOT = vm.ROOT
 
 
 def ctor_map():
-    pl = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/wasm/placement.csv'))}
+    pl = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/brally/wasm32/placement.csv'))}
     out = {}
-    for r in csv.reader(open('build/wasm/sites.csv')):
+    for r in csv.reader(open('build/brally/wasm32/sites.csv')):
         if len(r) >= 5 and r[1].startswith('??0'):
             cls = r[2].split('::')[0]
-            out[(r[0].replace('src/core/', 'ports/brally/src/core/'), cls)] = pl.get(int(r[4], 16))
+            out[(r[0].replace('src/brally/core/', 'ports/brally/src/core/'), cls)] = pl.get(int(r[4], 16))
     return out
 
 
@@ -40,7 +40,7 @@ def canon_map():
     rules, per = {}, {}
     for r in csv.DictReader(open('ports/brally/types/viewmap.csv')):
         (per if r['file'] else rules)[(r['file'], r['view']) if r['file'] else r['view']] = r['canon']
-    views = {(r['file'], r['view']) for r in csv.DictReader(open('build/portable/views.csv'))}
+    views = {(r['file'], r['view']) for r in csv.DictReader(open('build/brally/null-soft/views.csv'))}
     return rules, per, views
 
 

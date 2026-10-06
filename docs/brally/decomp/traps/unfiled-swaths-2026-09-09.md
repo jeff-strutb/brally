@@ -7,14 +7,14 @@
 2026-09-09, "take a crack at the untried swaths" session.
 
 **The gray 0x1007xxxx swath was never work.** 642 of its 644 todo functions
-(7,417/8,046 B) are in `config/fenced.csv` - import thunks, `__aulldiv`,
+(7,417/8,046 B) are in `config/brally/fenced.csv` - import thunks, `__aulldiv`,
 `__alldiv`, `_DllMainCRTStartup`, `_CRT_INIT` - reproduced at link.
-`tools/progressmap.py` only honoured `fenced_exe.csv`; fixed in 1677fc9 to
+`tools/brally/progressmap.py` only honoured `fenced_exe.csv`; fixed in 1677fc9 to
 read the DLL's `fenced.csv` (purple, own group). Before chasing a gray
 region on the map, check `fenced.csv` first.
 
 **0x100311C0 BrTrackLoad (770 B) T1→T2, committed 9c6bf9e**
-(`src/core/generated/0x100311C0.c`). Byte-exact to +0x1da (whole preamble:
+(`src/brally/core/generated/0x100311C0.c`). Byte-exact to +0x1da (whole preamble:
 strcpy/strcat intrinsics, all calls, sky-texture reads). Proven levers:
 
 - The 1/0/0 unit vector must be a **struct of three floats assigned
@@ -33,7 +33,7 @@ file header. Corpus MISSES on both loop idioms. NOT reggap-0 (two insn
 shapes differ) - not a t3.py candidate yet.
 
 **0x10036B20 BrDpAddressBuild (805 B) T1→T2 SIZE-EXACT, committed**
-(`src/core/generated/0x10036B20.c`): regnorm 2+3, insns 232/231.  THE
+(`src/brally/core/generated/0x10036B20.c`): regnorm 2+3, insns 232/231.  THE
 LEVER: spelling null pointers as bare `0` - a single `(void *)0x0` cast
 anywhere flipped the whole tail block layout AND broke the strlen guards
 (+11 B). Other proven levers: pObj/vt COM-call locals (byte-exact sibling

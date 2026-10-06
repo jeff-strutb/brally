@@ -12,10 +12,10 @@ two-address destination) and 0x100706D0 BrInputPoll (front-end wall, T3
 Gate 0+A+B PASS, still untagged). Everything else >2000 B is hundreds to
 thousands of bytes off.
 
-**What moved: 0x10011FA0 BrFrameDraw** (src/core/drawing/br_framedrive.c)
+**What moved: 0x10011FA0 BrFrameDraw** (src/brally/core/drawing/br_framedrive.c)
 4503 B / 1377 insns / 4+3 rows -> **4501 / 1376 / 1+1** (commits 18819d1,
 38096bd). Lever: `hMir = wMir >> 2` FIRST in the mirror block. Mechanism
-(new idiom, tail of docs/VC5-IDIOMS.md): register OCCUPANCY decides a
+(new idiom, tail of docs/brally/VC5-IDIOMS.md): register OCCUPANCY decides a
 cross-block global-load CSE; the crank's levers never reorder statements
 inside a nested block.
 

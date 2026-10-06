@@ -36,9 +36,9 @@ Session 2 (same day):
 - **0x10007AA0 BrFixDecodeRecord** (501 → 0): the caller pushes `mov ax,[..]; push eax` (no widening), so the callee's real param is short/char. Don't retype the shared callees; call through cast function types `((float (*)(short))F)(x)`. `?:` loads a float constant via the x87; if/else moves it through an integer register.
 - **0x1002A200 LightDirs → T3**: t3.py A3 now pairs `fimul m` with `fild m; fmulp` (exact). Oracle needs static-CRT helpers in t3b_env `_CRT_HELPER_VA` (added CIasin 0x10074606) and hand reloc rows for pooled `$T` double constants. Refiling a @t3 out of a batch: byte-compare objects; the batch's extern DECLARATIONS are load-bearing (symbol table), so carry them; defs become externs.
 - **0x1005ACE0 WheelSteer** (603 → 50): the Ghidra draft passed the wrong matrix (a behaviour bug). Retranscribe after the callees match.
--  The sweep masks reloc targets. The image gate caught port-gathered struct fields (g_brCrPlane.out really lives at 0x117781A0). Fix with a matching-arm-local extern plus a `config/globals_hand.csv` row; no header edit.
+-  The sweep masks reloc targets. The image gate caught port-gathered struct fields (g_brCrPlane.out really lives at 0x117781A0). Fix with a matching-arm-local extern plus a `config/brally/globals_hand.csv` row; no header edit.
 
-Harness: `build/match/t3d/m1/sc.py` (score one file) + `sweep.py GEN.py` (a generator module yields (tag, src), 12-way parallel). A standalone minimal TU usually reproduces the residue, so check that first, then sweep there.
+Harness: `build/brally/win32/match/t3d/m1/sc.py` (score one file) + `sweep.py GEN.py` (a generator module yields (tag, src), 12-way parallel). A standalone minimal TU usually reproduces the residue, so check that first, then sweep there.
 
 Parked for the batched T3 pass: 0x10039D20 BrMenuCap07E0 (41 B, reggap 0, A4 lost-sync fail). Per-arm duplicated e3 fixes the head and tail (46 B, +3 B) but not the arms.
 

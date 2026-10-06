@@ -22,7 +22,7 @@
  * return type than the dllimport below.  A separate file is what keeps each
  * body's view of the world the one its batch gave it.
  *
- * REFERENCE: orig/BRGlide.dll, cross-checked against orig/BRD3D.dll. Every
+ * REFERENCE: reference/brally/orig/BRGlide.dll, cross-checked against reference/brally/orig/BRD3D.dll. Every
  * address named in a banner is the D3D one, because that is the numbering the
  * rest of port/ uses; the Glide address actually read is given beside it.
  */
@@ -77,8 +77,8 @@
 /* WHAT IT DOES: starts the frame clock ticking from now, noting the current
  * time and when the next frame is due. It uses the machine's precise timer
  * where there is one and the ordinary Windows clock otherwise. */
-/* Glide match is src/core/generated/0x1006E3F0.c (now filed in its module) */
-/* 0x1006E3F0 is matched in src/core/generated/0x1006E3F0.c; BrX100751D0's
+/* Glide match is src/brally/core/generated/0x1006E3F0.c (now filed in its module) */
+/* 0x1006E3F0 is matched in src/brally/core/generated/0x1006E3F0.c; BrX100751D0's
  * `mov ecx,esi / call` needs that symbol, not a local copy. */
 /* br86_timer_restart: prototype in br_funcs.h */
 

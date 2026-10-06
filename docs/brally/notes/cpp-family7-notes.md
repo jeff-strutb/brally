@@ -1,11 +1,11 @@
 # C++ family 7 - EH worklist + two stack-dtor matches (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
 `/O2 /GX /MD`. Do not C-sweep these.
 
-Scanned `build/match/orig/*.bin` for `6aff` / `64a1` with FuncInfo magic
+Scanned `build/brally/win32/match/orig/*.bin` for `6aff` / `64a1` with FuncInfo magic
 `0x19930520`: **80 / 80** C++ EH functions, 97,204 / 480,853 of BRGlide.dll
-`.text` (20.2%). `src/core/cpp/` after this batch: **38 functions /
+`.text` (20.2%). `src/brally/core/cpp/` after this batch: **38 functions /
 16,503 B** (17.0% of the C++ class, 3.43% of `.text`). **42 unmatched /
 80,701 B** remain.
 
@@ -24,7 +24,7 @@ EH frame. Same DECLARE-not-define dtor as 0x10056260 / 0x10004C80.
 | 0x10004900 | 309 | stack-dtor, cdecl 7-arg | **0** |
 | 0x10004AD0 | 362 | stack-dtor, cdecl 10-arg | **0** |
 
-Sources: `src/core/cpp/0x10004900.cpp`, `src/core/cpp/0x10004AD0.cpp`.
+Sources: `src/brally/core/cpp/0x10004900.cpp`, `src/brally/core/cpp/0x10004AD0.cpp`.
 
 ### 0x10004900
 

@@ -3,7 +3,7 @@
 #include "slice3_41.h"   /* br_globals: its objects */
 /* br_cardamage.c -- per-lap car damage staging (0x1001CA30).
  *
- * Fresh transcription from build/ghidra_decomp/0x1001ca30.c against the
+ * Fresh transcription from build/brally/analysis/ghidra_decomp/0x1001ca30.c against the
  * original bytes, 2026-09-13.  Matching arm only.
  */
 
@@ -59,7 +59,7 @@ typedef struct BrDmgBit {
  * six-term first in the shift count, declaration order.  Corpus MISS at
  * +0x14E len 6 and +0x151 len 4 -- the construct is not proven anywhere. */
 /* @t4-pass 0x1001CA30 1 2026-09-13 probes 27 bytes 446 insns 141 regions 1 rows 2 census no  (hand, fn.py variants: loop init/increment orders, flag-byte OR spellings, bit-test placement, tail index spellings) */
-/* @t4-pass 0x1001CA30 2 2026-09-13 probes 92 bytes 446 insns 141 regions 3 rows 2 census yes  (tools/crank.py) */
+/* @t4-pass 0x1001CA30 2 2026-09-13 probes 92 bytes 446 insns 141 regions 3 rows 2 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1001CA30 3 2026-09-13 probes 17 bytes 446 insns 141 regions 3 rows 2 census yes  (hand, fn.py variants: 2-D bit table, unsigned index, 1u shift, car[5]-first and 12*car[4] term orders, six-term first; for-loop sum, += 1 forms, byte-pointer stride, pb bound before the for, explicit != 0 flag tests, merged head guard, q offset order, minSum operand order, hex flag literal -- 446/141/0+2 every time, the two orders that move (e02, e09) move the wrong way) */
 /* @t3 0x1001CA30 2026-09-13 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 446/450 insns 141/143 rows 2+0 regions 3 oracle EQUIVALENT

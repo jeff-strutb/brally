@@ -1,0 +1,21 @@
+# Port deviations for src/brally/core/drawing/br_texanim.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:DAT_106ed6b0
+@drop var:BrG_0B380C
+@drop var:DAT_106eecf0
+@drop var:DAT_106eecf4
+@drop var:DAT_100aa030
+@drop var:BrG_6909B4
+@drop var:DAT_105ccb88
+@drop var:DAT_106ec768
+@drop var:DAT_106b7c7c
+@drop var:DAT_106ed570
+@drop var:DAT_118ed1bc
+@drop proto:BrScratchRingAlloc
+@drop proto:BrStubTrue
+@drop define:REC
+@drop define:DESC
+@drop fn:BrTexAnimStep
+@drop undef:REC
+@drop undef:DESC

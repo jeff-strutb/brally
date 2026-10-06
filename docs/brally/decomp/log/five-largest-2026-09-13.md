@@ -52,7 +52,7 @@ T1 rows are all C++ EH (prologue `6a ff`), so the C++ lane again.
 
 **Tools:** `cprobe.py` (scratch) = compile one option + divergence in ~2 s;
 `cpp_score.score_source` for generated sweeps; `fn.py --var` writes to
-`build/match/t3d/fn_<VA>_<tag>.c`. t3.py counts ledger lines only inside the
+`build/brally/win32/match/t3d/fn_<VA>_<tag>.c`. t3.py counts ledger lines only inside the
 @implements comment block -- check the anchor line exists before pasting.
 
 Related: [five-largest-2026-09-12b](five-largest-2026-09-12b.md), [largest-to-t3-survey-2026-09-12](largest-to-t3-survey-2026-09-12.md),

@@ -170,7 +170,7 @@ void BrCarGfxSetColour(BrCarGfx *pCar, int r, int g, int b)
  * register-eligible, so ecx takes `this`, edx is left alone and no dummy has
  * to be materialised. (The `int unused_edx` spelling used here before cost an
  * `xor edx,edx` at the call and pushed the guard's `jne` from short to near.)
- * See docs/VC5-IDIOMS.md, "CALLING one is ALSO reachable".
+ * See docs/brally/VC5-IDIOMS.md, "CALLING one is ALSO reachable".
  *
  * Everything else is /Od-literal: pw[0] is RE-READ for every term (no `c`
  * local), and the locals are declared in the original's home order

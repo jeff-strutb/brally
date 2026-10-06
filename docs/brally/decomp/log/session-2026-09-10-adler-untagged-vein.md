@@ -15,7 +15,7 @@ and the index already said: the readily-certifiable pool is spent.
   register-only (edi/ecx vs edx/esi in the timestamp tail). Certified via two
   `crank.py 0x10023B70 --budget 40` passes (Pool A, single VA is sanctioned).
 - **0x10001000 BrAdler32** -> BYTE-EXACT (986->987 match), filed to a NEW
-  module `src/core/gamedata/br_adler.c` (was an untagged body in the slice1_01
+  module `src/brally/core/gamedata/br_adler.c` (was an untagged body in the slice1_01
   batch; the hook refuses a new match in a batch, so refile). It IS zlib
   adler32. Three spelling facts made it byte-exact: DO16 as sixteen INDEXED
   reads `pBuf[0..15]` with a single `pBuf += 16` (post-increment `*p++` emits

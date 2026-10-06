@@ -4,7 +4,7 @@
 
 > Mac port NATIVE_RENDERER.md phases 1-6 landed 2026-09-29; what is native, what is not, and the traps found
 
-ports/macos/NATIVE_RENDERER.md phases 1-6 were implemented 2026-09-29 (commits 6c9c5ca3..872baf0d). The spec's section 5 holds the measured results; read it before touching the 32-bit lane's renderer.
+ports/brally-wasm/NATIVE_RENDERER.md phases 1-6 were implemented 2026-09-29 (commits 6c9c5ca3..872baf0d). The spec's section 5 holds the measured results; read it before touching the 32-bit lane's renderer.
 
 **Why:** the project lead asked for all phases; later sessions will be asked to go further ("clean, proper modern native").
 

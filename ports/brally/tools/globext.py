@@ -7,7 +7,7 @@ next address anything names. In the 64-bit core each global is its own
 object, so a global declared as an `int` but used as a 0x400-byte path
 buffer overruns into whatever the linker put next.
 
-For every global defined in src/core/data/br_globals.c with its original
+For every global defined in src/brally/core/data/br_globals.c with its original
 address, this measures:
 
     size32   sizeof at i686 (the original layout of the declared type)
@@ -21,7 +21,7 @@ type plus extent - size32), under the same linker symbol:
 
 Globals whose size32 is LARGER than their extent overlap the next named
 global: the original reads one object through two names. Those are listed
-in build/portable/overlaps.txt; each needs its second name folded into the
+in build/brally/null-soft/overlaps.txt; each needs its second name folded into the
 first by hand.
 
 Usage: globext.py [--dry]
@@ -127,9 +127,9 @@ def main():
         want = nxt[va] - va - psz[name]
         if want > 0 and want != int(m.group('pad'), 16):
             edits.append((m.start('pad'), m.end('pad'), '0x%X' % want))
-    os.makedirs('build/portable', exist_ok=True)
-    open('build/portable/overlaps.txt', 'w').write('\n'.join(over) + '\n')
-    print('padded %d, overlapping %d (build/portable/overlaps.txt)' % (len(edits), len(over)))
+    os.makedirs('build/brally/null-soft', exist_ok=True)
+    open('build/brally/null-soft/overlaps.txt', 'w').write('\n'.join(over) + '\n')
+    print('padded %d, overlapping %d (build/brally/null-soft/overlaps.txt)' % (len(edits), len(over)))
     if dry or not edits:
         return
     for b, e, rep in sorted(edits, reverse=True):

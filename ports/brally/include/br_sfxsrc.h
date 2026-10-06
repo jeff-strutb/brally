@@ -2,8 +2,8 @@
  * 15-entry per-channel record, and the two countdown entry points the race
  * step calls.
  *
- * REFERENCE IS orig/BRGlide.dll.  Every address below was checked with
- * tools/whereis.py before a line was written, and every one of them reported
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  Every address below was checked with
+ * tools/brally/whereis.py before a line was written, and every one of them reported
  * `port/ ... NOTHING` for both builds' numbers except where noted.
  *
  * ======================================================================

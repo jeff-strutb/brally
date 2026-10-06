@@ -2,15 +2,15 @@
 
 *Recorded 2026-09-03.*
 
-> The N64 XM->FLAC export is scored against libopenmpt by tools/xm_oracle.py; there is no soundfont, and vibrato scaling is the top open inaccuracy.
+> The N64 XM->FLAC export is scored against libopenmpt by tools/tgrally/xm_oracle.py; there is no soundfont, and vibrato scaling is the top open inaccuracy.
 
-The Top Gear Rally soundtrack export (`tools/extract_xm.py`) renders six
+The Top Gear Rally soundtrack export (`tools/tgrally/extract_xm.py`) renders six
 FastTracker II modules out of the N64 ROM with **our own** replayer,
-`tools/xm_render.c`. There is no soundfont and no external sample set - the
+`tools/tgrally/xm_render.c`. There is no soundfont and no external sample set - the
 samples live inside the .xm modules - so any "wrong instruments" complaint is a
 replayer bug, never an asset problem.
 
-**The oracle is `tools/xm_oracle.py`** (added 2026-09-03). It scores
+**The oracle is `tools/tgrally/xm_oracle.py`** (added 2026-09-03). It scores
 `xm_render.c` against libopenmpt (`brew install libopenmpt` → `openmpt123`),
 which is what MilkyTracker and VLC use, as windowed correlation with the two
 renders RMS-matched - never peak-matched, because libopenmpt hard-clips into

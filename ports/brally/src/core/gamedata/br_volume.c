@@ -4,7 +4,7 @@
  *
  * SHORT VERSION: the game asks "is there a CD-ROM drive holding a disc whose
  * volume label is Boss Rally". There is never a drive here, but the disc's
- * contents are on the disk, extracted by tools/extract_assets.sh, and the
+ * contents are on the disk, extracted by tools/brally/extract_assets.sh, and the
  * extraction records the disc's real ISO 9660 volume identifier. This reports
  * the extracted asset root as a volume carrying that recorded label. The
  * comparison the game applies to it is the game's own and is unchanged.
@@ -230,7 +230,7 @@ static void scan(void)
     pszDoc = read_whole(szPath);
     if (pszDoc == NULL) {
         s_pszWhy = "no " BR_VOLUME_MANIFEST " under the asset root -- nothing "
-                   "has been extracted here (run tools/extract_assets.sh)";
+                   "has been extracted here (run tools/brally/extract_assets.sh)";
         return;
     }
 

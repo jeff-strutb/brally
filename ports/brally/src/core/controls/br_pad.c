@@ -3,7 +3,7 @@
  * RESPONSIBILITY: reading what the player is doing -- opening and closing the
  * sampling window each frame and walking the pad blocks.
  *
- * Moved here out of src/core/slice2_19.c (an address batch, not a module).
+ * Moved here out of src/brally/core/slice2_19.c (an address batch, not a module).
  * The bodies are byte-for-byte the text that was matched there; the layouts,
  * globals and prototypes they need all come from slice2_19.h.
  */
@@ -28,7 +28,7 @@
  * use.
  *
  * Shape notes, all read off the bytes: members are re-derefed per statement
- * (docs/VC5-IDIOMS.md); the button word is ONE u16 load tested by sub-
+ * (docs/brally/VC5-IDIOMS.md); the button word is ONE u16 load tested by sub-
  * register; the ramp pair is an inline two-lap pointer loop, not a helper;
  * the x/y clamps compare the RELOADED member while steer's compares the
  * unrounded register (hence the local for steer only).

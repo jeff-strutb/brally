@@ -29,7 +29,7 @@ def main():
     recs = [a for a in sys.argv[1:] if not a.startswith('--')]
     dry = '--dry' in sys.argv
     meas = collections.defaultdict(dict)       # rec -> off -> (width, held)
-    for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
         m = re.match(r'^(\w+)<(\w+)>$', r['object'])
         if not m or (recs and m.group(2) not in recs):
             continue

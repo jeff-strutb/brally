@@ -1,0 +1,10 @@
+# Port deviations for src/brally/core/controls/br_inputpoll.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop fn:BrInEdge
+@drop fn:BrInputJustPressed
+@drop var:DAT_118eeee8
+@drop var:DAT_118eeef0
+@drop type:CC_std_1
+@drop fn:BrDiKeyboardShutdown

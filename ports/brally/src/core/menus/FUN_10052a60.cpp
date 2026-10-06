@@ -11,7 +11,7 @@
  * @cpp_symbol ?FUN_10052a60@@YAHPAVGameUi@@@Z
  *
  * 2863 B cdecl EH-frame menu-page builder. Emitted by
- * tools/gen_menubuilder.py from the Ghidra draft; the class
+ * tools/brally/gen_menubuilder.py from the Ghidra draft; the class
  * layouts and the three family levers come from the hand-solved
  * 0x100425E0 / 0x10048160 (char bool after the slot store, raw
  * float pushes for simple lvalues, w14-then-w344 tails).

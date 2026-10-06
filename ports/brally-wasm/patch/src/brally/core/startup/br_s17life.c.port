@@ -1,0 +1,19 @@
+# Port deviations for src/brally/core/startup/br_s17life.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrPtrListContains
+@drop define:_CRTIMP
+@drop undef:BrPtrListContains
+@drop define:BRS17_THISCALL
+@after define:BRS17_THISCALL
+
+/* XSLICE 0x100751D0
+ * 0x1002C2A0 tail-jumps into it with the object in ecx and nothing on the
+ * stack: it is a C++ __thiscall method. MSVC 5.0's C front end cannot spell
+ * __thiscall, but for a single pointer argument __fastcall is byte-identical
+ * at the call site (arg1 in ecx, no stack cleanup), so that is what the
+ * matching build uses. Off MSVC the qualifier vanishes and it is an ordinary
+ * one-argument function. */
+#define BRS17_THISCALL
+@end
+@drop fn:BrS17Init

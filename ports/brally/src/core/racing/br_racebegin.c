@@ -4,7 +4,7 @@
  * the whole of its one-time arm, 0x10019A70..0x1001AB6F, plus the seven small
  * functions below it in .text that only it reaches.
  *
- * Transcribed from orig/BRGlide.dll.  Every branch carries the address of the
+ * Transcribed from reference/brally/orig/BRGlide.dll.  Every branch carries the address of the
  * instruction it is, so the two can be diffed.
  */
 /* Header takes the race-step body as an argument; the original is void and
@@ -271,8 +271,8 @@ void BrRaceEnterOutro(void)
  * What the cues are FOR is not established -- nothing transcribed so far
  * reads the starts back -- so all that can honestly be said is that this is
  * where their timings come from. */
-/* @t4-pass 0x10019930 1 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x10019930 2 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x10019930 1 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10019930 2 2026-09-07 probes 51 bytes 75 insns 31 regions 3 rows 3 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10019930 3 2026-09-09 probes 10 bytes 78 insns 32 regions 2 rows 2 census no  (hand, fn.py variants at the mid-bump shape: star/index spellings, orders, decl split, all inert) */
 /* @t4-pass 0x10019930 4 2026-09-09 probes 10 bytes 78 insns 32 regions 2 rows 2 census yes  (hand, fn.py variants: casts, guard/store/while forms, all inert; corpus hit at +0x11 -- the do/while-next walk shape confirmed) */
 /* @t3 0x10019930 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

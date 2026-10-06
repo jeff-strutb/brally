@@ -1,6 +1,6 @@
 /* vec.c -- 3-vector math, Top Gear Rally (N64) 0x8022439C-0x80224D00.
  *
- * The PC decomp has the same routines (src/core/geometry/br_vec.c); these are
+ * The PC decomp has the same routines (src/brally/core/geometry/br_vec.c); these are
  * transcribed from the ROM, not copied.  IDO keeps commutative operands in
  * source order, so every `a * b` below is the order the original wrote.
  */

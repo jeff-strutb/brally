@@ -6,7 +6,7 @@
  * range, or a single-number setting like the dead zone); two send a
  * force-feedback effect its new parameters and start it.
  *
- * Moved out of src/core/slice3_45.c (an address batch) unchanged. The
+ * Moved out of src/brally/core/slice3_45.c (an address batch) unchanged. The
  * preamble below is carried over verbatim from that file, including the
  * matching-build renames that have nothing to do with this code: they decide
  * the set of names the translation unit sees, and trimming them changes the
@@ -49,7 +49,7 @@ typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
     ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
 /* g_brFfb is the port's gathering of four scattered originals.  The matching
  * build names the two effect pointers as the separate globals they are
- * (Glide 0x118EEF04 and 0x118EEF14, config/globals_glide.csv) so each
+ * (Glide 0x118EEF04 and 0x118EEF14, config/brally/globals_glide.csv) so each
  * relocation resolves to its own variable instead of an offset into a struct
  * the original never had. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118EEF04 */

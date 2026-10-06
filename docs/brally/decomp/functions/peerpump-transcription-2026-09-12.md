@@ -13,7 +13,7 @@ does not apply - it targets HELPER-ARGUMENT sites only). The real fresh find
 was **0x1006AB80 - 803 B, NEVER TRANSCRIBED, invisible because it had no
 report row** ([unswept-tu-bookkeeping-class](../traps/unswept-tu-bookkeeping-class.md)).
 
-**Result: BrNetPeerPump, new TU src/core/net/br_peerpump.c (the
+**Result: BrNetPeerPump, new TU src/brally/core/net/br_peerpump.c (the
 br_peerrank.c precedent: own TU so the peer table can be typed as records).
 802/803 B, 248/248 insns, REGNORM 8+8, parked T2 with full dossier.**
 
@@ -35,7 +35,7 @@ init order (br_peerrank's 'pointer in the sorted loop' lever, reconfirmed).
    +0x2C (the status word) - the SAME open question br_peerrank.c documents;
    still no source lever known.
 
-**Also this session:** `tools/stale_claims.py --fix` is the cpp-twin-retire
+**Also this session:** `tools/brally/stale_claims.py --fix` is the cpp-twin-retire
 chore's real replacement - it converts C-tree tags for VAs matched in the
 cpp lane (did 0x10007230 + a peer's 0x10036220), then re-sweep both files.
 fileaudit now shows 'matched, never recorded: 6' - peers' in-flight filing,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""What stands between src/core and a native 64-bit build, measured.
+"""What stands between src/brally/core and a native 64-bit build, measured.
 
 The portable core targets any 64-bit compiler: LLP64 (Windows x64, long is
 32 bits) and LP64 (macOS, Linux, long is 64 bits). The matching source is
@@ -21,11 +21,11 @@ view of the tree rather than from text patterns where it can:
   text     idioms clang does not flag: image-range address literals,
            byte-offset pointer arithmetic, manual vtable indexing, inline asm.
 
-Needs the 32-bit lane built once (build/wasm: its TU list, lax copies,
+Needs the 32-bit lane built once (build/brally/wasm32: its TU list, lax copies,
 objects and symbol maps are the inputs).
 
 Usage: .venv/bin/python ports/brally/tools/lp64audit.py [--jobs N]
-Output: build/lp64audit/{summary.txt,layout.csv,casts.csv,asserts.csv,image.csv}
+Output: build/brally/analysis/lp64audit/{summary.txt,layout.csv,casts.csv,asserts.csv,image.csv}
 """
 import argparse
 import collections
@@ -41,15 +41,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 HERE = os.path.dirname(os.path.abspath(__file__))
 LLVM = os.environ.get('BR_WASM_LLVM', '/opt/homebrew/opt/emscripten/libexec/llvm/bin')
-WB = os.path.join(ROOT, 'build', 'wasm')
-OUT = os.path.join(ROOT, 'build', 'lp64audit')
+WB = os.path.join(ROOT, 'build', 'brally', 'wasm32')
+OUT = os.path.join(ROOT, 'build', 'brally', 'analysis', 'lp64audit')
 T32, TW64, TL64 = 'i686-pc-windows-msvc', 'x86_64-pc-windows-msvc', 'x86_64-unknown-linux-gnu'
 
 COMMON = ('-fms-extensions -fshort-wchar -fno-builtin -fno-strict-aliasing -fwrapv '
           '-D_M_IX86=500 -D_X86_ -D_WIN32 -DWIN32 -D_MSC_VER=1100 '
           '-D_INTEGRAL_MAX_BITS=64 -DBR_MATCHING_BUILD '
-          '-Iinclude -I%s/inc -Iports/macos/wasm/inc -Itools/msvc5-compat '
-          '-include ports/macos/wasm/inc/msvc_intrinsics.h -Itools/msvc5/include' % WB).split()
+          '-Isrc/brally/include -I%s/inc -Iports/brally-wasm/wasm/inc -Itools/toolchains/msvc5-compat '
+          '-include ports/brally-wasm/wasm/inc/msvc_intrinsics.h -Itools/toolchains/msvc5/include' % WB).split()
 # 64-bit views: size_t, ptrdiff_t and intptr_t from the compiler, not MSVC5's
 W64 = ['-I' + os.path.join(HERE, 'lp64audit_inc'),
        '-include', os.path.join(HERE, 'lp64audit_inc', 'lp64pre.h')]
@@ -98,7 +98,7 @@ def parse_layouts(txt):
 
 def tree_tags():
     tags = set()
-    for root in ('include', 'src'):
+    for root in ('src/brally/include', 'src/brally'):
         for p in glob.glob(os.path.join(ROOT, root, '**', '*'), recursive=True):
             if p.endswith(('.h', '.c', '.cpp')):
                 s = open(p, errors='replace').read()
@@ -115,7 +115,7 @@ def ours(name, tags):
     if n.startswith(('(unnamed', '(anonymous')):
         # a lax TU is preprocessed: its unnamed records cannot be told from
         # the SDK headers', so only unnamed records the tree names count
-        return ' at include/' in n or ' at src/' in n
+        return ' at src/brally/include/' in n or ' at src/brally/' in n
     return n in tags
 
 
@@ -138,11 +138,11 @@ TEXT_PATTERNS = [
 
 def image_census():
     """Original image data the compiled game reads, by provenance."""
-    sys.path.insert(0, os.path.join(ROOT, 'ports', 'macos', 'wasm'))
-    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    sys.path.insert(0, os.path.join(ROOT, 'ports', 'brally-wasm', 'wasm'))
+    sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
     import w2c
     import pe as pemod
-    P = pemod.load(os.path.join(ROOT, 'orig', 'BRGlide.dll'))
+    P = pemod.load(os.path.join(ROOT, 'reference', 'brally', 'orig', 'BRGlide.dll'))
     IB = P.image_base
     text = next(s for s in P.sections if s.name == '.text')
     tlo, thi = IB + text.vaddr, IB + text.vaddr + text.vsize
@@ -154,12 +154,12 @@ def image_census():
         tgt = P.u32(IB + rva)
         slots.append((IB + rva, s.name, 'function' if tgt is not None and tlo <= tgt < thi else 'data'))
 
-    od = os.path.join(ROOT, 'build', 'match', 'orig')
+    od = os.path.join(ROOT, 'build', 'brally', 'win32', 'match', 'orig')
     for fn in os.listdir(od):
         m = re.match(r'0x([0-9A-Fa-f]{8})\.bin$', fn)
         if m:
             w2c.FUNC_STARTS.add(int(m.group(1), 16))
-    w2c.load_thunks(os.path.join(ROOT, 'orig', 'BRGlide.dll'))
+    w2c.load_thunks(os.path.join(ROOT, 'reference', 'brally', 'orig', 'BRGlide.dll'))
     norm = lambda n: re.sub(r'\$S\d+$', '', n)
     symmap = [(r['scope'], norm(r['name']), int(r['va'], 16))
               for r in csv.DictReader(open(os.path.join(WB, 'symmap.csv')))]
@@ -218,7 +218,7 @@ def main():
     os.chdir(ROOT)
     tus = [l.strip() for l in open(os.path.join(WB, 'tus.txt')) if l.strip()]
     if not tus:
-        sys.exit('lp64audit: build the 32-bit lane first (ports/macos/wasm/build_wasm.sh)')
+        sys.exit('lp64audit: build the 32-bit lane first (ports/brally-wasm/wasm/build_wasm.sh)')
     os.makedirs(OUT, exist_ok=True)
     with concurrent.futures.ThreadPoolExecutor(a.jobs) as ex:
         results = list(ex.map(tu_job, tus))
@@ -245,7 +245,7 @@ def main():
             failed_tus += 1
 
     # text idioms
-    files = [p for d in ('src', 'include') for p in glob.glob(d + '/**/*', recursive=True)
+    files = [p for d in ('src/brally',) for p in glob.glob(d + '/**/*', recursive=True)
              if p.endswith(('.c', '.cpp', '.h'))]
     text = collections.Counter()
     text_files = collections.defaultdict(set)

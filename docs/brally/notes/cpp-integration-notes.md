@@ -1,6 +1,6 @@
-# C++ match integration - src/core/cpp + cpp_sweep
+# C++ match integration - src/brally/core/cpp + cpp_sweep
 
-The C pipeline (`tools/match_sweep.py` → `build/match/report.csv`) is
+The C pipeline (`tools/brally/match_sweep.py` → `build/brally/win32/match/report.csv`) is
 `.text`-only and C-only. It cannot emit or score `__CxxFrameHandler`
 unwind. Verified C++ EH matches live in a sibling tree and a sibling
 report. This file is the layout; `docs/cpp-harness-notes.md` is the
@@ -9,17 +9,17 @@ harness and idiom.
 ## Layout
 
 ```
-src/core/cpp/<VA>.cpp          one TU per matched function
-tools/cpp_score.py             4-piece scorer (body, FuncInfo, unwind, handler)
-tools/cpp_sweep.py             walks src/core/cpp, writes report_cpp.csv
-build/match/report_cpp.csv     C++ rows (report.csv columns + `pieces`)
-tools/total.py                 C from report.csv; C++ from report_cpp.csv
+src/brally/core/cpp/<VA>.cpp          one TU per matched function
+tools/brally/cpp_score.py             4-piece scorer (body, FuncInfo, unwind, handler)
+tools/brally/cpp_sweep.py             walks src/brally/core/cpp, writes report_cpp.csv
+build/brally/win32/match/report_cpp.csv     C++ rows (report.csv columns + `pieces`)
+tools/brally/total.py                 C from report.csv; C++ from report_cpp.csv
 ```
 
-`build/cpp_work/` is the scratch pad. Wall attempts stay there
+`build/brally/win32/cpp_work/` is the scratch pad. Wall attempts stay there
 (frame-lands, body-coloring: 0x100439B0 / 44860 / 45EF0 / 4F8C0 /
 485B0 / 4DA00, and the family-6 page-builder / stack-dtor bodies).
-They are not `@implements` in `src/` and they do not count.
+They are not `@implements` in `src/brally/` and they do not count.
 
 Each filed TU is tagged:
 
@@ -37,13 +37,13 @@ Each filed TU is tagged:
 ## Sweep
 
 ```
-python3 tools/cpp_sweep.py                       # every src/core/cpp/*.cpp
-python3 tools/cpp_sweep.py src/core/cpp/0x....cpp
-python3 tools/cpp_sweep.py --summary
+python3 tools/brally/cpp_sweep.py                       # every src/brally/core/cpp/*.cpp
+python3 tools/brally/cpp_sweep.py src/brally/core/cpp/0x....cpp
+python3 tools/brally/cpp_sweep.py --summary
 ```
 
 For each `@implements` it compiles the TU via `cpp_score.compile_cpp`
-(own `build/match/obj_cpp/`, never the C `obj_*` dirs) and scores:
+(own `build/brally/win32/match/obj_cpp/`, never the C `obj_*` dirs) and scores:
 
 | piece | where | how |
 |---|---|---|
@@ -58,14 +58,14 @@ For each `@implements` it compiles the TU via `cpp_score.compile_cpp`
 The C sweep is untouched: `match_sweep.sources` walks `*.c` only, and
 `report.csv` is a different file. Do not fold `/GX` into the C sweep.
 
-`tools/total.py` counts C++ from `report_cpp.csv` (and runs `cpp_sweep`
-once if that file is missing). It no longer walks `build/cpp_work`.
+`tools/brally/total.py` counts C++ from `report_cpp.csv` (and runs `cpp_sweep`
+once if that file is missing). It no longer walks `build/brally/win32/cpp_work`.
 
 ## Filing a new match
 
-1. Land a 4-piece 0 in `build/cpp_work/<VA>.cpp`
-   (`python3 tools/cpp_score.py --va <VA>` → exit 0 and `all four`).
-2. Copy it to `src/core/cpp/<VA>.cpp` with the tags above.
-3. `python3 tools/cpp_sweep.py src/core/cpp/<VA>.cpp` - merges the row.
+1. Land a 4-piece 0 in `build/brally/win32/cpp_work/<VA>.cpp`
+   (`python3 tools/brally/cpp_score.py --va <VA>` → exit 0 and `all four`).
+2. Copy it to `src/brally/core/cpp/<VA>.cpp` with the tags above.
+3. `python3 tools/brally/cpp_sweep.py src/brally/core/cpp/<VA>.cpp` - merges the row.
 4. Do not file a wall. Sidecar-only (FuncInfo/unwind/handler MATCH,
    body diffs > 0) stays in `cpp_work`.

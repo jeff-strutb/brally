@@ -13,7 +13,7 @@
  *
  * THE SNAP IS INLINE ASM, exactly as br_dltrim.c and br_dlproj.c establish:
  * a bare `fistp` with no control-word change is not reachable from VC5 C,
- * because every `(int)float` is a `__ftol` call (docs/VC5-IDIOMS.md).  That
+ * because every `(int)float` is a `__ftol` call (docs/brally/VC5-IDIOMS.md).  That
  * is also why this function keeps an EBP frame -- VC5 does not omit the frame
  * pointer in a function containing inline asm.
  *

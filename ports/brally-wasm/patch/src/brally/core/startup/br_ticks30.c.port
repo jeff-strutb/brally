@@ -1,0 +1,7 @@
+# Port deviations for src/brally/core/startup/br_ticks30.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop proto:BrGetTimerState
+@drop var:DAT_1021c908
+@drop fn:BrTicks30FromMs

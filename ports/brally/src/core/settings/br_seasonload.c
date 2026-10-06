@@ -3,7 +3,7 @@
  *
  *   0x100695C0  877 B   the season reader (d3d 0x10070610, declared by the
  *                       port as BrSub10070610(mode, arg)); format in
- *                       include/br_save.h.
+ *                       src/brally/include/br_save.h.
  *
  * Two entry shapes share one install half:
  *   mode 0    the second argument is an OPEN FILE*; the staging buffer is
@@ -70,9 +70,9 @@
  * five standing words (any other mode).  Returns 1 on success; when the file
  * cannot be opened or fails its magic/checksum checks it returns whether the
  * second argument was non-zero. */
-/* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x100695C0 2 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/crank.py) */
-/* @t4-pass 0x100695C0 3 2026-09-13 probes 61 bytes 879 insns 280 regions 2 rows 13 census yes  (tools/crank.py) */
+/* @t4-pass 0x100695C0 1 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100695C0 2 2026-09-07 probes 61 bytes 871 insns 288 regions 3 rows 5 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100695C0 3 2026-09-13 probes 61 bytes 879 insns 280 regions 2 rows 13 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x100695C0 4 2026-09-20 probes 12 bytes 879 insns 280 regions 2 rows 13 census yes  (failure-return respelling arg&0xff?1:0 scores worse 3+10->6+13; C `(char)arg!=0` stays) */
 /* @t4-pass 0x100695C0 5 2026-09-20 probes 10 bytes 879 insns 280 regions 2 rows 13 census no   (baseline reconfirm; the two residues are C++-front-end block layout + bool-return, per header) */
 /* @t3 0x100695C0 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.

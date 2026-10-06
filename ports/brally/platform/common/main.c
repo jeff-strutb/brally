@@ -6,7 +6,7 @@
 
 #include "plat.h"
 
-void br_data_lift(void);            /* build/portable/gen/br_data.c */
+void br_data_lift(void);            /* build/brally/null-soft/gen/br_data.c */
 void br_data_initterm(void);
 void plat_dx_init(void);            /* dx.c */
 void plat_ear_init(void);           /* ear.c */

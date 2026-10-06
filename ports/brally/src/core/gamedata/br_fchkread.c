@@ -3,7 +3,7 @@
  *
  * Filed out of the address batch slice1_01.c; the CHK_* allocation and
  * existence helpers stay there as port-only bodies (their Glide matches are
- * in src/core/generated/). The preamble is slice1_01.c's, carried whole.
+ * in src/brally/core/generated/). The preamble is slice1_01.c's, carried whole.
  */
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */

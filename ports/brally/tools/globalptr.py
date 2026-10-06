@@ -29,7 +29,7 @@ def main():
     ov = list(csv.DictReader(open(OV))) if os.path.exists(OV) else []
     have = {o['va'] for o in ov}
     found = {}
-    for ef in glob.glob('build/portable/obj/*.err'):
+    for ef in glob.glob('build/brally/null-soft/obj/*.err'):
         t = open(ef, errors='replace').read()
         for m in re.finditer(r"^(\S+?):(\d+):(\d+): error: ([^\n]*)$", t, re.M):
             f, ln, col, msg = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4)

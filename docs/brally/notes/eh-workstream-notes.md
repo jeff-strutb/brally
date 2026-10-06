@@ -6,7 +6,7 @@ from C. That is only half true. VC5 C **does** emit that frame from
 unwind / `new T`) needs `.cpp`. No try/catch exists in BRGlide.dll.
 
 Stayed on BRGlide.dll EH-prologue functions. Did not run `--refine`. Did
-not edit `tools/`, `include/`, `src/`, or any `build/*_work/` EXE dir.
+not edit `tools/brally/`, `src/brally/include/`, `src/brally/`, or any `build/*_work/` EXE dir.
 
 ## Proof: VC5 C `__try` reproduces the frame
 
@@ -39,7 +39,7 @@ though the filter bytes themselves sit in the next map entry.
 
 ## Classification
 
-`build/match/orig/*.bin` starting `6a ff` or `64 a1`: **80 functions,
+`build/brally/win32/match/orig/*.bin` starting `6a ff` or `64 a1`: **80 functions,
 97,204 / 480,853 of `.text` (20.2%)**. Every one pushes a thunk
 `mov eax, FuncInfo; jmp 0x10074566` and `0x10074566` is
 `jmp [MSVCRT!__CxxFrameHandler]`. Magic `0x19930520`, **nTryBlocks = 0
@@ -61,7 +61,7 @@ had `fs:[0]` in this corpus (0 bins).
 
 ### SEH (C-reachable) - matched `/O2`, 0 diffs
 
-TUs in `build/ghidra_work/`. Map splits the compiler-outlined filter /
+TUs in `build/brally/analysis/ghidra_work/`. Map splits the compiler-outlined filter /
 finally / second epilogue into sibling VAs; those siblings are not
 independent C. Compiling the parent reproduces them. Complete DLL span
 also 0 diffs reloc-masked.

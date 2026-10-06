@@ -79,8 +79,8 @@ typedef struct { int n; } BrEntityIndexArg;
  * 6 the car just copies a global into its +0x29A8 slot; otherwise the car's
  * slot above the entrant count picks the level's index byte, falling back
  * to the lowest bit set in the level's mask (5 if the mask is empty). */
-/* @t4-pass 0x1005C490 1 2026-09-07 probes 148 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005C490 2 2026-09-07 probes 101 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005C490 1 2026-09-07 probes 148 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1005C490 2 2026-09-07 probes 101 bytes 204 insns 78 regions 3 rows 6 census yes  (tools/brally/crank.py) */
 /* @t3 0x1005C490 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 204/201 insns 78/78 rows 3+3 regions 3 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2

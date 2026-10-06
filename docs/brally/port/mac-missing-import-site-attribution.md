@@ -10,4 +10,4 @@ Same day, 2fd0aa2c: host hfmt lacked MSVC `%C`, so the CD check (`"%C:\\"`) fail
 
 Known benign: "free of non-heap" x4 at quit after a championship = original BrMakeEnemyCarColorPanels (0x1005EDC0, T4) leaves 4 list slots uninitialised; host free rejects them.
 
-**How to apply:** for a new "not implemented" stub, diff `w_missing(` lines in build/wasm/c/w2c_link.c and check sites.csv for the caller's file before touching w2c. Related: [obj-cpp-is-not-scratch](../decomp/traps/obj-cpp-is-not-scratch.md), [port-build-drift](port-build-drift.md).
+**How to apply:** for a new "not implemented" stub, diff `w_missing(` lines in build/brally/wasm32/c/w2c_link.c and check sites.csv for the caller's file before touching w2c. Related: [obj-cpp-is-not-scratch](../decomp/traps/obj-cpp-is-not-scratch.md), [port-build-drift](port-build-drift.md).

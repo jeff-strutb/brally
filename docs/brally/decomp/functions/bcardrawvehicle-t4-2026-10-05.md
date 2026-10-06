@@ -10,7 +10,7 @@ one session to these, all found by reading the original rather than respelling:
 
 - **Wrong symbol identities.** The colour arms used D3D-addressed `BrG_6Cxxxx` names that
   stood for DIFFERENT Glide addresses at different sites (the image gate rebound them via
-  10 "scramble" rows in config/reloc_overrides.csv). VC5 value-numbers by symbol, so lane
+  10 "scramble" rows in config/brally/reloc_overrides.csv). VC5 value-numbers by symbol, so lane
   order and load order were wrong. Naming each byte global by its Glide address
   (`DAT_106e8610` etc.) fixed the "unreachable" lane flip at once.  Any function with
   hand reloc_overrides rows: suspect wrong symbol identity first.
@@ -36,6 +36,6 @@ one session to these, all found by reading the original rather than respelling:
 - Stale reloc_overrides rows are keyed to the OLD recomp offsets: delete all rows for a
   function when it goes byte-exact (513 here), then rerun the gate.
 
-scratch tools (session): cc.sh (compile C variant from build/match/probe_bd4988/dc),
+scratch tools (session): cc.sh (compile C variant from build/brally/win32/match/probe_bd4988/dc),
 al.py --noaddr/--pairs, fr.sh (/FAcs frame), frameinv.py, namemap.py, slotmap.py.
 Related: [bracestep-hand-transcription-2026-10-05](bracestep-hand-transcription-2026-10-05.md), [hand-transcription-only](../rules/hand-transcription-only.md).

@@ -1,0 +1,113 @@
+/* br_bits.c -- see br_bits.h. */
+#include "br_bits.h"
+#include "br_match.h"
+/* The POD reader's declarations come in ahead of the swap helpers.  Beyond
+ * the types, the count of symbols declared before BrSwapU16Array is what
+ * orders the two byte loads of each halfword swap (low byte first, as the
+ * original reads them): VC5 sorts those commutative operands by a key that
+ * hashes symbol indices. */
+#include "br_pod.h"
+
+/* 0x10035FA0 -- note it reads pending once and writes both fields, so a bit
+ * present in pending and already set in latched stays set (OR, not XOR). */
+/* WHAT IT DOES: moves the chosen bits from "waiting" to "taken" in a two-
+ * word latch, leaving the rest waiting. A bit that was already taken stays
+ * taken, because the merge is an OR and not a flip. */
+/* @t4-pass 0x1002F640 1 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
+/* @t4-pass 0x1002F640 2 2026-09-09 probes 13 bytes 31 insns 15 regions 1 rows 0 census yes  (hand, fn.py variants) */
+/* @implements 0x10035FA0 d3d BrBitLatchTake */
+/* @n64 0x80255910 located */
+/* Register-allocation wall, 31/31 B, 15/15 insns, RAW 2+2, REGNORM 0+0: the
+ * original loads pending ([ecx]) before mask ([esp+4]) and copies PENDING
+ * into esi for the `and`; VC5 loads mask first and copies MASK.  The N64
+ * twin (0x80255910) reads pending once, forms `pending & mask` and
+ * `pending & ~mask`, then `latched | taken` -- the same statement shape as
+ * below, so the source is not in question.  DEAD 2026-09-09 (every probe
+ * identical): operand order in either `&` (VC5 canonicalises); the field
+ * read twice instead of the local; `&=` compound form; `taken`/`rest`
+ * locals in either order; a local copy of mask declared before or after
+ * pending; int/unsigned long/const mask; int pending; a struct copy of the
+ * latch; explicit `latched` local; non-compound `|`; the two stores swapped
+ * (-2 B); int-typed edx dummy; every slot in the TU (3).  Corpus: the
+ * `mov R,R; push; mov R,[R+4]; and; or; not` run is proven nowhere. */
+void __fastcall BrBitLatchTake(BrBitLatch *pLatch, void *_dummy, uint32_t mask)
+{
+    /* Two compound assignments read straight from the record: the original
+     * loads the mask before the pending word, which a `pending` local
+     * (read first) reverses. */
+    pLatch->latched |= mask & pLatch->pending;
+    pLatch->pending &= ~mask;
+}
+
+/* 0x100383C0 -- unrolled swap of three u32s. */
+/* WHAT IT DOES: turns a 3D vector the right way round: three numbers, each
+ * with its bytes reversed. Boss Rally's data came from the N64 and stores
+ * its numbers the other way round from a PC. */
+/* @implements 0x100383C0 d3d BrSwapVec3 */
+void BrSwapVec3(void *pv)
+{
+    unsigned char *p = (unsigned char *)pv;
+    unsigned char t;
+
+    /* temp holds HIGH on both pairs of each dword (p[3]/p[0] then p[2]/p[1]). */
+    t = p[3];  p[3]  = p[0];  p[0]  = t;
+    t = p[2];  p[2]  = p[1];  p[1]  = t;
+    t = p[7];  p[7]  = p[4];  p[4]  = t;
+    t = p[6];  p[6]  = p[5];  p[5]  = t;
+    t = p[11]; p[11] = p[8];  p[8]  = t;
+    t = p[10]; p[10] = p[9];  p[9]  = t;
+}
+
+/* 0x10018A50 (glide) == 0x1002B9E0 (d3d), 29 bytes, byte-identical.
+ *
+ * ONE BODY, AND IT LIVES HERE because both of the modules that need it are
+ * leaves that must not depend on each other: br_track.c had it as
+ * `swap_u16_run` and slice2_16.c as `BrSwapU16Array`, transcribed
+ * independently under the two builds' addresses.  Neither was wrong, which is
+ * the point -- they would have drifted, as 0x10022120's two copies did.
+ *
+ * THE COUNT IS SIGNED and the guard is `test ecx,ecx / jle`, so a negative
+ * count is a no-op rather than a run of four billion.  br_track.c's copy took
+ * an unsigned count and would have looped forever on one; nothing passed one,
+ * so nothing showed it.
+ *
+ * The loop itself is `dec ecx / jne`, entered only after the guard, and the
+ * source pointer is loaded ONCE before the loop label at 0x10018A5C -- the
+ * jump target is the `xor edx,edx`, not the `mov eax,[esp+4]` above it.
+ * Word-compose `lo=p[1]; hi=p[0]; *(u16*)p = lo|(hi<<8)` is the orig shape
+ * (xor edx; mov dl/dh; mov [eax],dx).  Which byte loads first (dl, the
+ * original, or dh) is VC5's key sort over the two `|` operands, a hash of
+ * symbol indices: it follows the symbol count ahead of this function, which
+ * the br_pod.h include at the top supplies (any count in the original's
+ * window works; padding sweeps found the window, a real header fills it).
+ * Every spelling of the compose is canonicalised; only the count moves it.
+ * @t4-pass 0x10018A50 1 2026-09-07 probes 2 bytes 29 insns 12 regions 1 rows 4 census yes */
+/* WHAT IT DOES: reverses the byte order of a run of 16-bit numbers in place.
+ * Boss Rally's data files came from the N64 and store their numbers the other
+ * way round from a PC, so they have to be turned around after loading. Asking
+ * for nothing, or for a negative number of them, does nothing. */
+/* @t4-pass 0x10018A50 2 2026-09-07 probes 25 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10018A50 3 2026-09-07 probes 39 bytes 29 insns 12 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @implements 0x10018A50 glide BrSwapU16Array */
+void BrSwapU16Array(void *pv, int count)
+{
+    unsigned char *p;
+
+    if (count <= 0)
+        return;
+    p = (unsigned char *)pv;
+    do {
+        unsigned short lo, hi;
+        lo = p[1];
+        hi = p[0];
+        *(unsigned short *)p = (unsigned short)(lo | (hi << 8));
+        p += 2;
+    } while (--count);
+}
+
+void *BrHandleLookup(void *const *apTable, uint32_t handle)
+{
+    if (handle < BR_HANDLE_MIN || handle > BR_HANDLE_MAX)
+        return 0;
+    return apTable[handle];
+}

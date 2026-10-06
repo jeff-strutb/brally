@@ -5,7 +5,7 @@ offsets against it.
     layout32.py HEADER TYPE [GLOBAL]
 
 prints every field's offset, size and type (clang -fdump-record-layouts at
-i686), and with GLOBAL, the offsets build/portable/trace/objects.csv says
+i686), and with GLOBAL, the offsets build/brally/null-soft/trace/objects.csv says
 held addresses, each marked by the field it falls in: a pointer field is
 right, anything else is a 64-bit bug in the type.
 """
@@ -51,7 +51,7 @@ def main():
         print('  0x%04X %s%s %s' % (off, ' ' * (depth - 1), t, n))
     if len(sys.argv) > 3 and size:
         meas = set()
-        for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+        for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
             if r['object'] == sys.argv[3] and r['holds_address'] == 'yes' and r['width'] == '4':
                 meas.add(int(r['offset'], 16) % size)
         for o in sorted(meas):

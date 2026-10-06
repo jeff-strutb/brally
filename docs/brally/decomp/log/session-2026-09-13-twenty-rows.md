@@ -6,7 +6,7 @@
 
 **Project lead ask (2026-09-13):** "pick 20 of the T1 or T2 functions and decompile
 them to T4 or T3 if you can't hit T4. DO NOT make excuses." Delivered 20 from
-the tools/tiers.py --list T1/T2 pool (check `/tmp/t2list.txt` style lists
+the tools/brally/tiers.py --list T1/T2 pool (check `/tmp/t2list.txt` style lists
 against the report before probing -- five rows I opened were already @t3).
 
 **Byte-exact (14):** 0x10063CC0 BrReplaySeek, 0x10038A80 BrMenuSetTrackLetter,
@@ -20,7 +20,7 @@ and four with NO source change under the `/O2 /Gi` sweep shape: 0x100540D0,
 T1->T2 with dossiers: 0x1001CA30, 0x100271F0, 0x10062B80, 0x10058680,
 0x10009010, 0x10010FB0.
 
-**Levers proven (all on the tail of docs/VC5-IDIOMS.md):**
+**Levers proven (all on the tail of docs/brally/VC5-IDIOMS.md):**
 - A `rep stos` fill whose three setup instructions are permuted vs the
   original (`lea edi` first) is NOT a memset in the source: spell it as an
   indexed `for` (constant count) or `for (; i < N; i++) dst[i] = 0` (variable).

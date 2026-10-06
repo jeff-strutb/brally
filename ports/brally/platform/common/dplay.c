@@ -2,7 +2,7 @@
  *
  * What the game sees is a DirectX 6 machine with DirectPlay's four stock
  * service providers, never launched from a lobby (the model the brbox oracle
- * runs the original against, tools/brbox_com.py): it enumerates the
+ * runs the original against, tools/brally/brbox_com.py): it enumerates the
  * providers, opens or joins a session, creates its player, and exchanges
  * messages; the other machines' players arrive as DPSYS_CREATEPLAYERORGROUP
  * and leave as DPSYS_DESTROYPLAYERORGROUP. Which provider the player picks

@@ -3,7 +3,7 @@
 #   env: JOBS (default 14), CC (default clang), TARGET (default host)
 set -e
 cd "$(dirname "$0")/../.."
-OUT=${OUT:-build/portable}
+OUT=${OUT:-build/brally/null-null}
 mkdir -p $OUT/obj
 JOBS=${JOBS:-14}
 CC=${CC:-clang}
@@ -15,7 +15,7 @@ CFLAGS="-O2 ${GFLAG:--g} -ftrivial-auto-var-init=${AUTOINIT:-zero} -Wno-everythi
   -Iports/brally/platform/include -Iports/brally/include -include ports/brally/platform/include/win32.h -include ports/brally/platform/include/glide.h -include ports/brally/platform/include/br_x87.h -include ports/brally/include/br_crt.h -include ports/brally/include/br_addr32.h -include ports/brally/platform/include/br_lp64.h -include ports/brally/include/br_globals.h -include ports/brally/include/br_funcs.h"
 # a Windows target links nothing from a DLL: the dllimport the sources
 # spell (as the original's link did) must not ask the system's CRT for one
-# ... and the Win32 emulation takes private names (tools/winnames.py)
+# ... and the Win32 emulation takes private names (tools/brally/winnames.py)
 case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) CFLAGS="-include ports/brally/platform/include/br_winemu.h $CFLAGS -Ddllimport=";; esac
 export CFLAGS
 # one file: build64.sh FILE...  (prints OK/FAIL and the errors)

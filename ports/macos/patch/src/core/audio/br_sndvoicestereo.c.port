@@ -1,9 +1,0 @@
-# Port deviations for src/core/audio/br_sndvoicestereo.c -- see ports/macos/tools/portgen.py.
-# The decomp file is what MSVC compiles; these are the items the
-# Mac port drops, and the port bodies it compiles in their place.
-@drop var:DAT_100b55f0
-@drop var:DAT_1184c458
-@drop var:DAT_1184c45c
-@drop proto:BrSndVoiceApplyVolume
-@drop proto:BrSndVoiceApplyPan
-@drop fn:BrSndVoiceSetLR

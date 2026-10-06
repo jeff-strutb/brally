@@ -1,7 +1,7 @@
 /* br_phys.h -- vehicle physics: how a wheel finds the ground.
  *
  * REFERENCE IS BRGlide.dll.  D3D addresses are given second because the rest
- * of this tree is keyed to them and because `config/shared.csv` classifies
+ * of this tree is keyed to them and because `config/brally/shared.csv` classifies
  * two of these three as `d3d_only` -- WHICH IS WRONG, and is worth recording
  * because the same mistake has now been made repeatedly on this project:
  *
@@ -96,7 +96,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 #include "slice2_11.h"   /* BrCollPlane, g_pBrCollGrid, BrCollGridCellAcquire */
 #include "slice3_42.h"   /* BrRbBodyFull -- the chassis and wheel bodies      */
 
-/* Every constant below was read out of orig/BRGlide.dll, not assumed. */
+/* Every constant below was read out of reference/brally/orig/BRGlide.dll, not assumed. */
 
 /* 0x10077C60 / the immediate 0x42C80000.  The "no ground" answer, and also
  * the initial best-t.  A miss is NOT a sentinel the callers test -- they use

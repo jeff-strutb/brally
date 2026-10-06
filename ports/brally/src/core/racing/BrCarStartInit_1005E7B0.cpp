@@ -27,7 +27,7 @@
  * Not byte-exact: 246/246 instructions (/O2 /Gi, the lane's variant for
  * this file), rows 3+3 register-blind, measured with every relocation
  * resolved to its address (the sweep's masked counts are blind to
- * operand-order swaps -- see docs/VC5-IDIOMS.md).  Source facts, all fixed
+ * operand-order swaps -- see docs/brally/VC5-IDIOMS.md).  Source facts, all fixed
  * by the bytes:
  *  - the start-node test is `!= 0` with the node arm first; the grid
  *    position is one statement `DAT_100b2f00 - f140 - 1` before the two zero

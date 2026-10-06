@@ -6,7 +6,7 @@ BYTES (`v + 0x10`, `v += 0x2b68`). Once the port gives such a variable its
 real pointer type, the same expression steps in ELEMENTS -- it still
 compiles, and it is silently wrong. This finds every such site:
 
-  * the variable's declaration in the ORIGINAL decompiled file (src/...),
+  * the variable's declaration in the ORIGINAL decompiled file (src/brally/...),
     same function, is an integer type;
   * in the fork it is a pointer to something wider than a byte;
   * the fork applies + - += -= ++ -- to it with a non-zero operand.
@@ -15,7 +15,7 @@ Each site is printed with what the original stepped by, for a person (or
 rewrite.py) to turn into a field or an index.
 
 Usage: arithcheck.py [FILE...]      (default: every core file)
-Output: build/portable/arithcheck.csv
+Output: build/brally/null-soft/arithcheck.csv
 """
 import collections
 import csv
@@ -143,8 +143,8 @@ def main():
                 continue
             walk(n, None)
     rows = sorted(set(rows))
-    os.makedirs('build/portable', exist_ok=True)
-    with open('build/portable/arithcheck.csv', 'w', newline='') as fh:
+    os.makedirs('build/brally/null-soft', exist_ok=True)
+    with open('build/brally/null-soft/arithcheck.csv', 'w', newline='') as fh:
         w = csv.writer(fh)
         w.writerow(['file', 'line', 'func', 'var', 'orig_type', 'type', 'expr'])
         w.writerows(rows)

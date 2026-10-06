@@ -7,7 +7,7 @@
 2026-09-21: **BRGlide T3+ image gate PASSES** (`CONTRACT-VALID (T3+) GATE
 PASSED`, exit 0). Two fixes landed:
 
-1. **f21ec9f5** - `tools/image_build_t3.py` main (under-slot) placement path
+1. **f21ec9f5** - `tools/brally/image_build_t3.py` main (under-slot) placement path
    now resolves relocations with `augment_maps` + `address_in_name`, the SAME
    resolution the annex (over-slot) path already trusted and that
    `compiled_functions`' docstring documents this lane as passing. Before, the
@@ -21,11 +21,11 @@ PASSED`, exit 0). Two fixes landed:
    fromref=0, correct call/data target addresses.
 
 2. **82be257f** - 0x100656F0 (driving 2-D barycentric containment test in
-   `src/core/driving/br_tritest.c`) was certified naming itself
+   `src/brally/core/driving/br_tritest.c`) was certified naming itself
    `BrTriContainsPoint`, colliding with the byte-exact geometry function
    0x10034FC0. One C symbol binds one VA → the image gate dropped 0x100656F0 as
    "symbol not in obj". Renamed to `FUN_100656F0` (canonical name is blank in
-   config/functions_glide.csv; `FUN_<VA>` self-encodes the VA). Its shared-body
+   config/brally/functions_glide.csv; `FUN_<VA>` self-encodes the VA). Its shared-body
    twin 0x1006C740 is already `BrTriContainsPoint2D`.
 
 REUSABLE: **"symbol not in obj" for a function that clearly exists = a

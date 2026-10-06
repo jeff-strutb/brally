@@ -1,0 +1,854 @@
+/* br_collrespsolve.c -- see br_collrespsolve.h.  The OBB collision response.
+ *
+ * Transcribed from reference/brally/orig/BRGlide.dll and pinned to tools/brally/x87emu.py golden
+ * vectors.  Each function carries the address of what it is.
+ */
+/* <windows.h> is TU state, not an API dependency: the original unit's symbol
+ * table was large, and VC5 breaks commutative x87 operand ties by it.  With
+ * only this file's own declarations BrCrContactKick (0x10065980) loads pN on
+ * the fld side of its cross products; with the header it loads the rotated
+ * copy, as the original does.  Measured 2026-09-27 with dummy-declaration
+ * pads: the tie flips in 256-declaration bands, so any header of the right
+ * size would do -- this one is the plausible one for the original unit. */
+#include <windows.h>
+#include <math.h>
+#include <string.h>
+
+/* The original 0x10067710 takes TWO arguments (the body block and the box
+ * matrix); the port's prototype in br_collrespsolve.h takes nine.  Under the
+ * matching build the header's prototype is declared under a spare name so the
+ * two-argument original can be defined here without touching src/brally/include/. */
+#define BrCrRespWalk BrCrRespWalk_portproto
+#define BrCrContactKick BrCrContactKick_portproto
+#include "br_collrespsolve.h"
+#undef BrCrRespWalk
+#undef BrCrContactKick
+#include "br_collresp.h"   /* BrCrTest, BrCollRespNode/Plane, g_pBrCollRespList */
+#include "slice1_09.h"     /* BrMat4TransformPoint, BrVec3Normalise             */
+
+/* 0x117787F0..FC and 0x117781A0..A8. */
+BrCrPlaneState g_brCrPlane;
+
+/* 0x10077B84 (1/3), 0x10077AC8 (0.5) -- the two literals the mode-2 arm uses. */
+#define BR_CR_THIRD  (1.0f / 3.0f)
+#define BR_CR_HALF   0.5f
+
+
+/* 0x10077B44 -1.05, 0x10077B40 0.2, 0x10077B38 0.9, 0x100B5170 1.0,
+ * 0x10077AB8 27, 0x10077B3C 1e-4, 0x10077B30 -4.703703880, 0x10077B34 128. */
+#define BR_CR_RESTITUTION  (-1.05f)   /* -(1 + e), e = 0.05                    */
+#define BR_CR_KICK_REST     1.05f     /* 0x10077B2C -- +(1 + e), kick path     */
+#define BR_CR_TANGENT       0.2f      /* tangential fraction folded into rhs   */
+#define BR_CR_DAMP          0.9f      /* impact damping on the contact velocity*/
+#define BR_CR_CLAMP27      27.0f      /* intensity ceiling                     */
+#define BR_CR_EPS           1e-4f     /* restOffset gate for the damping path  */
+#define BR_CR_PEAK_K       (-4.703703880310059f)
+#define BR_CR_PEAK_BASE   128.0f
+
+/* trunc-to-int, the x87 _ftol (0x10074560) the original calls; the store then
+ * keeps the low byte. */
+static uint8_t br_cr_ftol_byte(float x)
+{
+    return (uint8_t)(int32_t)x;   /* C truncates toward zero, as _ftol does */
+}
+
+/* ------------------------------------------------------------------ *
+ * 0x10065950 -- signed distance of a point from a contact plane.
+ *
+ * Fourteen call sites, all in the OBB walk (0x10066D70, 0x10068070,
+ * 0x100682C0), and every one of them pushes the plane record, the plane's
+ * own +0x0C field as the constant, and the address of a point:
+ * `push esi / push [esi+0xc] / push &pt / call`.  So the first argument is
+ * the plane normal at +0x00..+0x08 of that record and the second is its
+ * plane constant, passed by value because the caller already has it loaded.
+ *
+ * THE TERM ORDER IS y, z, x -- read off the two faddps, not guessed.  The
+ * x87 stack at the first `faddp st(1)` is [py*ny (ST1), pz*nz (ST0)], and
+ * `faddp st(1)` is ST(1) += ST(0), so that sum is (y + z); the second sees
+ * [that (ST1), nx*px (ST0)] and makes ((y + z) + x).  The plane constant is
+ * last, as a plain `fadd dword ptr [esp+8]`.  Float addition is not
+ * associative, so this is the source order and not a scheduling artefact --
+ * writing the conventional x, y, z sum pairs the wrong two products.
+ *
+ * !! NO PROTOTYPE.  This function is byte-exact ONLY when its definition is
+ * not preceded by a declaration of itself: putting the obvious prototype in
+ * br_collrespsolve.h adds one `fxch st(1)` and takes it 41 -> 43 bytes.
+ * Isolated and re-measured both ways (the bare prototype alone does it, with
+ * or without the comment above it).  A prototype in some OTHER translation
+ * unit is harmless -- it is a prior declaration in the DEFINING TU that moves
+ * the schedule.  Do not "tidy" this into the header.
+ *
+ * FILE POSITION: byte-exact only when defined before the impulse solver
+ * (position sweep 2026-09-24); after BrCrImpulseSolve the x87 schedule
+ * gains an fxch.  The spelling is not the lever -- the TU state is.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: says which side of a plane a point is on, and how far --
+ * positive in front of the plane, negative behind it. */
+/* @implements 0x10065950 glide BrCrPlaneDist */
+/* @n64 0x8025B704 located */
+float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
+{
+    return pPoint->y * pN->y + pPoint->z * pN->z + pPoint->x * pN->x + planeD;
+}
+
+/* ------------------------------------------------------------------ *
+ * 0x10065C80 -- the impulse solver.
+ *
+ * WHAT IT DOES: resolves ONE contact into a collision impulse and applies it to
+ * the body's `next` linear and angular velocity.  This is the function whose
+ * absence lets cars fall through the world -- contacts were found and never
+ * answered.
+ *
+ * The shape is a textbook rigid-body contact solve, with this engine's own
+ * choices baked in:
+ *
+ *   nb   = orientationT . normal          -- the contact normal in body frame;
+ *                                            this engine uses it AS the lever arm
+ *                                            (there is no separate contact point).
+ *   vc   = vel + angVel x nb              -- velocity at the contact.
+ *   gate: if the approach speed dot(vc, relDir) is >= 0 the bodies are
+ *         separating -- return 0, touch nothing.  Spelled `>=` so a NaN
+ *         continues, matching the x87 `fcomp`/`jne`.
+ *   Wworld = orientationT . invInertia . orientation   -- inverse inertia,
+ *                                            world frame.
+ *   K    = (1/mass) I - [nb]x . Wworld . [nb]x          -- the effective-mass
+ *                                            matrix (diag preset to 1/mass).
+ *   rhs  = dd*relDir + s*(vc - dd*relDir), dd = dot(vc, relDir),
+ *          s = 0.2 when `flag`, else 0     -- normal component, plus an optional
+ *                                            slice of the tangential velocity.
+ *   J    = solve(K, rhs)                   -- the impulse (Cramer, no singular
+ *                                            guard; a degenerate K yields inf/nan
+ *                                            exactly as the original).
+ *   vel    -= (1.05 + restOffset) * J / mass
+ *   angVel -= (1.05 + restOffset) * Wworld . (nb x J)
+ *
+ * The effect record (damage/particle cue) is stamped alongside: intensity =
+ * trunc(min(|dd|, 27)) and colour = the normal's raw dwords, always; and on a
+ * hard hit (threshold > 10, restOffset < 1e-4) the contact velocity is damped
+ * to 0.9 before the solve and a saturating `peak` byte is raised.
+ *
+ * Verified against tools/brally/x87emu.py executing 0x10065C80's real opcode stream:
+ * the Python model this mirrors matched the emulator over >14000 random cases
+ * (both paths, effect bytes, and the restOffset gate), worst relative error
+ * ~1.6e-3 confined to near-singular K.  Golden vectors below pin it.
+ * ------------------------------------------------------------------ */
+/* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10065C80 2 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/brally/crank.py) */
+/* WHAT IT DOES: resolves one contact into a collision impulse and applies it
+ * to the body's next linear and angular velocity -- the solve that stops a car
+ * falling through the world (full dossier above). */
+/* @t3 0x10065C80 2026-09-23 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1406/1448 insns 419/422 rows 106+103 regions 5 oracle EQUIVALENT
+ * @t3-effort passes 2 zero-movement 1 2
+ * !! 2026-09-23: the earlier "scheduling and layout only" verdict came from
+ * the retired seed oracle, which tolerated float differences.  On real race
+ * contacts the live oracle (tools/brally/t3live.py) showed the results differing
+ * by several ULP: the original rounds at different points -- the cross
+ * product never rounded, vc stored as floats, dd computed TWICE (a register
+ * gate before the matrices, a float after them from the stored vc), the
+ * normal component formed from the float dd and damped, next.vel scaled by
+ * the .data float at 0x100B5170, a literal +0 tangential term without the
+ * flag, J/mass stored before the angular product.  All of that is now
+ * spelled out (the `double` locals are the original's register-resident
+ * values) and every captured call agrees bit for bit.  Remaining residue is
+ * register colouring and x87 scheduling. */
+/* @implements 0x10065C80 glide BrCrImpulseSolve */
+/* Matching arm, transcribed from the 0x10065C80 bytes.  The original is NOT the
+ * flat ten-argument port below: it takes the BODY block and reads every operand
+ * off it, exactly as the already-certified caller BrCrRespWalk documents its
+ * cast (`(body, pNormal, pPlane, flag, restOffset)`).  Body offsets, read off
+ * the disassembly and cross-checked against br_collrespsolve.h:
+ *     +0x2C   mass          (invMass = 1/mass)
+ *     +0x54   invInertia    (BrMat3)
+ *     +0xBC   orientation   (BrMat4, 3x3 used)
+ *     +0x164  next.vel      (BrVec3, READ and WRITTEN)
+ *     +0x180  next.angVel   (BrVec3, READ and WRITTEN)
+ *     +0x1EC  effect.color[3]   +0x1FC intensity  +0x1FF peak  +0x200 threshold
+ * The impact colour is the shared normal bank g_brCrPlane.normal read straight
+ * from its global (the original does three dword loads off 0x117787F0); the
+ * contact normal the solve uses is the caller's pNormal, copied on entry.  The
+ * two differ at the 0x100692D5 call site.
+ * The arithmetic content is the port's, validated to the original's opcode
+ * stream over >14000 cases; only the operand SOURCES change here. */
+extern float DAT_100b5170;        /* 0x100B5170, a .data float, 1.0 at load */
+/* The damping and tangential factors as the ORIGINAL's own float constants:
+ * in a double (register-resident) expression a literal becomes a qword
+ * constant the reference image does not contain. */
+extern const float DAT_10077b38;   /* 0.9f */
+extern const float DAT_10077b40;   /* 0.2f */
+extern const float DAT_10077b44;   /* -1.05f, BR_CR_RESTITUTION as the image holds it */
+int BrCrImpulseSolve(char *pBody, const BrVec3 *pNormal, const void *pPlane, int flag, float restOffset)
+{
+    const float   mass        = *(const float *)(pBody + 0x2C);
+    const BrMat3 *pInvInertia  = (const BrMat3 *)(pBody + 0x54);
+    const BrMat4 *pOrient      = (const BrMat4 *)(pBody + 0xBC);
+    BrVec3       *pVel         = (BrVec3 *)      (pBody + 0x164);
+    BrVec3       *pAngVel      = (BrVec3 *)      (pBody + 0x180);
+    const BrVec3 *pRelDir      = (const BrVec3 *) pPlane;
+
+    BrMat3 Rt, R, skew, Wworld, tmp, WSS, D, K;
+    BrVec3 nb, nrm, vc, cross, rhs, J, dw;
+    BrVec3 Jm;           /* J / mass, stored before the angular call */
+    int32_t ddBits;      /* dd's 32-bit image: the original's rounded copy */
+    int32_t vcxBits, vcBits[3];       /* vc read back through its stored floats */
+    double cx, cy, cz, vcx, vcy, vcz; /* register-resident in the original */
+    double ddrx, ttx, tty, ttz;
+    BrVec3 ddr;          /* dd * relDir, as the original stores it (+0x24c/+0x254) */
+    int32_t ddrBits[2];  /* ddr.y, ddr.z read back through their float slots */
+    float  invMass = 1.0f / mass;
+    float  dd, add, inten, tang;
+    double mult;         /* register-resident in the original: never stored */
+    int    i;
+
+    /* nb = orientationT . normal.  The normal is the CALLER's pointer,
+     * copied to a local at +0x6..+0x2B before anything else; only the
+     * impact colour below reads the global bank.  The two are the same
+     * object at the plane-contact call site but not at 0x100692D5 (live
+     * oracle, championship: T3 read a zero global and solved against
+     * (1/mass) I). */
+    nrm = *pNormal;
+    BrMat4ToMat3Both(&Rt, &R, pOrient);
+    BrMat3MulVec3(&nb, &Rt, &nrm);
+
+    /* vc = vel + angVel x nb.  +0x5F..+0xED: the cross product is never
+     * rounded -- each component goes straight into the add with vel -- and
+     * the three sums are STORED as floats (+0xCD, +0xD3, +0xED).  The
+     * `double` locals in this function are values the original keeps in x87
+     * registers: under 24- or 53-bit precision control a register result
+     * is exactly representable as a double, so a double temp computes what
+     * the register computed. */
+    cx = (double)pAngVel->y * nb.z - (double)pAngVel->z * nb.y;
+    cy = (double)pAngVel->z * nb.x - (double)pAngVel->x * nb.z;
+    cz = (double)pAngVel->x * nb.y - (double)pAngVel->y * nb.x;
+    vcy = cy + pVel->y;
+    vcz = cz + pVel->z;
+    vcx = cx + pVel->x;
+    vc.x = (float)vcx;
+    vc.y = (float)vcy;
+    vc.z = (float)vcz;
+
+    /* gate, +0xE1..+0x108: (y*ry + z*rz) + rx*x, with y and z still in
+     * registers and x read back from its float slot (+0xF3 fmul [esp+8]).
+     * Separating (or NaN, as the original's `test ah,1`) -> no response. */
+    vcxBits = *(int32_t *)&vc.x;
+    if (!(((vcy * pRelDir->y + vcz * pRelDir->z) + pRelDir->x * (double)*(float *)&vcxBits) < 0.0))
+        return 0;
+
+    /* K = (1/mass) I - [nb]x . Wworld . [nb]x  (+0x114..+0x1F9) */
+    BrMat3Skew(&skew, &nb);
+    BrMat3Mul(&tmp, pInvInertia, &R);
+    BrMat3Mul(&Wworld, &Rt, &tmp);
+    BrMat3Mul(&tmp, &Wworld, &skew);
+    BrMat3Mul(&WSS, &skew, &tmp);
+    for (i = 0; i < 9; ++i)
+        D.m[i] = (i == 0 || i == 4 || i == 8) ? invMass : 0.0f;
+    BrMat3Sub(K.m, D.m, WSS.m);
+
+    /* dd again, AFTER the matrices, from the STORED floats (+0x1FE..+0x226:
+     * (y*ry + z*rz) + rx*x), kept as a float (+0x228 fst [esp+0x10]).  The
+     * normal component dd*relDir is formed from that float copy before any
+     * damping: y and z stored (+0x24C/+0x254), x left in st(0). */
+    vcBits[0] = *(int32_t *)&vc.x;
+    vcBits[1] = *(int32_t *)&vc.y;
+    vcBits[2] = *(int32_t *)&vc.z;
+    dd = (float)(((double)*(float *)&vcBits[1] * pRelDir->y +
+                  (double)*(float *)&vcBits[2] * pRelDir->z) +
+                 pRelDir->x * (double)*(float *)&vcBits[0]);
+    ddBits = *(int32_t *)&dd;
+    ddrx  = (double)*(float *)&ddBits * pRelDir->x;
+    ddr.y = *(float *)&ddBits * pRelDir->y;
+    ddr.z = *(float *)&ddBits * pRelDir->z;
+    /* the original reloads y and z from those slots every time (the damping
+     * at +0x30B, the tangent and rhs at +0x3B7/+0x408); VC5 would forward
+     * the unrounded register otherwise (live whole-image run, 1 ulp in rhs.y) */
+    ddrBits[0] = *(int32_t *)&ddr.y;
+    ddrBits[1] = *(int32_t *)&ddr.z;
+
+    /* effect record (+0x25D..+0x2B4): intensity = trunc(min(|dd|, 27)),
+     * colour = the shared normal bank's dwords, into body+0x1EC. */
+    add   = -dd;
+    inten = add < BR_CR_CLAMP27 ? add : BR_CR_CLAMP27;
+    *(uint8_t *)(pBody + 0x1FC) = (uint8_t)(int32_t)inten;
+    memcpy(pBody + 0x1EC, &g_brCrPlane.normal, 3 * sizeof(uint32_t));
+
+    /* hard-hit path (+0x2BA): saturating peak byte; next.vel scaled in place
+     * by the .data float at 0x100B5170 (1.0 as shipped); the stored contact
+     * velocity and the normal component damped by 0.9. */
+    if (*(uint8_t *)(pBody + 0x200) > 10u && restOffset < BR_CR_EPS) {
+        uint8_t v = (uint8_t)(int32_t)(BR_CR_PEAK_BASE - BR_CR_PEAK_K * inten);
+        if (v > *(uint8_t *)(pBody + 0x1FF))
+            *(uint8_t *)(pBody + 0x1FF) = v;
+        pVel->x = DAT_100b5170 * pVel->x;
+        pVel->y = DAT_100b5170 * pVel->y;
+        pVel->z = DAT_100b5170 * pVel->z;
+        vc.x *= BR_CR_DAMP; vc.y *= BR_CR_DAMP; vc.z *= BR_CR_DAMP;
+        ddrx *= DAT_10077b38;
+        ddr.y = *(float *)&ddrBits[0] * BR_CR_DAMP;
+        ddr.z = *(float *)&ddrBits[1] * BR_CR_DAMP;
+        ddrBits[0] = *(int32_t *)&ddr.y;
+        ddrBits[1] = *(int32_t *)&ddr.z;
+    }
+
+    /* rhs = dd*relDir + tang*(vc - dd*relDir) */
+    /* +0x3C7: with the flag the tangential slice is (vc - ddr) * 0.2; without
+     * it the original loads three literal +0.0 (+0x3F6..+0x402) -- NOT
+     * 0 * (vc - ddr), which is -0 for a negative difference and leaves
+     * rhs = -0 + -0 = -0 where the original has +0. */
+    if (flag) {
+        ttx  = (vc.x - ddrx) * DAT_10077b40;
+        tty  = (vc.y - *(float *)&ddrBits[0]) * BR_CR_TANGENT;
+        ttz  = (vc.z - *(float *)&ddrBits[1]) * BR_CR_TANGENT;
+    } else {
+        ttx  = 0.0;
+        tty  = 0.0;
+        ttz  = 0.0;
+    }
+    rhs.x = (float)(ttx + ddrx);
+    rhs.y = (float)(tty + *(float *)&ddrBits[0]);
+    rhs.z = (float)(ttz + *(float *)&ddrBits[1]);
+
+    /* J = solve(K, rhs); apply to vel and angVel. */
+    BrMat3Solve(&J, &K, &rhs);
+    /* restOffset + 1.05, loaded after the angular call and kept on the FPU
+     * stack for all six updates -- unrounded (live oracle, championship). */
+    mult = (double)restOffset - DAT_10077b44;
+
+    /* +0x44F..+0x4F5: the impulse is scaled by 1/mass -- recomputed, at
+     * register precision, not the float invMass above -- and STORED as
+     * floats before the angular product's call; +0x4FE..: each velocity then
+     * loses mult * that stored value.  mult * J * invMass associates and
+     * rounds differently (the live oracle's hard-hit captures). */
+    Jm.x = J.x * (1.0f / mass);
+    Jm.y = J.y * (1.0f / mass);
+    Jm.z = J.z * (1.0f / mass);
+
+    cross.x = nb.y * J.z - nb.z * J.y;       /* nb x J */
+    cross.y = nb.z * J.x - nb.x * J.z;
+    cross.z = nb.x * J.y - nb.y * J.x;
+    BrMat3MulVec3(&dw, &Wworld, &cross);
+    pVel->x = (float)(pVel->x - Jm.x * mult);
+    pVel->y = (float)(pVel->y - Jm.y * mult);
+    pVel->z = (float)(pVel->z - Jm.z * mult);
+    pAngVel->x = (float)(pAngVel->x - dw.x * mult);
+    pAngVel->y = (float)(pAngVel->y - dw.y * mult);
+    pAngVel->z = (float)(pAngVel->z - dw.z * mult);
+
+    return 1;
+}
+
+
+/* ------------------------------------------------------------------ *
+ * 0x10065980 -- the contact "kick" (see the header).
+ *
+ * The linear part is a plain restitution reflection: remove 1.05x the velocity
+ * component along the contact normal, so an approaching body leaves with a small
+ * rebound.  Then, gated on the two flags and the effect threshold, come the
+ * damping and the spin fold.
+ *
+ * The spin fold (spinFlag) is the one non-obvious piece.  It builds an
+ * orthogonal frame M from the normal -- row 0 is N, row 1 is the quadratic
+ * tangent (Nx*Ny - Nz^2, Ny*Nz - Nx^2, Nx*Nz - Ny^2), row 2 is N x row 1 -- and
+ * forms M diag(Mt . N) Mt . angVel.  Because Mt.N has a single non-zero entry
+ * (N is row 0 of M, so Mt.N is |N|^2 along axis 0 and near-0 elsewhere), the
+ * result is the component of the spin about the contact normal, sign and scale
+ * carried by the frame.  Transcribed as the original computes it -- Mt.N, then
+ * Mt.angVel, their componentwise product, then M times that -- so the exact
+ * arithmetic (and any non-unit-N behaviour) matches.
+ *
+ * Verified against tools/brally/x87emu.py over 6000 random cases (both flags, all
+ * effect branches), worst relative error ~2e-6.  Golden vectors pin it.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: apply one collision impulse to a body: bounces the velocity
+ * off the surface and adds the spin the contact imparts. Returns without
+ * touching anything when the body is already moving AWAY from the surface,
+ * which is what stops a resting car being kicked every frame. */
+/* @implements 0x10065980 glide BrCrContactKick */
+/* Matching arm, byte-exact 2026-09-27.  The original takes FOUR arguments --
+ * the body record (velocity at +0x164, angular velocity at +0x180, the effect
+ * bytes/floats at +0x1EC..+0x200), the contact normal and the two flags --
+ * which is what the solver's BR_CR_KICK cast already passes; the port arm's
+ * six-argument form is a gathering of those fields.  Source facts the bytes
+ * force: the velocity is read as a BrVec3 at +0x164 (BR_KB_VEL), which puts
+ * pN on the fld side of the approach dot; d is homed; the 1.05 scale is an
+ * unnamed `(d * 1.05f)` common subexpression, not a named local (a named s
+ * flips the first product's operand roles); the effect colour is three FLOAT
+ * assignments from the shared plane normal; the peak is a select then an
+ * unconditional store; the spin fold's frame is row0 = N, row1 =
+ * N x (N.y, N.z, N.x), row2 = N x row1, pushed through
+ * BrMat4MulVec3Transposed twice and BrMat4MulVec3 once.  The cross products'
+ * operand roles are TU state -- see the <windows.h> note at the top. */
+#define BR_KB_F(off) (*(float *)(pBody + (off)))
+#define BR_KB_B(off) (*(unsigned char *)(pBody + (off)))
+#define BR_KB_VEL    ((BrVec3 *)(pBody + 0x164))
+int BrCrContactKick(char *pBody, const BrVec3 *pN, int dampFlag, int spinFlag)
+{
+    float  d;
+    BrVec3 t;
+    BrVec3 b;
+    BrMat4 M;
+
+    d = BR_KB_VEL->x * pN->x + BR_KB_VEL->y * pN->y + BR_KB_VEL->z * pN->z;
+    if (!(d < 0.0f))
+        return 0;
+
+    t.x = pN->x * (d * 1.05f);
+    t.y = pN->y * (d * 1.05f);
+    t.z = pN->z * (d * 1.05f);
+    BR_KB_VEL->x = BR_KB_VEL->x - t.x;
+    BR_KB_VEL->y = BR_KB_VEL->y - t.y;
+    BR_KB_VEL->z = BR_KB_VEL->z - t.z;
+
+    if (BR_KB_B(0x200) >= 10) {
+        float         inten = -d;
+        unsigned char v;
+
+        if (inten > 27.0f)
+            inten = 27.0f;
+        BR_KB_B(0x1FC) = (unsigned char)inten;
+        BR_KB_F(0x1EC) = g_brCrPlane.normal.x;
+        BR_KB_F(0x1F0) = g_brCrPlane.normal.y;
+        BR_KB_F(0x1F4) = g_brCrPlane.normal.z;
+        v = (unsigned char)(128.0f - inten * -4.703703880310059f);
+        if (v <= BR_KB_B(0x1FF))
+            v = BR_KB_B(0x1FF);
+        BR_KB_VEL->x = BR_KB_VEL->x * 0.9f;
+        BR_KB_VEL->y = BR_KB_VEL->y * 0.9f;
+        BR_KB_B(0x1FF) = v;
+        BR_KB_VEL->z = BR_KB_VEL->z * 0.9f;
+    }
+
+    if (dampFlag) {
+        BR_KB_VEL->x = BR_KB_VEL->x * 0.9f;
+        BR_KB_VEL->y = BR_KB_VEL->y * 0.9f;
+        BR_KB_VEL->z = BR_KB_VEL->z * 0.9f;
+    }
+
+    if (spinFlag) {
+        t.x = pN->y;
+        t.y = pN->z;
+        t.z = pN->x;
+        M.m[1][0] = pN->y * t.z - pN->z * t.y;
+        M.m[1][1] = pN->z * t.x - pN->x * t.z;
+        M.m[1][2] = pN->x * t.y - pN->y * t.x;
+        M.m[2][0] = pN->y * M.m[1][2] - pN->z * M.m[1][1];
+        M.m[2][1] = pN->z * M.m[1][0] - pN->x * M.m[1][2];
+        M.m[2][2] = pN->x * M.m[1][1] - pN->y * M.m[1][0];
+        M.m[0][0] = pN->x;
+        M.m[0][1] = pN->y;
+        M.m[0][2] = pN->z;
+        BrMat4MulVec3Transposed(&t, &M, pN);
+        BrMat4MulVec3Transposed(&b, &M, (BrVec3 *)(pBody + 0x180));
+        b.x = b.x * t.x;
+        b.y = b.y * t.y;
+        b.z = b.z * t.z;
+        BrMat4MulVec3((BrVec3 *)(pBody + 0x180), &M, &b);
+    }
+    return 1;
+}
+#undef BR_KB_F
+#undef BR_KB_VEL
+#undef BR_KB_B
+
+/* 0x10077B8C -- 1.1, the penetration push-out gain in the walker's position fix. */
+#define BR_CR_PUSHOUT 1.1f
+
+/* ------------------------------------------------------------------ *
+ * 0x10067470 -- contact-plane resolver.
+ *
+ * Turns one candidate contact into a plane and writes the plane normal
+ * scaled by how far the point is from it.  There are two ways in.  The
+ * common one (mode != 2) is handed the plane normal outright.  The box-face
+ * one (mode == 2) has to CHOOSE the face: it averages the three box-space
+ * triangle vertices and picks the axis on which that centroid is SMALLEST --
+ * the face the triangle lies most flush against -- and uses that box face's
+ * outward normal.  The N64 sibling calls these two paths "Cube Edge to
+ * Triangle Face" and "Triangle Edge to CubeFace".
+ *
+ * Two things here are preserved quirks, both confirmed against the bytes:
+ *
+ *  - The sign of the chosen box normal is taken from the centroid's X
+ *    component, NOT from the component on the winning axis.  The original
+ *    carries cx on the FPU stack through the entire argmin tournament and
+ *    signs by whatever is left in st0, which is always cx.  A NaN cx takes the
+ *    negative arm (the compare's unordered result), so it maps to -0.5.
+ *
+ *  - The argmin is the original's exact >= tournament, so ties resolve the way
+ *    its `fcom`/`jae`-shaped branches do (a tie keeps the earlier axis).
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: turns one candidate contact into a plane and writes the plane
+ * normal scaled by how far the point is from it -- either with the plane
+ * handed in (mode != 2) or, for the box-face case, by first picking the box
+ * face the triangle lies most flush against. */
+/* @implements 0x10067470 glide BrCrPlaneResolve */
+/* Matching arm, byte-exact 2026-09-28, hand-transcribed from the bytes.
+ * Source facts the bytes force:
+ *  - the centroid is ((v0 + v2) + v1) * 1/3 per component; |c| is the
+ *    `c < 0 ? -c : c` compare-and-fchs; the argmin tests |c0| < |c1| then
+ *    the survivor against |c2|, the z face shared (goto face); every arm
+ *    takes its SIGN from c[0], as an int -1/+1 converted and scaled by 0.5;
+ *  - each arm computes its distance as ONE named local, (dot) - planeD, and
+ *    scales by the unnamed common subexpression (0.0f - d).  VC5 homes that
+ *    CSE in pA's dead argument slot (`fstp [esp+14h]; fmul; fld; fld`) and
+ *    cross-jumps the two arms at the out.x store, as the original does.  A
+ *    named negated s is kept on the x87 stack instead; one variable shared
+ *    by both arms makes the tails identical, so VC5 merges them early; the
+ *    parentheses around the dot are load-bearing;
+ *  - in mode 2 the dot reads the normal back from the globals BEFORE the
+ *    in-place scaling of normal.x (twice) and of modeFC as a float.
+ * 1/3 is a literal (BR_CR_THIRD): 0x10077B84 is referenced by this function
+ * alone.  That is also TU state -- every declaration ahead of the function
+ * moves VC5's commutative x87 operand roles in steps of 3 (mod 8), and with
+ * an extern for 1/3 the arm-1 dot takes the other roles (6 B off).  So do
+ * not add or remove declarations between BrCrContactKick and here without
+ * re-measuring.  The result is written to g_brCrPlaneOut (0x117781A0), a
+ * separate global in the original; the port gathers it into g_brCrPlane.out. */
+extern float BrCrK_Zero;     /* 0x10077A78 */
+extern float BrCrK_Half;     /* 0x10077AC8 */
+#define BR_CR_EXT(off) (*(const float *)((const char *)pExt + (off)))
+void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
+                      const BrVec3 *pEdgeN, const BrVec3 aVerts[3])
+{
+    /* 0x117781A0 -- the result vector.  A global of its own in the original,
+     * not part of g_brCrPlane; declared here so no file-scope declaration
+     * is added ahead of the function (see the TU-state note above). */
+    extern BrVec3 g_brCrPlaneOut;
+    float c[3];
+    float s;
+    float d;
+    int   sgn;
+    int   k;
+
+    if (g_brCrPlane.modeFC != 2u) {
+        d = (pA->y * pEdgeN->y + pA->z * pEdgeN->z + pA->x * pEdgeN->x) - planeD;
+        g_brCrPlaneOut.x = pA->x * (0.0f - d);
+        g_brCrPlaneOut.y = (0.0f - d) * pA->y;
+        g_brCrPlaneOut.z = (0.0f - d) * pA->z;
+    } else {
+        for (k = 0; k < 3; k++)
+            c[k] = ((&aVerts[0].x)[k] + (&aVerts[2].x)[k] + (&aVerts[1].x)[k]) * BR_CR_THIRD;
+        if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[1] < BrCrK_Zero ? -c[1] : c[1])) {
+            if ((c[0] < BrCrK_Zero ? -c[0] : c[0]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.y = 0.0f;
+                sgn = -1;
+                if (!(c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.x = (float)sgn * BrCrK_Half;
+                goto face;
+            }
+        } else {
+            if ((c[1] < BrCrK_Zero ? -c[1] : c[1]) < (c[2] < BrCrK_Zero ? -c[2] : c[2])) {
+                g_brCrPlane.normal.z = 0.0f;
+                g_brCrPlane.normal.x = 0.0f;
+                sgn = -1;
+                if (!(c[0] < BrCrK_Zero))
+                    sgn = 1;
+                g_brCrPlane.normal.y = (float)sgn * BrCrK_Half;
+                goto face;
+            }
+        }
+        g_brCrPlane.normal.y = 0.0f;
+        g_brCrPlane.normal.x = 0.0f;
+        sgn = -1;
+        if (!(c[0] < BrCrK_Zero))
+            sgn = 1;
+        g_brCrPlane.normal.z = (float)sgn * BrCrK_Half;
+    face:
+        s = (g_brCrPlane.normal.z * pA->z + g_brCrPlane.normal.y * pA->y + pA->x * g_brCrPlane.normal.x) - planeD;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1dc) * g_brCrPlane.normal.x;
+        g_brCrPlane.normal.x = BR_CR_EXT(0x1e0) * g_brCrPlane.normal.x;
+        *(float *)&g_brCrPlane.modeFC = BR_CR_EXT(0x1e4) * *(float *)&g_brCrPlane.modeFC;
+        g_brCrPlaneOut.x = pA->x * (0.0f - s);
+        g_brCrPlaneOut.y = (0.0f - s) * pA->y;
+        g_brCrPlaneOut.z = (0.0f - s) * pA->z;
+    }
+}
+
+
+/* ------------------------------------------------------------------ *
+ * 0x10067710 -- the response walker: the top of the collision response.
+ *
+ * It walks the broad phase's candidate list (g_pBrCollRespList) and, for each
+ * contact that survives the exact test, resolves the impulse and pushes the
+ * body back out of the triangle.  This is the function that finally wires the
+ * whole unit together, so the previous three all run because this calls them.
+ *
+ * Per contact:
+ *   1. transform the record's three triangle vertices into the car's box space
+ *      (BrMat4TransformPoint) and form the face normal e2 x e1, exactly as the
+ *      broad phase did;
+ *   2. BrCrTest the transformed triangle against the unit box; skip if clear;
+ *   3. build the contact plane: normalise the face normal, take planeD =
+ *      dot(normal, v0), and choose a box-corner sign per axis --
+ *      sign[i] = +0.5 if planeD*normal[i] >= 0 else -0.5.  The shared normal
+ *      bank is then (ext.x*sx, ext.y*sy, ext.z*sz + ext.w), the box corner the
+ *      contact drives toward;
+ *   4. BrCrPlaneResolve, then BrCrImpulseSolve with that bank as the normal and
+ *      the plane's own normal as the approach direction.  The solver's tangent
+ *      flag is off when the body's "no-torque" gate (body+0xE4) exceeds 0.5;
+ *   5. if the solver acted, push the body out: subtract 1.1x the penetration
+ *      (measured from the saved position along the plane normal) from next.pos,
+ *      restore the quaternion, and rebuild qDot and the orientation matrix.
+ *
+ * The mode-2 / contact-kick branch is gated on the debug global 0x100A9360 == 4
+ * (it is 1 in the shipped build), so the retail path always takes the impulse
+ * solver; that branch is not reproduced here.  The four "trace" calls
+ * (0x10008D60) are a one-byte `ret` stub and are dropped.
+ *
+ * pOrient/pNext are REBUILT on a resolved contact.  Returns the number of
+ * contacts that produced a response.
+ * ------------------------------------------------------------------ */
+/* WHAT IT DOES: walk every surface the car is touching this frame and apply
+ * each one's collision response in turn. The top of the collision solver --
+ * one pass over the contact list built during the collision test.  Returns
+ * 1 if any contact produced a response, else 0, and keeps a per-body "frames
+ * with no contact" byte (body+0x200): bumped (saturating at 40) when nothing
+ * passed the exact test this pass, reset to 0 otherwise. */
+/* @t4-pass 0x10067710 1 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 2 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 3 2026-09-10 probes 45 bytes 1282 insns 373 regions 9 rows 10 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 4 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 5 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 6 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 7 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/brally/crank.py) */
+/* @t3 0x10067710 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
+ * @t3-measure bytes 1309/1301 insns 376/375 rows 3+4 regions 6 oracle UNCLASSIFIED
+ * @t3-effort passes 7 zero-movement 6 7
+ * Residue is allocation and layout only: four fxch + one register copy (x87
+ * drain and slot colouring), the mode-4 cold arm's out-of-line skip, spin
+ * homed vs registered, and the pP->nx stack-dup commutative pair, paired by
+ * t3.py's stack-dup fold (exact identity, user-approved 2026-09-12; the
+ * thirteen dead spellings are in the STATE 2026-09-10 block above).
+ * Dossier and dead list: this file header.  Do not reopen before the
+ * end-grind. */
+/* @implements 0x10067710 glide BrCrRespWalk */
+/* Matching arm, transcribed from the bytes.  The original is
+ * (body, pMatBox): every field the port passes separately is read off the
+ * body block (offsets below), and its two callees take the body too --
+ * 0x10065C80 is (body, pNormal, pRelDir, flag, restOffset) and 0x10065980 is
+ * (body, pNormal, dampFlag, spinFlag).  Their port definitions in this file
+ * keep the port signatures, so the calls go through a cast of the function
+ * designator, which VC5 still emits as a direct `call rel32`.
+ *
+ * State 2026-09-04: 1296/1301 B, 375/375 instructions, regnorm 7+7 under
+ * plain /O2 (the original is esp-framed: `sub esp,0x78`, ebp a general
+ * register -- NOT the /Oy- the old report row said).  Frame, prologue,
+ * loop shape, the mode-4 block, the sign tournament, the normal bank, both
+ * calls, the push-out, the quat copy and the +0x200 tail all line up.
+ * What the port had dropped: the debug-mode-4 kick path with its three
+ * trace calls (0x10008D60, a bare ret, still called with the string), the
+ * body-relative signature, the 0/1 return, and the +0x200 counter tail.
+ * Levers that landed: the push-out delta is a NAMED BrVec3 (three homed
+ * slots, `fld st(0)`/`fld st(1)` dups); `pos = pos - dp` not `pos -= dp`
+ * (orig fld pos; fsub [slot]); the quat copy is three DWORD copies
+ * (integer regs, hoisted loads), not float assignments; the first sign is
+ * an if/else (`< 0` arm first), the other two `sgn=-1; if (!(x<0)) sgn=1`.
+ * Landed 2026-09-05: e1 is computed BEFORE e2 (the orig loads all of e1's
+ * minuends aV[3..5] before the first fsub, so region 1 was a pure statement-
+ * order artifact) -- register-blind multiset 17+17 -> 12+12.
+ *
+ * STATE 2026-09-10: PARKED at Gate A3 -- 1309/1301 B, 376/375
+ * instructions, msetdiff 3+4 rows, 6 regions, no lost sync.  Six levers
+ * landed this session; the first three took it to 4+5 rows with 33 bytes
+ * still unanchored, the last three closed the layout and the row count:
+ *  - the saved position is a NAMED BrVec3 (`pSv`), which is what makes the
+ *    push-out delta come out minuend-first (`fld pos; fsub save`); with the
+ *    body offsets open-coded VC5 loads the subtrahends and `fsubr`s all
+ *    three.  7+7 -> 4+5 register-blind.
+ *  - sign.x's default arm is `+1` (`sgn = 1; if (p < 0) sgn = -1;`), not an
+ *    if/else; the if/else form pays an extra constant copy.
+ *  - the three `planeD * nrm.c` products are NAMED and computed up front --
+ *    the orig reloads planeD three times running and homes each product --
+ *    and they live in the DEAD `e2` because three fresh locals cost a
+ *    fourth stack slot and take the frame to 0x7c against the orig's 0x78.
+ * Residue, every row allocation or layout:
+ *  - four `fxch` and one register copy (x87 drain and slot colouring);
+ *  - !! THE ONLY THING BLOCKING CERTIFICATION: a 4-row x87 operand-hand
+ *    fork on `pP->nx` between the dot product and the push-out vector.
+ *    The original duplicates d and multiplies the copy by memory
+ *    (`fld st; fmul [nx]`); ours loads nx and multiplies it by the copy
+ *    two deep (`fld [nx]; fmul st(2)`).  Same product, same two
+ *    instructions, same operands -- it is the stack-dup case of the
+ *    commutative fold t3.py already applies to two memory operands, and
+ *    t3.py does NOT extend that rule to a stack operand, so A3 counts all
+ *    four rows unpaired.  THIRTEEN spellings measured and all inert or
+ *    worse: node re-navigation, the global, split statements, compound
+ *    `*=`, all six component orders, flipped multiply operands, d copied
+ *    to a second local, a named normal pointer.  Everything else in this
+ *    function passes: A1 gap 1, A2 3+4 rows against a limit of 9.4, A4 no
+ *    lost sync, A5 clean, and Gate B has its two counted zero-movement
+ *    passes.  Do not re-grind the spellings; the decision is whether that
+ *    fold belongs in t3.py, and that is the user's call.
+ *  - the mode-4 cold arm's OUT-OF-LINE placement, CLOSED: the arm has to
+ *    set `flag` itself and `goto` PAST the join's own assignment of it.
+ *    Nothing textual reaches this -- the arm's body written as a trailing
+ *    label, a mid-function label, a negated-then arm and an ||-chain all
+ *    compile to the same inline bytes; and hoisting `flag = 1` above the
+ *    mode-4 test lifts the arm but turns every modeFC/spin store into an
+ *    immediate-to-memory (17 rows).  It is the SKIP that does it.
+ *  - with the arm lifted, sign.x wants the if/else form again and the
+ *    push-out vector wants to be built z,y,x (which is what makes VC5
+ *    re-read pP->nx for dp.x instead of holding the CSE'd copy).
+ *  - slots: orig planeD@0x10 cnt@0x14 sgn@0x18 spin@0x1c; ours has
+ *    planeD/cnt one slot up.  Declaration order both ways: inert.
+ *  - `spin` is HOMED in the orig ([esp+0x1c], written via the edi that
+ *    also carries the constant 0/1); ours keeps spin in a register.  The
+ *    orig's `mov edi,0` (not xor) then `mov [modeFC],edi` says modeFC=0
+ *    and spin=0 share one constant register.
+ * Dead: BF-offset spelling of next.pos in the delta (fsubp shape, 11+7);
+ * `pos -= dp` (fsubr x3); goto LAB_common out of the then-arm (extra jmp). */
+extern int   g_br0AA010;        /* 0x100A9360 -- the debug/game mode; 4 arms the kick path */
+extern float BrCrK_Flat;        /* 0x10077B88 0.999 */
+extern float BrCrK_Pushout;     /* 0x10077B8C 1.1 */
+extern const BrCollPlane *g_pBrCrCurPlane;   /* 0x1177819C */
+void BrExt_10008D60(const char *pszFmt, ...); /* 0x10008D60, a bare `ret` */
+
+typedef int (*BrCrImpulseSolveFn)(char *, const BrVec3 *, const BrCollPlane *, int, float);
+typedef int (*BrCrContactKickFn)(char *, const BrCollPlane *, int, int);
+#define BR_CR_IMPULSE(b, n, p, f, r) (((BrCrImpulseSolveFn)BrCrImpulseSolve)((b), (n), (p), (f), (r)))
+#define BR_CR_KICK(b, p, f, s)       (((BrCrContactKickFn)BrCrContactKick)((b), (p), (f), (s)))
+
+#define BR_CR_BF(off)  (*(float *)(pBody + (off)))
+#define BR_CR_BB(off)  (*(unsigned char *)(pBody + (off)))
+#define BR_CR_BD(off)  (*(uint32_t *)(pBody + (off)))
+#define BR_CR_NEXT     ((BrRbState *)(pBody + 0x158))
+#define BR_CR_ORIENT   ((BrMat4 *)(pBody + 0xbc))
+
+int BrCrRespWalk(char *pBody, const BrMat4 *pMatBox)
+{
+    const BrCollRespNode *pNode;
+    const BrCollPlane *pP;
+    float  aV[9];
+    BrVec3 e1, e2, nrm, sign, dp;
+    float  planeD, d;
+    /* The saved position is a NAMED BrVec3 in the original, not three
+     * body-offset floats: with the pointer spelled out the push-out delta
+     * comes out minuend-first (`fld pos; fsub save`), and with the offsets
+     * open-coded VC5 loads the subtrahends and reverses (`fld save; fsubr
+     * pos`) for all three components.  Same value either way; this is the
+     * spelling that reproduces the original's operand hand. */
+    const BrVec3 *pSv = (const BrVec3 *)(pBody + 0x114);
+    int    ret = 0;
+    short  cnt = 0;
+    int    flag, spin, sgn, r;
+
+    for (pNode = g_pBrCollRespList; pNode != NULL; pNode = pNode->pNext) {
+        pP = pNode->pPlane;
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[0], pMatBox, pP->pV0);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[3], pMatBox, pP->pV1);
+        BrMat4TransformPoint((BrVec3 *)(void *)&aV[6], pMatBox, pP->pV2);
+        e1.x = aV[3] - aV[0]; e1.y = aV[4] - aV[1]; e1.z = aV[5] - aV[2];
+        e2.x = aV[6] - aV[0]; e2.y = aV[7] - aV[1]; e2.z = aV[8] - aV[2];
+        nrm.x = e2.z * e1.y - e2.y * e1.z;
+        nrm.y = e2.x * e1.z - e2.z * e1.x;
+        nrm.z = e2.y * e1.x - e2.x * e1.y;
+        if (BrCrTest(aV, &nrm) == 0)
+            continue;
+        BrVec3Normalise(&nrm);
+        cnt++;
+        planeD = nrm.x * aV[0] + nrm.y * aV[1] + nrm.z * aV[2];
+        g_brCrPlane.modeFC = 0;
+        if (g_br0AA010 == 4) {
+            if (((nrm.x < BrCrK_Zero) ? -nrm.x : nrm.x) <= BrCrK_Flat
+                && ((nrm.y < BrCrK_Zero) ? -nrm.y : nrm.y) <= BrCrK_Flat
+                && ((nrm.z < BrCrK_Zero) ? -nrm.z : nrm.z) <= BrCrK_Flat) {
+                if (((planeD < BrCrK_Zero) ? -planeD : planeD) < BrCrK_Half) {
+                    BrExt_10008D60("Triangle Edge to CubeFace\n");
+                    spin = 0;
+                    g_brCrPlane.modeFC = 2;
+                }
+            } else {
+                g_brCrPlane.modeFC = 1;
+                BrExt_10008D60("Wank CT1 case\n");
+                spin = 1;
+                /* The cold arm sets the flag ITSELF and jumps PAST the join's
+                 * assignment of it -- the original's `mov edi,1` inside the
+                 * block and its `jmp` to one instruction after the join's own
+                 * `mov edi,1`.  That skip is what lets VC5 lift the whole arm
+                 * out of line, past the epilogue, where the original has it:
+                 * with the join's assignment on the fall-through path the arm
+                 * has to stay inline, and the last 33 bytes of the original
+                 * (this block) then have nothing to anchor against.  Moving
+                 * `flag = 1` above the mode-4 test lifts the arm too, but
+                 * costs the shared constant register -- every modeFC and spin
+                 * store becomes an immediate-to-memory. */
+                flag = 1;
+                goto LAB_join;
+            }
+        }
+        flag = 1;
+LAB_join:
+        BrExt_10008D60("Cube Edge to Triangle Face\n");
+
+        /* All three products are NAMED and computed up front: the original
+         * reloads planeD from its slot three times in a row and homes each
+         * product, which a per-arm `planeD * nrm.c` subexpression does not
+         * reproduce.  They go in the DEAD e2 -- e2 is finished the moment
+         * nrm is built -- because three fresh locals cost a fourth stack
+         * slot and take the frame to 0x7c against the original's 0x78. */
+        e2.x = planeD * nrm.x;
+        e2.y = planeD * nrm.y;
+        e2.z = planeD * nrm.z;
+        /* The FIRST sign is an if/else -- with the cold arm lifted, the
+         * `sgn = 1;` default form pays a materialised constant on both
+         * paths into the join instead of storing the flag register. */
+        if (e2.x < BrCrK_Zero)
+            sgn = -1;
+        else
+            sgn = 1;
+        sign.x = (float)sgn * BrCrK_Half;
+        sgn = -1;
+        if (!(e2.y < BrCrK_Zero))
+            sgn = 1;
+        sign.y = (float)sgn * BrCrK_Half;
+        sgn = -1;
+        if (!(e2.z < BrCrK_Zero))
+            sgn = 1;
+        sign.z = (float)sgn * BrCrK_Half;
+
+        g_brCrPlane.normal.x = BR_CR_BF(0x1dc) * sign.x;
+        g_brCrPlane.normal.y = BR_CR_BF(0x1e0) * sign.y;
+        g_brCrPlane.normal.z = BR_CR_BF(0x1e4) * sign.z + BR_CR_BF(0x1e8);
+        g_pBrCrCurPlane = pP;
+        BrCrPlaneResolve((const BrVec3 *)pBody, &nrm, planeD, &sign, (const BrVec3 *)(void *)aV);
+
+        if (BR_CR_BF(0xe4) > BrCrK_Half)
+            flag = 0;
+        if (flag)
+            BrExt_10008D60("Resistive collision %10.3f\n", BR_CR_BF(0xe4));
+
+        if (g_brCrPlane.modeFC != 1)
+            r = BR_CR_IMPULSE(pBody, &g_brCrPlane.normal, g_pBrCrCurPlane, flag, 0.0f);
+        else
+            r = BR_CR_KICK(pBody, g_pBrCrCurPlane, flag, spin);
+        if (r == 0)
+            continue;
+
+        d = ((BR_CR_NEXT->pos.x - pSv->x) * pP->nx
+           + (BR_CR_NEXT->pos.y - pSv->y) * pP->ny
+           + (BR_CR_NEXT->pos.z - pSv->z) * pP->nz) * BrCrK_Pushout;
+        ret = 1;
+        /* z, y, x: the push-out vector is built from the top down.  In this
+         * order VC5 re-reads pP->nx for dp.x the way the original does,
+         * instead of holding the copy CSE'd out of the dot product above. */
+        dp.z = d * pP->nz;
+        dp.y = d * pP->ny;
+        dp.x = d * pP->nx;
+        BR_CR_NEXT->pos.x = BR_CR_NEXT->pos.x - dp.x;
+        BR_CR_NEXT->pos.y = BR_CR_NEXT->pos.y - dp.y;
+        BR_CR_NEXT->pos.z = BR_CR_NEXT->pos.z - dp.z;
+        BR_CR_BD(0x170) = BR_CR_BD(0x12c);
+        BR_CR_BD(0x174) = BR_CR_BD(0x130);
+        BR_CR_BD(0x178) = BR_CR_BD(0x134);
+        BrRbQuatDerivative(BR_CR_NEXT);
+        BrRbBuildMatrix(BR_CR_ORIENT, BR_CR_NEXT);
+    }
+
+    if (cnt == 0) {
+        if (BR_CR_BB(0x200) < 0x28)
+            BR_CR_BB(0x200)++;
+    } else {
+        BR_CR_BB(0x200) = 0;
+    }
+    return ret;
+}

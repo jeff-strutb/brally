@@ -1,8 +1,8 @@
 # BossRally.exe - intro-shim notes (2026-08-27)
 
-BossRally.exe is the ~40 KB intro stub (`orig/BossRally.exe`). `.text` is
+BossRally.exe is the ~40 KB intro stub (`reference/brally/orig/BossRally.exe`). `.text` is
 23,552 bytes at image base `0x400000`. Entry is `WinMainCRTStartup` at
-`0x401BC0`. 215 functions in `config/functions_bossrally.csv`.
+`0x401BC0`. 215 functions in `config/brally/functions_bossrally.csv`.
 
 ## EXE vs BRally.exe (verified against the bytes)
 
@@ -100,7 +100,7 @@ No file/INI helper is byte-identical. Three CRT scraps are:
 
 35 / 215 functions byte-exact under `/O2` (COFF 16-byte `nop` padding
 after `ret` ignored). Winning TUs: `build/bossrally_work/0x<VA>.c`.
-Original bytes: `build/match/orig_bossrally/`.
+Original bytes: `build/brally/win32/match/orig_bossrally/`.
 
 35 / 215 functions, 2,482 / 23,552 of `.text` (10.54%).
 

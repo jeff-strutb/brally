@@ -13,7 +13,7 @@ host), so the game binds to the emulation and the host to the system.
 The list comes from the platform/common objects of a host build (nm), so
 run it after any change to what platform/common defines:
 
-    tools/winnames.py [OBJDIR]      (default build/portable/plat)
+    tools/brally/winnames.py [OBJDIR]      (default build/brally/null-soft/plat)
 """
 import os
 import re
@@ -26,7 +26,7 @@ KEEP = re.compile(r'^(main$|plat_|brr_|host_|g_plat|br_|kthread)')
 
 
 def main():
-    objdir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'build', 'portable', 'plat')
+    objdir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'build', 'brally', 'null-soft', 'plat')
     src = os.path.join(ROOT, 'ports', 'brally', 'platform', 'common')
     commons = {os.path.splitext(f)[0] for f in os.listdir(src) if f.endswith('.c')}
     names = set()

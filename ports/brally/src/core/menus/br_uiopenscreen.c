@@ -15,7 +15,7 @@
  * the argument these hooks receive is a `BrUiCtl_`, whose fields have moved
  * under LP64.
  *
- * Transcribed from orig/BRGlide.dll and cross-checked against orig/BRD3D.dll.
+ * Transcribed from reference/brally/orig/BRGlide.dll and cross-checked against reference/brally/orig/BRD3D.dll.
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -30,7 +30,7 @@
 #include <string.h>
 
 /* g_br73 is the port's gathering of separate originals.  The matching build
- * names the ones used here as the globals they are (config/globals_glide.csv),
+ * names the ones used here as the globals they are (config/brally/globals_glide.csv),
  * so each relocation resolves to its own variable. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5D4C */
 #define BR73_PAA29F4 g_brUipAA29F4

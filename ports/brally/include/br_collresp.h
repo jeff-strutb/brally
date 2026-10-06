@@ -1,7 +1,7 @@
 /* br_collresp.h -- the collision half of 0x10067C30, the position pass.
  *
- * REFERENCE IS orig/BRGlide.dll.  Every address below was checked with
- * tools/whereis.py first; none of the four callees is ported anywhere else in
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  Every address below was checked with
+ * tools/brally/whereis.py first; none of the four callees is ported anywhere else in
  * this tree under either build's number.
  *
  * ======================================================================

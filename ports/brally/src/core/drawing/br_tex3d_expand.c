@@ -1,5 +1,5 @@
 /* 0x100250D0 BrTex3dExpand: fresh hand transcription from the disassembly
- * (2026-09-16). Authored block-by-block off build/match/orig/0x100250D0.bin;
+ * (2026-09-16). Authored block-by-block off build/brally/win32/match/orig/0x100250D0.bin;
  * arithmetic expressions carried verbatim from the verified decomp, control
  * flow rewritten by hand, no permuter codegen tuning. Behavioural equivalence
  * is certified by the A5 oracle (the BrRaceStep method), not a byte grind.

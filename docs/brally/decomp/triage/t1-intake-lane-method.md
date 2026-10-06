@@ -16,7 +16,7 @@ closes in 4-6 probes. Nine of eleven attempted closed.
 **How to apply:**
 - Screen ten at a time (C++ ownership, claims, EH prologue, odd address,
   x87/16-bit/byte-lane bodies rejected on sight).
-- After every diff run `tools/sbs.py <obj> <Name> <VA>` (now in `tools/`,
+- After every diff run `tools/brally/sbs.py <obj> <Name> <VA>` (now in `tools/brally/`,
   committed) -- the side-by-side dump finds WHERE; fn.py's EXTRA/MISSING
   summary misled twice. Match the symbol exactly: a `_port` twin can win a
   substring match.

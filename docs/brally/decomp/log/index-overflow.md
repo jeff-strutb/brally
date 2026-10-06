@@ -19,7 +19,7 @@ Verbatim index lines (each links its topic file):
 - [Native 64-bit portable core](native-64bit-portable-core-2026-09-30.md) - ports/brally: plays, multiplayer, Metal/Vulkan/soft, Windows build (2026-10-03); render bugs: copy host_glide.m semantics first
 - [macOS 32-bit wasm lane](macos-port-32bit-wasm-lane.md) - full-boot port via wasm32->C->native, interim; native 64-bit later.
 - [Mac missing-import = site attribution](mac-missing-import-site-attribution.md) - "host import not implemented" mid-game: sites.csv filed under a C draft; plus %C CD-check fix (2026-09-30)
-- [obj_cpp is not scratch](obj-cpp-is-not-scratch.md) - deleting build/match/obj_cpp silently unplaces C++ bodies; Mac boot dies on Phase::Phase (2026-09-30)
+- [obj_cpp is not scratch](obj-cpp-is-not-scratch.md) - deleting build/brally/win32/match/obj_cpp silently unplaces C++ bodies; Mac boot dies on Phase::Phase (2026-09-30)
 - [N64 XM sample provenance](n64-xm-sample-provenance-2026-09-29.md) - donors traced; 8 better-quality sources in reference/tgrally/XM/ + manifest; 12 unsourced
 - [N64 remaster renderer](n64-remaster-renderer-2026-09-29.md) - APPROVED stereo remaster method (Jungle done); event log + A440 retune + NAM guitars + own synth; mistakes to avoid
 - [N64 session 2026-09-29](n64-session--2026-09-29.md) - VA split with peer, 17 T4 + 5 T2, parked list, claims file

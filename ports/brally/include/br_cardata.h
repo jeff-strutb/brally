@@ -1,7 +1,7 @@
 /* br_cardata.h -- the CAR-DATA RECORD: the .rca image the physics reads.
  *
- * REFERENCE IS orig/BRGlide.dll.  Every address below was checked with
- * tools/whereis.py before a line was written; none of the four functions this
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  Every address below was checked with
+ * tools/brally/whereis.py before a line was written; none of the four functions this
  * module ports is ported anywhere else in this tree under either build's
  * number.
  *
@@ -218,7 +218,7 @@ int BrCarDataLoadIndex(BrCarData *pData, const char *pszDir, int iCar);
  * the CD's root; this port is run from the tree root, so the answer is
  * searched for once and cached:
  *
- *      $BR_CARS_DIR, then "testdata/cars", "cars", "../testdata/cars"
+ *      $BR_CARS_DIR, then "reference/brally/data/cars", "cars", "../testdata/cars"
  *
  * Returns NULL when none of them holds the default car's file, and a NULL
  * answer is a MEASUREMENT, not an error: BrCarPhysInit then leaves the box

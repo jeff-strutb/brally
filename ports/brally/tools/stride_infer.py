@@ -22,7 +22,7 @@ def main():
     os.chdir(ROOT)
     want = set(sys.argv[1:])
     meas = collections.defaultdict(dict)
-    for r in csv.DictReader(open('build/portable/trace/objects.csv')):
+    for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
         b = r['object'][8:] if r['object'].startswith('OVERRUN:') else r['object']
         if b not in want:
             continue

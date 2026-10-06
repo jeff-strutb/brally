@@ -1,0 +1,41 @@
+# Port deviations for src/brally/core/net/br_peerfind.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:BrVtxExpand
+@drop define:BrVtxCacheInsert
+@drop define:BrVtxCacheResolve
+@drop define:BrSelLookup
+@drop define:BrPtrListAdd
+@drop define:BrF3DVtxFixup
+@drop undef:BrVtxExpand
+@drop undef:BrVtxCacheInsert
+@drop undef:BrVtxCacheResolve
+@drop undef:BrSelLookup
+@drop undef:BrPtrListAdd
+@drop undef:BrF3DVtxFixup
+@drop var:WaitForSingleObject
+@drop var:ReleaseMutex
+@drop fn:BrPeerFind
+@after fn:BrPeerFind
+
+int BrPeerFind(uint32_t id)
+{
+    int i;
+
+    if (id == 1)
+        return 0;
+
+    for (i = 1; i < BR_PEER_COUNT; ++i) {
+        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) != 0u &&
+            g_aBrPeers[i].f04 == id)
+            return i;
+    }
+
+    for (i = 1; i < BR_PEER_COUNT; ++i) {
+        if ((g_aBrPeers[i].f2C & BR_PEER_STATE_MASK) == 0u)
+            return i;
+    }
+
+    return -1;
+}
+@end

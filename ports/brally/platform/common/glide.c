@@ -29,7 +29,7 @@ static int s_depth_mode;
 /* ---- the call log ------------------------------------------------------------- */
 /* BR_GLLOG=PATH: during the frames BR_TRACE_FRAMES=A:B selects (script.c),
  * the Glide calls one per line with the vertices expanded, in the wasm
- * lane's text (ports/macos/wasm/host/host_glide.m), so the two streams diff
+ * lane's text (ports/brally-wasm/wasm/host/host_glide.m), so the two streams diff
  * call by call. */
 int g_plat_tracing;
 static FILE *s_gllog;
@@ -146,7 +146,7 @@ void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
 
 /* ---- the screen map ---------------------------------------------------------------- */
 /* Where each draw goes on a target of any shape, as the wasm lane places it
- * (ports/macos/wasm/host/host_glide.m).  Outside a race frame, and always
+ * (ports/brally-wasm/wasm/host/host_glide.m).  Outside a race frame, and always
  * with BR_FLAG_ANY_ASPECT off, the game's picture is drawn at its own shape,
  * as large as fits, centred (XF_BOX*).  A race frame fills the target: the
  * camera's view is stretched over it (its lens widened to match, br_cammatrix
@@ -591,7 +591,7 @@ FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
 
 FxU32 grTexMinAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return 0; }
 /* the top of texture memory as brbox and the 32-bit lane report it: 128 KB
- * below the end of the TMU's 4 MB (tools/brbox_imports.py) */
+ * below the end of the TMU's 4 MB (tools/brally/brbox_imports.py) */
 FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return TMU_RAM - 0x20000; }
 
 static uint8_t s_tmem[TMU_RAM];

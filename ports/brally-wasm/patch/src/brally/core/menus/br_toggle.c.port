@@ -1,0 +1,8 @@
+# Port deviations for src/brally/core/menus/br_toggle.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop var:g_brAA28D8
+@drop fn:BrToggleOnce_BFF0
+@drop var:g_brAA28D8#2
+@drop fn:BrToggleOnce_C050

@@ -8,11 +8,11 @@ Four of the validated auditors import `capstone` and die with
 `ModuleNotFoundError: No module named 'capstone'` on a fresh checkout, because
 the system python3 is PEP-668 externally-managed (`pip install` refused):
 
-- `tools/claimcheck.py` - call-graph parity between original and port (the main
+- `tools/brally/claimcheck.py` - call-graph parity between original and port (the main
   auditor for an @implements claim)
-- `tools/crossdiff.py`
-- `tools/dumpasm.py`
-- `tools/globals.py`
+- `tools/brally/crossdiff.py`
+- `tools/brally/dumpasm.py`
+- `tools/brally/globals.py`
 
 Restore once per environment with a repo-local venv (the `.gitignore` already
 has a `.venv/` rule, so it will not be committed):
@@ -22,16 +22,16 @@ python3 -m venv .venv
 .venv/bin/pip install capstone
 ```
 
-Then run any capstone tool through it: `.venv/bin/python tools/claimcheck.py`.
+Then run any capstone tool through it: `.venv/bin/python tools/brally/claimcheck.py`.
 The pre-dumped `asm/*.asm` (Glide) and `work/slice*/*.asm` (D3D) do NOT need
 capstone - plain grep/sed over them works and is how most transcription reads
 the bytes.
 
-**GOTCHA - claimcheck reads `config/ported.csv`, NOT the `@implements` lines.**
+**GOTCHA - claimcheck reads `config/brally/ported.csv`, NOT the `@implements` lines.**
 `ported.csv` is GENERATED from the source `@implements` lines by
-`tools/manifest.py --emit`, but nothing runs that automatically. So after adding
-or moving any `@implements` line you MUST run `.venv/bin/python tools/manifest.py
---emit` and commit the regenerated `config/ported.csv`, or claimcheck silently
+`tools/brally/manifest.py --emit`, but nothing runs that automatically. So after adding
+or moving any `@implements` line you MUST run `.venv/bin/python tools/brally/manifest.py
+--emit` and commit the regenerated `config/brally/ported.csv`, or claimcheck silently
 does not audit the new claim (and manifest.py --list disagrees with ported.csv).
 Found 2026-08-17: last session's six collision-response claims
 (BrCrRespWalk 0x10067710, BrCrImpulseSolve, BrCrContactKick, BrCrPlaneResolve,

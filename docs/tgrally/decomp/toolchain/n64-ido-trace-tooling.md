@@ -6,7 +6,7 @@
 
 Built 2026-10-04 at the project lead's direction ("build the optimizer and any other tooling we need"); project lead approved cloning decompals/ido-static-recomp and akratch/n64-decomp-workbench into build/tgrally/ext (gitignored, never committed).
 
-- `sh tools/tgrally/build_ido_trace.sh` rebuilds build/tgrally/ext/instr/out/cc: IDO 5.3 recompiled at ido-static-recomp 9c242adc (uopt.c sha b0058f15, the workbench pin), workbench uopt globalcolor+alias and ugen freelist+emit profiles, plus an ecvt/fcvt libc shim (tools/tgrally/patches/) so `-Wo,-zdbug:2` (writes ./uoptlist itable + flow graph) doesn't abort. Identity gate: tracing off, 176/176 N64 sources compile identically to tools/ido53.
+- `sh tools/tgrally/build_ido_trace.sh` rebuilds build/tgrally/ext/instr/out/cc: IDO 5.3 recompiled at ido-static-recomp 9c242adc (uopt.c sha b0058f15, the workbench pin), workbench uopt globalcolor+alias and ugen freelist+emit profiles, plus an ecvt/fcvt libc shim (tools/tgrally/patches/) so `-Wo,-zdbug:2` (writes ./uoptlist itable + flow graph) doesn't abort. Identity gate: tracing off, 176/176 N64 sources compile identically to tools/toolchains/ido53.
 - `tools/tgrally/n64alloc.py trace|force|sweep|diagnose VA [--file draft.c]`. Force keys `p1:wN=cK` / `p1:wN=s` (split); colours c1-5 v0 v1 a0 a1 a2, c6 a3, c7-12 t0-t5, c14-22 s0-s8. Sweep uses an ALIGNED diff (positional T4 count is useless once lengths differ); `--greedy N` stacks forces.
 - `diagnose` runs the workbench on ROM/candidate dumps: separates uopt's colour pool from ugen's temp ring and names the owning pass.
 - A `force_declined ... forbidden=` record means an interfering neighbour holds that colour; use CDX_DETAIL_WEB=N to list `intf` neighbours (assigned=K) and force the blocker too.

@@ -23,8 +23,8 @@
  *                same file-level shape as port/src/slice7_81.c.
  *   INSTALLER    the two table fills at the bottom.
  *
- * Transcribed from orig/BRD3D.dll (these are D3D addresses) and cross-checked
- * against orig/BRGlide.dll.
+ * Transcribed from reference/brally/orig/BRD3D.dll (these are D3D addresses) and cross-checked
+ * against reference/brally/orig/BRGlide.dll.
  */
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
@@ -35,7 +35,7 @@
 #include <string.h>
 
 /* g_br73 is the port's gathering of separate originals.  The matching build
- * names the ones used here as the globals they are (config/globals_glide.csv),
+ * names the ones used here as the globals they are (config/brally/globals_glide.csv),
  * so each relocation resolves to its own variable. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5D4C */
 #define BR73_PAA29F4 g_brUipAA29F4

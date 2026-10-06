@@ -44,7 +44,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ROM_PATH = os.environ.get('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
-CC = os.environ.get('TGR_CC', os.path.join(ROOT, 'tools/ido53/cc'))
+CC = os.environ.get('TGR_CC', os.path.join(ROOT, 'tools/toolchains/ido53/cc'))
 SYMS = os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv')
 OUT = os.path.join(ROOT, 'build/tgrally/n64')
 

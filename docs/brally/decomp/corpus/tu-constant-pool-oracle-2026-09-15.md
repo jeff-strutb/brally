@@ -6,7 +6,7 @@
 
 **Finding (measured 2026-09-15, never used before in docs or tools):**
 MSVC 5.0 emits floating-point literals per translation unit; `.rdata` of
-`orig/BRGlide.dll` holds 28 aligned copies of `1.0f`, 18 of `0.5f`. Two
+`reference/brally/orig/BRGlide.dll` holds 28 aligned copies of `1.0f`, 18 of `0.5f`. Two
 functions loading the SAME `.rdata` constant address are in the same
 original TU. Union-find over x87 constant refs: 258 fns -> 84 groups, 29
 multi-member, 25 of 29 VA-compact (<20 KB span). 76,771 B of open T1+T2
@@ -34,15 +34,15 @@ corpora have source) NOT yet measured -- that is Phase 1 gate 2.
 
 **Plan handed to the project lead (scratch `wins-plan-2026-09-15.md`):** Phase 0
 session contract (empty picker => lever session, not re-triage; report only
-T4 B / T3 B / pool refill); Phase 1 `tools/tumap.py` + `config/tu_map.csv`
+T4 B / T3 B / pool refill); Phase 1 `tools/brally/tumap.py` + `config/brally/tu_map.csv`
 with three validation gates; Phase 2 TU lane (co-file whole TU in VA order,
 cheapest TUs first, kill after 5 TUs with zero msetdiff movement); Phase 3
 `gen_widen.py` from the proven CRT widen idioms for the byte-lane class;
 Phase 4 crank only; Phase 5 cpp residue. Backlog also: fn.py auto FN_OPTS
 from the row's opt, t4lane parked -> dated hold, tiers.py T1 definition.
 
-**PHASE 1 BUILT + VALIDATED 2026-09-15 (commit c9e19813):** `tools/tumap.py`
-emits `config/tu_map.csv` (tu_id, va, order, flag, tier, size, file,
+**PHASE 1 BUILT + VALIDATED 2026-09-15 (commit c9e19813):** `tools/brally/tumap.py`
+emits `config/brally/tu_map.csv` (tu_id, va, order, flag, tier, size, file,
 evidence). 258 fns -> 84 raw FP-const components -> 58 coalesced TUs (VA-span
 interleave merge; 24 multi-member, 75,790 B open inside them). Modes:
 `--groups` (ranked table), `--lane` (Phase-2 picker: open TUs cheapest first

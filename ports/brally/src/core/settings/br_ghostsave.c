@@ -1,8 +1,8 @@
 /* br_ghostsave.c -- settings: write the ".GRF" Time Attack ghost file.
  *
  *   0x10069DE0  649 B   the ghost writer (twin of the season writer
- *                       0x10069930 in src/core/generated/, format in
- *                       include/br_save.h: magic "RGho", a zero dword, the
+ *                       0x10069930 in src/brally/core/generated/, format in
+ *                       src/brally/include/br_save.h: magic "RGho", a zero dword, the
  *                       payload length, the adler32, two option dwords, the
  *                       0x10-byte ghost header, the replay buffer, six loose
  *                       option dwords and the 0x80-byte display name).

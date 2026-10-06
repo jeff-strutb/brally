@@ -257,7 +257,7 @@ typedef struct BrEntCar {
  *
  * SIZE, now pinned rather than "sized by integration": BrEntSetRecord indexes
  * with a stride of 89992 (0x15F88) and the next referenced global in
- * config/globals.csv is 0x10220B20 == 0x100C12A0 + 16 * 0x15F88 exactly. So
+ * config/brally/globals.csv is 0x10220B20 == 0x100C12A0 + 16 * 0x15F88 exactly. So
  * the table is 16 records -- the same 16 as the race-entrant array. A
  * seventeenth record would run past 0x10220B20, which is separately
  * referenced, so 16 is an upper bound as well as a lower one.

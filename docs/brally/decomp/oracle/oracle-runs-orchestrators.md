@@ -4,7 +4,7 @@
 
 > 2026-09-15: the A5 equivalence oracle can now behaviourally certify orchestrator functions (inputs = an object graph, not scalars) via valid-state seeding + emulator/resolution extensions + A5 made authoritative in t3.py. This is how a colouring-walled giant becomes T3.
 
-** The A5 oracle (tools/t3b_verify.py) now runs functions whose input is an
+** The A5 oracle (tools/brally/t3b_verify.py) now runs functions whose input is an
 OBJECT GRAPH, not just scalar-arg leaves. This is the path to T3 for a giant that
 byte-shape gates false-negative on colouring residue.** Built 2026-09-15 doing
 BrRaceStep 0x10019A70 (see bracestep-wall); all changes committed, no regressions.
@@ -16,7 +16,7 @@ in a pointer global point nowhere, the function walks garbage down branches the
 compiler proved unreachable, and the two compilations diverge on paths that never
 run with real state -- FALSE DIFFs. FIX = valid-state seeding: pointer globals
 null-safe (BSS->0), the scalar state/flag globals that gate control flow varied
-per seed. tools/oracle_profiles.py holds a per-VA `Profile(bss_fn)`; t3b_verify
+per seed. tools/brally/oracle_profiles.py holds a per-VA `Profile(bss_fn)`; t3b_verify
 auto-applies it. A profile is a decision about a function's input SHAPE, not a
 lowering of standard -- a bad world surfaces as spurious DIFFs, never false
 EQUIVALENTs.
@@ -38,7 +38,7 @@ for non-bugs that desync a positional write trace: an intermediate double-store
 every later write; fix the source to match the store shape first, then the trace
 realigns and the REAL divergence surfaces.
 
-**Emulator/resolution extensions that made it run (tools/, committed).**
+**Emulator/resolution extensions that made it run (tools/brally/, committed).**
 x87emu: indirect call + jmp, 64-bit CRT helpers (allmul 0x10074680, alldiv
 0x100748B0, aulldiv 0x10074610), memmove import (IAT 0x118F04FC), rep string ops,
 memory-destination arithmetic, 16-bit regs, setCC, on-demand disasm (the shared

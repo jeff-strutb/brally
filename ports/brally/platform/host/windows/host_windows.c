@@ -18,7 +18,7 @@
  *   pads      XInput's first controller
  *
  * Directories (environment, else the defaults):
- *   BR_CDROOT    the CD's files     (default testdata\disc, then disc\ beside the exe)
+ *   BR_CDROOT    the CD's files     (default reference/brally/data\disc, then disc\ beside the exe)
  *   BR_GAMEDIR   the install        (default: the CD root)
  *   BR_SAVEDIR   saves and settings (default %APPDATA%\Boss Rally 64)
  *   BR_MUSICDIR  the CD's tracks    (default music\cd beside the exe)
@@ -79,8 +79,8 @@ void host_init(int argc, char **argv)
     e = getenv("BR_CDROOT");
     if (e)
         snprintf(s_cd, sizeof s_cd, "%s", e);
-    else if (is_dir("testdata\\disc"))
-        snprintf(s_cd, sizeof s_cd, "testdata\\disc");
+    else if (is_dir("reference/brally/data\\disc"))
+        snprintf(s_cd, sizeof s_cd, "reference/brally/data\\disc");
     else
         snprintf(s_cd, sizeof s_cd, "%s\\disc", here);
     e = getenv("BR_GAMEDIR");

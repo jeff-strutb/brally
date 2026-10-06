@@ -85,7 +85,7 @@ void FUN_1005a6b0(void)
 }
 
 
-/* !! MAP DEFECT, fixed 2026-09-04.  config/functions_glide.csv listed
+/* !! MAP DEFECT, fixed 2026-09-04.  config/brally/functions_glide.csv listed
  * 0x1005A480 as one 91-byte function.  It is two: a 5-byte `jmp 1005A490`
  * plus eleven alignment nops (16 bytes, MSVC emits the padding inside the
  * first function), then the 75-byte loader at the 16-aligned address that
@@ -107,8 +107,8 @@ __declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
 /* WHAT IT DOES: load the three damage-decal bitmaps (Paint\damage1.bmp ..
  * damage3.bmp) into the three shared livery slots that FUN_1005a6b0 frees.
  * The dllimport sprintf is hoisted into ebx across the loop. */
-/* @t4-pass 0x1005A490 1 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1005A490 2 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1005A490 1 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1005A490 2 2026-09-07 probes 68 bytes 75 insns 27 regions 2 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x1005A490 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 75/75 insns 27/27 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -116,7 +116,7 @@ __declspec(dllimport) int __cdecl sprintf(char *pDst, const char *pFmt, ...);
  * multiset (rows 0+0), 2 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x1005A490 glide BrLiveryLoadDamageBmps */
 void BrLiveryLoadDamageBmps(void)

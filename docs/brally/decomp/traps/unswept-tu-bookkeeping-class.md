@@ -5,25 +5,25 @@
 > A written-but-never-swept TU keeps the port body's diff row in report.csv, so a finished byte-exact match reads as fresh work; claimcheck.py is the only screen that finds it.
 
 A matching TU that exists on disk but has never been through
-`tools/match_sweep.py` is **invisible to every count and every ranking**.
-`build/match/report.csv` still carries the PORT body's `diff` row for that VA,
-so `tools/fnmatch/triage.py` ranks the function as fresh structural work and
-`tools/total.py` does not count it.
+`tools/brally/match_sweep.py` is **invisible to every count and every ranking**.
+`build/brally/win32/match/report.csv` still carries the PORT body's `diff` row for that VA,
+so `tools/brally/fnmatch/triage.py` ranks the function as fresh structural work and
+`tools/brally/total.py` does not count it.
 
 **Why:** the sweep is what discovers `@implements` tags and writes rows; a tag
 written in a previous session and never compiled leaves report.csv keyed to
 whichever file claimed the VA earlier - usually the port body under its D3D
 tag. The VA *is* present in report.csv, just pointing at the wrong file, so a
-"tags with no report row" screen finds nothing and `tools/stale_claims.py`
+"tags with no report row" screen finds nothing and `tools/brally/stale_claims.py`
 reports "every diff row owns its VA".
 
 **How to apply - run these at session start, before triage:**
 
 ```bash
-python3 tools/claimcheck.py     # "TWO NAMES CLAIMING ONE ADDRESS" is the tell
-git status --short src/         # uncommitted matches (rule 7 violations)
-ls src/core/generated/*.c | wc -l
-grep -c 'src/core/generated/' build/match/report.csv   # must be equal
+python3 tools/brally/claimcheck.py     # "TWO NAMES CLAIMING ONE ADDRESS" is the tell
+git status --short src/brally/         # uncommitted matches (rule 7 violations)
+ls src/brally/core/generated/*.c | wc -l
+grep -c 'src/brally/core/generated/' build/brally/win32/match/report.csv   # must be equal
 ```
 
 When claimcheck flags a pair, sweep the generated/cpp TU first, then untag the

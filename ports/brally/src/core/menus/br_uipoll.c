@@ -8,7 +8,7 @@
  *
  * slice2_23.c -- BRD3D.dll 0x1003DC10-0x10040330, a later pass. See slice2_23.h.
  *
- * Constants below were read out of orig/BRD3D.dll rather than guessed:
+ * Constants below were read out of reference/brally/orig/BRD3D.dll rather than guessed:
  *   0x1008F660 == 8.0f, 0x1008F664 == -8.0f, the immediate 0x43020000 stored
  *   into item[0].F414 by 0x1003FA00 == 130.0f, the table at 0x100AB334 is 21
  *   records of 8 bytes whose second dword of the last record is exactly the

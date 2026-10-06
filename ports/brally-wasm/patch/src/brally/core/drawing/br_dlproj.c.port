@@ -1,0 +1,10 @@
+# Port deviations for src/brally/core/drawing/br_dlproj.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop type:BrProjGrVtx
+@drop var:DAT_105ccd48
+@drop var:DAT_105cd9f8
+@drop var:DAT_105ccfdc
+@drop var:DAT_105cd9fc
+@drop define:BR_PROJ_SNAP
+@drop fn:BrDlProjectNoZ

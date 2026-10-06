@@ -39,7 +39,7 @@ the other flagged instance 0x1002E376 is already a match, and the other
 one function, not a family.
 
 **Process lesson for me:** I mis-certified this as a T3 "colouring wall" and
-even added a trampoline-classifier fold to `tools/t3.py` to admit the residue  - 
+even added a trampoline-classifier fold to `tools/brally/t3.py` to admit the residue  - 
 lowering the gate for a wall that was actually crackable. When a residue is a
 small PURELY branch-encoding delta, exhaust source levers (including adding
 structure, not just removing it) before certifying T3 or touching gate tooling.

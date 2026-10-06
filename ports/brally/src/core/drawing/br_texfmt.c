@@ -110,7 +110,7 @@ int BrTexFormatCode(int a, int b, int c)
  * cross-slice block rather than in any header. Without it the error path
  * below calls it implicitly (C4013) and leaves an undefined external -- a
  * link failure match_sweep.py cannot see, because it only compiles the
- * matching configuration. Found by tools/portcheck.py. */
+ * matching configuration. Found by tools/brally/portcheck.py. */
 /* BrX10035BBA: prototype in br_funcs.h */
 
 /* 0x10031347 */

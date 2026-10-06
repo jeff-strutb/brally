@@ -6,7 +6,7 @@
 
 ** 0x100250D0 BrTex3dExpand is T3 (commit b04b40a7).** Fresh hand transcription
 from the disasm (discarded the permuter-tuned body + 500-line dead-lever comment),
-filed at `src/core/drawing/br_tex3d_expand.c`, certified by the A5 oracle
+filed at `src/brally/core/drawing/br_tex3d_expand.c`, certified by the A5 oracle
 EQUIVALENT across 64 valid-state seeds. This SUPERSEDES the byte-grind framing in
 [brtex3dexpand-doubling-lever-2026-09-10](../levers/brtex3dexpand-doubling-lever-2026-09-10.md) and [brtex3dexpand-wall-broken](brtex3dexpand-wall-broken.md):
 those documented a colouring/allocation wall that never mattered for T3 - A5 is
@@ -37,12 +37,12 @@ EQUIVALENT - a profile that seeds a dead world gives false EQUIVALENTs, exactly 
 failure oracle-profiles.py warns about. Palette bugs need a varied palette:
 uniform-0 palette makes every index read 0.
 
-**Emulator gap fixed (tools/x87emu.py, committed b04b40a7):** one-operand `mul`
+**Emulator gap fixed (tools/brally/x87emu.py, committed b04b40a7):** one-operand `mul`
 and one-operand `imul` (edx:eax) - the MSVC `/255` magic-divide uses `mul`. Was
 UNCLASSIFIED "unhandled mul edx" until added. No regressions (certified sweep 0 DIFF).
 
 **Stale-obj trap (same as [cpp-lane-t3-filing-workflow](../cpp-lane/cpp-lane-t3-filing-workflow.md)):** 52 leftover permuter
-probe objs (A1_*.obj, W_one_eq_iVar3.obj, ...) in build/match/obj_O2 carried the
+probe objs (A1_*.obj, W_one_eq_iVar3.obj, ...) in build/brally/win32/match/obj_O2 carried the
 BrTex3dExpand symbol at 9632 B and shadowed the real 8224 B obj via _obj_index's
 setdefault → "substituted bytes bury <neighbour>". Delete every obj carrying the
 symbol except the real <file>.obj.

@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""Decomp progress treemap (SM64DS-style) for BRGlide.dll.
+
+Joins config/brally/functions_glide.csv (the full Glide function universe) against
+build/brally/win32/match/report.csv (per-function match status) and emits a single
+self-contained HTML file: one squarified treemap, boxes grouped by module,
+cells sized by original byte size, colored by status.
+
+  green = byte-exact match   amber = tagged, diffs remain   gray = untranscribed
+
+Usage:  python3 tools/brally/progressmap.py [-o build/brally/win32/match/map.html]
+"""
+import argparse, csv, html, os, subprocess, sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+FUNCS = os.environ.get("BR_MAP", os.path.join(ROOT, "config", "brally", "functions_glide.csv"))
+REPORT = os.path.join(ROOT, "build", "brally", "win32", "match", "report.csv")
+
+GREEN, AMBER, GRAY = "#3fb950", "#d29922", "#c8ccd2"
+BLUE = "#58a6ff"    # codegen-only diff (T3): same instructions, register/sched only
+FENCED = "#6e5494"  # static CRT / library: reproduced by linking, not decompiled
+EXCLUDED = "#3f6f7a"  # game code the retail game never runs (config/brally/excluded.csv)
+
+# Per-EXE static-CRT boundary: functions at/after this VA are linked library
+# code (fenced), not a decomp target. So they never turn green: distinct from
+# unfinished user code ("todo").
+CRT_START = {"brally": 0x401BC0, "setvideo": 0x402D20, "bossrally": 0x401BC0}
+
+
+def _fenced_exe():
+    """Interleaved static-CRT functions that sit BELOW an EXE's CRT boundary
+    (linked library code physically laid out inside the game-code VA range).
+    They are reproduced by linking the CRT, not decompiled: same category as
+    the DLL's config/brally/fenced.csv, so they must not count as unfinished game
+    code. Returns {(exe, va): True}."""
+    out = {}
+    p = os.path.join(ROOT, "config", "brally", "fenced_exe.csv")
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[(r["exe"], int(r["va"], 16))] = True
+    return out
+
+
+def _fenced_dll():
+    """The DLL's linker-reproduced functions (config/brally/fenced.csv): import
+    thunks, jump stubs, CRT helper intrinsics, CRT startup. Same category as
+    fenced_exe, not decomp targets, must not render as untried game code.
+    Returns {va: class}."""
+    out = {}
+    p = os.path.join(ROOT, "config", "brally", "fenced.csv")
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[int(r["va"], 16)] = r.get("class") or "fenced"
+    return out
+
+
+def _diffs(m):
+    """The row's diff count, or -1 for "not in the report at all".
+
+    A `compile_error` row carries the COMPILER'S MESSAGE in this column, not a
+    number, so this must never int() blindly: one such row used to crash the
+    whole map. Treat any non-numeric value as "unknown, but tagged" (0)."""
+    if not m:
+        return -1
+    v = str(m.get("diffs") or "").strip()
+    try:
+        return int(v)
+    except ValueError:
+        return 0
+
+
+def _match_set(path):
+    """VAs from a total.py manifest (build/brally/win32/match/<path>), or empty."""
+    p = os.path.join(ROOT, "build", "brally", "win32", "match", path)
+    out = {}
+    if os.path.exists(p):
+        with open(p) as f:
+            for r in csv.DictReader(f):
+                out[int(r["va"], 16)] = int(r.get("bytes") or 0)
+    return out
+
+
+def _cpp_matches():
+    """Byte-exact C++-lane VAs, read from build/brally/win32/match/report_cpp.csv itself.
+
+    cpp_matches.csv is a manifest tools/brally/total.py writes only when it runs (a
+    slow EXE re-score), so it lags the C++ sweep: functions matched since the
+    last total.py run painted grey. Apply total.score_cpp's filter to the
+    sweep report directly; fall back to the manifest if the report is absent."""
+    p = os.path.join(ROOT, "build", "brally", "win32", "match", "report_cpp.csv")
+    if not os.path.exists(p):
+        return _match_set("cpp_matches.csv")
+    out = {}
+    with open(p) as f:
+        for r in csv.DictReader(f):
+            if r.get("status") != "match" or not r.get("orig_size"):
+                continue
+            if r.get("pieces") and r["pieces"] != "4/4":
+                continue
+            out[int(r["va"], 16)] = int(r["orig_size"])
+    return out
+
+
+def _implements_files():
+    """{va: repo-relative source file} from `@implements 0x... glide` tags.
+
+    C++-lane and T3 functions often have no report.csv row, so without this
+    they grouped as "unfiled" or into a single C++ box instead of the module
+    their source actually lives in."""
+    out = {}
+    try:
+        res = subprocess.run(["git", "grep", "-n", "-E", "@implements 0x[0-9A-Fa-f]+ glide",
+                              "--", "src/brally"], cwd=ROOT, capture_output=True, text=True)
+    except Exception:
+        return out
+    for line in res.stdout.splitlines():
+        path, _, rest = line.split(":", 2)
+        va = int(rest.split("@implements", 1)[1].split()[0], 16)
+        out.setdefault(va, path)
+    return out
+
+
+def _refresh_t3():
+    """Regenerate build/brally/win32/match/tier3.csv from source @t3 tags before rendering.
+
+    tier3.csv is an untracked build artifact; nothing commits it, so a map
+    rendered against a stale copy paints already-certified T3 functions grey.
+    tools/brally/tiers.py derives the T3 set from the source tags (one row per
+    distinct @t3 VA) and is cheap, so refresh it here rather than trust
+    whatever copy happens to be on disk. Best-effort: a map is still useful if
+    this fails, so never let it abort the render.
+    """
+    try:
+        subprocess.run([sys.executable, os.path.join(ROOT, "tools", "brally", "tiers.py")],
+                       cwd=ROOT, stdout=subprocess.DEVNULL, check=True)
+    except Exception as e:
+        print("progressmap: could not refresh tier3.csv (%s); "
+              "T3 layer may be stale" % e, file=sys.stderr)
+
+
+def load():
+    _refresh_t3()
+    rep = {}
+    with open(REPORT) as f:
+        for r in csv.DictReader(f):
+            va = int(r["va"], 16)
+            # An address may carry more than one row (e.g. a function filed
+            # into its own module while a stale diff row from its old slice
+            # lingers). A VA is matched if ANY row matches: prefer a match
+            # row over a non-match one, independent of file order, so the
+            # count agrees with total.py's unique-matched-VA total.
+            prev = rep.get(va)
+            if prev is None or (r["status"] == "match" and prev["status"] != "match"):
+                rep[va] = r
+    # C++ EH matches verified off-report (total.py manifest): mark them
+    # matched so the DLL map reflects them, grouped into their own region.
+    cpp = _cpp_matches()
+    t3 = _match_set("tier3.csv")   # codegen-only diffs (T3), from tools/brally/tiers.py
+    fenced_dll = _fenced_dll()
+    impl = _implements_files()
+    excl = set()
+    _ep = os.path.join(ROOT, "config", "brally", "excluded.csv")
+    if os.path.exists(_ep):
+        with open(_ep) as f:
+            excl = set(int(r["va"], 16) for r in csv.DictReader(f))
+    funcs = []
+    with open(FUNCS) as f:
+        for r in csv.DictReader(f):
+            va, size = int(r["va"], 16), int(r["size"])
+            if size <= 0:
+                continue
+            m = rep.get(va)
+            is_cpp = va in cpp
+            if is_cpp or (m and m["status"] == "match"):
+                status = "match"
+            elif va in excl:
+                status = "excluded"   # never run by the game: outside the target
+            elif va in t3:
+                # T3: certified same-behaviour (register/sched-only residue).
+                # Independent of the sweep report: a function filed into its
+                # own module (src/brally/core/cpp/<VA>.cpp) carries an @t3 tag but no
+                # report.csv row, and must not fall through to grey/todo.
+                status = "codegen"
+            elif m:
+                status = "diff"
+            elif va in fenced_dll:
+                status = "fenced"
+            else:
+                status = "todo"
+            funcs.append({
+                "va": va, "size": size,
+                "name": (m and m["name"]) or r.get("name") or "",
+                "file": ((m and m["file"]) or impl.get(va)
+                         or ("linker/CRT (fenced)" if status == "fenced" else "")),
+                "status": status,
+                "diffs": 0 if is_cpp else _diffs(m),
+            })
+    # The three in-scope EXEs as their own regions.
+    exe_hit = {}
+    for r in _exe_rows():
+        exe_hit.setdefault(r[0], {})[int(r[1], 16)] = int(r[2] or 0)
+    fenced_exe = _fenced_exe()
+    for exe in ("brally", "setvideo", "bossrally"):
+        fmap = os.path.join(ROOT, "config", "brally", "functions_%s.csv" % exe)
+        if not os.path.exists(fmap):
+            continue
+        hits = exe_hit.get(exe, {})
+        with open(fmap) as f:
+            for r in csv.DictReader(f):
+                va, size = int(r["va"], 16), int(r["size"])
+                if size <= 0:
+                    continue
+                if va in hits:
+                    st = "match"
+                elif va >= CRT_START.get(exe, 1 << 30) or (exe, va) in fenced_exe:
+                    st = "fenced"   # linked CRT, not a decomp target
+                else:
+                    st = "todo"
+                funcs.append({
+                    "va": va, "size": size,
+                    "name": r.get("name") or "",
+                    "file": "EXE: %s.exe" % exe,
+                    "status": st,
+                    "diffs": 0 if va in hits else -1,
+                })
+    return funcs
+
+
+def _exe_rows():
+    p = os.path.join(ROOT, "build", "brally", "win32", "match", "exe_matches.csv")
+    if not os.path.exists(p):
+        return []
+    with open(p) as f:
+        return [(r["exe"], r["va"], r["bytes"]) for r in csv.DictReader(f)]
+
+
+def group_key(fn):
+    if fn["file"]:
+        p = fn["file"]
+        p = p[len("src/brally/"):] if p.startswith("src/brally/") else p
+        return os.path.splitext(p)[0] if p.endswith((".c", ".cpp")) else p
+    return "unfiled 0x%04Xxxxx" % (fn["va"] >> 16)
+
+
+# --- squarified treemap ------------------------------------------------------
+
+def squarify(items, x, y, w, h):
+    """items: list of (weight, payload), pre-sorted desc. Yields (x,y,w,h,payload)."""
+    items = [it for it in items if it[0] > 0]
+    total = sum(it[0] for it in items)
+    if not items or total <= 0 or w <= 0 or h <= 0:
+        return
+    scale = w * h / total
+    i = 0
+    while i < len(items):
+        vertical = w < h  # lay row along the shorter side
+        side = w if vertical else h
+        row, rs = [], 0.0
+        worst = None
+        j = i
+        while j < len(items):
+            a = items[j][0] * scale
+            nrs = rs + a
+            thick = nrs / side
+            wr = 0.0
+            for k in range(i, j + 1):
+                ak = items[k][0] * scale
+                cell = ak / thick
+                r = max(cell / thick, thick / cell)
+                wr = max(wr, r)
+            if worst is not None and wr > worst:
+                break
+            worst, rs = wr, nrs
+            row.append(items[j])
+            j += 1
+        thick = rs / side
+        off = 0.0
+        for wt, payload in row:
+            length = (wt * scale) / thick
+            if vertical:
+                yield (x + off, y, length, thick, payload)
+            else:
+                yield (x, y + off, thick, length, payload)
+            off += length
+        if vertical:
+            y += thick; h -= thick
+        else:
+            x += thick; w -= thick
+        i = j
+
+
+W, H = 1600, 900
+
+
+def stats(funcs):
+    return dict(
+        total_b=sum(f["size"] for f in funcs),
+        match_b=sum(f["size"] for f in funcs if f["status"] == "match"),
+        codegen_b=sum(f["size"] for f in funcs if f["status"] == "codegen"),
+        tag_b=sum(f["size"] for f in funcs if f["status"] != "todo"),
+        n_match=sum(1 for f in funcs if f["status"] == "match"),
+        n_codegen=sum(1 for f in funcs if f["status"] == "codegen"),
+        n=len(funcs))
+
+
+def layout(funcs):
+    """Yields ('group', x,y,w,h, name) and ('fn', x,y,w,h, fn, group_name)."""
+    groups = {}
+    for f in funcs:
+        groups.setdefault(group_key(f), []).append(f)
+    gitems = sorted(((sum(f["size"] for f in fs), (k, fs)) for k, fs in groups.items()),
+                    reverse=True, key=lambda it: it[0])
+    for gx, gy, gw, gh, (gname, fs) in squarify(gitems, 0, 0, W, H):
+        pad = 1.5
+        show_label = gw > 70 and gh > 26
+        top = 14 if show_label else 0
+        yield ("group", gx, gy, gw, gh, gname if show_label else None, None)
+        ix, iy = gx + pad, gy + pad + top
+        iw, ih = max(gw - 2 * pad, 0.1), max(gh - 2 * pad - top, 0.1)
+        fitems = sorted(((f["size"], f) for f in fs), reverse=True, key=lambda it: it[0])
+        for fx, fy, fw, fh, f in squarify(fitems, ix, iy, iw, ih):
+            yield ("fn", fx, fy, max(fw - .6, .4), max(fh - .6, .4), f, gname)
+
+
+def tooltip(f, gname):
+    tip = "%s  0x%08X  %dB" % (f["name"] or "(unnamed)", f["va"], f["size"])
+    if f["status"] == "diff":
+        tip += "  %d diff bytes" % f["diffs"]
+    return tip + "  [%s]" % gname
+
+
+def render_svg(funcs, out_path):
+    s = stats(funcs)
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" '
+             'font-family="sans-serif">' % (W, H + 30),
+             '<rect width="%d" height="%d" fill="#161b22"/>' % (W, H + 30)]
+    for kind, x, y, w, h, obj, gname in layout(funcs):
+        if kind == "group":
+            if obj:
+                parts.append('<text x="%.1f" y="%.1f" font-size="10" fill="#8b949e">%s</text>'
+                             % (x + 3, y + 10.5, html.escape(obj.split("/")[-1])))
+        else:
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED, "excluded": EXCLUDED}[obj["status"]]
+            parts.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s">'
+                         '<title>%s</title></rect>'
+                         % (x, y, w, h, color, html.escape(tooltip(obj, gname))))
+    parts.append('<text x="8" y="%d" font-size="13" fill="#e6edf3">'
+                 'T4 byte-exact %d &#183; T3 codegen-only %d &#183; %s/%s bytes exact '
+                 '(%.1f%%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>'
+                 % (H + 20, s["n_match"], s["n_codegen"], "{:,}".format(s["match_b"]),
+                    "{:,}".format(s["total_b"]), 100.0 * s["match_b"] / s["total_b"]))
+    with open(out_path, "w") as f:
+        f.write("\n".join(parts))
+    print("%s: svg snapshot" % out_path)
+
+
+def render(funcs, out_path):
+    s = stats(funcs)
+    total_b, match_b, tag_b = s["total_b"], s["match_b"], s["tag_b"]
+    n_match = s["n_match"]
+
+    ngroups = 0
+    cells = []
+    for kind, x, y, w, h, obj, gname in layout(funcs):
+        if kind == "group":
+            ngroups += 1
+            cells.append(
+                '<div class="g" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;height:%.1fpx">%s</div>'
+                % (x, y, w, h,
+                   '<span class="gl">%s</span>' % html.escape(obj.split("/")[-1]) if obj else ""))
+        else:
+            color = {"match": GREEN, "codegen": BLUE, "diff": AMBER, "todo": GRAY, "fenced": FENCED, "excluded": EXCLUDED}[obj["status"]]
+            cells.append(
+                '<div class="f" title="%s" style="left:%.1fpx;top:%.1fpx;width:%.1fpx;'
+                'height:%.1fpx;background:%s"></div>'
+                % (html.escape(tooltip(obj, gname), quote=True), x, y, w, h, color))
+
+    page = """<!doctype html><meta charset="utf-8"><title>BRGlide decomp map</title>
+<style>
+ body{margin:0;background:#0d1117;color:#e6edf3;font:13px/1.5 -apple-system,Segoe UI,sans-serif}
+ header{padding:14px 20px 10px}
+ h1{font-size:16px;margin:0 0 6px}
+ .stats span{margin-right:22px;color:#9da7b3}
+ .stats b{color:#e6edf3}
+ .bar{height:8px;border-radius:4px;background:%(gray)s;overflow:hidden;display:flex;margin:8px 0 2px;max-width:820px}
+ .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 5px 0 18px;vertical-align:-1px}
+ #map{position:relative;width:%(W)dpx;height:%(H)dpx;margin:10px 20px 24px;background:#161b22;border-radius:6px;overflow:hidden}
+ .g{position:absolute;outline:1px solid #0d1117}
+ .gl{position:absolute;top:0;left:3px;font-size:10px;color:#8b949e;white-space:nowrap;overflow:hidden;max-width:95%%;z-index:2}
+ .f{position:absolute;border-radius:1px}
+ .f:hover{outline:1px solid #fff;z-index:3}
+</style>
+<header>
+ <h1>BRGlide.dll: matching decomp progress</h1>
+ <div class="stats">
+  <span>T4 byte-exact: <b>%(nm)d / %(nf)d</b> functions (%(nmp).1f%%)</span>
+  <span>T3 codegen-only: <b>%(nc)d</b></span>
+  <span>bytes exact: <b>%(mb)s / %(tb)s</b> (%(mbp).1f%%)</span>
+ </div>
+ <div class="bar"><i style="width:%(mbp).2f%%;background:%(green)s"></i><i style="width:%(cbp).2f%%;background:%(blue)s"></i><i style="width:%(dbp).2f%%;background:%(amber)s"></i></div>
+ <div class="legend"><i style="background:%(green)s"></i>T4 byte-exact<i style="background:%(blue)s"></i>T3 codegen-only<i style="background:%(amber)s"></i>T2 diffs remain<i style="background:%(gray)s"></i>T1 still asm<i style="background:%(fenced)s"></i>linker/CRT (fenced)<i style="background:%(excluded)s"></i>excluded (never run)</div>
+</header>
+<div id="map">%(cells)s</div>
+""" % dict(W=W, H=H, cells="".join(cells), green=GREEN, amber=AMBER, gray=GRAY,
+           blue=BLUE, fenced=FENCED, excluded=EXCLUDED, nc=s["n_codegen"], cbp=100.0 * s["codegen_b"] / total_b,
+           nm=n_match, nf=len(funcs), nmp=100.0 * n_match / len(funcs),
+           mb="{:,}".format(match_b), tb="{:,}".format(total_b),
+           mbp=100.0 * match_b / total_b, gb="{:,}".format(tag_b),
+           gbp=100.0 * tag_b / total_b, dbp=100.0 * (tag_b - match_b - s["codegen_b"]) / total_b)
+    with open(out_path, "w") as f:
+        f.write(page)
+    print("%s: %d functions, %d groups" % (out_path, len(funcs), ngroups))
+    print("byte-exact %d/%d functions, %d/%d bytes (%.1f%%)"
+          % (n_match, len(funcs), match_b, total_b, 100.0 * match_b / total_b))
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-o", default=os.path.join(ROOT, "build", "brally", "win32", "match", "map.html"))
+    ap.add_argument("--svg", help="also write an SVG snapshot (for the README)")
+    a = ap.parse_args()
+    funcs = load()
+    render(funcs, a.o)
+    if a.svg:
+        render_svg(funcs, a.svg)

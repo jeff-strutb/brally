@@ -71,7 +71,7 @@ void         BrGameStepRegister(BrGameStepFn pfn, int id);
  * The identification is worth stating because it also explains a call site:
  * slice2_19.c tests `BrHookIsCurrent(g_BrPadHookFn)` before granting the pad
  * its two extra buttons, and `g_BrPadHookFn` is the literal 0x1002C500 --
- * which config/shared.csv pairs with BRGlide's 0x10019A70, THE RACE STEP.  So
+ * which config/brally/shared.csv pairs with BRGlide's 0x10019A70, THE RACE STEP.  So
  * that test reads "are we in a race", and it is this slot it asks. */
 int          BrGameStepIsAddr(const void *pv);
 /* 0x1002E324, 11 bytes.  Returns 0 if the slot is NULL and 1 if it ran. */

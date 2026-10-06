@@ -22,21 +22,21 @@ keyed to - do not assume, and do not read it off a tool default:
     # matches is what the corpus is actually keyed to
     EOF
 
-Tools take BR_REF / BR_MAP overrides; `tools/dumpasm.py` was repointed at
+Tools take BR_REF / BR_MAP overrides; `tools/brally/dumpasm.py` was repointed at
 BRGlide in commit d98f480.
 
 **THIS HAS HAPPENED TWICE.** Commit d98f480 (2026-08-15) corrected the D3D
 default and said explicitly it was contrary to the project's stated choice. The
 matching pipeline introduced in a7eb7cd (2026-08-19) re-made the same mistake,
-and the whole `build/match/orig` corpus plus `build/match/report.csv` are keyed
+and the whole `build/brally/win32/match/orig` corpus plus `build/brally/win32/match/report.csv` are keyed
 to D3D addresses. Confirmed 2026-08-22: 400 of 400 sampled reference .bin files
 match BRD3D, 1 matches BRGlide.
 
 **What that costs, measured, not assumed:** of 290 matched functions, 276 have a
-Glide twin in `config/shared.csv`; 53 are already byte-identical in Glide, 201
+Glide twin in `config/brally/shared.csv`; 53 are already byte-identical in Glide, 201
 differ only in baked-in addresses (same code, different link), and 22 are
 genuinely different code. The decompiled C transfers; the scoring layer is what
-is D3D-keyed. `config/shared.csv` maps d3d_va to glide_va for 2,697 functions,
+is D3D-keyed. `config/brally/shared.csv` maps d3d_va to glide_va for 2,697 functions,
 so re-keying is mechanical.
 
 See [goal-coverage-not-playability](goal-coverage-not-playability.md), [matching-progress](../log/matching-progress.md),

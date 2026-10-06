@@ -7,7 +7,7 @@
 **End-to-end to certify a reconstructed C++-lane function as T3 (proven on
 BrRaceStep 0x10019A70, bracestep-wall, [oracle-runs-orchestrators](../oracle/oracle-runs-orchestrators.md)).**
 
-1. **File** at `src/core/cpp/0x<VA>.cpp`. Header order, top-of-file:
+1. **File** at `src/brally/core/cpp/0x<VA>.cpp`. Header order, top-of-file:
    `/* WHAT IT DOES: ... */` then (later) `/* @t3 ... */` then
    `/* @implements 0x<VA> glide <Name>` + ` * @cpp_symbol _<Name>`. In the C++
    lane @implements is the SWEEP ANCHOR and coexists with @t3 + not-byte-exact
@@ -15,12 +15,12 @@ BrRaceStep 0x10019A70, bracestep-wall, [oracle-runs-orchestrators](../oracle/ora
    it to mark which VA the file implements). self-contained externs are fine
    (opaque `struct Obj`/`Driver`, ~200 extern decls) -- cpp_score compiles it
    standalone with /GX.
-2. **Sweep** to get a report row: `tools/cpp_sweep.py src/core/cpp/0x<VA>.cpp`
-   -> writes build/match/report_cpp.csv. It picks the min-diff VARIANT; for a
+2. **Sweep** to get a report row: `tools/brally/cpp_sweep.py src/brally/core/cpp/0x<VA>.cpp`
+   -> writes build/brally/win32/match/report_cpp.csv. It picks the min-diff VARIANT; for a
    FRAMELESS original (`sub esp,N`) that is often O2y (ebp-frame), a sweep-variant
    artifact that INFLATES rows -- fine, because A5 supersedes byte-shape, but note
    it in the tag ([sweep-variant-selection-artifact](../traps/sweep-variant-selection-artifact.md)).
-3. **Qualify**: `tools/t3.py --qualify 0x<VA>`.
+3. **Qualify**: `tools/brally/t3.py --qualify 0x<VA>`.
    - Gate 0 (WHAT IT DOES) passes if the comment is present.
    - Gate A: A5 must run + return EQUIVALENT/EQUIV-MODULO-FP (see
      [oracle-runs-orchestrators](../oracle/oracle-runs-orchestrators.md) for making it run) -> supersedes A1-A4.
@@ -29,8 +29,8 @@ BrRaceStep 0x10019A70, bracestep-wall, [oracle-runs-orchestrators](../oracle/ora
      (bytes/insns/regions/rows). Write them honestly from the real T4 grind.
 4. **Paste** the emitted `@t3 ...` block above the @implements line; fill the
    residue placeholder.
-5. **Update counts/README/SVG**: `tools/progressbar.py` (regens README block +
-   docs/progress-map.svg from tiers.py). Commit with pathspecs, NO attribution.
+5. **Update counts/README/SVG**: `tools/brally/progressbar.py` (regens README block +
+   docs/brally/progress-map.svg from tiers.py). Commit with pathspecs, NO attribution.
 
 ** GOTCHAS that cost time:**
 - **Stale sweep objs pollute the oracle.** `_obj_index` scans obj_O2/O2y/O2p/Od

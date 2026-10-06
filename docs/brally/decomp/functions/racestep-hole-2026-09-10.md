@@ -41,8 +41,8 @@ the listing:**
   WHOLE function's locals, so rule 11's "win the frame first" only becomes
   measurable once the last block is in. Do not chase it early.
 - Jump tables sit PAST the function's extracted bytes (0x1001C678 is beyond
-  the 11,223-byte end at 0x1001C647) -- read them from orig/BRGlide.dll
-  through the section table, not from build/match/orig/<VA>.bin.
+  the 11,223-byte end at 0x1001C647) -- read them from reference/brally/orig/BRGlide.dll
+  through the section table, not from build/brally/win32/match/orig/<VA>.bin.
 - `lea` chains that look like table indices are usually the 0x2B68 car-record
   stride or the 0x54 object-record stride. x1389 then scale-8 is 0x2B68.
 

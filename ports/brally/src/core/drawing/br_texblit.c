@@ -102,7 +102,7 @@ int BrRleEncode(char *dst,int dstMax,char *src,int srcLen,int stride)
 
 {
   /* /Od homes locals by name hash; single letters in the original's
-   * frame order land in order (docs/VC5-IDIOMS.md). Roles:
+   * frame order land in order (docs/brally/VC5-IDIOMS.md). Roles:
    *   a cur      -4    b c3=stride*3   -8    c c128=stride*128  -0xc
    *   d out      -0x10 e pos           -0x14 f len              -0x18
    *   g chan     -0x1c h prev          -0x20 i runStart         -0x24

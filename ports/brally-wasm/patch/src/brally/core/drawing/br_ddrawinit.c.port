@@ -1,0 +1,27 @@
+# Port deviations for src/brally/core/drawing/br_ddrawinit.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<stdio.h>
+@drop proto:BrSurfNew
+@drop proto:BrBmpLoadSurface
+@drop proto:BrFontFreeAndExit
+@drop proto:BrSprFontDraw
+@drop proto:BrSurfFree
+@drop proto:BrSurfSetColourKey
+@drop var:DAT_10ac5d84
+@drop var:DAT_10ac5dc4
+@drop type:BrImg
+@drop var:g_brImg
+@drop var:DAT_10ac5c5c
+@drop var:DAT_10ac5c2c
+@drop var:DAT_100a7514
+@drop var:DAT_100a7518
+@drop var:DAT_105bc72c
+@drop var:DAT_100aad0c
+@drop var:DAT_100aad1c
+@drop var:s_images_loading_bmp_100ad71c
+@drop var:s_DDraw_DoInit__loading_bmp_failed_100ad6f0
+@drop var:s_DDraw_DoInit__Bitmap__d_failed_t_100ad6c8
+@drop type:this
+@drop fn:FUN_100583c0

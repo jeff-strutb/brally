@@ -7,7 +7,7 @@
 /* @implements 0x10037FA0 glide BrItemDrawIconRow
  * @cpp_symbol _BrItemDrawIconRow
  *
- * The C transcription (src/core/menus/br_itemiconrow.c, same VA) was
+ * The C transcription (src/brally/core/menus/br_itemiconrow.c, same VA) was
  * size-exact but pushed the icon code through a struct wrapper (`mov R,N;
  * push R`) where the original's thiscall vcall pushes an imm8 -- the
  * calling TU was C++.  Here the vtable slot +0x14 is a virtual method with

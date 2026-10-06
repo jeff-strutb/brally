@@ -8,7 +8,7 @@
 # links them with a libc shim that implements ecvt/fcvt (so uopt's
 # -Wo,-zdbug:2 listing works), and gates the result: with tracing off, every
 # N64 source must compile to the same sections, relocations and symbols as
-# tools/ido53.  Everything lands in build/tgrally/ext (gitignored).
+# tools/toolchains/ido53.  Everything lands in build/tgrally/ext (gitignored).
 #
 #     sh tools/tgrally/build_ido_trace.sh
 #
@@ -51,7 +51,7 @@ for p in uopt ugen; do
 done
 ../wbvenv/bin/decomp-workbench check-drop-in ../instr/out/uopt ../instr/out/ugen
 
-# identity gate: tracing off, the traced compiler must equal tools/ido53 on every source
+# identity gate: tracing off, the traced compiler must equal tools/toolchains/ido53 on every source
 cd "$ROOT"
 .venv/bin/python - <<'EOF'
 import os, sys, hashlib, subprocess

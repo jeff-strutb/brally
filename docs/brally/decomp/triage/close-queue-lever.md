@@ -15,7 +15,7 @@ is 20-worker work for <15 bytes.
 
 **The lever (2026-08-30, landed 2):** a CLOSE(n) function is n bytes from
 byte-exact and the batch already recorded the transform. Land it by:
-1. Disassemble the orig bin (`build/match/orig/0xVA.bin`) - never trust the
+1. Disassemble the orig bin (`build/brally/win32/match/orig/0xVA.bin`) - never trust the
    refine's type hints (they called an int `double`, a byte-load a CONCAT).
 2. Find whether it slots into an EXISTING tree module that already declares
    its globals/imports - that is what makes it cheap. FUN_10002830 slotted

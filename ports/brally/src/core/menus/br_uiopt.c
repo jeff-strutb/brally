@@ -40,7 +40,7 @@
  * __inline` there, so the definition could not travel, and without it the
  * calls below are implicit (C4013) and leave an undefined external: a link
  * failure match_sweep.py cannot see, because it only compiles the matching
- * configuration. Found by tools/portcheck.py. It holds no state of its own,
+ * configuration. Found by tools/brally/portcheck.py. It holds no state of its own,
  * so two copies cannot drift, the same reason BrFtol is duplicated in
  * slice1_02.c and slice2_12.c.
  *

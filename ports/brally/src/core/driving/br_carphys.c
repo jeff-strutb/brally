@@ -1,7 +1,7 @@
 #include <stddef.h>
 /* br_carphys.c -- 0x1005A7A0 and the four force generators it drives.
  *
- * Transcribed from orig/BRGlide.dll:
+ * Transcribed from reference/brally/orig/BRGlide.dll:
  *
  *   0x1005A7A0  1206 B   BrCarPhysStep      the frame
  *   0x100684F0   265 B   BrCarPhysSpring    the suspension spring

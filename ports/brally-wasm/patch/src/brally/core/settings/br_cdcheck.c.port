@@ -1,0 +1,11 @@
+# Port deviations for src/brally/core/settings/br_cdcheck.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop include:<windows.h>
+@drop var:DAT_100acacc
+@drop var:DAT_100acad0
+@drop var:s_Boss_Rally_1007b384
+@drop proto:_chdrive
+@drop proto:_chdir
+@drop fn:FUN_100377a0

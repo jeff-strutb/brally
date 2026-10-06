@@ -9,7 +9,7 @@
  * @cpp_kind method
  * @cpp_symbol ?BrOpt4F00@@YAHPAVGameObj@@@Z
  *
- * Phase-leave family member (see tools/gen_phaseleave.py), hand-filed:
+ * Phase-leave family member (see tools/brally/gen_phaseleave.py), hand-filed:
  * its current-phase slot is g_5CC0, not the family's g_cur, and the
  * tail sets a mode global to 2 instead of a zero store.
  */

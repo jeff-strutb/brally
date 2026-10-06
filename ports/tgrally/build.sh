@@ -3,7 +3,7 @@
 # platform layer).  A TU that owns data symbols compiles through its wrapper
 # in build/tgrally/null-null/gen/own (tools/globals.py) so it defines them.
 #   env: JOBS (default 14), CC (default clang), OUT (default build/tgrally/null-null;
-#        link.sh passes its own, build/tgrally/HOST-RENDER)
+#        link.sh passes its own, build/tgrally/null-null/HOST-RENDER)
 #   build.sh FILE...   compile those TUs only and print their errors
 set -e
 cd "$(dirname "$0")/../.."

@@ -8,13 +8,13 @@
  * @cpp_kind method
  * @cpp_symbol ?Open@BrPodFile@@QAEXXZ
  *
- * 148 B, thiscall, no stack args.  The C twin in src/core/ghidra_batch.c is
+ * 148 B, thiscall, no stack args.  The C twin in src/brally/core/ghidra_batch.c is
  * instruction-exact except for ONE construct: the header read passes the
  * constant 0x10 to a callee whose receiver is in ecx (`push 0x10 / push ebx /
  * push eax / mov ecx,edi / call`).  From C that callee has to be __fastcall
  * with every argument wrapped in a struct (VC5-IDIOMS "thiscall with 3+
  * arguments"), and a struct built from a constant is `mov eax,0x10 / push
- * eax`, never `push 0x10` -- tools/corpus.py finds no solved C site pushing an
+ * eax`, never `push 0x10` -- tools/brally/corpus.py finds no solved C site pushing an
  * immediate to a this-in-ecx callee.  The receiver is the 4-byte checked-file
  * sub-object at +0x04 (its two methods are 0x10008E10 / 0x10008E60, matched
  * in the C lane as __stdcall functions that ignore ecx), so this is a member

@@ -16,13 +16,13 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
   SnapInterpDraw, CtlInputApply, RcaFixup, FUN_100038f0, FUN_1002f790,
   GhostLoad); HudDraw un-force-blocked and fits in-slot under the fixed
   measure.  CONTRACT-VALID GATE PASSED - first ever.  Manifest:
-  build/image/t3_annex.csv; both verifiers follow the thunk.**
+  build/brally/win32/image/t3_annex.csv; both verifiers follow the thunk.**
 - **Annex value rules (in _annex_fill): jump tables re-based from the
   object's own symbol table at the annex address; $T constants and
   cross-section EH dwords carried as absolute; REL32 shifted by the
   placement delta; the rest through trusted/confirmed; an unnameable
   slot still blocks.**
-- ** config/globals_hand.csv (relocmap.load_learned_full): hand
+- ** config/brally/globals_hand.csv (relocmap.load_learned_full): hand
   address rows appended to globals_learned.csv GET WIPED when
   reloc_learn.py regenerates it (happened mid-session - took out the
   KeyTableFind trio).  Hand rows go in globals_hand.csv, loaded second,
@@ -87,7 +87,7 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
   offset-keyed reloc_overrides rows and pin t3_variant.csv if the sweep's
   raw-min variant differs from the fitting one.**
 - **Gate now: 129 T3 placed + SprFontGlyphA byte-exact = 130/135 in
-  BRGlide.T3.dll; 0 address-blocked.  config/t3_blocked.csv is the new
+  BRGlide.T3.dll; 0 address-blocked.  config/brally/t3_blocked.csv is the new
   FORCE-BLOCK channel (7ed52a33): BrHudDraw 0x10015300 blocked on its
   placed-image DIFF at the DL cursor 0x106E7710 (routing lane pending).**
 - **The 5 remaining walls, all dated 09-19: BrGlInstall +3 (VC5 je-rel32
@@ -98,15 +98,15 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
   header says not source-reachable); BrGhostLoad cpp +20 (block-layout
   inversion wall, shared with the season reader); BrSnapInterpDraw +287
   (full lane); BrHudDraw (routing DIFF, force-blocked).**
-- KeyTableFind's oracle needed a PROFILE (tools/oracle_profiles.py
+- KeyTableFind's oracle needed a PROFILE (tools/brally/oracle_profiles.py
   0x10030FD0): a random count global = 2^31-iteration runaway.  Profiles
   are cheap - pin the loop bound, drive hit+miss, done.
--  crank gotcha: `tools/crank.py --help` starts a sweep ([match-tooling-gotchas](../traps/match-tooling-gotchas.md)
+-  crank gotcha: `tools/brally/crank.py --help` starts a sweep ([match-tooling-gotchas](../traps/match-tooling-gotchas.md)
   was right); targeted `crank.py <VA> --budget 60` is the Gate-B
   ledger-pass minting workflow after any respell (2 runs = 2 counted
   passes; it commits its own ledger lines).
 -  [shared-tree-partial-commit](../traps/shared-tree-partial-commit.md) bit again softly: committing
-  config/globals_learned.csv by pathspec swept this session's regenerated
+  config/brally/globals_learned.csv by pathspec swept this session's regenerated
   refcount drift into 3d168485 (benign, but check `git diff` first).
 - A parallel session is active on the same tree (28283a33 BrCtlInputApply
   cert, t3.py cross-jump-ret class 2dbace23); keep pathspecs, expect
@@ -251,11 +251,11 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
   the anchorless byte-widen wall (do not touch). The t3.py --qualify --all
   READY list (83) is ALL already-tagged rows.
 - **!! 0x1003AB00 was certified TWICE: the C twin in br_menucb.c has carried
-  @t3 since 09-09. CHECK FOR A C-TWIN @t3 (grep "@t3 <VA>" src/) BEFORE
+  @t3 since 09-09. CHECK FOR A C-TWIN @t3 (grep "@t3 <VA>" src/brally/) BEFORE
   certifying a cpp row -- t3.py keys the ledger to the file its report row
   points at and does not see the twin.** The duplicate cert added real
   evidence (ext/ext2/crt corpora + VC4.2 all miss the unfused
-  sub/test/jge) and is committed. tools/cpp_twin_retire.py NO LONGER
+  sub/test/jge) and is committed. tools/brally/cpp_twin_retire.py NO LONGER
   EXISTS (that note is stale); twin tooling is gen_cpptwin.py /
   twinfind.py / twinscreen.py.
 - 0x10039D20: 2 fresh probes dead (cond-temp canonicalised away, per-arm
@@ -285,7 +285,7 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
 ## RESUME (2026-09-09c, third parallel session) - +1 byte-exact T1 intake; dlclip LEFT probed to a proven wall
 
 - **0x100314D0 BrGlTrackFixupAll (398 B) BYTE-EXACT in 3 probes**, filed in
-  src/core/startup/br_track.c with its 10 already-exact neighbours. Levers,
+  src/brally/core/startup/br_track.c with its 10 already-exact neighbours. Levers,
   now on the VC5-IDIOMS tail: guard literal survives (`1 <= n` = cmp,1/jl;
   `0 < n` = test/jge), max-scan compare is value-first (`*p > iMax`, copy
   sibling BrTrackSetF08FromMax), and an orig `mov edx,eax` before `dec/jne`
@@ -329,7 +329,7 @@ Newest first. See [matching-progress](matching-progress.md) for the older runnin
   exchange (the +0x8014 address CSE vs the inner swap-loop counter,
   ebx/ebp), +6 B of [ebp] disp8 encodings, 10 regions, multiset 0+0.
   22 hand probes + 241 crank candidates dead.  crank's parked endpoint
-  (build/ghidra_work/0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND:
+  (build/brally/analysis/ghidra_work/0x10030770.crank.c, "regions 8 bytes -2") is UNSOUND:
   it reads the +0x8010 count BEFORE the BR_LD32BE that byte-swaps it.
   **crank's non-exact parked candidates use unsound intermediates to steer
   -- NEVER land one without checking the transformation is a transcription.**
@@ -375,10 +375,10 @@ each on its own commit and filed in a module** (0x100023F0 BrTimeFormat,
 BrNetPeerMsgReset, 0x1002B3F0 BrPointDepthFrac, 0x10003530 BrChkFReadLine,
 0x100154A0 BrHudDrawSplitTimes, 0x10002310 BrCamFrameInitB, 0x10031960
 BrTrackFixupSegRec). Two parked as T2 with dead-probe notes in
-src/core/audio/br_sndload.c: 0x100701B0 (8 B long, block layout) and
+src/brally/core/audio/br_sndload.c: 0x100701B0 (8 B long, block layout) and
 0x10070280 (43 B, two register copies swapped, REGNORM 0+0).
 
-**What the lane taught (all in docs/VC5-IDIOMS.md tail):** a named
+**What the lane taught (all in docs/brally/VC5-IDIOMS.md tail):** a named
 wait-result local swaps two hoisted import registers; an expression of the
 loop counter is the INDEX register, a named bumped local the BASE; a parameter
 used as the cursor is registerised in the loop preheader; an arm written as
@@ -387,14 +387,14 @@ order; a 12-byte vector copy is three scalar float copies; the saved byte
 takes eax in a 4-byte swap; a pointer local initialised at declaration is
 hoisted above the first branch.
 
-**Method that paid:** `build/match/sbs.py <obj> <sym> <VA>` -- a side-by-side
+**Method that paid:** `build/brally/win32/match/sbs.py <obj> <sym> <VA>` -- a side-by-side
 capstone dump of the recomp object against the original -- found every
 divergence in one read; fn.py's EXTRA/MISSING alone misled twice (a symbol
 substring matched the PORT twin `_port` first -- match the symbol exactly).
 `fn.py --make/--var` probes at ~10 s each; 4-6 probes per function.
 
 **Bookkeeping traps seen:** the other session's pathspec commit swallowed my
-filing.csv rewrite (harmless), and `tools/filing.py` DROPS rows whose VA is
+filing.csv rewrite (harmless), and `tools/brally/filing.py` DROPS rows whose VA is
 not in report.csv -- re-add another session's in-flight rows by hand
 (0x10066610/0x10066950 were about to be lost). The parked small-reggap pool
 (BrBitStreamReadU16, BrEntitySetIndex, BrComGetAlloc, BrDpCreateIface) is
@@ -415,7 +415,7 @@ READ three. That asymmetry is the tell: one arm's writes have no read of their
 own because it `jmp`s INTO a read the other arm falls through to -- i.e. a
 SHARED JOIN. Census the slots before theorising about spellings.
 
-**THE FIX / NEW IDIOM (docs/VC5-IDIOMS.md, commit 771b76e):** a Horner pack
+**THE FIX / NEW IDIOM (docs/brally/VC5-IDIOMS.md, commit 771b76e):** a Horner pack
 `(((top<<8|b0)<<8|b1)<<8)` written AFTER an if/else makes VC5 carry `top`
 across the join in a register, which costs it a register and pushes one byte
 back into a lane move. The original emits `xor edx,edx; mov dh,<top>` at the
@@ -511,7 +511,7 @@ directory of variants. **Never full-sweep to measure a probe.**
 
 **FINAL NUMBERS, both image-gate runs PASSED (2026-09-05): 1,208 byte-exact
 tree-wide (929 C + 174 C++ + 105 EXE) -- re-verified on the final committed
-tree at session end (workers kept landing matches after the first gate run) via tools/total.py; the gate
+tree at session end (workers kept landing matches after the first gate run) via tools/brally/total.py; the gate
 places 1,103 BRGlide functions / 178,925 B = 37.21% of .text with 0 differing
 bytes, and BRally/SetVideo/BossRally all 0 too. fileaudit clean (0 stranded,
 0 undescribed, batches still 58).**
@@ -521,12 +521,12 @@ BrAtan2, BrGrid64Sample, BrCpIntegrateVelocity, the two sprite blitters
 0x100013F0/0x10001440, and the 0x1005A480 split's wrapper) plus a dozen more
 from three parallel T1-intake workers (see git log 2026-09-04/05). Workers were
 stopped TWICE by a run limit and relaunched with resume notes each time -- always list what they left
-uncommitted (`git status --short src/` + grep `@implements`) before relaunch.
+uncommitted (`git status --short src/brally/` + grep `@implements`) before relaunch.
 
 ** THE PARKED SMALL-REGGAP POOL IS NOT DEAD.** The playbook said un-parking
 finds thorough dead-probe notes. It did -- and five of them still fell,
 because each note had stopped one lever short. The levers, all in
-docs/VC5-IDIOMS.md (entries at the end of the file):
+docs/brally/VC5-IDIOMS.md (entries at the end of the file):
  1. **A store scheduled AFTER the next statement's x87 work is SOURCE ORDER**:
     the narrowed value goes into an int temp and the store is written after
     the next `cos(ang)` (BrHudDrawDial's "scheduler pipelining" note, four
@@ -557,8 +557,8 @@ for itself ten times over. divergence.py LOOPED (re-anchor at the same
 offset forever) on one BrGrid64Sample variant -- kill it, do not wait.
 
 ## 2026-09-04 (lane 546bc55c) - T1 intake by cluster, audio/net/tint: +3 byte-exact, 2 parked
-Tree at hand-off: **1,186 byte-exact / 185,761 B (907 C + 174 C++ + 105 EXE)** via tools/total.py; 22 of the +25 are parallel sessions'. Mine: 0x100611F0 BrSndNearestOfferTrack (102 B, first compile, br_sndpos.c), 0x1005A280 BrImgMulByMask (121 B, br_imgtint.c), 0x1006BC10 BrSndVoiceLoad (352 B, NEW audio TU br_sndload.c). Parked with notes above the tag: 0x1006B0E0 BrNetPeerSendPass (br_peerslot.c, 9 B regnorm 0 - the order VC5 loads the send call's arg 1 vs arg 3 around a call in the arg list, corpus has no witness); 0x1005A300 BrImgMulByTexture (br_imgtint.c, 287/286 B, height's register + a +2 pointer bias on the inner IV).
-Two idioms in docs/VC5-IDIOMS.md (b8e3e3b): a lone if/else lays the failure arm FIRST with `je success` while any ||/&& chain lays success first - the only C that reproduces "three failure jumps into one cleanup + je success" is `goto fail` with the label INSIDE the failure arm; and consecutive pointer increments are scheduled in source order.
+Tree at hand-off: **1,186 byte-exact / 185,761 B (907 C + 174 C++ + 105 EXE)** via tools/brally/total.py; 22 of the +25 are parallel sessions'. Mine: 0x100611F0 BrSndNearestOfferTrack (102 B, first compile, br_sndpos.c), 0x1005A280 BrImgMulByMask (121 B, br_imgtint.c), 0x1006BC10 BrSndVoiceLoad (352 B, NEW audio TU br_sndload.c). Parked with notes above the tag: 0x1006B0E0 BrNetPeerSendPass (br_peerslot.c, 9 B regnorm 0 - the order VC5 loads the send call's arg 1 vs arg 3 around a call in the arg list, corpus has no witness); 0x1005A300 BrImgMulByTexture (br_imgtint.c, 287/286 B, height's register + a +2 pointer bias on the inner IV).
+Two idioms in docs/brally/VC5-IDIOMS.md (b8e3e3b): a lone if/else lays the failure arm FIRST with `je success` while any ||/&& chain lays success first - the only C that reproduces "three failure jumps into one cleanup + je success" is `goto fail` with the label INSIDE the failure arm; and consecutive pointer increments are scheduled in source order.
 T1 screen (scratch script, 235 rows -> 37 clean after tag/cpp/fenced/EH/port-body checks): 0x1006B080 (83 B) is the C++ lane - `mov al,[esp+0xc]; or al,0x20; push eax` into the thiscall byte writer 0x1006CFA0, plus a byte table at 0x11849E68 (8 x 8 B). Untouched clean rows worth a cluster pass next: tex 0x10023760/0x10023CB0/0x10024680/0x10024750/0x10024AA0/0x10027CD0 (br_texfmt.c / br_tex3d.c own the neighbours), 0x10005F50 (br_netstate.c), 0x10003810 was taken by a parallel session mid-run.
 
 ## RESUME (2026-09-04 - THE THREE GIANTS, ONE REGION BANKED ON 0x1000EAF0)
@@ -636,7 +636,7 @@ adversarial-verify harness that guarded the arm-order trap.**
 
 **+3 byte-exact by hand** (0x10027850, 0x1001FF60, 0x1001ECF0) plus three
 worker-driven structural steps; tree total after: **1,169 byte-exact /
-183,070 B (890 C + 174 C++ + 105 EXE)** via `tools/total.py`. `claim 20`
+183,070 B (890 C + 174 C++ + 105 EXE)** via `tools/brally/total.py`. `claim 20`
 DID return a lane this time (11 rows: mixed / MISSING CODE / C++-owned) --
 the tagged SHAPE pool is still dry, but the mixed rows are workable.
 
@@ -690,7 +690,7 @@ struct-typed parameter (7th probe, byte-identical); 0x100686D0 three
 typings of the 16-bit key compare (inert; inline expression worse);
 0x1001FF60 `((oc0 & oc1) & oc2)` and OR permutations (inert).
 
-**Bookkeeping:** `tools/filing.py` with no args REWRITES filing.csv from
+**Bookkeeping:** `tools/brally/filing.py` with no args REWRITES filing.csv from
 report.csv and picks up other sessions' rows -- and the file is CRLF, so a
 naive python rewrite touches every line. Insert your one row by hand with
 `newline=''`. The pre-commit hook greps `@implements 0x...` in ANY comment:
@@ -740,10 +740,10 @@ Result, same sources at /O2 under each:
 So the giants' residue is in the source or genuinely unreachable -- NOT a
 toolchain artefact. Do not reach for the patch level again.
 
-`tools/match_sweep.py` now takes **`BR_MSVC=<dir>`** for the toolchain
-directory (include path follows it); SP3 staged at `tools/msvc5sp3/`,
+`tools/brally/match_sweep.py` now takes **`BR_MSVC=<dir>`** for the toolchain
+directory (include path follows it); SP3 staged at `tools/toolchains/msvc5sp3/`,
 gitignored.  **Stage any alternate compiler in a PARALLEL directory -- never
-overwrite `tools/msvc5` in place**, or a failed experiment costs the tree.
+overwrite `tools/toolchains/msvc5` in place**, or a failed experiment costs the tree.
 Untested and narrow: the SP3 **linker** (irrelevant to per-function matching,
 which works on .obj; could matter to the image build) and the C++ front end on
 the one TU only VC4.2 reproduces (0x10006510, a .cpp -- needs the C++ path).
@@ -813,7 +813,7 @@ that licenses calling the rest allocation. Same class as
 [instruction-count-padding-trap](../traps/instruction-count-padding-trap.md): **an instruction total quoted from a
 previous session is not a measurement.**
 
-** TOOLING, LANDED (c04b042): `tools/msetdiff.py --orig-range LO-HI
+** TOOLING, LANDED (c04b042): `tools/brally/msetdiff.py --orig-range LO-HI
 --recomp-range LO-HI`.** This is the ONLY way to see inside a lost-sync gap --
 divergence.py cannot compare a block with no `--key` consecutive matching
 instructions, and on 0x100250D0 that hid 12.9% of the function behind one
@@ -837,7 +837,7 @@ differ in 6-8 bytes, all of them a field displacement or a `call rel32` byte.
 That diff is the cheapest family screen there is; run it before writing C.
 The port had them as one routine plus a distance CALLBACK (emits a `call
 [reg]` the original lacks), so the matching build is ONE MACRO instantiated
-seven times, in a new module `src/core/drawing/br_dlclip.c`, with the port
+seven times, in a new module `src/brally/core/drawing/br_dlclip.c`, with the port
 copy in slice1_03.c fenced behind `#ifndef BR_MATCHING_BUILD`. Three source
 facts did it: (a) macro not function pointer; (b) **a cross-jumped store is a
 statement-order question** -- the `+1` and `-1` arms share one
@@ -852,7 +852,7 @@ fld/fadd pair.
 bytes and could not match at any spelling: each is a 14-byte DISPATCHER, then
 nops aligning to 16, then a SEPARATE tail-called function the map had no row
 for (nothing CALLS it, so the map builder never saw an entry). Split
-`config/functions_glide.csv` to 32+54 twice, re-extracted the four bins, and
+`config/brally/functions_glide.csv` to 32+54 twice, re-extracted the four bins, and
 all four went byte-exact. **Two tells: an unconditional `jmp` followed by nops
 up to a 16-aligned address; and A GLOBAL THE ORIGINAL RE-READS ACROSS WHAT
 LOOKS LIKE A PLAIN BRANCH** -- two functions cannot share a register, so a
@@ -878,7 +878,7 @@ before believing any row you did not just produce.
 ** THE IMAGE GATE COULD NOT BE RUN TO A CLEAN VERDICT.** A parallel session
 was refiling continuously; four runs, and `image_build.py` itself flagged two
 of them with "THE TREE CHANGED WHILE THIS RUN WAS GRADING IT ... do NOT record
-either a pass or a failure from this run". One run found `src/core/slice2_16.c`
+either a pass or a failure from this run". One run found `src/brally/core/slice2_16.c`
 mid-write and not compiling at all (C1004). What was CONSISTENT across every
 run: **`functions differing from original: 0` and `0 differing bytes`** -- the
 FAILED verdicts came only from 3-4 symbols "not in obj" in files being refiled
@@ -905,7 +905,7 @@ it as a regression -- but never treat a pass as retroactively covering the
 failure either.
 
 **Matched:**
-- `0x10071F00 BrTickAdd` (31 B) -> src/core/racing/br_replayon.c. THREE
+- `0x10071F00 BrTickAdd` (31 B) -> src/brally/core/racing/br_replayon.c. THREE
   separable facts, one instruction each: (a) the counter is ONE `int64_t`,
   not a lo/hi pair -- `+= K` gives `add`/`adc`, the hand-carried
   `hi += (lo < K)` gives `sbb`/`setb`; (b) it is read into a LOCAL first --
@@ -922,7 +922,7 @@ failure either.
   `sz` are what make VC5 reuse the register it just freed instead of
   hoisting both parameters.
 
-**GENERALISATION worth carrying (both idioms are in docs/VC5-IDIOMS.md):**
+**GENERALISATION worth carrying (both idioms are in docs/brally/VC5-IDIOMS.md):**
 on a struct/record-filling function with regnorm 0+0, exact instruction
 count and only 2-4 diff bytes in which register a parameter lands, re-spell
 the assignments in ADDRESS ORDER before recording a colouring wall. And on
@@ -966,7 +966,7 @@ not colouring -- `edx:eax` is the only pair a 64-bit return can use.
   66/64, 56` in report.csv while the compiled bytes were already identical;
   a second one-file sweep flipped it to MATCH. Re-sweep before believing a
   diff row on a file you just touched.
-- `tools/total.py` re-scores and disagreed with report.csv (842 vs 856 C)
+- `tools/brally/total.py` re-scores and disagreed with report.csv (842 vs 856 C)
   while a parallel session rebuilt objs. Under concurrency, image_build's
   placed-function count is the number to trust.
 
@@ -1019,7 +1019,7 @@ finds came from it.
 
 ** THE IMAGE GATE HAS A RACE GUARD NOW, AND IT FIRED.** With a parallel
 session sweeping, `image_build.py` printed "THE TREE CHANGED WHILE THIS RUN
-WAS GRADING IT (build/match/report.csv) ... do NOT record either a pass or a
+WAS GRADING IT (build/brally/win32/match/report.csv) ... do NOT record either a pass or a
 failure from this run." Believe it. Across four runs the BRGlide verdict was
 FAILED every time, but **"functions differing from original: 0" and
 "ASSEMBLED IMAGE vs ORIGINAL: 0 differing bytes" every time too** -- the only
@@ -1048,7 +1048,7 @@ to 2 diffs -- later stores are index-first and already matched), and a NARROW
 argument needs the index named too (WriteU16 takes a short and pulls its high
 byte from `ah`, so `pb` alone is not enough; `pb` + `int w` closes it, while a
 widening `unsigned int x = v.v` local destroys the `mov ax,` word load and
-costs 8 bytes). Written up in docs/VC5-IDIOMS.md.
+costs 8 bytes). Written up in docs/brally/VC5-IDIOMS.md.
 
 **The screen that found them, and it is reusable:** filter report.csv for
 `status=diff` with `diffs <= 6`. Fifteen functions tree-wide. Most are
@@ -1109,7 +1109,7 @@ changed four things at once -- count-DOWN (`dec`/`jne`) instead of up, a
 NEGATIVE displacement because the offset bumps at the top, `j` never spilled,
 and `sub esp,8` instead of `sub esp,0xc`. Putting the expression back in the
 for-condition fixed all four and made the leaf loop instruction-exact. New
-idiom in `docs/VC5-IDIOMS.md` ("Never hoist a LOOP BOUND either").
+idiom in `docs/brally/VC5-IDIOMS.md` ("Never hoist a LOOP BOUND either").
 **The TELL is the frame, not the loop: `sub esp` one dword short plus a
 count-down loop inside = a bound the source re-reads. And when one loop in a
 function re-reads its count, assume they all do.**
@@ -1133,15 +1133,15 @@ between them: 39/27 against a 26/18 baseline. Standalone one-byte file-scope
 globals: 36/24, missing byte loads 6 -> 8. **The widening context is the
 cause, not the storage shape.** This is an /O2 /Op TU -- fn.py compiles /O2
 only, so score it by compiling with `/O2 /Op` into your own objdir and
-running `tools/fnmatch/mdiff2.py <obj> <sym> regnorm`.
+running `tools/brally/fnmatch/mdiff2.py <obj> <sym> regnorm`.
 
 **PARKED via `claim_lane.py release`:** 0x1005FF00 BrRaceGateStep (2 bytes,
 one `add ecx,eax` vs `add eax,ecx`; probe list exhausted AND the N64 twin
 0x8022A0E0 confirms the source spelling -- do not reopen) and 0x10015630.
 
 ! **A PARALLEL SESSION WAS COMMITTING TO THIS REPO THROUGHOUT.** HEAD moved
-under me (da33a15, 5820d98) and `tools/refile.py` +
-`config/globals_learned.csv` were dirty in the shared tree the whole time.
+under me (da33a15, 5820d98) and `tools/brally/refile.py` +
+`config/brally/globals_learned.csv` were dirty in the shared tree the whole time.
 Every commit used a pathspec. `git stash -- <file>` is safe for a probe
 revert, but check `git stash list` before dropping -- the stash message names
 a HEAD you did not make.
@@ -1169,7 +1169,7 @@ accepting any control-flow change, disassemble the site and check the ARM ORDER
 against the original's branch - never the totals alone.** This is exactly the
 trap project rule 2 exists to stop, and the scoreboard cannot catch it.
 
-**The idiom entry in docs/VC5-IDIOMS.md is corrected, not deleted.** The
+**The idiom entry in docs/brally/VC5-IDIOMS.md is corrected, not deleted.** The
 codegen fact is real (`x = a; if (c) x = b;` keeps x in a register; the if/else
 gives it a home on two edges). What was wrong was the SCREEN. Homes are
 allocation and can come from anywhere; the screen is the arm order:
@@ -1246,9 +1246,9 @@ Honest maps now: **0x1000EAF0 = 37 rows, ONE instruction short**;
 
 ## RESUME (2026-09-03, session 16 -  THE TRIAGE METRIC WAS WRONG)
 
-**The deliverable is a MEASUREMENT FIX, not a match.** `tools/fnmatch/fn.py`
-and `tools/fnmatch/triage.py` did not mask reloc'd operands in the
-register-blind multiset -- only `tools/msetdiff.py` did, and its header has
+**The deliverable is a MEASUREMENT FIX, not a match.** `tools/brally/fnmatch/fn.py`
+and `tools/brally/fnmatch/triage.py` did not mask reloc'd operands in the
+register-blind multiset -- only `tools/brally/msetdiff.py` did, and its header has
 said so since it was fixed, but nobody carried the fix across. An unlinked
 .obj holds the ADDEND in the reloc'd field and the symbol in the relocation,
 so capstone prints `[edx*4]` or `push 0` where the LINKED original prints the
@@ -1411,7 +1411,7 @@ eight raw rows worse), hoisting `packA[0]` alone (recovers none of the four
 three assignments without hoisting (inert), and a named `uint8_t` for
 colourA's second component (byte-identical).
 
-**Idioms added to docs/VC5-IDIOMS.md:** "`ptr[0]` and `ptr[k!=0]` are NOT the
+**Idioms added to docs/brally/VC5-IDIOMS.md:** "`ptr[0]` and `ptr[k!=0]` are NOT the
 same operand" (with the screen: when parallel terms compile the same way and
 ONE does not, compare how the odd term SPELLS its operands, and ADD a pointer
 local, never remove one -- the 19th pass's opposite probe is much worse), and
@@ -1429,20 +1429,20 @@ structural transcription parked one optimiser decision short.
 (even COMMITTED) but never swept.** report.csv then still carries the PORT
 body's `diff` row for that VA, so triage.py ranks it as fresh work and the
 finished match is invisible to every count. Two functions were in this state:
- - **0x10033BB0 BrPfxTick (219 B)** -- `src/core/generated/0x10033BB0.c` was
+ - **0x10033BB0 BrPfxTick (219 B)** -- `src/brally/core/generated/0x10033BB0.c` was
    UNTRACKED (a killed worker's uncommitted match, exactly what rule 7 exists
-   to prevent). One `tools/match_sweep.py` on it: MATCH, first try.
+   to prevent). One `tools/brally/match_sweep.py` on it: MATCH, first try.
  - **0x10033880 BrPfxUpdateB0 (315 B)** -- tracked, never swept; it scored
    MATCH the moment the directory was swept.
-`tools/stale_claims.py` says "no stale claims" for both and the VA-orphan
+`tools/brally/stale_claims.py` says "no stale claims" for both and the VA-orphan
 screen misses them too (the VA *is* in report.csv, keyed to the port file).
-**Only `tools/claimcheck.py`'s "TWO NAMES CLAIMING ONE ADDRESS" catches it.**
-Run it at session start, before triage. Also `ls src/core/generated/*.c | wc -l`
-vs `grep -c src/core/generated/ build/match/report.csv` -- they must be equal
-(75/75 now). And `git status --short src/` for uncommitted matches.
+**Only `tools/brally/claimcheck.py`'s "TWO NAMES CLAIMING ONE ADDRESS" catches it.**
+Run it at session start, before triage. Also `ls src/brally/core/generated/*.c | wc -l`
+vs `grep -c src/brally/core/generated/ build/brally/win32/match/report.csv` -- they must be equal
+(75/75 now). And `git status --short src/brally/` for uncommitted matches.
 
 **0x1005ECF0 BrRacePathAdvance: 443 -> 219 B against a 204 B original**, filed
-as `src/core/generated/0x1005ECF0.c`, port body in br_racestep.c untagged. The
+as `src/brally/core/generated/0x1005ECF0.c`, port body in br_racestep.c untagged. The
 gap was the port's `BrAiNodeAt`/`BrAiPoint_` bounds-checked accessors: the
 original walks RELOCATED NODE POINTERS and reads fields in place. Node layout:
 next +0, sibling +4, u16 count +0x14, flag byte +0x16 (bit 0 = skip),
@@ -1461,7 +1461,7 @@ diverges at +0x8 in every spelling, at 163 B / 69 insns against 165 / 70, with
 a register-blind multiset difference of exactly ONE `fxch`. This is the fourth
 overturned "do not grind" note -- re-measure before believing one.
 
-**NEW IDIOM (in docs/VC5-IDIOMS.md): VC5's commutative-float canonicalisation
+**NEW IDIOM (in docs/brally/VC5-IDIOMS.md): VC5's commutative-float canonicalisation
 covers a WHOLE FLAT SUM-OF-PRODUCTS, not one add.** Eleven spellings of
 BrVec3Project's projection compile byte-identically: term order in the `+`
 chain, operand order inside each `*`, `(...)*r` vs `r*(...)`, a named numerator
@@ -1470,7 +1470,7 @@ temp, `w` inlined into the reciprocal, declaration order, and `(*m)[4]` vs
 different tree -- a legitimate probe axis) and dropping the `vx/vy/vz` locals
 (VC5 re-CSEs the loads, -8 insns). Never probe flat-sum order again.
 
-**The C++ vcall/twin family is confirmed DRY.** `tools/cpp_screen.py` lists 22
+**The C++ vcall/twin family is confirmed DRY.** `tools/brally/cpp_screen.py` lists 22
 strong rows; every one is either matched, filled-and-parked with a dead-probe
 list, or carries the photo trio. The only untouched member is 0x100541B0
 (196 B), and its own sibling note predicts the 1-diff SIB park.
@@ -1480,14 +1480,14 @@ nothing" -- is a real screen, not just a smell.** It found **0x10001320**,
 where the port's `BrUiSprClip` is only the GEOMETRY HALF of the original:
 the real function clips, computes both surface pointers, and dispatches to
 the keyed blit (0x10001440) or the plain one (0x100013F0). Written fresh as
-`src/core/generated/0x10001320.c` -- **206 B / 85 insns, SIZE AND INSTRUCTION
+`src/brally/core/generated/0x10001320.c` -- **206 B / 85 insns, SIZE AND INSTRUCTION
 EXACT, reggap 0**, parked on one eax-vs-ebp choice for rect[3]. Surface layout
 from it: u16 pixels +0, w +4, h +8, key(u16) +0xC; both pitches reach the
 blits in BYTES. The lever that made it size-exact: **compute the two surface
 pointers and both pitches ONCE, before the flag test** -- spelling them inline
 in each call arm duplicates them (+33 B).
 Two of the eight flagged rows (0x1007F240 BrStrUpr, 0x1008C320 br_stricmp) are
-`crt` in config/shared.csv (MSVCRT!_strupr / _stricmp) -- D3D's static CRT,
+`crt` in config/brally/shared.csv (MSVCRT!_strupr / _stricmp) -- D3D's static CRT,
 never a Glide target. Skip those; the four BrPhaseLeave rows are still open.
 
 **0x10059410 BrGlNavPoll parked at +4 B / reggap 0+1**, note in the file. All
@@ -1543,7 +1543,7 @@ Masked regions 24 → 22, multiset 19+10 → 17+14, REGNORM 25+34 → 21+32.
  Size moved the WRONG way (36 → 42 short): removing an accidental spill
 exposed a real deficit, exactly the session-11 pattern. Rank by the multiset.
 
-**NEW TOOL - `tools/slotcensus.py`** ([slot-census-screen](../triage/slot-census-screen.md)). Per `[esp+N]`
+**NEW TOOL - `tools/brally/slotcensus.py`** ([slot-census-screen](../triage/slot-census-screen.md)). Per `[esp+N]`
 slot of the original: every write, every read, and the call that produced the
 written value. It is the ONLY screen that sees "one source variable emitting
 two different values" - divergence.py sees the same `mov [eax+4],R` in both
@@ -1572,7 +1572,7 @@ one of those is this lane's.** Tiers AFTER a fencing correction: target
 
 **BANKED: 0x10065950 BrCrPlaneDist (41 B) - T1 intake, byte-exact on the
 FIRST compile.** Signed point-to-plane distance in
-`src/core/driving/br_collrespsolve.c`. Two things made it one-shot: the
+`src/brally/core/driving/br_collrespsolve.c`. Two things made it one-shot: the
 fourteen call sites all push `esi / [esi+0xc] / &pt`, which fixes the
 signature, and the term order came off the two `faddp st(1)`s (y, z, x, then
 the constant) instead of being guessed as x, y, z.
@@ -1583,7 +1583,7 @@ with ONE extra `fxch st(1)`. Isolated both ways twice. **When a float leaf is
 right everywhere but one stray fxch, delete its prototype from the header
 before probing the expression.** A prototype in another TU is harmless - only
 a prior declaration in the DEFINING TU does it. Written up in
-docs/VC5-IDIOMS.md with the screen it implies (float leaf + one-fxch gap +
+docs/brally/VC5-IDIOMS.md with the screen it implies (float leaf + one-fxch gap +
 declared in its header). NOT yet swept across the tree - that is a free lead
 for the next lane.
 
@@ -1598,7 +1598,7 @@ for the next lane.
    `_chkstk` (0x10074580, next to the fenced __aulldiv block), five bare
    `jmp dword ptr [IAT]` thunks, and eight unwind funclets that read
    `[ebp±N]` without establishing ebp (two at odd addresses). Added to
-   config/fenced.csv.
+   config/brally/fenced.csv.
 
 ** THE SMALL-REGGAP TAGGED POOL IS WORKED OUT - do not plan a lane on it.**
 `claim 20` returned nothing; every SHAPE row at reggap <= 7 is parked, and
@@ -1638,7 +1638,7 @@ parked on ordering).** `claimcheck.py` now flags this directly - I added it,
 silent when clean. **Fragments, thunks and port-only bodies must not carry
 @implements.**
 
-** RUN `tools/claimcheck.py` AT SESSION START.** It found the class the size
+** RUN `tools/brally/claimcheck.py` AT SESSION START.** It found the class the size
 screens cannot see: 0x1001FD70 BrDlVtxRoutine flagged "orig calls 3, port 0",
 and that was exactly right - **269 bytes short -> 6, 80 instructions against
 80.** A THIRD MISSING-CODE SHAPE, now in [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md): **the port
@@ -1653,7 +1653,7 @@ original must be `#ifndef BR_MATCHING_BUILD`'d out or the arm will not build.
 
 **Backed off 0x1003A140 / 0x1003A2B0 (BrMenuTime pair) - the C++ workstream
 owns that family** (0x1003A140 is already in report_cpp.csv at 237). Returned
-them to park. **Check `ls src/core/cpp/<VA>.cpp` and report_cpp.csv before
+them to park. **Check `ls src/brally/core/cpp/<VA>.cpp` and report_cpp.csv before
 taking anything in the 0x1003Axxx / menu-item range.**
 
 
@@ -1739,7 +1739,7 @@ BrTextEmitString 3,050 vs 1,888 bytes.
 ## ▶ RESUME (2026-09-03 lane 912109bc - THE FACTORED-HELPER RECIPE, WORKED END TO END)
 
 Image gate **GREEN, 0 differing bytes, 1,014 fns / 158,378 B / 32.94% of
-.text.** Denominator (`tools/tiers.py`): 1,519 hand-C fns / 453,140 B; T4 =
+.text.** Denominator (`tools/brally/tiers.py`): 1,519 hand-C fns / 453,140 B; T4 =
 842 (55% by count, **18% by BYTES**), T1 = 460 fns / 251,704 B still unstarted.
 `claim 20` yielded 6 this time - the other session's claims had gone stale.
 
@@ -1781,7 +1781,7 @@ no 32-bit use in the ORIGINAL either, so giving it one is not the answer.
 ## ▶ RESUME (2026-09-03 lane 3f7cb98c - THE SCREEN ITSELF WAS OVER-COUNTING)
 
 Image gate re-run: **GREEN, 0 differing bytes, 1,012 fns / 157,428 B / 32.74%
-of .text.** Real denominator from `tools/tiers.py`: **1,519 hand-C functions /
+of .text.** Real denominator from `tools/brally/tiers.py`: **1,519 hand-C functions /
 453,140 B**; T4 = 840 (55% by count but only 18% by BYTES), T2 = 187, T3a = 34,
 **T1 = 459 fns / 250,944 B - 55% of the target bytes are not in the tree at
 all.** `claim 20` empty again; all 18 live claims belonged to the other
@@ -1792,7 +1792,7 @@ session, 3-6 min old, including the whole factored-helper batch.
 1. Its EH test read only byte 0 for `6A FF`, but a VC5 EH prologue often
    leads with `mov eax,fs:[0]` - so `64 A1 ... 6A FF` frames were counted as
    C targets. Two rows, 1,242 bytes.
-2. It counted rows the C++ lane already owns (a `src/core/cpp/<VA>.cpp`
+2. It counted rows the C++ lane already owns (a `src/brally/core/cpp/<VA>.cpp`
    exists) - 4 rows / 1,782 bytes, and one of those, 0x1003A140, has a
    byte-exact C++ sibling. **Also check a row's TWIN:** 0x1003A2B0 has no
    `.cpp` of its own but is the same function as 0x1003A140, so matching it
@@ -1834,7 +1834,7 @@ bytes, 32.34% of .text placed.**
 
 ** `claim 20` RETURNED NOTHING - the ledger really is exhausted.** I un-parked
 NINE rows straight off the factored-helper screen by editing
-`build/match/lane_claims.csv` (0x1005FF00, 0x10015B10, 0x10059410, 0x1001FA30,
+`build/brally/win32/match/lane_claims.csv` (0x1005FF00, 0x10015B10, 0x10059410, 0x1001FA30,
 0x1001ECF0, 0x10027850, 0x10034010, 0x100302A0, 0x10067710). **This is now the
 normal way to start a lane** - pick from the screen, un-park, work it.
 
@@ -1901,7 +1901,7 @@ argument moved with `mov`/`push` instead of `fld`/`fstp` is a DWORD PUN
 
 ** CONCURRENCY:** another lane is live in this tree and commits with `-a`;
 one of my file changes was swept into THEIR commit (f85d281). The code is
-safe, the explanation is not - **put the reasoning in docs/VC5-IDIOMS.md, not
+safe, the explanation is not - **put the reasoning in docs/brally/VC5-IDIOMS.md, not
 only in the commit message**, and expect `.git/index.lock` contention (retry
 loop, 15 s).
 
@@ -1924,7 +1924,7 @@ brightened colour components use `>> 2`, not `/ 4` - a signed divide emits
 the round-toward-zero correction (`cdq; and; add; sub`) the original's bare
 `sar` does not have.  **TELL, reusable: count `call`s and stack adjusts in
 the original before believing any "both branches do X" comment.**
-`tools/pushcensus.py` with the ORIGINAL as argv[1] shows the group-count
+`tools/brally/pushcensus.py` with the ORIGINAL as argv[1] shows the group-count
 mismatch immediately.
 
 ** TWO WAYS MY OWN BEFORE/AFTER MEASUREMENT LIED, both in this one function
@@ -1948,7 +1948,7 @@ canonicalises the `|` chain, byte-identical.
 ## ▶ RESUME (2026-09-03 lane 2 -  IMAGE GATE WAS RED (now green), AND A FALSE PARITY CLAIM
 
 ** THE IMAGE GATE IS NOT CLEAN: 3 differing bytes, and they are NOT mine.**
-`0x10053590 FUN_10053590` (src/core/cpp/0x10053590.cpp, landed by the
+`0x10053590 FUN_10053590` (src/brally/core/cpp/0x10053590.cpp, landed by the
 gen_menubuilder work in 283741b) reads `match` with 0 diffs in report_cpp.csv
 but is wrong once addresses resolve. The three bytes are at file+0x52999, VA
 ~0x10053599, and they are the C++ **SEH scope-table pointer** in the prologue:
@@ -1957,8 +1957,8 @@ function whose EH scope table resolves to that TU's own address instead of the
 original's - image_build's fill-from-reference does not cover this slot. This
 is a CLASS bug, not one function: any generated C++ TU with an EH frame can
 carry it, and the function-level scorer cannot see it. Whoever owns the C++
-lane needs it. Reproduce: `tools/image_build.py --out /tmp/img.dll` then diff
-against `orig/BRGlide.dll`.
+lane needs it. Reproduce: `tools/brally/image_build.py --out /tmp/img.dll` then diff
+against `reference/brally/orig/BRGlide.dll`.
 
 ** THE LANE LEDGER IS EXHAUSTED AND OVER-PARKED.** `claim 20` returns
 nothing: 221 parked / 16 claimed of ~240 diff rows. Nearly every TOP-RANKED
@@ -2005,7 +2005,7 @@ hand. **The park state has stopped meaning "wall" and now just means
 bytes, 27.21% of .text placed.**
 
 ** I UN-PARKED THREE ROWS** (0x1002ECEB, 0x1002F380, 0x1002EB03) by editing
-`build/match/lane_claims.csv` directly - claim_lane has no unpark command and
+`build/brally/win32/match/lane_claims.csv` directly - claim_lane has no unpark command and
 the pool is thinning. The park predated the "diff stranded in an /Od run"
 screen and was wrong. **When a screen invalidates a park, un-park it; parked
 rows are excluded from the pool forever.**
@@ -2066,7 +2066,7 @@ Always diff `git log` before attributing a count delta.
   the total. Worth a periodic re-sweep of `diff` rows whose `opt` is not O2.
 - **All three idioms are ONE cause: make the short-lived value DIE so its
   register is reused, instead of keeping it live.** Recorded in
-  [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md). `tools/fnmatch/screen_pushpop.py` (new) screens
+  [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md). `tools/brally/fnmatch/screen_pushpop.py` (new) screens
   the residue for the spurious callee-saved push/pop pair - honest yield is in
   its docstring: 90/244 rows carry the pair but nearly all are big size
   blow-ups, so read the ranked head, not the count. NOT a family.
@@ -2320,7 +2320,7 @@ that last session's one-off fix now has a tree-wide screen.
   instruction total at 2,408 vs 2,407 that settles the function: **the residue
   is allocation**, wherever the region map points. Do this before grinding any
   large `change`.
-- **NEW SCREEN, and it opens a class: `tools/framescreen.py`.** Last session's
+- **NEW SCREEN, and it opens a class: `tools/brally/framescreen.py`.** Last session's
   array-vs-scalar frame fix is not a one-off. The screen reads `sub esp,imm`
   from every tagged-diff function's original bytes and its object and ranks
   the disagreements: **26 of 69 rows with a readable prologue disagree.** Ours
@@ -2516,7 +2516,7 @@ coloring walls. **Do not undo this; the class belongs to the C++ workstream.**
 **Three ways an @implements tag lies, each with a screen:**
 1. FALSE shared.csv TWIN - 0x1001BAE0/0x1001E080: D3D is 26 bytes, Glide is
    173. Screen by disassembling BOTH binaries at BOTH addresses
-   (`BR_REF=orig/BRD3D.dll`). Fixed to @d3donly; the real Glide body was
+   (`BR_REF=reference/brally/orig/BRD3D.dll`). Fixed to @d3donly; the real Glide body was
    sitting untagged in br_dlglide.c as BrGlInstall (3 bytes off, cross-jump
    class, all five variants tried).
 2. TAG ON THE FORWARDER - 0x100695D0: 32-byte alias tagged, 363-byte body
@@ -2540,7 +2540,7 @@ mask build).
 diff bytes.** +2 C this pass, but the value is the two levers, both now in
 [vc5-idiom-dictionary](../corpus/vc5-idiom-dictionary.md):
 
-**1. `/Od /Op` was a MISSING SWEEP VARIANT.** `tools/match_sweep.py`
+**1. `/Od /Op` was a MISSING SWEEP VARIANT.** `tools/brally/match_sweep.py`
 VARIANTS had O2 / Od / O2y / O2p; the round-to-float32 idiom
 (`fild; fstp dword [t]; fld dword [t]; fmul`) exists at /Od too and plain
 /Od never emits it, so **every /Od TU with an int->float cast in it was
@@ -2598,7 +2598,7 @@ compile. **0x10041300 pinned the 0x438 UI item record (vtable +0, flags
 +4, kind byte +8, label +9), which is the SAME record 0x10054E20's slot
 array holds - see [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md) for the byte screen that found
 31 unmatched members, most 70-360 B, and the list of which are left.**
-Copy the class decl from src/core/cpp/0x10041300.cpp; the recurring shape
+Copy the class decl from src/brally/core/cpp/0x10041300.cpp; the recurring shape
 is _itoa-or-catalogue-string into the label, then relayout/repaint vcalls
 with the LABEL POINTER in a local that gets null-tested.
 New levers: strlen folds on a literal but not an extern array; and
@@ -2663,11 +2663,11 @@ merged with its target); refine transforms now include calltemp, scaletemp,
 zerohoist, ftolfuse, walkerstrcpy, deadnull (all byte-proven). Parked:
 0x10071F00 (3-diff __int64 high-half), 0x100283C0/0x1005A480/0x10054070
 (register-pairing T3a); 0x10013E80 unsolved (VC5 value-sorts literal global
-stores; probes in VC5-IDIOMS). Refine loads build/ghidra_work/<VA>.c (NOT
+stores; probes in VC5-IDIOMS). Refine loads build/brally/analysis/ghidra_work/<VA>.c (NOT
 .refined.c) and REGENERATES .refined.c - hand-fix the base file.
 **HOT LEAD: C++ vcall family ([cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md)) - 25 TUs one session,
-~30 KB of "short" residue is C++-only; run `tools/gen_cpptwin.py` after every
-new C++ TU.** Count = 3 report CSVs via tools/total.py; report.csv is a
+~30 KB of "short" residue is C++-only; run `tools/brally/gen_cpptwin.py` after every
+new C++ TU.** Count = 3 report CSVs via tools/brally/total.py; report.csv is a
 gitignored local artifact ([counting-reconciliation](../traps/counting-reconciliation.md)). Efficient count-mover:
 the refine batch's CLOSE(n) lines ([close-queue-lever](../triage/close-queue-lever.md)).
 
@@ -2678,7 +2678,7 @@ masked regions 49→32, IDX4+CI4 arms exact ([brtex3dexpand-wall-broken](../func
 literal, pPlayer-after-memcpy; pack bytes = register-death T3a); 0x10019A70
 LAST ([braceStep-wall](../functions/braceStep-wall.md)). Each file header carries its residue map and
 do-not-re-run list. Per-function harness: scratch probe.sh = cl.exe +
-tools/divergence.py masked+raw, ~1s/probe.
+tools/brally/divergence.py masked+raw, ~1s/probe.
 **Triage:** register-blind multiset gap, never raw diffs
 ([register-rotation-is-a-symptom](../triage/register-rotation-is-a-symptom.md), [divergence-class-triage](../triage/divergence-class-triage.md),
 [residue-retriage-2026-08-28](../triage/residue-retriage-2026-08-28.md)); don't rank by smallest diff count
@@ -2728,9 +2728,9 @@ stand as source-unreachable.
 0x10054E20(480).
 
 **Bookkeeping:** six stale d3d tags in slice2_23.c duplicated Glide
-matches already carried in src/core/cpp; dropping them took the C residue
+matches already carried in src/brally/core/cpp; dropping them took the C residue
 359 -> 350 with no image change. Do that cleanup in the same commit as the
-match. tools/gen_uilabel.py screens the 100-byte label shape and reports it
+match. tools/brally/gen_uilabel.py screens the 100-byte label shape and reports it
 CLOSED at 8/8 - it swept 0 new functions, so it is a regression screen,
 not leverage.
 
@@ -2770,10 +2770,10 @@ DirectInput poll) on the same globals-pointer cause.
 
 +3 byte-exact: 0x1003E1C0, 0x1003E330 (56 B each) and 0x10040420 (119 B),
 all twins of the previous pass's 0x100400E0 differing only in which globals
-they touch. Run `tools/gen_cpptwin.py` BEFORE hand-stamping twins -- it
+they touch. Run `tools/brally/gen_cpptwin.py` BEFORE hand-stamping twins -- it
 reports 0 afterwards because the siblings are already matched by then.
 
-**The real result is tools/stale_claims.py.** It cross-checks every C
+**The real result is tools/brally/stale_claims.py.** It cross-checks every C
 `diff` row against the other report and finds claims whose VA is already
 matched in another TU. 71 of them across 21 files -- the C residue was
 325 and is now 250. This had been eating a third of the apparent remaining
@@ -2787,7 +2787,7 @@ the two declared in slice2_16.c. Indexing past the first array does fix
 the displacement but perturbs an earlier read (4 -> 15). The clean fix
 needs a serialised edit to slice2_16.h.
 
-**Process slip worth remembering:** `git add -A src/core` swept a parallel
+**Process slip worth remembering:** `git add -A src/brally/core` swept a parallel
 worker's in-progress file into my commit. Backed out cleanly; see
 the commit-every-match rule. Stage explicit paths only.
 
@@ -2800,7 +2800,7 @@ reusable class pieces: [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode
 already-matched sibling and transcribe the Ghidra draft entry by entry --
 this is the highest bytes-per-minute lever found so far.
 
-Session start ritual now includes `python3 tools/stale_claims.py` (clean
+Session start ritual now includes `python3 tools/brally/stale_claims.py` (clean
 this session). Image gate 0 diff bytes.
 
 Next: 0x10046E70 (2114 B) is the last lane member and the only one whose
@@ -2812,7 +2812,7 @@ block.
 ## Session 10 (2026-09-03) - 1,083 -> 1,094; the builder family is generated
 
 +7 byte-exact, 6,526 bytes, ALL from a new transform:
-**tools/gen_menubuilder.py** turns a Ghidra draft into a byte-exact menu
+**tools/brally/gen_menubuilder.py** turns a Ghidra draft into a byte-exact menu
 builder TU. Details and the remaining bail list: [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md).
 This is the first generator in the project that actually swept a class --
 mint it only after hand-solving several, which is what happened here
@@ -2822,7 +2822,7 @@ Also parked 0x10046E70 at a constant-register fork (675/2114 bytes exact)
 after recovering two shapes the draft loses: the clamp is one load fixed
 in place, and the fill loop's bound test is SIGNED on the pointer.
 
-Image gate 0 diff bytes. Session start: refcheck, `tools/stale_claims.py`,
+Image gate 0 diff bytes. Session start: refcheck, `tools/brally/stale_claims.py`,
 claim a lane.
 
 
@@ -2833,7 +2833,7 @@ claim a lane.
 [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md). Image gate 0 diff bytes.
 
 Third sighting of the put-the-whole-expression-in-both-arms lever (now on
-a conditional caption id) -- recorded in docs/VC5-IDIOMS.md.
+a conditional caption id) -- recorded in docs/brally/VC5-IDIOMS.md.
 
 13 builders left, all needing hand fills of a scaffold. Largest first:
 0x10051600 (4109 B, 41 markers), 0x100498A0, 0x1004CBA0, 0x1004BE00,
@@ -2843,9 +2843,9 @@ a conditional caption id) -- recorded in docs/VC5-IDIOMS.md.
 ## Session 12 (2026-09-03) - 1,008 placed / 151,377 B; six new levers, two screens
 
 Image gate 0 differing bytes, 0 overlapping claims (839 C + 169 C++).
-`tools/claim_lane.py claim` HANDS OUT NOTHING now: every ranked diff row is
-already `parked` in `build/match/lane_claims.csv` from earlier lanes, and
-the pool excludes parked rows. Work straight off `tools/fnmatch/triage.py`
+`tools/brally/claim_lane.py claim` HANDS OUT NOTHING now: every ranked diff row is
+already `parked` in `build/brally/win32/match/lane_claims.csv` from earlier lanes, and
+the pool excludes parked rows. Work straight off `tools/brally/fnmatch/triage.py`
 instead, or clear stale parks first.
 
 **Byte-exact this session (7):** 0x100549A0 (C++, 132 B, slot poll on the
@@ -2855,7 +2855,7 @@ instead, or clear stale parks first.
 BrGbiDList (61 B). Big improvements: 0x10029480 LoadTlut 19 -> 4,
 0x100014A0 BrSurfSetColourKey 46 -> 21.
 
-**Six levers, all in docs/VC5-IDIOMS.md, all proven byte-exact:**
+**Six levers, all in docs/brally/VC5-IDIOMS.md, all proven byte-exact:**
 1. An accumulated local is not the same expression as a sum (`dx += i;
    f = dx;` vs `f = dx + i;`). VC5 canonicalises commutative adds, so
    operand order NEVER matters -- only the assignment form does.
@@ -2872,10 +2872,10 @@ BrGbiDList (61 B). Big improvements: 0x10029480 LoadTlut 19 -> 4,
    now under /O2).
 
 **Two new screens, both cheap, both run once:**
-- `tools/screen_shrinkwrap.py` -- originals that sink a callee-save push
+- `tools/brally/screen_shrinkwrap.py` -- originals that sink a callee-save push
   past the first branch (39 diff rows; many 0x1004xxxx hits are C++ EH
   false positives, ignore those).
-- `tools/screen_globalcache.py` -- sources that cache a global in a local
+- `tools/brally/screen_globalcache.py` -- sources that cache a global in a local
   and store it back (10 diff rows).
 
 **Parked with dead-probe lists in their file headers:** 0x10054730
@@ -2923,7 +2923,7 @@ BrPadTranslate (690 B), 0x10003320 BrChkFReadOpen (260 B), and the
 bytes / 8-instruction gap; five of the eight are the known epilogue
 cross-jump.
 
-**Three new levers, all in docs/VC5-IDIOMS.md:**
+**Three new levers, all in docs/brally/VC5-IDIOMS.md:**
 1.  **A repeated byte immediate gets POOLED into a register.** Two probes
    spelled `p[1] & 0x80` / `p[7] & 0x80` share one source constant and VC5
    hoists it to `mov cl,0x80`; spelled `& 0x8000` on the halfword the
@@ -2978,12 +2978,12 @@ at the call site under BR_MATCHING_BUILD and keep the static for its other
 callers. Worst: BrRaceGateStep -1962, BrOptFn100558A0 -1357, BrTextEmitString
 -1162, BrExt_1004DFC0 -962, BrUiNavMove -891). Sub-case: an accessor over N
 standalone globals, giveaway `mov R,[R+I]` where the original has `mov R,[I]`.
-Then: `tools/gen_menubuilder.py` stamps byte-exact UI
+Then: `tools/brally/gen_menubuilder.py` stamps byte-exact UI
 menu-builder TUs from Ghidra drafts (+28 KB over two sessions, `--partial`
 scaffolds bespoke ones, 8 members left - [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md));
 `(double)` modelling is a D3D-era artefact and the Glide binary is FLOAT (tell:
 the original never spills a qword; twelve diff-bearing files named);
-`tools/framescreen.py` - 26 of 69 tagged-diff rows have a frame disagreeing
+`tools/brally/framescreen.py` - 26 of 69 tagged-diff rows have a frame disagreeing
 with the original's `sub esp` (ours smaller = a scalar that should be an
 ARRAY, larger = a local the original does not spend); a diff row whose
 byte-adjacent MATCHED neighbours are all /Od is MIS-SHAPED, not blocked; a
@@ -3039,7 +3039,7 @@ and keep it used twice or the prologue flips (scenedl-0x1000eaf0-state).
 2. ** "THE LANE LEDGER IS EXHAUSTED" IS NOT "THERE IS NO WORK".** The ledger
    and `triage.py` only ever see functions that are TAGGED and diffing, i.e.
    T2/T3a. **T1 -- 289 functions, 176,365 B, still the biggest tier -- has no `@implements` tag, never reaches report.csv, and
-   is structurally invisible to both tools.** Run `python3 tools/tiers.py` for
+   is structurally invisible to both tools.** Run `python3 tools/brally/tiers.py` for
    the real denominator and `--list T1` for the work (largest-first, with each
    function's machine draft; implemented 2026-09-03 -- the docstring had
    advertised it for months and the code did nothing). Every T1 function
@@ -3048,7 +3048,7 @@ and keep it used twice or the prologue flips (scenedl-0x1000eaf0-state).
    16 claimed of ~240 diff rows), and nearly every top-ranked SHAPE row is
    parked, including rows at 86-100% struct%. Park now means "someone ran out
    of time", not "wall". Work them directly after reading the file's residue
-   note; un-park by editing `build/match/lane_claims.csv` (there is no unpark
+   note; un-park by editing `build/brally/win32/match/lane_claims.csv` (there is no unpark
    command and parked rows never return to the pool).
 
 
@@ -3108,7 +3108,7 @@ the parenthesis axis FIRST; it is one recompile.
   (0x100199A0 + 0x1002A050.)
 - When the port's signature cannot express the original's - the original
   reaches globals where the port takes a state pointer - put the Glide body
-  in its OWN file under src/core/generated/ and mark the slice body
+  in its OWN file under src/brally/core/generated/ and mark the slice body
   "port-only". That is the existing convention for the net cluster and it
   took 0x10006350 byte-exact on the first compile with no header edit.
   Editing the shared header instead would have touched three other files.
@@ -3155,14 +3155,14 @@ with byte-identical residue, 10,731 B on one VC5 schedule)  -
 [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md). BrGlTrackHdrRead 649 -> 231 diffs, size and
 multiset exact, residue is byte-pair load order; header carries the list.
 
-** SESSION START:** refcheck, `tools/tiers.py` (the real denominator),
-**`tools/claimcheck.py`** - it catches two names on one address AND the
+** SESSION START:** refcheck, `tools/brally/tiers.py` (the real denominator),
+**`tools/brally/claimcheck.py`** - it catches two names on one address AND the
 "original delegates, port calls nothing" class that every size-based screen
 misses - then triage + claim.
 
 **Family is DRY.** Every remaining menu-builder is filled-and-parked or
 carries the photo trio. **Standing order from here: SHAPE targets from
-`tools/fnmatch/triage.py`, smallest reggap first** - but READ THE FILE'S
+`tools/brally/fnmatch/triage.py`, smallest reggap first** - but READ THE FILE'S
 RESIDUE NOTE BEFORE PROBING. Of the seven smallest-reggap SHAPE rows
 examined 2026-09-03, FIVE already carried exhaustive dead-probe lists
 (BrEntitySetIndex, BrComGetAlloc, BrMat3Mul, BrMat4Mul, BrDpCreateIface).
@@ -3179,9 +3179,9 @@ menu/input lane detail and the three standing warnings.
 
 ## ▶ RESUME - 2026-09-03
 **1,121 byte-exact / 169,003 B (845 C + 172 C++ + 104 EXE)** via
-`tools/total.py` ([counting-reconciliation](../traps/counting-reconciliation.md)). **Hand-C target is 1,505, not
+`tools/brally/total.py` ([counting-reconciliation](../traps/counting-reconciliation.md)). **Hand-C target is 1,505, not
 1,519 - 14 CRT/thunk/funclet rows were fenced 2026-09-03.** **Session start:** refcheck,
-`tools/stale_claims.py`, refresh triage, claim a lane. **This index is capped
+`tools/brally/stale_claims.py`, refresh triage, claim a lane. **This index is capped
 at 200 lines - keep detail in [resume-state](resume-state.md), which is the working state:
 per-session log, parked functions, dead-probe lists, open levers. Read it
 before planning.** Each file header carries its own residue map and
@@ -3229,16 +3229,16 @@ a float sum).
    (ii) `--list T1` still printed the C++ matches after (i) - 460 rows
    against a stated 289, the extra 171 already byte-exact and offered as
    fresh work (a nine-member 66-byte BrOpt* family among them). **Before
-   taking ANY target: `ls src/core/cpp/<VA>.cpp` and grep report_cpp.csv.**
+   taking ANY target: `ls src/brally/core/cpp/<VA>.cpp` and grep report_cpp.csv.**
    Current numbers, after fencing 14 CRT/thunk/funclet rows: **T1 274 /
    176,164 B, T2 179, T3a 36, T4 1,016 of a 1,505-fn target.** Any figure
    quoted before this date overstates T1. Detail in [resume-state](resume-state.md).
 2. ** "THE LANE LEDGER IS EXHAUSTED" IS NOT "THERE IS NO WORK".** The
    ledger and `triage.py` only see TAGGED+diffing functions (T2/T3a). **T1  - 
    274 fns, 176,164 B, the biggest tier - has no tag and is invisible to
-   both.** `tools/tiers.py --list T1` is the work, largest-first, each with a
+   both.** `tools/brally/tiers.py --list T1` is the work, largest-first, each with a
    machine draft. Park now means "ran out of time", not "wall": un-park by
-   editing `build/match/lane_claims.csv`. Detail in [resume-state](resume-state.md).
+   editing `build/brally/win32/match/lane_claims.csv`. Detail in [resume-state](resume-state.md).
 3. **RE-MEASURE A NOTE'S CLAIM BEFORE BELIEVING IT.** One asserting
    instruction parity was a whole instruction short at its own commit. FOUR
    "unreachable" / "do not grind" / "parity reached" notes have now been
@@ -3287,7 +3287,7 @@ the frame moves.
 [residue-retriage-2026-08-28](../triage/residue-retriage-2026-08-28.md)); don't rank by smallest diff count
 ([inlined-helper-match-class](../triage/inlined-helper-match-class.md)); harness [fnmatch-harness](../toolchain/fnmatch-harness.md); generators only
 for homogeneous classes ([generator-compounding-reality](../triage/generator-compounding-reality.md));
-`tools/pushcensus.py` is the ONLY check that sees a permuted call constant.
+`tools/brally/pushcensus.py` is the ONLY check that sees a permuted call constant.
 **Gates:** [image-build-gate](../oracle/image-build-gate.md) is the deliverable gate; one-file sweep ~12s,
 NEVER full-sweep ([sweep-is-incremental-now](../toolchain/sweep-is-incremental-now.md)); EH class
 [cxx-eh-frame-wall](../cpp-lane/cxx-eh-frame-wall.md); EXEs [exe-decomp-state](../functions/exe-decomp-state.md); Ghidra [ghidra-pipeline](../toolchain/ghidra-pipeline.md).
@@ -3306,13 +3306,13 @@ GREEN: 0 differing bytes, 1,019 fns / 159,232 B placed (33.11% of .text),
 847 C + 172 C++.**
 
 Landed: **0x10033BB0 BrPfxTick (219 B)** and **0x10033880 BrPfxUpdateB0
-(315 B)**, both in `src/core/generated/`. Parked: **0x100339C0
+(315 B)**, both in `src/brally/core/generated/`. Parked: **0x100339C0
 BrPfxUpdateB4AC**, 396/398 B, one redundant `test r,r` short - full
 dead-probe list in its header, do not re-run those.
 
 **How the lane was picked, and what that says about triage:** the C++
 vcall/twin family is EXHAUSTED (see [cpp-vcall-family-lode](../cpp-lane/cpp-vcall-family-lode.md) session 14),
-`claim 5` returns nothing, and every SHAPE row in `tools/fnmatch/triage.py`
+`claim 5` returns nothing, and every SHAPE row in `tools/brally/fnmatch/triage.py`
 is `parked`. Parked is not walled - but a screen of all 57 SHAPE rows against
 their owning files found only ~10 with a real residue note, so the rest are
 "ran out of time". The one I took, BrPfxTick, was tagged only by its **d3d**
@@ -3321,12 +3321,12 @@ held a port body for it.
 
 **The cause, and it is the general lever now:** the port body took five
 aggregate parameters; the original takes NONE. **Screen for this from the
-CALL SITE, not the source** - `tools/dumpasm.py <caller>` on BrPfxTick showed
+CALL SITE, not the source** - `tools/brally/dumpasm.py <caller>` on BrPfxTick showed
 bare `call rel32` for the three pool steppers and `mov ecx,[esi]; call` for
 the three per-car helpers, settling four signatures in one disassembly.
 Written up in [port-safety-additions-block-matches](../triage/port-safety-additions-block-matches.md).
 
-**Two new idioms, both in docs/VC5-IDIOMS.md:**
+**Two new idioms, both in docs/brally/VC5-IDIOMS.md:**
 1. **Respell `array[idx].field` in every statement.** Hoisting the record
    into a `Rec *p` local collapses the index chain into a base register:
    -19 bytes, -10 instructions, regnorm 48+21 -> 18+8, on a function whose
@@ -3344,15 +3344,15 @@ Written up in [port-safety-additions-block-matches](../triage/port-safety-additi
 **Scorer trap worth knowing:** a struct member at record offset 0 has a zero
 reloc addend, so the recomp disassembles as `[esi]` where the original reads
 `[esi+0x10AC0C48]`. `fn.py --detail regnorm` reports that as a phantom
-`fadd [R]` EXTRA / `fadd [R+I]` MISSING pair. Check `tools/divergence.py`
+`fadd [R]` EXTRA / `fadd [R+I]` MISSING pair. Check `tools/brally/divergence.py`
 before chasing it - on 0x100339C0 two of its five regnorm rows were this
 artefact.
 
 **Environment notes:** `timeout` does not exist on this machine (use the tool's
-own timeout). `tools/cpp_screen.py`, `triage.py`, `fn.py`, `divergence.py` and
+own timeout). `tools/brally/cpp_screen.py`, `triage.py`, `fn.py`, `divergence.py` and
 `image_build.py` all need `.venv/bin/python3` (capstone). `divergence.py` takes
-`<obj> <orig/VA.bin> <symbol>` - the obj fn.py just built is
-`build/match/obj_fnbase/<file>.obj` and the symbol is undecorated.
+`<obj> <reference/brally/orig/VA.bin> <symbol>` - the obj fn.py just built is
+`build/brally/win32/match/obj_fnbase/<file>.obj` and the symbol is undecorated.
 
 ** A PARALLEL SESSION WAS COMMITTING TO THIS REPO THROUGHOUT.** HEAD moved
 under me twice and `match_sweep.py` auto-committed my first match before I
@@ -3363,7 +3363,7 @@ your last commit is HEAD.
 
 **The two lanes named in the request were both screened DRY before starting**,
 and that screening is the reusable part:
-- `tools/cpp_screen.py` (`.venv/bin/python3`): **20 strong**, and only four
+- `tools/brally/cpp_screen.py` (`.venv/bin/python3`): **20 strong**, and only four
   lack a TU - 0x100498A0 and 0x1004CBA0 both carry the photo trio so they
   inherit its 34-diff park, 0x100541B0 is the predicted SIB park, and
   0x10059410 is NOT a C++ row at all (it is BrGlNavPoll in br_uinav.c, C lane,
@@ -3384,7 +3384,7 @@ Five were byte-exact on the FIRST compile. Image gate re-run after:
 
  **THE ONE LEVER THAT DECIDED THREE OF THEM - DO NOT HOIST.** Already an
 idiom for record pointers; it now has three distinct symptoms, all written up
-in docs/VC5-IDIOMS.md under "Respell the index chain in every statement":
+in docs/brally/VC5-IDIOMS.md under "Respell the index chain in every statement":
  1. addressing-mode collapse (the old one, 0x10033880);
  2. **a hoisted array base is LOADED ABOVE THE GUARD** the original loads it
     inside (0x10031660, was the entire residue);
@@ -3429,7 +3429,7 @@ back **0**. The class is now empty; do not go looking again without a reason.
   0x10054070 / 0x100087D0 / 0x1006FCE0 / 0x1006B440 are C++-lane rows.
 - **Finding a small function's meaning is a lookup, not a derivation.** Every
   one of these eight was named from evidence already in the tree: a sibling
-  body, `config/globals_learned.csv`, `whereis.py`, or a header note that had
+  body, `config/brally/globals_learned.csv`, `whereis.py`, or a header note that had
   already analysed the address (0x10031660's semantics were written out in
   slice2_20.h verbatim). scratch `callers.py` scans `.text` for `E8` sites
   targeting a VA and names the containing function - that is what identified
@@ -3468,7 +3468,7 @@ flip moves nothing - there the merged arms STORE TO A GLOBAL in a void function.
 Four shapes plus a `switch` probed on it; all merge. Parked with the full list.
 
  **NEW IDIOM 2 - thiscall with 3+ args: WRAP EVERY ARGUMENT AFTER `this`.**
-`include/br_match.h` said "a struct-typed SECOND parameter", which is only
+`src/brally/include/br_match.h` said "a struct-typed SECOND parameter", which is only
 enough for two-argument functions: `__fastcall` SKIPS a struct and carries on
 handing out edx, so a lone wrapper lets the THIRD argument take edx and the
 callee cleans 4 bytes where thiscall cleans 8. With one wrapper 0x10069BC0 was
@@ -3509,10 +3509,10 @@ Start-of-session screens: refcheck OK, no stale claims, 0 undescribed, no
 unswept TUs. **C++ family screened dry for the THIRD session running** - 20
 strong, the same four without a TU (0x100498A0 / 0x1004CBA0 inherit the photo
 park, 0x100541B0 is the predicted SIB park, 0x10059410 is a C-lane row).
-`claim 5` DID return targets this time, but two were in `src/core/drawing/
+`claim 5` DID return targets this time, but two were in `src/brally/core/drawing/
 br_dlclip.c`, an UNTRACKED file the parallel session was creating, and one was
 0x100686D0 which that session had just parked. **Released those three rather
-than colliding** - `git status --short src/` before working a claimed row is
+than colliding** - `git status --short src/brally/` before working a claimed row is
 now part of the start-up ritual, not just `stale_claims.py`.
 
 Landed: **0x100623A0 BrRaceDriverAnim (58 B), 0x1005D050 BrCtlHuman (9 B),
@@ -3570,7 +3570,7 @@ tiny T1 tail for that before working it.
    it does a float one.**
 
 **Gate state at hand-off:** BRGlide's image gate FAILS, and it is NOT this
-lane's work - `src/core/net/br_car.c` (created by refile commits d012626 /
+lane's work - `src/brally/core/net/br_car.c` (created by refile commits d012626 /
 ba89fa1) leaves 0x10005C70 / 0x10005CA0 "claimed but NOT placed: symbol not in
 obj"; the two are tagged with their d3d VAs there. Everything else resolves and
 the assembled image is **0 differing bytes, 1,043 fns / 165,502 B / 34.42% of
@@ -3585,16 +3585,16 @@ two or three times before you get a still-tree verdict.
 
 **Lane:** `claim 20` returned a TOKEN AND ZERO TARGETS - the tagged pool is
 still exhausted, exactly as `docs/STRUCTURAL-PLAYBOOK.md` says. Went to T1
-intake instead: screened `tools/tiers.py --list T1` (243 rows) against tree
-`@implements` tags, `report_cpp.csv`, `src/core/cpp/<VA>.cpp`, `fenced.csv`
+intake instead: screened `tools/brally/tiers.py --list T1` (243 rows) against tree
+`@implements` tags, `report_cpp.csv`, `src/brally/core/cpp/<VA>.cpp`, `fenced.csv`
 and the original's prologue bytes (EH frame / IAT jump) - **218 clean
 candidates**. Picked the smallest, then followed the neighbours: every VA in
 0x1006B000-0x1006C500 is the DirectSound voice/bank layer, and
-`src/core/slice6_76.c` already owns its globals and its `dsbuf_fn2` vtable
+`src/brally/core/slice6_76.c` already owns its globals and its `dsbuf_fn2` vtable
 typedef. **A neighbour cluster with a live owning TU is worth more than a
 small size** - the declarations are the expensive part and they were free.
 
-**Landed byte-exact (all in `src/core/slice6_76.c`, filed in `config/filing.csv`):**
+**Landed byte-exact (all in `src/brally/core/slice6_76.c`, filed in `config/brally/filing.csv`):**
 - **0x1006BD70 `BrSndBankMute`** (90 B) - drive every occupied voice to
   DSBVOLUME_MIN and recentre pan. Fell to the guard-shape idiom below.
 - **0x1006C460 `BrSndBankFree`** (109 B) - stop + free every buffer, zero the
@@ -3603,11 +3603,11 @@ small size** - the declarations are the expensive part and they were free.
 - **0x1006B530 `BrSndChanBind`** (128 B) - bind a group's voice to a channel
   and copy the 8-byte base rate. Two probes.
 
-**Two idioms minted, both in `docs/VC5-IDIOMS.md`** (and in
+**Two idioms minted, both in `docs/brally/VC5-IDIOMS.md`** (and in
 [guard-shape-decides-prologue](../levers/guard-shape-decides-prologue.md)): the `&&`-chain-vs-early-return choice is
 decided by whether the guard and the body return the SAME value, and an
 explicit `shl R,3` beside a row-index `lea` means our element type is too
-narrow. `tools/fnmatch/screen_shrinkwrap.py` is new; its yield on the tagged
+narrow. `tools/brally/fnmatch/screen_shrinkwrap.py` is new; its yield on the tagged
 pool is **zero**, so the guard rewrite is a lever, not a family.
 
 **PARKED: 0x1006B440 `BrSndVoiceApplyVolume`** (79 B, 84 recomp, regnorm 3+1).
@@ -3625,7 +3625,7 @@ must come from outside the statement spelling. NOTE the contrast: 0x1006BD70,
 `mov reg,imm / push reg` there is real evidence of a variable, not noise.
 
 ** Operational:** a parallel session destroyed work twice - see
-[parallel-session-clobber](../traps/parallel-session-clobber.md). Also: rewriting `config/filing.csv` from a full
+[parallel-session-clobber](../traps/parallel-session-clobber.md). Also: rewriting `config/brally/filing.csv` from a full
 read flipped all 872 lines CRLF→LF; splice with `b"\r\n"` and check
 `git show --stat`.
 
@@ -3633,10 +3633,10 @@ read flipped all 872 lines CRLF→LF; splice with `b"\r\n"` and check
 
 **0x1006B5F0 `BrSndChanSetRatio`** (118 B) and **0x1006B970
 `BrSndVoiceBufStart`** (111 B) also landed byte-exact - five for the session,
-all in `src/core/slice6_76.c`. 0x1006B5F0 was a FIRST COMPILE once the applied
+all in `src/brally/core/slice6_76.c`. 0x1006B5F0 was a FIRST COMPILE once the applied
 record was indexed as `int64[]`, three per channel (the `[R*8+K]` idiom).
 0x1006B970 was one instruction out, and the fix is a **new idiom now in
-`docs/VC5-IDIOMS.md`**: with two locals both starting at 0, one enregistered
+`docs/brally/VC5-IDIOMS.md`**: with two locals both starting at 0, one enregistered
 and one address-taken, **zero the MEMORY one first** - flag-first lets VC5
 CSE the zero (`mov [esp+8],edi`) where the original stores an immediate. A
 `mov [esp+S],R` against the original's `mov [esp+S],I` is an initialiser-order
@@ -3650,24 +3650,24 @@ known, both would have cost a session each:
    with no zero-extension - a CHAR argument on a thiscall's stack. Screen the
    draft's argument loads for an 8-bit `[esp+N]` read BEFORE writing any C.
 2. ** A T1 row can ALREADY HAVE A PORT BODY under a different name.**
-   0x1006E430 is `BrX100751D0` in `src/core/slice8_86.c` - a complete,
+   0x1006E430 is `BrX100751D0` in `src/brally/core/slice8_86.c` - a complete,
    commented port body with a NULL guard and `pfn` indirection the original
    does not have, carrying no `@implements` because it is port-only. My T1
-   screen checked tags, `report_cpp.csv`, `src/core/cpp/<VA>.cpp`,
+   screen checked tags, `report_cpp.csv`, `src/brally/core/cpp/<VA>.cpp`,
    `fenced.csv` and the prologue bytes, and saw NONE of that. **Add
    `whereis.py` / a grep for the D3D twin VA in comments to the T1 screen**;
    these rows are cheap (`#ifdef BR_MATCHING_BUILD` variant beside the port
    body, as `br86_timer_end_period` already does in that file) but they are
    NOT fresh transcription, and treating them as such duplicates a body.
 
-**Tally at hand-off** (`tools/total.py`, re-derived, tree churning under
+**Tally at hand-off** (`tools/brally/total.py`, re-derived, tree churning under
 parallel sessions): **1,141 byte-exact / 178,029 B** - DLL C 862 fns / 85,136 B,
 DLL C++ 174 / 80,300 B, EXE 105 / 12,593 B, against 480,853 B of BRGlide
 `.text` plus ~64 KB in-scope EXE `.text`. The C count reads LOWER than the
 871 the one-file sweep printed 20 minutes earlier; parallel rebuilds move it,
 so re-derive rather than quoting. `fileaudit.py`: descriptions **0** and
 address batches **62**, both at baseline; the 518 failures are the inherited
-"assigned but not moved" backlog. `src/core/slice6_76.c` is 18/19, the one
+"assigned but not moved" backlog. `src/brally/core/slice6_76.c` is 18/19, the one
 diff being the parked 0x1006B440.
 
 ## 2026-09-03 - the d3d-only-tag lode: +12 byte-exact, class CLOSED
@@ -3678,15 +3678,15 @@ correct but carries only its **d3d** `@implements`. The glide-keyed sweep never
 scores a d3d VA, so it has no `report.csv` row, so `tiers.py` calls the glide
 twin **T1/not-started**. It is finished - only the second tag is missing. The
 tree's spelling is two stacked tags on one body. Full screen, all three traps
-and the closure note are in `docs/VC5-IDIOMS.md`; the screen itself is
-`tools/twinscreen.py`.
+and the closure note are in `docs/brally/VC5-IDIOMS.md`; the screen itself is
+`tools/brally/twinscreen.py`.
 
 The 12: `0x10036040` (slice6_70.c), `0x10008D20` (br_pod.c), and the ten
 `BrFixUnpack*` codecs `0x100075C0` - `0x10007730` (net/br_fix.c).
 
 ** CLOSED - do not plan a lane on it.** With all four filters the screen now
 returns **0 candidates binary-wide**. Only a batch of NEW d3d-lane matches can
-refill it; re-run `tools/twinscreen.py` then, never as opening work.
+refill it; re-run `tools/brally/twinscreen.py` then, never as opening work.
 
 ** THE CANDIDATE COUNT LIES IN TWO DIRECTIONS, AND BOTH WERE HIT THIS SESSION.**
 Keyed on the bare VA number it said 22 (the two binaries overlap in address
@@ -3734,7 +3734,7 @@ gives you the declarations free" case.
 268 diffs, regnorm 5+1** - every structural element verified (frame
 `sub esp,0xc`, two epilogues, AND/OR asymmetry, finish blocks, flat copy,
 save/restore). Full ladder, open leads and dead-probe list are in the file
-header above the tag; the reusable idiom went to `docs/VC5-IDIOMS.md`
+header above the tag; the reusable idiom went to `docs/brally/VC5-IDIOMS.md`
 ("Pointer form vs index form is decided by WHAT THE INDEX IS"). **Next lead,
 never probed: the clip arm's three float args are pushed with integer
 `mov`/`push`, not `fld`/`fstp` - try `uint32_t` params + BR_DL_PUN at the
@@ -3751,7 +3751,7 @@ IMMEDIATELY after every edit that survives a compile - do not wait for
 byte-exact - and `grep` the file for your own text after committing.
 
 ** A PATHSPEC COMMIT STILL TAKES THE FILE'S WHOLE WORKING-TREE STATE.**
-`config/filing.csv` was already dirty with the parallel session's module
+`config/brally/filing.csv` was already dirty with the parallel session's module
 reassignments; my one-line splice was correct but `caefe5d` swept 40 of their
 lines in under my message. Content intact, attribution wrong. **Check
 `git diff <shared csv>` BEFORE committing it, not `git show --stat` after.**
@@ -3768,17 +3768,17 @@ that 57 and NOT yet taken: 0x10024680+0x10024750+0x10024AA0, 0x10035C50
 family, 0x1003B350 family, 0x1005A280 family, 0x1006A330..0x1006B0E0.
 
 ## 2026-09-05 session 20 (this lane): +6 byte-exact, 5 parked, tree 1,227 / 196,890 B per total.py
-- Claim ledger handed out br_collresp.c rows another session was actively committing to (6faab8c) - released them; `git status src/` before working a claimed row remains the rule.
-- New module files: src/core/menus/br_saveprobe.c, br_savename.c, br_savebegin.c (2 parked + 1 parked), src/core/settings/br_ghostsave.c, br_seasonload.c (parked); src/core/cpp/0x10008AB0.cpp (exact), 0x10039620.cpp (parked).
+- Claim ledger handed out br_collresp.c rows another session was actively committing to (6faab8c) - released them; `git status src/brally/` before working a claimed row remains the rule.
+- New module files: src/brally/core/menus/br_saveprobe.c, br_savename.c, br_savebegin.c (2 parked + 1 parked), src/brally/core/settings/br_ghostsave.c, br_seasonload.c (parked); src/brally/core/cpp/0x10008AB0.cpp (exact), 0x10039620.cpp (parked).
 - Image gate NOT run this session (parallel sessions were writing; the guard would fire). Run it at the next quiet point.
 - Frame-layout facts and the same-object alias rule are in VC5-IDIOMS (tail); the "constant through a __fastcall wrapper" boundary is under the thiscall 3+ args entry.
 
 ## 2026-09-08 session: reset validated, +0 byte-exact, 1 parked (T2, 2 B off), tree 1,235 / 198,117 B per total.py
 - commit 1576d0b (the project rules 104 lines, MATCHING.md the procedure, docs archived not deleted, autofile/claim N/crank loop disarmed) verified by running each refusal; image gate PASSED (BRGlide 0 diff bytes) once run ALONE -- running portcheck concurrently timed cl.exe out on br_input.c and made the gate INCONCLUSIVE. Never run two compilers at once.
-- 0x10002460 BrRaceSelFromMenu -> src/core/racing/br_racesel.c (c085112): 252/252 B, 65/65 insns, regnorm 0+0, eax/edx roles of the two loop induction pointers are the only residue. Gate 0+A pass, 1 ledger line; it is a Pool A / T3 candidate now, not a lane. Levers in VC5-IDIOMS tail (356c9aa). 9 probes, over the six-probe budget by three because w4/w6 each moved a structural fact.
+- 0x10002460 BrRaceSelFromMenu -> src/brally/core/racing/br_racesel.c (c085112): 252/252 B, 65/65 insns, regnorm 0+0, eax/edx roles of the two loop induction pointers are the only residue. Gate 0+A pass, 1 ledger line; it is a Pool A / T3 candidate now, not a lane. Levers in VC5-IDIOMS tail (356c9aa). 9 probes, over the six-probe budget by three because w4/w6 each moved a structural fact.
 - `crank.py --help` starts a real crank run (no guard). `t4lane.py --claim` locks 20 Pool B rows; release the token at session end (done: f5d114d3).
 - Next unused Pool B primary: 0x100284E0 (253 B), then 0x1005F580, 0x100704E0.
-- the notes index's "port build is broken" lead is unverified: the narrowing it blames is matching-arm only, include/slice2_12.h already says int16_t, and ports/macos has no build.sh.
+- the notes index's "port build is broken" lead is unverified: the narrowing it blames is matching-arm only, src/brally/include/slice2_12.h already says int16_t, and ports/brally-wasm has no build.sh.
 
 ## 2026-09-09 session (lane f103e9fc / 64bdcead): +5 byte-exact, 5 T2 parked, image gate PASSED
 Byte-exact (each committed + filed): 0x10055D40 (C++ TU, named ftell local),
@@ -3801,7 +3801,7 @@ that claim: 0x1005C6D0, 0x10055F40, 0x1006C010 -- not started.
 - t4lane.py --claim had NOTHING (Pool B 0 clean, 39 rejected; Pool A = T3 colouring). Hand-screened the T1 list with a capstone op census (fxch / 16-bit / EH) and claimed by --va. **The productive lane was the /Od stretch 0x1002Cxxx-0x1002Exxx: three of the five wins (0x1002D864, 0x1002E376, 0x1002CB49) were /Od, each byte-exact in 3-6 sweeps.** Remaining unclaimed /Od-looking T1 rows: none <800 B; look above 800 B next.
 - Byte-exact: 0x10032190 BrGlTrackFixupCmds (br_track.c), 0x100628B0 BrGlRaceStart (br_racestart.c), 0x1002D864 BrDlRecolor (new br_dlrecolor.c), 0x1002E376 BrRleEncode (br_texblit.c), 0x1002CB49 BrTexAnimStep (new br_texanim.c). Image gate PASSED after.
 - Parked T2 with dead lists in the file: 0x100299A0 (size-exact, cursor/counter register swap), 0x100590D0 (insn-exact, scratch regs), 0x10028620 (size-exact, one CSE at the slot test). C++-owned, do not re-open in C: 0x10062E50 (thiscall, ret 4), 0x10039990 (thiscall vcalls). 0x10032320 is COM/OLE vcalls in C form, unscreened.
-- Levers proven today (all at the tail of docs/VC5-IDIOMS.md): counter-expression fields keep load/store order; halfword compose for an ah-first pair; `while (f == 0) {}` spin; float zero is an imm store; /Od locals as letters in frame order; /Od arms in source order; **/Od two-hop jumps are `label: goto X;` written after the return** (this is the BrAnimUpdate 0x1003563A open wall's shape -- re-probe it); `call; push eax; call; add esp,N` under /Od = inner callee takes no args (read the callee, not Ghidra's split).
+- Levers proven today (all at the tail of docs/brally/VC5-IDIOMS.md): counter-expression fields keep load/store order; halfword compose for an ah-first pair; `while (f == 0) {}` spin; float zero is an imm store; /Od locals as letters in frame order; /Od arms in source order; **/Od two-hop jumps are `label: goto X;` written after the return** (this is the BrAnimUpdate 0x1003563A open wall's shape -- re-probe it); `call; push eax; call; add esp,N` under /Od = inner callee takes no args (read the callee, not Ghidra's split).
 
 ## 2026-09-09 third session ("untried swaths"): +0 byte-exact, 2 parked T2 at regnorm 0+0 (both the register-transposition class)
 - Pool B <=400 exhausted; `t4lane.py --claim --max-bytes 800 --pool B` gave 8 rows, of which only 0x1006C290 and 0x100096A0 are C targets (0x1005C6D0/0x10055F40/0x1006C010 this-ecx, 0x10062E50/0x10039990 thiscall, 0x10032320 COM vcalls unscreened).
@@ -3816,7 +3816,7 @@ that claim: 0x1005C6D0, 0x10055F40, 0x1006C010 -- not started.
 -  msetdiff normaliser fix (53ffc7b): when the recomp's reloc is known NOT in the last 4 bytes, mask the MEMORY OPERAND, not a trailing imm 0 -- `mov [R+relocdisp],0` had its true zero rewritten to A and failed T3 gate A3 on identical bytes. Mirror of the 0x1005FF00 tail fix. After it, BOTH of this morning's parks (0x1006C290, 0x100096A0) pass Gate 0+A at rows 0+0; they now lack only Gate B's counted ledger (2 x >=10-probe zero-movement @t4-pass lines -- note t3.py wants the `@t4-pass <VA> <n> <date> probes N ... census yes/no` format, not the freehand line I used). 0x10029CD0's certification unchanged; 0x10032320 correctly shows its real `and R,0xff` as the one unpaired row.
 
 ## 2026-09-09 fifth session ("5 largest to T3"): +1 BYTE-EXACT (1,576 B), +4 T3-certified (3,306+939+805+696 B rows), 2 map-row fixes, 3 gate/classifier extensions
-- **0x1000BEB0 BrCarDrawBody BYTE-EXACT (c376551), 62 msetdiff rows -> 0 in 6 probes.** The whole gap was five idiom classes, now on docs/VC5-IDIOMS.md tail: (1) the `slotL ? slotL+0x10 : 0` null-guard was a PORT INVENTION -- orig re-reads [car+0x140], re-indexes the table and adds 0x10/0x20/0x30 unconditionally, four times; (2) `model`/`iCar`/`pCamBasis`/`pRow2`/`dot2` locals DO NOT EXIST -- orig re-derefs the global/field at every use and RE-CALLS BrVec3Dot in guard AND value; (3) front arm spells `len = len * len;` destructively (arms runtime-exclusive), back arm divides on-stack; (4) `&BrG_0AAxxx` where the extern is a `void *` -- the value-read was an UNINITIALIZED-POINTER latent bug (nothing ever assigns them); (5) camslot compare spelled off BrG_6C2CF8, reusing+destroying the just-compared register.
+- **0x1000BEB0 BrCarDrawBody BYTE-EXACT (c376551), 62 msetdiff rows -> 0 in 6 probes.** The whole gap was five idiom classes, now on docs/brally/VC5-IDIOMS.md tail: (1) the `slotL ? slotL+0x10 : 0` null-guard was a PORT INVENTION -- orig re-reads [car+0x140], re-indexes the table and adds 0x10/0x20/0x30 unconditionally, four times; (2) `model`/`iCar`/`pCamBasis`/`pRow2`/`dot2` locals DO NOT EXIST -- orig re-derefs the global/field at every use and RE-CALLS BrVec3Dot in guard AND value; (3) front arm spells `len = len * len;` destructively (arms runtime-exclusive), back arm divides on-stack; (4) `&BrG_0AAxxx` where the extern is a `void *` -- the value-read was an UNINITIALIZED-POINTER latent bug (nothing ever assigns them); (5) camslot compare spelled off BrG_6C2CF8, reusing+destroying the just-compared register.
 - ** JUMP-TABLE MEASUREMENT CLASS (f18edca): functions_glide.csv rows cut at CODE END hide the function's case maps + dword tables; the recomp symbol includes them, so every gate saw garbage-vs-garbage.** t3.py measure now cuts insn gates at the table start (read from the orig's own `jmp [R*4+VA]` dispatches) and byte-compares the table zone reloc-masked (gate A6). 0x10015B10 BrTextEmitString: map 3050->3306, then size- AND insn-exact, tables byte-equal -> @t3 (d90bcae). 0x1000CBA0 BrObjDlBuild map 3971->4180 (e60824b): its case map genuinely differs by 208 B -- the switch GROUPING is a real open defect, plus 218 code rows; multi-session, not a today target.
 - **Classifier extensions, each re-gated against every certified tag (none moved):** `xor R,R` = rematerialised-zero singleton (a real missing `x=0` still fails on its store row); canon `lea R,[R*K]` ~ `shl R,2` (*4 only -- msetdiff already ate the scale); classify cancels the either-or layout TRIPLE `jCC A; jmp B` ~ `j!CC B` (only when all three are unpaired at once).
 - @t3 landed: 0x10015B10 (752/752 insns, residue = scale/b slot pair + stride-vs-vaBlock promotion), 0x10059410 BrGlNavPoll (943/939, transposition + the orig's fresh xor-zero for the Edge672x run -- chained/named/reordered zero spellings ALL value-numbered identical, same mechanism as specMem), 0x10036B20 BrDpAddressBuild (805/805, either-or tail + cmpsb hoist), 0x1001FA30 BrDlCmdTri2 (698/696 --  the no-Z twin's DEAD probe `pv_->oow` for the ib corner LANDED here at -3 B: twin dead-lists do NOT transfer between TUs).
@@ -3836,7 +3836,7 @@ BrDlsTileSizeDecode, 0x10005330 BrNetBeaconTick, 0x10005400 BrCdAudioTick,
 **Byte-exact (3):** 0x1006CE20 BrBitStreamReadU16 (index-through-cursor),
 0x10036E50 BrDpCreateIface (early `goto fail` guard; FILED into
 net/br_dplay.c), 0x1002F6D0 BrPeerFind (dword-width mask).  Levers + walls
-on the tail of docs/VC5-IDIOMS.md (c419c29).
+on the tail of docs/brally/VC5-IDIOMS.md (c419c29).
 
 ** THE METHOD THAT PAID: fix the gate's normalisers/canon before grinding
 sources.** Three capstone bare-decimal artefacts found and fixed (branch
@@ -3882,8 +3882,8 @@ A parallel session ran all day (BrTextEmitString 0x10015B10 T3 + more;
 it added the either-or branch-triple cancellation and the lea/shl class
 to classify, and a jump-table cut to measure).  fileaudit
 assigned-not-moved sits at 16 vs baseline 11 -- NOT reconciled; the 5
-are not all mine (DpCreateIface was moved).  config/globals_learned.csv,
-config/survey.csv and src/core/cpp/0x10055F40.cpp were the parallel
+are not all mine (DpCreateIface was moved).  config/brally/globals_learned.csv,
+config/brally/survey.csv and src/brally/core/cpp/0x10055F40.cpp were the parallel
 session's uncommitted work -- left untouched.
 
 ## 2026-09-09 fifth session, part 2: 0x1000A110 BrCarDrawVehicle @t3 CERTIFIED (7,560/7,577 B -- the largest certified function in the tree)
@@ -3915,7 +3915,7 @@ ratchet (16 vs baseline 11) is still unreconciled across sessions.
 
 Method note repeated: renumber hand @t4-passes ABOVE existing crank
 passes (bit twice more this session: 0x1000CB20-style duplicate-number
-collisions on 0x10035DD0).  Config csvs and src/core/cpp/0x10055F40.cpp
+collisions on 0x10035DD0).  Config csvs and src/brally/core/cpp/0x10055F40.cpp
 belong to a parallel session -- untouched.
 
 ## 2026-09-10 "20 to contract-valid, round three": 9 @t3 + 2 BYTE-EXACT from my lane; THREE other sessions worked the same tree
@@ -3941,7 +3941,7 @@ its MISS/EXTR lines) -- rebuild it, it is the worklist.
 
 ** THREE parallel sessions commit to this working tree.**  They took
 0x1005F580, 0x10029B50, 0x1006CE50 out from under my claims mid-probe,
-edited tools/t3.py's classify under my measurements (rows move between
+edited tools/brally/t3.py's classify under my measurements (rows move between
 runs), and one of their `crank` commits SWALLOWED my uncommitted
 BrVarLoad edit under a BrVarSave message.  claim_lane.py IS being
 honoured by them (three of my claims came back REFUSED as live).  Commit
@@ -3953,12 +3953,12 @@ asked about extending Gate A4 to accept a pure schedule rotation (7 rows
 fail A4 alone; 0x10058540 is 112/112 instructions, RAW 0+0, only the
 order of four loop tails differs).  Answer: don't lower standards.  A4
 stays as written -- those rows stay uncertifiable and I did not touch
-tools/t3.py.
+tools/brally/t3.py.
 
 **Method notes:** fn.py `--var` probes are ~4 s each and the harness in
 scratch/probe.py (replace-one-string, print scorecard + positional
 diff) ran ~60 probes today; pos.py prints the A4 order diff.  fn.py's
-obj lands in build/match/obj_fn_<tag>/.  A fn.py win does NOT always
+obj lands in build/brally/win32/match/obj_fn_<tag>/.  A fn.py win does NOT always
 reproduce in the tree: 0x10028620's statement-order improvement scored
 regnorm 2+1 in the variant and 23 rows in the real TU -- sweep before
 believing it, and revert on the spot.  Gate B "no counted census-driven
@@ -3973,9 +3973,9 @@ BrMenuCap07E0 head fork, 0x10058540 BrSprFontRectInit loop-tail schedule,
 (the outer counter lives in the parameter slot in the original -- pure
 allocation), 0x100299A0 BrTexInstallRecords (the original materialises
 its zero BEFORE the frame).  Idioms committed at the tail of
-docs/VC5-IDIOMS.md.
+docs/brally/VC5-IDIOMS.md.
 
 **Bookkeeping debt, NOT mine:** fileaudit `assigned but not moved` is 17
 against baseline 11 (was 16 yesterday) -- still unreconciled across
-sessions; `src/core/racing/br_racestep.c` and config/globals_learned.csv
+sessions; `src/brally/core/racing/br_racestep.c` and config/brally/globals_learned.csv
 were left dirty by another session.

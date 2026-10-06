@@ -1,8 +1,8 @@
 /* br_carphys.h -- the per-frame car physics step, 0x1005A7A0.
  *
- * REFERENCE IS orig/BRGlide.dll.  The D3D twin is 0x10061720 and the two are
- * `matched by body` in config/shared.csv; every address below was checked with
- * tools/whereis.py before a line was written, and TWO of the answers that tool
+ * REFERENCE IS reference/brally/orig/BRGlide.dll.  The D3D twin is 0x10061720 and the two are
+ * `matched by body` in config/brally/shared.csv; every address below was checked with
+ * tools/brally/whereis.py before a line was written, and TWO of the answers that tool
  * gave were WRONG in a way worth recording:
  *
  *   0x1006D850  whereis reports "paired 0x10066800 (glide)", i.e. it read the
@@ -239,7 +239,7 @@ extern "C" {  /* BR_CLINK_BEGIN: every original function has C linkage */
 #include "slice3_44.h"    /* BrRbState and the four integrator primitives    */
 
 /* ======================================================================
- * Constants, every one read out of orig/BRGlide.dll or orig/BRD3D.dll
+ * Constants, every one read out of reference/brally/orig/BRGlide.dll or reference/brally/orig/BRD3D.dll
  * ====================================================================== */
 
 /* 0x10077780 / 84 / 88 -- the sign triple the damper classifies with.  The

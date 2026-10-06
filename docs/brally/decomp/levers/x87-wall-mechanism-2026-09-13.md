@@ -7,8 +7,8 @@
 **2026-09-13 micro-TU sweep (follow-on to [ext-corpus-2026-09-13](../corpus/ext-corpus-2026-09-13.md)): the
 wall that blocks the five largest ([five-largest-2026-09-13b](../log/five-largest-2026-09-13b.md)) and the
 matrix rows has a MEASURED mechanism.** Lab preserved at
-`build/external/lab/lab.py` (git-ignored): one micro .c vs original bytes,
-~3 s/probe. Full write-up: docs/VC5-IDIOMS.md tail (commit 7cd4020).
+`build/brally/analysis/corpus/lab/lab.py` (git-ignored): one micro .c vs original bytes,
+~3 s/probe. Full write-up: docs/brally/VC5-IDIOMS.md tail (commit 7cd4020).
 
 1. **Straight-line FP operand roles (fld side vs memory side) are decided
    by TU compilation state from PRECEDING FUNCTION DEFINITIONS, not the
@@ -54,5 +54,5 @@ separate TUs; pick co-filing candidates by matching best-variant AND
 adjacency. (2)  report.csv `detail` is RAW POSITIONAL byte-diff (407 on
 carcol's 7-region row is normal); never read it as region count - a
 co-filing effect smaller than a length wobble needs msetdiff, not the row.
- Sweep objs cache per variant dir (build/match/obj_*/<file>.obj) - rm
+ Sweep objs cache per variant dir (build/brally/win32/match/obj_*/<file>.obj) - rm
 them when a file's TU membership changes, or the row is stale.

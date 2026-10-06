@@ -35,7 +35,7 @@
  *   0x10043650  slice2_25.c  BrOptCycleAA2A20   car shadow   -> 0x10AA2A20
  *   0x100436B0  slice2_25.c  BrOptCycleAA2A24   specular     -> 0x10AA2A24
  *
- * All six were re-checked against orig/BRGlide.dll for this pass and all six
+ * All six were re-checked against reference/brally/orig/BRGlide.dll for this pass and all six
  * are right, instruction for instruction (see the VERIFIED table below).  So
  * nothing is decompiled a second time; what this file adds is the three
  * things that were missing between a correct body and an observable toggle:
@@ -50,9 +50,9 @@
  *      actually load-bearing, and it is not what it looks like.
  *
  * ===========================================================================
- * VERIFIED AGAINST orig/BRGlide.dll
+ * VERIFIED AGAINST reference/brally/orig/BRGlide.dll
  * ===========================================================================
- * config/shared.csv classes all six `shared`.  The four two-state cyclers are
+ * config/brally/shared.csv classes all six `shared`.  The four two-state cyclers are
  * byte-identical apart from their operands, which is why crossdiff maps all
  * four D3D addresses onto the ONE Glide address 0x1003C3D0 -- a hash match on
  * four functions, not evidence that three of them are missing.
@@ -190,7 +190,7 @@
  *   - the twelve pointers read, in order, "Fear and Loathing", "Alice",
  *     "Tre", "Nagasaki", "Chewbaca", "Projectile", "Numb VI", "Gelex",
  *     "Three Blind Lice", "10 to 0", "Bottle Rocket", "Fancy Car" -- the CD
- *     soundtrack, not cars.  (Read out of orig/BRD3D.dll, not inferred from
+ *     soundtrack, not cars.  (Read out of reference/brally/orig/BRD3D.dll, not inferred from
  *     the name.)
  *
  * So 0x10AA2A34, which that builder clamps to [0,11] three times over, is the

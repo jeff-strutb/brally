@@ -7,7 +7,7 @@ This file is the `.cpp` path.
 
 ## Result: 0x10040D10 is open
 
-`python3 tools/cpp_score.py --va 0x10040D10` → **0 diffs on .text**.
+`python3 tools/brally/cpp_score.py --va 0x10040D10` → **0 diffs on .text**.
 
 | piece | orig VA | size | result |
 |---|---|---:|---|
@@ -16,9 +16,9 @@ This file is the `.cpp` path.
 | unwind action | 0x10075060 | 27 | **MATCH** |
 | handler thunk | 0x1007507B | 10 | **MATCH** |
 
-Source: `build/cpp_work/0x10040D10.cpp`. Scorer: `tools/cpp_score.py`.
-Do not `@implements`-tag it in `src/` until a later session files it  - 
-this session does not edit `src/` or commit.
+Source: `build/brally/win32/cpp_work/0x10040D10.cpp`. Scorer: `tools/brally/cpp_score.py`.
+Do not `@implements`-tag it in `src/brally/` until a later session files it  - 
+this session does not edit `src/brally/` or commit.
 
 It is a **virtual destructor**, not a ctor. Workstream notes called it a
 ctor because the unwind *action* is `__ehvec_dtor`; the body also *calls*
@@ -81,7 +81,7 @@ until the sidecar check is green too.
    one). Screen: `6a ff` / `64 a1` in the first ~0x20 bytes, handler
    thunk `B8 <FuncInfo> E9` to `0x10074566`.
 
-`cpp_score.py` is standalone (own `build/match/obj_cpp/`). It reuses
+`cpp_score.py` is standalone (own `build/brally/win32/match/obj_cpp/`). It reuses
 `match_diff.parse_coff_obj` and `match_sweep.score` / `load_orig`. It
 does **not** edit `match_sweep.py`. Folding `/GX` into the C sweep is a
 later, serialized tools change.
@@ -89,8 +89,8 @@ later, serialized tools change.
 CLI:
 
 ```
-python3 tools/cpp_score.py --va 0x10040D10
-python3 tools/cpp_score.py --va 0x10040D10 --src build/cpp_work/0x10040D10.cpp --list
+python3 tools/brally/cpp_score.py --va 0x10040D10
+python3 tools/brally/cpp_score.py --va 0x10040D10 --src build/brally/win32/cpp_work/0x10040D10.cpp --list
 ```
 
 `score_source(src_text, func_name, orig_bytes, opts, tag)` is the
@@ -147,18 +147,18 @@ The 80 are object-lifetime, not try/catch. Three unwind-action shapes:
 | 0x10045EF0 | 1834 | `6aff` | 11 | 24 diffs, recomp 32 B |
 
 Workstream notes: a C body compile left **only the EH frame** (24 diffs).
-**Today's tagged C is not that body** - `src/core/slice8_86.c` holds 32-byte
+**Today's tagged C is not that body** - `src/brally/core/slice8_86.c` holds 32-byte
 port adapters (`BrPhaseEnterPlaceholder_*` calling `BrExt_*` if a host
 ctx is set). The 24 diffs are stub-vs-prologue on a 32-byte overlap.
 
 To match: copy the real bodies (Ghidra / the prior C transcription) into
-`build/cpp_work/<VA>.cpp`, spell each unwind state as a C++ `new T` (all
+`build/brally/win32/cpp_work/<VA>.cpp`, spell each unwind state as a C++ `new T` (all
 five actions are `push; call operator delete` / `0x1007456C`), compile
 `/GX`. One FuncInfo per function, maxState = number of live `new`s.
 
 ### 2. 0x10056260 BrUiBootPreLoopGate (8,349 B, 97% body, 230 diffs)
 
-`src/core/startup/br_uiboot.c`, report.csv `diff /O2 orig=8349 recomp=256
+`src/brally/core/startup/br_uiboot.c`, report.csv `diff /O2 orig=8349 recomp=256
 diffs=230`. Two unwind states, both `push eax; call operator delete`.
 The `new` of the 0xC8 phase object (concern E) plus one more allocation
 (concern F, 0x400 singleton). Port already has the behaviour split across
@@ -186,4 +186,4 @@ and the high-maxState UI ctors (0x100498A0 / 0x1004AEE0 maxState=24,
 - Do not C-sweep the 80. `6aff`/`64a1` in the first ~0x20 bytes → `.cpp`.
 - Do not confuse this with the 3 SEH helpers (`_except_handler3` via
   `0x10074AE6`) - those are C `__try` and already matched.
-- Header edits stay serialized. This harness created no `include/` churn.
+- Header edits stay serialized. This harness created no `src/brally/include/` churn.

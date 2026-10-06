@@ -105,7 +105,7 @@
  * register-allocation + commutative-operand-order scheduling (+234 B of spills,
  * no behavioural effect); byte-exact is that colouring wall.  Certification
  * required an oracle fix too -- the x87 compare handler was not setting C3
- * (equal); see tools/x87emu.py.  Do not reopen before the end-grind.
+ * (equal); see tools/brally/x87emu.py.  Do not reopen before the end-grind.
  */
 /* @implements 0x1005AFF0 glide BrCtlInputApply */
 void BR_THISCALL1 BrCtlInputApply(BrDriverCar *pCar)

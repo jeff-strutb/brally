@@ -4,7 +4,7 @@
 
 > VC5 C can reach __thiscall after all - __fastcall for one argument, struct-typed second param for two.
 
-The old note in `include/br_match.h` claimed ~22 thiscall functions "will need
+The old note in `src/brally/include/br_match.h` claimed ~22 thiscall functions "will need
 to be compiled as .cpp or use inline asm wrappers." **That is too pessimistic
 and is now corrected in the header.**
 
@@ -13,7 +13,7 @@ register-eligible arguments in ecx and edx with callee stack cleanup:
 
 - **One argument (just `this`)**: there is no second argument, so `__fastcall`
   and thiscall emit *identical* code. Exact, not an approximation. This is
-  `BR_THISCALL1` in `include/br_match.h`, defined as `__fastcall` under
+  `BR_THISCALL1` in `src/brally/include/br_match.h`, defined as `__fastcall` under
   `_MSC_VER` and empty otherwise so the macOS port is unaffected.
 - **Two or more arguments**: `__fastcall` claims edx for the second argument
   where thiscall leaves it on the stack, so a blanket macro would silently
@@ -23,7 +23,7 @@ register-eligible arguments in ecx and edx with callee stack cleanup:
 - **The two-argument workaround**: a struct-typed parameter is never
   register-eligible, so a 4-byte struct in second position is forced back onto
   the stack, reproducing thiscall's split and callee cleanup. Landed this way
-  in `BrSub10060260` (`src/core/slice4_52.c`). It is per-call-site, not a macro.
+  in `BrSub10060260` (`src/brally/core/slice4_52.c`). It is per-call-site, not a macro.
 
 Matched with this: BrTextBoxDtor, BrCtrlCfgInitGlobal, BrS17Release,
 BrSub10060260.

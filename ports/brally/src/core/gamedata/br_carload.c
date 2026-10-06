@@ -116,8 +116,8 @@ void BrSub10037740(void *pCar, int iCar)
  * either through an attached mesh header that says where in the file blob
  * the pixels live, or through a plain index into that blob. When the copying
  * is switched off it just does the byte order and lets the record go. */
-/* @t4-pass 0x10018B60 1 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10018B60 2 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10018B60 1 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10018B60 2 2026-09-07 probes 77 bytes 492 insns 165 regions 2 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10018B60 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 492/493 insns 165/165 rows 0+0 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -223,8 +223,8 @@ void BrRcaFixupRecord(void *pRec)
  * entry count is re-read from the header on every pass of the loop, exactly
  * as the original does, so swapping it can change how many entries get
  * processed. */
-/* @t4-pass 0x10018D50 1 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x10018D50 2 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x10018D50 1 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10018D50 2 2026-09-07 probes 58 bytes 180 insns 71 regions 5 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x10018D50 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 180/180 insns 71/71 rows 0+0 regions 5 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2
@@ -232,7 +232,7 @@ void BrRcaFixupRecord(void *pRec)
  * multiset (rows 0+0), 5 masked regions;
  * every row pairs under t3.py's canonical classes.  Effort: 2 counted
  * @t4-pass passes (ledger lines above, zero movement on passes 1 and 2);
- * crank candidates and scores in build/match/crank.log, dead probes in the
+ * crank candidates and scores in build/brally/win32/match/crank.log, dead probes in the
  * comment block above.  Do not reopen before the end-grind. */
 /* @implements 0x10018D50 glide BrRcaSwapMesh */
 void BrRcaSwapMesh(void *pv)

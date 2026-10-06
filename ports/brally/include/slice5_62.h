@@ -387,7 +387,7 @@ void BrNetKeepAliveTick(void);
  *
  * NOTE ON THE LISTING: the packet's block for this address stops mid-function
  * at 0x1007664E; its "(112 bytes)" size is wrong.  The real function runs
- * 0x100765E0..0x100766FD (286 bytes) and tools/dumpasm.py reports the tail as
+ * 0x100765E0..0x100766FD (286 bytes) and tools/brally/dumpasm.py reports the tail as
  * a separate "sub_10076650".  The banner address is correct -- this is a
  * function-boundary bug in the map, not a mispaired listing.
  *

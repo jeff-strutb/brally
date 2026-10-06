@@ -3,11 +3,11 @@
  * RESPONSIBILITY: reading what the player is doing -- and the other half of
  * that conversation, the force-feedback effect the wheel is asked to play.
  * The three setters here only REMEMBER a choice; the commit that sends it is
- * still in src/core/slice3_45.c (it needs that file's DirectInput vtable cast
+ * still in src/brally/core/slice3_45.c (it needs that file's DirectInput vtable cast
  * helpers).  The re-probe below is the wheel-detection pass.
  *
- * Moved here out of the address batches src/core/slice3_45.c and
- * src/core/slice6_77.c.
+ * Moved here out of the address batches src/brally/core/slice3_45.c and
+ * src/brally/core/slice6_77.c.
  */
 #include "slice3_42.h"   /* br_globals: its objects */
 #include "slice2_25.h"   /* g_brB4E1D0/D4/E0, g_aBrB4DF30 and its stride  */

@@ -16,7 +16,7 @@
  *
  *   Glide 0x1005FF00 (2538 B)  ==  D3D 0x10066E90 (2534 B)
  *
- * config/shared.csv classes 0x10066E90 `d3d_only`, which it is NOT: the two
+ * config/brally/shared.csv classes 0x10066E90 `d3d_only`, which it is NOT: the two
  * maps disagree about the extent by four bytes of trailing padding and a
  * crossdiff pair only matches on equal extents. Both builds have the function,
  * both reference the same ten debug format strings, and the Glide build is
@@ -191,7 +191,7 @@ void BrRaceStoreToCar(BrDriver *pDrv);
  * `mov ecx, dword ptr [0x106EEE38]`, not through any base register, and it
  * re-reads it four times inside one block.  A struct pointer costs a base
  * register and cannot produce that, which is the accessor sub-case
- * docs/VC5-IDIOMS.md records.  The port arm keeps BrRaceRules; this arm
+ * docs/brally/VC5-IDIOMS.md records.  The port arm keeps BrRaceRules; this arm
  * spells the globals out.
  * ========================================================================== */
 

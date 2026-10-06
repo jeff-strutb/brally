@@ -9,7 +9,7 @@ undefined symbol. For every such symbol a TU references and no TU defines:
 
   non-virtual method, constructor, destructor
       an out-of-line definition in that TU that calls the C entry of the
-      function at the method's original address (build/wasm/sites.csv gives
+      function at the method's original address (build/brally/wasm32/sites.csv gives
       the address, the @implements line the entry, br_funcs.h its
       prototype):
           void Car5C6D0::SetPos(float a1, float a2, float a3)
@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import viewmerge as vm  # noqa: E402
 
 ROOT = vm.ROOT
-OBJ = 'build/portable/obj'
+OBJ = 'build/brally/null-soft/obj'
 
 
 def missing_by_tu():
@@ -56,17 +56,17 @@ def missing_by_tu():
 
 
 def sites():
-    """(src path under src/core, qualified name) -> VA"""
+    """(src path under src/brally/core, qualified name) -> VA"""
     out = {}
-    for r in csv.DictReader(open('build/wasm/sites.csv')):
+    for r in csv.DictReader(open('build/brally/wasm32/sites.csv')):
         out.setdefault((r['src'], r['name']), int(r['va'], 16))
     return out
 
 
 def implementers():
-    """VA -> the canonical function placed there (build/wasm/placement.csv)"""
+    """VA -> the canonical function placed there (build/brally/wasm32/placement.csv)"""
     out = {}
-    for line in open('build/wasm/placement.csv'):
+    for line in open('build/brally/wasm32/placement.csv'):
         p = line.strip().split(',')
         if len(p) >= 2 and p[0].startswith('0x'):
             out.setdefault(int(p[0], 16), p[1])

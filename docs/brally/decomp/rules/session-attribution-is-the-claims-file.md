@@ -8,7 +8,7 @@ Several parallel sessions work this tree at once and they all commit as the
 same git identity. `git log --author`, `git blame` and "who touched this
 file" therefore carry NO information about which session owns a function.
 
-**How to attribute:** `build/match/lane_claims.csv` - which token held the
+**How to attribute:** `build/brally/win32/match/lane_claims.csv` - which token held the
 VA - plus the owning session's own commits. Nothing else.
 
 **Why it matters:** on 2026-09-10 a peer session inferred from the commits

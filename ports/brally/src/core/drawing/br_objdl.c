@@ -153,7 +153,7 @@ typedef int            int32_t;
  * dropped rather than handed on.  The surface-class bitmask says how many
  * times to repeat the whole thing, one pass per set bit, each pass reading
  * the next slice of the scene block. */
-/* @t4-pass 0x1000CBA0 1 2026-09-07 probes 150 bytes 4164 insns 1144 regions 23 rows 184 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000CBA0 1 2026-09-07 probes 150 bytes 4164 insns 1144 regions 23 rows 184 census yes  (tools/brally/crank.py) */
 /* T3 RESOLVED (2026-09-19): the code is a faithful, complete transcription;
  * the byte residue the 2026-09-15 verdict called "semantic" (orig `shr R,8`
  * progressive vs our `shr R,0x10` third-index, indexed byte-RMW clip tests,
@@ -163,16 +163,16 @@ typedef int            int32_t;
  * not cross-jump identical blocks in the orig, so the share is driven by the
  * upstream walk-loop register allocation -- an immovable colouring wall, not
  * missing/wrong code.  A5 verdict = EQUIVALENT with real teeth: the oracle
- * profile (tools/oracle_profiles.py) was seeding ZERO vertices (a masking bug
+ * profile (tools/brally/oracle_profiles.py) was seeding ZERO vertices (a masking bug
  * served only byte 0 of each coord float), so every transform coefficient was
  * multiplied by zero and the geometry/clip half had no teeth -- a false
  * EQUIVALENT.  Fixed to seed full coordinate words; negative-controlled: a
  * matrix-coefficient swap (m00<->m20), a corner-index shift bug, a clip-flag
  * bug, a counter bug, and a switch-dispatch mislabel are ALL now caught as
  * DIFF, and the correct code stays EQUIVALENT.  So T3 is a real cert here. */
-/* @t4-pass 0x1000CBA0 2 2026-09-07 probes 150 bytes 4164 insns 1144 regions 24 rows 182 census yes  (tools/crank.py) */
+/* @t4-pass 0x1000CBA0 2 2026-09-07 probes 150 bytes 4164 insns 1144 regions 24 rows 182 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1000CBA0 3 2026-09-19 probes 12 bytes 3980 insns 1081 regions 21 rows 256 census no  (register-alloc grind on the frame-correct O2 variant: hoisting pObj+0xb0/+0xab into locals flips the frame 0x60->0x68 to match the orig and pushes FIRSTDIV +0x2->+0x1e, but VC5 still tail-shares the five CLIPTRI sites to two -- the singleton sites jmp a common push+call tail -- driven by the walk-loop entry register allocation, which no source spelling reproduces; the progressive-shift and byte-RMW residue is the same scheduling. Numbers held.) */
-/* @t4-pass 0x1000CBA0 4 2026-09-19 probes 11 bytes 3980 insns 1081 regions 21 rows 256 census yes  (write-slot census (tools/slotcensus.py) + O2 variant sweep confirm every slot's writes/reads are consistent -- the residue is register allocation/scheduling, not missing/wrong code; the teeth-fixed A5 oracle proves same-in/same-out across the cheap and expanded paths incl. the vertex transform and the clip drop/keep decision; numbers unmoved.) */
+/* @t4-pass 0x1000CBA0 4 2026-09-19 probes 11 bytes 3980 insns 1081 regions 21 rows 256 census yes  (write-slot census (tools/brally/slotcensus.py) + O2 variant sweep confirm every slot's writes/reads are consistent -- the residue is register allocation/scheduling, not missing/wrong code; the teeth-fixed A5 oracle proves same-in/same-out across the cheap and expanded paths incl. the vertex transform and the clip drop/keep decision; numbers unmoved.) */
 /* @t3 0x1000CBA0 2026-09-19 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 3980/4180 insns 1081/1031 rows 103+153 regions 21 oracle EQUIVALENT
  * @t3-effort passes 4 zero-movement 3 4

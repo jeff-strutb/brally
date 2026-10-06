@@ -35,6 +35,45 @@ def show(commit, path):
     return r.stdout if r.returncode == 0 else None
 
 
+# the decomp tree, now and before 2026-10-05 (src/tgrally)
+TREES = ('src/tgrally', 'src/tgrally')
+
+
+def rel_of(path):
+    """The path under the decomp's source tree; its headers (src/tgrally/include,
+    formerly src/tgrally/include) are not port source and stay out."""
+    if path.startswith('src/tgrally/include/'):
+        return None
+    for t in TREES:
+        if path.startswith(t + '/'):
+            return path[len(t) + 1:]
+    return None
+
+
+def show_rel(commit, rel):
+    for t in TREES:
+        b = show(commit, t + '/' + rel)
+        if b is not None:
+            return b
+    return None
+
+
+def changed_rels(base, to):
+    """(status, rel) for each decomp file that differs between BASE and TO,
+    whichever layout either commit has; a pure move is not a change."""
+    out = {}
+    for l in git('diff', '--name-status', '-M', base, to, '--', *TREES).splitlines():
+        row = l.split('\t')
+        st, old, new = row[0], row[1], row[-1]
+        rn, ro = rel_of(new), rel_of(old)
+        if rn is None:
+            continue
+        if st.startswith('R') and rn == ro and st[1:] == '100':
+            continue
+        out[rn] = 'D' if st.startswith('D') else ('A' if show_rel(base, rn) is None else 'M')
+    return [(st, rel) for rel, st in sorted(out.items())]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--to', default='HEAD')
@@ -44,8 +83,7 @@ def main():
     base = open(STAMP).read().split()[0]
     if a.resolved:
         to = open(STAMP + '.pending').read().split()[0]
-        files = [os.path.relpath(l.split('\t')[-1], 'src/tgrally')
-                 for l in git('diff', '--name-status', base, to, '--', 'src/tgrally').splitlines()]
+        files = [rel for st, rel in changed_rels(base, to)]
         finish(to, [f for f in files if f.endswith(('.c', '.h', '.s'))])
         print('sync: FORKED-FROM is now %s' % to[:8])
         return
@@ -53,19 +91,17 @@ def main():
     if to == base:
         print('sync: the fork is at %s already' % to[:8])
         return
-    changed = [l.split('\t') for l in git('diff', '--name-status', base, to, '--', 'src/tgrally').splitlines()]
+    changed = changed_rels(base, to)
     clean, conflicts, added, removed = [], [], [], []
-    for row in changed:
-        st, path = row[0], row[-1]
-        rel = os.path.relpath(path, 'src/tgrally')
+    for st, rel in changed:
         if not rel.endswith(('.c', '.h', '.s')):
             continue                # the decomp's progress notes are not port source
         ours = os.path.join(SRC, rel)
         if st.startswith('D'):
             removed.append(rel)
             continue
-        new = show(to, path)
-        old = show(base, path)
+        new = show_rel(to, rel)
+        old = show_rel(base, rel)
         if old is None or not os.path.exists(ours):
             added.append(rel)
             if not a.dry_run:

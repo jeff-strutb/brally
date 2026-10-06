@@ -18,7 +18,7 @@
  *     10044500  89 0d 04 29 aa 10  mov [0x10aa2904], ecx
  *
  * This tree had NINE declarations claiming to be that dword, of which six had
- * real storage.  They are listed in tools/aliasmap.py --addr 0x10AA2904.  Four
+ * real storage.  They are listed in tools/brally/aliasmap.py --addr 0x10AA2904.  Four
  * of the six were `BrPhase_ *` under three names and one anonymous type alias
  * apiece, and they drifted apart after the first write:
  *

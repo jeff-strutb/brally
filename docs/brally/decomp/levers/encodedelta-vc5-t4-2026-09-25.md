@@ -9,7 +9,7 @@
 bitstream TU (tu_006) needs VC4.2 is WRONG; three earlier sessions stopped at a
 "compiler wall" that was a missing type.
 
-**Levers (all in the file header and docs/VC5-IDIOMS.md tail):**
+**Levers (all in the file header and docs/brally/VC5-IDIOMS.md tail):**
 1. Writer `WriteBits(unsigned int value, unsigned int nBits)` (ReadBits returns
    unsigned; the writer's own transcription already had unsigned). Converting
    `short>>8` to UNSIGNED narrows to `sar ax,8; movsx` as a pure expression,

@@ -1,0 +1,20 @@
+# Port deviations for src/brally/core/menus/br_uiopthook.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:DAT_10ac6734
+@drop var:DAT_10ac6730
+@drop var:DAT_10ac5d7c
+@drop var:DAT_100abce0
+@drop var:DAT_10b7153c
+@drop fn:BrUiOptHook_100436B0
+@after fn:BrUiOptHook_100436B0
+
+/* WHAT IT DOES: steps the Specular option on to its next setting when the
+ * player activates that row. */
+/* @implements 0x100436B0 d3d BrUiOptHook_100436B0 */
+int32_t BrUiOptHook_100436B0(BrUiCtl_ *pCtl)
+{
+    (void)pCtl;
+    return (int32_t)BrOptCycleAA2A24();
+}
+@end

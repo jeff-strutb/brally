@@ -6,7 +6,7 @@
 
 The project lead asked (2026-10-05) for the largest PC T3 rows to be hand-transcribed to T4; this session took BrTex3dExpand (claimed in lane_claims.csv; BrRaceStep and BrSceneDlBuild went to peers).
 
-Metric used: aligned diff lines (scratch al.py: difflib on register-blind shapes, jumps ignored) = structural ! + register ~ + slot-only `.`. Start (saved candidate build/match/m2_candidates/0x100250D0_*_frame68_struct223.c) 800; best 399 (frame 0x68, regnorm 22+27, 2402/2407 insns). Best source kept in the session scratch as best_407.c / climb result; NOT committed (tree still has the certified T3 body).
+Metric used: aligned diff lines (scratch al.py: difflib on register-blind shapes, jumps ignored) = structural ! + register ~ + slot-only `.`. Start (saved candidate build/brally/win32/match/m2_candidates/0x100250D0_*_frame68_struct223.c) 800; best 399 (frame 0x68, regnorm 22+27, 2402/2407 insns). Best source kept in the session scratch as best_407.c / climb result; NOT committed (tree still has the certified T3 body).
 
 **Levers that moved it (each measured):**
 - Use param_1 / param_2 directly as output cursor and budget (no puVar21/cbMax copies): prologue load order matches.

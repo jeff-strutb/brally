@@ -51,7 +51,7 @@ typedef struct { void *p; } BrModelLoadArg;
 /* lo + (((hi - lo) * frac) >> 12), truncated back to the source width. The
  * truncation is a `movsx ax` / `movsx al` in the original and does wrap.
  * Macros, not helpers: the original open-codes all six per vertex, and at
- * /Od a static helper is a real call (docs/VC5-IDIOMS.md, /Od source facts). */
+ * /Od a static helper is a real call (docs/brally/VC5-IDIOMS.md, /Od source facts). */
 #define BrAnimLerp16(lo, hi, frac) \
     ((int)(int16_t)(((((hi) - (lo)) * (frac)) >> 12) + (lo)))
 #define BrAnimLerp8(lo, hi, frac) \
@@ -97,7 +97,7 @@ typedef struct { void *p; } BrModelLoadArg;
 void BrAnimUpdate(BrAnimSet *pSet)
 {
     /* ALL SIXTEEN locals at function scope, and in THIS order.  /Od homes a
-     * local by a hash of its NAME (docs/VC5-IDIOMS.md): the slot order is
+     * local by a hash of its NAME (docs/brally/VC5-IDIOMS.md): the slot order is
      * hash-bucket ascending, and inside one bucket the LATER declaration
      * takes the EARLIER slot.  Names were chosen against a measured bucket
      * table so the frame reads exactly -4 pDst8, -8 ii, -0xC t, -0x10 pLow,

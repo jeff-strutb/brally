@@ -1,0 +1,74 @@
+/* WHAT IT DOES: reduce a file path to a clean 64-character name: take the
+ * basename, then normalise it. Aborts the game if the result would not fit,
+ * since a longer one would have overrun the buffer it is copied into. */
+/* @implements 0x100087D0 glide BrCleanupName_100087D0
+ * @cpp_kind method
+ * @cpp_symbol ?CleanupName@Name87D0@@QAEXPAD0@Z
+ *
+ * Thiscall, two stack args (`ret 8`), 121 B. Take the basename of `src`
+ * into `dst` through the +4 subobject's helper (0x10008D70, the one
+ * slice4_52.c matches as `__stdcall BrPathBasename` -- byte-identical
+ * because that member never touches its `this`), shout via
+ * BrLogFatalPrintf if the result is longer than the 64-byte field, then
+ * upper-case it in place and zero-fill the tail of the field.
+ *
+ * The `this` adjustment for the member call is `add ecx,4`, not a lea,
+ * because `this` is still live in ecx at that point.
+ *
+ * Both string primitives are the /Oi inline forms: strlen as
+ * `or ecx,-1 / xor eax,eax / repne scasb / not ecx / dec ecx`, and the
+ * variable-length memset as the shr-2 / and-3 stosd+stosb pair.
+ *
+ * The loop counter is UNSIGNED -- as `int` the two `i < 64` tests come
+ * out `jl`/`jge` where the original has `jb`/`jae` (2 of the 9 first-draft
+ * diffs).
+ *
+ * BYTE-EXACT 2026-09-13 (23 cpp probes).  The tail zero-fill is a plain
+ * `for (; i < 64; i++) dst[i] = 0;` -- VC5 expands the loop as the same
+ * variable-length memset (shr-2 / and-3 stosd+stosb) but materialises the
+ * destination lea BEFORE the fill value, which is the original's order;
+ * every memset(...) spelling (`dst + i`, `&dst[i]`, hoisted `char *p`, a
+ * named length) emits the lea last (7 diffs).  Same lever as 0x1006FCE0's
+ * constant-size fill: see docs/brally/VC5-IDIOMS.md "rep stosd order".
+ */
+#define _CRTIMP __declspec(dllimport)
+#include <string.h>
+
+class Sub8D70 {
+public:
+    void Basename(char *src, char *dst);    /* 0x10008D70 */
+};
+
+class Name87D0 {
+public:
+    char    pad[4];
+    Sub8D70 m4;             /* +0x04 */
+
+    void CleanupName(char *src, char *dst);
+};
+
+extern "C" {
+_CRTIMP int __cdecl toupper(int c);
+void BrLogFatalPrintf(const char *fmt);     /* 0x10008EC0 */
+}
+
+void Name87D0::CleanupName(char *src, char *dst)
+{
+    unsigned int i;
+
+    m4.Basename(src, dst);
+
+    if (strlen(dst) > 64)
+        BrLogFatalPrintf(
+            "CleanupName: Name is greater than 64 bytes. Memory Corrupted!");
+
+    for (i = 0; i < 64; i++) {
+        char c = dst[i];
+        if (c == 0)
+            break;
+        dst[i] = (char)toupper(c);
+    }
+
+    for (; i < 64; i++)
+        dst[i] = 0;
+}

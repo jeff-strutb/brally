@@ -4,7 +4,7 @@
 
 > A logged "cross-jumping wall" often breaks by reordering which return is PHYSICALLY LAST in the source; that return becomes VC5's shared tail.
 
-A "cross-jumping wall" (docs/VC5-IDIOMS.md, "our cl merges identical error
+A "cross-jumping wall" (docs/brally/VC5-IDIOMS.md, "our cl merges identical error
 tails") is frequently NOT a wall. VC5 picks ONE return as the shared physical
 tail block and jumps all matching returns forward to it; the others stay
 inline/duplicated. **Which return it shares is decided by which return is

@@ -8,7 +8,7 @@ OURS is the 64-bit build's dump (BR_DUMP=F:PATH, platform/common/script.c);
 REFERENCE is the wasm lane's dump of the same frame of the same script. Only
 the globals the 64-bit build can place at their original addresses are
 compared -- the map is the g_brDumpMap table datalift.py generates into
-build/portable/gen/br_data.c (--map for another build's). A word inside a
+build/brally/null-soft/gen/br_data.c (--map for another build's). A word inside a
 block of neighbouring globals (globfold.py) is shown with the global the
 original has there. Each differing global prints with its words
 shown as integers and as floats, ours first.
@@ -86,7 +86,7 @@ NOT_STATE = (
     's17_',
     's_aClipPool',
 )
-MAP = 'build/portable/gen/br_data.c'
+MAP = 'build/brally/null-soft/gen/br_data.c'
 
 
 def is_addr(v):

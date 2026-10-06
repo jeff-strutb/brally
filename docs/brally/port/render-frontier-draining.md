@@ -6,7 +6,7 @@
 
 Milestone 6's render half = port the per-frame race render `0x10011FA0`. It
 cannot be transcribed until its direct callees are ported. The enumerated queue
-is **`config/render_frontier.csv`** (va, glide_size, aligned, status, name,
+is **`config/brally/render_frontier.csv`** (va, glide_size, aligned, status, name,
 note).
 
 **Why B (drain frontier) before A (scene-entity model):** each boundary-clean
@@ -19,7 +19,7 @@ field usage.
 **The loop that worked (validated on 0x10017F60):**
 1. Read the Glide body from `asm/<page>.asm` (Glide is the reference target per
    README - NOT D3D; `work/slice*/*.asm` is the D3D dump). Confirm size/pairing
-   with `tools/manifest.py <addr>` and `tools/whereis.py <addr>`.
+   with `tools/brally/manifest.py <addr>` and `tools/brally/whereis.py <addr>`.
 2. Trace every global/callee the body touches to understand role before naming.
    Name globals `g_<hexaddr>` (matches asm annotation + repo convention). Do NOT
    overclaim a role you cannot prove - address names beat guessed names.
@@ -31,11 +31,11 @@ field usage.
    Glide coverage target.
 5. Behavioural test in `port/tests/test_<slice>.c`, wired into its `main`.
 6. `./build.sh && ./tools/regress.sh` (green = 135/135), then
-   `.venv/bin/python tools/claimcheck.py` (see [capstone-venv-auditors](../decomp/toolchain/capstone-venv-auditors.md)).
+   `.venv/bin/python tools/brally/claimcheck.py` (see [capstone-venv-auditors](../decomp/toolchain/capstone-venv-auditors.md)).
 7. Mark the row `done` in render_frontier.csv; commit (no credit trailers).
 
 **State (2026-08-21, main `c78f090`): 8 TODO left** (38 done, 4 n/a, 50 rows  - 
-counted straight out of `config/render_frontier.csv`, which is the authority;
+counted straight out of `config/brally/render_frontier.csv`, which is the authority;
 the narrative below it lags).
 
 **Prior state (2026-08-18, main `2838aad`): 10 TODO left.**
@@ -52,7 +52,7 @@ disambiguate stack aliasing (I miscounted glide pushes; a 3rd `push edx` at
 (BrMat4Mul) are grab-bag objects that drag trig/span/pool/dplay into a
 standalone test link - unbounded. Fix per this project's stub philosophy: link
 only self-contained cheap modules (br_vec, br_mat) and STUB the heavy-object
-helpers faithfully in the test (build.d/test_slice2_14.deps = just br_vec br_mat).
+helpers faithfully in the test (tests/brally/deps/test_slice2_14.deps = just br_vec br_mat).
 g_077284 = -2.0 (z lift +2). g_5BCAEC/g_680944 modelled as `BrPropList
 *g_BrModelLights` (slice2_14.c, NULL until the blob loader runs).
 
@@ -72,7 +72,7 @@ METHOD THAT WORKED (reusable for the car-draw siblings):
    uses token 1 = G_?CMUX_1 in the d slot. Words: #1 w0=0xFCFFFFFF
    w1=0xFFFF73B9, #2 w0=0xFC121824 w1=0xFF33FFFF (literals in the test).
 3. GLOW: transcribe the stack-aliasing arithmetic (0x1000C1C2..0x1000C38A)
-   against tools/x87emu.py, NOT by hand. Harness recipe (scratch
+   against tools/brally/x87emu.py, NOT by hand. Harness recipe (scratch
    glow_golden.py): dump the fn + the 7 BrVec3 callees + the 7-byte fsqrt
    (0x10002570); drop the fn tail (0x1000C38A..end) and append a sentinel
    (0x1000C38A,'ret',''); set esi=pCar, esp=scratch, edi=0; run from
@@ -276,7 +276,7 @@ STRUCTURE (verified by reading the full D3D twin):
   Scale/MulAddTo on pos(+0x30), basis(+0x00), headlight(+0x20), camera
   g_6C6490+0x30. Consts: g_08F1F8=0.0, g_08F21C=0.95, g_08F220=750.0. HAS THE
   STACK-ALIASING TRAP the file warns of ([esp+N] names different locals as esp
-  shifts) - do NOT hand-derive; drive it through tools/x87emu.py.
+  shifts) - do NOT hand-derive; drive it through tools/brally/x87emu.py.
 - Tail (~15 put): E7; BA001402; BD000000(popmtx); B6000000{0x40000};
   BC000002{0x80000040}; G_MOVEMEM{0x03860010,BrG_0AA868}; {0x03880010,
   BrG_0AA860}; BA000c02{BrG_6C0258}; BA000e02{0}; BrRdpSetCombineLERP #2.
@@ -405,7 +405,7 @@ After draining the pure-math deps, EVERY remaining first-level frontier function
 needs either unmodelled shared scene/render state or its unported frontier
 siblings. Verified:
 - 0x10011D20 (FULLY DECODED, see below) needs g_0A9EC0 (shared DL blob, in
-  config/globals_shared.csv, referenced as a cmd payload by ~7 render fns),
+  config/brally/globals_shared.csv, referenced as a cmd payload by ~7 render fns),
   g_6EED48 (scene-object ptr), g_5BCAEC (props ctx), g_6EA360, g_5BC764
   (RUNTIME global, set elsewhere - not a const). Only g_6E78F0 already exists
   (br_mat.c scratch matrix).

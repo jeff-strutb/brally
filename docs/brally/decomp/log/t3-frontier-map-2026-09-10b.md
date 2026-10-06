@@ -44,7 +44,7 @@ functions move at once:
 
 **WHAT MOVED: 0x1005D770 BrCtlAiBody (3,858 B) - gates 0, A1, A2, A4, A5
 now ALL PASS** (was A2 35/27 and A3 15). Two new levers, both on the tail
-of docs/VC5-IDIOMS.md:
+of docs/brally/VC5-IDIOMS.md:
 
 - **Name a computed float bound in a (dead) local.** `if (v < a - -1.0f)`
   is canonicalised to `fld <bound>; fcomp v`; with the bound in a slot it
@@ -71,7 +71,7 @@ A4's identical-order demand: 0x10060F40, 0x10058540, 0x10058900,
 0x10029EC0, 0x10013FD0, 0x10039D20. That is the gate question the project lead
 already answered - see [do-not-lower-t3-standard](../rules/do-not-lower-t3-standard.md). Parked.
 
- The tree is SHARED and a peer was writing `src/core/slice3_44.c` during
+ The tree is SHARED and a peer was writing `src/brally/core/slice3_44.c` during
 this session; the tree-wide match count moved 984 -> 986 with none of my
 edits landing a match. Commit by pathspec, re-derive counts, never quote
 one from earlier in the session ([counting-reconciliation](../traps/counting-reconciliation.md),

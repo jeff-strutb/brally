@@ -1,0 +1,10 @@
+# Port deviations for src/brally/core/geometry/br_quat.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_077C38
+@drop var:g_077C4C
+@drop var:g_077C50
+@after var:g_077C50
+
+static float g_077C38, g_077C4C, g_077C50;
+@end

@@ -10,7 +10,7 @@
  *   .rca  car file.  0x100370D0 fixes it up.  The N64 struct it contains is
  *         at FILE OFFSET 0x8000 and its N64 address is 0x803C8000 -- that
  *         pair is what BrSegSetBases() is handed, and both retail cars in
- *         testdata/ have 0x803C.... words at 0x8010 onwards, which confirms
+ *         reference/brally/data/ have 0x803C.... words at 0x8010 onwards, which confirms
  *         it.  The first 0x8000 bytes are the "RCar" header plus name.
  *
  *   track header.  0x10038510 reads exactly 0x230 bytes and swaps them;
@@ -319,7 +319,7 @@ void BrTrackFixupList84(void *pvHdr);
  * GOTCHA: the palette size is chosen from a DIFFERENT array -- the parallel
  * table at 0x106C7C64, same index, same stride, field +0x20.  0x20 bytes
  * (16 entries, CI4) when that field's nibble at 0xF000000 is exactly
- * 0x1000000, otherwise 0x200 (256 entries, CI8).  testdata/skytexdesert.lut4
+ * 0x1000000, otherwise 0x200 (256 entries, CI8).  reference/brally/data/skytexdesert.lut4
  * is 32 bytes, which is the CI4 case. */
 /* BrTexCopyRecords: prototype in br_funcs.h */
 

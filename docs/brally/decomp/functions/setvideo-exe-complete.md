@@ -9,17 +9,17 @@
 **Second fully-decompiled in-scope binary, after BRally.exe.** Game code
 `0x401000` - `0x402D20`: **42 / 42 functions, 7,228 / 7,228 B** (+228 B of
 inter-function alignment padding = the whole 7,456-byte span).
-`tools/image_build.py` assembles `SetVideo.exe` with **0 differing bytes**.
+`tools/brally/image_build.py` assembles `SetVideo.exe` with **0 differing bytes**.
 Matched total in `.text` is 7,251 / 36,864 B (19.7%) - the extra 23 B are the
 three CRT stubs `CRT_empty` / `_matherr` / `_setdefaultprecision`.
 
 The remaining **27,888 B / 289 map rows at or above `0x402D20`** are
 statically-linked MSVC 5.0 CRT: fenced by `CRT_START['setvideo']` in
-`tools/progressmap.py`, reproduced by linking, **not a decomp target** (same
-category as BRD3D's static CRT under rule 0). `config/fenced_exe.csv` needs no
+`tools/brally/progressmap.py`, reproduced by linking, **not a decomp target** (same
+category as BRD3D's static CRT under rule 0). `config/brally/fenced_exe.csv` needs no
 SetVideo rows - nothing CRT sits below the boundary.
 
-**Map defect fixed in the same pass:** `config/functions_setvideo.csv` had
+**Map defect fixed in the same pass:** `config/brally/functions_setvideo.csv` had
 WinMain truncated at 930 B with 11 further rows split out of its body at
 non-prologue boundaries (`WinMain_radio`, `WriteDefaultINI`, `WinMain_jtab`,
 …). Those rows made the progress map report 1,212 B of phantom unfinished game
@@ -31,7 +31,7 @@ split into 7 the same way, and BRally has the same class.
 ## The last wall: WinMain 0x00402480 (2,144 B, 644 → 0)
 
 Read as a coloring wall for a week; it was three source facts. Full write-up
-in `docs/setvideo-exe-notes.md`, both new idioms in `docs/VC5-IDIOMS.md`.
+in `docs/setvideo-exe-notes.md`, both new idioms in `docs/brally/VC5-IDIOMS.md`.
 
 1. **The radio dialog's lParam IS the loop-carried result.** `mov ebx,eax` at
    `+0x3bb` has no downstream reader, so it read as dead - but every back-edge
@@ -60,8 +60,8 @@ gives the preheader load + reload on the `n<=0` path that keeps `n` in ebp
 
 - Score one TU: `.venv/bin/python3` (capstone lives in the venv, not the
   system python) with `ghidra_to_match._score_source(src, name, orig,
-  ['/O2 /ML'], tag)`. Orig bins: `build/match/orig_setvideo/<VA>.bin`.
-- Sweep: `python3 tools/exe_sweep.py src/exe/setvideo/<VA>.c` → `report_exe.csv`.
+  ['/O2 /ML'], tag)`. Orig bins: `build/brally/win32/match/orig_setvideo/<VA>.bin`.
+- Sweep: `python3 tools/brally/exe_sweep.py src/brally/exe/setvideo/<VA>.c` → `report_exe.csv`.
 - `/ML` static CRT: CRT calls are `E8`, never `FF 15`. Do **not** define
   `_CRTIMP` here - that is the BRally/DLL convention.
 

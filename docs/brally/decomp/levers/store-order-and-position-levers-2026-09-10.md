@@ -40,7 +40,7 @@ original's stream shows a product before a doubling, spell the product first.
 
 ## 2. POSITION IN THE TU -- rare, big, and it ROTS
 
-`tools/possweep.py` (committed 2026-09-10; lifts a function's comment block through its closing
+`tools/brally/possweep.py` (committed 2026-09-10; lifts a function's comment block through its closing
 brace and reinserts it ahead of every top-level definition, scoring each with
 `fn.py --var`) swept ~25 rows. Position moved only 3 of them, but when it moves
 it moves a lot:
@@ -102,7 +102,7 @@ Restated in the counted form the gate now says the honest thing -- "thin passes
 
 Sweep for the class with:
 
-    grep -rhoE "@t4-pass [^*]*" src/ | grep -vE "@t4-pass 0x[0-9A-Fa-f]{8} [0-9]+ [0-9]{4}-[0-9]{2}-[0-9]{2} probes [0-9]+ bytes [0-9]+ insns [0-9]+ regions [0-9]+ rows [0-9]+ census (yes|no)"
+    grep -rhoE "@t4-pass [^*]*" src/brally/ | grep -vE "@t4-pass 0x[0-9A-Fa-f]{8} [0-9]+ [0-9]{4}-[0-9]{2}-[0-9]{2} probes [0-9]+ bytes [0-9]+ insns [0-9]+ regions [0-9]+ rows [0-9]+ census (yes|no)"
 
 Most hits are prose inside a @t3 tag ("@t4-pass passes (ledger lines above...)")
 and are harmless; as of 2026-09-10 that was the only real one left. Companion to

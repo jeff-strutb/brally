@@ -13,15 +13,15 @@ its own file compiled and that function objdiff'd - nothing more. A single-file
 sweep is ~12s measured. The whole-tree run only ever produced an accurate total.
 Do not full-sweep to pick or verify a function.
 
-**Three changes to `tools/match_sweep.py`:**
+**Three changes to `tools/brally/match_sweep.py`:**
 1. **Every run merges its rows into report.csv**, single-file runs included.
    Previously only an argument-less run wrote the report, so each incremental
    match made it staler until a full sweep was the only cure - that is exactly
    how the 120-vs-152 drift happened. Merge replaces the row set PER FILE, so a
    deleted/renamed/moved function drops out instead of lingering.
-2. **Results cached** in `build/match/sweep_cache.json`, keyed by the file's
-   own bytes plus a digest of everything under `include/` and
-   `tools/msvc5-compat`. A cache hit is refused unless the variant `.obj` files
+2. **Results cached** in `build/brally/win32/match/sweep_cache.json`, keyed by the file's
+   own bytes plus a digest of everything under `src/brally/include/` and
+   `tools/toolchains/msvc5-compat`. A cache hit is refused unless the variant `.obj` files
    still exist, because objdiff.py is pointed at them right afterwards.
    Measured: 11.7s cold -> 0.08s warm; full sweep 20min -> 0.076s.
    ANY header edit invalidates the WHOLE cache by design.

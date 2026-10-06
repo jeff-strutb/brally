@@ -1,6 +1,6 @@
 # Calling-convention generator - decision logic
 
-Standalone transform (`tools/gen_callconv.py`). Do **not** copy this file
+Standalone transform (`tools/brally/gen_callconv.py`). Do **not** copy this file
 into `ghidra_to_match.py` blindly: fold the *rules* into
 `_refine_candidates` as one candidate per caller. Proven against
 BRGlide.dll orig bytes.
@@ -100,7 +100,7 @@ order). 0x10023B70: `grAlphaCombine;` → `grAlphaCombine(3, 8, 1, 1, 0)`
 from `push esi=0; push 1; push 1; push 8; push 3`. Without this the
 5-arg stdcall prototype is C2198.
 
-If `tgt` is a local function, open `build/match/orig/0x<tgt>.bin`:
+If `tgt` is a local function, open `build/brally/win32/match/orig/0x<tgt>.bin`:
 
 | callee tail | `add esp` after call? | convention | arity |
 |---|---|---|---|
@@ -245,19 +245,19 @@ Seed from the wrapped TU (`wrap_for_compile` output). Do not write
 CLI:
 
 ```
-python3 tools/gen_callconv.py --va 0x1006C6A0
-python3 tools/gen_callconv.py --va 0x1006C6A0 --from-decomp
-python3 tools/gen_callconv.py --validate
-python3 tools/gen_callconv.py --va 0x1006C6A0 --from-decomp --no-score
+python3 tools/brally/gen_callconv.py --va 0x1006C6A0
+python3 tools/brally/gen_callconv.py --va 0x1006C6A0 --from-decomp
+python3 tools/brally/gen_callconv.py --validate
+python3 tools/brally/gen_callconv.py --va 0x1006C6A0 --from-decomp --no-score
 ```
 
 `--from-decomp` isolates the convention-only delta (wrap of
-`build/ghidra_decomp`, never a hand-edited `ghidra_work`). `--validate`
+`build/brally/analysis/ghidra_decomp`, never a hand-edited `ghidra_work`). `--validate`
 runs the prey list that way.
 
 ## Measured convention-only delta
 
-Scored with `ghidra_to_match._score_source` against `build/match/orig`,
+Scored with `ghidra_to_match._score_source` against `build/brally/win32/match/orig`,
 opts `/O2`, `/Od`, `/O2 /Oy-`. From-decomp wrap. 2026-08-26.
 
 | VA | before | after | delta | what the transform did | remaining |

@@ -6,8 +6,8 @@
 
 ## The gate could lie, and did (fixed 2026-09-03, commit 7234422)
 
-`tools/image_build.py`'s **DLL lane read whatever `.obj` was sitting in
-`build/match/obj_<opt>/` with no freshness test at all.** A *missing* object
+`tools/brally/image_build.py`'s **DLL lane read whatever `.obj` was sitting in
+`build/brally/win32/match/obj_<opt>/` with no freshness test at all.** A *missing* object
 was caught (its rows surfaced as unplaced); a **stale** one was not. So an
 object left over from an older version of a file placed bytes the current tree
 would not produce, while the run printed *"0 differing bytes / every claim
@@ -33,7 +33,7 @@ COFF timestamp. The gate had been grading that object.
  **THE GENERAL HAZARD, and it is rule 10's real cost:** a shared header edit
 silently un-matches functions in files nobody re-sweeps, and BOTH the report
 and (until now) the gate keep saying they match. After touching anything in
-`include/`, the objects of every dependent TU are stale - the gate now rebuilds
+`src/brally/include/`, the objects of every dependent TU are stale - the gate now rebuilds
 them, but `report.csv` rows are NOT re-scored by it. **A green gate does not
 re-validate a stale report row's diff count; it only proves what it placed.**
 
@@ -54,7 +54,7 @@ re-validate a stale report row's diff count; it only proves what it placed.**
 
 Before this, every non-pass printed *"the tree's claims do not hold at image
 level"*, which sent a session hunting a decomp defect that did not exist while
-`refile_group.py` rewrote `src/` underneath the run - three different failure
+`refile_group.py` rewrote `src/brally/` underneath the run - three different failure
 sets in twenty minutes, each reading as a hard FAIL. See warning 1 in
 [image-build-gate](../oracle/image-build-gate.md), which this supersedes on the "re-run before believing a
 failure" point: the tool now tells you WHY.
@@ -62,9 +62,9 @@ failure" point: the tool now tells you WHY.
 ## Cost and cache
 
 First run after a header edit rebuilds every dependent TU (~140 here, a few
-minutes); mtime-cached after, into `build/match/obj_img_dll_<tag>/` so it never
+minutes); mtime-cached after, into `build/brally/win32/match/obj_img_dll_<tag>/` so it never
 races the sweep's own `obj_<tag>/`. `--recompile` forces both lanes.
-`tools/audit.py` **check E** covers freshness, race detection, the opt-tag
+`tools/brally/audit.py` **check E** covers freshness, race detection, the opt-tag
 mapping and the verdict taxonomy - check C only ever proved the image DIFF was
 a real comparison, never that the gate compared the CURRENT tree.
 

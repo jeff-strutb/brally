@@ -265,8 +265,8 @@ typedef struct BrCamObj {
  * highlighted entry, the attract-mode credits page, the fade bars, and
  * finally closes the frame.  Debug colour markers bracket every stage;
  * their callee is a bare `ret`. */
-/* @t4-pass 0x10011FA0 1 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10011FA0 2 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10011FA0 1 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10011FA0 2 2026-09-07 probes 103 bytes 4503 insns 1377 regions 10 rows 7 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x10011FA0 3 2026-09-09 probes 35 bytes 4501 insns 1376 regions 2 rows 2 census no  (hand: hMir first) */
 /* @t4-pass 0x10011FA0 4 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: corpus MISS at +0x131/+0xaf; site-1 fresh angles -- X7 pV-before-call landed, size exact) */
 /* @t4-pass 0x10011FA0 5 2026-09-09 probes 11 bytes 4500 insns 1376 regions 2 rows 0 census yes  (hand: shadow-lea and site-2 fresh angles -- zero movement) */

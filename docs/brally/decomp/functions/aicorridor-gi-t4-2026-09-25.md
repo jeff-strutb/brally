@@ -2,7 +2,7 @@
 
 *Recorded 2026-09-25.*
 
-> 2026-09-25: 0x1005D060 BrAiScanCorridor T1 -> T4 as a C++ /Gi TU (src/core/driving/BrAiCorridor_1005D060.cpp). /Gi join-reload order depends on source+obj PATH LENGTH and idb chain; verify via the serial O2-Gi chain, never the root vc50.idb.
+> 2026-09-25: 0x1005D060 BrAiScanCorridor T1 -> T4 as a C++ /Gi TU (src/brally/core/driving/BrAiCorridor_1005D060.cpp). /Gi join-reload order depends on source+obj PATH LENGTH and idb chain; verify via the serial O2-Gi chain, never the root vc50.idb.
 
 0x1005D060 (856 B, recursive thiscall) went T1 -> T4, commit b02fa277.
 
@@ -26,7 +26,7 @@ merge_report using that chain (scratch script gisweep_row2.py pattern).
 only reproducible through the serial chain, like 0x10054730
 ([gi-serial-idb-a7-recipe](../oracle/gi-serial-idb-a7-recipe.md)).
 **How to apply:** renaming this file, or adding an "O2 Gi" TU that sorts
-before src/core/driving/, can flip it -- re-run the chain. BrRaceStep's /Gi
+before src/brally/core/driving/, can flip it -- re-run the chain. BrRaceStep's /Gi
 recompile reads 6,765 diffs vs 6,752 in the ledger with or without this TU
 (pre-existing drift, not caused here).
 Related: [encodedelta-vc5-t4-2026-09-25](../levers/encodedelta-vc5-t4-2026-09-25.md) (the non-/Gi heap tie-break).

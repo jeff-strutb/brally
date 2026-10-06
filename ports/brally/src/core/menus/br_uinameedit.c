@@ -16,8 +16,8 @@
  * pushes (195.0f == 0x43430000, 10.0f == 0x41200000, ...).  The row offsets
  * +19/+38/+57/+76/+95/+114/+133/+33 come from the NEGATIVE .rdata constants
  * at 0x1008F680..0x1008F69C, every one of which is used as an `fsub` and
- * therefore ADDS its magnitude; they were read out of orig/BRD3D.dll with
- * tools/pe.py, not assumed.
+ * therefore ADDS its magnitude; they were read out of reference/brally/orig/BRD3D.dll with
+ * tools/brally/pe.py, not assumed.
  *
  * The C++ exception frames the originals set up (`push -1 / push <funclet> /
  * fs:[0]`, plus the state variable each keeps at [esp+0x18] or [esp+0x24])
@@ -34,7 +34,7 @@
 #include "br_ui.h"
 
 /* g_br73 is the port's gathering of separate originals.  The matching build
- * names the ones used here as the globals they are (config/globals_glide.csv),
+ * names the ones used here as the globals they are (config/brally/globals_glide.csv),
  * so each relocation resolves to its own variable. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC5C44 */
 #define BR73_NAA28EC g_brUinAA28EC

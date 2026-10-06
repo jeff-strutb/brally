@@ -52,7 +52,7 @@ So: when a function is CONFIRMED an allocator/scheduler wall, tag it, record
 the specific coloring evidence, and BATCH it - do not hand-grind.
 
 **PERMUTER BUILT + TESTED 2026-08-26 - basic version does NOT crack these
-(negative result).** `tools/permute.py` (SM64-style: mutate liveness/temp-
+(negative result).** `tools/brally/permute.py` (SM64-style: mutate liveness/temp-
 count, compile MSVC5, score, anneal) was run on all 19 coloring-wall near-
 misses. ZERO cracked; the closest 5 held at 2-10 diffs after 150-220 unique
 compiles each. The mutation set (intro/inline temp, split/merge locals,

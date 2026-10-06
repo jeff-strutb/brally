@@ -29,7 +29,7 @@
  * destination lea BEFORE the fill value, which is the original's order;
  * every memset(...) spelling (`dst + i`, `&dst[i]`, hoisted `char *p`, a
  * named length) emits the lea last (7 diffs).  Same lever as 0x1006FCE0's
- * constant-size fill: see docs/VC5-IDIOMS.md "rep stosd order".
+ * constant-size fill: see docs/brally/VC5-IDIOMS.md "rep stosd order".
  */
 #include <string.h>
 #include <ctype.h>

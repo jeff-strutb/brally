@@ -1,0 +1,190 @@
+# Port deviations for src/brally/core/menus/br_textbox.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop define:_CRTIMP
+@drop define:BrTextBoxDeleteDtor
+@drop define:BrTextBoxMeasureA
+@drop define:BrTextBoxMeasureB
+@drop define:BrTextBoxInit
+@drop undef:BrTextBoxInit
+@drop undef:BrTextBoxDeleteDtor
+@drop undef:BrTextBoxMeasureA
+@drop undef:BrTextBoxMeasureB
+@drop var:DAT_100776f0
+@drop fn:BrTextBoxInit
+@drop type:BrTextBoxDeleteFlags
+@drop fn:BrTextBoxDeleteDtor
+@drop type:BrGlyphMetric12
+@drop var:g_BrGlyphFontA12
+@drop var:g_BrGlyphFontB12
+@drop fn:BrTextBoxMeasureA
+@drop fn:BrTextBoxMeasureB
+@drop type:funcptr
+@drop var:PTR_FUN_100776F0
+@drop var:PTR_FUN_100776f0
+@drop fn:BrStubFalse
+@drop fn:BrVtInit53EE0
+@after fn:BrVtInit53EE0
+
+/* =====================================================================
+ * 0x1005B050 -- BrTextBox constructor (thiscall)
+ * ===================================================================== */
+
+/* WHAT IT DOES: sets up a fresh text box -- one line of on-screen text with
+ * its own position and size. It clears the string and the measurements but
+ * deliberately leaves the box's left and right edges as it found them, and
+ * since the allocator does not zero either, a brand-new box has junk in
+ * those fields until something fills them in. */
+/* @implements 0x1005B050 d3d BrTextBoxInit */
+/* WHAT IT DOES: sets up a fresh text box -- one line of on-screen text with
+ * its own position and size. It clears the string and the measurements but
+ * deliberately leaves the box's left and right edges as it found them, and
+ * since the allocator does not zero either, a brand-new box has junk in
+ * those fields until something fills them in. */
+/* @implements 0x1005B050 d3d BrTextBoxInit */
+BrTextBox *BrTextBoxInit(BrTextBox *pBox)
+{
+    /* The vtable store comes FIRST, before the buffer clear -- the clear
+     * starts at this+9 and so never touches it either way. */
+    pBox->pVtbl = g_pBrTextBoxVtbl;
+
+    memset(pBox->sz, 0, sizeof pBox->sz);
+
+    pBox->f418  = 0;
+    pBox->y     = 0.0f;
+    pBox->x     = 0.0f;
+    pBox->height = 0;
+    pBox->width  = 0;
+    pBox->f41C  = 0;
+    pBox->f420  = 0;
+    pBox->f04   = 0;
+    pBox->f08   = 1;
+
+    /* left / f428 / right / f430 / f434 are deliberately NOT touched. */
+    return pBox;
+}
+
+/* =====================================================================
+ * 0x1005B0A0 -- scalar deleting destructor
+ * ===================================================================== */
+
+/* WHAT IT DOES: destroys a text box and, if asked, frees it too. It hands
+ * the pointer back even when it has just freed it, which is what the
+ * compiler's standard destructor does and is kept. */
+/* @implements 0x1005B0A0 d3d BrTextBoxDeleteDtor */
+BrTextBox *BrTextBoxDeleteDtor(BrTextBox *pBox, uint32_t flags)
+{
+    BrTextBoxDtor(pBox);
+    if (flags & 1u) {
+        BrOperatorDelete(pBox);
+    }
+    /* Returns the (possibly freed) pointer, exactly as the original does. */
+    return pBox;
+}
+
+/* =====================================================================
+ * 0x1005B0D0 / 0x1005B160 -- measure sz[]
+ * ===================================================================== */
+
+/* The shared prologue of both measurers: decide what kind of character this
+ * is.  Returns 1 for "in the glyph range", 0 for "space-or-nothing", -1 for
+ * "stop the walk entirely". */
+static int BrGlyphClassify(char c)
+{
+    /* movsx ax, dl ; sub eax, 0x20 ; test ax,ax / cmp ax,0x7f  -- a SIGNED
+     * 16-bit test on the sign-extended byte, so 0x80..0xFF land negative. */
+    int16_t k = (int16_t)((int16_t)(signed char)c - 0x20);
+
+    if (k < 0 || k > 0x7F) {
+        if (c != 0x20) {
+            return -1;      /* < 0x20 or >= 0x80: stop measuring here */
+        }
+    }
+    /* cmp dl,0x21 / jl ; cmp dl,0x7e / jg  -- signed byte compares */
+    if ((signed char)c < 0x21 || (signed char)c > 0x7E) {
+        return 0;
+    }
+    return 1;
+}
+
+void BrTextBoxMeasureA(BrTextBox *pBox)
+{
+    uint16_t width = 0;
+    /* Seeded from the field, never reset. */
+    uint16_t maxH  = (uint16_t)pBox->height;
+    int      i     = 0;
+    char     c     = pBox->sz[0];
+
+    while (c != '\0') {
+        int cls = BrGlyphClassify(c);
+        int hit = 0;
+
+        if (cls < 0) {
+            break;
+        }
+        if (cls > 0) {
+            const BrGlyphMetric *pG = &g_BrGlyphFontA[(unsigned char)c - BR_GLYPH_FIRST];
+
+            if (pG->advance != BR_GLYPH_NONE && pG->height != BR_GLYPH_NONE) {
+                width = (uint16_t)(width + pG->advance);
+                if ((int16_t)maxH < (int16_t)pG->height) {
+                    maxH = pG->height;
+                }
+                hit = 1;
+            }
+        }
+        if (!hit && c == 0x20) {
+            width = (uint16_t)(width + BR_GLYPH_SPACE_ADVANCE);
+        }
+
+        ++i;
+        /* movsx eax, di -- the index is truncated to 16 bits and
+         * sign-extended.  Harmless for a 0x400-byte buffer. */
+        c = pBox->sz[(int16_t)i];
+    }
+
+    pBox->height = (int16_t)maxH;
+    pBox->width  = (int16_t)width;
+}
+
+void BrTextBoxMeasureB(BrTextBox *pBox)
+{
+    uint16_t width = 0;
+    uint16_t maxH  = (uint16_t)pBox->height;
+    int      i     = 0;
+    char     c     = pBox->sz[0];
+
+    while (c != '\0') {
+        int cls = BrGlyphClassify(c);
+        int hit = 0;
+
+        if (cls < 0) {
+            break;
+        }
+        if (cls > 0) {
+            unsigned idx = (unsigned)((unsigned char)c - BR_GLYPH_FIRST);
+            /* GOTCHA: the sentinel test reads FONT A, the metrics read
+             * FONT B.  Not a transcription slip -- see the header. */
+            const BrGlyphMetric *pGate = &g_BrGlyphFontA[idx];
+            const BrGlyphMetric *pG    = &g_BrGlyphFontB[idx];
+
+            if (pGate->advance != BR_GLYPH_NONE && pGate->height != BR_GLYPH_NONE) {
+                width = (uint16_t)(width + (uint16_t)(pG->advance - 4u));
+                if ((int16_t)maxH < (int16_t)pG->height) {
+                    maxH = pG->height;
+                }
+                hit = 1;
+            }
+        }
+        if (!hit && c == 0x20) {
+            width = (uint16_t)(width + BR_GLYPH_SPACE_ADVANCE);
+        }
+
+        ++i;
+        c = pBox->sz[(int16_t)i];
+    }
+
+    pBox->height = (int16_t)maxH;
+    pBox->width  = (int16_t)width;
+}
+@end

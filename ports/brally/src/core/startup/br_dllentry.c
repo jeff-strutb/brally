@@ -9,7 +9,7 @@
  * 0x10073974, 0x10073979) were bytes of the 256-record data table at
  * 0x10072AE0..0x10073AE0 that happen to decode as `ret` / `call rel32`.  They
  * matched only because the image gate filled the call's displacement from
- * the original; they are fenced as data_table in config/fenced.csv now.
+ * the original; they are fenced as data_table in config/brally/fenced.csv now.
  */
 #include <excpt.h>   /* GetExceptionInformation, for the array unwinders */
 

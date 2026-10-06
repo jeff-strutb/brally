@@ -20,7 +20,7 @@
  * the destination BEFORE the fill value (`lea edi / mov ecx,8 / xor eax`),
  * where every memset spelling emits `mov ecx / xor eax / lea edi`.  The
  * memset forms and every flag set were dead (12 diffs, one permutation);
- * the loop is the source fact.  See docs/VC5-IDIOMS.md "rep stosd order".
+ * the loop is the source fact.  See docs/brally/VC5-IDIOMS.md "rep stosd order".
  */
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
@@ -60,7 +60,7 @@ void Car6FCE0::SlotSetup(int slot, int a)
     Bind(slot);
 }
 
-/* 0x1006FCB0 -- not yet transcribed in src/; read off the original:
+/* 0x1006FCB0 -- not yet transcribed in src/brally/; read off the original:
  * thiscall, one stack arg (`ret 4`).  Points the car at its slot's model
  * record (slot * 0x15F88 into the car-slot area at 0x100BCDD0, which
  * BrCarSlotLoad filled) and refreshes its colours (0x1006FC70). */

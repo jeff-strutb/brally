@@ -6,7 +6,7 @@ kept. The working procedure is [MATCHING.md](MATCHING.md); proven compiler
 idioms are in [VC5-IDIOMS.md](VC5-IDIOMS.md) and are queried, not reread:
 
 ```bash
-.venv/bin/python tools/corpus.py find --from <VA> --at <off> --len 12 --source
+.venv/bin/python tools/brally/corpus.py find --from <VA> --at <off> --len 12 --source
 ```
 
 A corpus miss means the construct is not proven anywhere: go to source truth,
@@ -15,7 +15,7 @@ not another permutation. Newly proven mappings go on the tail of VC5-IDIOMS.md.
 **Cadence.** Hand-solve one of a class, mint a generator, re-batch. Never
 hand-match what a generator could sweep. The lanes that still pay are T1
 intake (Pool B) and structural T2. Colouring walls (`reggap 0`) are T3, not a
-grind. `tools/crank.py` is an overnight lottery on Pool A only: never
+grind. `tools/brally/crank.py` is an overnight lottery on Pool A only: never
 `--all --loop`, never `--max-bytes` above 400. Giants are not a lottery.
 
 The N64 decompilation (Top Gear Rally) is the oracle for commutative operand
@@ -25,7 +25,7 @@ register-allocation walls. Pairing is not by shared strings (7 usable, not
 
 ## 0. The reference is BRGlide.dll, not BRD3D.dll
 
-`tools/refcheck.py` must say Glide-keyed. Tools honour `BR_REF` / `BR_MAP`.
+`tools/brally/refcheck.py` must say Glide-keyed. Tools honour `BR_REF` / `BR_MAP`.
 
 ## 1. Bit-exact under MSVC 5.0; the same source cross-compiles as the port
 
@@ -33,7 +33,7 @@ Do not reorder matching to make something run. Do keep the port buildable.
 The decomp sources hold only what MSVC compiles: no `BR_MATCHING_BUILD` /
 `_MSC_VER` conditionals (the hook refuses one). A port difference is a spec
 in the port's patch tree. Refactors of either side are checked with
-`tools/ppgate.py` (MSVC tokens) and the port's `portpp.py` (port tokens).
+`tools/brally/ppgate.py` (MSVC tokens) and the port's `portpp.py` (port tokens).
 
 ## 2. `@implements` means the bytes diff clean. Nothing else.
 
@@ -55,13 +55,13 @@ connected group; sweep both files; keep the move only if nothing regressed.
 Surroundings decide codegen: carry the whole preamble.
 
 ```bash
-python3 tools/install_hooks.py    # once per clone
-python3 tools/fileaudit.py        # ratchets: undescribed 0, batches 0, stranded 0
+python3 tools/common/install_hooks.py    # once per clone
+python3 tools/brally/fileaudit.py        # ratchets: undescribed 0, batches 0, stranded 0
 ```
 
 The pre-commit hook refuses a new `@implements` without `WHAT IT DOES:`, a new
 `sliceN_MM.c`, or a new VA in an existing batch. After a refile:
-`python3 tools/portcheck.py --baseline main`. The sweep compiles nothing for a
+`python3 tools/brally/portcheck.py --baseline main`. The sweep compiles nothing for a
 file with no `@implements`.
 
 ## 7. Commit every verified match immediately. Use pathspecs. Never stage behind a revert.
@@ -69,7 +69,7 @@ file with no `@implements`.
 ## 8. No attribution
 
 No credit trailers, no generator or tool credit, no names. Commit messages
-describe what changed and why. `tools/provcheck.py` enforces this in the
+describe what changed and why. `tools/common/provcheck.py` enforces this in the
 pre-commit and commit-msg hooks.
 
 ## 9. Never full-sweep for ordinary work
@@ -93,19 +93,19 @@ are all open to M2 work (see
 ## 12. T4 is byte-exact. T3 is certified complete, not byte-exact. Nothing between.
 
 EXCLUDED sits beside the tiers, not between them: game code the retail game
-provably never runs (`config/excluded.csv`, with the proof in the function's
+provably never runs (`config/brally/excluded.csv`, with the proof in the function's
 source header). It is outside the target and every work list, and
-`tools/tiers.py` labels it with the tier its transcription reached, for
+`tools/brally/tiers.py` labels it with the tier its transcription reached, for
 example `EXCLUDED (T2)`.
 
-`tools/t3.py --qualify <VA>` decides. Gate 0: purpose comment, no unfinished
+`tools/brally/t3.py --qualify <VA>` decides. Gate 0: purpose comment, no unfinished
 markers. Gate A: the residue is allocation or scheduling, every row
-classified, no lost sync, and A5 (the live oracle, `tools/t3live.py`, the
-original game run headless by `tools/brbox.py`) says EQUIVALENT in
-`config/t3_live.csv`. UNCOVERED, UNVERIFIED and DIVERGENT fail; an unreached
-function is never passed. A7 (the whole-image run, `tools/brbox_diff.py --all`:
+classified, no lost sync, and A5 (the live oracle, `tools/brally/t3live.py`, the
+original game run headless by `tools/brally/brbox.py`) says EQUIVALENT in
+`config/brally/t3_live.csv`. UNCOVERED, UNVERIFIED and DIVERGENT fail; an unreached
+function is never passed. A7 (the whole-image run, `tools/brally/brbox_diff.py --all`:
 every T3 body placed, every script, every frame against the original) must be
-IDENTICAL in `config/whole_image.csv` and no older than the function's
+IDENTICAL in `config/brally/whole_image.csv` and no older than the function's
 source. A5 alone certified about 25 real bugs that A7 found; nothing
 supersedes A7. Gate B: two counted `@t4-pass` lines (at least 10 compiles
 each) at the current numbers, one of them `census yes`. Colouring walls that
@@ -115,12 +115,12 @@ matched; `t4lane.py` / `claim_lane.py` never hand one out.
 ## Session start
 
 ```bash
-python3 tools/refcheck.py
-python3 tools/install_hooks.py
-python3 tools/t4lane.py --claim          # Pool B. Never `claim_lane.py claim N`.
+python3 tools/brally/refcheck.py
+python3 tools/common/install_hooks.py
+python3 tools/brally/t4lane.py --claim          # Pool B. Never `claim_lane.py claim N`.
 ```
 
-Counts come from `tools/tiers.py` and `tools/total.py`, not the README.
+Counts come from `tools/brally/tiers.py` and `tools/brally/total.py`, not the README.
 
 ## Scope
 

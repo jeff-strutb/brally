@@ -1,0 +1,22 @@
+# Port deviations for src/brally/core/drawing/br_seg.c -- see ports/brally-wasm/tools/portgen.py.
+# The decomp file is what MSVC compiles; these are the items the
+# Mac port drops, and the port bodies it compiles in their place.
+@drop var:g_brSegN64Base
+@drop var:g_brSegHostBase
+@drop proto:BrRcaResetCounts
+@drop fn:BrSegSetBases
+@after fn:BrSegSetBases
+
+/* 0x10018A10 (D3D twin 0x1002B9A0) -- calls 0x10018A30 BrRcaResetCounts
+ * first, then stores the two args to the N64/host base globals. The port
+ * writes through pMap instead. */
+/* WHAT IT DOES: records where a chunk of N64 data used to live and where it
+ * lives now, so that addresses inside it can be translated as the file is
+ * walked. Every pointer in a loaded .rca or track file goes through this
+ * mapping. */
+void BrSegSetBases(BrSegMap *pMap, uint32_t n64Base, uint32_t hostBase)
+{
+    pMap->n64Base  = n64Base;
+    pMap->hostBase = hostBase;
+}
+@end

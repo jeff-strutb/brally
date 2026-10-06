@@ -1,6 +1,6 @@
 # SPEC C - SetVideo.exe user-region idioms
 
-Proven against `build/match/orig_setvideo/<VA>.bin` with `exe_sweep.py`
+Proven against `build/brally/win32/match/orig_setvideo/<VA>.bin` with `exe_sweep.py`
 (`/O2 /ML`). Fence Microsoft CRT (`0x402D20`-end except the three tiny
 stubs already tagged). Do not touch the DLL pipeline.
 

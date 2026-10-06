@@ -23,7 +23,7 @@
  * own -- they are `static` there, so the definitions could not travel, and
  * without them the port arms below call them implicitly (C4013) and leave
  * undefined externals: a link failure match_sweep.py cannot see, because it
- * only compiles the matching configuration. Found by tools/portcheck.py.
+ * only compiles the matching configuration. Found by tools/brally/portcheck.py.
  * Duplicating these is safe for the reason BrFtol is duplicated in
  * slice1_02.c and slice2_12.c: they hold no state, so two copies cannot
  * drift. */
@@ -335,7 +335,7 @@ void BrTrackSurfaceSet(int param_1)
 /* The two globals the original reads here (g_BrLoad gathers them for the
  * port, see slice2_20.h): the texture/TLUT byte base and the parallel flag
  * array.  Named separately so each relocation resolves to its own variable
- * (config/globals_glide.csv). */
+ * (config/brally/globals_glide.csv). */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x106B7C7C */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x106EECF4 */
 /* @implements 0x10038450 d3d BrTexCopyRecords */

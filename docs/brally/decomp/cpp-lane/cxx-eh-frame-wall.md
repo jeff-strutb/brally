@@ -7,9 +7,9 @@
 ##  CLASS OPEN + INTEGRATED 2026-08-27 - 36 C++ EH functions now match
 
 **UPDATE (later 2026-08-27): the "INTEGRATION TODO" below is DONE.** 36 C++ EH
-functions are filed under `src/core/cpp/*.cpp` (tag: `@implements 0xVA glide
-NAME` + `@cpp_kind` + `@cpp_symbol <mangled>`), swept by `tools/cpp_sweep.py`
-into `build/match/report_cpp.csv`, and counted by `total.py`. Includes the
+functions are filed under `src/brally/core/cpp/*.cpp` (tag: `@implements 0xVA glide
+NAME` + `@cpp_kind` + `@cpp_symbol <mangled>`), swept by `tools/brally/cpp_sweep.py`
+into `build/brally/win32/match/report_cpp.csv`, and counted by `total.py`. Includes the
 **8,349 B landmark 0x10056260 - largest match in the project.** 15,832 B of
 C++ EH matched. cpp_score.py verifies all 4 pieces (.text body+frame, FuncInfo
 .xdata magic 0x19930520, unwind action, handler thunk). See
@@ -17,7 +17,7 @@ C++ EH matched. cpp_score.py verifies all 4 pieces (.text body+frame, FuncInfo
 
 ##  CLASS OPEN 2026-08-27 - C++ /GX harness PROVEN, verification gap CLOSED
 
-**tools/cpp_score.py exists and WORKS.** It compiles a .cpp TU with `cl /O2
+**tools/brally/cpp_score.py exists and WORKS.** It compiles a .cpp TU with `cl /O2
 /GX /MD` and scores ALL FOUR pieces of a C++ EH function - the .text body+frame,
 the FuncInfo table (.xdata, magic 0x19930520), the __ehvec_dtor unwind action,
 and the handler thunk - including the .xdata/.rdata parts match_sweep CANNOT
@@ -28,7 +28,7 @@ class is now an OPEN, tractable, verifiable workstream - no longer a wall.
 
 ** 0x10056260 (8,349 B) MATCHED 0-diff on all four pieces 2026-08-27 - the
 LARGEST match in the project (1.74% of .text in one function).** Source
-build/cpp_work/0x10056260.cpp: 145 unrolled `operator new(0x104)` + inlined
+build/brally/win32/cpp_work/0x10056260.cpp: 145 unrolled `operator new(0x104)` + inlined
 strcpy, then `new Phase`(0xC8) and `new Obj400`(0x400). New C++ idioms (in
 docs/cpp-family3-notes.md): operator new must NOT be dllimport (E8 thunk, not
 FF 15); path buffers are scalar `operator new(0x104)` not `new char[N]`;
@@ -58,7 +58,7 @@ __except) and 4 more EH helpers at 0 diffs /O2 (0x10074AE6 _except_handler3
 thunk, 0x100747E0 __FrameUnwindFilter, 0x100746C0 __ehvec_dtor __try/__finally,
 0x10074800 __ehvec_ctor __try/__finally). Key: the orig __except filter is
 `FrameUnwindFilter(GetExceptionInformation)`, NOT a constant 1. **5 SEH
-matches pending filing in build/ghidra_work/ (tree was live).**
+matches pending filing in build/brally/analysis/ghidra_work/ (tree was live).**
 
 **THE 80 `push -1`/`fs:[0]` FUNCTIONS ARE C++ UNWIND, NOT SEH - and they are
 97,204 B = 20.2% of .text.** All 80 thunk to `__CxxFrameHandler` with

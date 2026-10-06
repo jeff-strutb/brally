@@ -8,10 +8,10 @@
  *                     32-bit lane's numbers), read through the BR_DUMP map
  *   autopilot on|off  the player's racing-line steering (brbox_drive.py)
  *   waittext/text     the strings BrTextEmitString drew last frame
- *   files NAME        tools/brbox_saves/NAME copied into the save directory
+ *   files NAME        tools/brally/brbox_saves/NAME copied into the save directory
  *                     before the game starts
  *
- * Semantics follow ports/macos/wasm/host/host_script.c so both lanes run
+ * Semantics follow ports/brally-wasm/wasm/host/host_script.c so both lanes run
  * the same scenarios. */
 #include <ctype.h>
 #include <math.h>
@@ -210,7 +210,7 @@ void plat_script_autopilot(void)
 }
 
 /* ---- fixtures ------------------------------------------------------------------ */
-/* `files NAME`: copy tools/brbox_saves/NAME/c/bossrally/<path> into the save
+/* `files NAME`: copy tools/brally/brbox_saves/NAME/c/bossrally/<path> into the save
  * directory under the flattened name the file layer uses (crt.c overlay():
  * the path below the game directory, backslashes as `_`, lower case). */
 static void copy_tree(const char *dir, const char *rel, const char *save)
@@ -261,7 +261,7 @@ void plat_script_files(void)
     while (fgets(line, sizeof line, f)) {
         char op[32], name[256], dir[1200];
         if (sscanf(line, "%31s %255s", op, name) == 2 && !strcmp(op, "files")) {
-            snprintf(dir, sizeof dir, "tools/brbox_saves/%s/c/bossrally", name);
+            snprintf(dir, sizeof dir, "tools/brally/brbox_saves/%s/c/bossrally", name);
             copy_tree(dir, "", host_save_dir());
         }
     }

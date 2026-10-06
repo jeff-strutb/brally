@@ -2,7 +2,7 @@
  * what its file is called, and the fixed-point pitch conversion the mixer uses.
  *
  * Reference is BRGlide.dll.  Every function modelled here is classified
- * `shared` in config/shared.csv, so the D3D addresses are given alongside and
+ * `shared` in config/brally/shared.csv, so the D3D addresses are given alongside and
  * either binary answers the same question.
  *
  * WHAT THE SOUND ENGINE ACTUALLY IS

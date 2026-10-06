@@ -1,12 +1,12 @@
 # Fresh-batch generators - decision logic
 
-Standalone transforms (`tools/gen_fresh.py`). stringops + charret were
+Standalone transforms (`tools/brally/gen_fresh.py`). stringops + charret were
 folded 2026-08-27: stringops as one combined candidate in
 `_refine_candidates` (with retnotemp/ge0); charret orig-gated in
 `refine_function` next to callconv, only-if-better. i64glob / ucharbx
 stay standalone. Proven against BRGlide.dll orig bytes. Residue: 184
-unmatched refine rows (`python3 tools/ghidra_to_match.py --residue`).
-Untranscribed: 564 `build/ghidra_decomp/<VA>.c` with no work file and no
+unmatched refine rows (`python3 tools/brally/ghidra_to_match.py --residue`).
+Untranscribed: 564 `build/brally/analysis/ghidra_decomp/<VA>.c` with no work file and no
 tree MATCH.
 
 Four recurring idioms from the fresh DLL batches (VC5-IDIOMS-fresh{1,2,3}.md).
@@ -14,7 +14,7 @@ Each generator yields `(label, mutated_source)` in the `_refine_candidates`
 style. `--validate` scores `transform_*` with `ghidra_to_match._score_source`,
 opts `/O2`, `/Od`, `/O2 /Oy-`.
 
-`--from-decomp` isolates the transform (wrap of `build/ghidra_decomp`).
+`--from-decomp` isolates the transform (wrap of `build/brally/analysis/ghidra_decomp`).
 `--pool untrans` is the same wrap on VAs that never got a work file.
 Work-file scores are the residue as it sits (some VAs already hand-fixed).
 
@@ -262,14 +262,14 @@ batch wants it; it is not the fold.
 ## CLI
 
 ```
-python3 tools/gen_fresh.py --dry-run
-python3 tools/gen_fresh.py --dry-run --pool untrans
-python3 tools/gen_fresh.py --validate --from-decomp
-python3 tools/gen_fresh.py --validate --pool untrans
-python3 tools/gen_fresh.py --va 0x10055AF0 --from-decomp --gen stringops
-python3 tools/gen_fresh.py --va 0x10069930 --from-decomp --gen charret
-python3 tools/gen_fresh.py --va 0x1002E186 --from-decomp --gen i64glob
-python3 tools/gen_fresh.py --va 0x10027B60 --from-decomp --gen ucharbx
+python3 tools/brally/gen_fresh.py --dry-run
+python3 tools/brally/gen_fresh.py --dry-run --pool untrans
+python3 tools/brally/gen_fresh.py --validate --from-decomp
+python3 tools/brally/gen_fresh.py --validate --pool untrans
+python3 tools/brally/gen_fresh.py --va 0x10055AF0 --from-decomp --gen stringops
+python3 tools/brally/gen_fresh.py --va 0x10069930 --from-decomp --gen charret
+python3 tools/brally/gen_fresh.py --va 0x1002E186 --from-decomp --gen i64glob
+python3 tools/brally/gen_fresh.py --va 0x10027B60 --from-decomp --gen ucharbx
 ```
 
 `--from-decomp` / `--pool untrans` never writes `ghidra_work`.

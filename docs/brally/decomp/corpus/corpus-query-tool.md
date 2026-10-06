@@ -1,8 +1,8 @@
 # Corpus query tool
 
-> tools/corpus.py - query the ~1,036 byte-exact functions for the C that produced a given original instruction pattern. Use INSTEAD of inventing a spelling.
+> tools/brally/corpus.py - query the ~1,036 byte-exact functions for the C that produced a given original instruction pattern. Use INSTEAD of inventing a spelling.
 
-`tools/corpus.py`, built 2026-09-03 (7b6673f, docs in 18e3f32 / ee44690).
+`tools/brally/corpus.py`, built 2026-09-03 (7b6673f, docs in 18e3f32 / ee44690).
 
 **The premise.** Inventing spellings is measured dead here (permuter 0/95,
 refine batch 0/258). But every byte-exact function is a PROOF that "this C
@@ -14,10 +14,10 @@ probably already written the construct that produces it.
 
 **Use it.**
 
-    .venv/bin/python tools/corpus.py build                     # after ANY batch of matches
-    .venv/bin/python tools/corpus.py find --from <VA> --at <off> --len 12 --source
-    .venv/bin/python tools/corpus.py find --pattern 'mov R, dword ptr [esp+S]; and R, 0xff'
-    .venv/bin/python tools/corpus.py show --va <VA> --at <off> --len 20
+    .venv/bin/python tools/brally/corpus.py build                     # after ANY batch of matches
+    .venv/bin/python tools/brally/corpus.py find --from <VA> --at <off> --len 12 --source
+    .venv/bin/python tools/brally/corpus.py find --pattern 'mov R, dword ptr [esp+S]; and R, 0xff'
+    .venv/bin/python tools/brally/corpus.py show --va <VA> --at <off> --len 20
 
 `--at` takes an offset straight from `divergence.py`. `--source`/`show`
 resolve a hit to real C through the compiler's own `/FAcs` listing - the
@@ -46,7 +46,7 @@ byte-lane defect - orig homes both byte locals and reads them back widened
 (`mov R,[esp+S]; and R,0xff; or R,R`), we forward one from a register as
 `mov dl,al` - **that run exists NOWHERE in the corpus**, nor does
 `mov byte [esp+S],B; mov R,[esp+S]; and R,0xff`. Closest proven relative:
-byte-exact `BrGlRectFill` (0x1001E380, `src/core/drawing/br_dlglide.c`),
+byte-exact `BrGlRectFill` (0x1001E380, `src/brally/core/drawing/br_dlglide.c`),
 which emits the two-instruction widening FOUR times. Its source says the
 cause: **four `uint8_t` locals assigned on BOTH ARMS of an if/else and read
 after the join** get memory homes and come back widened at every later use.

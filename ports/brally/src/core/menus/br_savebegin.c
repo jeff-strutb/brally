@@ -34,7 +34,7 @@
  *   itoa, memcpy(&n, p, 4), copied back from the global after the store,
  *   and re-reading the global at the sprintf (VC5 will not CSE an extern
  *   across the two calls; it WILL for a static, and then the slot vanishes).
- *   What the probes proved (now in docs/VC5-IDIOMS.md): under /O2 the
+ *   What the probes proved (now in docs/brally/VC5-IDIOMS.md): under /O2 the
  *   frame is laid out top-down by class -- address-taken arrays first,
  *   largest highest -- and a scalar that is register-homed but spilled
  *   goes BELOW every array whatever its type or declaration position.  So
@@ -118,8 +118,8 @@
  * class's four point columns, converts the packed finishing positions to
  * 1-based, and prints the race number and entrant count into the two
  * labels.  Reports 1. */
-/* @t4-pass 0x1003B6D0 1 2026-09-07 probes 106 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1003B6D0 2 2026-09-07 probes 107 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1003B6D0 1 2026-09-07 probes 106 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1003B6D0 2 2026-09-07 probes 107 bytes 671 insns 216 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x1003B6D0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 671/671 insns 216/216 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2
@@ -198,9 +198,9 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
  * Otherwise it copies the loaded track / car / class / options into the
  * race globals (the option block by value), looks the per-index tables up,
  * commits the race settings and reports 1. */
-/* @t4-pass 0x1003BDE0 1 2026-09-07 probes 150 bytes 532 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1003BDE0 2 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1003BDE0 3 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1003BDE0 1 2026-09-07 probes 150 bytes 532 insns 148 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1003BDE0 2 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1003BDE0 3 2026-09-07 probes 150 bytes 531 insns 148 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t4-pass 0x1003BDE0 4 2026-09-09 probes 10 bytes 532 insns 148 regions 1 rows 0 census no  (hand, fn.py variants: literal/order/decl/index spellings, all inert or worse) */
 /* @t4-pass 0x1003BDE0 5 2026-09-09 probes 10 bytes 532 insns 148 regions 1 rows 0 census yes  (hand, fn.py variants: amp/nested/expression forms, store-order swaps, all inert; corpus query at +0x10) */
 /* @t3 0x1003BDE0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
@@ -278,8 +278,8 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
  * statement.  Dead: two int temps for the pair; an `int *` view of the row;
  * indexed `*(int *)&DAT_10ac5a66[k*4]` loads (recomputes the row, -3
  * insns); `if (fp == NULL) return;` instead of the nested block. */
-/* @t4-pass 0x1003B130 1 2026-09-07 probes 86 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
-/* @t4-pass 0x1003B130 2 2026-09-07 probes 87 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/crank.py) */
+/* @t4-pass 0x1003B130 1 2026-09-07 probes 86 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x1003B130 2 2026-09-07 probes 87 bytes 536 insns 162 regions 1 rows 0 census yes  (tools/brally/crank.py) */
 /* @t3 0x1003B130 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 536/536 insns 162/162 rows 0+0 regions 1 oracle EQUIVALENT
  * @t3-effort passes 2 zero-movement 1 2

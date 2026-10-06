@@ -6,7 +6,7 @@
 
 **Why:** patching Ghidra's transcription toward the original means every
 Ghidra artifact (counter-fold, phi role-swap, folded ternary, twin counters,
-do-while peel, widened temps - 9 classes catalogued in docs/VC5-IDIOMS.md)
+do-while peel, widened temps - 9 classes catalogued in docs/brally/VC5-IDIOMS.md)
 must be DISCOVERED and undone separately, each costing a session or a
 workflow round. A fresh transcription written from the original asm, in
 period C, never introduces them, so it never pays to find them.

@@ -35,7 +35,7 @@ static const float kBrHalf = 0.5f;
 #undef BrEntSetPos
 
 /* ====================================================================== */
-/* Constants read out of orig/BRD3D.dll .rdata (do not re-derive)          */
+/* Constants read out of reference/brally/orig/BRD3D.dll .rdata (do not re-derive)          */
 /* ====================================================================== */
 
 /* 0x1008FCA4 = 0xBFC90FDB. The float nearest -pi/2. BrEntSetHeading

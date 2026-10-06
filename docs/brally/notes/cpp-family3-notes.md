@@ -1,6 +1,6 @@
 # C++ family 3 - large EH functions (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
 `/O2 /GX /MD`. Do not C-sweep these.
 
 ## 0x10056260 - MATCH, all four pieces
@@ -16,10 +16,10 @@ Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
 | unwind[1] | 0x100765EB | 11 | **MATCH** same |
 | handler | 0x100765F6 | 10 | **MATCH** `mov eax, FuncInfo; jmp __CxxFrameHandler` |
 
-Source: `build/cpp_work/0x10056260.cpp`.
-`python3 tools/cpp_score.py --va 0x10056260 --opt "/O2 /GX /MD"`
+Source: `build/brally/win32/cpp_work/0x10056260.cpp`.
+`python3 tools/brally/cpp_score.py --va 0x10056260 --opt "/O2 /GX /MD"`
 
-Do not `@implements`-tag it in `src/` this session.
+Do not `@implements`-tag it in `src/brally/` this session.
 
 ### What the source is
 
@@ -82,7 +82,7 @@ displacements are immediates. Page is 0x348 with `apCtl[200]` at +0x18,
 | 0x100485B0 | 2389 | 14 | 1776 diffs | **MATCH** | 13/14 (one `[ebp+4]` vs `[ebp-0x10]`) | **MATCH** | +0x00 prologue schedule |
 | 0x1004DA00 | 3394 | 21 | 2051 diffs | **MATCH** | 18/21 (same slot) | **MATCH** | +0x00 prologue + missing `sub esp,0xc` |
 
-Sources: `build/cpp_work/0x1004F8C0.cpp` (full Place/SetText body),
+Sources: `build/brally/win32/cpp_work/0x1004F8C0.cpp` (full Place/SetText body),
 `0x100485B0.cpp` (fopen AutoSave.brf + namelist fill + 13 Ctl),
 `0x1004DA00.cpp` (21 news; trailing Place args not all unique).
 

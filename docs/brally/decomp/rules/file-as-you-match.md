@@ -6,7 +6,7 @@
 
 `sliceN_MM.c` files are **analysis batches**, not architecture - they group
 functions by the address range a reverse-engineering pass happened to cover.
-The named modules under `src/core/` (audio, controls, drawing, driving,
+The named modules under `src/brally/core/` (audio, controls, drawing, driving,
 gamedata, geometry, menus, racing, scene, settings, startup) are the real
 destination. As of 2026-08-19: 77 files filed, ~65 slices still unfiled.
 

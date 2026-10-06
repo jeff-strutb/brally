@@ -16,7 +16,7 @@ VC5 `/O2` implies `/Oy` (frame-pointer omission), so a whole address range that
 keeps `ebp` is a strong hint that its translation unit was compiled with
 different flags - plausibly `/O2 /Oy-`, or `/O1`, or `/Ox` variants.
 
-Worth testing because it is CHEAP and BROAD: `tools/match_sweep.py` currently
+Worth testing because it is CHEAP and BROAD: `tools/brally/match_sweep.py` currently
 tries only two variants (`VARIANTS = [('O2','/O2'), ('Od','/Od')]`) and takes
 the better per function. Adding a third variant would test the whole tree at
 once rather than one function at a time. Do NOT assume it - many `/O2`

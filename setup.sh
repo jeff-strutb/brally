@@ -4,13 +4,13 @@
 # Everything this script produces lives inside the repo.  Nothing is installed
 # onto the host: no package manager, no /Applications, no ~/.wine.  A fresh
 # clone plus this script plus the disc images under reference/ is a complete
-# matching build, and deleting tools/wine/, tools/msvc5/ and orig/ puts the
+# matching build, and deleting tools/toolchains/wine/, tools/toolchains/msvc5/ and reference/brally/orig/ puts the
 # machine back exactly as it was.
 #
 # Four pieces get staged:
 #
 #   Wine        Downloaded as a portable macOS build and unpacked into
-#               tools/wine/.  Pinned to a version and checksummed, because the
+#               tools/toolchains/wine/.  Pinned to a version and checksummed, because the
 #               whole point of a matching build is that the toolchain does not
 #               drift underneath it.
 #
@@ -19,7 +19,7 @@
 #               image is right there, so there is no reason to make a human
 #               copy files by hand.
 #
-#   orig/       Game binaries pulled out of the Boss Rally BIN/CUE.  The match
+#   reference/brally/orig/       Game binaries pulled out of the Boss Rally BIN/CUE.  The match
 #               target is BRD3D.dll; BRGlide.dll is the renderer reference.
 #               Do not copy these by hand.
 #
@@ -41,7 +41,7 @@ WINE_VERSION="11.0_1"
 WINE_URL="https://github.com/Gcenx/macOS_Wine_builds/releases/download/11.0_1/wine-stable-11.0_1-osx64.tar.xz"
 WINE_SHA256="b50dc50ec7f41d58b115a6b685d4d1315ba3c797bd3aa0f49213f2703cb82388"
 
-WINE_DIR="tools/wine"
+WINE_DIR="tools/toolchains/wine"
 WINE_BIN="$WINE_DIR/Wine Stable.app/Contents/Resources/wine/bin/wine"
 
 if [ -x "$WINE_BIN" ]; then
@@ -100,7 +100,7 @@ fi
 echo ""
 
 # ---- MSVC 5.0, straight off the disc image -------------------------------
-MSVC_DIR="tools/msvc5"
+MSVC_DIR="tools/toolchains/msvc5"
 VC_ISO="reference/msvc/VCPP-5.00.iso"
 
 find_cl() {
@@ -149,8 +149,8 @@ else
         [ -f "$extra" ] && cp -f "$extra" "$MSVC_DIR/bin/"
     done
 
-    echo "       include/ ..."
-    cp -Rf "$VC"/INCLUDE/* "$MSVC_DIR/include/" 2>/dev/null || true
+    echo "       src/brally/include/ ..."
+    cp -Rf "$VC"/INCLUDE/* "$MSVC_DIR/src/brally/include/" 2>/dev/null || true
 
     echo "       lib/ ..."
     cp -Rf "$VC"/LIB/* "$MSVC_DIR/lib/" 2>/dev/null || true
@@ -223,22 +223,22 @@ if [ -z "$TGR_ROM" ]; then
 fi
 
 need_orig=0
-for f in orig/BRD3D.dll orig/BRGlide.dll; do
+for f in reference/brally/orig/BRD3D.dll reference/brally/orig/BRGlide.dll; do
     [ -f "$f" ] || need_orig=1
 done
 
 if [ "$need_orig" -eq 0 ]; then
-    echo "[ok] orig/ already staged"
+    echo "[ok] reference/brally/orig/ already staged"
 elif [ -z "$BRALLY_BIN" ]; then
-    echo "[need] orig/BRD3D.dll and orig/BRGlide.dll, and no disc image at"
+    echo "[need] reference/brally/orig/BRD3D.dll and reference/brally/orig/BRGlide.dll, and no disc image at"
     echo "       reference/brally/BossRally.BIN"
     echo ""
     echo "  Put the retail Boss Rally BIN/CUE there (MD5 of the BIN this tree"
     echo "  was matched against: $BRALLY_BIN_MD5) and re-run.  setup.sh"
-    echo "  extracts the binaries; do not copy them into orig/ by hand."
+    echo "  extracts the binaries; do not copy them into reference/brally/orig/ by hand."
     exit 1
 else
-    echo "[extract] orig/ from $BRALLY_BIN"
+    echo "[extract] reference/brally/orig/ from $BRALLY_BIN"
     warn_md5 "$BRALLY_BIN" "$BRALLY_BIN_MD5" "BossRally.BIN" || true
     if [ -n "$BRALLY_CUE" ]; then
         warn_md5 "$BRALLY_CUE" "$BRALLY_CUE_MD5" "BossRally.cue" || true
@@ -246,15 +246,15 @@ else
         echo "[warn] no .cue beside $BRALLY_BIN (binaries still extract; CD audio will not)"
     fi
 
-    mkdir -p orig
-    # src on the disc -> dest under orig/.  Names on the right are what the
+    mkdir -p reference/brally/orig
+    # src on the disc -> dest under reference/brally/orig/.  Names on the right are what the
     # rest of the tree opens.
     while read -r src dst; do
         [ -n "$src" ] || continue
-        if [ -f "orig/$dst" ]; then
+        if [ -f "reference/brally/orig/$dst" ]; then
             continue
         fi
-        python3 tools/extract_iso.py --extract-path "$BRALLY_BIN" "$src" "orig/$dst" >/dev/null
+        python3 tools/brally/extract_iso.py --extract-path "$BRALLY_BIN" "$src" "reference/brally/orig/$dst" >/dev/null
     done <<'EOF'
 BRD3D.dll BRD3D.dll
 BRGlide.dll BRGlide.dll
@@ -268,27 +268,27 @@ _ISDEL.EXE _ISDEL.EXE
 _SETUP.DLL _SETUP.DLL
 EOF
 
-    if [ ! -f orig/BRD3D.dll ] || [ ! -f orig/BRGlide.dll ]; then
-        echo "[fail] extraction finished but orig/BRD3D.dll or orig/BRGlide.dll is missing"
+    if [ ! -f reference/brally/orig/BRD3D.dll ] || [ ! -f reference/brally/orig/BRGlide.dll ]; then
+        echo "[fail] extraction finished but reference/brally/orig/BRD3D.dll or reference/brally/orig/BRGlide.dll is missing"
         exit 1
     fi
-    echo "[ok] orig/ staged from the disc"
+    echo "[ok] reference/brally/orig/ staged from the disc"
 fi
 
 echo ""
 
 # Testdata assets (tracks, cars, sprites, CD audio).  Idempotent: skipped
-# once testdata/strings.txt is already there.
+# once reference/brally/data/strings.txt is already there.
 if [ -n "$BRALLY_BIN" ]; then
-    if [ ! -f testdata/strings.txt ]; then
-        echo "[extract] testdata/ from $BRALLY_BIN"
-        tools/extract_assets.sh "$BRALLY_BIN"
+    if [ ! -f reference/brally/data/strings.txt ]; then
+        echo "[extract] reference/brally/data/ from $BRALLY_BIN"
+        tools/brally/extract_assets.sh "$BRALLY_BIN"
     else
-        echo "[ok] testdata/ already present"
+        echo "[ok] reference/brally/data/ already present"
     fi
     # The whole data track, as the CD root a Mac build runs against (the
     # game expects a physical drive). Idempotent: present files are skipped.
-    python3 tools/extract_disc.py "$BRALLY_BIN" testdata/disc
+    python3 tools/brally/extract_disc.py "$BRALLY_BIN" reference/brally/data/disc
 fi
 
 echo ""
@@ -296,11 +296,11 @@ echo ""
 if [ -n "$TGR_ROM" ]; then
     echo "[ok] Top Gear Rally ROM at $TGR_ROM"
     warn_md5 "$TGR_ROM" "$TGR_ROM_MD5" "$(basename "$TGR_ROM")" || true
-    if [ -f testdata/music_xm/xm.manifest.json ]; then
+    if [ -f reference/brally/data/music_xm/xm.manifest.json ]; then
         echo "[ok] N64 soundtrack already extracted"
     elif command -v ffmpeg >/dev/null 2>&1; then
         echo "[extract] N64 soundtrack from $TGR_ROM"
-        python3 tools/extract_xm.py "$TGR_ROM" testdata/music_xm
+        python3 tools/tgrally/extract_xm.py "$TGR_ROM" reference/brally/data/music_xm
     else
         echo "[skip] N64 soundtrack: ffmpeg not on PATH (FLAC encoder)."
         echo "       Matching does not need it; the port will have no N64 music."
@@ -312,17 +312,17 @@ fi
 echo ""
 
 # ---- Original function bytes ---------------------------------------------
-if [ ! -f orig/BRD3D.dll ]; then
-    echo "[fail] orig/BRD3D.dll is missing -- cannot extract function bytes"
+if [ ! -f reference/brally/orig/BRD3D.dll ]; then
+    echo "[fail] reference/brally/orig/BRD3D.dll is missing -- cannot extract function bytes"
     exit 1
 fi
-if [ ! -d build/match/orig ] || [ -z "$(ls build/match/orig/ 2>/dev/null)" ]; then
+if [ ! -d build/brally/win32/match/orig ] || [ -z "$(ls build/brally/win32/match/orig/ 2>/dev/null)" ]; then
     echo "[extract] original function bytes from the shipped game binary..."
-    mkdir -p build/match/orig
-    python3 tools/extract_funcs.py orig/BRD3D.dll config/functions.csv build/match/orig/
-    echo "[ok] original function bytes extracted ($(ls build/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
+    mkdir -p build/brally/win32/match/orig
+    python3 tools/brally/extract_funcs.py reference/brally/orig/BRD3D.dll config/brally/functions.csv build/brally/win32/match/orig/
+    echo "[ok] original function bytes extracted ($(ls build/brally/win32/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
 else
-    echo "[ok] original function bytes extracted ($(ls build/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
+    echo "[ok] original function bytes extracted ($(ls build/brally/win32/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
 fi
 
 echo ""
@@ -331,9 +331,9 @@ echo ""
 # The game was built against the Glide 2.x SDK (glide.h, glideutl.h and the
 # 3dfx/fx*.h it includes).  Its declarations are part of each original
 # translation unit's symbol count, which MSVC 5's register and operand-order
-# choices follow, so matching work compiles with them: /I tools/glide2x-sdk.
+# choices follow, so matching work compiles with them: /I tools/toolchains/glide2x-sdk.
 # Copy shipped with the Homeworld source release (pinned commit).
-GLIDE_DIR="tools/glide2x-sdk"
+GLIDE_DIR="tools/toolchains/glide2x-sdk"
 GLIDE_SRC="https://raw.githubusercontent.com/aheadley/homeworld/c1e7f492eaea243af782376e8bd7b6ef147c5b8f/src/rgl/3dfx"
 if [ -f "$GLIDE_DIR/glide.h" ]; then
     echo "[ok] Glide 2.x SDK headers in $GLIDE_DIR"
@@ -348,7 +348,7 @@ fi
 echo ""
 
 # ---- Keep the staged toolchain out of git --------------------------------
-for path in "tools/msvc5/" "tools/wine/" "tools/glide2x-sdk/"; do
+for path in "tools/toolchains/msvc5/" "tools/toolchains/wine/" "tools/toolchains/glide2x-sdk/"; do
     grep -qxF "$path" .gitignore 2>/dev/null || {
         echo "$path" >> .gitignore
         echo "[ok] added $path to .gitignore"
@@ -362,20 +362,20 @@ echo "=== Status ==="
                    || echo "  Wine:      MISSING"
 [ -n "$CL_FOUND" ] && echo "  cl.exe:    $CL_FOUND" \
                    || echo "  cl.exe:    MISSING (see above)"
-[ -f orig/BRD3D.dll ] && echo "  orig/:     BRD3D.dll staged" \
-                      || echo "  orig/:     MISSING"
-[ -d build/match/orig ] && echo "  Functions: extracted" \
+[ -f reference/brally/orig/BRD3D.dll ] && echo "  reference/brally/orig/:     BRD3D.dll staged" \
+                      || echo "  reference/brally/orig/:     MISSING"
+[ -d build/brally/win32/match/orig ] && echo "  Functions: extracted" \
                         || echo "  Functions: not extracted"
 [ -n "$TGR_ROM" ] && echo "  TGR ROM:   $TGR_ROM" \
                   || echo "  TGR ROM:   not present (optional)"
 echo ""
 
 if [ -x "$WINE_BIN" ] && [ -n "$CL_FOUND" ]; then
-    echo "Ready.  Run:  sh build_match.sh"
+    echo "Ready.  Run:  sh tools/brally/build_match.sh"
 else
     echo "Not ready -- see above."
 fi
 
 # Rule 6 is enforced by a pre-commit hook. .git/ is not tracked, so the hook
 # has to be wired into each clone; this is idempotent and safe to re-run.
-python3 "$(dirname "$0")/tools/install_hooks.py" || true
+python3 "$(dirname "$0")/tools/common/install_hooks.py" || true

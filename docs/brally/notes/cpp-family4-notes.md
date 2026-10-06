@@ -1,7 +1,7 @@
 # C++ family 4 - small/mid EH (201 B installers + three other shapes)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
-`/O2 /GX /MD`. Do not `@implements`-tag these in `src/` this session.
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
+`/O2 /GX /MD`. Do not `@implements`-tag these in `src/brally/` this session.
 
 ## Matched: 11 / 11, all four pieces 0
 

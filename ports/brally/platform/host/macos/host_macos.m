@@ -9,7 +9,7 @@
  * into the window's CAMetalLayer (host_macos_metal_layer).
  *
  * Directories (environment, else the defaults):
- *   BR_CDROOT   the CD's files       (default testdata/disc, then the app's Resources/disc)
+ *   BR_CDROOT   the CD's files       (default reference/brally/data/disc, then the app's Resources/disc)
  *   BR_GAMEDIR  the install          (default: the CD root)
  *   BR_SAVEDIR  saves and settings   (default ~/Library/Application Support/Boss Rally 64)
  */
@@ -69,8 +69,8 @@ void host_init(int argc, char **argv)
         e = getenv("BR_CDROOT");
         if (e) {
             snprintf(s_cd, sizeof s_cd, "%s", e);
-        } else if (is_dir("testdata/disc")) {
-            snprintf(s_cd, sizeof s_cd, "testdata/disc");
+        } else if (is_dir("reference/brally/data/disc")) {
+            snprintf(s_cd, sizeof s_cd, "reference/brally/data/disc");
         } else {
             NSString *r = [[NSBundle mainBundle] resourcePath];
             snprintf(s_cd, sizeof s_cd, "%s/disc", r ? [r fileSystemRepresentation] : ".");
@@ -91,8 +91,8 @@ void host_init(int argc, char **argv)
         e = getenv("BR_MUSICDIR");
         if (e) {
             snprintf(s_music, sizeof s_music, "%s", e);
-        } else if (is_dir("build/app/extract/music/cd")) {
-            snprintf(s_music, sizeof s_music, "build/app/extract/music/cd");
+        } else if (is_dir("build/brally/wasm32/app/extract/music/cd")) {
+            snprintf(s_music, sizeof s_music, "build/brally/wasm32/app/extract/music/cd");
         } else {
             NSString *r = [[NSBundle mainBundle] resourcePath];
             snprintf(s_music, sizeof s_music, "%s/music/cd", r ? [r fileSystemRepresentation] : ".");

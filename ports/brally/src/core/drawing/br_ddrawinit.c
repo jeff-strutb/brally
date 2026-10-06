@@ -55,8 +55,8 @@ typedef void (__fastcall *BrVt0)(void *self);
  * that surface down. Then walks every {surface, path} slot, loading each
  * named BMP, bumping the live-surface count and giving it a colour key of
  * 0xFF00. A failed load of a still-named slot is fatal. Returns 1. */
-/* @t4-pass 0x100583C0 2 2026-09-07 probes 88 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/crank.py) */
-/* @t4-pass 0x100583C0 3 2026-09-07 probes 89 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/crank.py) */
+/* @t4-pass 0x100583C0 2 2026-09-07 probes 88 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x100583C0 3 2026-09-07 probes 89 bytes 381 insns 119 regions 2 rows 3 census yes  (tools/brally/crank.py) */
 /* @t3 0x100583C0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 381/379 insns 119/118 rows 1+2 regions 2 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 2 3

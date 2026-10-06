@@ -38,5 +38,5 @@ the emitted image, so BRGlide.T3.dll(.FAILED) is runnable and tests the 56.
 **Follow-up lever:** recover static/hand-named-global addresses for the 62  - 
 e.g. teach reloc_learn to pair a T3 recompile's reloc sites with the
 original's by opcode+register (BrTimeUpdate's three `mov [imm32]` stores pair
-uniquely), or survey the globals into config/globals_glide.csv. Related:
+uniquely), or survey the globals into config/brally/globals_glide.csv. Related:
 [oracle-resolution-advances-2026-09-16](oracle-resolution-advances-2026-09-16.md), [dollar-label-reloc-trap](../traps/dollar-label-reloc-trap.md).

@@ -1,6 +1,6 @@
 /* br_collrespsolve.c -- see br_collrespsolve.h.  The OBB collision response.
  *
- * Transcribed from orig/BRGlide.dll and pinned to tools/x87emu.py golden
+ * Transcribed from reference/brally/orig/BRGlide.dll and pinned to tools/brally/x87emu.py golden
  * vectors.  Each function carries the address of what it is.
  */
 /* <windows.h> is TU state, not an API dependency: the original unit's symbol
@@ -21,7 +21,7 @@
 /* The original 0x10067710 takes TWO arguments (the body block and the box
  * matrix); the port's prototype in br_collrespsolve.h takes nine.  Under the
  * matching build the header's prototype is declared under a spare name so the
- * two-argument original can be defined here without touching include/. */
+ * two-argument original can be defined here without touching src/brally/include/. */
 #define BrCrRespWalk BrCrRespWalk_portproto
 #define BrCrContactKick BrCrContactKick_portproto
 #include "br_collrespsolve.h"
@@ -129,13 +129,13 @@ float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
  * hard hit (threshold > 10, restOffset < 1e-4) the contact velocity is damped
  * to 0.9 before the solve and a saturating `peak` byte is raised.
  *
- * Verified against tools/x87emu.py executing 0x10065C80's real opcode stream:
+ * Verified against tools/brally/x87emu.py executing 0x10065C80's real opcode stream:
  * the Python model this mirrors matched the emulator over >14000 random cases
  * (both paths, effect bytes, and the restOffset gate), worst relative error
  * ~1.6e-3 confined to near-singular K.  Golden vectors below pin it.
  * ------------------------------------------------------------------ */
-/* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
-/* @t4-pass 0x10065C80 2 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/crank.py) */
+/* @t4-pass 0x10065C80 1 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10065C80 2 2026-09-21 probes 40 bytes 1137 insns 347 regions 4 rows 205 census yes  (tools/brally/crank.py) */
 /* WHAT IT DOES: resolves one contact into a collision impulse and applies it
  * to the body's next linear and angular velocity -- the solve that stops a car
  * falling through the world (full dossier above). */
@@ -144,7 +144,7 @@ float BrCrPlaneDist(const BrVec3 *pN, float planeD, const BrVec3 *pPoint)
  * @t3-effort passes 2 zero-movement 1 2
  * !! 2026-09-23: the earlier "scheduling and layout only" verdict came from
  * the retired seed oracle, which tolerated float differences.  On real race
- * contacts the live oracle (tools/t3live.py) showed the results differing
+ * contacts the live oracle (tools/brally/t3live.py) showed the results differing
  * by several ULP: the original rounds at different points -- the cross
  * product never rounded, vc stored as floats, dd computed TWICE (a register
  * gate before the matrices, a float after them from the stored vc), the
@@ -357,7 +357,7 @@ int BrCrImpulseSolve(BrCarBody *pBody, const BrVec3 *pNormal, const void *pPlane
  * Mt.angVel, their componentwise product, then M times that -- so the exact
  * arithmetic (and any non-unit-N behaviour) matches.
  *
- * Verified against tools/x87emu.py over 6000 random cases (both flags, all
+ * Verified against tools/brally/x87emu.py over 6000 random cases (both flags, all
  * effect branches), worst relative error ~2e-6.  Golden vectors pin it.
  * ------------------------------------------------------------------ */
 /* WHAT IT DOES: apply one collision impulse to a body: bounces the velocity
@@ -603,13 +603,13 @@ void BrCrPlaneResolve(const BrVec3 *pExt, const BrVec3 *pA, float planeD,
  * 1 if any contact produced a response, else 0, and keeps a per-body "frames
  * with no contact" byte (body+0x200): bumped (saturating at 40) when nothing
  * passed the exact test this pass, reset to 0 otherwise. */
-/* @t4-pass 0x10067710 1 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 2 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 3 2026-09-10 probes 45 bytes 1282 insns 373 regions 9 rows 10 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 4 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 5 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 6 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
-/* @t4-pass 0x10067710 7 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/crank.py) */
+/* @t4-pass 0x10067710 1 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 2 2026-09-07 probes 68 bytes 1289 insns 375 regions 8 rows 14 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 3 2026-09-10 probes 45 bytes 1282 insns 373 regions 9 rows 10 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 4 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 5 2026-09-10 probes 40 bytes 1292 insns 376 regions 11 rows 9 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 6 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10067710 7 2026-09-10 probes 40 bytes 1309 insns 376 regions 6 rows 7 census yes  (tools/brally/crank.py) */
 /* @t3 0x10067710 2026-09-12 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 1309/1301 insns 376/375 rows 3+4 regions 6 oracle UNCLASSIFIED
  * @t3-effort passes 7 zero-movement 6 7

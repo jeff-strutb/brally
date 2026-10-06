@@ -8,7 +8,7 @@
 MATCH 0 diffs 4/4 under the /Gi chain idb; image gate BRGlide 1394 placed, 0 bytes differ.
 Claims released (m2_claims + lane token e7a4d751).
 
-How it was measured: /O2 /Gi with a private copy of build/match/probe_bd4988/idb/chain.idb (the
+How it was measured: /O2 /Gi with a private copy of build/brally/win32/match/probe_bd4988/idb/chain.idb (the
 preceding Gi rows compiled in (file,va) order). For report_cpp.csv, cpp_sweep -j 1 was run with the
 repo-root vc50.idb temporarily replaced by chain.idb, then restored byte-for-byte.
 
@@ -33,7 +33,7 @@ Levers (all measured):
   0x10019840 and fails the image gate. Original TU = 0x10019350..0x1001C647 (window proc, main loop,
   S17 static Clock object at 0x105BC858, race begin helpers); co-filing the rest was inert.
 
-C2 instrumentation kit (build/match/probe_bd4988/c2cap, reusable for any VC5 colouring wall):
+C2 instrumentation kit (build/brally/win32/match/probe_bd4988/c2cap, reusable for any VC5 colouring wall):
 mingw-built c2wrap.exe used via `cl /B2Z:\...\c2wrap.exe`; env C2PATCH=1 runs C2P.EXE, a C2.EXE copy
 with an added .hk section (hk/mkpatch.py, i686-w64-mingw32-as) that logs the colouring candidate
 loop in FUN_0042ad28 (symbol kind byte sym+4: 3 temp, 4 local, 7 global, 0xd constant; P sort key

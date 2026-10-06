@@ -1,7 +1,7 @@
 # C++ family 6 - large EH functions (2026-08-27)
 
-Harness: `build/cpp_work/<VA>.cpp` + `python3 tools/cpp_score.py --va <VA>`.
-`/O2 /GX /MD`. Do not C-sweep these. Do not `@implements`-tag in `src/`
+Harness: `build/brally/win32/cpp_work/<VA>.cpp` + `python3 tools/brally/cpp_score.py --va <VA>`.
+`/O2 /GX /MD`. Do not C-sweep these. Do not `@implements`-tag in `src/brally/`
 this session. Do not permute register coloring.
 
 Two classes:
@@ -26,7 +26,7 @@ Ctl **declared, not defined**. Same idiom as family 3: without it,
 | 0x1004CBA0 | 3671 | 21 | 1+20 | 2557 diffs | **MATCH** | 18/21 | **MATCH** | +0x17; unwind[6..8] `[ebp-0x50]` vs `[ebp-0x10]` |
 | 0x100498A0 | 3993 | 24 | 1+23 | 2876 diffs | **MATCH** | 21/24 | **MATCH** | +0x17; unwind[6..8] same `[ebp-0x50]` |
 
-Sources: `build/cpp_work/<VA>.cpp`. 0x1004F290 / 0x100504A0 are full
+Sources: `build/brally/win32/cpp_work/<VA>.cpp`. 0x1004F290 / 0x100504A0 are full
 Place/SetText/edit-box transcriptions (strlen+strcpy of the name field).
 The four large ones have every `new` and every Place/SetText/hook from
 the orig bytes; leftover is the coloring wall.

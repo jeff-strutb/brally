@@ -2,7 +2,7 @@
 """Resolve `conflicting types` between declarations of one function.
 
 A function's definition is the truth: it is what matched the original. For
-every conflict clang reports in the portable build (build/portable/obj/*.err):
+every conflict clang reports in the portable build (build/brally/null-soft/obj/*.err):
 
   * a stray prototype (no body) in a source file is deleted -- the header or
     the definition declares the function;
@@ -44,7 +44,7 @@ def stmt_span(text, line):
 def main():
     os.chdir(ROOT)
     pairs = []
-    for ef in glob.glob('build/portable/obj/*.err'):
+    for ef in glob.glob('build/brally/null-soft/obj/*.err'):
         txt = open(ef, errors='replace').read()
         for m in re.finditer(r"^(\S+?):(\d+):\d+: error: (?:conflicting types for|declaration of) '(\w+)'(?: has a different language linkage)?\n(?:.*\n){0,3}?"
                              r"(\S+?):(\d+):\d+: note: previous (?:declaration|definition) is here", txt, re.M):

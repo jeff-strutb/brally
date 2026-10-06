@@ -10,7 +10,7 @@ symbols swapped (constant on the fld side where the original loads the
 variable). Masking hides the symbol, so only a per-reloc check sees it.
 
 - Check: for each DIR32 in the obj, symbol `DAT_<hex>` + addend must equal
-  the dword at the same offset of `build/match/orig/<VA>.bin`; REL32 target
+  the dword at the same offset of `build/brally/win32/match/orig/<VA>.bin`; REL32 target
   must equal the callee VA. Scratch script used this session:
   coff_relocs.func_relocs + that comparison (no in-tree tool yet).
 - Fix lever: declaration order - the LATER-declared symbol takes the fld side,
@@ -20,4 +20,4 @@ variable). Masking hides the symbol, so only a per-reloc check sees it.
 
 **Why:** "byte-exact" rows can be wrong at run time. **How to apply:** run the
 reloc check before every T4 commit of a loose-globals matching arm. Idioms:
-docs/VC5-IDIOMS.md tail. Related: [declaration-order-tiebreak](../levers/declaration-order-tiebreak.md), [placed-image-verification](../oracle/placed-image-verification.md).
+docs/brally/VC5-IDIOMS.md tail. Related: [declaration-order-tiebreak](../levers/declaration-order-tiebreak.md), [placed-image-verification](../oracle/placed-image-verification.md).

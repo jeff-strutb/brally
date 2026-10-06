@@ -1,0 +1,49 @@
+symbol,addr,refs,corroborated,class,sources
+g_aBrKeyEnts,0x106EEF0C,1,1,"transcription header: BrKeyEnt table (src/brally/core/slice1_06.c)",0x10030FD0
+g_brKeyCount,0x10AC0808,1,1,"transcription header: key-table count (src/brally/core/slice1_06.c)",0x10030FD0
+g_brKeyBias,0x10AC080C,1,1,"transcription header: key bias (src/brally/core/slice1_06.c)",0x10030FD0
+g_brSnapCur,0x104AB4EC,1,1,"transcription header: newest complete snap slot (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapPrev,0x104AB500,1,1,"transcription header: previous snap slot (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapTo,0x10396F44,1,1,"transcription header: blend target snap slot (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapFrom,0x104AB4FC,1,1,"transcription header: blend source snap slot (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_aBrSnap,0x10396F48,1,1,"transcription header: snap slot array (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_aBrSnapLocked,0x10396F10,1,1,"transcription header (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapOrigin,0x10396F24,1,1,"transcription header (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapT0,0x104AB4F4,1,1,"transcription header (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brSnapFrames,0x104AB4F0,1,1,"transcription header (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brCfgInterpolate,0x100A5EAC,1,1,"transcription header (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+BrFrameDrawView,0x10011FA0,1,1,"transcription header: the frame driver (src/brally/core/drawing/br_snapinterp.c)",0x100131E0
+g_brCrPlane,0x117787F0,1,1,"transcription header: shared contact-normal bank (0x117787F0/F4/F8), src/brally/core/driving/br_collrespsolve.c",0x10065C80
+?Sub10062C50@BrCar@@QAEXXZ,0x1005BCC0,1,1,"cpp-lane member callee: BrSub10062C50 (src/brally/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?InitTables@BrCar@@QAEXXZ,0x1005E6A0,1,1,"cpp-lane member callee: BrCarInitTables (src/brally/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetPos@BrCar@@QAEXMMM@Z,0x1006F680,1,1,"cpp-lane member callee: BrEntSetPos (src/brally/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetVel@BrCar@@QAEXMMM@Z,0x1006FA10,1,1,"cpp-lane member callee: BrEntSetVel (src/brally/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+?SetMatrix@BrCar@@QAEXPAX@Z,0x1006F970,1,1,"cpp-lane member callee: BrEntSetMatrix (src/brally/core/racing/BrLapSaveRestore_1005F6C0.cpp)",0x1005F6C0
+g_brAC5DB4,0x10AC5DB4,1,1,"transcription header: slot-scroll repeat-timer accumulator, wraps at 60 (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DB8,0x10AC5DB8,1,1,"transcription header: slot-scroll last-tick timestamp (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5BAC,0x10AC5BAC,1,1,"transcription header: slot-scroll input-consumed flag (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_pBrAC5DD8,0x10AC5DD8,1,1,"transcription header: slot-scroll timing/anchor struct pointer (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DBC,0x10AC5DBC,1,1,"transcription header: slot-scroll horizontal anchor origin (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+g_brAC5DC0,0x10AC5DC0,1,1,"transcription header: slot-scroll vertical anchor origin (src/brally/core/menus/BrSlotScrollStep_100553B0.cpp)",0x100553B0
+BrDxNameDInputDll,0x100A9A44,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgLoadDInputFailed,0x100A9A24,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDInputCreate,0x100A9A10,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgProcDInputFailed,0x100A99E8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDDrawDll,0x100A99DC,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxNameDDrawCreate,0x100A99C8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgLoadDDrawFailed,0x100A99A8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCreateDDrawFailed,0x100A9990,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgQiDDraw2Failed,0x100A9978,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCoopLevelFailed,0x100A995C,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrDxMsgCreateSurfaceFailed,0x100A9940,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDraw2,0x10077CB8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDrawSurface3,0x10077CF8,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+BrIidIDirectDrawSurface4,0x10077D08,1,1,"BrDxDetect string/GUID; original bytes at the address verified equal to the source literal (src/brally/core/startup/br_dxver.c)",0x1001D8A0
+g_brCrPlaneOut,0x117781A0,1,1,"transcription header: plane-distance vector (0x117781A0/A4/A8), src/brally/core/driving/br_carphys.c",0x10067C30
+?SetAngVel@BrCar@@QAEXMMM@Z,0x1006FC10,1,1,"cpp-lane member callee: BrEntSetAngVel (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?SetOrientation@BrCar@@QAEXMMM@Z,0x1006FA90,1,1,"cpp-lane member callee: BrEntSetOrientation (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?CtlInputApply@BrCar@@QAEXXZ,0x1005AFF0,1,1,"cpp-lane member callee: BrCtlInputApply (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?PhysStep@BrCar@@QAEXXZ,0x1005A7A0,1,1,"cpp-lane member callee: BrCarPhysStep (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?WheelSteerStep@BrCar@@QAEXXZ,0x1005ACE0,1,1,"cpp-lane member callee: BrCarWheelSteerStep_1005ACE0 (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?CamChaseStep@BrCar@@QAEXXZ,0x10001CF0,1,1,"cpp-lane member callee: BrCamChaseStep (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170
+?Take@BrBitLatch@@QAEXI@Z,0x1002F640,1,1,"cpp-lane member callee: BrBitLatchTake (src/brally/core/driving/BrCarStep_1006F170.cpp)",0x1006F170

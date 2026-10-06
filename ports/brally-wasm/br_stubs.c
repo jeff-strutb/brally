@@ -1,0 +1,232 @@
+/* br_stubs.c -- one stub per not-yet-ported function.
+ *
+ * Purpose: make the game LINK before the core is finished, so it can be RUN.
+ * A stub that is never called costs nothing; a stub that IS called tells us
+ * exactly which function the boot path needs next. That turns the remaining
+ * decompilation into a runtime-ordered priority list instead of guesswork.
+ *
+ * WHY EVERY STUB IS long(void):
+ * C does not mangle names, so a definition links against any caller
+ * declaration. Returning `long` puts 0 in rax, which reads correctly as int,
+ * pointer or bool at every call site. It is WRONG for a float/double-returning
+ * callee (those return in xmm0, which this leaves untouched) -- such a caller
+ * will see garbage rather than 0. Stubs that matter get reported below, so a
+ * float-returning gap shows up as a hit and gets ported rather than trusted.
+ *
+ * THIS FILE IS HAND-MAINTAINED. It used to say "GENERATED -- regenerate with
+ * tools/brally/genstubs.py. Do not hand-edit."; that generator does not exist in the
+ * tree (and the per-stub comments below, which carry real findings, could not
+ * have survived a regeneration anyway). Edit it directly.
+ */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+/* Capacity, AND the "of N linked" figure the exit report prints.
+ *
+ * Keep it equal to the number of stub definitions below. Too small silently
+ * drops hits past the limit; too large only overstates how much is still
+ * missing, so a stale value is safe but misleading.
+ *
+ * This is hand-maintained and goes stale every time a packet lands -- it has
+ * already drifted twice while packets were being merged in parallel. It should
+ * be derived from the table rather than typed; until it is, re-check it with
+ *     grep -cE '^long [A-Za-z0-9_]+\(void\); long' port/host/br_stubs.c */
+/* Capacity of the hit table, NOT a claim about how many stubs are linked.
+ *
+ * This was previously sized to the exact stub count and drifted three times in
+ * one session (152 -> 135 -> 131) as packets deleted stub lines. A number that
+ * has to be retyped every time the file changes will be wrong, and it was also
+ * being PRINTED as "of N linked", so the drift became a false statistic in the
+ * report rather than a silent one.
+ *
+ * Now it is a generous bound with an overflow guard, and the report states only
+ * what it actually counted. The true linked count is `grep -cE '^long .*return br_stub'`
+ * on this file -- derived, not typed.
+ *
+ * NOTE the anchor. The obvious unanchored grep counts the COMMENTS TOO --
+ * including this one and the recipe above it -- and reported 66 stubs where
+ * there were 50. A recipe that matches its own prose is a small thing that
+ * still produced a wrong number in three separate reports. Anchor on `^long`,
+ * which only a definition line can satisfy. */
+#define BR_STUB_MAX 512
+static const char *g_hit[BR_STUB_MAX];
+static unsigned    g_cnt[BR_STUB_MAX];
+static int         g_nHit;
+static int         g_abort;   /* BR_STUB_ABORT=1 -> die on first hit */
+
+static long br_stub(const char *name)
+{
+    int i;
+    for (i = 0; i < g_nHit; i++)
+        if (g_hit[i] == name) { g_cnt[i]++; return 0; }
+    if (g_nHit < BR_STUB_MAX) { g_hit[g_nHit] = name; g_cnt[g_nHit++] = 1; }
+    else { static int warned; if (!warned) { warned = 1;
+        fprintf(stderr, "br_stubs: hit table full at %d -- report truncated\n",
+                BR_STUB_MAX); } }
+    if (!g_abort) { static int once; if (!once) { once = 1;
+        g_abort = getenv("BR_STUB_ABORT") ? atoi(getenv("BR_STUB_ABORT")) : 0; } }
+    if (g_abort) { fprintf(stderr, "\nSTUB HIT (fatal): %s\n", name); abort(); }
+    return 0;
+}
+
+/* br_unresolved.c's stubs report through the same table. */
+long br_stub_hit(const char *name);
+long br_stub_hit(const char *name) { return br_stub(name); }
+
+/* Called at exit: the boot path's actual demand, most-wanted first.
+ *
+ * BR_STUB_GATE=1 turns this from a report into a GATE: the process exits 1 if
+ * the run reached any stub at all. That is the macOS peer of what
+ * tools/brally/image_build.py does for the Win9x lane -- image_build exits 1 when a
+ * claimed match cannot be placed, and this exits 1 when a claimed-complete
+ * boot path is in fact standing on a stub.
+ *
+ * The two gates measure DIFFERENT things and neither substitutes for the
+ * other. image_build proves PLACEMENT: our bytes sit at the claimed address
+ * and the assembled file equals the original -- but 66% of that file is the
+ * original's own bytes, so it says nothing about whether our code runs. This
+ * proves REACHABILITY: every function the run actually entered was real
+ * ported code, not a stub returning 0. A green image and a green stub gate
+ * together are still not "the game works"; they are "placed right" and
+ * "nothing faked it".
+ *
+ * Default (unset) stays a plain report, so exploratory runs are unaffected --
+ * a gate that breaks ordinary use gets switched off and stops gating.
+ * BR_STUB_ABORT=1 remains the fail-fast variant: it dies at the FIRST hit,
+ * with the stack still live, which is what you want when you need to see WHO
+ * called the stub rather than merely that it was called. */
+void BrStubReport(void)
+{
+    int i, j, gate;
+    gate = getenv("BR_STUB_GATE") ? atoi(getenv("BR_STUB_GATE")) : 0;
+    if (!g_nHit) {
+        printf("stubs: none reached -- everything the run touched is ported\n");
+        return;
+    }
+    printf("\nstubs reached: %d distinct\n", g_nHit);
+    for (i = 0; i < g_nHit; i++) {
+        int best = i;
+        for (j = i + 1; j < g_nHit; j++) if (g_cnt[j] > g_cnt[best]) best = j;
+        { const char *tn = g_hit[i]; unsigned tc = g_cnt[i];
+          g_hit[i] = g_hit[best]; g_cnt[i] = g_cnt[best];
+          g_hit[best] = tn; g_cnt[best] = tc; }
+        printf("  %6u  %s\n", g_cnt[i], g_hit[i]);
+    }
+    if (gate) {
+        fprintf(stderr,
+                "\nSTUB GATE: FAILED -- %d stub%s reached; the run did not "
+                "execute ported code all the way through.\n",
+                g_nHit, g_nHit == 1 ? " was" : "s were");
+        exit(1);
+    }
+}
+
+long BrAppMsg107(void); long BrAppMsg107(void) { return br_stub("BrAppMsg107"); }
+long BrEnt35CE0(void); long BrEnt35CE0(void) { return br_stub("BrEnt35CE0"); }
+long BrExt_10041AC0(void); long BrExt_10041AC0(void) { return br_stub("BrExt_10041AC0"); }
+long BrExt_10041BD0(void); long BrExt_10041BD0(void) { return br_stub("BrExt_10041BD0"); }
+/* BrExt_10045A00 (the CD-ROM volume scan, Glide 0x1003EE90 / D3D 0x10045A00)
+ * WAS stubbed here, returning 0. That made BrPhaseActivate_10045900 report
+ * status 0xD and refuse to open Championship on EVERY machine, including one
+ * where tools/brally/extract_assets.sh had extracted every asset successfully. It is
+ * now answered for real by port/src/gamedata/br_volume.c, out of the volume
+ * label the extraction records in reference/brally/data/assets.manifest.json. A tree with
+ * nothing extracted still gets 0, which is the honest answer and still 0xD. */
+long BrExt_10047660(void); long BrExt_10047660(void) { return br_stub("BrExt_10047660"); }
+long BrExt_10049C20(void); long BrExt_10049C20(void) { return br_stub("BrExt_10049C20"); }
+long BrExt_1004A260(void); long BrExt_1004A260(void) { return br_stub("BrExt_1004A260"); }
+long BrExt_1004D1F0(void); long BrExt_1004D1F0(void) { return br_stub("BrExt_1004D1F0"); }
+long BrExt_1004DB00(void); long BrExt_1004DB00(void) { return br_stub("BrExt_1004DB00"); }
+long BrExt_100509F0(void); long BrExt_100509F0(void) { return br_stub("BrExt_100509F0"); }
+long BrExt_10052F50(void); long BrExt_10052F50(void) { return br_stub("BrExt_10052F50"); }
+long BrExt_10053CF0(void); long BrExt_10053CF0(void) { return br_stub("BrExt_10053CF0"); }
+long BrExt_10058750(void); long BrExt_10058750(void) { return br_stub("BrExt_10058750"); }
+long BrExt_10059BB0(void); long BrExt_10059BB0(void) { return br_stub("BrExt_10059BB0"); }
+long BrFn1003D210(void); long BrFn1003D210(void) { return br_stub("BrFn1003D210"); }
+long BrGbiCall1001D420(void); long BrGbiCall1001D420(void) { return br_stub("BrGbiCall1001D420"); }
+long BrGbiCall10029470(void); long BrGbiCall10029470(void) { return br_stub("BrGbiCall10029470"); }
+long BrModelVtxResolve(void); long BrModelVtxResolve(void) { return br_stub("BrModelVtxResolve"); }
+long BrNetSend4760(void); long BrNetSend4760(void) { return br_stub("BrNetSend4760"); }
+long BrNetSendDelta(void); long BrNetSendDelta(void) { return br_stub("BrNetSendDelta"); }
+long BrNetSendFull(void); long BrNetSendFull(void) { return br_stub("BrNetSendFull"); }
+long BrOptFn10056FF0(void); long BrOptFn10056FF0(void) { return br_stub("BrOptFn10056FF0"); }
+long BrOptFn10058750(void); long BrOptFn10058750(void) { return br_stub("BrOptFn10058750"); }
+long BrSub1000BAF0(void); long BrSub1000BAF0(void) { return br_stub("BrSub1000BAF0"); }
+long BrSub10035BD1(void); long BrSub10035BD1(void) { return br_stub("BrSub10035BD1"); }
+long BrSub100360F0(void); long BrSub100360F0(void) { return br_stub("BrSub100360F0"); }
+long BrSub10037990(void); long BrSub10037990(void) { return br_stub("BrSub10037990"); }
+long BrSub1003C550(void); long BrSub1003C550(void) { return br_stub("BrSub1003C550"); }
+long BrSub1003C5C0(void); long BrSub1003C5C0(void) { return br_stub("BrSub1003C5C0"); }
+long BrSub1003C740(void); long BrSub1003C740(void) { return br_stub("BrSub1003C740"); }
+long BrSub1003CC70(void); long BrSub1003CC70(void) { return br_stub("BrSub1003CC70"); }
+long BrSub1003D210(void); long BrSub1003D210(void) { return br_stub("BrSub1003D210"); }
+long BrSub1003D480(void); long BrSub1003D480(void) { return br_stub("BrSub1003D480"); }
+long BrSub1003E1D0(void); long BrSub1003E1D0(void) { return br_stub("BrSub1003E1D0"); }
+long BrSub1005F5A0(void); long BrSub1005F5A0(void) { return br_stub("BrSub1005F5A0"); }
+long BrSub10061010(void); long BrSub10061010(void) { return br_stub("BrSub10061010"); }
+long BrSub10062C50(void); long BrSub10062C50(void) { return br_stub("BrSub10062C50"); }
+long BrSub10070610(void); long BrSub10070610(void) { return br_stub("BrSub10070610"); }
+long BrSub10070E60(void); long BrSub10070E60(void) { return br_stub("BrSub10070E60"); }
+/* Called directly by 0x10071550, which has no null test and no indirection.
+ * void rather than long: that is the signature slice6_73.c declares. */
+void BrSub10071560(void); void BrSub10071560(void) { (void)br_stub("BrSub10071560"); }
+void BrSub10071630(void); void BrSub10071630(void) { (void)br_stub("BrSub10071630"); }
+long BrSub100773F0(void); long BrSub100773F0(void) { return br_stub("BrSub100773F0"); }
+long BrSub1007A840(void); long BrSub1007A840(void) { return br_stub("BrSub1007A840"); }
+long BrSub1007A940(void); long BrSub1007A940(void) { return br_stub("BrSub1007A940"); }
+long BrSub_100290A0(void); long BrSub_100290A0(void) { return br_stub("BrSub_100290A0"); }
+long BrX1002C500(void); long BrX1002C500(void) { return br_stub("BrX1002C500"); }
+long BrX1003563A(void); long BrX1003563A(void) { return br_stub("BrX1003563A"); }
+long BrX100397C0(void); long BrX100397C0(void) { return br_stub("BrX100397C0"); }
+long BrX100664C0(void); long BrX100664C0(void) { return br_stub("BrX100664C0"); }
+long BrX10068260(void); long BrX10068260(void) { return br_stub("BrX10068260"); }
+long BrX10075F10(void); long BrX10075F10(void) { return br_stub("BrX10075F10"); }
+
+
+/* ==========================================================================
+ * PROVISIONAL STORAGE -- RETIRED.
+ *
+ * This block used to hold 64 zeroed 1 MiB blocks standing in for data symbols
+ * whose owning module is not ported. They are now real definitions in
+ * port/src/br_data.c, read back out of reference/brally/orig/BRD3D.dll: 28 of them live in
+ * .data and carry initialisers this file could not have guessed, and the rest
+ * were confirmed to be genuine .bss -- zero in the original too, so zero here
+ * is the right answer rather than an unexamined default.
+ *
+ * Three of the 64 were not separate objects at all and are now aliases of
+ * storage another module already owned (0x100C12A0, 0x10AA26F4, 0x10220D68);
+ * see the ALIAS RESOLVED notes in slice3_45.h, slice5_61.h and slice2_11.h.
+ *
+ * One more was miscategorised by the generator: g_brPAA29D0 (0x10AA29D0) was
+ * emitted as a FUNCTION, so it could never compare equal to NULL and the
+ * consumer's null guard was dead. Do not let it come back as a function.
+ *
+ * The original header is kept below because its reasoning is still the right
+ * reasoning for any NEW provisional symbol.
+ * --------------------------------------------------------------------------
+ * ORIGINAL NOTE:
+ *
+ * These are `extern` arrays and objects the original keeps in .data/.bss.
+ * The module that will own each one has not been ported, so nothing defines
+ * them and the link fails on DATA rather than on code.
+ *
+ * Each is given a generous, 8-byte-aligned zeroed block. That is safe for the
+ * bring-up harness for two reasons: the original's .bss starts zeroed too, and
+ * over-allocating cannot corrupt a neighbour the way under-allocating would.
+ * It is NOT a substitute for porting the owning module -- the real definitions
+ * carry initialisers this cannot know. Anything whose behaviour depends on a
+ * non-zero initial value will read 0 here and behave differently.
+ *
+ * Sizes are deliberately uniform rather than guessed per symbol: a wrong guess
+ * that is too SMALL is a silent heap corruption, and there is no evidence here
+ * to guess correctly with. 1 MiB of .bss costs nothing on disk.
+ *
+ * Every symbol below is a porting TODO, not a finished decision.
+ * ========================================================================== */
+/* (the 1 MiB blocks that used to sit here now live, correctly sized and
+ * correctly initialised, in port/src/br_data.c) */
+
+/* Count of provisional data symbols, reported at exit so the number cannot
+ * quietly grow without anyone noticing. */
+const int g_brProvisionalData = 0;

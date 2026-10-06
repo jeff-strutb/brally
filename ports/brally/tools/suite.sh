@@ -2,18 +2,18 @@
 # suite.sh [SCRIPT ...] -- run brbox scenario scripts against the 64-bit build.
 #
 # Each script runs headless with its own save directory and shot directory
-# under build/portable/suite/<name>/, at most $JOBS at a time, for at most
+# under build/brally/null-soft/suite/<name>/, at most $JOBS at a time, for at most
 # $SECS seconds. A summary line per script: ok (the script reached `end`,
 # or the game quit by itself with 0), exit codes otherwise, and for a crash
 # the faulting frames from lldb.
-#   env: JOBS (default 6), SECS (default 600), BIN (default build/portable/brally64)
+#   env: JOBS (default 6), SECS (default 600), BIN (default build/brally/null-soft/brally64)
 cd "$(dirname "$0")/../../.."
 JOBS=${JOBS:-6}
 SECS=${SECS:-600}
-BIN=${BIN:-build/portable/brally64}
-OUT=build/portable/suite
+BIN=${BIN:-build/brally/null-soft/brally64}
+OUT=build/brally/null-soft/suite
 mkdir -p $OUT
-[ $# -gt 0 ] || set -- tools/brbox_scripts/*.txt
+[ $# -gt 0 ] || set -- tools/brally/brbox_scripts/*.txt
 
 run_one() {
     s=$1

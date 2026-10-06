@@ -66,7 +66,7 @@ typedef struct { int n; } BrEntityIndexArg;
  * const-propagated `base` local, an in-place bump on the parameter member,
  * and the compile variants /O2 /Op, /O2 /Oy-, /O1 and /Ox.  An isolated
  * one-line probe confirms the rule for int, long, unsigned, short and both
- * pointer spellings.  See the `sub reg, imm` entry in docs/VC5-IDIOMS.md: the
+ * pointer spellings.  See the `sub reg, imm` entry in docs/brally/VC5-IDIOMS.md: the
  * three MSVC5 constructs known to keep a real `sub` are a loop-carried
  * decrement, a 16-bit-typed subtraction whose result stays live narrow, and a
  * pointer difference feeding further arithmetic -- this function fits none of

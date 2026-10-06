@@ -2,7 +2,7 @@
  *
  * RESPONSIBILITY: reading what the player is doing -- specifically the last
  * step of it. The bring-up side of this pair lives in
- * src/core/cpp/0x10059350.cpp (Input59350::CreateDevice), which creates the
+ * src/brally/core/cpp/0x10059350.cpp (Input59350::CreateDevice), which creates the
  * device off the same IDirectInput root this file releases.
  *
  * The root object is reference-counted by the game, not just by COM: several
@@ -35,10 +35,10 @@ typedef struct BrDI {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* 0x10059320, a thiscall with no stack argument: the input record's own
- * teardown, matched in src/core/cpp/0x10059320.cpp as BrNavRelease_10059320. */
+ * teardown, matched in src/brally/core/cpp/0x10059320.cpp as BrNavRelease_10059320. */
 /* BrNavRelease_10059320: prototype in br_funcs.h */
 /* 0x1007456C -- the linker's jmp[IAT] stub for MSVCRT's operator delete.
- * Fenced in config/fenced.csv as an import thunk, so it is declared, never
+ * Fenced in config/brally/fenced.csv as an import thunk, so it is declared, never
  * defined, and the call is a plain cdecl one. */
 /* BrOperatorDelete: prototype in br_funcs.h */
 

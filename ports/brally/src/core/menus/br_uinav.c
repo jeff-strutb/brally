@@ -259,7 +259,7 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
 /* (port-only BrUiNavHook_10045AF0 removed) */
 
 
-/* declared only (the Mac port keeps its own body in ports/macos/patch/); Glide match is src/core/cpp/0x100400E0.cpp */
+/* declared only (the Mac port keeps its own body in ports/brally-wasm/patch/); Glide match is src/brally/core/cpp/0x100400E0.cpp */
 /* BrUiNavHook_10046C90: prototype in br_funcs.h */
 
 /* ==========================================================================
@@ -299,11 +299,11 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
  * written together because that function writes them together.
  *
  * NOT TAGGED. This is a FRAGMENT -- 48 bytes of a 939-byte function -- and
- * config/shared.csv maps d3d 0x100603A0 to Glide 0x10059410, which is a true
+ * config/brally/shared.csv maps d3d 0x100603A0 to Glide 0x10059410, which is a true
  * twin (939 bytes in both binaries) whose real transcription is BrGlNavPoll
  * below. Tagged @implements until 2026-09-03, which put two names on one
  * address and scored a 48-byte fragment against the whole function. Fragments
- * and thunks must not carry @implements -- docs/VC5-IDIOMS.md. */
+ * and thunks must not carry @implements -- docs/brally/VC5-IDIOMS.md. */
 /* (port-only BrUiNavMove removed) */
 
 
@@ -408,8 +408,8 @@ typedef struct BrGlNavRec {
 /* WHAT IT DOES: poll the menu's navigation input once per frame -- reads the
  * stick and buttons, moves the highlight, and fires the selected control's
  * action. The front end's input step. */
-/* @t4-pass 0x10059410 1 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/crank.py) */
-/* @t4-pass 0x10059410 2 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/crank.py) */
+/* @t4-pass 0x10059410 1 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/brally/crank.py) */
+/* @t4-pass 0x10059410 2 2026-09-07 probes 150 bytes 943 insns 297 regions 3 rows 1 census yes  (tools/brally/crank.py) */
 /* @t3 0x10059410 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
  * @t3-measure bytes 943/939 insns 297/298 rows 1+0 regions 3 oracle UNCLASSIFIED
  * @t3-effort passes 2 zero-movement 1 2

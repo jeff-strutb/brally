@@ -18,7 +18,7 @@
  * puts the offset first for every spelling tried (DAT[n], n[DAT], char-pointer or int
  * arithmetic, a named offset, an int list) and costs a byte on
  * `lea ecx, [ebp + eax]`; the C++ front end gives the original's order.
- * /Gi is inert on it.  The function is alone in its TU (config/tu_map.csv
+ * /Gi is inert on it.  The function is alone in its TU (config/brally/tu_map.csv
  * tu_009), so nothing else moves lanes.
  *
  * Shapes the bytes fix:

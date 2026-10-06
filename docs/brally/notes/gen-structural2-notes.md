@@ -1,17 +1,17 @@
 # Structural generators 2 - decision logic
 
-Standalone transforms (`tools/gen_structural2.py`). Do **not** copy this file
+Standalone transforms (`tools/brally/gen_structural2.py`). Do **not** copy this file
 into `ghidra_to_match.py` blindly: fold the *high-value* ones into
 `_refine_candidates` as one candidate per function. Proven against
 BRGlide.dll orig bytes. Residue: 184 unmatched refine rows
-(`python3 tools/ghidra_to_match.py --residue`).
+(`python3 tools/brally/ghidra_to_match.py --residue`).
 
 Three recurring idioms from the structural batch (VC5-IDIOMS-dll2.md). Each
 generator yields `(label, mutated_source)` in the `_refine_candidates`
 style. `--validate` scores `transform_*` (all edits of that generator)
 with `ghidra_to_match._score_source`, opts `/O2`, `/Od`, `/O2 /Oy-`.
 
-`--from-decomp` isolates the transform (wrap of `build/ghidra_decomp`).
+`--from-decomp` isolates the transform (wrap of `build/brally/analysis/ghidra_decomp`).
 Work-file scores are the residue as it sits (some VAs already hand-fixed).
 
 ## Verdict
@@ -169,12 +169,12 @@ That is optional. Not the recommendation.
 ## CLI
 
 ```
-python3 tools/gen_structural2.py --dry-run
-python3 tools/gen_structural2.py --validate
-python3 tools/gen_structural2.py --validate --from-decomp
-python3 tools/gen_structural2.py --va 0x1006BAA0 --from-decomp --gen retnotemp
-python3 tools/gen_structural2.py --va 0x1006E130 --from-decomp --gen ge0
-python3 tools/gen_structural2.py --self-test
+python3 tools/brally/gen_structural2.py --dry-run
+python3 tools/brally/gen_structural2.py --validate
+python3 tools/brally/gen_structural2.py --validate --from-decomp
+python3 tools/brally/gen_structural2.py --va 0x1006BAA0 --from-decomp --gen retnotemp
+python3 tools/brally/gen_structural2.py --va 0x1006E130 --from-decomp --gen ge0
+python3 tools/brally/gen_structural2.py --self-test
 ```
 
 `--from-decomp` never writes `ghidra_work`. `--validate` does not write

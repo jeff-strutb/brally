@@ -6,7 +6,7 @@
 
 ** THE ORACLE IS THE ONLY GATE THAT TESTS WHAT T3 CLAIMS.** A1..A4 compare
 compiled bytes and argue the differences look like compiler choices - an
-inference about instruction SHAPE. Gate A5 (`tools/t3b_verify.py`) executes
+inference about instruction SHAPE. Gate A5 (`tools/brally/t3b_verify.py`) executes
 both functions on identical inputs and compares what they produce.
 
 **Why it was almost useless:** it refused any object carrying a relocation  - 
@@ -16,7 +16,7 @@ for every other reason combined. Only 6 of 98 certified tags carried a
 behavioural verdict; the other 92 said UNCLASSIFIED, and **UNCLASSIFIED PASSES
 the gate**.
 
-**What it does now** (commit 3e38a95, new `tools/t3b_env.py`): both sides run
+**What it does now** (commit 3e38a95, new `tools/brally/t3b_env.py`): both sides run
 inside the real DLL, mapped at its image base. Our relocations are resolved to
 the original's own addresses via `reloc_fill.fill_function`, so both name the
 same globals and callees; globals hold their real contents; and **a call

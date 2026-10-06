@@ -30,7 +30,7 @@ of it exists anywhere (GitHub/decomp.me searched; only this project's repo).
    pairing** is the bridge: same string referenced on both sides = function
    correspondence with zero matching work.
 
-**PC-side transferability numbers** (measured from orig/BRGlide.dll IAT +
+**PC-side transferability numbers** (measured from reference/brally/orig/BRGlide.dll IAT +
 call graph): 74.7% of .text (343,696 B, 1,808/2,140 fns) never touches an
 import - the shared-lineage engine body. Glide submission layer is only 35
 fns / 14,360 B (3.1%). Of 512 matched fns, 460 are in the portable region.
@@ -45,7 +45,7 @@ identical 16-byte chunks); (b) a few debug guards retail dropped ("Mtx pool
 ran dry", "CELL SHADOW GFX/VTX BUF OVERFLOW"). No symbols/asserts/paths.
 
 **Round-trip test RUN 2026-08-25 (commit 2ed53ab).** IDO 5.3 + 7.1 recomp
-staged in-repo at `tools/ido/` and `tools/ido53/` (gitignored; decompals
+staged in-repo at `tools/toolchains/ido/` and `tools/toolchains/ido53/` (gitignored; decompals
 v1.2 macOS universal - runs natively). Flags for TGR: `-O2 -mips2
 -non_shared -G 0`. Test subject: BrVarSave (PC 0x100608F0, 118 B ~ N64
 0x8022adcc / ROM 0x2bdcc, 164 B), located via the "VAR SAVE OVERFLOW"
