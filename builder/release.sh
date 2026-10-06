@@ -3,7 +3,8 @@
 # both on the repository's GitHub Releases page as vVERSION.
 #
 # VERSION is the lower of the two decompilations' M2 progress (version.py).
-# The release is tagged at HEAD, which must already be on GitHub. Running it
+# The release is tagged at HEAD as it is when this starts, which must
+# already be on GitHub. Running it
 # again at the same version replaces the files of that release.
 #
 # Usage: builder/release.sh [--dry-run]
@@ -25,7 +26,8 @@ if [ -n "$(git status --porcelain -- builder ports)" ]; then
     exit 1
 fi
 git fetch -q origin
-if [ $DRY = 0 ] && ! git merge-base --is-ancestor HEAD origin/main; then
+REV=$(git rev-parse HEAD)          # the commit checked here is the one tagged, whatever lands meanwhile
+if [ $DRY = 0 ] && ! git merge-base --is-ancestor $REV origin/main; then
     echo "release: HEAD is not on origin/main; push it first" >&2
     exit 1
 fi
@@ -68,7 +70,7 @@ if gh release view $TAG >/dev/null 2>&1; then
     gh release upload $TAG $MAC $WIN --clobber
     gh release edit $TAG --notes-file $NOTES
 else
-    gh release create $TAG $MAC $WIN --target "$(git rev-parse HEAD)" --title "Rally Builder $VERSION" --notes-file $NOTES
+    gh release create $TAG $MAC $WIN --target "$REV" --title "Rally Builder $VERSION" --notes-file $NOTES
 fi
 rm -f $NOTES $NOTES.m2
 gh release view $TAG --json url -q .url
