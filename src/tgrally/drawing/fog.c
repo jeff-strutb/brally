@@ -20,7 +20,7 @@ extern unsigned char D_8028AB40, D_8028AB44, D_8028AB48;   /* tint A r/g/b */
 extern unsigned char D_8028AB4C, D_8028AB50, D_8028AB54;   /* tint B r/g/b */
 extern unsigned char D_8031B350[4], D_8031B354[4], D_8031B358[4];   /* the ramp, r/g/b */
 extern unsigned int D_8028AB58, D_8028AB5C;                /* packed tints A and B */
-extern unsigned int D_8031B360[4];                         /* packed ramp */
+unsigned int D_8031B360[4];                                /* packed ramp */
 extern float D_8031B338[3];
 extern int D_8028AB30;                  /* the fog's near and far RSP depths */
 extern int D_8028AB34;
@@ -177,15 +177,11 @@ float BrFogAmount(float v[3])
  * three-quarter and full steps of the first tint.  All of it is packed into
  * the RGB words the renderer reads.  The PC twin is BrFrameTintSetup
  * (br_framebegin.c).
- * RESIDUE (261 words, 454/453 instructions): the ROM keeps 0xFF in a1 for
- * the whole tint block (one fewer constant load), has a 0x50 frame (0x40
- * here) and spills the ramp shifts one slot higher; everything after the
- * first branch is shifted by that one instruction. */
-/* @t4-pass 0x80218D5C 1 2026-10-03 compiles 121 best 102 moved 159  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80218D5C 2 2026-10-03 compiles 120 best 97 moved 5  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80218D5C 3 2026-10-03 compiles 118 best 97 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80218D5C 4 2026-10-03 compiles 120 best 97 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80218D5C */
+ * The packed words shift the promoted colour bytes (no casts): the int
+ * conversion of each tint byte is its own value, copied from the third
+ * ramp's load, which the ROM shows as a load through another register.
+ * The packed ramp is defined here, so the assembler shares the high half
+ * of its address between stores, two words at a time, as in the ROM. */
 /* @implements 0x80218D5C tgr BrFrameTintSetup */
 void BrFrameTintSetup(void)
 {
@@ -215,8 +211,8 @@ void BrFrameTintSetup(void)
     D_8028AB40 = (((D_8028AB20 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
     D_8028AB44 = (((D_8028AB24 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
     D_8028AB48 = (((D_8028AB28 + 0xCC) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xCC) / 0xFF;
-    D_8028AB50 = (((D_8028AB24 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
     D_8028AB4C = (((D_8028AB20 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
+    D_8028AB50 = (((D_8028AB24 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x66) / 0xFF;
     D_8028AB54 = (((D_8028AB28 << 2) / 5) * D_8028AB2C + (0xFF - D_8028AB2C) * 0x77) / 0xFF;
   } else {
     D_8028AB40 = 0xFF;
@@ -268,10 +264,9 @@ void BrFrameTintSetup(void)
     D_8031B358[3] = D_8028AB48;
   }
 
-  D_8028AB5C = (unsigned int)D_8028AB4C << 24 | (unsigned int)D_8028AB50 << 16 | (unsigned int)D_8028AB54 << 8;
-  D_8028AB58 = (unsigned int)D_8028AB40 << 24 | (unsigned int)D_8028AB44 << 16 | (unsigned int)D_8028AB48 << 8;
+  D_8028AB5C = D_8028AB4C << 24 | D_8028AB50 << 16 | D_8028AB54 << 8;
+  D_8028AB58 = D_8028AB40 << 24 | D_8028AB44 << 16 | D_8028AB48 << 8;
   for (i = 0; i < 4; i++) {
-    D_8031B360[i] = (unsigned int)D_8031B350[i] << 24 | (unsigned int)D_8031B354[i] << 16
-                  | (unsigned int)D_8031B358[i] << 8;
+    D_8031B360[i] = D_8031B350[i] << 24 | D_8031B354[i] << 16 | D_8031B358[i] << 8;
   }
 }
