@@ -99,7 +99,7 @@ extern int D_8028AAB0;                  /* the screen width */
 extern int D_8028DDD0;                  /* the debug text's x */
 extern int D_8028DDD4;                  /* and y */
 extern int D_8028DDD8;                  /* use the small font */
-extern short D_8028DDDC;       /* the text colour */
+extern unsigned short D_8028DDDC; /* the text colour */
 extern short D_8028DFC0[][7][5];   /* the 5 by 7 font */
 extern short D_8028F2A0[][7][3];   /* the 3 by 7 font, its own colours */
 
@@ -491,111 +491,116 @@ void BrStub80254870(void)
  * line's x to 16 (64 hi-res); lower case prints as upper case, and
  * anything else unprintable as a space.  The frame buffer, fonts and colour
  * are shorts (the ROM re-reads the first store of each block with lh).
- * RESIDUE (308): the ROM keeps the column in a stack home and orders the
- * block stores row by row; ours holds more in saved registers.
+ * RESIDUE (44): the ROM tests the loaded byte where it lands (lbu v0) and
+ * copies it to a0 for the non-letter paths; ours truncates the copy (andi)
+ * and swaps the two registers, which renames the glyph index, the hi-res
+ * flag and the font flag after it.
  *
  * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x80254878 -- no
  * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
  * no data word holding it (the whole ROM searched for the value). */
 /* @implements 0x80254878 tgr BrDebugPrint */
-void BrDebugPrint(unsigned char *s)
+void BrDebugPrint(char *s)
 {
-  short col;
-  int w;
   unsigned char c;
+  int w;
   short *p;
-  int x0;
-  unsigned int n;
+  int x;
+  int y;
+  unsigned short col;
+  unsigned char n;
   short *g;
   int i;
 
-  col = D_8028DDDC;
   w = D_8028AAB0 << D_8028A850;
-  c = *s;
-  p = (short *)D_8031AA28[D_8028A85C ^ 1] + D_8028DDD4 * w + D_8028DDD0;
-  x0 = D_8028DDD0;
-  for (;;) {
-    if (c == 0) {
-      D_8028DDD0 = x0;
-      return;
-    }
-    if (c < 0x20 || c > 0x7e) {
-      n = 0;
-      if (c != '\n') {
-        goto draw;
-      }
-      x0 = 16 << (D_8028A850 << 1);
-      D_8028DDD4 += D_8028A850 + 8;
-      p += (D_8028A850 + 8) * w;
-    } else {
+  y = D_8028DDD4;
+  x = D_8028DDD0;
+  p = (short *)D_8031AA28[D_8028A85C ^ 1];
+  p += y * w;
+  p += x;
+  col = D_8028DDDC;
+  for (; *s != 0; s++) {
+    c = *s;
+    if (c >= 0x20 && c < 0x7f) {
       if (c >= 'a' && c <= 'z') {
-        n = (unsigned char)(c - 0x40);
+        n = c - 0x40;
       } else {
         if (c > 'z' && c < 0x7f) {
           c -= 0x1a;
         }
-        n = (unsigned char)(c - 0x20);
+        n = c - 0x20;
       }
-    draw:
-#define DOT(k) \
-      if (g[k]) { \
-        p[k + 2] = p[k + 1] = p[k] = p[w + k + 2] = p[w + k] = p[w * 2 + k] = p[w * 2 + k + 1] = p[w * 2 + k + 2] = 1; \
-      }
-      if (D_8028DDD8 == 0) {
-        g = D_8028DFC0[n][0];
-        for (i = 0; i != 8; i++, p += w, g += 5) {
-          if (i < 7) {
-            DOT(0)
-            DOT(1)
-            DOT(2)
-            DOT(3)
-            DOT(4)
-          }
-          if (i != 0) {
-            if (g[-5]) {
-              p[1] = col;
-            }
-            if (g[-4]) {
-              p[2] = col;
-            }
-            if (g[-3]) {
-              p[3] = col;
-            }
-            if (g[-2]) {
-              p[4] = col;
-            }
-            if (g[-1]) {
-              p[5] = col;
-            }
-          }
-        }
-        p -= w * 8 - D_8028A850 - 6;
-      } else {
-        g = D_8028F2A0[n][0];
-        for (i = 0; i != 8; i++, p += w, g += 3) {
-          if (i < 7) {
-            DOT(0)
-            DOT(1)
-            DOT(2)
-          }
-          if (i != 0) {
-            if (g[-3]) {
-              p[1] = g[-3];
-            }
-            if (g[-2]) {
-              p[2] = g[-2];
-            }
-            if (g[-1]) {
-              p[3] = g[-1];
-            }
-          }
-        }
-        p -= w * 8 - D_8028A850 - 4;
-      }
-#undef DOT
+    } else if (c == '\n') {
+      x = 16 << (D_8028A850 << 1);
+      y += D_8028A850 + 8;
+      p += (D_8028A850 + 8) * w;
+      continue;
+    } else {
+      n = 0;
     }
-    c = *++s;
+#define DOT(k) \
+    if (g[k]) { \
+      p[k] = p[k + 1] = p[k + 2] = p[w + k] = p[w + k + 2] = p[w + w + k] = p[w + w + k + 1] = p[w + w + k + 2] = 1; \
+    }
+    if (D_8028DDD8 != 0) {
+      g = D_8028F2A0[n][0];
+      for (i = 0; i != 8; i++, p += w, g += 3) {
+        if (i < 7) {
+          DOT(0)
+          DOT(1)
+          DOT(2)
+        }
+        if (i != 0) {
+          g -= 3;
+          if (g[0]) {
+            p[1] = g[0];
+          }
+          if (g[1]) {
+            p[2] = g[1];
+          }
+          if (g[2]) {
+            p[3] = g[2];
+          }
+          g += 3;
+        }
+      }
+      p -= w * 8 - D_8028A850 - 4;
+    } else {
+      g = D_8028DFC0[n][0];
+      for (i = 0; i != 8; i++, p += w, g += 5) {
+        if (i < 7) {
+          DOT(0)
+          DOT(1)
+          DOT(2)
+          DOT(3)
+          DOT(4)
+        }
+        if (i != 0) {
+          g -= 5;
+          if (g[0]) {
+            p[1] = col;
+          }
+          if (g[1]) {
+            p[2] = col;
+          }
+          if (g[2]) {
+            p[3] = col;
+          }
+          if (g[3]) {
+            p[4] = col;
+          }
+          if (g[4]) {
+            p[5] = col;
+          }
+          g += 5;
+        }
+      }
+      p -= w * 8 - D_8028A850 - 6;
+    }
+#undef DOT
   }
+  D_8028DDD0 = x;
+  D_8028DDD4 = y;
 }
 
 /* WHAT IT DOES: Does nothing. A second empty function in the Controller Pak
