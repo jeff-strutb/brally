@@ -2347,26 +2347,23 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
  * between the two dash colours (swapped every 8 frames), then the corners
  * by a midpoint circle walk at twice the resolution, on every other step
  * the eight octant points on odd pixels only, in dashes of four points.
- * RESIDUE (~270): the ROM keeps the corners in their parameter homes and
- * the radius twice (s6, s7); ours holds the corners in saved registers. */
-/* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80251F68 */
+ * Source facts: the corners stay in the parameters, and after the edges
+ * they are moved in place to the corner centres (x0 += r, x1 -= r,
+ * y0 += r, y1 -= r) for the walk.  The edge loops name their bounds as
+ * y0 + r .. y1 - r (x0 + r .. x1 - r), and the dash toggle is on++;
+ * on &= 1;. */
 /* @implements 0x80251F68 tgr BrPaintDashRoundRect */
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
 {
   int t;
   int r;
-  int top;
-  int bot;
-  int right;
   int x;
   int y;
   int a;
   int b;
   int err;
   int ha;
-  int hb;
+  int hb;                       /* declared, never used: the frame holds it */
   unsigned char on;
   unsigned char c;
 
@@ -2385,61 +2382,66 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
     y1 = t;
   }
   r = (x1 - x0 < y1 - y0 ? x1 - x0 : y1 - y0) >> 2;
-  top = y0 + r;
-  bot = y1 - r;
-  for (y = top; y <= y1 - r; y += 4) {
-    on = (on + 1) & 1;
+  for (y = y0 + r; y <= y1 - r; y += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x0, y, 1, 4, c, c, c);
   }
-  for (y = top; y <= y1 - r; y += 4) {
-    on = (on + 1) & 1;
+  for (y = y0 + r; y <= y1 - r; y += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x1, y, 1, 4, c, c, c);
   }
-  x0 += r;
-  right = x1 - r;
-  for (x = x0; x <= x1 - r; x += 4) {
-    on = (on + 1) & 1;
+  for (x = x0 + r; x <= x1 - r; x += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y0, 4, 1, c, c, c);
   }
-  for (x = x0; x <= x1 - r; x += 4) {
-    on = (on + 1) & 1;
+  for (x = x0 + r; x <= x1 - r; x += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y1, 4, 1, c, c, c);
   }
+  x0 += r;
+  x1 -= r;
+  y0 += r;
+  y1 -= r;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b;) {
+  while (a <= b) {
     if (!(a & 1)) {
-      on = (on + 1) & 7;
+      on++;
+      on %= 8;
       c = on < 4 ? D_8028DAB8 : D_8028DABC;
       ha = a >> 1;
-      hb = b >> 1;
       if ((x0 - ha) & 1) {
-        BrFillPoint(x0 - ha, top - hb, c);
+        BrFillPoint(x0 - ha, y0 - (b >> 1), c);
       }
       if ((x0 - ha) & 1) {
-        BrFillPoint(x0 - ha, hb + bot, c);
+        BrFillPoint(x0 - ha, (b >> 1) + y1, c);
       }
-      if ((ha + right) & 1) {
-        BrFillPoint(ha + right, hb + bot, c);
+      if ((ha + x1) & 1) {
+        BrFillPoint(ha + x1, (b >> 1) + y1, c);
       }
-      if ((ha + right) & 1) {
-        BrFillPoint(ha + right, top - hb, c);
+      if ((ha + x1) & 1) {
+        BrFillPoint(ha + x1, y0 - (b >> 1), c);
       }
-      if ((ha + bot) & 1) {
-        BrFillPoint(hb + right, ha + bot, c);
+      if ((ha + y1) & 1) {
+        BrFillPoint((b >> 1) + x1, ha + y1, c);
       }
-      if ((top - ha) & 1) {
-        BrFillPoint(hb + right, top - ha, c);
+      if ((y0 - ha) & 1) {
+        BrFillPoint((b >> 1) + x1, y0 - ha, c);
       }
-      if ((top - ha) & 1) {
-        BrFillPoint(x0 - hb, top - ha, c);
+      if ((y0 - ha) & 1) {
+        BrFillPoint(x0 - (b >> 1), y0 - ha, c);
       }
-      if ((ha + bot) & 1) {
-        BrFillPoint(x0 - hb, ha + bot, c);
+      if ((ha + y1) & 1) {
+        BrFillPoint(x0 - (b >> 1), ha + y1, c);
       }
     }
     err += a;
