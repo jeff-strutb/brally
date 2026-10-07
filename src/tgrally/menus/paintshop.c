@@ -1746,113 +1746,133 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
  * BrPaintFillOval with the radii grown by half the brush, and on every
  * other step each quadrant's point drawn as a run of texels the brush's
  * size inward (up/down in the first region, across in the second).
- * RESIDUE (371): the ROM's frame is 8 smaller and keeps the corners and
- * radii in their stack homes; ours holds them in saved registers first. */
-/* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80250FCC */
+ * Source facts: the corners are swapped when sx1 - sx0 (sy1 - sy0) is
+ * negative, with no width variable; the radii are the pair r[] and the
+ * squares the pair sq, whose address is taken (p), so both stay in memory:
+ * the walk reads them back after every plot and keeps the source operand
+ * order.  b2b and a2b are copies of the squares for the running sums ey and
+ * ex.  Each region is guarded by the product test, then runs as a for loop
+ * whose inits sit on its header line and which breaks at the bottom.  The
+ * left, top and bottom edges are computed in that order at each step and
+ * the right edge is written inline, which orders the four runs' setup as in
+ * the ROM. */
 /* @implements 0x80250FCC tgr BrPaintFrameOval */
 void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
 {
-  int ry;
-  int rx;
+  int *p;
+  int r[2];
+  int l;
   int t;
-  int dx;
-  int dy;
+  int b;
   int w;
   int x;
   int y;
   int err;
   int k;
+  int d;
   int b2b;
   int a2b;
-  int b2;
-  int a2;
+  struct {
+    int a2;
+    int b2;
+  } sq;
   int ey;
   int ex;
-  int d;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  sx1 = (sx1 - D_8028DB94.x) >> 2;
-  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
-  dx = sx1 - sx0;
-  if (dx < 0) {
-    dx = sx0 - sx1;
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (sx1 - sx0 < 0) {
     t = sx0;
     sx0 = sx1;
     sx1 = t;
   }
-  dy = sy1 - sy0;
-  if (dy < 0) {
-    dy = sy0 - sy1;
+  if (sy1 - sy0 < 0) {
     t = sy0;
     sy0 = sy1;
     sy1 = t;
   }
   w = D_8028D4A0[D_8028DAC0].w;
-  ry = (dy + w) >> 1 < 2 ? 1 : (dy + w) >> 1;
-  rx = (dx + w) >> 1 < 2 ? 1 : (dx + w) >> 1;
+  r[1] = (sy1 - sy0 + w) >> 1 >= 2 ? (sy1 - sy0 + w) >> 1 : 1;
+  r[0] = (sx1 - sx0 + w) >> 1 >= 2 ? (sx1 - sx0 + w) >> 1 : 1;
+  p = &sq.a2;
+  sq.b2 = r[1] * r[1];
+  b2b = sq.b2;
+  sq.a2 = r[0] * r[0];
+  a2b = sq.a2;
+  y = r[1] * 2;
   x = 0;
-  y = ry * 2;
-  b2 = b2b = ry * ry;
-  a2 = a2b = rx * rx;
-  err = -a2 * y;
-  for (ex = a2b * y, ey = 0, d = 0; ey <= ex;) {
-    if (!(x & 1)) {
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
+  err = -sq.a2 * y;
+  if (b2b * x <= a2b * y) {
+    for (ex = a2b * y, ey = 0, d = 0;;) {
+      if (!(x & 1)) {
+        l = ((sx0 + sx1) >> 1) - (x >> 1);
+        t = ((sy0 + sy1) >> 1) - (y >> 1);
+        b = (y >> 1) + ((sy0 + sy1) >> 1);
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), b - k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), t + k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l, t + k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l, b - k, D_8028DB58);
+        }
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      err += d;
+      ey += b2b;
+      x++;
+      d += r[1] * r[1];
+      err += d;
+      if (err > 0) {
+        err -= sq.a2 * y;
+        y--;
+        ex -= a2b;
+        err -= sq.a2 * y;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      if (ex < ey) {
+        break;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
-      }
-    }
-    err += d;
-    ey += b2b;
-    x++;
-    d += ry * ry;
-    err += d;
-    if (err > 0) {
-      err -= a2 * y;
-      y--;
-      ex -= a2b;
-      err -= a2 * y;
     }
   }
-  x = rx * 2;
   y = 0;
-  err = -b2 * x;
-  for (ey = b2b * x, ex = 0, d = 0; ex <= ey;) {
-    if (!(y & 1)) {
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+  x = r[0] * 2;
+  err = -sq.b2 * x;
+  if (sq.a2 * y <= x * sq.b2) {
+    for (ey = b2b * x, ex = 0, d = 0;;) {
+      if (!(y & 1)) {
+        l = ((sx0 + sx1) >> 1) - (x >> 1);
+        t = ((sy0 + sy1) >> 1) - (y >> 1);
+        b = (y >> 1) + ((sy0 + sy1) >> 1);
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, b, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, t, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l + k, t, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l + k, b, D_8028DB58);
+        }
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      err += d;
+      ex += a2b;
+      y++;
+      d += r[0] * r[0];
+      err += d;
+      if (err > 0) {
+        err -= sq.b2 * x;
+        x--;
+        ey -= b2b;
+        err -= sq.b2 * x;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      if (ey < ex) {
+        break;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
-      }
-    }
-    err += d;
-    y++;
-    ex += a2b;
-    d += rx * rx;
-    err += d;
-    if (err > 0) {
-      err -= b2 * x;
-      x--;
-      ey -= b2b;
-      err -= b2 * x;
     }
   }
 }
