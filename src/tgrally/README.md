@@ -23,4 +23,4 @@ One folder per area; a file per responsibility.  Every function carries a
 | [`racing/`](racing/README.md) | race state, the race display, car artwork, the camera |
 | [`startup/`](startup/README.md) | boot, the main loop's game modes, fatal errors |
 
-Tagged functions: EXCLUDED (T2) 4, EXCLUDED (T4) 1, FENCED 163, T3 41, T4 526.
+Tagged functions: EXCLUDED (T2) 3, EXCLUDED (T4) 2, FENCED 163, T3 30, T4 537.
