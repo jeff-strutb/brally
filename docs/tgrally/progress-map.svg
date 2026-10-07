@@ -511,7 +511,7 @@
 <rect x="1077.2" y="569.2" width="100.2" height="74.2" fill="#3fb950"><title>(unnamed)  0x802182A8  2532B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1178.0" y="569.2" width="90.1" height="74.2" fill="#3fb950"><title>(unnamed)  0x802167E0  2280B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1268.8" y="569.2" width="68.0" height="74.2" fill="#3fb950"><title>(unnamed)  0x8021AA08  1724B  [unfiled 0x8021xxxx]</title></rect>
-<rect x="1337.4" y="569.2" width="61.5" height="74.2" fill="#58a6ff"><title>(unnamed)  0x8021F380  1560B  [unfiled 0x8021xxxx]</title></rect>
+<rect x="1337.4" y="569.2" width="61.5" height="74.2" fill="#3fb950"><title>(unnamed)  0x8021F380  1560B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1077.2" y="643.9" width="61.6" height="68.9" fill="#3fb950"><title>(unnamed)  0x80219470  1452B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1077.2" y="713.4" width="61.6" height="64.9" fill="#3fb950"><title>(unnamed)  0x80217734  1368B  [unfiled 0x8021xxxx]</title></rect>
 <rect x="1077.2" y="778.9" width="61.6" height="64.9" fill="#3fb950"><title>(unnamed)  0x8021EB50  1368B  [unfiled 0x8021xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [src/exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [src/core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [src/core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 542 &#183; T3 codegen-only 25 &#183; 347,660/457,392 bytes exact (76.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 543 &#183; T3 codegen-only 24 &#183; 349,220/457,392 bytes exact (76.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
