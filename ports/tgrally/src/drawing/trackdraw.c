@@ -631,26 +631,26 @@ int BrDrawSortCmp(BrDrawSortItem *a, BrDrawSortItem *b)
 /* @implements 0x80234FF8 tgr BrTrackDrawSetup */
 void BrTrackDrawSetup(void)
 {
-  int n;
-  int r;
   int c;
-  int cx;
-  int cy;
+  int r;
+  int n;
   int i;
   int k;
   int d;
-  int lim;
+  int dx;
+  int dy;
   int near2;
-  int slot;
-  unsigned int cell;
   unsigned short q[2];
   unsigned short o;
+  int lim;
+  int slot;
+  unsigned int cell;
   float dot;
+  BrCar *car;
   float lx;
   float ly;
-  BrCar *car;
+  bef_t *pos;                   /* the object's translation row: cartridge data */
   BrVec3 v;
-  BrDrawCell *p;
 
   D_8028C76C = 0;
   n = 0;
@@ -668,17 +668,18 @@ void BrTrackDrawSetup(void)
 full:
   D_8035D1D0[n].col = 0xFF;
   D_8035D1D0[n].row = 0xFF;
-  cx = D_8028AAF4->mtx[3][0] / 32.0f;
-  if (cx == 64) {
-    cx = 63;
+  c = D_8028AAF4->mtx[3][0] / 32.0f;
+  if (c == 64) {
+    c--;
   }
-  cy = D_8028AAF4->mtx[3][1] / 32.0f;
-  if (cy == 64) {
-    cy = 63;
+  r = D_8028AAF4->mtx[3][1] / 32.0f;
+  if (r == 64) {
+    r--;
   }
   for (i = 0; i < n; i++) {
-    D_8035D1D0[i].dist = (D_8035D1D0[i].col - cx) * (D_8035D1D0[i].col - cx) +
-                         (D_8035D1D0[i].row - cy) * (D_8035D1D0[i].row - cy);
+    dx = D_8035D1D0[i].col - c;
+    dy = D_8035D1D0[i].row - r;
+    D_8035D1D0[i].dist = dx * dx + dy * dy;
   }
   BrQsort(D_8035D1D0, n, 4, BrDrawSortCmp);
   BrFill64(D_80351D80, BES32(D_80025C00.nObjs), -1);
@@ -686,15 +687,16 @@ full:
   D_8028C778 = -1;
   D_8028C780 = -1;
   D_8028C788 = -1;
-  near2 = (int)(D_8028AACC / (float)32) - 3;
-  near2 = near2 * near2;
-  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost == 0 || D_8028AAF4 != &D_8028AAF0->cams[3]) {
-    lim = 1;
-  } else {
+  near2 = D_8028AACC / (float)32;
+  near2 -= 3;
+  near2 *= near2;
+  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && D_8028AAF4 == &D_8028AAF0->cams[3]) {
     lim = 9;
+  } else {
+    lim = 1;
   }
-  for (p = D_8035D1D0; p->col != 0xFF; p++) {
-    d = p->dist;
+  for (n = 0; (c = D_8035D1D0[n].col) != 0xFF; n++) {
+    d = D_8035D1D0[n].dist;
     if (8 < d && D_8028C778 == -1) {
       D_8028C778 = D_8028C740;
     }
@@ -704,14 +706,16 @@ full:
     if (near2 < d && D_8028C780 == -1) {
       D_8028C780 = D_8028C740;
     }
-    if (D_8026FF64 != 0 && D_80351D80[D_8026FF64] != 0 &&
-        BrGridSpanHasPoint(BEF(BR_TRACKOBJS()[D_8026FF64].m[3][0]), BEF(BR_TRACKOBJS()[D_8026FF64].m[3][1]))) {
-      D_80352580[D_8028C740++] = D_8026FF64;
-      D_80351D80[D_8026FF64] = 0;
+    r = D_8035D1D0[n].row;
+    if (D_8026FF64 != 0 && D_80351D80[D_8026FF64] != 0) {
+      pos = BR_TRACKOBJS()[D_8026FF64].m[3];
+      if (BrGridSpanHasPoint(BEF(pos[0]), BEF(pos[1]))) {
+        D_80352580[D_8028C740++] = D_8026FF64;
+        D_80351D80[D_8026FF64] = 0;
+      }
     }
-    cell = BrTrackGridCell(p->col, p->row);
-    q[1] = cell >> 16;
-    q[0] = cell;
+    cell = BrTrackGridCell(c, r);
+    q[0] = cell & 0xffff; q[1] = cell >> 16;
     if (cell != 0) {
       while ((o = BrU16QueuePopB(q)) != 0) {
         if (D_80351D80[o] != 0 && D_8026FF64 != o) {
@@ -723,19 +727,22 @@ full:
   }
   D_8035D4FC = 0;
   for (i = 0; i < D_8028B7F4; i++) {
-    if (D_80351C70[i] != 0) {
-      BrVec3Sub(&D_8035D500, (BrVec3 *)D_8031B760[i].mtx0[3], (BrVec3 *)D_8028AAF4->mtx[3]);
-      dot = BrVec3Dot(D_8028AAF4, &D_8035D500);
-      if (dot >= 2.0f) {
-        for (k = D_8035D4FC - 1; k >= 0 && dot < D_8035D4D8[k]; k--) {
-          D_8035D4D8[k + 1] = D_8035D4D8[k];
-          D_8035D4E8[k + 1] = D_8035D4E8[k];
-        }
-        D_8035D4D8[k + 1] = dot;
-        D_8035D4E8[k + 1] = i;
-        D_8035D4FC++;
-      }
+    if (D_80351C70[i] == 0) {
+      continue;
     }
+    BrVec3Sub(&D_8035D500, (BrVec3 *)D_8031B760[i].mtx0[3], (BrVec3 *)D_8028AAF4->mtx[3]);
+    dot = BrVec3Dot(D_8028AAF4, &D_8035D500);
+    if (dot < 2.0f) {
+      continue;
+    }
+    slot = D_8035D4FC - 1;
+    for (k = slot; k >= 0 && dot < D_8035D4D8[k]; k--) {
+      D_8035D4D8[k + 1] = D_8035D4D8[k];
+      D_8035D4E8[k + 1] = D_8035D4E8[k];
+    }
+    D_8035D4D8[k + 1] = dot;
+    D_8035D4E8[k + 1] = i;
+    D_8035D4FC++;
   }
   if (D_8035D4FC > 4) {
     D_8035D4FC = 4;
@@ -747,20 +754,20 @@ full:
     }
   }
   D_8028C770 = 0;
-  for (i = 0; i < D_8028AB00; i++) {
-    D_8028C770 |= BE16(BR_TRACKOBJS()[D_8031B248[i]].x4a);
+  for (k = 0; k < D_8028AB00; k++) {
+    D_8028C770 |= BE16(BR_TRACKOBJS()[D_8031B248[k]].x4a);
   }
   lx = D_8028AAF4->mtx[0][0];
   ly = D_8028AAF4->mtx[0][1];
-  if (lx == 0.0f && ly == 0.0f) {
+  if (lx == 0.0 && ly == 0.0) {
     lx = D_802AA00C;
   }
   D_8028C774 = tgr_addr32(BrVpAlloc());
-  guLookAtReflectF((float (*)[4])D_8031AB10, TGR_PTR(void *, D_8028C774), lx * 50.0f, ly * 50.0f, 0, 0, 0, 0, 0, 0, 1.0f);
+  guLookAtReflectF((float (*)[4])D_8031AB10, TGR_PTR(void *, D_8028C774), lx * 50.0f, ly * 50.0f, 0.0f, 0, 0, 0, 0, 0, 1.0f);
   if (D_8028AA80 != 0) {
-    D_8035D510.x = D_8028AAF0->mtx0[0][0] * -4.0f + D_8028AAF0->mtx0[2][0];
-    D_8035D510.y = D_8028AAF0->mtx0[0][1] * -4.0f + D_8028AAF0->mtx0[2][1];
-    D_8035D510.z = D_8028AAF0->mtx0[0][2] * -4.0f + D_8028AAF0->mtx0[2][2];
+    D_8035D510.x = D_8028AAF0->mtx0[2][0] + D_8028AAF0->mtx0[0][0] * -4.0f;
+    D_8035D510.y = D_8028AAF0->mtx0[2][1] + D_8028AAF0->mtx0[0][1] * -4.0f;
+    D_8035D510.z = D_8028AAF0->mtx0[2][2] + D_8028AAF0->mtx0[0][2] * -4.0f;
   } else {
     D_8035D510.x = D_8031B338[0];
     D_8035D510.y = D_8031B338[1];
@@ -770,9 +777,9 @@ full:
   BrVec3ScaleBy(&D_8035D510, 120.0f);
   D_8028C6A0 = (D_8028C6A0 + 1) % 4;
   memcpy(&D_8028C640[D_8028C6A0], D_8028A9F0, 0x18);   /* six words, as they are */
-  ((char *)D_8028C640)[D_8028C6A0 * 0x18 + 0x10] = (int)D_8035D510.x;
-  ((char *)D_8028C640)[D_8028C6A0 * 0x18 + 0x11] = (int)D_8035D510.y;
-  ((char *)D_8028C640)[D_8028C6A0 * 0x18 + 0x12] = (int)D_8035D510.z;
+  ((signed char *)D_8028C640[D_8028C6A0].l)[8] = (int)D_8035D510.x;   /* trunc.w.s then sb, as the ROM */
+  ((signed char *)D_8028C640[D_8028C6A0].l)[9] = (int)D_8035D510.y;   /* trunc.w.s then sb, as the ROM */
+  ((signed char *)D_8028C640[D_8028C6A0].l)[10] = (int)D_8035D510.z;   /* trunc.w.s then sb, as the ROM */
   for (i = 0; i < D_8028B7F0; i++) {
     car = TGR_PTR(BrCar *, D_803239A0[i].car);
     if (car != 0) {

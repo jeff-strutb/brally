@@ -40,21 +40,18 @@ float BrPowf(float a, float b)
   return r * sum;
 }
 
-/* WHAT IT DOES: cross product -- out = a x b.  Two components are copied to
- * the stack first, so out may alias a or b. */
-/* @t4-pass 0x8022439C 1 2026-09-26 compiles 17 best 24 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022439C 2 2026-09-26 compiles 17 best 24 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022439C 3 2026-09-26 compiles 17 best 24 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022439C */
+/* WHAT IT DOES: cross product -- out = a x b.  z and y are worked out into
+ * locals before out is written, so out may alias a or b; x is computed at its
+ * store.  The six components are each read once: four stay in registers and
+ * the two z components are saved to the frame across the stores. */
 /* @implements 0x8022439C tgr BrVec3Cross */
 void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB)
 {
     float z = pA->x * pB->y - pB->x * pA->y;
-    float az = pA->z;
-    float bz = pB->z;
+    float y = pA->z * pB->x - pB->z * pA->x;
+    pOut->x = pA->y * pB->z - pB->y * pA->z;
+    pOut->y = y;
     pOut->z = z;
-    pOut->y = az * pB->x - bz * pA->x;
-    pOut->x = pA->y * bz - pB->y * az;
 }
 
 /* WHAT IT DOES: dot product of two vectors. */

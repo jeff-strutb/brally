@@ -20,7 +20,7 @@ typedef struct BrModChan {      /* one module channel, 0x18 bytes */
 } BrModChan;
 typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
   unsigned int pos;             /* 0x00 */
-  int x4;
+  int x4;                       /* that overruns its sample mixes these bytes */
   unsigned long long rate;      /* 0x08  0 = silent */
   int vol;                      /* 0x10  scaled volume */
   int baseVol;                  /* 0x14 */
@@ -74,7 +74,7 @@ extern char D_80374710[];               /* the music timer */
 extern be16_t D_803747D0[];             /* the music output buffer (0x4000 bytes), as the AI reads it */
 extern short D_802A4A08[];              /* silence: where idle sound voices point */
 extern char D_80378FB8[];               /* the mixer thread */
-extern short D_802A4790;
+extern unsigned short D_802A4790;
 extern unsigned long long osClockRate;
 void BrMixMusic(short *buf, int bytes);
 void BrNoteRatesInit(void);
@@ -215,6 +215,34 @@ void BrNoteRatesInit(void)
   }
 }
 
+/* WHAT IT DOES: Keep the music voices' samples looping: a channel with an
+ * instrument whose voice has run past the end of the sample jumps back by
+ * the loop length, or falls silent if the sample does not loop.
+ * The instrument number is an int, and the sample is indexed from the
+ * table at each use rather than held in a pointer, so the end address is
+ * the busier web and is coloured first, as the ROM has it (v1), and the
+ * sample address second (a2). */
+/* @implements 0x80256D3C tgr BrMusicLoopSamples */
+void BrMusicLoopSamples(void)
+{
+  int i;
+  int n;
+  unsigned int end;
+
+  for (i = 0; i < D_802A49C0; i++) {
+    n = D_80378DD0[i].smp;
+    if (n != 0) {
+      end = tgr_addr32(D_803787D0[n - 1]) + BE32(D_803787D0[n - 1]->len) + 0x28;
+      if (end < D_802A4798[i].pos) {
+        if (D_803787D0[n - 1]->loops == 0) {
+          D_802A4798[i].rate = 0;
+        } else {
+          D_802A4798[i].pos -= BE32(D_803787D0[n - 1]->loopLen);
+        }
+      }
+    }
+  }
+}
 
 /* WHAT IT DOES: Read one packed pattern row (FastTracker II packing: a
  * byte with the top bit set says which of note, instrument, volume, effect
@@ -227,9 +255,15 @@ void BrNoteRatesInit(void)
  * Returns the next row.  The bytes are chained into the channel first and
  * sign-extended into the locals (lbu, then sll/sra); the channel is
  * indexed, not a pointer, so the count is read once.
- * RESIDUE (241): register allocation -- the ROM holds the four table
- * bases in s0-s3 (frame 0x48), ours the row values; the code is otherwise
- * in the ROM's order (register-blind gap 72). */
+ * Source facts: note, fx, param and inst are zeroed at the top of each
+ * row in that order (fx's and param's zeros are dead, but the order of
+ * first mention gives the ROM's colours a2, a3, t0, t1, then flags t2 and
+ * the byte t3); six unused ints give the 0x48 frame; arpOn is counted up
+ * from the zero stored before the switch (a plain 1 would be a hoisted
+ * constant register that pushes the table bases out of s0-s3).
+ * RESIDUE (107): the ROM stores arpOn = 1 as a literal with no hoisted
+ * constant (unresolved), which shifts the effect cases' temporaries; the
+ * tone-portamento case reads the sample before storing porta. */
 /* @t4-pass 0x80256DEC 1 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
 /* @t4-pass 0x80256DEC 2 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
 /* @t3 0x80256DEC */
@@ -243,12 +277,15 @@ unsigned char *BrModRowRead(unsigned char *p)
   signed char fx;
   signed char param;
   unsigned int smp;
+  int unused[6];
   unsigned long long target;
 
   for (i = 0; i < D_802A49C0; i++) {
-    flags = *p++;
     note = 0;
+    fx = 0;
+    param = 0;
     inst = 0;
+    flags = *p++;
     if (flags < 0) {
       if (flags & 1) {
         note = D_80378DD0[i].note = *p++;
@@ -293,7 +330,7 @@ unsigned char *BrModRowRead(unsigned char *p)
       if (param != 0) {
         D_80378DD0[i].arp[1] = D_80378DD0[i].note + (param >> 4 & 0xf);
         D_80378DD0[i].arp[2] = D_80378DD0[i].note + (param & 0xf);
-        D_80378DD0[i].arpOn = 1;
+        D_80378DD0[i].arpOn++;
         D_80378DD0[i].arp[0] = D_80378DD0[i].note;
       }
       break;
@@ -347,6 +384,24 @@ unsigned char *BrModRowRead(unsigned char *p)
     }
   }
   return p;
+}
+
+/* WHAT IT DOES: Reset the module player: playback state flags, and every
+ * channel's position, two per-channel bytes (0 and 64, a centred pan or
+ * volume). */
+/* @implements 0x802571AC tgr BrModReset */
+void BrModReset(void)
+{
+  int i;
+
+  D_80378FA0.x2 = 1;
+  D_80378FA0.x4 = 0;
+  D_80378FA0.x10 = 0xff;
+  for (i = 0; i < D_802A49C0; i++) {
+    D_80378DD0[i].smp = 0;
+    D_80378DD0[i].vol = 0x40;
+    D_80378DD0[i].target = 0;
+  }
 }
 
 /* -- declarations: BrModTick -- */
@@ -432,25 +487,6 @@ void BrModTick(void)
   }
 }
 
-/* WHAT IT DOES: Reset the module player: playback state flags, and every
- * channel's position, two per-channel bytes (0 and 64, a centred pan or
- * volume). */
-/* @implements 0x802571AC tgr BrModReset */
-void BrModReset(void)
-{
-  int i;
-
-  D_80378FA0.x2 = 1;
-  D_80378FA0.x4 = 0;
-  D_80378FA0.x10 = 0xff;
-  for (i = 0; i < D_802A49C0; i++) {
-    D_80378DD0[i].smp = 0;
-    D_80378DD0[i].vol = 0x40;
-    D_80378DD0[i].target = 0;
-  }
-}
-
-
 /* WHAT IT DOES: Bring up the music player: set the audio interface to
  * 21998 Hz, start a 10 ms timer on the music queue, silence every music and
  * sound voice, time one test mix, build the instrument and note-rate
@@ -532,7 +568,6 @@ void BrMusicStart(int param_1,int param_2)
   }
 }
 
-
 /* WHAT IT DOES: Find a free sound-effect voice: the first of the six that
  * is silent, or -1 when all are playing. */
 /* @implements 0x802579F4 tgr BrSfxFreeVoice */
@@ -548,7 +583,6 @@ short BrSfxFreeVoice(void)
   return -1;
 }
 
-
 /* WHAT IT DOES: Start a sample on a sound-effect voice: record the
  * sample's start, length and loop length, and set the voice playing from the
  * start at rate 1.0 (32.32 fixed point), volume 0, both pans 0x20. */
@@ -563,141 +597,6 @@ void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int
   D_802A4920[v].x4 = 0;
   D_802A4920[v].baseVol = 0x200020;
   D_802A4920[v].rate = 0x100000000LL;
-}
-
-
-/* WHAT IT DOES: Keep the music voices' samples looping: a channel with an
- * instrument whose voice has run past the end of the sample jumps back by
- * the loop length, or falls silent if the sample does not loop.
- * The instrument number is an int, and the sample is indexed from the
- * table at each use rather than held in a pointer, so the end address is
- * the busier web and is coloured first, as the ROM has it (v1), and the
- * sample address second (a2). */
-/* @implements 0x80256D3C tgr BrMusicLoopSamples */
-void BrMusicLoopSamples(void)
-{
-  int i;
-  int n;
-  unsigned int end;
-
-  for (i = 0; i < D_802A49C0; i++) {
-    n = D_80378DD0[i].smp;
-    if (n != 0) {
-      end = tgr_addr32(D_803787D0[n - 1]) + BE32(D_803787D0[n - 1]->len) + 0x28;
-      if (end < D_802A4798[i].pos) {
-        if (D_803787D0[n - 1]->loops == 0) {
-          D_802A4798[i].rate = 0;
-        } else {
-          D_802A4798[i].pos -= BE32(D_803787D0[n - 1]->loopLen);
-        }
-      }
-    }
-  }
-}
-
-
-/* WHAT IT DOES: Keep the six sound-effect voices' samples looping, a
- * stereo pair at a time: a playing voice that has run past its sample's end
- * jumps back by the loop length, or stops if the sample does not loop. */
-/* @implements 0x80257C44 tgr BrSfxLoopSamples */
-void BrSfxLoopSamples(void)
-{
-  int i;
-
-  for (i = 0; i < 6; i += 2) {
-    if (D_802A4920[i].rate != 0 && D_802A4920[i].pos >= D_80378F50[i].x0 + D_80378F50[i].x4) {
-      if (D_80378F50[i].loop != 0) {
-        D_802A4920[i].pos -= D_80378F50[i].loop;
-      } else {
-        D_802A4920[i].rate = 0;
-      }
-    }
-    if (D_802A4920[i + 1].rate != 0 && D_802A4920[i + 1].pos >= D_80378F50[i + 1].x0 + D_80378F50[i + 1].x4) {
-      if (D_80378F50[i + 1].loop != 0) {
-        D_802A4920[i + 1].pos -= D_80378F50[i + 1].loop;
-      } else {
-        D_802A4920[i + 1].rate = 0;
-      }
-    }
-  }
-}
-
-
-/* WHAT IT DOES: The mixer thread, woken by the music timer: scale every
- * music voice's volume by the music level and fade, and every effect
- * voice's two channel volumes by the effects level and fade; queue the
- * output buffer if the AI can take it; work out how far the AI has read
- * and mix that much music (stepping the module on alternate wake-ups),
- * the remaining voices in pairs, and the effects; then update rumble.
- * The six counters/positions only this thread uses are function-local
- * statics (the ROM re-materialises their addresses).
- * RESIDUE: ours hoists more loop-invariant addresses and constants into
- * saved registers (frame 0x40 vs 0x30); the volume loop keeps a counter
- * and a pointer in the ROM.  Not yet matched. */
-/* @t4-pass 0x80257D3C 1 2026-10-04 compiles 31 best 209 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80257D3C 2 2026-10-04 compiles 31 best 209 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80257D3C */
-/* @implements 0x80257D3C tgr BrMusicThread */
-void BrMusicThread(void *arg)
-{
-  extern int D_802A4A0C;            /* 0x802A4A0C: the module steps on alternate wake-ups */
-  extern int D_802A4A10;        /* 0x802A4A10: where the AI was reading last time */
-  extern unsigned int D_802A4A14; /* 0x802A4A14: the effects write position */
-  extern int D_80379930;             /* 0x80379930: bytes to mix this time */
-  extern int D_80379934;             /* 0x80379934: where the AI will be reading */
-  extern int D_80379938;                 /* 0x80379938: voice counter */
-  int i;
-  int len;
-  unsigned short save;
-  unsigned int n;
-
-  for (;;) {
-    D_802A4A0C ^= 1;
-    osRecvMesg(&D_803746F0, 0, 1);
-    for (i = 0; i < D_802A49C0; i++) {
-      D_802A4798[i].vol = (unsigned int)(D_802A4798[i].baseVol * D_802A49C4 * D_802A49C8) >> 16;
-    }
-    for (D_80379938 = 0; D_80379938 < 6; D_80379938++) {
-      D_802A4920[D_80379938].vol =
-          ((D_802A49CC * ((unsigned int)D_802A4920[D_80379938].baseVol >> 16) * D_802A49D0 >> 16) << 16) +
-          (D_802A49CC * (D_802A4920[D_80379938].baseVol & 0xffff) * D_802A49D0 >> 16);
-    }
-    D_80379930 = osAiGetStatus();
-    if (D_80379930 >= 0) {
-      D_80379930 = osAiSetNextBuffer((short *)D_803747D0, 0x4000);
-    }
-    len = osAiGetLength();
-    D_80379934 = len - 0x1000;
-    if (D_80379934 < 0) {
-      D_80379934 += 0x4000;
-    }
-    D_80379930 = D_802A4A10 - D_80379934;
-    if (D_80379930 < 0) {
-      D_80379930 += 0x4000;
-    }
-    D_802A4A10 = D_80379934;
-    BrMusicLoopSamples();
-    if (D_802A4A0C != 0 && D_80378F98 != 0) {
-      BrModTick();
-    }
-    save = D_802A4790;
-    BrMixMusic((short *)D_803747D0, D_80379930);
-    for (D_80379938 = 6; D_80379938 < D_802A49C0; D_80379938 += 2) {
-      D_802A4790 = save;
-      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
-    }
-    n = ((0x5000 - len) & ~7) - D_802A4A14;
-    if (n > 0x4000) {
-      n -= 0x4000;
-    }
-    BrMixSfx((short *)D_803747D0, n, D_802A4A14);
-    BrSfxLoopSamples();
-    D_802A4A14 += n;
-    if (D_802A4A14 > 0x4000) {
-      D_802A4A14 -= 0x4000;
-    }
-    BrRumbleUpdate(0);
-  }
 }
 
 /* WHAT IT DOES: Start a sound voice on a sample: record the sample's
@@ -729,4 +628,115 @@ void BrSfxVoiceVolume(short v, unsigned int vol)
     vol &= 0x20ffff;
   }
   D_802A4920[v].baseVol = vol;
+}
+
+/* WHAT IT DOES: Keep the six sound-effect voices' samples looping, a
+ * stereo pair at a time: a playing voice that has run past its sample's end
+ * jumps back by the loop length, or stops if the sample does not loop. */
+/* @implements 0x80257C44 tgr BrSfxLoopSamples */
+void BrSfxLoopSamples(void)
+{
+  int i;
+
+  for (i = 0; i < 6; i += 2) {
+    if (D_802A4920[i].rate != 0 && D_802A4920[i].pos >= D_80378F50[i].x0 + D_80378F50[i].x4) {
+      if (D_80378F50[i].loop != 0) {
+        D_802A4920[i].pos -= D_80378F50[i].loop;
+      } else {
+        D_802A4920[i].rate = 0;
+      }
+    }
+    if (D_802A4920[i + 1].rate != 0 && D_802A4920[i + 1].pos >= D_80378F50[i + 1].x0 + D_80378F50[i + 1].x4) {
+      if (D_80378F50[i + 1].loop != 0) {
+        D_802A4920[i + 1].pos -= D_80378F50[i + 1].loop;
+      } else {
+        D_802A4920[i + 1].rate = 0;
+      }
+    }
+  }
+}
+
+/* WHAT IT DOES: The mixer thread, woken by the music timer: scale every
+ * music voice's volume by the music level and fade, and every effect
+ * voice's two channel volumes by the effects level and fade; queue the
+ * output buffer if the AI can take it; work out how far the AI has read
+ * and mix that much music (stepping the module on alternate wake-ups),
+ * the remaining voices in pairs, and the effects; then update rumble.
+ * The six counters/positions only this thread uses are function-local
+ * statics (the ROM re-materialises their addresses).  Source facts: the
+ * two range checks after the wrap have empty bodies; their blocks raise
+ * uopt's callee-saved register cost (a quarter of the block count) above the
+ * saving of keeping 0x80000000 and &D_80378F98 in saved registers, so those
+ * stay out of the loop as in the ROM.  readPos takes aiPos before the wrap
+ * of bytes, D_802A4790 is unsigned short, and the effects length is
+ * rounded with / 8 * 8 of an unsigned length. */
+/* @implements 0x80257D3C tgr BrMusicThread */
+void BrMusicThread(void *arg)
+{
+  extern int D_802A4A0C;            /* 0x802A4A0C: the module steps on alternate wake-ups */
+  extern int D_802A4A10;        /* 0x802A4A10: where the AI was reading last time */
+  extern unsigned int D_802A4A14; /* 0x802A4A14: the effects write position */
+  extern int D_80379930;             /* 0x80379930: bytes to mix this time */
+  extern int D_80379934;             /* 0x80379934: where the AI will be reading */
+  extern int D_80379938;                 /* 0x80379938: voice counter */
+  int i;
+  unsigned int len;
+  unsigned short save;
+  unsigned int n;
+  unsigned int lo;
+  unsigned int hi;
+
+  for (;;) {
+    D_802A4A0C ^= 1;
+    osRecvMesg(&D_803746F0, 0, 1);
+    for (D_80379938 = 0; D_80379938 < D_802A49C0; D_80379938++) {
+      D_802A4798[D_80379938].vol = (unsigned int)(D_802A4798[D_80379938].baseVol * D_802A49C4 * D_802A49C8) >> 16;
+    }
+    for (D_80379938 = 0; D_80379938 < 6; D_80379938++) {
+      lo = D_802A4920[D_80379938].baseVol & 0xffff;
+      hi = (unsigned int)D_802A4920[D_80379938].baseVol >> 16;
+      lo = D_802A49CC * lo * D_802A49D0 >> 16;
+      hi = D_802A49CC * hi * D_802A49D0 >> 16;
+      D_802A4920[D_80379938].vol = (hi << 16) + lo;
+    }
+    D_80379930 = osAiGetStatus();
+    if (!(D_80379930 & 0x80000000)) {
+      D_80379930 = osAiSetNextBuffer((short *)D_803747D0, 0x4000);
+    }
+    len = osAiGetLength();
+    D_80379934 = len - 0x1000;
+    if (D_80379934 < 0) {
+      D_80379934 += 0x4000;
+    }
+    D_80379930 = D_802A4A10 - D_80379934;
+    D_802A4A10 = D_80379934;
+    if (D_80379930 < 0) {
+      D_80379930 += 0x4000;
+    }
+    if (len > 0x4000) {
+    }
+    if (D_80379930 > 0x4000) {
+    }
+    BrMusicLoopSamples();
+    if (D_802A4A0C != 0 && D_80378F98 != 0) {
+      BrModTick();
+    }
+    save = D_802A4790;
+    BrMixMusic((short *)D_803747D0, D_80379930);
+    for (D_80379938 = 6; D_80379938 < D_802A49C0; D_80379938 += 2) {
+      D_802A4790 = save;
+      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
+    }
+    n = (0x5000 - len) / 8 * 8 - D_802A4A14;
+    if (n > 0x4000) {
+      n -= 0x4000;
+    }
+    BrMixSfx((short *)D_803747D0, n, D_802A4A14);
+    BrSfxLoopSamples();
+    D_802A4A14 += n;
+    if (D_802A4A14 > 0x4000) {
+      D_802A4A14 -= 0x4000;
+    }
+    BrRumbleUpdate(0);
+  }
 }

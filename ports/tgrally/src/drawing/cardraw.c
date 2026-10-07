@@ -57,12 +57,12 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b);
  * (lowered a little, fogged in fog), or in a split screen a fill of the
  * view in the fog colour -- brightened by a lightning flash.  The unused
  * array is the ROM frame's 0x40.
- * RESIDUE (116): the two cull-mode ternaries -- the ROM materialises the 0x1000
- * arm first and fills the branch's delay slot from the 0x2000 arm (4 bytes
- * longer); everything after is shifted by that. */
-/* @t4-pass 0x8022F968 1 2026-09-29 compiles 97 best 116 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022F968 2 2026-09-29 compiles 97 best 116 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022F968 */
+ * The cull-mode words are written as the mirror test in matched code,
+ * D_8028A8AC ^ D_8028A8A8 ? 0x1000 : 0x2000 (and the swap for the clear):
+ * the folded xor gives the ROM's arm layout and temps.  The render mode and
+ * the closing geometry mode are blocks with one word per line, and the
+ * matrix allocation shares its line with guMtxF2L, so as1 issues the ROM's
+ * order. */
 /* @implements 0x8022F968 tgr BrSkyDraw */
 void BrSkyDraw(void)
 {
@@ -85,8 +85,7 @@ void BrSkyDraw(void)
     return;
   }
   guTranslateF(D_8031AB10, D_8028AAF4->mtx0[3][0], D_8028AAF4->mtx0[3][1], D_8028AAF4->mtx0[3][2] * 0.99f);
-  m = BrMtxAlloc();
-  guMtxF2L(D_8031AB10, m);
+  m = BrMtxAlloc(); guMtxF2L(D_8031AB10, m);
   gSPMatrix(D_8028A858++, tgr_addr32(D_8028A878) + 0x80000000u, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
   gSPMatrix(D_8028A858++, tgr_addr32(m) + 0x80000000u, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
   gDPPipeSync(D_8028A858++);
@@ -97,11 +96,16 @@ void BrSkyDraw(void)
   } else {
     gDPSetCombine(D_8028A858++, 0xFFFFFF, 0xFFFCF87C);
   }
-  gDPSetRenderMode(D_8028A858++, 0x0F0A4200, 0);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, (_SHIFTL(G_SETOTHERMODE_L, 24, 8) | _SHIFTL(G_MDSFT_RENDERMODE, 8, 8) | _SHIFTL(29, 0, 8)));
+    tgr_wr32(&_g->words.w1, (unsigned int)(0x0F0A4200 | 0));
+  }
   gDPSetTextureFilter(D_8028A858++, D_8028A898);
   gSPClearGeometryMode(D_8028A858++, 0xF0205);
-  gSPSetGeometryMode(D_8028A858++, D_8028A8A8 == D_8028A8AC ? 0x2000 : 0x1000);
-  gSPClearGeometryMode(D_8028A858++, D_8028A8A8 == D_8028A8AC ? 0x1000 : 0x2000);
+  gSPSetGeometryMode(D_8028A858++, D_8028A8AC ^ D_8028A8A8 ? 0x1000 : 0x2000);
+  gSPClearGeometryMode(D_8028A858++, D_8028A8AC ^ D_8028A8A8 ? 0x2000 : 0x1000);
   gDPSetTextureLOD(D_8028A858++, 0);
   gSPTexture(D_8028A858++, 0xFFFF, 0xFFFF, 0, 0, 1);
   gSPClearGeometryMode(D_8028A858++, 0xC0000);
@@ -112,7 +116,12 @@ void BrSkyDraw(void)
   gSPDisplayList(D_8028A858++, D_80025C50);
   gDPPipeSync(D_8028A858++);
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
-  gSPSetGeometryMode(D_8028A858++, 0x20205);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    tgr_wr32(&_g->words.w0, _SHIFTL(G_SETGEOMETRYMODE, 24, 8));
+    tgr_wr32(&_g->words.w1, (unsigned int)(0x20205));
+  }
   gSPPopMatrix(D_8028A858++, 0);
 }
 
@@ -143,13 +152,10 @@ void BrCarPlaceWheels(int n)
  * units, load it, load its product with the camera as the lighting matrix,
  * set texturing and tiles, and call the wheel display list (the low-detail
  * one when asked).
- * RESIDUE (20): saved-register naming only -- the ROM gives s3-s5 to the
- * two matrix buffers and the DL command word and s6/s7 to the loop; ours
- * the reverse.  Register-blind exact; loop forms and named locals do not
- * move it. */
-/* @t4-pass 0x8022FFB4 1 2026-10-03 compiles 118 best 20 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022FFB4 2 2026-10-03 compiles 117 best 20 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022FFB4 */
+ * The empty do { } while (0) after the matrix allocation (an assert that
+ * compiles out) gives uopt two more blocks in the loop: the loop counter and
+ * wheel pointer then rank below the two matrix buffers and the DL command
+ * word, which take s3-s5 as in the ROM. */
 /* @implements 0x8022FFB4 tgr BrCarDrawWheels */
 void BrCarDrawWheels(BrCar *car)
 {
@@ -171,6 +177,8 @@ void BrCarDrawWheels(BrCar *car)
       guScaleF(D_8031AB50, 0.003921569f, 0.003921569f, 0.003921569f);
       guMtxCatF(D_8031AB50, car->wheelMtx[i], D_80351CC0);
       m = tgr_addr32(BrMtxAlloc());
+      do {
+      } while (0);
       guMtxF2L(D_80351CC0, TGR_PTR(void *, m));
       gRaw(D_8028A858++, 0x1060040, m);
       guMtxCatF(D_80351CC0, D_8031AA50, D_8031AB10);

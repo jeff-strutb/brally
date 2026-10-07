@@ -1077,13 +1077,9 @@ void BrAiInputClear(short *car)
  * bypassed through their alternates, and where the distance runs out the
  * position is interpolated into D_8031B750, with the segment and point
  * kept.
- * RESIDUE (77): the same instructions, but our IDO hoists the 1.0 for frac
- * to the entry (lui/mtc1 once, mov.s in the loop) where the ROM builds it
- * inside the loop; everything after shifts by one slot.  Literal
- * spellings and goto/while loop shapes leave it. */
-/* @t4-pass 0x802290C4 1 2026-10-03 compiles 119 best 77 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802290C4 2 2026-10-03 compiles 119 best 77 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802290C4 */
+ * frac is reset in the loop's step (i++, frac = 1.0f): there uopt does not
+ * keep the 1.0 in a register over the loop, and it is built where it is
+ * stored, as in the ROM. */
 /* @implements 0x802290C4 tgr BrPathWalk */
 void BrPathWalk(BrPathSeg *seg, int i, float frac, float d)
 {
@@ -1100,10 +1096,9 @@ void BrPathWalk(BrPathSeg *seg, int i, float frac, float d)
     if (seg == 0) {
       return;
     }
-    for (; i < BES16(seg->count); i++) {
+    for (; i < BES16(seg->count); i++, frac = 1.0f) {
       len = (BEF(seg->pt[i].dist) - BEF(seg->pt[i + 1].dist)) * frac;
       if (len < d) {
-        frac = 1.0f;
         d -= len;
       } else {
         BrVec3Lerp(&D_8031B750, BRV(&seg->pt[i].pos), BRV(&seg->pt[i + 1].pos), frac);

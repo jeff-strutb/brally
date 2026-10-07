@@ -132,15 +132,12 @@ void BrVec3Zero(BrVec3 *v);
  * new point's width and the trail's newest vertex (relative to the car)
  * are written at the head of the wheel's trail.  The frame is the ROM's
  * with the unused one-int arrays; stores of 0 and the decrements by 1 are
- * integer literals (the 0.0f compares keep their own zero register).
- * RESIDUE (6): two lui's of the mark width scheduled one slot later than
- * the ROM's, and the scale's spill slot 0x64 (ROM 0x70).  500 permuter
- * compiles leave it. */
-/* @t4-pass 0x8023B418 1 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 2 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 3 2026-10-03 compiles 30 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 4 2026-10-03 compiles 31 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023B418 */
+ * integer literals (the 0.0f compares keep their own zero register).  The
+ * first two arms jump to the spread (goto) so the mark width's lui is
+ * scheduled with the arm, as in the ROM.  The side vector is a pointer
+ * local set before the loop: uopt meets car + 0x10 there, ahead of the
+ * per-wheel addresses, which gives the snow scale its spill slot at 0x70
+ * as in the ROM. */
 /* @implements 0x8023B418 tgr BrSkidStep */
 void BrSkidStep(car)
 BrCar *car;
@@ -148,7 +145,7 @@ BrCar *car;
   BrVec3 save;
   BrVec3 d;
   BrVec3 at;
-  int u0[1];
+  BrVec3 *side;
   float fade;
   int u1[1];
   float s;
@@ -182,6 +179,7 @@ BrCar *car;
     } else {
       slip = f;
     }
+    side = (BrVec3 *)car->mtx0[1];
     for (k = 0; k < 4; k++) {
       car->skidClock[k] += D_8028AAD8 * 4.0f;
       if (car->skidClock[k] > 0.75f) {
@@ -206,8 +204,10 @@ BrCar *car;
       if (car->skidLife[k] != 0.0f) {
         if (hold) {
           s = 1.5f;
+          goto spread;
         } else if (surf == 4) {
           s = 2.5f;
+          goto spread;
         } else if (surf == 3 && D_8028AA8C != 0 && !onSnow) {
           s = 1.5f;
           if (!hold) {
@@ -216,15 +216,16 @@ BrCar *car;
         } else {
           goto flat;
         }
+      spread:
         if (!hold) {
           BrVec3Scale(&d, (BrVec3 *)car->mtx0[2], s);
           if (surf != 3) {
-            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -s : s);
+            BrVec3MulAddTo(&d, side, k != 0 && k < 3 ? -s : s);
           }
           if (surf != 3) {
             BrVec3ScaleBy(&d, fade);
             BrVec3MulAddTo(&d, &car->velfd8, 0.3f);
-            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.5f);
+            BrVec3MulAddTo(&d, side, BrVec3Dot(side, &car->velfd8) * 0.5f);
           } else {
             f = (1.0f - 25.0f / (2.24f * slip + 25.0f)) * 3.0f;
             BrVec3ScaleBy(&d, f);
@@ -232,13 +233,13 @@ BrCar *car;
               if (k >= 2) {
                 d.z += d.z;
               }
-              BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.3f);
+              BrVec3MulAddTo(&d, side, BrVec3Dot(side, &car->velfd8) * 0.3f);
             }
           }
         }
         BrVec3MulAdd(&at, (BrVec3 *)car->wheelMtx[k][3], (BrVec3 *)car->mtx0[2], -0.25f);
         if (surf != 3 || k < 2) {
-          BrVec3MulAddTo(&at, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -0.15f : 0.15f);
+          BrVec3MulAddTo(&at, side, k != 0 && k < 3 ? -0.15f : 0.15f);
         }
         save.x = at.x;
         save.y = at.y;
@@ -410,12 +411,10 @@ void guMtxCatL(void *a, void *b, void *r);
  * last four, takes its texture column and row, and moves with the origin
  * (older points also spread by their width and sink by gravity).  The
  * surface switch is in the ROM's body order (4, 0, 3, unknown); the frame
- * has two unused ints above the drop.
- * RESIDUE (3): the low quad's z for the sink test sits in a0, the ROM's
- * in v0; compare/assignment spellings and 400 permuter compiles leave it. */
-/* @t4-pass 0x8023BF60 1 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023BF60 2 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023BF60 */
+ * has two unused ints above the drop.  The empty do { } while (0) before
+ * the sink test is a block boundary with no code, as a compiled-out check
+ * expands: it puts the test in its own block, away from the trail row's
+ * pointer, so the low quad's z takes v0 as in the ROM. */
 /* @implements 0x8023BF60 tgr BrSkidAge */
 void BrSkidAge(void)
 {
@@ -578,6 +577,8 @@ void BrSkidAge(void)
           SET16(v1->ob[0], (short)(int)(BES16(v1->ob[0]) + (((car->skidPt[k][j].half[0] * dt) >> 12) + dx)));
           SET16(v1->ob[1], (short)(int)(BES16(v1->ob[1]) + (((h[1] * dt) >> 12) + dy)));
           SET16(v1->ob[2], (short)(int)(BES16(v1->ob[2]) + (((h[2] * dt) >> 12) + dz)));
+          do {
+          } while (0);
           if (BES16(v1->ob[2]) < BES16(v0->ob[2])) {
             v1->ob[2] = v0->ob[2];
           } else {
@@ -844,28 +845,30 @@ extern float D_80368A80[4][4];          /* the falling particles' billboard */
  * high, its alpha the product of its two strength bytes.  The x axis flips
  * with the mirrored view.  The ROM's float tests are <=/>= early-outs
  * (continue); the view's centre is precomputed.
- * RESIDUE (352): register allocation -- the ROM keeps the list index in
- * v0 (dead across the transform call) and p in s1 with only s0/s1 saved;
- * ours keeps the index and a copy of p in saved registers, which moves
- * every spill slot.  Loop forms (for/while/do, a local index, a ushort
- * parameter) and 120 declaration orders leave it. */
-/* @t4-pass 0x8023D134 1 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023D134 2 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023D134 */
+ * Source facts: the list is walked with an index i copied from n and each
+ * field is read from the table as D_80366A80[i] (as BrParticleStep does), so
+ * the row address is one value in s1; p is declared and never read (the
+ * frame keeps its slot), and the homes of h, x, y and sx follow from the
+ * declaration order.  The mirror test is D_8028A8A8 ^ D_8028A8AC, as in
+ * BrWeatherDraw.  The size is .size * (4.0f * inv), the alpha product is
+ * written x1e * x1f, and the depth is gDPSetPrimDepth.  The scissored
+ * rectangle is written as a multi-line block, one word per line: on one
+ * line as1 schedules the w1 operands ahead of the w0 ones. */
 /* @implements 0x8023D134 tgr BrParticleListDraw */
 void BrParticleListDraw(int n, int r, int g, int b)
 {
   float v[4];
-  int x;
-  int y;
-  int w;
-  int h;
-  float sw;
-  float sx;
   BrParticle *p;
+  int i;
   float inv;
   float size;
   float lim;
+  int w;
+  int h;
+  int x;
+  int y;
+  float sx;
+  float sw;
   int hw;
   int hh;
   int cx;
@@ -877,12 +880,11 @@ void BrParticleListDraw(int n, int r, int g, int b)
   y = (D_8031B2C8[D_8028AAEC].y * 2 + h) * 2;
   sw = (float)(w * 2);
   sx = sw;
-  if (D_8028A8A8 != D_8028A8AC) {
+  if (D_8028A8A8 ^ D_8028A8AC) {
     sx = -sw;
   }
-  for (; n != 0; n = p->next) {
-    p = &D_80366A80[n];
-    BrMat4TransformPoint4(v, p->pos, D_80368A80);
+  for (i = n; i != 0; i = D_80366A80[i].next) {
+    BrMat4TransformPoint4(v, D_80366A80[i].pos, D_80368A80);
     if (v[3] <= 0.001f && v[3] >= -0.001f) {
       continue;
     }
@@ -892,7 +894,7 @@ void BrParticleListDraw(int n, int r, int g, int b)
       continue;
     }
     v[0] *= inv;
-    size = p->size * inv * 4.0f;
+    size = D_80366A80[i].size * (4.0f * inv);
     lim = 1.0f + size;
     if (v[0] <= -lim || v[0] >= lim) {
       continue;
@@ -912,10 +914,16 @@ void BrParticleListDraw(int n, int r, int g, int b)
     cx = (int)(v[0] * sx) + x;
     cy = (int)(v[1] * (float)(h * 2)) + y;
     gDPPipeSync(D_8028A858++);
-    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, (p->x1f * p->x1e) >> 8);
-    gRaw(D_8028A858++, 0xee000000, ((int)(v[2] * 16352.0f) + 0x3fe0) << 16);
-    gSPScisTextureRectangle(D_8028A858++, cx - hw, cy - hh, cx + hw, cy + hh, 0, 0, 0x7e0,
-                            0x1f800 / hw, -0x1f800 / hh);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, (D_80366A80[i].x1e * D_80366A80[i].x1f) >> 8);
+    gDPSetPrimDepth(D_8028A858++, (int)(v[2] * 16352.0f) + 0x3fe0, 0);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      tgr_wr32(&_g->words.w0, (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)(cx + hw), 0), 12, 12) | _SHIFTL(MAX((s16)(cy + hh), 0), 0, 12)));
+      tgr_wr32(&_g->words.w1, (_SHIFTL(0, 24, 3) | _SHIFTL(MAX((s16)(cx - hw), 0), 12, 12) | _SHIFTL(MAX((s16)(cy - hh), 0), 0, 12)));
+      gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL((0 - (((s16)(cx - hw) < 0) ? (((s16)(0x1f800 / hw) < 0) ? (MAX((((s16)(cx - hw) * (s16)(0x1f800 / hw)) >> 7), 0)) : (MIN((((s16)(cx - hw) * (s16)(0x1f800 / hw)) >> 7), 0))) : 0)), 16, 16) | _SHIFTL((0x7e0 - (((cy - hh) < 0) ? (((s16)(-0x1f800 / hh) < 0) ? (MAX((((s16)(cy - hh) * (s16)(-0x1f800 / hh)) >> 7), 0)) : (MIN((((s16)(cy - hh) * (s16)(-0x1f800 / hh)) >> 7), 0))) : 0)), 0, 16)));
+      gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((0x1f800 / hw), 16, 16) | _SHIFTL((-0x1f800 / hh), 0, 16)));
+    }
   }
 }
 

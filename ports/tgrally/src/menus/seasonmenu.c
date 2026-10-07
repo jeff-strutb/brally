@@ -130,7 +130,7 @@ void BrSeasonDrawHelp(int row)
       BrTextPrint("%wwFirst=9, Second=6, Third=5, Fourth=3, Fifth=2, Sixth=1", 0xa0, 100);
       sprintf(D_80315EE8, "%%ww%d point%s needed to advance to next season", need, need == 1 ? "" : "s");
     }
-    BrTextPrint((D_80315EE8), 0xa0, 0x5a);
+    BrTextPrint(D_80315EE8, 0xa0, 0x5a);
   }
   if (loadPending != 0) {
     if (BrCpakCheck(D_8026FF18 == 2, 0)) {
@@ -162,25 +162,21 @@ void BrSeasonDrawHelp(int row)
  * races (track and weather, mirrored on a mirror season; the one to run
  * next blinks yellow) with the player's race and lap records for each track,
  * and the cars on offer, with the two car views set up side by side.
- * RESIDUE (440): register choice -- the ROM spills the race and the round
- * pointer (0x84, 0x70, frame 0xB0) and keeps the round in s0, the state in s4
- * (state & 1 in fp) and the text buffer in s2; ours spills the state and the
- * race count reloads each pass of the first loop.  Structure, calls and the
- * blink clock match. */
-/* @t4-pass 0x80208CF0 1 2026-09-29 compiles 196 best 440 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80208CF0 2 2026-09-29 compiles 196 best 440 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80208CF0 */
+ * Source facts: the text printer takes a char * (an int cast makes the
+ * buffer's address a second web), the round's entry is indexed each time
+ * rather than held in a pointer (uopt's temp for it is the ROM's 0x70
+ * spill), and the frame holds an unused 32-byte buffer above race. */
 /* @implements 0x80208CF0 tgr BrSeasonDraw */
 void BrSeasonDraw(void)
 {
   extern float D_80271D5C;  /* 0x80271D5C: the next race's blink clock, seconds */
   extern char D_80315F38[80];       /* 0x80315F38 */
+  char buf[32];
+  int i;
+  int k;
   int race;
   int round;
   unsigned int state;
-  BrRound *r;
-  int i;
-  int k;
   int off;
   int y;
 
@@ -193,11 +189,10 @@ void BrSeasonDraw(void)
   BrTextHighlightOff();
   BrTextAlignCentre();
   BrTextSetFont(20);
-  r = &D_8028B944[round];
-  sprintf(D_80315F38, "%%ry%s:", TGR_PTR(char *, r->x4));
-  BrTextPrint((D_80315F38), D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
+  sprintf(D_80315F38, "%%ry%s:", TGR_PTR(char *, D_8028B944[round].x4));
+  BrTextPrint(D_80315F38, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
   off = 0;
-  for (i = 0; i < r->x8; i++) {
+  for (i = 0; i < D_8028B944[round].x8; i++) {
     if (D_8028B944[round].races[i][0] < 5) {
       if (state & 1) {
         off = D_8028AAB0 * 3 / 64;
@@ -213,7 +208,7 @@ void BrSeasonDraw(void)
   BrTextPrint("Race Record", D_8028AAB0 * 23 / 32 + off, 0x56);
   BrTextPrint("Lap Record", D_8028AAB0 * 28 / 32 + off + 2, 0x56);
   BrTextSetFont(10);
-  for (i = 0; i < r->x8; i++) {
+  for (i = 0; i < D_8028B944[round].x8; i++) {
     k = D_8028B944[round].races[i][0];
     if (state & 1) {
       if (k < 5) {
@@ -229,28 +224,30 @@ void BrSeasonDraw(void)
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
     }
     sprintf(D_80315F38, "Race %d", i + 1);
-    BrTextPrint((D_80315F38), D_8028AAB0 * 4 / 32 - off, y);
+    BrTextPrint(D_80315F38, D_8028AAB0 * 4 / 32 - off, y);
     sprintf(D_80315F38, "%s/%s", TGR_PTR(const char *, D_80271D1C[k]->label), TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[i][1]]->label));
-    BrTextPrint((D_80315F38), D_8028AAB0 * 8 / 32 - off + 4, y);
+    BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
     BrTextAlignRight();
     if (TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k] != 0) {
       BrTimeFormat(D_80315F38, TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k]);
     } else {
       sprintf(D_80315F38, "--    ");
     }
-    BrTextPrint((D_80315F38), D_8028AAB0 * 23 / 32 + off - 1, y);
+    BrTextPrint(D_80315F38, D_8028AAB0 * 23 / 32 + off - 1, y);
     if (TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[k] != 0) {
       BrTimeFormat(D_80315F38, TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[k]);
     } else {
       sprintf(D_80315F38, "--    ");
     }
-    BrTextPrint((D_80315F38), D_8028AAB0 * 28 / 32 + off, y);
+    BrTextPrint(D_80315F38, D_8028AAB0 * 28 / 32 + off, y);
     y += 10;
   }
   BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
   BrTextAlignCentre();
-  BrTextPrint("Cars For", D_8028AAB0 >> 1, 0x94);
-  BrTextPrint("This Season:", D_8028AAB0 >> 1, 0x9E);
+  y = 0x94;
+  BrTextPrint("Cars For", D_8028AAB0 >> 1, y);
+  y += 10;
+  BrTextPrint("This Season:", D_8028AAB0 >> 1, y);
   D_8028AA78 = 0;
   D_8028AA80 = 0;
   D_8028AA8C = 0;

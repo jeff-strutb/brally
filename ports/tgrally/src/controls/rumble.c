@@ -27,14 +27,16 @@ extern BrPfs D_8031A3F8[4];
  * paused, or when an effect is held off), and in a race pulse each player's
  * motor on and off at the rates the current effect asks for, while the
  * player's pad is live, stopping it when the effect runs out; every 64
- * frames look for paks again. */
-/* @t4-pass 0x80260490 1 2026-10-03 compiles 30 best 170 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80260490 2 2026-10-03 compiles 30 best 170 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80260490 */
+ * frames look for paks again.  Source facts: the pulse loop has its own
+ * counter j; the frame count goes through a local k, and is read through
+ * the word after the hold-off flag (the same address as D_802A4C08), so the
+ * read and the write keep their own lui as in the ROM. */
 /* @implements 0x80260490 tgr BrRumbleUpdate */
 void BrRumbleUpdate(int arg0)
 {
   int i;
+  int j;
+  int k;
 
   if (!BrModeIs(BrRaceTick) || D_8026FF18 == 5 || D_802A4C04 != 0 || D_8026FF10 != 0) {
     for (i = 0; i != 2; i++) {
@@ -49,33 +51,34 @@ void BrRumbleUpdate(int arg0)
     }
   }
   if (D_802A4BE8 != 0 && D_802A4C04 == 0 && D_8026FF10 == 0) {
-    for (i = 0; i != 2; i++) {
-      if (D_8031B1E8[i] != 0 && D_802A4BEC[i] != 0 && TGR_PTR(unsigned int *, D_8031B760[i].pad)[0x11] == 0) {
-        if (D_802A4BFC[i] == 0) {
-          if (D_802A4BF0[i] != 0) {
-            D_802A4BFC[i] = D_802A4BF8[i];
-            osMotorStop(&D_8031A3F8[i]);
+    for (j = 0; j != 2; j++) {
+      if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && TGR_PTR(unsigned int *, D_8031B760[j].pad)[0x11] == 0) {
+        if (D_802A4BFC[j] == 0) {
+          if (D_802A4BF0[j] != 0) {
+            D_802A4BFC[j] = D_802A4BF8[j];
+            osMotorStop(&D_8031A3F8[j]);
           } else {
-            D_802A4BFC[i] = D_802A4BF4[i];
-            osMotorStart(&D_8031A3F8[i]);
+            D_802A4BFC[j] = D_802A4BF4[j];
+            osMotorStart(&D_8031A3F8[j]);
           }
-          D_802A4BF0[i] ^= 1;
+          D_802A4BF0[j] ^= 1;
         } else {
-          D_802A4BFC[i]--;
+          D_802A4BFC[j]--;
         }
-        if (D_802A4C00[i] == 0) {
-          osMotorStop(&D_8031A3F8[i]);
-          D_802A4BF0[i] = 0;
-          D_802A4BFC[i] = 0;
-          D_802A4BEC[i] = 0;
+        if (D_802A4C00[j] == 0) {
+          osMotorStop(&D_8031A3F8[j]);
+          D_802A4BF0[j] = 0;
+          D_802A4BFC[j] = 0;
+          D_802A4BEC[j] = 0;
         } else {
-          D_802A4C00[i]--;
+          D_802A4C00[j]--;
         }
       }
     }
   }
-  D_802A4C08 = (D_802A4C08 + 1) & 0x3f;
-  if (D_802A4C08 == 0 && D_802A4BE8 != 0) {
+  k = ((int *)&D_802A4C04)[1] + 1;
+  D_802A4C08 = k = k & 0x3f;
+  if (k == 0 && D_802A4BE8 != 0) {
     for (i = 0; i != 2; i++) {
       D_8031B1E8[i] = 0;
       if (osMotorInit(D_80272D48, &D_8031A3F8[i], i) == 0) {

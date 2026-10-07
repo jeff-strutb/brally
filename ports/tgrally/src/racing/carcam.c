@@ -139,13 +139,16 @@ void BrCarCamInit(BrCar *car)
  * the camera frame (a copy of the car's matrix when locked, else looking
  * back from 20 behind), its copy, the eye basis, the lens from the eye
  * distance, and the negated axis rows the renderer reads.  Ported from the
- * PC twin (BrCamChaseStep); pos is a dead copy the ROM keeps, u is unused.
- * RESIDUE (140): the ROM spills five matrix loads to its temp area for the
- * closing axis rows (frame 0xB8 vs ours 0x70) and keeps &cams[1] as a spilled
- * temp; structure, calls and named slots match. */
-/* @t4-pass 0x80221170 1 2026-09-29 compiles 13 best 140 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80221170 2 2026-09-29 compiles 13 best 140 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80221170 */
+ * PC twin (BrCamChaseStep); pos is a dead copy the ROM keeps.
+ * The lens offsets and the car's axis rows are read through BrVec3 casts:
+ * cfe puts an indexed operand ahead of a field, and only the field form
+ * gives the ROM's offset-first products and pos-then-axis sums.  The model
+ * pointer is read inline, so the tail (from the cosf call to the z row)
+ * stays one uopt block of 24 local loads, and its matrix values are the
+ * ROM's spilled temps.  The lift is written with its products inline and
+ * the 0.5/0.15 factor divided inline: uopt CSEs both products (f12, f14)
+ * as temps that take the first spill slots, so &cams[1] spills to 0x28.
+ * The unused arrays are words of the ROM frame with no visible use. */
 /* @implements 0x80221170 tgr BrCamChaseStep */
 void BrCamChaseStep(BrCar *car)
 {
@@ -153,13 +156,17 @@ void BrCamChaseStep(BrCar *car)
   float len2;
   float spin;
   float k;
-  float s;
-  float l;
-  float dist;
+  int unused0[3];
   BrVec3 prev;
-  BrCamView *pv;
-  int u;
+  int unused1[2];
   float speed;
+  BrCarCam *cam;
+  BrVec3 *pRow;
+  BrVec3 *pUp;
+  BrVec3 *pLook;
+  int unused2[10];
+  float dist;
+  int unused3[2];
 
   prev.x = car->cams[1].mtx[3][0];
   prev.y = car->cams[1].mtx[3][1];
@@ -185,27 +192,25 @@ void BrCamChaseStep(BrCar *car)
   }
   car->camSpin = car->camSpin * 0.95f + spin * 0.05f;
   car->camSpin = car->camSpin * (1.0f - car->x1fac * 18.181818f);
-  car->cams[1].mtx[3][0] = car->camPosA.x;
-  car->cams[1].mtx[3][2] = car->camPosA.z;
-  car->cams[1].mtx[3][1] = car->camPosA.y;
-  k = (D_80270788 != 0 ? 0.5f : 0.15f) / 31.415928f;
-  s = car->camSpeed * 0.009549296f;
-  l = car->camSpin * k;
-  if (car->x1fac + (s - l) > 0.07f) {
-    BrCarCamPlaceBehind(car, &car->cams[1], 0);
+  car->cams[1].mtx[3][0] = car->camPosA.x; car->cams[1].mtx[3][1] = car->camPosA.y; car->cams[1].mtx[3][2] = car->camPosA.z;
+  k = D_80270788 != 0 ? 0.5f : 0.15f;
+  if (car->x1fac + (car->camSpeed * 0.009549296f - car->camSpin * (k / 31.415928f)) > 0.07f) {
+    cam = &car->cams[1];
+    BrCarCamPlaceBehind(car, cam, 0);
   } else {
-    BrCarCamPlaceBehind(car, &car->cams[1], 0.07f - car->x1fac - s + l);
+    cam = &car->cams[1];
+    BrCarCamPlaceBehind(car, cam, 0.07f - car->x1fac - car->camSpeed * 0.009549296f + car->camSpin * (k / 31.415928f));
   }
   BrCarCamTargetStep(car);
   car->camPosA.x = car->cams[1].mtx[3][0];
   car->camPosA.y = car->cams[1].mtx[3][1];
   car->camPosA.z = car->cams[1].mtx[3][2];
   if (car->xf4c == 0) {
-    BrCarCamWallPush(car, &car->cams[1], &prev);
+    BrCarCamWallPush(car, cam, &prev);
     if (D_8028B710 != 0) {
       if (D_80270788 != 0) {
         D_8028B7FC = 30;
-        if (&car->cams[1] == TGR_PTR(BrCarCam *, car->cam)) {
+        if (cam == TGR_PTR(BrCarCam *, car->cam)) {
           car->cam = tgr_addr32(&car->cams[0]);
           car->xf48 = 2;
           D_8028B7F8 = 60;
@@ -230,36 +235,38 @@ void BrCamChaseStep(BrCar *car)
       }
     }
   }
-  BrCarCamLookAt(car, &car->cams[1]);
+  BrCarCamLookAt(car, cam);
   pos[0] = car->cams[0].mtx[3][0];
   pos[1] = car->cams[0].mtx[3][1];
   pos[2] = car->cams[0].mtx[3][2];
   if (car->xf4c != 0) {
     memcpy(&car->cams[0], car, sizeof(BrCarCam));
   } else {
-    pv = (BrCamView *)TGR_PTR(char *, car->model);
-    car->cams[0].mtx[3][0] = car->mtx0[3][0] + car->mtx0[0][0] * BEF(pv->xb0) + BEF(pv->xb8) * car->mtx0[2][0];
-    car->cams[0].mtx[3][1] = car->mtx0[3][1] + car->mtx0[0][1] * BEF(pv->xb0) + BEF(pv->xb8) * car->mtx0[2][1];
-    car->cams[0].mtx[3][2] = car->mtx0[3][2] + car->mtx0[0][2] * BEF(pv->xb0) + BEF(pv->xb8) * car->mtx0[2][2];
+    car->cams[0].mtx[3][0] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
+    car->cams[0].mtx[3][1] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
+    car->cams[0].mtx[3][2] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
     BrVec3MulAddTo((BrVec3 *)&car->cams[0], (BrVec3 *)car, -20.0f);
     BrVec3Negate((BrVec3 *)&car->cams[0], (BrVec3 *)&car->cams[0]);
     BrVec3Normalise((BrVec3 *)&car->cams[0]);
-    car->cams[0].mtx[1][0] = car->mtx0[1][0];
-    car->cams[0].mtx[1][1] = car->mtx0[1][1];
-    car->cams[0].mtx[1][2] = car->mtx0[1][2];
-    BrVec3Cross((BrVec3 *)car->cams[0].mtx[2], (BrVec3 *)&car->cams[0], (BrVec3 *)car->cams[0].mtx[1]);
+    pRow = (BrVec3 *)car->cams[0].mtx[1];
+    pRow->x = car->mtx0[1][0];
+    pRow->y = car->mtx0[1][1];
+    pRow->z = car->mtx0[1][2];
+    BrVec3Cross((BrVec3 *)car->cams[0].mtx[2], (BrVec3 *)&car->cams[0], pRow);
   }
   memcpy(&car->cams[2], &car->cams[0], sizeof(BrCarCam));
   BrVec3MulAddTo((BrVec3 *)car->cams[2].mtx[3], (BrVec3 *)car, 0.5f);
-  car->cams[3].mtx[2][0] = 0.0f;
-  car->cams[3].mtx[2][1] = 0.0f;
-  car->cams[3].mtx[2][2] = 1.0f;
-  BrVec3Add((BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2]);
-  BrVec3SubFrom((BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->cams[3].mtx[3]);
-  dist = BrVec3Length((BrVec3 *)car->cams[3].mtx[0]);
-  BrVec3DivBy((BrVec3 *)car->cams[3].mtx[0], dist);
-  BrVec3Cross((BrVec3 *)car->cams[3].mtx[1], (BrVec3 *)car->cams[3].mtx[2], (BrVec3 *)car->cams[3].mtx[0]);
-  BrVec3Cross((BrVec3 *)car->cams[3].mtx[2], (BrVec3 *)car->cams[3].mtx[0], (BrVec3 *)car->cams[3].mtx[1]);
+  pUp = (BrVec3 *)car->cams[3].mtx[2];
+  pLook = (BrVec3 *)car->cams[3].mtx[0];
+  pUp->x = 0.0f;
+  pUp->y = 0.0f;
+  pUp->z = 1.0f;
+  BrVec3Add(pLook, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2]);
+  BrVec3SubFrom(pLook, (BrVec3 *)car->cams[3].mtx[3]);
+  dist = BrVec3Length(pLook);
+  BrVec3DivBy(pLook, dist);
+  BrVec3Cross((BrVec3 *)car->cams[3].mtx[1], pUp, pLook);
+  BrVec3Cross(pUp, pLook, (BrVec3 *)car->cams[3].mtx[1]);
   if (dist <= 1.0f) {
     dist = 0.0f;
   } else if (dist >= 101.0f) {
@@ -272,10 +279,9 @@ void BrCamChaseStep(BrCar *car)
   car->cams[1].fov = D_8028AAC0;
   car->cams[0].fov = D_8028AAC0;
   car->cam4.fov = D_8028AAC0;
-  pv = (BrCamView *)TGR_PTR(char *, car->model);
-  car->cam4.mtx[3][0] = BEF(pv->xb8) * car->mtx0[2][0] + (car->mtx0[3][0] + car->mtx0[0][0] * BEF(pv->xb4) * 2.0f);
-  car->cam4.mtx[3][1] = BEF(pv->xb8) * car->mtx0[2][1] + (car->mtx0[3][1] + car->mtx0[0][1] * BEF(pv->xb4) * 2.0f);
-  car->cam4.mtx[3][2] = BEF(pv->xb8) * car->mtx0[2][2] + (car->mtx0[3][2] + car->mtx0[0][2] * BEF(pv->xb4) * 2.0f);
+  car->cam4.mtx[3][0] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
+  car->cam4.mtx[3][1] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
+  car->cam4.mtx[3][2] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
   car->cam4.mtx[0][0] = -car->mtx0[0][0];
   car->cam4.mtx[0][1] = -car->mtx0[0][1];
   car->cam4.mtx[0][2] = -car->mtx0[0][2];

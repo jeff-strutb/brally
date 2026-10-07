@@ -113,14 +113,14 @@ unsigned short BrU16QueuePop(unsigned short *q);
  * both onto the two axes the triangle's normal is least aligned with, put
  * the point in edge coordinates u and v, and it is inside when u and v are
  * not negative and u, and u + v, stay within 1.  The PC twin is
- * FUN_100656F0 (br_tritest.c).  The modulus is a variable 3 (the ROM keeps
- * the divide's zero check).
- * RESIDUE (41): register naming only -- |n1| and n1 swap f12/f14, the axis
- * indices sit in v1/a3 where ours use t1/t2, and u and the vertex copies
- * trade spill slots. */
-/* @t4-pass 0x8025B3B0 1 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025B3B0 2 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025B3B0 */
+ * FUN_100656F0 (br_tritest.c).  The edge test is Badouel's ray-polygon
+ * test (Graphics Gems I) cut down to one triangle: r = 0 and i = 2 sit
+ * where the fan loop's set-up was, and the loop itself is gone.
+ * The modulus is a literal 3 kept in a register, so the ROM still checks
+ * the divide for zero.  Because it is a literal, uopt builds the scaled
+ * axis indices ahead of the vertex base loads, and they take v1/a3 before
+ * the bases.  The store a1 = 0.0f is dead, but it places a1 ahead of the
+ * n[1] load, so |n1| takes f12 and the raw n1 f14 as in the ROM. */
 /* @implements 0x8025B3B0 tgr BrCrTriContainsPoint */
 short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
 {
@@ -135,45 +135,42 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
   float b2;
   float c1;
   float c2;
-  int n;
+  int n;                        /* declared, never used: the frame holds it */
   float v;
   int r;
-  int x0;                       /* declared, never used: the frame holds it */
+  int i;
   float u;
-  float ay;
-  float ax;
 
-  n = 3;
-  a0 = pT->n[0] < 0.0f ? -pT->n[0] : pT->n[0];
-  a1 = pT->n[1] < 0.0f ? -pT->n[1] : pT->n[1];
+  a0 = ABS(pT->n[0]);
+  a1 = 0.0f;
+  a1 = ABS(pT->n[1]);
   if (a1 < a0) {
-    a0 = pT->n[0] < 0.0f ? -pT->n[0] : pT->n[0];
-    a1 = pT->n[2] < 0.0f ? -pT->n[2] : pT->n[2];
+    a0 = ABS(pT->n[0]);
+    a1 = ABS(pT->n[2]);
     if (a1 < a0) {
       c = 0;
     } else {
       c = 2;
     }
   } else {
-    a0 = pT->n[1] < 0.0f ? -pT->n[1] : pT->n[1];
-    a1 = pT->n[2] < 0.0f ? -pT->n[2] : pT->n[2];
+    a0 = ABS(pT->n[1]);
+    a1 = ABS(pT->n[2]);
     if (a1 < a0) {
       c = 1;
     } else {
       c = 2;
     }
   }
-  i1 = (c + 1) % n;
-  i2 = (c + 2) % n;
-  ax = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
-  d1 = pP[i1] - ax;
-  ay = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
-  d2 = pP[i2] - ay;
-  b1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i1] - ax;
-  b2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i2] - ay;
-  c1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i1] - ax;
-  c2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i2] - ay;
+  i1 = (c + 1) % 3;
+  i2 = (c + 2) % 3;
+  d1 = pP[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
+  d2 = pP[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
   r = 0;
+  i = 2;
+  b1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
+  b2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
+  c1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
+  c2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
   if (b1 == 0.0f) {
     u = d1 / c1;
     if (u >= 0.0f && u <= 1.0f) {
@@ -875,30 +872,27 @@ void BrCarPhysAdvance(BrTipBody *b)
  * triangle of that square: its three vertex pointers, index and surface
  * bits, unit normal (v1 - v0) x (v2 - v0) and plane constant.  The PC twin
  * is BrCollGridCellAcquire.
- * RESIDUE (208): ours hoists the vertex-index scale (12) into a saved
- * register and multiplies; the ROM shifts ((i << 2) - i) << 2 in place, so
- * every saved register after it moves.  Index types and byte/float/struct
- * pointer spellings all hoist. */
-/* @t4-pass 0x8025F18C 1 2026-09-29 compiles 26 best 209 moved 2  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025F18C 2 2026-09-29 compiles 26 best 208 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025F18C 3 2026-09-29 compiles 26 best 208 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025F18C */
+ * Source facts: the vertex table is rows of three floats, so the 12-byte
+ * scale is part of the row index and stays a shift in place; the triangle
+ * table is addressed in bytes (tris + tri * 8) through a row pointer of its
+ * own for each vertex (t0, t1, t2), which are the frame's three words above
+ * the planes' scratch vectors; the count n is an int; the high half of the
+ * packed range is masked, (packed >> 16) & 0xffff, and stored first. */
 /* @implements 0x8025F18C tgr BrCollGridCellAcquire */
 short BrCollGridCellAcquire(float x, float y)
 {
-  BrVec3be *verts;
-  be16_t *tris;
+  unsigned short *t0;
   BrVec3 *v0, *v1, *v2;
-  int spare;                    /* spare, spare2: declared, never used; */
   int victim;
   unsigned int best;
   unsigned int packed;
-  int spare2;                   /* the frame holds them */
+  unsigned short *t1;
   unsigned short cur[2];
   unsigned short tri;
-  unsigned short n;
+  int n;
   float a[3];
   float b[3];
+  unsigned short *t2;
   float *p;
   short key;
   int i;
@@ -912,29 +906,28 @@ short BrCollGridCellAcquire(float x, float y)
       return i;
     }
     if (D_8037EA90[i] < best) {
-      best = D_8037EA90[i];
       victim = i;
+      best = D_8037EA90[i];
     }
   }
   D_8037EA90[victim] = D_8037EAA0;
   D_8037EA80[victim] = key;
-  packed = BrGridCellRangeAt(x, y);
   n = 0;
   p = D_80379F80[victim][0].n;
+  packed = BrGridCellRangeAt(x, y);
+  cur[1] = (packed >> 16) & 0xffff;
   cur[0] = packed;
-  cur[1] = packed >> 16;
   if (packed != 0) {
     while ((tri = BrU16QueuePop(cur)) != 0) {
-      /* the plane record: its corners are original addresses of the
-       * track's (big-endian) vertices, as the cartridge kept them */
-      verts = BEPTR(BrVec3be *, D_80025C00.verts);
-      tris = BEPTR(be16_t *, D_80025C00.tris);
-      ((unsigned int *)p)[4] = tgr_addr32(&verts[BE16(tris[tri * 4])]);
-      ((unsigned int *)p)[5] = tgr_addr32(&verts[BE16(tris[tri * 4 + 1])]);
-      ((unsigned int *)p)[6] = tgr_addr32(&verts[BE16(tris[tri * 4 + 2])]);
-      *(unsigned short *)(p + 7) = tri;
+      t0 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
+      ((unsigned int *)p)[4] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t0[0])]);
+      t1 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
+      ((unsigned int *)p)[5] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t1[1])]);
+      t2 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
+      ((unsigned int *)p)[6] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t2[2])]);
       ((unsigned char *)p)[0x1e] = BEPTR(unsigned char *, D_80025C00.surf)[tri] & 7;
-      v0 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[4]));
+      *(unsigned short *)(p + 7) = tri;
+      v0 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[4]));   /* the corners natively */
       v1 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[5]));
       v2 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[6]));
       a[0] = v1->x - v0->x;
@@ -943,12 +936,12 @@ short BrCollGridCellAcquire(float x, float y)
       b[0] = v2->x - v0->x;
       b[1] = v2->y - v0->y;
       b[2] = v2->z - v0->z;
-      p[0] = a[1] * b[2] - b[1] * a[2];
-      p[1] = a[2] * b[0] - b[2] * a[0];
-      p[2] = a[0] * b[1] - b[0] * a[1];
+      p[0] = a[1] * b[2] - a[2] * b[1];
+      p[1] = a[2] * b[0] - a[0] * b[2];
+      p[2] = a[0] * b[1] - a[1] * b[0];
       BrVec3NormaliseF(p);
       n++;
-      p[3] = -(p[0] * v0->x + p[1] * v0->y + v0->z * p[2]);
+      p[3] = -(p[0] * v0->x + p[1] * v0->y + p[2] * v0->z);
       p += 8;
     }
   }
@@ -963,74 +956,78 @@ short BrCollGridCellAcquire(float x, float y)
  * products -- must not separate them: the offset's projection may not
  * exceed both boxes' projected half-extents.  All fifteen are evaluated
  * and ANDed.  The PC twin is BrObbOverlap (br_obb.c).
- * RESIDUE (516): register pressure -- the ROM (frame 0x80, 571
- * instructions) spills copies of the parameter elements (b[0], b[1],
- * a[0], b[2], t[0], m[...]) to the stack and reloads them per test; ours
- * keeps more in registers (544).  The fifteen tests and their sums are in
- * the ROM's order. */
-/* @t4-pass 0x8025F4F8 1 2026-10-03 compiles 26 best 516 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025F4F8 2 2026-10-03 compiles 26 best 516 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025F4F8 */
+ * Each test's value is taken into d and its magnitude into c (ABS), so
+ * the raw sum and c keep separate registers; the six face tests pass their
+ * result through an int before it is ANDed in, the nine edge tests AND
+ * it directly.  The locals sit around am as the ROM's frame shows. */
 /* @implements 0x8025F4F8 tgr BrObbOverlap */
 int BrObbOverlap(float *m, float *t, float *a, float *b)
 {
-  float am[9];
-  float c;
   int ok;
+  float c;
+  float d;
+  float am[9];
+  int in;
 
-  am[0] = m[0] < 0 ? -m[0] : m[0];
-  am[1] = m[1] < 0 ? -m[1] : m[1];
-  am[2] = m[2] < 0 ? -m[2] : m[2];
-  am[3] = m[3] < 0 ? -m[3] : m[3];
-  am[4] = m[4] < 0 ? -m[4] : m[4];
-  am[5] = m[5] < 0 ? -m[5] : m[5];
-  am[6] = m[6] < 0 ? -m[6] : m[6];
-  am[7] = m[7] < 0 ? -m[7] : m[7];
-  am[8] = m[8] < 0 ? -m[8] : m[8];
+  am[0] = ABS(m[0]);
+  am[1] = ABS(m[1]);
+  am[2] = ABS(m[2]);
+  am[3] = ABS(m[3]);
+  am[4] = ABS(m[4]);
+  am[5] = ABS(m[5]);
+  am[6] = ABS(m[6]);
+  am[7] = ABS(m[7]);
+  am[8] = ABS(m[8]);
   ok = 1;
 
-  c = t[0] < 0 ? -t[0] : t[0];
-  ok &= c <= a[0] + b[0] * am[0] + b[1] * am[1] + b[2] * am[2];
-  c = t[0] * m[0] + t[1] * m[3] + t[2] * m[6];
-  c = c < 0 ? -c : c;
-  ok &= c <= b[0] + a[0] * am[0] + a[1] * am[3] + a[2] * am[6];
-  c = t[1] < 0 ? -t[1] : t[1];
-  ok &= c <= a[1] + b[0] * am[3] + b[1] * am[4] + b[2] * am[5];
-  c = t[2] < 0 ? -t[2] : t[2];
-  ok &= c <= a[2] + b[0] * am[6] + b[1] * am[7] + b[2] * am[8];
-  c = t[0] * m[1] + t[1] * m[4] + t[2] * m[7];
-  c = c < 0 ? -c : c;
-  ok &= c <= b[1] + a[0] * am[1] + a[1] * am[4] + a[2] * am[7];
-  c = t[0] * m[2] + t[1] * m[5] + t[2] * m[8];
-  c = c < 0 ? -c : c;
-  ok &= c <= b[2] + a[0] * am[2] + a[1] * am[5] + a[2] * am[8];
+  c = ABS(t[0]);
+  in = c <= a[0] + b[0] * am[0] + b[1] * am[1] + b[2] * am[2];
+  ok &= in;
+  d = t[0] * m[0] + t[1] * m[3] + t[2] * m[6];
+  c = ABS(d);
+  in = c <= b[0] + a[0] * am[0] + a[1] * am[3] + a[2] * am[6];
+  ok &= in;
+  c = ABS(t[1]);
+  in = c <= a[1] + b[0] * am[3] + b[1] * am[4] + b[2] * am[5];
+  ok &= in;
+  c = ABS(t[2]);
+  in = c <= a[2] + b[0] * am[6] + b[1] * am[7] + b[2] * am[8];
+  ok &= in;
+  d = t[0] * m[1] + t[1] * m[4] + t[2] * m[7];
+  c = ABS(d);
+  in = c <= b[1] + a[0] * am[1] + a[1] * am[4] + a[2] * am[7];
+  ok &= in;
+  d = t[0] * m[2] + t[1] * m[5] + t[2] * m[8];
+  c = ABS(d);
+  in = c <= b[2] + a[0] * am[2] + a[1] * am[5] + a[2] * am[8];
+  ok &= in;
 
-  c = t[2] * m[3] - t[1] * m[6];
-  c = c < 0 ? -c : c;
+  d = t[2] * m[3] - t[1] * m[6];
+  c = ABS(d);
   ok &= c <= a[1] * am[6] + a[2] * am[3] + b[1] * am[2] + b[2] * am[1];
-  c = t[2] * m[4] - t[1] * m[7];
-  c = c < 0 ? -c : c;
+  d = t[2] * m[4] - t[1] * m[7];
+  c = ABS(d);
   ok &= c <= a[1] * am[7] + a[2] * am[4] + b[0] * am[2] + b[2] * am[0];
-  c = t[2] * m[5] - t[1] * m[8];
-  c = c < 0 ? -c : c;
+  d = t[2] * m[5] - t[1] * m[8];
+  c = ABS(d);
   ok &= c <= a[1] * am[8] + a[2] * am[5] + b[0] * am[1] + b[1] * am[0];
-  c = t[0] * m[6] - t[2] * m[0];
-  c = c < 0 ? -c : c;
+  d = t[0] * m[6] - t[2] * m[0];
+  c = ABS(d);
   ok &= c <= a[0] * am[6] + a[2] * am[0] + b[1] * am[5] + b[2] * am[4];
-  c = t[0] * m[7] - t[2] * m[1];
-  c = c < 0 ? -c : c;
+  d = t[0] * m[7] - t[2] * m[1];
+  c = ABS(d);
   ok &= c <= a[0] * am[7] + a[2] * am[1] + b[0] * am[5] + b[2] * am[3];
-  c = t[0] * m[8] - t[2] * m[2];
-  c = c < 0 ? -c : c;
+  d = t[0] * m[8] - t[2] * m[2];
+  c = ABS(d);
   ok &= c <= a[0] * am[8] + a[2] * am[2] + b[0] * am[4] + b[1] * am[3];
-  c = t[1] * m[0] - t[0] * m[3];
-  c = c < 0 ? -c : c;
+  d = t[1] * m[0] - t[0] * m[3];
+  c = ABS(d);
   ok &= c <= a[0] * am[3] + a[1] * am[0] + b[1] * am[8] + b[2] * am[7];
-  c = t[1] * m[1] - t[0] * m[4];
-  c = c < 0 ? -c : c;
+  d = t[1] * m[1] - t[0] * m[4];
+  c = ABS(d);
   ok &= c <= a[0] * am[4] + a[1] * am[1] + b[0] * am[8] + b[2] * am[6];
-  c = t[1] * m[2] - t[0] * m[5];
-  c = c < 0 ? -c : c;
+  d = t[1] * m[2] - t[0] * m[5];
+  c = ABS(d);
   ok &= c <= a[0] * am[5] + a[1] * am[2] + b[0] * am[7] + b[1] * am[6];
   return ok;
 }
@@ -1060,117 +1057,118 @@ float sqrtf(float x);
  * contact on a saved state, the impulse put back and copied to its other
  * velocity.  The PC twin is BrCarCarCollide (br_carcol.c).  The 2.5 x 1 x 1
  * box is an initialised array (from .data 0x802A4BA0).
- * RESIDUE (432): the ROM keeps the outer index in its frame slot (0x148,
- * under the offset) and has four more named words there; the
- * car-missing/out tests branch straight to the loop end. */
-/* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025FDE4 */
+ * The outer and inner tests wrap the bodies (no continue), so a missing or
+ * removed car branches straight to the loop end.  The offset is a BrVec3 and
+ * the closing-speed dot is accumulated into s from zero: with s pending, cfe
+ * keeps the operands in source order (d.z ahead of the velocity), and uopt
+ * folds the zero away.  x lives in the inner block, so the frame holds only
+ * j, pa, pb and s above the matrices.  The saved velocity adds are written
+ * stB + imp; cfe swaps them to the ROM's imp-first order. */
 /* @implements 0x8025FDE4 tgr BrCarCarCollide */
 void BrCarCarCollide(void)
 {
-  float d[3];
+  BrVec3 d;
   int i;
   int j;
   BrRbState *pa;
   BrRbState *pb;
-  float dotA;
   float s;
-  float x;
   float mA[3][3];
   float mB[3][3];
   float mR[3][3];
   float dd[3];
   float t[3];
-  float imp[3];
   float sd[3];
+  float imp[3];
 
   for (i = 0; i < D_8028B7F0; i++) {
-    if (D_803239A0[i].car == 0 || TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] == 2) {
-      continue;
-    }
-    TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge++;
-    pa = &TGR_PTR(BrCar *, D_803239A0[i].car)->st;
-    for (j = i + 1; j < D_8028B7F0; j++) {
-      if (D_803239A0[j].car == 0 || TGR_PTR(BrCar *, D_803239A0[j].car)->colour[3] == 2) {
-        continue;
-      }
-      pb = &TGR_PTR(BrCar *, D_803239A0[j].car)->st;
-      d[0] = pa->pos.x - pb->pos.x;
-      d[1] = pa->pos.y - pb->pos.y;
-      d[2] = pa->pos.z - pb->pos.z;
-      if (sqrtf(d[2] * d[2] + (d[0] * d[0] + d[1] * d[1])) < 5.0f) {
-        float ext[3] = { 2.5f, 1.0f, 1.0f };
+    if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
+      TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge++;
+      pa = &TGR_PTR(BrCar *, D_803239A0[i].car)->st;
+      for (j = i + 1; j < D_8028B7F0; j++) {
+        if (D_803239A0[j].car != 0 && TGR_PTR(BrCar *, D_803239A0[j].car)->colour[3] != 2) {
+          pb = &TGR_PTR(BrCar *, D_803239A0[j].car)->st;
+          d.x = pa->pos.x - pb->pos.x;
+          d.y = pa->pos.y - pb->pos.y;
+          d.z = pa->pos.z - pb->pos.z;
+          if (sqrtf(d.z * d.z + (d.x * d.x + d.y * d.y)) < 5.0f) {
+            float ext[3] = { 2.5f, 1.0f, 1.0f };
+            float x;
 
-        BrMat3FromMat4T(mB, TGR_PTR(BrCar *, D_803239A0[j].car)->stMtx);
-        BrMat3FromMat4(mA, TGR_PTR(BrCar *, D_803239A0[i].car)->stMtx);
-        BrMat3Mul(mR, mB, mA);
-        dd[0] = pa->pos.x - pb->pos.x;
-        dd[1] = pa->pos.y - pb->pos.y;
-        dd[2] = pa->pos.z - pb->pos.z;
-        BrMat3MulVec(t, mA, dd);
-        if (BrObbOverlap((float *)mR, t, ext, ext) == 0) {
-          return;
+            BrMat3FromMat4T(mB, TGR_PTR(BrCar *, D_803239A0[j].car)->stMtx);
+            BrMat3FromMat4(mA, TGR_PTR(BrCar *, D_803239A0[i].car)->stMtx);
+            BrMat3Mul(mR, mB, mA);
+            dd[0] = pa->pos.x - pb->pos.x;
+            dd[1] = pa->pos.y - pb->pos.y;
+            dd[2] = pa->pos.z - pb->pos.z;
+            BrMat3MulVec(t, mA, dd);
+            if (BrObbOverlap((float *)mR, t, ext, ext) == 0) {
+              return;
+            }
+            BrVec3NormaliseF(&d.x);
+            s = 0.0f;
+            s += d.z * pa->vel.z + (pa->vel.x * d.x + pa->vel.y * d.y);
+            x = s;
+            s += pb->vel.x * d.x + pb->vel.y * d.y + pb->vel.z * d.z;
+            s *= 0.5f;
+            imp[0] = d.x * s;
+            imp[1] = d.y * s;
+            imp[2] = d.z * s;
+            if (s < x) {
+              x = -(s - x);
+            } else {
+              x = s - x;
+            }
+            if (x > 27.0f) {
+              x = 27.0f;
+            }
+            if (TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge > 40) {
+              TGR_PTR(BrCar *, D_803239A0[j].car)->sndHitA = TGR_PTR(BrCar *, D_803239A0[i].car)->sndHitA = tgr_f2u(127.0f * x / 27.0f + 128.0f);
+            }
+            TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge = 0;
+            sd[0] = d.x * -1.0f;
+            sd[1] = d.y * -1.0f;
+            sd[2] = d.z * -1.0f;
+            t[0] = sd[0] * 2.5f;
+            t[1] = sd[1] * 2.5f;
+            t[2] = sd[2] * 2.5f;
+            BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[i].car)->stMtx, t);
+            pa->vel.x = pa->vel.x - imp[0];
+            pa->vel.y = pa->vel.y - imp[1];
+            pa->vel.z = pa->vel.z - imp[2];
+            memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->stB, &TGR_PTR(BrCar *, D_803239A0[i].car)->st, sizeof(BrRbState));
+            BrCrImpulseSolve((BrTipBody *)((char *)TGR_PTR(BrCar *, D_803239A0[i].car) + 0x148), dd, &d.x, 0, 0.45f);
+            memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->st, &TGR_PTR(BrCar *, D_803239A0[i].car)->stB, sizeof(BrRbState));
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x + imp[0];
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y + imp[1];
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z + imp[2];
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.x = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x;
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.y = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y;
+            TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.z = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z;
+            pa->vel.x = imp[0] + pa->vel.x;
+            pa->vel.y = imp[1] + pa->vel.y;
+            pa->vel.z = imp[2] + pa->vel.z;
+            t[0] = d.x * 2.5f;
+            t[1] = d.y * 2.5f;
+            t[2] = d.z * 2.5f;
+            BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[j].car)->stMtx, t);
+            pb->vel.x = pb->vel.x - imp[0];
+            pb->vel.y = pb->vel.y - imp[1];
+            pb->vel.z = pb->vel.z - imp[2];
+            memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->stB, &TGR_PTR(BrCar *, D_803239A0[j].car)->st, sizeof(BrRbState));
+            BrCrImpulseSolve((BrTipBody *)((char *)TGR_PTR(BrCar *, D_803239A0[j].car) + 0x148), dd, sd, 0, 0.45f);
+            memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->st, &TGR_PTR(BrCar *, D_803239A0[j].car)->stB, sizeof(BrRbState));
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x + imp[0];
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y + imp[1];
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z + imp[2];
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.x = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x;
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.y = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y;
+            TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.z = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z;
+            pb->vel.x = imp[0] + pb->vel.x;
+            pb->vel.y = imp[1] + pb->vel.y;
+            pb->vel.z = imp[2] + pb->vel.z;
+          }
         }
-        BrVec3NormaliseF(d);
-        dotA = d[2] * pa->vel.z + (pa->vel.x * d[0] + pa->vel.y * d[1]);
-        s = (dotA + (pb->vel.x * d[0] + pb->vel.y * d[1] + pb->vel.z * d[2])) * 0.5f;
-        imp[0] = d[0] * s;
-        imp[1] = d[1] * s;
-        imp[2] = d[2] * s;
-        if (s < dotA) {
-          x = -(s - dotA);
-        } else {
-          x = s - dotA;
-        }
-        if (x > 27.0f) {
-          x = 27.0f;
-        }
-        if (TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge > 40) {
-          TGR_PTR(BrCar *, D_803239A0[i].car)->sndHitA = TGR_PTR(BrCar *, D_803239A0[j].car)->sndHitA = tgr_f2u(127.0f * x / 27.0f + 128.0f);
-        }
-        TGR_PTR(BrCar *, D_803239A0[i].car)->hitAge = 0;
-        sd[0] = d[0] * -1.0f;
-        sd[1] = d[1] * -1.0f;
-        sd[2] = d[2] * -1.0f;
-        t[0] = sd[0] * 2.5f;
-        t[1] = sd[1] * 2.5f;
-        t[2] = sd[2] * 2.5f;
-        BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[i].car)->stMtx, t);
-        pa->vel.x = pa->vel.x - imp[0];
-        pa->vel.y = pa->vel.y - imp[1];
-        pa->vel.z = pa->vel.z - imp[2];
-        memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->stB, &TGR_PTR(BrCar *, D_803239A0[i].car)->st, sizeof(BrRbState));
-        BrCrImpulseSolve((BrTipBody *)((char *)TGR_PTR(BrCar *, D_803239A0[i].car) + 0x148), dd, d, 0, 0.45f);
-        memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->st, &TGR_PTR(BrCar *, D_803239A0[i].car)->stB, sizeof(BrRbState));
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x = imp[0] + TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x;
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y = imp[1] + TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y;
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z = imp[2] + TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z;
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.x = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.x;
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.y = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.y;
-        TGR_PTR(BrCar *, D_803239A0[i].car)->stA.vel.z = TGR_PTR(BrCar *, D_803239A0[i].car)->stB.vel.z;
-        pa->vel.x = imp[0] + pa->vel.x;
-        pa->vel.y = imp[1] + pa->vel.y;
-        pa->vel.z = imp[2] + pa->vel.z;
-        t[0] = d[0] * 2.5f;
-        t[1] = d[1] * 2.5f;
-        t[2] = d[2] * 2.5f;
-        BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[j].car)->stMtx, t);
-        pb->vel.x = pb->vel.x - imp[0];
-        pb->vel.y = pb->vel.y - imp[1];
-        pb->vel.z = pb->vel.z - imp[2];
-        memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->stB, &TGR_PTR(BrCar *, D_803239A0[j].car)->st, sizeof(BrRbState));
-        BrCrImpulseSolve((BrTipBody *)((char *)TGR_PTR(BrCar *, D_803239A0[j].car) + 0x148), dd, sd, 0, 0.45f);
-        memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->st, &TGR_PTR(BrCar *, D_803239A0[j].car)->stB, sizeof(BrRbState));
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x = imp[0] + TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x;
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y = imp[1] + TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y;
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z = imp[2] + TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z;
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.x = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.x;
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.y = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.y;
-        TGR_PTR(BrCar *, D_803239A0[j].car)->stA.vel.z = TGR_PTR(BrCar *, D_803239A0[j].car)->stB.vel.z;
-        pb->vel.x = imp[0] + pb->vel.x;
-        pb->vel.y = imp[1] + pb->vel.y;
-        pb->vel.z = imp[2] + pb->vel.z;
       }
     }
   }

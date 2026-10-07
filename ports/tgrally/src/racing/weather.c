@@ -70,117 +70,131 @@ void BrStub8023A1C0(void)
  * drifting with the wind and falling twice the time step, snow falling
  * half of it and jittering left and right at random, as 16.16-scaled
  * shorts; each particle's jitter flips sign every 0-15 frames.
- * RESIDUE (~320): the ROM's frame is 8 larger with the car pointer and view
- * index in stack homes and the view point re-read from its home; ours keeps
- * the point in saved FP registers, which moves every register after. */
-/* @t4-pass 0x8023A1C8 1 2026-10-03 compiles 31 best 317 moved 5  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023A1C8 2 2026-10-03 compiles 31 best 317 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023A1C8 */
+ * The view's camera is reached as D_8031B760[n] (uopt strength-reduces it
+ * to a pointer kept in a spill slot) and the drift as D_803634E0[n][k], so
+ * the stores to v do not hide the drift values from the adds.  The point
+ * is copied into x, y and z where it is used.  The particle rows go
+ * through pp, whose stores may alias the particle count, so the count is
+ * reloaded after the last store; the rows and the short deltas are
+ * computed after the loop's entry test.  u is never read; it holds its
+ * frame slot. */
 /* @implements 0x8023A1C8 tgr BrWeatherStep */
 void BrWeatherStep(void)
 {
-  BrCar *car;
-  float v[3];
-  int n;
-  float cur[3];
+  float x;
+  float y;
+  float z;
   float dx;
   float dy;
   float dz;
-  float *w;
   float jx;
   float jy;
   unsigned int cx;
   unsigned int cy;
+  int i;
+  short (*pp)[3];
+  float cur[3];
+  int n;
   short sjx;
   short sjy;
   short sdx;
   short sdy;
   short sdz;
-  short *p;
-  int i;
+  int u[3];
+  float v[3];
 
   BrWindUpdate();
   if (D_8028AA8C != 0) {
     BrLightningStep();
   }
   D_8028C804 = 512 / D_8028AB0C;
-  for (n = 0, car = D_8031B760; n < D_8028AB0C; n++, car++) {
-    BrVec3MulAdd(cur, TGR_PTR(BrCarCam *, car->cam)->mtx[3], TGR_PTR(BrCarCam *, car->cam)->mtx[0], 3.0f);
+  for (n = 0; n < D_8028AB0C; n++) {
+    BrVec3MulAdd(cur, TGR_PTR(BrCarCam *, D_8031B760[n].cam)->mtx[3], TGR_PTR(BrCarCam *, D_8031B760[n].cam)->mtx[0], 3.0f);
     if (D_8028C824 == 0) {
       BrParticlesInit();
-      D_803634B8[1][0] = D_803634B8[0][0] = cur[0];
-      D_803634B8[1][1] = D_803634B8[0][1] = cur[1];
-      D_803634B8[1][2] = D_803634B8[0][2] = cur[2];
+      x = cur[0];
+      y = cur[1];
+      z = cur[2];
+      D_803634B8[0][0] = x;
+      D_803634B8[1][0] = x;
+      D_803634B8[0][1] = y;
+      D_803634B8[1][1] = y;
+      D_803634B8[0][2] = z;
+      D_803634B8[1][2] = z;
       D_8028C824 = 1;
     }
+    x = cur[0];
+    y = cur[1];
+    z = cur[2];
     if (D_8028AA84 == 0 && D_8028AA8C == 0) {
       return;
     }
-    dx = cur[0] - D_803634B8[n][0];
-    dy = cur[1] - D_803634B8[n][1];
-    dz = cur[2] - D_803634B8[n][2];
+    dx = x - D_803634B8[n][0];
+    dy = y - D_803634B8[n][1];
+    dz = z - D_803634B8[n][2];
     D_8028C810 = sqrtf(dx * dx + dy * dy + dz * dz) / D_8028AAD8;
     if (D_8028C810 > 0.27777777f) {
       D_8028C814 = sqrtf(D_8028C810 * 3.6000001f) * 0.27777777f / D_8028C810;
       D_8028C810 = D_8028C810 * D_8028C814;
       dx = dx * D_8028C814;
       dy = dy * D_8028C814;
-      dz = D_8028C814 * dz;
+      dz = dz * D_8028C814;
     } else {
       D_8028C814 = 1.0f;
     }
-    if (D_8028AA84 == 0) {
-      w = D_803634E0[n];
-      w[0] = cosf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
-      w[1] = sinf(D_8028C808) * (D_8028C80C * D_8028AAD8);
-      w[2] = D_8028AAD8 + D_8028AAD8;
+    if (D_8028AA84 != 0) {
+      dz += D_8028AAD8 * 0.5f;
+    } else {
+      D_803634E0[n][0] = cosf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
+      D_803634E0[n][1] = sinf(D_8028C808) * (D_8028AAD8 * D_8028C80C);
+      D_803634E0[n][2] = D_8028AAD8 + D_8028AAD8;
       v[0] = dx;
       v[1] = dy;
       v[2] = dz;
-      dx += w[0];
-      dy += w[1];
-      dz += w[2];
+      dx += D_803634E0[n][0];
+      dy += D_803634E0[n][1];
+      dz += D_803634E0[n][2];
       BrVec3ScaleBy(v, D_8028C814 * 0.5f);
-      BrVec3AddTo(w, v);
-    } else {
-      dz += 0.5f * D_8028AAD8;
+      BrVec3AddTo(D_803634E0[n], v);
     }
-    if (D_8028AA84 == 0) {
-      jx = 0.0f;
-      jy = 0.0f;
+    if (D_8028AA84 != 0) {
+      jx = ((BrRandStep() & 0xffff) * 3.05180437862873e-05f - 1.0f) * D_8028AAD8 * 0.25f;
+      jy = ((BrRandStep() & 0xffff) * 3.05180437862873e-05f - 1.0f) * D_8028AAD8 * 0.25f;
     } else {
-      jx = ((unsigned short)BrRandStep() * 3.05180437862873e-05f - 1.0f) * D_8028AAD8 * 0.25f;
-      jy = ((unsigned short)BrRandStep() * 3.05180437862873e-05f - 1.0f) * D_8028AAD8 * 0.25f;
+      jx = jy = 0.0f;
     }
-    D_803634B8[n][0] = cur[0];
-    D_803634B8[n][1] = cur[1];
-    D_803634B8[n][2] = cur[2];
+    x = cur[0];
+    y = cur[1];
+    z = cur[2];
+    D_803634B8[n][0] = x;
+    D_803634B8[n][1] = y;
+    D_803634B8[n][2] = z;
     cx = BrRandStep() & 0xf;
     cy = BrRandStep() & 0xf;
     sjx = jx * 16383.5;
     sjy = jy * 16383.5;
-    p = D_80361C40[n].p[0];
+    pp = D_80361C40[n].p;
     sdx = dx * 16383.5;
     sdy = dy * 16383.5;
     sdz = dz * 16383.5;
-    for (i = 0; i < D_8028C804; i++, p += 3) {
-      if (cx == 0) {
-        p[0] = p[0] + sdx + sjx;
+    for (i = 0; i < D_8028C804; i++) {
+      if (cx != 0) {
+        cx--;
+        pp[i][0] += sdx;
+      } else {
+        pp[i][0] = pp[i][0] + sdx + sjx;
         sjx = -sjx;
         cx = BrRandStep() & 0xf;
-      } else {
-        cx--;
-        p[0] += sdx;
       }
-      if (0 == cy) {
-        p[1] = p[1] + sdy + sjy;
+      if (cy != 0) {
+        cy--;
+        pp[i][1] += sdy;
+      } else {
+        pp[i][1] = pp[i][1] + sdy + sjy;
         sjy = -sjy;
         cy = BrRandStep() & 0xf;
-      } else {
-        cy--;
-        p[1] += sdy;
       }
-      p[2] += sdz;
+      pp[i][2] += sdz;
     }
   }
 }

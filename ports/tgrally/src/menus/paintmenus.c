@@ -82,29 +82,28 @@ void BrPaintPlot(int x, int y, unsigned char c);
  * or all ten decals with the colour, B cancels.
  * The pad record's index is multiplied unsigned (sizeof), as the ROM keeps
  * 0x15C in a saved register for multu.
- * RESIDUE (383, 7 short): saved-register allocation of the preview offsets
- * (the ROM keeps the unshifted differences in s3/s6/s7 and shifts at each
- * use), and its locals sit 0x1C lower in the frame. */
-/* @t4-pass 0x80247B0C 1 2026-10-03 compiles 26 best 325 moved 57  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80247B0C 2 2026-10-03 compiles 26 best 325 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80247B0C */
+ * i is also the plots' x counter, which ranks it above the box-row
+ * pointer; the offsets are computed dx1, dy1, dx2, dy2; the option
+ * dispatch is a switch whose cases each restore the saved mode; the
+ * restore after the all-decals clear indexes through the just-stored
+ * current decal; the register locals sit above y in the frame. */
 /* @implements 0x80247B0C tgr BrPaintClearMenu */
 void BrPaintClearMenu(void)
 {
   int i;
+  unsigned int dx1;
+  unsigned int dy1;
+  unsigned int dx2;
+  unsigned int dy2;
+  int u0;
+  int py;
+  int k;
   int unused[8];
   int y;
   int bx;
   int r[4][4];
   char *what[2] = { "CLEAR CURRENT DECAL", "CLEAR ALL DECALS" };
   char *to[2] = { "TO SELECTED COLOR", "TO BODY COLOR" };
-  unsigned int dx1;
-  unsigned int dy1;
-  unsigned int dx2;
-  unsigned int dy2;
-  int px;
-  int py;
-  int k;
 
   y = 0x160 - D_8028D0B0.h;
   bx = 0x161 - D_8028D0E0.w;
@@ -122,10 +121,10 @@ void BrPaintClearMenu(void)
       BrFillFrame(r[i][0], r[i][1], r[i][2], r[i][3], 1, 0x20, 0x20, 0x20);
     }
   }
-  dx2 = (unsigned int)(r[2][2] - D_8028CBA0.w) >> 1;
-  dy1 = (r[0][3] - (D_8028DB0C[D_8028DB68]->h >> 1)) >> 1;
-  dy2 = (r[2][3] - D_8028CBA0.h) >> 1;
   dx1 = (r[0][2] - ((unsigned int)D_8028DB0C[D_8028DB68]->w >> 1)) >> 1;
+  dy1 = (r[0][3] - (D_8028DB0C[D_8028DB68]->h >> 1)) >> 1;
+  dx2 = (unsigned int)(r[2][2] - D_8028CBA0.w) >> 1;
+  dy2 = (r[2][3] - D_8028CBA0.h) >> 1;
   BrImageDrawRect(D_8028DB0C[D_8028DB68], r[0][0] + dx1, r[0][1] + dy1, D_8028DB0C[D_8028DB68]->drawW >> 1,
                   D_8028DB0C[D_8028DB68]->drawH >> 1, D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g,
                   D_80369B98[D_8028DB58].b);
@@ -139,7 +138,7 @@ void BrPaintClearMenu(void)
   BrTextHighlightOff();
   BrTextSetFont(16);
   BrTextPrint("%rySELECT OPTION", 0x9e, 0x4e);
-  BrBevelPanel(0xba, r[0][3] + r[0][1] + 12, 0x10c, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xba, r[0][1] + r[0][3] + 12, 0x10c, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextPrint(what[D_8028CFC0.kind >> 1], 0x9e, 0x8e);
@@ -168,18 +167,23 @@ void BrPaintClearMenu(void)
   }
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x10) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x10);
-    if (D_8028CFC0.kind == 0 || D_8028CFC0.kind == 1) {
+    switch (D_8028CFC0.kind) {
+    case 0:
+    case 1:
       BrPaintDecalCommit();
       for (py = 0; py < D_8028DB8C; py++) {
-        for (px = 0; px < D_8028DB88; px++) {
+        for (i = 0; i < D_8028DB88; i++) {
           if (D_8028CFC0.kind == 0) {
-            BrPaintPlot(px, py, D_8028DB58);
+            BrPaintPlot(i, py, D_8028DB58);
           } else {
-            BrPaintPlot(px, py, 0);
+            BrPaintPlot(i, py, 0);
           }
         }
       }
-    } else if (D_8028CFC0.kind == 2 || D_8028CFC0.kind == 3) {
+      D_8028DB60 = D_8028DB64;
+      break;
+    case 2:
+    case 3:
       D_8028DB70 = D_8028DB68;
       for (k = 0; k < 10; k++) {
         D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[k]].tex);
@@ -187,26 +191,29 @@ void BrPaintClearMenu(void)
         D_8028DB88 = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[k]].w);
         D_8028DB8C = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[k]].h);
         for (py = 0; py < D_8028DB8C; py++) {
-          for (px = 0; px < D_8028DB88; px++) {
+          for (i = 0; i < D_8028DB88; i++) {
             if (D_8028CFC0.kind == 2) {
-              BrPaintPlot(px, py, D_8028DB58);
+              BrPaintPlot(i, py, D_8028DB58);
             } else {
-              BrPaintPlot(px, py, 0);
+              BrPaintPlot(i, py, 0);
             }
           }
         }
       }
       D_8028DB68 = D_8028DB70;
-      D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB70]].tex);
-      D_8028DB7C = TGR_PTR(void *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->masks) + D_8028DB70));
-      D_8028DB88 = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB70]].w);
-      D_8028DB8C = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB70]].h);
+      D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB68]].tex);
+      D_8028DB7C = TGR_PTR(void *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->masks) + D_8028DB68));
+      D_8028DB88 = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB68]].w);
+      D_8028DB8C = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[D_8028DB68]].h);
       BrPaintDecalCommit();
       D_8028CFC0.kind = 0;
-    } else {
+      D_8028DB60 = D_8028DB64;
+      break;
+    default:
       D_8028CFC0.kind = 0;
+      D_8028DB60 = D_8028DB64;
+      break;
     }
-    D_8028DB60 = D_8028DB64;
   } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x20) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x20);
     D_8028CFC0.kind = 0;

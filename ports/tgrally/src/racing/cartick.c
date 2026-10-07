@@ -7,8 +7,6 @@
 extern int D_8026FF18;
 extern float D_8028AAD8;
 #include "tgr/track.h"
-
-
 typedef struct BrCollPlane {    /* a collision triangle's plane (0x20 bytes) */
   BrVec3 n;                     /* its normal */
   float d;
@@ -40,7 +38,7 @@ typedef struct BrCarEnt {       /* a car's entity record (0x78 bytes) */
   char pad00[0x60];
   TgrAddr car;                   /* BrCar * -- 0x60 */
 } BrCarEnt;
-void BrHudArrowDraw(int, void *, short);
+void BrHudArrowDraw(BrCar *car, BrVec3 *at, short kind);
 void BrWrongWayCheck(BrCar *car);
 void BrRaceGateStep(BrCarEnt *e);
 void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
@@ -83,13 +81,13 @@ float sqrtf(float x);
  * Returns 0 when no point is found.  One corner of the tracks 3 and 8 grid
  * is searched as a single cell with no distance check.  Ported from the PC
  * twin (BrCarTrackLocate).
- * RESIDUE (231): our IDO hoists the 1000.0f of the segment distance test
- * out of the search loop (the ROM rematerialises it at each test), which
- * shifts the loop body; x/z take f26/f30 the other way round and the car
- * position pointer s1 for s2.  Structure, frame and calls match. */
-/* @t4-pass 0x8021EB50 1 2026-09-29 compiles 13 best 230 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021EB50 2 2026-09-29 compiles 13 best 230 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021EB50 */
+ * The point search keeps one point pointer and accumulates the squared
+ * distance through one delta (d = dx * dx, d += dy * dy, d += dz * dz);
+ * the found index is the search index j.  The two 1000 tests are spelled
+ * apart and tested in turn, so each is its own constant as in the ROM.
+ * The step reads the point's distance through p and the first point's as
+ * pt->dist, so cfe keeps the dot product first; it is its own float and
+ * a miss returns 0 from the end. */
 /* @implements 0x8021EB50 tgr BrCarTrackLocate */
 int BrCarTrackLocate(BrCar *car)
 {
@@ -98,7 +96,7 @@ int BrCarTrackLocate(BrCar *car)
   float z;
   unsigned char cx;
   unsigned char cy;
-  int i;
+  float e;
   BrPathSeg *seg;
   int best;
   int bestSeg;
@@ -114,10 +112,9 @@ int BrCarTrackLocate(BrCar *car)
   BrVec3 rel;
   BrVec3 across;
   BrVec3 off;
+  float step;
 
-  x = car->mtx0[3][0];
-  y = car->mtx0[3][1];
-  z = car->mtx0[3][2];
+  x = car->mtx0[3][0]; y = car->mtx0[3][1]; z = car->mtx0[3][2];
   check = 1;
   cx = car->cellX;
   cy = car->cellY;
@@ -136,7 +133,7 @@ int BrCarTrackLocate(BrCar *car)
                       &car->posPrev.x, car->mtx0[3]) &&
       BrVec3Dist((BrVec3 *)car->mtx0[3], BRV(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].pos)) < 64.0f) {
     seg = TGR_PTR(BrPathSeg *, car->xf5c);
-    i = car->xf60;
+    j = car->xf60;
   } else {
     bestD = BEF(D_80025C00.x2c) - BEF(D_80025C00.x28);
     bestD *= bestD;
@@ -146,13 +143,22 @@ int BrCarTrackLocate(BrCar *car)
         if (cx < seg->x0 || cx > seg->x1 || cy < seg->y0 || cy > seg->y1) {
           continue;
         }
-        if (check && ((BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[0].dist)) - dist > 1000.0f ||
-                      dist - (BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[BE16(seg->count)].dist)) > 1000.0f)) {
-          continue;
+        if (check) {
+          if ((BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[0].dist)) - dist > 1000.f) {
+            continue;
+          }
+          if (dist - (BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[BE16(seg->count)].dist)) > 1000.0f) {
+            continue;
+          }
         }
         n = BES16(seg->count);
         for (j = 0, p = seg->pt; j < n; j++, p++) {
-          d = (BEF(p->pos.x) - x) * (BEF(p->pos.x) - x) + (BEF(p->pos.y) - y) * (BEF(p->pos.y) - y) + (BEF(p->pos.z) - z) * (BEF(p->pos.z) - z);
+          d = BEF(p->pos.x) - x;
+          d *= d;
+          e = BEF(p->pos.y) - y;
+          d += e * e;
+          e = BEF(p->pos.z) - z;
+          d += e * e;
           if (d < bestD) {
             dir.x = BEF(p->left.y) - BEF(p->right.y);
             dir.y = BEF(p->right.x) - BEF(p->left.x);
@@ -168,27 +174,30 @@ int BrCarTrackLocate(BrCar *car)
       }
     }
     if (best == -1) {
-      return 0;
+      goto none;
     }
     seg = BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[bestSeg]);
-    i = best;
+    j = best;
   }
-  p = &seg->pt[i];
-  across.x = BEF(p->left.y) - BEF(p->right.y);
+  across.x = BEF(seg->pt[j].left.y) - BEF(seg->pt[j].right.y);
+  across.y = BEF(seg->pt[j].right.x) - BEF(seg->pt[j].left.x);
   across.z = 0.0f;
-  across.y = BEF(p->right.x) - BEF(p->left.x);
   BrVec3Normalise(&across);
-  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], BRV(&p->pos));
-  d = BrVec3Dot(&across, &off) + (BEF(D_80025C70->pt[0].dist) * (car->xf7c + 1) - BEF(p->dist)) - car->xfa8;
-  if (!check || (-1000.0f < d && d < 1000.0f)) {
-    car->xfa8 += d;
+  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], BRV(&seg->pt[j].pos));
+  p = &seg->pt[j];
+  step = BrVec3Dot(&across, &off) + (BEF(D_80025C70->pt->dist) * (car->xf7c + 1) - BEF(p->dist));
+  step -= car->xfa8;
+  if (!check || (-1000.0f < step && step < 1000.0f)) {
+    car->xfa8 += step;
   }
-  car->xf60 = i;
   car->xf5c = tgr_addr32(seg);
+  car->xf60 = j;
   car->xf64 = across.x;
   car->xf68 = across.y;
   car->xf6c = across.z;
   return 1;
+none:
+  return 0;
 }
 
 /* WHAT IT DOES: Advance a car's clocks by one frame while it is still in
@@ -243,13 +252,13 @@ void BrCarTickMessages(BrCar *car)
  * list (and, within 5, its triggers to the far list); failing any, the
  * nearest just above (within 1) stands in.  Returns how many were hit.
  * Ported from the PC twin (the collision ray); the u locals are declared
- * and unused (the ROM frame keeps their slots).
- * RESIDUE (387): the loop end is a spilled temp at 0x9C in the ROM (ours sits
- * elsewhere), which with FP colouring shifts most rows; frame, named slots,
- * structure and calls match. */
-/* @t4-pass 0x8021F380 1 2026-09-29 compiles 13 best 387 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021F380 2 2026-09-29 compiles 13 best 387 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021F380 */
+ * and unused (the ROM frame keeps their slots), and pEnd is a declared
+ * local at 0x9C.  The eye's x and y are read into locals x and y on one
+ * line (the ROM keeps them in f18/f20 on the way to origin).  The far-hit
+ * test is a negated guard that continues, like the loop's first three
+ * tests: its two jumps are blocks of their own, which put the 5.0 constant
+ * below bestFarDist and bestNearDist in uopt's colouring order (f24 bestFar,
+ * f26 bestNear, f28 5.0, f30 1.5). */
 /* @implements 0x8021F380 tgr BrGroundRay */
 int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short *pNearIds, int *pGotHit,
                 unsigned short *pFarIds, int *pFarCount, float *pDistOut, int *pFaceOut)
@@ -265,7 +274,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   float bestFarDist;
   BrVec3 tmpV;
   float t;
-  int u0;
+  float dn;
   int u1;
   BrVec3 hitPt;
   BrVec3 origin;
@@ -274,32 +283,34 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   unsigned short farFaceVal;
   unsigned short farFaceIdx;
   BrCollPlane *pP;
-  BrCollPlane *pEnd;
+  int u5;
   int ci;
   int cell;
-  int u3;
-  int u4;
+  float x;
+  float y;
   BrVec3 bestFarNorm;
   BrVec3 bestNearNorm;
-  int u6[8];
+  int u6[2];
+  BrCollPlane *pEnd;
+  int u7[5];
 
   bestFarNorm = D_8028B318;
   bestNearNorm = D_8028B324;
+  bestFarHitZ = pEye->z;
+  bestNearHitZ = pEye->z;
   dt = BEF(D_80025C00.fogHi) - BEF(D_80025C00.fogLo);    /* x3c - x38 */
-  bestNearDist = dt * dt + 1.0f;
+  bestNearDist = bestFarDist = dt * dt + 1.0f;
   farFaceVal = 0;
   farFaceIdx = 0;
-  bestNearHitZ = pEye->z;
-  bestFarHitZ = pEye->z;
   dir.x = 0.0f;
   dir.y = 0.0f;
-  dir.z = 1.0f;
-  origin.y = pEye->y;
-  origin.x = pEye->x;
-  origin.z = 1.0f;
+  dir.z = 1.f;
+  x = pEye->x; y = pEye->y;
+  origin.y = y;
+  origin.x = x;
+  origin.z = 1.0;
   hitCount = 0;
   *pFaceOut = 0;
-  bestFarDist = bestNearDist;
   nearCount = 0;
   farCount = 0;
   cell = BrCollGridCellAcquire(origin.x, origin.y);
@@ -309,12 +320,12 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (pP->n.z < 0.0f) {
       continue;
     }
-    dist = BrVec3Dot(&dir, &pP->n);
-    if (dist == 0) {
+    dn = BrVec3Dot(&dir, &pP->n);
+    if (dn == 0) {
       continue;
     }
     BrVec3Sub(&tmpV, BRV(TGR_PTR(BrVec3be *, pP->v0)), &origin);
-    t = BrVec3Dot(&tmpV, &pP->n) / dist;
+    t = BrVec3Dot(&tmpV, &pP->n) / dn;
     BrVec3MulAdd(&hitPt, &origin, &dir, t);
     if (!BrTriContainsPoint(&hitPt, BRV(TGR_PTR(BrVec3be *, pP->v0)), BRV(TGR_PTR(BrVec3be *, pP->v1)), BRV(TGR_PTR(BrVec3be *, pP->v2)), &pP->n)) {
       continue;
@@ -365,19 +376,20 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
       }
     }
     dist -= 1.5f;
-    if (dist <= 0.0f && dist < bestFarDist) {
-      farFaceVal = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
-      if (-1.0f < dist) {
-        bestFarDist = dist;
-        farFaceIdx = pP->tri;
-        bestFarHitZ = hitPt.z;
-        if (pP->n.z < 0.0f) {
-          BrVec3Negate(&bestFarNorm, &pP->n);
-        } else {
-          bestFarNorm.x = pP->n.x;
-          bestFarNorm.y = pP->n.y;
-          bestFarNorm.z = pP->n.z;
-        }
+    if (!(dist <= 0.0f && dist < bestFarDist)) {
+      continue;
+    }
+    farFaceVal = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
+    if (-1.0f < dist) {
+      bestFarDist = dist;
+      farFaceIdx = pP->tri;
+      bestFarHitZ = hitPt.z;
+      if (pP->n.z < 0.0f) {
+        BrVec3Negate(&bestFarNorm, &pP->n);
+      } else {
+        bestFarNorm.x = pP->n.x;
+        bestFarNorm.y = pP->n.y;
+        bestFarNorm.z = pP->n.z;
       }
     }
   }
@@ -452,7 +464,7 @@ void BrCarEntTick(BrCarEnt *e)
 {
   if (D_8026FF10 == 0 && e->car != 0) {
     if (TGR_PTR(BrCar *, e->car)->x344 != 0) {
-      BrHudArrowDraw(e->car, &TGR_PTR(BrCar *, e->car)->x334, TGR_PTR(BrCar *, e->car)->x344);
+      BrHudArrowDraw(TGR_PTR(BrCar *, e->car), &TGR_PTR(BrCar *, e->car)->x334, TGR_PTR(BrCar *, e->car)->x344);
       TGR_PTR(BrCar *, e->car)->x344 = 0;
     }
     BrCarTickClocks(TGR_PTR(BrCar *, e->car));

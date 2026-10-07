@@ -146,14 +146,11 @@ void BrRankUpdate(void)
  * position, repainted, turned along the route and set moving at 50 (held at
  * the start), writing the car's list of entities by key.  PC twin:
  * BrLapSaveRestore.
- * Source facts: indexed arrays; int seg + pt * 40; a double 1.0.
- * RESIDUE (443): frame 0x18 larger (spill temps); &free[nFree] formed in
- * both save paths; restore-loop set-up order. */
-/* @t4-pass 0x80229700 1 2026-09-29 compiles 198 best 447 moved 15  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80229700 2 2026-09-29 compiles 198 best 443 moved 4  (tools/tgrally/n64permute.py) */
-/* @t3 0x80229700 */
-/* @t4-pass 0x80229700 3 2026-09-29 compiles 150 best 443 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80229700 4 2026-09-29 compiles 150 best 443 moved 0  (tools/tgrally/n64permute.py) */
+ * The three loops index list[i]: uopt keeps one &list[i] induction pointer
+ * for all of them.  The save loop nests its tests (no continue, which would
+ * let uopt replace the counter test) and the first entity jumps into the
+ * later entities' save block, as the PC twin's shared block shows.  The
+ * swap reuses d; unused ints hold the ROM's frame slots. */
 /* @implements 0x80229700 tgr BrCarSlotSwap */
 void BrCarSlotSwap(BrCar *me)
 {
@@ -161,17 +158,16 @@ void BrCarSlotSwap(BrCar *me)
   int u0[4];
   float d;
   BrCar *free[7];
-  int u1[2];
-  int u2[6];
+  int u2[2];
   int group;
-  BrVec3 tA;
-  BrVec3 tB;
   BrRaceEnt *ent;
   BrCar *car;
-  BrRankEntry *e;
+  int u3;
   float lap;
-  float t;
+  int u4;
   int i;
+  BrVec3 tA;
+  BrVec3 tB;
   int seen;
   int nFree;
   int open;
@@ -198,7 +194,7 @@ void BrCarSlotSwap(BrCar *me)
     } else if (D_8026FF18 == 0 && D_803239A0[i].x64 >= D_8026FF08 && (D_803239A0[i].flags & 2)) {
       list[i].key = 1e9f;
     } else {
-      d = (float)(D_803239A0[i].x44 - me->xf7c) * lap + (me->xfa8 - D_803239A0[i].progress);
+      d = (me->xfa8 - D_803239A0[i].progress) + (float)(D_803239A0[i].x44 - me->xf7c) * lap;
       if (lap * 0.5f < d) {
         d -= lap;
       } else if (d < lap * -0.5f) {
@@ -209,9 +205,9 @@ void BrCarSlotSwap(BrCar *me)
     list[i].ent = i;
   }
   if (D_8028B7F0 > 1) {
-    t = list[me->slot].key;
+    d = list[me->slot].key;
     list[me->slot].key = list[0].key;
-    list[0].key = t;
+    list[0].key = d;
     list[0].ent = me->slot;
     list[me->slot].ent = 0;
     BrQsort(&list[1], D_8028B7F0 - 1, 8, BrRankCmpKey);
@@ -219,65 +215,62 @@ void BrCarSlotSwap(BrCar *me)
   group = 0;
   do {
     open = 1;
-    seen = 0;
-    nFree = 0;
-    for (i = 0, e = list; i < D_8028B7F0; i++, e++) {
-      ent = &D_803239A0[e->ent];
-      if (ent->group != group || ent->x64 < D_8026FF08) {
-        continue;
+    for (i = 0, nFree = 0, seen = 0; i < D_8028B7F0; i++) {
+      ent = &D_803239A0[list[i].ent];
+      if (ent->group == group) {
+        if (ent->x64 < D_8026FF08) {
+        } else if (seen < 1) {
+          seen++;
+          if (ent->car != 0) {
+            open = 0;
+            if ((ent->flags & 2) && TGR_PTR(BrCar *, ent->car)->colour[3] == 2 && TGR_PTR(BrCar *, ent->car)->x2064 == 0.0f) {
+              car = TGR_PTR(BrCar *, ent->car);
+              goto save;
+            }
+          }
+        } else {
+          car = TGR_PTR(BrCar *, ent->car);
+          if (ent->car != 0) {
+            open = 0;
+            if (TGR_PTR(BrCar *, ent->car)->xed4 == 0 && 80000.0 < list[i].key) {
+            save:
+              osSyncPrintf("enemy %d loses slot %d (dist=%f)\n", ent->x64, TGR_PTR(BrCar *, ent->car)->slot, list[i].key);
+              ent->pos.x = car->mtx0[3][0];
+              ent->pos.y = car->mtx0[3][1];
+              ent->pos.z = car->mtx0[3][2];
+              ent->vel.x = car->velfd8.x;
+              ent->vel.y = car->velfd8.y;
+              ent->vel.z = car->velfd8.z;
+              ent->x24 = car->xfe4[0];
+              ent->seg = car->xf5c;
+              ent->pt = car->xf60;
+              ent->raceTime = car->raceTime;
+              ent->x34 = car->xf98;
+              ent->lapTime = car->lapTime;
+              ent->x3c = car->xfa4;
+              ent->laps = car->laps;
+              ent->x44 = car->xf7c;
+              ent->x48 = car->xf70;
+              ent->x4c = car->xf74;
+              osSyncPrintf("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
+              ent->progress = car->xfa8;
+              ent->rank = car->xfac;
+              free[nFree++] = TGR_PTR(BrCar *, ent->car);
+              ent->car = 0;
+              car->link = 0;
+              car->xed4 = 60;
+            }
+          }
+        }
       }
-      if (seen < 1) {
-        seen++;
-        if (0 == ent->car) {
-          continue;
-        }
-        open = 0;
-        if (!(ent->flags & 2) || TGR_PTR(BrCar *, ent->car)->colour[3] != 2 || TGR_PTR(BrCar *, ent->car)->x2064 != 0.0f) {
-          continue;
-        }
-      } else {
-        if (ent->car == 0) {
-          continue;
-        }
-        open = 0;
-        if (TGR_PTR(BrCar *, ent->car)->xed4 != 0 || !(80000.0 < e->key)) {
-          continue;
-        }
-      }
-      car = TGR_PTR(BrCar *, ent->car);
-      osSyncPrintf("enemy %d loses slot %d (dist=%f)\n", ent->x64, car->slot, e->key);
-      ent->pos.x = car->mtx0[3][0];
-      ent->pos.y = car->mtx0[3][1];
-      ent->pos.z = car->mtx0[3][2];
-      ent->vel.x = car->velfd8.x;
-      ent->vel.y = car->velfd8.y;
-      ent->vel.z = car->velfd8.z;
-      ent->seg = car->xf5c;
-      ent->x24 = car->xfe4[0];
-      ent->pt = car->xf60;
-      ent->x44 = car->xf7c;
-      ent->raceTime = car->raceTime;
-      ent->x34 = car->xf98;
-      ent->lapTime = car->lapTime;
-      ent->x3c = car->xfa4;
-      ent->laps = car->laps;
-      ent->x4c = car->xf74;
-      ent->x48 = car->xf70;
-      osSyncPrintf("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
-      ent->progress = car->xfa8;
-      ent->rank = car->xfac;
-      free[nFree++] = TGR_PTR(BrCar *, ent->car);
-      ent->car = 0;
-      car->xed4 = 60;
-      car->link = 0;
     }
     i = 0;
     if (open) {
-      osSyncPrintf("init slot %d to being open\n", group + D_8026FF08);
+      osSyncPrintf("init slot %d to being open\n", D_8026FF08 + group);
       free[nFree++] = &D_8031B760[D_8026FF08 + group];
     }
-    for (e = &list[i]; nFree != 0 && i < D_8028B7F0; i++, e++) {
-      ent = &D_803239A0[e->ent];
+    for (; nFree != 0 && i < D_8028B7F0; i++) {
+      ent = D_803239A0 + list[i].ent;
       if (ent->group == group && ent->x64 >= D_8026FF08 && !(ent->flags & 2) && ent->car == 0) {
         car = free[--nFree];
         ent->car = tgr_addr32(car);
@@ -290,13 +283,13 @@ void BrCarSlotSwap(BrCar *me)
         car->lapTime = ent->lapTime;
         car->xfa4 = ent->x3c;
         car->laps = ent->laps;
+        car->xf7c = ent->x44;
         car->xf70 = ent->x48;
         car->xf74 = ent->x4c;
-        car->xf7c = ent->x44;
         osSyncPrintf("restoring lap (%d/%d) and gate (%d/%d)\n", car->laps, car->xf7c, car->xf70, car->xf74);
+        car->xfa8 = ent->progress;
         car->xfac = ent->rank;
         car->link = tgr_addr32((BrCarLink *)ent);
-        car->xfa8 = ent->progress;
         car->colour[3] = 0;
         car->x2064 = 1.0f;
         car->xf48 = 1;
@@ -351,7 +344,7 @@ void BrCarSlotSwap(BrCar *me)
         car->x340 = 40;
         car->xdf0 = 0.0f;
       }
-      ((TgrAddr *)me->pade80)[i] = tgr_addr32(&D_803239A0[e->ent]);
+      ((TgrAddr *)me->pade80)[i] = tgr_addr32(&D_803239A0[list[i].ent]);
     }
   } while (++group != 2);
 }

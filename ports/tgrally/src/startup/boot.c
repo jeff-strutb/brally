@@ -201,10 +201,9 @@ void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
- * copy. */
-/* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021D32C */
+ * copy.  The rebase helpers are called without prototypes (declared old
+ * style), so the two block addresses go in as pointers with no conversion;
+ * a conversion each would reserve two spill slots and grow the frame. */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(BrCarModel *m)
 {

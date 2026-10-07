@@ -94,12 +94,12 @@ void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
  * within 2 on an upward-facing plane (normal z above 0.2) whose triangle
  * contains it is recorded on the wheel (plane, surface byte, normal and
  * constant).  Returns the drop, or 100.  The PC twin is BrWheelGroundProbe.
- * RESIDUE (65): FP register choice from the ray dot product on -- the ROM
- * also loads world x and y ahead of the |t| test and spills them; ours loads
- * them after.  Frame and control flow match. */
-/* @t4-pass 0x8025E96C 1 2026-09-29 compiles 26 best 65 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025E96C 2 2026-09-29 compiles 26 best 65 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025E96C */
+ * The normal's dot product with the world point goes into its own variable
+ * e before h; that coloured value keeps f12, and the normal's components
+ * take f14, f16 and f18.
+ * All three mount additions are written mount[k] = mount[k] + world[k]:
+ * ugen picks a temporary by the slot it is stored to, so the loop's stores
+ * also decide the registers at the entry. */
 /* @implements 0x8025E96C tgr BrWheelGroundProbe */
 float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
 {
@@ -114,10 +114,10 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
   int i;
   int n;
   float dir[3];
-  int x;                        /* x, y, pad: declared, never used; */
-  int y;                        /* the frame holds them */
+  float e;
+  int x;                        /* x, pad: declared, never used; */
   BrTyreVec down;
-  char pad[24];
+  char pad[16];                 /* the frame holds them */
 
   down = D_802A4B94;
   best = 100.0f;
@@ -133,15 +133,16 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
   for (i = 0; i < n; i++, pPl += 8) {
     d = BrCrPlaneDist(pPl, pPl[3], world);
     if (d > -2.0 && d < 2.0) {
-      t = pPl[0] * dir[0] + pPl[1] * dir[1] + dir[2] * pPl[2];
+      t = pPl[0] * dir[0] + pPl[1] * dir[1] + pPl[2] * dir[2];
       if ((t < 0.0f ? -t : t) > 0.001) {
-        h = -(pPl[3] + (pPl[0] * world[0] + pPl[1] * world[1] + world[2] * pPl[2])) / t;
+        e = pPl[0] * world[0] + pPl[1] * world[1] + pPl[2] * world[2];
+        h = -(pPl[3] + e) / t;
         mount[0] = dir[0] * h;
         mount[1] = dir[1] * h;
         mount[2] = dir[2] * h;
         mount[0] = mount[0] + world[0];
         mount[1] = mount[1] + world[1];
-        mount[2] += world[2];
+        mount[2] = mount[2] + world[2];
         if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 && BrCrTriContainsPoint(pPl, mount) != 0) {
           w->hit = tgr_addr32(pPl);
           w->surface = ((unsigned char *)pPl)[0x1e];
@@ -164,12 +165,13 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
  * back on the ground after a frame off it flags a landing.  The bottom-out
  * test is -0.4 + 0.0001 (BrTyreDepthAll's clamp; the folded double differs
  * from a literal -0.3999 in its last bit).
- * RESIDUE (53, same 109 instructions): the hoisted constants' FP registers
- * (the ROM keeps 1.0/-1.0 in f26/f28 and 0.0 in f20) and literal pool order
- * (the ROM pools -0.3 double before -0.3f). */
-/* @t4-pass 0x8025EDBC 1 2026-09-29 compiles 26 best 53 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025EDBC 2 2026-09-29 compiles 26 best 53 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025EDBC */
+ * One float d carries the depth through to the load (d *= SIGN(d) * d,
+ * then the rate).  With a second variable for it, the constants were
+ * constrained and took f2/f12 ahead of the sign temporaries.  The zero
+ * stored into d is an int 0, so it shares its constant with SIGN's > 0,
+ * apart from the 0.0f stores and tests.  The empty test on the count before
+ * prev is read makes the count's load number ahead of prev, so it takes a2
+ * and prev a3. */
 /* @implements 0x8025EDBC tgr BrTyreSprings */
 void BrTyreSprings(BrRbBody *b)
 {
@@ -178,7 +180,6 @@ void BrTyreSprings(BrRbBody *b)
   BrRbBody *s;
   short prev;
   float d;
-  float t;
 
   w = TGR_PTR(BrTyreLoad *, b->loads);
   for (i = 0; i < 4; i++) {
@@ -197,6 +198,8 @@ void BrTyreSprings(BrRbBody *b)
       s = TGR_PTR(struct BrRbBody *, b->sub[3]);
       break;
     }
+    if (s->x1b4) {             /* an empty check, compiled out */
+    }
     prev = s->x1b4;
     d = s->x1d8;
     if (s->x1b4 < 100) {
@@ -207,14 +210,15 @@ void BrTyreSprings(BrRbBody *b)
       d = -0.3;
     }
     if (0.0 < d) {
+      d = 0;
+    }
+    d = d - -0.3;
+    if (d < 0.0f) {
       d = 0.0f;
     }
-    t = d - -0.3;
-    if (t < 0.0f) {
-      t = 0.0f;
-    }
-    t = SIGN(t) * t * t;
-    w->load = t * b->x1b8;
+    d *= SIGN(d) * d;
+    d *= b->x1b8;
+    w->load = d;
     w = TGR_PTR(struct BrTyreLoad *, w->next);
     if (s->x1b4 != 0 && prev == 0) {
       b->x203 = 0x80;

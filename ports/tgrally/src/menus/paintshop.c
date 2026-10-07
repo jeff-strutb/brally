@@ -544,12 +544,12 @@ void BrPaintExitPrompt(void)
  * the decal, up to 16), key 47 deletes the last one and key 49 closes the
  * keyboard (starting the text stamp when there is text).  The text is
  * printed centred in the box, in the chosen paint colour.
- * RESIDUE (205): saved-register choice in the key loop (the key pointer and
- * the constant 1 swap s3/s4, the text-length and width globals s0/s1) and
- * the pad address kept in a0 for the consume. */
-/* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024AC70 */
+ * Source facts: the text length is read and written through the global
+ * D_8028DBA8 itself, with no local copy.  Deleting is D_8028DBA8--, so the
+ * byte store keeps the unmasked difference and the reloads use the masked
+ * one (the else arm's reload of the stored 0 is the andi of $zero); adding
+ * ends with D_80369EA8[++D_8028DBA8] = 0, whose incremented value is a
+ * temp of its own beside the old length. */
 /* @implements 0x8024AC70 tgr BrPaintKeyboard */
 void BrPaintKeyboard(void)
 {
@@ -557,9 +557,10 @@ void BrPaintKeyboard(void)
   int x;
   int y;
   int i;
-  BrGlyph *k;
-  unsigned int n;
+
+
   int kern;
+  BrPadRec *pad;
 
   D_8028DBD8 = 0;
   D_8028DBC8 = 0;
@@ -581,15 +582,15 @@ void BrPaintKeyboard(void)
   BrImageDrawRect(&D_8028D260, x, y, 200, 48, 0xe0, 0xe0, 0xe0);
   BrFillFrame(x, y, 200, 48, 2, 0xff, 0xff, 0xff);
   if (BrPaintCursorInBox((int *)&D_8028D260) != 0) {
-    for (i = 0, k = D_8028D540; i < 50; i++, k++) {
-      if (BrPaintCursorInBrush(&k->x0) != 0) {
+    for (i = 0; i < 50; i++) {
+      if (BrPaintCursorInBrush(&D_8028D540[i].x0) != 0) {
         D_8028DBA4 = i;
         D_8028D290.flash = 1;
-        D_8028D290.x = k->x0;
-        D_8028D290.y = k->x4;
+        D_8028D290.x = D_8028D540[i].x0;
+        D_8028D290.y = D_8028D540[i].x4;
       }
-      if (BrPaintCursorInBox((int *)&D_8028D290) != 0 && (PADS[D_8028DBBC].pressed & 0x8010)) {
-        BrPadConsume((unsigned int *)&PADS[D_8028DBBC], 0x8010);
+      if (BrPaintCursorInBox((int *)&D_8028D290) != 0 && ((pad = &PADS[D_8028DBBC])->pressed & 0x8010)) {
+        BrPadConsume((unsigned int *)pad, 0x8010);
         D_8028DBB0 = 3;
         if (D_8028DBA4 == 49) {
           if (D_8028DBA8 > 0) {
@@ -602,36 +603,32 @@ void BrPaintKeyboard(void)
           D_8028DBD8 = 1;
           D_8028DBC8 = 1;
         } else if (D_8028DBA4 == 47) {
-          n = (unsigned char)(D_8028DBA8 - 1);
-          if (D_80369E68[D_8028DBA8 - 1] == 0) {
-            n = 0;
+          if (D_80369E68[D_8028DBA8 - 1] != 0) {
+            D_8028DBA8--;
+            if (D_8028DBA8 == 0) {
+              D_8028DBAC -= D_80369E68[D_8028DBA8]->w;
+            } else {
+              kern = D_80369E68[D_8028DBA8 - 1]->kernR < D_80369E68[D_8028DBA8]->kernL ? D_80369E68[D_8028DBA8 - 1]->kernR : D_80369E68[D_8028DBA8]->kernL;
+              D_8028DBAC = D_8028DBAC - D_80369E68[D_8028DBA8]->w + kern - 2;
+            }
+          } else {
             D_8028DBA8 = 0;
             D_8028DBAC = 0;
-          } else {
-            D_8028DBA8 = n;
-            if (n == 0) {
-              D_8028DBAC -= D_80369E68[0]->w;
-            } else {
-              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
-              D_8028DBAC = D_8028DBAC - D_80369E68[n]->w + kern - 2;
-            }
           }
-          D_80369EA8[n] = 0;
-          D_80369E68[n] = 0;
+          D_80369EA8[D_8028DBA8] = 0;
+          D_80369E68[D_8028DBA8] = 0;
         } else {
           if (D_8028D540[D_8028DBA4].w + D_8028DBAC + 2 < D_8028DB88) {
-            n = D_8028DBA8;
-            D_80369EA8[n] = D_8028D540[D_8028DBA4].c;
-            D_80369E68[n] = &D_8028D540[D_8028DBA4];
-            if (n == 0) {
+            D_80369EA8[D_8028DBA8] = D_8028D540[D_8028DBA4].c;
+            D_80369E68[D_8028DBA8] = &D_8028D540[D_8028DBA4];
+            if (D_8028DBA8 == 0) {
               D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC;
             } else {
-              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
+              kern = D_80369E68[D_8028DBA8 - 1]->kernR < D_80369E68[D_8028DBA8]->kernL ? D_80369E68[D_8028DBA8 - 1]->kernR : D_80369E68[D_8028DBA8]->kernL;
               D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC - kern + 2;
             }
-            D_80369EA8[(unsigned char)(n + 1)] = 0;
-            D_8028DBA8 = n + 1;
-            if ((unsigned char)(n + 1) > 16) {
+            D_80369EA8[++D_8028DBA8] = 0;
+            if (D_8028DBA8 > 16) {
               D_8028DBA8 = 16;
             }
           }
@@ -860,31 +857,26 @@ void BrPaintBrushSelect(void)
  * stack): the fill is painted into a scratch copy of the decal with the
  * mask off, then the whole copy is plotted back into the decal so the mask
  * applies.  Nothing when the region is already that colour.
- * RESIDUE (~260): the ROM keeps the stack count in its stack home and
- * recomputes each segment's address from it (dy and x1 homed too); ours
- * walks a pointer. */
-/* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024DCA0 */
+ * Source facts: the screen point arrives in x and y themselves (no
+ * locals for it), which sets the frame.  The pop reads dy through
+ * stack[--n] before the other fields, the segment loop is a top-tested
+ * while, and the plot loops step x inside the call (x--, x++). */
 /* @implements 0x8024DCA0 tgr BrPaintFloodFill */
-void BrPaintFloodFill(int sx, int sy)
+void BrPaintFloodFill(int x, int y)
 {
   unsigned char ov;
+  int dy;
   int n;
-  int x;
-  int y;
   int l;
   int x1;
   int x2;
-  int dy;
-  unsigned char *decal;
-  unsigned char *mask;
   BrFillSeg stack[400];
+  unsigned char *mask;
+  unsigned char *decal;
 
-  x = (sx - D_8028DB94.x) >> 2;
-  y = (D_8028DB94.y + D_8028DB94.h - sy) >> 2;
+  x = (x - D_8028DB94.x) >> 2; y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
   ov = BrPaintGet(x, y);
-  if (D_8028DB58 != ov) {
+  if (ov != D_8028DB58) {
     stack[0].y = y;
     stack[0].xl = x;
     stack[0].xr = x;
@@ -892,21 +884,19 @@ void BrPaintFloodFill(int sx, int sy)
     stack[1].y = y + 1;
     stack[1].xl = x;
     stack[1].xr = x;
-    stack[1].dy = -1;
-    n = 2;
+    stack[1].dy = -1; n = 2;
     mask = D_8028DB7C;
     D_8028DB7C = 0;
     memcpy(D_8028DB84, D_8028DB78, 0x800);
     decal = D_8028DB78;
     D_8028DB78 = D_8028DB84;
-    do {
-      n--;
-      dy = stack[n].dy;
+    while (n > 0 && n < 400) {
+      dy = stack[--n].dy;
       y = stack[n].y + dy;
-      x1 = stack[n].xl;
+      x = x1 = stack[n].xl;
       x2 = stack[n].xr;
-      for (x = x1; x >= 0 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x--) {
-        BrPaintPlot(x, y, D_8028DB58);
+      while (x >= 0 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov) {
+        BrPaintPlot(x--, y, D_8028DB58);
       }
       if (x >= x1) {
         goto skip;
@@ -921,8 +911,8 @@ void BrPaintFloodFill(int sx, int sy)
       }
       x = x1 + 1;
       do {
-        for (; x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x++) {
-          BrPaintPlot(x, y, D_8028DB58);
+        while (x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov) {
+          BrPaintPlot(x++, y, D_8028DB58);
         }
         stack[n].y = y;
         stack[n].xl = l;
@@ -941,7 +931,7 @@ void BrPaintFloodFill(int sx, int sy)
         }
         l = x;
       } while (x <= x2);
-    } while (n > 0 && n < 400);
+    }
     D_8028DB7C = mask;
     for (y = 0; y < D_8028DB8C; y++) {
       for (x = 0; x < D_8028DB88; x++) {
@@ -1107,20 +1097,12 @@ void BrPaintStyleSelect(void)
  * quarter scale, y flipped) by Bresenham's method, stepping along the
  * longer axis from the lower end: each point a texel in the chosen colour,
  * or a disc the brush's size.
- * RESIDUE (92): register priority -- the ROM keeps both steps in s6/s7 and
- * spills the loop end; ours spills the y step.  Hoisting x/y, loops on the
- * parameters, loop-test spellings, declaration order and 396 permuter
- * compiles leave it. */
-/* @t4-pass 0x8024F000 1 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024F000 2 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024F000 */
+ * Source facts: each step is one conditional expression (y1 < y0 ? -1 : 1),
+ * which gives both steps the callee registers and leaves the loop ends to be
+ * spilled; the two corners are converted one point per line. */
 /* @implements 0x8024F000 tgr BrPaintLine */
 void BrPaintLine(int x0, int y0, int x1, int y1)
 {
-  int u0;                       /* u0-u3: declared, never used; the ROM's */
-  int u1;                       /* frame has their four slots */
-  int u2;
-  int u3;
   int dx;
   int dy;
   int r;
@@ -1131,14 +1113,11 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
   int e;
   int t;
 
-  x0 = (x0 - D_8028DB94.x) >> 2;
-  y0 = (D_8028DB94.y + D_8028DB94.h - y0) >> 2;
-  x1 = (x1 - D_8028DB94.x) >> 2;
-  y1 = (D_8028DB94.y + D_8028DB94.h - y1) >> 2;
+  x0 = (x0 - D_8028DB94.x) >> 2; y0 = (D_8028DB94.y + D_8028DB94.h - y0) >> 2;
+  x1 = (x1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - y1) >> 2;
   r = D_8028D4A0[D_8028DAC0].w >> 1;
   dx = x1 - x0 < 0 ? -(x1 - x0) : x1 - x0;
   dy = y1 - y0 < 0 ? -(y1 - y0) : y1 - y0;
-  stepy = 1;
   if ((dy < dx && x1 < x0) || (dx < dy && y1 < y0)) {
     t = x0;
     x0 = x1;
@@ -1147,13 +1126,8 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
     y0 = y1;
     y1 = t;
   }
-  stepx = 1;
-  if (y1 < y0) {
-    stepy = -1;
-  }
-  if (x1 < x0) {
-    stepx = -1;
-  }
+  stepy = y1 < y0 ? -1 : 1;
+  stepx = x1 < x0 ? -1 : 1;
   if (dy < dx) {
     x = x0;
     y = y0;
@@ -1192,15 +1166,13 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
 /* WHAT IT DOES: Plot one texel of colour c into the 4-bit decal texture at
  * (x, y) -- inside the texture and not masked off -- with the odd rows'
  * 8-texel words swapped as the RDP's TMEM layout wants them.
- * RESIDUE (51): temporaries are numbered one register later than the ROM's
- * from the row-width shift on; the instructions and their order match. */
-/* @t4-pass 0x8024F25C 1 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024F25C 2 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024F25C */
+ * Source facts: the mask byte's index is a named local m, computed in the
+ * masked arm, so its address is the mask base plus m. */
 /* @implements 0x8024F25C tgr BrPaintPlot */
 void BrPaintPlot(int x, int y, unsigned char c)
 {
   int o;
+  int m;
 
   if (x >= 0 && x < D_8028DB88 && y >= 0 && y < D_8028DB8C) {
     o = ((x ^ ((y & 1) << 3)) >> 1) + y * (D_8028DB88 >> 1);
@@ -1210,11 +1182,14 @@ void BrPaintPlot(int x, int y, unsigned char c)
       } else {
         D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
       }
-    } else if (!(D_8028DB7C[(x >> 3) + y * ((D_8028DB88 + 7) >> 3)] & (1 << ((x ^ 7) & 7)))) {
-      if (x & 1) {
-        D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
-      } else {
-        D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+    } else {
+      m = (x >> 3) + y * ((D_8028DB88 + 7) >> 3);
+      if (!(D_8028DB7C[m] & (1 << ((x ^ 7) & 7)))) {
+        if (x & 1) {
+          D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
+        } else {
+          D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+        }
       }
     }
   }
@@ -1764,113 +1739,133 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
  * BrPaintFillOval with the radii grown by half the brush, and on every
  * other step each quadrant's point drawn as a run of texels the brush's
  * size inward (up/down in the first region, across in the second).
- * RESIDUE (371): the ROM's frame is 8 smaller and keeps the corners and
- * radii in their stack homes; ours holds them in saved registers first. */
-/* @t4-pass 0x80250FCC 1 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80250FCC 2 2026-10-03 compiles 31 best 371 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80250FCC */
+ * Source facts: the corners are swapped when sx1 - sx0 (sy1 - sy0) is
+ * negative, with no width variable; the radii are the pair r[] and the
+ * squares the pair sq, whose address is taken (p), so both stay in memory:
+ * the walk reads them back after every plot and keeps the source operand
+ * order.  b2b and a2b are copies of the squares for the running sums ey and
+ * ex.  Each region is guarded by the product test, then runs as a for loop
+ * whose inits sit on its header line and which breaks at the bottom.  The
+ * left, top and bottom edges are computed in that order at each step and
+ * the right edge is written inline, which orders the four runs' setup as in
+ * the ROM. */
 /* @implements 0x80250FCC tgr BrPaintFrameOval */
 void BrPaintFrameOval(int sx0, int sy0, int sx1, int sy1)
 {
-  int ry;
-  int rx;
+  int *p;
+  int r[2];
+  int l;
   int t;
-  int dx;
-  int dy;
+  int b;
   int w;
   int x;
   int y;
   int err;
   int k;
+  int d;
   int b2b;
   int a2b;
-  int b2;
-  int a2;
+  struct {
+    int a2;
+    int b2;
+  } sq;
   int ey;
   int ex;
-  int d;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  sx1 = (sx1 - D_8028DB94.x) >> 2;
-  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
-  dx = sx1 - sx0;
-  if (dx < 0) {
-    dx = sx0 - sx1;
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  if (sx1 - sx0 < 0) {
     t = sx0;
     sx0 = sx1;
     sx1 = t;
   }
-  dy = sy1 - sy0;
-  if (dy < 0) {
-    dy = sy0 - sy1;
+  if (sy1 - sy0 < 0) {
     t = sy0;
     sy0 = sy1;
     sy1 = t;
   }
   w = D_8028D4A0[D_8028DAC0].w;
-  ry = (dy + w) >> 1 < 2 ? 1 : (dy + w) >> 1;
-  rx = (dx + w) >> 1 < 2 ? 1 : (dx + w) >> 1;
+  r[1] = (sy1 - sy0 + w) >> 1 >= 2 ? (sy1 - sy0 + w) >> 1 : 1;
+  r[0] = (sx1 - sx0 + w) >> 1 >= 2 ? (sx1 - sx0 + w) >> 1 : 1;
+  p = &sq.a2;
+  sq.b2 = r[1] * r[1];
+  b2b = sq.b2;
+  sq.a2 = r[0] * r[0];
+  a2b = sq.a2;
+  y = r[1] * 2;
   x = 0;
-  y = ry * 2;
-  b2 = b2b = ry * ry;
-  a2 = a2b = rx * rx;
-  err = -a2 * y;
-  for (ex = a2b * y, ey = 0, d = 0; ey <= ex;) {
-    if (!(x & 1)) {
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
+  err = -sq.a2 * y;
+  if (b2b * x <= a2b * y) {
+    for (ex = a2b * y, ey = 0, d = 0;;) {
+      if (!(x & 1)) {
+        l = ((sx0 + sx1) >> 1) - (x >> 1);
+        t = ((sy0 + sy1) >> 1) - (y >> 1);
+        b = (y >> 1) + ((sy0 + sy1) >> 1);
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), b - k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), t + k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l, t + k, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l, b - k, D_8028DB58);
+        }
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      err += d;
+      ey += b2b;
+      x++;
+      d += r[1] * r[1];
+      err += d;
+      if (err > 0) {
+        err -= sq.a2 * y;
+        y--;
+        ex -= a2b;
+        err -= sq.a2 * y;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), ((sy0 + sy1) >> 1) - (y >> 1) + k, D_8028DB58);
+      if (ex < ey) {
+        break;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1), (y >> 1) + ((sy0 + sy1) >> 1) - k, D_8028DB58);
-      }
-    }
-    err += d;
-    ey += b2b;
-    x++;
-    d += ry * ry;
-    err += d;
-    if (err > 0) {
-      err -= a2 * y;
-      y--;
-      ex -= a2b;
-      err -= a2 * y;
     }
   }
-  x = rx * 2;
   y = 0;
-  err = -b2 * x;
-  for (ey = b2b * x, ex = 0, d = 0; ex <= ey;) {
-    if (!(y & 1)) {
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+  x = r[0] * 2;
+  err = -sq.b2 * x;
+  if (sq.a2 * y <= x * sq.b2) {
+    for (ey = b2b * x, ex = 0, d = 0;;) {
+      if (!(y & 1)) {
+        l = ((sx0 + sx1) >> 1) - (x >> 1);
+        t = ((sy0 + sy1) >> 1) - (y >> 1);
+        b = (y >> 1) + ((sy0 + sy1) >> 1);
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, b, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, t, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l + k, t, D_8028DB58);
+        }
+        for (k = 0; k < w; k++) {
+          BrPaintPlot(l + k, b, D_8028DB58);
+        }
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot((x >> 1) + ((sx0 + sx1) >> 1) - k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      err += d;
+      ex += a2b;
+      y++;
+      d += r[0] * r[0];
+      err += d;
+      if (err > 0) {
+        err -= sq.b2 * x;
+        x--;
+        ey -= b2b;
+        err -= sq.b2 * x;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      if (ey < ex) {
+        break;
       }
-      for (k = 0; k < w; k++) {
-        BrPaintPlot(((sx0 + sx1) >> 1) - (x >> 1) + k, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
-      }
-    }
-    err += d;
-    y++;
-    ex += a2b;
-    d += rx * rx;
-    err += d;
-    if (err > 0) {
-      err -= b2 * x;
-      x--;
-      ey -= b2b;
-      err -= b2 * x;
     }
   }
 }
@@ -2003,86 +1998,87 @@ void BrPaintCircle(int sx, int sy, int r)
  * arrays are unused locals that reproduce the ROM's frame (0xD8); `/ 16` is
  * an integer so IDO keeps the divide.
  * The car pointer goes into D_8028AAF0 first and the camera pointer is
- * chained off it; the preset copy goes through a source and a destination
- * pointer (both one load each, as in the ROM).
- * RESIDUE (127, same length): the vector copies and interpolation are
- * scheduled differently (the view-counter store, float registers). */
-/* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80242BDC */
+ * chained off it.  The view vectors are float arrays (cfe loads indexed
+ * elements ahead of the product, so each sum reads the start vector
+ * first) and the preset copies read through two pointers, one per vector,
+ * which keeps the ROM's interleaved loads and stores. */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
 {
-  BrVec3 from;
-  BrVec3 to;
+  float from[3];
+  float to[3];
   float dx;
   float dy;
   float dz;
   float x1[4];
   BrVec3 side;
   BrVec3 zAxis;
-  float x2[3];
+  float x2[1];
+  BrVec3 *p;
+  BrVec3 *q;
 
   D_8028AAF0 = &D_8031B760[D_8028DBBC];
   D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cams[3]));
   if (D_8028DBD0 != 0) {
-    from.x = D_8028DC08[D_8028DB6C].x;
-    from.y = D_8028DC08[D_8028DB6C].y;
-    from.z = D_8028DC08[D_8028DB6C].z;
-    to.x = D_8028DC08[D_8028DB68].x;
-    to.y = D_8028DC08[D_8028DB68].y;
-    to.z = D_8028DC08[D_8028DB68].z;
+    p = &D_8028DC08[D_8028DB6C];
+    from[0] = p->x;
+    from[1] = p->y;
+    from[2] = p->z;
+    q = &D_8028DC08[D_8028DB68];
+    to[0] = q->x;
+    to[1] = q->y;
+    to[2] = q->z;
     D_8028DBB0++;
-    BrVec3Normalise(&from);
-    BrVec3Normalise(&to);
-    if (BrVec3Dot(&to, &from) < -0.9) {
+    BrVec3Normalise((BrVec3 *)from);
+    BrVec3Normalise((BrVec3 *)to);
+    if (BrVec3Dot((BrVec3 *)to, (BrVec3 *)from) < -0.9) {
       zAxis.x = 0.0f;
       zAxis.y = 0.0f;
       zAxis.z = 1.0f;
-      BrVec3Cross(&side, &zAxis, &from);
+      BrVec3Cross(&side, &zAxis, (BrVec3 *)from);
       if (D_8028DBB0 < 8) {
-        BrVec3AddTo(&to, &side);
+        BrVec3AddTo((BrVec3 *)to, &side);
       } else {
-        BrVec3AddTo(&from, &side);
+        BrVec3AddTo((BrVec3 *)from, &side);
       }
     }
-    dx = (to.x - from.x) / 16;
-    dz = (to.z - from.z) / 16;
-    dy = (to.y - from.y) / 16;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = from.x + D_8028DBB0 * dx;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = from.y + D_8028DBB0 * dy;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = from.z + D_8028DBB0 * dz;
+    dx = (to[0] - from[0]) / 16;
+    dy = (to[1] - from[1]) / 16;
+    dz = (to[2] - from[2]) / 16;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = D_8028DBB0 * dx + from[0];
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = D_8028DBB0 * dy + from[1];
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = D_8028DBB0 * dz + from[2];
     BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[0]);
     {
-      BrVec3 upB = {0.0f, 0.0f, 0.0f};
-      BrVec3 upA = {0.0f, 0.0f, 0.0f};
+      float upB[3] = {0.0f, 0.0f, 0.0f};
+      float upA[3] = {0.0f, 0.0f, 0.0f};
 
       if (D_8028DB68 == 5) {
-        upA.x = 5.0f;
-        upA.y = 5.0f;
-        upA.z = 1.5f;
+        upA[0] = 5.0f;
+        upA[1] = 5.0f;
+        upA[2] = 1.5f;
       } else {
-        upA.z = 1.0f;
-        upA.x = 0.0f;
-        upA.y = 0.0f;
+        upA[0] = 0.0f;
+        upA[1] = 0.0f;
+        upA[2] = 1.0f;
       }
       if (D_8028DB6C == 5) {
-        upB.x = 5.0f;
-        upB.y = 5.0f;
-        upB.z = 1.5f;
+        upB[0] = 5.0f;
+        upB[1] = 5.0f;
+        upB[2] = 1.5f;
       } else {
-        upB.x = 0.0f;
-        upB.y = 0.0f;
-        upB.z = 1.0f;
+        upB[0] = 0.0f;
+        upB[1] = 0.0f;
+        upB[2] = 1.0f;
       }
-      BrVec3Normalise(&upB);
-      BrVec3Normalise(&upA);
-      dx = (upA.x - upB.x) / 16;
-      dy = (upA.y - upB.y) / 16;
-      dz = (upA.z - upB.z) / 16;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->x = upB.x + D_8028DBB0 * dx;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->y = upB.y + D_8028DBB0 * dy;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->z = upB.z + D_8028DBB0 * dz;
+      BrVec3Normalise((BrVec3 *)upB);
+      BrVec3Normalise((BrVec3 *)upA);
+      dx = (upA[0] - upB[0]) / 16;
+      dy = (upA[1] - upB[1]) / 16;
+      dz = (upA[2] - upB[2]) / 16;
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->x = D_8028DBB0 * dx + upB[0];
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->y = D_8028DBB0 * dy + upB[1];
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->z = D_8028DBB0 * dz + upB[2];
     }
     BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[2]);
     if (D_8028DBB0 == 16) {
@@ -2358,26 +2354,23 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1)
  * between the two dash colours (swapped every 8 frames), then the corners
  * by a midpoint circle walk at twice the resolution, on every other step
  * the eight octant points on odd pixels only, in dashes of four points.
- * RESIDUE (~270): the ROM keeps the corners in their parameter homes and
- * the radius twice (s6, s7); ours holds the corners in saved registers. */
-/* @t4-pass 0x80251F68 1 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80251F68 2 2026-10-03 compiles 31 best 268 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80251F68 */
+ * Source facts: the corners stay in the parameters, and after the edges
+ * they are moved in place to the corner centres (x0 += r, x1 -= r,
+ * y0 += r, y1 -= r) for the walk.  The edge loops name their bounds as
+ * y0 + r .. y1 - r (x0 + r .. x1 - r), and the dash toggle is on++;
+ * on &= 1;. */
 /* @implements 0x80251F68 tgr BrPaintDashRoundRect */
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
 {
   int t;
   int r;
-  int top;
-  int bot;
-  int right;
   int x;
   int y;
   int a;
   int b;
   int err;
   int ha;
-  int hb;
+  int hb;                       /* declared, never used: the frame holds it */
   unsigned char on;
   unsigned char c;
 
@@ -2396,61 +2389,66 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
     y1 = t;
   }
   r = (x1 - x0 < y1 - y0 ? x1 - x0 : y1 - y0) >> 2;
-  top = y0 + r;
-  bot = y1 - r;
-  for (y = top; y <= y1 - r; y += 4) {
-    on = (on + 1) & 1;
+  for (y = y0 + r; y <= y1 - r; y += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x0, y, 1, 4, c, c, c);
   }
-  for (y = top; y <= y1 - r; y += 4) {
-    on = (on + 1) & 1;
+  for (y = y0 + r; y <= y1 - r; y += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x1, y, 1, 4, c, c, c);
   }
-  x0 += r;
-  right = x1 - r;
-  for (x = x0; x <= x1 - r; x += 4) {
-    on = (on + 1) & 1;
+  for (x = x0 + r; x <= x1 - r; x += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y0, 4, 1, c, c, c);
   }
-  for (x = x0; x <= x1 - r; x += 4) {
-    on = (on + 1) & 1;
+  for (x = x0 + r; x <= x1 - r; x += 4) {
+    on++;
+    on &= 1;
     c = on ? D_8028DAB8 : D_8028DABC;
     BrFillRect(x, y1, 4, 1, c, c, c);
   }
+  x0 += r;
+  x1 -= r;
+  y0 += r;
+  y1 -= r;
   b = r * 2;
+  a = 0;
   err = -b;
-  for (a = 0; a <= b;) {
+  while (a <= b) {
     if (!(a & 1)) {
-      on = (on + 1) & 7;
+      on++;
+      on %= 8;
       c = on < 4 ? D_8028DAB8 : D_8028DABC;
       ha = a >> 1;
-      hb = b >> 1;
       if ((x0 - ha) & 1) {
-        BrFillPoint(x0 - ha, top - hb, c);
+        BrFillPoint(x0 - ha, y0 - (b >> 1), c);
       }
       if ((x0 - ha) & 1) {
-        BrFillPoint(x0 - ha, hb + bot, c);
+        BrFillPoint(x0 - ha, (b >> 1) + y1, c);
       }
-      if ((ha + right) & 1) {
-        BrFillPoint(ha + right, hb + bot, c);
+      if ((ha + x1) & 1) {
+        BrFillPoint(ha + x1, (b >> 1) + y1, c);
       }
-      if ((ha + right) & 1) {
-        BrFillPoint(ha + right, top - hb, c);
+      if ((ha + x1) & 1) {
+        BrFillPoint(ha + x1, y0 - (b >> 1), c);
       }
-      if ((ha + bot) & 1) {
-        BrFillPoint(hb + right, ha + bot, c);
+      if ((ha + y1) & 1) {
+        BrFillPoint((b >> 1) + x1, ha + y1, c);
       }
-      if ((top - ha) & 1) {
-        BrFillPoint(hb + right, top - ha, c);
+      if ((y0 - ha) & 1) {
+        BrFillPoint((b >> 1) + x1, y0 - ha, c);
       }
-      if ((top - ha) & 1) {
-        BrFillPoint(x0 - hb, top - ha, c);
+      if ((y0 - ha) & 1) {
+        BrFillPoint(x0 - (b >> 1), y0 - ha, c);
       }
-      if ((ha + bot) & 1) {
-        BrFillPoint(x0 - hb, ha + bot, c);
+      if ((ha + y1) & 1) {
+        BrFillPoint(x0 - (b >> 1), ha + y1, c);
       }
     }
     err += a;
@@ -2466,68 +2464,73 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
  * order): the midpoint ellipse walk of BrPaintFillOval at twice the
  * resolution, and on every other step the four quadrant points at odd
  * coordinates only, in dashes of four points of the two dash colours (swapped
- * every 8 frames). */
-/* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802523CC */
+ * every 8 frames).
+ * Source facts: the corners are swapped when x1 - x0 (y1 - y0) is negative,
+ * with no width variable, and the centres are named once (cx, cy) and
+ * propagated: that numbers the centre expressions ahead of the walk's x >> 1,
+ * so the second walk's centre (10, tied with x >> 1) is coloured first and
+ * stays in a3, and the dash counter n, written n++; n %= 8;, gets $fp.  The
+ * radii stay in memory.  The squares are chains (b2 = b2b = ry * ry), so the
+ * walks strength-reduce b2 * x and a2 * y with the step recomputed as ry * ry;
+ * the squares come before y = ry * 2; x = 0; as in BrPaintFrameOval.  The
+ * second walk is an explicit guard on a2 * y <= x * b2 around a do-while. */
 /* @implements 0x802523CC tgr BrPaintDashOval */
 void BrPaintDashOval(int x0, int y0, int x1, int y1)
 {
+  unsigned char c;
   int ry;
   int rx;
   int t;
-  int dx;
-  int dy;
+  int cx;
+  int cy;
   int x;
   int y;
   int err;
-  int b2b;
-  int a2b;
   int b2;
   int a2;
+  int b2b;
+  int a2b;
   int n;
-  unsigned char c;
 
   n = 0;
-  dx = x1 - x0;
-  if (dx < 0) {
-    dx = x0 - x1;
+  if (x1 - x0 < 0) {
     t = x0;
     x0 = x1;
     x1 = t;
   }
-  dy = y1 - y0;
-  if (dy < 0) {
-    dy = y0 - y1;
+  if (y1 - y0 < 0) {
     t = y0;
     y0 = y1;
     y1 = t;
   }
-  ry = dy >> 1 >= 2 ? dy >> 1 : 1;
-  rx = dx >> 1 >= 2 ? dx >> 1 : 1;
-  x = 0;
-  y = ry * 2;
+  cx = (x0 + x1) >> 1;
+  cy = (y0 + y1) >> 1;
+  ry = (y1 - y0) >> 1 >= 2 ? (y1 - y0) >> 1 : 1;
+  rx = (x1 - x0) >> 1 >= 2 ? (x1 - x0) >> 1 : 1;
   b2 = b2b = ry * ry;
   a2 = a2b = rx * rx;
+  y = ry * 2;
+  x = 0;
   err = -a2 * y;
   if ((++D_8028DBB0 & 7) == 0) {
     BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
   }
-  while (b2b * x <= a2b * y) {
+  while (x * b2b <= a2b * y) {
     if (!(x & 1)) {
-      n = (n + 1) % 8;
+      n++;
+      n %= 8;
       c = n < 4 ? D_8028DAB8 : D_8028DABC;
-      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      if (((x >> 1) + cx) & 1) {
+        BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
       }
-      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      if (((x >> 1) + cx) & 1) {
+        BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
       }
-      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      if ((cx - (x >> 1)) & 1) {
+        BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
       }
-      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      if ((cx - (x >> 1)) & 1) {
+        BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
       }
     }
     err += b2 * x;
@@ -2539,34 +2542,37 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
       err -= a2 * y;
     }
   }
-  x = rx * 2;
   y = 0;
+  x = rx * 2;
   err = -b2 * x;
-  while (a2b * y <= b2b * x) {
-    if (!(y & 1)) {
-      n = (n + 1) % 8;
-      c = n < 4 ? D_8028DAB8 : D_8028DABC;
-      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+  if (a2 * y <= x * b2) {
+    do {
+      if (!(y & 1)) {
+        n++;
+        n %= 8;
+        c = n < 4 ? D_8028DAB8 : D_8028DABC;
+        if (((y >> 1) + cy) & 1) {
+          BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
+        }
+        if ((cy - (y >> 1)) & 1) {
+          BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
+        }
+        if ((cy - (y >> 1)) & 1) {
+          BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
+        }
+        if (((y >> 1) + cy) & 1) {
+          BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
+        }
       }
-      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      err += a2 * y;
+      y++;
+      err += a2 * y;
+      if (err > 0) {
+        err -= b2 * x;
+        x--;
+        err -= b2 * x;
       }
-      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
-      }
-      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
-      }
-    }
-    err += a2 * y;
-    y++;
-    err += a2 * y;
-    if (err > 0) {
-      err -= b2 * x;
-      x--;
-      err -= b2 * x;
-    }
+    } while (a2b * y <= x * b2b);
   }
 }
 
@@ -2575,12 +2581,12 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
  * point, clipped to the paint area: a midpoint walk at double resolution,
  * on every other step the eight octant points on odd pixels only, in dashes
  * of the two dash colours (swapped every 8 frames), four points each.
- * RESIDUE (~200): the ROM keeps the dash counter n in a temp register
- * (spilled to its home around the calls) and x in memory; ours keeps both
- * in memory, which shifts every temp after. */
-/* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802528F8 */
+ * Source facts: each point names its coordinates first (px, py) and then
+ * tests the parity, the clip window and plots; the dash counter is n++;
+ * n %= 8;, and x = 0 comes before d = -y.  Naming the coordinates numbers each point's x and y
+ * expressions ahead of its parity, which gives the parity temps the ROM's
+ * spill slots (the parities of points 1-2, 3-4 and 5/8 share 0x4c, the
+ * parity of points 6-7 uses 0x44). */
 /* @implements 0x802528F8 tgr BrPaintDashCircle */
 void BrPaintDashCircle(int cx, int cy, int r)
 {
@@ -2592,9 +2598,9 @@ void BrPaintDashCircle(int cx, int cy, int r)
   int ay;
   int ax2;
   int ay2;
-  int u0;                       /* u0, u1: declared, never used; */
-  int u1;                       /* the frame holds them */
+  int px;
   int d;
+  int py;
 
   ax = D_8028DB94.x;
   ay = D_8028DB94.y;
@@ -2605,39 +2611,52 @@ void BrPaintDashCircle(int cx, int cy, int r)
     BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
   }
   y = r * 2;
-  d = -y;
   x = 0;
+  d = -y;
   while (x <= y) {
     if ((x & 1) == 0) {
-      n = (n + 1) % 8;
-      if (n < 4) {
-        c = D_8028DAB8;
-      } else {
-        c = D_8028DABC;
+      n++;
+      n %= 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      px = (x >> 1) + cx;
+      py = (y >> 1) + cy;
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
-        BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
+      px = (x >> 1) + cx;
+      py = cy - (y >> 1);
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
-        BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
+      px = cx - (x >> 1);
+      py = cy - (y >> 1);
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
-        BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
+      px = cx - (x >> 1);
+      py = (y >> 1) + cy;
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
-        BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
+      px = (y >> 1) + cx;
+      py = (x >> 1) + cy;
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cy) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
-        BrFillPoint((y >> 1) + cx, (x >> 1) + cy, c);
+      px = (y >> 1) + cx;
+      py = cy - (x >> 1);
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cy - (x >> 1)) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
-        BrFillPoint((y >> 1) + cx, cy - (x >> 1), c);
+      px = cx - (y >> 1);
+      py = cy - (x >> 1);
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cy - (x >> 1)) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
-        BrFillPoint(cx - (y >> 1), cy - (x >> 1), c);
-      }
-      if ((((x >> 1) + cy) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
-        BrFillPoint(cx - (y >> 1), (x >> 1) + cy, c);
+      px = cx - (y >> 1);
+      py = (x >> 1) + cy;
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
     }
     d += x;

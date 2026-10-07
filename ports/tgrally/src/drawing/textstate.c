@@ -393,20 +393,24 @@ void BrTextSetFont(int param_1)
 
 /* WHAT IT DOES: Print a string at a position given in fractions of the
  * screen (y measured up from the bottom), nudged in from the edges.
- * RESIDUE (1): the ROM multiplies y * height with y as the first operand;
- * every spelling here (operand order, casts, locals, 80 permuter compiles)
- * puts the converted height first.
+ * The height is read into an int and copied to a float, and y is
+ * multiplied by the float copy: cfe puts a converted load ahead of y, but
+ * two plain variables keep the source order, and uopt then folds the
+ * conversion back in.  This gives y * height with y first, as in the ROM.
  *
  * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x8022F694 -- no
  * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
  * no data word holding it (the whole ROM searched for the value). */
-/* @t4-pass 0x8022F694 1 2026-10-03 compiles 121 best 1 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022F694 2 2026-10-03 compiles 121 best 1 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8022F694 tgr BrTextPrintAt */
 void BrTextPrintAt(char *str, float x, float y, float unused)
 {
+  int h;
+  float fh;
+
+  h = D_8028AAB4;
+  fh = h;
   BrTextPrint(str, (int)(D_8028AAB0 * x * 0.0009267578134313226f) + 8,
-              D_8028AAB4 - (int)(D_8028AAB4 * y * 0.0012148438254371285f) - 9);
+              h - (int)(y * fh * 0.0012148438254371285f) - 9);
 }
 
 /* WHAT IT DOES: Print a string at (x, y) in the current font, honouring the
@@ -435,13 +439,10 @@ void BrTextPrint(char *s, int x, int y)
  * glyph's width from the small or large font's table, spaces and other
  * unprintables as 12/40 of the size, %% as a percent sign, and the %i, %n and
  * two-letter colour codes as nothing. Halved back when the hi-res flag doubled
- * the size. */
-/* @t4-pass 0x8022F720 1 2026-09-29 compiles 13 best 1 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022F720 2 2026-09-29 compiles 13 best 1 moved 0  (tools/tgrally/n64permute.py) */
-/* RESIDUE (1): the ROM compares the percent sign with the constant register
- * first (bnel t5, t1); IDO orders this compare itself, and every spelling of
- * it and the byte types tried gives c first. */
-/* @t3 0x8022F720 */
+ * the size.  The escape character is held in a variable (esc == c): uopt
+ * puts a variable ahead of a constant in a compare, but esc only becomes the
+ * constant in its second pass, so the ROM's order (constant register first)
+ * stays. */
 /* @implements 0x8022F720 tgr BrTextWidth */
 int BrTextWidth(unsigned char *s, int size)
 {
@@ -452,8 +453,10 @@ int BrTextWidth(unsigned char *s, int size)
   int c;
   unsigned char g;
   unsigned char n;
+  int esc;
 
   w = 0;
+  esc = '%';
   if (D_8028A850 != 0) {
     size <<= 1;
   }
@@ -471,7 +474,7 @@ int BrTextWidth(unsigned char *s, int size)
     if (c < 0x21 || c >= 0x80) {
       w += size * 12 / 40;
     } else {
-      if (c == '%' && (n = s[1])) {
+      if (esc == c && (n = s[1])) {
         if (n == '%') {
           s++;
         } else if (n == 'i' || n == 'n') {
