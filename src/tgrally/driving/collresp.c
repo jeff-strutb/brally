@@ -123,14 +123,14 @@ unsigned short BrU16QueuePop(unsigned short *q);
  * both onto the two axes the triangle's normal is least aligned with, put
  * the point in edge coordinates u and v, and it is inside when u and v are
  * not negative and u, and u + v, stay within 1.  The PC twin is
- * FUN_100656F0 (br_tritest.c).  The modulus is a variable 3 (the ROM keeps
- * the divide's zero check).
- * RESIDUE (41): register naming only -- |n1| and n1 swap f12/f14, the axis
- * indices sit in v1/a3 where ours use t1/t2, and u and the vertex copies
- * trade spill slots. */
-/* @t4-pass 0x8025B3B0 1 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025B3B0 2 2026-09-29 compiles 26 best 41 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025B3B0 */
+ * FUN_100656F0 (br_tritest.c).  The edge test is Badouel's ray-polygon
+ * test (Graphics Gems I) cut down to one triangle: r = 0 and i = 2 sit
+ * where the fan loop's set-up was, and the loop itself is gone.
+ * The modulus is a literal 3 kept in a register, so the ROM still checks
+ * the divide for zero.  Because it is a literal, uopt builds the scaled
+ * axis indices ahead of the vertex base loads, and they take v1/a3 before
+ * the bases.  The store a1 = 0.0f is dead, but it places a1 ahead of the
+ * n[1] load, so |n1| takes f12 and the raw n1 f14 as in the ROM. */
 /* @implements 0x8025B3B0 tgr BrCrTriContainsPoint */
 short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
 {
@@ -145,45 +145,42 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
   float b2;
   float c1;
   float c2;
-  int n;
+  int n;                        /* declared, never used: the frame holds it */
   float v;
   int r;
-  int x0;                       /* declared, never used: the frame holds it */
+  int i;
   float u;
-  float ay;
-  float ax;
 
-  n = 3;
-  a0 = pT->n[0] < 0.0f ? -pT->n[0] : pT->n[0];
-  a1 = pT->n[1] < 0.0f ? -pT->n[1] : pT->n[1];
+  a0 = ABS(pT->n[0]);
+  a1 = 0.0f;
+  a1 = ABS(pT->n[1]);
   if (a1 < a0) {
-    a0 = pT->n[0] < 0.0f ? -pT->n[0] : pT->n[0];
-    a1 = pT->n[2] < 0.0f ? -pT->n[2] : pT->n[2];
+    a0 = ABS(pT->n[0]);
+    a1 = ABS(pT->n[2]);
     if (a1 < a0) {
       c = 0;
     } else {
       c = 2;
     }
   } else {
-    a0 = pT->n[1] < 0.0f ? -pT->n[1] : pT->n[1];
-    a1 = pT->n[2] < 0.0f ? -pT->n[2] : pT->n[2];
+    a0 = ABS(pT->n[1]);
+    a1 = ABS(pT->n[2]);
     if (a1 < a0) {
       c = 1;
     } else {
       c = 2;
     }
   }
-  i1 = (c + 1) % n;
-  i2 = (c + 2) % n;
-  ax = pT->v0[i1];
-  d1 = pP[i1] - ax;
-  ay = pT->v0[i2];
-  d2 = pP[i2] - ay;
-  b1 = pT->v1[i1] - ax;
-  b2 = pT->v1[i2] - ay;
-  c1 = pT->v2[i1] - ax;
-  c2 = pT->v2[i2] - ay;
+  i1 = (c + 1) % 3;
+  i2 = (c + 2) % 3;
+  d1 = pP[i1] - pT->v0[i1];
+  d2 = pP[i2] - pT->v0[i2];
   r = 0;
+  i = 2;
+  b1 = pT->v1[i1] - pT->v0[i1];
+  b2 = pT->v1[i2] - pT->v0[i2];
+  c1 = pT->v2[i1] - pT->v0[i1];
+  c2 = pT->v2[i2] - pT->v0[i2];
   if (b1 == 0.0f) {
     u = d1 / c1;
     if (u >= 0.0f && u <= 1.0f) {
