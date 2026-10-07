@@ -1985,86 +1985,87 @@ void BrPaintCircle(int sx, int sy, int r)
  * arrays are unused locals that reproduce the ROM's frame (0xD8); `/ 16` is
  * an integer so IDO keeps the divide.
  * The car pointer goes into D_8028AAF0 first and the camera pointer is
- * chained off it; the preset copy goes through a source and a destination
- * pointer (both one load each, as in the ROM).
- * RESIDUE (127, same length): the vector copies and interpolation are
- * scheduled differently (the view-counter store, float registers). */
-/* @t4-pass 0x80242BDC 1 2026-10-03 compiles 30 best 125 moved 2  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80242BDC 2 2026-10-03 compiles 29 best 125 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80242BDC */
+ * chained off it.  The view vectors are float arrays (cfe loads indexed
+ * elements ahead of the product, so each sum reads the start vector
+ * first) and the preset copies read through two pointers, one per vector,
+ * which keeps the ROM's interleaved loads and stores. */
 /* @implements 0x80242BDC tgr BrPaintCarView */
 void BrPaintCarView(void)
 {
-  BrVec3 from;
-  BrVec3 to;
+  float from[3];
+  float to[3];
   float dx;
   float dy;
   float dz;
   float x1[4];
   BrVec3 side;
   BrVec3 zAxis;
-  float x2[3];
+  float x2[1];
+  BrVec3 *p;
+  BrVec3 *q;
 
   D_8028AAF0 = &D_8031B760[D_8028DBBC];
   D_8028AAF4 = D_8028AAF0->cam = &D_8028AAF0->cams[3];
   if (D_8028DBD0 != 0) {
-    from.x = D_8028DC08[D_8028DB6C].x;
-    from.y = D_8028DC08[D_8028DB6C].y;
-    from.z = D_8028DC08[D_8028DB6C].z;
-    to.x = D_8028DC08[D_8028DB68].x;
-    to.y = D_8028DC08[D_8028DB68].y;
-    to.z = D_8028DC08[D_8028DB68].z;
+    p = &D_8028DC08[D_8028DB6C];
+    from[0] = p->x;
+    from[1] = p->y;
+    from[2] = p->z;
+    q = &D_8028DC08[D_8028DB68];
+    to[0] = q->x;
+    to[1] = q->y;
+    to[2] = q->z;
     D_8028DBB0++;
-    BrVec3Normalise(&from);
-    BrVec3Normalise(&to);
-    if (BrVec3Dot(&to, &from) < -0.9) {
+    BrVec3Normalise((BrVec3 *)from);
+    BrVec3Normalise((BrVec3 *)to);
+    if (BrVec3Dot((BrVec3 *)to, (BrVec3 *)from) < -0.9) {
       zAxis.x = 0.0f;
       zAxis.y = 0.0f;
       zAxis.z = 1.0f;
-      BrVec3Cross(&side, &zAxis, &from);
+      BrVec3Cross(&side, &zAxis, (BrVec3 *)from);
       if (D_8028DBB0 < 8) {
-        BrVec3AddTo(&to, &side);
+        BrVec3AddTo((BrVec3 *)to, &side);
       } else {
-        BrVec3AddTo(&from, &side);
+        BrVec3AddTo((BrVec3 *)from, &side);
       }
     }
-    dx = (to.x - from.x) / 16;
-    dz = (to.z - from.z) / 16;
-    dy = (to.y - from.y) / 16;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = from.x + D_8028DBB0 * dx;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = from.y + D_8028DBB0 * dy;
-    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = from.z + D_8028DBB0 * dz;
+    dx = (to[0] - from[0]) / 16;
+    dy = (to[1] - from[1]) / 16;
+    dz = (to[2] - from[2]) / 16;
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->x = D_8028DBB0 * dx + from[0];
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->y = D_8028DBB0 * dy + from[1];
+    ((BrVec3 *)D_8028AAF0->mtx0[0])->z = D_8028DBB0 * dz + from[2];
     BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[0]);
     {
-      BrVec3 upB = {0.0f, 0.0f, 0.0f};
-      BrVec3 upA = {0.0f, 0.0f, 0.0f};
+      float upB[3] = {0.0f, 0.0f, 0.0f};
+      float upA[3] = {0.0f, 0.0f, 0.0f};
 
       if (D_8028DB68 == 5) {
-        upA.x = 5.0f;
-        upA.y = 5.0f;
-        upA.z = 1.5f;
+        upA[0] = 5.0f;
+        upA[1] = 5.0f;
+        upA[2] = 1.5f;
       } else {
-        upA.z = 1.0f;
-        upA.x = 0.0f;
-        upA.y = 0.0f;
+        upA[0] = 0.0f;
+        upA[1] = 0.0f;
+        upA[2] = 1.0f;
       }
       if (D_8028DB6C == 5) {
-        upB.x = 5.0f;
-        upB.y = 5.0f;
-        upB.z = 1.5f;
+        upB[0] = 5.0f;
+        upB[1] = 5.0f;
+        upB[2] = 1.5f;
       } else {
-        upB.x = 0.0f;
-        upB.y = 0.0f;
-        upB.z = 1.0f;
+        upB[0] = 0.0f;
+        upB[1] = 0.0f;
+        upB[2] = 1.0f;
       }
-      BrVec3Normalise(&upB);
-      BrVec3Normalise(&upA);
-      dx = (upA.x - upB.x) / 16;
-      dy = (upA.y - upB.y) / 16;
-      dz = (upA.z - upB.z) / 16;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->x = upB.x + D_8028DBB0 * dx;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->y = upB.y + D_8028DBB0 * dy;
-      ((BrVec3 *)D_8028AAF0->mtx0[2])->z = upB.z + D_8028DBB0 * dz;
+      BrVec3Normalise((BrVec3 *)upB);
+      BrVec3Normalise((BrVec3 *)upA);
+      dx = (upA[0] - upB[0]) / 16;
+      dy = (upA[1] - upB[1]) / 16;
+      dz = (upA[2] - upB[2]) / 16;
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->x = D_8028DBB0 * dx + upB[0];
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->y = D_8028DBB0 * dy + upB[1];
+      ((BrVec3 *)D_8028AAF0->mtx0[2])->z = D_8028DBB0 * dz + upB[2];
     }
     BrVec3Normalise((BrVec3 *)D_8028AAF0->mtx0[2]);
     if (D_8028DBB0 == 16) {
