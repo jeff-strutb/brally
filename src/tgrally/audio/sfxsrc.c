@@ -358,13 +358,10 @@ void BrSndNearestOfferDefault(int f8C, void *pPos, void *pListener)
  * can read past it); a sample that would not fit is pointed at the buffer
  * start and reported.  Prints the space used, is fatal on overflow, and
  * starts sample 0 on voice 0 -- and on voices 2 and 4 with two and three
- * players.
- * RESIDUE (44): the three voice starts.  The ROM loads each argument through
- * its own lui (a3, a2, a1 in that order); ours keeps the table's address in
- * s0 across the calls. */
-/* @t4-pass 0x8022BAA0 1 2026-10-03 compiles 116 best 44 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022BAA0 2 2026-10-03 compiles 116 best 44 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022BAA0 */
+ * players.  Source facts: the voice starts read sample 0 through a pointer
+ * set after the loading loop (s = D_8028BC04); uopt propagates the constant
+ * into each read, so every argument is its own lui/lw as in the ROM, with no
+ * table address kept across the calls. */
 /* @implements 0x8022BAA0 tgr BrCarSfxLoad */
 void BrCarSfxLoad(void)
 {
@@ -372,6 +369,7 @@ void BrCarSfxLoad(void)
   unsigned int pos;
   int i;
   unsigned int j;
+  BrSfxSrc *s;
 
   base = (unsigned int)D_80324550;
   pos = base;
@@ -395,15 +393,16 @@ void BrCarSfxLoad(void)
     }
     pos += D_8028BC04[i].size + D_8028BC04[i].loopLen;
   }
+  s = D_8028BC04;
   osSyncPrintf("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
   if (pos - base > 0x29fe0) {
     BrFatal("Car sound effect overflow");
   }
-  BrSfxVoicePlay(0, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
+  BrSfxVoicePlay(0, (unsigned int)s->data, s->size, s->loop);
   if (D_8028B7F4 > 1) {
-    BrSfxVoicePlay(2, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
+    BrSfxVoicePlay(2, (unsigned int)s->data, s->size, s->loop);
   }
   if (D_8028B7F4 > 2) {
-    BrSfxVoicePlay(4, (unsigned int)D_8028BC04[0].data, D_8028BC04[0].size, D_8028BC04[0].loop);
+    BrSfxVoicePlay(4, (unsigned int)s->data, s->size, s->loop);
   }
 }
