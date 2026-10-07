@@ -351,16 +351,13 @@ float BrVec3LenXY(BrVec3 *pV)
 
 /* WHAT IT DOES: Rotate a vector in place by angle a about a unit axis
  * (Rodrigues: c v + (1 - c)(k.v) k + s k x v, written out as the rotation
- * matrix's rows).
- * RESIDUE (63): float colouring -- the ROM holds t, kx, ky, kz in f18,
- * f16, f12, f14 and spills its common products in a different slot order
- * (and recomputes t * ky where ours keeps it); same operations.
+ * matrix's rows).  The six off-diagonal products are named locals, txz
+ * before txy: uopt folds them back into common products, and the order they
+ * are first written decides which frame slot each spilled one takes.
  *
  * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x80224B7C -- no
  * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
  * no data word holding it (the whole ROM searched for the value). */
-/* @t4-pass 0x80224B7C 1 2026-10-03 compiles 119 best 63 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80224B7C 2 2026-10-03 compiles 116 best 63 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x80224B7C tgr BrVec3RotateAxis */
 void BrVec3RotateAxis(BrVec3 *pV, float a, BrVec3 *pK)
 {
@@ -373,7 +370,12 @@ void BrVec3RotateAxis(BrVec3 *pV, float a, BrVec3 *pK)
     float kx;
     float ky;
     float kz;
-    float spare[6];                 /* unused: the ROM's frame */
+    float txy;
+    float txz;
+    float tyz;
+    float sx;
+    float sy;
+    float sz;
 
     s = sinf(a);
     c = cosf(a);
@@ -384,7 +386,13 @@ void BrVec3RotateAxis(BrVec3 *pV, float a, BrVec3 *pK)
     kx = pK->x;
     ky = pK->y;
     kz = pK->z;
-    pV->x = (t * kx * kx + c) * x + y * (t * kx * ky + s * kz) + z * (t * kx * kz - s * ky);
-    pV->y = (t * kx * ky - s * kz) * x + y * (t * ky * ky + c) + z * (t * ky * kz + s * kx);
-    pV->z = (s * ky + t * kx * kz) * x + y * (t * ky * kz - s * kx) + z * (t * kz * kz + c);
+    txz = t * kx * kz;
+    txy = t * kx * ky;
+    tyz = t * ky * kz;
+    sx = s * kx;
+    sy = s * ky;
+    sz = s * kz;
+    pV->x = (t * kx * kx + c) * x + y * (txy + sz) + z * (txz - sy);
+    pV->y = (txy - sz) * x + y * (t * ky * ky + c) + z * (tyz + sx);
+    pV->z = (sy + txz) * x + y * (tyz - sx) + z * (t * kz * kz + c);
 }
