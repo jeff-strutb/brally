@@ -893,15 +893,16 @@ void BrPadPollAll(void)
  * callback), optionally copy the debug frame, set the VI mode once after a
  * resolution change, swap to the finished frame buffer and wait for it,
  * lift the screen blanking; then start the task and flip buffers.
- * The list size is (list - (buffer + 0x200)) in bytes (the ROM's negu);
- * the count is stored and then tested; boot size uses rspbootTextEnd, a
- * second symbol at the F3DEX text start.
- * RESIDUE (~210): instruction scheduling -- the task's stores, the counter
- * loads and the debug copy's multiply are ordered differently; the
- * instruction multiset matches except about 30 moved ops. */
-/* @t4-pass 0x8021AA08 1 2026-10-03 compiles 120 best 209 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021AA08 2 2026-10-03 compiles 120 best 209 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021AA08 */
+ * Written as the PC twin (BrFrameEnd 0x1002CEE9): one stats variable m
+ * takes the three counts in turn, and the frame's count is recomputed for
+ * D_8028AB70.  uopt keeps that recomputed count in v1 from the first
+ * count onwards, and m (a copy) holds v0 there, so &D_8028AB7C takes a0.
+ * The empty do/while before the first count ends uopt's first block, so
+ * the gRaw locals' registers (v1, a0) are free again for the counts.
+ * Task stores follow the ROM's ring order (output_buff and its size before
+ * ucode_size); the osGetCount difference shares the call's line and the
+ * debug copy's multiplier shares its count's line, for as1's ordering.
+ * v is an unused word of the ROM frame. */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {
@@ -923,29 +924,32 @@ void BrFrameEnd(void)
   t->ucode = gspF3DEX_fifoTextStart;
   t->ucode_data = gspF3DEX_fifoDataStart;
   t->flags = 6;
-  t->ucode_size = 0x1000;
   t->output_buff = D_8028A860[0];
   t->output_buff_size = D_8028A860[1] - D_8028AB84;
+  t->ucode_size = 0x1000;
   t->ucode_data_size = 0x800;
   t->dram_stack = (void *)(((unsigned int)D_8031A598 + 0xf) & ~0xf);
   t->dram_stack_size = 0x400;
   t->ucode_boot = rspbootTextStart;
   t->ucode_boot_size = (unsigned int)rspbootTextEnd - (unsigned int)rspbootTextStart;
-  t->data_ptr = &D_8028A848[D_8028A85C][0x40];
-  t->data_size = (((char *)D_8028A858 - ((char *)D_8028A848[D_8028A85C] + 0x200)) >> 3) << 3;
-  n = ((char *)D_8028A858 - ((char *)D_8028A848[D_8028A85C] + 0x200)) >> 3;
-  if (D_8028AB7C < n) {
-    D_8028AB7C = n;
+  t->data_ptr = D_8028A848[D_8028A85C] + 0x40;
+  t->data_size = (D_8028A858 - (D_8028A848[D_8028A85C] + 0x40)) * sizeof(Gfx);
+  do {
+  } while (0);
+  m = D_8028A858 - (D_8028A848[D_8028A85C] + 0x40);
+  if (D_8028AB7C < m) {
+    D_8028AB7C = m;
   }
   m = (D_8028C75C - D_8028C760) >> 1;
   if (D_8028AB74 < m) {
     D_8028AB74 = m;
   }
-  v = D_8028C764 - D_8028C768;
-  if (D_8028AB78 < v) {
-    D_8028AB78 = v;
+  m = D_8028C764 - D_8028C768;
+  if (D_8028AB78 < m) {
+    D_8028AB78 = m;
   }
-  if ((D_8028AB70 = n) > 6000) {
+  D_8028AB70 = D_8028A858 - (D_8028A848[D_8028A85C] + 0x40);
+  if (D_8028AB70 > 6000) {
     BrFatal("HUGE GLIST ERROR");
   }
   osWritebackDCacheAll();
@@ -960,8 +964,7 @@ void BrFrameEnd(void)
     BrPerfMark(0, 0, 0, 0, 0xff);
     osRecvMesg(D_8031A358, 0, 1);
     if (D_8028AA94 != 0) {
-      mul = D_8028A850 != 0 ? 4 : 1;
-      n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
+      mul = D_8028A850 != 0 ? 4 : 1; n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
       src = D_80000400;
       dst = (int *)D_8031AA28[D_8028A85C ^ 1];
       for (i = 0; i < n; i++) {
@@ -973,8 +976,7 @@ void BrFrameEnd(void)
       D_8031B31C = 0;
     }
     osWritebackDCacheAll();
-    D_8028AAE8 = osGetCount();
-    D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
+    D_8028AAE8 = osGetCount(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
         if (D_8028A850 != 0) {
