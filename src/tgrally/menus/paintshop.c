@@ -2465,68 +2465,73 @@ void BrPaintDashRoundRect(int x0, int y0, int x1, int y1)
  * order): the midpoint ellipse walk of BrPaintFillOval at twice the
  * resolution, and on every other step the four quadrant points at odd
  * coordinates only, in dashes of four points of the two dash colours (swapped
- * every 8 frames). */
-/* @t4-pass 0x802523CC 1 2026-10-03 compiles 29 best 308 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802523CC 2 2026-10-03 compiles 31 best 308 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802523CC */
+ * every 8 frames).
+ * Source facts: the corners are swapped when x1 - x0 (y1 - y0) is negative,
+ * with no width variable, and the centres are named once (cx, cy) and
+ * propagated: that numbers the centre expressions ahead of the walk's x >> 1,
+ * so the second walk's centre (10, tied with x >> 1) is coloured first and
+ * stays in a3, and the dash counter n, written n++; n %= 8;, gets $fp.  The
+ * radii stay in memory.  The squares are chains (b2 = b2b = ry * ry), so the
+ * walks strength-reduce b2 * x and a2 * y with the step recomputed as ry * ry;
+ * the squares come before y = ry * 2; x = 0; as in BrPaintFrameOval.  The
+ * second walk is an explicit guard on a2 * y <= x * b2 around a do-while. */
 /* @implements 0x802523CC tgr BrPaintDashOval */
 void BrPaintDashOval(int x0, int y0, int x1, int y1)
 {
+  unsigned char c;
   int ry;
   int rx;
   int t;
-  int dx;
-  int dy;
+  int cx;
+  int cy;
   int x;
   int y;
   int err;
-  int b2b;
-  int a2b;
   int b2;
   int a2;
+  int b2b;
+  int a2b;
   int n;
-  unsigned char c;
 
   n = 0;
-  dx = x1 - x0;
-  if (dx < 0) {
-    dx = x0 - x1;
+  if (x1 - x0 < 0) {
     t = x0;
     x0 = x1;
     x1 = t;
   }
-  dy = y1 - y0;
-  if (dy < 0) {
-    dy = y0 - y1;
+  if (y1 - y0 < 0) {
     t = y0;
     y0 = y1;
     y1 = t;
   }
-  ry = dy >> 1 >= 2 ? dy >> 1 : 1;
-  rx = dx >> 1 >= 2 ? dx >> 1 : 1;
-  x = 0;
-  y = ry * 2;
+  cx = (x0 + x1) >> 1;
+  cy = (y0 + y1) >> 1;
+  ry = (y1 - y0) >> 1 >= 2 ? (y1 - y0) >> 1 : 1;
+  rx = (x1 - x0) >> 1 >= 2 ? (x1 - x0) >> 1 : 1;
   b2 = b2b = ry * ry;
   a2 = a2b = rx * rx;
+  y = ry * 2;
+  x = 0;
   err = -a2 * y;
   if ((++D_8028DBB0 & 7) == 0) {
     BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
   }
-  while (b2b * x <= a2b * y) {
+  while (x * b2b <= a2b * y) {
     if (!(x & 1)) {
-      n = (n + 1) % 8;
+      n++;
+      n %= 8;
       c = n < 4 ? D_8028DAB8 : D_8028DABC;
-      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      if (((x >> 1) + cx) & 1) {
+        BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
       }
-      if (((x >> 1) + ((x0 + x1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      if (((x >> 1) + cx) & 1) {
+        BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
       }
-      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      if ((cx - (x >> 1)) & 1) {
+        BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
       }
-      if ((((x0 + x1) >> 1) - (x >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+      if ((cx - (x >> 1)) & 1) {
+        BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
       }
     }
     err += b2 * x;
@@ -2538,34 +2543,37 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
       err -= a2 * y;
     }
   }
-  x = rx * 2;
   y = 0;
+  x = rx * 2;
   err = -b2 * x;
-  while (a2b * y <= b2b * x) {
-    if (!(y & 1)) {
-      n = (n + 1) % 8;
-      c = n < 4 ? D_8028DAB8 : D_8028DABC;
-      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
+  if (a2 * y <= x * b2) {
+    do {
+      if (!(y & 1)) {
+        n++;
+        n %= 8;
+        c = n < 4 ? D_8028DAB8 : D_8028DABC;
+        if (((y >> 1) + cy) & 1) {
+          BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
+        }
+        if ((cy - (y >> 1)) & 1) {
+          BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
+        }
+        if ((cy - (y >> 1)) & 1) {
+          BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
+        }
+        if (((y >> 1) + cy) & 1) {
+          BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
+        }
       }
-      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
-        BrFillPoint((x >> 1) + ((x0 + x1) >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
+      err += a2 * y;
+      y++;
+      err += a2 * y;
+      if (err > 0) {
+        err -= b2 * x;
+        x--;
+        err -= b2 * x;
       }
-      if ((((y0 + y1) >> 1) - (y >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), ((y0 + y1) >> 1) - (y >> 1), c);
-      }
-      if (((y >> 1) + ((y0 + y1) >> 1)) & 1) {
-        BrFillPoint(((x0 + x1) >> 1) - (x >> 1), (y >> 1) + ((y0 + y1) >> 1), c);
-      }
-    }
-    err += a2 * y;
-    y++;
-    err += a2 * y;
-    if (err > 0) {
-      err -= b2 * x;
-      x--;
-      err -= b2 * x;
-    }
+    } while (a2b * y <= x * b2b);
   }
 }
 
