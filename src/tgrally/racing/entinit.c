@@ -254,12 +254,11 @@ extern BrViewRec D_8031B2C8[2];         /* the views and the car each follows */
 extern int D_8028AB0C;                  /* views on screen */
 extern int D_8028A8AC;                  /* the picture is mirrored */
 extern int D_8028B7F8;                  /* frames the camera keeps its checkpoint target */
-extern int D_8028B9EC;                  /* which fallback camera is next */
 extern int D_8028B7FC;
 extern int D_80270788;
 extern BrVec3 *D_80025C84;              /* the camera checkpoints */
 extern int D_80025C88;                  /* and their count */
-void BrPadConsume(BrCarInput *pad, unsigned int bit);
+void BrPadConsume(BrCarInput *pad, int bit);
 void BrCarCamPlaceChase(BrCar *car);
 void BrVec3MulAddTo(BrVec3 *pV, float *pD, float t);
 void BrCarLineFit(BrCar *car);
@@ -291,33 +290,36 @@ void BrCamShakeAdd(int slot, float s);
  * probe frames (a hard knock shakes the camera), and the respawn check.
  * The PC twin is FUN_1005c8b0.  The unused arrays place the named locals
  * where the ROM frame has them (b 0xC4, la 0x90, v 0x7C).
- * RESIDUE (546): every slot is 8 above the ROM's (its spill area is 8
- * smaller), the locked-camera test branches to the scan where the ROM
- * branches (likely) to the buttons, the fallback-camera toggle is formed
- * after the camera stores, and the +-1.0 constants are materialised per
- * use. */
-/* @t4-pass 0x80226488 1 2026-09-29 compiles 185 best 546 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80226488 2 2026-09-29 compiles 185 best 546 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80226488 */
+ * v is a float array: the chain v[0] = v[1] = v[2] = 0.f makes cfe hold
+ * the reloaded v[2] in a temp, and the head bob's sqrt result, kept across
+ * BrVec3Length, takes the same cfe temp slot (0x34), so uopt makes one web
+ * of the two.  That web takes $f12 (the Length result holds $f0 and s's
+ * division $f2), so the zero is materialised in $f12.  s is its own local
+ * (the PC twin's v): with the scan's dx the division could not take $f2.
+ * The Dist result goes through dy, so the slot is the frame's lowest word;
+ * u2 is an unused word above it. */
 /* @implements 0x80226488 tgr BrCarPlayerCtl */
 void BrCarPlayerCtl(BrCar *car)
 {
+  static int D_8028B9EC = 0;
   float b[3];
-  int u0[10];
+  BrVec3 *p;
+  BrVec3 *q;
+  int u0[8];
   BrVec3 la;
   int u1[2];
-  BrVec3 v;
+  float v[3];
   BrVec3 prev;
   BrVec3 bb;
   BrVec3 a;
-  BrVec3 *p;
   float best;
   float dx;
-  float dy;
   float dz;
   float d;
   float s;
   int i;
+  float dy;
+  int u2;
 
   if (D_8028A8AC != 0) {
     PAD->steer = -PAD->steer;
@@ -332,26 +334,29 @@ void BrCarPlayerCtl(BrCar *car)
     car->x1dd4 = 0.0f;
   }
   if ((car->link->flags & 2) && VIEWED) {
-    if (D_8028B7F8 != 0) {
-      goto buttons;
+    if (D_8028B7F8 == 0) {
+      goto scan;
     }
-    goto scan;
-  }
-  if ((D_8026FF18 == 4 || D_8026FF18 == 5 || D_80270788 != 0) && VIEWED) {
+  } else if ((D_8026FF18 == 4 || D_8026FF18 == 5 || D_80270788 != 0) && VIEWED) {
     if (D_8028B7F8 == 0) {
 scan:
       best = 16777216.0f;
       for (i = 0; i < D_80025C88; i++) {
-        dx = car->mtx0[3][0] - D_80025C84[i].x;
-        dy = car->mtx0[3][1] - D_80025C84[i].y;
+        p = &D_80025C84[i];
+        dx = car->mtx0[3][0] - p->x;
+        dy = car->mtx0[3][1] - p->y;
         dx = dx * dx;
-        dz = car->mtx0[3][2] - D_80025C84[i].z;
+        dz = car->mtx0[3][2] - p->z;
         dy = dy * dy;
-        if (!(dz > 10.0f) && (d = dx + dy + dz * dz) < best) {
-          b[0] = D_80025C84[i].x;
-          b[1] = D_80025C84[i].y;
-          b[2] = D_80025C84[i].z;
-          best = d;
+        if (!(dz > 10.0f)) {
+          dz = dz * dz;
+          if ((d = dx + dy + dz) < best) {
+            q = &D_80025C84[i];
+            b[0] = q->x;
+            b[1] = q->y;
+            b[2] = q->z;
+            best = d;
+          }
         }
       }
       if (best < 22500.0f) {
@@ -365,13 +370,13 @@ scan:
         car->cam = &car->cams[3];
       } else if (car->cam == &car->cams[3]) {
         car->xf48 = 1;
-        if (D_8028B9EC == 0 && D_8028B7FC == 0) {
-          car->cam = &car->cams[1];
-        } else {
+        if (D_8028B9EC != 0 || D_8028B7FC != 0) {
           car->cam = &car->cams[0];
+        } else {
+          car->cam = &car->cams[1];
         }
-        D_8028B7F8 = 60;
         D_8028B9EC = D_8028B9EC == 0;
+        D_8028B7F8 = 60;
       }
     } else {
       D_8028B7F8--;
@@ -382,7 +387,6 @@ scan:
   } else if (VIEWED) {
     D_8028B7F8 = 0;
   }
-buttons:
   if (PAD->flags & 0x1000000) {
     car->cam = &car->cams[0];
     car->xf48 = 1;
@@ -417,21 +421,21 @@ buttons:
   }
   if (PAD->flags & 0x8000) {
     if (car->xf4c == 0) {
-      car->x1ddc = 1.0f;
+      car->x1ddc = 1.f;
     }
   } else if (car->xf4c != 0) {
     car->x1dd8 = car->x1ddc;
     car->x1ddc = 0.0f;
   }
   if (PAD->flags & 8) {
-    car->x1ddc = 1.0f;
+    car->x1ddc = 1.f;
   }
   if (PAD->flags & 2) {
     car->x1ddc = -1.0f;
   }
   if (PAD->flags & 1) {
     if (car->xf4c != 0) {
-      car->x1de0 = 1.0f;
+      car->x1de0 = 1.f;
     } else {
       car->x1dd4 = -1.0f;
     }
@@ -440,7 +444,7 @@ buttons:
     if (car->xf4c != 0) {
       car->x1de0 = -1.0f;
     } else {
-      car->x1dd4 = 1.0f;
+      car->x1dd4 = 1.f;
     }
   }
   if (D_8026FF18 == 5) {
@@ -453,22 +457,22 @@ buttons:
     BrCarLineFit(car);
     PAD->flags &= 0xF0C0FFFF;
     if (car->xfa8 < 114.5f) {
-      BrVec3Scale(&v, &car->lineDir, 27.0f);
+      BrVec3Scale((BrVec3 *)v, &car->lineDir, 27.0f);
     } else {
-      BrVec3Scale(&v, &car->lineDir, (168.5f - car->xfa8) * 0.5f);
+      BrVec3Scale((BrVec3 *)v, &car->lineDir, (168.5f - car->xfa8) * 0.5f);
       if (167.5f < car->xfa8) {
         PAD->flags |= 0x40000;
         if (168.4f < car->xfa8) {
-          v.y = v.x = v.z = 0.0f;
+          v[0] = v[1] = v[2] = 0.f;
         }
       } else {
         PAD->flags |= 0x80000;
       }
     }
     car->xdf0 = BrVec3Dot(&la, car->mtx0[1]) * 3.0f;
-    v.x = v.x - car->lineRel.x * 0.2f;
-    v.y = v.y - car->lineRel.y * 0.2f;
-    BrCarSetVel(car, v.x, v.y, v.z);
+    v[0] = v[0] - car->lineRel.x * 0.2f;
+    v[1] = v[1] - car->lineRel.y * 0.2f;
+    BrCarSetVel(car, v[0], v[1], v[2]);
   }
   BrCarPhysTick(car);
   if (car->xf4c == 0) {
@@ -481,10 +485,10 @@ buttons:
     BrVec3Sub((BrVec3 *)&car->xfe4[8], (BrVec3 *)&car->xfe4[2], &a);
     d = BrVec3Length((BrVec3 *)&car->xfe4[8]);
     if (d != 0.0f) {
-      BrVec3ScaleBy((BrVec3 *)&car->xfe4[8], d / (d + 1.0f) / d);
+      BrVec3ScaleBy((BrVec3 *)&car->xfe4[8], d / (1.0f + d) / d);
     }
-    s = sqrtf(BrVec3Dist((BrVec3 *)&car->xfe4[8], &prev));
-    s = s / (BrVec3Length((BrVec3 *)&car->xfe4[5]) + 1.0f);
+    dy = BrVec3Dist((BrVec3 *)&car->xfe4[8], &prev);
+    s = sqrtf(dy) / (BrVec3Length((BrVec3 *)&car->xfe4[5]) + 1.0f);
     if (0.025f < s) {
       BrCamShakeAdd(car->slot, s + s);
     }
