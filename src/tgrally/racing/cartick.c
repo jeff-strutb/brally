@@ -292,13 +292,13 @@ void BrCarTickMessages(BrCar *car)
  * list (and, within 5, its triggers to the far list); failing any, the
  * nearest just above (within 1) stands in.  Returns how many were hit.
  * Ported from the PC twin (the collision ray); the u locals are declared
- * and unused (the ROM frame keeps their slots).
- * RESIDUE (387): the loop end is a spilled temp at 0x9C in the ROM (ours sits
- * elsewhere), which with FP colouring shifts most rows; frame, named slots,
- * structure and calls match. */
-/* @t4-pass 0x8021F380 1 2026-09-29 compiles 13 best 387 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021F380 2 2026-09-29 compiles 13 best 387 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021F380 */
+ * and unused (the ROM frame keeps their slots), and pEnd is a declared
+ * local at 0x9C.  The eye's x and y are read into locals x and y on one
+ * line (the ROM keeps them in f18/f20 on the way to origin).  The far-hit
+ * test is a negated guard that continues, like the loop's first three
+ * tests: its two jumps are blocks of their own, which put the 5.0 constant
+ * below bestFarDist and bestNearDist in uopt's colouring order (f24 bestFar,
+ * f26 bestNear, f28 5.0, f30 1.5). */
 /* @implements 0x8021F380 tgr BrGroundRay */
 int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short *pNearIds, int *pGotHit,
                 unsigned short *pFarIds, int *pFarCount, float *pDistOut, int *pFaceOut)
@@ -314,7 +314,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   float bestFarDist;
   BrVec3 tmpV;
   float t;
-  int u0;
+  float dn;
   int u1;
   BrVec3 hitPt;
   BrVec3 origin;
@@ -323,32 +323,34 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   unsigned short farFaceVal;
   unsigned short farFaceIdx;
   BrCollPlane *pP;
-  BrCollPlane *pEnd;
+  int u5;
   int ci;
   int cell;
-  int u3;
-  int u4;
+  float x;
+  float y;
   BrVec3 bestFarNorm;
   BrVec3 bestNearNorm;
-  int u6[8];
+  int u6[2];
+  BrCollPlane *pEnd;
+  int u7[5];
 
   bestFarNorm = D_8028B318;
   bestNearNorm = D_8028B324;
+  bestFarHitZ = pEye->z;
+  bestNearHitZ = pEye->z;
   dt = D_80025C00.x3c - D_80025C00.x38;
-  bestNearDist = dt * dt + 1.0f;
+  bestNearDist = bestFarDist = dt * dt + 1.0f;
   farFaceVal = 0;
   farFaceIdx = 0;
-  bestNearHitZ = pEye->z;
-  bestFarHitZ = pEye->z;
   dir.x = 0.0f;
   dir.y = 0.0f;
-  dir.z = 1.0f;
-  origin.y = pEye->y;
-  origin.x = pEye->x;
-  origin.z = 1.0f;
+  dir.z = 1.f;
+  x = pEye->x; y = pEye->y;
+  origin.y = y;
+  origin.x = x;
+  origin.z = 1.0;
   hitCount = 0;
   *pFaceOut = 0;
-  bestFarDist = bestNearDist;
   nearCount = 0;
   farCount = 0;
   cell = func_8025F18C(origin.x, origin.y);
@@ -358,12 +360,12 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (pP->n.z < 0.0f) {
       continue;
     }
-    dist = BrVec3Dot(&dir, &pP->n);
-    if (dist == 0) {
+    dn = BrVec3Dot(&dir, &pP->n);
+    if (dn == 0) {
       continue;
     }
     BrVec3Sub(&tmpV, pP->v0, &origin);
-    t = BrVec3Dot(&tmpV, &pP->n) / dist;
+    t = BrVec3Dot(&tmpV, &pP->n) / dn;
     BrVec3MulAdd(&hitPt, &origin, &dir, t);
     if (!BrTriContainsPoint(&hitPt, pP->v0, pP->v1, pP->v2, &pP->n)) {
       continue;
@@ -414,19 +416,20 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
       }
     }
     dist -= 1.5f;
-    if (dist <= 0.0f && dist < bestFarDist) {
-      farFaceVal = D_80025C00.tris[pP->tri].surface + 1;
-      if (-1.0f < dist) {
-        bestFarDist = dist;
-        farFaceIdx = pP->tri;
-        bestFarHitZ = hitPt.z;
-        if (pP->n.z < 0.0f) {
-          BrVec3Negate(&bestFarNorm, &pP->n);
-        } else {
-          bestFarNorm.x = pP->n.x;
-          bestFarNorm.y = pP->n.y;
-          bestFarNorm.z = pP->n.z;
-        }
+    if (!(dist <= 0.0f && dist < bestFarDist)) {
+      continue;
+    }
+    farFaceVal = D_80025C00.tris[pP->tri].surface + 1;
+    if (-1.0f < dist) {
+      bestFarDist = dist;
+      farFaceIdx = pP->tri;
+      bestFarHitZ = hitPt.z;
+      if (pP->n.z < 0.0f) {
+        BrVec3Negate(&bestFarNorm, &pP->n);
+      } else {
+        bestFarNorm.x = pP->n.x;
+        bestFarNorm.y = pP->n.y;
+        bestFarNorm.z = pP->n.z;
       }
     }
   }
