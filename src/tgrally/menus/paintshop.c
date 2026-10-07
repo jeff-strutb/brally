@@ -551,12 +551,12 @@ void BrPaintExitPrompt(void)
  * the decal, up to 16), key 47 deletes the last one and key 49 closes the
  * keyboard (starting the text stamp when there is text).  The text is
  * printed centred in the box, in the chosen paint colour.
- * RESIDUE (205): saved-register choice in the key loop (the key pointer and
- * the constant 1 swap s3/s4, the text-length and width globals s0/s1) and
- * the pad address kept in a0 for the consume. */
-/* @t4-pass 0x8024AC70 1 2026-10-03 compiles 31 best 205 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024AC70 2 2026-10-03 compiles 30 best 205 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024AC70 */
+ * Source facts: the text length is read and written through the global
+ * D_8028DBA8 itself, with no local copy.  Deleting is D_8028DBA8--, so the
+ * byte store keeps the unmasked difference and the reloads use the masked
+ * one (the else arm's reload of the stored 0 is the andi of $zero); adding
+ * ends with D_80369EA8[++D_8028DBA8] = 0, whose incremented value is a
+ * temp of its own beside the old length. */
 /* @implements 0x8024AC70 tgr BrPaintKeyboard */
 void BrPaintKeyboard(void)
 {
@@ -564,9 +564,10 @@ void BrPaintKeyboard(void)
   int x;
   int y;
   int i;
-  BrGlyph *k;
-  unsigned int n;
+
+
   int kern;
+  BrPadRec *pad;
 
   D_8028DBD8 = 0;
   D_8028DBC8 = 0;
@@ -588,15 +589,15 @@ void BrPaintKeyboard(void)
   BrImageDrawRect(&D_8028D260, x, y, 200, 48, 0xe0, 0xe0, 0xe0);
   BrFillFrame(x, y, 200, 48, 2, 0xff, 0xff, 0xff);
   if (BrPaintCursorInBox((int *)&D_8028D260) != 0) {
-    for (i = 0, k = D_8028D540; i < 50; i++, k++) {
-      if (BrPaintCursorInBrush(&k->x0) != 0) {
+    for (i = 0; i < 50; i++) {
+      if (BrPaintCursorInBrush(&D_8028D540[i].x0) != 0) {
         D_8028DBA4 = i;
         D_8028D290.flash = 1;
-        D_8028D290.x = k->x0;
-        D_8028D290.y = k->x4;
+        D_8028D290.x = D_8028D540[i].x0;
+        D_8028D290.y = D_8028D540[i].x4;
       }
-      if (BrPaintCursorInBox((int *)&D_8028D290) != 0 && (PADS[D_8028DBBC].pressed & 0x8010)) {
-        BrPadConsume((unsigned int *)&PADS[D_8028DBBC], 0x8010);
+      if (BrPaintCursorInBox((int *)&D_8028D290) != 0 && ((pad = &PADS[D_8028DBBC])->pressed & 0x8010)) {
+        BrPadConsume((unsigned int *)pad, 0x8010);
         D_8028DBB0 = 3;
         if (D_8028DBA4 == 49) {
           if (D_8028DBA8 > 0) {
@@ -609,36 +610,32 @@ void BrPaintKeyboard(void)
           D_8028DBD8 = 1;
           D_8028DBC8 = 1;
         } else if (D_8028DBA4 == 47) {
-          n = (unsigned char)(D_8028DBA8 - 1);
-          if (D_80369E68[D_8028DBA8 - 1] == 0) {
-            n = 0;
+          if (D_80369E68[D_8028DBA8 - 1] != 0) {
+            D_8028DBA8--;
+            if (D_8028DBA8 == 0) {
+              D_8028DBAC -= D_80369E68[D_8028DBA8]->w;
+            } else {
+              kern = D_80369E68[D_8028DBA8 - 1]->kernR < D_80369E68[D_8028DBA8]->kernL ? D_80369E68[D_8028DBA8 - 1]->kernR : D_80369E68[D_8028DBA8]->kernL;
+              D_8028DBAC = D_8028DBAC - D_80369E68[D_8028DBA8]->w + kern - 2;
+            }
+          } else {
             D_8028DBA8 = 0;
             D_8028DBAC = 0;
-          } else {
-            D_8028DBA8 = n;
-            if (n == 0) {
-              D_8028DBAC -= D_80369E68[0]->w;
-            } else {
-              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
-              D_8028DBAC = D_8028DBAC - D_80369E68[n]->w + kern - 2;
-            }
           }
-          D_80369EA8[n] = 0;
-          D_80369E68[n] = 0;
+          D_80369EA8[D_8028DBA8] = 0;
+          D_80369E68[D_8028DBA8] = 0;
         } else {
           if (D_8028D540[D_8028DBA4].w + D_8028DBAC + 2 < D_8028DB88) {
-            n = D_8028DBA8;
-            D_80369EA8[n] = D_8028D540[D_8028DBA4].c;
-            D_80369E68[n] = &D_8028D540[D_8028DBA4];
-            if (n == 0) {
+            D_80369EA8[D_8028DBA8] = D_8028D540[D_8028DBA4].c;
+            D_80369E68[D_8028DBA8] = &D_8028D540[D_8028DBA4];
+            if (D_8028DBA8 == 0) {
               D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC;
             } else {
-              kern = D_80369E68[n - 1]->kernR < D_80369E68[n]->kernL ? D_80369E68[n - 1]->kernR : D_80369E68[n]->kernL;
+              kern = D_80369E68[D_8028DBA8 - 1]->kernR < D_80369E68[D_8028DBA8]->kernL ? D_80369E68[D_8028DBA8 - 1]->kernR : D_80369E68[D_8028DBA8]->kernL;
               D_8028DBAC = D_8028D540[D_8028DBA4].w + D_8028DBAC - kern + 2;
             }
-            D_80369EA8[(unsigned char)(n + 1)] = 0;
-            D_8028DBA8 = n + 1;
-            if ((unsigned char)(n + 1) > 16) {
+            D_80369EA8[++D_8028DBA8] = 0;
+            if (D_8028DBA8 > 16) {
               D_8028DBA8 = 16;
             }
           }
