@@ -211,12 +211,9 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
  * as a dw by dh textured rectangle at (x, y) tinted r, g, b -- mirrored
  * left to right when dw is negative, upside down always.  Coordinates are
  * halved on a low-res screen.  The loads are libultra's LoadTextureBlock
- * sequences written out (the DXT and line arithmetic as in its macros).
- * RESIDUE (693): the ROM keeps no saved register (frame 0xF8) and reloads
- * w from its home at every use; ours holds w in s0. */
-/* @t4-pass 0x80245B00 1 2026-10-03 compiles 26 best 693 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80245B00 2 2026-10-03 compiles 26 best 693 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80245B00 */
+ * sequences written out (the DXT and line arithmetic as in its macros,
+ * the 8-bit line as width * 1), each through fmt; the tile-size command
+ * is a block, one statement per line, as the other commands here. */
 /* @implements 0x80245B00 tgr BrImageStrip */
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
                   unsigned char r, unsigned char g, unsigned char b)
@@ -230,8 +227,8 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
 
   flip = 0;
   if (dw < 0) {
-    flip = 1;
     dw = -dw;
+    flip = 1;
   }
   BrTexSizeBits(w, &maskS, &bitsS);
   BrTexSizeBits(h, &maskT, &bitsT);
@@ -241,6 +238,7 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
   switch (img->siz) {
   case 4:
+    fmt = 4;
     if (img == &D_8028CB40) {
       gDPSetCombine(D_8028A858++, 0x309861, 0x5532ff7f);
       gDPSetRenderMode(D_8028A858++, 0x0f0a4000, 0);
@@ -248,28 +246,39 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
       gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
     }
-    gDPSetTextureImage(D_8028A858++, 4, 2, 1, data);
-    gDPSetTile(D_8028A858++, 4, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
+    gDPSetTile(D_8028A858++, fmt, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
     gDPLoadSync(D_8028A858++);
     gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 3) >> 2) - 1, CALC_DXT_4b(w));
     gDPPipeSync(D_8028A858++);
-    gDPSetTile(D_8028A858++, 4, 0, ((w >> 1) + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
-    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    gDPSetTile(D_8028A858++, fmt, 0, ((w >> 1) + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = _SHIFTL(G_SETTILESIZE, 24, 8);
+      _g->words.w1 = _SHIFTL((w - 1) << 2, 12, 12) | _SHIFTL((h - 1) << 2, 0, 12);
+    }
     break;
   case 8:
+    fmt = 3;
     if (img->kind == 'c') {
       gDPSetCombine(D_8028A858++, 0x11fe23, 0xfffff3f9);
     } else {
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
     }
     gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
-    gDPSetTextureImage(D_8028A858++, 3, 2, 1, data);
-    gDPSetTile(D_8028A858++, 3, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
+    gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
+    gDPSetTile(D_8028A858++, fmt, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
     gDPLoadSync(D_8028A858++);
     gDPLoadBlock(D_8028A858++, 7, 0, 0, ((w * h + 1) >> 1) - 1, CALC_DXT(w, 1));
     gDPPipeSync(D_8028A858++);
-    gDPSetTile(D_8028A858++, 3, 1, (w + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
-    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    gDPSetTile(D_8028A858++, fmt, 1, (w * 1 + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = _SHIFTL(G_SETTILESIZE, 24, 8);
+      _g->words.w1 = _SHIFTL((w - 1) << 2, 12, 12) | _SHIFTL((h - 1) << 2, 0, 12);
+    }
     break;
   case 16:
     if (img == &D_8028CB70) {
@@ -285,7 +294,12 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
     gDPLoadBlock(D_8028A858++, 7, 0, 0, w * h - 1, CALC_DXT(w, 2));
     gDPPipeSync(D_8028A858++);
     gDPSetTile(D_8028A858++, fmt, 2, (w * 2 + 7) >> 3, 0, 0, 0, 0, bitsT, 0, 0, bitsS, 0);
-    gDPSetTileSize(D_8028A858++, 0, 0, 0, (w - 1) << 2, (h - 1) << 2);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = _SHIFTL(G_SETTILESIZE, 24, 8);
+      _g->words.w1 = _SHIFTL((w - 1) << 2, 12, 12) | _SHIFTL((h - 1) << 2, 0, 12);
+    }
     break;
   }
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
@@ -293,14 +307,14 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
   if (D_8028A850 == 0) {
     x >>= 1;
     y >>= 1;
-    dh >>= 1;
     dw >>= 1;
+    dh >>= 1;
   }
   gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, 0xff);
   gDPSetEnvColor(D_8028A858++, 0, 0, 0, 0xff);
   gSPTextureRectangle(D_8028A858++, x << 2, y << 2, (x + dw) << 2, (y + dh) << 2, 0,
                       flip ? (w - 1) << 5 : 0, (h - 1) << 5,
-                      flip ? ((1 - w) << 10) / dw : ((w - 1) << 10) / dw, ((1 - h) << 10) / dh);
+                      flip ? (0x400 - (w << 10)) / dw : ((w << 10) - 0x400) / dw, (0x400 - (h << 10)) / dh);
   gDPPipeSync(D_8028A858++);
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0x80000);
 }
