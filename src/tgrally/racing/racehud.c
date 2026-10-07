@@ -345,216 +345,176 @@ void BrWrongWayCheck(BrCar *car)
   }
 }
 
-/* WHAT IT DOES: Draw the direction arrow for the next turn: picks one of
- * the arrow shapes from the angle of the upcoming bend and draws it tinted
- * for that player. */
-/* @t4-pass 0x80233880 1 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80233880 2 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80233880 3 2026-09-26 compiles 17 best 348 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80233880 */
+/* WHAT IT DOES: Dents the car's body where it was hit.  The hit
+ * direction's angle picks one of eight sides and the vertex box that side
+ * covers; if that side is not already dented past 0x100, the dent grows by
+ * four times the amount and a wobble offset cycles -4..3.  The push per axis
+ * is the amount (or half, or a quarter/eighth for z) signed by the direction,
+ * and every G_VTX vertex of the car model's display lists that falls in the
+ * box is nudged by it, weighted by the low bits of its other coordinates.
+ * (The name is historical: this is not an arrow.)
+ * The display list is read as a stream: the count is (*dl++ >> 10) & 0x3f
+ * and the vertex pointer *dl++, and the default arm steps dl++ twice.  The
+ * extra occurrences rank dl's web above the hoisted constant 8, giving the
+ * ROM's t5 for dl and ra for the 8.  The switch reads *dl, so the command
+ * word is a load in a0, apart from the count w (a3) and the copy cfe's
+ * post-decrement temp keeps in v1. */
 /* @implements 0x80233880 tgr BrHudArrowDraw */
-void BrHudArrowDraw(int param_1,float *param_2,short param_3)
+void BrHudArrowDraw(BrCar *car, BrVec3 *dir, short amount)
 {
-  short sVar1;
-  short *psVar2;
-  unsigned int uVar3;
-  int iVar4;
-  unsigned int *puVar5;
-  short sVar7;
-  int iVar6;
-  unsigned int uVar8;
-  int iVar9;
-  int iVar10;
-  int iVar11;
-  int iVar12;
-  int iVar13;
-  int iVar14;
-  int iVar15;
-  unsigned int uVar16;
-  int iVar17;
-  float fVar18;
-  int iVar19;
-  
-  fVar18 = (float)func_8022576C(*param_2,param_2[1]);
-  iVar9 = 0x3fff;
-  iVar10 = 0xff;
-  iVar11 = 0x3fff;
-  iVar12 = -0x3fff;
-  iVar14 = 0;
-  iVar19 = (int)((fVar18 * 180.0f) / 3.1415927f);
-  if ((iVar19 < 0x14) || (0x153 < iVar19)) {
-    iVar19 = 0;
+  int a;
+  int xmax;
+  int xmin;
+  int ymax;
+  int ymin;
+  int off;
+  int ax;
+  int ay;
+  int az;
+  int k;
+  int j;
+  unsigned int *dl;
+  unsigned int w;
+  int n;
+  Vtx_t *v;
+  int x;
+  int y;
+  int z;
+
+  a = (int)(func_8022576C(dir->x, dir->y) * 180.0f / 3.1415927f);
+  if (a < 20 || a >= 340) {
+    xmax = 0x3fff;
+    xmin = 0xff;
+    ymax = 0x3fff;
+    ymin = -0x3fff;
+    a = 0;
+  } else if (a < 50) {
+    xmax = 0x3fff;
+    xmin = 0x80;
+    ymax = 0x3fff;
+    ymin = 0x40;
+    a = 1;
+  } else if (a < 130) {
+    xmax = 0x3fff;
+    xmin = -0x3fff;
+    ymax = 0x3fff;
+    ymin = 0x40;
+    a = 2;
+  } else if (a < 160) {
+    xmax = -0x80;
+    xmin = -0x3fff;
+    ymax = 0x3fff;
+    ymin = 0x40;
+    a = 3;
+  } else if (a < 200) {
+    xmax = -0xff;
+    xmin = -0x3fff;
+    ymax = 0x3fff;
+    ymin = -0x3fff;
+    a = 4;
+  } else if (a < 230) {
+    xmax = -0x80;
+    xmin = -0x3fff;
+    ymax = -0x40;
+    ymin = -0x3fff;
+    a = 5;
+  } else if (a < 310) {
+    xmax = 0x3fff;
+    xmin = -0x3fff;
+    ymax = -0x40;
+    ymin = -0x3fff;
+    a = 6;
+  } else {
+    xmax = 0x3fff;
+    xmin = 0x80;
+    ymax = -0x40;
+    ymin = -0x3fff;
+    a = 7;
   }
-  else {
-    iVar9 = 0x3fff;
-    if (iVar19 < 0x32) {
-      iVar10 = 0x80;
-      iVar11 = 0x3fff;
-      iVar12 = 0x40;
-      iVar19 = 1;
+  amount <<= 2;
+  if (car->dent[a] < 0x100) {
+    car->dent[a] += amount;
+    car->dentWobble = ((car->dentWobble + 5) & 7) - 4;
+    off = car->dentWobble;
+    if (off < 0) {
+      off++;
     }
-    else {
-      iVar9 = 0x3fff;
-      if (iVar19 < 0x82) {
-        iVar10 = -0x3fff;
-        iVar11 = 0x3fff;
-        iVar12 = 0x40;
-        iVar19 = 2;
-      }
-      else {
-        iVar9 = -0x80;
-        if (iVar19 < 0xa0) {
-          iVar10 = -0x3fff;
-          iVar11 = 0x3fff;
-          iVar12 = 0x40;
-          iVar19 = 3;
-        }
-        else {
-          iVar9 = -0xff;
-          if (iVar19 < 200) {
-            iVar10 = -0x3fff;
-            iVar11 = 0x3fff;
-            iVar12 = -0x3fff;
-            iVar19 = 4;
-          }
-          else {
-            iVar9 = -0x80;
-            if (iVar19 < 0xe6) {
-              iVar10 = -0x3fff;
-              iVar11 = -0x40;
-              iVar12 = -0x3fff;
-              iVar19 = 5;
+    if (1.0f < dir->y) {
+      ay = (amount) << 16 >> 16;
+    } else if (0.0f < dir->y) {
+      ay = (amount >> 1) << 16 >> 16;
+    } else if (dir->y < -1.0f) {
+      ay = (-amount) << 16 >> 16;
+    } else {
+      ay = (-(amount >> 1)) << 16 >> 16;
+    }
+    if (1.0f < dir->z) {
+      az = (amount >> 2) << 16 >> 16;
+    } else if (0.0f < dir->z) {
+      az = (amount >> 3) << 16 >> 16;
+    } else if (dir->z < -1.0f) {
+      az = (-(amount >> 2)) << 16 >> 16;
+    } else {
+      az = (-(amount >> 3)) << 16 >> 16;
+    }
+    if (1.25f < dir->x) {
+      ax = (amount) << 16 >> 16;
+    } else if (0.0f < dir->x) {
+      ax = (amount >> 1) << 16 >> 16;
+    } else if (dir->x < -1.25f) {
+      ax = (-amount) << 16 >> 16;
+      az = (az << 1) << 16 >> 16;
+    } else {
+      ax = (short)-amount;
+    }
+    for (k = 0; k < 3; k++) {
+      for (j = 0; j < 10; j++) {
+        if (j != 9 && (dl = ((BrCarModel *)car->model)->dl[k][j]) != 0) {
+          for (;;) {
+            switch (*dl >> 24) {
+            case 4:
+              w = (*dl++ >> 10) & 0x3f;
+              v = (Vtx_t *)*dl++;
+              while (w--) {
+                x = (short)(v->ob[0] + off);
+                if (xmin < x && x < xmax) {
+                  y = (short)(v->ob[1] + off);
+                  if (ymin < y && y < ymax) {
+                    z = (short)(v->ob[2] + off);
+                    if (-0x30 < z && z < 0xe0) {
+                      if (y & 0x80) {
+                        v->ob[0] = v->ob[0] + ((int)(ax * (4 - (y & 0xfU))) >> 5);
+                      } else {
+                        v->ob[0] = v->ob[0] + ((int)(ax * ((y & 0xfU) - 12)) >> 5);
+                      }
+                      if (x & 0x80) {
+                        v->ob[1] = v->ob[1] + ((int)(ay * (4 - (x & 0xfU))) >> 5);
+                      } else {
+                        v->ob[1] = v->ob[1] + ((int)(ay * ((x & 0xfU) - 12)) >> 5);
+                      }
+                      x = (short)(x + y);
+                      if (x & 0x80) {
+                        v->ob[2] = v->ob[2] + ((int)(az * (8 - (x & 0xfU))) >> 6);
+                      } else {
+                        v->ob[2] = v->ob[2] + ((int)(az * ((x & 0xfU) - 8)) >> 6);
+                      }
+                    }
+                  }
+                }
+                v = (Vtx_t *)((Vtx *)v + 1);
+              }
+              break;
+            case 0xb8:
+              goto next;
+            default:
+              dl++;
+              dl++;
+              break;
             }
-            else {
-              iVar9 = 0x3fff;
-              if (iVar19 < 0x136) {
-                iVar9 = 0x3fff;
-                iVar10 = -0x3fff;
-                iVar11 = -0x40;
-                iVar12 = -0x3fff;
-                iVar19 = 6;
-              }
-              else {
-                iVar10 = 0x80;
-                iVar11 = -0x40;
-                iVar12 = -0x3fff;
-                iVar19 = 7;
-              }
-            }
           }
+        next:;
         }
       }
-    }
-  }
-  iVar19 = param_1 + iVar19 * 2;
-  sVar7 = *(short *)(iVar19 + 0x207c);
-  if (sVar7 < 0x100) {
-    sVar1 = (short)((unsigned int)((int)param_3 << 0x12) >> 0x10);
-    *(short *)(iVar19 + 0x207c) = sVar7 + sVar1;
-    *(unsigned short *)(param_1 + 0x208c) = (*(short *)(param_1 + 0x208c) + 5U & 7) - 4;
-    iVar19 = (int)*(short *)(param_1 + 0x208c);
-    iVar17 = (int)sVar1;
-    if (iVar19 < 0) {
-      iVar19 = iVar19 + 1;
-    }
-    fVar18 = param_2[1];
-    sVar7 = sVar1 >> 1;
-    if (fVar18 <= 1.0f) {
-      if (0.0f < fVar18) {
-        iVar17 = (int)sVar7;
-      }
-      else {
-        iVar17 = (int)-sVar7;
-        if (fVar18 < -1.0f) {
-          iVar17 = (int)-sVar1;
-        }
-      }
-    }
-    fVar18 = param_2[2];
-    if (1.0f < fVar18) {
-      iVar4 = (int)(sVar1 >> 2);
-    }
-    else if (0.0f < fVar18) {
-      iVar4 = (int)(sVar1 >> 3);
-    }
-    else {
-      iVar4 = (int)(short)-(sVar1 >> 3);
-      if (fVar18 < -1.0f) {
-        iVar4 = (int)(short)-(sVar1 >> 2);
-      }
-    }
-    fVar18 = *param_2;
-    iVar15 = (int)sVar1;
-    if (fVar18 <= 1.25f) {
-      if (0.0f < fVar18) {
-        iVar15 = (int)sVar7;
-      }
-      else {
-        iVar15 = (int)-sVar1;
-        if (fVar18 < -1.25f) {
-          iVar15 = (int)-sVar1;
-          iVar4 = (iVar4 << 0x11) >> 0x10;
-        }
-      }
-    }
-    iVar13 = 0;
-LAB_80233be0:
-    do {
-      if ((iVar13 != 9) &&
-         (puVar5 = *(unsigned int **)(*(int *)(param_1 + 0x2078) + iVar14 * 0x28 + iVar13 * 4 + 0x18),
-         puVar5 != (unsigned int *)0x0)) {
-LAB_80233c10:
-        do {
-          uVar3 = *puVar5;
-          while( 1 ) {
-            if (uVar3 >> 0x18 != 4) break;
-            uVar3 = uVar3 >> 10 & 0x3f;
-            psVar2 = (short *)puVar5[1];
-            puVar5 = puVar5 + 2;
-            if (uVar3 == 0) goto LAB_80233c10;
-            do {
-              uVar3 = uVar3 - 1;
-              sVar7 = *psVar2;
-              uVar16 = (sVar7 + iVar19) * 0x10000 >> 0x10;
-              if ((((iVar10 < (int)uVar16) && ((int)uVar16 < iVar9)) &&
-                  (uVar8 = (psVar2[1] + iVar19) * 0x10000 >> 0x10, iVar12 < (int)uVar8)) &&
-                 ((((int)uVar8 < iVar11 &&
-                   (iVar6 = (psVar2[2] + iVar19) * 0x10000 >> 0x10, -0x30 < iVar6)) &&
-                  (iVar6 < 0xe0)))) {
-                if ((uVar8 & 0x80) == 0) {
-                  *psVar2 = sVar7 + (short)((int)(iVar15 * ((uVar8 & 0xf) - 0xc)) >> 5);
-                }
-                else {
-                  *psVar2 = sVar7 + (short)((int)(iVar15 * (4 - (uVar8 & 0xf))) >> 5);
-                }
-                if ((uVar16 & 0x80) == 0) {
-                  psVar2[1] = psVar2[1] + (short)((int)(iVar17 * ((uVar16 & 0xf) - 0xc)) >> 5);
-                }
-                else {
-                  psVar2[1] = psVar2[1] + (short)((int)(iVar17 * (4 - (uVar16 & 0xf))) >> 5);
-                }
-                uVar16 = (int)((uVar16 + uVar8) * 0x10000) >> 0x10;
-                if ((uVar16 & 0x80) == 0) {
-                  psVar2[2] = psVar2[2] + (short)((int)(iVar4 * ((uVar16 & 0xf) - 8)) >> 6);
-                }
-                else {
-                  psVar2[2] = psVar2[2] + (short)((int)(iVar4 * (8 - (uVar16 & 0xf))) >> 6);
-                }
-              }
-              psVar2 = psVar2 + 8;
-            } while (uVar3 != 0);
-            uVar3 = *puVar5;
-          }
-          if (uVar3 >> 0x18 == 0xb8) break;
-          puVar5 = puVar5 + 2;
-        } while( 1 );
-      }
-      iVar13 = iVar13 + 1;
-    } while (iVar13 != 10);
-    iVar14 = iVar14 + 1;
-    if (iVar14 != 3) {
-      iVar13 = 0;
-      goto LAB_80233be0;
     }
   }
 }

@@ -224,7 +224,9 @@ typedef struct BrCar {
     char pad2072[0x2074 - 0x2072];
     unsigned int *pad;          /* 0x2074  the slot's pad record */
     char *model;                /* 0x2078  the slot's model buffer */
-    char pad207c[0x2090 - 0x207C];
+    short dent[8];              /* 0x207C  how far each side of the body has been pushed in */
+    short dentWobble;           /* 0x208C  cycles -4..3, offsets the dent's vertex sample */
+    char pad208e[0x2090 - 0x208E];
 } BrCar;
 
 extern BrCar D_8031B760[4];
