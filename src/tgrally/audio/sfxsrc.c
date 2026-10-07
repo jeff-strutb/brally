@@ -57,10 +57,9 @@ typedef struct BrSndVoice {     /* a mixer voice, 0x18 bytes */
 extern BrSndVoice D_802A4920[6];
 extern unsigned int D_802A497C;
 typedef struct BrSndCarLink { char pad00[0x68]; unsigned int flags; } BrSndCarLink;
-extern BrSndCarLink *D_8031C630;        /* car 0's link record */
 typedef struct BrSndView { int x, y, w, h; int car; } BrSndView;
 extern BrSndView D_8031B2C8[2];         /* the players' views */
-typedef struct BrSndCar { char pad0000[0xF48]; int camMode; char padf4c[0x2090 - 0xF4C]; } BrSndCar;
+typedef struct BrSndCar { char pad0000[0xED0]; BrSndCarLink *link; char padED4[0xF48 - 0xED4]; int camMode; char padf4c[0x2090 - 0xF4C]; } BrSndCar;
 extern BrSndCar D_8031B760[4];
 extern int D_8028AB0C;                  /* number of players */
 void BrSndPan(float pos[3], float m[4][4], float *left, float *right, int *vol, int narrow);
@@ -165,17 +164,12 @@ void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pL
  * listener matrix, the sample started the first time, and -- when the
  * viewed cars use camera mode 0 -- the 32.32 rate and the packed stereo
  * level (halved on the first frame).  Then this frame's winner becomes
- * last frame's.
- * RESIDUE (128 words, instruction count 261/263): register colouring -- the
- * ROM holds f8C in a0 and pObj in v1 where ours has v1/v0, and the tail
- * reaches objPosPrev.z through pObj + 0x30 in v0 (then reloads pObj).
- * Levers that landed: the frame (an unused int above ratio and seven unused
- * floats below gainB), the early exit as a goto past the reset (it splits
- * the base setup onto the skip edge), the first packed store through its
- * own absolute symbol, the Doppler result assigned before the multiply. */
-/* @t4-pass 0x8022B534 1 2026-10-03 compiles 119 best 128 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022B534 2 2026-10-03 compiles 118 best 128 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022B534 */
+ * last frame's.  Source facts: the race test reads car 0's link through
+ * the car table, D_8031B760[0].link, so the table's address is live from
+ * the top and is not kept in a register for the camera-mode tests; the
+ * volume is scaled in two statements (vol *= f9C; vol >>= 8;) and the
+ * halving arm reads the level into vol, which keeps vol in v0 as in the
+ * ROM; the listener row pointer is read as an int, a load of its own. */
 /* @implements 0x8022B534 tgr BrSndNearestCommit */
 void BrSndNearestCommit(void)
 {
@@ -184,9 +178,10 @@ void BrSndNearestCommit(void)
   int vol;
   float gainA;
   float gainB;
-  float unused2[7];
+  float unused2[6];
+  float *p;
 
-  if (D_8031C630->flags & 1)
+  if (D_8031B760[0].link->flags & 1)
     return;
   if (D_8028B7EC != -1) {
     if (D_802A4920[3].rate != 0)
@@ -215,14 +210,15 @@ skip:
       ratio = D_8028B7A0.f98 * ratio;
       BrSndPan(&D_8028B7A0.pos.x, D_8028B7A0.pObj, &gainA, &gainB, &vol, 0);
     }
-    vol = vol * D_8028B7A0.f9C >> 8;
+    vol *= D_8028B7A0.f9C;
+    vol >>= 8;
     if (D_8028B7A0.fA0 == 0) {
       D_8028B7A0.fA0 = 1;
       BrSfxVoicePlay(3, (unsigned int)D_8028BC04[D_8028B7A0.f84].data, D_8028BC04[D_8028B7A0.f84].size,
                      D_8028BC04[D_8028B7A0.f84].loop);
     }
-    if (D_8031B760[D_8031B2C8[0].car].camMode == 0
-        && (D_8028AB0C == 1 || D_8031B760[D_8031B2C8[1].car].camMode == 0)) {
+    if ((D_8031B2C8[0].car + D_8031B760)->camMode == 0
+        && (D_8028AB0C == 1 || (D_8031B2C8[1].car + D_8031B760)->camMode == 0)) {
       D_802A4920[3].rate = (double)(ratio * (1.0f / 11000.0f)) * 4294967296.0;
       if (D_802A4920[3].baseVol == 0) {
         D_802A497C = ((int)((float)((int)(vol * gainA) << 16) + gainB * vol) >> 1) & 0x7FFF7FFF;
@@ -233,12 +229,14 @@ skip:
     D_8028B7A0.posPrev.x = D_8028B7A0.pos.x;
     D_8028B7A0.posPrev.y = D_8028B7A0.pos.y;
     D_8028B7A0.posPrev.z = D_8028B7A0.pos.z;
-    D_8028B7A0.objPosPrev.x = ((float *)D_8028B7A0.pObj)[12];
-    D_8028B7A0.objPosPrev.y = ((float *)D_8028B7A0.pObj)[13];
-    D_8028B7A0.objPosPrev.z = ((float *)D_8028B7A0.pObj)[14];
+    p = (float *)(*(int *)&D_8028B7A0.pObj + 0x30);
+    D_8028B7A0.objPosPrev.x = p[0];
+    D_8028B7A0.objPosPrev.y = p[1];
+    D_8028B7A0.objPosPrev.z = p[2];
   } else {
     D_8028B7A0.fA0 = 0;
-    D_802A4920[3].baseVol = (D_802A4920[3].baseVol >> 1) & 0x7FFF7FFF;
+    vol = D_802A4920[3].baseVol;
+    D_802A4920[3].baseVol = ((unsigned int)vol >> 1) & 0x7FFF7FFF;
   }
   D_8028B7A0.f90 = D_8028B7A0.f8C;
   D_8028B7A0.pObjPrev = D_8028B7A0.pObj;
