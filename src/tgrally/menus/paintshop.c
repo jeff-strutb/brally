@@ -1103,20 +1103,12 @@ void BrPaintStyleSelect(void)
  * quarter scale, y flipped) by Bresenham's method, stepping along the
  * longer axis from the lower end: each point a texel in the chosen colour,
  * or a disc the brush's size.
- * RESIDUE (92): register priority -- the ROM keeps both steps in s6/s7 and
- * spills the loop end; ours spills the y step.  Hoisting x/y, loops on the
- * parameters, loop-test spellings, declaration order and 396 permuter
- * compiles leave it. */
-/* @t4-pass 0x8024F000 1 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024F000 2 2026-09-29 compiles 25 best 92 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024F000 */
+ * Source facts: each step is one conditional expression (y1 < y0 ? -1 : 1),
+ * which gives both steps the callee registers and leaves the loop ends to be
+ * spilled; the two corners are converted one point per line. */
 /* @implements 0x8024F000 tgr BrPaintLine */
 void BrPaintLine(int x0, int y0, int x1, int y1)
 {
-  int u0;                       /* u0-u3: declared, never used; the ROM's */
-  int u1;                       /* frame has their four slots */
-  int u2;
-  int u3;
   int dx;
   int dy;
   int r;
@@ -1127,14 +1119,11 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
   int e;
   int t;
 
-  x0 = (x0 - D_8028DB94.x) >> 2;
-  y0 = (D_8028DB94.y + D_8028DB94.h - y0) >> 2;
-  x1 = (x1 - D_8028DB94.x) >> 2;
-  y1 = (D_8028DB94.y + D_8028DB94.h - y1) >> 2;
+  x0 = (x0 - D_8028DB94.x) >> 2; y0 = (D_8028DB94.y + D_8028DB94.h - y0) >> 2;
+  x1 = (x1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - y1) >> 2;
   r = D_8028D4A0[D_8028DAC0].w >> 1;
   dx = x1 - x0 < 0 ? -(x1 - x0) : x1 - x0;
   dy = y1 - y0 < 0 ? -(y1 - y0) : y1 - y0;
-  stepy = 1;
   if ((dy < dx && x1 < x0) || (dx < dy && y1 < y0)) {
     t = x0;
     x0 = x1;
@@ -1143,13 +1132,8 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
     y0 = y1;
     y1 = t;
   }
-  stepx = 1;
-  if (y1 < y0) {
-    stepy = -1;
-  }
-  if (x1 < x0) {
-    stepx = -1;
-  }
+  stepy = y1 < y0 ? -1 : 1;
+  stepx = x1 < x0 ? -1 : 1;
   if (dy < dx) {
     x = x0;
     y = y0;
