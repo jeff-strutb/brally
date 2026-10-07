@@ -142,15 +142,12 @@ void BrVec3Zero(BrVec3 *v);
  * new point's width and the trail's newest vertex (relative to the car)
  * are written at the head of the wheel's trail.  The frame is the ROM's
  * with the unused one-int arrays; stores of 0 and the decrements by 1 are
- * integer literals (the 0.0f compares keep their own zero register).
- * RESIDUE (6): two lui's of the mark width scheduled one slot later than
- * the ROM's, and the scale's spill slot 0x64 (ROM 0x70).  500 permuter
- * compiles leave it. */
-/* @t4-pass 0x8023B418 1 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 2 2026-10-03 compiles 1 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 3 2026-10-03 compiles 30 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023B418 4 2026-10-03 compiles 31 best 6 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023B418 */
+ * integer literals (the 0.0f compares keep their own zero register).  The
+ * first two arms jump to the spread (goto) so the mark width's lui is
+ * scheduled with the arm, as in the ROM.  The side vector is a pointer
+ * local set before the loop: uopt meets car + 0x10 there, ahead of the
+ * per-wheel addresses, which gives the snow scale its spill slot at 0x70
+ * as in the ROM. */
 /* @implements 0x8023B418 tgr BrSkidStep */
 void BrSkidStep(car)
 BrCar *car;
@@ -158,7 +155,7 @@ BrCar *car;
   BrVec3 save;
   BrVec3 d;
   BrVec3 at;
-  int u0[1];
+  BrVec3 *side;
   float fade;
   int u1[1];
   float s;
@@ -192,6 +189,7 @@ BrCar *car;
     } else {
       slip = f;
     }
+    side = (BrVec3 *)car->mtx0[1];
     for (k = 0; k < 4; k++) {
       car->skidClock[k] += D_8028AAD8 * 4.0f;
       if (car->skidClock[k] > 0.75f) {
@@ -216,8 +214,10 @@ BrCar *car;
       if (car->skidLife[k] != 0.0f) {
         if (hold) {
           s = 1.5f;
+          goto spread;
         } else if (surf == 4) {
           s = 2.5f;
+          goto spread;
         } else if (surf == 3 && D_8028AA8C != 0 && !onSnow) {
           s = 1.5f;
           if (!hold) {
@@ -226,15 +226,16 @@ BrCar *car;
         } else {
           goto flat;
         }
+      spread:
         if (!hold) {
           BrVec3Scale(&d, (BrVec3 *)car->mtx0[2], s);
           if (surf != 3) {
-            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -s : s);
+            BrVec3MulAddTo(&d, side, k != 0 && k < 3 ? -s : s);
           }
           if (surf != 3) {
             BrVec3ScaleBy(&d, fade);
             BrVec3MulAddTo(&d, &car->velfd8, 0.3f);
-            BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.5f);
+            BrVec3MulAddTo(&d, side, BrVec3Dot(side, &car->velfd8) * 0.5f);
           } else {
             f = (1.0f - 25.0f / (2.24f * slip + 25.0f)) * 3.0f;
             BrVec3ScaleBy(&d, f);
@@ -242,13 +243,13 @@ BrCar *car;
               if (k >= 2) {
                 d.z += d.z;
               }
-              BrVec3MulAddTo(&d, (BrVec3 *)car->mtx0[1], BrVec3Dot((BrVec3 *)car->mtx0[1], &car->velfd8) * 0.3f);
+              BrVec3MulAddTo(&d, side, BrVec3Dot(side, &car->velfd8) * 0.3f);
             }
           }
         }
         BrVec3MulAdd(&at, (BrVec3 *)car->wheelMtx[k][3], (BrVec3 *)car->mtx0[2], -0.25f);
         if (surf != 3 || k < 2) {
-          BrVec3MulAddTo(&at, (BrVec3 *)car->mtx0[1], k != 0 && k < 3 ? -0.15f : 0.15f);
+          BrVec3MulAddTo(&at, side, k != 0 && k < 3 ? -0.15f : 0.15f);
         }
         save.x = at.x;
         save.y = at.y;
