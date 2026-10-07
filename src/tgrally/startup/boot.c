@@ -435,14 +435,17 @@ void BrAnimSetPingPong(int param_1)
  * start).  Written in the ROM's block order: the search and blend sit inside
  * the backwards branch; the time doubles as the blend fraction; `* 2` is an
  * integer so IDO keeps the multiply (a float 2.0f becomes x + x).
- * One key index serves the search and the vertex loop, and the vertex loop
- * runs to the animation's vertex count read each pass; with the entry count
- * held in a local this gives the ROM's 1000 bytes.
- * RESIDUE (246): the ROM's frame is 0x28 to our 0x20, which moves every
- * spill slot. */
-/* @t3 0x8021D84C */
-/* @t4-pass 0x8021D84C 1 2026-10-04 compiles 121 best 246 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021D84C 2 2026-10-04 compiles 120 best 246 moved 0  (tools/tgrally/n64permute.py) */
+ * Source facts: the wrap period is written out as a->end - a->start each
+ * time it is used (before the bounce test, in the plain arm and in the final
+ * t -= ...), as the PC twin's unoptimised code has it; uopt makes it one
+ * common subexpression (f16) and step a copy of it (f14) that copy
+ * propagation never sees.  The search region has j = a->nKeys; if (j) {}:
+ * the empty test emits nothing but keeps j live, which gives a enough
+ * interference to be coloured before the outer loop's values (a in t1).
+ * The animation list is walked with an explicit byte offset, mentioned
+ * first (fl = off, dead) so it is numbered before i and takes t2.  The
+ * blend writes libultra Vtx fields (ob, cn); the colour pointers are
+ * computed from the position pointers (nv * 3 shorts on). */
 /* @implements 0x8021D84C tgr BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *set)
 {
@@ -450,7 +453,6 @@ void BrAnimUpdate(BrAnimSet *set)
   int n;
   BrAnim *a;
   float t;
-  float len;
   float step;
   float lim;
   int k;
@@ -460,26 +462,34 @@ void BrAnimUpdate(BrAnimSet *set)
   short *pb;
   signed char *ca;
   signed char *cb;
-  short *out;
+  Vtx *out;
   int j;
   int f;
   int nv;
+  int fl;
+  int off;
 
   if (set->list != 0) {
+    fl = off;
     n = set->list->n;
-    for (i = 0; i < n; i++) {
-      a = set->list->anim[i];
+    for (i = 0, off = 0; i < n; i++, off += 4) {
+      a = *(BrAnim **)((char *)set->list->anim + off);
       if (a->flags & 4) {
         a->time -= D_8028AAD8;
         t = a->time;
-        if (!(a->start <= t)) {
+        if (a->start <= t) {
+        } else {
           goto back_to_start;
         }
         if (!(t < a->end)) {
           continue;
         }
       search:
-        for (k = a->key; k < a->nKeys; k++) {
+        j = a->nKeys;
+        if (j) {
+        }
+        nv = a->nKeys;
+        for (k = a->key; k < nv; k++) {
           if (t < *(float *)a->keys[k]) {
             break;
           }
@@ -491,30 +501,31 @@ void BrAnimUpdate(BrAnimSet *set)
         k = 0;
       blend:
         f = t * 4096.0f;
+        nv = a->n;
         pa = (short *)(ka + 4);
         pb = (short *)(kb + 4);
-        ca = (signed char *)(ka + 4 + a->n * 6);
-        cb = (signed char *)(kb + 4 + a->n * 6);
-        out = a->out;
-        for (; k != a->n; k++) {
-          out[0] = pa[0] + ((pb[0] - pa[0]) * f >> 12);
-          out[1] = pa[1] + ((pb[1] - pa[1]) * f >> 12);
-          out[2] = pa[2] + ((pb[2] - pa[2]) * f >> 12);
-          ((signed char *)out)[12] = ca[0] + ((cb[0] - ca[0]) * f >> 12);
-          ((signed char *)out)[13] = ca[1] + ((cb[1] - ca[1]) * f >> 12);
-          ((signed char *)out)[14] = ca[2] + ((cb[2] - ca[2]) * f >> 12);
+        ca = (signed char *)(pa + nv * 3);
+        cb = (signed char *)(pb + nv * 3);
+        out = (Vtx *)a->out;
+        for (k = 0; k < nv; k++) {
+          out[k].v.ob[0] = ((pb[0] - pa[0]) * f >> 12) + pa[0];
+          out[k].v.ob[1] = ((pb[1] - pa[1]) * f >> 12) + pa[1];
+          out[k].v.ob[2] = ((pb[2] - pa[2]) * f >> 12) + pa[2];
+          out[k].v.cn[0] = ((cb[0] - ca[0]) * f >> 12) + ca[0];
+          out[k].v.cn[1] = ((cb[1] - ca[1]) * f >> 12) + ca[1];
+          out[k].v.cn[2] = ((cb[2] - ca[2]) * f >> 12) + ca[2];
           pa += 3;
           pb += 3;
           ca += 3;
           cb += 3;
-          out += 8;
         }
         continue;
       back_to_start:
-        if (!(a->flags & 1)) {
+        fl = a->flags;
+        if (!(fl & 1)) {
           continue;
         }
-        a->flags &= ~4;
+        a->flags = fl & ~4;
         a->key = 0;
         t = a->start * 2 - t;
         a->time = t;
@@ -524,7 +535,7 @@ void BrAnimUpdate(BrAnimSet *set)
         t = a->time;
         if (t < a->start) {
           t = 0.0f;
-          ka = kb = a->keys[0];
+          kb = ka = a->keys[0];
           k = 0;
           goto blend;
         }
@@ -535,10 +546,10 @@ void BrAnimUpdate(BrAnimSet *set)
           continue;
         }
         if (a->flags & 1) {
-          len = a->end - a->start;
-          step = len;
+          step = a->end - a->start;
+          lim = a->end + step;
           if (a->flags & 2) {
-            step *= 2;
+            step = (a->end - a->start) * 2;
             lim = a->end + step;
             while (lim < t) {
               t -= step;
@@ -552,19 +563,20 @@ void BrAnimUpdate(BrAnimSet *set)
             t = a->end * 2 - t;
             a->time = t;
           } else {
+            step = a->end - a->start;
             lim = a->end + step;
           wrap:
             while (lim < t) {
               t -= step;
             }
-            t -= len;
+            t -= a->end - a->start;
             a->time = t;
           }
           a->key = 0;
           goto search;
         } else {
           t = 0.0f;
-          ka = kb = a->keys[a->nKeys - 1];
+          kb = ka = a->keys[a->nKeys - 1];
           k = 0;
           goto blend;
         }
