@@ -421,12 +421,10 @@ void *memcpy(void *dst, void *src, unsigned int n);
  * last four, takes its texture column and row, and moves with the origin
  * (older points also spread by their width and sink by gravity).  The
  * surface switch is in the ROM's body order (4, 0, 3, unknown); the frame
- * has two unused ints above the drop.
- * RESIDUE (3): the low quad's z for the sink test sits in a0, the ROM's
- * in v0; compare/assignment spellings and 400 permuter compiles leave it. */
-/* @t4-pass 0x8023BF60 1 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023BF60 2 2026-10-03 compiles 26 best 3 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023BF60 */
+ * has two unused ints above the drop.  The empty do { } while (0) before
+ * the sink test is a block boundary with no code, as a compiled-out check
+ * expands: it puts the test in its own block, away from the trail row's
+ * pointer, so the low quad's z takes v0 as in the ROM. */
 /* @implements 0x8023BF60 tgr BrSkidAge */
 void BrSkidAge(void)
 {
@@ -588,6 +586,8 @@ void BrSkidAge(void)
           v1->ob[0] += ((car->skidPt[k][j].half[0] * dt) >> 12) + dx;
           v1->ob[1] += ((h[1] * dt) >> 12) + dy;
           v1->ob[2] += ((h[2] * dt) >> 12) + dz;
+          do {
+          } while (0);
           if (v1->ob[2] < v0->ob[2]) {
             v1->ob[2] = v0->ob[2];
           } else {
