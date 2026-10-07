@@ -1061,117 +1061,118 @@ float sqrtf(float x);
  * contact on a saved state, the impulse put back and copied to its other
  * velocity.  The PC twin is BrCarCarCollide (br_carcol.c).  The 2.5 x 1 x 1
  * box is an initialised array (from .data 0x802A4BA0).
- * RESIDUE (432): the ROM keeps the outer index in its frame slot (0x148,
- * under the offset) and has four more named words there; the
- * car-missing/out tests branch straight to the loop end. */
-/* @t4-pass 0x8025FDE4 1 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025FDE4 2 2026-10-03 compiles 26 best 432 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025FDE4 */
+ * The outer and inner tests wrap the bodies (no continue), so a missing or
+ * removed car branches straight to the loop end.  The offset is a BrVec3 and
+ * the closing-speed dot is accumulated into s from zero: with s pending, cfe
+ * keeps the operands in source order (d.z ahead of the velocity), and uopt
+ * folds the zero away.  x lives in the inner block, so the frame holds only
+ * j, pa, pb and s above the matrices.  The saved velocity adds are written
+ * stB + imp; cfe swaps them to the ROM's imp-first order. */
 /* @implements 0x8025FDE4 tgr BrCarCarCollide */
 void BrCarCarCollide(void)
 {
-  float d[3];
+  BrVec3 d;
   int i;
   int j;
   BrRbState *pa;
   BrRbState *pb;
-  float dotA;
   float s;
-  float x;
   float mA[3][3];
   float mB[3][3];
   float mR[3][3];
   float dd[3];
   float t[3];
-  float imp[3];
   float sd[3];
+  float imp[3];
 
   for (i = 0; i < D_8028B7F0; i++) {
-    if (D_803239A0[i].car == 0 || D_803239A0[i].car->colour[3] == 2) {
-      continue;
-    }
-    D_803239A0[i].car->hitAge++;
-    pa = &D_803239A0[i].car->st;
-    for (j = i + 1; j < D_8028B7F0; j++) {
-      if (D_803239A0[j].car == 0 || D_803239A0[j].car->colour[3] == 2) {
-        continue;
-      }
-      pb = &D_803239A0[j].car->st;
-      d[0] = pa->pos.x - pb->pos.x;
-      d[1] = pa->pos.y - pb->pos.y;
-      d[2] = pa->pos.z - pb->pos.z;
-      if (sqrtf(d[2] * d[2] + (d[0] * d[0] + d[1] * d[1])) < 5.0f) {
-        float ext[3] = { 2.5f, 1.0f, 1.0f };
+    if (D_803239A0[i].car != 0 && D_803239A0[i].car->colour[3] != 2) {
+      D_803239A0[i].car->hitAge++;
+      pa = &D_803239A0[i].car->st;
+      for (j = i + 1; j < D_8028B7F0; j++) {
+        if (D_803239A0[j].car != 0 && D_803239A0[j].car->colour[3] != 2) {
+          pb = &D_803239A0[j].car->st;
+          d.x = pa->pos.x - pb->pos.x;
+          d.y = pa->pos.y - pb->pos.y;
+          d.z = pa->pos.z - pb->pos.z;
+          if (sqrtf(d.z * d.z + (d.x * d.x + d.y * d.y)) < 5.0f) {
+            float ext[3] = { 2.5f, 1.0f, 1.0f };
+            float x;
 
-        BrMat3FromMat4T(mB, D_803239A0[j].car->stMtx);
-        BrMat3FromMat4(mA, D_803239A0[i].car->stMtx);
-        BrMat3Mul(mR, mB, mA);
-        dd[0] = pa->pos.x - pb->pos.x;
-        dd[1] = pa->pos.y - pb->pos.y;
-        dd[2] = pa->pos.z - pb->pos.z;
-        BrMat3MulVec(t, mA, dd);
-        if (BrObbOverlap((float *)mR, t, ext, ext) == 0) {
-          return;
+            BrMat3FromMat4T(mB, D_803239A0[j].car->stMtx);
+            BrMat3FromMat4(mA, D_803239A0[i].car->stMtx);
+            BrMat3Mul(mR, mB, mA);
+            dd[0] = pa->pos.x - pb->pos.x;
+            dd[1] = pa->pos.y - pb->pos.y;
+            dd[2] = pa->pos.z - pb->pos.z;
+            BrMat3MulVec(t, mA, dd);
+            if (BrObbOverlap((float *)mR, t, ext, ext) == 0) {
+              return;
+            }
+            BrVec3NormaliseF(&d.x);
+            s = 0.0f;
+            s += d.z * pa->vel.z + (pa->vel.x * d.x + pa->vel.y * d.y);
+            x = s;
+            s += pb->vel.x * d.x + pb->vel.y * d.y + pb->vel.z * d.z;
+            s *= 0.5f;
+            imp[0] = d.x * s;
+            imp[1] = d.y * s;
+            imp[2] = d.z * s;
+            if (s < x) {
+              x = -(s - x);
+            } else {
+              x = s - x;
+            }
+            if (x > 27.0f) {
+              x = 27.0f;
+            }
+            if (D_803239A0[i].car->hitAge > 40) {
+              D_803239A0[j].car->sndHitA = D_803239A0[i].car->sndHitA = 127.0f * x / 27.0f + 128.0f;
+            }
+            D_803239A0[i].car->hitAge = 0;
+            sd[0] = d.x * -1.0f;
+            sd[1] = d.y * -1.0f;
+            sd[2] = d.z * -1.0f;
+            t[0] = sd[0] * 2.5f;
+            t[1] = sd[1] * 2.5f;
+            t[2] = sd[2] * 2.5f;
+            func_802586C0(dd, D_803239A0[i].car->stMtx, t);
+            pa->vel.x = pa->vel.x - imp[0];
+            pa->vel.y = pa->vel.y - imp[1];
+            pa->vel.z = pa->vel.z - imp[2];
+            memcpy(&D_803239A0[i].car->stB, &D_803239A0[i].car->st, sizeof(BrRbState));
+            BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[i].car + 0x148), dd, &d.x, 0, 0.45f);
+            memcpy(&D_803239A0[i].car->st, &D_803239A0[i].car->stB, sizeof(BrRbState));
+            D_803239A0[i].car->stB.vel.x = D_803239A0[i].car->stB.vel.x + imp[0];
+            D_803239A0[i].car->stB.vel.y = D_803239A0[i].car->stB.vel.y + imp[1];
+            D_803239A0[i].car->stB.vel.z = D_803239A0[i].car->stB.vel.z + imp[2];
+            D_803239A0[i].car->stA.vel.x = D_803239A0[i].car->stB.vel.x;
+            D_803239A0[i].car->stA.vel.y = D_803239A0[i].car->stB.vel.y;
+            D_803239A0[i].car->stA.vel.z = D_803239A0[i].car->stB.vel.z;
+            pa->vel.x = imp[0] + pa->vel.x;
+            pa->vel.y = imp[1] + pa->vel.y;
+            pa->vel.z = imp[2] + pa->vel.z;
+            t[0] = d.x * 2.5f;
+            t[1] = d.y * 2.5f;
+            t[2] = d.z * 2.5f;
+            func_802586C0(dd, D_803239A0[j].car->stMtx, t);
+            pb->vel.x = pb->vel.x - imp[0];
+            pb->vel.y = pb->vel.y - imp[1];
+            pb->vel.z = pb->vel.z - imp[2];
+            memcpy(&D_803239A0[j].car->stB, &D_803239A0[j].car->st, sizeof(BrRbState));
+            BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[j].car + 0x148), dd, sd, 0, 0.45f);
+            memcpy(&D_803239A0[j].car->st, &D_803239A0[j].car->stB, sizeof(BrRbState));
+            D_803239A0[j].car->stB.vel.x = D_803239A0[j].car->stB.vel.x + imp[0];
+            D_803239A0[j].car->stB.vel.y = D_803239A0[j].car->stB.vel.y + imp[1];
+            D_803239A0[j].car->stB.vel.z = D_803239A0[j].car->stB.vel.z + imp[2];
+            D_803239A0[j].car->stA.vel.x = D_803239A0[j].car->stB.vel.x;
+            D_803239A0[j].car->stA.vel.y = D_803239A0[j].car->stB.vel.y;
+            D_803239A0[j].car->stA.vel.z = D_803239A0[j].car->stB.vel.z;
+            pb->vel.x = imp[0] + pb->vel.x;
+            pb->vel.y = imp[1] + pb->vel.y;
+            pb->vel.z = imp[2] + pb->vel.z;
+          }
         }
-        BrVec3NormaliseF(d);
-        dotA = d[2] * pa->vel.z + (pa->vel.x * d[0] + pa->vel.y * d[1]);
-        s = (dotA + (pb->vel.x * d[0] + pb->vel.y * d[1] + pb->vel.z * d[2])) * 0.5f;
-        imp[0] = d[0] * s;
-        imp[1] = d[1] * s;
-        imp[2] = d[2] * s;
-        if (s < dotA) {
-          x = -(s - dotA);
-        } else {
-          x = s - dotA;
-        }
-        if (x > 27.0f) {
-          x = 27.0f;
-        }
-        if (D_803239A0[i].car->hitAge > 40) {
-          D_803239A0[i].car->sndHitA = D_803239A0[j].car->sndHitA = 127.0f * x / 27.0f + 128.0f;
-        }
-        D_803239A0[i].car->hitAge = 0;
-        sd[0] = d[0] * -1.0f;
-        sd[1] = d[1] * -1.0f;
-        sd[2] = d[2] * -1.0f;
-        t[0] = sd[0] * 2.5f;
-        t[1] = sd[1] * 2.5f;
-        t[2] = sd[2] * 2.5f;
-        func_802586C0(dd, D_803239A0[i].car->stMtx, t);
-        pa->vel.x = pa->vel.x - imp[0];
-        pa->vel.y = pa->vel.y - imp[1];
-        pa->vel.z = pa->vel.z - imp[2];
-        memcpy(&D_803239A0[i].car->stB, &D_803239A0[i].car->st, sizeof(BrRbState));
-        BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[i].car + 0x148), dd, d, 0, 0.45f);
-        memcpy(&D_803239A0[i].car->st, &D_803239A0[i].car->stB, sizeof(BrRbState));
-        D_803239A0[i].car->stB.vel.x = imp[0] + D_803239A0[i].car->stB.vel.x;
-        D_803239A0[i].car->stB.vel.y = imp[1] + D_803239A0[i].car->stB.vel.y;
-        D_803239A0[i].car->stB.vel.z = imp[2] + D_803239A0[i].car->stB.vel.z;
-        D_803239A0[i].car->stA.vel.x = D_803239A0[i].car->stB.vel.x;
-        D_803239A0[i].car->stA.vel.y = D_803239A0[i].car->stB.vel.y;
-        D_803239A0[i].car->stA.vel.z = D_803239A0[i].car->stB.vel.z;
-        pa->vel.x = imp[0] + pa->vel.x;
-        pa->vel.y = imp[1] + pa->vel.y;
-        pa->vel.z = imp[2] + pa->vel.z;
-        t[0] = d[0] * 2.5f;
-        t[1] = d[1] * 2.5f;
-        t[2] = d[2] * 2.5f;
-        func_802586C0(dd, D_803239A0[j].car->stMtx, t);
-        pb->vel.x = pb->vel.x - imp[0];
-        pb->vel.y = pb->vel.y - imp[1];
-        pb->vel.z = pb->vel.z - imp[2];
-        memcpy(&D_803239A0[j].car->stB, &D_803239A0[j].car->st, sizeof(BrRbState));
-        BrCrImpulseSolve((BrTipBody *)((char *)D_803239A0[j].car + 0x148), dd, sd, 0, 0.45f);
-        memcpy(&D_803239A0[j].car->st, &D_803239A0[j].car->stB, sizeof(BrRbState));
-        D_803239A0[j].car->stB.vel.x = imp[0] + D_803239A0[j].car->stB.vel.x;
-        D_803239A0[j].car->stB.vel.y = imp[1] + D_803239A0[j].car->stB.vel.y;
-        D_803239A0[j].car->stB.vel.z = imp[2] + D_803239A0[j].car->stB.vel.z;
-        D_803239A0[j].car->stA.vel.x = D_803239A0[j].car->stB.vel.x;
-        D_803239A0[j].car->stA.vel.y = D_803239A0[j].car->stB.vel.y;
-        D_803239A0[j].car->stA.vel.z = D_803239A0[j].car->stB.vel.z;
-        pb->vel.x = imp[0] + pb->vel.x;
-        pb->vel.y = imp[1] + pb->vel.y;
-        pb->vel.z = imp[2] + pb->vel.z;
       }
     }
   }
