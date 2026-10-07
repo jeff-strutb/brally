@@ -46,6 +46,7 @@ typedef union {
 #define G_RDPPIPESYNC       0xe7
 #define G_FILLRECT          0xf6
 #define G_SETPRIMCOLOR      0xfa
+#define G_SETPRIMDEPTH      0xee
 #define G_SETFILLCOLOR      0xf7
 #define G_SETCIMG           0xff
 #define G_SETTIMG           0xfd
@@ -156,6 +157,10 @@ typedef union {
     _g->words.w0 = _SHIFTL(c, 24, 8);                                   \
     _g->words.w1 = (unsigned int)(d);                                   \
 }
+
+#define gDPSetPrimDepth(pkt, z, dz)                                     \
+    gDPSetColor(pkt, G_SETPRIMDEPTH,                                    \
+                _SHIFTL(z, 16, 16) | _SHIFTL(dz, 0, 16))
 
 #define gDPSetPrimColor(pkt, m, l, r, g, b, a)                          \
 {                                                                       \

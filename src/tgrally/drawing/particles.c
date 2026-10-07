@@ -855,28 +855,30 @@ extern float D_80368A80[4][4];          /* the falling particles' billboard */
  * high, its alpha the product of its two strength bytes.  The x axis flips
  * with the mirrored view.  The ROM's float tests are <=/>= early-outs
  * (continue); the view's centre is precomputed.
- * RESIDUE (352): register allocation -- the ROM keeps the list index in
- * v0 (dead across the transform call) and p in s1 with only s0/s1 saved;
- * ours keeps the index and a copy of p in saved registers, which moves
- * every spill slot.  Loop forms (for/while/do, a local index, a ushort
- * parameter) and 120 declaration orders leave it. */
-/* @t4-pass 0x8023D134 1 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8023D134 2 2026-10-03 compiles 25 best 352 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8023D134 */
+ * Source facts: the list is walked with an index i copied from n and each
+ * field is read from the table as D_80366A80[i] (as BrParticleStep does), so
+ * the row address is one value in s1; p is declared and never read (the
+ * frame keeps its slot), and the homes of h, x, y and sx follow from the
+ * declaration order.  The mirror test is D_8028A8A8 ^ D_8028A8AC, as in
+ * BrWeatherDraw.  The size is .size * (4.0f * inv), the alpha product is
+ * written x1e * x1f, and the depth is gDPSetPrimDepth.  The scissored
+ * rectangle is written as a multi-line block, one word per line: on one
+ * line as1 schedules the w1 operands ahead of the w0 ones. */
 /* @implements 0x8023D134 tgr BrParticleListDraw */
 void BrParticleListDraw(int n, int r, int g, int b)
 {
   float v[4];
-  int x;
-  int y;
-  int w;
-  int h;
-  float sw;
-  float sx;
   BrParticle *p;
+  int i;
   float inv;
   float size;
   float lim;
+  int w;
+  int h;
+  int x;
+  int y;
+  float sx;
+  float sw;
   int hw;
   int hh;
   int cx;
@@ -888,12 +890,11 @@ void BrParticleListDraw(int n, int r, int g, int b)
   y = (D_8031B2C8[D_8028AAEC].y * 2 + h) * 2;
   sw = (float)(w * 2);
   sx = sw;
-  if (D_8028A8A8 != D_8028A8AC) {
+  if (D_8028A8A8 ^ D_8028A8AC) {
     sx = -sw;
   }
-  for (; n != 0; n = p->next) {
-    p = &D_80366A80[n];
-    BrMat4TransformPoint4(v, p->pos, D_80368A80);
+  for (i = n; i != 0; i = D_80366A80[i].next) {
+    BrMat4TransformPoint4(v, D_80366A80[i].pos, D_80368A80);
     if (v[3] <= 0.001f && v[3] >= -0.001f) {
       continue;
     }
@@ -903,7 +904,7 @@ void BrParticleListDraw(int n, int r, int g, int b)
       continue;
     }
     v[0] *= inv;
-    size = p->size * inv * 4.0f;
+    size = D_80366A80[i].size * (4.0f * inv);
     lim = 1.0f + size;
     if (v[0] <= -lim || v[0] >= lim) {
       continue;
@@ -923,10 +924,16 @@ void BrParticleListDraw(int n, int r, int g, int b)
     cx = (int)(v[0] * sx) + x;
     cy = (int)(v[1] * (float)(h * 2)) + y;
     gDPPipeSync(D_8028A858++);
-    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, (p->x1f * p->x1e) >> 8);
-    gRaw(D_8028A858++, 0xee000000, ((int)(v[2] * 16352.0f) + 0x3fe0) << 16);
-    gSPScisTextureRectangle(D_8028A858++, cx - hw, cy - hh, cx + hw, cy + hh, 0, 0, 0x7e0,
-                            0x1f800 / hw, -0x1f800 / hh);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, r, g, b, (D_80366A80[i].x1e * D_80366A80[i].x1f) >> 8);
+    gDPSetPrimDepth(D_8028A858++, (int)(v[2] * 16352.0f) + 0x3fe0, 0);
+    {
+      Gfx *_g = (Gfx *)(D_8028A858++);
+
+      _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)(cx + hw), 0), 12, 12) | _SHIFTL(MAX((s16)(cy + hh), 0), 0, 12));
+      _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(MAX((s16)(cx - hw), 0), 12, 12) | _SHIFTL(MAX((s16)(cy - hh), 0), 0, 12));
+      gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL((0 - (((s16)(cx - hw) < 0) ? (((s16)(0x1f800 / hw) < 0) ? (MAX((((s16)(cx - hw) * (s16)(0x1f800 / hw)) >> 7), 0)) : (MIN((((s16)(cx - hw) * (s16)(0x1f800 / hw)) >> 7), 0))) : 0)), 16, 16) | _SHIFTL((0x7e0 - (((cy - hh) < 0) ? (((s16)(-0x1f800 / hh) < 0) ? (MAX((((s16)(cy - hh) * (s16)(-0x1f800 / hh)) >> 7), 0)) : (MIN((((s16)(cy - hh) * (s16)(-0x1f800 / hh)) >> 7), 0))) : 0)), 0, 16)));
+      gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((0x1f800 / hw), 16, 16) | _SHIFTL((-0x1f800 / hh), 0, 16)));
+    }
   }
 }
 
