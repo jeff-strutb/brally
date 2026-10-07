@@ -250,6 +250,8 @@ float cosf(float x);
 #define SIGN(x) ((x) == 0 ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
 #define SIGNF(x) ((x) == 0 ? 0.0 : ((x) > 0.0f ? 1.0 : -1.0))
 #define SIGNB(x) ((x) == 0.0f ? 0. : ((x) > 0.0f ? 1. : -1.))
+#define ABSF(x) ((x) < 0.0f ? -(x) : (x))
+#define SIGNZ(x) ((x) == 0.0f ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The axle constraint on a car body: each axle's drive slip
@@ -523,11 +525,12 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
  * wrapped into a turn.  The PC twin is BrCarPhysTyre (br_carphys.c).  The
  * locals follow the ROM frame (the {0, 1, 0} axis is initialised from
  * .data right after BrCarAxleGrip's).
- * RESIDUE (423): the cross products' load order and the spill temps (the
- * ROM uses two, 0x20/0x24); the axis sits at 0x50, the ROM's 0x58. */
-/* @t4-pass 0x8025AC9C 1 2026-10-03 compiles 26 best 390 moved 16  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025AC9C 2 2026-10-03 compiles 26 best 390 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025AC9C */
+ * Source facts: the contact record is read into a local, the tyre's
+ * zeros are spelled apart (the load vector and ABSF take 0.0f, the
+ * disabled height term h *= 0 and SIGNZ's sign test an int 0, the angle
+ * wrap 0.), the drive torque is read into tq in both arms, h is reused for
+ * the spin reaction, and the sums are written with the accumulated value
+ * first (fwd[i] + c[i]); IDO's operand swap then gives the ROM's order. */
 /* @implements 0x8025AC9C tgr BrWheelTyre */
 void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float dt)
 {
@@ -542,26 +545,28 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   float sn;
   float cs;
   float load;
-  int u0;
+  int contact;
   float q;
   int u1[2];
   float tq;
-  int u2[3];
+  float h;
   float axis[3] = { 0.0f, 1.0f, 0.0f };
+  int u2[2];
 
-  if (w->x19c == 0) {
+  contact = w->x19c;
+  if (contact == 0) {
     return;
   }
   if (w->n[2] < 0.7) {
     return;
   }
   func_80258758(a, b->m, axis);
-  c[0] = a[1] * w->n[2] - w->n[1] * a[2];
-  c[1] = a[2] * w->n[0] - w->n[2] * a[0];
-  c[2] = a[0] * w->n[1] - w->n[0] * a[1];
-  d[0] = w->n[1] * c[2] - c[1] * w->n[2];
-  d[1] = w->n[2] * c[0] - c[2] * w->n[0];
-  d[2] = w->n[0] * c[1] - c[0] * w->n[1];
+  c[0] = a[1] * w->n[2] - a[2] * w->n[1];
+  c[1] = a[2] * w->n[0] - a[0] * w->n[2];
+  c[2] = a[0] * w->n[1] - a[1] * w->n[0];
+  d[0] = w->n[1] * c[2] - w->n[2] * c[1];
+  d[1] = w->n[2] * c[0] - w->n[0] * c[2];
+  d[2] = w->n[0] * c[1] - w->n[1] * c[0];
   cs = cosf(w->steer);
   sn = sinf(w->steer);
   fwd[0] = c[0] * cs;
@@ -573,62 +578,62 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   c[0] = d[0] * sn;
   c[1] = d[1] * sn;
   c[2] = d[2] * sn;
-  fwd[0] = c[0] + fwd[0];
-  fwd[1] = c[1] + fwd[1];
-  fwd[2] = c[2] + fwd[2];
+  fwd[0] = fwd[0] + c[0];
+  fwd[1] = fwd[1] + c[1];
+  fwd[2] = fwd[2] + c[2];
   c[0] = d[0] * cs;
   c[1] = d[1] * cs;
   c[2] = d[2] * cs;
   side[0] = side[0] + c[0];
-  side[1] = c[1] + side[1];
+  side[1] = side[1] + c[1];
   side[2] = side[2] + c[2];
   if (b->sub[0]->x1b4 != 0 && b->sub[2]->x1b4 != 0 && b->sub[1]->x1b4 != 0 && b->sub[3]->x1b4 != 0) {
     BrRbVelAtBodyPoint(v, b, w);
-    dot = fwd[2] * v[2] + (v[0] * fwd[0] + v[1] * fwd[1]);
+    dot = v[0] * fwd[0] + v[1] * fwd[1] + v[2] * fwd[2];
+    h = w->f78[2] - -0.97;
+    h *= 0;
     a[1] = 0.0f;
     a[0] = 0.0f;
-    a[2] = (b->mass + 4.0f * w->mass) * 2.9430003f + (float)(w->f78[2] - -0.97) * 0.0f;
+    a[2] = (b->mass + 4.0f * w->mass) * 2.9430003f + h;
+    load = (a[0] * w->n[0] + a[1] * w->n[1] + a[2] * w->n[2]) * 3.5f;
     tq = w->drive;
     q = tq / w->inertia;
-    load = (w->n[2] * a[2] + (a[0] * w->n[0] + a[1] * w->n[1])) * 3.5f;
-    *pA = *pA + q / 2.0f;
+    *pA = *pA + q / 2;
     if (*pB != 0) {
       q = q * 0.9;
     }
-    if (ABS(load) < ABS(q)) {
-      load = load / q;
-      if (load < 0) {
-        load = -load;
-      }
+    if (ABSF(q) > ABSF(load)) {
+      load = ABSF(load / q);
       q = q * (load * 0.1);
     }
-    e[2] = -q;
-    e[0] = fwd[0] * e[2];
-    e[1] = fwd[1] * e[2];
-    e[2] = e[2] * fwd[2];
+    e[0] = -q * fwd[0];
+    e[1] = -q * fwd[1];
+    e[2] = -q * fwd[2];
     func_802586C0(a, b->m, e);
-    w->forces->f[0] = a[0] + w->forces->f[0];
-    w->forces->f[1] = a[1] + w->forces->f[1];
-    w->forces->f[2] = a[2] + w->forces->f[2];
-    w->spin = w->spin + (tq - w->inertia * q) * dt;
+    w->forces->f[0] = w->forces->f[0] + a[0];
+    w->forces->f[1] = w->forces->f[1] + a[1];
+    w->forces->f[2] = w->forces->f[2] + a[2];
+    h = tq - w->inertia * q;
+    w->spin = w->spin + h * dt;
     w->spin = w->spin - (w->spin * w->inertia + dot) * 0.4;
-    if (ABS(w->spin) > 300.0f) {
-      w->spin = SIGN(w->spin) * 300.0;
+    if (ABSF(w->spin) > 300.0f) {
+      w->spin = SIGNZ(w->spin) * 300.0;
     }
   } else {
-    w->spin = w->spin + w->drive * dt;
-    if (ABS(w->spin) > 300.0f) {
-      w->spin = SIGN(w->spin) * 300.0;
+    tq = w->drive;
+    w->spin = w->spin + tq * dt;
+    if (ABSF(w->spin) > 300.0f) {
+      w->spin = SIGNZ(w->spin) * 300.0;
     }
   }
   w->angle = w->angle - w->spin * 57.295776f * dt;
   while (w->angle > 360.0) {
     w->angle = w->angle - 360.0;
   }
-  if (w->angle < 0.0) {
+  if (w->angle < 0.) {
     do {
       w->angle = w->angle + 360.0f;
-    } while (w->angle < 0.0f);
+    } while (w->angle < 0.);
   }
 }
 
