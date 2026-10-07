@@ -2574,12 +2574,12 @@ void BrPaintDashOval(int x0, int y0, int x1, int y1)
  * point, clipped to the paint area: a midpoint walk at double resolution,
  * on every other step the eight octant points on odd pixels only, in dashes
  * of the two dash colours (swapped every 8 frames), four points each.
- * RESIDUE (~200): the ROM keeps the dash counter n in a temp register
- * (spilled to its home around the calls) and x in memory; ours keeps both
- * in memory, which shifts every temp after. */
-/* @t4-pass 0x802528F8 1 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x802528F8 2 2026-10-03 compiles 31 best 206 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x802528F8 */
+ * Source facts: each point names its coordinates first (px, py) and then
+ * tests the parity, the clip window and plots; the dash counter is n++;
+ * n %= 8;, and x = 0 comes before d = -y.  Naming the coordinates numbers each point's x and y
+ * expressions ahead of its parity, which gives the parity temps the ROM's
+ * spill slots (the parities of points 1-2, 3-4 and 5/8 share 0x4c, the
+ * parity of points 6-7 uses 0x44). */
 /* @implements 0x802528F8 tgr BrPaintDashCircle */
 void BrPaintDashCircle(int cx, int cy, int r)
 {
@@ -2591,9 +2591,9 @@ void BrPaintDashCircle(int cx, int cy, int r)
   int ay;
   int ax2;
   int ay2;
-  int u0;                       /* u0, u1: declared, never used; */
-  int u1;                       /* the frame holds them */
+  int px;
   int d;
+  int py;
 
   ax = D_8028DB94.x;
   ay = D_8028DB94.y;
@@ -2604,39 +2604,52 @@ void BrPaintDashCircle(int cx, int cy, int r)
     BrSwapBytes((char *)&D_8028DAB8, (char *)&D_8028DABC);
   }
   y = r * 2;
-  d = -y;
   x = 0;
+  d = -y;
   while (x <= y) {
     if ((x & 1) == 0) {
-      n = (n + 1) % 8;
-      if (n < 4) {
-        c = D_8028DAB8;
-      } else {
-        c = D_8028DABC;
+      n++;
+      n %= 8;
+      c = n < 4 ? D_8028DAB8 : D_8028DABC;
+      px = (x >> 1) + cx;
+      py = (y >> 1) + cy;
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
-        BrFillPoint((x >> 1) + cx, (y >> 1) + cy, c);
+      px = (x >> 1) + cx;
+      py = cy - (y >> 1);
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cx) & 1) && (x >> 1) + cx >= ax && (x >> 1) + cx < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
-        BrFillPoint((x >> 1) + cx, cy - (y >> 1), c);
+      px = cx - (x >> 1);
+      py = cy - (y >> 1);
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && cy - (y >> 1) >= ay && cy - (y >> 1) < ay2) {
-        BrFillPoint(cx - (x >> 1), cy - (y >> 1), c);
+      px = cx - (x >> 1);
+      py = (y >> 1) + cy;
+      if ((px & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cx - (x >> 1)) & 1) && cx - (x >> 1) >= ax && cx - (x >> 1) < ax2 && (y >> 1) + cy >= ay && (y >> 1) + cy < ay2) {
-        BrFillPoint(cx - (x >> 1), (y >> 1) + cy, c);
+      px = (y >> 1) + cx;
+      py = (x >> 1) + cy;
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if ((((x >> 1) + cy) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
-        BrFillPoint((y >> 1) + cx, (x >> 1) + cy, c);
+      px = (y >> 1) + cx;
+      py = cy - (x >> 1);
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cy - (x >> 1)) & 1) && (y >> 1) + cx >= ax && (y >> 1) + cx < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
-        BrFillPoint((y >> 1) + cx, cy - (x >> 1), c);
+      px = cx - (y >> 1);
+      py = cy - (x >> 1);
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
-      if (((cy - (x >> 1)) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && cy - (x >> 1) >= ay && cy - (x >> 1) < ay2) {
-        BrFillPoint(cx - (y >> 1), cy - (x >> 1), c);
-      }
-      if ((((x >> 1) + cy) & 1) && cx - (y >> 1) >= ax && cx - (y >> 1) < ax2 && (x >> 1) + cy >= ay && (x >> 1) + cy < ay2) {
-        BrFillPoint(cx - (y >> 1), (x >> 1) + cy, c);
+      px = cx - (y >> 1);
+      py = (x >> 1) + cy;
+      if ((py & 1) && px >= ax && px < ax2 && py >= ay && py < ay2) {
+        BrFillPoint(px, py, c);
       }
     }
     d += x;
