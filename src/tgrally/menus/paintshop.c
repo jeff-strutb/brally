@@ -864,31 +864,26 @@ void BrPaintBrushSelect(void)
  * stack): the fill is painted into a scratch copy of the decal with the
  * mask off, then the whole copy is plotted back into the decal so the mask
  * applies.  Nothing when the region is already that colour.
- * RESIDUE (~260): the ROM keeps the stack count in its stack home and
- * recomputes each segment's address from it (dy and x1 homed too); ours
- * walks a pointer. */
-/* @t4-pass 0x8024DCA0 1 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024DCA0 2 2026-10-03 compiles 30 best 262 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024DCA0 */
+ * Source facts: the screen point arrives in x and y themselves (no
+ * locals for it), which sets the frame.  The pop reads dy through
+ * stack[--n] before the other fields, the segment loop is a top-tested
+ * while, and the plot loops step x inside the call (x--, x++). */
 /* @implements 0x8024DCA0 tgr BrPaintFloodFill */
-void BrPaintFloodFill(int sx, int sy)
+void BrPaintFloodFill(int x, int y)
 {
   unsigned char ov;
+  int dy;
   int n;
-  int x;
-  int y;
   int l;
   int x1;
   int x2;
-  int dy;
-  unsigned char *decal;
-  unsigned char *mask;
   BrFillSeg stack[400];
+  unsigned char *mask;
+  unsigned char *decal;
 
-  x = (sx - D_8028DB94.x) >> 2;
-  y = (D_8028DB94.y + D_8028DB94.h - sy) >> 2;
+  x = (x - D_8028DB94.x) >> 2; y = (D_8028DB94.y + D_8028DB94.h - y) >> 2;
   ov = BrPaintGet(x, y);
-  if (D_8028DB58 != ov) {
+  if (ov != D_8028DB58) {
     stack[0].y = y;
     stack[0].xl = x;
     stack[0].xr = x;
@@ -896,21 +891,19 @@ void BrPaintFloodFill(int sx, int sy)
     stack[1].y = y + 1;
     stack[1].xl = x;
     stack[1].xr = x;
-    stack[1].dy = -1;
-    n = 2;
+    stack[1].dy = -1; n = 2;
     mask = D_8028DB7C;
     D_8028DB7C = 0;
     memcpy(D_8028DB84, D_8028DB78, 0x800);
     decal = D_8028DB78;
     D_8028DB78 = D_8028DB84;
-    do {
-      n--;
-      dy = stack[n].dy;
+    while (n > 0 && n < 400) {
+      dy = stack[--n].dy;
       y = stack[n].y + dy;
-      x1 = stack[n].xl;
+      x = x1 = stack[n].xl;
       x2 = stack[n].xr;
-      for (x = x1; x >= 0 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x--) {
-        BrPaintPlot(x, y, D_8028DB58);
+      while (x >= 0 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov) {
+        BrPaintPlot(x--, y, D_8028DB58);
       }
       if (x >= x1) {
         goto skip;
@@ -925,8 +918,8 @@ void BrPaintFloodFill(int sx, int sy)
       }
       x = x1 + 1;
       do {
-        for (; x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov; x++) {
-          BrPaintPlot(x, y, D_8028DB58);
+        while (x < D_8028DB88 && y >= 0 && y < D_8028DB8C && BrPaintGet(x, y) == ov) {
+          BrPaintPlot(x++, y, D_8028DB58);
         }
         stack[n].y = y;
         stack[n].xl = l;
@@ -945,7 +938,7 @@ void BrPaintFloodFill(int sx, int sy)
         }
         l = x;
       } while (x <= x2);
-    } while (n > 0 && n < 400);
+    }
     D_8028DB7C = mask;
     for (y = 0; y < D_8028DB8C; y++) {
       for (x = 0; x < D_8028DB88; x++) {
