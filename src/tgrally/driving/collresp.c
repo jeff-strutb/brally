@@ -625,9 +625,6 @@ int BrCollRespTipKick(BrTipBody *b)
  * box face the triangle's centroid lies most flush against (sign from the
  * centroid's x) and scaling the face by the body's extents.  The PC twin is
  * BrCrPlaneResolve. */
-/* @t3 0x8025DCB8 */
-/* @t4-pass 0x8025DCB8 1 2026-09-29 compiles 41 best 4 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025DCB8 2 2026-09-29 compiles 40 best 4 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8025DCB8 tgr BrCrPlaneResolve */
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v)
 {
@@ -657,28 +654,27 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
           sgn = 1;
         }
         D_8037EAA8[0] = sgn * 0.5f;
-        goto face;
+      } else {
+        goto three;
       }
-    } else {
-      if ((c[1] < 0.0f ? -c[1] : c[1]) < (c[2] < 0.0f ? -c[2] : c[2])) {
-        D_8037EAA8[0] = D_8037EAA8[2] = 0.0f;
-        if (c[0] < 0) {
-          sgn = -1;
-        } else {
-          sgn = 1;
-        }
-        D_8037EAA8[1] = sgn * 0.5f;
-        goto face;
+    } else if ((c[1] < 0.0f ? -c[1] : c[1]) < (c[2] < 0.0f ? -c[2] : c[2])) {
+      D_8037EAA8[0] = D_8037EAA8[2] = 0.0f;
+      if (c[0] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
       }
-    }
-    D_8037EAA8[0] = D_8037EAA8[1] = 0.0f;
-    if (!(c[0] < 0)) {
-      sgn = 1;
+      D_8037EAA8[1] = sgn * 0.5f;
     } else {
-      sgn = -1;
+    three:
+      D_8037EAA8[0] = D_8037EAA8[1] = 0.0f;
+      if (c[0] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
+      }
+      D_8037EAA8[2] = sgn * 0.5f;
     }
-    D_8037EAA8[2] = sgn * 0.5f;
-  face:
     s = (pA[0] * D_8037EAA8[0] + pA[1] * D_8037EAA8[1] + pA[2] * D_8037EAA8[2]) - planeD;
     D_8037EAA8[0] = D_8037EAA8[0] * b->f1DC;
     D_8037EAA8[0] = D_8037EAA8[0] * b->f1E0;
