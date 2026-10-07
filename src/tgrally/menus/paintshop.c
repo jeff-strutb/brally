@@ -1172,15 +1172,13 @@ void BrPaintLine(int x0, int y0, int x1, int y1)
 /* WHAT IT DOES: Plot one texel of colour c into the 4-bit decal texture at
  * (x, y) -- inside the texture and not masked off -- with the odd rows'
  * 8-texel words swapped as the RDP's TMEM layout wants them.
- * RESIDUE (51): temporaries are numbered one register later than the ROM's
- * from the row-width shift on; the instructions and their order match. */
-/* @t4-pass 0x8024F25C 1 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8024F25C 2 2026-09-29 compiles 26 best 51 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8024F25C */
+ * Source facts: the mask byte's index is a named local m, computed in the
+ * masked arm, so its address is the mask base plus m. */
 /* @implements 0x8024F25C tgr BrPaintPlot */
 void BrPaintPlot(int x, int y, unsigned char c)
 {
   int o;
+  int m;
 
   if (x >= 0 && x < D_8028DB88 && y >= 0 && y < D_8028DB8C) {
     o = ((x ^ ((y & 1) << 3)) >> 1) + y * (D_8028DB88 >> 1);
@@ -1190,11 +1188,14 @@ void BrPaintPlot(int x, int y, unsigned char c)
       } else {
         D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
       }
-    } else if (!(D_8028DB7C[(x >> 3) + y * ((D_8028DB88 + 7) >> 3)] & (1 << ((x ^ 7) & 7)))) {
-      if (x & 1) {
-        D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
-      } else {
-        D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+    } else {
+      m = (x >> 3) + y * ((D_8028DB88 + 7) >> 3);
+      if (!(D_8028DB7C[m] & (1 << ((x ^ 7) & 7)))) {
+        if (x & 1) {
+          D_8028DB78[o] = (D_8028DB78[o] & 0xf0) | c;
+        } else {
+          D_8028DB78[o] = (D_8028DB78[o] & 0xf) | (c << 4);
+        }
       }
     }
   }
