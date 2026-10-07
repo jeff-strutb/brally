@@ -107,11 +107,11 @@
 <rect x="736.1" y="131.2" width="91.8" height="80.0" fill="#3fb950"><title>(unnamed)  0x8023A784  2476B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="828.5" y="131.2" width="81.8" height="80.0" fill="#3fb950"><title>(unnamed)  0x8023BF60  2208B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="211.9" width="78.0" height="70.2" fill="#3fb950"><title>(unnamed)  0x8023B418  1848B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="624.2" y="282.6" width="78.0" height="57.0" fill="#58a6ff"><title>(unnamed)  0x8023D134  1504B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="624.2" y="282.6" width="78.0" height="57.0" fill="#3fb950"><title>(unnamed)  0x8023D134  1504B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="340.2" width="78.0" height="55.8" fill="#3fb950"><title>(unnamed)  0x80232ED4  1472B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="624.2" y="396.6" width="78.0" height="55.6" fill="#3fb950"><title>(unnamed)  0x8023A1C8  1468B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="702.8" y="211.9" width="70.9" height="60.0" fill="#3fb950"><title>(unnamed)  0x80239750  1440B  [unfiled 0x8023xxxx]</title></rect>
-<rect x="774.3" y="211.9" width="70.1" height="60.0" fill="#58a6ff"><title>(unnamed)  0x80233880  1424B  [unfiled 0x8023xxxx]</title></rect>
+<rect x="774.3" y="211.9" width="70.1" height="60.0" fill="#3fb950"><title>(unnamed)  0x80233880  1424B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="845.0" y="211.9" width="65.3" height="60.0" fill="#3fb950"><title>(unnamed)  0x80239220  1328B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="702.8" y="272.5" width="53.8" height="65.6" fill="#3fb950"><title>(unnamed)  0x8023D714  1196B  [unfiled 0x8023xxxx]</title></rect>
 <rect x="702.8" y="338.8" width="53.8" height="57.0" fill="#3fb950"><title>(unnamed)  0x8023BB50  1040B  [unfiled 0x8023xxxx]</title></rect>
@@ -263,7 +263,7 @@
 <rect x="1033.0" y="123.7" width="117.7" height="84.0" fill="#3fb950"><title>(unnamed)  0x8022A0E0  3308B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1151.3" y="123.7" width="103.7" height="84.0" fill="#3f6f7a"><title>(unnamed)  0x8022D97C  2916B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="208.3" width="102.0" height="74.0" fill="#3fb950"><title>(unnamed)  0x80229700  2528B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="1016.5" y="208.3" width="92.4" height="74.0" fill="#58a6ff"><title>(unnamed)  0x80226488  2292B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="1016.5" y="208.3" width="92.4" height="74.0" fill="#3fb950"><title>(unnamed)  0x80226488  2292B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1109.5" y="208.3" width="73.2" height="74.0" fill="#3fb950"><title>(unnamed)  0x80222D54  1820B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="1183.3" y="208.3" width="71.6" height="74.0" fill="#3fb950"><title>(unnamed)  0x80221170  1780B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="282.9" width="57.9" height="72.8" fill="#3fb950"><title>(unnamed)  0x8022C9FC  1420B  [unfiled 0x8022xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [src/exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [src/core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [src/core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 543 &#183; T3 codegen-only 24 &#183; 349,220/457,392 bytes exact (76.4%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 546 &#183; T3 codegen-only 21 &#183; 354,440/457,392 bytes exact (77.5%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
