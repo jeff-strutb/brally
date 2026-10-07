@@ -49,7 +49,7 @@ extern int D_80319F88;
 int osRecvMesg(void *mq, void *msg, int flag);
 extern int D_80272D44;
 extern int D_80272D40;
-void func_8021D070(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
+void func_8021D070();
 void BrDlRebase(unsigned int *dl, unsigned int lo, unsigned int hi, int base);
 extern int D_8021DC94;
 extern int D_8021DC98;
@@ -94,7 +94,7 @@ typedef struct BrStream {       /* a streamed ROM read in flight */
 } BrStream;
 void BrStreamInit(BrStream *s, char *buf);
 void func_802203F0(int param_1,int param_2);
-void func_8021D098(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
+void func_8021D098();
 void func_80220398();
 unsigned int BrRomUnpack();
 void func_8021D32C(int param_1);
@@ -306,10 +306,9 @@ void BrCarColourFromModel(BrCar *car, BrCarModel *m)
 
 /* WHAT IT DOES: Fix up a car model just loaded into its slot: every part's
  * address and display list is moved from the loading area to the slot's own
- * copy. */
-/* @t4-pass 0x8021D32C 1 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021D32C 2 2026-10-03 compiles 121 best 2 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021D32C */
+ * copy.  The rebase helpers are called without prototypes (declared old
+ * style), so the two block addresses go in as pointers with no conversion;
+ * a conversion each would reserve two spill slots and grow the frame. */
 /* @implements 0x8021D32C tgr BrEntRebaseModel */
 void BrEntRebaseModel(BrCarModel *m)
 {
@@ -318,26 +317,26 @@ void BrEntRebaseModel(BrCarModel *m)
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 10; j++) {
-      func_8021D070((unsigned int *)&m->dl[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
-      func_8021D098(m->dl[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+      func_8021D070((unsigned int *)&m->dl[i][j], D_803C8000, D_803D5F88, (int)m);
+      func_8021D098(m->dl[i][j], D_803C8000, D_803D5F88, (int)m);
     }
     for (j = 0; j < 3; j++) {
       if (m->dl2[i][j] != 0) {
-        func_8021D070((unsigned int *)&m->dl2[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
-        func_8021D098(m->dl2[i][j], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+        func_8021D070((unsigned int *)&m->dl2[i][j], D_803C8000, D_803D5F88, (int)m);
+        func_8021D098(m->dl2[i][j], D_803C8000, D_803D5F88, (int)m);
       }
     }
   }
-  func_8021D070((unsigned int *)&m->parts, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
-  func_8021D070((unsigned int *)&m->x90, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
-  func_8021D070((unsigned int *)&m->x94, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->parts, D_803C8000, D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->x90, D_803C8000, D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->x94, D_803C8000, D_803D5F88, (int)m);
   for (i = 0; i < m->nParts; i++) {
-    func_8021D070((unsigned int *)&m->parts[i].a, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
-    func_8021D070((unsigned int *)&m->parts[i].b, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+    func_8021D070((unsigned int *)&m->parts[i].a, D_803C8000, D_803D5F88, (int)m);
+    func_8021D070((unsigned int *)&m->parts[i].b, D_803C8000, D_803D5F88, (int)m);
   }
-  func_8021D070((unsigned int *)&m->x11c, (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+  func_8021D070((unsigned int *)&m->x11c, D_803C8000, D_803D5F88, (int)m);
   for (i = 0; i < 12; i++) {
-    func_8021D070((unsigned int *)&m->x11c[i], (unsigned int)D_803C8000, (unsigned int)D_803D5F88, (int)m);
+    func_8021D070((unsigned int *)&m->x11c[i], D_803C8000, D_803D5F88, (int)m);
   }
 }
 
@@ -585,21 +584,21 @@ void BrModelRebase(BrModel *m)
   int j;
 
   if (m->parts != 0) {
-    func_8021D070((unsigned int *)&m->parts, 0, 0x7fffffff, (int)m);
+    func_8021D070((unsigned int *)&m->parts, 0U, 0x7fffffffU, (int)m);
     for (i = 0; i < m->parts->count; i++) {
-      func_8021D070((unsigned int *)&m->parts->part[i], 0, 0x7fffffff, (int)m);
-      func_8021D070((unsigned int *)&m->parts->part[i]->a, 0, 0x7fffffff, (int)m);
-      func_8021D070((unsigned int *)&m->parts->part[i]->b, 0, 0x7fffffff, (int)m);
+      func_8021D070((unsigned int *)&m->parts->part[i], 0U, 0x7fffffffU, (int)m);
+      func_8021D070((unsigned int *)&m->parts->part[i]->a, 0U, 0x7fffffffU, (int)m);
+      func_8021D070((unsigned int *)&m->parts->part[i]->b, 0U, 0x7fffffffU, (int)m);
       for (j = 0; j < m->parts->part[i]->n; j++) {
-        func_8021D070((unsigned int *)&m->parts->part[i]->v[j], 0, 0x7fffffff, (int)m);
+        func_8021D070((unsigned int *)&m->parts->part[i]->v[j], 0U, 0x7fffffffU, (int)m);
       }
     }
   }
   for (i = 0; i < m->nDl; i++) {
-    func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
+    func_8021D070((unsigned int *)&m->dls[i].dl, 0U, 0x7fffffffU, (int)m);
     if (m->dls[i].dl != 0) {
-      func_8021D070((unsigned int *)&m->dls[i].dl, 0, 0x7fffffff, (int)m);
-      BrDlRebase(m->dls[i].dl, 0, 0x7fffffff, (int)m);
+      func_8021D070((unsigned int *)&m->dls[i].dl, 0U, 0x7fffffffU, (int)m);
+      BrDlRebase(m->dls[i].dl, 0U, 0x7fffffffU, (int)m);
     }
   }
 }
