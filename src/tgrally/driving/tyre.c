@@ -165,12 +165,13 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
  * back on the ground after a frame off it flags a landing.  The bottom-out
  * test is -0.4 + 0.0001 (BrTyreDepthAll's clamp; the folded double differs
  * from a literal -0.3999 in its last bit).
- * RESIDUE (53, same 109 instructions): the hoisted constants' FP registers
- * (the ROM keeps 1.0/-1.0 in f26/f28 and 0.0 in f20) and literal pool order
- * (the ROM pools -0.3 double before -0.3f). */
-/* @t4-pass 0x8025EDBC 1 2026-09-29 compiles 26 best 53 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025EDBC 2 2026-09-29 compiles 26 best 53 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025EDBC */
+ * One float d carries the depth through to the load (d *= SIGN(d) * d,
+ * then the rate).  With a second variable for it, the constants were
+ * constrained and took f2/f12 ahead of the sign temporaries.  The zero
+ * stored into d is an int 0, so it shares its constant with SIGN's > 0,
+ * apart from the 0.0f stores and tests.  The empty test on the count before
+ * prev is read makes the count's load number ahead of prev, so it takes a2
+ * and prev a3. */
 /* @implements 0x8025EDBC tgr BrTyreSprings */
 void BrTyreSprings(BrRbBody *b)
 {
@@ -179,7 +180,6 @@ void BrTyreSprings(BrRbBody *b)
   BrRbBody *s;
   short prev;
   float d;
-  float t;
 
   w = b->loads;
   for (i = 0; i < 4; i++) {
@@ -198,6 +198,8 @@ void BrTyreSprings(BrRbBody *b)
       s = b->sub[3];
       break;
     }
+    if (s->x1b4) {             /* an empty check, compiled out */
+    }
     prev = s->x1b4;
     d = s->x1d8;
     if (s->x1b4 < 100) {
@@ -208,14 +210,15 @@ void BrTyreSprings(BrRbBody *b)
       d = -0.3;
     }
     if (0.0 < d) {
+      d = 0;
+    }
+    d = d - -0.3;
+    if (d < 0.0f) {
       d = 0.0f;
     }
-    t = d - -0.3;
-    if (t < 0.0f) {
-      t = 0.0f;
-    }
-    t = SIGN(t) * t * t;
-    w->load = t * b->x1b8;
+    d *= SIGN(d) * d;
+    d *= b->x1b8;
+    w->load = d;
     w = w->next;
     if (s->x1b4 != 0 && prev == 0) {
       b->x203 = 0x80;
