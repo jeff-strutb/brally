@@ -141,13 +141,10 @@ void BrCarPlaceWheels(int n)
  * units, load it, load its product with the camera as the lighting matrix,
  * set texturing and tiles, and call the wheel display list (the low-detail
  * one when asked).
- * RESIDUE (20): saved-register naming only -- the ROM gives s3-s5 to the
- * two matrix buffers and the DL command word and s6/s7 to the loop; ours
- * the reverse.  Register-blind exact; loop forms and named locals do not
- * move it. */
-/* @t4-pass 0x8022FFB4 1 2026-10-03 compiles 118 best 20 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022FFB4 2 2026-10-03 compiles 117 best 20 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8022FFB4 */
+ * The empty do { } while (0) after the matrix allocation (an assert that
+ * compiles out) gives uopt two more blocks in the loop: the loop counter and
+ * wheel pointer then rank below the two matrix buffers and the DL command
+ * word, which take s3-s5 as in the ROM. */
 /* @implements 0x8022FFB4 tgr BrCarDrawWheels */
 void BrCarDrawWheels(BrCar *car)
 {
@@ -169,6 +166,8 @@ void BrCarDrawWheels(BrCar *car)
       guScaleF(D_8031AB50, 0.003921569f, 0.003921569f, 0.003921569f);
       guMtxCatF(D_8031AB50, car->wheelMtx[i], D_80351CC0);
       m = (unsigned int)BrMtxAlloc();
+      do {
+      } while (0);
       guMtxF2L(D_80351CC0, (void *)m);
       gRaw(D_8028A858++, 0x1060040, m);
       guMtxCatF(D_80351CC0, D_8031AA50, D_8031AB10);
