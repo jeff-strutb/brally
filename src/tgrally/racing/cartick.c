@@ -121,13 +121,13 @@ float sqrtf(float x);
  * Returns 0 when no point is found.  One corner of the tracks 3 and 8 grid
  * is searched as a single cell with no distance check.  Ported from the PC
  * twin (BrCarTrackLocate).
- * RESIDUE (231): our IDO hoists the 1000.0f of the segment distance test
- * out of the search loop (the ROM rematerialises it at each test), which
- * shifts the loop body; x/z take f26/f30 the other way round and the car
- * position pointer s1 for s2.  Structure, frame and calls match. */
-/* @t4-pass 0x8021EB50 1 2026-09-29 compiles 13 best 230 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021EB50 2 2026-09-29 compiles 13 best 230 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8021EB50 */
+ * The point search keeps one point pointer and accumulates the squared
+ * distance through one delta (d = dx * dx, d += dy * dy, d += dz * dz);
+ * the found index is the search index j.  The two 1000 tests are spelled
+ * apart and tested in turn, so each is its own constant as in the ROM.
+ * The step reads the point's distance through p and the first point's as
+ * pt->dist, so cfe keeps the dot product first; it is its own float and
+ * a miss returns 0 from the end. */
 /* @implements 0x8021EB50 tgr BrCarTrackLocate */
 int BrCarTrackLocate(BrCar *car)
 {
@@ -136,7 +136,7 @@ int BrCarTrackLocate(BrCar *car)
   float z;
   unsigned char cx;
   unsigned char cy;
-  int i;
+  float e;
   BrPathSeg *seg;
   int best;
   int bestSeg;
@@ -152,10 +152,9 @@ int BrCarTrackLocate(BrCar *car)
   BrVec3 rel;
   BrVec3 across;
   BrVec3 off;
+  float step;
 
-  x = car->mtx0[3][0];
-  y = car->mtx0[3][1];
-  z = car->mtx0[3][2];
+  x = car->mtx0[3][0]; y = car->mtx0[3][1]; z = car->mtx0[3][2];
   check = 1;
   cx = car->cellX;
   cy = car->cellY;
@@ -174,7 +173,7 @@ int BrCarTrackLocate(BrCar *car)
                       &car->posPrev.x, car->mtx0[3]) &&
       BrVec3Dist((BrVec3 *)car->mtx0[3], &((BrPathSeg *)car->xf5c)->pt[car->xf60].pos) < 64.0f) {
     seg = (BrPathSeg *)car->xf5c;
-    i = car->xf60;
+    j = car->xf60;
   } else {
     bestD = D_80025C00.x2c - D_80025C00.x28;
     bestD *= bestD;
@@ -184,13 +183,22 @@ int BrCarTrackLocate(BrCar *car)
         if (cx < seg->x0 || cx > seg->x1 || cy < seg->y0 || cy > seg->y1) {
           continue;
         }
-        if (check && ((D_80025C70->pt[0].dist - seg->pt[0].dist) - dist > 1000.0f ||
-                      dist - (D_80025C70->pt[0].dist - seg->pt[seg->count].dist) > 1000.0f)) {
-          continue;
+        if (check) {
+          if ((D_80025C70->pt[0].dist - seg->pt[0].dist) - dist > 1000.f) {
+            continue;
+          }
+          if (dist - (D_80025C70->pt[0].dist - seg->pt[seg->count].dist) > 1000.0f) {
+            continue;
+          }
         }
         n = seg->count;
         for (j = 0, p = seg->pt; j < n; j++, p++) {
-          d = (p->pos.x - x) * (p->pos.x - x) + (p->pos.y - y) * (p->pos.y - y) + (p->pos.z - z) * (p->pos.z - z);
+          d = p->pos.x - x;
+          d *= d;
+          e = p->pos.y - y;
+          d += e * e;
+          e = p->pos.z - z;
+          d += e * e;
           if (d < bestD) {
             dir.x = p->left.y - p->right.y;
             dir.y = p->right.x - p->left.x;
@@ -206,27 +214,30 @@ int BrCarTrackLocate(BrCar *car)
       }
     }
     if (best == -1) {
-      return 0;
+      goto none;
     }
     seg = D_80025C00.segs[bestSeg];
-    i = best;
+    j = best;
   }
-  p = &seg->pt[i];
-  across.x = p->left.y - p->right.y;
+  across.x = seg->pt[j].left.y - seg->pt[j].right.y;
+  across.y = seg->pt[j].right.x - seg->pt[j].left.x;
   across.z = 0.0f;
-  across.y = p->right.x - p->left.x;
   BrVec3Normalise(&across);
-  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], &p->pos);
-  d = BrVec3Dot(&across, &off) + (D_80025C70->pt[0].dist * (car->xf7c + 1) - p->dist) - car->xfa8;
-  if (!check || (-1000.0f < d && d < 1000.0f)) {
-    car->xfa8 += d;
+  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], &seg->pt[j].pos);
+  p = &seg->pt[j];
+  step = BrVec3Dot(&across, &off) + (D_80025C70->pt->dist * (car->xf7c + 1) - p->dist);
+  step -= car->xfa8;
+  if (!check || (-1000.0f < step && step < 1000.0f)) {
+    car->xfa8 += step;
   }
-  car->xf60 = i;
   car->xf5c = (int)seg;
+  car->xf60 = j;
   car->xf64 = across.x;
   car->xf68 = across.y;
   car->xf6c = across.z;
   return 1;
+none:
+  return 0;
 }
 
 /* WHAT IT DOES: Advance a car's clocks by one frame while it is still in
