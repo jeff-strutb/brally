@@ -3,6 +3,8 @@
  * once a second.  GBARUN_RAW=FILE writes every frame from GBARUN_RAW_FROM on as
  * raw 240x160 RGB24 (for a video).  GBARUN_MEM=FILE saves EWRAM at the end.
  * GBARUN_IWRAM=FILE@FRAME: IWRAM after that frame.
+ * GBARUN_PROBE=ADDR:FRAME:X:Y holds the camera at FRAME, unless GBARUN_REALTIME
+ * (the ROM's own pacing) or GBARUN_STEP (every recorded frame in turn) is set.
  * GBARUN_WAV=FILE: the sound, from GBARUN_RAW_FROM on (16-bit stereo WAV).
  * GBARUN_PROF=FILE@FROM: from frame FROM on, the cycles spent at each code
  * address (IWRAM and ROM), stepped an instruction at a time, into FILE.
@@ -106,9 +108,9 @@ int main(int argc, char **argv)
         sscanf(getenv("GBARUN_PROF"), "%511[^@]@%d", prof, &prof_from);
     for (f = 1; f <= frames; f++) {
         if (pa && f <= 30) {                          /* until the program has started */
-            if (getenv("GBARUN_REALTIME"))           /* g_probe[2]: the camera kept in real time */
+            if (getenv("GBARUN_STEP"))               /* g_probe[2]: every recorded camera frame in turn */
                 core->busWrite32(core, pa + 8, 1);
-            else {
+            if (!getenv("GBARUN_REALTIME") && !getenv("GBARUN_STEP")) {   /* the camera held at FRAME */
                 core->busWrite32(core, pa, pf + 1);
                 core->busWrite32(core, pa + 4, px | py << 16);
             }

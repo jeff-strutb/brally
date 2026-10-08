@@ -51,7 +51,8 @@ volatile uint32_t g_stats[12];
 static int s_lapped;
 uint32_t g_cyc[1200] EWRAM_BSS;                        /* each race frame's cycles, the first time round */
 /* the host's probe: g_probe[0] = camera frame + 1 to hold the camera there; g_probe[1] set:
-   stop once the frame's lists are built (for a look at memory); g_probe[2] set: real time */
+   stop once the frame's lists are built (for a look at memory); g_probe[2] set: one recorded camera
+   frame a frame drawn, the whole race in turn (for measuring); else real time */
 volatile uint32_t g_probe[3];
 
 PV s_pv[128] __attribute__((section(".iwram_bss")));   /* a cell's vertices (convert.py: at most 128) */
@@ -622,7 +623,7 @@ int main(void)
             if (fi < 1200)
                 g_cyc[fi] = t2 - t0;
         }
-        if (g_probe[2]) {                            /* the host's: real time, the camera at the game's 30 a second */
+        if (!g_probe[2]) {                           /* real time: the camera at the game's 30 a second */
             static uint32_t lap;                     /* (no divide: the laps counted off) */
             uint32_t t = (s_vbl >> 1) - lap;
             while (t >= (uint32_t)g_nframes) {
