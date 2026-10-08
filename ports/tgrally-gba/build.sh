@@ -37,7 +37,7 @@ clang $CF -c $G/gba/libc.c -o $OUT/obj/libc.o
 SIM="geom rigid coll car camera simload fxmath"
 # the simulation: ARM, a section to each function (gba/place.txt puts the hot ones in IWRAM
 # overlays), plain branches (the link adds the stubs between the cartridge and IWRAM)
-TF="${SIMCF:-$(echo "$CF" | sed 's/-mlong-calls//')} -ffunction-sections $SIMDEF"
+TF="${SIMCF:-$(echo "$CF" | sed 's/-mlong-calls//')} -ffunction-sections -DSIM_SUBSTEPS=2 $SIMDEF"
 clang $CF -c $G/gba/fxarm.s -o $OUT/obj/fxarm.o
 clang $CF -c $G/gba/aeabi.s -o $OUT/obj/aeabi.o
 for f in $SIM; do clang $TF -I$G/sim -c $G/sim/$f.c -o $OUT/obj/sim_$f.o; done

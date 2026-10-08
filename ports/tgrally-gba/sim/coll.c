@@ -681,7 +681,7 @@ void BrCarPhysAdvance(Body *b)
     t = FX(0.033333335f);
     s[1] = FDIV(FX(1.0f), b->box[1]);
     s[2] = FDIV(FX(1.0f), b->box[2]);
-    dt = FDIVK(t, 4);
+    dt = FDIVK(t, SIM_SUBSTEPS);
     while (t > FX(0.002f)) {
         BrCollRespTipKick(b);
         SP(13);

@@ -229,6 +229,12 @@ void BrRbStateStep(RbState *out, const RbState *in, fx dt);
 void guRotateF(fx m[4][4], fx a, fx x, fx y, fx z);
 void guMtxCatF(fx m[4][4], fx n[4][4], fx r[4][4]);
 fx BrAtan2(fx x, fx y);
+/* the collision's substeps a tick: the game's four, two on the GBA (gba/ builds define
+   SIM_SUBSTEPS; the host checks keep the game's) */
+#ifndef SIM_SUBSTEPS
+#define SIM_SUBSTEPS 4
+#endif
+
 /* SIM_OWN: a helper kept a function of its own (not folded into its caller), so the GBA's
    link can place it (gba/place.txt) */
 #define SIM_OWN __attribute__((noinline))
