@@ -50,7 +50,7 @@ void BrRbVelAtFlatPoint(fx out[3], Body *b, Body *at)
 }
 
 /* BrRbVelAtBodyPoint: the body's velocity at another body's mount (world axes) */
-static void BrRbVelAtBodyPoint(fx out[3], Body *b, Body *at)
+SIM_OWN static void BrRbVelAtBodyPoint(fx out[3], Body *b, Body *at)
 {
     fx p[3], c[3], r[3];
     p[0] = at->st.pos[0];
@@ -359,7 +359,7 @@ void BrWheelTyre(Body *b, Body *w, fx *pA, uint8_t *pB, fx dt)
 
 /* BrRbSolveAccel: the chassis' force and torque to accelerations (the wheels' forces
    on the ground axes added) */
-static void BrRbSolveAccel(Body *b)
+SIM_OWN static void BrRbSolveAccel(Body *b)
 {
     fx t[3], u[3], w[3];
     BrMat4RotateVec(t, b->m, b->force);
@@ -443,6 +443,70 @@ static void BrRbAddWheelForces(Body *b, Body *w)
 }
 
 /* BrRbForcesClear: clear and resum the chassis' and wheels' forces, then accelerations */
+#ifndef FX_FLOAT
+/* the fixed point's BrRbForcesClear: the same sums with the rotations taken out of them.  A
+   body-axes force's moment R^T at x R^T f is R^T (at x f), so those are summed in body axes and
+   turned once; a wheel's forces all act at its mount, so its flat moment is the mount crossed
+   with their flat sum, the four wheels' turned once together */
+SIM_OWN static void forces_sum(Body *b)
+{
+    Force *a;
+    fx fw[3] = { 0, 0, 0 }, tw[3] = { 0, 0, 0 }, fb[3] = { 0, 0, 0 }, tb[3] = { 0, 0, 0 };
+    fx r[3], t[3], c[3];
+    int k, i;
+
+    for (a = b->forces; a != 0; a = a->next) {
+        if (a->frame == 0) {
+            for (k = 0; k < 3; k++)
+                fw[k] += a->f[k];
+            if (b->kind != 2) {
+                BrMat4RotateVecT(r, b->m, a->at);
+                tw[0] += FMUL(r[1], a->f[2]) - FMUL(r[2], a->f[1]);
+                tw[1] += FMUL(r[2], a->f[0]) - FMUL(r[0], a->f[2]);
+                tw[2] += FMUL(r[0], a->f[1]) - FMUL(r[1], a->f[0]);
+            }
+        } else {
+            for (k = 0; k < 3; k++)
+                fb[k] += a->f[k];
+            if (b->kind != 2) {
+                tb[0] += FMUL(a->at[1], a->f[2]) - FMUL(a->at[2], a->f[1]);
+                tb[1] += FMUL(a->at[2], a->f[0]) - FMUL(a->at[0], a->f[2]);
+                tb[2] += FMUL(a->at[0], a->f[1]) - FMUL(a->at[1], a->f[0]);
+            }
+        }
+    }
+    for (i = 0; i < 4; i++) {                    /* the wheels: their forces in body axes */
+        Body *w = b->sub[i];
+        fx sf[3] = { 0, 0, 0 }, f[3];
+        for (a = w->forces; a != 0; a = a->next) {
+            if (a->frame == 0)
+                BrMat4RotateVec(f, b->m, a->f);
+            else {
+                f[0] = a->f[0];
+                f[1] = a->f[1];
+                f[2] = a->f[2];
+            }
+            for (k = 0; k < 3; k++)
+                sf[k] += f[k];
+        }
+        for (k = 0; k < 3; k++)
+            w->force[k] += sf[k];
+        if (w->forces != 0 && w->x1b4 != 0) {
+            const fx *p = w->m[3];
+            tb[0] += -FMUL(p[2], sf[1]);
+            tb[1] += FMUL(p[2], sf[0]);
+            tb[2] += FMUL(p[0], sf[1]) - FMUL(p[1], sf[0]);
+        }
+    }
+    BrMat4RotateVecT(c, b->m, fb);
+    BrMat4RotateVecT(t, b->m, tb);
+    for (k = 0; k < 3; k++) {
+        b->force[k] += fw[k] + c[k];
+        b->torque[k] += tw[k] + t[k];
+    }
+}
+#endif
+
 void BrRbForcesClear(Body *b)
 {
     b->force[2] = b->force[1] = b->force[0] = FX(0.0f);
@@ -459,11 +523,15 @@ void BrRbForcesClear(Body *b)
     b->sub[3]->force[0] = FX(0.0f);
     b->sub[3]->force[1] = FX(0.0f);
     b->sub[3]->force[2] = FX(0.0f);
+#ifndef FX_FLOAT
+    forces_sum(b);
+#else
     BrRbAddForces(b);
     BrRbAddWheelForces(b, b->sub[0]);
     BrRbAddWheelForces(b, b->sub[1]);
     BrRbAddWheelForces(b, b->sub[2]);
     BrRbAddWheelForces(b, b->sub[3]);
+#endif
     BrRbSolveAccel(b);
 }
 
@@ -497,13 +565,15 @@ fx BrCrPlaneDist(const fx *n, fx d, const fx *p);
 SimCell BrCollGridCellAcquire(fx x, fx y);
 
 /* BrWheelGroundProbe: how far a wheel can drop before the ground (100: none) */
-static fx BrWheelGroundProbe(Body *b, Body *w)
+SIM_OWN static fx BrWheelGroundProbe(Body *b, Body *w)
 {
     static const fx down[3] = { FX(0.0f), FX(0.0f), FX(-1.0f) };   /* D_802A4B94 */
     fx mount[3], world[3], dir[3], best, t, h, d, e;
     const Plane *pPl;
     SimCell cell;
-    int i;
+    int k, npick;
+    int32_t q[6];
+    uint16_t pick[256];
 
     best = FX(100.0f);
     mount[0] = w->st.pos[0];
@@ -513,8 +583,13 @@ static fx BrWheelGroundProbe(Body *b, Body *w)
     BrMat4RotateVecT(dir, b->m, down);
     w->hit = 0;
     cell = BrCollGridCellAcquire(world[0], world[1]);
-    for (i = 0; i < cell.n; i++) {
-        pPl = &g_track->planes[cell.tris[i]];
+    sim_pick_box(q, world, FX(2.01f));  /* (a hit is within 2 of the point, on its triangle) */
+    npick = sim_cell_pick(&cell, q, pick);
+#ifndef FX_FLOAT
+    return sim_probe_walk(w, &cell, pick, npick, world, dir);
+#endif
+    for (k = 0; k < npick; k++) {
+        pPl = &g_track->planes[cell.tris[pick[k]]];
         {   /* (a hit within 2 of the point lies on the triangle: farther than that, none) */
             fx dx = pPl->c[0] - world[0], dy = pPl->c[1] - world[1], dz = pPl->c[2] - world[2], rr = pPl->r + FX(2.01f);
             if (FMUL(dx, dx) + FMUL(dy, dy) + FMUL(dz, dz) > FMUL(rr, rr))

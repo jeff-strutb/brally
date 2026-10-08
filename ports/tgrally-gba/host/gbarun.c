@@ -12,7 +12,7 @@
  *   gbarun ROM FRAMES STATS_ADDR OUTDIR [SHOT_FRAME...]
  *
  * STATS_ADDR (hex) is the ROM's struct of counters (see gba/main.c: g_stats);
- * each line printed is frame, then its words.  */
+ * each line printed is frame, then its words (GBARUN_NSTATS of them, 12 unless set).  */
 #include <mgba/flags.h>
 #include <mgba/core/core.h>
 #include <mgba/core/config.h>
@@ -76,12 +76,14 @@ int main(int argc, char **argv)
     struct mCore *core;
     int frames, f, i, nshot = argc - 5;
     uint32_t stats;
+    int nstats;
     if (argc < 5) {
         fprintf(stderr, "usage: gbarun ROM FRAMES STATS_ADDR OUTDIR [SHOT_FRAME...]\n");
         return 2;
     }
     frames = atoi(argv[2]);
     stats = (uint32_t)strtoul(argv[3], NULL, 16);
+    nstats = getenv("GBARUN_NSTATS") ? atoi(getenv("GBARUN_NSTATS")) : 12;
     core = mCoreFind(argv[1]);
     if (!core || !core->init(core))
         return 1;
@@ -185,7 +187,7 @@ int main(int argc, char **argv)
             }
         if (stats && f % 60 == 0) {
             printf("%d", f);
-            for (i = 0; i < 12; i++)
+            for (i = 0; i < nstats; i++)
                 printf(" %u", core->busRead32(core, stats + i * 4));
             printf("\n");
         }

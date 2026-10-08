@@ -15,6 +15,13 @@
 #define FAR 400                          /* D_8028AAC8: the race view's far plane */
 
 static Car s_car[2];
+volatile uint32_t g_phase_cyc[6];        /* the cycles of each phase, of the overlays' copies, ticks */
+static inline uint32_t clock32(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*(volatile uint16_t *)0x0400010C << 16; }
+
+#ifdef SIM_PROF
+uint32_t g_simprof[24];
+uint32_t sim_clock(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*(volatile uint16_t *)0x0400010C << 16; }
+#endif
 static Pad s_pad[2];
 
 void race_start(void)
@@ -61,12 +68,21 @@ static void pad_from_keys(Pad *p, uint32_t keys)
 
 void race_tick(uint32_t keys)
 {
+    int k;
     pad_from_keys(&s_pad[0], keys);
     s_pad[1].flags = 0;
     s_pad[1].steer = FX(0.0);
     g_world.walkBack ^= 1;               /* BrRaceTick: the collision cells walked the other way */
-    BrCarPhysTick(&s_car[0]);
-    BrCarPhysTick(&s_car[1]);
+    for (k = 0; k < 4; k++) {            /* BrCarPhysTick a phase at a time, each phase's code in */
+        uint32_t t0 = clock32(), t1;     /* IWRAM for both cars */
+        race_phase_code(k);
+        t1 = clock32();
+        sim_tick_phase(&s_car[0], k);
+        sim_tick_phase(&s_car[1], k);
+        g_phase_cyc[4] += t1 - t0;
+        g_phase_cyc[k] += clock32() - t1;
+    }
+    g_phase_cyc[5]++;
 }
 
 /* ---- the camera to the renderer's Frame (convert.py's rows, made here) ---- */

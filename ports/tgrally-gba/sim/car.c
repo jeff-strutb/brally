@@ -54,7 +54,9 @@ int BrTriContainsPointV(const fx *pt, const fx *a, const fx *b, const fx *c, con
 int BrGroundRay(fx *pPosOut, fx *pNormOut, const fx *pEye, uint16_t *pNearIds, int *pGotHit, uint16_t *pFarIds,
                 int *pFarCount, fx *pDistOut, int *pFaceOut)
 {
-    int hitCount, nearCount, farCount, ci, i;
+    int hitCount, nearCount, farCount, ci, i, k, npick;
+    int32_t q[6];
+    uint16_t pick[256];
     fx dt, dir[3], bestFarHitZ, bestNearHitZ, bestNearDist, bestFarDist, tmpV[3], t, dn, hitPt[3], origin[3], dist;
     fx bestFarNorm[3], bestNearNorm[3], x, y;
     uint16_t farFaceVal, farFaceIdx;
@@ -85,8 +87,12 @@ int BrGroundRay(fx *pPosOut, fx *pNormOut, const fx *pEye, uint16_t *pNearIds, i
     nearCount = 0;
     farCount = 0;
     cell = BrCollGridCellAcquire(origin[0], origin[1]);
-    for (i = 0; i < cell.n; i++) {
-        pP = &T->planes[cell.tris[i]];
+    sim_pick_box(q, origin, FX(0.0f));  /* (the vertical ray meets only the triangles over its x, y) */
+    q[4] = -32768;
+    q[5] = 32767;
+    npick = sim_cell_pick(&cell, q, pick);
+    for (k = 0; k < npick; k++) {
+        pP = &T->planes[cell.tris[pick[k]]];
         if (x < pP->xmin || x > pP->xmax || y < pP->ymin || y > pP->ymax)
             continue;                   /* (the vertical ray misses its box: it misses it) */
         if (pP->n[2] < FX(0.0f))
@@ -214,8 +220,18 @@ int BrGroundRay(fx *pPosOut, fx *pNormOut, const fx *pEye, uint16_t *pNearIds, i
    the wheels' matrices */
 void BrCarPhysStep(Car *car)
 {
+    sim_step_forces(car);
+    sim_step_collide(car);
+    sim_step_ground(car);
+}
+
+/* BrCarPhysStep's parts, which the GBA runs each for every car in turn (gba/race.c): the
+   forces and the step to the collision's start */
+void sim_step_forces(Car *car)
+{
     int i;
     Body *b = &car->body;
+    SP_BEGIN;
 
     b->forces = FORCE(car, 0xB70);
     WHEEL(car, 0)->forces = FORCE(car, 0xCF0);
@@ -228,6 +244,7 @@ void BrCarPhysStep(Car *car)
         WHEEL(car, i)->forces->f[2] = FX(0.0f);
     }
     BrTyreSprings(b);
+    SP(2);
     if (car->firstFrame == 0) {
         car->gripR = FX(0.0f);
         car->gripF = FX(0.0f);
@@ -238,11 +255,13 @@ void BrCarPhysStep(Car *car)
         BrWheelTyre(b, WHEEL(car, 3), &car->gripR, &car->slipR, FX(0.033333335f));
     }
     car->firstFrame = 0;
+    SP(3);
     for (i = 0; i < 3; i++)
         b->force[i] = b->torque[i] = FX(0.0f);
     BrRbForcesClear(b);
     BrRbIntegrate(&b->st, b, FX(0.033333335f));
     BrCarAxleGrip(b, FX(0.033333335f), &car->gripF, &car->gripR, &car->slipF, &car->slipR);
+    SP(4);
     BrRbQuatDerivative(&b->st);
     b->forces = FORCE(car, 0xBF0);
     WHEEL(car, 0)->forces = 0;
@@ -251,6 +270,7 @@ void BrCarPhysStep(Car *car)
     WHEEL(car, 3)->forces = 0;
     BrTyreSkidCheck(b, FORCE(car, 0xCD0));
     BrTyreLoads(b);
+    SP(5);
     for (i = 0; i < 3; i++)
         b->force[i] = b->torque[i] = FX(0.0f);
     BrRbForcesClear(b);
@@ -272,11 +292,30 @@ void BrCarPhysStep(Car *car)
     b->stA = b->st;
     BrRbQuatDerivative(&b->stA);
     BrRbQuatDerivative(&b->stA);
+    SP(6);
+}
+
+/* the collision's substeps */
+void sim_step_collide(Car *car)
+{
+    Body *b = &car->body;
+    SP_BEGIN;
     BrCarPhysAdvance(b);
+    SP(7);
     b->st = b->stB;
+}
+
+/* the wheels on the ground */
+void sim_step_ground(Car *car)
+{
+    int i;
+    Body *b = &car->body;
+    SP_BEGIN;
     BrTyreDepthAll(b);
+    SP(8);
     for (i = 0; i < 4; i++)
         BrQuatToMat(WHEEL(car, i)->m, &WHEEL(car, i)->st);
+    SP(9);
 }
 
 #define SGN(x) ((x) == FX(0.0f) ? FX(0.0f) : ((x) > FX(0.0f) ? FX(1.0f) : FX(-1.0f)))
@@ -473,11 +512,25 @@ void BrCarDriveInput(Car *car)
    0.254 */
 void BrCarBuildMatrices(Car *car)
 {
+    fx m[4][4];
+    int i;
+
+    if (car->body.angle == FX(0.0f)) {  /* (no roll: the rotation is the identity) */
+        for (i = 0; i < 16; i++)
+            (&car->mtx0[0][0])[i] = (&car->body.m[0][0])[i];
+    } else {
+        guRotateF(m, car->body.angle, FX(1.0f), FX(0.0f), FX(0.0f));
+        guMtxCatF(m, car->body.m, car->mtx0);
+    }
+}
+
+/* the rest of BrCarBuildMatrices: the wheels' matrices, which only drawing reads, made
+   when it asks for them */
+void sim_car_wheels(Car *car)
+{
     fx spin[4][4], m[4][4], steer[4][4];
     int k;
 
-    guRotateF(m, car->body.angle, FX(1.0f), FX(0.0f), FX(0.0f));
-    guMtxCatF(m, car->body.m, car->mtx0);
     for (k = 0; k < 4; k++)
         car->wb[k].m[3][2] += FX(0.254f);
     guRotateF(m, car->wb[0].angle, FX(0.0f), FX(1.0f), FX(0.0f));
@@ -505,10 +558,36 @@ void BrCarBuildMatrices(Car *car)
    matrices, the speed for the gauges, the viewed car's camera ---- */
 void BrCarPhysTick(Car *car)
 {
+    sim_tick_phase(car, 0);
+    sim_tick_phase(car, 1);
+    sim_tick_phase(car, 2);
+    sim_tick_phase(car, 3);
+}
+
+/* BrCarPhysTick in four phases: 0 the ground ray and the pad, 1 the forces, 2 the collision,
+   3 the ground under the wheels, the matrices and the camera.  One car's phases in order are
+   the game's tick; the GBA runs each phase for every car before the next (each phase's code
+   copied into IWRAM once a tick) */
+void sim_tick_phase(Car *car, int k)
+{
+    if (k == 0)
+        sim_tick_input(car);
+    else if (k == 1)
+        sim_step_forces(car);
+    else if (k == 2)
+        sim_step_collide(car);
+    else
+        sim_tick_after(car);
+}
+
+void sim_tick_input(Car *car)
+{
     int i;
+    SP_BEGIN;
 
     car->groundHits = BrGroundRay(car->mtx0[3], car->mtx0[2], car->mtx0[3], car->nearIds, &car->gotHit, car->farIds,
                                   &car->farCount, &car->groundDist, &car->groundFace);
+    SP(0);
     WHEEL(car, 0)->steer = WHEEL(car, 1)->steer = FX(0.0f);
     BrCarDriveInput(car);
     WHEEL(car, 2)->steer = WHEEL(car, 3)->steer = car->xdf0;
@@ -539,14 +618,22 @@ void BrCarPhysTick(Car *car)
             WHEEL(car, 3)->brake = -car->xe3c;
         }
     }
-    BrCarPhysStep(car);
+    SP(1);
+}
+
+void sim_tick_after(Car *car)
+{
+    SP_BEGIN;
+    sim_step_ground(car);
     BrCarBuildMatrices(car);
+    SP(10);
     if (car->wb[1].x1b4 != 0) {
         fx *v = car->body.st.vel;
         car->speedMph = FMUL(FSQRT(FMUL(v[2], v[2]) + (FMUL(v[0], v[0]) + FMUL(v[1], v[1]))), FX(2.24f));
     }
     if (sim_camera && car->slot == g_world.viewCar)
         sim_camera(car);
+    SP(11);
 }
 
 /* a plane's bounds (sim.h): the sphere about its corners' box centre, the box of its x and y,
@@ -574,6 +661,36 @@ void sim_plane_bounds(Plane *p)
             r2 = q;
     }
     p->r = FSQRT(r2) + FX(0.01f);
+    for (k = 0; k < 3; k++) {
+        lo = hi = v[0][k];
+        for (i = 1; i < 3; i++) {
+            if (v[i][k] < lo) lo = v[i][k];
+            if (v[i][k] > hi) hi = v[i][k];
+        }
+        p->bx[k * 2] = (int16_t)(sim_q8(lo) - 1);
+        p->bx[k * 2 + 1] = (int16_t)(sim_q8(hi) + 2);
+    }
+}
+
+/* q: the box from a to b, pad wider each way, in eighths */
+void sim_pick_seg(int32_t q[6], const fx *a, const fx *b, fx pad)
+{
+    int k;
+    for (k = 0; k < 3; k++) {
+        fx lo = a[k] < b[k] ? a[k] : b[k], hi = a[k] < b[k] ? b[k] : a[k];
+        q[k * 2] = sim_q8(lo - pad) - 1;
+        q[k * 2 + 1] = sim_q8(hi + pad) + 2;
+    }
+}
+
+/* q: the box r about p each way, in eighths (wide by one) */
+void sim_pick_box(int32_t q[6], const fx *p, fx r)
+{
+    int k;
+    for (k = 0; k < 3; k++) {
+        q[k * 2] = sim_q8(p[k] - r) - 1;
+        q[k * 2 + 1] = sim_q8(p[k] + r) + 2;
+    }
 }
 
 /* the pointers BrCarPhysInit sets up: the chassis' wheels, the force records' links */

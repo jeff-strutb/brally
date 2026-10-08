@@ -35,6 +35,7 @@ float fx_cosf(float);
 #define FSIN(a) fx_sinf(a)
 #define FCOS(a) fx_cosf(a)
 #define FX_STEP(v) ((void)0)
+#define sim_q8(a) ((int32_t)((a) * 8.0f) - ((a) < 0))   /* about a x 8, rounded down (or one less) */
 #else
 typedef int64_t fx;
 #define FX_ONE ((int64_t)1 << 32)
@@ -55,6 +56,7 @@ fx fx_cos(fx a);
 #define FSIN(a) fx_sin(a)
 #define FCOS(a) fx_cos(a)
 #define FX_STEP(v) __asm__("" : "+r"(v))
+#define sim_q8(a) ((int32_t)((a) >> 29))                  /* a x 8, rounded down */
 /* fx_mul in line, for ARM code (gba/fxarm.s's, word for word): the product's bits 32..95 */
 static inline __attribute__((always_inline)) fx fx_muli(fx a, fx b)
 {
@@ -71,6 +73,10 @@ static inline __attribute__((always_inline)) fx fx_muli(fx a, fx b)
         hi -= al;
     return (fx)(((uint64_t)hi << 32) | (uint32_t)t);
 }
+#if defined(FX_INLINE_MUL)                /* ARM code: every multiply in line */
+#undef FMUL
+#define FMUL(a, b) fx_muli((a), (b))
+#endif
 #endif
 
 #endif

@@ -12,7 +12,7 @@
 #include "world.h"
 #include "sound.h"
 
-#define IWRAM_CODE __attribute__((section(".iwram"), target("arm"), noinline))
+#define IWRAM_CODE __attribute__((section(".ovl_draw"), target("arm"), noinline))
 #define EWRAM_BSS __attribute__((section(".ewram_bss")))
 
 #define REG_DISPCNT (*(volatile uint16_t *)0x04000000)
@@ -49,18 +49,34 @@ typedef struct { PolyV v[3]; uint16_t col, next, tex, pad; } Poly;
 /* the counters the host reads: frame, cycles total, cycles transform/sort,
    cycles raster, triangles drawn, cells drawn, vertices transformed, game frame */
 volatile uint32_t g_stats[12];
+volatile uint32_t g_dstat[16];                         /* the drawing's stage clocks and their sums */
+volatile uint32_t g_fcount[12];                         /* COUNT builds: triangles tested, near enough, facing,
+                                                          emitted (front.s); pixels textured, polygons, rows (raster.s);
+                                                          emitted by size (front.s) */
 uint32_t g_cyc[1200] EWRAM_BSS;                        /* each race frame's cycles, the first time round */
 /* the host's probe: g_probe[0] = camera frame + 1 to hold the camera there; g_probe[1] set:
    stop once the frame's lists are built (for a look at memory); g_probe[2] set: one recorded camera
    frame a frame drawn, the whole race in turn (for measuring); else real time */
 volatile uint32_t g_probe[3];
 
-PV s_pv[128] __attribute__((section(".iwram_bss")));   /* a cell's vertices (convert.py: at most 128) */
+/* the drawing's scratch rides in its overlay (copied in with its code, so the race physics can
+   have the room while it runs): the vertex cache, its tags (zero on each copy), the shift table */
+#define OVL_DRAW_DATA __attribute__((section(".ovl_draw.data")))
+PV s_pv[128] OVL_DRAW_DATA;          /* a cell's vertices (convert.py: at most 128) */
 Poly s_poly[MAXPOLY] EWRAM_BSS;
 uint16_t s_bucket[NBUCKET] EWRAM_BSS;
 int s_npoly;
 uint32_t s_rec[4096] EWRAM_BSS;     /* 2^24 / w, w < 4096 (recip normalises a larger w) */
-uint8_t s_rsh[256] __attribute__((section(".iwram_bss")));   /* w >> 12's bit length: recip's shift for w under 2^20 */
+uint8_t s_rsh[256] OVL_DRAW_DATA = {      /* w >> 12's bit length: recip's shift for w under 2^20 */
+    0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+};
 uint16_t *s_back;
 const Tex *s_textab = g_tex;        /* the screen's textures: the race's, or the menu's */
 
@@ -99,7 +115,7 @@ static inline __attribute__((always_inline)) uint32_t recip(int32_t w)
 }
 #endif
 
-uint16_t s_tag[128] __attribute__((section(".iwram_bss")));   /* s_pv[i] is this cell's */
+uint16_t s_tag[128] OVL_DRAW_DATA;   /* s_pv[i] is this cell's */
 uint16_t s_stamp;
 uint32_t s_ct;                                        /* front.s: the triangle's col | tex << 16 */
 
@@ -569,6 +585,32 @@ uint32_t pad_take(void);
 extern const uint16_t *s_vis_list;               /* front.s: the frame's own cell list */
 static Frame s_frame;
 
+/* the overlays (tools/gbalink.py): the drawing's code and the race physics' take turns in one
+   stretch of IWRAM, each copied in from the cartridge before it runs */
+extern char __ovl_base[], __ovl_draw_lma[], __ovl_draw_words[];
+extern char __ovl_sim0_lma[], __ovl_sim0_words[], __ovl_sim1_lma[], __ovl_sim1_words[];
+extern char __ovl_sim2_lma[], __ovl_sim2_words[], __ovl_sim3_lma[], __ovl_sim3_words[];
+enum { OVL_DRAW, OVL_SIM0 };            /* then the race physics' phases (gba/place.txt) */
+static const char *const s_ovl_lma[5] = { __ovl_draw_lma, __ovl_sim0_lma, __ovl_sim1_lma, __ovl_sim2_lma, __ovl_sim3_lma };
+static const char *const s_ovl_words[5] = { __ovl_draw_words, __ovl_sim0_words, __ovl_sim1_words, __ovl_sim2_words,
+                                            __ovl_sim3_words };
+static int s_ovl = -1;
+
+static void ovl_load(int k)
+{
+    if (k == s_ovl)
+        return;
+    *(volatile uint32_t *)0x040000D4 = (uint32_t)s_ovl_lma[k];
+    *(volatile uint32_t *)0x040000D8 = (uint32_t)__ovl_base;
+    *(volatile uint32_t *)0x040000DC = (uint32_t)s_ovl_words[k] | 0x84000000u;
+    s_ovl = k;
+    if (k == OVL_DRAW && s_stamp > 60000)            /* (the tags came in zero: no stamp may be zero) */
+        s_stamp = 1;
+}
+static uint32_t s_tick_vbl;                      /* the retrace the next race tick is due at */
+static void ovl_load(int k);
+void race_phase_code(int k) { ovl_load(OVL_SIM0 + k); }
+
 /* the race from its start: its textures, its HUD, its music and effects as recorded; wiped in
    (or at once, for the host's measurements) */
 static void race_enter(int wipe)
@@ -579,6 +621,7 @@ static void race_enter(int wipe)
     hud_init();
     s_k = 0;
     race_start();                                    /* the cars on the grid */
+    s_tick_vbl = s_vbl - 2;
     for (i = 0; i < 128; i++)                        /* the menu's sprites off */
         ((volatile uint16_t *)0x07000000)[i * 4] = 2 << 8;
     s_sfx_trace = 0;
@@ -596,8 +639,6 @@ int main(void)
     for (i = 1; i < 4096; i++)
         s_rec[i] = udiv(1u << 24, (uint32_t)i);
     s_rec[0] = 1u << 24;
-    for (i = 1; i < 256; i++)
-        s_rsh[i] = (uint8_t)(s_rsh[i >> 1] + 1);
     REG_DISPCNT = 5 | 1 << 10 | 1 << 12 | 1 << 6;                       /* mode 5, BG2 */
     REG_BG2PA = (SW << 8) / 240;                     /* 160x128 stretched to 240x160 */
     REG_BG2PB = 0;
@@ -615,6 +656,7 @@ int main(void)
     REG_DISPSTAT = 1 << 3;                           /* the vertical blank interrupt */
     REG_IE = 1;
     REG_IME = 1;
+    ovl_load(OVL_DRAW);
     menu_enter();                                    /* BrMainMenu */
     for (;;) {
         const Frame *f;
@@ -632,6 +674,7 @@ int main(void)
                 ;
             s_back = (uint16_t *)(page ? 0x06000000 : 0x0600A000);
             t0c = clock32();
+            ovl_load(OVL_DRAW);
             i = menu_frame();
             g_stats[0] = 0xFFFFFFFFu;                    /* the menu: its frame's cycles */
             g_stats[1] = clock32() - t0c;
@@ -647,16 +690,37 @@ int main(void)
             page ^= 1;
             continue;
         }
-        t0c = clock32();
-        race_tick(REG_KEYS);                         /* a game frame of the race */
-        g_stats[8] = clock32() - t0c;                /* (its cycles) */
+        {   /* the race's ticks of 1/30 s that are due by the retrace count (two to a tick): as many
+               as the frame took, three at most (behind further, the race slows) */
+            int n = 0;
+            uint32_t ts;
+            while ((int32_t)(s_vbl - s_tick_vbl) < 2)
+                ;
+            t0c = clock32();
+            while ((int32_t)(s_vbl - s_tick_vbl) >= 2 && n < 3) {
+                race_tick(REG_KEYS);
+                s_tick_vbl += 2;
+                n++;
+            }
+            if ((int32_t)(s_vbl - s_tick_vbl) >= 2)
+                s_tick_vbl = s_vbl - 1;
+            ts = clock32() - t0c;
+            g_stats[8] = ts;                         /* the ticks' cycles */
+            g_stats[9] = (uint32_t)n;
+        }
+        g_dstat[0] = clock32();
+        ovl_load(OVL_DRAW);
+        g_dstat[1] = clock32();
         race_view(&s_frame);
         f = &s_frame;
+        g_dstat[2] = clock32();
         s_vis_list = race_cells(f);
+        g_dstat[3] = clock32();
         for (i = 0; i < NBUCKET; i++)
             s_bucket[i] = 0;
         s_npoly = 0;
         render_visible(f, &ncells, &nverts);
+        g_dstat[4] = clock32();
         while (g_probe[1])                           /* the host's: hold here, the lists built */
             ;
         t1 = clock32();
@@ -664,8 +728,14 @@ int main(void)
             ;
         tc = clock32();
         s_back = (uint16_t *)(page ? 0x06000000 : 0x0600A000);
+        g_dstat[5] = clock32();
         clear(0x7E8C);                               /* the desert sky */
+        g_dstat[6] = clock32();
         ndrawn = draw();
+        g_dstat[7] = clock32();
+        for (i = 0; i < 7; i++)                      /* the drawing's stages: overlay, view, cells, the */
+            g_dstat[8 + i] += i == 4 ? 0 : g_dstat[i + 1] - g_dstat[i];   /* walk, (flip), clear, raster */
+        g_dstat[15] += 1;
         t2 = clock32();
         dv = (int)(s_vbl - tl);                      /* the wipe, and START back to the menu */
         tl = s_vbl;
@@ -676,6 +746,7 @@ int main(void)
             if (!fade_step(dv)) {
                 s_hud_on = 0;
                 racing = 0;
+                ovl_load(OVL_DRAW);
                 menu_enter();
                 continue;
             }
@@ -691,6 +762,7 @@ int main(void)
         g_stats[5] = (uint32_t)ncells;
         g_stats[6] = (uint32_t)nverts;
         g_stats[7] = tc - t1;                            /* waited for the flip */
+        g_stats[10] = (uint32_t)dv;                      /* retraces the frame took */
         fi++;                                            /* game frames raced */
     }
 }

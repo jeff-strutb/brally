@@ -10,7 +10,8 @@ extern const fx g_rt_camView[2][3];
 extern const fx g_rt_lens;
 
 void race_start(void);
-void race_tick(uint32_t keys);           /* a game frame (1/30 s) of the cars, from the pad (KEYINPUT, active low) */
+void race_tick(uint32_t keys);
+void race_phase_code(int k);             /* gba/main.c: phase k's code into IWRAM (its overlay) */           /* a game frame (1/30 s) of the cars, from the pad (KEYINPUT, active low) */
 struct Frame;
 void race_view(void *frame);             /* the viewed car's camera as the renderer's Frame */
 const uint16_t *race_cells(const void *frame);   /* the cells in view, as render_visible's list */

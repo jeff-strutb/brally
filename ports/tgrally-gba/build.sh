@@ -23,26 +23,28 @@ CF="--target=armv4t-none-eabi -mcpu=arm7tdmi -marm -mfloat-abi=soft -O2 -ffreest
     -mlong-calls -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-exceptions -I$G/gba -Wall"
 clang $CF -c $G/gba/crt0.s -o $OUT/obj/crt0.o
 clang $CF -c $G/gba/span.s -o $OUT/obj/span.o
-clang $CF -c $G/gba/raster.s -o $OUT/obj/raster.o
+clang $CF $FRONTDEF -c $G/gba/raster.s -o $OUT/obj/raster.o
 clang $CF -c $G/gba/sound.s -o $OUT/obj/sound.o
 clang $CF -c $G/gba/hud.s -o $OUT/obj/hud.o
 clang $CF -c $OUT/hud_data.c -o $OUT/obj/hud_data.o
 clang $CF -c $OUT/sound_data.c -o $OUT/obj/sound_data.o
-clang $CF -c $G/gba/front.s -o $OUT/obj/front.o
+clang $CF $FRONTDEF -c $G/gba/front.s -o $OUT/obj/front.o
 clang $CF -c $G/gba/menu.s -o $OUT/obj/menu_s.o
 clang $CF $MAINDEF -c $G/gba/main.c -o $OUT/obj/main.o
 clang $CF $MAINDEF -c $G/gba/menu.c -o $OUT/obj/menu.o
 clang $CF -c $OUT/menu_data.c -o $OUT/obj/menu_data.o
 clang $CF -c $G/gba/libc.c -o $OUT/obj/libc.o
 SIM="geom rigid coll car camera simload fxmath"
-TF=$(echo "$CF" | sed 's/-marm/-mthumb/')        # the simulation runs from the cartridge: Thumb, half the fetches
+# the simulation: ARM, a section to each function (gba/place.txt puts the hot ones in IWRAM
+# overlays), plain branches (the link adds the stubs between the cartridge and IWRAM)
+TF="${SIMCF:-$(echo "$CF" | sed 's/-mlong-calls//')} -ffunction-sections $SIMDEF"
 clang $CF -c $G/gba/fxarm.s -o $OUT/obj/fxarm.o
 clang $CF -c $G/gba/aeabi.s -o $OUT/obj/aeabi.o
 for f in $SIM; do clang $TF -I$G/sim -c $G/sim/$f.c -o $OUT/obj/sim_$f.o; done
-clang $CF -I$G/sim -c $G/sim/geomhot.c -o $OUT/obj/sim_geomhot.o    # ARM in IWRAM
+clang $TF -I$G/sim -c $G/sim/geomhot.c -o $OUT/obj/sim_geomhot.o
 clang $TF -I$G/sim -c $G/gba/race.c -o $OUT/obj/race.o
 clang $CF -I$G/sim -I$G/gba -c $OUT/race_data.c -o $OUT/obj/race_data.o
 clang $CF -c $OUT/world_data.c -o $OUT/obj/world_data.o
-$PY $G/tools/gbalink.py $OUT/tgrally_poc.gba $OUT/obj/crt0.o $OUT/obj/span.o $OUT/obj/raster.o $OUT/obj/sound.o $OUT/obj/hud.o $OUT/obj/front.o $OUT/obj/main.o $OUT/obj/libc.o $OUT/obj/world_data.o $OUT/obj/sound_data.o $OUT/obj/hud_data.o \
+GBALINK_PLACE=$G/gba/place.txt $PY $G/tools/gbalink.py $OUT/tgrally_poc.gba $OUT/obj/crt0.o $OUT/obj/span.o $OUT/obj/raster.o $OUT/obj/sound.o $OUT/obj/hud.o $OUT/obj/front.o $OUT/obj/main.o $OUT/obj/libc.o $OUT/obj/world_data.o $OUT/obj/sound_data.o $OUT/obj/hud_data.o \
     $OUT/obj/menu.o $OUT/obj/menu_s.o $OUT/obj/menu_data.o $OUT/obj/race.o $OUT/obj/race_data.o $OUT/obj/fxarm.o $OUT/obj/aeabi.o \
     $(for f in $SIM geomhot; do echo $OUT/obj/sim_$f.o; done)

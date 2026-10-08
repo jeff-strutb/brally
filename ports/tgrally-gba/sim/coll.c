@@ -47,6 +47,9 @@ SimCell BrCollGridCellAcquire(fx x, fx y)
    least-aligned axes (Badouel's test cut down to one triangle) */
 int BrCrTriContainsPoint(const Plane *pT, const fx *pP)
 {
+#ifndef FX_FLOAT
+    return sim_tri_contains(pT, pP);
+#else
     fx a0, a1, d1, b1, d2, b2, c1, c2, u, v;
     int c, i1, i2, r;
 
@@ -84,6 +87,7 @@ int BrCrTriContainsPoint(const Plane *pT, const fx *pP)
         }
     }
     return (short)r;
+#endif
 }
 
 fx BrCrPlaneDist(const fx *n, fx d, const fx *p)
@@ -240,7 +244,7 @@ static int BrPolyIntersectsCube(fx verts[3][3], const fx polynormal[3])
     return BrPolyContainsPoint3d(verts, polynormal, p);
 }
 
-static int BrTriCubeTest(fx tri[3][3], const fx *norm)
+SIM_OWN static int BrTriCubeTest(fx tri[3][3], const fx *norm)
 {
     int r = BrTriCubeTrivial(tri);
     if (r == -1)
@@ -251,7 +255,7 @@ static int BrTriCubeTest(fx tri[3][3], const fx *norm)
 /* ---- driving/collresp.c ---- */
 
 /* BrCrContactKick: bounce the velocity off a contact normal (game mode 4's edge case) */
-static int BrCrContactKick(Body *b, const fx *pN, int dampFlag, int spinFlag)
+SIM_OWN static int BrCrContactKick(Body *b, const fx *pN, int dampFlag, int spinFlag)
 {
     fx t[3], v[3], M[4][4], d, k;
     RbState *cur = &b->stB;
@@ -430,22 +434,38 @@ static void tri_in_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *pP)
     nrm[2] = FMUL(e1[0], e2[1]) - FMUL(e1[1], e2[0]);
 }
 
+/* the triangle against the box (tri_in_box, BrTriCubeTest): the fixed-point builds' in 32 bits
+   where the triangle is small enough (geomhot.c sim_tri_box) */
+SIM_OWN static int tri_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *pP)
+{
+#ifndef FX_FLOAT
+    int r = sim_tri_box(v, nrm, m, pP);
+    if (r >= 0)
+        return r;
+#endif
+    tri_in_box(v, nrm, m, pP);
+    return BrTriCubeTest(v, nrm);
+}
+
 /* BrCollRespBroadPhase: the cell's triangles touching the body's box, onto the contact list
    (the cell walked backwards on alternate frames) */
-static int BrCollRespBroadPhase(Body *b, fx m[4][4])
+SIM_OWN static int BrCollRespBroadPhase(Body *b, fx m[4][4])
 {
     fx v[3][3], nrm[3];
     SimCell cell;
-    int i, n = 0;
+    int i, n = 0, npick;
+    int32_t q[6];
+    uint16_t pick[256];
 
     cell = BrCollGridCellAcquire(b->m[3][0], b->m[3][1]);
-    for (i = 0; i < cell.n; i++) {
-        const Plane *pP = &g_track->planes[cell.tris[g_world.walkBack ? cell.n - 1 - i : i]];
+    sim_pick_box(q, b->m[3], FX(8.7f)); /* (the box's cube reaches 5 x sqrt 3 from its middle) */
+    npick = sim_cell_pick(&cell, q, pick);
+    for (i = 0; i < npick; i++) {
+        const Plane *pP = &g_track->planes[cell.tris[pick[g_world.walkBack ? npick - 1 - i : i]]];
         fx dx = pP->c[0] - b->m[3][0], dy = pP->c[1] - b->m[3][1], dz = pP->c[2] - b->m[3][2], rr = pP->r + FX(8.7f);
         if (FMUL(dx, dx) + FMUL(dy, dy) + FMUL(dz, dz) > FMUL(rr, rr))
             continue;                   /* (beyond the unit cube's reach: 5 x sqrt 3 units at the box's 0.1) */
-        tri_in_box(v, nrm, m, pP);
-        if (BrTriCubeTest(v, nrm) != 0) {
+        if (tri_box(v, nrm, m, pP) != 0) {
             if (s_ncontact < (int)(sizeof s_contact / sizeof s_contact[0]))
                 s_contact[s_ncontact++] = pP;
             n++;
@@ -455,7 +475,7 @@ static int BrCollRespBroadPhase(Body *b, fx m[4][4])
 }
 
 /* BrCollRespTipKick: a car standing on its nose, nudged over */
-static int BrCollRespTipKick(Body *b)
+SIM_OWN static int BrCollRespTipKick(Body *b)
 {
     Body *pW = 0;
     fx p[3], w[3], t, best;
@@ -463,6 +483,11 @@ static int BrCollRespTipKick(Body *b)
 
     BrQuatToMat(b->m, &b->stA);
     best = FX(100.0f);
+    count = 0;
+    for (k = 0; k < 4; k++)             /* (none or three or four wheels down: no kick, nothing to measure) */
+        count += b->sub[k]->x1b4 != 0;
+    if (count > 2 || count < 1)
+        return 0;
     count = 0;
     for (k = 0; k < 4; k++) {
         if (b->sub[k]->x1b4 != 0) {
@@ -507,7 +532,7 @@ static int BrCollRespTipKick(Body *b)
 }
 
 /* BrCrPlaneResolve: a candidate contact's push-out */
-static void BrCrPlaneResolve(Body *b, const fx *pA, fx planeD, const fx *pEdgeN, fx v[3][3])
+SIM_OWN static void BrCrPlaneResolve(Body *b, const fx *pA, fx planeD, const fx *pEdgeN, fx v[3][3])
 {
     fx c[3], s;
     int sgn, k;
@@ -551,7 +576,7 @@ static void BrCrPlaneResolve(Body *b, const fx *pA, fx planeD, const fx *pEdgeN,
 }
 
 /* BrCrRespWalk: this frame's contacts against the stepped state, each answered */
-static int BrCrRespWalk(Body *b, fx m[4][4])
+SIM_OWN static int BrCrRespWalk(Body *b, fx m[4][4])
 {
     fx v[3][3], nrm[3], e1[3], sign[3], planeD, d, dp[3];
     const Plane *pP;
@@ -562,8 +587,7 @@ static int BrCrRespWalk(Body *b, fx m[4][4])
     cnt = 0;
     for (k = s_ncontact - 1; k >= 0; k--) {
         pP = s_contact[k];
-        tri_in_box(v, nrm, m, pP);
-        if (BrTriCubeTest(v, nrm) == 0)
+        if (tri_box(v, nrm, m, pP) == 0)
             continue;
         BrVec3NormaliseF(nrm);
         flag = 1;
@@ -636,6 +660,7 @@ static void BrCarCarCollide(void);
 void BrCarPhysAdvance(Body *b)
 {
     fx m[4][4], s[3], t, dt;
+    SP_BEGIN;
 
     s_ncontact = 0;
     D_8037EAA8[0] = FX(0.0f);
@@ -651,6 +676,7 @@ void BrCarPhysAdvance(Body *b)
     s[2] = FX(0.1f);
     BrMat4InvertScaled(b->m, m, s);
     BrCollRespBroadPhase(b, m);
+    SP(12);
     s[0] = FDIV(FX(1.0f), b->box[0]);
     t = FX(0.033333335f);
     s[1] = FDIV(FX(1.0f), b->box[1]);
@@ -658,15 +684,19 @@ void BrCarPhysAdvance(Body *b)
     dt = FDIVK(t, 4);
     while (t > FX(0.002f)) {
         BrCollRespTipKick(b);
+        SP(13);
         BrCarCarCollide();
+        SP(14);
         BrRbStateStep(&b->stB, &b->stA, dt);
         BrQuatToMat(b->m, &b->stB);
         BrMat4InvertScaled(b->m, m, s);
         m[3][2] -= b->box[3];
+        SP(15);
         if (BrCrRespWalk(b, m) != 0) {
             BrRbQuatDerivative(&b->stB);
             BrQuatToMat(b->m, &b->stB);
         }
+        SP(16);
         b->stA = b->stB;
         t -= dt;
     }
@@ -682,7 +712,7 @@ void BrCarPhysAdvance(Body *b)
 }
 
 /* BrObbOverlap: two oriented boxes overlap (the separating-axis test, all fifteen axes) */
-static int BrObbOverlap(const fx *m, const fx *t, const fx *a, const fx *b)
+SIM_OWN static int BrObbOverlap(const fx *m, const fx *t, const fx *a, const fx *b)
 {
     int ok, in;
     fx c, d, am[9];
@@ -732,7 +762,7 @@ static int BrObbOverlap(const fx *m, const fx *t, const fx *a, const fx *b)
 /* BrCarCarCollide: every live pair within 5 units, as oriented 2.5 x 1 x 1 boxes; an
    overlapping pair pushed apart by an impulse along the line between them (the first
    pair that does not overlap ends the pass, as in the game) */
-static void BrCarCarCollide(void)
+SIM_OWN static void BrCarCarCollide(void)
 {
     static const fx ext[3] = { FX(2.5f), FX(1.0f), FX(1.0f) };
     fx d[3], s, x, mA[3][3], mB[3][3], mR[3][3], dd[3], t[3], sd[3], imp[3];

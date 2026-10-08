@@ -55,9 +55,12 @@ def main():
         hi = [max(v0[k], v1[k], v2[k]) for k in range(3)]
         cen = [(lo[k] + hi[k]) / 2 for k in range(3)]
         rad = max(math.sqrt(sum((v[k] - cen[k]) ** 2 for k in range(3))) for v in (v0, v1, v2)) + 0.01
-        planes.append('{{%s},%s,s_verts[%d],s_verts[%d],s_verts[%d],%d,%d,0,{%s},%s,%s,%s,%s,%s}' % (
+        bx = []                                                  # sim_plane_bounds' eighths
+        for k in range(3):
+            bx += [math.floor(lo[k] * 8) - 2, math.floor(hi[k] * 8) + 3]
+        planes.append('{{%s},%s,s_verts[%d],s_verts[%d],s_verts[%d],%d,%d,0,{%s},%s,%s,%s,%s,%s,{%s}}' % (
             ','.join(q(c) for c in nn), q(d), t[0], t[1], t[2], i, surf[i] & 7, ','.join(q(c) for c in cen), q(rad),
-            q(lo[0] - 0.01), q(hi[0] + 0.01), q(lo[1] - 0.01), q(hi[1] + 0.01)))
+            q(lo[0] - 0.01), q(hi[0] + 0.01), q(lo[1] - 0.01), q(hi[1] + 0.01), ','.join(map(str, bx))))
     o.append('static const Plane s_planes[%d] = {%s};' % (nt, ','.join(planes)))
     o.append('static const uint16_t s_cellStart[4097] = {%s};' % ','.join(map(str, cs)))
     o.append('static const uint16_t s_cellTris[%d] = {%s};' % (max(1, len(ct)), ','.join(map(str, ct)) or '0'))

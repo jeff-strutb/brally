@@ -9,7 +9,7 @@ SimCell BrCollGridCellAcquire(fx x, fx y);
 
 /* a triangle the segment from + dir (t in 0..1.1) cannot reach: its sphere farther from the
    segment's middle than half the segment's length (the work the loops below pass by) */
-static int seg_far(const Plane *p, const fx *from, const fx *dir)
+SIM_OWN static int seg_far(const Plane *p, const fx *from, const fx *dir)
 {
     fx m[3], d2, hl, rr;
     int k;
@@ -24,13 +24,15 @@ static int seg_far(const Plane *p, const fx *from, const fx *dir)
 /* BrCarCamWallPush: keep the chase camera out of walls (a ray from the target to the
    camera against the triangles of both ends' cells; on a hit, the wall it came through
    from its last place, 0.1 in front of it, no nearer the target than it was) */
-static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
+SIM_OWN static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
 {
     fx dir[3], hit[3], toV0[3], hitOut[3] = { 0, 0, 0 }, tBest, denom, t, len, dist;
     SimCell cells[2];
     const Plane *pBest;
     const fx *from;
-    int c, i, nCells;
+    int c, i, nCells, npick;
+    int32_t q[6];
+    uint16_t pick[256];
 
     g_world.camPushed = 0;
     cells[0] = BrCollGridCellAcquire(car->camTarget[0], car->camTarget[1]);
@@ -44,9 +46,11 @@ static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
         tBest = FDIV(len + FX(0.1f), len);
     else
         tBest = FX(1.0f);
+    sim_pick_seg(q, car->camTarget, pos, FX(0.15f));   /* (a hit lies on the way, 0.1 past pos at most) */
     for (c = 0; c < nCells; c++) {
-        for (i = 0; i < cells[c].n; i++) {
-            const Plane *pP = &g_track->planes[cells[c].tris[i]];
+        npick = sim_cell_pick(&cells[c], q, pick);
+        for (i = 0; i < npick; i++) {
+            const Plane *pP = &g_track->planes[cells[c].tris[pick[i]]];
             if (seg_far(pP, from, dir))
                 continue;
             denom = BrVec3Dot(dir, pP->n);
@@ -72,9 +76,11 @@ static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
     from = prev;
     pBest = 0;
     tBest = FX(1.0f);
+    sim_pick_seg(q, prev, pos, FX(0.05f));
     for (c = 0; c < nCells; c++) {
-        for (i = 0; i < cells[c].n; i++) {
-            const Plane *pP = &g_track->planes[cells[c].tris[i]];
+        npick = sim_cell_pick(&cells[c], q, pick);
+        for (i = 0; i < npick; i++) {
+            const Plane *pP = &g_track->planes[cells[c].tris[pick[i]]];
             if (seg_far(pP, from, dir))
                 continue;
             denom = BrVec3Dot(dir, pP->n);
@@ -147,7 +153,7 @@ void BrCarCamPlaceBehind(Car *car, fx (*mtx)[4], fx t)
 }
 
 /* BrCarCamTargetStep: the target above the car, led ahead while it turns slowly */
-static void BrCarCamTargetStep(Car *car)
+SIM_OWN static void BrCarCamTargetStep(Car *car)
 {
     fx spin, want;
 
@@ -179,7 +185,7 @@ static void BrCarCamTargetStep(Car *car)
 }
 
 /* BrCarCamLookAt: aim a camera at the car's camera target */
-static void BrCarCamLookAt(Car *car, fx (*mtx)[4])
+SIM_OWN static void BrCarCamLookAt(Car *car, fx (*mtx)[4])
 {
     fx v[3], len;
 
@@ -275,6 +281,7 @@ void BrCamChaseStep(Car *car)
     if (car->fly != 0) {
         for (i = 0; i < 16; i++)
             (&car->cams[0].mtx[0][0])[i] = (&car->mtx0[0][0])[i];
+        sim_car_wheels(car);
         car->cams[0].fov = car->wheelMtx[0][0][0];
     } else {
         fx *v = car->camView;

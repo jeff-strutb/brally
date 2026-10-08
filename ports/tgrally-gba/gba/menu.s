@@ -9,7 +9,7 @@
 @        the light's way (Q12), its level, the ambient's, s_rec
 @     out: x, y (Q4 pixels), w (W >> 10), the light 0..255
 @   void icon_tris(const MTri *t, int n, const MV *mv, int front)
-        .section .iwram, "ax"
+        .section .ovl_draw, "ax"
         .arm
         .global icon_xform, icon_tris
 

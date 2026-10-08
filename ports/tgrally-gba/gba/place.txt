@@ -1,0 +1,73 @@
+# place.txt -- where the race physics' hot functions run (tools/gbalink.py GBALINK_PLACE):
+# FUNCTION REGION, the region "iwram" (resident) or an overlay's name, which gba/main.c copies
+# into IWRAM before its phase of the tick runs (gba/race.c, sim/car.c sim_tick_phase); the rest
+# stays in the cartridge.  tools/ovlcheck.py checks that no phase reaches another's code.
+# entry sim0 sim_tick_input
+# entry sim1 sim_step_forces
+# entry sim2 sim_step_collide
+# entry sim3 sim_tick_after
+# calls sim_tick_after BrCamChaseStep
+# dispatch sim_tick_phase BrCarPhysTick BrCarPhysStep
+# ok race_start BrCamChaseStep
+
+# every phase's
+BrMat4RotateVec         iwram
+BrMat4RotateVecT        iwram
+BrMat3MulVecRows        iwram
+BrMat3MulVec            iwram
+BrMat3Mul               iwram
+BrQuatToMat             iwram
+BrRbQuatDerivative      iwram
+BrRbVelAtPoint          iwram
+BrVec3NormaliseF        iwram
+BrCollGridCellAcquire   iwram
+sim_cell_pick           iwram
+sim_pick_box            iwram
+sim_tri_contains        iwram
+
+# 0: the ground ray and the pad
+sim_tick_input          sim0
+BrGroundRay             sim0
+BrCarDriveInput         sim0
+
+# 1: the forces
+sim_step_forces         sim1
+BrTyreSprings           sim1
+BrWheelTyre             sim1
+BrRbForcesClear         sim1
+forces_sum              sim1
+BrRbSolveAccel          sim1
+BrRbIntegrate           sim1
+BrCarAxleGrip           sim1
+BrRbVelAtFlatPoint      sim1
+BrRbVelAtBodyPoint      sim1
+BrTyreSkidCheck         sim1
+BrTyreLoads             sim1
+
+# 2: the collision
+sim_step_collide        sim2
+BrCarPhysAdvance        sim2
+BrCollRespBroadPhase    sim2
+tri_box                 sim2
+sim_tri_box             sim2
+trivial24               sim2
+seg24                   sim2
+contains24              sim2
+BrRbStateStep           sim2
+BrMat4InvertScaled      sim2
+BrCrRespWalk            sim2
+BrCrPlaneResolve        sim2
+BrCrImpulseSolve        sim2
+
+# 3: the wheels on the ground, the matrices, the camera
+sim_tick_after          sim3
+sim_step_ground         sim3
+BrTyreDepthAll          sim3
+BrWheelGroundProbe      sim3
+sim_probe_walk          sim3
+BrCarBuildMatrices      sim3
+BrCamChaseStep          sim3
+BrCarCamPlaceBehind     sim3
+BrCarCamTargetStep      sim3
+BrCarCamWallPush        sim3
+seg_far                 sim3

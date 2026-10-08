@@ -31,6 +31,8 @@ typedef struct Plane {                  /* a track triangle's collision plane (B
        each a little generous), so the answers stay the game's and the work falls */
     fx c[3], r;
     fx xmin, xmax, ymin, ymax;
+    int16_t bx[6];                      /* the corners' box in eighths, a little wide: x, y, z each
+                                           low then high (sim_cell_pick's) */
 } Plane;
 
 typedef struct Body {                   /* a rigid body (0x208 bytes in the game) */
@@ -207,6 +209,19 @@ void BrMat3Sub(fx out[3][3], fx a[3][3], fx b[3][3]);
 void BrMat3Solve(fx out[3], fx m[3][3], const fx v[3]);
 void BrMat4InvertScaled(fx m[4][4], fx out[4][4], const fx s[3]);
 void BrQuatToMat(fx m[4][4], const RbState *s);
+void sim_car_wheels(Car *car);
+void sim_tick_phase(Car *car, int k);   /* BrCarPhysTick's phase k (0..3) */
+void sim_tick_input(Car *car);
+void sim_step_forces(Car *car);
+void sim_step_collide(Car *car);
+void sim_step_ground(Car *car);
+void sim_tick_after(Car *car);
+int sim_cell_pick(const SimCell *c, const int32_t q[6], uint16_t *out);   /* the cell's entries whose box meets q */
+void sim_pick_box(int32_t q[6], const fx *p, fx r);
+int sim_tri_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *p);   /* a triangle against the box, in 32 bits */
+int sim_tri_contains(const Plane *t, const fx *p);
+fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick, const fx *world, const fx *dir);
+void sim_pick_seg(int32_t q[6], const fx *a, const fx *b, fx pad);   /* q: a to b's box, pad wider */   /* q: p's box r wide each way, in eighths */          /* the wheels' matrices (BrCarBuildMatrices' rest) */
 void BrVec4Normalise(fx v[4]);
 void BrVec3NormaliseF(fx v[3]);
 void BrRbQuatDerivative(RbState *b);
@@ -214,4 +229,19 @@ void BrRbStateStep(RbState *out, const RbState *in, fx dt);
 void guRotateF(fx m[4][4], fx a, fx x, fx y, fx z);
 void guMtxCatF(fx m[4][4], fx n[4][4], fx r[4][4]);
 fx BrAtan2(fx x, fx y);
+/* SIM_OWN: a helper kept a function of its own (not folded into its caller), so the GBA's
+   link can place it (gba/place.txt) */
+#define SIM_OWN __attribute__((noinline))
+
+/* SIM_PROF: the cycles of each stage of a tick, summed into g_simprof (gba/race.c) */
+#ifdef SIM_PROF
+extern uint32_t g_simprof[24];
+uint32_t sim_clock(void);
+#define SP_BEGIN uint32_t sp_t_ = sim_clock()
+#define SP(k) do { uint32_t n_ = sim_clock(); g_simprof[k] += n_ - sp_t_; sp_t_ = n_; } while (0)
+#else
+#define SP_BEGIN
+#define SP(k) ((void)0)
+#endif
+
 #endif

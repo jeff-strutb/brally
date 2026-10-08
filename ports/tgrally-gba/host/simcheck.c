@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "simload.h"
+#ifndef DRIVE_SIGN
+#define DRIVE_SIGN -1
+#endif
 
 #define CARS 2
 #define CAR_SIZE 0x2090
@@ -193,7 +196,13 @@ int main(int argc, char **argv)
     FILE *f;
     long size;
     uint8_t *ticks;
-    int n, t, k, fails = 0, checked = 0, freerun = argc > 2 && !strcmp(argv[2], "free");
+    int n, t, k, fails = 0, checked = 0, drive = argc > 2 && !strcmp(argv[2], "drive");
+    int traj = drive || (argc > 2 && !strcmp(argv[2], "traj"));
+    int freerun = traj || (argc > 2 && !strcmp(argv[2], "free"));
+    double offsum = 0, offmax = 0, vsum = 0, vref = 0;
+    int stuck = 0;
+    double sum = 0;
+    int nsum = 0;
     double worst = 0;
 
     snprintf(path, sizeof path, "%s/ram.bin", argv[1]);
@@ -260,8 +269,63 @@ int main(int argc, char **argv)
                 s_cars[k].body.landed = cr[0x148 + 0x203];
             }
         }
+        if (drive) {                                  /* steered back onto the cartridge's path */
+            Car *c = &s_cars[slot];
+            int ahead = t + 1 + 2 * CARS * 20, j;
+            double px = FROMFX(c->body.st.pos[0]), py = FROMFX(c->body.st.pos[1]), dx, dy, fw, sd, st;
+            if (ahead >= n)
+                ahead = n - 1 - ((n - 1 - (t + 1)) % (2 * CARS));
+            for (j = ahead; j > t && (ticks[(size_t)j * REC] != 'O'); j--)
+                ;
+            dx = bef(ticks + (size_t)j * REC + 6 + slot * CAR_SIZE + 0x1C0) - px;
+            dy = bef(ticks + (size_t)j * REC + 6 + slot * CAR_SIZE + 0x1C4) - py;
+            fw = dx * FROMFX(c->mtx0[0][0]) + dy * FROMFX(c->mtx0[0][1]);
+            sd = dx * FROMFX(c->mtx0[1][0]) + dy * FROMFX(c->mtx0[1][1]);
+            st = DRIVE_SIGN * atan2(sd, fabs(fw) + 4.0) * 1.2;
+            if (st > 1) st = 1;
+            if (st < -1) st = -1;
+            s_pads[slot].steer = TOFX(st);
+        }
         BrCarPhysTick(&s_cars[slot]);
+        sim_car_wheels(&s_cars[slot]);       /* (the drawing's, compared too) */
+        if (drive && slot == 0) {                     /* how far from the path, how fast */
+            double px = FROMFX(s_cars[0].body.st.pos[0]), py = FROMFX(s_cars[0].body.st.pos[1]), best = 1e9;
+            int j;
+            for (j = t + 1 - 400; j <= t + 1 + 400; j += 2 * CARS) {
+                double ex, ey;
+                if (j < 1 || j >= n || ticks[(size_t)j * REC] != 'O')
+                    continue;
+                ex = bef(ticks + (size_t)j * REC + 6 + 0x1C0) - px;
+                ey = bef(ticks + (size_t)j * REC + 6 + 0x1C4) - py;
+                if (ex * ex + ey * ey < best)
+                    best = ex * ex + ey * ey;
+            }
+            best = sqrt(best);
+            offsum += best;
+            if (best > offmax)
+                offmax = best;
+            vsum += FROMFX(s_cars[0].speedMph);
+            vref += bef(out + 6 + 0xFE4);
+            if (FROMFX(s_cars[0].speedMph) < 2 && bef(out + 6 + 0xFE4) > 20)
+                stuck++;
+        }
         checked++;
+        if (traj) {                                   /* the path against the cartridge's */
+            const uint8_t *cr = out + 6 + slot * CAR_SIZE;
+            double dx = FROMFX(s_cars[slot].body.st.pos[0]) - bef(cr + 0x1C0);
+            double dy = FROMFX(s_cars[slot].body.st.pos[1]) - bef(cr + 0x1C4);
+            double dz = FROMFX(s_cars[slot].body.st.pos[2]) - bef(cr + 0x1C8);
+            double dd = sqrt(dx * dx + dy * dy + dz * dz);
+            sum += dd;
+            nsum++;
+            if (t % 200 == 0)
+                printf("frame %4d car%d at %9.3f %9.3f %7.3f, %6.1f mph; the cartridge's %9.3f %9.3f %7.3f, %6.1f mph; apart %.2f\n",
+                       t / 2, slot, FROMFX(s_cars[slot].body.st.pos[0]), FROMFX(s_cars[slot].body.st.pos[1]),
+                       FROMFX(s_cars[slot].body.st.pos[2]), FROMFX(s_cars[slot].speedMph), bef(cr + 0x1C0), bef(cr + 0x1C4),
+                       bef(cr + 0x1C8), bef(cr + 0xFE4), dd);
+            checked++;
+            continue;
+        }
         if (freerun && t % 400 == 0)
             for (k = 0; k < CARS; k++) {
                 const uint8_t *cr = out + 6 + k * CAR_SIZE;
@@ -280,6 +344,13 @@ int main(int argc, char **argv)
             if (freerun && fails >= 40)
                 break;
         }
+    }
+    if (drive)
+        printf("driven: off the path %.2f on average, %.2f at most; %.1f mph on average, the cartridge's %.1f; %d frames stuck\n",
+               offsum / (checked / 2), offmax, vsum / (checked / 2), vref / (checked / 2), stuck);
+    if (traj) {
+        printf("%d physics frames run, the cars on average %.2f from the cartridge's\n", checked, sum / nsum);
+        return 0;
     }
     printf("%d physics frames checked, %d differ\n", checked, fails);
     return fails != 0;

@@ -18,6 +18,8 @@ from preview import tex_avg
 
 CELL = 32                     # world units a grid cell
 MAXEDGE = 10000               # longer edges are split (in effect off: the runtime subdivision cuts deep ones)
+PXUNIT = 224                  # the race view's pixels across a unit at a distance of one (cot 15 deg x 80 / (4/3))
+MINPX = 1.5                   # the whole track: a triangle smaller on the screen than this is not drawn
 TEXMAX = 64                   # textures larger than this are halved until they fit
 LEVELS = 8                    # brightness levels a texture is stored at (the shading, baked)
 SW, SH = 160, 128             # the GBA bitmap mode 5 screen
@@ -103,7 +105,8 @@ def split(pts):
 
 def main():
     ram, dump, f0, f1, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
-    if dump.endswith('-'):                # the whole track from the snapshot alone (no recorded race)
+    whole = dump.endswith('-')
+    if whole:                             # the whole track from the snapshot alone (no recorded race)
         import trackworld
         cams = {}
         keep, tex = trackworld.build(ram)
@@ -133,6 +136,9 @@ def main():
         rgb = [a[i] * (col[i] + col[4 + i] + col[8 + i]) / 3 for i in range(3)]
         cen = (int(centre[0] - org[0]), int(centre[1] - org[1]))   # the object's: its detail range is measured there
         dl, dh = max(0, int(dlo) - 8) // 8, min(255, (int(dhi) + 8 + 7) // 8)
+        if whole:                                 # no recorded draw distances: past where it is too small
+            size = max(math.dist(pts[i], pts[(i + 1) % 3]) for i in range(3))
+            dh = min(dh, int(size * PXUNIT / MINPX / 8) + 2)
         ti, uv = 0xFFFF, [(0.0, 0.0)] * 3
         if tx and key in tex and tile:
             s0, t0, ss, ts, cs, ct, ms, mt = tile[:8]

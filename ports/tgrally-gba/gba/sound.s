@@ -771,6 +771,10 @@ snd_vblank:
         ldr     r3, =0xB640
         strh    r3, [r1, #0xC6]
         strh    r3, [r1, #0xD2]
+        ldr     r0, =s_song             @ no module yet (before the first snd_play): the buffers
+        ldr     r0, [r0]                @ stay silent
+        cmp     r0, #0
+        beq     2f
         ldr     r0, =s_sfx_trace
         ldr     r0, [r0]
         cmp     r0, #0
@@ -787,6 +791,6 @@ snd_vblank:
         add     r5, r5, #CHUNK
         subs    r6, r6, #1
         bne     1b
-        ldmfd   sp!, {r4-r6, lr}
+2:      ldmfd   sp!, {r4-r6, lr}
         bx      lr
         .ltorg

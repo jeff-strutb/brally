@@ -15,7 +15,7 @@
         .global s_vis_list
 s_vis_list: .space 4                    @ render_visible's list, when the frame makes its own
 
-        .section .iwram, "ax"
+        .section .ovl_draw, "ax"
         .arm
         .global render_visible, project, emit, persp, cut, tri
 
@@ -23,8 +23,29 @@ s_vis_list: .space 4                    @ render_visible's list, when the frame 
         .equ    SH, 128
         .equ    NEAR, 128               @ the near plane, W in 1/256 units
         .equ    GMAX, 3                 @ an edge's halvings at most
+        .ifndef DEEP
+        .equ    DEEP, 0                 @ halved when the far end is more than 1 + 2^DEEP times as deep
+        .endif
+        .ifndef MINEDGE
+        .equ    MINEDGE, 256            @ and the edge longer than this (sixteenths of a pixel)
+        .endif
         .equ    MAXPOLY, 2400
         .equ    NBUCKET, 256
+        .ifndef DOTA
+        .equ    DOTA, 2048              @ a triangle under 4 square pixels is a dot
+        .endif
+
+@ COUNT builds: g_fcount[k] += 1 (main.c), the flags and registers kept
+        .macro  CNT k
+        .ifdef  COUNT
+        stmfd   sp!, {r0, r1}
+        ldr     r0, =g_fcount
+        ldr     r1, [r0, #\k * 4]
+        add     r1, r1, #1
+        str     r1, [r0, #\k * 4]
+        ldmfd   sp!, {r0, r1}
+        .endif
+        .endm
 
 @ project: r0 = PV; sx, sy from X, Y, W.  Clobbers r1-r3, r12.
 project:
@@ -69,6 +90,7 @@ project:
 @ emit: r0 a, r1 b, r2 c (PV); into the buckets if it faces us and is on the
 @ screen.  Colour and texture from s_ct.  AAPCS.
 emit:
+        CNT     3
         stmfd   sp!, {r4-r11, lr}
         ldr     r3, [r0, #12]           @ a
         ldr     r4, [r0, #16]
@@ -129,7 +151,11 @@ emit:
         mov     r9, r9, asr #4
         cmp     r9, r10, asr #4
         bge     9f
-        ldr     r11, =s_npoly
+        cmn     r12, #1                 @ under DOTA (twice the area, 1/256 pixels): a dot
+        bne     1f
+        cmn     r11, #DOTA
+        bgt     .Ldot
+1:      ldr     r11, =s_npoly
         ldr     r12, [r11]
         ldr     r3, =MAXPOLY
         cmp     r12, r3
@@ -171,6 +197,58 @@ emit:
         str     r12, [r11]
 9:      ldmfd   sp!, {r4-r11, lr}
         bx      lr
+@ a triangle too small to set up: its colour at the pixel under its middle, in its bucket as
+@ a Poly with tex 0xFFFE (raster.s draw), x and y in its first two words
+.Ldot:
+        ldr     r11, =s_npoly
+        ldr     r12, [r11]
+        ldr     r9, =MAXPOLY
+        cmp     r12, r9
+        bge     9b
+        add     r9, r3, r5              @ the middle: the corners' sum / 3 / 16
+        add     r9, r9, r7
+        add     r10, r4, r6
+        add     r10, r10, r8
+        ldr     lr, =0x5556
+        mul     r9, lr, r9
+        mul     r10, lr, r10
+        mov     r9, r9, asr #20
+        mov     r10, r10, asr #20
+        cmp     r9, #0
+        movlt   r9, #0
+        cmp     r9, #SW - 1
+        movgt   r9, #SW - 1
+        cmp     r10, #0
+        movlt   r10, #0
+        cmp     r10, #SH - 1
+        movgt   r10, #SH - 1
+        ldr     r3, [r0, #8]            @ the depth key, as for a poly
+        ldr     r4, [r1, #8]
+        add     r3, r3, r4
+        ldr     r4, [r2, #8]
+        add     r3, r3, r4
+        mov     r3, r3, asr #8
+        cmp     r3, #NBUCKET - 1
+        movgt   r3, #NBUCKET - 1
+        mov     r4, r12, lsl #4
+        sub     r4, r4, r12, lsl #1     @ 14 n
+        ldr     lr, =s_poly
+        add     lr, lr, r4, lsl #2
+        str     r9, [lr]
+        str     r10, [lr, #4]
+        ldr     r4, =s_bucket
+        add     r4, r4, r3, lsl #1
+        ldrh    r5, [r4]
+        ldr     r6, =s_ct
+        ldrh    r6, [r6]                @ the colour
+        orr     r6, r6, r5, lsl #16     @ col | next << 16
+        str     r6, [lr, #48]
+        ldr     r6, =0xFFFE
+        strh    r6, [lr, #52]
+        add     r12, r12, #1
+        strh    r12, [r4]
+        str     r12, [r11]
+        b       9b
         .ltorg
 
 @ halve: r8 |= bit when edge p-q is to be halved (main.c's halve: fewer than
@@ -185,7 +263,7 @@ emit:
         rsblt   r2, r2, #0              @ hi - lo
         cmp     r0, r1
         movgt   r0, r1                  @ lo
-        cmp     r2, r0
+        cmp     r2, r0, lsl #DEEP
         ble     1f
         ldr     r0, [\p, #12]
         ldr     r1, [\q, #12]
@@ -196,7 +274,7 @@ emit:
         subs    r1, r1, r2
         rsblt   r1, r1, #0
         add     r0, r0, r1
-        cmp     r0, #256
+        cmp     r0, #MINEDGE
         orrgt   r8, r8, #\bit
 1:
         .endm
@@ -268,7 +346,7 @@ persp:
         cmp     r12, r5
         movgt   r5, r12
         sub     r5, r5, r4
-        cmp     r5, r4
+        cmp     r5, r4, lsl #DEEP
         ldmfd   sp!, {r4, r5}
         ble     emit
         b       7f
@@ -769,6 +847,7 @@ render_visible:
         cmp     r5, #0
         beq     .Lcell
 .Ltri:
+        CNT     0
         ldrh    r0, [r4], #2
         add     r0, r0, r0, lsl #2
         add     r11, r6, r0, lsl #3     @ the triangle
@@ -792,6 +871,7 @@ render_visible:
         mul     r2, r0, r0
         cmp     r3, r2, lsl #6
         bgt     .Lnext
+        CNT     1
         add     r12, r11, #28           @ the camera clearly behind its plane: facing away
         ldmia   r12, {r0, r1, r2}       @ n0 n1, n2, d
         mov     r3, r0, lsl #16
@@ -808,6 +888,7 @@ render_visible:
         sub     r10, r10, r2
         cmn     r10, #8192
         blt     .Lnext
+        CNT     2
         ldrh    r0, [r11]
         VERTEX
         str     r0, [sp, #RV_PA]
@@ -820,7 +901,28 @@ render_visible:
         ldr     r0, [sp, #RV_PA]
         ldr     r1, [sp, #RV_PB]
         mov     r3, r11
+        .ifdef  COUNT
+        stmfd   sp!, {r0-r3}
+        mov     r0, #0x04000000
+        add     r0, r0, #0x100
+        ldrh    r0, [r0, #8]
+        ldr     r1, =g_fcount + 32
+        str     r0, [r1, #4]
+        ldmfd   sp!, {r0-r3}
         bl      tri
+        mov     r0, #0x04000000
+        add     r0, r0, #0x100
+        ldrh    r0, [r0, #8]
+        ldr     r1, =g_fcount + 32
+        ldr     r2, [r1, #4]
+        sub     r0, r0, r2
+        mov     r0, r0, lsl #16
+        ldr     r2, [r1]
+        add     r2, r2, r0, lsr #16
+        str     r2, [r1]
+        .else
+        bl      tri
+        .endif
 .Lnext:
         subs    r5, r5, #1
         bne     .Ltri

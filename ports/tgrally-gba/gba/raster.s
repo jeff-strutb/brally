@@ -4,7 +4,7 @@
 @   void raster_tex(const Poly *p)
 @   Poly: (x y u v)[3] (words), col next tex pad (halves)
 @   Tex: data (word), wm2 hm7 (halves), wbits hbits alpha pad (bytes); its rows 64 texels apart
-        .section .iwram, "ax"
+        .section .ovl_draw, "ax"
         .arm
         .global raster_tex
 
@@ -29,7 +29,8 @@
         .equ    F_RSS, 100
         .equ    F_RS02, 104
         .equ    F_UV0, 108              @ u, v packed at pixel (0, 0)
-        .equ    FRAME, 112
+        .equ    F_ODD, 112              @ ROWS2: the row's odd last pixel
+        .equ    FRAME, 116
 
 @ lr = ((a b - c d) >> r4, its low word) times r7, >> 8 (r10 = 32 - r4)
         .macro  GRAD a, b, c, d
@@ -52,6 +53,22 @@
         bge     1b
         ldr     \d, [\rec, \w, lsl #2]
         mov     \d, \d, lsr \t
+        .endm
+
+@ COUNT builds: g_fcount[k] += reg (main.c), the flags and registers kept
+        .macro  CNTADD k, reg                   @ (reg not r2 or r3)
+        .ifdef  COUNT
+        stmfd   sp!, {r2, r3}
+        mrs     r2, cpsr
+        stmfd   sp!, {r2}
+        ldr     r2, =g_fcount
+        ldr     r3, [r2, #\k * 4]
+        add     r3, r3, \reg
+        str     r3, [r2, #\k * 4]
+        ldmfd   sp!, {r2}
+        msr     cpsr_f, r2
+        ldmfd   sp!, {r2, r3}
+        .endif
         .endm
 
 @ swap two registers when the flags say gt
@@ -94,6 +111,93 @@
         .else
         strh    r12, [r0], #2
         .endif
+        .endm
+
+@ the texel at r2 to two pixels at r0 (word aligned) in one store, r2 stepped twice (alpha 1: a
+@ clear texel leaves both undrawn); 8 instructions (alpha 1: 9)
+        .macro  PAIR alpha
+        and     r12, r7, r2, lsr #25
+        and     lr, r8, r2, lsr #3
+        orr     r12, r12, lr
+        ldrh    r12, [r6, r12]
+        add     r2, r2, r4, lsl #1
+        .if     \alpha
+        tst     r12, #0x8000
+        orreq   r12, r12, r12, lsl #16
+        streq   r12, [r0]
+        add     r0, r0, #4
+        .else
+        orr     r12, r12, r12, lsl #16
+        str     r12, [r0], #4
+        nop
+        .endif
+        .endm
+
+@ the half's rows as ROWS does them, a texel to each pair of pixels (half the fetches): an odd
+@ first pixel alone, then pairs in words, an odd last pixel alone (its count kept in r0's bit 0)
+        .macro  ROWS2 alpha
+1:      .ifdef  COUNT
+        stmfd   sp!, {r0, r1}
+        ldr     r0, =g_fcount
+        ldr     r1, [r0, #24]
+        add     r1, r1, #1
+        str     r1, [r0, #24]
+        ldmfd   sp!, {r0, r1}
+        .endif
+        cmp     r9, r10
+        movlt   r0, r9, asr #16
+        movlt   r1, r10, asr #16
+        movge   r0, r10, asr #16
+        movge   r1, r9, asr #16
+        cmp     r0, #0
+        movlt   r0, #0
+        cmp     r1, #SW
+        movgt   r1, #SW
+        subs    r1, r1, r0
+        ble     3f
+        CNTADD  4, r1
+        mla     r2, r4, r0, r3
+        add     r0, r11, r0, lsl #1
+        tst     r0, #2                  @ an odd first pixel: alone
+        beq     4f
+        TEXEL
+        PUT     \alpha
+        subs    r1, r1, #1
+        ble     3f
+4:      and     r12, r1, #1             @ an odd last pixel: noted
+        str     r12, [sp, #F_ODD]
+        movs    r1, r1, lsr #1          @ the pairs
+        beq     6f
+        and     r12, r1, #3             @ four pairs a pass, entered part way in for the rest
+        rsb     r12, r12, #4
+        and     r12, r12, #3
+        add     r1, r1, #3
+        mov     r1, r1, lsr #2
+        .if     \alpha
+        add     r12, r12, r12, lsl #3
+        add     pc, pc, r12, lsl #2     @ (9 instructions a pair)
+        .else
+        add     pc, pc, r12, lsl #5     @ (8 instructions a pair)
+        .endif
+        nop
+5:      .rept   4
+        PAIR    \alpha
+        .endr
+        subs    r1, r1, #1
+        bne     5b
+6:      ldr     r12, [sp, #F_ODD]
+        cmp     r12, #0
+        beq     3f
+        TEXEL
+        PUT     \alpha
+3:      add     r12, sp, #F_RDUV
+        ldmia   r12, {r0, r1, r12}      @ the uv, xs, xo steps
+        add     r3, r3, r0
+        add     r9, r9, r1
+        add     r10, r10, r12
+        add     r11, r11, #SW * 2
+        cmp     r11, r5
+        bne     1b
         .endm
 
 @ the half's rows: r9 xs, r10 xo (Q16 pixels, biased), r11 the row, r3 uv at its pixel 0,
@@ -143,6 +247,14 @@
         .endm
 
 raster_tex:
+        .ifdef  COUNT
+        stmfd   sp!, {r0, r1}
+        ldr     r0, =g_fcount
+        ldr     r1, [r0, #20]
+        add     r1, r1, #1
+        str     r1, [r0, #20]
+        ldmfd   sp!, {r0, r1}
+        .endif
         stmfd   sp!, {r4-r11, lr}
         sub     sp, sp, #FRAME
         ldrh    lr, [r0, #52]           @ the texture
@@ -346,12 +458,12 @@ raster_tex:
         ldr     r0, [sp, #F_ALPHA]
         cmp     r0, #0
         bne     .Lalpha
-        ROWS    0
+        ROWS2   0
         b       .Lnext_half
 .Lalpha:
         cmp     r0, #2
         beq     .Lblend
-        ROWS    1
+        ROWS2   1
         b       .Lnext_half
 .Lblend:
         ROWS    2
@@ -532,7 +644,19 @@ draw:
         bne     3f
         bl      raster
         b       31f
-3:      bl      raster_tex
+32:     ldmia   r0, {r1, r2}            @ a dot (front.s): its colour at x, y
+        ldr     r3, =s_back
+        ldr     r3, [r3]
+        add     r3, r3, r1, lsl #1
+        add     r2, r2, r2, lsl #2      @ + 320 y
+        add     r3, r3, r2, lsl #6
+        ldrh    r1, [r0, #48]
+        strh    r1, [r3]
+        b       31f
+3:      sub     r2, r2, #1 << 16        @ (0xFFFE)
+        cmp     r1, r2, lsr #16
+        beq     32b
+        bl      raster_tex
 31:     ldmfd   sp!, {r0}
         add     r6, r6, #1
         ldrh    r0, [r0, #50]           @ next
