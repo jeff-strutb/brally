@@ -1,6 +1,1 @@
 va,name,reason
-0x8022D97C,BrPerfMeterDraw,"never run in the retail game: drawn only while D_8028AA98 >= 2; the word is 0 in the ROM, only read (five call sites), never pointed at, and a write watch over all 64 box scripts saw no store; proof in src/tgrally/drawing/perfmeter.c"
-0x80224B7C,BrVec3RotateAxis,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in src/tgrally/geometry/vec.c"
-0x8022F694,BrTextPrintAt,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in src/tgrally/drawing/textstate.c"
-0x80254878,BrDebugPrint,"never run in the retail game: no call, no address formation and no data word refers to it anywhere in the ROM; proof in src/tgrally/menus/cpakmenu.c"
-0x8022021C,BrCarRotate,"never run in the retail game: called only while car->xf4c is non-zero; no instruction stores to offset 0xF4C and a write watch on all four cars over all 64 box scripts saw no store; proof in src/tgrally/racing/entinit.c"
