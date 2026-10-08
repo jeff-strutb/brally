@@ -1,0 +1,52 @@
+# Arcade, one player, desert: the menus as arcade_timeup.txt, then driven: the accelerator held,
+# the stick swept left and right, the brake and handbrake now and then, for tools/simref.py.
+frames 3600
+0 -
+40 A
+46 -
+200 START
+206 -
+406 - 80 0
+414 -
+446 A
+452 -
+590 A
+596 -
+634 A
+640 -
+680 A
+686 -
+726 A
+732 -
+766 A
+772 -
+806 A
+812 -
+846 A
+852 -
+886 A
+892 -
+926 A
+932 -
+970 A
+976 -
+1010 -
+1100 A
+1300 A 30 0
+1420 A -50 0
+1540 A 0 0
+1640 A 80 0
+1700 A -80 0
+1760 A 0 0
+1900 A+B 0 0
+1960 A 60 0
+2100 A -30 0
+2250 A+R 70 0
+2290 A 0 0
+2500 B -80 0
+2560 A -80 0
+2700 A 40 0
+2900 A 0 0
+3100 A -70 0
+3200 A 20 0
+3400 A 0 0
