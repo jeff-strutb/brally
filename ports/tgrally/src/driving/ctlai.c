@@ -370,23 +370,30 @@ void BrPathGates(BrPathSeg *seg, float d)
  * a corridor has been banked.  Depth 0 clears the state; no segment means
  * the path's start.  Past a segment's last point it recurses into each
  * following segment.  Ported from the PC twin (BrAiScanCorridor).
- * RESIDUE (255, size 1140 vs 1144): register allocation.  The ROM keeps
- * car, depth and mid in their argument home slots and reloads them at each
- * use (seg in s3, ret in s4, frame 0x80); ours gives car and mid s-registers
- * (frame 0x78).  Structure and call order match. */
-/* @t4-pass 0x80226D9C 1 2026-09-29 compiles 13 best 253 moved 2  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80226D9C 2 2026-09-29 compiles 13 best 253 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80226D9C */
+ * Source facts: the locals are declared in the PC twin's order and kinds
+ * (their slots give every home in the 0x80 frame); the centre is indexed as
+ * D_8031B610[depth - 1] at each use, so uopt keeps B610 + depth * 12 as
+ * one spilled temporary (0x34) for the midpoints and the aim copy; the
+ * midpoint's two components sit in a do { } while (0) block, which ends
+ * &seg->pt[mid] (s0) before the loop's left-edge pointer takes s0; the
+ * loop limit is depth - 1 written in the test (a temporary, spilled to
+ * 0x44, latch bne).  depth is never held in a register: k and limit are
+ * loaded after the three stores and tested, with mid and the two midpoint
+ * arrays, in an empty if in the depth <= 2 arm.  The test emits nothing,
+ * but its values are live through the store block, which stops uopt
+ * growing depth's register piece from the loop guard into the block that
+ * stores and tests depth; depth is then reloaded from its home at every
+ * use, as in the ROM. */
 /* @implements 0x80226D9C tgr BrAiScanCorridor */
 unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
 {
   unsigned int ret;
   int next;
   BrVec3 midPt;
-  int level;
-  BrVec3 *pA;
-  BrVec3 *pB;
-  BrVec3 *pC;
+  int level, k;
+  int limit;
+  BrVec3 *pA, *pB;
+  BrVec3 *pC, *pD;
 
   ret = 0;
   if (seg == 0) {
@@ -395,23 +402,22 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
   }
   if (depth == 0) {
     D_8028B804 = 0;
-    D_8028B818 = 0;
-    D_8028B81C = 0;
-    D_8028B820 = 0;
+    D_8028B820 = D_8028B818 = D_8028B81C = 0;
   } else {
     if (depth > 8 || (BES16(seg->flags) & 1)) {
       return 0;
     }
     BrVec3Lerp(&D_8031B6D0[depth - 1], BRV(&seg->pt[mid].left), BRV(&seg->pt[mid].right), 0.2f);
-    pC = &D_8031B610[depth - 1];
-    pC->x = BEF(seg->pt[mid].pos.x);
-    pC->y = BEF(seg->pt[mid].pos.y);
-    pC->z = BEF(seg->pt[mid].pos.z);
+    D_8031B610[depth - 1].x = BEF(seg->pt[mid].pos.x);
+    D_8031B610[depth - 1].y = BEF(seg->pt[mid].pos.y);
+    D_8031B610[depth - 1].z = BEF(seg->pt[mid].pos.z);
     BrVec3Lerp(&D_8031B550[depth - 1], BRV(&seg->pt[mid].right), BRV(&seg->pt[mid].left), 0.2f);
-    BrVec3Midpoint(&D_8031B5B0[depth - 1], &D_8031B550[depth - 1], pC);
-    BrVec3Midpoint(&D_8031B670[depth - 1], &D_8031B6D0[depth - 1], pC);
-    midPt.x = (BEF(seg->pt[mid].right.x) + BEF(seg->pt[mid].left.x)) * 0.5f;
-    midPt.y = (BEF(seg->pt[mid].right.y) + BEF(seg->pt[mid].left.y)) * 0.5f;
+    BrVec3Midpoint(&D_8031B5B0[depth - 1], &D_8031B550[depth - 1], &D_8031B610[depth - 1]);
+    BrVec3Midpoint(&D_8031B670[depth - 1], &D_8031B6D0[depth - 1], &D_8031B610[depth - 1]);
+    do {
+      midPt.x = (BEF(seg->pt[mid].left.x) + BEF(seg->pt[mid].right.x)) * 0.5f;
+      midPt.y = (BEF(seg->pt[mid].left.y) + BEF(seg->pt[mid].right.y)) * 0.5f;
+    } while (0);
     pA = &D_8031B550[1];
     pB = &D_8031B6D0[1];
     for (level = 1; level < depth - 1; level++, pA++, pB++) {
@@ -424,10 +430,12 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
       D_8028B804 = depth;
       D_8028B814 = seg;
       D_8028B810 = mid;
+      k = D_8028B828;
+      limit = D_8028B82C;
       if (depth > 2) {
         if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B5B0[1], &D_8031B550[1]) != 0) {
-          D_8028B808 = 1;
           D_8028B80C = 0;
+          D_8028B808 = 1;
         } else if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B670[1], &D_8031B6D0[1]) != 0) {
           D_8028B80C = 1;
           D_8028B808 = 0;
@@ -436,15 +444,16 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
           D_8028B808 = 0;
         }
       } else {
+        if (k + limit + mid + (int)tgr_addr32(D_8031B5B0) + (int)tgr_addr32(D_8031B670));
         D_8028B80C = 0;
         D_8028B808 = 0;
       }
+      D_8031B730.x = D_8031B610[depth - 1].x;
+      D_8031B730.y = D_8031B610[depth - 1].y;
+      D_8031B730.z = D_8031B610[depth - 1].z;
       D_8031B740.x = D_8031B610[depth >> 1].x;
       D_8031B740.y = D_8031B610[depth >> 1].y;
       D_8031B740.z = D_8031B610[depth >> 1].z;
-      D_8031B730.x = pC->x;
-      D_8031B730.y = pC->y;
-      D_8031B730.z = pC->z;
       memcpy(D_8031B430, D_8031B550, depth * sizeof(BrVec3));
       memcpy(D_8031B490, D_8031B610, depth * sizeof(BrVec3));
       memcpy(D_8031B4F0, D_8031B6D0, depth * sizeof(BrVec3));
