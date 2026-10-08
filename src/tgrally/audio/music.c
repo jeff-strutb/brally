@@ -269,15 +269,14 @@ void BrMusicLoopSamples(void)
  * Source facts: note, fx, param and inst are zeroed at the top of each
  * row in that order (fx's and param's zeros are dead, but the order of
  * first mention gives the ROM's colours a2, a3, t0, t1, then flags t2 and
- * the byte t3); six unused ints give the 0x48 frame; arpOn is counted up
- * from the zero stored before the switch (a plain 1 would be a hoisted
- * constant register that pushes the table bases out of s0-s3).
- * RESIDUE (107): the ROM stores arpOn = 1 as a literal with no hoisted
- * constant (unresolved), which shifts the effect cases' temporaries; the
- * tone-portamento case reads the sample before storing porta. */
-/* @t4-pass 0x80256DEC 1 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80256DEC 2 2026-10-03 compiles 25 best 240 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80256DEC */
+ * the byte t3); the unused locals give the 0x48 frame.  The arpeggio
+ * stores arpOn = 1: the constant is a web uopt does not colour, but it
+ * interferes with the loop-wide webs and keeps the row pointer, offset
+ * and end constrained.  A note takes inst = smp = the channel's
+ * instrument and indexes the sample table with inst, so the byte is one
+ * web (t3) and the sample pointer takes t0; the voice is addressed
+ * before its sample is loaded (s0 before s1), and case 0's note byte and
+ * case 15's parameter are masked with & 0xff. */
 /* @implements 0x80256DEC tgr BrModRowRead */
 unsigned char *BrModRowRead(unsigned char *p)
 {
@@ -288,7 +287,10 @@ unsigned char *BrModRowRead(unsigned char *p)
   signed char fx;
   signed char param;
   unsigned int smp;
-  int unused[6];
+  int unuseds;
+  BrMixVoice *v;
+  int n;
+  int unused[3];
   unsigned long long target;
 
   for (i = 0; i < D_802A49C0; i++) {
@@ -339,15 +341,16 @@ unsigned char *BrModRowRead(unsigned char *p)
     switch (fx) {
     case 0:
       if (param != 0) {
-        D_80378DD0[i].arp[1] = D_80378DD0[i].note + (param >> 4 & 0xf);
-        D_80378DD0[i].arp[2] = D_80378DD0[i].note + (param & 0xf);
-        D_80378DD0[i].arpOn++;
-        D_80378DD0[i].arp[0] = D_80378DD0[i].note;
+        n = D_80378DD0[i].note & 0xff;
+        D_80378DD0[i].arp[1] = n + (unsigned)(param >> 4 & 0xf);
+        D_80378DD0[i].arp[2] = n + (unsigned)(param & 0xf);
+        D_80378DD0[i].arpOn = 1;
+        D_80378DD0[i].arp[0] = n;
       }
       break;
     case 1:
-      D_80378DD0[i].target = 0;
       D_80378DD0[i].porta = D_80378DD0[i].param;
+      D_80378DD0[i].target = 0;
       break;
     case 2:
       D_80378DD0[i].porta = -D_80378DD0[i].param;
@@ -357,8 +360,8 @@ unsigned char *BrModRowRead(unsigned char *p)
       if (smp != 0) {
         D_80378DD0[i].porta = D_80378DD0[i].param;
         note = 0;
-        target = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].note) & 0xffff];
-        D_80378DD0[i].target = target;
+        n = D_80378DD0[i].note + D_803787D0[smp - 1]->relNote;
+        D_80378DD0[i].target = target = (&D_80379568[0][0])[n & 0xffff];
         if (D_802A4798[i].rate > target) {
           D_80378DD0[i].porta = -D_80378DD0[i].porta;
         }
@@ -379,19 +382,21 @@ unsigned char *BrModRowRead(unsigned char *p)
       D_80378FA0.x4 = 0;
       break;
     case 15:
-      D_80378FA0.x0 = D_80378FA0.x2 = D_80378DD0[i].param;
+      D_80378FA0.x2 = D_80378FA0.x0 = D_80378DD0[i].param & 0xff;
       break;
     }
     if (note != 0) {
-      smp = D_80378DD0[i].inst;
+      v = &D_802A4798[i];
       D_80378DD0[i].arpIdx = 0;
-      D_802A4798[i].x4 = 0;
-      D_80378DD0[i].smp = smp;
-      D_802A4798[i].pos = (unsigned int)D_803787D0[smp - 1] + 0x28;
-      D_802A4798[i].rate = (&D_80379568[0][0])[(D_803787D0[smp - 1]->relNote + D_80378DD0[i].note) & 0xffff];
+      v->x4 = 0;
+      inst = D_80378DD0[i].smp = D_80378DD0[i].inst;
+      v->pos = (unsigned int)D_803787D0[inst - 1] + 0x28;
+      n = D_80378DD0[i].note + D_803787D0[inst - 1]->relNote;
+      smp = D_80378DD0[i].smp;
+      v->rate = (&D_80379568[0][0])[n & 0xffff];
     }
     if (smp != 0) {
-      D_802A4798[i].baseVol = (D_80378DD0[i].vol * D_803787D0[smp - 1]->vol) >> 6;
+      D_802A4798[i].baseVol = (D_803787D0[smp - 1]->vol * D_80378DD0[i].vol) >> 6;
     }
   }
   return p;
