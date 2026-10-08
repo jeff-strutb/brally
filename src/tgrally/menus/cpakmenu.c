@@ -491,10 +491,6 @@ void BrStub80254870(void)
  * line's x to 16 (64 hi-res); lower case prints as upper case, and
  * anything else unprintable as a space.  The frame buffer, fonts and colour
  * are shorts (the ROM re-reads the first store of each block with lh).
- * RESIDUE (44): the ROM tests the loaded byte where it lands (lbu v0) and
- * copies it to a0 for the non-letter paths; ours truncates the copy (andi)
- * and swaps the two registers, which renames the glyph index, the hi-res
- * flag and the font flag after it.
  *
  * NEVER RUN IN THE RETAIL GAME: nothing in the ROM refers to 0x80254878 -- no
  * jal to it, no lui/addiu pair forming its address (n64rom xref: none), and
@@ -505,10 +501,10 @@ void BrDebugPrint(char *s)
   unsigned char c;
   int w;
   short *p;
-  int x;
   int y;
   unsigned short col;
   unsigned char n;
+  int x;
   short *g;
   int i;
 
@@ -517,19 +513,16 @@ void BrDebugPrint(char *s)
   x = D_8028DDD0;
   p = (short *)D_8031AA28[D_8028A85C ^ 1];
   p += y * w;
-  p += x;
   col = D_8028DDDC;
-  for (; *s != 0; s++) {
-    c = *s;
+  p += x;
+  for (; c = *s; s++) {
     if (c >= 0x20 && c < 0x7f) {
       if (c >= 'a' && c <= 'z') {
-        n = c - 0x40;
-      } else {
-        if (c > 'z' && c < 0x7f) {
-          c -= 0x1a;
-        }
-        n = c - 0x20;
+        c -= 0x20;
+      } else if (c > 'z' && c < 0x7f) {
+        c -= 0x1a;
       }
+      n = c - 0x20;
     } else if (c == '\n') {
       x = 16 << (D_8028A850 << 1);
       y += D_8028A850 + 8;
