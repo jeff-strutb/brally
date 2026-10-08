@@ -278,14 +278,14 @@ int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
  * otherwise; hard hits after 10 idle frames are recorded for the effects
  * and damped.  Applies the impulse to velocity and spin; returns 0 when the
  * contact is separating.  The PC twin is BrCrImpulseSolve.
- * Source facts: the flag arm opens with a NaN self-test of a dead product,
- * x = tt[2] * spare[0]; if (x != x);.  ugen drops the empty test but still
- * evaluates the product, which takes one FP temporary (the load of spare[0])
- * between the differences and the sum, and as1 deletes the dead load and
- * multiply; that one temporary is what puts the ROM's FP temporary names
- * on everything around it.  x is a scalar of its own (folding it into dd or
- * r merges it into their live ranges) carved out of the unused spare[3],
- * which keeps the frame at 0x1B8.  tt[2] is read before the differences
+ * Source facts: the flag arm opens with a debug NaN check whose report is
+ * compiled out, x = tt[2] * rest; if (x != x);.  ugen drops the empty test
+ * but still evaluates the product, which takes one FP temporary (the load
+ * of rest from its home) between the differences and the sum, and as1
+ * deletes the dead load and multiply; that one temporary is what puts the
+ * ROM's FP temporary names on everything around it.  x is a scalar of its
+ * own (folding it into dd or r merges it into their live ranges); with
+ * the unused spare[2] beside it the frame stays 0x1B8.  tt[2] is read before the differences
  * (dd = tt[2], dead) so it is the first tt web and takes f12. */
 /* @implements 0x8025BBB8 tgr BrCrImpulseSolve */
 int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
@@ -298,7 +298,7 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   float tmp[3][3];
   float W[3][3];
   float vc[3];
-  float spare[2];               /* never written */
+  float spare[2];               /* declared, never used: the frame holds it */
   float x;                      /* the dead NaN test's value */
   float J[3];
   float nb[3];
@@ -376,7 +376,7 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   tt[1] = vc[1] - tn[1];
   tt[2] = vc[2] - tn[2];
   if (flag) {
-    x = tt[2] * spare[0];
+    x = tt[2] * rest;
     if (x != x);
     tt[0] = tt[0] * D_802AB800;
     tt[1] = tt[1] * D_802AB800;
