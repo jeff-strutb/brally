@@ -29,6 +29,7 @@ import struct
 import sys
 
 SX, SY = 3 / 4, 2 / 3
+DIAL = 4                         # the car record whose dial the HUD shows (TYPE-SP)
 
 
 # ---- the text printer (drawing/textstate.c) ----------------------------------------
@@ -255,11 +256,11 @@ def draws(tx, st):
     return out
 
 
-def scale(px, x0, y0, x1, y1, brightest=None):
+def scale(px, x0, y0, x1, y1, sharp=False):
     """an N64 rectangle's pixels (dict index -> rgba, 320 wide) at the GBA's scale:
-    -> (gx, gy, gw, gh, rows of (r, g, b) or None).  The area's average, or (the dial's
-    art: one-pixel strokes on a dark face) the pixel that stands out most by the key
-    given, so a stroke survives"""
+    -> (gx, gy, gw, gh, rows of (r, g, b) or None).  The area's average, or (sharp: the
+    dial's art, one-pixel strokes and digits) the pixel that stands out most from the
+    rest of the area, bright on dark or dark on light, so a stroke survives"""
     gx0, gy0 = int(x0 * SX), int(y0 * SY)
     gx1, gy1 = -int(-x1 * SX), -int(-y1 * SY)
     rows = []
@@ -279,11 +280,13 @@ def scale(px, x0, y0, x1, y1, brightest=None):
                         cov += wgt * p[3]
                         for k in range(3):
                             acc[k] += wgt * p[3] * p[k]
-            if brightest and cov > 0:
+            if sharp and cov > 0:
                 cand = [px.get(yy * 320 + xx) for yy in range(int(sy0), -int(-sy1)) for xx in range(int(sx0), -int(-sx1))
                         if 0 <= xx < 320 and 0 <= yy < 240]
                 cand = [c for c in cand if c]
-                row.append(tuple(max(cand, key=brightest)[:3]))
+                lum = [0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2] for c in cand]
+                mean = sum(lum) / len(lum)
+                row.append(tuple(cand[max(range(len(cand)), key=lambda k: abs(lum[k] - mean))][:3]))
                 continue
             row.append(tuple(v / cov for v in acc) if area and cov / area > 0.5 else None)
         rows.append(row)
@@ -375,7 +378,10 @@ def main():
         for k in sorted(g for g in glyph_img if g[2] == sc):
             gx, gy, gw, gh, rows = glyph_img[k]
             glyphs.append((k, si, gw, gh, rows, q, pal))
-    # the dial: BrHudDialDraw's images, from ROM
+    # the dial: BrHudDialDraw's images, from ROM.  Not the race car's own: the TYPE-SP's
+    # (D_8028AE0C[DIAL]), whose gear number is the largest of the game's dials and so
+    # reads on the GBA's screen
+    dial = bytes(ram[0x28AE0C + DIAL * 0x60:0x28AE0C + (DIAL + 1) * 0x60])
     rom_dial = struct.unpack_from('<I', dial, 0x20)[0]
     dw, dh, lx, ly, lw, lh, mode, nx, ny = dial[0x28], dial[0x29], struct.unpack_from('b', dial, 0x2a)[0], \
         struct.unpack_from('b', dial, 0x2b)[0], dial[0x2c], dial[0x2d], dial[0x2e], dial[0x2f], dial[0x30]
@@ -394,11 +400,9 @@ def main():
                     px[y * 320 + x] = ((c >> 11 & 31) * 255 / 31, (c >> 6 & 31) * 255 / 31, (c >> 1 & 31) * 255 / 31, 1.0)
         return px
     dial_x, dial_y = 296 - dw, 8 + 224 - dh - 4          # (the view: from the state)
-    luma = lambda c: 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]          # the face: white strokes
-    green = lambda c: c[1] - max(c[0], c[2])                          # the lamps: green segments
-    face = scale(ci8(rom_dial + 0x400, dw, dh), 0, 0, dw, dh, luma)
+    face = scale(ci8(rom_dial + 0x400, dw, dh), 0, 0, dw, dh, True)
     lamp_frames = max(st[21] for st in states.values()) + 2
-    lamps = [scale(ci8(rom_dial + 0x400 + dw * dh + k * lw * lh, lw, lh), 0, 0, lw, lh, green) for k in range(lamp_frames)]
+    lamps = [scale(ci8(rom_dial + 0x400 + dw * dh + k * lw * lh, lw, lh), 0, 0, lw, lh, True) for k in range(lamp_frames)]
     dcols = [rgb555(c) for img in [face] + lamps for row in img[4] for c in row if c]
     dq = quantize(dcols, 127)
     dpal = sorted(set(dq.values()))
