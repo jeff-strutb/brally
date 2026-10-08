@@ -12,7 +12,7 @@
 
 #define SW 160
 #define SH 128
-#define FAR 400                          /* D_8028AAC8: the race view's far plane */
+#define FAR 300                          /* the view's reach (the game's far plane, D_8028AAC8, is 400) */
 
 static Car s_car[2];
 volatile uint32_t g_phase_cyc[6];        /* the cycles of each phase, of the overlays' copies, ticks */

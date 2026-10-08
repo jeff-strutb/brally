@@ -31,6 +31,12 @@ s_vis_list: .space 4                    @ render_visible's list, when the frame 
         .endif
         .equ    MAXPOLY, 2400
         .equ    NBUCKET, 256
+        .ifndef FLATW
+        .equ    FLATW, 150 * 256        @ a triangle wholly past this depth (W) is drawn flat, its colour
+        .endif
+        .ifndef PERSPW
+        .equ    PERSPW, 60 * 256        @ halved for perspective only nearer than this
+        .endif
         .ifndef DOTA
         .equ    DOTA, 4096              @ a triangle under 8 square pixels is a dot
         .endif
@@ -346,7 +352,8 @@ persp:
         cmp     r12, r5
         movgt   r5, r12
         sub     r5, r5, r4
-        cmp     r5, r4, lsl #DEEP
+        cmp     r4, #PERSPW             @ (far enough: as it is)
+        cmple   r5, r4, lsl #DEEP
         ldmfd   sp!, {r4, r5}
         ble     emit
         b       7f
@@ -600,6 +607,16 @@ tri:
 1:      ldrh    r0, [r7, #6]            @ colour and texture, for emit
         ldrh    r1, [r7, #14]
         orr     r0, r0, r1, lsl #16
+        ldr     r2, [r4, #8]            @ wholly far: flat, its colour (no texture)
+        ldr     r3, [r5, #8]
+        cmp     r2, r3
+        movgt   r2, r3
+        ldr     r3, [r6, #8]
+        cmp     r2, r3
+        movgt   r2, r3
+        cmp     r2, #FLATW
+        orrgt   r0, r0, #0xFF000000
+        orrgt   r0, r0, #0x00FF0000
         ldr     r1, =s_ct
         str     r0, [r1]
         cmp     r8, #7
@@ -625,9 +642,10 @@ tri:
         mov     r1, r5
         mov     r2, r6
         mov     r3, #0
-        ldrh    r12, [r7, #14]
+        ldr     r12, =s_ct
+        ldr     r12, [r12]
         mvn     lr, #0
-        cmp     r12, lr, lsr #16
+        cmp     lr, r12, lsr #16
         beq     4f
         bl      persp
         b       9f
