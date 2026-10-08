@@ -18,8 +18,8 @@ protocol, no gdb needed).  Report formatting is c2prio's own.
 import argparse, json, os, re, shutil, socket, struct, subprocess, sys, time, secrets, types
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-WINEBIN = ROOT + '/tools/wine/Wine Stable.app/Contents/Resources/wine/bin'
-ENV = dict(os.environ, WINEPREFIX=ROOT + '/build/wineprefix', WINEDEBUG='-all')
+WINEBIN = ROOT + '/tools/toolchains/wine/Wine Stable.app/Contents/Resources/wine/bin'
+ENV = dict(os.environ, WINEPREFIX=ROOT + '/build/toolchains/wineprefix', WINEDEBUG='-all')
 sys.path.insert(0, HERE)
 import gdbshim
 import c2prio_bt as bt   # Byte Tactics tools/brally/c2prio.py, unchanged (imported without gdb: host side)
@@ -56,11 +56,11 @@ def main():
     ap.add_argument('--keep', action='store_true')
     a = ap.parse_args()
 
-    c2 = ROOT + '/tools/msvc5/bin-sp3/C2.EXE'
+    c2 = ROOT + '/tools/toolchains/msvc5/bin-sp3/C2.EXE'
     import hashlib
     assert hashlib.sha256(open(c2, 'rb').read()).hexdigest() == bt.C2_SHA256
     token = secrets.token_hex(4)
-    run = f'{ROOT}/build/c2read/{token}'
+    run = f'{ROOT}/build/brally/c2read/{token}'
     os.makedirs(run)
     exe = f'c2r{token}.exe'
     data = bytearray(open(c2, 'rb').read())
@@ -68,12 +68,12 @@ def main():
     assert data[off:off + 2] == bt.ENTRY_BYTES
     data[off:off + 2] = b'\xeb\xfe'
     open(f'{run}/{exe}', 'wb').write(data)
-    shutil.copy(ROOT + '/tools/msvc5/bin-sp3/MSPDB50.DLL', run)
+    shutil.copy(ROOT + '/tools/toolchains/msvc5/bin-sp3/MSPDB50.DLL', run)
     obj = f'{run}/out.obj'
     procs = []
     t0 = time.time()
     try:
-        cl = subprocess.Popen([WINEBIN + '/wine', ROOT + '/tools/msvc5/bin/cl.exe', '/nologo', *a.opts.split(), '/W3',
+        cl = subprocess.Popen([WINEBIN + '/wine', ROOT + '/tools/toolchains/msvc5/bin/cl.exe', '/nologo', *a.opts.split(), '/W3',
                                '/I', 'src/brally/include', '/I', 'tools/toolchains/msvc5-compat', '/I', 'tools/toolchains/msvc5/include',
                                '/DBR_MATCHING_BUILD', '/c', '/B2' + winpath(f'{run}/{exe}'), '/Fo' + winpath(obj),
                                os.path.relpath(a.source, ROOT)],
