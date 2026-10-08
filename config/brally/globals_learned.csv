@@ -118,6 +118,7 @@ BrDlLightSetup_100221D0,0x100221D0,4,1,"named global, no address recorded",0x100
 FUN_100242e0,0x100242E0,8,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0 0x100298C0
 FUN_10024490,0x10024490,4,1,"named global, no address recorded",0x10027CD0 0x10027E10
 FUN_100250d0,0x100250D0,2,1,"named global, no address recorded",0x10024E60
+FUN_100271f0,0x100271F0,14,1,"named global, no address recorded",0x100250D0
 FUN_10027220,0x10027220,4,1,"named global, no address recorded",0x10024E60 0x100272F0
 FUN_10027290,0x10027290,24,1,"named global, no address recorded",0x10024E60 0x100272F0 0x10027FB0
 BrTex3dModulate,0x10027CD0,2,1,"named global, no address recorded",0x10027B60
