@@ -11,9 +11,9 @@ of it exists anywhere (GitHub/decomp.me searched; only this project's repo).
 
 **Findings - all favorable:**
 1. **Compiler: IDO -O2.** Windowed capstone stats over the code segment (ROM
-   0x1000 - ~0xC0000, uncompressed; assets are deflate-compressed - zlib
+   0x1000-~0xC0000, uncompressed; assets are deflate-compressed - zlib
    `inflate 1.0.4` lives in-engine): branch-likely instructions dense in every
-   window (up to 507/32KB), delay-slot nop-fill mostly 0 - 25%. GCC 2.7 emits
+   window (up to 507/32KB), delay-slot nop-fill mostly 0-25%. GCC 2.7 emits
    ~no branch-likely. IDO = best tooling support (recompiled IDO, decomp.me,
    permuter, m3c all turnkey). IDO 5.3 vs 7.1 undetermined - settle via
    decomp.me trial.
@@ -76,11 +76,11 @@ regalloc-classed rows - proven useless there. The active matching session
 (brally-f0) was briefed with the full recipe via SendMessage; future
 sessions get it from this note.
 
-** BULK RUN EXECUTED 2026-09-03 (commit 1debdab) - two claims above are
-now CORRECTED, and the harness exists.** `tools/tgr/` compiles the PC decomp's
+**BULK RUN EXECUTED 2026-09-03 (commit 1debdab) - two claims above are
+now CORRECTED, and the harness exists.** `tools/brally/tgr/` compiles the PC decomp's
 C with the staged IDO and searches TGR's .text for each function, which pairs
 AND matches in one step. 252/255 source files cross-compile (the unlock was
-shims: `tools/tgr/include/` libc + Win32 typedefs, declarations only - the
+shims: `tools/brally/tgr/include/` libc + Win32 typedefs, declarations only - the
 Win32 headers alone blocked 182 files). Denominator: **TGR .text = 457,392 B /
 883 functions.** Result with ZERO hand-matching: **22 EXACT (964 B, 0.21% of
 .text), 175 SHAPE, 197 located (13,440 B, 2.94% of .text; 22.3% of functions).**
@@ -103,8 +103,8 @@ Win32 headers alone blocked 182 files). Denominator: **TGR .text = 457,392 B /
   CAVEAT in br_vec.c - is resolved by its N64 twin). Next bulk lever is an
   operand-order permuter, not hand work.
 
-**Decision (project lead + analysis):** not a parallel second grind. Next step if
-pursued: splat the ROM, IDO preset, round-trip 2 - 3 functions already matched
+**Decision (user + analysis):** not a parallel second grind. Next step if
+pursued: splat the ROM, IDO preset, round-trip 2-3 functions already matched
 on PC (known answers) through the N64 diff harness to test whether
 MIPS-first source recovery beats x86-first for the portable region. N64→PC
 payoff: second codegen witness (signedness/width/op-order visible on MIPS)

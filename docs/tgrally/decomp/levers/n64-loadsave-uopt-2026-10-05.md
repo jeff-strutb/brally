@@ -2,9 +2,9 @@
 
 *Recorded 2026-10-05.*
 
-> BrLoadSaveScreen 0x80211D70 T4 2026-10-05 (011520ad, gate 663/0): function-static state, compare operand order = uopt leaf vs node (read ucode via workbench capture), grader .rodata base-by-nearest-pair fix
+> BrLoadSaveScreen 0x80211D70 T4 2026-10-05 (65a3db79, gate 663/0): function-static state, compare operand order = uopt leaf vs node (read ucode via workbench capture), grader .rodata base-by-nearest-pair fix
 
-BrLoadSaveScreen 0x80211D70 (src/tgrally/menus/loadsave.c) went T3 -> T4 on 2026-10-05 (commit 011520ad; grader fix 4a808c34; image gate 663 placed, 0 bytes differ). It is uopt-OPTIMISED (not over -Olimit); the old header said otherwise.
+BrLoadSaveScreen 0x80211D70 (src/tgrally/menus/loadsave.c) went T3 -> T4 on 2026-10-05 (commit 65a3db79; grader fix 338a316b; image gate 663 placed, 0 bytes differ). It is uopt-OPTIMISED (not over -Olimit); the old header said otherwise.
 
 **Levers that closed it:**
 - Screen state is FUNCTION-STATIC (uopt promotes a static whose address isn't taken as a dt8 register variable across calls; extern globals are only CSE'd loads). Statics in address order; .data initial values must match (D_80272554 = 1). An uninitialised file-scope global (D_80316420[2]) goes to .bss at offset 0 before the .bss statics.

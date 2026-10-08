@@ -1,5 +1,7 @@
 # Top Gear Rally documentation
 
+- [decomp/IDO-HANDBOOK.md](decomp/IDO-HANDBOOK.md): what matching IDO 5.3
+  taught, distilled: method, compiler stages, frame, allocator, scheduler.
 - [decomp/](decomp/): the N64 decompilation under IDO 5.3: viability study,
   rules, source levers, oracle notes, per-function state, toolchain and the
   dated log.

@@ -10,6 +10,9 @@ has a clear PC twin, and twins still differ by a few percent of their
 instructions. PC source is a starting point for a twin, never a substitute.
 See the top-level README for the measurement.
 
+How to match IDO 5.3 output (method, compiler stages, allocator rules, the
+levers that closed every function): [decomp/IDO-HANDBOOK.md](decomp/IDO-HANDBOOK.md).
+
 ## Standard
 
 The same as the PC lane:

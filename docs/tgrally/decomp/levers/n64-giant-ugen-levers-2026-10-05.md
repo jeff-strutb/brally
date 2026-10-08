@@ -4,11 +4,11 @@
 
 > BrRaceTick (22 KB giant) to T4 on 2026-10-05: ugen operand-order/need levers, the instr2 ring-injection compiler, -O1 probes, register-blind top-down workflow
 
-BrRaceTick 0x8020082C went T3 -> T4 on 2026-10-05 (commit bb842a01, image gate 661/0) by hand transcription, top-down.
+BrRaceTick 0x8020082C went T3 -> T4 on 2026-10-05 (commit 3e5738e8, image gate 661/0) by hand transcription, top-down.
 
 **Workflow that worked for a giant (no uopt, ugen only):**
 - `build/tgrally/n64/m2tools/firstdiff.py VA draft [N] --nosp` (ignores sp offsets, so a frame-size shift doesn't hide everything) and `--blind` (also ignores register names). Fix STRUCTURE first with `--blind` all the way to the end, then chase register naming.
-- `spell.py` honours `FD_MODE=--blind|--nosp`; `joinsearch.py` (line joins); `scratch/bin/swaparms.py` swaps if/else arms brace-matched.
+- `spell.py` honours `FD_MODE=--blind|--nosp`; `joinsearch.py` (line joins); `<scratch>` swaps if/else arms brace-matched.
 - Most structural residue was branch POLARITY: ugen lays out the then-arm first, so `if (x == 0) {A} else {B}` vs `if (x != 0) {B} else {A}` differ. Also if-chains on one variable that the ROM does as `switch` (s7 holds the value, `beq`/`beql` ladder).
 - Comparisons: ugen loads the LEFT operand first; `a < b` vs `b > a` changes load order and FP register order.
 
@@ -20,7 +20,7 @@ BrRaceTick 0x8020082C went T3 -> T4 on 2026-10-05 (commit bb842a01, image gate 6
 **Tools built (build/tgrally/ext and build/tgrally/n64/m2tools, gitignored):**
 - `build/tgrally/ext/instr2/out/cc`: the traced IDO with a ugen hook. `DKWB_INJECT=proc:emit:reg,...` moves a register to the end of ugen's free list (0x10019da4; 0x10019da8 is the used/LRU list) at an emit index.
 - `inject.py VA draft [spec]` grades under injection (`SHOW=a:b`, `SKIP=n`); `ringsearch.py` greedily finds the ring moves the ROM implies. If no single move fixes a statement, the cause is evaluation order, not the ring.
-- `scratch/probe/run.py` (`PFLAGS=-O1`) compiles a small file the way a giant compiles (no uopt) and disassembles it. Use it to test spellings in about a second each.
+- `<scratch>` (`PFLAGS=-O1`) compiles a small file the way a giant compiles (no uopt) and disassembles it. Use it to test spellings in about a second each.
 - `DKWB_UGEN_TRACE=1` free-list records (ALLOC_GP_RESULT / FREE / MOVE_END with source line) show the pop order per statement.
 
-Related: [hand-transcription-only](../../../brally/decomp/rules/hand-transcription-only.md), [n64-ido-trace-tooling](../toolchain/n64-ido-trace-tooling.md), [n64-giant-t3-method-2026-09-28](n64-giant-t3-method-2026-09-28.md).
+Related: [feedback-hand-transcription-only](../rules/hand-transcription-only.md), [n64-ido-trace-tooling](../toolchain/n64-ido-trace-tooling.md), [n64-giant-t3-method-2026-09-28](n64-giant-t3-method-2026-09-28.md).

@@ -14,4 +14,4 @@
 - Pad record bits (pressed): A 0x10000, B 0x40020, Z 0x208000, START 0x4000, L 0x1000, R 0x102000, D-pad U8 D2 L4 R1, C: CU 0x100 CD 0x400 CL 0x800 CR 0x200. Box models ONE controller (2P races unreachable).
 - Scratch debug scripts (grab job / replay sandboxes / watch writes / call-sequence diff / a7diff / a7bisect) were in the session scratch; re-create as needed.
 
-Related: [n64-ido-levers-2026-09-27](n64-ido-levers-2026-09-27.md), [a5-a7-coverage-gap](../../../brally/decomp/oracle/a5-a7-coverage-gap.md), [t3-certified-standard](../../../brally/decomp/rules/t3-certified-standard.md).
+Related: [n64-ido-levers-2026-09-27](n64-ido-levers-2026-09-27.md), [a5-a7-coverage-gap](../../../brally/decomp/oracle/a5-a7-coverage-gap.md), [feedback-t3-certified-standard](../../../brally/decomp/rules/t3-certified-standard.md).

@@ -1,0 +1,28 @@
+# N64 paintkeyboard wip
+
+*Recorded 2026-10-07.*
+
+> BrPaintKeyboard 0x8024AC70 (paintshop.c) T4 by hand 2026-10-07 (eebbc5, ea72b012, gate 715/0): the 'local n' was the global itself; uopt store-forwarding explains andi-of-$zero and unmasked stores; ++global in an index gives the cfe temp
+
+DONE 2026-10-07, commit ea72b012, image gate 715/0. 205 -> 0 by hand. Drafts: build/tgrally/n64/search/8024AC70/ee/ (run.sh, mk.py; c2.c final).
+
+Levers (reusable):
+- A local that "is" a global (lbu into v0, stores of unmasked t3, `andi v0,$zero,0xff` after storing 0) = the source used the GLOBAL directly: uopt forwards a stored value to later reloads as cvt(stored), and `g--` stores the unmasked difference. The old drafts' `n = D_8028DBA8 = n - 1` / `n = D_8028DBA8 = 0` chains were emulating this.
+- `D_80369EA8[++g] = 0` (pre-increment of a GLOBAL inside an index): cfe makes a temp for g + 1 (own colour, v1 beside the old value in v0), stores the masked value, and the clamp reload is forwarded (andi t1,t8). `++n` of a LOCAL in an index also makes a second temp for the value (coloured, wrong); `x = ++n` makes no temp.
+- Expression webs are shared across arms only when the expressions are identical: the kerning loads (E68[g-1]->kernR, E68[g]->kernL) got priority 30 (a0/a1) only when both arms index the same way.
+- uopt LR priority = totalsave / nocs; nocs from t3 = occurrences + live-through blocks; t3>=3 -> ((t3-2)>>2)+2 (instrLC uopt.c f_compute_save). LR per variable.
+- Tools: scratch cdx.py/dec.sh (decision list with var offsets), lrb.py (lrblocks via instrLC cc), u/ug.sh (cfe+uopt+ugen listing; ugen -temp needs a FILE path), udump.py (uopt-output ucode by source line).
+
+Same session, BrPaintFloodFill 0x8024DCA0 T4 (86a1d04a, gate 716/0), 262 -> 0 in ~10 edits: frame 8 too big = x,y were locals; ROM converts the PARAMETERS in place. ROM's strength-reduced pointer seeded from n's home (not the constant &stack[2]) = top-tested `while` (do-while lets uopt fold the seed). One field read by index while the rest go through the SR pointer = `dy = stack[--n].dy` first. Induction step before the jal = step inside the call arg (`BrPaintPlot(x--, ...)`). as1 move/store order fixed by sharing one line (`x = ...; y = ...;`, `stack[1].dy = -1; n = 2;`).
+
+Same session, BrPaintDashRoundRect 0x80251F68 T4 (fe5d8f28, gate 717/0), 268 -> 0 in 5 drafts: params homed and moved in place (x0 += r ...) after the edges; the "radius twice (s6, s7)" came for free once the loop bounds were written inline (y0 + r .. y1 - r); `on++; on &= 1;` fixed the s3/s4/s5 rotation; `a = 0;` before `err = -b;`; one unused int keeps the frame.
+
+Parked same session (open, released):
+- BrPaintDashCircle 0x802528F8: DONE by 66d9b9 from x5 (e8f896a6, [n64-dashcircle-t4-2026-10-07](n64-dashcircle-t4-2026-10-07.md)): fillers were named point coordinates px/py. Was: 206 -> 4 (ee/x5.c) with the sibling idioms; residue only uopt's SPILL-SLOT choice (spillcand/spillreuse in instrSP: slot = first non-forbidden slot in creation order, webs in number order). Parity2 loses parity1's slot because web 86 (cy - (y>>1)) took it first.
+- BrSndNearestCommit 0x8022B534: 128 -> 120 (ee/w3.c): a `float *p = (char *)pObj + 0x30` local + index-first `(D_8031B2C8[0].car + D_8031B760)->camMode` fix the top colours; ugen FIFO puts v0 early in the ROM (vol/baseVol loads in v0).
+- ugen free list (instr2 DKWB_UGEN_TRACE): coloured regs are REMOVEd at proc start and FREEd into the FIFO when their web ends, so a dead uopt web's register becomes a ring temp in FIFO order.
+- BrModRowRead 0x80256DEC (open): IDO colours CONSTRAINED webs (intf >= regs, ~22) first by priority (p1) and UNCONSTRAINED ones last in WEB-NUMBER order (p2). The ROM's bases-in-s0..s3 / row-values-in-caller-saved = bases unconstrained; ours have one extra interference from a hoisted const-1 web (arpOn = 1 in switch case 0). Deleting that store reproduces the ROM colouring exactly (diagnostic only).
+- Second round (same day): BrCrImpulseSolve reviewed, no new lever. BrPaintPlot 0x8024F25C (51): two diagnostic ring injections (t0 at the (x^..)>>1 pop, t5 at the stride +7) take it to 24, so the ROM spends one extra GP temp before each. BrPaintLine 0x8024F000 (92): the loop-end temps x1+1 / y1+1 (11/3) outrank dx, dy and both steps; the ROM ranks them last. Scratch tool inj.py (instr2 DKWB_INJECT grading via n64alloc.Grader) for one-off diagnostic injections.
+- DONE later same session: BrPaintLine 0x8024F000 T4 c0369206 (719/0): steps as one conditional each (`stepy = y1 < y0 ? -1 : 1;`, ROM pattern = then-arm ending in `b join` with the constant in the beqz delay), no separate `= 1` init -> steps outrank the loop ends; fillers gone; corners converted one point per line. BrPaintPlot 0x8024F25C T4 737ca1f4 (720/0): the mask index as a named local computed at the top of the masked arm (base + m operand order AND the two "missing" ring pops both came from that one statement).
+- Lesson: a ring shift of +1 or +2 with identical instructions often = an intermediate the original wrote as its own statement/local; a `b` to the very next instruction = a conditional expression or if/else.
+- IDO idiom (corpus, 007 tlbmanageRemoveEntry): `if (x & 0x80000000)` compiles to `sll t, x, 0; bltz t` when 0x80000000 is not a hoisted constant web. BrMusicThread 0x80257D3C (open): ee/m7_full.c has the loops right (static v as the first loop counter keeps counter+pointer; lo/hi locals with `>> 16` folded); left = outer-loop constants hoisted into s-regs (tot 10 > callee cost 9.25 because the forever-loop head is "movable"); ROM rematerialises them.

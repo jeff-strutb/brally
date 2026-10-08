@@ -2,9 +2,9 @@
 
 *Recorded 2026-10-05.*
 
-> BrPaintClick 0x8024C184 T4 2026-10-05 (65b5283b, 1005 -> 0): as1 schedules ties by SOURCE LINE (fold statements onto one line); args loaded straight into a0/a1 = an in-place local with parameter preference (available=a0 only); reusing an existing local (i, r) joins its web and changes colour order; nested call in args = cfe frame temp
+> BrPaintClick 0x8024C184 T4 2026-10-05 (d52546cd, 1005 -> 0): as1 schedules ties by SOURCE LINE (fold statements onto one line); args loaded straight into a0/a1 = an in-place local with parameter preference (available=a0 only); reusing an existing local (i, r) joins its web and changes colour order; nested call in args = cfe frame temp
 
-BrPaintClick (src/tgrally/menus/paintclick.c) went 1005 -> 0 on 2026-10-05, commit 65b5283b, image gate 670/0. Hand transcription only.
+BrPaintClick (src/tgrally/menus/paintclick.c) went 1005 -> 0 on 2026-10-05, commit d52546cd, image gate 670/0. Hand transcription only.
 
 **Levers, each diagnosed before the edit:**
 - **as1 scheduler ties break on the source line number, lowest first** (workbench field-guide lever 33). Read the decisions with `cc -Wa,-R` (trace on stdout, the object is unchanged). If two adjacent instructions issue in the wrong order with allocation and count exact, put both statements on one physical line. Used three times here: the anchor if/else, the plot's x/y shifts, and a hoisted load that took the line of the r statement (fixed by splitting `r = sqrtf(..); r >>= 2;`).
@@ -14,4 +14,4 @@ BrPaintClick (src/tgrally/menus/paintclick.c) went 1005 -> 0 on 2026-10-05, comm
 - **Frame one word too big with every local's home matching:** a cfe temp from a call nested in another call's arguments (`f(.., (int)sqrtf(..))`). Hoist it into a local.
 - `n64alloc force` to the suspected ROM colouring proves the target before searching for the source (it compiles the tree, so install the draft first).
 
-Related: [n64-ctlaibody-const-spelling-2026-10-05](n64-ctlaibody-const-spelling-2026-10-05.md), [n64-m2-levers-2026-10-05](n64-m2-levers-2026-10-05.md).
+Related: [n64-ctlaibody-const-spelling-2026-10-05](n64-ctlaibody-const-spelling-2026-10-05.md), [n64-m2-643a5c-levers-2026-10-05](n64-m2-levers-2026-10-05.md).

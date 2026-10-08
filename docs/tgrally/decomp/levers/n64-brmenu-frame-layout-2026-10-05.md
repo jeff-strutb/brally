@@ -2,9 +2,9 @@
 
 *Recorded 2026-10-05.*
 
-> BrMenu 0x8020AD5C T4 2026-10-05 (af920333, gate 664/0) by hand: solved the frame from ROM slot offsets with the frame-size arithmetic; buf in an inner block; block variables split webs; pointer-typed prototypes; result set after the call
+> BrMenu 0x8020AD5C T4 2026-10-05 (221e57d5, gate 664/0) by hand: solved the frame from ROM slot offsets with the frame-size arithmetic; buf in an inner block; block variables split webs; pointer-typed prototypes; result set after the call
 
-BrMenu (src/tgrally/menus/frontbuttons.c) T3 -> T4 on 2026-10-05, session, commit af920333 + README e26ab2a5, image gate 664/0. Pure hand transcription, 289 -> 0, about 12 reasoned edits. Follows [n64-carselect-handtranscription-2026-10-05](../functions/n64-carselect-handtranscription-2026-10-05.md) (same BrRomUnpack prototype fix gave the first 10).
+BrMenu (src/tgrally/menus/frontbuttons.c) T3 -> T4 on 2026-10-05, session 422ec5, commit 221e57d5 + README a145e359, image gate 664/0. Pure hand transcription, 289 -> 0, about 12 reasoned edits. Follows [n64-carselect-handtranscription-2026-10-05](../functions/n64-carselect-handtranscription-2026-10-05.md) (same BrRomUnpack prototype fix gave the first 10).
 
 **Frame arithmetic (reusable):** IDO frame = round8(args + saved + 4*homes + ~12 temp bytes); measured f(37 homes) = 0xF8, f(39) = 0x100, f(42) = 0x110 for a 0x38 arg area + 0x20 saved. Homes: function-level decls top-down in declaration order, then EVERY block-scope local in source order (each gbi macro `_g` its own slot, measured: gSPClipRatio = 4, gSPLight = 1; sibling blocks never share, checked with a 3-block repro), then cfe temps. Use the ROM's few visible slots (spills, &buf) plus this budget to prove where the block slots must sit. Here only one layout fit: `buf` declared in a block opened AFTER the lighting macros (their 7 `_g` slots above it).
 
