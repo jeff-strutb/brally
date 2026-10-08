@@ -742,7 +742,8 @@ tri:
         .equ    RV_PB, 76
         .equ    RV_CAM, 80              @ the camera (1/8 units), then the screen's edges as planes
         .equ    RV_EDGE, 92
-        .equ    RV_FRAME, 156
+        .equ    RV_ALL, 156             @ a cell of all its triangles: the list's place after it, else 0
+        .equ    RV_FRAME, 160
 
 render_visible:
         stmfd   sp!, {r4-r11, lr}
@@ -811,6 +812,12 @@ render_visible:
         cmp     r0, r1, lsr #16
         beq     .Lcells_done
         ldrh    r5, [r4], #2
+        mov     r1, #0                  @ the count's top bit: all the cell's triangles, in order
+        tst     r5, #0x8000             @ (their numbers from s_iota)
+        bicne   r5, r5, #0x8000
+        movne   r1, r4
+        ldrne   r4, =s_iota
+        str     r1, [sp, #RV_ALL]
         ldr     r1, =g_cells            @ (24 bytes a cell)
         add     r0, r0, r0, lsl #1
         add     r1, r1, r0, lsl #3
@@ -845,7 +852,7 @@ render_visible:
         add     r0, r0, #1
         str     r0, [sp, #RV_NC]
         cmp     r5, #0
-        beq     .Lcell
+        beq     .Lcell_end
 .Ltri:
         CNT     0
         ldrh    r0, [r4], #2
@@ -926,9 +933,16 @@ render_visible:
 .Lnext:
         subs    r5, r5, #1
         bne     .Ltri
+.Lcell_end:
+        ldr     r0, [sp, #RV_ALL]       @ back in the list after an all-triangles cell
+        cmp     r0, #0
+        movne   r4, r0
         b       .Lcell
 .Lcull:
-        add     r4, r4, r5, lsl #1      @ past its triangles in the list
+        ldr     r0, [sp, #RV_ALL]
+        cmp     r0, #0
+        addeq   r4, r4, r5, lsl #1      @ past its triangles in the list
+        movne   r4, r0
         b       .Lcell
 .Lcells_done:
         ldr     r0, =s_stamp
@@ -948,3 +962,14 @@ render_visible:
         ldmfd   sp!, {r4-r11, lr}
         bx      lr
         .ltorg
+
+@ 0, 1, 2 ..: an all-triangles cell's numbers (race.c's lists)
+        .section .rodata
+        .align  1
+        .global s_iota
+s_iota:
+        .set    i, 0
+        .rept   256
+        .hword  i
+        .set    i, i + 1
+        .endr

@@ -23,7 +23,9 @@ uint32_t g_simprof[24];
 uint32_t sim_clock(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*(volatile uint16_t *)0x0400010C << 16; }
 #endif
 static Pad s_pad[2];
-static fx s_cprev[17], s_ccur[17];       /* the view's camera (rows, fov) a tick ago and now */
+static fx s_cprev[17], s_ccur[17];
+static int s_settle;                     /* ticks every car runs whatever (the start) */
+#define ABS(x) ((x) < 0 ? -(x) : (x))       /* the view's camera (rows, fov) a tick ago and now */
 
 void race_start(void)
 {
@@ -48,6 +50,7 @@ void race_start(void)
         g_world.cars[k] = &s_car[k];
     }
     sim_camera = BrCamChaseStep;
+    s_settle = 20;
     g_sim_dt = FX(1.0 / 30);             /* settled on the grid in the game's ticks, half a second */
     g_sim_dtk = FX(1.0);
     for (k = 0; k < 15; k++)
@@ -76,17 +79,27 @@ static void pad_from_keys(Pad *p, uint32_t keys)
 
 void race_tick(uint32_t keys)
 {
-    int k;
+    int k, awake;
     pad_from_keys(&s_pad[0], keys);
     s_pad[1].flags = 0;
     s_pad[1].steer = FX(0.0);
     g_world.walkBack ^= 1;               /* BrRaceTick: the collision cells walked the other way */
+    {   /* a car at rest with nothing to do, the player's well away, sleeps (its tick skipped) */
+        const Body *o = &s_car[1].body;
+        fx dx = o->st.pos[0] - s_car[0].body.st.pos[0], dy = o->st.pos[1] - s_car[0].body.st.pos[1];
+        awake = s_settle > 0 || s_pad[1].flags != 0 || s_pad[1].steer != 0 || (ABS(dx) < FX(16.0) && ABS(dy) < FX(16.0)) ||
+                ABS(o->st.vel[0]) + ABS(o->st.vel[1]) + ABS(o->st.vel[2]) > FX(0.05) ||
+                ABS(o->st.omega[0]) + ABS(o->st.omega[1]) + ABS(o->st.omega[2]) > FX(0.05);
+        if (s_settle > 0)
+            s_settle--;
+    }
     for (k = 0; k < 4; k++) {            /* BrCarPhysTick a phase at a time, each phase's code in */
         uint32_t t0 = clock32(), t1;     /* IWRAM for both cars */
         race_phase_code(k);
         t1 = clock32();
         sim_tick_phase(&s_car[0], k);
-        sim_tick_phase(&s_car[1], k);
+        if (awake)
+            sim_tick_phase(&s_car[1], k);
         g_phase_cyc[4] += t1 - t0;
         g_phase_cyc[k] += clock32() - t1;
     }
@@ -187,53 +200,140 @@ void race_view(void *frame, int alpha)
     }
 }
 
-/* ---- the cells in view: each cell with a triangle, its sphere inside the four edges and
-   nearer than the far plane, all its triangles (render_visible's list) ---- */
+/* ---- the cells in view: those in the view's wedge on the ground (26 degrees either side, out to
+   the far plane, 64 units wider), each with a triangle, its sphere inside the four edges
+   and nearer than the far plane, all its triangles (render_visible's list); the few cells whose
+   sphere reaches further than that past their square are tried every frame ---- */
 static uint16_t s_list[12288] __attribute__((section(".ewram_bss")));
+#define M8 512                           /* the margin: 64 units, in eighths (a cell's sphere reaches out
+                                            that far, which the edges' test lets in) */
+static uint16_t s_big[128];
+static int s_nbig = -1;
+static uint8_t s_isbig[(4096 * 2) / 8] __attribute__((section(".ewram_bss")));
+
+static void find_big(void)
+{
+    int ci, gx, gy;
+    s_nbig = 0;
+    for (gy = 0; gy < g_grid_h; gy++)
+    for (gx = 0; gx < g_grid_w; gx++) {
+        const Cell *c = &g_cells[ci = gy * g_grid_w + gx];
+        int32_t x0 = gx * 256, y0 = gy * 256;
+        if (c->nt == 0)
+            continue;
+        if (c->c[0] - c->r < x0 - M8 || c->c[0] + c->r > x0 + 256 + M8 ||
+            c->c[1] - c->r < y0 - M8 || c->c[1] + c->r > y0 + 256 + M8) {
+            if (s_nbig < (int)(sizeof s_big / sizeof s_big[0])) {
+                s_big[s_nbig++] = (uint16_t)ci;
+                s_isbig[ci >> 3] |= (uint8_t)(1 << (ci & 7));
+            }
+        }
+    }
+}
+
+static int cell_seen(const Frame *f, const Cell *c)
+{
+    int32_t dx, dy, r;
+    int k;
+    if (c->nt == 0)
+        return 0;
+    dx = c->c[0] - f->cam[0];
+    dy = c->c[1] - f->cam[1];
+    r = c->r + FAR * 8;
+    if (dx * dx + dy * dy > r * r)
+        return 0;
+    for (k = 0; k < 4; k++) {
+        const int32_t *e = f->edge[k];
+        if (e[0] * c->c[0] + e[1] * c->c[1] + e[2] * c->c[2] < (-e[3] - c->r - 2) * 4096)
+            return 0;
+    }
+    return 1;
+}
+
+static int cell_take(const Frame *f, int ci, int n)
+{
+    const Cell *c = &g_cells[ci];
+    int k;
+    if (!cell_seen(f, c))
+        return n;
+    if (n + 2 + (int)c->nt >= (int)(sizeof s_list / 2) - 1)
+        return n;
+    s_list[n++] = (uint16_t)ci;
+    s_list[n++] = (uint16_t)c->nt;
+    for (k = 0; k < (int)c->nt; k++)
+        s_list[n++] = (uint16_t)k;
+    return n;
+}
 
 const uint16_t *race_cells(const void *frame)
 {
     const Frame *f = (const Frame *)frame;
-    int n = 0, ci, k, cx, cy, x0, x1, y0, y1;
-    int32_t far2;
-    /* the cells within the far plane's reach of the camera (32 units = 256 vertex units) */
-    cx = f->cam[0] >> 8;
-    cy = f->cam[1] >> 8;
-    x0 = cx - FAR / 32 - 1;
-    x1 = cx + FAR / 32 + 1;
-    y0 = cy - FAR / 32 - 1;
-    y1 = cy + FAR / 32 + 1;
-    if (x0 < 0) x0 = 0;
-    if (y0 < 0) y0 = 0;
-    if (x1 >= g_grid_w) x1 = g_grid_w - 1;
-    if (y1 >= g_grid_h) y1 = g_grid_h - 1;
-    for (cy = y0; cy <= y1; cy++)
-    for (cx = x0; cx <= x1; cx++) {
-        const Cell *c = &g_cells[ci = cy * g_grid_w + cx];
-        int32_t dx, dy, r;
-        if (c->nt == 0)
-            continue;
-        dx = c->c[0] - f->cam[0];
-        dy = c->c[1] - f->cam[1];
-        r = c->r + FAR * 8;
-        far2 = r * r;
-        if (dx * dx + dy * dy > far2)
-            continue;
-        for (k = 0; k < 4; k++) {
-            const int32_t *e = f->edge[k];
-            if (e[0] * c->c[0] + e[1] * c->c[1] + e[2] * c->c[2] < (-e[3] - c->r - 2) * 4096)
-                break;
+    int32_t px[3], py[3], ylo, yhi, row, i, n = 0;
+    fx slope[3];
+    if (s_nbig < 0)
+        find_big();
+    {   /* the wedge: the camera, the far plane's two ends (tan 26 deg = 0.4877) */
+        int32_t fx_ = -f->fwd[0], fy = -f->fwd[1], R = FAR * 8, t = 125;   /* Q8 (the view looks down -fwd), unit on the ground */
+        fx l = FSQRT(ITOF(fx_ * fx_ + fy * fy));
+        if (l > 0) {
+            fx_ = FTOI(FDIV(ITOF(fx_ * 256), l));
+            fy = FTOI(FDIV(ITOF(fy * 256), l));
         }
-        if (k < 4)
-            continue;
-        if (n + 2 + (int)c->nt >= (int)(sizeof s_list / 2) - 1)
-            goto full;
-        s_list[n++] = (uint16_t)ci;
-        s_list[n++] = (uint16_t)c->nt;
-        for (k = 0; k < (int)c->nt; k++)
-            s_list[n++] = (uint16_t)k;
+        px[0] = f->cam[0] - (fx_ * M8 >> 8);
+        py[0] = f->cam[1] - (fy * M8 >> 8);
+        px[1] = f->cam[0] + ((fx_ * R - fy * (R * t >> 8)) >> 8);
+        py[1] = f->cam[1] + ((fy * R + fx_ * (R * t >> 8)) >> 8);
+        px[2] = f->cam[0] + ((fx_ * R + fy * (R * t >> 8)) >> 8);
+        py[2] = f->cam[1] + ((fy * R - fx_ * (R * t >> 8)) >> 8);
     }
-full:
+    ylo = py[0] < py[1] ? py[0] : py[1];
+    ylo = ylo < py[2] ? ylo : py[2];
+    yhi = py[0] > py[1] ? py[0] : py[1];
+    yhi = yhi > py[2] ? yhi : py[2];
+    for (i = 0; i < 3; i++) {                /* each edge's x per y, 32.32 */
+        int j = i == 2 ? 0 : i + 1;
+        slope[i] = py[j] != py[i] ? FDIV(ITOF(px[j] - px[i]), ITOF(py[j] - py[i])) : 0;
+    }
+    for (row = (ylo - M8) >> 8; row <= (yhi + M8) >> 8; row++) {
+        int32_t s0 = row * 256 - M8, s1 = row * 256 + 256 + M8, xlo = 0x7FFFFFFF, xhi = -0x7FFFFFFF, cx;
+        if (row < 0 || row >= g_grid_h)
+            continue;
+        for (i = 0; i < 3; i++) {            /* the wedge within the strip: its corners, its edges' ends */
+            int j = i == 2 ? 0 : i + 1, e;
+            int32_t ya, yb;
+            if (py[i] >= s0 && py[i] <= s1) {
+                xlo = px[i] < xlo ? px[i] : xlo;
+                xhi = px[i] > xhi ? px[i] : xhi;
+            }
+            if (py[i] == py[j])
+                continue;
+            ya = py[i] < py[j] ? py[i] : py[j];
+            yb = py[i] < py[j] ? py[j] : py[i];
+            ya = ya > s0 ? ya : s0;
+            yb = yb < s1 ? yb : s1;
+            for (e = 0; e < 2 && ya <= yb; e++) {
+                int32_t y = e ? yb : ya, x = px[i] + FTOI(FMUL(slope[i], ITOF(y - py[i])));
+                xlo = x < xlo ? x : xlo;
+                xhi = x > xhi ? x : xhi;
+            }
+        }
+        if (xlo > xhi)
+            continue;
+        xlo = (xlo - M8) >> 8;
+        xhi = (xhi + M8) >> 8;
+        if (xlo < 0)
+            xlo = 0;
+        if (xhi >= g_grid_w)
+            xhi = g_grid_w - 1;
+        for (cx = xlo; cx <= xhi; cx++) {
+            int ci = row * g_grid_w + cx;
+            if (!(s_isbig[ci >> 3] & (1 << (ci & 7))))
+                n = cell_take(f, ci, n);
+        }
+    }
+    for (i = 0; i < s_nbig; i++)
+        n = cell_take(f, s_big[i], n);
     s_list[n] = 0xFFFF;
     return s_list;
 }
+
