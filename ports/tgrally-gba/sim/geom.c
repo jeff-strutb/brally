@@ -1,54 +1,9 @@
 /* geom.c -- the simulation's geometry: geometry/mat3.c, driving/rbquat.c's
- * orientation helpers, libultra's guRotateF, guMtxCatF and guNormalize,
+ * orientation helpers, libultra's guRotateF and guNormalize,
  * geometry/atan2.c BrAtan2; under FX_FLOAT also libultra's sinf and cosf as
- * the cartridge has them (the fixed build's are in fxmath.c). */
+ * the cartridge has them (the fixed build's are in fxmath.c).  The kernels the
+ * race calls most are in geomhot.c. */
 #include "sim.h"
-
-/* BrMat4RotateVec (0x802586C0): out = m v (rows: world to body) */
-void BrMat4RotateVec(fx out[3], fx m[4][4], const fx v[3])
-{
-    int i, k;
-    for (i = 0; i < 3; i++) {
-        out[i] = FX(0.0);
-        for (k = 0; k < 3; k++)
-            out[i] += FMUL(m[i][k], v[k]);
-    }
-}
-
-/* BrMat4RotateVecT (0x80258758): out = m^T v (body to world) */
-void BrMat4RotateVecT(fx out[3], fx m[4][4], const fx v[3])
-{
-    int i, k;
-    for (i = 0; i < 3; i++) {
-        out[i] = FX(0.0);
-        for (k = 0; k < 3; k++)
-            out[i] += FMUL(m[k][i], v[k]);
-    }
-}
-
-/* BrMat3MulVecRows: m^T v plus m's translation (a body point into the world) */
-void BrMat3MulVecRows(fx out[3], fx m[4][4], const fx v[3])
-{
-    int i, k;
-    for (i = 0; i < 3; i++) {
-        out[i] = FX(0.0);
-        for (k = 0; k < 3; k++)
-            out[i] += FMUL(m[k][i], v[k]);
-    }
-    out[0] += m[3][0];
-    out[1] += m[3][1];
-    out[2] += m[3][2];
-}
-
-void BrMat3MulVec(fx out[3], fx m[3][3], const fx v[3])
-{
-    int i, k;
-    for (i = 0; i < 3; i++) {
-        out[i] = FX(0.0);
-        for (k = 0; k < 3; k++)
-            out[i] += FMUL(m[i][k], v[k]);
-    }
-}
 
 void BrMat3Transpose(fx t[3][3], fx c[3][3], fx m[4][4])
 {
@@ -85,14 +40,6 @@ void BrMat3Skew(fx out[3][3], const fx v[3])
     out[1][2] = -v[0];
     out[2][0] = -v[1];
     out[2][1] = v[0];
-}
-
-void BrMat3Mul(fx out[3][3], fx a[3][3], fx b[3][3])
-{
-    int i, j;
-    for (i = 0; i < 3; i++)
-        for (j = 0; j < 3; j++)
-            out[i][j] = FMUL(a[i][0], b[0][j]) + FMUL(a[i][1], b[1][j]) + FMUL(a[i][2], b[2][j]);
 }
 
 void BrMat3Sub(fx out[3][3], fx a[3][3], fx b[3][3])
@@ -153,40 +100,6 @@ void BrMat3Solve(fx out[3], fx mm[3][3], const fx v[3])
 }
 
 /* ---- driving/rbquat.c ---- */
-
-/* BrQuatToMat: the rotation of a unit quaternion (w, x, y, z) and the state's position */
-void BrQuatToMat(fx m[4][4], const RbState *p)
-{
-    fx ww, xx, yy, zz, xy2, wz2, xz2, wy2, yz2, wx2;
-    const fx *q = p->q;
-
-    ww = FMUL(q[0], q[0]);
-    xx = FMUL(q[1], q[1]);
-    yy = FMUL(q[2], q[2]);
-    zz = FMUL(q[3], q[3]);
-    xy2 = FMUL(q[2], FMUL(q[1], FX(2.0)));
-    wz2 = FMUL(q[3], FMUL(q[0], FX(2.0)));
-    xz2 = FMUL(q[3], FMUL(q[1], FX(2.0)));
-    wy2 = FMUL(q[2], FMUL(q[0], FX(2.0)));
-    yz2 = FMUL(q[3], FMUL(q[2], FX(2.0)));
-    wx2 = FMUL(q[1], FMUL(q[0], FX(2.0)));
-    m[0][0] = ww + xx - yy - zz;
-    m[0][1] = xy2 + wz2;
-    m[0][2] = xz2 - wy2;
-    m[0][3] = FX(0.0);
-    m[1][0] = xy2 - wz2;
-    m[1][1] = ww - xx + yy - zz;
-    m[1][2] = yz2 + wx2;
-    m[1][3] = FX(0.0);
-    m[2][0] = xz2 + wy2;
-    m[2][1] = yz2 - wx2;
-    m[2][2] = ww - xx - yy + zz;
-    m[2][3] = FX(0.0);
-    m[3][0] = p->pos[0];
-    m[3][1] = p->pos[1];
-    m[3][2] = p->pos[2];
-    m[3][3] = FX(1.0);
-}
 
 void BrVec4Normalise(fx v[4])
 {
@@ -293,21 +206,6 @@ void guRotateF(fx mf[4][4], fx a, fx x, fx y, fx z)
     mf[2][2] = t + FMUL(cosine, FX(1.0) - t);
     mf[1][0] = ab - FMUL(z, sine);
     mf[0][1] = ab + FMUL(z, sine);
-}
-
-void guMtxCatF(fx mf[4][4], fx nf[4][4], fx res[4][4])
-{
-    int i, j, k;
-    fx temp[4][4];
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++) {
-            temp[i][j] = FX(0.0);
-            for (k = 0; k < 4; k++)
-                temp[i][j] += FMUL(mf[i][k], nf[k][j]);
-        }
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            res[i][j] = temp[i][j];
 }
 
 /* ---- geometry/atan2.c: the angle of (x, y), 0 to 2 pi, by bisecting sin ---- */

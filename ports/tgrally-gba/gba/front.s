@@ -10,6 +10,11 @@
 @ dlo dhi (bytes), tex (half), uv[6] (halves).  Cell: vstart (word), nv
 @ (half), dlo dhi (bytes), tstart, nt (words).  Poly: (x y u v)[3] (words),
 @ col next tex pad (halves).
+        .section .iwram_bss, "aw", %nobits
+        .align  2
+        .global s_vis_list
+s_vis_list: .space 4                    @ render_visible's list, when the frame makes its own
+
         .section .iwram, "ax"
         .arm
         .global render_visible, project, emit, persp, cut, tri
@@ -685,7 +690,14 @@ render_visible:
         mov     r0, #0
         str     r0, [sp, #RV_NC]
         str     r0, [sp, #RV_NV]
-        ldr     r0, =g_org              @ the camera's 32-unit cell
+        ldr     r0, =s_vis_list         @ the frame's own list (the live race: race.c), else the
+        ldr     r4, [r0]                @ recorded race's for the camera's cell
+        cmp     r4, #0
+        beq     1f
+        ldr     r8, =s_stamp
+        ldrh    r8, [r8]
+        b       .Lcell
+1:      ldr     r0, =g_org              @ the camera's 32-unit cell
         ldmia   r0, {r1, r2}
         add     r1, r1, r9
         mov     r1, r1, asr #5

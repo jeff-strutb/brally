@@ -56,7 +56,7 @@ BYTES = [(0x8036A8E0 + 0x25, 'ctlP1'),         # controller type: A B C D wheel
 
 def names():
     out = {}
-    for r in csv.DictReader(open(os.path.join(NB.N64, 'config/symbols_tgr.csv'))):
+    for r in csv.DictReader(open(os.path.join(NB.ROOT, 'config/tgrally/symbols_tgr.csv'))):
         out[int(r['va'], 16)] = r['name']
     return out
 

@@ -1,7 +1,7 @@
 /* coll.c -- collision: driving/collresp.c (the contact planes, the impulse,
  * the substepped advance, car against car) and driving/obb.c (triangle
  * against the unit cube), transcribed.  The track's grid cells come straight
- * from the track (sim.h Cell) in place of the game's four-slot cache. */
+ * from the track (sim.h SimCell) in place of the game's four-slot cache. */
 #include "sim.h"
 
 #define ABS(x) ((x) < FX(0.0f) ? -(x) : (x))
@@ -9,6 +9,10 @@
 #define SIGN(x) ((x) == FX(0.0f) ? FXD(0.0) : ((x) > 0 ? FXD(1.0) : FXD(-1.0)))
 
 void BrRbVelAtPoint(fx out[3], Body *b, const fx *pt);
+
+/* x % 3 for x in 0 .. 4, from a table (Thumb has no divide, and the compiler would call one) */
+static const signed char s_mod3[5] = { 0, 1, 2, 0, 1 };
+#define MOD3(x) s_mod3[x]
 
 /* the contact list (D_802A4A20, newest first) and the shared contact values */
 static const Plane *s_contact[160];
@@ -20,16 +24,16 @@ static const Plane *D_802A4A2C;         /* the contact's plane */
 
 /* BrCollGridCellAcquire: the triangles of the 32-unit cell under (x, y), as
    BrGridCellRangeAt and BrU16QueuePop list them (a 0 ends the list) */
-Cell BrCollGridCellAcquire(fx x, fx y)
+SimCell BrCollGridCellAcquire(fx x, fx y)
 {
-    Cell c;
+    SimCell c;
     int i, first, n;
     c.tris = 0;
     c.n = 0;
     c.key = (FTOI(y) / 32 << 6) + FTOI(x) / 32;
     if (x < FX(0.0f) || x >= FX(2048.0f) || y < FX(0.0f) || y >= FX(2048.0f))
         return c;
-    i = (uint8_t)FTOI(FDIV(x, FX(32.0f))) + (uint8_t)FTOI(FDIV(y, FX(32.0f))) * 64;
+    i = (uint8_t)FTOI(FDIVK(x, 32.0f)) + (uint8_t)FTOI(FDIVK(y, 32.0f)) * 64;
     first = g_track->cellStart[i];
     n = g_track->cellStart[i + 1] - first;
     c.tris = &g_track->cellTris[first];
@@ -57,8 +61,8 @@ int BrCrTriContainsPoint(const Plane *pT, const fx *pP)
         a1 = ABS(pT->n[2]);
         c = a1 < a0 ? 1 : 2;
     }
-    i1 = (c + 1) % 3;
-    i2 = (c + 2) % 3;
+    i1 = MOD3(c + 1);
+    i2 = MOD3(c + 2);
     d1 = pP[i1] - pT->v0[i1];
     d2 = pP[i2] - pT->v0[i2];
     r = 0;
@@ -161,16 +165,16 @@ static int BrPolyContainsPoint3d(fx verts[][3], const fx polynormal[3], const fx
         abspolynormal[i] = ABS(polynormal[i]);
     zaxis = MAXINDEX3(abspolynormal);
     if (polynormal[zaxis] < 0) {
-        xaxis = (zaxis + 2) % 3;
-        yaxis = (zaxis + 1) % 3;
+        xaxis = MOD3(zaxis + 2);
+        yaxis = MOD3(zaxis + 1);
     } else {
-        xaxis = (zaxis + 1) % 3;
-        yaxis = (zaxis + 2) % 3;
+        xaxis = MOD3(zaxis + 1);
+        yaxis = MOD3(zaxis + 2);
     }
     count = 0;
     for (i = 0; i < 3; i++) {
         v = verts[i];
-        w = verts[(i + 1) % 3];
+        w = verts[MOD3(i + 1)];
         if ((xdirection = seg_contains_point(v[xaxis], w[xaxis], point[xaxis]))) {
             if (seg_contains_point(v[yaxis], w[yaxis], point[yaxis])) {
                 if (FMUL(ITOF(xdirection), FMUL(point[xaxis] - v[xaxis], w[yaxis] - v[yaxis])) <=
@@ -204,8 +208,8 @@ static int BrSegIntersectsCube(const fx v0[3], const fx v1[3])
     for (i = 0; i < 3; i++) {
         fx rhomb_normal_dot_v0;
         fx rhomb_normal_dot_cubedge;
-        iplus1 = (i + 1) % 3;
-        iplus2 = (i + 2) % 3;
+        iplus1 = MOD3(i + 1);
+        iplus2 = MOD3(i + 2);
         rhomb_normal_dot_v0 = FMUL(edgevec[iplus2], v0[iplus1]) - FMUL(edgevec[iplus1], v0[iplus2]);
         rhomb_normal_dot_cubedge = FTOF(FMUL(FXD(.5), FMUL(edgevec[iplus2], ITOF(edgevec_signs[iplus1])) +
                                                      FMUL(edgevec[iplus1], ITOF(edgevec_signs[iplus2]))));
@@ -221,7 +225,7 @@ static int BrPolyIntersectsCube(fx verts[3][3], const fx polynormal[3])
     fx p[3], t, bd[3];
 
     for (i = 0; i < 3; ++i)
-        if (BrSegIntersectsCube(verts[i], verts[(i + 1) % 3]))
+        if (BrSegIntersectsCube(verts[i], verts[MOD3(i + 1)]))
             return 1;
     for (i = 0; i < 3; i++)
         best_diagonal[i] = SIGN_NONZERO(polynormal[i]);
@@ -276,7 +280,7 @@ static int BrCrContactKick(Body *b, const fx *pN, int dampFlag, int spinFlag)
             b->hitN2[2] = D_8037EAA8[2];
         }
         {
-            uint8_t peak = (uint8_t)FTOI(FDIV(FMUL(k, FX(127.0f)), FX(27.0f)) + FX(128.0f));
+            uint8_t peak = (uint8_t)FTOI(FDIVK(FMUL(k, FX(127.0f)), 27.0f) + FX(128.0f));
             b->hitPeak = b->hitPeak < peak ? peak : b->hitPeak;
         }
         k = FX(0.9f);
@@ -360,7 +364,7 @@ int BrCrImpulseSolve(Body *b, const fx *pN, const fx *pDir, int flag, fx rest)
         b->hitN2[2] = D_8037EAA8[2];
     }
     if (b->idle > 10 && rest < FX(1e-4f)) {
-        uint8_t peak = (uint8_t)FTOI(FDIV(FMUL(FX(127.0f), dd), FX(27.0f)) + FX(128.0f));
+        uint8_t peak = (uint8_t)FTOI(FDIVK(FMUL(FX(127.0f), dd), 27.0f) + FX(128.0f));
         b->hitPeak = b->hitPeak < peak ? peak : b->hitPeak;
         tn[0] = FMUL(tn[0], FX(0.9f));
         tn[1] = FMUL(tn[1], FX(0.9f));
@@ -431,12 +435,15 @@ static void tri_in_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *pP)
 static int BrCollRespBroadPhase(Body *b, fx m[4][4])
 {
     fx v[3][3], nrm[3];
-    Cell cell;
+    SimCell cell;
     int i, n = 0;
 
     cell = BrCollGridCellAcquire(b->m[3][0], b->m[3][1]);
     for (i = 0; i < cell.n; i++) {
         const Plane *pP = &g_track->planes[cell.tris[g_world.walkBack ? cell.n - 1 - i : i]];
+        fx dx = pP->c[0] - b->m[3][0], dy = pP->c[1] - b->m[3][1], dz = pP->c[2] - b->m[3][2], rr = pP->r + FX(8.7f);
+        if (FMUL(dx, dx) + FMUL(dy, dy) + FMUL(dz, dz) > FMUL(rr, rr))
+            continue;                   /* (beyond the unit cube's reach: 5 x sqrt 3 units at the box's 0.1) */
         tri_in_box(v, nrm, m, pP);
         if (BrTriCubeTest(v, nrm) != 0) {
             if (s_ncontact < (int)(sizeof s_contact / sizeof s_contact[0]))
@@ -513,7 +520,7 @@ static void BrCrPlaneResolve(Body *b, const fx *pA, fx planeD, const fx *pEdgeN,
     } else {
         for (k = 0; k < 3; k++) {
             c[k] = v[0][k] + v[1][k] + v[2][k];
-            c[k] = FDIV(c[k], FX(3.0f));
+            c[k] = FDIVK(c[k], 3.0f);
         }
         if (ABS(c[0]) < ABS(c[1])) {
             if (ABS(c[0]) < ABS(c[2])) {
@@ -648,7 +655,7 @@ void BrCarPhysAdvance(Body *b)
     t = FX(0.033333335f);
     s[1] = FDIV(FX(1.0f), b->box[1]);
     s[2] = FDIV(FX(1.0f), b->box[2]);
-    dt = FDIV(t, FX(4));
+    dt = FDIVK(t, 4);
     while (t > FX(0.002f)) {
         BrCollRespTipKick(b);
         BrCarCarCollide();
@@ -773,7 +780,7 @@ static void BrCarCarCollide(void)
                 if (x > FX(27.0f))
                     x = FX(27.0f);
                 if (ci->hitAge > 40)
-                    cj->sndHitA = ci->sndHitA = (uint8_t)FTOI(FDIV(FMUL(FX(127.0f), x), FX(27.0f)) + FX(128.0f));
+                    cj->sndHitA = ci->sndHitA = (uint8_t)FTOI(FDIVK(FMUL(FX(127.0f), x), 27.0f) + FX(128.0f));
                 ci->hitAge = 0;
                 sd[0] = FMUL(d[0], FX(-1.0f));
                 sd[1] = FMUL(d[1], FX(-1.0f));

@@ -110,7 +110,7 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
     slipF = FDIV(slipF, b->sub[2]->inertia);
     slipR = FTOF(FMUL(FMUL(-ABS(b->sub[0]->brake), SIGNF(b->sub[0]->spin)), FXD(2.0)));
     slipR = FDIV(slipR, b->sub[0]->inertia);
-    m4 = FDIV(b->mass, FX(4));
+    m4 = FDIVK(b->mass, 4);
     slipF = FDIV(slipF, m4);
     slipR = FDIV(slipR, m4);
     slipF = FMUL(slipF, FMUL(dt, dt));
@@ -163,7 +163,7 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
         } else {
             sp = FSQRT(FMUL(b->st.vel[0], b->st.vel[0]) + FMUL(b->st.vel[1], b->st.vel[1]) + FMUL(b->st.vel[2], b->st.vel[2]));
             if (sp < FX(27.0f)) {
-                t = FDIV(FMUL(FX(27.0f) - sp, FX(0.1f)), FX(27.0f));
+                t = FDIVK(FMUL(FX(27.0f) - sp, FX(0.1f)), 27.0f);
                 if (g < t)
                     g = t;
             }
@@ -233,7 +233,7 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
                 g = FX(1.0f);
             sp = FSQRT(FMUL(b->st.vel[0], b->st.vel[0]) + FMUL(b->st.vel[1], b->st.vel[1]) + FMUL(b->st.vel[2], b->st.vel[2]));
             if (sp < FX(27.0f)) {
-                t = FDIV(FMUL(FX(27.0f) - sp, FX(0.1f)), FX(27.0f));
+                t = FDIVK(FMUL(FX(27.0f) - sp, FX(0.1f)), 27.0f);
                 if (g < t)
                     g = t;
             }
@@ -247,7 +247,7 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
         }
     }
     if (ran != 0) {
-        sv[0] = FDIV(vB[0] + vA[0], FX(2));
+        sv[0] = FDIVK(vB[0] + vA[0], 2);
         sv[2] = FDIV(vA[1] - vB[1], b->sub[0]->st.pos[0] - b->sub[2]->st.pos[0]);
         sv[1] = vA[1] - FMUL(b->sub[0]->st.pos[0], sv[2]);
         BrMat4RotateVec(w, b->m, b->st.omega);
@@ -260,7 +260,7 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
     }
     if (ABS(side) > FX(0.5f))
         side = FTOF(FMUL((side == FX(0.0f) ? FXD(0.) : (side > FX(0.0f) ? FXD(1.) : FXD(-1.))), FXD(0.5)));
-    side = FDIV(side, FX(0.5f));
+    side = FDIVK(side, 0.5f);
     side = FMUL(side, FX(-4.0f));
     if (ABS(b->angle - side) < FX(0.26666668f))
         b->angle = side;
@@ -319,7 +319,7 @@ void BrWheelTyre(Body *b, Body *w, fx *pA, uint8_t *pB, fx dt)
         load = FMUL(FMUL(a[0], w->hitN[0]) + FMUL(a[1], w->hitN[1]) + FMUL(a[2], w->hitN[2]), FX(3.5f));
         tq = w->drive;
         q = FDIV(tq, w->inertia);
-        *pA = *pA + FDIV(q, FX(2));
+        *pA = *pA + FDIVK(q, 2);
         if (*pB != 0)
             q = FTOF(FMUL(q, FXD(0.9)));
         if (ABSF(q) > ABSF(load)) {
@@ -345,11 +345,14 @@ void BrWheelTyre(Body *b, Body *w, fx *pA, uint8_t *pB, fx dt)
             w->spin = FTOF(FMUL(SIGNZ(w->spin), FXD(300.0)));
     }
     w->angle = w->angle - FMUL(FMUL(w->spin, FX(57.295776f)), dt);
-    while (w->angle > FXD(360.0))
+    while (w->angle > FXD(360.0)) {
         w->angle = FTOF(w->angle - FXD(360.0));
+        FX_STEP(w->angle);
+    }
     if (w->angle < FXD(0.)) {
         do {
             w->angle = w->angle + FX(360.0f);
+            FX_STEP(w->angle);
         } while (w->angle < FXD(0.));
     }
 }
@@ -491,7 +494,7 @@ void BrTyreSkidCheck(Body *b, Force *f)
 
 int BrCrTriContainsPoint(const Plane *pT, const fx *pP);
 fx BrCrPlaneDist(const fx *n, fx d, const fx *p);
-Cell BrCollGridCellAcquire(fx x, fx y);
+SimCell BrCollGridCellAcquire(fx x, fx y);
 
 /* BrWheelGroundProbe: how far a wheel can drop before the ground (100: none) */
 static fx BrWheelGroundProbe(Body *b, Body *w)
@@ -499,7 +502,7 @@ static fx BrWheelGroundProbe(Body *b, Body *w)
     static const fx down[3] = { FX(0.0f), FX(0.0f), FX(-1.0f) };   /* D_802A4B94 */
     fx mount[3], world[3], dir[3], best, t, h, d, e;
     const Plane *pPl;
-    Cell cell;
+    SimCell cell;
     int i;
 
     best = FX(100.0f);
@@ -512,6 +515,11 @@ static fx BrWheelGroundProbe(Body *b, Body *w)
     cell = BrCollGridCellAcquire(world[0], world[1]);
     for (i = 0; i < cell.n; i++) {
         pPl = &g_track->planes[cell.tris[i]];
+        {   /* (a hit within 2 of the point lies on the triangle: farther than that, none) */
+            fx dx = pPl->c[0] - world[0], dy = pPl->c[1] - world[1], dz = pPl->c[2] - world[2], rr = pPl->r + FX(2.01f);
+            if (FMUL(dx, dx) + FMUL(dy, dy) + FMUL(dz, dz) > FMUL(rr, rr))
+                continue;
+        }
         d = BrCrPlaneDist(pPl->n, pPl->d, world);
         if (d > FXD(-2.0) && d < FXD(2.0)) {
             t = FMUL(pPl->n[0], dir[0]) + FMUL(pPl->n[1], dir[1]) + FMUL(pPl->n[2], dir[2]);

@@ -18,7 +18,7 @@
 @ game's effects mixer packs its two levels so), exact modulo 2^32.
         .section .iwram, "ax"
         .arm
-        .global snd_init, snd_vblank, s_voice, s_chan, s_player, mix_chunk, mod_tick, row_read, sfx_frame, udiv
+        .global snd_init, snd_vblank, s_voice, s_chan, s_player, mix_chunk, mod_tick, row_read, sfx_frame
         .global snd_play, snd_sfx, s_song, s_sfx_trace, s_mus_gain
 
         .equ    MAXCH, 16               @ music channels at most
@@ -85,29 +85,6 @@ s_acc:    .space CHUNK * 4
 s_out:    .space 4 * N              @ left 0, left 1, right 0, right 1
 
         .section .iwram, "ax"
-@ r0 = r0 / r1 (unsigned; 0 when r1 is 0).  Clobbers r1-r3.
-udiv:
-        mov     r2, #0
-        mov     r3, #1
-        cmp     r1, #0
-        moveq   r0, #0
-        bxeq    lr
-1:      cmp     r1, r0
-        bhs     2f
-        tst     r1, #0x80000000
-        bne     2f
-        mov     r1, r1, lsl #1
-        mov     r3, r3, lsl #1
-        b       1b
-2:      cmp     r0, r1
-        subhs   r0, r0, r1
-        orrhs   r2, r2, r3
-        mov     r1, r1, lsr #1
-        movs    r3, r3, lsr #1
-        bne     2b
-        mov     r0, r2
-        bx      lr
-
 @ \d = the note rate of note \n (+ the sample's relative note), the table's last past its end
         .macro  NOTERATE d, n
         mov     \n, \n, lsl #16

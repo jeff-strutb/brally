@@ -37,7 +37,7 @@ extern const Cell g_cells[];
 extern const V3 g_verts[];
 extern const Tri g_tris[];
 extern const Frame g_frames[];
-extern const int g_org[2];          /* the world origin of the cell grid and the vertices */
+extern const int g_org[3];          /* the world origin of the cell grid and the vertices */
 extern const int g_pvs_x0, g_pvs_y0, g_pvs_w, g_pvs_h, g_pvs_cell;   /* camera cells, absolute */
 extern const uint32_t g_pvs_at[];   /* per camera cell: where its list starts in g_pvs, or ~0 */
 extern const uint16_t g_pvs[];      /* cell, n, n triangle indices in it; ...; 0xFFFF */

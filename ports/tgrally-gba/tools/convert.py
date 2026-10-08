@@ -103,7 +103,19 @@ def split(pts):
 
 def main():
     ram, dump, f0, f1, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
-    cams, keep, tex = world2.build(ram, dump, f0, f1)
+    if dump.endswith('-'):                # the whole track from the snapshot alone (no recorded race)
+        import trackworld
+        cams = {}
+        keep, tex = trackworld.build(ram)
+        two = []                          # a triangle drawn both ways round: its other face too
+        for k in keep:
+            if k[10][2] & 0x10000:
+                pts, tx, key, col, st, dlo, dhi, vis, centre, tile, src = k
+                two.append(([pts[0], pts[2], pts[1]], tx, key, col[0:4] + col[8:12] + col[4:8],
+                            st[0:2] + st[4:6] + st[2:4], dlo, dhi, vis, centre, tile, src))
+        keep = keep + two
+    else:
+        cams, keep, tex = world2.build(ram, dump, f0, f1)
     xs = [p[0] for t in keep for p in t[0]]
     ys = [p[1] for t in keep for p in t[0]]
     zs = [p[2] for t in keep for p in t[0]]
@@ -177,6 +189,8 @@ def main():
             for cc in t[5]:
                 pvs_of.setdefault(cc, {}).setdefault(cy * gw + cx, []).append(j)
     pvs, pvs_at = [], []
+    if not pvs_of:
+        pvs_of = {(0, 0): {}}
     px0 = min(c[0] for c in pvs_of)
     py0 = min(c[1] for c in pvs_of)
     pw = max(c[0] for c in pvs_of) - px0 + 1
@@ -247,11 +261,13 @@ def main():
         f.write('const Tex g_tex[%d] = {\n' % max(1, len(texs.out)))
         f.write(',\n'.join('{tex%d,%d,%d,%d,%d,%d}' % (i, ((1 << wb) - 1) << 1, ((1 << hb) - 1) << 7, wb, hb, alpha)
                             for i, (wb, hb, alpha, data) in enumerate(texs.out)) + '};\n')
-        f.write('const int g_org[2] = {%d, %d}, g_pvs_x0 = %d, g_pvs_y0 = %d, g_pvs_w = %d, g_pvs_h = %d, g_pvs_cell = %d;\n'
-                % (org[0], org[1], px0, py0, pw, ph, world.PVSCELL))
+        f.write('const int g_org[3] = {%d, %d, %d}, g_pvs_x0 = %d, g_pvs_y0 = %d, g_pvs_w = %d, g_pvs_h = %d, g_pvs_cell = %d;\n'
+                % (org[0], org[1], org[2], px0, py0, pw, ph, world.PVSCELL))
         f.write('const uint32_t g_pvs_at[%d] = {%s};\n' % (len(pvs_at), ','.join('%uu' % v for v in pvs_at)))
-        f.write('const uint16_t g_pvs[%d] = {%s};\n' % (len(pvs), ','.join('%d' % v for v in pvs)))
-        f.write('const Frame g_frames[%d] = {\n' % len(frames))
+        f.write('const uint16_t g_pvs[%d] = {%s};\n' % (max(1, len(pvs)), ','.join('%d' % v for v in pvs) or '0xFFFF'))
+        f.write('const Frame g_frames[%d] = {\n' % max(1, len(frames)))
+        if not frames:
+            f.write('{{0}}')
         f.write(',\n'.join('{{%s},{%d,%d},{%d,%d},{%d,%d,%d},{%s}}' % (','.join('%d' % x for r in rows for x in r), p[0], p[1], d[0], d[1],
                                                                   cam[0], cam[1], cam[2], ','.join('{%d,%d,%d,%d}' % tuple(pl) for pl in planes))
                            for rows, p, d, cam, planes in frames) + '};\n')

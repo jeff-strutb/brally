@@ -24,7 +24,7 @@ void BrTyreSprings(Body *b);
 void BrTyreLoads(Body *b);
 void BrTyreDepthAll(Body *b);
 void BrCarPhysAdvance(Body *b);
-Cell BrCollGridCellAcquire(fx x, fx y);
+SimCell BrCollGridCellAcquire(fx x, fx y);
 
 /* ---- geometry/tri.c ---- */
 int BrTriContainsPointV(const fx *pt, const fx *a, const fx *b, const fx *c, const fx *ref)
@@ -59,7 +59,7 @@ int BrGroundRay(fx *pPosOut, fx *pNormOut, const fx *pEye, uint16_t *pNearIds, i
     fx bestFarNorm[3], bestNearNorm[3], x, y;
     uint16_t farFaceVal, farFaceIdx;
     const Plane *pP;
-    Cell cell;
+    SimCell cell;
     const Track *T = g_track;
 
     for (i = 0; i < 3; i++) {
@@ -87,6 +87,8 @@ int BrGroundRay(fx *pPosOut, fx *pNormOut, const fx *pEye, uint16_t *pNearIds, i
     cell = BrCollGridCellAcquire(origin[0], origin[1]);
     for (i = 0; i < cell.n; i++) {
         pP = &T->planes[cell.tris[i]];
+        if (x < pP->xmin || x > pP->xmax || y < pP->ymin || y > pP->ymax)
+            continue;                   /* (the vertical ray misses its box: it misses it) */
         if (pP->n[2] < FX(0.0f))
             continue;
         dn = BrVec3Dot(dir, pP->n);
@@ -293,7 +295,7 @@ void BrCarDriveInput(Car *car)
     s = pad->steer;
     if (pad->kind == 4) {
         a = s < FX(0.0f) ? -s : s;
-        car->xdf0 = FDIV(FMUL(FMUL(-FMUL(SGN(s), FSQRT(FMUL(FSQRT(a), FSQRT(FMUL(FSQRT(a), a))))), FX(10.0f)), FX(3.1415927f)), FX(180.0f));
+        car->xdf0 = FDIVK(FMUL(FMUL(-FMUL(SGN(s), FSQRT(FMUL(FSQRT(a), FSQRT(FMUL(FSQRT(a), a))))), FX(10.0f)), FX(3.1415927f)), 180.0f);
     } else {
         if (FX(0.0f) < s) {
             s = s - FX(0.07f);
@@ -335,24 +337,24 @@ void BrCarDriveInput(Car *car)
             break;
         }
         rate = slewRate;
-        lim = lockMax - FMUL(FDIV(t, FX(90.0f)), lockFall);
+        lim = lockMax - FMUL(FDIVK(t, 90.0f), lockFall);
         if ((s < FX(0.0f) ? -s : s) < FX(0.001f)) {
             tgt = FX(0.0f);
-            t = FDIV(FMUL(lim, FX(3.1415927f)), FX(180.0f));
-            lo = FDIV(FMUL(-lim, FX(3.1415927f)), FX(180.0f));
+            t = FDIVK(FMUL(lim, FX(3.1415927f)), 180.0f);
+            lo = FDIVK(FMUL(-lim, FX(3.1415927f)), 180.0f);
         } else if (s < FX(-0.75f)) {
-            t = FDIV(FMUL(lim, FX(3.1415927f)), FX(180.0f));
-            lo = FDIV(FMUL(-lim, FX(3.1415927f)), FX(180.0f));
+            t = FDIVK(FMUL(lim, FX(3.1415927f)), 180.0f);
+            lo = FDIVK(FMUL(-lim, FX(3.1415927f)), 180.0f);
             tgt = t;
         } else if (FX(0.75f) < s) {
-            lo = FDIV(FMUL(-lim, FX(3.1415927f)), FX(180.0f));
-            t = FDIV(FMUL(lim, FX(3.1415927f)), FX(180.0f));
+            lo = FDIVK(FMUL(-lim, FX(3.1415927f)), 180.0f);
+            t = FDIVK(FMUL(lim, FX(3.1415927f)), 180.0f);
             tgt = lo;
         } else {
-            x = x - FMUL(FMUL(ITOF(k), FDIV(x, FX(2))), FDIV(sp, FX(200.0f)));
-            tgt = FMUL(-s, FDIV(FMUL(x, FX(3.1415927f)), FX(180.0f)));
-            t = FDIV(FMUL(lim, FX(3.1415927f)), FX(180.0f));
-            lo = FDIV(FMUL(-lim, FX(3.1415927f)), FX(180.0f));
+            x = x - FMUL(FMUL(ITOF(k), FDIVK(x, 2)), FDIVK(sp, 200.0f));
+            tgt = FMUL(-s, FDIVK(FMUL(x, FX(3.1415927f)), 180.0f));
+            t = FDIVK(FMUL(lim, FX(3.1415927f)), 180.0f);
+            lo = FDIVK(FMUL(-lim, FX(3.1415927f)), 180.0f);
         }
         if (t < tgt)
             tgt = t;
@@ -441,7 +443,7 @@ void BrCarDriveInput(Car *car)
         }
     }
     if (g != 0) {
-        car->xdf4 = FMUL(FMUL(FMUL(-FDIV(car->wb[1].spin, FX(6.2831855f)), FX(60.0f)), car->xe24), car->ratio[g]);
+        car->xdf4 = FMUL(FMUL(FMUL(-FDIVK(car->wb[1].spin, 6.2831855f), FX(60.0f)), car->xe24), car->ratio[g]);
     } else {
         if (pad->flags & 0x10000)
             car->xdf4 += FX(300.0f);
@@ -545,6 +547,33 @@ void BrCarPhysTick(Car *car)
     }
     if (sim_camera && car->slot == g_world.viewCar)
         sim_camera(car);
+}
+
+/* a plane's bounds (sim.h): the sphere about its corners' box centre, the box of its x and y,
+   each 0.01 generous */
+void sim_plane_bounds(Plane *p)
+{
+    const fx *v[3] = { p->v0, p->v1, p->v2 };
+    fx lo, hi, r2 = 0, d[3], q;
+    int i, k;
+    for (k = 0; k < 3; k++) {
+        lo = hi = v[0][k];
+        for (i = 1; i < 3; i++) {
+            if (v[i][k] < lo) lo = v[i][k];
+            if (v[i][k] > hi) hi = v[i][k];
+        }
+        p->c[k] = lo + (hi - lo) / 2;
+        if (k == 0) { p->xmin = lo - FX(0.01f); p->xmax = hi + FX(0.01f); }
+        if (k == 1) { p->ymin = lo - FX(0.01f); p->ymax = hi + FX(0.01f); }
+    }
+    for (i = 0; i < 3; i++) {
+        for (k = 0; k < 3; k++)
+            d[k] = v[i][k] - p->c[k];
+        q = FMUL(d[0], d[0]) + FMUL(d[1], d[1]) + FMUL(d[2], d[2]);
+        if (q > r2)
+            r2 = q;
+    }
+    p->r = FSQRT(r2) + FX(0.01f);
 }
 
 /* the pointers BrCarPhysInit sets up: the chassis' wheels, the force records' links */

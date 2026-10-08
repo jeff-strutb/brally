@@ -6,6 +6,7 @@
 #ifndef FX_FLOAT
 
 #if !defined(__arm__) || defined(__aarch64__)
+/* the host's (the GBA's are gba/fxarm.s) */
 fx fx_mul(fx a, fx b)
 {
     return (fx)(((__int128)a * b) >> 32);
@@ -17,59 +18,29 @@ fx fx_div(fx a, fx b)
         return a < 0 ? INT64_MIN : INT64_MAX;
     return (fx)(((__int128)a << 32) / b);
 }
-#else
-/* a / b, 32.32: b normalised to 31 bits and a long division of the remainder */
-fx fx_div(fx a, fx b)
-{
-    uint64_t ua, ub, q = 0, r;
-    int neg = 0, sh = 0, i;
-    if (b == 0)
-        return a < 0 ? INT64_MIN : INT64_MAX;
-    if (a < 0) { ua = (uint64_t)-a; neg = 1; } else ua = (uint64_t)a;
-    if (b < 0) { ub = (uint64_t)-b; neg ^= 1; } else ub = (uint64_t)b;
-    /* (ua << 32) / ub, bit by bit over the 96-bit dividend */
-    r = 0;
-    for (i = 95; i >= 0; i--) {
-        uint32_t bit = i >= 32 ? (uint32_t)(ua >> (i - 32)) & 1 : 0;
-        r = r << 1 | bit;
-        q <<= 1;
-        if (r >= ub) {
-            r -= ub;
-            q |= 1;
-        }
-    }
-    (void)sh;
-    return neg ? -(fx)q : (fx)q;
-}
-#endif
 
 /* sqrt of a 32.32 value: the integer square root of a << 32 (96 bits) */
 fx fx_sqrt(fx a)
 {
-    uint64_t hi, lo, rem = 0, root = 0;
-    int i;
+    unsigned __int128 v, r = 0, bit;
     if (a <= 0)
         return 0;
-    hi = (uint64_t)a >> 32;              /* a << 32 = hi:lo:0 (96 bits) */
-    lo = (uint64_t)a & 0xFFFFFFFFu;
-    for (i = 47; i >= 0; i--) {          /* two bits at a time, from the top */
-        uint32_t two;
-        int bit = i * 2;
-        if (bit >= 64)
-            two = (uint32_t)(hi >> (bit - 64)) & 3;
-        else if (bit >= 32)
-            two = (uint32_t)(lo >> (bit - 32)) & 3;
-        else
-            two = 0;
-        rem = rem << 2 | two;
-        root <<= 1;
-        if (rem >= (root << 1 | 1)) {
-            rem -= root << 1 | 1;
-            root |= 1;
+    v = (unsigned __int128)a << 32;
+    bit = (unsigned __int128)1 << 94;
+    while (bit > v)
+        bit >>= 2;
+    while (bit) {
+        if (v >= r + bit) {
+            v -= r + bit;
+            r = (r >> 1) + bit;
+        } else {
+            r >>= 1;
         }
+        bit >>= 2;
     }
-    return (fx)root;
+    return (fx)r;
 }
+#endif
 
 #define PI FX(3.14159265358979323846)
 #define RPI FX(0.31830988618379067154)

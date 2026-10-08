@@ -1,4 +1,5 @@
-/* libc.c -- what the compiler may call: memcpy, memset */
+/* libc.c -- what the compiler may call: memcpy, memset (the word-aligned copies are
+ * gba/fxarm.s's) */
 #include <stddef.h>
 #include <stdint.h>
 
@@ -20,7 +21,6 @@ void *memset(void *d, int c, size_t n)
 }
 
 void *__aeabi_memcpy(void *d, const void *s, size_t n) { return memcpy(d, s, n); }
-void *__aeabi_memcpy4(void *d, const void *s, size_t n) { return memcpy(d, s, n); }
 void __aeabi_memclr(void *d, size_t n) { memset(d, 0, n); }
 void __aeabi_memclr4(void *d, size_t n) { memset(d, 0, n); }
 void __aeabi_memset(void *d, size_t n, int c) { memset(d, c, n); }

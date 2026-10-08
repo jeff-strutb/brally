@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     unsigned pa = 0, pf = 0, px = 0, py = 0;
     if (getenv("GBARUN_PROBE"))                       /* ADDR:FRAME:X:Y -- g_probe (gba/main.c) */
         sscanf(getenv("GBARUN_PROBE"), "%x:%u:%u:%u", &pa, &pf, &px, &py);
-    static uint64_t prof_iw[0x4000], prof_rom[0x200000];
+    static uint64_t prof_iw[0x4000], prof_rom[0x1000000];   /* IWRAM, and all 32 MB of ROM */
     FILE *wav = getenv("GBARUN_WAV") ? fopen(getenv("GBARUN_WAV"), "wb") : NULL;
     uint32_t wav_n = 0;
     if (wav) {
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
                 t = mTimingCurrentTime(&gba->timing) - t;
                 if (pc >= 0x03000000 && pc < 0x03008000)
                     prof_iw[(pc - 0x03000000) >> 1] += (uint64_t)t;
-                else if (pc >= 0x08000000 && pc < 0x08400000)
+                else if (pc >= 0x08000000 && pc < 0x0A000000)
                     prof_rom[(pc - 0x08000000) >> 1] += (uint64_t)t;
             }
         } else
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
         for (i = 0; i < 0x4000; i++)
             if (prof_iw[i])
                 fprintf(pf_, "%08X %llu\n", 0x03000000 + i * 2, (unsigned long long)prof_iw[i]);
-        for (i = 0; i < 0x200000; i++)
+        for (i = 0; i < 0x1000000; i++)
             if (prof_rom[i])
                 fprintf(pf_, "%08X %llu\n", 0x08000000 + i * 2, (unsigned long long)prof_rom[i]);
         fclose(pf_);

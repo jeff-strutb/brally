@@ -39,7 +39,7 @@ extern int32_t s_mus_gain;
 extern const int16_t g_sin1024[1024];
 
 typedef struct { int32_t x, y, w, i; } MV;              /* screen (Q4), depth (W >> 10, Q12), light 0..255 */
-static MV s_mv[MAXV] __attribute__((section(".iwram_bss")));
+static MV s_mv[MAXV] __attribute__((section(".ewram_bss")));
 void icon_xform(const MVert *v, int n, const int32_t *k, MV *out);   /* menu.s */
 void icon_tris(const MTri *t, int n, const MV *mv, int front);
 

@@ -49,7 +49,6 @@ typedef struct { PolyV v[3]; uint16_t col, next, tex, pad; } Poly;
 /* the counters the host reads: frame, cycles total, cycles transform/sort,
    cycles raster, triangles drawn, cells drawn, vertices transformed, game frame */
 volatile uint32_t g_stats[12];
-static int s_lapped;
 uint32_t g_cyc[1200] EWRAM_BSS;                        /* each race frame's cycles, the first time round */
 /* the host's probe: g_probe[0] = camera frame + 1 to hold the camera there; g_probe[1] set:
    stop once the frame's lists are built (for a look at memory); g_probe[2] set: one recorded camera
@@ -565,18 +564,25 @@ uint16_t fade_window(uint16_t dispcnt);
 extern int32_t s_fade, s_hud_on, s_k, s_mus_gain;       /* menu.c, hud.s, sound.s */
 
 uint32_t pad_take(void);
+#define REG_KEYS (*(volatile uint16_t *)0x04000130)
+#include "race.h"
+extern const uint16_t *s_vis_list;               /* front.s: the frame's own cell list */
+static Frame s_frame;
 
 /* the race from its start: its textures, its HUD, its music and effects as recorded; wiped in
    (or at once, for the host's measurements) */
 static void race_enter(int wipe)
 {
+    int i;
     s_textab = g_tex;
     s_hud_on = 0;
     hud_init();
     s_k = 0;
-    s_sfx_trace = 1;
+    race_start();                                    /* the cars on the grid */
+    for (i = 0; i < 128; i++)                        /* the menu's sprites off */
+        ((volatile uint16_t *)0x07000000)[i * 4] = 2 << 8;
+    s_sfx_trace = 0;
     snd_play(&g_race_song);
-    s_hud_on = 1;
     s_mus_gain = 256;
     s_fade = wipe ? 0 : 65536;
     fade_to(1);
@@ -585,7 +591,7 @@ static void race_enter(int wipe)
 int main(void)
 {
     int page = 0, fi = 0, i, racing = 0, dv;
-    uint32_t t0 = 0, tl = 0, lap = 0;
+    uint32_t tl = 0;
     REG_WAITCNT = 0x4317;                            /* ROM 3/1 waitstates, prefetch on */
     for (i = 1; i < 4096; i++)
         s_rec[i] = udiv(1u << 24, (uint32_t)i);
@@ -618,8 +624,7 @@ int main(void)
             if (g_probe[0] || g_probe[2]) {          /* the host's measurements: the race at once */
                 race_enter(0);
                 racing = 1;
-                t0 = s_vbl;
-                lap = 0;
+                tl = s_vbl;
                 fi = 0;
                 continue;
             }
@@ -633,8 +638,7 @@ int main(void)
             if (i) {                      /* a row that races: the race, wiped in */
                 race_enter(1);
                 racing = 1;
-                t0 = tl = s_vbl;
-                lap = 0;
+                tl = s_vbl;
                 fi = 0;
                 pad_take();
                 continue;
@@ -643,10 +647,12 @@ int main(void)
             page ^= 1;
             continue;
         }
-        if (g_probe[0])
-            fi = (int)g_probe[0] - 1;
-        f = &g_frames[fi];
         t0c = clock32();
+        race_tick(REG_KEYS);                         /* a game frame of the race */
+        g_stats[8] = clock32() - t0c;                /* (its cycles) */
+        race_view(&s_frame);
+        f = &s_frame;
+        s_vis_list = race_cells(f);
         for (i = 0; i < NBUCKET; i++)
             s_bucket[i] = 0;
         s_npoly = 0;
@@ -661,11 +667,11 @@ int main(void)
         clear(0x7E8C);                               /* the desert sky */
         ndrawn = draw();
         t2 = clock32();
-        dv = (int)(s_vbl - tl);                      /* the wipe, and B or START back to the menu */
+        dv = (int)(s_vbl - tl);                      /* the wipe, and START back to the menu */
         tl = s_vbl;
         if (!g_probe[0] && !g_probe[2]) {
             uint32_t press = pad_take();
-            if ((press & (1 << 1 | 1 << 3)) && s_fade == 65536)
+            if ((press & 1 << 3) && s_fade == 65536)
                 fade_to(0);
             if (!fade_step(dv)) {
                 s_hud_on = 0;
@@ -685,28 +691,6 @@ int main(void)
         g_stats[5] = (uint32_t)ncells;
         g_stats[6] = (uint32_t)nverts;
         g_stats[7] = tc - t1;                            /* waited for the flip */
-        if (!s_lapped) {                                 /* over the race once: the worst, the sum, the count */
-            if (t2 - t0c > g_stats[8]) {
-                g_stats[8] = t2 - t0c;
-                g_stats[11] = (uint32_t)fi;
-            }
-            g_stats[9] += (t2 - t0c) >> 4;
-            g_stats[10]++;
-            if (fi < 1200)
-                g_cyc[fi] = t2 - t0c;
-        }
-        if (!g_probe[2]) {                           /* real time: the camera at the game's 30 a second */
-            uint32_t t = ((s_vbl - t0) >> 1) - lap;  /* (no divide: the laps counted off) */
-            while (t >= (uint32_t)g_nframes) {
-                lap += (uint32_t)g_nframes;
-                t -= (uint32_t)g_nframes;
-            }
-            fi = (int)t;
-            continue;
-        }
-        if (++fi >= g_nframes) {
-            fi = 0;
-            s_lapped = 1;
-        }
+        fi++;                                            /* game frames raced */
     }
 }

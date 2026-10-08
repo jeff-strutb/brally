@@ -80,6 +80,7 @@ static void track_load(void)
         p->n[2] = FMUL(a[0], b[1]) - FMUL(a[1], b[0]);
         BrVec3NormaliseF(p->n);
         p->d = -(FMUL(p->n[0], p->v0[0]) + FMUL(p->n[1], p->v0[1]) + FMUL(p->n[2], p->v0[2]));
+        sim_plane_bounds(p);
     }
     cs = malloc(4097 * 2);
     for (i = 0; i < 4097; i++)

@@ -100,7 +100,13 @@ void sl_car_load(Car *c, Pad *pad, const uint8_t *rec, const uint8_t *padrec, ui
         }
     }
     c->linkFlags = linkFlags;
-    c->cam = (int)(sl_be32(rec + 0x1DE8) - 0x8031B760u - (uint32_t)c->slot * 0x2090 - 0x1DF0) / 0x44;
+    {   /* the camera in use: which of cams[] (0x44 bytes each) the record points at */
+        int32_t off = (int32_t)(sl_be32(rec + 0x1DE8) - 0x8031B760u - (uint32_t)c->slot * 0x2090 - 0x1DF0);
+        for (c->cam = 0; off >= 0x44; off -= 0x44) {
+            c->cam++;
+            FX_STEP(off);
+        }
+    }
 #ifndef FX_FLOAT
     {   /* the torque curve in thousands of rpm: each coefficient's exponent raised to match */
         static const int raise[4] = { 30, 20, 10, 0 };   /* x 2^30, 2^20, 2^10: then x 1e9 / 2^30 .. */

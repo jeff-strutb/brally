@@ -5,7 +5,21 @@
 #include "vec.h"
 
 int BrTriContainsPointV(const fx *pt, const fx *a, const fx *b, const fx *c, const fx *ref);
-Cell BrCollGridCellAcquire(fx x, fx y);
+SimCell BrCollGridCellAcquire(fx x, fx y);
+
+/* a triangle the segment from + dir (t in 0..1.1) cannot reach: its sphere farther from the
+   segment's middle than half the segment's length (the work the loops below pass by) */
+static int seg_far(const Plane *p, const fx *from, const fx *dir)
+{
+    fx m[3], d2, hl, rr;
+    int k;
+    for (k = 0; k < 3; k++)
+        m[k] = from[k] + FMUL(dir[k], FX(0.55f)) - p->c[k];
+    d2 = FMUL(m[0], m[0]) + FMUL(m[1], m[1]) + FMUL(m[2], m[2]);
+    hl = FMUL(FSQRT(FMUL(dir[0], dir[0]) + FMUL(dir[1], dir[1]) + FMUL(dir[2], dir[2])), FX(0.56f));
+    rr = p->r + hl + FX(0.01f);
+    return d2 > FMUL(rr, rr);
+}
 
 /* BrCarCamWallPush: keep the chase camera out of walls (a ray from the target to the
    camera against the triangles of both ends' cells; on a hit, the wall it came through
@@ -13,8 +27,9 @@ Cell BrCollGridCellAcquire(fx x, fx y);
 static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
 {
     fx dir[3], hit[3], toV0[3], hitOut[3] = { 0, 0, 0 }, tBest, denom, t, len, dist;
-    Cell cells[2];
+    SimCell cells[2];
     const Plane *pBest;
+    const fx *from;
     int c, i, nCells;
 
     g_world.camPushed = 0;
@@ -22,6 +37,7 @@ static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
     cells[1] = BrCollGridCellAcquire(pos[0], pos[1]);
     nCells = cells[0].key == cells[1].key ? 1 : 2;
     BrVec3Sub(dir, pos, car->camTarget);
+    from = car->camTarget;
     pBest = 0;
     len = BrVec3Length(dir);
     if (len != 0)
@@ -31,6 +47,8 @@ static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
     for (c = 0; c < nCells; c++) {
         for (i = 0; i < cells[c].n; i++) {
             const Plane *pP = &g_track->planes[cells[c].tris[i]];
+            if (seg_far(pP, from, dir))
+                continue;
             denom = BrVec3Dot(dir, pP->n);
             if (denom < FX(0.0f)) {
                 BrVec3Sub(toV0, pP->v0, car->camTarget);
@@ -51,11 +69,14 @@ static void BrCarCamWallPush(Car *car, fx *pos, const fx *prev)
     if (pBest == 0)
         return;
     BrVec3Sub(dir, pos, prev);
+    from = prev;
     pBest = 0;
     tBest = FX(1.0f);
     for (c = 0; c < nCells; c++) {
         for (i = 0; i < cells[c].n; i++) {
             const Plane *pP = &g_track->planes[cells[c].tris[i]];
+            if (seg_far(pP, from, dir))
+                continue;
             denom = BrVec3Dot(dir, pP->n);
             if (denom < FX(0.0f)) {
                 BrVec3Sub(toV0, pP->v0, prev);
@@ -215,10 +236,10 @@ void BrCamChaseStep(Car *car)
     car->cams[1].mtx[3][2] = car->camPosA[2];
     k = g_world.replay != 0 ? FX(0.5f) : FX(0.15f);
     cam = car->cams[1].mtx;
-    if (car->x1fac + (FMUL(car->camSpeed, FX(0.009549296f)) - FMUL(car->camSpin, FDIV(k, FX(31.415928f)))) > FX(0.07f))
+    if (car->x1fac + (FMUL(car->camSpeed, FX(0.009549296f)) - FMUL(car->camSpin, FDIVK(k, 31.415928f))) > FX(0.07f))
         BrCarCamPlaceBehind(car, cam, FX(0));
     else
-        BrCarCamPlaceBehind(car, cam, FX(0.07f) - car->x1fac - FMUL(car->camSpeed, FX(0.009549296f)) + FMUL(car->camSpin, FDIV(k, FX(31.415928f))));
+        BrCarCamPlaceBehind(car, cam, FX(0.07f) - car->x1fac - FMUL(car->camSpeed, FX(0.009549296f)) + FMUL(car->camSpin, FDIVK(k, 31.415928f)));
     BrCarCamTargetStep(car);
     car->camPosA[0] = car->cams[1].mtx[3][0];
     car->camPosA[1] = car->cams[1].mtx[3][1];

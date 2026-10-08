@@ -26,6 +26,11 @@ typedef struct Plane {                  /* a track triangle's collision plane (B
     uint16_t tri;
     uint8_t surface;                    /* 0x1E: the triangle's surface bits & 7 */
     uint8_t pad;
+    /* bounds the game does not keep: the loops over a cell's triangles pass by those that
+       cannot meet what they test (a sphere about the corners, the box of their x and y,
+       each a little generous), so the answers stay the game's and the work falls */
+    fx c[3], r;
+    fx xmin, xmax, ymin, ymax;
 } Plane;
 
 typedef struct Body {                   /* a rigid body (0x208 bytes in the game) */
@@ -153,7 +158,7 @@ typedef struct {                        /* a grid cell's triangles (BrCollGridCe
     const uint16_t *tris;
     int n;
     int key;                            /* the cache's key for the cell: one per 32-unit square */
-} Cell;
+} SimCell;
 
 /* the globals the simulation reads */
 typedef struct {
@@ -178,6 +183,7 @@ extern fx g_grip[72];            /* D_802A4A38: grip, then the lateral speeds ab
                                      below which it is full, each by weather row (8) and surface */
 
 void sim_car_link(Car *car);
+void sim_plane_bounds(Plane *p);
 void BrCamChaseStep(Car *car);
 extern void (*sim_camera)(Car *car);                       /* the pointers BrCarPhysInit sets */
 void BrCarPhysTick(Car *car);
