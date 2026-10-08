@@ -409,10 +409,11 @@ void BrPathGates(BrPathSeg *seg, float d)
  * midpoint's two components sit in a do { } while (0) block, which ends
  * &seg->pt[mid] (s0) before the loop's left-edge pointer takes s0; the
  * loop limit is depth - 1 written in the test (a temporary, spilled to
- * 0x44, latch bne).  depth is never held in a register: k and limit are
- * loaded after the three stores and tested, with mid and the two midpoint
- * arrays, in an empty if in the depth <= 2 arm.  The test emits nothing,
- * but its values are live through the store block, which stops uopt
+ * 0x44, latch bne).  depth is never held in a register: the difficulty
+ * and the car count are read after the three stores and tested, with mid
+ * and the first two midpoints, in an empty if in the depth <= 2 arm (a
+ * debug line whose body is compiled out).  The test emits nothing, but
+ * its values are live through the store block, which stops uopt
  * growing depth's register piece from the loop guard into the block that
  * stores and tests depth; depth is then reloaded from its home at every
  * use, as in the ROM. */
@@ -422,8 +423,8 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
   unsigned int ret;
   int next;
   BrVec3 midPt;
-  int level, k;
-  int limit;
+  int level, skill;
+  int cars;
   BrVec3 *pA, *pB;
   BrVec3 *pC, *pD;
 
@@ -462,8 +463,8 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
       D_8028B804 = depth;
       D_8028B814 = seg;
       D_8028B810 = mid;
-      k = D_8028B828;
-      limit = D_8028B82C;
+      skill = D_8028C800;
+      cars = D_8028B7F4;
       if (depth > 2) {
         if (BrSegmentsOverlapXY((float *)car->mtx0[3], (float *)&D_8031B610[2], &D_8031B5B0[1], &D_8031B550[1]) != 0) {
           D_8028B80C = 0;
@@ -476,7 +477,7 @@ unsigned int BrAiScanCorridor(BrCar *car, int depth, int mid, BrPathSeg *seg)
           D_8028B808 = 0;
         }
       } else {
-        if (k + limit + mid + (int)D_8031B5B0 + (int)D_8031B670);
+        if (skill + cars + mid + D_8031B5B0[0].x + D_8031B670[0].x != 0.0f);
         D_8028B80C = 0;
         D_8028B808 = 0;
       }
