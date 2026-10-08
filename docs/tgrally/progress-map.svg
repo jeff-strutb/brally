@@ -269,7 +269,7 @@
 <rect x="913.9" y="282.9" width="57.9" height="72.8" fill="#3fb950"><title>(unnamed)  0x8022C9FC  1420B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="356.3" width="57.9" height="72.6" fill="#3fb950"><title>(unnamed)  0x8022F968  1416B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="913.9" y="429.5" width="57.9" height="62.9" fill="#3fb950"><title>(unnamed)  0x80221940  1228B  [unfiled 0x8022xxxx]</title></rect>
-<rect x="913.9" y="493.0" width="57.9" height="58.6" fill="#58a6ff"><title>(unnamed)  0x80226D9C  1144B  [unfiled 0x8022xxxx]</title></rect>
+<rect x="913.9" y="493.0" width="57.9" height="58.6" fill="#3fb950"><title>(unnamed)  0x80226D9C  1144B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="972.4" y="282.9" width="58.7" height="55.3" fill="#3fb950"><title>(unnamed)  0x80220810  1096B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="972.4" y="338.8" width="58.7" height="53.3" fill="#3fb950"><title>(unnamed)  0x8022B534  1056B  [unfiled 0x8022xxxx]</title></rect>
 <rect x="972.4" y="392.7" width="58.7" height="53.3" fill="#3fb950"><title>(unnamed)  0x8022FFB4  1056B  [unfiled 0x8022xxxx]</title></rect>
@@ -813,4 +813,4 @@
 <rect x="1588.1" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>SetCommentChar  0x8022F4EC  12B  [src/exe/brally/0x004016C0]</title></rect>
 <rect x="1592.6" y="893.1" width="0.9" height="4.8" fill="#6e5494"><title>BrGbiMtxSlot  0x80242810  12B  [src/core/drawing/br_gbihandlers]</title></rect>
 <rect x="1597.0" y="893.1" width="0.9" height="4.8" fill="#3fb950"><title>BrRet0Std3_10054600  0x8025D35C  12B  [src/core/menus/br_textlist]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 571 &#183; T3 codegen-only 1 &#183; 378,788/457,392 bytes exact (82.8%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 572 &#183; T3 codegen-only 0 &#183; 379,932/457,392 bytes exact (83.1%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>

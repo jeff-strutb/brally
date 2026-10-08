@@ -560,7 +560,7 @@
 <text x="246.4" y="10.5" font-size="10" fill="#8b949e">br_scenedl</text>
 <rect x="244.9" y="15.5" width="140.9" height="161.1" fill="#58a6ff"><title>BrSceneDlBuild  0x1000EAF0  9354B  [core/drawing/br_scenedl]</title></rect>
 <text x="246.4" y="189.2" font-size="10" fill="#8b949e">br_tex3d_expand</text>
-<rect x="244.9" y="194.2" width="140.9" height="144.4" fill="#58a6ff"><title>BrTex3dExpand  0x100250D0  8480B  [core/drawing/br_tex3d_expand]</title></rect>
+<rect x="244.9" y="194.2" width="140.9" height="144.4" fill="#3fb950"><title>BrTex3dExpand  0x100250D0  8480B  [core/drawing/br_tex3d_expand]</title></rect>
 <text x="246.4" y="351.1" font-size="10" fill="#8b949e">BrUiBootPreLoopGate_10056260</text>
 <rect x="244.9" y="356.1" width="140.9" height="141.9" fill="#3fb950"><title>(unnamed)  0x10056260  8349B  [core/menus/BrUiBootPreLoopGate_10056260]</title></rect>
 <text x="246.4" y="510.6" font-size="10" fill="#8b949e">CRT (fenced)</text>
@@ -2807,4 +2807,4 @@
 <rect x="1591.5" y="897.4" width="2.5" height="0.5" fill="#3fb950"><title>BrFtolArg  0x10018990  9B  [core/geometry/br_ftol]</title></rect>
 <rect x="1597.6" y="892.9" width="0.4" height="1.4" fill="#3fb950"><title>BrCosF  0x100023E0  7B  [core/geometry/br_cos]</title></rect>
 <rect x="1597.6" y="897.9" width="0.4" height="0.4" fill="#3fb950"><title>BrThunk5C440  0x1005C440  5B  [core/racing/br_thunks]</title></rect>
-<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1505 &#183; T3 codegen-only 96 &#183; 354,826/521,753 bytes exact (68.0%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
+<text x="8" y="920" font-size="13" fill="#e6edf3">T4 byte-exact 1506 &#183; T3 codegen-only 95 &#183; 363,306/521,753 bytes exact (69.6%) &#183; green=T4 blue=T3 amber=T2 gray=T1 purple=fenced teal=excluded</text></svg>
