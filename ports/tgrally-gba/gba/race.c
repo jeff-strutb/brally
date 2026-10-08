@@ -12,7 +12,7 @@
 
 #define SW 160
 #define SH 128
-#define FAR 300                          /* the view's reach (the game's far plane, D_8028AAC8, is 400) */
+#define FAR 400                          /* D_8028AAC8: the race view's far plane */
 
 static Car s_car[2];
 volatile uint32_t g_phase_cyc[6];        /* the cycles of each phase, of the overlays' copies, ticks */
@@ -24,7 +24,6 @@ uint32_t sim_clock(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*
 #endif
 static Pad s_pad[2];
 static fx s_cprev[17], s_ccur[17];
-static int s_settle;                     /* ticks every car runs whatever (the start) */
 #define ABS(x) ((x) < 0 ? -(x) : (x))       /* the view's camera (rows, fov) a tick ago and now */
 
 void race_start(void)
@@ -49,67 +48,21 @@ void race_start(void)
             s_car[k].camView[i] = g_rt_camView[k][i];
         g_world.cars[k] = &s_car[k];
     }
-    sim_camera = BrCamChaseStep;
-    s_settle = 20;
-    g_sim_dt = FX(1.0 / 30);             /* settled on the grid in the game's ticks, half a second */
-    g_sim_dtk = FX(1.0);
-    for (k = 0; k < 15; k++)
-        race_tick(0x3FF);
-    g_sim_dt = FX(RACE_TICKS / 30.0);    /* then a tick every RACE_TICKS of the game's */
-    g_sim_dtk = FX(RACE_TICKS);
+    arc_init(s_car[0].body.m, s_car[0].camView);   /* the GBA's own car physics (arcade.c) */
+    race_tick(0x3FF);
     race_tick(0x3FF);
 }
 
-/* the pad as BrPadMapRead makes it in a race (control layout 0: A accelerates, B brakes,
-   R changes up, L down; the d-pad is the stick, full lock either way) */
-static void pad_from_keys(Pad *p, uint32_t keys)
-{
-    uint32_t down = ~keys & 0x3FF, f = 0;
-    if (down & 1)
-        f |= 0x10 | 0x10000;
-    if (down & 2)
-        f |= 0x20 | ((f & 0x10000) ? 0x80000 : 0x40000);
-    if (down & 0x100)
-        f |= 0x2000 | 0x100000;
-    if (down & 0x200)
-        f |= 0x200000;
-    p->flags = f;
-    p->steer = (down & 0x10) ? FX(1.0) : (down & 0x20) ? FX(-1.0) : FX(0.0);
-}
-
+/* a tick of 1/30 s: the car from the pad (KEYINPUT, active low), the camera now and a tick
+   before (race_view between them) */
 void race_tick(uint32_t keys)
 {
-    int k, awake;
-    pad_from_keys(&s_pad[0], keys);
-    s_pad[1].flags = 0;
-    s_pad[1].steer = FX(0.0);
-    g_world.walkBack ^= 1;               /* BrRaceTick: the collision cells walked the other way */
-    {   /* a car at rest with nothing to do, the player's well away, sleeps (its tick skipped) */
-        const Body *o = &s_car[1].body;
-        fx dx = o->st.pos[0] - s_car[0].body.st.pos[0], dy = o->st.pos[1] - s_car[0].body.st.pos[1];
-        awake = s_settle > 0 || s_pad[1].flags != 0 || s_pad[1].steer != 0 || (ABS(dx) < FX(16.0) && ABS(dy) < FX(16.0)) ||
-                ABS(o->st.vel[0]) + ABS(o->st.vel[1]) + ABS(o->st.vel[2]) > FX(0.05) ||
-                ABS(o->st.omega[0]) + ABS(o->st.omega[1]) + ABS(o->st.omega[2]) > FX(0.05);
-        if (s_settle > 0)
-            s_settle--;
-    }
-    for (k = 0; k < 4; k++) {            /* BrCarPhysTick a phase at a time, each phase's code in */
-        uint32_t t0 = clock32(), t1;     /* IWRAM for both cars */
-        race_phase_code(k);
-        t1 = clock32();
-        sim_tick_phase(&s_car[0], k);
-        if (awake)
-            sim_tick_phase(&s_car[1], k);
-        g_phase_cyc[4] += t1 - t0;
-        g_phase_cyc[k] += clock32() - t1;
-    }
-    g_phase_cyc[5]++;
-    for (k = 0; k < 16; k++) {                /* the camera now and a tick before (race_view between) */
+    int k;
+    arc_tick(keys);
+    for (k = 0; k < 17; k++)
         s_cprev[k] = s_ccur[k];
-        s_ccur[k] = (&s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].mtx[0][0])[k];
-    }
-    s_cprev[16] = s_ccur[16];
-    s_ccur[16] = s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].fov;
+    arc_camera(s_ccur, g_world.lens);
+    g_phase_cyc[5]++;
 }
 
 /* ---- the camera to the renderer's Frame (convert.py's rows, made here) ---- */

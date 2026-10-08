@@ -15,6 +15,10 @@ void race_phase_code(int k);             /* gba/main.c: phase k's code into IWRA
 struct Frame;
 void race_view(void *frame, int alpha);  /* the viewed car's camera as the renderer's Frame, alpha (0..256)
                                             of the way from the last tick but one to the last */
-#define RACE_TICKS 2                     /* the game's ticks (1/30 s) in each of the GBA's */
+#define RACE_TICKS 1                     /* the game's ticks (1/30 s) in each of the GBA's */
+void arc_init(const fx m[4][4], const fx view[3]);   /* arcade.c: the GBA's car physics */
+void arc_tick(uint32_t keys);
+void arc_camera(fx out[17], fx lens);
+fx arc_speed_mph(void);
 const uint16_t *race_cells(const void *frame);   /* the cells in view, as render_visible's list */
 #endif
