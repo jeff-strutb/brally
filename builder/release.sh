@@ -58,6 +58,9 @@ $(cat $NOTES.m2)
 - Boss Rally: \`Boss Rally.app\` (macOS) or a \`Boss Rally\` folder with \`Boss Rally.exe\` (Windows), with the CD's files and its soundtrack (FLAC).
 - Top Gear Rally: \`Top Gear Rally.app\` (macOS) or a \`Top Gear Rally\` folder with \`Top Gear Rally.exe\` (Windows).
 
+### Playing
+Both games start in **Remastered**: the window can take any shape, and a race fills it at the screen's own resolution, the camera widened to match while the HUD keeps its shape at the edges (menus stay 4:3). **Tab** switches to **Original**, the game's own 4:3 picture, and back; in Top Gear Rally the controller's **View** button does the same.
+
 Saves live in your user folder (Application Support on macOS, AppData on Windows), so rebuilding never touches them. Source: [builder/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/builder).
 EOF
 

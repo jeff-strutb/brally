@@ -38,8 +38,9 @@ builder/release.sh               # tag vVERSION at HEAD (already pushed) and pub
 ```
 
 The payload is the two ports built without their data: `ports/brally`
-with `IMAGE=runtime` (macOS Metal, universal; Windows, software renderer) and
-`ports/tgrally` with `ROMDATA=file` (likewise). Building needs Xcode's clang,
+with `IMAGE=runtime` and `ports/tgrally` with `ROMDATA=file`: on macOS drawn
+with Metal, universal; on Windows drawn with Vulkan, with a software-rendered
+build beside it for a PC without a Vulkan driver (the builder picks). Building needs Xcode's clang,
 mingw-w64 for Windows, and the dumps under `reference/` that the ports
 already build from (`check_payload.py` reads them to prove their absence).
 
