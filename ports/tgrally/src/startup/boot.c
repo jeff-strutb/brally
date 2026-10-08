@@ -334,51 +334,62 @@ void BrAnimSetPingPong(BrAnimSet *set)
  * start).  Written in the ROM's block order: the search and blend sit inside
  * the backwards branch; the time doubles as the blend fraction; `* 2` is an
  * integer so IDO keeps the multiply (a float 2.0f becomes x + x).
- * One key index serves the search and the vertex loop, and the vertex loop
- * runs to the animation's vertex count read each pass; with the entry count
- * held in a local this gives the ROM's 1000 bytes.
- * RESIDUE (246): the ROM's frame is 0x28 to our 0x20, which moves every
- * spill slot. */
-/* @t3 0x8021D84C */
-/* @t4-pass 0x8021D84C 1 2026-10-04 compiles 121 best 246 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8021D84C 2 2026-10-04 compiles 120 best 246 moved 0  (tools/tgrally/n64permute.py) */
+ * Source facts: the wrap period is written out as a->end - a->start each
+ * time it is used (before the bounce test, in the plain arm and in the final
+ * t -= ...), as the PC twin's unoptimised code has it; uopt makes it one
+ * common subexpression (f16) and step a copy of it (f14) that copy
+ * propagation never sees.  The search region has j = a->nKeys; if (j) {}:
+ * the empty test emits nothing but keeps j live, which gives a enough
+ * interference to be coloured before the outer loop's values (a in t1).
+ * The animation list is walked with an explicit byte offset, mentioned
+ * first (fl = off, dead) so it is numbered before i and takes t2.  The
+ * blend writes libultra Vtx fields (ob, cn); the colour pointers are
+ * computed from the position pointers (nv * 3 shorts on). */
 /* @implements 0x8021D84C tgr BrAnimUpdate */
 void BrAnimUpdate(BrAnimSet *set)
 {
   int i;
   int n;
-  BrAnimList *list;
   BrAnim *a;
   float t;
-  float len;
   float step;
   float lim;
   int k;
   unsigned char *ka;
   unsigned char *kb;
-  unsigned char *pa;
-  unsigned char *pb;
+  be16_t *pa;                   /* the keys are cartridge data, big-endian */
+  be16_t *pb;
   signed char *ca;
   signed char *cb;
-  unsigned char *out;
+  Vtx *out;
+  int j;
   int f;
+  int nv;
+  int fl;
+  int off;
+  BrAnimList *list;
 
   if (BE32(set->anims) != 0) {
     list = BEPTR(BrAnimList *, set->anims);
     n = BES32(list->n);
-    for (i = 0; i < n; i++) {
-      a = BEPTR(BrAnim *, list->anim[i]);
+    for (i = 0, off = 0; i < n; i++, off += 4) {
+      a = BEPTR(BrAnim *, *(be32_t *)((char *)list->anim + off));
       if (BE16(a->flags) & 4) {
         SETF(a->time, BEF(a->time) - D_8028AAD8);
         t = BEF(a->time);
-        if (!(BEF(a->start) <= t)) {
+        if (BEF(a->start) <= t) {
+        } else {
           goto back_to_start;
         }
         if (!(t < BEF(a->end))) {
           continue;
         }
       search:
-        for (k = BE16(a->key); k < BES32(a->nKeys); k++) {
+        j = BES32(a->nKeys);
+        if (j) {
+        }
+        nv = BES32(a->nKeys);
+        for (k = BE16(a->key); k < nv; k++) {
           if (t < tgr_rdf(BEPTR(unsigned char *, a->keys[k]))) {
             break;
           }
@@ -390,31 +401,31 @@ void BrAnimUpdate(BrAnimSet *set)
         k = 0;
       blend:
         f = t * 4096.0f;
-        pa = ka + 4;
-        pb = kb + 4;
-        ca = (signed char *)(ka + 4 + BES32(a->n) * 6);
-        cb = (signed char *)(kb + 4 + BES32(a->n) * 6);
-        out = BEPTR(unsigned char *, a->out);
-        for (; k != BES32(a->n); k++) {
-          /* a Vtx: x, y, z big-endian at 0, 2, 4; colour bytes at 12 */
-          tgr_wr16(out + 0, (short)tgr_rd16(pa + 0) + (((short)tgr_rd16(pb + 0) - (short)tgr_rd16(pa + 0)) * f >> 12));
-          tgr_wr16(out + 2, (short)tgr_rd16(pa + 2) + (((short)tgr_rd16(pb + 2) - (short)tgr_rd16(pa + 2)) * f >> 12));
-          tgr_wr16(out + 4, (short)tgr_rd16(pa + 4) + (((short)tgr_rd16(pb + 4) - (short)tgr_rd16(pa + 4)) * f >> 12));
-          ((signed char *)out)[12] = ca[0] + ((cb[0] - ca[0]) * f >> 12);
-          ((signed char *)out)[13] = ca[1] + ((cb[1] - ca[1]) * f >> 12);
-          ((signed char *)out)[14] = ca[2] + ((cb[2] - ca[2]) * f >> 12);
-          pa += 6;
-          pb += 6;
+        nv = BES32(a->n);
+        pa = (be16_t *)(ka + 4);
+        pb = (be16_t *)(kb + 4);
+        ca = (signed char *)(pa + nv * 3);
+        cb = (signed char *)(pb + nv * 3);
+        out = BEPTR(Vtx *, a->out);
+        for (k = 0; k < nv; k++) {
+          SET16(out[k].v.ob[0], ((BES16(pb[0]) - BES16(pa[0])) * f >> 12) + BES16(pa[0]));
+          SET16(out[k].v.ob[1], ((BES16(pb[1]) - BES16(pa[1])) * f >> 12) + BES16(pa[1]));
+          SET16(out[k].v.ob[2], ((BES16(pb[2]) - BES16(pa[2])) * f >> 12) + BES16(pa[2]));
+          out[k].v.cn[0] = ((cb[0] - ca[0]) * f >> 12) + ca[0];
+          out[k].v.cn[1] = ((cb[1] - ca[1]) * f >> 12) + ca[1];
+          out[k].v.cn[2] = ((cb[2] - ca[2]) * f >> 12) + ca[2];
+          pa += 3;
+          pb += 3;
           ca += 3;
           cb += 3;
-          out += 16;
         }
         continue;
       back_to_start:
-        if (!(BE16(a->flags) & 1)) {
+        fl = BE16(a->flags);
+        if (!(fl & 1)) {
           continue;
         }
-        SET16(a->flags, BE16(a->flags) & ~4);
+        SET16(a->flags, fl & ~4);
         SET16(a->key, 0);
         t = BEF(a->start) * 2 - t;
         SETF(a->time, t);
@@ -424,7 +435,7 @@ void BrAnimUpdate(BrAnimSet *set)
         t = BEF(a->time);
         if (t < BEF(a->start)) {
           t = 0.0f;
-          ka = kb = BEPTR(unsigned char *, a->keys[0]);
+          kb = ka = BEPTR(unsigned char *, a->keys[0]);
           k = 0;
           goto blend;
         }
@@ -435,10 +446,10 @@ void BrAnimUpdate(BrAnimSet *set)
           continue;
         }
         if (BE16(a->flags) & 1) {
-          len = BEF(a->end) - BEF(a->start);
-          step = len;
+          step = BEF(a->end) - BEF(a->start);
+          lim = BEF(a->end) + step;
           if (BE16(a->flags) & 2) {
-            step *= 2;
+            step = (BEF(a->end) - BEF(a->start)) * 2;
             lim = BEF(a->end) + step;
             while (lim < t) {
               t -= step;
@@ -452,19 +463,20 @@ void BrAnimUpdate(BrAnimSet *set)
             t = BEF(a->end) * 2 - t;
             SETF(a->time, t);
           } else {
+            step = BEF(a->end) - BEF(a->start);
             lim = BEF(a->end) + step;
           wrap:
             while (lim < t) {
               t -= step;
             }
-            t -= len;
+            t -= BEF(a->end) - BEF(a->start);
             SETF(a->time, t);
           }
           SET16(a->key, 0);
           goto search;
         } else {
           t = 0.0f;
-          ka = kb = BEPTR(unsigned char *, a->keys[BES32(a->nKeys) - 1]);
+          kb = ka = BEPTR(unsigned char *, a->keys[BES32(a->nKeys) - 1]);
           k = 0;
           goto blend;
         }

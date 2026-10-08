@@ -36,7 +36,10 @@ suite. `src/tgrally` itself is never edited for the port.
 A function M2 restructures (arms swapped, blocks moved) is better rebuilt
 than merged hunk by hunk: take the decomp's file and re-apply the port's
 conversions, which can be read off as the diff from `src/tgrally` at the fork
-commit to the port's file. Code that moved merges cleanly in its new place
+commit to the port's file (`tools/segsync.py rebuild` does this per function,
+keeping the port's text for every function the decomp left alone; `diff`
+shows each rebuilt one against the port's, `check` lists what the port had
+that the file lacks). Code that moved merges cleanly in its new place
 without its conversions, so after any sync check that no line the port had
 converted survives verbatim. Data the decomp now defines in a TU (an
 initialised global, a function static) stays a declaration here:

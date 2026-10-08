@@ -1631,39 +1631,37 @@ void BrPaintOvalStyleSelect(void)
  * order) in the chosen colour: a midpoint ellipse walk at twice the
  * resolution, radii half the sides (at least 1), and on every other step a
  * span above and below the centre -- first the region where the walk steps
- * across, then the one where it steps up.  rx*rx and ry*ry are each held
- * twice (a2/a2b, b2/b2b), as the ROM's frame does.
- * RESIDUE (250): register priority -- the ROM keeps the corners, the radii
- * and the walk's running sums in their stack homes; ours holds more of them
- * in saved registers. */
-/* @t4-pass 0x80250B58 1 2026-10-03 compiles 28 best 250 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80250B58 2 2026-10-03 compiles 31 best 250 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x80250B58 */
+ * across, then the one where it steps up.
+ * Source facts: the walk is written with products, as in
+ * BrPaintDashOval: the loop tests b2b * x against a2b * y and the error
+ * steps add b2 * x before and after x++, and uopt strength-reduces all
+ * three into frame temps (the running sums at 0x4c, 0x48, 0x44).  b2 and a2
+ * are copies of the squares that uopt replaces by the products themselves.
+ * The centres are recomputed at the top of every step and the span ends
+ * are formed from them.  t = b2b * x at the top of the first walk is dead
+ * and emits nothing, but it makes uopt meet b2b * x before a2b * y, which
+ * gives the sums their ROM stack slots and puts the b2b load of the second
+ * walk's start first (hoisted above its guard). */
 /* @implements 0x80250B58 tgr BrPaintFillOval */
 void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
 {
-  int ry;
   int t;
+  int ry;
   int rx;
   int x;
   int y;
   int err;
   int cx;
-  int xs;
+  int cy;
   int xe;
   int i;
-  int b2b;
-  int a2b;
   int b2;
   int a2;
-  int ey;
-  int ex;
-  int d;
+  int b2b;
+  int a2b;
 
-  sx0 = (sx0 - D_8028DB94.x) >> 2;
-  sx1 = (sx1 - D_8028DB94.x) >> 2;
-  sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
-  sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
+  sx0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
+  sx1 = (sx1 - D_8028DB94.x) >> 2; sy1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
   if (sx1 < sx0) {
     t = sx0;
     sx0 = sx1;
@@ -1674,63 +1672,60 @@ void BrPaintFillOval(int sx0, int sy0, int sx1, int sy1)
     sy0 = sy1;
     sy1 = t;
   }
-  ry = (sy1 - sy0) >> 1 < 2 ? 1 : (sy1 - sy0) >> 1;
-  x = 0;
-  rx = (sx1 - sx0) >> 1 < 2 ? 1 : (sx1 - sx0) >> 1;
-  y = ry * 2;
+  ry = (sy1 - sy0) >> 1 >= 2 ? (sy1 - sy0) >> 1 : 1;
+  rx = (sx1 - sx0) >> 1 >= 2 ? (sx1 - sx0) >> 1 : 1;
   b2 = b2b = ry * ry;
   a2 = a2b = rx * rx;
+  y = ry * 2;
+  x = 0;
   err = -a2 * y;
-  for (ex = a2b * y, ey = 0, d = 0; ey <= ex;) {
+  while (b2b * x <= a2b * y) {
+    t = b2b * x;
+    cx = (sx0 + sx1) >> 1;
+    cy = (sy0 + sy1) >> 1;
     if (!(x & 1)) {
-      cx = (sx0 + sx1) >> 1;
       xe = (x >> 1) + cx;
-      xs = cx - (x >> 1);
-      for (i = xs; i < xe; i++) {
-        BrPaintPlot(i, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      for (i = cx - (x >> 1); i < xe; i++) {
+        BrPaintPlot(i, (y >> 1) + cy, D_8028DB58);
       }
-      for (i = xs; i < xe; i++) {
-        BrPaintPlot(i, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      for (i = cx - (x >> 1); i < xe; i++) {
+        BrPaintPlot(i, cy - (y >> 1), D_8028DB58);
       }
     }
-    err += d;
-    ey += b2b;
+    err += b2 * x;
     x++;
-    d += ry * ry;
-    err += d;
+    err += b2 * x;
     if (err > 0) {
       err -= a2 * y;
       y--;
-      ex -= a2b;
       err -= a2 * y;
     }
   }
-  x = rx * 2;
   y = 0;
+  x = rx * 2;
   err = -b2 * x;
-  for (ey = b2b * x, ex = 0, d = 0; ex <= ey;) {
-    if (!(y & 1)) {
+  if (a2 * y <= x * b2) {
+    do {
       cx = (sx0 + sx1) >> 1;
-      xe = (x >> 1) + cx;
-      xs = cx - (x >> 1);
-      for (i = xs; i < xe; i++) {
-        BrPaintPlot(i, (y >> 1) + ((sy0 + sy1) >> 1), D_8028DB58);
+      cy = (sy0 + sy1) >> 1;
+      if (!(y & 1)) {
+        xe = (x >> 1) + cx;
+        for (i = cx - (x >> 1); i < xe; i++) {
+          BrPaintPlot(i, (y >> 1) + cy, D_8028DB58);
+        }
+        for (i = cx - (x >> 1); i < xe; i++) {
+          BrPaintPlot(i, cy - (y >> 1), D_8028DB58);
+        }
       }
-      for (i = xs; i < xe; i++) {
-        BrPaintPlot(i, ((sy0 + sy1) >> 1) - (y >> 1), D_8028DB58);
+      err += a2 * y;
+      y++;
+      err += a2 * y;
+      if (err > 0) {
+        err -= b2 * x;
+        x--;
+        err -= b2 * x;
       }
-    }
-    err += d;
-    y++;
-    ex += a2b;
-    d = d + rx * rx;
-    err += d;
-    if (err > 0) {
-      err -= b2 * x;
-      x--;
-      ey -= b2b;
-      err -= b2 * x;
-    }
+    } while (a2b * y <= b2b * x);
   }
 }
 

@@ -278,16 +278,18 @@ int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag)
  * otherwise; hard hits after 10 idle frames are recorded for the effects
  * and damped.  Applies the impulse to velocity and spin; returns 0 when the
  * contact is separating.  The PC twin is BrCrImpulseSolve.
- * RESIDUE (~300): the ROM frame is 8 smaller (its loop counters have no
- * slots) and the FP schedule of the lever cross product differs. */
-/* @t4-pass 0x8025BBB8 1 2026-10-03 compiles 31 best 302 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025BBB8 2 2026-10-03 compiles 31 best 302 moved 0  (tools/tgrally/n64permute.py) */
-/* @t3 0x8025BBB8 */
+ * Source facts: the flag arm opens with a NaN self-test of a dead product,
+ * x = tt[2] * spare[0]; if (x != x);.  ugen drops the empty test but still
+ * evaluates the product, which takes one FP temporary (the load of spare[0])
+ * between the differences and the sum, and as1 deletes the dead load and
+ * multiply; that one temporary is what puts the ROM's FP temporary names
+ * on everything around it.  x is a scalar of its own (folding it into dd or
+ * r merges it into their live ranges) carved out of the unused spare[3],
+ * which keeps the frame at 0x1B8.  tt[2] is read before the differences
+ * (dd = tt[2], dead) so it is the first tt web and takes f12. */
 /* @implements 0x8025BBB8 tgr BrCrImpulseSolve */
 int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
 {
-  int i;
-  int j;
   float Rt[3][3];
   float R[3][3];
   float skew[3][3];
@@ -296,7 +298,8 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   float tmp[3][3];
   float W[3][3];
   float vc[3];
-  float spare[3];               /* declared, never used */
+  float spare[2];               /* never written */
+  float x;                      /* the dead NaN test's value */
   float J[3];
   float nb[3];
   float dw[3];
@@ -305,6 +308,9 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   float tn[3];
   BrCrVtx zero;                 /* initialised, never used */
   float dd;
+  float r;
+  int i;
+  int j;
 
   zero = D_802A4B70;
   vc[0] = pN[0];
@@ -312,13 +318,13 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   vc[2] = pN[2];
   BrMat3Transpose(Rt, R, b->m);
   BrMat3MulVec(nb, Rt, vc);
-  vc[0] = b->cur[11] * nb[2] - nb[1] * b->cur[12];
-  vc[1] = b->cur[12] * nb[0] - nb[2] * b->cur[10];
-  vc[2] = b->cur[10] * nb[1] - nb[0] * b->cur[11];
-  vc[0] = b->cur[3] + vc[0];
-  vc[1] = b->cur[4] + vc[1];
-  vc[2] = b->cur[5] + vc[2];
-  if (pDir[0] * vc[0] + pDir[1] * vc[1] + vc[2] * pDir[2] >= 0.0f) {
+  vc[0] = b->cur[11] * nb[2] - b->cur[12] * nb[1];
+  vc[1] = b->cur[12] * nb[0] - b->cur[10] * nb[2];
+  vc[2] = b->cur[10] * nb[1] - b->cur[11] * nb[0];
+  vc[0] = vc[0] + b->cur[3];
+  vc[1] = vc[1] + b->cur[4];
+  vc[2] = vc[2] + b->cur[5];
+  if (pDir[0] * vc[0] + pDir[1] * vc[1] + pDir[2] * vc[2] >= 0.0f) {
     return 0;
   }
   BrMat3Skew(skew, nb);
@@ -337,7 +343,7 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
   }
   D[0][0] = D[1][1] = D[2][2] = 1.0f / b->mass;
   BrMat3Sub(K, D, tmp);
-  dd = pDir[0] * vc[0] + pDir[1] * vc[1] + vc[2] * pDir[2];
+  dd = pDir[0] * vc[0] + pDir[1] * vc[1] + pDir[2] * vc[2];
   tn[0] = pDir[0] * dd;
   tn[1] = pDir[1] * dd;
   tn[2] = pDir[2] * dd;
@@ -365,10 +371,13 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
     vc[1] = vc[1] * D_802AB7FC;
     vc[2] = vc[2] * D_802AB7FC;
   }
+  dd = tt[2];
   tt[0] = vc[0] - tn[0];
   tt[1] = vc[1] - tn[1];
   tt[2] = vc[2] - tn[2];
   if (flag) {
+    x = tt[2] * spare[0];
+    if (x != x);
     tt[0] = tt[0] * D_802AB800;
     tt[1] = tt[1] * D_802AB800;
     tt[2] = tt[2] * D_802AB800;
@@ -377,24 +386,24 @@ int BrCrImpulseSolve(BrTipBody *b, float *pN, float *pDir, int flag, float rest)
     tt[1] = 0.0f;
     tt[2] = 0.0f;
   }
-  vc[0] = tn[0] + tt[0];
-  vc[1] = tn[1] + tt[1];
-  vc[2] = tn[2] + tt[2];
+  vc[0] = tt[0] + tn[0];
+  vc[1] = tt[1] + tn[1];
+  vc[2] = tt[2] + tn[2];
   BrMat3Solve(J, K, vc);
   jm[0] = J[0] * (1.0f / b->mass);
   jm[1] = J[1] * (1.0f / b->mass);
   jm[2] = J[2] * (1.0f / b->mass);
-  vc[0] = nb[1] * J[2] - J[1] * nb[2];
-  vc[1] = nb[2] * J[0] - J[2] * nb[0];
-  vc[2] = nb[0] * J[1] - J[0] * nb[1];
+  vc[0] = nb[1] * J[2] - nb[2] * J[1];
+  vc[1] = nb[2] * J[0] - nb[0] * J[2];
+  vc[2] = nb[0] * J[1] - nb[1] * J[0];
   BrMat3MulVec(dw, W, vc);
-  rest = D_802AB804 + rest;
-  jm[0] = jm[0] * rest;
-  jm[1] = jm[1] * rest;
-  jm[2] = jm[2] * rest;
-  dw[0] = dw[0] * rest;
-  dw[1] = dw[1] * rest;
-  dw[2] = dw[2] * rest;
+  r = D_802AB804 + rest;
+  jm[0] = jm[0] * r;
+  jm[1] = jm[1] * r;
+  jm[2] = jm[2] * r;
+  dw[0] = dw[0] * r;
+  dw[1] = dw[1] * r;
+  dw[2] = dw[2] * r;
   b->cur[3] = b->cur[3] - jm[0];
   b->cur[4] = b->cur[4] - jm[1];
   b->cur[5] = b->cur[5] - jm[2];
@@ -606,9 +615,6 @@ int BrCollRespTipKick(BrTipBody *b)
  * box face the triangle's centroid lies most flush against (sign from the
  * centroid's x) and scaling the face by the body's extents.  The PC twin is
  * BrCrPlaneResolve. */
-/* @t3 0x8025DCB8 */
-/* @t4-pass 0x8025DCB8 1 2026-09-29 compiles 41 best 4 moved 0  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8025DCB8 2 2026-09-29 compiles 40 best 4 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8025DCB8 tgr BrCrPlaneResolve */
 void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, float *v)
 {
@@ -638,28 +644,27 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
           sgn = 1;
         }
         D_8037EAA8[0] = sgn * 0.5f;
-        goto face;
+      } else {
+        goto three;
       }
-    } else {
-      if ((c[1] < 0.0f ? -c[1] : c[1]) < (c[2] < 0.0f ? -c[2] : c[2])) {
-        D_8037EAA8[0] = D_8037EAA8[2] = 0.0f;
-        if (c[0] < 0) {
-          sgn = -1;
-        } else {
-          sgn = 1;
-        }
-        D_8037EAA8[1] = sgn * 0.5f;
-        goto face;
+    } else if ((c[1] < 0.0f ? -c[1] : c[1]) < (c[2] < 0.0f ? -c[2] : c[2])) {
+      D_8037EAA8[0] = D_8037EAA8[2] = 0.0f;
+      if (c[0] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
       }
-    }
-    D_8037EAA8[0] = D_8037EAA8[1] = 0.0f;
-    if (!(c[0] < 0)) {
-      sgn = 1;
+      D_8037EAA8[1] = sgn * 0.5f;
     } else {
-      sgn = -1;
+    three:
+      D_8037EAA8[0] = D_8037EAA8[1] = 0.0f;
+      if (c[0] < 0) {
+        sgn = -1;
+      } else {
+        sgn = 1;
+      }
+      D_8037EAA8[2] = sgn * 0.5f;
     }
-    D_8037EAA8[2] = sgn * 0.5f;
-  face:
     s = (pA[0] * D_8037EAA8[0] + pA[1] * D_8037EAA8[1] + pA[2] * D_8037EAA8[2]) - planeD;
     D_8037EAA8[0] = D_8037EAA8[0] * b->f1DC;
     D_8037EAA8[0] = D_8037EAA8[0] * b->f1E0;

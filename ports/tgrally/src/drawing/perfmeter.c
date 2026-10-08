@@ -66,17 +66,15 @@ void BrPerfFrameStart(void)
  * frame time (781250 counts), and each bar's segments in their colours.
  * The scale state is function static (the ROM addresses it afresh at every
  * access); the local bounds and row pointers are what let IDO unroll both
- * inner loops by four as the ROM has them.
- * RESIDUE (717): the ROM keeps the first loop's counters and row pointer in
- * s4/s6/s7/fp (it saves two more registers, frame 0x40) where ours uses
- * temporaries, which renames everything after.
+ * inner loops by four as the ROM has them.  Each tick takes its display
+ * list slot, works out its offset and steps t before it is drawn, which is
+ * the order the ROM schedules them in; the bars' x is (bar << 2), which
+ * keeps bar as a counter.
  * NEVER RUN IN THE RETAIL GAME: its five callers (BrRaceTick, BrIntroScreen,
  * BrMenu, BrCarSelect, 0x80243260) draw it only while D_8028AA98 >= 2.
  * That word is 0 in the ROM's .data, no instruction forms its address
  * (n64rom xref: reads only, at those five sites), no data word points at
  * it, and a write watch over all 64 box scripts saw no store to it. */
-/* @t4-pass 0x8022D97C 1 2026-09-29 compiles 119 best 717 moved 5  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x8022D97C 2 2026-09-29 compiles 119 best 717 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8022D97C tgr BrPerfMeterDraw */
 void BrPerfMeterDraw(void)
 {
@@ -84,6 +82,8 @@ void BrPerfMeterDraw(void)
   extern unsigned int D_803519C8;        /* 0x803519C8: the meter's full scale, CPU counts */
   unsigned int max;
   unsigned int t;
+  unsigned int y;
+  Gfx *gfx;
   int h;
   int bar;
   int j;
@@ -98,8 +98,8 @@ void BrPerfMeterDraw(void)
                    D_8031AA28[D_8028A85C] + 0x80000000);
   max = 0;
   for (bar = 0; bar < 3; bar++) {
-    n = D_803519B0[D_8028BDA0 ^ 1][bar];
     e = D_8034E9B0[D_8028BDA0 ^ 1][bar];
+    n = D_803519B0[D_8028BDA0 ^ 1][bar];
     for (j = 1; j < n; j++) {
       if (max < e[j].time) {
         max = e[j].time;
@@ -108,13 +108,13 @@ void BrPerfMeterDraw(void)
   }
   if (max < D_803519C8 + 7812) {
     if (D_8028BDB0 != 0) {
-      D_8028BDB0--;
       max = D_803519C8;
+      D_8028BDB0--;
     } else if (D_803519C8 > 1736110) {
       D_803519C8 -= 781250;
       if (max >= D_803519C8 + 7812) {
-        D_8028BDB0 = 30;
         D_803519C8 = max;
+        D_8028BDB0 = 30;
       } else {
         max = D_803519C8;
         D_8028BDB0 = 30;
@@ -133,9 +133,12 @@ void BrPerfMeterDraw(void)
                    ((D_8028AAB0 - 16) << D_8028A850) - 3, (16 << D_8028A850) + h + 2);
   gDPPipeSync(D_8028A858++);
   gDPSetFillColor(D_8028A858++, 0xFFFFFFFF);
-  for (t = 0; t < max; t += 781250) {
-    gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) - 21, (16 << D_8028A850) + t * h / max,
-                     ((D_8028AAB0 - 16) << D_8028A850) - 20, (16 << D_8028A850) + t * h / max);
+  for (t = 0; t < max; ) {
+    gfx = D_8028A858++;
+    y = t * h / max;
+    t += 781250;
+    gDPFillRectangle(gfx, ((D_8028AAB0 - 16) << D_8028A850) - 21, (16 << D_8028A850) + y,
+                     ((D_8028AAB0 - 16) << D_8028A850) - 20, (16 << D_8028A850) + y);
   }
   gDPPipeSync(D_8028A858++);
   for (bar = 0; bar < 3; bar++) {
@@ -143,9 +146,9 @@ void BrPerfMeterDraw(void)
     n = D_803519B0[D_8028BDA0 ^ 1][bar];
     for (j = 1; j < n; j++) {
       gDPSetFillColor(D_8028A858++, e[j].colour);
-      gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) + bar * 4 - 18,
+      gDPFillRectangle(D_8028A858++, ((D_8028AAB0 - 16) << D_8028A850) + (bar << 2) - 18,
                        e[j - 1].time * h / max + (16 << D_8028A850),
-                       ((D_8028AAB0 - 16) << D_8028A850) + bar * 4 - 16,
+                       ((D_8028AAB0 - 16) << D_8028A850) + (bar << 2) - 16,
                        e[j].time * h / max + (16 << D_8028A850));
       gDPPipeSync(D_8028A858++);
     }
