@@ -24,7 +24,7 @@ s_vis_list: .space 4                    @ render_visible's list, when the frame 
         .equ    NEAR, 128               @ the near plane, W in 1/256 units
         .equ    GMAX, 3                 @ an edge's halvings at most
         .ifndef DEEP
-        .equ    DEEP, 0                 @ halved when the far end is more than 1 + 2^DEEP times as deep
+        .equ    DEEP, 1                 @ halved when the far end is more than 1 + 2^DEEP times as deep
         .endif
         .ifndef MINEDGE
         .equ    MINEDGE, 256            @ and the edge longer than this (sixteenths of a pixel)
@@ -32,7 +32,7 @@ s_vis_list: .space 4                    @ render_visible's list, when the frame 
         .equ    MAXPOLY, 2400
         .equ    NBUCKET, 256
         .ifndef DOTA
-        .equ    DOTA, 2048              @ a triangle under 4 square pixels is a dot
+        .equ    DOTA, 4096              @ a triangle under 8 square pixels is a dot
         .endif
 
 @ COUNT builds: g_fcount[k] += 1 (main.c), the flags and registers kept
