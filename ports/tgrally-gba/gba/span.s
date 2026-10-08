@@ -24,13 +24,22 @@ fill:
 @ the vertical blank interrupt (through the BIOS's dispatcher, 0x03007FFC):
 @ show the finished page main.c asked for in s_flip (its DISPCNT) with its wipe's window
 @ (s_winh: WIN0H), then 0
-        .global irq_vblank, s_winh
+        .global irq_vblank, s_winh, s_press
 irq_vblank:
         ldr     r1, =s_vbl
         ldr     r2, [r1]
         add     r2, r2, #1
         str     r2, [r1]
         mov     r0, #0x04000000
+        add     r3, r0, #0x130          @ the pad, every retrace: the buttons pressed since the last
+        ldrh    r3, [r3]                @ one, latched in s_press until the frame takes them
+        ldr     r1, =s_press
+        ldr     r2, [r1, #4]            @ (last retrace's)
+        str     r3, [r1, #4]
+        bic     r2, r2, r3              @ up then, down now (KEYINPUT is active low)
+        ldr     r3, [r1]
+        orr     r3, r3, r2
+        str     r3, [r1]
         ldr     r1, =s_flip
         ldr     r2, [r1]
         cmp     r2, #0
@@ -55,3 +64,4 @@ irq_vblank:
         .section .iwram_bss, "aw", %nobits
         .align  2
 s_winh: .space  4
+s_press: .space 8                       @ the presses latched; the pad last retrace

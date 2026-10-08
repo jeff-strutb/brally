@@ -564,7 +564,7 @@ int fade_step(int dv);
 uint16_t fade_window(uint16_t dispcnt);
 extern int32_t s_fade, s_hud_on, s_k, s_mus_gain;       /* menu.c, hud.s, sound.s */
 
-#define REG_KEYS (*(volatile uint16_t *)0x04000130)
+uint32_t pad_take(void);
 
 /* the race from its start: its textures, its HUD, its music and effects as recorded; wiped in
    (or at once, for the host's measurements) */
@@ -586,7 +586,6 @@ int main(void)
 {
     int page = 0, fi = 0, i, racing = 0, dv;
     uint32_t t0 = 0, tl = 0, lap = 0;
-    uint16_t keys = 0x3FF;
     REG_WAITCNT = 0x4317;                            /* ROM 3/1 waitstates, prefetch on */
     for (i = 1; i < 4096; i++)
         s_rec[i] = udiv(1u << 24, (uint32_t)i);
@@ -637,7 +636,7 @@ int main(void)
                 t0 = tl = s_vbl;
                 lap = 0;
                 fi = 0;
-                keys = REG_KEYS;
+                pad_take();
                 continue;
             }
             s_flip = fade_window((uint16_t)(5 | 1 << 10 | 1 << 12 | 1 << 6 | (page ? 0 : 1 << 4)));
@@ -665,8 +664,7 @@ int main(void)
         dv = (int)(s_vbl - tl);                      /* the wipe, and B or START back to the menu */
         tl = s_vbl;
         if (!g_probe[0] && !g_probe[2]) {
-            uint16_t k = REG_KEYS, press = (uint16_t)(keys & ~k);
-            keys = k;
+            uint32_t press = pad_take();
             if ((press & (1 << 1 | 1 << 3)) && s_fade == 65536)
                 fade_to(0);
             if (!fade_step(dv)) {

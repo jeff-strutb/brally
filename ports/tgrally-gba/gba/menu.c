@@ -32,7 +32,9 @@ void txt_use(const TextSet *t);                         /* hud.s */
 void txt_print(const char *s, int x, int y);
 void put_sprite(int a0, int a1, int a2);
 extern uint16_t s_oam[128 * 4];
-extern int32_t s_oamn, s_oam_ready, s_txt[10];
+extern int32_t s_oamn, s_txt[10];
+extern volatile int32_t s_oam_ready;
+uint32_t pad_take(void);
 extern int32_t s_mus_gain;
 extern const int16_t g_sin1024[1024];
 
@@ -155,9 +157,20 @@ int32_t s_fade;                           /* BrFadeStep's level (Q16) */
 static int32_t s_fspeed;          /* and its speed (Q16 a retrace) */
 static int32_t s_bl, s_br;                /* its bars: the picture between (N64 pixels) */
 static uint32_t s_t;                      /* the retrace last frame */
-static uint16_t s_keys;
+extern volatile uint32_t s_press[2];
 
-#define REG_KEYS (*(volatile uint16_t *)0x04000130)
+/* the buttons pressed since the last call (latched every retrace: span.s) */
+uint32_t pad_take(void)
+{
+    uint32_t p;
+    __asm__ volatile("" ::: "memory");
+    *(volatile uint16_t *)0x04000208 = 0;               /* (IME off: the interrupt may add one) */
+    p = s_press[0];
+    s_press[0] = 0;
+    *(volatile uint16_t *)0x04000208 = 1;
+    return p;
+}
+
 #define REG_WIN0V (*(volatile uint16_t *)0x04000044)
 #define REG_WININ (*(volatile uint16_t *)0x04000048)
 #define REG_WINOUT (*(volatile uint16_t *)0x0400004A)
@@ -228,7 +241,7 @@ void menu_enter(void)
     s_bl = s_br = 0;
     fade_to(1);
     s_t = s_vbl;
-    s_keys = 0x3FF;
+    pad_take();                                          /* (nothing pressed before the menu counts) */
     snd_play(&g_menu_song);                              /* BrMainMenu: the title music (BrMusicStart) */
 }
 
@@ -238,21 +251,19 @@ int menu_frame(void)
 {
     uint32_t now = s_vbl;
     int dv = (int)(now - s_t), i, k;
-    uint16_t keys, press;
+    uint16_t press;
     int32_t off;
     if (dv > 8)
         dv = 8;
     s_t = now;
-    keys = REG_KEYS;
+    press = (uint16_t)pad_take();
 #ifdef MENU_FIXED_DT
     {                                                    /* (comparing builds: the same frames, held at */
         static int n;                                    /* the Nth; the next row chosen at the 3rd) */
         dv = ++n < MENU_FIXED_DT ? 2 : 0;
-        keys = n == 3 && MENU_FIXED_DT > 10 ? (uint16_t)~(1 << 4) : 0x3FF;
+        press = n == 3 && MENU_FIXED_DT > 10 ? 1 << 4 : 0;
     }
 #endif
-    press = (uint16_t)(s_keys & ~keys);                 /* pressed since the last frame (active low) */
-    s_keys = keys;
     fade_step(dv);
     s_mus_gain = 256;
     s_spin += SPIN_STEP * dv;
