@@ -220,6 +220,7 @@ int sim_cell_pick(const SimCell *c, const int32_t q[6], uint16_t *out);   /* the
 void sim_pick_box(int32_t q[6], const fx *p, fx r);
 int sim_tri_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *p);   /* a triangle against the box, in 32 bits */
 int sim_tri_contains(const Plane *t, const fx *p);
+fx sim_probe_last(Body *w, const Plane *p, const fx *world, const fx *dir);
 fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick, const fx *world, const fx *dir);
 void sim_pick_seg(int32_t q[6], const fx *a, const fx *b, fx pad);   /* q: a to b's box, pad wider */   /* q: p's box r wide each way, in eighths */          /* the wheels' matrices (BrCarBuildMatrices' rest) */
 void BrVec4Normalise(fx v[4]);

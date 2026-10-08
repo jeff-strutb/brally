@@ -65,9 +65,8 @@ sim_step_ground         sim3
 BrTyreDepthAll          sim3
 BrWheelGroundProbe      sim3
 sim_probe_walk          sim3
-BrCarBuildMatrices      sim3
+sim_probe_last          sim3
 BrCamChaseStep          sim3
 BrCarCamPlaceBehind     sim3
-BrCarCamTargetStep      sim3
 BrCarCamWallPush        sim3
 seg_far                 sim3

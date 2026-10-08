@@ -581,6 +581,15 @@ SIM_OWN static fx BrWheelGroundProbe(Body *b, Body *w)
     mount[2] = FX(0.0f);
     BrMat3MulVecRows(world, b->m, mount);
     BrMat4RotateVecT(dir, b->m, down);
+#ifndef FX_FLOAT
+    if (w->hit != 0) {                  /* (the fixed point's: last tick's triangle first) */
+        const Plane *last = w->hit;
+        w->hit = 0;
+        best = sim_probe_last(w, last, world, dir);
+        if (w->hit != 0)
+            return best;
+    }
+#endif
     w->hit = 0;
     cell = BrCollGridCellAcquire(world[0], world[1]);
     sim_pick_box(q, world, FX(2.01f));  /* (a hit is within 2 of the point, on its triangle) */

@@ -367,6 +367,20 @@ int sim_tri_contains(const Plane *pT, const fx *pP)
 /* BrWheelGroundProbe's walk of the picked triangles in integers: each plane's distance from
    the point relative to its first corner (normals 2.30 by 16.16), the drop along dir by one
    divide where the plane is near enough and faces up */
+static inline __attribute__((always_inline)) fx probe_one(Body *w, const Plane *p, const fx *world, const fx *dir,
+                                                            const int32_t *d30, fx best);
+
+/* the plane the wheel was on last tick, alone: still under it, it is the ground (the walk below
+   would find the same, short of triangles lying over each other) */
+fx sim_probe_last(Body *w, const Plane *p, const fx *world, const fx *dir)
+{
+    int32_t d30[3];
+    int j;
+    for (j = 0; j < 3; j++)
+        d30[j] = (int32_t)(dir[j] >> 2);
+    return probe_one(w, p, world, dir, d30, FX(100.0f));
+}
+
 fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick, const fx *world, const fx *dir)
 {
     const Plane *pl = g_track->planes;
@@ -375,8 +389,16 @@ fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick,
     int k, j;
     for (j = 0; j < 3; j++)
         d30[j] = (int32_t)(dir[j] >> 2);
-    for (k = 0; k < npick; k++) {
-        const Plane *p = &pl[cell->tris[pick[k]]];
+    for (k = 0; k < npick; k++)
+        best = probe_one(w, &pl[cell->tris[pick[k]]], world, dir, d30, best);
+    return best;
+}
+
+static inline __attribute__((always_inline)) fx probe_one(Body *w, const Plane *p, const fx *world, const fx *dir,
+                                                            const int32_t *d30, fx best)
+{
+    int j;
+    {
         int32_t n30[3];
         int64_t d64 = 0, t64 = 0, sq = 0, rr;
         fx d, t, h, mount[3];
@@ -386,9 +408,9 @@ fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick,
         }
         rr = (p->r + FX(2.01f)) >> 16;
         if (sq > rr * rr)
-            continue;
+            return best;
         if (p->n[2] <= FXD(0.2))
-            continue;
+            return best;
         for (j = 0; j < 3; j++) {
             n30[j] = (int32_t)(p->n[j] >> 2);
             d64 += (int64_t)n30[j] * (int32_t)((world[j] - p->v0[j]) >> 16);
@@ -396,13 +418,13 @@ fx sim_probe_walk(Body *w, const SimCell *cell, const uint16_t *pick, int npick,
         }
         d = d64 >> 14;
         if (!(d > FXD(-2.0) && d < FXD(2.0)))
-            continue;
+            return best;
         t = t64 >> 28;
         if ((t < 0 ? -t : t) <= FXD(0.001))
-            continue;
+            return best;
         h = FDIV(-d, t);
         if (!(h > FXD(-2.0) && h < FXD(2.0) && h < best))
-            continue;
+            return best;
         for (j = 0; j < 3; j++)
             mount[j] = fx_muli(dir[j], h) + world[j];
         if (sim_tri_contains(p, mount)) {

@@ -248,7 +248,7 @@ static inline __attribute__((always_inline)) int cell_seen(const Frame *f, const
     r = c->r + FAR * 8;
     if (dx * dx + dy * dy > r * r)
         return 0;
-    for (k = 0; k < 4; k++) {
+    for (k = 0; k < 2; k++) {               /* (the screen's sides: its top and bottom seldom cut a cell) */
         const int32_t *e = f->edge[k];
         if (e[0] * c->c[0] + e[1] * c->c[1] + e[2] * c->c[2] < (-e[3] - c->r - 2) * 4096)
             return 0;
