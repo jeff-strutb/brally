@@ -522,8 +522,22 @@ void BrCarBuildMatrices(Car *car)
         for (i = 0; i < 16; i++)
             (&car->mtx0[0][0])[i] = (&car->body.m[0][0])[i];
     } else {
+#ifndef FX_FLOAT
+        /* (the fixed point's: guRotateF about x is the identity but for rows 1 and 2, so the
+           product only turns those two) */
+        fx a = FMUL(car->body.angle, FX(3.1415926 / 180.0)), sn = FSIN(a), cs = FCOS(a);
+        for (i = 0; i < 4; i++) {
+            fx r1 = car->body.m[1][i], r2 = car->body.m[2][i];
+            car->mtx0[0][i] = car->body.m[0][i];
+            car->mtx0[1][i] = FMUL(cs, r1) + FMUL(sn, r2);
+            car->mtx0[2][i] = FMUL(cs, r2) - FMUL(sn, r1);
+            car->mtx0[3][i] = car->body.m[3][i];
+        }
+        (void)m;
+#else
         guRotateF(m, car->body.angle, FX(1.0f), FX(0.0f), FX(0.0f));
         guMtxCatF(m, car->body.m, car->mtx0);
+#endif
     }
 }
 

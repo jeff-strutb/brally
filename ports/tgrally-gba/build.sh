@@ -42,7 +42,7 @@ clang $CF -c $G/gba/fxarm.s -o $OUT/obj/fxarm.o
 clang $CF -c $G/gba/aeabi.s -o $OUT/obj/aeabi.o
 for f in $SIM; do clang $TF -I$G/sim -c $G/sim/$f.c -o $OUT/obj/sim_$f.o; done
 clang $TF -I$G/sim -c $G/sim/geomhot.c -o $OUT/obj/sim_geomhot.o
-clang $(echo "$CF" | sed "s/-marm/-mthumb/") -DSIM_SUBSTEPS=1 -I$G/sim -c $G/gba/race.c -o $OUT/obj/race.o   # Thumb: the cartridge fetches half
+clang $(echo "$CF" | sed "s/-marm/-mthumb/") -DSIM_SUBSTEPS=1 $SIMDEF -I$G/sim -c $G/gba/race.c -o $OUT/obj/race.o   # Thumb: the cartridge fetches half
 clang $CF -I$G/sim -I$G/gba -c $OUT/race_data.c -o $OUT/obj/race_data.o
 clang $CF -c $OUT/world_data.c -o $OUT/obj/world_data.o
 GBALINK_PLACE=${PLACE:-$G/gba/place.txt} $PY $G/tools/gbalink.py $OUT/tgrally_poc.gba $OUT/obj/crt0.o $OUT/obj/span.o $OUT/obj/raster.o $OUT/obj/sound.o $OUT/obj/hud.o $OUT/obj/front.o $OUT/obj/main.o $OUT/obj/libc.o $OUT/obj/world_data.o $OUT/obj/sound_data.o $OUT/obj/hud_data.o \

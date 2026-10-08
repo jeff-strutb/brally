@@ -104,8 +104,6 @@ void race_tick(uint32_t keys)
         g_phase_cyc[k] += clock32() - t1;
     }
     g_phase_cyc[5]++;
-    if (g_sim_dtk == FX(2.0) && sim_camera)   /* the chase camera at the game's rate: once more */
-        sim_camera(&s_car[g_world.viewCar]);
     for (k = 0; k < 16; k++) {                /* the camera now and a tick before (race_view between) */
         s_cprev[k] = s_ccur[k];
         s_ccur[k] = (&s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].mtx[0][0])[k];

@@ -96,11 +96,13 @@ def main():
             secs.setdefault(k, []).append((o, i))
             key_of[(o, i)] = k
     ovls = sorted(k for k in secs if k.startswith('ovl_'))
-    defs = {}                                        # each global's section
+    defs, thumb = {}, set()                          # each global's section; the Thumb functions
     for o in objs:
         for name, value, size, info, shndx in o.syms:
             if info >> 4 and shndx and shndx < 0xFF00 and (o, shndx) in key_of:
                 defs[name] = (o, shndx)
+                if info & 0xF == 2 and value & 1:
+                    thumb.add(name)
     far = {'rom': [], 'iw': []}                      # the stubs: (target symbol key) by the caller's memory
     for o in objs:
         for s in o.sh:
@@ -115,7 +117,7 @@ def main():
                 tgt = defs.get(name) if shndx == 0 else (o, shndx) if shndx < 0xFF00 else None
                 if tgt is None or tgt not in key_of:
                     continue
-                if mem(key_of[tgt]) != src:
+                if mem(key_of[tgt]) != src or (shndx == 0 and name in thumb):   # (or into Thumb: BX)
                     t = stub_key(o, o.sh[s[7]], off, name, value, sinfo, shndx)
                     if t not in far[src]:
                         far[src].append(t)
