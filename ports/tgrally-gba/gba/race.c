@@ -209,18 +209,23 @@ static uint16_t s_list[12288] __attribute__((section(".ewram_bss")));
                                             that far, which the edges' test lets in) */
 static uint16_t s_big[128];
 static int s_nbig = -1;
+static uint16_t s_rowat[130] __attribute__((section(".ewram_bss")));   /* each row's first in s_rowx */
+static uint8_t s_rowx[4422] __attribute__((section(".ewram_bss")));   /* the rows' cells with triangles, by x */
 static uint8_t s_isbig[(4096 * 2) / 8] __attribute__((section(".ewram_bss")));
 
 static void find_big(void)
 {
-    int ci, gx, gy;
+    int ci, gx, gy, nx = 0;
     s_nbig = 0;
     for (gy = 0; gy < g_grid_h; gy++)
     for (gx = 0; gx < g_grid_w; gx++) {
         const Cell *c = &g_cells[ci = gy * g_grid_w + gx];
         int32_t x0 = gx * 256, y0 = gy * 256;
+        if (gx == 0)
+            s_rowat[gy] = (uint16_t)nx;
         if (c->nt == 0)
             continue;
+        s_rowx[nx++] = (uint8_t)gx;
         if (c->c[0] - c->r < x0 - M8 || c->c[0] + c->r > x0 + 256 + M8 ||
             c->c[1] - c->r < y0 - M8 || c->c[1] + c->r > y0 + 256 + M8) {
             if (s_nbig < (int)(sizeof s_big / sizeof s_big[0])) {
@@ -229,9 +234,10 @@ static void find_big(void)
             }
         }
     }
+    s_rowat[g_grid_h] = (uint16_t)nx;
 }
 
-static int cell_seen(const Frame *f, const Cell *c)
+static inline __attribute__((always_inline)) int cell_seen(const Frame *f, const Cell *c)
 {
     int32_t dx, dy, r;
     int k;
@@ -250,18 +256,15 @@ static int cell_seen(const Frame *f, const Cell *c)
     return 1;
 }
 
-static int cell_take(const Frame *f, int ci, int n)
+static inline __attribute__((always_inline)) int cell_take(const Frame *f, int ci, int n)
 {
     const Cell *c = &g_cells[ci];
-    int k;
     if (!cell_seen(f, c))
         return n;
-    if (n + 2 + (int)c->nt >= (int)(sizeof s_list / 2) - 1)
+    if (n + 2 >= (int)(sizeof s_list / 2) - 1)
         return n;
     s_list[n++] = (uint16_t)ci;
-    s_list[n++] = (uint16_t)c->nt;
-    for (k = 0; k < (int)c->nt; k++)
-        s_list[n++] = (uint16_t)k;
+    s_list[n++] = (uint16_t)(c->nt | 0x8000);   /* all its triangles (front.s) */
     return n;
 }
 
@@ -325,8 +328,13 @@ const uint16_t *race_cells(const void *frame)
             xlo = 0;
         if (xhi >= g_grid_w)
             xhi = g_grid_w - 1;
-        for (cx = xlo; cx <= xhi; cx++) {
-            int ci = row * g_grid_w + cx;
+        for (cx = s_rowat[row]; cx < s_rowat[row + 1]; cx++) {   /* the row's cells with triangles */
+            int x = s_rowx[cx], ci;
+            if (x < xlo)
+                continue;
+            if (x > xhi)
+                break;
+            ci = row * g_grid_w + x;
             if (!(s_isbig[ci >> 3] & (1 << (ci & 7))))
                 n = cell_take(f, ci, n);
         }
