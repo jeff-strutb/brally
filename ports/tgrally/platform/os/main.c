@@ -8,6 +8,7 @@
 #include <string.h>
 #include "host.h"
 #include "plat.h"
+#include "tgr_view.h"
 #include "../render/rdr.h"
 
 TgrConfig g_tgr;
@@ -78,8 +79,15 @@ int main(int argc, char **argv)
     if (g_tgr.headless) {
         tgr_os_wait();
     } else {
+        int locked = 1;                 /* the window opens at 4:3, kept so */
         while (!tgr_os_finished()) {
             host_event ev;
+            /* any shape of window, or the N64's 4:3: the profile's (Tab or
+               View switch it on the game's thread; the window is this one's) */
+            if (locked != !tgr_flag(TGR_FLAG_ANY_ASPECT)) {
+                locked = !locked;
+                host_window_lock_aspect(locked);
+            }
             if (host_poll_event(&ev, 10)) {
                 if (ev.type == HOST_EV_CLOSE)
                     break;

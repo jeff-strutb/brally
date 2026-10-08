@@ -43,6 +43,7 @@ extern BrRaceLight D_802707D0[];
 extern float D_80270794[];      /* countdown beep times (the state-2 timer runs down) */
 
 #include "tgr/track.h"
+#include "tgr_view.h"
 
 typedef struct BrTimeLimit {    /* time allowed per difficulty and car class (0x1C bytes) */
   float secs;
@@ -1038,6 +1039,7 @@ draw:
   }
 
   /* each view */
+  tgr_view_race(1);   /* port: the race views fill the window (tgr_view.h) */
   for (j = 0; j < D_8028AB0C; j++) {
     BrPerfMark(0, 0, 0, 0, 0xFF);
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
@@ -1217,6 +1219,7 @@ draw:
     }
     BrViewOutline(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h);
   }
+  tgr_view_race(0);
   BrStub80217C8C();
   BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
 

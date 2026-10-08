@@ -19,6 +19,7 @@
 #include <string.h>
 #include "plat.h"
 #include "tgr_addr.h"
+#include "tgr_view.h"
 #include "../render/rdr.h"
 
 /* ---- debugging switches (environment, read once) ------------------------------ *
@@ -99,9 +100,12 @@ static void hud_state(void)
     }
 }
 
+static void rec_flush(void);
+
 static void frame_end(void)
 {
     uint64_t t0 = host_ticks_ns(), t;
+    rec_flush();
     hud_state();
     rdr_vi(tgr_vi_ctrl());
     rdr_frame_end();
@@ -445,6 +449,8 @@ static uint32_t s_cache_clock;
 static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
 static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
 
+static void tex_free(int tex);
+
 static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
 {
     int i;
@@ -509,7 +515,7 @@ static int tile_texture(int t, int *pw, int *ph)
         fwrite(rgba, 4, (size_t)w * h, s_wdump);
     }
     if (s_cache[slot].tex)
-        rdr_texture_free(s_cache[slot].tex);
+        tex_free(s_cache[slot].tex);
     s_cache[slot].tex = rdr_texture(rgba, w, h);
     if (s_texdump) {
         static int n;
@@ -698,10 +704,373 @@ static void state(RdrState *st, int tile0)
     st->scissor[3] = s_scissor[3];
 }
 
+/* ---- a window of any shape (tgr_view.h) ---------------------------------------------------- *
+ * With TGR_FLAG_ANY_ASPECT on and a window of another shape than the N64's 4:3, a frame is
+ * recorded and drawn at its end, when what it was is known.  A race frame (one that loaded a
+ * race view's projection, its lens widened by kx across and ky down: drawing/frameloop.c)
+ * fills the window: its colour image becomes kx fb_w by ky fb_h, still in the N64's pixels,
+ * and the race views are stretched over it; the rear-view mirror keeps its shape, centred
+ * along the top; and every piece of 2D (the HUD, text, panels) keeps its shape too,
+ * stretched only along an axis it spans its scissor on, else held at the distance from the
+ * edge (or the centre) it sat nearest.  2D draws are grouped into the elements they make up
+ * (touching boxes, words on one line), so a gauge or a line of text moves as one: the Boss
+ * Rally port's placement (ports/brally/platform/common/glide.c).  Any other frame is drawn
+ * as it was, and the renderer keeps it 4:3 in the window. */
+enum { K_2D, K_RACE, K_MIRROR };
+typedef struct { double ax, bx, ay, by; } XMap;     /* target = a * game + b (b times w) */
+typedef struct {
+    int type;                   /* 0 triangles, 1 a rectangle, 2 a depth clear */
+    int st, kind, v0, n, fill;
+    float x0, y0, x1, y1, s, t, dsdx, dtdy, rgba[4];
+    float box[4], clip[4];      /* the draw's box and its scissor, game pixels */
+} Rec;
+static int s_kind;              /* what the loaded projection draws (K_*) */
+static int s_rec;               /* this frame is recorded */
+static int s_race;              /* ... and a race view was drawn in it, its lens kx by ky */
+static float s_kx = 1, s_ky = 1;
+static float s_mirror_clip[4];
+static int s_mirror_ok;
+static Rec *s_recs;
+static int s_nrec, s_caprec;
+static RdrVtx *s_rv;
+static int s_nrv, s_caprv;
+static RdrState *s_rst;
+static int s_nrst, s_caprst;
+static int *s_freed;            /* textures let go while recording: freed after the frame */
+static int s_nfreed, s_capfreed;
+
+#define GROW(p, n, cap, more)                                                          \
+    do {                                                                               \
+        if ((n) + (more) > (cap)) {                                                    \
+            (cap) = ((n) + (more)) * 2 + 1024;                                         \
+            (p) = realloc((p), (size_t)(cap) * sizeof *(p));                           \
+        }                                                                              \
+    } while (0)
+
+static void tex_free(int tex)
+{
+    if (!s_rec) {
+        rdr_texture_free(tex);
+        return;
+    }
+    GROW(s_freed, s_nfreed, s_capfreed, 1);
+    s_freed[s_nfreed++] = tex;
+}
+
+static int full_clip(const float *r) { return r[0] <= 0 && r[1] <= 0 && r[2] >= s_fb_w && r[3] >= s_fb_h; }
+
+static Rec *rec_new(int type, const RdrState *st)
+{
+    Rec *r;
+    GROW(s_recs, s_nrec, s_caprec, 1);
+    r = &s_recs[s_nrec++];
+    memset(r, 0, sizeof *r);
+    r->type = type;
+    r->kind = K_2D;
+    if (st) {
+        if (!s_nrst || memcmp(&s_rst[s_nrst - 1], st, sizeof *st)) {
+            GROW(s_rst, s_nrst, s_caprst, 1);
+            s_rst[s_nrst++] = *st;
+        }
+        r->st = s_nrst - 1;
+        r->clip[0] = fmaxf(st->scissor[0], 0);
+        r->clip[1] = fmaxf(st->scissor[1], 0);
+        r->clip[2] = fminf(st->scissor[2], (float)s_fb_w);
+        r->clip[3] = fminf(st->scissor[3], (float)s_fb_h);
+        if (r->clip[2] <= r->clip[0] || r->clip[3] <= r->clip[1]) {
+            r->clip[0] = r->clip[1] = 0;
+            r->clip[2] = (float)s_fb_w;
+            r->clip[3] = (float)s_fb_h;
+        }
+    }
+    return r;
+}
+
+static void put_tris(const RdrState *st, const RdrVtx *v, int n)
+{
+    Rec *r;
+    int k;
+    if (!s_rec) {
+        rdr_triangles(st, v, n);
+        return;
+    }
+    r = rec_new(0, st);
+    r->kind = s_kind;
+    r->v0 = s_nrv;
+    r->n = n;
+    GROW(s_rv, s_nrv, s_caprv, n);
+    memcpy(s_rv + s_nrv, v, (size_t)n * sizeof *v);
+    s_nrv += n;
+    r->box[0] = r->box[1] = 1e9f;
+    r->box[2] = r->box[3] = -1e9f;
+    for (k = 0; k < n; k++) {
+        float x, y;
+        if (v[k].w <= 1e-6f)
+            continue;
+        x = v[k].x / v[k].w;
+        y = v[k].y / v[k].w;
+        r->box[0] = fminf(r->box[0], x);
+        r->box[1] = fminf(r->box[1], y);
+        r->box[2] = fmaxf(r->box[2], x);
+        r->box[3] = fmaxf(r->box[3], y);
+    }
+    if (r->box[2] < r->box[0])
+        memcpy(r->box, r->clip, sizeof r->box);
+    if (s_kind == K_MIRROR && !s_mirror_ok) {
+        memcpy(s_mirror_clip, r->clip, sizeof s_mirror_clip);
+        s_mirror_ok = 1;
+    }
+}
+
+static void put_rect(const RdrState *st, float x0, float y0, float x1, float y1, float s, float t, float dsdx,
+                     float dtdy, int fill, const float rgba[4])
+{
+    Rec *r;
+    if (!s_rec) {
+        rdr_rect(st, x0, y0, x1, y1, s, t, dsdx, dtdy, fill, rgba);
+        return;
+    }
+    r = rec_new(1, st);
+    r->x0 = x0; r->y0 = y0; r->x1 = x1; r->y1 = y1;
+    r->s = s; r->t = t; r->dsdx = dsdx; r->dtdy = dtdy;
+    r->fill = fill;
+    if (rgba)
+        memcpy(r->rgba, rgba, sizeof r->rgba);
+    r->box[0] = fmaxf(x0, r->clip[0]);
+    r->box[1] = fmaxf(y0, r->clip[1]);
+    r->box[2] = fminf(x1, r->clip[2]);
+    r->box[3] = fminf(y1, r->clip[3]);
+    if (r->box[2] <= r->box[0] || r->box[3] <= r->box[1]) {
+        r->box[0] = x0; r->box[1] = y0;
+        r->box[2] = x1; r->box[3] = y1;
+    }
+}
+
+static void put_clear_depth(void)
+{
+    if (!s_rec)
+        rdr_clear_depth();
+    else
+        rec_new(2, NULL);
+}
+
+/* a projection loaded: what it draws */
+static void proj_loaded(uint32_t phys)
+{
+    float kx, ky;
+    s_kind = tgr_view_proj_kind(mem(phys), &kx, &ky);
+    if (s_kind == K_RACE) {                           /* (the frame may not have opened yet) */
+        s_race = 1;
+        s_kx = kx;
+        s_ky = ky;
+    }
+}
+
+/* One axis of an element's placement: stretched with the window when it spans its
+ * scissor, else its own size, kept at the distance from the edge (or the centre) it sat
+ * nearest (k the window's stretch on this axis) */
+static void place(double lo, double hi, double r0, double r1, double k, double *a, double *b)
+{
+    double rw = r1 - r0;
+    if (hi - lo >= 0.9 * rw) { *a = k; *b = 0; return; }
+    *a = 1;
+    if (hi <= r0 + 0.42 * rw) *b = r0 * k - r0;
+    else if (lo >= r0 + 0.58 * rw) *b = r1 * k - r1;
+    else *b = (r0 + r1) * 0.5 * (k - 1);
+}
+
+static void follow(double lo, double hi, double r0, double r1, double k, double *b)
+{
+    double e = lo + hi < r0 + r1 ? lo : hi;
+    *b = e * (k - 1);
+}
+
+static int el_root(int *p, int i) { while (p[i] != i) i = p[i] = p[p[i]]; return i; }
+
+static int spans(const Rec *a)
+{
+    return a->box[2] - a->box[0] >= 0.9f * (a->clip[2] - a->clip[0]) ||
+           a->box[3] - a->box[1] >= 0.9f * (a->clip[3] - a->clip[1]);
+}
+
+/* every record's map, for a race frame: the 2D ones by the element they belong to (the 2D
+ * draws of one scissor whose boxes touch, within 6 game pixels, or that sit on one row a
+ * few spaces apart).  A draw spanning its scissor joins none. */
+static void place_frame(XMap *map)
+{
+    static int *par, cap;
+    static float (*gb)[4];
+    XMap mirror = { 1, (s_fb_w * s_kx - s_fb_w) * 0.5, 1, 0 }, wide = { s_kx, 0, s_ky, 0 };
+    int i, j, n = s_nrec;
+    if (n > cap) {
+        cap = n * 2;
+        par = realloc(par, (size_t)cap * sizeof *par);
+        gb = realloc(gb, (size_t)cap * sizeof *gb);
+    }
+    for (i = 0; i < n; i++) {
+        Rec *a = &s_recs[i];
+        par[i] = i;
+        /* a fill, or triangles cut to their own box (a panel, the mirror's frame): an
+           element of the whole screen, so it groups with what it borders */
+        if (a->type != 2 && a->kind == K_2D && !full_clip(a->clip) &&
+            !(s_mirror_ok && !memcmp(a->clip, s_mirror_clip, sizeof a->clip)) &&
+            a->box[2] - a->box[0] >= 0.9f * (a->clip[2] - a->clip[0]) &&
+            a->box[3] - a->box[1] >= 0.9f * (a->clip[3] - a->clip[1])) {
+            a->clip[0] = a->clip[1] = 0;
+            a->clip[2] = (float)s_fb_w;
+            a->clip[3] = (float)s_fb_h;
+        }
+    }
+    if (n <= 6000)
+        for (i = 0; i < n; i++) {
+            const Rec *a = &s_recs[i];
+            if (a->type == 2 || a->kind != K_2D || spans(a))
+                continue;
+            for (j = i + 1; j < n; j++) {
+                const Rec *b = &s_recs[j];
+                if (b->type == 2 || b->kind != K_2D || memcmp(a->clip, b->clip, sizeof a->clip) || spans(b))
+                    continue;
+                if ((a->box[0] - 6 <= b->box[2] && b->box[0] - 6 <= a->box[2] && a->box[1] - 6 <= b->box[3] &&
+                     b->box[1] - 6 <= a->box[3]) ||
+                    /* words of one line of text: the same row, a few spaces apart */
+                    (fabsf(a->box[1] - b->box[1]) < 2 && fabsf(a->box[3] - b->box[3]) < 2 &&
+                     a->box[0] - 40 <= b->box[2] && b->box[0] - 40 <= a->box[2])) {
+                    int ra = el_root(par, i), rb = el_root(par, j);
+                    if (ra != rb)
+                        par[rb] = ra;
+                }
+            }
+        }
+    for (i = 0; i < n; i++) {
+        gb[i][0] = gb[i][1] = 1e9f;
+        gb[i][2] = gb[i][3] = -1e9f;
+    }
+    for (i = 0; i < n; i++) {
+        int r = el_root(par, i);
+        const Rec *a = &s_recs[i];
+        gb[r][0] = fminf(gb[r][0], a->box[0]);
+        gb[r][1] = fminf(gb[r][1], a->box[1]);
+        gb[r][2] = fmaxf(gb[r][2], a->box[2]);
+        gb[r][3] = fmaxf(gb[r][3], a->box[3]);
+    }
+    for (i = 0; i < n; i++) {
+        const Rec *a = &s_recs[i];
+        const float *g = gb[el_root(par, i)];
+        if (a->kind == K_RACE || a->type == 2)
+            map[i] = wide;
+        else if (a->kind == K_MIRROR || (s_mirror_ok && !memcmp(a->clip, s_mirror_clip, sizeof a->clip)))
+            map[i] = mirror;
+        else {
+            int sx = g[2] - g[0] >= 0.9f * (a->clip[2] - a->clip[0]), sy = g[3] - g[1] >= 0.9f * (a->clip[3] - a->clip[1]);
+            place(g[0], g[2], a->clip[0], a->clip[2], s_kx, &map[i].ax, &map[i].bx);
+            place(g[1], g[3], a->clip[1], a->clip[3], s_ky, &map[i].ay, &map[i].by);
+            /* a bar the length of one side (a view's outline, a divider) goes with the
+               stretched views across it: its nearer edge where theirs goes */
+            if (sy && !sx)
+                follow(g[0], g[2], a->clip[0], a->clip[2], s_kx, &map[i].bx);
+            if (sx && !sy)
+                follow(g[1], g[3], a->clip[1], a->clip[3], s_ky, &map[i].by);
+        }
+    }
+}
+
+/* the scissor in the window's image: a whole-screen one stays whole, the mirror's goes
+ * with the mirror, any other is stretched with the views (2D moves within it) */
+static void map_scissor(RdrState *st, const Rec *r)
+{
+    float *sc = st->scissor;
+    double vw = s_fb_w * s_kx, vh = s_fb_h * s_ky;
+    XMap m = { s_kx, 0, s_ky, 0 };
+    if (sc[0] <= 0 && sc[1] <= 0 && sc[2] >= s_fb_w && sc[3] >= s_fb_h) {
+        sc[0] = sc[1] = 0;
+        sc[2] = (float)vw;
+        sc[3] = (float)vh;
+        return;
+    }
+    if (r->kind == K_MIRROR || (s_mirror_ok && !memcmp(r->clip, s_mirror_clip, sizeof r->clip)))
+        m = (XMap){ 1, (vw - s_fb_w) * 0.5, 1, 0 };
+    sc[0] = (float)(m.ax * sc[0] + m.bx);
+    sc[2] = (float)(m.ax * sc[2] + m.bx);
+    sc[1] = (float)(m.ay * sc[1] + m.by);
+    sc[3] = (float)(m.ay * sc[3] + m.by);
+}
+
+/* the recorded frame, drawn */
+static void rec_flush(void)
+{
+    static XMap *map;
+    static int mapcap;
+    static RdrVtx *tv;
+    static int tvcap;
+    int i, k, race = s_race;
+    if (!s_rec) {
+        s_race = 0;
+        s_kx = s_ky = 1;
+        return;
+    }
+    s_rec = 0;                                        /* from here, draws and frees are direct */
+    if (race) {
+        if (s_nrec > mapcap) {
+            mapcap = s_nrec * 2;
+            map = realloc(map, (size_t)mapcap * sizeof *map);
+        }
+        place_frame(map);
+        rdr_frame_begin(s_fb_w * s_kx, s_fb_h * s_ky);
+    } else {
+        rdr_frame_begin((float)s_fb_w, (float)s_fb_h);
+    }
+    for (i = 0; i < s_nrec; i++) {
+        const Rec *r = &s_recs[i];
+        RdrState st;
+        if (r->type == 2) {
+            rdr_clear_depth();
+            continue;
+        }
+        st = s_rst[r->st];
+        if (!race) {
+            if (r->type == 0)
+                rdr_triangles(&st, s_rv + r->v0, r->n);
+            else
+                rdr_rect(&st, r->x0, r->y0, r->x1, r->y1, r->s, r->t, r->dsdx, r->dtdy, r->fill, r->rgba);
+            continue;
+        }
+        map_scissor(&st, r);
+        if (r->type == 0) {
+            const XMap *m = &map[i];
+            if (r->n > tvcap) {
+                tvcap = r->n * 2;
+                tv = realloc(tv, (size_t)tvcap * sizeof *tv);
+            }
+            for (k = 0; k < r->n; k++) {
+                tv[k] = s_rv[r->v0 + k];
+                tv[k].x = (float)(m->ax * tv[k].x + m->bx * tv[k].w);
+                tv[k].y = (float)(m->ay * tv[k].y + m->by * tv[k].w);
+            }
+            rdr_triangles(&st, tv, r->n);
+        } else {
+            const XMap *m = &map[i];
+            rdr_rect(&st, (float)(m->ax * r->x0 + m->bx), (float)(m->ay * r->y0 + m->by),
+                     (float)(m->ax * r->x1 + m->bx), (float)(m->ay * r->y1 + m->by), r->s, r->t,
+                     (float)(r->dsdx / m->ax), (float)(r->dtdy / m->ay), r->fill, r->rgba);
+        }
+    }
+    for (i = 0; i < s_nfreed; i++)
+        rdr_texture_free(s_freed[i]);
+    s_nfreed = s_nrec = s_nrv = s_nrst = 0;
+    s_race = 0;
+    s_kx = s_ky = 1;
+    s_mirror_ok = 0;
+}
+
 static void frame_open(void)
 {
     if (!s_frame_open) {
-        rdr_frame_begin(s_fb_w, s_fb_h);
+        float kx, ky;
+        tgr_view_scale(&kx, &ky);
+        s_rec = kx > 1.0f || ky > 1.0f;               /* drawn at the end (above) */
+        s_mirror_ok = 0;
+        if (!s_rec)
+            rdr_frame_begin((float)s_fb_w, (float)s_fb_h);
         s_frame_open = 1;
     }
 }
@@ -942,9 +1311,9 @@ static void triangle(int a, int b, int c)
             fan[m++] = poly[k + 1];
         }
         if (m)
-            rdr_triangles(&st, fan, m);
+            put_tris(&st, fan, m);
     }
-    rdr_triangles(&st, out, 3);
+    put_tris(&st, out, 3);
 }
 
 /* ---- the display list ----------------------------------------------------------------- */
@@ -983,7 +1352,7 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
         if (!st.tile[0].tex)
             fill_tile(&st.tile[0], tile);
     }
-    rdr_rect(&st, x0, y0, x1, y1, s, t, dsdx, dtdy, 0, NULL);
+    put_rect(&st, x0, y0, x1, y1, s, t, dsdx, dtdy, 0, NULL);
 }
 
 static void rect_fill(uint32_t w0, uint32_t w1)
@@ -998,7 +1367,7 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         fprintf(stderr, "fillrect cyc %d %.0f,%.0f-%.0f,%.0f fill %08X cimg %X zimg %X cc %06X %08X prim %.2f %.2f %.2f oml %08X\n",
                 cyc, x0, y0, x1, y1, s_fill, s_cimg, s_zimg, s_cc0, s_cc1, s_prim[0], s_prim[1], s_prim[2], s_oml);
     if (cyc == 3 && s_cimg == s_zimg) {               /* the depth buffer filled: a depth clear */
-        rdr_clear_depth();
+        put_clear_depth();
         return;
     }
     if (cyc == 3 && s_cimg != s_zimg) {
@@ -1012,12 +1381,12 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         st.scissor[1] = s_scissor[1];
         st.scissor[2] = s_scissor[2];
         st.scissor[3] = s_scissor[3];
-        rdr_rect(&st, x0, y0, x1 + 1, y1 + 1, 0, 0, 0, 0, 1, c);
+        put_rect(&st, x0, y0, x1 + 1, y1 + 1, 0, 0, 0, 0, 1, c);
         return;
     }
     state(&st, 0);                                    /* 1/2-cycle: the combiner's colour */
     st.tile[0].tex = st.tile[1].tex = 0;
-    rdr_rect(&st, x0, y0, x1, y1, 0, 0, 0, 0, 2, NULL);
+    put_rect(&st, x0, y0, x1, y1, 0, 0, 0, 0, 2, NULL);
 }
 
 static void run(uint32_t dl)
@@ -1035,10 +1404,13 @@ static void run(uint32_t dl)
             int p = (w0 >> 16) & 0xFF;
             m4_load(&m, seg_addr(w1));
             if (p & 1) {                              /* projection */
-                if (p & 2)
+                if (p & 2) {
                     s_proj = m;
-                else
+                    proj_loaded(seg_addr(w1));        /* a race view's? (a window of any shape) */
+                } else {
                     m4_mul(&s_proj, &m, &s_proj);
+                    s_kind = K_2D;
+                }
             } else {
                 if ((p & 4) && s_mvn < 9) {
                     s_mv[s_mvn + 1] = s_mv[s_mvn];
@@ -1276,6 +1648,7 @@ void tgr_rcp_task(uint32_t dl)
     }
     s_mvn = 0;                                        /* each task starts the matrix stack at the
                                                          task's dram_stack base */
+    s_kind = K_2D;
     run(dl);
     if (getenv("TGR_RAMDUMP")) {                      /* FILE@FRAME: game memory and the segments, once */
         static int done;

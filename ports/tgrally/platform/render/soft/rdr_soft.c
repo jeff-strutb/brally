@@ -34,8 +34,9 @@ int rdr_init(void) { return 1; }
 void rdr_window(void) {}
 int rdr_presents(void) { return 0; }
 
-void rdr_frame_begin(int fb_w, int fb_h)
+void rdr_frame_begin(float fb_wf, float fb_hf)
 {
+    int fb_w = (int)(fb_wf + 0.5f), fb_h = (int)(fb_hf + 0.5f);
     if (fb_w * fb_h > s_cap) {
         s_cap = fb_w * fb_h;
         s_col = (uint32_t *)realloc(s_col, (size_t)s_cap * 4);

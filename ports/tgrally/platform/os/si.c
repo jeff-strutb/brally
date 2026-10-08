@@ -10,6 +10,7 @@
 #include <string.h>
 #include "host.h"
 #include "plat.h"
+#include "tgr_view.h"
 
 enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
        B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
@@ -97,14 +98,22 @@ void tgr_script_load(const char *path)
     s_pads = s_nev[1] ? 2 : 1;
 }
 
-/* the host's keyboard and pad: the N64 pad's buttons and stick */
+/* the host's keyboard and pad: the N64 pad's buttons and stick; Tab and the
+ * pad's View button, which the N64 pad has no counterpart for, switch the
+ * port's profile (tgr_view.h) */
 static uint16_t s_keys;
 static int s_kx, s_ky;
 
 void tgr_input_key(int vk, int down)
 {
+    static int s_tab;
     uint16_t b = 0;
     switch (vk) {
+    case 0x09:                                      /* Tab: original / remastered */
+        if (down && !s_tab)
+            tgr_profile_toggle();
+        s_tab = down;
+        return;
     case 'X': case 0x0D: b = B_A; break;            /* X or Return */
     case 'Z': b = B_B; break;
     case ' ': b = B_Z; break;
@@ -197,6 +206,13 @@ void tgr_input_frame(uint32_t frame)
             if (hp.buttons & (1 << 13)) b |= B_DR;
             if (hp.buttons & (1 << 14)) b |= B_DD;
             if (hp.buttons & (1 << 15)) b |= B_DL;
+        }
+        {
+            static int s_view;                    /* View: original / remastered */
+            int v = (hp.buttons & 64) != 0;
+            if (v && !s_view)
+                tgr_profile_toggle();
+            s_view = v;
         }
         s_now[0].b = b;
         s_now[0].x = (int8_t)x;

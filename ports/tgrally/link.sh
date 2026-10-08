@@ -48,7 +48,7 @@ else
   BLOB=
 fi
 
-SRCS="$P/os/addr.c $P/os/romdata.c $P/os/lift.c $P/os/thread.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/trace.c $P/os/sha1.c \
+SRCS="$P/os/addr.c $P/os/romdata.c $P/os/lift.c $P/os/thread.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/view.c $P/os/trace.c $P/os/sha1.c \
       $P/audio/mixer.c $P/audio/out.c $P/gfx/gfx.c $P/gfx/rcp.c $P/libc/xprintf.c $P/libc/bstring.c \
       ports/brally/platform/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX

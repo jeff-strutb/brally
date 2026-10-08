@@ -2,15 +2,18 @@
  *
  * The same rules as the software renderer (render/soft/rdr_soft.c), on the
  * GPU: frames are drawn offscreen with a depth buffer, at the window's
- * resolution (the N64's frame scaled to the window's 4:3 area, so geometry
- * and texture filtering are evaluated per output pixel, not stretched), the colour combiner and the tiles' wrap, mirror and mask rules are
+ * resolution (the frame scaled to the largest area of its shape the window
+ * holds -- the N64's 4:3, or the whole window when a race fills it, gfx/rcp.c
+ * -- so geometry and texture filtering are evaluated per output pixel, not
+ * stretched), the colour combiner and the tiles' wrap, mirror and mask rules are
  * evaluated in the fragment shader from the RDP state of each draw, alpha
  * compare discards, and the blender's modes are fixed-function blends.  A
- * finished frame is scaled into the window's Metal layer (the host's) at the
- * N64's 4:3, letterboxed. */
+ * finished frame is put into the window's Metal layer (the host's) at its
+ * own shape, letterboxed. */
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #include <simd/simd.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../rdr.h"
@@ -120,9 +123,11 @@ static id<MTLDepthStencilState> s_ds[2][2][2];       /* [test][write][decal] */
 static id<MTLTexture> s_color, s_depth, s_dummy, s_ms;   /* s_ms: the multisampled colour, resolved into s_color */
 static id<MTLCommandBuffer> s_cb;
 static id<MTLRenderCommandEncoder> s_enc;
-static int s_fb_w, s_fb_h, s_first = 1;
-static int s_tw, s_th;                                /* the target: the N64's frame at the output's size */
-static float s_scale = 1;
+static float s_fb_w, s_fb_h;                          /* the frame, N64 pixels */
+static int s_first = 1;
+static int s_tw, s_th;                                /* the target: the frame at the output's size */
+static float s_scale = 1, s_sx = 1, s_sy = 1;         /* target pixels per N64 pixel: s_sx across, s_sy
+                                                         (and s_scale, the texture LOD's) down */
 static NSMutableArray *s_tex;                         /* handle -> texture (NSNull: free) */
 static uint32_t *s_pixels;
 static int s_px_w, s_px_h;
@@ -240,35 +245,40 @@ static void begin_pass(MTLLoadAction color, MTLLoadAction depth)
     [s_enc setViewport:(MTLViewport){ 0, 0, s_tw, s_th, 0, 1 }];
 }
 
-/* the target's scale: the window's 4:3 area in pixels over the N64's frame
- * (so a frame is drawn at the window's resolution, not stretched), or
- * TGR_SCALE without a window (screenshots) */
-static float target_scale(int fb_w)
+/* the target's size: the largest area of the frame's shape the window holds,
+ * in pixels (so a frame is drawn at the window's resolution, not stretched;
+ * a frame of the window's own shape takes it to the pixel), or the frame
+ * scaled by TGR_SCALE without a window (screenshots) */
+static void target_size(float fb_w, float fb_h, int *tw, int *th)
 {
     int dw = 0, dh = 0;
     float k;
-    if (s_layer) {
+    if (s_layer)
         host_macos_layer_fit(&dw, &dh);
-        if (dw > 0 && dh > 0) {
-            k = (float)(dw * 3 > dh * 4 ? dh * 4 / 3 : dw) / (float)fb_w;
-            return k < 0.25f ? 0.25f : k;
-        }
-    }
-    {
+    if (dw > 0 && dh > 0) {
+        k = fminf(dw / fb_w, dh / fb_h);
+        k = k < 0.25f ? 0.25f : k;
+    } else {
         const char *e = getenv("TGR_SCALE");
         k = e ? (float)atof(e) : 1.0f;
+        k = k < 0.25f ? 0.25f : k > 16 ? 16 : k;
     }
-    return k < 0.25f ? 0.25f : k > 16 ? 16 : k;
+    *tw = (int)(fb_w * k + 0.5f);
+    *th = (int)(fb_h * k + 0.5f);
+    if (dw > 0 && abs(*tw - dw) <= 2)
+        *tw = dw;
+    if (dh > 0 && abs(*th - dh) <= 2)
+        *th = dh;
 }
 
 static uint32_t s_frames;                              /* the noise's seed */
 
-void rdr_frame_begin(int fb_w, int fb_h)
+void rdr_frame_begin(float fb_w, float fb_h)
 {
     s_frames++;
     @autoreleasepool {
-        float k = target_scale(fb_w);
-        int tw = (int)(fb_w * k + 0.5f), th = (int)(fb_h * k + 0.5f);
+        int tw, th;
+        target_size(fb_w, fb_h, &tw, &th);
         if (!s_color || tw != s_tw || th != s_th) {
             MTLTextureDescriptor *td =
                 [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm width:tw
@@ -293,7 +303,9 @@ void rdr_frame_begin(int fb_w, int fb_h)
         }
         s_fb_w = fb_w;
         s_fb_h = fb_h;
-        s_scale = (float)tw / (float)fb_w;
+        s_sx = (float)tw / fb_w;
+        s_sy = (float)th / fb_h;
+        s_scale = s_sy;
         s_cb = [s_q commandBuffer];
         begin_pass(s_first ? MTLLoadActionClear : MTLLoadActionLoad, MTLLoadActionClear);
         s_first = 0;
@@ -344,7 +356,7 @@ static void uniforms(const RdrState *st, Uniforms *u)
     u->fog_blend = st->fog_blend;
     u->alpha_cmp = st->alpha_compare;
     u->balpha = st->blend_alpha;
-    u->fb = (simd_float2){ (float)s_fb_w, (float)s_fb_h };
+    u->fb = (simd_float2){ s_fb_w, s_fb_h };
     u->seed = (int)s_frames;
     u->lodn = st->lod_levels;
     for (k = 0; k < 10; k++) {
@@ -370,8 +382,8 @@ static void draw(const RdrState *st, const RdrVtx *v, int n, int depth)
     [s_enc setRenderPipelineState:s_pipe[st->aa && st->cvg_x_alpha && !st->force_bl ? 4 : st->blend_mode & 3]];
     [s_enc setDepthStencilState:depth ? s_ds[st->z_test != 0][st->z_write != 0][st->z_decal != 0] : s_ds[0][0][0]];
     {
-        int x0 = (int)(st->scissor[0] * s_scale + 0.5f), y0 = (int)(st->scissor[1] * s_scale + 0.5f);
-        int x1 = (int)(st->scissor[2] * s_scale + 0.5f), y1 = (int)(st->scissor[3] * s_scale + 0.5f);
+        int x0 = (int)(st->scissor[0] * s_sx + 0.5f), y0 = (int)(st->scissor[1] * s_sy + 0.5f);
+        int x1 = (int)(st->scissor[2] * s_sx + 0.5f), y1 = (int)(st->scissor[3] * s_sy + 0.5f);
         x0 = x0 < 0 ? 0 : x0;
         y0 = y0 < 0 ? 0 : y0;
         x1 = x1 > s_tw ? s_tw : x1;
@@ -468,10 +480,10 @@ void rdr_frame_end(void)
                 id<MTLRenderCommandEncoder> e;
                 float sx = 1, sy = 1;
                 simd_float4 r;
-                if (dw * 3 > dh * 4)                  /* letterbox to 4:3 */
-                    sx = (float)(dh * 4) / (float)(dw * 3);
+                if ((long)dw * s_th > (long)dh * s_tw)  /* letterbox to the frame's shape */
+                    sx = (float)((double)dh * s_tw / ((double)dw * s_th));
                 else
-                    sy = (float)(dw * 3) / (float)(dh * 4);
+                    sy = (float)((double)dw * s_th / ((double)dh * s_tw));
                 r = (simd_float4){ -sx, -sy, 2 * sx, 2 * sy };
                 p.colorAttachments[0].texture = dr.texture;
                 p.colorAttachments[0].loadAction = MTLLoadActionClear;

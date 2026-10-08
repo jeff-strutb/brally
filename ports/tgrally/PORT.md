@@ -97,7 +97,7 @@ its definition exactly (`tools/abicheck.py`, `tools/protofix.py`).
 |---|---|
 | `platform/os/` | libultra's API, natively: threads (one runs at a time, scheduled at OS calls, as the VR4300 ran them), message queues and events, the video retrace, PI DMA from the cartridge's data built into the executable, the controllers and Controller Pak, timers, the audio interface, RCP tasks |
 | `platform/gfx/` | the RSP and RDP: an F3DEX 1.21 display-list interpreter (transform, lighting, clipping, the texture loads into TMEM) feeding a renderer with the RDP's combiner and blender state |
-| `platform/render/` | renderers behind `rdr.h`: Metal (draws at the window's resolution: the N64's frame scaled to the window's 4:3 area, `TGR_SCALE` without a window; 4x multisampling stands in for the RDP's coverage, alpha to coverage for texture edges, the VI's gamma), soft (the N64's own resolution, the reference: 8-sample coverage kept per pixel, 5-bit colour dithered as the RDP dithers, and the VI's anti-aliasing, dither filter, divot filter and gamma on each finished frame), null (headless) |
+| `platform/render/` | renderers behind `rdr.h`: Metal (draws at the window's resolution: the frame scaled to the largest area of its shape the window holds, the N64's 4:3 or the whole window when a race fills it, `TGR_SCALE` without a window; 4x multisampling stands in for the RDP's coverage, alpha to coverage for texture edges, the VI's gamma), soft (the N64's own resolution, the reference: 8-sample coverage kept per pixel, 5-bit colour dithered as the RDP dithers, and the VI's anti-aliasing, dither filter, divot filter and gamma on each finished frame), null (headless) |
 | `platform/audio/` | the game's software mixer (`mixer.s` in the decomp) in C, and the audio interface's buffers out to the host |
 | host | `ports/brally/platform/host/` (window, input, audio out, time, files) |
 
@@ -119,9 +119,23 @@ Saves are a Controller Pak in port 1, kept in
 | L, R | shoulders (right trigger is R too) | Q, W or E |
 | START | menu | Escape or P |
 | D-pad | d-pad | |
+| (Original / Remastered) | View | Tab |
 
-The window scales the N64's 4:3 picture to any size; View > Enter Full Screen
-(Ctrl-Cmd-F). In the background the game is paused: the N64's clock stops.
+Two profiles, as the Boss Rally port has (`platform/include/tgr_view.h`):
+**Remastered** (the default) and **Original**, switched in play with Tab or the
+controller's View button (the one button the N64 pad has no use for);
+`TGR_PROFILE=original` starts in the other, `TGR_FLAG_<NAME>=0|1` overrides one
+flag. Remastered lets the window take any shape: a race then fills it at the
+window's own resolution, each view's lens widened to the window's shape (Hor+
+when wider than 4:3, Vert+ when taller) and its culling wedge with it
+(`drawing/frameloop.c`, only for the race's views, `racing/racetick.c`); the
+rear-view mirror keeps its shape at the top centre, and the HUD keeps its
+shape at the edges it sat by, each gauge or line of text moved as one
+(`gfx/rcp.c`, the Boss Rally port's placement). Menus, the car select and the
+paint shop stay 4:3, centred. Original keeps the window and the picture at
+the N64's 4:3. View > Enter Full Screen (Ctrl-Cmd-F). In the background the
+game is paused: the N64's clock stops. Without a window, `TGR_WINDOW=WxH`
+stands in for one (screenshots).
 
 Time is the console's: 60 retraces a second against the wall clock, the
 N64's count advancing exactly a retrace's worth (781,250) each, and audio

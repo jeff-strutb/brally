@@ -15,6 +15,7 @@
 #include "tgr/car.h"
 #include "tgr/common.h"
 #include "tgr/gbi.h"
+#include "tgr_view.h"
 
 /* -- declarations -- */
 
@@ -975,6 +976,7 @@ void BrFrustumSet(float m[4][4], float fov, float far, float w, float h)
   if (D_8028AB0C == 2) {
     halfH *= 0.5f;
   }
+  tgr_view_wedge(&halfW, &halfH, D_8028A8A8);   /* port: as wide as the window's view (tgr_view.h) */
   D_8031B1F0.eye[0] = m[3][0];
   D_8031B1F0.eye[1] = m[3][1];
   D_8031B1F0.eye[2] = m[3][2];
@@ -1007,15 +1009,18 @@ void BrFrustumSet(float m[4][4], float fov, float far, float w, float h)
 /* @implements 0x8021B2F8 tgr BrCameraSet */
 void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
 {
+  float fovy = fov * 1.3333334f * (h / w) * 57.295776f, aspect = w / h;
+
+  tgr_view_lens(&fovy, &aspect, D_8028A8A8);   /* port: the window's shape (tgr_view.h) */
   guLookAtF(D_8031AAD0, m[3][0], m[3][1], m[3][2], m[3][0] + m[0][0], m[3][1] + m[0][1],
             m[3][2] + m[0][2], m[2][0], m[2][1], m[2][2]);
   D_8028A870 = far;
   D_8028A86C = 2.4f;
-  guPerspectiveF(D_8031AA90, &D_8028A874, fov * 1.3333334f * (h / w) * 57.295776f, w / h,
-                 D_8028A86C, D_8028A870, 1.0f);
+  guPerspectiveF(D_8031AA90, &D_8028A874, fovy, aspect, D_8028A86C, D_8028A870, 1.0f);
   guMtxCatF(D_8031AAD0, D_8031AA90, D_8031AA50);
   D_8028A878 = BrMtxAlloc();
   guMtxF2L(D_8031AA50, D_8028A878);
+  tgr_view_proj(D_8028A878, D_8028A8A8);
 }
 
 /* WHAT IT DOES: Set the front end's 3D camera: looking straight into a

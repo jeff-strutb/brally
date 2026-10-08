@@ -10,7 +10,9 @@
  * rules), and screen rectangles.
  *
  * Coordinates are the N64's framebuffer pixels (fb_w x fb_h, the colour
- * image's size); a renderer scales them to its output. */
+ * image's size); a renderer scales them to its output, keeping that shape
+ * (fb_w x fb_h is 4:3, or the window's shape when a race fills the window:
+ * gfx/rcp.c). */
 #ifndef TGR_RDR_H
 #define TGR_RDR_H
 #include <stdint.h>
@@ -75,7 +77,7 @@ typedef struct RdrState {
     int cvg_x_alpha;        /* coverage is scaled by the pixel's alpha (texture edges) */
     int rgb_dither;         /* 0 magic square, 1 Bayer, 2 noise, 3 none: to 5 bits a channel */
     int cull;               /* (already done by the RSP: informational) */
-    int scissor[4];         /* x0, y0, x1, y1 in framebuffer pixels */
+    float scissor[4];       /* x0, y0, x1, y1 in framebuffer pixels */
 } RdrState;
 
 typedef struct RdrVtx {
@@ -89,7 +91,7 @@ int  rdr_init(void);                                   /* 1 on success */
 void rdr_window(void);      /* the host's window is open (called on the main thread) */
 int  rdr_presents(void);    /* 1: frames reach the window by themselves (rdr_frame_end);
                                0: the platform presents rdr_frame_pixels */
-void rdr_frame_begin(int fb_w, int fb_h);              /* a new colour image */
+void rdr_frame_begin(float fb_w, float fb_h);          /* a new colour image, in N64 pixels */
 int  rdr_texture(const uint8_t *rgba, int w, int h);   /* an RGBA8 image; a handle */
 void rdr_texture_free(int tex);
 void rdr_triangles(const RdrState *st, const RdrVtx *v, int n);   /* n vertices, n/3 triangles */

@@ -2,8 +2,9 @@
  * and macOS through MoltenVK).
  *
  * rdr_metal.m's design, call for call: the frame is drawn offscreen, 4x
- * multisampled with a depth buffer, at the window's resolution (the N64's
- * frame scaled to the window's 4:3 area); the colour combiner, the tiles'
+ * multisampled with a depth buffer, at the window's resolution (the frame
+ * scaled to the largest area of its shape the window holds: the N64's 4:3,
+ * or the whole window when a race fills it); the colour combiner, the tiles'
  * wrap, mirror and mask rules and the alpha compare run in the fragment
  * shader (shaders/rcp.frag) from each draw's RDP state; the blender's modes
  * are fixed-function blends; a finished frame is scaled into the window,
@@ -25,6 +26,7 @@
 #include <vulkan/vulkan.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../rdr.h"
@@ -92,8 +94,8 @@ static VkFormat         s_dep_fmt;
 static VkRenderPass     s_pass[2];                   /* colour cleared / loaded; depth always cleared */
 static VkFramebuffer    s_fb;
 static int              s_tw, s_th, s_first = 1;     /* the target's size */
-static int              s_fb_w, s_fb_h;               /* the N64's colour image */
-static float            s_scale = 1;
+static float            s_fb_w, s_fb_h;               /* the frame, N64 pixels */
+static float            s_scale = 1, s_sx = 1, s_sy = 1;   /* target pixels per N64 pixel: across, down */
 
 static VkDescriptorSetLayout s_lay_ubo, s_lay_tex, s_lay_blit;
 static VkPipelineLayout s_playout, s_blit_layout;
@@ -1051,22 +1053,28 @@ static int swap_make(void)
 }
 
 /* ---- a frame ------------------------------------------------------------------------------- */
-/* the target's scale: the window's 4:3 area in pixels over the N64's frame,
- * or TGR_SCALE without a window (screenshots) */
-static float target_scale(int fb_w)
+/* the target's size: the largest area of the frame's shape the window holds,
+ * in pixels (a frame of the window's own shape takes it to the pixel), or the
+ * frame scaled by TGR_SCALE without a window (screenshots) */
+static void target_size(float fb_w, float fb_h, int *tw, int *th)
 {
     uint32_t dw, dh;
     float k;
     window_size(&dw, &dh);
     if (dw > 0 && dh > 0) {
-        k = (float)(dw * 3 > dh * 4 ? dh * 4 / 3 : dw) / (float)fb_w;
-        return k < 0.25f ? 0.25f : k;
-    }
-    {
+        k = fminf(dw / fb_w, dh / fb_h);
+        k = k < 0.25f ? 0.25f : k;
+    } else {
         const char *e = getenv("TGR_SCALE");
         k = e ? (float)atof(e) : 1.0f;
+        k = k < 0.25f ? 0.25f : k > 16 ? 16 : k;
     }
-    return k < 0.25f ? 0.25f : k > 16 ? 16 : k;
+    *tw = (int)(fb_w * k + 0.5f);
+    *th = (int)(fb_h * k + 0.5f);
+    if (dw > 0 && abs(*tw - (int)dw) <= 2)
+        *tw = (int)dw;
+    if (dh > 0 && abs(*th - (int)dh) <= 2)
+        *th = (int)dh;
 }
 
 /* the last frame done with: its rings, sets and freed textures can go */
@@ -1102,10 +1110,9 @@ static void pass_begin(int load_color)
     s_in_pass = 1;
 }
 
-void rdr_frame_begin(int fb_w, int fb_h)
+void rdr_frame_begin(float fb_w, float fb_h)
 {
     VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    float k;
     int tw, th;
     if (!s_dev)
         return;
@@ -1117,13 +1124,13 @@ void rdr_frame_begin(int fb_w, int fb_h)
     s_ubo.used = s_vtx.used = 0;
     vkResetDescriptorPool(s_dev, s_pool_frame, 0);
     s_set_last = VK_NULL_HANDLE;
-    k = target_scale(fb_w);
-    tw = (int)(fb_w * k + 0.5f);
-    th = (int)(fb_h * k + 0.5f);
+    target_size(fb_w, fb_h, &tw, &th);
     if (!s_color || tw != s_tw || th != s_th)
         if (!targets_make(tw, th))
             return;
-    s_scale = (float)s_tw / (float)fb_w;
+    s_sx = (float)s_tw / fb_w;
+    s_sy = (float)s_th / fb_h;
+    s_scale = s_sy;
     vkResetCommandBuffer(s_cmd, 0);
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(s_cmd, &bi);
@@ -1152,8 +1159,8 @@ static void uniforms(const RdrState *st, U *u)
     u->fog_blend = st->fog_blend;
     u->alpha_cmp = st->alpha_compare;
     u->balpha = st->blend_alpha;
-    u->fb[0] = (float)s_fb_w;
-    u->fb[1] = (float)s_fb_h;
+    u->fb[0] = s_fb_w;
+    u->fb[1] = s_fb_h;
     u->seed = (int)s_frames;
     u->lodn = st->lod_levels;
     for (k = 0; k < NTEX; k++) {
@@ -1228,10 +1235,10 @@ static void draw(const RdrState *st, const RdrVtx *v, int n, int depth)
     VkPipeline p;
     if (!s_in_pass || n <= 0)
         return;
-    x0 = (int)(st->scissor[0] * s_scale + 0.5f);
-    y0 = (int)(st->scissor[1] * s_scale + 0.5f);
-    x1 = (int)(st->scissor[2] * s_scale + 0.5f);
-    y1 = (int)(st->scissor[3] * s_scale + 0.5f);
+    x0 = (int)(st->scissor[0] * s_sx + 0.5f);
+    y0 = (int)(st->scissor[1] * s_sy + 0.5f);
+    x1 = (int)(st->scissor[2] * s_sx + 0.5f);
+    y1 = (int)(st->scissor[3] * s_sy + 0.5f);
     x0 = x0 < 0 ? 0 : x0;
     y0 = y0 < 0 ? 0 : y0;
     x1 = x1 > s_tw ? s_tw : x1;
@@ -1355,10 +1362,10 @@ void rdr_frame_end(void)
         rb.clearValueCount = 1;
         rb.pClearValues = &black;
         vkCmdBeginRenderPass(s_cmd, &rb, VK_SUBPASS_CONTENTS_INLINE);
-        if (s_swap_w * 3 > s_swap_h * 4)              /* letterbox to 4:3 */
-            sx = (float)(s_swap_h * 4) / (float)(s_swap_w * 3);
+        if ((long)s_swap_w * s_th > (long)s_swap_h * s_tw)   /* letterbox to the frame's shape */
+            sx = (float)((double)s_swap_h * s_tw / ((double)s_swap_w * s_th));
         else
-            sy = (float)(s_swap_w * 3) / (float)(s_swap_h * 4);
+            sy = (float)((double)s_swap_w * s_th / ((double)s_swap_h * s_tw));
         pc.r[0] = -sx;
         pc.r[1] = -sy;
         pc.r[2] = 2 * sx;
