@@ -26,7 +26,7 @@ and the 12 CD audio tracks as FLAC; Top Gear Rally gets the cartridge from ROM
 | `src/win/` | the Win32 front end, its manifest and version resources |
 | `build.sh` | builds both builders into `build/builder/dist/`: the macOS app, and a Windows zip of the exe with the game executables beside it in `games\` |
 | `release.sh` | builds and publishes them as a GitHub release |
-| `version.py` | the release version: the lower of the two decompilations' M2 progress, two decimals, rounded down |
+| `version.py` | the release version: the average of the two decompilations' M2 progress, two decimals, rounded down |
 | `check_payload.py` | proves the shipped game executables carry none of the games' data |
 
 ## Building

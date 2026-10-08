@@ -2,7 +2,7 @@
 # builder/release.sh: build Rally Builder for macOS and Windows and publish
 # both on the repository's GitHub Releases page as vVERSION.
 #
-# VERSION is the lower of the two decompilations' M2 progress (version.py).
+# VERSION is the average of the two decompilations' M2 progress (version.py).
 # The release is tagged at HEAD as it is when this starts, which must
 # already be on GitHub. Running it
 # again at the same version replaces the files of that release.
@@ -39,7 +39,7 @@ $PY builder/version.py --detail | sed '$d' > $NOTES.m2
 cat > $NOTES <<EOF
 Rally Builder makes a native build of **Boss Rally** (PC, 1999) or **Top Gear Rally** (Nintendo 64, 1997) for your Mac or PC, from your own copy of the game. The games' data is copyrighted, so the builder does not include it: you provide your dump and the builder checks it by MD5, takes what the game needs from it, and produces a game that runs on its own. The dump is not needed once the build is done.
 
-Version $VERSION is the decompilations' byte-exact (M2) progress, the lower of the two:
+Version $VERSION is the decompilations' byte-exact (M2) progress, the average of the two:
 \`\`\`
 $(cat $NOTES.m2)
 \`\`\`

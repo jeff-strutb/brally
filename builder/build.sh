@@ -8,7 +8,7 @@
 # Each carries the two games' executables (the payload) built with none of the
 # games' data in them: ports/brally with IMAGE=runtime, ports/tgrally with
 # ROMDATA=file. check_payload.py proves that before anything is packaged.
-# VERSION is builder/version.py's (the lower M2 percentage) unless set.
+# VERSION is builder/version.py's (the average M2 percentage) unless set.
 #
 # Needs the toolchains the ports already use: Xcode's clang (macOS), and
 # mingw-w64 (x86_64-w64-mingw32-*) for Windows.

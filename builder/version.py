@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""version.py -- the release version: the lower of the two decompilations' M2
-progress (byte-exact bytes over the hand-written target), as a fraction with
-two decimals, rounded down. M2 at 73.6% for one game and 75.7% for the other
-is release 0.73; both complete is 1.00.
+"""version.py -- the release version: the average of the two decompilations'
+M2 progress (byte-exact bytes over the hand-written target), as a fraction
+with two decimals, rounded down. M2 at 77.6% for one game and 100% for the
+other is release 0.88; both complete is 1.00.
 
 The counts come from the same tools that draw the README's bars
 (tools/brally/tiers.py and tools/tgrally/n64tiers.py, through
@@ -23,8 +23,8 @@ def main():
     t3_fns, t3_b, t4_fns, t4_b, target, target_b = progressbar.tier_counts()[:6]
     n3f, n3b, n4f, n4b, ntf, ntb = progressbar.n64_counts()
     br, tgr = t4_b / target_b, n4b / ntb
-    low = min(br, tgr)
-    hundredths = int(low * 100 + 1e-9)
+    avg = (br + tgr) / 2
+    hundredths = int(avg * 100 + 1e-9)
     version = '%d.%02d' % (hundredths // 100, hundredths % 100)
     if '--detail' in sys.argv:
         print('Boss Rally M2      %.2f%%  (%d / %d B)' % (100 * br, t4_b, target_b))
