@@ -29,7 +29,6 @@ import struct
 import sys
 
 SX, SY = 3 / 4, 2 / 3
-DIAL = 4                         # the car record whose dial the HUD shows (TYPE-SP)
 
 
 # ---- the text printer (drawing/textstate.c) ----------------------------------------
@@ -378,10 +377,7 @@ def main():
         for k in sorted(g for g in glyph_img if g[2] == sc):
             gx, gy, gw, gh, rows = glyph_img[k]
             glyphs.append((k, si, gw, gh, rows, q, pal))
-    # the dial: BrHudDialDraw's images, from ROM.  Not the race car's own: the TYPE-SP's
-    # (D_8028AE0C[DIAL]), whose gear number is the largest of the game's dials and so
-    # reads on the GBA's screen
-    dial = bytes(ram[0x28AE0C + DIAL * 0x60:0x28AE0C + (DIAL + 1) * 0x60])
+    # the dial: BrHudDialDraw's images for the race car (its model record), from ROM
     rom_dial = struct.unpack_from('<I', dial, 0x20)[0]
     dw, dh, lx, ly, lw, lh, mode, nx, ny = dial[0x28], dial[0x29], struct.unpack_from('b', dial, 0x2a)[0], \
         struct.unpack_from('b', dial, 0x2b)[0], dial[0x2c], dial[0x2d], dial[0x2e], dial[0x2f], dial[0x30]
