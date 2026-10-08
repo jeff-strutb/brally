@@ -589,11 +589,9 @@ static Frame s_frame;
    stretch of IWRAM, each copied in from the cartridge before it runs */
 extern char __ovl_base[], __ovl_draw_lma[], __ovl_draw_words[];
 extern char __ovl_sim0_lma[], __ovl_sim0_words[], __ovl_sim1_lma[], __ovl_sim1_words[];
-extern char __ovl_sim2_lma[], __ovl_sim2_words[], __ovl_sim3_lma[], __ovl_sim3_words[];
 enum { OVL_DRAW, OVL_SIM0 };            /* then the race physics' phases (gba/place.txt) */
-static const char *const s_ovl_lma[5] = { __ovl_draw_lma, __ovl_sim0_lma, __ovl_sim1_lma, __ovl_sim2_lma, __ovl_sim3_lma };
-static const char *const s_ovl_words[5] = { __ovl_draw_words, __ovl_sim0_words, __ovl_sim1_words, __ovl_sim2_words,
-                                            __ovl_sim3_words };
+static const char *const s_ovl_lma[3] = { __ovl_draw_lma, __ovl_sim0_lma, __ovl_sim1_lma };
+static const char *const s_ovl_words[3] = { __ovl_draw_words, __ovl_sim0_words, __ovl_sim1_words };
 static int s_ovl = -1;
 
 static void ovl_load(int k)
@@ -609,7 +607,7 @@ static void ovl_load(int k)
 }
 static uint32_t s_tick_vbl;                      /* the retrace the next race tick is due at */
 static void ovl_load(int k);
-void race_phase_code(int k) { ovl_load(OVL_SIM0 + k); }
+void race_phase_code(int k) { ovl_load(OVL_SIM0 + (k == 1)); }   /* phase 1 alone in its own */
 
 /* the race from its start: its textures, its HUD, its music and effects as recorded; wiped in
    (or at once, for the host's measurements) */
@@ -619,6 +617,7 @@ static void race_enter(int wipe)
     s_textab = g_tex;
     s_hud_on = 0;
     hud_init();
+    s_hud_on = 1;                                    /* the race HUD, from the race (race.c) */
     s_k = 0;
     race_start();                                    /* the cars on the grid */
     s_tick_vbl = s_vbl;

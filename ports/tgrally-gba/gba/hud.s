@@ -493,9 +493,14 @@ hud_vblank:
         str     r2, [r0]
         tst     r1, #1                  @ the game draws its HUD every other retrace: so here
         bne     .Lhud_done
+        ldr     r4, =g_hud_live         @ the live race's (race.c), else the recorded one
+        ldr     r4, [r4]
+        cmp     r4, #0
+        bne     8f
         ldr     r4, =g_hud_state
         mov     r2, #H_SIZE
         mla     r4, r1, r2, r4          @ r4: the HudState
+8:
         ldr     r0, =s_oamn
         mov     r1, #127
         str     r1, [r0]

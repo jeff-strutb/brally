@@ -328,3 +328,22 @@ void BrCamChaseStep(Car *car)
         car->cam4.mtx[2][i] = car->mtx0[2][i];
     }
 }
+
+/* the in-car view alone (cams[0], BrCamChaseStep's own steps for it): the GBA shows only this
+   one, so it steps only this one */
+void sim_cam_incar(Car *car)
+{
+    fx *v = car->camView, *pRow;
+    int i;
+    for (i = 0; i < 3; i++)
+        car->cams[0].mtx[3][i] = FMUL(v[2], car->mtx0[2][i]) + (car->mtx0[3][i] + FMUL(car->mtx0[0][i], v[0]));
+    BrVec3MulAddTo(car->cams[0].mtx[0], car->mtx0[0], FX(-20.0f));
+    BrVec3Negate(car->cams[0].mtx[0], car->cams[0].mtx[0]);
+    BrVec3Normalise(car->cams[0].mtx[0]);
+    pRow = car->cams[0].mtx[1];
+    pRow[0] = car->mtx0[1][0];
+    pRow[1] = car->mtx0[1][1];
+    pRow[2] = car->mtx0[1][2];
+    BrVec3Cross(car->cams[0].mtx[2], car->cams[0].mtx[0], pRow);
+    car->cams[0].fov = g_world.lens;
+}

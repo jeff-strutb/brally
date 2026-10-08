@@ -216,6 +216,8 @@ void sim_step_forces(Car *car);
 void sim_step_collide(Car *car);
 void sim_step_ground(Car *car);
 void sim_tick_after(Car *car);
+void sim_collide_lite(Body *b);
+void sim_cam_incar(Car *car);           /* the in-car view alone (camera.c) */         /* the GBA's BrCarPhysAdvance (coll.c) */
 int sim_cell_pick(const SimCell *c, const int32_t q[6], uint16_t *out);   /* the cell's entries whose box meets q */
 void sim_pick_box(int32_t q[6], const fx *p, fx r);
 int sim_tri_box(fx v[3][3], fx nrm[3], fx m[4][4], const Plane *p);   /* a triangle against the box, in 32 bits */

@@ -458,12 +458,12 @@ raster_tex:
         ldr     r0, [sp, #F_ALPHA]
         cmp     r0, #0
         bne     .Lalpha
-        ROWS2   0
+        ROWS    0
         b       .Lnext_half
 .Lalpha:
         cmp     r0, #2
         beq     .Lblend
-        ROWS2   1
+        ROWS    1
         b       .Lnext_half
 .Lblend:
         ROWS    2

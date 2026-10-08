@@ -303,7 +303,11 @@ void sim_step_collide(Car *car)
 {
     Body *b = &car->body;
     SP_BEGIN;
+#ifdef SIM_LITE
+    sim_collide_lite(b);
+#else
     BrCarPhysAdvance(b);
+#endif
     SP(7);
     b->st = b->stB;
 }

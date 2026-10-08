@@ -849,3 +849,79 @@ SIM_OWN static void BrCarCarCollide(void)
         }
     }
 }
+
+#ifndef FX_FLOAT
+/* sim_collide_lite: BrCarPhysAdvance for the GBA, its detection made simple.  One step of the
+   state; the cars against each other as the game does it; then the chassis box's eight corners
+   against the triangles about it: the deepest corner under a triangle's plane (within LITE_DEEP,
+   over the triangle) gets the game's impulse (BrCrImpulseSolve, its contact point that corner)
+   and is pushed back out along the plane's normal, twice at most; the stuck count as the game
+   keeps it */
+#define LITE_DEEP FX(1.0)
+void sim_collide_lite(Body *b)
+{
+    fx dt = SIM_DT;
+    SimCell cell;
+    uint16_t pick[256];
+    int32_t q[6];
+    int npick, pass, k, c, contacts = 0;
+
+    BrRbStateStep(&b->stB, &b->stA, dt);
+    BrQuatToMat(b->m, &b->stB);
+    BrCarCarCollide();
+    cell = BrCollGridCellAcquire(b->m[3][0], b->m[3][1]);
+    sim_pick_box(q, b->m[3], FX(4.0f));
+    npick = sim_cell_pick(&cell, q, pick);
+    for (pass = 0; pass < 2; pass++) {
+        const Plane *bestp = 0;
+        fx bestd = 0, bestc[3], corner[3], w[3];
+        for (c = 0; c < 8; c++) {
+            corner[0] = FMUL(b->box[0], c & 1 ? FX(0.5f) : FX(-0.5f));
+            corner[1] = FMUL(b->box[1], c & 2 ? FX(0.5f) : FX(-0.5f));
+            corner[2] = FMUL(b->box[2], c & 4 ? FX(0.5f) : FX(-0.5f)) + b->box[3];
+            BrMat3MulVecRows(w, b->m, corner);
+            for (k = 0; k < npick; k++) {
+                const Plane *p = &g_track->planes[cell.tris[pick[k]]];
+                fx d = FMUL(p->n[0], w[0]) + FMUL(p->n[1], w[1]) + FMUL(p->n[2], w[2]) + p->d, on[3];
+                if (d >= 0 || d <= -LITE_DEEP || d >= bestd)
+                    continue;
+                on[0] = w[0] - FMUL(p->n[0], d);
+                on[1] = w[1] - FMUL(p->n[1], d);
+                on[2] = w[2] - FMUL(p->n[2], d);
+                if (!sim_tri_contains(p, on))
+                    continue;
+                bestd = d;
+                bestp = p;
+                bestc[0] = corner[0];
+                bestc[1] = corner[1];
+                bestc[2] = corner[2];
+            }
+        }
+        if (bestp == 0)
+            break;
+        contacts++;
+        D_8037EAA8[0] = bestc[0];
+        D_8037EAA8[1] = bestc[1];
+        D_8037EAA8[2] = bestc[2];
+        BrCrImpulseSolve(b, bestc, bestp->n, b->m[2][2] > FX(0.5f) ? 0 : 1, FX(0.0f));
+        b->stB.pos[0] -= FMUL(bestp->n[0], bestd);
+        b->stB.pos[1] -= FMUL(bestp->n[1], bestd);
+        b->stB.pos[2] -= FMUL(bestp->n[2], bestd);
+        BrQuatToMat(b->m, &b->stB);
+    }
+    if (contacts == 0) {
+        if (b->idle < 40)
+            b->idle++;
+    } else {
+        b->idle = 0;
+    }
+    b->stA = b->stB;
+    if (b->m[2][2] < FX(0.5f)) {
+        if (b->stuck < 0)
+            b->stuck = -1;
+        b->stuck--;
+    } else {
+        b->stuck = 35;
+    }
+}
+#endif

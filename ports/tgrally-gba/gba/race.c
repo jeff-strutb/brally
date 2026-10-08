@@ -15,6 +15,11 @@
 #define FAR 400                          /* D_8028AAC8: the race view's far plane */
 
 static Car s_car[2];
+#include "hud.h"
+static HudState s_hud;                   /* the HUD's numbers from the race (hud.s reads them) */
+const HudState *g_hud_live;
+static uint32_t s_ticks;
+void snd_voice(int v, int smp, int step, uint32_t vol);   /* sound.s */                 /* the race's ticks since the start */
 volatile uint32_t g_phase_cyc[6];        /* the cycles of each phase, of the overlays' copies, ticks */
 static inline uint32_t clock32(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*(volatile uint16_t *)0x0400010C << 16; }
 
@@ -24,6 +29,7 @@ uint32_t sim_clock(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*
 #endif
 static Pad s_pad[2];
 static fx s_cprev[17], s_ccur[17];
+static int s_settle;                     /* ticks every car runs whatever (the start) */
 #define ABS(x) ((x) < 0 ? -(x) : (x))       /* the view's camera (rows, fov) a tick ago and now */
 
 void race_start(void)
@@ -48,21 +54,105 @@ void race_start(void)
             s_car[k].camView[i] = g_rt_camView[k][i];
         g_world.cars[k] = &s_car[k];
     }
-    arc_init(s_car[0].body.m, s_car[0].camView);   /* the GBA's own car physics (arcade.c) */
-    race_tick(0x3FF);
+    sim_camera = sim_cam_incar;          /* (the GBA shows the in-car view) */
+    s_car[0].cam = 0;
+    s_ticks = 0;
+    s_settle = 20;
+    g_sim_dt = FX(1.0 / 30);             /* settled on the grid in the game's ticks, half a second */
+    g_sim_dtk = FX(1.0);
+    for (k = 0; k < 15; k++)
+        race_tick(0x3FF);
+    g_sim_dt = FX(RACE_TICKS / 30.0);    /* then a tick every RACE_TICKS of the game's */
+    g_sim_dtk = FX(RACE_TICKS);
     race_tick(0x3FF);
 }
 
-/* a tick of 1/30 s: the car from the pad (KEYINPUT, active low), the camera now and a tick
-   before (race_view between them) */
+/* the pad as BrPadMapRead makes it in a race (control layout 0: A accelerates, B brakes,
+   R changes up, L down; the d-pad is the stick, full lock either way) */
+static void pad_from_keys(Pad *p, uint32_t keys)
+{
+    uint32_t down = ~keys & 0x3FF, f = 0;
+    if (down & 1)
+        f |= 0x10 | 0x10000;
+    if (down & 2)
+        f |= 0x20 | ((f & 0x10000) ? 0x80000 : 0x40000);
+    if (down & 0x100)
+        f |= 0x2000 | 0x100000;
+    if (down & 0x200)
+        f |= 0x200000;
+    p->flags = f;
+    p->steer = (down & 0x10) ? FX(1.0) : (down & 0x20) ? FX(-1.0) : FX(0.0);
+}
+
 void race_tick(uint32_t keys)
 {
-    int k;
-    arc_tick(keys);
-    for (k = 0; k < 17; k++)
-        s_cprev[k] = s_ccur[k];
-    arc_camera(s_ccur, g_world.lens);
+    int k, awake;
+    pad_from_keys(&s_pad[0], keys);
+    s_pad[1].flags = 0;
+    s_pad[1].steer = FX(0.0);
+    g_world.walkBack ^= 1;               /* BrRaceTick: the collision cells walked the other way */
+    {   /* a car at rest with nothing to do, the player's well away, sleeps (its tick skipped) */
+        const Body *o = &s_car[1].body;
+        fx dx = o->st.pos[0] - s_car[0].body.st.pos[0], dy = o->st.pos[1] - s_car[0].body.st.pos[1];
+        awake = s_settle > 0 || s_pad[1].flags != 0 || s_pad[1].steer != 0 || (ABS(dx) < FX(16.0) && ABS(dy) < FX(16.0)) ||
+                ABS(o->st.vel[0]) + ABS(o->st.vel[1]) + ABS(o->st.vel[2]) > FX(0.05) ||
+                ABS(o->st.omega[0]) + ABS(o->st.omega[1]) + ABS(o->st.omega[2]) > FX(0.05);
+        if (s_settle > 0)
+            s_settle--;
+    }
+    for (k = 0; k < 4; k++) {            /* BrCarPhysTick a phase at a time, each phase's code in */
+        uint32_t t0 = clock32(), t1;     /* IWRAM for both cars */
+        race_phase_code(k);
+        t1 = clock32();
+        sim_tick_phase(&s_car[0], k);
+        if (awake)
+            sim_tick_phase(&s_car[1], k);
+        g_phase_cyc[4] += t1 - t0;
+        g_phase_cyc[k] += clock32() - t1;
+    }
     g_phase_cyc[5]++;
+    {   /* the HUD: the clock (ticks of 1/30 s), the speed, the revs, the gear's lamp */
+        const Car *c = &s_car[0];
+        uint32_t t = ++s_ticks, cs = 0, m = 0, sec;
+        while (t >= 1800) { t -= 1800; m++; __asm__("" : "+r"(t)); }   /* (minutes, seconds, hundredths: no divide) */
+        sec = 0;
+        while (t >= 30) { t -= 30; sec++; __asm__("" : "+r"(t)); }
+        cs = (t * 6827) >> 11;               /* t / 30 x 100: t x 3.333 */
+        s_hud.totalM = s_hud.lapM = (int16_t)m;
+        s_hud.totalS = s_hud.lapS = (int16_t)sec;
+        s_hud.totalC = s_hud.lapC = (int16_t)cs;
+        s_hud.laps = 0;
+        s_hud.nlaps = 3;
+        s_hud.pos = 1;
+        s_hud.speed = (int16_t)FTOI(c->speedMph + FX(0.5));
+        s_hud.rev = (int16_t)FTOI(c->xdf4);
+        s_hud.lamp = (int16_t)(c->xe38 >= 0 ? c->gear + 1 : 0);
+        s_hud.flags = 1;
+        g_hud_live = &s_hud;
+    }
+    {   /* the sounds, as sndcar.c BrSndCarStep sets the player's two channels: the engine loop
+           (sample 9) at |revs| / 2800 of its 11000 Hz, the mixer's step 1.2027 x revs in Q12;
+           the surface loop (sample 14, the road's) at its own rate, loud as the speed (|v| x
+           64 / 27 to 64, times the level, over 128); the levels the recorded race's */
+        const Car *c = &s_car[0];
+        int32_t rev = FTOI(c->xdf4), lv;
+        fx sp = FSQRT(FMUL(c->body.st.vel[0], c->body.st.vel[0]) + FMUL(c->body.st.vel[1], c->body.st.vel[1]) +
+                      FMUL(c->body.st.vel[2], c->body.st.vel[2]));
+        if (rev < 0)
+            rev = -rev;
+        snd_voice(0, 9, (rev * 4927) >> 12, 24 << 16 | 26);
+        lv = FTOI(FMUL(sp, FX(64.0 / 27.0)));
+        if (lv > 64)
+            lv = 64;
+        lv = (lv * 26) >> 7;
+        snd_voice(1, 14, lv ? 3367 : 0, lv << 16 | lv);
+    }
+    for (k = 0; k < 16; k++) {                /* the camera now and a tick before (race_view between) */
+        s_cprev[k] = s_ccur[k];
+        s_ccur[k] = (&s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].mtx[0][0])[k];
+    }
+    s_cprev[16] = s_ccur[16];
+    s_ccur[16] = s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].fov;
 }
 
 /* ---- the camera to the renderer's Frame (convert.py's rows, made here) ---- */

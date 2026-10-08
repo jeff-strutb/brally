@@ -256,8 +256,14 @@ int main(int argc, char **argv)
         for (f = 0; f < 13 * 30; f += every) {
             Car *c = &s_cars[0];
             double sec = f / 30.0;
-            s_pads[0].flags = sec < 10 ? 0x10 | 0x10000 : 0x20 | 0x40000;
-            s_pads[0].steer = sec >= 6 && sec < 10 ? FX(0.5) : 0;
+            if (getenv("SIM_CRASH")) {                /* (into the bank: full lock right 3..8 s, the
+                                                         throttle down throughout) */
+                s_pads[0].flags = 0x10 | 0x10000;
+                s_pads[0].steer = sec >= 3 && sec < 8 ? -FX(1.0) : sec >= 8 && sec < 10 ? FX(1.0) : 0;
+            } else {
+                s_pads[0].flags = sec < 10 ? 0x10 | 0x10000 : 0x20 | 0x40000;
+                s_pads[0].steer = sec >= 6 && sec < 10 ? FX(0.5) : 0;
+            }
             s_pads[1].flags = 0;
             s_pads[1].steer = 0;
             g_world.walkBack ^= 1;

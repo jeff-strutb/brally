@@ -19,7 +19,7 @@
         .section .iwram, "ax"
         .arm
         .global snd_init, snd_vblank, s_voice, s_chan, s_player, mix_chunk, mod_tick, row_read, sfx_frame
-        .global snd_play, snd_sfx, s_song, s_sfx_trace, s_mus_gain
+        .global snd_play, snd_sfx, s_song, s_sfx_trace, s_mus_gain, snd_voice
 
         .equ    MAXCH, 16               @ music channels at most
         .equ    NV, 6 + MAXCH           @ voices: 6 effects, then the music's (the mixer walks 6 + the module's)
@@ -654,6 +654,9 @@ snd_play:
         bne     1b
         ldr     r5, =s_player
         str     r1, [r5, #P_SFX]
+        ldr     r2, =s_vsmp             @ (no effect voice holds a sample now: snd_voice's)
+        str     r1, [r2]
+        str     r1, [r2, #4]
         ldr     r4, [r7, #SG_INIT]
         cmp     r4, #0
         bne     .Lrecorded
@@ -718,6 +721,44 @@ snd_play:
         ldmfd   sp!, {r4-r8, lr}
         bx      lr
         .ltorg
+
+@ snd_voice(r0 the effect voice, r1 the sample (g_sfx_smp's), r2 the step (Q12, 0: silent), r3
+@ the levels (left << 16 | right)): the live race's engine and surface (race.c, as sndcar.c
+@ BrSndCarStep sets its channels); a new sample starts from its beginning, the same one plays on
+        .bss
+s_vsmp:   .space  8                     @ each effect voice's sample (snd_voice) and 1
+        .text
+snd_voice:
+        stmfd   sp!, {r4, r5, lr}
+        ldr     r4, =s_voice
+        mov     r5, #V_SIZE
+        mla     r4, r0, r5, r4
+        ldr     r5, =s_vsmp
+        ldrb    r12, [r5, r0]
+        add     lr, r1, #1              @ (stored plus one: 0 is none, as snd_play leaves it)
+        cmp     r12, lr
+        beq     1f
+        strb    lr, [r5, r0]
+        ldr     r5, =g_sfx_smp
+        add     r5, r5, r1, lsl #4
+        mov     r12, #0
+        str     r12, [r4, #V_RATE]      @ (silent while it changes: the mixer may run between)
+        ldr     r12, [r5, #S_DATA]
+        str     r12, [r4, #V_DATA]
+        ldr     r12, [r5, #S_LEN]
+        str     r12, [r4, #V_LEN]
+        ldr     r12, [r5, #S_LOOP]
+        str     r12, [r4, #V_LOOP]
+        ldrb    r12, [r5, #S_LOOPS]
+        str     r12, [r4, #V_LOOPS]
+        mov     r12, #0
+        str     r12, [r4, #V_POS]
+1:      str     r3, [r4, #V_VOL]
+        str     r2, [r4, #V_RATE]
+        ldmfd   sp!, {r4, r5, lr}
+        bx      lr
+        .ltorg
+        .section .iwram, "ax"
 
 @ BrSfxFreeVoice and BrSfxVoiceStart: the sample r0 on the first silent effect voice, at
 @ step r1 (Q12), levels r2 left, r3 right; none free: not played
