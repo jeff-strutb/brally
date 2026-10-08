@@ -1,0 +1,24 @@
+# The main menu toured: every row turned to and held through a full turn of its icon,
+# for ports/tgrally-gba/tools/menu.py.
+frames 2300
+0 -
+80 A
+88 -
+294 START
+302 -
+500 - 80 0
+508 -
+720 - 80 0
+728 -
+940 - 80 0
+948 -
+1160 - 80 0
+1168 -
+1380 - 80 0
+1388 -
+1600 - 80 0
+1608 -
+1820 - 80 0
+1828 -
+2040 - 80 0
+2048 -

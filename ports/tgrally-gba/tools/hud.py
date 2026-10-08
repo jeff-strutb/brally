@@ -334,6 +334,77 @@ def tiles(img, w, h, bpp, index):
     return out
 
 
+SIZES = (15, 20, 40, 30, 11)           # the text sizes the GBA draws (the HUD's, the menus')
+
+
+def text_tables(tx):
+    """BrTextEmitString's and BrTextWidth's arithmetic for SIZES: each glyph's advance
+    ((w - pad) * size / cell: BrTextWidth's measure is the same sum), a space's width
+    and advance, the lift (size * 30 / 40)"""
+    o = ['const uint8_t g_txt_map[96] = { %s };' % ', '.join(map(str, tx.map))]
+    adv = bytearray()
+    for size in SIZES:
+        cell, pad, tbl = (20, 4, tx.small) if size < 25 else (40, 7, tx.large)
+        for g in range(64):
+            if g + 1 < len(tbl):
+                w = tbl[g + 1] - tbl[g] + 1
+                adv.append(((w - pad) * size // cell) & 0xFF)
+            else:
+                adv.append(0)
+    o.append('const uint8_t g_txt_adv[%d * 64] = { %s };' % (len(SIZES), ', '.join(map(str, adv))))
+    o.append('const uint8_t g_txt_space[%d][4] = { %s };  /* space width, space advance, lift */' % (len(SIZES), ', '.join(
+        '{ %d, %d, %d, 0 }' % (sz * 12 // 40, sz * 12 // 40 + 1, sz * 30 // 40) for sz in SIZES)))
+    return o
+
+
+def glyph_set(ram, tx, need, prefix, bank0):
+    """the glyphs a screen draws (need: (glyph, size, colours) -> its first rectangle), each
+    drawn once as the RDP draws it, at the GBA's scale; a 16-colour bank a colour set from
+    bank0.  -> (C lines: {prefix}_glyph_tiles .. {prefix}_tset, the banks' colours)"""
+    fonts = Fonts(ram, tx)
+    glyph_img = {}
+    for key, r in need.items():
+        x0, y0, x1, y1 = r
+        glyph_img[key] = scale(fonts.draw(key[0], key[1], key[2], x0, y0, x1, y1), x0, y0, x1, y1)
+    schemes = sorted({k[2] for k in glyph_img})
+    banks, glyphs = [], []
+    for si, sc in enumerate(schemes):
+        cols = [rgb555(c) for k, g in glyph_img.items() if k[2] == sc for row in g[4] for c in row if c]
+        q = quantize(cols, 15)
+        pal = sorted(set(q.values()))
+        banks.append(pal)
+        for k in sorted(g for g in glyph_img if g[2] == sc):
+            gx, gy, gw, gh, rows = glyph_img[k]
+            glyphs.append((k, si, gw, gh, rows, q, pal))
+    o = []
+    data, gl = bytearray(), []
+    for (key, si, gw, gh, rows, q, bp) in glyphs:
+        sw = 16 if gw <= 16 and gh <= 16 else 32
+        def idx(img, x, y, rows=rows, q=q, bp=bp):
+            c = rows[y][x] if y < len(rows) and x < len(rows[y]) else None
+            return 0 if c is None else bp.index(q[rgb555(c)]) + 1
+        gl.append((key, si, len(data) // 32, sw, gw, gh))
+        data += tiles(rows, sw, sw, 4, idx)
+    o.append('static const uint8_t %s_glyph_tiles[%d] __attribute__((aligned(4))) = { %s };' % (prefix, len(data), ', '.join(map(str, data))))
+    o.append('/* by colour set, size and glyph: bank, first tile, sprite size (16 or 32), GBA size */')
+    o.append('static const HudGlyph %s_glyphs[%d] = {' % (prefix, len(gl)))
+    for key, si, t0, sw, gw, gh in gl:
+        o.append('    { %d, %d, %d, %d, %d, %d, %d },' % (bank0 + si, key[1], key[0], sw, t0, gw, gh))
+    o.append('};')
+    lut = bytearray(len(schemes) * len(SIZES) * 64)
+    for k, (key, si, t0, sw, gw, gh) in enumerate(gl):
+        if key[1] in SIZES:
+            lut[(si * len(SIZES) + SIZES.index(key[1])) * 64 + key[0]] = k + 1
+    o.append('static const uint8_t %s_glyph_lut[%d] = { %s };' % (prefix, len(lut), ', '.join(map(str, lut))))
+    o.append('static const HudScheme %s_schemes[%d] = {' % (prefix, len(schemes)))
+    for sc in schemes:
+        o.append('    { 0x%06X, 0x%06X, %d },' % (sc[0][0] << 16 | sc[0][1] << 8 | sc[0][2], sc[1][0] << 16 | sc[1][1] << 8 | sc[1][2], sc[2]))
+    o.append('};')
+    o.append('const TextSet %s_tset = { %s_glyph_lut, %s_glyphs, %s_schemes, %d, %s_glyph_tiles, %d };' % (
+        prefix, prefix, prefix, prefix, len(schemes), prefix, len(data)))
+    return o, banks
+
+
 def main():
     ram_p, rom_p, hst_p, f0, f1, out_p = sys.argv[1:7]
     f0, f1 = int(f0), int(f1)
@@ -360,23 +431,8 @@ def main():
                 key = g[:3]
                 if key not in need:
                     need[key] = (fr, g[3:])
-    # each drawn once, as the RDP draws it, at the GBA's scale
-    fonts = Fonts(ram, tx)
-    glyph_img = {}
-    for key, (fr, r) in need.items():
-        x0, y0, x1, y1 = r
-        glyph_img[key] = scale(fonts.draw(key[0], key[1], key[2], x0, y0, x1, y1), x0, y0, x1, y1)
-    # glyph palettes: one 16-colour bank a colour set
-    schemes = sorted({k[2] for k in glyph_img})
-    banks, glyphs = [], []
-    for si, sc in enumerate(schemes):
-        cols = [rgb555(c) for k, g in glyph_img.items() if k[2] == sc for row in g[4] for c in row if c]
-        q = quantize(cols, 15)
-        pal = sorted(set(q.values()))
-        banks.append(pal)
-        for k in sorted(g for g in glyph_img if g[2] == sc):
-            gx, gy, gw, gh, rows = glyph_img[k]
-            glyphs.append((k, si, gw, gh, rows, q, pal))
+    need = {k: v[1] for k, v in need.items()}
+    glyph_lines, banks = glyph_set(ram, tx, need, 'g_hud', 0)
     # the dial: BrHudDialDraw's images for the race car (its model record), from ROM
     rom_dial = struct.unpack_from('<I', dial, 0x20)[0]
     dw, dh, lx, ly, lw, lh, mode, nx, ny = dial[0x28], dial[0x29], struct.unpack_from('b', dial, 0x2a)[0], \
@@ -406,24 +462,7 @@ def main():
     o = ['/* the race HUD (tools/hud.py): the text printer\'s tables, the glyphs as the game',
          '   draws them, the car\'s dial from ROM, and what the HUD reads each retrace */',
          '#include "hud.h"', '']
-    o.append('const uint8_t g_txt_map[96] = { %s };' % ', '.join(map(str, tx.map)))
-    o.append('const int32_t g_txt_small[59] = { %s };' % ', '.join(map(str, tx.small)))
-    o.append('const int32_t g_txt_large[55] = { %s };' % ', '.join(map(str, tx.large)))
-    # BrTextEmitString's and BrTextWidth's arithmetic for the sizes the HUD uses (15, 20, 40):
-    # each glyph's advance ((w - pad) * size / cell: BrTextWidth's measure is the same sum),
-    # a space's width and advance, the lift (size * 30 / 40)
-    adv = bytearray()
-    for size in (15, 20, 40):
-        cell, pad, tbl = (20, 4, tx.small) if size < 25 else (40, 7, tx.large)
-        for g in range(64):
-            if g + 1 < len(tbl):
-                w = tbl[g + 1] - tbl[g] + 1
-                adv.append(((w - pad) * size // cell) & 0xFF)
-            else:
-                adv.append(0)
-    o.append('const uint8_t g_txt_adv[3 * 64] = { %s };' % ', '.join(map(str, adv)))
-    o.append('const uint8_t g_txt_space[3][4] = { %s };  /* space width, space advance, lift */' % ', '.join(
-        '{ %d, %d, %d, 0 }' % (sz * 12 // 40, sz * 12 // 40 + 1, sz * 30 // 40) for sz in (15, 20, 40)))
+    o += text_tables(tx)
     # the OBJ palette: glyph banks 0.., the needle's bank, the dial in 128..255
     pal = [0] * 256
     for bi, b in enumerate(banks):
@@ -434,36 +473,8 @@ def main():
     for k, c in enumerate(dpal):
         pal[129 + k] = c
     o.append('const uint16_t g_hud_pal[256] = { %s };' % ', '.join(map(str, pal)))
-    # glyph tiles (4bpp, 16 wide; 32 for the large font)
-    data, gl = bytearray(), []
-    for (key, si, gw, gh, rows, q, bp) in glyphs:
-        sw = 16 if gw <= 16 and gh <= 16 else 32
-        sh = 16 if sw == 16 else 32
-        def idx(img, x, y, rows=rows, q=q, bp=bp):
-            c = rows[y][x] if y < len(rows) and x < len(rows[y]) else None
-            return 0 if c is None else bp.index(q[rgb555(c)]) + 1
-        gl.append((key, si, len(data) // 32, sw, sh, gw, gh))
-        data += tiles(rows, sw, sh, 4, idx)
-    o.append('const uint8_t g_glyph_tiles[%d] __attribute__((aligned(4))) = { %s };' % (len(data), ', '.join(map(str, data))))
-    o.append('/* by colour set, size and glyph: bank, first tile, sprite size (16 or 32), GBA size */')
-    o.append('const HudGlyph g_glyphs[%d] = {' % len(gl))
-    for key, si, t0, sw, sh, gw, gh in gl:
-        o.append('    { %d, %d, %d, %d, %d, %d, %d },' % (si, key[1], key[0], sw, t0, gw, gh))
-    o.append('};')
-    o.append('const int g_nglyphs = %d;' % len(gl))
-    # a glyph by colour set, size (15, 20, 40) and font glyph: its entry + 1, 0 if the race never draws it
-    sizes = (15, 20, 40)
-    lut = bytearray(len(schemes) * 3 * 64)
-    for k, (key, si, t0, sw, sh, gw, gh) in enumerate(gl):
-        if key[1] in sizes:
-            lut[(si * 3 + sizes.index(key[1])) * 64 + key[0]] = k + 1
-    o.append('const uint8_t g_glyph_lut[%d] = { %s };' % (len(lut), ', '.join(map(str, lut))))
-    o.append('/* the colour sets, as (prim, env, alt): their banks */')
-    o.append('const HudScheme g_schemes[%d] = {' % len(schemes))
-    for sc in schemes:
-        o.append('    { 0x%06X, 0x%06X, %d },' % (sc[0][0] << 16 | sc[0][1] << 8 | sc[0][2], sc[1][0] << 16 | sc[1][1] << 8 | sc[1][2], sc[2]))
-    o.append('};')
-    o.append('const int g_nschemes = %d, g_needle_bank = %d;' % (len(schemes), needle_bank))
+    o += glyph_lines
+    o.append('const int g_needle_bank = %d;' % needle_bank)
     # dial face and lamp frames (8bpp, 64x64 and 16x16)
     def dimg(img, sw):
         rows = img[4]
@@ -515,13 +526,12 @@ def main():
     st0 = states[min(k for k in states if k >= f0)]
     o.append('/* the player\'s view (D_8031B2C8[0]: x, y, w, h) and its panel\'s height (D_8028C7B4[0].h) */')
     o.append('const int32_t g_view[5] = { %d, %d, %d, %d, %d };' % (st0[7], st0[8], st0[9], st0[10], st0[11]))
-    o.append('const int g_glyph_bytes = %d;' % len(data))
     # sin in Q12 by a 1024th of a turn (the needle's angle)
     o.append('const int16_t g_sin1024[1024] = { %s };' % ', '.join(str(int(round(math.sin(k * 2 * math.pi / 1024) * 4096))) for k in range(1024)))
     o.append('const uint32_t g_rand_seed = %d;            /* BrRandStep\'s state in the race (D_8028B790) */' % struct.unpack_from('<I', ram, 0x28B790)[0])
     open(out_p, 'w').write('\n'.join(o) + '\n')
-    print('%s: %d glyphs in %d colour sets (%d bytes), dial %dx%d with %d lamp frames, %d retraces' % (
-        out_p, len(gl), len(schemes), len(data), dw, dh, lamp_frames, f1 - f0 + 1))
+    print('%s: %d glyphs in %d colour sets, dial %dx%d with %d lamp frames, %d retraces' % (
+        out_p, len(need), len(banks), dw, dh, lamp_frames, f1 - f0 + 1))
 
 
 if __name__ == '__main__':

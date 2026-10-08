@@ -36,13 +36,23 @@ typedef struct {
     ModChan chan[6];
     ModVoice voice[6];
 } ModInit;
+/* a module (tools/sound.py module_c): its samples (by instrument - 1), patterns, order
+   list, length, restart, speed, channels (up to 16), the game's music level times its
+   fade, and the player's state to start from (0: BrModReset's) */
+typedef struct {
+    const SndSample *smp;
+    const uint8_t *const *pat;
+    const uint8_t *order;
+    int32_t len, restart, speed, chans, level;
+    const ModInit *init;
+} Song;
 extern const ModInit g_mod_init;
-extern const SndSample g_mod_smp[];
-extern const uint8_t *const g_mod_pat[];
-extern const uint8_t g_mod_order[];
-extern const int g_mod_len, g_mod_restart, g_mod_speed, g_mod_chans, g_mod_level;
+extern const Song g_race_song;
 extern const uint32_t g_note_rate[120], g_porta_k;
 extern const SndSample g_sfx_smp[];
 extern const int g_sfx_frames;
 extern const SfxVoice g_sfx_trace[][6];
+void snd_play(const Song *song);          /* sound.s: the music from its start (or its init) */
+void snd_sfx(const SndSample *s, int rate, int left, int right);   /* an effect on a free voice */
+extern volatile int32_t s_sfx_trace;         /* the race's effects (the trace) play: 1 */
 #endif

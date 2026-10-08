@@ -11,7 +11,7 @@
 @   void hud_vblank(void)      from the blank interrupt: this retrace's HUD
         .section .iwram, "ax"
         .arm
-        .global hud_init, hud_vblank, s_oam, txt_emit, txt_width, txt_print, put_dec, time_draw, txt_scheme, put_sprite, copy
+        .global hud_init, hud_vblank, s_oam, s_oamn, s_txt, s_oam_ready, s_hud_on, s_k, txt_emit, txt_width, txt_print, put_dec, time_draw, txt_scheme, put_sprite, copy
 
         .equ    TILE0, 512              @ the first sprite tile in the bitmap modes
         .equ    FACE, 0x2000            @ where things are in sprite VRAM (bytes): glyphs at 0
@@ -40,18 +40,37 @@ s_txt:    .space  40
 s_buf:    .space  32
 s_k:      .space  4
 s_rand:   .space  4
+s_tset:   .space  4                     @ the TextSet in use
+s_oam_ready: .space 4                   @ another screen's sprites (the menu's) built: copied at the blank
+s_hud_on: .space  4                     @ 1: the race HUD each retrace
 
         .section .iwram, "ax"
 @ ---- the printer ------------------------------------------------------------------
-@ r0 = the size's index in the tables (15, 20, 40) for r0
+@ r0 = the size's index in the tables (15, 20, 40, 30, 11: hud.py's SIZES) for r0
 size_id:
         cmp     r0, #20
         moveq   r0, #1
         bxeq    lr
         cmp     r0, #40
         moveq   r0, #2
+        bxeq    lr
+        cmp     r0, #30
+        moveq   r0, #3
+        bxeq    lr
+        cmp     r0, #11
+        moveq   r0, #4
         movne   r0, #0
         bx      lr
+
+@ the glyphs in use (a TextSet: lut, glyphs, schemes, nschemes, tiles, bytes), their tiles to VRAM
+        .global txt_use
+txt_use:
+        ldr     r1, =s_tset
+        str     r0, [r1]
+        ldr     r2, [r0, #20]
+        ldr     r0, [r0, #16]
+        ldr     r1, =0x06014000
+        b       copy
 
 @ r0 = BrTextWidth(r0 string, r1 size): each glyph's advance, a space's width (g_txt_adv,
 @ g_txt_space: the game's sums for the size)
@@ -108,9 +127,10 @@ txt_scheme:
         ldr     r0, [r4, #T_PRIM]
         ldr     r1, [r4, #T_ENV]
         ldr     r2, [r4, #T_ALT]
-        ldr     r3, =g_schemes
-        ldr     r12, =g_nschemes
-        ldr     r12, [r12]
+        ldr     r3, =s_tset
+        ldr     r3, [r3]
+        ldr     r12, [r3, #12]
+        ldr     r3, [r3, #8]
         mov     r5, #0
 1:      cmp     r5, r12
         mvnge   r5, #0
@@ -244,15 +264,17 @@ txt_emit:
         ldr     r0, [r11, #T_SCHEME]    @ its sprite, if the race draws it
         cmp     r0, #0
         blt     2f
-        mov     r1, r9
-        add     r0, r0, r0, lsl #1
-        add     r0, r0, r1
+        add     r0, r0, r0, lsl #2      @ (5 sizes a colour set)
+        add     r0, r0, r9
         add     r0, r8, r0, lsl #6
-        ldr     r1, =g_glyph_lut
+        ldr     r3, =s_tset
+        ldr     r3, [r3]
+        ldr     r1, [r3]
         ldrb    r0, [r1, r0]
         cmp     r0, #0
         beq     2f
-        ldr     r1, =g_glyphs - 8
+        ldr     r1, [r3, #4]
+        sub     r1, r1, #8
         add     r3, r1, r0, lsl #3      @ its HudGlyph
         stmfd   sp!, {r3}
         mov     r0, r5
@@ -407,11 +429,8 @@ time_draw:
 @ ---- the HUD ---------------------------------------------------------------------------
 hud_init:
         stmfd   sp!, {r4, lr}
-        ldr     r0, =g_glyph_tiles      @ the sprites' tiles and palette
-        ldr     r1, =0x06014000
-        ldr     r2, =g_glyph_bytes
-        ldr     r2, [r2]
-        bl      copy
+        ldr     r0, =g_hud_tset         @ the sprites' tiles and palette
+        bl      txt_use
         ldr     r0, =g_dial_face
         ldr     r1, =0x06014000 + FACE
         mov     r2, #64 * 64
@@ -448,6 +467,22 @@ copy:
 
 hud_vblank:
         stmfd   sp!, {r4-r11, lr}
+        ldr     r0, =s_hud_on           @ another screen: its sprites, when built
+        ldr     r0, [r0]
+        cmp     r0, #0
+        bne     7f
+        ldr     r4, =s_oam_ready
+        ldr     r0, [r4]
+        cmp     r0, #0
+        beq     .Lhud_done
+        ldr     r0, =s_oam
+        mov     r1, #0x07000000
+        mov     r2, #128 * 8
+        bl      copy
+        mov     r0, #0
+        str     r0, [r4]
+        b       .Lhud_done
+7:
         ldr     r0, =s_k                @ this retrace's state
         ldr     r1, [r0]
         add     r2, r1, #1

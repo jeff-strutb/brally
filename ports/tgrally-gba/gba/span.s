@@ -22,8 +22,9 @@ fill:
         bx      lr
 
 @ the vertical blank interrupt (through the BIOS's dispatcher, 0x03007FFC):
-@ show the finished page main.c asked for in s_flip (its DISPCNT), then 0
-        .global irq_vblank
+@ show the finished page main.c asked for in s_flip (its DISPCNT) with its wipe's window
+@ (s_winh: WIN0H), then 0
+        .global irq_vblank, s_winh
 irq_vblank:
         ldr     r1, =s_vbl
         ldr     r2, [r1]
@@ -33,9 +34,14 @@ irq_vblank:
         ldr     r1, =s_flip
         ldr     r2, [r1]
         cmp     r2, #0
-        strhne  r2, [r0]
-        movne   r2, #0
-        strne   r2, [r1]
+        beq     1f
+        strh    r2, [r0]
+        mov     r2, #0
+        str     r2, [r1]
+        ldr     r1, =s_winh
+        ldr     r2, [r1]
+        strh    r2, [r0, #0x40]
+1:
         add     r3, r0, #0x200
         mov     r2, #1
         strh    r2, [r3, #2]            @ IF: the blank answered
@@ -45,3 +51,7 @@ irq_vblank:
         ldmfd   sp!, {lr}
         bx      lr
         .ltorg
+
+        .section .iwram_bss, "aw", %nobits
+        .align  2
+s_winh: .space  4

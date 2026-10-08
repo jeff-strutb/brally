@@ -10,6 +10,7 @@
  * counted with the timers into g_stats (read by the host harness). */
 #include <stdint.h>
 #include "world.h"
+#include "sound.h"
 
 #define IWRAM_CODE __attribute__((section(".iwram"), target("arm"), noinline))
 #define EWRAM_BSS __attribute__((section(".ewram_bss")))
@@ -62,6 +63,7 @@ int s_npoly;
 uint32_t s_rec[4096] EWRAM_BSS;     /* 2^24 / w, w < 4096 (recip normalises a larger w) */
 uint8_t s_rsh[256] __attribute__((section(".iwram_bss")));   /* w >> 12's bit length: recip's shift for w under 2^20 */
 uint16_t *s_back;
+const Tex *s_textab = g_tex;        /* the screen's textures: the race's, or the menu's */
 
 static uint32_t udiv(uint32_t n, uint32_t d)
 {
@@ -444,7 +446,7 @@ static IWRAM_CODE void raster_tex(const Poly *p)
     int64_t den;
     uint64_t ad;
     int sh = 0, neg;
-    const Tex *tx = &g_tex[p->tex];
+    const Tex *tx = &s_textab[p->tex];
     x0 = p->v[0].x; y0 = p->v[0].y; u0 = p->v[0].u; v0 = p->v[0].v;
     x1 = p->v[1].x; y1 = p->v[1].y; u1 = p->v[1].u; v1 = p->v[1].v;
     x2 = p->v[2].x; y2 = p->v[2].y; u2 = p->v[2].u; v2 = p->v[2].v;
@@ -512,7 +514,7 @@ static IWRAM_CODE void raster_tex(const Poly *p)
             for (uv = uvr + duvx * (uint32_t)a; a < b; a++, uv += duvx, dst++) {
                 uint16_t c = *(const uint16_t *)((const uint8_t *)tx->data + (((uv >> 25) & wm2) | ((uv >> 3) & hm7)));
                 if (!tx->alpha || !(c & 0x8000))
-                    *dst = c;
+                    *dst = tx->alpha == 2 ? (uint16_t)(c + ((*dst >> 1) & 0x3DEF)) : c;   /* (2: half over it, halved already) */
             }
         }
     }
@@ -530,7 +532,7 @@ volatile uint32_t s_vbl;                                /* blanks so far (span.s
 
 #ifdef RASTER_C
 /* the buckets, furthest first, each its list: the triangles drawn */
-static int draw(void)
+int draw(void)
 {
     int i, n = 0;
     for (i = NBUCKET - 1; i >= 0; i--) {
@@ -555,9 +557,36 @@ static void clear(uint16_t col)
     fill((uint32_t *)s_back, col | (uint32_t)col << 16, SW * SH / 2);
 }
 
+void menu_enter(void);                                  /* menu.c */
+int menu_frame(void);
+void fade_to(int up);
+int fade_step(int dv);
+uint16_t fade_window(uint16_t dispcnt);
+extern int32_t s_fade, s_hud_on, s_k, s_mus_gain;       /* menu.c, hud.s, sound.s */
+
+#define REG_KEYS (*(volatile uint16_t *)0x04000130)
+
+/* the race from its start: its textures, its HUD, its music and effects as recorded; wiped in
+   (or at once, for the host's measurements) */
+static void race_enter(int wipe)
+{
+    s_textab = g_tex;
+    s_hud_on = 0;
+    hud_init();
+    s_k = 0;
+    s_sfx_trace = 1;
+    snd_play(&g_race_song);
+    s_hud_on = 1;
+    s_mus_gain = 256;
+    s_fade = wipe ? 0 : 65536;
+    fade_to(1);
+}
+
 int main(void)
 {
-    int page = 0, fi = 0, i;
+    int page = 0, fi = 0, i, racing = 0, dv;
+    uint32_t t0 = 0, tl = 0, lap = 0;
+    uint16_t keys = 0x3FF;
     REG_WAITCNT = 0x4317;                            /* ROM 3/1 waitstates, prefetch on */
     for (i = 1; i < 4096; i++)
         s_rec[i] = udiv(1u << 24, (uint32_t)i);
@@ -575,19 +604,50 @@ int main(void)
     REG_TM3D = 0;
     REG_TM3C = 0x84;                                 /* cascade: TM3 counts TM2's overflows */
     REG_TM2C = 0x80;                                 /* TM2 at the full 16.78 MHz */
+    *(volatile uint16_t *)0x05000000 = 0;            /* the backdrop (outside the wipe): black */
     snd_init();
-    hud_init();
     *(void (*volatile *)(void))0x03007FFC = irq_vblank;
     REG_DISPSTAT = 1 << 3;                           /* the vertical blank interrupt */
     REG_IE = 1;
     REG_IME = 1;
+    menu_enter();                                    /* BrMainMenu */
     for (;;) {
         const Frame *f;
+        uint32_t t1, t2, tc, t0c;
+        int ncells = 0, nverts = 0, ndrawn = 0;
+        if (!racing) {
+            if (g_probe[0] || g_probe[2]) {          /* the host's measurements: the race at once */
+                race_enter(0);
+                racing = 1;
+                t0 = s_vbl;
+                lap = 0;
+                fi = 0;
+                continue;
+            }
+            while (s_flip)
+                ;
+            s_back = (uint16_t *)(page ? 0x06000000 : 0x0600A000);
+            t0c = clock32();
+            i = menu_frame();
+            g_stats[0] = 0xFFFFFFFFu;                    /* the menu: its frame's cycles */
+            g_stats[1] = clock32() - t0c;
+            if (i) {                      /* a row that races: the race, wiped in */
+                race_enter(1);
+                racing = 1;
+                t0 = tl = s_vbl;
+                lap = 0;
+                fi = 0;
+                keys = REG_KEYS;
+                continue;
+            }
+            s_flip = fade_window((uint16_t)(5 | 1 << 10 | 1 << 12 | 1 << 6 | (page ? 0 : 1 << 4)));
+            page ^= 1;
+            continue;
+        }
         if (g_probe[0])
             fi = (int)g_probe[0] - 1;
         f = &g_frames[fi];
-        uint32_t t0 = clock32(), t1, t2, tc;
-        int ncells = 0, nverts = 0, ndrawn = 0;
+        t0c = clock32();
         for (i = 0; i < NBUCKET; i++)
             s_bucket[i] = 0;
         s_npoly = 0;
@@ -602,30 +662,43 @@ int main(void)
         clear(0x7E8C);                               /* the desert sky */
         ndrawn = draw();
         t2 = clock32();
-        s_flip = (uint16_t)(5 | 1 << 10 | 1 << 12 | 1 << 6 | (page ? 0 : 1 << 4));   /* shown at the next blank */
+        dv = (int)(s_vbl - tl);                      /* the wipe, and B or START back to the menu */
+        tl = s_vbl;
+        if (!g_probe[0] && !g_probe[2]) {
+            uint16_t k = REG_KEYS, press = (uint16_t)(keys & ~k);
+            keys = k;
+            if ((press & (1 << 1 | 1 << 3)) && s_fade == 65536)
+                fade_to(0);
+            if (!fade_step(dv)) {
+                s_hud_on = 0;
+                racing = 0;
+                menu_enter();
+                continue;
+            }
+        }
+        s_flip = fade_window((uint16_t)(5 | 1 << 10 | 1 << 12 | 1 << 6 | (page ? 0 : 1 << 4)));   /* shown at the next blank */
         page ^= 1;
         t2 -= tc - t1;                               /* the cycles worked, not waited */
         g_stats[0] = (uint32_t)fi;
-        g_stats[1] = t2 - t0;
-        g_stats[2] = t1 - t0;
+        g_stats[1] = t2 - t0c;
+        g_stats[2] = t1 - t0c;
         g_stats[3] = t2 - t1;
         g_stats[4] = (uint32_t)ndrawn;
         g_stats[5] = (uint32_t)ncells;
         g_stats[6] = (uint32_t)nverts;
         g_stats[7] = tc - t1;                            /* waited for the flip */
         if (!s_lapped) {                                 /* over the race once: the worst, the sum, the count */
-            if (t2 - t0 > g_stats[8]) {
-                g_stats[8] = t2 - t0;
+            if (t2 - t0c > g_stats[8]) {
+                g_stats[8] = t2 - t0c;
                 g_stats[11] = (uint32_t)fi;
             }
-            g_stats[9] += (t2 - t0) >> 4;
+            g_stats[9] += (t2 - t0c) >> 4;
             g_stats[10]++;
             if (fi < 1200)
-                g_cyc[fi] = t2 - t0;
+                g_cyc[fi] = t2 - t0c;
         }
         if (!g_probe[2]) {                           /* real time: the camera at the game's 30 a second */
-            static uint32_t lap;                     /* (no divide: the laps counted off) */
-            uint32_t t = (s_vbl >> 1) - lap;
+            uint32_t t = ((s_vbl - t0) >> 1) - lap;  /* (no divide: the laps counted off) */
             while (t >= (uint32_t)g_nframes) {
                 lap += (uint32_t)g_nframes;
                 t -= (uint32_t)g_nframes;

@@ -70,6 +70,28 @@ def mod_load(xm):
     return order, restart, speed, ch, pats, smps
 
 
+def module_c(prefix, order, restart, speed, nch, pats, smps, level, init='0'):
+    """a module as gba/sound.s plays it: its samples, patterns and order list, and
+    the Song naming them (init: the player's state to start from, or 0 for
+    BrModReset's)"""
+    o = []
+    for i, s in enumerate(smps):
+        if s:
+            o.append('static ' + c_bytes('%s_data%d' % (prefix, i), s[0]))
+    o.append('static const SndSample %s_smp[%d] = {' % (prefix, len(smps)))
+    for i, s in enumerate(smps):
+        o.append('    { %s_data%d, %d, %d, %d, %d, %d },' % (prefix, i, s[1], s[2], s[3], 1 if s[4] == 1 else 0, s[5]) if s else '    { 0, 0, 0, 0, 0, 0 },')
+    o.append('};')
+    for i, p in enumerate(pats):
+        o.append('static ' + c_bytes('%s_pat%d' % (prefix, i), p, False))
+    o.append('static const uint8_t *const %s_pats[%d] = { %s };' % (prefix, len(pats), ', '.join('%s_pat%d' % (prefix, i) for i in range(len(pats)))))
+    o.append('static const uint8_t %s_order[%d] = { %s };' % (prefix, len(order), ', '.join(map(str, order))))
+    o.append('/* samples, patterns, order list; its length, restart, speed, channels; the game\'s music level times its fade */')
+    o.append('const Song %s_song = { %s_smp, %s_pats, %s_order, %d, %d, %d, %d, %d, %s };' % (
+        prefix, prefix, prefix, prefix, len(order), restart, speed, nch, level, init))
+    return o
+
+
 def read_snd(path):
     d = open(path, 'rb').read()
     i, frames, samples, music, last = 0, {}, {}, {}, None
@@ -215,19 +237,8 @@ def main():
 
     o = ['/* the race\'s sound, from the game (tools/sound.py): module 0x%06X and the effect voices */' % xm_off,
          '#include "sound.h"', '']
-    for i, s in enumerate(smps):
-        if s:
-            o.append(c_bytes('s_mod_data%d' % i, s[0]))
-    o.append('const SndSample g_mod_smp[%d] = {' % len(smps))
-    for i, s in enumerate(smps):
-        o.append('    { s_mod_data%d, %d, %d, %d, %d, %d },' % (i, s[1], s[2], s[3], 1 if s[4] == 1 else 0, s[5]) if s else '    { 0, 0, 0, 0, 0, 0 },')
-    o.append('};')
-    for i, p in enumerate(pats):
-        o.append(c_bytes('s_mod_pat%d' % i, p, False))
-    o.append('const uint8_t *const g_mod_pat[%d] = { %s };' % (len(pats), ', '.join('s_mod_pat%d' % i for i in range(len(pats)))))
-    o.append('const uint8_t g_mod_order[%d] = { %s };' % (len(order), ', '.join(map(str, order))))
-    o.append('const int g_mod_len = %d, g_mod_restart = %d, g_mod_speed = %d, g_mod_chans = %d;' % (len(order), restart, speed, nch))
-    o.append('const int g_mod_level = %d;               /* the game\'s music level times its fade */' % level)
+    o += init
+    o += module_c('g_race', order, restart, speed, nch, pats, smps, level, '&g_mod_init')
     o.append('const uint32_t g_note_rate[120] = { %s };' % ', '.join(map(str, q12)))
     o.append('const uint32_t g_porta_k = %d;          /* BrModTick\'s K in these units */' % int(round(PORTA_K * scale / (1 << 20))))
     for i, k in enumerate(sfx_keys):
@@ -241,7 +252,6 @@ def main():
         ln, lp = sfx_meta.get(k, (len(sdata[k]) - 0x800, 0))
         o.append('    { s_sfx_data%d, %d, %d, 0, %d, 0 },' % (i, ln, lp, 1 if lp else 0))
     o.append('};')
-    o += init
     o.append('const int g_sfx_frames = %d;' % len(trace))
     o.append('const SfxVoice g_sfx_trace[%d][6] = {' % len(trace))
     for row in trace:

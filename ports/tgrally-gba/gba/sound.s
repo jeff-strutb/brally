@@ -1,12 +1,15 @@
-@ sound.s -- the race's sound: the game's module player (src/tgrally/audio/
-@ music.c: BrModRowRead, BrModTick, BrMusicLoopSamples) on its six channels,
-@ the game's six effect voices as the race drove them (tools/sound.py's
-@ trace, a retrace at a time), and a mixer: 13379 Hz, the two FIFOs (A left,
+@ sound.s -- the sound: the game's module player (src/tgrally/audio/
+@ music.c: BrModRowRead, BrModTick, BrMusicLoopSamples) on a module's channels
+@ (up to 16: the race's has 6, the front end's 16), the game's six effect
+@ voices (as the race drove them, tools/sound.py's trace a retrace at a time,
+@ or started by the menu: BrSfxVoiceStart), and a mixer: 13379 Hz, the two FIFOs (A left,
 @ B right) fed by DMA 1 and 2 on timer 0, 224 samples a retrace, double
 @ buffered, mixed in the vertical blank.  In IWRAM, ARM.
 @
 @   void snd_init(void)       before the blank interrupt is on
 @   void snd_vblank(void)     from it, every retrace
+@   void snd_play(const Song *s)   the module from its start (BrMusicStart), or its recorded state
+@   void snd_sfx(const SndSample *s, int rate, int left, int right)   an effect on a free voice
 @
 @ A voice's position and step are Q12 bytes from its sample's start.  The
 @ samples are stored offset by 128 (unsigned), so a voice adds level times
@@ -16,8 +19,10 @@
         .section .iwram, "ax"
         .arm
         .global snd_init, snd_vblank, s_voice, s_chan, s_player, mix_chunk, mod_tick, row_read, sfx_frame, udiv
+        .global snd_play, snd_sfx, s_song, s_sfx_trace, s_mus_gain
 
-        .equ    NV, 12                  @ voices: 6 music, then 6 effects
+        .equ    MAXCH, 16               @ music channels at most
+        .equ    NV, 6 + MAXCH           @ voices: 6 effects, then the music's (the mixer walks 6 + the module's)
         .equ    V_DATA, 0
         .equ    V_POS, 4
         .equ    V_RATE, 8               @ 0: silent
@@ -54,6 +59,15 @@
         .equ    S_VOL, 12
         .equ    S_LOOPS, 13
         .equ    S_REL, 14
+        .equ    SG_SMP, 0               @ Song
+        .equ    SG_PAT, 4
+        .equ    SG_ORDER, 8
+        .equ    SG_LEN, 12
+        .equ    SG_RESTART, 16
+        .equ    SG_SPEED, 20
+        .equ    SG_CHANS, 24
+        .equ    SG_LEVEL, 28
+        .equ    SG_INIT, 32
         .equ    N, 224                  @ samples a retrace
         .equ    CHUNK, 56               @ mixed at a time: loops checked, the player ticked between
         .equ    TICK, 26758             @ 13379 / 50, in hundredths: the game ticks at 50 Hz
@@ -62,8 +76,11 @@
         .section .iwram_bss, "aw", %nobits
         .align  2
 s_voice:  .space NV * V_SIZE
-s_chan:   .space 6 * C_SIZE
+s_chan:   .space MAXCH * C_SIZE
 s_player: .space 32
+s_song:   .space 4                  @ the module playing
+s_sfx_trace: .space 4               @ 1: the effects are the race's trace
+s_mus_gain: .space 4                @ the music's fade, 0..256
 s_acc:    .space CHUNK * 4
 s_out:    .space 4 * N              @ left 0, left 1, right 0, right 1
 
@@ -103,17 +120,27 @@ udiv:
 
 @ \h = the channel's sample header (\s: its instrument, 1..)
         .macro  SMPHDR h, s
-        ldr     \h, =g_mod_smp - 16
+        ldr     \h, =s_song
+        ldr     \h, [\h]
+        ldr     \h, [\h, #SG_SMP]
+        sub     \h, \h, #16
         add     \h, \h, \s, lsl #4
         .endm
 
-@ r0 = BrModRowRead(r0): one packed row into the six channels
+@ \d = the module's field at \off
+        .macro  SONG d, off
+        ldr     \d, =s_song
+        ldr     \d, [\d]
+        ldr     \d, [\d, #\off]
+        .endm
+
+@ r0 = BrModRowRead(r0): one packed row into the module's channels
 row_read:
         stmfd   sp!, {r4-r11, lr}
         mov     r4, r0
         mov     r5, #0
         ldr     r6, =s_chan
-        ldr     r7, =s_voice
+        ldr     r7, =s_voice + 6 * V_SIZE
 .Lch:
         mov     r8, #0                  @ note
         mov     r9, #0                  @ instrument
@@ -296,7 +323,8 @@ row_read:
 5:      add     r6, r6, #C_SIZE
         add     r7, r7, #V_SIZE
         add     r5, r5, #1
-        cmp     r5, #6
+        SONG    r0, SG_CHANS
+        cmp     r5, r0
         blt     .Lch
         mov     r0, r4
         ldmfd   sp!, {r4-r11, lr}
@@ -322,15 +350,15 @@ mod_tick:
         ldr     r1, [r11, #P_ORDER]     @ the next order's pattern
         add     r1, r1, #1
         and     r1, r1, #0xFF
-        ldr     r2, =g_mod_len
-        ldr     r2, [r2]
+        ldr     r3, =s_song
+        ldr     r3, [r3]
+        ldr     r2, [r3, #SG_LEN]
         cmp     r1, r2
-        ldreq   r1, =g_mod_restart
-        ldreq   r1, [r1]
+        ldreq   r1, [r3, #SG_RESTART]
         str     r1, [r11, #P_ORDER]
-        ldr     r2, =g_mod_order
+        ldr     r2, [r3, #SG_ORDER]
         ldrb    r2, [r2, r1]
-        ldr     r3, =g_mod_pat
+        ldr     r3, [r3, #SG_PAT]
         ldr     r3, [r3, r2, lsl #2]
         ldrb    r0, [r3, #5]
         add     r3, r3, #9
@@ -344,8 +372,8 @@ mod_tick:
         str     r0, [r11, #P_ROW]
 .Leffects:
         ldr     r4, =s_chan
-        ldr     r5, =s_voice
-        mov     r6, #6
+        ldr     r5, =s_voice + 6 * V_SIZE
+        SONG    r6, SG_CHANS
 .Lchan:
         ldrb    r7, [r4, #C_SMP]
         ldrb    r0, [r4, #C_ARPON]      @ arpeggio
@@ -434,7 +462,7 @@ sfx_frame:
         cmp     r0, r1
         movge   r0, #0
         str     r0, [r8, #P_SFX]
-        ldr     r5, =s_voice + 6 * V_SIZE
+        ldr     r5, =s_voice
         mov     r6, #6
 1:      ldrb    r0, [r4]
         cmp     r0, #0xFF
@@ -476,7 +504,8 @@ mix_chunk:
         stmfd   sp!, {r4-r11, lr}
         stmfd   sp!, {r0, r1}
         ldr     r4, =s_voice            @ samples run past their end: loop back, or stop
-        mov     r5, #NV
+        SONG    r5, SG_CHANS
+        add     r5, r5, #6
 1:      ldr     r0, [r4, #V_RATE]
         cmp     r0, #0
         beq     2f
@@ -502,22 +531,26 @@ mix_chunk:
         subge   r0, r0, r1
         str     r0, [r4, #P_TACC]
         blge    mod_tick
-        ldr     r4, =s_voice            @ the music voices' levels: the music's own, left or right
-        ldr     r6, =g_mod_level
-        ldr     r6, [r6]
+        ldr     r4, =s_voice + 6 * V_SIZE   @ the music voices' levels: the music's own (and its fade), left or right
+        SONG    r6, SG_LEVEL
+        ldr     r0, =s_mus_gain
+        ldr     r0, [r0]
+        mul     r6, r0, r6
+        SONG    r2, SG_CHANS
         mov     r5, #0
 3:      ldr     r0, [r4, #V_BASE]
         mul     r1, r0, r6
-        mov     r1, r1, lsr #16
+        mov     r1, r1, lsr #24
         tst     r5, #1
         moveq   r1, r1, lsl #16
         str     r1, [r4, #V_VOL]
         add     r4, r4, #V_SIZE
         add     r5, r5, #1
-        cmp     r5, #6
+        cmp     r5, r2
         blt     3b
         ldr     r4, =s_voice            @ the bias: -128 times the playing voices' levels
-        mov     r5, #NV
+        SONG    r5, SG_CHANS
+        add     r5, r5, #6
         mov     r6, #0
 4:      ldr     r0, [r4, #V_RATE]
         cmp     r0, #0
@@ -535,7 +568,8 @@ mix_chunk:
         subs    r1, r1, #1
         bne     5b
         ldr     r11, =s_voice           @ each playing voice into the mix
-        mov     r10, #NV
+        SONG    r10, SG_CHANS
+        add     r10, r10, #6
 .Lvoice:
         ldr     r4, [r11, #V_RATE]
         cmp     r4, #0
@@ -597,44 +631,6 @@ mix_chunk:
 
 snd_init:
         stmfd   sp!, {r4-r8, lr}
-        ldr     r4, =g_mod_init         @ the player as the game had it at the replay's start
-        ldr     r5, =s_player
-        ldmia   r4!, {r0-r3, r12}       @ speed, ticks, rows, order, the row's offset
-        stmia   r5, {r0-r3}
-        ldr     r0, =g_mod_order
-        ldrb    r0, [r0, r3]
-        ldr     r1, =g_mod_pat
-        ldr     r1, [r1, r0, lsl #2]
-        add     r1, r1, r12
-        str     r1, [r5, #P_ROW]
-        ldr     r5, =s_chan             @ the channels: the same layout
-        mov     r6, #6 * C_SIZE / 4
-1:      ldr     r0, [r4], #4
-        str     r0, [r5], #4
-        subs    r6, r6, #1
-        bne     1b
-        ldr     r5, =s_voice            @ the voices: their instrument's sample, place, step, level
-        mov     r6, #6
-2:      ldmia   r4!, {r0-r3}
-        str     r3, [r5, #V_BASE]
-        cmp     r0, #0
-        beq     3f
-        SMPHDR  r7, r0
-        ldr     r8, [r7, #S_DATA]
-        cmp     r8, #0
-        beq     3f
-        str     r8, [r5, #V_DATA]
-        ldr     r8, [r7, #S_LEN]
-        str     r8, [r5, #V_LEN]
-        ldr     r8, [r7, #S_LOOP]
-        str     r8, [r5, #V_LOOP]
-        ldrb    r8, [r7, #S_LOOPS]
-        str     r8, [r5, #V_LOOPS]
-        str     r1, [r5, #V_POS]
-        str     r2, [r5, #V_RATE]
-3:      add     r5, r5, #V_SIZE
-        subs    r6, r6, #1
-        bne     2b
         mov     r0, #0x04000000
         mov     r1, #0x80
         strh    r1, [r0, #0x84]         @ sound on
@@ -660,6 +656,124 @@ snd_init:
         bx      lr
         .ltorg
 
+@ the module r0 from its start (BrMusicStart: BrModLoad's speed, BrModReset, every voice at
+@ 0x20), or from the player's recorded state (its init: the race's, as the game had it at
+@ the replay's start); the effects silenced, the trace from its start
+snd_play:
+        stmfd   sp!, {r4-r8, lr}
+        mov     r3, #0x04000000
+        add     r3, r3, #0x200
+        ldrh    r8, [r3, #8]            @ (no blank in between: IME off)
+        mov     r1, #0
+        strh    r1, [r3, #8]
+        ldr     r1, =s_song
+        str     r0, [r1]
+        mov     r7, r0
+        ldr     r4, =s_voice            @ every voice, channel and the player cleared (the buffer
+        mov     r1, #0                  @ playing kept), the trace from its start
+        ldr     r2, =(NV * V_SIZE + MAXCH * C_SIZE + P_BUF) / 4
+1:      str     r1, [r4], #4
+        subs    r2, r2, #1
+        bne     1b
+        ldr     r5, =s_player
+        str     r1, [r5, #P_SFX]
+        ldr     r4, [r7, #SG_INIT]
+        cmp     r4, #0
+        bne     .Lrecorded
+        ldr     r0, [r7, #SG_SPEED]     @ BrModReset: ticks 1, rows 0, order 0xFF
+        mov     r1, #1
+        mov     r2, #0
+        mov     r3, #0xFF
+        stmia   r5, {r0-r3}
+        ldr     r5, =s_chan
+        ldr     r4, =s_voice + 6 * V_SIZE
+        ldr     r6, [r7, #SG_CHANS]
+        mov     r0, #0x40
+        mov     r1, #0x20
+2:      strb    r0, [r5, #C_VOL]
+        str     r1, [r4, #V_BASE]
+        add     r5, r5, #C_SIZE
+        add     r4, r4, #V_SIZE
+        subs    r6, r6, #1
+        bne     2b
+        b       .Lplay_done
+.Lrecorded:
+        ldmia   r4!, {r0-r3, r12}       @ speed, ticks, rows, order, the row's offset
+        stmia   r5, {r0-r3}
+        ldr     r0, [r7, #SG_ORDER]
+        ldrb    r0, [r0, r3]
+        ldr     r1, [r7, #SG_PAT]
+        ldr     r1, [r1, r0, lsl #2]
+        add     r1, r1, r12
+        str     r1, [r5, #P_ROW]
+        ldr     r5, =s_chan             @ the channels: the same layout
+        mov     r6, #6 * C_SIZE / 4
+1:      ldr     r0, [r4], #4
+        str     r0, [r5], #4
+        subs    r6, r6, #1
+        bne     1b
+        ldr     r5, =s_voice + 6 * V_SIZE            @ the voices: their instrument's sample, place, step, level
+        mov     r6, #6
+2:      ldmia   r4!, {r0-r3}
+        str     r3, [r5, #V_BASE]
+        cmp     r0, #0
+        beq     3f
+        SMPHDR  r7, r0
+        ldr     r12, [r7, #S_DATA]
+        cmp     r12, #0
+        beq     3f
+        str     r12, [r5, #V_DATA]
+        ldr     r12, [r7, #S_LEN]
+        str     r12, [r5, #V_LEN]
+        ldr     r12, [r7, #S_LOOP]
+        str     r12, [r5, #V_LOOP]
+        ldrb    r12, [r7, #S_LOOPS]
+        str     r12, [r5, #V_LOOPS]
+        str     r1, [r5, #V_POS]
+        str     r2, [r5, #V_RATE]
+3:      add     r5, r5, #V_SIZE
+        subs    r6, r6, #1
+        bne     2b
+.Lplay_done:
+        mov     r3, #0x04000000
+        add     r3, r3, #0x200
+        strh    r8, [r3, #8]
+        ldmfd   sp!, {r4-r8, lr}
+        bx      lr
+        .ltorg
+
+@ BrSfxFreeVoice and BrSfxVoiceStart: the sample r0 on the first silent effect voice, at
+@ step r1 (Q12), levels r2 left, r3 right; none free: not played
+snd_sfx:
+        stmfd   sp!, {r4, r5, lr}
+        ldr     r4, =s_voice
+        mov     r5, #6
+1:      ldr     r12, [r4, #V_RATE]
+        cmp     r12, #0
+        beq     2f
+        add     r4, r4, #V_SIZE
+        subs    r5, r5, #1
+        bne     1b
+        ldmfd   sp!, {r4, r5, lr}
+        bx      lr
+2:      ldr     r12, [r0, #S_DATA]
+        str     r12, [r4, #V_DATA]
+        ldr     r12, [r0, #S_LEN]
+        str     r12, [r4, #V_LEN]
+        ldr     r12, [r0, #S_LOOP]
+        str     r12, [r4, #V_LOOP]
+        ldrb    r12, [r0, #S_LOOPS]
+        str     r12, [r4, #V_LOOPS]
+        mov     r12, #0
+        str     r12, [r4, #V_POS]
+        orr     r2, r3, r2, lsl #16
+        str     r2, [r4, #V_VOL]
+        str     r1, [r4, #V_RATE]       @ (last: the mixer may run in between)
+        ldmfd   sp!, {r4, r5, lr}
+        bx      lr
+        .ltorg
+
+
 @ a retrace: play the buffer mixed last time, mix the next
 snd_vblank:
         stmfd   sp!, {r4-r6, lr}
@@ -680,7 +794,10 @@ snd_vblank:
         ldr     r3, =0xB640
         strh    r3, [r1, #0xC6]
         strh    r3, [r1, #0xD2]
-        bl      sfx_frame
+        ldr     r0, =s_sfx_trace
+        ldr     r0, [r0]
+        cmp     r0, #0
+        blne    sfx_frame
         ldr     r0, [r4, #P_BUF]
         eor     r0, r0, #1
         ldr     r2, =s_out

@@ -72,9 +72,22 @@
         add     r2, r2, r4
         .endm
 
-@ the texel to the pixel at r0, which steps on (alpha: a clear one left undrawn)
+@ the texel to the pixel at r0, which steps on (alpha 1: a clear one left undrawn; 2: half
+@ over the pixel, the texel already halved by the converter)
         .macro  PUT alpha
-        .if     \alpha
+        .if     \alpha == 2
+        tst     r12, #0x8000
+        ldrheq  lr, [r0]
+        moveq   lr, lr, lsr #1
+        biceq   lr, lr, #0x10
+        biceq   lr, lr, #0x200
+        addeq   r12, r12, lr
+        strheq  r12, [r0]
+        add     r0, r0, #2
+        nop
+        nop
+        nop
+        .elseif \alpha
         tst     r12, #0x8000
         strheq  r12, [r0]
         add     r0, r0, #2
@@ -104,7 +117,9 @@
         and     r12, r12, #7
         add     r1, r1, #7
         mov     r1, r1, lsr #3
-        .if     \alpha
+        .if     \alpha == 2
+        add     pc, pc, r12, lsl #6     @ (16 instructions a texel)
+        .elseif \alpha
         add     pc, pc, r12, lsl #5     @ (8 instructions a texel)
         .else
         add     r12, r12, r12, lsl #1
@@ -162,7 +177,8 @@ raster_tex:
         sub     r9, r9, r7              @ du2
         sub     r11, r11, r10           @ dv1
         sub     r12, r12, r10           @ dv2
-        ldr     r0, =g_tex              @ the span's texture (12 bytes a Tex)
+        ldr     r0, =s_textab           @ the span's texture (12 bytes a Tex) in the screen's table
+        ldr     r0, [r0]
         add     lr, lr, lr, lsl #1
         add     r0, r0, lr, lsl #2
         ldmia   r0, {r1, r4, r7}        @ data; wmask << 1 | hmask << 7 << 16; wbits, hbits, alpha
@@ -333,7 +349,12 @@ raster_tex:
         ROWS    0
         b       .Lnext_half
 .Lalpha:
+        cmp     r0, #2
+        beq     .Lblend
         ROWS    1
+        b       .Lnext_half
+.Lblend:
+        ROWS    2
 .Lnext_half:
         ldr     r0, [sp, #F_HALF]
         add     r0, r0, #4

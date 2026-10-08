@@ -106,7 +106,20 @@ int main(int argc, char **argv)
     int prof_from = 0;
     if (getenv("GBARUN_PROF"))                        /* FILE@FROM */
         sscanf(getenv("GBARUN_PROF"), "%511[^@]@%d", prof, &prof_from);
+    const char *keys = getenv("GBARUN_KEYS");          /* F:MASK,F:MASK..: the pad (A 1, B 2, START 8, RIGHT 16, LEFT 32) from F on */
     for (f = 1; f <= frames; f++) {
+        if (keys) {
+            const char *k = keys;
+            unsigned kf, km, cur = 0;
+            int n;
+            while (sscanf(k, "%u:%u%n", &kf, &km, &n) == 2 && kf <= (unsigned)f) {
+                cur = km;
+                k += n;
+                if (*k == ',')
+                    k++;
+            }
+            core->setKeys(core, cur);
+        }
         if (pa && f <= 30) {                          /* until the program has started */
             if (getenv("GBARUN_STEP"))               /* g_probe[2]: every recorded camera frame in turn */
                 core->busWrite32(core, pa + 8, 1);
