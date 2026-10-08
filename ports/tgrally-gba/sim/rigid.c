@@ -115,10 +115,10 @@ void BrCarAxleGrip(Body *b, fx dt, fx *gripF, fx *gripR, uint8_t *slipFp, uint8_
     slipR = FDIV(slipR, m4);
     slipF = FMUL(slipF, FMUL(dt, dt));
     slipR = FMUL(slipR, FMUL(dt, dt));
-    if (ABS(slipF) > FX(1.0f))
-        slipF = FTOF(FMUL(SIGNF(slipF), FX(1.5f)));
-    if (ABS(slipR) > FX(1.0f))
-        slipR = FTOF(FMUL((slipR == 0 ? FXD(0.0) : (slipR > 0 ? FXD(1.0) : FXD(-1.0))), FX(1.5f)));
+    if (ABS(slipF) > SIM_DTK)               /* (a tick's braking: k ticks' worth in a longer one) */
+        slipF = FTOF(FMUL(FMUL(SIGNF(slipF), FX(1.5f)), SIM_DTK));
+    if (ABS(slipR) > SIM_DTK)
+        slipR = FTOF(FMUL(FMUL((slipR == 0 ? FXD(0.0) : (slipR > 0 ? FXD(1.0) : FXD(-1.0))), FX(1.5f)), SIM_DTK));
     pt[1] = pt[2] = FX(0.0);
     pt[0] = b->sub[0]->st.pos[0];
     BrRbVelAtPoint(tmpA, b, pt);

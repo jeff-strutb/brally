@@ -13,6 +13,9 @@
 const Track *g_track;
 World g_world;
 fx g_grip[72];
+#ifndef FX_FLOAT
+fx g_sim_dt = FX(0.033333335f), g_sim_dtk = FX(1.0f);
+#endif
 void (*sim_camera)(Car *car);           /* the viewed car's chase camera (BrCamChaseStep) */
 
 void BrRbIntegrate(RbState *s, Body *r, fx dt);
@@ -249,18 +252,18 @@ void sim_step_forces(Car *car)
         car->gripR = FX(0.0f);
         car->gripF = FX(0.0f);
         car->slipF = 0;
-        BrWheelTyre(b, WHEEL(car, 0), &car->gripF, &car->slipF, FX(0.033333335f));
-        BrWheelTyre(b, WHEEL(car, 1), &car->gripF, &car->slipF, FX(0.033333335f));
-        BrWheelTyre(b, WHEEL(car, 2), &car->gripR, &car->slipR, FX(0.033333335f));
-        BrWheelTyre(b, WHEEL(car, 3), &car->gripR, &car->slipR, FX(0.033333335f));
+        BrWheelTyre(b, WHEEL(car, 0), &car->gripF, &car->slipF, SIM_DT);
+        BrWheelTyre(b, WHEEL(car, 1), &car->gripF, &car->slipF, SIM_DT);
+        BrWheelTyre(b, WHEEL(car, 2), &car->gripR, &car->slipR, SIM_DT);
+        BrWheelTyre(b, WHEEL(car, 3), &car->gripR, &car->slipR, SIM_DT);
     }
     car->firstFrame = 0;
     SP(3);
     for (i = 0; i < 3; i++)
         b->force[i] = b->torque[i] = FX(0.0f);
     BrRbForcesClear(b);
-    BrRbIntegrate(&b->st, b, FX(0.033333335f));
-    BrCarAxleGrip(b, FX(0.033333335f), &car->gripF, &car->gripR, &car->slipF, &car->slipR);
+    BrRbIntegrate(&b->st, b, SIM_DT);
+    BrCarAxleGrip(b, SIM_DT, &car->gripF, &car->gripR, &car->slipF, &car->slipR);
     SP(4);
     BrRbQuatDerivative(&b->st);
     b->forces = FORCE(car, 0xBF0);
@@ -275,7 +278,7 @@ void sim_step_forces(Car *car)
         b->force[i] = b->torque[i] = FX(0.0f);
     BrRbForcesClear(b);
     b->stB = b->st;
-    BrRbIntegrate(&b->stB, b, FX(0.033333335f));
+    BrRbIntegrate(&b->stB, b, SIM_DT);
     for (i = 0; i < 3; i++) {
         fx a = b->st.omega[i], c = b->stB.omega[i];
         if ((a == FX(0.0f) ? 0 : (a > FX(0.0f) ? 1 : -1)) != (c == FX(0.0f) ? 0 : (c > FX(0.0f) ? 1 : -1)))

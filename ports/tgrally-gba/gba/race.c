@@ -23,6 +23,7 @@ uint32_t g_simprof[24];
 uint32_t sim_clock(void) { return *(volatile uint16_t *)0x04000108 | (uint32_t)*(volatile uint16_t *)0x0400010C << 16; }
 #endif
 static Pad s_pad[2];
+static fx s_cprev[17], s_ccur[17];       /* the view's camera (rows, fov) a tick ago and now */
 
 void race_start(void)
 {
@@ -47,6 +48,13 @@ void race_start(void)
         g_world.cars[k] = &s_car[k];
     }
     sim_camera = BrCamChaseStep;
+    g_sim_dt = FX(1.0 / 30);             /* settled on the grid in the game's ticks, half a second */
+    g_sim_dtk = FX(1.0);
+    for (k = 0; k < 15; k++)
+        race_tick(0x3FF);
+    g_sim_dt = FX(RACE_TICKS / 30.0);    /* then a tick every RACE_TICKS of the game's */
+    g_sim_dtk = FX(RACE_TICKS);
+    race_tick(0x3FF);
 }
 
 /* the pad as BrPadMapRead makes it in a race (control layout 0: A accelerates, B brakes,
@@ -83,6 +91,14 @@ void race_tick(uint32_t keys)
         g_phase_cyc[k] += clock32() - t1;
     }
     g_phase_cyc[5]++;
+    if (g_sim_dtk == FX(2.0) && sim_camera)   /* the chase camera at the game's rate: once more */
+        sim_camera(&s_car[g_world.viewCar]);
+    for (k = 0; k < 16; k++) {                /* the camera now and a tick before (race_view between) */
+        s_cprev[k] = s_ccur[k];
+        s_ccur[k] = (&s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].mtx[0][0])[k];
+    }
+    s_cprev[16] = s_ccur[16];
+    s_ccur[16] = s_car[g_world.viewCar].cams[s_car[g_world.viewCar].cam].fov;
 }
 
 /* ---- the camera to the renderer's Frame (convert.py's rows, made here) ---- */
@@ -98,14 +114,17 @@ static void norm3(fx *v)
     }
 }
 
-void race_view(void *frame)
+void race_view(void *frame, int alpha)
 {
     Frame *f = (Frame *)frame;
-    const Car *c = &s_car[g_world.viewCar];
-    const fx (*m)[4] = (const fx (*)[4])c->cams[c->cam].mtx;
+    fx cm[17];
+    const fx (*m)[4] = (const fx (*)[4])cm;
     fx look[3], right[3], up[3], rel[3], cot, half, kx, ky, rows[3][3], org[3];
     int32_t ri[3][4];
     int i, k;
+
+    for (i = 0; i < 17; i++)             /* between the last two ticks: alpha 0..256 */
+        cm[i] = s_cprev[i] + (((s_ccur[i] - s_cprev[i]) >> 8) * alpha);
 
     /* guLookAtF: the eye at m[3], looking along m[0], m[2] up */
     for (i = 0; i < 3; i++)
@@ -121,7 +140,7 @@ void race_view(void *frame)
     norm3(up);
     /* guPerspectiveF: fovy = the lens x 4/3 x (h / w) = the lens (radians), aspect 4/3; the
        viewport: x = 80 ndc + 80, y = 64 - 64 ndc on the GBA's screen */
-    half = FMUL(c->cams[c->cam].fov, FX(0.5));
+    half = FMUL(cm[16], FX(0.5));
     cot = FDIV(FCOS(half), FSIN(half));
     kx = FMUL(FDIV(cot, FX(4.0 / 3.0)), FX(SW / 2));
     ky = FMUL(cot, FX(SH / 2));

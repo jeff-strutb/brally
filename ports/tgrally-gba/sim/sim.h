@@ -229,6 +229,17 @@ void BrRbStateStep(RbState *out, const RbState *in, fx dt);
 void guRotateF(fx m[4][4], fx a, fx x, fx y, fx z);
 void guMtxCatF(fx m[4][4], fx n[4][4], fx r[4][4]);
 fx BrAtan2(fx x, fx y);
+/* a tick's length: the game's 1/30 s; the fixed-point builds' can be longer (g_sim_dt, the
+   GBA's physics running fewer ticks a second) */
+#ifdef FX_FLOAT
+#define SIM_DT FX(0.033333335f)
+#define SIM_DTK FX(1.0f)
+#else
+extern fx g_sim_dt, g_sim_dtk;             /* the tick's length, and that in the game's ticks */
+#define SIM_DT g_sim_dt
+#define SIM_DTK g_sim_dtk
+#endif
+
 /* the collision's substeps a tick: the game's four, two on the GBA (gba/ builds define
    SIM_SUBSTEPS; the host checks keep the game's) */
 #ifndef SIM_SUBSTEPS

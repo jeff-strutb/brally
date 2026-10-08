@@ -678,7 +678,7 @@ void BrCarPhysAdvance(Body *b)
     BrCollRespBroadPhase(b, m);
     SP(12);
     s[0] = FDIV(FX(1.0f), b->box[0]);
-    t = FX(0.033333335f);
+    t = SIM_DT;
     s[1] = FDIV(FX(1.0f), b->box[1]);
     s[2] = FDIV(FX(1.0f), b->box[2]);
     dt = FDIVK(t, SIM_SUBSTEPS);

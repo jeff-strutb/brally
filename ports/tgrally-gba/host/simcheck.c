@@ -230,6 +230,47 @@ int main(int argc, char **argv)
     sim_camera = BrCamChaseStep;
     for (k = 0; k < CARS; k++)
         g_world.cars[k] = &s_cars[k];
+#ifndef FX_FLOAT
+    if (argc > 2 && !strcmp(argv[2], "test")) {      /* a set drive from the grid: throttle 6 s, half lock */
+        const uint8_t *in = ticks;                    /* 4 s, the brake 3 s; a tick every SIM_EVERY frames */
+        const uint8_t *g = in + 6 + CARS * CAR_SIZE + CARS * PAD_SIZE;
+        int every = getenv("SIM_EVERY") ? atoi(getenv("SIM_EVERY")) : 1, f;
+        g_world.dt = TOFX(bef(g + 4));
+        g_world.weather = (int)be32(g + 8);
+        g_world.mode = (int)be32(g + 12);
+        g_world.players = (int)be32(g + 16);
+        for (k = 0; k < CARS; k++) {
+            const uint8_t *cr = in + 6 + k * CAR_SIZE;
+            int i;
+            sl_car_load(&s_cars[k], &s_pads[k], cr, in + 6 + CARS * CAR_SIZE + k * PAD_SIZE, 0);   /* (as gba/race.c) */
+            for (i = 0; i < 3; i++)
+                s_cars[k].camView[i] = TOFX(bef(R(be32(cr + 0x2078)) + 0xB0 + i * 4));
+        }
+        for (f = 0; f < 30; f++) {                    /* settled on the grid in the game's ticks */
+            g_world.walkBack ^= 1;
+            BrCarPhysTick(&s_cars[0]);
+            BrCarPhysTick(&s_cars[1]);
+        }
+        g_sim_dt = FX(0.033333335) * every;
+        g_sim_dtk = FX(1.0) * every;
+        for (f = 0; f < 13 * 30; f += every) {
+            Car *c = &s_cars[0];
+            double sec = f / 30.0;
+            s_pads[0].flags = sec < 10 ? 0x10 | 0x10000 : 0x20 | 0x40000;
+            s_pads[0].steer = sec >= 6 && sec < 10 ? FX(0.5) : 0;
+            s_pads[1].flags = 0;
+            s_pads[1].steer = 0;
+            g_world.walkBack ^= 1;
+            BrCarPhysTick(&s_cars[0]);
+            BrCarPhysTick(&s_cars[1]);
+            if (f % 15 < every)
+                printf("%5.1f s %6.1f mph  at %8.2f %8.2f %6.2f  heading %7.1f  up %5.2f  gear %d\n", sec,
+                       FROMFX(c->speedMph), FROMFX(c->body.st.pos[0]), FROMFX(c->body.st.pos[1]), FROMFX(c->body.st.pos[2]),
+                       atan2(FROMFX(c->body.m[0][1]), FROMFX(c->body.m[0][0])) * 57.29578, FROMFX(c->body.m[2][2]), c->gear);
+        }
+        return 0;
+    }
+#endif
     for (t = 0; t + 1 < n; t += 2) {
         const uint8_t *in = ticks + (size_t)t * REC, *out = in + REC;
         const uint8_t *g = in + 6 + CARS * CAR_SIZE + CARS * PAD_SIZE;
@@ -269,6 +310,15 @@ int main(int argc, char **argv)
                 s_cars[k].body.landed = cr[0x148 + 0x203];
             }
         }
+#ifndef FX_FLOAT
+        if (drive && getenv("SIM_EVERY")) {          /* (a tick every k frames, k/30 s long) */
+            int every = atoi(getenv("SIM_EVERY"));
+            g_sim_dt = FX(0.033333335) * every;
+            g_sim_dtk = FX(1.0) * every;
+            if ((t / (2 * CARS)) % every != 0)
+                continue;
+        }
+#endif
         if (drive) {                                  /* steered back onto the cartridge's path */
             Car *c = &s_cars[slot];
             int ahead = t + 1 + 2 * CARS * 20, j;

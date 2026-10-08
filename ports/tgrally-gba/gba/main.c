@@ -621,7 +621,7 @@ static void race_enter(int wipe)
     hud_init();
     s_k = 0;
     race_start();                                    /* the cars on the grid */
-    s_tick_vbl = s_vbl - 2;
+    s_tick_vbl = s_vbl;
     for (i = 0; i < 128; i++)                        /* the menu's sprites off */
         ((volatile uint16_t *)0x07000000)[i * 4] = 2 << 8;
     s_sfx_trace = 0;
@@ -694,24 +694,27 @@ int main(void)
                as the frame took, three at most (behind further, the race slows) */
             int n = 0;
             uint32_t ts;
-            while ((int32_t)(s_vbl - s_tick_vbl) < 2)
-                ;
             t0c = clock32();
-            while ((int32_t)(s_vbl - s_tick_vbl) >= 2 && n < 3) {
+            while ((int32_t)(s_vbl - s_tick_vbl) >= 2 * RACE_TICKS && n < 2) {
                 race_tick(REG_KEYS);
-                s_tick_vbl += 2;
+                s_tick_vbl += 2 * RACE_TICKS;
                 n++;
             }
-            if ((int32_t)(s_vbl - s_tick_vbl) >= 2)
+            if ((int32_t)(s_vbl - s_tick_vbl) >= 2 * RACE_TICKS)
                 s_tick_vbl = s_vbl - 1;
             ts = clock32() - t0c;
-            g_stats[8] = ts;                         /* the ticks' cycles */
+            g_stats[8] = ts;
+            if (n == 0)
+                n = 1;                         /* the ticks' cycles */
             g_stats[9] = (uint32_t)n;
         }
         g_dstat[0] = clock32();
         ovl_load(OVL_DRAW);
         g_dstat[1] = clock32();
-        race_view(&s_frame);
+        {   /* the view between the last two ticks, by the retraces since the last */
+            int32_t a = ((int32_t)(s_vbl - s_tick_vbl) + 2 * RACE_TICKS) * (256 / (2 * RACE_TICKS));
+            race_view(&s_frame, a < 0 ? 0 : a > 256 ? 256 : a);
+        }
         f = &s_frame;
         g_dstat[2] = clock32();
         s_vis_list = race_cells(f);
