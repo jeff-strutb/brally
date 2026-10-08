@@ -8,6 +8,8 @@
  * RAM held it and the audio interface read it; BrMixSfx adds into it as the
  * original did, four samples at a time in one 64-bit register. */
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "plat.h"
 #include "tgr_core.h"
@@ -69,6 +71,7 @@ static uint8_t *ring_start(short *buf, int bytes, int32_t *first, int32_t *secon
 void BrMixMusic(short *buf, int bytes)
 {
     Voice *v = TGR_PTR(Voice *, MUSIC + 8);
+
     uint64_t a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
     uint64_t a3 = acc_of(&v[3]), a4 = acc_of(&v[4]), a5 = acc_of(&v[5]);
     int32_t n, rest;
@@ -132,8 +135,76 @@ void BrMixMusicVoice(short *buf, int bytes, int voice)
 static inline uint64_t rd64(const uint8_t *p) { return (uint64_t)tgr_rd32(p) << 32 | tgr_rd32(p + 4); }
 static inline void wr64(uint8_t *p, uint64_t v) { tgr_wr32(p, (uint32_t)(v >> 32)); tgr_wr32(p + 4, (uint32_t)v); }
 
+/* TGR_SNDDUMP=FILE: the effects voices once a retrace, for tools: 'F' frame, the
+ * effects level and fade, the lane mask, the second source, then six voices
+ * (pos, rate, baseVol, and the sample's start, length and loop); 'S' start
+ * length and the sample's bytes (and 0x800 after) the first time a start is seen;
+ * 'M' after each 'F': the music player */
+static void snd_dump(void)
+{
+    static FILE *f;
+    static int init;
+    static uint32_t last = 0xFFFFFFFF, seen[256];
+    static int nseen;
+    uint8_t *blk = TGR_PTR(uint8_t *, SFX);
+    const uint32_t *loops = TGR_PTR(const uint32_t *, 0x80378F50u);
+    Voice *v = (Voice *)(blk + 8);
+    uint32_t fr = tgr_frame(), w[8];
+    int i, k;
+    if (!init) {
+        init = 1;
+        if (getenv("TGR_SNDDUMP"))
+            f = fopen(getenv("TGR_SNDDUMP"), "wb");
+    }
+    if (!f || fr == last)
+        return;
+    last = fr;
+    for (i = 0; i < 6; i++) {
+        uint32_t st = loops[i * 3];
+        for (k = 0; k < nseen && seen[k] != st; k++)
+            ;
+        if (k == nseen && st && nseen < 256) {
+            uint32_t len = loops[i * 3 + 1] + 0x800;
+            seen[nseen++] = st;
+            fputc('S', f);
+            fwrite(&st, 4, 1, f);
+            fwrite(&len, 4, 1, f);
+            fwrite(TGR_PTR(uint8_t *, st), 1, len, f);
+        }
+    }
+    fputc('F', f);
+    w[0] = fr;
+    w[1] = *TGR_PTR(uint8_t *, 0x802A49CCu);
+    w[2] = *TGR_PTR(uint8_t *, 0x802A49D0u);
+    w[3] = *(uint32_t *)blk;
+    w[4] = *(uint32_t *)(blk + 4);
+    w[5] = *(uint32_t *)(blk + 0x98);
+    fwrite(w, 4, 6, f);
+    for (i = 0; i < 6; i++) {
+        w[0] = v[i].pos;
+        w[1] = v[i].frac;
+        w[2] = (uint32_t)(v[i].rate >> 32);
+        w[3] = (uint32_t)v[i].rate;
+        w[4] = (uint32_t)v[i].baseVol;
+        w[5] = loops[i * 3];
+        w[6] = loops[i * 3 + 1];
+        w[7] = loops[i * 3 + 2];
+        fwrite(w, 4, 8, f);
+    }
+    /* 'M': the music player as it stands: its six channels, its state, its six
+       voices, the instrument and pattern tables (32 each), as the game holds them */
+    fputc('M', f);
+    fwrite(TGR_PTR(uint8_t *, 0x80378DD0u), 1, 6 * 0x18, f);
+    fwrite(TGR_PTR(uint8_t *, 0x80378FA0u), 1, 0x14, f);
+    fwrite(TGR_PTR(uint8_t *, MUSIC + 8), 1, 6 * 0x18, f);
+    fwrite(TGR_PTR(uint8_t *, 0x803787D0u), 1, 32 * 4, f);
+    fwrite(TGR_PTR(uint8_t *, 0x803789D0u), 1, 32 * 4, f);
+}
+
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)
 {
+    snd_dump();
+    {
     uint8_t *blk = TGR_PTR(uint8_t *, SFX);
     Voice *v = (Voice *)(blk + 8);
     uint64_t a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
@@ -179,4 +250,5 @@ void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)
         rest = 0;
     }
     acc_set(&v[0], a0); acc_set(&v[1], a1); acc_set(&v[2], a2); acc_set(&v[3], a3); acc_set(&v[4], a4);
+    }
 }

@@ -5,6 +5,7 @@
  * it, at the rate the game set.  It goes into a ring the host's audio
  * callback drains, resampled to the device's rate.  The game paces itself on the modelled interface (os/io.c), never on
  * this ring, so audio cannot change what the game does. */
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "host.h"
@@ -79,10 +80,33 @@ int tgr_audio_buffered_ms(void)
     return s_open ? (int)((uint64_t)(s_w - s_r) * 1000 / (uint32_t)(s_devrate * (s_step > 0 ? s_step : 1))) : -1;
 }
 
+/* TGR_WAVDUMP=FILE@F0: what the game plays from retrace F0 on, raw 16-bit stereo
+ * (little-endian) at its rate, for tools */
+static void wav_dump(const uint8_t *b, int frames)
+{
+    static FILE *f;
+    static int init;
+    static unsigned from;
+    int i;
+    if (!init) {
+        char path[512];
+        init = 1;
+        if (getenv("TGR_WAVDUMP") && sscanf(getenv("TGR_WAVDUMP"), "%511[^@]@%u", path, &from) == 2)
+            f = fopen(path, "wb");
+    }
+    if (!f || tgr_frame() < from)
+        return;
+    for (i = 0; i < 2 * frames; i++) {
+        int16_t v = (int16_t)(b[2 * i] << 8 | b[2 * i + 1]);
+        fwrite(&v, 2, 1, f);
+    }
+}
+
 void tgr_audio_buffer(const int16_t *lr, int frames, int rate)
 {
     const uint8_t *b = (const uint8_t *)lr;
     int i;
+    wav_dump(b, frames);
     if (!s_open || rate <= 0)
         return;
     host_mutex_lock(s_m);

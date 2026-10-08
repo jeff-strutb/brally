@@ -23,6 +23,9 @@
 
 /* ---- debugging switches (environment, read once) ------------------------------ *
  *   TGR_RCPLOG=1         log each primitive's state to stderr
+ *   TGR_RAMDUMP=FILE@N   write the segment table and game memory at frame N (tools)
+ *   TGR_WORLDDUMP=FILE   record the world-placed triangles, the camera and the textures (tools)
+ *   TGR_HUDSTATE=FILE    record what the race HUD reads, each frame (tools)
  *   TGR_TEXDUMP=DIR      write every decoded texture as a PNG
  *   TGR_PIXEL=X,Y        (soft renderer) report each write to that pixel with
  *                        the triangle number the log gives
@@ -35,9 +38,71 @@ uint64_t host_ticks_ns(void);
 uint32_t tgr_rcp_frames;                            /* frames finished (TGR_STATS) */
 uint64_t tgr_rcp_end_ns, tgr_rcp_end_max_ns;        /* time in rdr_frame_end: the present */
 
+/* TGR_HUDSTATE=FILE: what the race HUD (racing/racehud.c) reads, once a finished
+ * frame, for tools: 'R' retrace, the mode and layout words, the laps, the view and
+ * panel, then the player car's fields the HUD prints (raw), its two messages
+ * (24 bytes each), and whether the view is the car's third camera; 'D' once: the
+ * car's model record (its dial) */
+extern void *D_8028AAF0[1], *D_8028AAF4[1];
+static void hud_state(void)
+{
+    static FILE *f;
+    static int init, dialed;
+    const uint8_t *car;
+    uint32_t w[24];
+    int i;
+    if (!init) {
+        init = 1;
+        if (getenv("TGR_HUDSTATE"))
+            f = fopen(getenv("TGR_HUDSTATE"), "wb");
+    }
+    car = (const uint8_t *)D_8028AAF0[0];
+    if (!f || !car)
+        return;
+    if (!dialed) {
+        int kind = *(const int *)(car + 0x205C);
+        dialed = 1;
+        fputc('D', f);
+        fwrite(TGR_PTR(uint8_t *, 0x8028AE0Cu + kind * 0x60), 1, 0x60, f);
+    }
+    w[0] = tgr_frame();
+    w[1] = *TGR_PTR(uint32_t *, 0x8026FF18u);     /* race mode */
+    w[2] = *TGR_PTR(uint32_t *, 0x8026FF10u);
+    w[3] = *TGR_PTR(uint32_t *, 0x802723D8u);     /* mph */
+    w[4] = *TGR_PTR(uint32_t *, 0x8028AB0Cu);     /* players' layout */
+    w[5] = *TGR_PTR(uint32_t *, 0x8028AA80u);     /* night */
+    w[6] = *TGR_PTR(uint32_t *, 0x8028B304u);     /* laps in the race */
+    for (i = 0; i < 4; i++)
+        w[7 + i] = TGR_PTR(uint32_t *, 0x8031B2C8u)[i];          /* view 0: x y w h */
+    w[11] = *TGR_PTR(uint16_t *, 0x8028C7B4u + 2);                /* its panel's height */
+    w[12] = *(const uint32_t *)(car + 0xF78);     /* laps */
+    w[13] = *(const uint32_t *)(car + 0xF80);     /* raceTime (the lap time shown) */
+    w[14] = *(const uint32_t *)(car + 0xF98);     /* best lap */
+    w[15] = *(const uint32_t *)(car + 0xFA0);     /* lapTime (the total shown) */
+    w[16] = *(const uint32_t *)(car + 0xFA4);     /* time left */
+    w[17] = *(const uint32_t *)(car + 0xFAC);     /* position */
+    w[18] = *(const uint32_t *)(car + 0xFE4);     /* speed */
+    w[19] = *(const uint32_t *)(car + 0xDF4);     /* revs */
+    w[20] = *(const uint32_t *)(car + 0xE38);
+    w[21] = *(const uint32_t *)(car + 0xE40);     /* rev lamp frame */
+    w[22] = *(const uint32_t *)(car + 0x205C);    /* kind */
+    w[23] = D_8028AAF4[0] == (const void *)(car + 0x1DF0 + 2 * 0x44);
+    fputc('R', f);
+    fwrite(w, 4, 24, f);
+    for (i = 0; i < 2; i++) {
+        uint32_t a = *(const uint32_t *)(car + (i ? 0xFB8 : 0xFB0));
+        char m[24];
+        memset(m, 0, sizeof m);
+        if (a)
+            strncpy(m, TGR_PTR(const char *, a), sizeof m - 1);
+        fwrite(m, 1, sizeof m, f);
+    }
+}
+
 static void frame_end(void)
 {
     uint64_t t0 = host_ticks_ns(), t;
+    hud_state();
     rdr_vi(tgr_vi_ctrl());
     rdr_frame_end();
     t = host_ticks_ns() - t0;
@@ -88,7 +153,7 @@ static int8_t s_lookat[2][3];
 static int s_fog_mul, s_fog_ofs;
 static struct { int on, tile, level; uint16_t ss, ts; } s_tex;
 
-typedef struct { RdrVtx v; float nx, ny, nz; int clip; } Vtx;
+typedef struct { RdrVtx v; float nx, ny, nz; int clip; float wx, wy, wz, ww; int world; uint32_t addr; } Vtx;
 static Vtx s_vtx[32];
 
 static void m4_mul(M4 *r, const M4 *a, const M4 *b)
@@ -174,6 +239,20 @@ static void load_vertices(uint32_t a, int n, int v0)
         v->v.z = cz;
         v->v.w = cw;
         v->clip = (cx < -cw) | (cx > cw) << 1 | (cy < -cw) << 2 | (cy > cw) << 3 | (cw < 0.001f) << 4;
+        v->world = !s_mvp_forced;                     /* the modelview places it in the world */
+        v->addr = p;
+        if (v->world) {
+            const M4 *w = &s_mv[s_mvn];
+            v->wx = x * w->m[0][0] + y * w->m[1][0] + z * w->m[2][0] + w->m[3][0];
+            v->wy = x * w->m[0][1] + y * w->m[1][1] + z * w->m[2][1] + w->m[3][1];
+            v->wz = x * w->m[0][2] + y * w->m[1][2] + z * w->m[2][2] + w->m[3][2];
+            v->ww = 1.0f;
+        } else {                                      /* a forced matrix: its clip position */
+            v->wx = cx;
+            v->wy = cy;
+            v->wz = cz;
+            v->ww = cw;
+        }
         if (s_geom & G_LIGHTING) {
             float n[3] = { (int8_t)c[0] / 127.0f, (int8_t)c[1] / 127.0f, (int8_t)c[2] / 127.0f };
             float r = s_light[s_nlights].col[0], g = s_light[s_nlights].col[1], b = s_light[s_nlights].col[2];
@@ -363,6 +442,8 @@ static void texel(int t, int x, int y, uint8_t out[4])
 #define TEXCACHE 512
 static struct { uint64_t key; int tex, w, h; uint32_t used; } s_cache[TEXCACHE];
 static uint32_t s_cache_clock;
+static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
+static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
 
 static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
 {
@@ -405,6 +486,7 @@ static int tile_texture(int t, int *pw, int *ph)
     for (i = 0; i < TEXCACHE; i++) {
         if (s_cache[i].tex && s_cache[i].key == key) {
             s_cache[i].used = ++s_cache_clock;
+            s_cur_key = key;
             *pw = s_cache[i].w;
             *ph = s_cache[i].h;
             return s_cache[i].tex;
@@ -418,6 +500,14 @@ static int tile_texture(int t, int *pw, int *ph)
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++)
             texel(t, x, y, rgba + (y * w + x) * 4);
+    s_cur_key = key;
+    if (s_wdump) {                                    /* 'X' key w h rgba: each texture once per decode */
+        int32_t wh[2] = { w, h };
+        fputc('X', s_wdump);
+        fwrite(&key, 8, 1, s_wdump);
+        fwrite(wh, 4, 2, s_wdump);
+        fwrite(rgba, 4, (size_t)w * h, s_wdump);
+    }
     if (s_cache[slot].tex)
         rdr_texture_free(s_cache[slot].tex);
     s_cache[slot].tex = rdr_texture(rgba, w, h);
@@ -751,6 +841,61 @@ static void triangle(int a, int b, int c)
     }
     frame_open();
     state(&st, s_tex.tile);
+    if (s_wdump) {
+        /* 'C' frame proj[16] vp[6] when the projection changes, then 'T' frame textured key world(bits)
+           xyzw[12] (world, or clip under a forced matrix) rgba[12] st[6] vertex addresses[3]
+           tile: s0 t0 sscale tscale, clamp s/t mirror s/t, mask s/t clamp w/h */
+        static uint32_t cam_frame = 0xFFFFFFFF;
+        static M4 cam_proj;
+        uint32_t fr = tgr_frame();
+        float rec[30];
+        int32_t textured = st.tile[0].tex != 0, world = v[0]->world | v[1]->world << 1 | v[2]->world << 2;
+        int q;
+        if (cam_frame != fr || memcmp(&cam_proj, &s_proj, sizeof s_proj)) {   /* each projection in use */
+            cam_frame = fr;
+            cam_proj = s_proj;
+            fputc('C', s_wdump);
+            fwrite(&fr, 4, 1, s_wdump);
+            fwrite(&s_proj, 4, 16, s_wdump);
+            fwrite(&s_vp, 4, 6, s_wdump);
+        }
+        for (q = 0; q < 3; q++) {
+            rec[q * 4] = v[q]->wx;
+            rec[q * 4 + 1] = v[q]->wy;
+            rec[q * 4 + 2] = v[q]->wz;
+            rec[q * 4 + 3] = v[q]->ww;
+            rec[12 + q * 4] = v[q]->v.r;
+            rec[13 + q * 4] = v[q]->v.g;
+            rec[14 + q * 4] = v[q]->v.b;
+            rec[15 + q * 4] = v[q]->v.a;
+            rec[24 + q * 2] = v[q]->v.s;
+            rec[25 + q * 2] = v[q]->v.t;
+        }
+        if (textured) {                               /* texel 0's own image, not the last tile looked up */
+            for (q = 0; q < TEXCACHE; q++)
+                if (s_cache[q].tex == st.tile[0].tex) {
+                    s_cur_key = s_cache[q].key;
+                    break;
+                }
+        }
+        fputc('T', s_wdump);
+        fwrite(&fr, 4, 1, s_wdump);
+        fwrite(&textured, 4, 1, s_wdump);
+        fwrite(&world, 4, 1, s_wdump);
+        fwrite(&s_cur_key, 8, 1, s_wdump);
+        fwrite(rec, 4, 30, s_wdump);
+        for (q = 0; q < 3; q++)
+            fwrite(&v[q]->addr, 4, 1, s_wdump);
+        {                                             /* how texel 0's tile maps the coordinates */
+            const RdrTile *tl = &st.tile[0];
+            float ft[4] = { tl->s0, tl->t0, tl->sscale, tl->tscale };
+            uint8_t fl[4] = { tl->clamp_s, tl->clamp_t, tl->mirror_s, tl->mirror_t };
+            int16_t mk[4] = { tl->mask_s, tl->mask_t, tl->clamp_w, tl->clamp_h };
+            fwrite(ft, 4, 4, s_wdump);
+            fwrite(fl, 1, 4, s_wdump);
+            fwrite(mk, 2, 4, s_wdump);
+        }
+    }
     if (s_log)
         fprintf(stderr, "tri #%d geom %08X omh %08X oml %08X cc %06X %08X tex %d %dx%d tex1 %d y %.2f %.2f %.2f w %.1f x %.1f %.1f %.1f zw %.3f %.3f %.3f w %.2f %.2f %.2f\n",
                 tgr_rcp_tri, s_geom, s_omh, s_oml, s_cc0, s_cc1, st.tile[0].tex, st.tile[0].w, st.tile[0].h, st.tile[1].tex,
@@ -1113,6 +1258,8 @@ void tgr_rcp_task(uint32_t dl)
     if (!inited) {
         s_log = getenv("TGR_RCPLOG") != NULL;
         s_texdump = getenv("TGR_TEXDUMP");
+        if (getenv("TGR_WORLDDUMP"))
+            s_wdump = fopen(getenv("TGR_WORLDDUMP"), "wb");
         if (getenv("TGR_ONLYTRIS"))
             s_only = atoi(getenv("TGR_ONLYTRIS"));
         if (getenv("TGR_SKIPTRIS"))
@@ -1130,6 +1277,21 @@ void tgr_rcp_task(uint32_t dl)
     s_mvn = 0;                                        /* each task starts the matrix stack at the
                                                          task's dram_stack base */
     run(dl);
+    if (getenv("TGR_RAMDUMP")) {                      /* FILE@FRAME: game memory and the segments, once */
+        static int done;
+        const char *e = getenv("TGR_RAMDUMP"), *at = strchr(e, '@');
+        if (!done && at && tgr_frame() >= (uint32_t)atoi(at + 1)) {
+            char path[512];
+            FILE *f;
+            snprintf(path, sizeof path, "%.*s", (int)(at - e), e);
+            if ((f = fopen(path, "wb"))) {
+                fwrite(s_seg, 4, 16, f);
+                fwrite(tgr_rdram, 1, 0x800000, f);
+                fclose(f);
+            }
+            done = 1;
+        }
+    }
     if (s_frame_open) {
         frame_end();
         s_frame_open = 0;
