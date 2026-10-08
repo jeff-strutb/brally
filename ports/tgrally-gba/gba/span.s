@@ -40,8 +40,8 @@ irq_vblank:
         mov     r2, #1
         strh    r2, [r3, #2]            @ IF: the blank answered
         stmfd   sp!, {lr}
+        bl      snd_vblank              @ the sound first: its buffers swap at the blank, to the sample (sound.s)
         bl      hud_vblank              @ the HUD's sprites, in the blank (hud.s)
-        bl      snd_vblank              @ the sound (sound.s)
         ldmfd   sp!, {lr}
         bx      lr
         .ltorg
