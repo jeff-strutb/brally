@@ -79,9 +79,21 @@ void tgr_gfx_task(uint32_t dl)
         dl_digest(dl, d);
         tgr_trace("gfx", "%s", d);
     }
-    if (!g_tgr.headless || g_tgr.shot_dir)     /* drawn only if a window or a shot will show it */
+    if (!getenv("TGR_NODRAW"))
         tgr_rcp_task(dl);
 }
 
-void tgr_gfx_swap(uint32_t fb) { s_fb = fb; }
-void tgr_gfx_present(void) {}
+void tgr_rcp_swap(uint32_t fb);
+void tgr_rcp_present(uint32_t frame);
+
+void tgr_gfx_swap(uint32_t fb)
+{
+    s_fb = fb;
+    tgr_rcp_swap(fb);
+}
+
+/* the retrace: the newest drawn frame is shown */
+void tgr_gfx_present(void)
+{
+    tgr_rcp_present(tgr_frame());
+}

@@ -277,11 +277,18 @@ FILE *fopen(const char *path, const char *mode)
     return &s_files[i];
 }
 
+/* stdout and stderr also go to a host file (ps1_log_open): DuckStation's
+ * log of the TTY is not flushed when it is stopped */
+static int s_logfd = -1;
+void ps1_log_open(const char *name) { s_logfd = pcdrv_creat(name); }
+
 int fflush(FILE *f)
 {
     if (f->tty) {
         f->buf[f->n] = 0;
         ps1_tty(f->buf);
+        if (s_logfd >= 0 && f->n)
+            pcdrv_write(s_logfd, f->buf, f->n);
     } else if (f->n) {
         pcdrv_write(f->fd - 1, f->buf, f->n);
     }

@@ -15,6 +15,7 @@ uint32_t ps1_gp(void);
 void     ps1_fatal(const char *msg) __attribute__((noreturn));
 int      ps1_pad_read(host_pad *p);
 void     ps1_tty(const char *s);
+void     ps1_log_open(const char *name);  /* stdout and stderr to a host file too */
 void     ps1_hw_init(void);
 void     ps1_exc_install(void);      /* the port's exception vector (hw/exc.s, hw/irq.c) */
 void     ps1_flush_icache(void);

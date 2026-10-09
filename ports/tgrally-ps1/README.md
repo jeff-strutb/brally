@@ -32,7 +32,8 @@ dev-kit's 8 MB; the retail console's 2 MB is the target.
 | `hw/ps1hw.c` | the clock (root counter 1 counting lines), the TTY |
 | `os/main_ps1.c` | power-on: `run.cfg`, the data lifted, `BrBoot` |
 | `os/io_ps1.c`, `os/lift_ps1.c` | the native port's io.c and lift.c with the cartridge's data read from a file |
-| `gfx/` | each graphics task's digest for the trace; the GTE and GPU renderer (to come) |
+| `gfx/` | each graphics task's digest for the trace; `rcp_ps1.c` the display lists drawn by the GPU (below) |
+| `hw/gpu.c` | the GPU: 320 x 240 double-buffered or 640 x 480 interlaced (the menus), linked-list DMA, VRAM reads for frame dumps |
 | `libc/` | the C library: strings, a heap, files over PCDRV, `sqrtf` correctly rounded (every float checked against the host's) |
 
 ## Checking it
@@ -49,3 +50,25 @@ recompiler stops with SIGILL on this game for now.
 
 As of the first run: the Options script (`tools/tgrally/n64box_scripts/options.txt`,
 5,062 retraces) is identical to the native port's, line for line.
+
+## The renderer (in progress)
+
+`gfx/rcp_ps1.c` interprets the F3DEX display lists: matrices and vertices on
+the CPU in the RSP's s15.16, the combiner reduced per vertex to "texel times
+a colour" or "a colour", depth-tested runs sorted in an ordering table,
+textures keyed by the TMEM loads that filled them and decoded into 4/8-bit
+CLUT or 15-bit textures in VRAM. `TGR_SHOT_AT=F1,F2` in `run.cfg` dumps the
+shown frame at those retraces (`shotNNNNN_WxH.raw`, `tools/shot2png.py`).
+
+State: the title screen and the menus draw, close to the native port's.
+Open:
+- The VRAM shelf allocator (wide textures span pages; texrects are split per
+  page) shows the menu background right, but text and logos on the Options
+  screen pick up wrong texels: textures reused or overwritten within a frame
+  (the earlier per-page allocator drew text right and the background wrong).
+- TEXEL1 used as a lerp factor (the fonts' colour gradient: a 1-texel ramp in
+  tile t+1, 2-cycle): to be sampled per vertex.
+- Textured colour should be the combiner at texel 1 (a + b), not a alone.
+- The A/B button circles (triangles over 4x1 RGBA16 swatches) do not show.
+- Not yet: the GTE for vertices, near-plane and large-polygon clipping,
+  texture wrap (texture windows), fog, the SPU, the CD, 2 MB.

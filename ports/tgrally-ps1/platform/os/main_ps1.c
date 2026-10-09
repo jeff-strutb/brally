@@ -69,6 +69,7 @@ int main(void)
 {
     ps1_hw_init();
     pcdrv_init();
+    ps1_log_open("stderr.txt");
     config();
     tgr_log("tgr: config\n");
     {
