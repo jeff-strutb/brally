@@ -8,6 +8,7 @@
 #include "plat.h"
 #include "tgr_core.h"
 #include "sha1.h"
+#include "tgr_touch.h"
 
 int32_t  osTvType = 1;              /* NTSC */
 uint32_t osMemSize = 0x400000;      /* 4 MB, no Expansion Pak */
@@ -111,6 +112,7 @@ void osSpTaskLoad(OSTask *task)
 {
     tgr_os_lock();
     if (task->t.type == M_GFXTASK) {
+        tgr_touch_built();                  /* the tap targets go with this frame */
         tgr_gfx_task(task->t.data_ptr);
         tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
         tgr_post_event_at(tgr_count() + 2, OS_EVENT_DP);

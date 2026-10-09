@@ -16,7 +16,7 @@ P=ports/tgrally/platform
 CFLAGS="-O2 ${GFLAG:--g} -Wno-everything -Werror=implicit-function-declaration -Werror=implicit-int \
   -Werror=incompatible-library-redeclaration -Werror=int-conversion -Werror=pointer-to-int-cast -Werror=int-to-pointer-cast -Werror=void-pointer-to-int-cast -Werror=int-to-void-pointer-cast -Werror=incompatible-function-pointer-types -Wno-error=int-to-pointer-cast-not-really -fno-strict-aliasing -fwrapv -ffp-contract=off \
   -fno-common -ferror-limit=0 -fno-builtin-sinf -fno-builtin-cosf ${WARN} \
-  -Iports/tgrally/include -I$P/include -include $P/include/ultra64.h -include $P/include/tgr_core.h -DTGR_CORE -include $P/include/tgr_libc.h"
+  -Iports/tgrally/include -I$P/include -Iports/brally/platform/host -include $P/include/ultra64.h -include $P/include/tgr_core.h -DTGR_CORE -include $P/include/tgr_libc.h"
 export CC CFLAGS OUT
 mkdir -p $OUT/obj
 $PY ports/tgrally/tools/globals.py >&2

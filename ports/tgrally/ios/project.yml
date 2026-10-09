@@ -1,0 +1,48 @@
+# The iPhone app (xcodegen): the Swift host in Sources over libgames.a (Top
+# Gear Rally and Boss Rally, each behind its entry points) and Boss Rally's
+# disc data (Resources/disc), which build.sh makes. It generates the project into
+# build/tgrally/ios-metal (paths here are relative to that folder) and
+# builds, signs and installs it.
+name: TopGearRally
+options:
+  bundleIdPrefix: com.strutb
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: "7892TK9529"
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+targets:
+  TopGearRally:
+    type: application
+    platform: iOS
+    sources:
+      - path: ../../../ports/tgrally/ios/Sources
+      - path: disc
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.strutb.tgrally
+        PRODUCT_NAME: "Top Gear Rally"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/tgrally/ios/Sources/Bridge.h"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)"
+        OTHER_LDFLAGS: "-lgames -lz -lc++"
+        ENABLE_BITCODE: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: "$(SRCROOT)/Info.plist"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: "Top Gear Rally"
+        CFBundleShortVersionString: "1.0"
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationLandscapeLeft]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiredDeviceCapabilities: [arm64, metal]

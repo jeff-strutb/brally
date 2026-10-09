@@ -401,9 +401,12 @@ static void trace_window(void)
 }
 
 /* BrAppFrame's entry: one script frame */
+void plat_race_frame(void);         /* race_handoff.c */
+
 void plat_app_frame(void)
 {
     int i;
+    plat_race_frame();
     trace_window();
     dump_window();
     if (!s_loaded)

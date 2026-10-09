@@ -27,6 +27,12 @@ enum tgr_flag {
      * its own shape at the window's edges.  Off: the N64's 4:3 picture,
      * letterboxed or pillarboxed. */
     TGR_FLAG_ANY_ASPECT,
+    /* races run by Boss Rally's engine: the menus are Top Gear Rally's, and
+     * each race the player starts is handed to Boss Rally (the same tracks;
+     * host_race.h, src/racing/handoff.c), its outcome taken back into the
+     * results, the season and the records.  Only where the host carries Boss
+     * Rally (the iPhone app); elsewhere, and off, the race is the N64's. */
+    TGR_FLAG_BR_RACES,
     TGR_FLAG_COUNT
 };
 
@@ -43,6 +49,10 @@ void tgr_view_scale(float *kx, float *ky);
 /* the race's views are being drawn (racing/racetick.c, port): only their
  * cameras are widened (the car select's and the paint shop's are not) */
 void tgr_view_race(int on);
+/* 1 while a race is being driven: its views drawn within the last few
+ * retraces and the race not paused (a touch host steers then; elsewhere a
+ * touch is a menu's swipe or tap) */
+int  tgr_view_driving(void);
 
 /* the game's camera (drawing/frameloop.c, port): the lens and the culling
  * wedge of a view.  fovy in degrees and aspect as the game makes them, kept

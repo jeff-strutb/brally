@@ -3,6 +3,7 @@
 #include "tgr/common.h"
 #include "tgr/gbi.h"
 #include "tgr/pad.h"
+#include "tgr_touch.h"                 /* port: tap targets */
 
 /* -- declarations -- */
 #include "tgr/image.h"
@@ -188,6 +189,9 @@ void BrPakManager(void)
           BrTextSetColours(0x80, 0xff, 0x80, 0, 0xff, 0);
         } else {
           BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
+        }
+        if (D_8036A064 != 0) {
+          tgr_touch_row(i, D_8036A061);  /* port: a tap target (tgr_touch.h) */
         }
         BrTextPrint((char *)name, 0x62, i * 9 + y);
         sprintf(num, "%d", D_8036A070[i].file_size >> 8);

@@ -346,6 +346,7 @@ void BrTextSetFont(int font);
 void BrTextPrint(char *s, int x, int y);
 void BrCarStatBarDraw(int x, int y, int w, int h, float frac);
 void BrFrontPromptSelect(void);
+#include "tgr_touch.h"
 void BrFrontPromptContinue(void);
 void BrFadeBarsDraw(void);
 void BrPerfMeterDraw(void);
@@ -881,6 +882,9 @@ void BrCarSelect(void)
                          *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
       }
     } else {
+      if (D_803162B0[0] != 6) {
+        tgr_touch_carousel();           /* port: tap targets (tgr_touch.h) */
+      }
       BrTextSetFont(20);
       if (D_80272070 != 0) {
         sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(0)->x2058].name));

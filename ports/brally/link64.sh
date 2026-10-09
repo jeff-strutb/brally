@@ -2,7 +2,9 @@
 # Link the portable 64-bit game: the core (build64.sh), the data lifted from
 # the user's BRGlide.dll (tools/brally/datalift.py, generated under build/), and
 # the platform layer for one host.
-#   env: HOST   null (default, headless) | macos | windows
+#   env: HOST   null (default, headless) | macos | windows | ios (a static library,
+#               libbrally.a, for the iPhone app in ports/tgrally/ios: the host
+#               is its Swift code, and main() is br_main, run on a thread of the app's)
 #        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
 #               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
 #               on macOS it runs on MoltenVK)
@@ -37,6 +39,8 @@ python3 ports/brally/tools/datalift.py ${DLL:+--dll "$DLL"} $([ "${IMAGE:-embed}
 ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 # the script commands that read the game (core types, so core flags)
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
+# races run for another game's menus (host_race.h): core types too
+ports/brally/build64.sh ports/brally/platform/common/race_handoff.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
       $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c \
@@ -64,6 +68,7 @@ case "$HOST" in
   null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c";;
   windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
            LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
+  ios)   SRCS="$SRCS $OSHOST";;                  # the app's Swift (ports/tgrally/ios)
   macos) SRCS="$SRCS $OSHOST $P/host/macos/host_macos.m"
          LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
 esac
@@ -71,6 +76,7 @@ OBJS=""
 for s in $SRCS; do
   o=$OUT/plat/$(basename "$s").o
   case "$s" in *.m) X="-x objective-c -fobjc-arc";; *) X="";; esac
+  [ "$HOST" = ios ] && [ "$s" = $P/common/main.c ] && X=-Dmain=br_main    # UIKit owns main()
   if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ]; then
     # the OS layer sees the real system headers, not the game's Win32 surface
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$P/host -c "$s" -o "$o"
@@ -82,6 +88,12 @@ done
 if [ -n "$EXE" ]; then          # Windows: name, version and manifest
   ports/brally/platform/host/windows/game_rc.sh "Boss Rally" "Boss Rally.exe" $OUT/plat/game.res.o
   OBJS="$OBJS $OUT/plat/game.res.o"
+fi
+if [ "$HOST" = ios ]; then
+  rm -f $OUT/libbrally.a
+  ar rcs $OUT/libbrally.a $OUT/obj/*.o $OBJS
+  echo "archived $OUT/libbrally.a (host ios, renderer $RENDER)"
+  exit 0
 fi
 $LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/brally64$EXE (host $HOST, renderer $RENDER)"

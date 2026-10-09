@@ -11,6 +11,7 @@
 #include "host.h"
 #include "plat.h"
 #include "tgr_view.h"
+#include "tgr_touch.h"
 
 enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
        B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
@@ -214,6 +215,7 @@ void tgr_input_frame(uint32_t frame)
                 tgr_profile_toggle();
             s_view = v;
         }
+        tgr_touch_input(&b, &x, &y);              /* a touch's presses (tgr_touch.h) */
         s_now[0].b = b;
         s_now[0].x = (int8_t)x;
         s_now[0].y = (int8_t)y;

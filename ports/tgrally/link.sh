@@ -2,7 +2,9 @@
 # Link Top Gear Rally: the core (build.sh), the symbol table and arena
 # generated from the source (tools/globals.py), the platform layer, and one
 # host (shared with the Boss Rally port: ports/brally/platform/host).
-#   env: HOST    null (default, headless) | macos | windows
+#   env: HOST    null (default, headless) | macos | windows | ios (a static library,
+#                libtgrally.a, for the iPhone app in ports/tgrally/ios: the host is
+#                its Swift code, and main() is tgr_main, run on a thread of the app's)
 #        RENDER  null (default) | soft | metal (needs HOST=macos) | vulkan (Windows; on
 #                macOS through MoltenVK: VULKAN_SDK, else Homebrew's)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
@@ -48,7 +50,7 @@ else
   BLOB=
 fi
 
-SRCS="$P/os/addr.c $P/os/romdata.c $P/os/lift.c $P/os/thread.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/view.c $P/os/trace.c $P/os/sha1.c \
+SRCS="$P/os/addr.c $P/os/romdata.c $P/os/lift.c $P/os/thread.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/view.c $P/os/touch.c $P/os/trace.c $P/os/sha1.c \
       $P/audio/mixer.c $P/audio/out.c $P/gfx/gfx.c $P/gfx/rcp.c $P/libc/xprintf.c $P/libc/bstring.c \
       ports/brally/platform/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
@@ -85,6 +87,7 @@ case "$HOST" in
   null)  SRCS="$SRCS $H/null/host_null.c";;
   macos) SRCS="$SRCS $H/macos/host_macos.m"
          LIBS="$LIBS -framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -framework AVFoundation";;
+  ios)   ;;                                    # the app's Swift (ports/tgrally/ios)
   windows) SRCS="$SRCS $H/windows/host_windows.c"
            LIBS="$LIBS -lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
   *) echo "link: unknown HOST $HOST" >&2; exit 2;;
@@ -93,6 +96,7 @@ OBJS=
 for s in $SRCS; do
   o=$OUT/plat/$(echo "$s" | sed 's#/#__#g').o
   case "$s" in */render/metal/*) XF=-fobjc-arc;; *) XF=;; esac   # the Metal renderer is ARC
+  [ "$HOST" = ios ] && [ "$s" = $P/os/main.c ] && XF=-Dmain=tgr_main   # UIKit owns main()
   if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ]; then
     # the OS layer sees the real system headers, not the game's
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H -c "$s" -o "$o"
@@ -106,6 +110,12 @@ CORE=$(sed "s#ports/tgrally/src/##; s#/#__#g; s#^#$OUT/obj/#; s#\$#.o#" $OUT/tus
 if [ -n "$EXE" ]; then          # Windows: name, version and manifest
   $H/windows/game_rc.sh "Top Gear Rally" "Top Gear Rally.exe" $OUT/plat/game.res.o
   OBJS="$OBJS $OUT/plat/game.res.o"
+fi
+if [ "$HOST" = ios ]; then
+  rm -f $OUT/libtgrally.a
+  ar rcs $OUT/libtgrally.a $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS
+  echo "archived $OUT/libtgrally.a (host ios, renderer $RENDER)"
+  exit 0
 fi
 $LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/tgrally$EXE (host $HOST, renderer $RENDER)"

@@ -21,6 +21,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int, 
 void BrModeSet(void (*fn)(void));
 void BrMainMenu(void);
 void BrTrackSelectScreen(void);
+int tgr_race_handoff_on(void);          /* port: racing/handoff.c */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw one row of the 1P/2P select screen; when the row needs
@@ -60,6 +61,10 @@ void BrPlayerSelectScreen(void)
       D_80316394 = 0;
     }
     D_802723C4 = 1;
+  }
+  if (tgr_race_handoff_on()) {           /* port: one player only (racing/handoff.c) */
+    D_80316390 = 1;
+    D_80316394 = 0;
   }
   if (D_8036A8E0[0].absent != 0 || D_8036A8E0[1].absent != 0) {
     D_802723B8[1]->flags |= 8;

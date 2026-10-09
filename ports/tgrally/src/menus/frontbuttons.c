@@ -71,6 +71,7 @@ Mtx *BrMtxAlloc(void);
 void guRotateF(float mf[4][4], float a, float x, float y, float z);
 void guMtxF2L(float mf[4][4], Mtx *m);
 void BrMenuRingDraw(void);
+#include "tgr_touch.h"
 void BrMenuBackdropDraw(void);
 void BrAnimUpdate(void *set);
 void BrMenuIconDraw(int, float, float, float, float);
@@ -251,6 +252,10 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
       guMtxF2L(D_8031AB10, mtx);
       gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
       BrMenuRingDraw();
+      tgr_touch_carousel();             /* port: tap targets (tgr_touch.h) */
+      if (items[D_80316244]->flags & 1) {
+        tgr_touch_value_row();
+      }
       row = D_80316244;
       do {
         row = (row + n - 1) % n;

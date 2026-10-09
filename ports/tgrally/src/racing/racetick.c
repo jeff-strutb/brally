@@ -16,6 +16,7 @@
 #include "tgr/car.h"
 #include "tgr/pad.h"
 #include "tgr/menu.h"
+#include "tgr_touch.h"                 /* port: tap targets */
 #include "tgr/season.h"
 #include "tgr/vec.h"
 
@@ -194,6 +195,7 @@ void BrSeasonPickRace(void);
 void BrIntroScreen(void);
 void BrTimeFormat(char *psz, float t);
 void BrResultsRun(void);
+int BrRaceHandoff(void);               /* port: racing/handoff.c */
 void BrMainMenu(void);
 void BrMusicVolumeUp(void);
 void BrMusicVolumeDown(void);
@@ -374,6 +376,9 @@ void BrRaceTick(void)
   int kb8;
   int kbc;
 
+  if (BrRaceHandoff()) {                /* port: the race run by Boss Rally (racing/handoff.c) */
+    return;
+  }
   if (D_802707C8 == 0) {
     D_8028A884 = 1;
     osViBlack(1);
@@ -1308,16 +1313,21 @@ draw:
       BrTextPrint("%ryPAUSED", x, D_8028AAB4 * 5 / 16);
       y = D_8028AAB4 * 5 / 11;
       BrTextSetFont(20);
+      tgr_touch_row(0, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
       BrTextPrint(D_8026FF14 == 0 ? "%y1Continue" : "%ryContinue", x, y);
       y += 20;
+      tgr_touch_row(1, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
       BrTextPrint(D_8026FF14 == 1 ? "%y1Restart Race" : "%ryRestart Race", x, y);
       y += 20;
+      tgr_touch_row(2, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
       sprintf(D_80315DD8, "%sBGM Volume: %d", D_8026FF14 == 2 ? "%y1" : "%ry", D_802723D0);
       BrTextPrint(D_80315DD8, x, y);
       y += 20;
+      tgr_touch_row(3, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
       sprintf(D_80315DD8, "%sSFX Volume: %d", D_8026FF14 == 3 ? "%y1" : "%ry", D_802723D4);
       BrTextPrint(D_80315DD8, x, y);
       y += 20;
+      tgr_touch_row(4, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
       BrTextPrint(D_8026FF14 == 4 ? "%y1Exit to Main Menu" : "%ryExit to Main Menu", x, y);
       y += 20;
     }

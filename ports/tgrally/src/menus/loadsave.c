@@ -20,6 +20,7 @@
 
 /* -- declarations -- */
 #include "tgr/image.h"
+#include "tgr_touch.h"                 /* port: tap targets */
 extern BrImage D_8028CB40;      /* the background */
 extern BrImage D_8028CB70;      /* the panel */
 extern BrImage D_8028D0B0;      /* the A button */
@@ -221,6 +222,7 @@ void BrLoadSaveScreen(void)
       } else {
         BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
       }
+      tgr_touch_row(i, D_80272550);     /* port: a tap target (tgr_touch.h) */
       BrTextPrint(labels[i], 158, 87 + i * 18);
     }
     BrImageDrawAt(&D_8028D0B0, 202, 432);

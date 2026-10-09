@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "plat.h"
+#include "tgr_touch.h"
 #include "tgr_addr.h"
 #include "tgr_view.h"
 #include "../render/rdr.h"
@@ -101,10 +102,12 @@ static void hud_state(void)
 }
 
 static void rec_flush(void);
+static void touch_shown(void);
 
 static void frame_end(void)
 {
     uint64_t t0 = host_ticks_ns(), t;
+    touch_shown();
     rec_flush();
     hud_state();
     rdr_vi(tgr_vi_ctrl());
@@ -728,6 +731,9 @@ static int s_kind;              /* what the loaded projection draws (K_*) */
 static int s_rec;               /* this frame is recorded */
 static int s_race;              /* ... and a race view was drawn in it, its lens kx by ky */
 static float s_kx = 1, s_ky = 1;
+
+/* the frame's tap targets are on the screen, in its shape (tgr_touch.h) */
+static void touch_shown(void) { tgr_touch_shown((float)s_fb_w, (float)s_fb_h, s_rec && s_race, s_kx, s_ky); }
 static float s_mirror_clip[4];
 static int s_mirror_ok;
 static Rec *s_recs;

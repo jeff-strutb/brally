@@ -15,6 +15,7 @@ static const struct {
     unsigned char value[PROFILE_COUNT]; /* original, remastered */
 } k_flags[TGR_FLAG_COUNT] = {
     [TGR_FLAG_ANY_ASPECT] = { "ANY_ASPECT", { 0, 1 } },
+    [TGR_FLAG_BR_RACES] = { "BR_RACES", { 0, 1 } },
 };
 
 static const char *const k_profiles[PROFILE_COUNT] = { "original", "remastered" };
@@ -88,8 +89,23 @@ void tgr_view_scale(float *kx, float *ky)
 
 static float s_kx = 1, s_ky = 1;        /* the scale the last lens was made for */
 static int s_race;
+static volatile uint32_t s_race_at;     /* the retrace the race's views were last drawn at, + 1 */
 
-void tgr_view_race(int on) { s_race = on; }
+uint32_t tgr_frame(void);
+extern int D_8026FF10;                  /* the race is paused */
+
+void tgr_view_race(int on)
+{
+    s_race = on;
+    if (on)
+        s_race_at = tgr_frame() + 1;
+}
+
+int tgr_view_driving(void)
+{
+    uint32_t at = s_race_at;
+    return at && tgr_frame() + 1 - at < 8 && !D_8026FF10;
+}
 
 void tgr_view_lens(float *fovy, float *aspect, int mirror)
 {
