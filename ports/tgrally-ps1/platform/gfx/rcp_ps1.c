@@ -4916,6 +4916,125 @@ static int nm_why(const Dlc *d, const DlcVar *v)    /* (TGR_PERF: why a variant 
 
 /* the mesh of a variant whose every triangle has its draw kept (none fogged):
  * NULL while it cannot be one */
+/* a mesh's state commands (run after it draws, for what comes next) cut to
+ * their net effect, in place: the geometry mode and the two other-mode words
+ * each one and/or (0x00 pairs at the end: the and, then the or applied); a
+ * colour, combine, texture or fill command dropped when a later one of its
+ * kind follows; a tile's size when a later size of the tile follows; a
+ * tile's descriptor or the texture image when a later one follows with no
+ * load between that reads it; loads and the rest kept in order */
+static int st_compress(uint32_t *st, int n)
+{
+    uint8_t keep[600];
+    uint32_t gand = ~0u, gor = 0, oand[2] = { ~0u, ~0u }, oor[2] = { 0, 0 };
+    int i, k, m = 0, hg = 0, ho[2] = { 0, 0 }, f5[8], f2[8], fd = 0;
+    uint8_t seen[256];
+    if (n > 600)
+        return n;
+    memset(seen, 0, sizeof seen);
+    memset(f5, 0, sizeof f5);
+    memset(f2, 0, sizeof f2);
+    for (i = n - 1; i >= 0; i--) {              /* (backwards: what follows each command) */
+        uint32_t w0 = st[i * 2], w1 = st[i * 2 + 1];
+        int op = (int)(w0 >> 24), t = (int)((w1 >> 24) & 7);
+        keep[i] = 1;
+        switch (op) {
+        case 0xB6: case 0xB7: case 0xB9: case 0xBA: case 0xEF:
+            keep[i] = 0;                        /* (composed below) */
+            break;
+        case 0xFC: case 0xFA: case 0xFB: case 0xF9: case 0xF8: case 0xF7: case 0xBB:
+            if (seen[op])
+                keep[i] = 0;
+            seen[op] = 1;
+            break;
+        case 0xF2:
+            if (f2[t])
+                keep[i] = 0;
+            f2[t] = 1;
+            break;
+        case 0xF5:
+            if (f5[t])
+                keep[i] = 0;
+            f5[t] = 1;
+            break;
+        case 0xFD:
+            if (fd)
+                keep[i] = 0;
+            fd = 1;
+            break;
+        case 0xF3: case 0xF4: case 0xF0:
+            f5[t] = 0;                          /* (it reads its tile's descriptor and the image) */
+            fd = 0;
+            break;
+        default:
+            break;
+        }
+    }
+    for (i = 0; i < n; i++) {                   /* (forwards: the modes composed) */
+        uint32_t w0 = st[i * 2], w1 = st[i * 2 + 1];
+        int op = (int)(w0 >> 24);
+        if (op == 0xB6) {
+            gand &= ~w1;
+            gor &= ~w1;
+            hg = 1;
+        } else if (op == 0xB7) {
+            gor |= w1;
+            hg = 1;
+        } else if (op == 0xB9 || op == 0xBA) {
+            int sh = (w0 >> 8) & 0xFF, len = w0 & 0xFF, r = op == 0xBA;
+            uint32_t mask = (len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1)) << sh;
+            oand[r] &= ~mask;
+            oor[r] = (oor[r] & ~mask) | w1;
+            ho[r] = 1;
+        } else if (op == 0xEF) {
+            oand[0] = oand[1] = 0;
+            oor[1] = w0 & 0xFFFFFF;
+            oor[0] = w1;
+            ho[0] = ho[1] = 1;
+        }
+    }
+    for (i = 0; i < n; i++)
+        if (keep[i]) {
+            st[m * 2] = st[i * 2];
+            st[m * 2 + 1] = st[i * 2 + 1];
+            m++;
+        }
+    for (k = 0; k < 3; k++) {
+        uint32_t a = k == 0 ? gand : oand[k - 1], o = k == 0 ? gor : oor[k - 1];
+        if (!(k == 0 ? hg : ho[k - 1]))
+            continue;
+        st[m * 2] = (uint32_t)(k + 1);          /* (0x00: 1 geometry, 2 other-mode low, 3 high) */
+        st[m * 2 + 1] = a;
+        m++;
+        st[m * 2] = 0x100u | (uint32_t)(k + 1);
+        st[m * 2 + 1] = o;
+        m++;
+    }
+    return m;
+}
+
+/* a mesh's state commands run (st_compress's form) */
+static void st_replay(const uint32_t *st, int n)
+{
+    uint32_t a = 0;
+    int i;
+    for (i = 0; i < n; i++) {
+        uint32_t w0 = st[i * 2], w1 = st[i * 2 + 1];
+        if (w0 >> 24)
+            exec_state((int)(w0 >> 24), w0, w1);
+        else if (!(w0 & 0x100))
+            a = w1;
+        else if ((w0 & 3) == 1)
+            s_geom = (s_geom & a) | w1;
+        else if ((w0 & 3) == 2)
+            s_oml = (s_oml & a) | w1;
+        else
+            s_omh = (s_omh & a) | w1;
+    }
+    s_dstamp++;
+    s_texgen++;
+}
+
 static NMesh *nm_build(const Dlc *d, const DlcVar *v)
 {
     NMesh *nm;
@@ -4943,7 +5062,7 @@ static NMesh *nm_build(const Dlc *d, const DlcVar *v)
         nm->bat = (NBat *)dlc_alloc_in(&mem, nb * (int)sizeof(NBat));
         nm->tri = (NTri *)dlc_alloc_in(&mem, d->ntri * (int)sizeof(NTri));
         words = (uint32_t *)dlc_alloc_in(&mem, d->ntri * 12 * 4);
-        nm->st = (const uint32_t *)dlc_alloc_in(&mem, nst * 8 + 4);
+        nm->st = (const uint32_t *)dlc_alloc_in(&mem, (nst + 6) * 8 + 4);   /* (and room for the composed modes) */
         nm->mem = mem;
         if (!nm->bat || !nm->tri || !words || !nm->st) {
             nm_free(nm);
@@ -5038,6 +5157,7 @@ static NMesh *nm_build(const Dlc *d, const DlcVar *v)
             nt3->idx = (uint32_t)ia | (uint32_t)ib << 5 | (uint32_t)ic << 10 | (uint32_t)t->prim << 15 | fl << 24;
         }
     }
+    nm->nst = st_compress((uint32_t *)nm->st, nm->nst);
     return nm;
 }
 
@@ -5308,12 +5428,7 @@ static int nm_draw(const Dlc *d, DlcVar *v)
     s_nmempty[1]++;
     {
         uint32_t c0 = ST_NOW();
-        for (i = 0; i < nm->nst; i++) {
-            uint32_t q = ST_NOW();
-            exec_state((int)(nm->st[i * 2] >> 24), nm->st[i * 2], nm->st[i * 2 + 1]);
-            s_stop[nm->st[i * 2] >> 24] += (ST_NOW() - q) & 0xFFFF;
-            s_stopn[nm->st[i * 2] >> 24]++;
-        }
+        st_replay(nm->st, nm->nst);
         ST_ADD(6, c0);
     }
     return 1;
