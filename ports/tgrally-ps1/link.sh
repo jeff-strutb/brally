@@ -32,7 +32,7 @@ sed 's/^\.space 0x800000/.space 0x400000/; s/^\.size tgr_rdram, 0x800000/.size t
   $OUT/gen/arena.s > $OUT/plat/arena.s
 SRCS="$Q/os/addr_ps1.c $P/os/thread.c $P/os/si.c $P/os/view.c $P/os/touch.c $P/os/sha1.c $P/audio/mixer.c $P/libc/xprintf.c \
       $Q/hw/ps1hw.c $Q/hw/irq.c $Q/hw/gpu.c $Q/os/host_ps1.c $Q/os/main_ps1.c $Q/os/io_ps1.c $Q/os/lift_ps1.c $Q/os/trace_ps1.c \
-      $Q/gfx/gfx_ps1.c $Q/gfx/rcp_ps1.c $Q/audio/out_ps1.c $Q/libc/libc.c $OUT/gen/tgr_syms.c"
+      $Q/gfx/gfx_ps1.c $Q/gfx/rcp_ps1.c $Q/audio/out_ps1.c $Q/libc/libc.c $Q/fp/softfloat.c $OUT/gen/tgr_syms.c"
 OBJS=
 fail=0
 for s in $SRCS; do
@@ -48,8 +48,16 @@ for s in $Q/hw/crt0.s $Q/hw/ctx.s $Q/hw/exc.s $OUT/plat/arena.s; do
   OBJS="$OBJS $o"
   $TC-gcc -march=r3000 -msoft-float -fno-pic -mno-abicalls -c $s -o $o
 done
+# libgcc with its single-precision routines renamed __gcc_*: platform/fp/softfloat.c
+# takes their names and hands them the cases it does not do itself
+LIBGCC=$OUT/plat/libgcc_ps1.a
+REN=
+for f in mulsf3 addsf3 subsf3 fixsfsi floatsisf ltsf2 lesf2 eqsf2 nesf2 gtsf2 gesf2; do
+  REN="$REN --redefine-sym __$f=__gcc_$f"
+done
+$TC-objcopy $REN $($TC-gcc -print-libgcc-file-name) $LIBGCC
 RAMTOP=$( [ "$RAM" = 8 ] && echo 0x80800000 || echo 0x80200000 )
 $TC-ld --defsym RAM_TOP=$RAMTOP -T $Q/hw/ps1.ld --gc-sections -Map $OUT/tgrally.map -o $OUT/tgrally.elf \
-  $OBJS $OUT/obj/*.o $($TC-gcc -print-libgcc-file-name)
+  $OBJS $OUT/obj/*.o $LIBGCC
 $TC-size $OUT/tgrally.elf
 $PY ports/tgrally-ps1/tools/mkexe.py $OUT/tgrally.elf $OUT/tgrally.exe
