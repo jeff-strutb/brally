@@ -23,6 +23,7 @@
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
+static int s_fog_mul, s_fog_ofs;                /* G_MW_FOG */
 static int s_black;                             /* osViBlack: the display is off */
 
 /* ---- game memory ----------------------------------------------------------- */
@@ -303,6 +304,12 @@ static void load_vertices(uint32_t a, int n, int v0)
             v->b = c[2];
         }
         v->a = c[3];
+        if (s_geom & G_FOG) {                   /* the shade alpha is the fog: depth times mul plus offset */
+            int32_t f, w = cw < W_NEAR ? W_NEAR : cw, zz = cz;
+            while (w > 0x7FFF || zz > 0x3FFFFF || zz < -0x3FFFFF) { w >>= 1; zz >>= 1; }
+            f = ((zz << 8) / (w ? w : 1)) * s_fog_mul / 256 + s_fog_ofs;
+            v->a = (uint8_t)(f < 0 ? 0 : f > 255 ? 255 : f);
+        }
         v->s = (int32_t)(((int64_t)s * s_tex.ss) >> 16);
         v->t = (int32_t)(((int64_t)t * s_tex.ts) >> 16);
     }
@@ -313,7 +320,7 @@ static uint32_t s_omh, s_oml, s_fill;
 static uint32_t s_timg;
 static int s_timg_siz, s_timg_w;
 static uint32_t s_cc0, s_cc1;
-static uint8_t s_prim[4], s_env[4], s_blend[4], s_prim_lod;
+static uint8_t s_prim[4], s_env[4], s_blend[4], s_fogc[4], s_prim_lod;
 static int s_scissor[4];
 typedef struct {
     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
@@ -1245,8 +1252,8 @@ static int32_t tc32(int32_t st, int32_t origin, int shift)
 static int clamp_u(int u, int w) { return u < 0 ? 0 : u > w ? w : u; }
 
 /* ---- triangles: clipped in clip space, split to what the GPU draws -------------------- */
-typedef struct { int32_t x, y, z, w, u, v, r, g, b; } CV;            /* clip space; u, v 1/32 texel */
-typedef struct { int16_t x, y, z; int32_t u, v; int16_t r, g, b; } SV; /* screen */
+typedef struct { int32_t x, y, z, w, u, v, r, g, b, fr, fg, fb; } CV;   /* clip space; u, v 1/32 texel */
+typedef struct { int16_t x, y, z; int32_t u, v; int16_t r, g, b, fr, fg, fb; } SV; /* screen */
 
 #define GUARD 2                                 /* the guard band: |x|, |y| <= GUARD * w */
 
@@ -1264,7 +1271,7 @@ static int32_t plane_d(const CV *c, int pl)
 static void cv_lerp(CV *o, const CV *a, const CV *b, int32_t t)   /* t 16.16 */
 {
 #define L(f) o->f = a->f + (int32_t)(((int64_t)(b->f - a->f) * t) >> 16)
-    L(x); L(y); L(z); L(w); L(u); L(v); L(r); L(g); L(b);
+    L(x); L(y); L(z); L(w); L(u); L(v); L(r); L(g); L(b); L(fr); L(fg); L(fb);
 #undef L
 }
 
@@ -1291,6 +1298,7 @@ typedef struct {
     int textured, semi, abr, cmd, zsort;
     int wraps, wrapt, ub, vb;                   /* wrapping (a texture window) and the texels' base in the page */
     uint32_t window;
+    int fog;                                    /* a second pass adds the fog colour (fr, fg, fb) */
 } Prim;
 
 static int span_ok(const SV *a, const SV *b, const SV *c, const Prim *pr, int *split)
@@ -1339,6 +1347,8 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
             m.z = (int16_t)((a->z + b->z) >> 1);
             m.u = (a->u + b->u) >> 1; m.v = (a->v + b->v) >> 1;
             m.r = (int16_t)((a->r + b->r) >> 1); m.g = (int16_t)((a->g + b->g) >> 1); m.b = (int16_t)((a->b + b->b) >> 1);
+            m.fr = (int16_t)((a->fr + b->fr) >> 1); m.fg = (int16_t)((a->fg + b->fg) >> 1);
+            m.fb = (int16_t)((a->fb + b->fb) >> 1);
             emit_tri(a, &m, c, pr, depth + 1);
             emit_tri(&m, b, c, pr, depth + 1);
         }
@@ -1355,7 +1365,7 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
         if (maxx - minx > 1023 || maxy - miny > 511)
             return;
     }
-    words = (pr->textured ? 9 : 6) + (pr->semi ? 1 : 0) + (pr->window ? 2 : 0);
+    words = (pr->textured ? 9 : 6) + (pr->semi ? 1 : 0) + (pr->window ? 2 : 0) + (pr->fog ? 7 : 0);
     if (!(p = pkt_alloc(words)))
         return;
     w = p + 1;
@@ -1405,6 +1415,17 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
     }
     if (pr->window)
         *w++ = 0xE2000000;
+    if (pr->fog) {
+        /* the fog: its colour times the factor added over the texel times (1 - factor) */
+        *w++ = 0xE1000000 | 0x200 | 0x400 | 1u << 5;
+        for (k = 0; k < 3; k++) {
+            w[0] = (uint32_t)clamp255(v[k]->fr) | (uint32_t)clamp255(v[k]->fg) << 8 | (uint32_t)clamp255(v[k]->fb) << 16;
+            if (k == 0)
+                w[0] |= 0x32u << 24;
+            w[1] = (uint32_t)(uint16_t)v[k]->y << 16 | (uint16_t)v[k]->x;
+            w += 2;
+        }
+    }
     if (pr->zsort)
         put_sorted(p, (v0->z + v1->z + v2->z) / 3);
     else
@@ -1476,6 +1497,11 @@ static void triangle(int ia, int ib, int ic)
                         (pr.wraps ? (uint32_t)((~(d.tex->w - 1) & 0xFF) >> 3) | (uint32_t)(pr.ub >> 3) << 10 : 0) |
                         (pr.wrapt ? (uint32_t)((~(d.tex->h - 1) & 0xFF) >> 3) << 5 | (uint32_t)(pr.vb >> 3) << 15 : 0);
     }
+    {
+        /* fogged: the blender takes the fog colour by the shade alpha (P = fog, A = shade alpha) */
+        uint32_t bl = s_oml >> 16;
+        pr.fog = (s_geom & G_FOG) && ((bl >> 14) & 3) == 3 && ((bl >> 10) & 3) == 2;
+    }
     for (k = 0; k < 3; k++) {
         CV *c = &poly[0][k];
         int r, g, b;
@@ -1495,6 +1521,12 @@ static void triangle(int ia, int ib, int ic)
             r = col[k].b[0]; g = col[k].b[1]; b = col[k].b[2];
         }
         c->r = r; c->g = g; c->b = b;
+        c->fr = c->fg = c->fb = 0;
+        if (pr.fog) {
+            int f = v[k]->a, nf = 255 - f;
+            c->r = r * nf / 255; c->g = g * nf / 255; c->b = b * nf / 255;
+            c->fr = s_fogc[0] * f / 255; c->fg = s_fogc[1] * f / 255; c->fb = s_fogc[2] * f / 255;
+        }
     }
     n = 3;
     cur = 0;
@@ -1522,6 +1554,7 @@ static void triangle(int ia, int ib, int ic)
             project(c->x, c->y, c->z, c->w < W_NEAR ? W_NEAR : c->w, &sv[k].x, &sv[k].y, &sv[k].z);
             sv[k].u = c->u; sv[k].v = c->v;
             sv[k].r = (int16_t)c->r; sv[k].g = (int16_t)c->g; sv[k].b = (int16_t)c->b;
+            sv[k].fr = (int16_t)c->fr; sv[k].fg = (int16_t)c->fg; sv[k].fb = (int16_t)c->fb;
         }
         for (k = 1; k + 1 < n; k++)
             emit_tri(&sv[0], &sv[k], &sv[k + 1], &pr, 0);
@@ -1924,6 +1957,10 @@ static void run(uint32_t dl)
                 s_nlights = (int)((w1 - 0x80000000u) / 32) - 1;
             else if (idx == 0x06)
                 s_seg[(ofs / 4) & 15] = w1 & 0x3FFFFF;
+            else if (idx == 0x08) {             /* G_MW_FOG */
+                s_fog_mul = (int16_t)(w1 >> 16);
+                s_fog_ofs = (int16_t)w1;
+            }
             else if (idx == 0x0A) {
                 int k = ofs / 0x20;
                 if ((ofs & 0x1F) == 0 && k < 8) {
@@ -2029,6 +2066,10 @@ static void run(uint32_t dl)
         }
         case 0xF6: rect_fill(w0, w1); break;
         case 0xF7: s_fill = w1; break;
+        case 0xF8:
+            s_fogc[0] = (uint8_t)(w1 >> 24); s_fogc[1] = (uint8_t)(w1 >> 16);
+            s_fogc[2] = (uint8_t)(w1 >> 8); s_fogc[3] = (uint8_t)w1;
+            break;
         case 0xF9:
             s_blend[0] = (uint8_t)(w1 >> 24); s_blend[1] = (uint8_t)(w1 >> 16);
             s_blend[2] = (uint8_t)(w1 >> 8); s_blend[3] = (uint8_t)w1;
