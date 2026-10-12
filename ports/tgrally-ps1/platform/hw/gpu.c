@@ -18,10 +18,17 @@
 static void wait_cmd(void) { while (!(GPUSTAT & (1u << 26))) ; }    /* ready for a command */
 static void wait_dma(void) { while (D2_CHCR & (1u << 24)) ; }
 
+uint64_t ps1_time_ns(void);
+uint64_t gpu_wait_ns;                           /* the CPU's time waiting for the GPU (TGR_PERF) */
+
 void gpu_wait(void)
 {
-    wait_dma();
-    wait_cmd();
+    if ((D2_CHCR & (1u << 24)) || !(GPUSTAT & (1u << 26))) {
+        uint64_t t = ps1_time_ns();
+        wait_dma();
+        wait_cmd();
+        gpu_wait_ns += ps1_time_ns() - t;
+    }
 }
 
 void gpu_init(void)

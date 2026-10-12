@@ -1964,10 +1964,18 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
  * by the edge alone, so the two triangles sharing it cut it alike */
 static int edge_split(int32_t wa, int32_t wb, int ax, int ay, int bx, int by)
 {
-    int64_t l = abs(ax - bx) + abs(ay - by);
+    int32_t l = abs(ax - bx) + abs(ay - by), d, sum;
+    if (l <= 6)
+        return 0;                               /* (|wb - wa| < wa + wb: never) */
     if (wa < W_NEAR) wa = W_NEAR;
     if (wb < W_NEAR) wb = W_NEAR;
-    return l * (int64_t)abs(wb - wa) > 6 * ((int64_t)wa + wb);
+    d = abs(wb - wa);
+    sum = wa + wb;
+    while (sum >= 0x10000) {                    /* (32 bits: l is under 2048) */
+        sum >>= 1;
+        d >>= 1;
+    }
+    return l * d > 6 * sum;
 }
 
 static int persp_split(const Vtx *a, const Vtx *b, const Vtx *c)
@@ -2124,12 +2132,142 @@ static void emit_cv3(const CV *a, const SV *sa, const CV *b, const SV *sb, const
     emit_tri(sa, sb, sc, pr, 0);
 }
 
+/* how many times an edge must be halved for its affine error to stay under
+ * 3 pixels (the error falls by 4 with each halving): 0..3 */
+static int edge_cuts(int32_t wa, int32_t wb, int ax, int ay, int bx, int by)
+{
+    int32_t l = abs(ax - bx) + abs(ay - by), d, sum, e;
+    int k;
+    if (l <= 6)
+        return 0;
+    if (wa < W_NEAR) wa = W_NEAR;
+    if (wb < W_NEAR) wb = W_NEAR;
+    d = abs(wb - wa);
+    sum = wa + wb;
+    while (sum >= 0x10000) {
+        sum >>= 1;
+        d >>= 1;
+    }
+    e = l * d;                                  /* the error is e / (2 sum) pixels */
+    for (k = 0; k < 2 && e > 6 * sum; k++)
+        e >>= 2;
+    return k;
+}
+
+/* a grid point of a cut triangle on the screen */
+typedef struct { int16_t x, y, z, u, v; uint8_t r, g, b, ok; } GP;
+
+/* a textured triangle cut into an n by n grid of pieces (n a power of two):
+ * every point through the GTE once, from its model-space place; 0 when the
+ * GTE cannot take a point (then the halving way) */
+static int emit_grid(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
+{
+    GP pt[45];
+    int n = 1 << lg, i, j, k, sh = 8 + s_gte_k;
+    int32_t dmx1 = (b->mx - a->mx) >> lg, dmy1 = (b->my - a->my) >> lg, dmz1 = (b->mz - a->mz) >> lg;
+    int32_t dmx2 = (c->mx - a->mx) >> lg, dmy2 = (c->my - a->my) >> lg, dmz2 = (c->mz - a->mz) >> lg;
+    if (!s_gte_ok)
+        return 0;
+    for (j = 0, k = 0; j <= n; j++)
+        for (i = 0; i + j <= n; i++, k++) {
+            int32_t x = (a->mx + dmx1 * i + dmx2 * j + 8) >> 4, y = (a->my + dmy1 * i + dmy2 * j + 8) >> 4;
+            int32_t z = (a->mz + dmz1 * i + dmz2 * j + 8) >> 4, m3;
+            uint32_t sxy;
+            GP *q = &pt[k];
+            if (x != (int16_t)x || y != (int16_t)y || z != (int16_t)z)
+                return 0;
+            gte_mtc(GTE_VXY0, (uint32_t)(y << 16) | (uint32_t)(x & 0xFFFF));
+            gte_mtc(GTE_VZ0, (uint32_t)z);
+            gte_rtps();
+            if (gte_cfc(GTE_FLAG) & 0x7FC7F000u)
+                return 0;
+            m3 = (int32_t)gte_mfc(GTE_MAC3);
+            if (m3 <= 0)
+                return 0;
+            sxy = gte_mfc(GTE_SXY2);
+            q->x = (int16_t)(sxy & 0xFFFF);
+            q->y = (int16_t)(sxy >> 16);
+            q->z = (int16_t)wbucket(sh_r(m3, -sh));
+            /* the texels and colours: the corners' by the point's place (n is 1 << lg) */
+            q->u = (int16_t)((a->u + (((b->u - a->u) * i + (c->u - a->u) * j) >> lg)) >> 5);
+            q->v = (int16_t)((a->v + (((b->v - a->v) * i + (c->v - a->v) * j) >> lg)) >> 5);
+            q->r = (uint8_t)clamp255(a->r + (((b->r - a->r) * i + (c->r - a->r) * j) >> lg));
+            q->g = (uint8_t)clamp255(a->g + (((b->g - a->g) * i + (c->g - a->g) * j) >> lg));
+            q->b = (uint8_t)clamp255(a->b + (((b->b - a->b) * i + (c->b - a->b) * j) >> lg));
+        }
+    {
+        uint32_t clut = (uint32_t)pr->tex->clut << 16, tpage = (uint32_t)(tex_tpage(pr->tex, pr->tex->vx) | pr->abr << 5) << 16;
+        uint32_t cmd = (uint32_t)pr->cmd << 24;
+        int tw = pr->tex->w, th = pr->tex->h, row = 0, words = 9 + (pr->semi ? 1 : 0) + (pr->window ? 2 : 0);
+        for (j = 0; j < n; j++) {
+            int next = row + (n + 1 - j);           /* the first point of row j + 1 */
+            for (i = 0; i < n - j; i++) {
+                int tri;
+                for (tri = 0; tri < (i + 1 < n - j ? 2 : 1); tri++) {
+                    const GP *v[3];
+                    uint32_t *p, *w;
+                    int m, su = 0, svv = 0;
+                    if (!tri) { v[0] = &pt[row + i]; v[1] = &pt[row + i + 1]; v[2] = &pt[next + i]; }
+                    else { v[0] = &pt[row + i + 1]; v[1] = &pt[next + i + 1]; v[2] = &pt[next + i]; }
+                    if (pr->wraps || pr->wrapt) {
+                        int mnu = v[0]->u, mnv = v[0]->v;
+                        for (m = 1; m < 3; m++) {
+                            if (v[m]->u < mnu) mnu = v[m]->u;
+                            if (v[m]->v < mnv) mnv = v[m]->v;
+                        }
+                        su = mnu & ~(tw - 1);
+                        svv = mnv & ~(th - 1);
+                    }
+                    if (!(p = pkt_alloc(words)))
+                        return 1;
+                    s_n_piece++;
+                    w = p + 1;
+                    if (pr->semi)
+                        *w++ = 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 | (tpage >> 16 & 0x1FF);
+                    if (pr->window)
+                        *w++ = pr->window;
+                    for (m = 0; m < 3; m++) {
+                        int u = v[m]->u, vv = v[m]->v;
+                        u = pr->wraps ? u - su : pr->ub + (u < 0 ? 0 : u >= tw ? tw - 1 : u);
+                        vv = pr->wrapt ? vv - svv : pr->vb + (vv < 0 ? 0 : vv >= th ? th - 1 : vv);
+                        w[0] = (uint32_t)v[m]->r | (uint32_t)v[m]->g << 8 | (uint32_t)v[m]->b << 16;
+                        w[1] = (uint32_t)(uint16_t)v[m]->y << 16 | (uint16_t)v[m]->x;
+                        w[2] = (uint32_t)(u & 255) | (uint32_t)(vv & 255) << 8;
+                        w += 3;
+                    }
+                    w[-9] |= cmd;
+                    w[-7] |= clut;
+                    w[-4] |= tpage;
+                    if (pr->window)
+                        *w++ = 0xE2000000;
+                    if (pr->zsort)
+                        put_sorted(p, (v[0]->z + v[1]->z + v[2]->z) / 3);
+                    else
+                        put_flat(p);
+                }
+            }
+            row = next;
+        }
+    }
+    return 1;
+}
+
 static void emit_cv(const CV *a, const CV *b, const CV *c, const Prim *pr, int depth)
 {
     SV sv[3];
     sv_of(&sv[0], a);
     sv_of(&sv[1], b);
     sv_of(&sv[2], c);
+    if (pr->textured && !pr->fog && pr->tex) {
+        int k0 = edge_cuts(a->w, b->w, sv[0].x, sv[0].y, sv[1].x, sv[1].y);
+        int k1 = edge_cuts(b->w, c->w, sv[1].x, sv[1].y, sv[2].x, sv[2].y);
+        int k2 = edge_cuts(c->w, a->w, sv[2].x, sv[2].y, sv[0].x, sv[0].y);
+        int lg = k0 > k1 ? k0 : k1;
+        if (k2 > lg)
+            lg = k2;
+        if (lg > 0 && emit_grid(a, b, c, pr, lg))
+            return;
+    }
     emit_cv3(a, &sv[0], b, &sv[1], c, &sv[2], pr, depth);
 }
 
@@ -3398,48 +3536,89 @@ static void dlc_tri(const Tpl *t, const Prim *pr, const MVtx *v0, const MVtx *v1
     emit_tri(&sv[0], &sv[1], &sv[2], pr, 0);
 }
 
+/* a kept list's vertex in clip space and its clip flags, for the clip and
+ * cut path (no colour: the kept draw has it): the GTE's MACs when it took
+ * the vertex, else the CPU's product */
+static void vtx_clip(int slot, CV *c, int *clip)
+{
+    const NVtx *nv = s_mvsrc[slot];
+    int32_t x = nv->x, y = nv->y, z = nv->z, cx, cy, cw;
+    int k = 0;
+    if (s_mvx[slot].ok) {
+        int sh = 8 + s_gte_k;
+        gte_mtc(GTE_VXY0, (uint32_t)(y << 16) | (uint32_t)(x & 0xFFFF));
+        gte_mtc(GTE_VZ0, (uint32_t)z);
+        gte_rtps();
+        cw = sh_r((int32_t)gte_mfc(GTE_MAC3), -sh);
+        cx = sh_r((int32_t)gte_mfc(GTE_MAC1), -sh);
+        cy = (int32_t)(((int64_t)sh_r((int32_t)gte_mfc(GTE_MAC2), -sh) * s_gte_ify) >> 16);
+        c->z = 0;
+    } else {
+        const M4 *m = &s_mvp;
+        cx = (int32_t)(((int64_t)x * m->m[0][0] + (int64_t)y * m->m[1][0] + (int64_t)z * m->m[2][0] + m->m[3][0]) >> 8);
+        cy = (int32_t)(((int64_t)x * m->m[0][1] + (int64_t)y * m->m[1][1] + (int64_t)z * m->m[2][1] + m->m[3][1]) >> 8);
+        c->z = (int32_t)(((int64_t)x * m->m[0][2] + (int64_t)y * m->m[1][2] + (int64_t)z * m->m[2][2] + m->m[3][2]) >> 8);
+        cw = (int32_t)(((int64_t)x * m->m[0][3] + (int64_t)y * m->m[1][3] + (int64_t)z * m->m[2][3] + m->m[3][3]) >> 8);
+    }
+    if (cw < W_NEAR) k |= 16;
+    if (cx < -cw) k |= 1;
+    if (cx > cw) k |= 2;
+    if (cy < -cw) k |= 4;
+    if (cy > cw) k |= 8;
+    if (abs(cx) > GUARD * cw || abs(cy) > GUARD * cw)
+        k |= 32;
+    c->x = cx; c->y = cy; c->w = cw;
+    c->mx = x * 16; c->my = y * 16; c->mz = z * 16;
+    *clip = k;
+}
+
 /* a kept triangle the GPU cannot take whole (reaching behind the eye, past
  * the guard band, or deep enough to need cutting): clipped and cut from its
- * kept draw, its full vertices made now */
+ * kept draw */
 static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
 {
-    const Vtx *v[3];
     CV poly[2][12];
-    int k, n = 3, cur = 0;
-    mesh_fill(ia);
-    mesh_fill(ib);
-    mesh_fill(ic);
+    int k, n = 3, cur = 0, cl[3];
+    const int idx[3] = { ia, ib, ic };
+    if (pr->fog) {                              /* (the fog wants the full vertices' depth cue) */
+        mesh_fill(ia);
+        mesh_fill(ib);
+        mesh_fill(ic);
+    }
     s_n_tri++;
-    v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
-    if (v[0]->clip & v[1]->clip & v[2]->clip & 31) {
-        s_n_rej++;
-        return;
-    }
-    {
-        int64_t det = (int64_t)v[0]->cx * (((int64_t)v[1]->cy * v[2]->cw - (int64_t)v[2]->cy * v[1]->cw) >> 8) -
-                      (int64_t)v[0]->cy * (((int64_t)v[1]->cx * v[2]->cw - (int64_t)v[2]->cx * v[1]->cw) >> 8) +
-                      (int64_t)v[0]->cw * (((int64_t)v[1]->cx * v[2]->cy - (int64_t)v[2]->cx * v[1]->cy) >> 8);
-        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
-            return;
-    }
     for (k = 0; k < 3; k++) {
         CV *c = &poly[0][k];
-        c->x = v[k]->cx; c->y = v[k]->cy; c->z = v[k]->cz; c->w = v[k]->cw;
-        c->mx = v[k]->mx * 16; c->my = v[k]->my * 16; c->mz = v[k]->mz * 16;
+        if (pr->fog && !(s_mvstale >> idx[k] & 1)) {
+            const Vtx *q = &s_vtx[idx[k]];
+            c->x = q->cx; c->y = q->cy; c->z = q->cz; c->w = q->cw;
+            c->mx = q->mx * 16; c->my = q->my * 16; c->mz = q->mz * 16;
+            cl[k] = q->clip;
+        } else {
+            vtx_clip(idx[k], c, &cl[k]);
+        }
         c->u = t->u[k]; c->v = t->v[k];
         c->r = t->r[k]; c->g = t->g[k]; c->b = t->b[k];
         c->fr = c->fg = c->fb = 0;
         if (pr->fog) {
-            int f = v[k]->a, nf = 255 - f;
+            int f = s_vtx[idx[k]].a, nf = 255 - f;
             c->r = c->r * nf / 255; c->g = c->g * nf / 255; c->b = c->b * nf / 255;
             c->fr = s_fogc[0] * f / 255; c->fg = s_fogc[1] * f / 255; c->fb = s_fogc[2] * f / 255;
         }
     }
+    if (cl[0] & cl[1] & cl[2] & 31) {
+        s_n_rej++;
+        return;
+    }
     {
-        int pl, any = (v[0]->clip | v[1]->clip | v[2]->clip) & 16, far = 0;
-        for (k = 0; k < 3 && !any; k++)
-            if (abs(v[k]->cx) > GUARD * v[k]->cw || abs(v[k]->cy) > GUARD * v[k]->cw)
-                far = 1;
+        const CV *v0 = &poly[0][0], *v1 = &poly[0][1], *v2 = &poly[0][2];
+        int64_t det = (int64_t)v0->x * (((int64_t)v1->y * v2->w - (int64_t)v2->y * v1->w) >> 8) -
+                      (int64_t)v0->y * (((int64_t)v1->x * v2->w - (int64_t)v2->x * v1->w) >> 8) +
+                      (int64_t)v0->w * (((int64_t)v1->x * v2->y - (int64_t)v2->x * v1->y) >> 8);
+        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
+            return;
+    }
+    {
+        int pl, any = (cl[0] | cl[1] | cl[2]) & 16, far = (cl[0] | cl[1] | cl[2]) & 32;
         for (pl = 0; pl < 5 && n >= 3; pl++) {
             if (pl == 0 && !any)
                 continue;
@@ -3893,6 +4072,11 @@ void tgr_rcp_present(uint32_t frame)
                 }
             for (i = 0; i < s_nshelf; i++)
                 lost += (uint32_t)(384 - s_shelf[i].x) * (uint32_t)s_shelf[i].h;
+            {
+                extern uint64_t gpu_wait_ns;
+                fprintf(stderr, "perf: waiting for the GPU %u ms\n", (unsigned)(gpu_wait_ns / 1000000));
+                gpu_wait_ns = 0;
+            }
             fprintf(stderr, "perf: lists kept %u, recorded %u, triangles from them %u\n", (unsigned)s_n_dlc_hit,
                     (unsigned)s_n_dlc_rec, (unsigned)s_n_dlc_tpl);
             s_n_dlc_hit = s_n_dlc_rec = s_n_dlc_tpl = 0;

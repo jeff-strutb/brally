@@ -153,3 +153,38 @@ NOI void tgr_fn_report(void)
             s_fn[i].incl = s_fn[i].excl = s_fn[i].n = 0;
         }
 }
+
+/* ---- TGR_BENCH: what the console charges for an instruction, a load from
+ * RAM, from the fast RAM, a store, a multiply (cycles per 1000) ---- */
+static NOI uint32_t c8(void) { return *(volatile uint32_t *)0xBF801120 & 0xFFFF; }
+
+NOI void tgr_bench(void)
+{
+    static volatile uint32_t ram[256];
+    volatile uint32_t *fast = (volatile uint32_t *)0x1F800200u;
+    uint32_t t, d[6], i, acc = 0;
+    t = c8();
+    for (i = 0; i < 1000; i++)
+        __asm__ volatile("addu %0, %0, %1; addu %0, %0, %1; addu %0, %0, %1; addu %0, %0, %1" : "+r"(acc) : "r"(i));
+    d[0] = (c8() - t) & 0xFFFF;
+    t = c8();
+    for (i = 0; i < 1000; i++)
+        acc += ram[i & 255] + ram[(i + 7) & 255] + ram[(i + 13) & 255] + ram[(i + 29) & 255];
+    d[1] = (c8() - t) & 0xFFFF;
+    t = c8();
+    for (i = 0; i < 1000; i++)
+        acc += fast[i & 63] + fast[(i + 7) & 63] + fast[(i + 13) & 63] + fast[(i + 29) & 63];
+    d[2] = (c8() - t) & 0xFFFF;
+    t = c8();
+    for (i = 0; i < 1000; i++) {
+        ram[i & 255] = i; ram[(i + 7) & 255] = i; ram[(i + 13) & 255] = i; ram[(i + 29) & 255] = i;
+    }
+    d[3] = (c8() - t) & 0xFFFF;
+    t = c8();
+    for (i = 0; i < 1000; i++)
+        acc += (uint32_t)((int64_t)(int32_t)acc * (int32_t)i >> 16);
+    d[4] = (c8() - t) & 0xFFFF;
+    fprintf(stderr, "bench (cycles for 1000 loops): 4 adds %u, 4 RAM loads %u, 4 fast loads %u, 4 RAM stores %u, mult %u (%u)\n",
+            (unsigned)(d[0] * 8), (unsigned)(d[1] * 8), (unsigned)(d[2] * 8), (unsigned)(d[3] * 8), (unsigned)(d[4] * 8),
+            (unsigned)acc);
+}
