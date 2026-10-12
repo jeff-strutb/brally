@@ -1526,7 +1526,7 @@ static const Tex *tile_texture_find(int t);
 /* the texture tile t draws, cached until the tiles, loads or modes change;
  * the source's bytes checked for the game's writes once a frame */
 static int s_in_rect;
-static int s_upsample = -1;                     /* TGR_UPSAMPLE=1: on (it costs VRAM: off) */                           /* a texture rectangle's: never decoded at twice the size */
+static int s_upsample = -1;                     /* TGR_UPSAMPLE=1: on (it costs VRAM: off) */
 static struct { uint32_t gen, epoch, frame; int t, opaque, mask, by0, bh, rect; const Tex *tex; } s_tcache[4];
 static int s_tcache_next;
 
@@ -1562,6 +1562,13 @@ static const Tex *tile_texture_(int t)
     return tx;
 }
 
+/* frames of animated textures, decoded: put back in place without decoding */
+#define DC_N 8
+#define DC_MAX 4096
+static struct { uint32_t key, check, used; uint16_t hw, h, n, alpha; uint16_t pal[256]; uint16_t px[DC_MAX]; } s_dc[DC_N];
+static uint16_t s_last_pal[256];
+static int s_last_pal_n;
+
 static const Tex *tile_texture_find(int t)
 {
     const Tile *tl = &s_tile[t];
@@ -1569,7 +1576,7 @@ static const Tex *tile_texture_find(int t)
     uint32_t key, check;
     int px, py, pg, hw;
     Tex *tx, old = { 0 };
-    int reuse = 0, ri = -1, wrap_s = 0, wrap_t = 0, up;
+    int reuse = 0, ri = -1, wrap_s = 0, wrap_t = 0, up, inplace = 0;
     int by0 = s_band_y0;
     if (!(key = tile_key(t, &check, &w, &h)))
         return NULL;
@@ -1597,9 +1604,8 @@ static const Tex *tile_texture_find(int t)
             ri = i;
             break;
         }
-    /* a miss: rebuild TMEM from the loads and decode */
-    for (i = 0; i < s_nloads; i++)
-        replay(&s_loads[i]);
+    /* a miss: decode (from TMEM rebuilt from the loads), or a frame of an
+     * animated texture decoded before */
     {
         int f = tl->fmt << 4 | tl->siz;
         grey = f == 0x30 ? GP_IA4 : f == 0x40 ? GP_I4 : f == 0x31 ? GP_IA8 : f == 0x41 ? GP_I8 :
@@ -1650,6 +1656,22 @@ static const Tex *tile_texture_find(int t)
         py = old.vy;
         pg = old.shelf;
         s_shelf[pg].used = s_frame_no;
+        inplace = 1;
+        for (i = 0; i < DC_N; i++)
+            if (s_dc[i].key == key && s_dc[i].check == check && s_dc[i].hw == (hw << up) && s_dc[i].h == (h << up)) {
+                /* this frame of it decoded before: up again, in its place */
+                s_dc[i].used = s_frame_no;
+                upload(px, py, s_dc[i].hw, s_dc[i].h, s_dc[i].px);
+                if (s_dc[i].n)
+                    upload((old.clut & 63) << 4, old.clut >> 6, s_dc[i].n, 1, s_dc[i].pal);
+                tx = &s_texs[ri];
+                *tx = old;
+                tx->key = key;
+                tx->check = check;
+                tx->used = s_frame_no;
+                tx->has_alpha = (uint8_t)s_dc[i].alpha;
+                return tx;
+            }
     } else if ((pg = vram_alloc(hw << up, h << up, &px, &py)) < 0) {
         s_align_x = s_align_y = 1;
         s_tex_full = 1;
@@ -1694,6 +1716,9 @@ static const Tex *tile_texture_find(int t)
     }
     if (s_log)
         tgr_log("rcp: decode f%d s%d %dx%d at %d,%d mode %d tlut %d opaque %d mask %d clut %04X frame %u src %06X tmem %d line %d wrap %d%d cm %d%d mask %d%d uls %d lrs %d\n", tl->fmt, tl->siz, w, h, px, py, mode, tlut, s_opaque, s_mask, tx->clut, (unsigned)tgr_frame(), s_nloads ? (unsigned)s_loads[s_nloads - 1].src : 0u, tl->tmem, tl->line, wrap_s, wrap_t, tl->cms, tl->cmt, tl->masks, tl->maskt, tl->uls, tl->lrs);
+    for (i = 0; i < s_nloads; i++)
+        replay(&s_loads[i]);
+    s_last_pal_n = 0;
     if (grey >= 0) {
         grey_palettes();
         tx->clut = grey_clut(grey);
@@ -1733,6 +1758,8 @@ static const Tex *tile_texture_find(int t)
             clut_alloc(n, &cx, &cy);
         }
         upload(cx, cy, n, 1, pal);
+        memcpy(s_last_pal, pal, (size_t)n * 2);
+        s_last_pal_n = n;
         if (s_log)
             tgr_log("rcp: clut %d,%d for %dx%d frame %u\n", cx, cy, w, h, (unsigned)tgr_frame());
         tx->clut = (uint16_t)(cy << 6 | cx >> 4);
@@ -1801,6 +1828,25 @@ static const Tex *tile_texture_find(int t)
         return tx;
     }
     upload(px, py, hw, h, s_dec);
+    if (inplace && hw * h <= DC_MAX) {
+        /* a texture whose bytes the game rewrites (an animation): this frame kept */
+        int k = 0;
+        uint32_t oldest = 0xFFFFFFFF;
+        for (i = 0; i < DC_N; i++)
+            if (s_dc[i].used < oldest) {
+                oldest = s_dc[i].used;
+                k = i;
+            }
+        s_dc[k].key = key;
+        s_dc[k].check = check;
+        s_dc[k].used = s_frame_no;
+        s_dc[k].hw = (uint16_t)hw;
+        s_dc[k].h = (uint16_t)h;
+        s_dc[k].n = (uint16_t)s_last_pal_n;
+        s_dc[k].alpha = tx->has_alpha;
+        memcpy(s_dc[k].px, s_dec, (size_t)(hw * h) * 2);
+        memcpy(s_dc[k].pal, s_last_pal, (size_t)s_last_pal_n * 2);
+    }
     return tx;
 }
 
@@ -3709,7 +3755,7 @@ typedef struct Dlc {
     int nextvar;
 } Dlc;
 
-#define DLC_ARENA (1280 * 1024)
+#define DLC_ARENA (1024 * 1024)
 #define DLC_HASH 256
 static uint32_t s_dlc_arena[DLC_ARENA / 4];
 static int s_dlc_used;
@@ -4683,11 +4729,7 @@ static int dlc_call(uint32_t a)
                 stale = 1;
                 s_dlc_why[3]++;
             }
-        for (i = 0; i < v->nsrc && !stale; i++)
-            if (src_sig(&v->src[i]) != v->srcsig[i]) {
-                stale = 1;
-                s_dlc_why[4]++;
-            }
+        /* (a texture's bytes changing does not matter: the draws keep where it is, not what) */
         if (stale) {
             v->nm = NULL;
             v->recorded = 0;
