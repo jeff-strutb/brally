@@ -33,7 +33,7 @@ dev-kit's 8 MB; the retail console's 2 MB is the target.
 | `os/main_ps1.c` | power-on: `run.cfg`, the data lifted, `BrBoot` |
 | `os/io_ps1.c`, `os/lift_ps1.c` | the native port's io.c and lift.c with the cartridge's data read from a file |
 | `gfx/` | each graphics task's digest for the trace; `rcp_ps1.c` the display lists drawn by the GPU (below) |
-| `hw/gpu.c` | the GPU: 320 x 240 double-buffered or 640 x 480 interlaced (the menus), linked-list DMA, VRAM reads for frame dumps |
+| `hw/gpu.c` | the GPU: 320 x 240 or 640 x 240 (the menus, the game's 640 x 480 with every y halved), double-buffered, linked-list DMA, VRAM reads for frame dumps |
 | `libc/` | the C library: strings, a heap, files over PCDRV, `sqrtf` correctly rounded (every float checked against the host's) |
 
 ## Checking it
@@ -60,10 +60,18 @@ textures keyed by the TMEM loads that filled them and decoded into 4/8-bit
 CLUT or 15-bit textures in VRAM. `TGR_SHOT_AT=F1,F2` in `run.cfg` dumps the
 shown frame at those retraces (`shotNNNNN_WxH.raw`, `tools/shot2png.py`).
 
-State: the title screen and the Options screen draw as the native port's do,
+State: the title screen, the Options screen and the paint shop draw as the
+native port's do,
 but for the items below. A second texture the combiner reads (the fonts'
 colour ramps) is sampled on the CPU at each vertex and folded into the
-vertex colours; blending by a texture's alpha is the texels' STP bit. Textures are uploaded to VRAM as they are decoded
+vertex colours; blending by a texture's alpha is the texels' STP bit; a
+texture whose colour the combiner does not use is a white mask; whether a
+texel's alpha cuts it follows the draw's alpha compare and blending. The
+game's two colour images are the two VRAM buffers (the paint shop redraws
+only what changed). Tall 2D textures are decoded and drawn in bands of 32
+rows; a texture the game rewrote goes back in its own place when the frame
+does not use it yet. `tools/shots.sh SCRIPT FRAMES F1,...` dumps the
+PlayStation's and the native port's frames side by side (`tools/sheet.py`). Textures are uploaded to VRAM as they are decoded
 (the previous frame drawn, this one not yet sent); the intensity formats are
 indexed through shared grey palettes. `TGR_VRAMDUMP=1` with a shot also
 dumps the whole of VRAM. `tools/dsrun.py` starts DuckStation hidden in the

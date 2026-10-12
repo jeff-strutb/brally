@@ -42,6 +42,7 @@ def settings(rundir, ram8, speed, gdb=False, cpu='Recompiler'):
         'BIOS': {'TTYLogging': 'true', 'PatchFastBoot': 'true', 'SearchDirectory': 'bios'},
         'Console': {'Enable8MBRAM': 'true' if ram8 else 'false', 'Region': 'NTSC-U'},
         'GPU': {'Renderer': 'Software'},
+        'Display': {'Scaling': 'Nearest', 'CropMode': 'Overscan'},
         'CPU': {'ExecutionMode': cpu},
         'PCDrv': {'Enabled': 'true', 'EnableWrites': 'true', 'Root': rundir},
         'Logging': {'LogToFile': 'true', 'LogLevel': 'Info', 'LogToConsole': 'false'},

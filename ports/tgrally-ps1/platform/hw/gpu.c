@@ -38,10 +38,10 @@ void gpu_init(void)
     GP1 = 0x03000000;                       /* display on */
 }
 
-/* 1: 640 x 480 interlaced; 0: 320 x 240 */
+/* 1: 640 x 240; 0: 320 x 240 */
 void gpu_mode(int hires)
 {
-    GP1 = hires ? 0x08000027 : 0x08000001;
+    GP1 = hires ? 0x08000003 : 0x08000001;
 }
 
 void gpu_show(int x, int y)

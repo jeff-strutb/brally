@@ -99,20 +99,22 @@ static void put_sorted(uint32_t *p, int z)
 }
 
 /* ---- frame buffers ---------------------------------------------------------- *
- * A 320-wide colour image is one of two 320 x 240 buffers (VRAM y 0 and 240),
- * drawn while the other is shown.  A 640-wide one (the menus) is the one
- * 640 x 480 interlaced buffer, which every 640-wide image of the game maps to. */
+ * Two buffers at VRAM y 0 and 240, one drawn while the other is shown, each
+ * standing for one of the game's two colour images (whose contents the game
+ * relies on keeping: the paint shop redraws only what changed).  A 320-wide
+ * image is 320 x 240; a 640-wide one (the menus, 640 x 480 on the N64) is
+ * 640 x 240, every y halved: two 640 x 480 buffers do not fit the 1 MB of
+ * VRAM, and one drawn while shown flickers. */
 static uint32_t s_fbaddr[2] = { 0xFFFFFFFF, 0xFFFFFFFF };
-static int s_target = -1;                       /* the buffer being drawn, -1 none; 2 the hi-res one */
+static int s_target = -1;                       /* the buffer being drawn, -1 none */
 static int s_shown = -1, s_show_pending = -1;
-static int s_hires = -1;                        /* the display mode set: 1 640 x 480i, 0 320 x 240 */
+static int s_hires = -1;                        /* the display mode set: 1 640 x 240, 0 320 x 240 */
+static int s_ysh;                               /* 1: game y halved (640-wide images) */
 static uint32_t s_cimg, s_zimg;
 
-static int fb_index(uint32_t a, int width)
+static int fb_index(uint32_t a)
 {
     int i;
-    if (width == 640)
-        return 2;
     for (i = 0; i < 2; i++)
         if (s_fbaddr[i] == a)
             return i;
@@ -129,8 +131,8 @@ static void fb_rect(int t, int *x, int *y, int *w, int *h)
 {
     *x = 0;
     *y = t == 1 ? 240 : 0;
-    *w = t == 2 ? 640 : 320;
-    *h = t == 2 ? 480 : 240;
+    *w = s_hires == 1 ? 640 : 320;
+    *h = 240;
 }
 
 /* ---- the RSP's state ---------------------------------------------------------- */
@@ -264,7 +266,7 @@ static void load_vertices(uint32_t a, int n, int v0)
             sy = s_vp.ty - (int32_t)(((yy << 8) / w) * s_vp.sy >> 8);
             sz = (zz << 8) / w;                 /* ndc z, 8 fraction bits */
         }
-        sx >>= 2; sy >>= 2;
+        sx >>= 2; sy >>= 2 + s_ysh;
         v->x = (int16_t)(sx < -2048 ? -2048 : sx > 2047 ? 2047 : sx);
         v->y = (int16_t)(sy < -2048 ? -2048 : sy > 2047 ? 2047 : sy);
         sz = (sz + 256) * (OT_LEN / 2) >> 8;
@@ -299,7 +301,7 @@ static uint32_t s_omh, s_oml, s_fill;
 static uint32_t s_timg;
 static int s_timg_siz, s_timg_w;
 static uint32_t s_cc0, s_cc1;
-static uint8_t s_prim[4], s_env[4];
+static uint8_t s_prim[4], s_env[4], s_blend[4];
 static int s_scissor[4];
 typedef struct {
     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
@@ -396,9 +398,16 @@ static uint32_t texel_raw(const Tile *tl, int x, int y)
  * black that should show is 0x8000 (black with the STP bit, which only
  * matters on a semi-transparent primitive); alpha under 1/4 is transparent,
  * under 3/4 the STP bit (blended on a semi-transparent primitive) */
+static int s_opaque;                            /* the draw ignores texel alpha: every texel shows */
+static int s_mask;                              /* the texture is only an alpha shape: white texels */
+
 static uint16_t ps1_col(int r, int g, int b, int a)
 {
     uint16_t c;
+    if (s_opaque)
+        a = 255;
+    if (s_mask)
+        r = g = b = 255;
     if (a < 64)
         return 0;
     c = (uint16_t)((r >> 3) | (g >> 3) << 5 | (b >> 3) << 10);
@@ -474,13 +483,74 @@ static int vram_alloc(int w, int h, int *px, int *py)
             x = 0;
             goto found;
         }
-    for (i = 0; i < s_nshelf; i++)              /* evict: the stalest shelf tall enough */
-        if (s_shelf[i].h >= h && s_shelf[i].used + 1 < s_frame_no && s_shelf[i].used < oldest) {
+    for (i = 0; i < s_nshelf; i++)              /* any shelf tall enough with room across */
+        if (s_shelf[i].h >= h && (x = shelf_fit(i, w)) >= 0)
+            goto found;
+    /* evict: uploads land once the previous frame is drawn, so only what
+     * this frame uses must stay; the stalest shelf tall enough */
+    for (i = 0; i < s_nshelf; i++)
+        if (s_shelf[i].h >= h && s_shelf[i].used != s_frame_no && s_shelf[i].used < oldest) {
             oldest = s_shelf[i].used;
             best = i;
         }
-    if (best < 0)
-        return -1;
+    if (best < 0) {
+        /* none tall enough: a run of stacked shelves this frame does not use,
+         * tall enough together, becomes one */
+        int half;
+        for (half = 0; half < 2; half++) {
+            int y0 = -1, run = 0, yy = 0, j;
+            while (yy < s_half_top[half]) {
+                int sh = -1;
+                for (j = 0; j < s_nshelf; j++)
+                    if (s_shelf[j].half == half && s_shelf[j].y == yy)
+                        sh = j;
+                if (sh < 0)
+                    break;
+                if (s_shelf[sh].used == s_frame_no) {
+                    y0 = -1;
+                    run = 0;
+                } else {
+                    if (y0 < 0)
+                        y0 = yy;
+                    run += s_shelf[sh].h;
+                }
+                yy += s_shelf[sh].h;
+                if (y0 >= 0 && run >= h)
+                    break;
+            }
+            if (y0 >= 0 && run >= h) {
+                int map[NSHELF], n = 0, k, keep = -1;
+                for (j = 0; j < s_nshelf; j++) {
+                    int in = s_shelf[j].half == half && s_shelf[j].y >= y0 && s_shelf[j].y < y0 + run;
+                    if (in && s_shelf[j].y != y0) {
+                        map[j] = -1;
+                        continue;
+                    }
+                    map[j] = n;
+                    s_shelf[n] = s_shelf[j];
+                    if (in) {
+                        keep = n;
+                        s_shelf[n].h = (int16_t)run;
+                        s_shelf[n].x = 0;
+                    }
+                    n++;
+                }
+                for (j = k = 0; j < s_ntex; j++) {
+                    int sh = map[s_texs[j].shelf];
+                    if (sh < 0 || sh == keep)
+                        continue;
+                    s_texs[j].shelf = (uint8_t)sh;
+                    s_texs[k++] = s_texs[j];
+                }
+                s_ntex = k;
+                s_nshelf = n;
+                best = keep;
+                break;
+            }
+        }
+        if (best < 0)
+            return -1;
+    }
     {
         int j, k;
         for (j = k = 0; j < s_ntex; j++)
@@ -509,8 +579,10 @@ static uint16_t tex_tpage(const Tex *t, int hx)  /* hx: the halfword column */
 
 /* the intensity formats' palettes, shared: every IA4, I4, IA8 and I8 texel is
  * its own index (lossless); IA16 keeps 6 bits of intensity and 2 of alpha.
- * Row 480 holds IA4, I4 and IA8, row 481 I8 and IA16; the textures' own
- * palettes follow from row 482. */
+ * Row 480 holds IA4, I4 and IA8, row 481 I8 and IA16; rows 482 and 483 the
+ * same opaque (for draws that ignore texel alpha), 484 and 485 white with
+ * the alpha (a texture used only for its shape); the textures' own palettes
+ * follow from row 486. */
 enum { GP_IA4, GP_I4, GP_IA8, GP_I8, GP_IA16, GP_N };
 static const uint16_t GREY_X[GP_N] = { 0, 16, 32, 0, 256 }, GREY_Y[GP_N] = { 480, 480, 480, 481, 481 };
 static int s_grey_up;
@@ -521,9 +593,11 @@ static void grey_palettes(void)
 {
     uint16_t pal[256];
     int i, k;
+    int op, keep = s_opaque, keepm = s_mask;
     if (s_grey_up)
         return;
     s_grey_up = 1;
+    for (op = 0; op < 3; op++)
     for (k = 0; k < GP_N; k++) {
         int n = k <= GP_I4 ? 16 : 256;
         for (i = 0; i < n; i++) {
@@ -535,24 +609,31 @@ static void grey_palettes(void)
             case GP_I8: in = al = i; break;
             default: in = (i & 63) * 255 / 63; al = (i >> 6) * 85; break;
             }
+            s_opaque = op == 1;
+            s_mask = op == 2;
             pal[i] = ps1_col(in, in, in, al);
         }
-        upload(GREY_X[k], GREY_Y[k], n, 1, pal);
+        upload(GREY_X[k], GREY_Y[k] + 2 * op, n, 1, pal);
     }
+    s_opaque = keep;
+    s_mask = keepm;
 }
-static uint16_t grey_clut(int k) { return (uint16_t)(GREY_Y[k] << 6 | GREY_X[k] >> 4); }
+static uint16_t grey_clut(int k)
+{
+    return (uint16_t)((GREY_Y[k] + (s_mask ? 4 : 2 * s_opaque)) << 6 | GREY_X[k] >> 4);
+}
 
 static int clut_alloc(int n, int *cx, int *cy)
 {
     if (s_clut_x + n > 320) {
         s_clut_x = 0;
         s_clut_y++;
-        if (s_clut_y >= 30) {
+        if (s_clut_y >= 26) {
             s_clut_y = 0;                       /* wrap: the oldest palettes go (TODO: tracked reuse) */
         }
     }
     *cx = s_clut_x;
-    *cy = CLUT_Y + 2 + s_clut_y;
+    *cy = CLUT_Y + 6 + s_clut_y;
     s_clut_x += (n + 15) & ~15;
     return 0;
 }
@@ -613,7 +694,7 @@ static uint32_t tile_key(int t, uint32_t *pcheck, int *pw, int *ph)
     if (w > 384 * 4)
         w = 384 * 4;
     key = hash32(key, (uint32_t)(tl->fmt << 28 | tl->siz << 26 | tl->line << 16 | tl->tmem << 4 | tl->pal));
-    key = hash32(key, (uint32_t)(w << 16 | h));
+    key = hash32(key, (uint32_t)(w << 16 | h | s_opaque << 15 | s_mask << 14));
     key = hash32(key, (uint32_t)(tl->uls << 16 | tl->ult));
     ci = tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2);
     if (ci)
@@ -635,15 +716,32 @@ static uint32_t tile_key(int t, uint32_t *pcheck, int *pw, int *ph)
     return key ? key : 1;
 }
 
+/* a band of a tile's rows decoded as a texture of its own: a tall 2D image
+ * (rect_tex) in shelves of at most BAND rows, which pack where a whole one
+ * would find no room */
+#define BAND 32
+static int s_band_y0, s_band_h;
+static int s_band_y0_of(int band, int b0) { return band ? b0 : 0; }
+
 static const Tex *tile_texture(int t)
 {
     const Tile *tl = &s_tile[t];
     int w, h, i, x, y, mode, ci, grey, tlut = (s_omh >> 14) & 3;
     uint32_t key, check;
     int px, py, pg, hw;
-    Tex *tx;
+    Tex *tx, old;
+    int reuse = 0;
+    int by0 = s_band_y0;
     if (!(key = tile_key(t, &check, &w, &h)))
         return NULL;
+    if (s_band_h) {                             /* a band of rows only (rect_tex) */
+        key = hash32(key, (uint32_t)(s_band_y0 << 16 | s_band_h));
+        h = h - by0 < s_band_h ? h - by0 : s_band_h;
+        if (h <= 0)
+            return NULL;
+    } else {
+        by0 = 0;
+    }
     ci = tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2);
     for (i = 0; i < s_ntex; i++)
         if (s_texs[i].key == key) {
@@ -652,7 +750,9 @@ static const Tex *tile_texture(int t)
                 s_shelf[s_texs[i].shelf].used = s_frame_no;
                 return &s_texs[i];
             }
-            s_texs[i] = s_texs[--s_ntex];       /* changed: decode again */
+            old = s_texs[i];                    /* changed (the game wrote it): decode again, in its place */
+            reuse = 1;
+            s_texs[i] = s_texs[--s_ntex];
             break;
         }
     /* a miss: rebuild TMEM from the loads and decode */
@@ -676,9 +776,20 @@ static const Tex *tile_texture(int t)
             if (s_texs[i].used < oldest) { oldest = s_texs[i].used; k = i; }
         s_texs[k] = s_texs[--s_ntex];
     }
-    if ((pg = vram_alloc(hw, h, &px, &py)) < 0) {
+    if (reuse && old.used != s_frame_no && old.w == w && old.h == h && old.mode == mode) {
+        px = old.vx;
+        py = old.vy;
+        pg = old.shelf;
+        s_shelf[pg].used = s_frame_no;
+    } else if ((pg = vram_alloc(hw, h, &px, &py)) < 0) {
         if (s_log)
+        {
+            int j;
             tgr_log("rcp: no room for %dx%d (%d halfwords wide), %d shelves\n", w, h, hw, s_nshelf);
+            for (j = 0; j < s_nshelf; j++)
+                tgr_log("rcp:   shelf %d half %d y %d h %d x %d used %u (now %u)\n", j, s_shelf[j].half, s_shelf[j].y,
+                        s_shelf[j].h, s_shelf[j].x, (unsigned)s_shelf[j].used, (unsigned)s_frame_no);
+        }
         return NULL;
     }
     tx = &s_texs[s_ntex++];
@@ -692,6 +803,18 @@ static const Tex *tile_texture(int t)
     tx->used = s_frame_no;
     tx->vx = (uint16_t)px;
     tx->vy = (uint16_t)py;
+    if (s_log) {                                /* (a check: no two live textures share VRAM) */
+        int j;
+        for (j = 0; j < s_ntex - 1; j++) {
+            const Tex *o = &s_texs[j];
+            int ow = o->mode == 0 ? (o->w + 3) / 4 : o->mode == 1 ? (o->w + 1) / 2 : o->w;
+            if (px < o->vx + ow && o->vx < px + hw && py < o->vy + o->h && o->vy < py + h)
+                tgr_log("rcp: OVERLAP new %d,%d %dx%d shelf %d with %d,%d %dx%d shelf %d\n", px, py, hw, h, pg,
+                        o->vx, o->vy, ow, o->h, o->shelf);
+        }
+    }
+    if (s_log)
+        tgr_log("rcp: decode f%d s%d %dx%d at %d,%d mode %d tlut %d opaque %d mask %d clut %04X frame %u\n", tl->fmt, tl->siz, w, h, px, py, mode, tlut, s_opaque, s_mask, tx->clut, (unsigned)tgr_frame());
     if (grey >= 0) {
         grey_palettes();
         tx->clut = grey_clut(grey);
@@ -704,7 +827,7 @@ static const Tex *tile_texture(int t)
                     uint32_t t;
                     if (x * per + k >= w)
                         break;
-                    t = texel_raw(tl, x * per + k, y);
+                    t = texel_raw(tl, x * per + k, y + by0);
                     if (grey == GP_IA16)
                         t = (t >> 10 & 63) | (t & 255) * 3 / 255 << 6;
                     v |= (uint16_t)(t << ((16 / per) * k));
@@ -724,8 +847,15 @@ static const Tex *tile_texture(int t)
             if (!pal[i] || (pal[i] & 0x8000))
                 tx->has_alpha = 1;
         }
-        clut_alloc(n, &cx, &cy);
+        if (reuse && old.used != s_frame_no && old.clut && old.mode == mode) {
+            cx = (old.clut & 63) << 4;
+            cy = old.clut >> 6;
+        } else {
+            clut_alloc(n, &cx, &cy);
+        }
         upload(cx, cy, n, 1, pal);
+        if (s_log)
+            tgr_log("rcp: clut %d,%d for %dx%d frame %u\n", cx, cy, w, h, (unsigned)tgr_frame());
         tx->clut = (uint16_t)(cy << 6 | cx >> 4);
         for (y = 0; y < h; y++)
             for (x = 0; x < hw; x++) {
@@ -734,18 +864,18 @@ static const Tex *tile_texture(int t)
                     int k;
                     for (k = 0; k < 4; k++)
                         if (x * 4 + k < w)
-                            v |= (uint16_t)(texel_raw(tl, x * 4 + k, y) << (4 * k));
+                            v |= (uint16_t)(texel_raw(tl, x * 4 + k, y + by0) << (4 * k));
                 } else {
-                    v = (uint16_t)texel_raw(tl, x * 2, y);
+                    v = (uint16_t)texel_raw(tl, x * 2, y + by0);
                     if (x * 2 + 1 < w)
-                        v |= (uint16_t)(texel_raw(tl, x * 2 + 1, y) << 8);
+                        v |= (uint16_t)(texel_raw(tl, x * 2 + 1, y + by0) << 8);
                 }
                 s_dec[y * hw + x] = v;
             }
     } else {
         for (y = 0; y < h; y++)
             for (x = 0; x < w; x++) {
-                uint32_t v = texel_raw(tl, x, y);
+                uint32_t v = texel_raw(tl, x, y + by0);
                 uint16_t c;
                 switch (tl->fmt << 4 | tl->siz) {
                 case 0x02: c = n64_5551((uint16_t)v); break;
@@ -988,12 +1118,23 @@ typedef struct {
     int shifts, shiftt;
 } Draw;
 
-static void draw_state(Draw *d, int tile, int want_tex)
+static void draw_state(Draw *d, int tile, int want_tex, int mask)
 {
     uint32_t bl = s_oml >> 16;
     int p, a, m, b;
     memset(d, 0, sizeof *d);
     d->textured = want_tex;
+    p = (bl >> 14) & 3; a = (bl >> 10) & 3; m = (bl >> 6) & 3; b = (bl >> 2) & 3;
+    if (((s_omh >> 20) & 3) == 1) {
+        p = (bl >> 12) & 3; a = (bl >> 8) & 3; m = (bl >> 4) & 3; b = bl & 3;
+    }
+    /* texel alpha matters only to an alpha compare that can fail (a
+     * threshold above 0, or dithered), to coverage times alpha, or to
+     * blending by alpha: else every texel is drawn (the paint shop's canvas
+     * has its alpha bits clear) */
+    s_opaque = !(((s_oml & 3) == 1 && s_blend[3] > 0) || (s_oml & 3) == 3 || (s_oml & 0x1000) ||
+                 (p == 0 && m == 1 && a != 3 && b == 0 && (s_oml & 0x4000)));
+    s_mask = mask;
     if (want_tex) {
         d->tex = tile_texture(tile);
         if (!d->tex)
@@ -1003,10 +1144,7 @@ static void draw_state(Draw *d, int tile, int want_tex)
         d->shifts = s_tile[tile].shifts;
         d->shiftt = s_tile[tile].shiftt;
     }
-    p = (bl >> 14) & 3; a = (bl >> 10) & 3; m = (bl >> 6) & 3; b = (bl >> 2) & 3;
-    if (((s_omh >> 20) & 3) == 1) {
-        p = (bl >> 12) & 3; a = (bl >> 8) & 3; m = (bl >> 4) & 3; b = bl & 3;
-    }
+    s_mask = 0;
     if (p == 0 && m == 1 && b == 2) {           /* additive */
         d->semi = 1;
         d->abr = 1;
@@ -1057,7 +1195,7 @@ static void triangle(int ia, int ib, int ic)
     const Vtx *v[3];
     Draw d;
     Lin col[3];
-    int k, words, cmd, semi = 0, abr = 0;
+    int k, words, cmd, semi = 0, abr = 0, mask;
     uint32_t *p;
     int tile = s_tex.tile, want_tex;
     if (ia >= 32 || ib >= 32 || ic >= 32 || s_target < 0)
@@ -1094,8 +1232,13 @@ static void triangle(int ia, int ib, int ic)
             combine(&col[k], sh, other ? ot : NULL);
         }
     }
-    want_tex = s_tex.on && (col[0].a[0] | col[0].a[1] | col[0].a[2] | col[1].a[0] | col[2].a[0]) != 0;
-    draw_state(&d, tile, want_tex);
+    {
+        /* textured for the colour, or only for the alpha's shape (a mask), or not */
+        int rgb_t = (col[0].a[0] | col[0].a[1] | col[0].a[2] | col[1].a[0] | col[2].a[0]) != 0;
+        mask = !rgb_t && col[0].a[3] != 0;
+        want_tex = s_tex.on && (rgb_t || mask);
+    }
+    draw_state(&d, tile, want_tex, mask);
     if (d.semi == 1) {
         semi = 1;
         abr = d.abr;
@@ -1114,7 +1257,9 @@ static void triangle(int ia, int ib, int ic)
             *w++ = 0xE1000000 | 0x200 | 0x400 | (uint32_t)abr << 5 | (d.tex ? tex_tpage(d.tex, d.tex->vx) & 0x1FF : 0);
         for (k = 0; k < 3; k++) {
             int r, g, b;
-            if (d.textured) {                    /* the GPU modulates: 128 is 1.0 */
+            if (d.textured && mask) {            /* white texels times the colour */
+                r = col[k].b[0] >> 1; g = col[k].b[1] >> 1; b = col[k].b[2] >> 1;
+            } else if (d.textured) {             /* the GPU modulates: 128 is 1.0 */
                 r = col[k].a[0] >> 1; g = col[k].a[1] >> 1; b = col[k].a[2] >> 1;
             } else {
                 r = col[k].b[0]; g = col[k].b[1]; b = col[k].b[2];
@@ -1146,9 +1291,82 @@ static void triangle(int ia, int ib, int ic)
 }
 
 /* a textured rectangle as a 4-point textured polygon */
-/* a textured rectangle: GPU quads, one per texture page its texels cross
- * (the GPU's u is 8 bits within a page), Gouraud-shaded when the combiner
- * reads the second texture (its colour taken at the four corners) */
+/* a textured rectangle's quads on the GPU, for texels [u0, u1) x [v0, v1) of
+ * one texture: one quad per texture page the texels cross (the GPU's u is 8
+ * bits within a page), x scaled between the texel bounds; rgb the corners'
+ * colours (top left, top right, bottom left, bottom right), Gouraud-shaded
+ * when shaded */
+static void put_texrect(const Tex *tex, int x0, int y0, int x1, int y1, int u0, int v0, int u1, int v1,
+                        int rgb[4][3], int shaded, int semi, int abr)
+{
+    int kk = tex_k(tex), lo = u0 < u1 ? u0 : u1, hi = u0 < u1 ? u1 : u0, ua = lo;
+    int vy0 = (tex->vy & 255) + v0, vy1 = (tex->vy & 255) + v1;
+    uint32_t *p;
+    if (hi == lo)
+        hi = lo + 1;
+    while (ua < hi) {
+        int hx = tex->vx + ua / kk;                         /* the halfword column of texel ua */
+        int pg_end = ((hx / 64) + 1) * 64;                  /* the page's end, halfwords */
+        int ub = (pg_end - tex->vx) * kk;                   /* the first texel past it */
+        int pa, pb, xa, xb, uu0, uu1, c, fa, fb;
+        uint32_t ca[2], cb[2];
+        uint16_t tp = tex_tpage(tex, hx);
+        if (ub > hi)
+            ub = hi;
+        pa = ((tex->vx * kk + ua) - (hx / 64) * 64 * kk) & 255;
+        pb = pa + (ub - ua);
+        if (u0 <= u1) {
+            xa = x0 + (ua - lo) * (x1 - x0) / (hi - lo);
+            xb = x0 + (ub - lo) * (x1 - x0) / (hi - lo);
+            uu0 = pa; uu1 = pb;
+        } else {
+            xa = x0 + (hi - ub) * (x1 - x0) / (hi - lo);
+            xb = x0 + (hi - ua) * (x1 - x0) / (hi - lo);
+            uu0 = pb; uu1 = pa;
+        }
+        if (uu1 > 255) uu1 = 255;
+        if (uu0 > 255) uu0 = 255;
+        fa = (xa - x0) * 256 / (x1 - x0);               /* the piece's ends across the rectangle */
+        fb = (xb - x0) * 256 / (x1 - x0);
+        for (c = 0; c < 2; c++) {                       /* top (corners 0, 1), bottom (2, 3) */
+            const int *l = rgb[c * 2], *r = rgb[c * 2 + 1];
+            ca[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fa >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fa >> 8)) << 8 |
+                    (uint32_t)(l[2] + ((r[2] - l[2]) * fa >> 8)) << 16;
+            cb[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fb >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fb >> 8)) << 8 |
+                    (uint32_t)(l[2] + ((r[2] - l[2]) * fb >> 8)) << 16;
+        }
+        if (xb > xa && shaded && (p = pkt_alloc(12))) {
+            p[1] = (uint32_t)(0x3C | (semi ? 2 : 0)) << 24 | ca[0];
+            p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
+            p[3] = (uint32_t)tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
+            p[4] = cb[0];
+            p[5] = (uint32_t)y0 << 16 | (uint16_t)xb;
+            p[6] = (uint32_t)(tp | abr << 5) << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu1;
+            p[7] = ca[1];
+            p[8] = (uint32_t)y1 << 16 | (uint16_t)xa;
+            p[9] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu0;
+            p[10] = cb[1];
+            p[11] = (uint32_t)y1 << 16 | (uint16_t)xb;
+            p[12] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu1;
+            put_flat(p);
+        } else if (xb > xa && !shaded && (p = pkt_alloc(9))) {
+            p[1] = (uint32_t)(0x2C | (semi ? 2 : 0)) << 24 | ca[0];
+            p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
+            p[3] = (uint32_t)tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
+            p[4] = (uint32_t)y0 << 16 | (uint16_t)xb;
+            p[5] = (uint32_t)(tp | abr << 5) << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu1;
+            p[6] = (uint32_t)y1 << 16 | (uint16_t)xa;
+            p[7] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu0;
+            p[8] = (uint32_t)y1 << 16 | (uint16_t)xb;
+            p[9] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu1;
+            put_flat(p);
+        }
+        ua = ub;
+    }
+}
+
+/* a textured rectangle (G_TEXRECT); a tile taller than a band is drawn a band
+ * of rows at a time, each its own texture */
 static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
 {
     int x1 = (int)((w0 >> 12) & 0xFFF) >> 2, y1 = (int)(w0 & 0xFFF) >> 2;
@@ -1159,8 +1377,7 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     Draw d;
     Lin col[4];                                 /* the corners: top left, top right, bottom left, bottom right */
     int rgb[4][3];
-    int u0, v0, u1, v1, semi = 0, abr = 0, k, shaded = 0;
-    uint32_t *p;
+    int u0, v0, u1, v1, semi = 0, abr = 0, k, shaded = 0, mask, tw, th, band, vlo, vhi;
     if (s_target < 0)
         return;
     if (cyc == 2) {                             /* copy mode: inclusive, 4 texels a step */
@@ -1186,92 +1403,69 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
         combine(&col[0], WHITE, NULL);
         col[1] = col[2] = col[3] = col[0];
     }
-    draw_state(&d, tile, 1);
-    if (!d.textured) {
-        if (s_log)
-            tgr_log("rcp: texrect without a texture (tile %d fmt %d siz %d)\n", tile, s_tile[tile].fmt, s_tile[tile].siz);
-        return;
-    }
-    u0 = (s - d.s0) >> 5;
-    v0 = (t - d.t0) >> 5;
-    u1 = u0 + (int)((dsdx * (x1 - x0)) >> 10);
-    v1 = v0 + (int)((dtdy * (y1 - y0)) >> 10);
-    u0 = clamp_u(u0, d.tex->w); u1 = clamp_u(u1, d.tex->w);
-    v0 = clamp_u(v0, d.tex->h); v1 = clamp_u(v1, d.tex->h);
-    if (cyc != 2 && d.semi == 2) {
-        semi = blend_mode(&col[0], 1, &abr);
-    } else if (cyc != 2 && d.semi == 1) {
-        semi = 1;
-        abr = 1;
-    }
+    mask = cyc != 2 && !(col[0].a[0] | col[0].a[1] | col[0].a[2]) && col[0].a[3];
     for (k = 0; k < 4; k++) {                   /* the GPU modulates: 128 is 1.0 */
-        rgb[k][0] = clamp255(col[k].a[0] >> 1);
-        rgb[k][1] = clamp255(col[k].a[1] >> 1);
-        rgb[k][2] = clamp255(col[k].a[2] >> 1);
+        rgb[k][0] = clamp255((mask ? col[k].b[0] : col[k].a[0]) >> 1);
+        rgb[k][1] = clamp255((mask ? col[k].b[1] : col[k].a[1]) >> 1);
+        rgb[k][2] = clamp255((mask ? col[k].b[2] : col[k].a[2]) >> 1);
     }
+    if (!tile_size(&s_tile[tile], &tw, &th))
+        return;
+    band = th > 64 ? BAND : 0;
+    /* the texels drawn: s, t to the tile's coordinates; v across the rectangle */
     {
-        int kk = tex_k(d.tex), lo = u0 < u1 ? u0 : u1, hi = u0 < u1 ? u1 : u0, ua = lo;
-        int vy0 = (d.tex->vy & 255) + v0, vy1 = (d.tex->vy & 255) + v1;
-        if (hi == lo)
-            hi = lo + 1;
-        while (ua < hi) {
-            int hx = d.tex->vx + ua / kk;                       /* the halfword column of texel ua */
-            int pg_end = ((hx / 64) + 1) * 64;                  /* the page's end, halfwords */
-            int ub = (pg_end - d.tex->vx) * kk;                 /* the first texel past it */
-            int pa, pb, xa, xb, uu0, uu1, c, fa, fb;
-            uint32_t ca[2], cb[2];
-            uint16_t tp = tex_tpage(d.tex, hx);
-            if (ub > hi)
-                ub = hi;
-            pa = ((d.tex->vx * kk + ua) - (hx / 64) * 64 * kk) & 255;
-            pb = pa + (ub - ua);
-            if (u0 <= u1) {
-                xa = x0 + (ua - lo) * (x1 - x0) / (hi - lo);
-                xb = x0 + (ub - lo) * (x1 - x0) / (hi - lo);
-                uu0 = pa; uu1 = pb;
+        int32_t s0 = (s_tile[tile].uls > s_tile[tile].lrs ? s_tile[tile].uls - 4096 : s_tile[tile].uls) << 3;
+        int32_t t0 = (s_tile[tile].ult > s_tile[tile].lrt ? s_tile[tile].ult - 4096 : s_tile[tile].ult) << 3;
+        u0 = (s - s0) >> 5;
+        v0 = (t - t0) >> 5;
+        u1 = u0 + (int)((dsdx * (x1 - x0)) >> 10);
+        v1 = v0 + (int)((dtdy * (y1 - y0)) >> 10);
+    }
+    u0 = clamp_u(u0, tw); u1 = clamp_u(u1, tw);
+    v0 = clamp_u(v0, th); v1 = clamp_u(v1, th);
+    vlo = v0 < v1 ? v0 : v1;
+    vhi = v0 < v1 ? v1 : v0;
+    if (vhi == vlo)
+        vhi = vlo + 1;
+    {
+        int b0 = band ? (vlo / band) * band : 0;
+        for (; b0 < (band ? vhi : 1); b0 += band ? band : 1) {
+            int a, b, ya, yb, gy0, gy1, va, vb;
+            s_band_y0 = band ? b0 : 0;
+            s_band_h = band;
+            draw_state(&d, tile, 1, mask);
+            s_band_y0 = s_band_h = 0;
+            if (!d.textured) {
+                if (s_log)
+                    tgr_log("rcp: texrect without a texture (tile %d fmt %d siz %d)\n", tile, s_tile[tile].fmt,
+                            s_tile[tile].siz);
+                return;
+            }
+            if (cyc != 2 && d.semi == 2)
+                semi = blend_mode(&col[0], 1, &abr);
+            else if (cyc != 2 && d.semi == 1) {
+                semi = 1;
+                abr = 1;
+            }
+            /* this band's texels, and the game rows they cover */
+            a = band ? (vlo > b0 ? vlo : b0) : vlo;
+            b = band ? (vhi < b0 + band ? vhi : b0 + band) : vhi;
+            if (b <= a)
+                continue;
+            if (v0 <= v1) {
+                gy0 = y0 + (a - vlo) * (y1 - y0) / (vhi - vlo);
+                gy1 = y0 + (b - vlo) * (y1 - y0) / (vhi - vlo);
+                va = a - s_band_y0_of(band, b0); vb = b - s_band_y0_of(band, b0);
             } else {
-                xa = x0 + (hi - ub) * (x1 - x0) / (hi - lo);
-                xb = x0 + (hi - ua) * (x1 - x0) / (hi - lo);
-                uu0 = pb; uu1 = pa;
+                gy0 = y0 + (vhi - b) * (y1 - y0) / (vhi - vlo);
+                gy1 = y0 + (vhi - a) * (y1 - y0) / (vhi - vlo);
+                va = b - s_band_y0_of(band, b0); vb = a - s_band_y0_of(band, b0);
             }
-            if (uu1 > 255) uu1 = 255;
-            if (uu0 > 255) uu0 = 255;
-            fa = (xa - x0) * 256 / (x1 - x0);           /* the piece's ends across the rectangle */
-            fb = (xb - x0) * 256 / (x1 - x0);
-            for (c = 0; c < 2; c++) {                   /* top (corners 0, 1), bottom (2, 3) */
-                const int *l = rgb[c * 2], *r = rgb[c * 2 + 1];
-                ca[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fa >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fa >> 8)) << 8 |
-                        (uint32_t)(l[2] + ((r[2] - l[2]) * fa >> 8)) << 16;
-                cb[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fb >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fb >> 8)) << 8 |
-                        (uint32_t)(l[2] + ((r[2] - l[2]) * fb >> 8)) << 16;
-            }
-            if (xb > xa && shaded && (p = pkt_alloc(12))) {
-                p[1] = (uint32_t)(0x3C | (semi ? 2 : 0)) << 24 | ca[0];
-                p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
-                p[3] = (uint32_t)d.tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
-                p[4] = cb[0];
-                p[5] = (uint32_t)y0 << 16 | (uint16_t)xb;
-                p[6] = (uint32_t)(tp | abr << 5) << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu1;
-                p[7] = ca[1];
-                p[8] = (uint32_t)y1 << 16 | (uint16_t)xa;
-                p[9] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu0;
-                p[10] = cb[1];
-                p[11] = (uint32_t)y1 << 16 | (uint16_t)xb;
-                p[12] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu1;
-                put_flat(p);
-            } else if (xb > xa && !shaded && (p = pkt_alloc(9))) {
-                p[1] = (uint32_t)(0x2C | (semi ? 2 : 0)) << 24 | ca[0];
-                p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
-                p[3] = (uint32_t)d.tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
-                p[4] = (uint32_t)y0 << 16 | (uint16_t)xb;
-                p[5] = (uint32_t)(tp | abr << 5) << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu1;
-                p[6] = (uint32_t)y1 << 16 | (uint16_t)xa;
-                p[7] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu0;
-                p[8] = (uint32_t)y1 << 16 | (uint16_t)xb;
-                p[9] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu1;
-                put_flat(p);
-            }
-            ua = ub;
+            ya = gy0 >> s_ysh;
+            yb = gy1 >> s_ysh;
+            if (yb <= ya)
+                yb = ya + 1;
+            put_texrect(d.tex, x0, ya, x1, yb, u0, va, u1, vb, rgb, shaded, semi, abr);
         }
     }
 }
@@ -1297,11 +1491,13 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         Lin col;
         Draw d;
         combine(&col, WHITE, NULL);
-        draw_state(&d, 0, 0);
+        draw_state(&d, 0, 0, 0);
         r = col.b[0]; g = col.b[1]; b = col.b[2];
         if (d.semi == 1 || (d.semi == 2 && col.b[3] < 230))
             semi = 1;
     }
+    y0 >>= s_ysh;
+    y1 >>= s_ysh;
     if (x1 <= x0 || y1 <= y0)
         return;
     if (!(p = pkt_alloc(semi ? 4 : 3)))
@@ -1326,6 +1522,8 @@ static void scissor(int x0, int y0, int x1, int y1)
     if (s_target < 0 || !(p = pkt_alloc(2)))
         return;
     fb_rect(s_target, &bx, &by, &bw, &bh);
+    y0 >>= s_ysh;
+    y1 = (y1 + s_ysh) >> s_ysh;
     if (x1 > bw) x1 = bw;
     if (y1 > bh) y1 = bh;
     if (x1 <= x0 || y1 <= y0) { x1 = x0 + 1; y1 = y0 + 1; }
@@ -1335,10 +1533,10 @@ static void scissor(int x0, int y0, int x1, int y1)
 }
 
 /* ---- the task ------------------------------------------------------------------------- */
-static void frame_begin(int target)
+static void frame_begin(int target, int hires)
 {
     uint32_t *p;
-    int x, y, w, h, hires = target == 2;
+    int x, y, w, h;
     s_target = target;
     if (target < 0)
         return;
@@ -1346,9 +1544,7 @@ static void frame_begin(int target)
         gpu_wait();
         gpu_mode(hires);
         s_hires = hires;
-        if (hires)
-            gpu_show(0, 0);
-        s_shown = hires ? 2 : -1;
+        s_ysh = hires;
     }
     fb_rect(target, &x, &y, &w, &h);
     p = pkt_alloc(5);
@@ -1583,6 +1779,10 @@ static void run(uint32_t dl)
         }
         case 0xF6: rect_fill(w0, w1); break;
         case 0xF7: s_fill = w1; break;
+        case 0xF9:
+            s_blend[0] = (uint8_t)(w1 >> 24); s_blend[1] = (uint8_t)(w1 >> 16);
+            s_blend[2] = (uint8_t)(w1 >> 8); s_blend[3] = (uint8_t)w1;
+            break;
         case 0xFA:
             s_prim[0] = (uint8_t)(w1 >> 24); s_prim[1] = (uint8_t)(w1 >> 16);
             s_prim[2] = (uint8_t)(w1 >> 8); s_prim[3] = (uint8_t)w1;
@@ -1604,10 +1804,10 @@ static void run(uint32_t dl)
                 tgr_log("rcp: cimg %06X w %d zimg %06X\n", a, (int)(w0 & 0xFFF) + 1, s_zimg);
             s_cimg = a;
             if (a != s_zimg && ((int)(w0 & 0xFFF) + 1 == 320 || (int)(w0 & 0xFFF) + 1 == 640)) {
-                int t = fb_index(a, (int)(w0 & 0xFFF) + 1);
-                if (t != s_target) {
+                int t = fb_index(a), hires = (int)(w0 & 0xFFF) + 1 == 640;
+                if (t != s_target || hires != s_hires) {
                     frame_end();
-                    frame_begin(t);
+                    frame_begin(t, hires);
                 }
             }
             break;
@@ -1655,8 +1855,6 @@ void tgr_rcp_swap(uint32_t fb)
     int i;
     if (s_log)
         tgr_log("rcp: swap %08X\n", fb);
-    if (s_hires == 1)
-        return;                                 /* one buffer: always shown */
     for (i = 0; i < 2; i++)
         if (s_fbaddr[i] == (fb & 0x3FFFFF))
             s_show_pending = i;
