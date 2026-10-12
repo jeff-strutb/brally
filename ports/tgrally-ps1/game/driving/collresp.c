@@ -70,6 +70,8 @@ typedef struct BrCrPlane {      /* a collision triangle's plane (0x20 bytes) */
 } BrCrPlane;
 extern BrCrPlane D_80379F80[][150];   /* each grid cell's collision planes */
 extern unsigned short D_8037EA88[];   /* and how many */
+short g_pbox[4][150][4];              /* (PlayStation: each plane's triangle's x, y box: low x, high x, low y, high y) */
+int g_pfx[4][150][4];                 /* (PlayStation: and the plane in fixed point: normal x 65536, constant x 2^19) */
 extern int D_802A4A30;                /* walk the cell backwards (flips every frame) */
 short BrCollGridCellAcquire(float x, float y);
 int BrTriCubeTest(float *tri, float *norm);
@@ -482,6 +484,27 @@ static int bp_far(const BrCrPlane *pP, const BrTipBody *b)
   r += a < 0.0f ? -a : a;
   return dist > r * 5.25f + 0.01f;
 }
+/* PlayStation: bp_far in fixed point: the plane's normal x 65536 and constant
+ * x 2^19 (g_pfx), the car's point x 8 and axes x 65536, the products 64 bits.
+ * The distance is then within 0.25 of the float one, so it is taken a whole
+ * unit nearer before the test: whatever bp_far would keep, this keeps. */
+static int bp_far_fx(const int *pf, const int c[3], const int ax[3][3])
+{
+  long long dist, r, a, lhs;
+  int k;
+  dist = (long long)pf[0] * c[0] + (long long)pf[1] * c[1] + (long long)pf[2] * c[2] + pf[3];
+  if (dist < 0)
+    dist = -dist;
+  if (dist <= 6LL << 19)
+    return 0;                   /* (5, and the unit) */
+  r = 0;
+  for (k = 0; k < 3; k++) {
+    a = (long long)pf[0] * ax[k][0] + (long long)pf[1] * ax[k][1] + (long long)pf[2] * ax[k][2];
+    r += a < 0 ? -a : a;
+  }
+  lhs = (dist - (1LL << 19)) << 13;     /* (2^32 a unit, as r) */
+  return lhs > r * 5 + (r >> 2) + 42949673LL + (1LL << 22);   /* (r 5.25, 0.01, and r's own rounding) */
+}
 #define BP_NOW() (*(volatile unsigned int *)0xBF801120 & 0xFFFF)
 int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
 {
@@ -502,10 +525,29 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   t1 = BP_NOW();
   g_bp_t[0] += (t1 - t0) & 0xFFFF;
   count = D_8037EA88[cell];
+  {
+  /* PlayStation: the cube (5 each way along the car's axes) is within 8.7
+   * of the car's point: a triangle whose x, y box is further off in x or y
+   * cannot meet it (10: that and the whole units' rounding) */
+  static int nobox = -1, nofx = -1;
+  int cx = (int)b->m[3][0], cy = (int)b->m[3][1], cf[3], ax[3][3], r, c;
+  const short (*bx)[4] = g_pbox[cell];
+  const int (*pf)[4] = g_pfx[cell];
+  if (nobox < 0) {
+    nobox = getenv("TGR_NOBPBOX") != 0;
+    nofx = getenv("TGR_NOBPFX") != 0 || getenv("TGR_NOBPFAR") != 0;
+  }
+  for (c = 0; c < 3; c++)
+    cf[c] = (int)(b->m[3][c] * 8.0f);
+  for (r = 0; r < 3; r++)
+    for (c = 0; c < 3; c++)
+      ax[r][c] = (int)(b->m[r][c] * 65536.0f);
+#define BP_BOXFAR(i) (!nobox && (i) < 150 && (cx < bx[i][0] - 10 || cx > bx[i][1] + 10 || cy < bx[i][2] - 10 || cy > bx[i][3] + 10))
+#define BP_FAR(i, pP) ((i) < 150 && !nofx ? bp_far_fx(pf[i], cf, ax) : bp_far(pP, b))
   if (D_802A4A30 != 0) {
     pP = &D_80379F80[cell][count - 1];
     for (i = count - 1; i >= 0; i--, pP--) {
-      if (bp_far(pP, b))
+      if (BP_BOXFAR(i) || BP_FAR(i, pP))
         continue;
       BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
       BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
@@ -529,7 +571,7 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   } else {
     pP = D_80379F80[cell];
     for (i = 0; i < count; i++, pP++) {
-      if (bp_far(pP, b))
+      if (BP_BOXFAR(i) || BP_FAR(i, pP))
         continue;
       BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
       BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
@@ -550,6 +592,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
         n++;
       }
     }
+  }
+#undef BP_BOXFAR
+#undef BP_FAR
   }
   g_bp_t[1] += (BP_NOW() - t1) & 0xFFFF;
   return n;
@@ -1028,8 +1073,32 @@ short BrCollGridCellAcquire(float x, float y)
       p[1] = a[2] * b[0] - a[0] * b[2];
       p[2] = a[0] * b[1] - a[1] * b[0];
       BrVec3NormaliseF(p);
-      n++;
+      if (n < 150) {
+        /* PlayStation: the triangle's x, y box, whole units widened by one */
+        float lx = v0->x, hx = v0->x, ly = v0->y, hy = v0->y;
+        if (v1->x < lx) lx = v1->x;
+        if (v1->x > hx) hx = v1->x;
+        if (v2->x < lx) lx = v2->x;
+        if (v2->x > hx) hx = v2->x;
+        if (v1->y < ly) ly = v1->y;
+        if (v1->y > hy) hy = v1->y;
+        if (v2->y < ly) ly = v2->y;
+        if (v2->y > hy) hy = v2->y;
+        g_pbox[victim][n][0] = (short)((int)lx - 1);
+        g_pbox[victim][n][1] = (short)((int)hx + 1);
+        g_pbox[victim][n][2] = (short)((int)ly - 1);
+        g_pbox[victim][n][3] = (short)((int)hy + 1);
+      }
       p[3] = -(p[0] * v0->x + p[1] * v0->y + p[2] * v0->z);
+      if (n < 150) {
+        /* PlayStation: the plane in fixed point: the normal in 1/65536, the
+         * constant in 1/2^19 (for bp_far's reject) */
+        g_pfx[victim][n][0] = (int)(p[0] * 65536.0f);
+        g_pfx[victim][n][1] = (int)(p[1] * 65536.0f);
+        g_pfx[victim][n][2] = (int)(p[2] * 65536.0f);
+        g_pfx[victim][n][3] = (int)(p[3] * 524288.0f);
+      }
+      n++;
       p += 8;
     }
   }

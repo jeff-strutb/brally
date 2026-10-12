@@ -56,7 +56,7 @@ void tgr_perf_marks_report(void)
     if (&g_bp_tested) {
         fprintf(stderr, "perf: broadphase calls %u triangles tested %u hit %u; ms: cell %u tests %u invert %u\n", g_bp_calls,
                 g_bp_tested, g_bp_hit, g_bp_t[0] * 8 / 33869, g_bp_t[1] * 8 / 33869, g_bp_t[2] * 8 / 33869);
-        g_bp_t[0] = g_bp_t[1] = g_bp_t[2] = 0;
+        g_bp_t[0] = g_bp_t[1] = g_bp_t[2] = g_bp_t[3] = 0;
         fprintf(stderr, "perf: response walk cube tests %u hit %u\n", g_rw_tested, g_rw_hit);
         g_rw_tested = g_rw_hit = 0;
         g_bp_calls = g_bp_tested = g_bp_hit = 0;
@@ -240,6 +240,23 @@ NOI void tgr_bench(void)
         fprintf(stderr, "bench: float multiply %u cycles, add %u (loop included)\n", (unsigned)(dm * 8 / 1000),
                 (unsigned)(da * 8 / 1000));
         (void)fc;
+    }
+    {
+        /* the game's 3x3 rows by a vector: fastmath's and the game's own */
+        extern void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
+        extern void __orig_BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
+        static float m[4][4] = { { 0.8f, 0.1f, -0.59f, 0 }, { -0.2f, 0.97f, 0.05f, 0 }, { 0.57f, 0.2f, 0.8f, 0 }, { 1203.5f, -88.25f, 31.1f, 1 } };
+        static float v[3] = { 1022.25f, 517.75f, 12.5f }, o[3];
+        uint32_t d1, d2;
+        t = c8();
+        for (i = 0; i < 100; i++)
+            BrMat3MulVecRows(o, m, v);
+        d1 = (c8() - t) & 0xFFFF;
+        t = c8();
+        for (i = 0; i < 100; i++)
+            __orig_BrMat3MulVecRows(o, m, v);
+        d2 = (c8() - t) & 0xFFFF;
+        fprintf(stderr, "bench: BrMat3MulVecRows fastmath %u cycles, the game's %u\n", (unsigned)(d1 * 8 / 100), (unsigned)(d2 * 8 / 100));
     }
     {
         /* sf.s against softfloat.c's C (the reference): random operands, near
