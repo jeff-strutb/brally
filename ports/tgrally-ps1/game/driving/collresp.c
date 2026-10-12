@@ -506,6 +506,25 @@ static int bp_far_fx(const int *pf, const int c[3], const int ax[3][3])
   return lhs > r * 5 + (r >> 2) + 42949673LL + (1LL << 22);   /* (r 5.25, 0.01, and r's own rounding) */
 }
 #define BP_NOW() (*(volatile unsigned int *)0xBF801120 & 0xFFFF)
+
+/* PlayStation: a collision vertex into the box's space (m), kept for the rest
+ * of the call: neighbouring triangles share their corners (s_xfc_gen moves on
+ * with m) */
+#define XFC_N 64
+static struct { const BrVec3be *p; unsigned int gen; float v[3]; } s_xfc[XFC_N];
+static unsigned int s_xfc_gen = 1;
+static void xf_vert(float out[3], float m[4][4], const BrVec3be *p)
+{
+  unsigned int h = ((unsigned int)(unsigned long)p >> 2) * 2654435761u >> 26;
+  if (s_xfc[h].p != p || s_xfc[h].gen != s_xfc_gen) {
+    BrMat3MulVecRows(s_xfc[h].v, m, (float *)BRV(p));
+    s_xfc[h].p = p;
+    s_xfc[h].gen = s_xfc_gen;
+  }
+  out[0] = s_xfc[h].v[0];
+  out[1] = s_xfc[h].v[1];
+  out[2] = s_xfc[h].v[2];
+}
 int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
 {
   float v[9];
@@ -521,6 +540,7 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   unsigned int t0 = BP_NOW(), t1;
   n = 0;
   g_bp_calls++;
+  s_xfc_gen++;                          /* (PlayStation: a new m) */
   cell = BrCollGridCellAcquire(b->m[3][0], b->m[3][1]);
   t1 = BP_NOW();
   g_bp_t[0] += (t1 - t0) & 0xFFFF;
@@ -549,9 +569,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
     for (i = count - 1; i >= 0; i--, pP--) {
       if (BP_BOXFAR(i) || BP_FAR(i, pP))
         continue;
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+      xf_vert(&v[0], m, TGR_PTR(BrVec3be *, pP->v0));
+      xf_vert(&v[3], m, TGR_PTR(BrVec3be *, pP->v1));
+      xf_vert(&v[6], m, TGR_PTR(BrVec3be *, pP->v2));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -573,9 +593,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
     for (i = 0; i < count; i++, pP++) {
       if (BP_BOXFAR(i) || BP_FAR(i, pP))
         continue;
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+      xf_vert(&v[0], m, TGR_PTR(BrVec3be *, pP->v0));
+      xf_vert(&v[3], m, TGR_PTR(BrVec3be *, pP->v1));
+      xf_vert(&v[6], m, TGR_PTR(BrVec3be *, pP->v2));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -872,6 +892,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
   }
   ret = 0;
   cnt = 0;
+  s_xfc_gen++;                          /* (PlayStation: a new m) */
   for (node = D_802A4A20; node != 0; node = TGR_PTR(struct BrCrNode *, node->next)) {
     pP = TGR_PTR(void *, node->plane);
     {
@@ -882,9 +903,9 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       } else if (rw_far(pP, b, bm0))
         continue;
     }
-    BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-    BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-    BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+    xf_vert(&v[0], m, TGR_PTR(BrVec3be *, pP->v0));
+    xf_vert(&v[3], m, TGR_PTR(BrVec3be *, pP->v1));
+    xf_vert(&v[6], m, TGR_PTR(BrVec3be *, pP->v2));
     e1[0] = v[3] - v[0];
     e1[1] = v[4] - v[1];
     e1[2] = v[5] - v[2];
