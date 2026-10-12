@@ -4589,6 +4589,8 @@ static void dlc_capture(DlcVar *v, Tpl *t, int ia, int ib, int ic)
             uint8_t ot[4];
             sample((s_tex.tile + 1) & 7, vv[k]->s, vv[k]->t, ot);
             combine(&col, sh, ot);
+        } else if (!s_fs.flat && vv[k]->cc_stamp == s_cc_stamp) {
+            col = vv[k]->col;                   /* (the dry run's: the same combiner, the same shade) */
         } else {
             combine(&col, sh, NULL);
         }
