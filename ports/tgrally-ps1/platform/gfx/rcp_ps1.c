@@ -2692,7 +2692,7 @@ static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr
                     if (pr->window)
                         w[9] = 0xE2000000;
                     if (zs)
-                        put_sorted(p, (p0->z + p1->z + p2->z) * 85 >> 8);
+                        put_sorted(p, (p0->z + p1->z + p2->z) / 3);
                     else
                         put_flat(p);
                 }
@@ -3701,6 +3701,7 @@ typedef struct Dlc {
     struct Dlc *next;
     uint32_t addr, sum, qsum, reads, checked;   /* (checked: the frame its bytes were last checked in) */
     int vol;                                    /* (its address's lists change: checked whole every frame) */
+    int stable;                                 /* (frames it passed a whole check: from 64, mostly the quick one) */
     int ncmd, ntri, bad;
     DCmd *cmd;
     uint32_t segmask, segval[16];
@@ -4581,7 +4582,7 @@ static int nm_draw(const Dlc *d, DlcVar *v)
             s_n_dlc_tpl++;
             s_path[1]++;
             if (fl & NT_ZS)
-                put_sorted(p, (A->z + B->z + C->z) * 85 >> 8);
+                put_sorted(p, (A->z + B->z + C->z) / 3);
             else
                 put_flat(p);
         }
@@ -4622,8 +4623,11 @@ static int dlc_call(uint32_t a)
         for (k = 0; k < 16; k++)
             if ((d->segmask >> k & 1) && d->segval[k] != s_seg[k])
                 break;
+        int whole = d->vol || d->stable < 64 || !((s_frame_no + (a >> 3)) & 7);
+        if (d->checked != s_frame_no && whole && d->stable < 64)
+            d->stable++;
         if (k < 16 || (d->checked != s_frame_no &&
-                       ((d->vol || !((s_frame_no + (a >> 3)) & 7)) ? dlc_sum_(d, 0) != d->sum : dlc_sum_(d, 1) != d->qsum))) {
+                       (whole ? dlc_sum_(d, 0) != d->sum : dlc_sum_(d, 1) != d->qsum))) {
             dlc_set_volatile(a);
             if (getenv("TGR_LOG"))
                 tgr_log("rcp: list %06X changed (root %06X)\n", (unsigned)a, (unsigned)s_root_dl);
