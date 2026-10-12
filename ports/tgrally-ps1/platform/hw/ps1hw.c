@@ -28,6 +28,7 @@ void ps1_hw_init(void)
     __asm__ volatile("mfc0 %0, $12" : "=r"(sr));
     __asm__ volatile("mtc0 %0, $12; nop; nop" : : "r"(sr | 0x40000000u));   /* the GTE (coprocessor 2) on */
     RC1_MODE = 0x0100;                      /* free-running, counting HBlanks */
+    PS1_IO(0x1124) = 0x0200;                /* counter 2: the system clock / 8 (TGR_PROF's timer) */
     s_last = RC1_VALUE & 0xFFFF;
     ps1_exc_install();
     ps1_on_vblank(on_vblank);

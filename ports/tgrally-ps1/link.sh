@@ -31,8 +31,8 @@ mkdir -p $OUT/plat
 sed 's/^\.space 0x800000/.space 0x400000/; s/^\.size tgr_rdram, 0x800000/.size tgr_rdram, 0x400000/' \
   $OUT/gen/arena.s > $OUT/plat/arena.s
 SRCS="$Q/os/addr_ps1.c $P/os/thread.c $P/os/si.c $P/os/view.c $P/os/touch.c $P/os/sha1.c $P/libc/xprintf.c \
-      $Q/hw/ps1hw.c $Q/hw/irq.c $Q/hw/gpu.c $Q/hw/spu.c $Q/audio/snd_ps1.c $Q/os/host_ps1.c $Q/os/main_ps1.c $Q/os/io_ps1.c $Q/os/lift_ps1.c $Q/os/trace_ps1.c \
-      $Q/gfx/gfx_ps1.c $Q/gfx/rcp_ps1.c $Q/audio/out_ps1.c $Q/libc/libc.c $Q/fp/softfloat.c $OUT/gen/tgr_syms.c"
+      $Q/hw/ps1hw.c $Q/hw/irq.c $Q/hw/gpu.c $Q/hw/spu.c $Q/audio/snd_ps1.c $Q/os/host_ps1.c $Q/os/main_ps1.c $Q/os/io_ps1.c $Q/os/lift_ps1.c $Q/os/trace_ps1.c $Q/os/perf_ps1.c \
+      $Q/gfx/gfx_ps1.c $Q/gfx/rcp_ps1.c $Q/audio/out_ps1.c $Q/libc/libc.c $Q/fp/softfloat.c $Q/fastmath/fastmath.c $OUT/gen/tgr_syms.c"
 OBJS=
 fail=0
 for s in $SRCS; do
@@ -40,13 +40,19 @@ for s in $SRCS; do
   OBJS="$OBJS $o"
   if [ ! -f $o ] || [ $s -nt $o ] || [ $0 -nt $o ] || [ -n "$(find $Q/include $Q/libc/include $P/include -newer $o -name '*.h' 2>/dev/null | head -1)" ]; then
     case $s in
-      */gfx/rcp_ps1.c|*/fp/softfloat.c) $TC-gcc $CF ${HOTFLAGS:--O3} -c $s -o $o || fail=1;;   # the hot paths
+      */gfx/rcp_ps1.c|*/fp/softfloat.c|*/fastmath/fastmath.c) $TC-gcc $CF ${HOTFLAGS:--O3} -c $s -o $o || fail=1;;   # the hot paths
       *) $TC-gcc $CF -c $s -o $o || fail=1;;
     esac
   fi
 done
 [ $fail = 0 ] || { echo "link: platform failed to compile" >&2; exit 1; }
-for s in $Q/hw/crt0.s $Q/hw/ctx.s $Q/hw/exc.s $OUT/plat/arena.s; do
+# PROF=list: inclusive timing wrappers for the functions named in it (tools/profwrap.py)
+ASMS="$Q/hw/crt0.s $Q/hw/ctx.s $Q/hw/exc.s $OUT/plat/arena.s"
+if [ -n "$PROF" ]; then
+  $PY ports/tgrally-ps1/tools/profwrap.py $PROF $OUT/plat/prof.s
+  ASMS="$ASMS $OUT/plat/prof.s"
+fi
+for s in $ASMS; do
   o=$OUT/plat/$(basename $s .s).o
   OBJS="$OBJS $o"
   $TC-gcc -march=r3000 -msoft-float -fno-pic -mno-abicalls -c $s -o $o
@@ -59,8 +65,32 @@ for f in mulsf3 addsf3 subsf3 fixsfsi floatsisf ltsf2 lesf2 eqsf2 nesf2 gtsf2 ge
   REN="$REN --redefine-sym __$f=__gcc_$f"
 done
 $TC-objcopy $REN $($TC-gcc -print-libgcc-file-name) $LIBGCC
+# the core's functions platform/fastmath replaces (fastmath.txt): renamed in
+# the object that defines them, a copy of which is linked
+mkdir -p $OUT/plat/core
+CORE=
+for o in $OUT/obj/*.o; do
+  ren=
+  while read -r sym new; do
+    case "$sym" in ''|'#'*) continue;; esac
+    if $TC-nm --defined-only $o 2>/dev/null | grep -q " T $sym\$"; then ren="$ren --redefine-sym $sym=$new"; fi
+  done < ports/tgrally-ps1/fastmath.txt
+  if [ -n "$PROF" ]; then
+    while read -r sym rest; do
+      case "$sym" in ''|'#'*) continue;; esac
+      if $TC-nm --defined-only $o 2>/dev/null | grep -q " T $sym\$"; then ren="$ren --redefine-sym $sym=__prof_$sym"; fi
+    done < $PROF
+  fi
+  if [ -n "$ren" ]; then
+    c=$OUT/plat/core/$(basename $o)
+    $TC-objcopy $ren $o $c
+    CORE="$CORE $c"
+  else
+    CORE="$CORE $o"
+  fi
+done
 RAMTOP=$( [ "$RAM" = 8 ] && echo 0x80800000 || echo 0x80200000 )
 $TC-ld --defsym RAM_TOP=$RAMTOP -T $Q/hw/ps1.ld --gc-sections -Map $OUT/tgrally.map -o $OUT/tgrally.elf \
-  $OBJS $OUT/obj/*.o $LIBGCC
+  $OBJS $CORE $LIBGCC
 $TC-size $OUT/tgrally.elf
 $PY ports/tgrally-ps1/tools/mkexe.py $OUT/tgrally.elf $OUT/tgrally.exe

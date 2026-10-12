@@ -1,0 +1,10 @@
+# the game's functions platform/fastmath replaces: renamed (to the second name)
+# in the core object that defines them, so every other caller gets the new one
+guMtxCatF __orig_guMtxCatF
+guMtxF2L __orig_guMtxF2L
+BrMat3MulVecRows __orig_BrMat3MulVecRows
+BrMat4RotateVecT __orig_BrMat4RotateVecT
+BrMat4RotateVec __orig_BrMat4RotateVec
+sinf __slow_sinf
+cosf __slow_cosf
+BrPerfMark __orig_BrPerfMark

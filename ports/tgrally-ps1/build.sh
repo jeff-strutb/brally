@@ -21,7 +21,7 @@ CFLAGS="-O2 -g -G0 -march=r3000 -mtune=r3000 -msoft-float -mno-abicalls -fno-pic
   -Werror=incompatible-pointer-types \
   -I$Q/include -I$Q/libc/include -isystem $(dirname $($CC -print-libgcc-file-name))/include \
   -Iports/tgrally/include -I$P/include -Iports/brally/platform/host \
-  -include $P/include/ultra64.h -include $P/include/tgr_core.h -DTGR_CORE -DTGR_PS1 -include $P/include/tgr_libc.h"
+  -include $P/include/ultra64.h -include $P/include/tgr_core.h -DTGR_CORE -DTGR_PS1 -include $P/include/tgr_libc.h $XCFLAGS"
 export CC CFLAGS OUT
 mkdir -p $OUT/obj
 OUT=$OUT TGR_TARGET=mipsel-unknown-none-elf $PY ports/tgrally/tools/globals.py >&2

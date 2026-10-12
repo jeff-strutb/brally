@@ -39,7 +39,7 @@ static uint32_t rd32(uint32_t phys) { const uint8_t *p = mem(phys); return (uint
 static uint16_t rd16(uint32_t phys) { const uint8_t *p = mem(phys); return (uint16_t)(p[0] << 8 | p[1]); }
 
 /* ---- the frame's packets ------------------------------------------------------ */
-#define PKT_WORDS (96 * 1024 / 4)
+#define PKT_WORDS (128 * 1024 / 4)
 #define OT_LEN 1024
 static uint32_t s_pkt[2][PKT_WORDS];
 static int s_buf, s_used;
@@ -47,16 +47,20 @@ static uint32_t *s_head, *s_tail;               /* the frame's list */
 static uint32_t *s_ot_head[OT_LEN], *s_ot_tail[OT_LEN];
 static int s_zrun, s_ot_lo, s_ot_hi;            /* a depth-sorted run is open; its buckets in use */
 static int s_overflow;
+static uint32_t s_n_over, s_peak_used;          /* TGR_PERF */
 
 static uint32_t *pkt_alloc(int words)
 {
     uint32_t *p;
     if (s_used + words + 1 > PKT_WORDS) {
         s_overflow = 1;
+        s_n_over++;
         return NULL;
     }
     p = &s_pkt[s_buf][s_used];
     s_used += words + 1;
+    if ((uint32_t)s_used > s_peak_used)
+        s_peak_used = (uint32_t)s_used;
     p[0] = (uint32_t)words << 24 | 0xFFFFFF;
     return p;
 }
@@ -394,7 +398,26 @@ static __attribute__((noinline)) int gte_vertex(Vtx *v, int32_t x, int32_t y, in
     return 1;
 }
 
+/* a vertex as the display list holds it, in the CPU's byte order */
+typedef struct { int16_t x, y, z, s, t; uint8_t c[4]; } NVtx;
+
+static void load_vertices_n(const NVtx *nv, int n, int v0);
+
 static __attribute__((noinline)) void load_vertices(uint32_t a, int n, int v0)
+{
+    NVtx nv[32];
+    int i;
+    for (i = 0; i < n && v0 + i < 32; i++) {
+        uint32_t p = a + i * 16;
+        const uint8_t *c = mem(p + 12);
+        nv[i].x = (int16_t)rd16(p); nv[i].y = (int16_t)rd16(p + 2); nv[i].z = (int16_t)rd16(p + 4);
+        nv[i].s = (int16_t)rd16(p + 8); nv[i].t = (int16_t)rd16(p + 10);
+        nv[i].c[0] = c[0]; nv[i].c[1] = c[1]; nv[i].c[2] = c[2]; nv[i].c[3] = c[3];
+    }
+    load_vertices_n(nv, i, v0);
+}
+
+static __attribute__((noinline)) void load_vertices_n(const NVtx *nv, int n, int v0)
 {
     int32_t ldir[8][3];
     int i, k;
@@ -418,10 +441,9 @@ static __attribute__((noinline)) void load_vertices(uint32_t a, int n, int v0)
     }
     s_n_vtx += (uint32_t)n;
     for (i = 0; i < n && v0 + i < 32; i++) {
-        uint32_t p = a + i * 16;
-        const uint8_t *c = mem(p + 12);
-        int32_t x = (int16_t)rd16(p), y = (int16_t)rd16(p + 2), z = (int16_t)rd16(p + 4);
-        int32_t s = (int16_t)rd16(p + 8), t = (int16_t)rd16(p + 10);
+        const uint8_t *c = nv[i].c;
+        int32_t x = nv[i].x, y = nv[i].y, z = nv[i].z;
+        int32_t s = nv[i].s, t = nv[i].t;
         Vtx *v = &s_vtx[v0 + i];
         if (s_gte_ok && gte_vertex(v, x, y, z)) {
             s_n_gte++;
@@ -564,10 +586,27 @@ static void replay(const Load *l)
 
 static uint8_t tm8(int a) { return s_tmem[a & 0xFFF]; }
 
+/* a texel coordinate through the tile's mask: repeated, or mirrored every
+ * other period */
+static int axis_map(int x, int mask, int mirror)
+{
+    int m, r;
+    if (!mask || x < 0)
+        return x;
+    m = 1 << mask;
+    r = x & (m - 1);
+    if (mirror && ((x >> mask) & 1))
+        r = m - 1 - r;
+    return r;
+}
+
 /* a texel of tile t as the RDP reads it: the value, or for CI the index */
 static uint32_t texel_raw(const Tile *tl, int x, int y)
 {
-    int line = tl->line * 8, base = tl->tmem * 8, swap = (y & 1) ? 4 : 0, a;
+    int line, base, swap, a;
+    x = axis_map(x, tl->masks, tl->cms & 1);
+    y = axis_map(y, tl->maskt, tl->cmt & 1);
+    line = tl->line * 8; base = tl->tmem * 8; swap = (y & 1) ? 4 : 0;
     switch (tl->siz) {
     case 0: a = base + y * line + x / 2; return (x & 1) ? tm8(a ^ swap) & 0xF : tm8(a ^ swap) >> 4;
     case 1: a = base + y * line + x; return tm8(a ^ swap);
@@ -622,6 +661,7 @@ typedef struct {
     uint16_t w, h;                              /* texels */
     uint8_t mode, shelf, has_alpha;             /* mode: 0 4-bit, 1 8-bit, 2 15-bit */
     uint8_t wraps, wrapt;                       /* repeats across (down): placed aligned to its size */
+    uint8_t up;                                 /* decoded at twice the size, filtered: texels are halves */
     uint32_t used;
 } Tex;
 #define NTEX 384
@@ -632,6 +672,8 @@ static struct { int16_t half, y, h, x; uint32_t used; } s_shelf[NSHELF];
 static int s_nshelf, s_half_top[2];
 static int s_clut_x, s_clut_y;
 static uint32_t s_frame_no;
+
+static int s_tex_full;                          /* a texture found no room: the next frame packs afresh */
 
 static void tex_flush_all(void)
 {
@@ -886,14 +928,21 @@ static uint32_t src_check_now(const Load *l)
  * uses the new */
 static void upload(int x, int y, int w, int h, const uint16_t *px)
 {
+    if (s_log)
+        tgr_log("rcp: upload %d,%d %dx%d frame %u\n", x, y, w, h, (unsigned)tgr_frame());
     gpu_load(x, y, w, h, px);
 }
 
 static int tile_size(const Tile *tl, int *w, int *h)
 {
+    /* what the tile shows: one period of its mask (repeated, or mirrored
+     * every other) when it repeats, or is clamped past more than one; else
+     * the texels up to its lower right */
     int ww = (((tl->lrs - tl->uls) & 0xFFF) >> 2) + 1, hh = (((tl->lrt - tl->ult) & 0xFFF) >> 2) + 1;
-    if (tl->masks && (1 << tl->masks) < ww) ww = 1 << tl->masks;
-    if (tl->maskt && (1 << tl->maskt) < hh) hh = 1 << tl->maskt;
+    if (tl->masks && (((tl->cms & 2) && ww > (1 << tl->masks) << (tl->cms & 1)) || (!(tl->cms & 2) && ww >= (1 << tl->masks))))
+        ww = (1 << tl->masks) << (tl->cms & 1);
+    if (tl->maskt && (((tl->cmt & 2) && hh > (1 << tl->maskt) << (tl->cmt & 1)) || (!(tl->cmt & 2) && hh >= (1 << tl->maskt))))
+        hh = (1 << tl->maskt) << (tl->cmt & 1);
     if (ww > 1024) ww = 1024;
     if (hh > 256) hh = 256;
     *w = ww;
@@ -948,7 +997,9 @@ static const Tex *tile_texture_find(int t);
 
 /* the texture tile t draws, cached until the tiles, loads or modes change;
  * the source's bytes checked for the game's writes once a frame */
-static struct { uint32_t gen, epoch, frame; int t, opaque, mask, by0, bh; const Tex *tex; } s_tcache[4];
+static int s_in_rect;
+static int s_upsample = -1;                     /* TGR_UPSAMPLE=1: on (it costs VRAM: off) */                           /* a texture rectangle's: never decoded at twice the size */
+static struct { uint32_t gen, epoch, frame; int t, opaque, mask, by0, bh, rect; const Tex *tex; } s_tcache[4];
 static int s_tcache_next;
 
 static const Tex *tile_texture(int t)
@@ -958,7 +1009,7 @@ static const Tex *tile_texture(int t)
     for (i = 0; i < 4; i++)
         if (s_tcache[i].gen == s_texgen && s_tcache[i].epoch == s_texepoch && s_tcache[i].frame == s_frame_no &&
             s_tcache[i].t == t && s_tcache[i].opaque == s_opaque && s_tcache[i].mask == s_mask &&
-            s_tcache[i].by0 == s_band_y0 && s_tcache[i].bh == s_band_h) {
+            s_tcache[i].by0 == s_band_y0 && s_tcache[i].bh == s_band_h && s_tcache[i].rect == s_in_rect) {
             ((Tex *)s_tcache[i].tex)->used = s_frame_no;
             return s_tcache[i].tex;
         }
@@ -972,6 +1023,7 @@ static const Tex *tile_texture(int t)
     s_tcache[i].mask = s_mask;
     s_tcache[i].by0 = s_band_y0;
     s_tcache[i].bh = s_band_h;
+    s_tcache[i].rect = s_in_rect;
     s_tcache[i].tex = tx;
     return tx;
 }
@@ -983,10 +1035,11 @@ static const Tex *tile_texture_find(int t)
     uint32_t key, check;
     int px, py, pg, hw;
     Tex *tx, old;
-    int reuse = 0, wrap_s = 0, wrap_t = 0;
+    int reuse = 0, wrap_s = 0, wrap_t = 0, up;
     int by0 = s_band_y0;
     if (!(key = tile_key(t, &check, &w, &h)))
         return NULL;
+    key = hash32(key, (uint32_t)s_in_rect);
     if (s_band_h) {                             /* a band of rows only (rect_tex) */
         key = hash32(key, (uint32_t)(s_band_y0 << 16 | s_band_h));
         h = h - by0 < s_band_h ? h - by0 : s_band_h;
@@ -1022,6 +1075,11 @@ static const Tex *tile_texture_find(int t)
         w = (384 * (mode == 0 ? 4 : mode == 1 ? 2 : 1));
         hw = 384;
     }
+    /* a small 15-bit texture drawn on triangles: at twice the size, filtered,
+     * where the GPU magnifies it without filtering (the road close up) */
+    if (s_upsample < 0)
+        s_upsample = getenv("TGR_UPSAMPLE") != NULL;
+    up = s_upsample && mode == 2 && !s_band_h && !s_in_rect && w <= 128 && h <= 128 && w * h <= 4096;
     if (s_ntex == NTEX) {
         uint32_t oldest = 0xFFFFFFFF;
         int k = 0;
@@ -1032,22 +1090,25 @@ static const Tex *tile_texture_find(int t)
     {
         /* a power-of-two size that the tile repeats: the GPU's texture window
          * repeats it if it sits aligned to its size within the page */
-        int ws = !s_band_h && tl->masks && !(tl->cms & 2) && w == (1 << tl->masks) && w >= 8 && w <= 256;
-        int wt = !s_band_h && tl->maskt && !(tl->cmt & 2) && h == (1 << tl->maskt) && h >= 8 && h <= 256;
+        int ws = !s_band_h && tl->masks && w == (1 << tl->masks) << (tl->cms & 1) && w >= 8 && w <= 256 &&
+                 (!(tl->cms & 2) || (((tl->lrs - tl->uls) & 0xFFF) >> 2) + 1 > w);
+        int wt = !s_band_h && tl->maskt && h == (1 << tl->maskt) << (tl->cmt & 1) && h >= 8 && h <= 256 &&
+                 (!(tl->cmt & 2) || (((tl->lrt - tl->ult) & 0xFFF) >> 2) + 1 > h);
         int k = mode == 0 ? 4 : mode == 1 ? 2 : 1;
-        s_align_x = ws ? (w / k < 1 ? 1 : w / k) : 1;
-        s_align_y = wt ? h : 1;
-        if (ws && w / k > 64) { ws = 0; s_align_x = 1; }
+        s_align_x = ws ? ((w << up) / k < 1 ? 1 : (w << up) / k) : 1;
+        s_align_y = wt ? h << up : 1;
+        if (ws && (w << up) / k > 64) { ws = 0; s_align_x = 1; }
         wrap_s = ws;
         wrap_t = wt;
     }
-    if (reuse && old.used != s_frame_no && old.w == w && old.h == h && old.mode == mode) {
+    if (reuse && old.used != s_frame_no && old.w == w << up && old.h == h << up && old.mode == mode) {
         px = old.vx;
         py = old.vy;
         pg = old.shelf;
         s_shelf[pg].used = s_frame_no;
-    } else if ((pg = vram_alloc(hw, h, &px, &py)) < 0) {
+    } else if ((pg = vram_alloc(hw << up, h << up, &px, &py)) < 0) {
         s_align_x = s_align_y = 1;
+        s_tex_full = 1;
         if (s_log)
         {
             int j;
@@ -1064,8 +1125,9 @@ static const Tex *tile_texture_find(int t)
     tx->check = check;
     tx->shelf = (uint8_t)pg;
     tx->mode = (uint8_t)mode;
-    tx->w = (uint16_t)w;
-    tx->h = (uint16_t)h;
+    tx->w = (uint16_t)(w << up);
+    tx->h = (uint16_t)(h << up);
+    tx->up = (uint8_t)up;
     tx->used = s_frame_no;
     tx->vx = (uint16_t)px;
     tx->vy = (uint16_t)py;
@@ -1083,7 +1145,7 @@ static const Tex *tile_texture_find(int t)
         }
     }
     if (s_log)
-        tgr_log("rcp: decode f%d s%d %dx%d at %d,%d mode %d tlut %d opaque %d mask %d clut %04X frame %u\n", tl->fmt, tl->siz, w, h, px, py, mode, tlut, s_opaque, s_mask, tx->clut, (unsigned)tgr_frame());
+        tgr_log("rcp: decode f%d s%d %dx%d at %d,%d mode %d tlut %d opaque %d mask %d clut %04X frame %u src %06X tmem %d line %d wrap %d%d cm %d%d mask %d%d uls %d lrs %d\n", tl->fmt, tl->siz, w, h, px, py, mode, tlut, s_opaque, s_mask, tx->clut, (unsigned)tgr_frame(), s_nloads ? (unsigned)s_loads[s_nloads - 1].src : 0u, tl->tmem, tl->line, wrap_s, wrap_t, tl->cms, tl->cmt, tl->masks, tl->maskt, tl->uls, tl->lrs);
     if (grey >= 0) {
         grey_palettes();
         tx->clut = grey_clut(grey);
@@ -1159,6 +1221,36 @@ static const Tex *tile_texture_find(int t)
                     tx->has_alpha = 1;
                 s_dec[y * hw + x] = c;
             }
+    }
+    if (up) {
+        /* each texel and the halfway points to its right and below it (the next
+         * texel round the repeat, or the edge's again): the GPU's nearest
+         * texel of these is the bilinear one at the half texel; a texture with
+         * transparent texels keeps them whole */
+        static uint16_t big[256 * 256];
+        int x1, y1, w2 = w * 2;
+        for (y = 0; y < h; y++) {
+            y1 = y + 1 < h ? y + 1 : wrap_t ? 0 : y;
+            for (x = 0; x < w; x++) {
+                uint16_t a = s_dec[y * hw + x], b, c, d;
+                x1 = x + 1 < w ? x + 1 : wrap_s ? 0 : x;
+                b = s_dec[y * hw + x1]; c = s_dec[y1 * hw + x]; d = s_dec[y1 * hw + x1];
+                big[(2 * y) * w2 + 2 * x] = a;
+                if (tx->has_alpha) {
+                    big[(2 * y) * w2 + 2 * x + 1] = a;
+                    big[(2 * y + 1) * w2 + 2 * x] = a;
+                    big[(2 * y + 1) * w2 + 2 * x + 1] = a;
+                } else {
+#define AVG2(p, q) (uint16_t)(((((p) & 0x7BDE) + ((q) & 0x7BDE)) >> 1) | ((p) & 0x8000))
+                    big[(2 * y) * w2 + 2 * x + 1] = AVG2(a, b);
+                    big[(2 * y + 1) * w2 + 2 * x] = AVG2(a, c);
+                    big[(2 * y + 1) * w2 + 2 * x + 1] = AVG2(AVG2(a, d), AVG2(b, c));
+#undef AVG2
+                }
+            }
+        }
+        upload(px, py, w2, h * 2, big);
+        return tx;
     }
     upload(px, py, hw, h, s_dec);
     return tx;
@@ -1447,8 +1539,8 @@ static void sample(int t, int32_t ss, int32_t tt, uint8_t out[4])
         int32_t vt = tl->shiftt > 10 ? tt << (16 - tl->shiftt) : tt >> tl->shiftt;
         x = (vs - origin_s) >> 5;
         y = (vt - origin_t) >> 5;
-        if (tl->masks && !(tl->cms & 2)) x &= (1 << tl->masks) - 1;
-        if (tl->maskt && !(tl->cmt & 2)) y &= (1 << tl->maskt) - 1;
+        if (tl->masks && w == (1 << tl->masks) << (tl->cms & 1)) x &= w - 1;
+        if (tl->maskt && h == (1 << tl->maskt) << (tl->cmt & 1)) y &= h - 1;
         x = x < 0 ? 0 : x >= w ? w - 1 : x;
         y = y < 0 ? 0 : y >= h ? h - 1 : y;
         memcpy(out, s_samp[slot].rgba + (y * w + x) * 4, 4);
@@ -1731,6 +1823,72 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
         put_flat(p);
 }
 
+/* an edge the GPU's affine mapping would bend: the texel at its middle
+ * drawn more than 3 pixels from where perspective puts it (an edge of
+ * screen length L between depths wa, wb: L |wb - wa| / 2 (wa + wb)); decided
+ * by the edge alone, so the two triangles sharing it cut it alike */
+static int edge_split(int32_t wa, int32_t wb, int ax, int ay, int bx, int by)
+{
+    int64_t l = abs(ax - bx) + abs(ay - by);
+    if (wa < W_NEAR) wa = W_NEAR;
+    if (wb < W_NEAR) wb = W_NEAR;
+    return l * (int64_t)abs(wb - wa) > 6 * ((int64_t)wa + wb);
+}
+
+static int persp_split(const Vtx *a, const Vtx *b, const Vtx *c)
+{
+    return edge_split(a->cw, b->cw, a->x, a->y, b->x, b->y) || edge_split(b->cw, c->cw, b->x, b->y, c->x, c->y) ||
+           edge_split(c->cw, a->cw, c->x, c->y, a->x, a->y);
+}
+
+static void sv_of(SV *o, const CV *c)
+{
+    project(c->x, c->y, c->z, c->w < W_NEAR ? W_NEAR : c->w, &o->x, &o->y, &o->z);
+    o->u = c->u; o->v = c->v;
+    o->r = (int16_t)c->r; o->g = (int16_t)c->g; o->b = (int16_t)c->b;
+    o->fr = (int16_t)c->fr; o->fg = (int16_t)c->fg; o->fb = (int16_t)c->fb;
+}
+
+/* a clipped triangle to the GPU: a textured one cut in clip space (where its
+ * texels run true) at the middles of the edges that need it, again in the
+ * pieces, so the texture runs on across its neighbours' cuts */
+static void emit_cv(const CV *a, const CV *b, const CV *c, const Prim *pr, int depth)
+{
+    SV sv[3];
+    sv_of(&sv[0], a);
+    sv_of(&sv[1], b);
+    sv_of(&sv[2], c);
+    if (pr->textured && depth < 5) {
+        int e0 = edge_split(a->w, b->w, sv[0].x, sv[0].y, sv[1].x, sv[1].y);
+        int e1 = edge_split(b->w, c->w, sv[1].x, sv[1].y, sv[2].x, sv[2].y);
+        int e2 = edge_split(c->w, a->w, sv[2].x, sv[2].y, sv[0].x, sv[0].y);
+        CV ab, bc, ca;
+        if (e0) cv_lerp(&ab, a, b, 0x8000);
+        if (e1) cv_lerp(&bc, b, c, 0x8000);
+        if (e2) cv_lerp(&ca, c, a, 0x8000);
+        switch (e0 | e1 << 1 | e2 << 2) {
+        case 0: break;
+        case 1: emit_cv(a, &ab, c, pr, depth + 1); emit_cv(&ab, b, c, pr, depth + 1); return;
+        case 2: emit_cv(b, &bc, a, pr, depth + 1); emit_cv(&bc, c, a, pr, depth + 1); return;
+        case 4: emit_cv(c, &ca, b, pr, depth + 1); emit_cv(&ca, a, b, pr, depth + 1); return;
+        case 3:                                 /* ab and bc */
+            emit_cv(&ab, b, &bc, pr, depth + 1); emit_cv(a, &ab, &bc, pr, depth + 1); emit_cv(a, &bc, c, pr, depth + 1);
+            return;
+        case 6:                                 /* bc and ca */
+            emit_cv(&bc, c, &ca, pr, depth + 1); emit_cv(b, &bc, &ca, pr, depth + 1); emit_cv(b, &ca, a, pr, depth + 1);
+            return;
+        case 5:                                 /* ca and ab */
+            emit_cv(&ca, a, &ab, pr, depth + 1); emit_cv(c, &ca, &ab, pr, depth + 1); emit_cv(c, &ab, b, pr, depth + 1);
+            return;
+        default:
+            emit_cv(a, &ab, &ca, pr, depth + 1); emit_cv(&ab, b, &bc, pr, depth + 1);
+            emit_cv(&ca, &bc, c, pr, depth + 1); emit_cv(&ab, &bc, &ca, pr, depth + 1);
+            return;
+        }
+    }
+    emit_tri(&sv[0], &sv[1], &sv[2], pr, 0);
+}
+
 /* what the slow path worked out for the current draw state, reused by the
  * triangles after it while nothing changes (most of a model's) */
 static struct {
@@ -1773,8 +1931,8 @@ static void vtx_fast(Vtx *vk, const Vtx *v0)
     }
     vk->fr = (int16_t)r; vk->fg = (int16_t)g; vk->fb = (int16_t)b;
     if (s_fs.textured) {
-        vk->fu = tc32(vk->s, s_fs.s0, s_fs.shifts);
-        vk->fv = tc32(vk->t, s_fs.t0, s_fs.shiftt);
+        vk->fu = tc32(vk->s, s_fs.s0, s_fs.shifts) << s_fs.pr.tex->up;
+        vk->fv = tc32(vk->t, s_fs.t0, s_fs.shiftt) << s_fs.pr.tex->up;
     } else {
         vk->fu = vk->fv = 0;
     }
@@ -1790,6 +1948,7 @@ static int tri_fast(Vtx *v0, Vtx *v1, Vtx *v2)
     if (s_fs.stamp != s_dstamp) { s_n_stamp++; return 0; }
     if (!s_fs.ok) { s_n_notok++; return 0; }
     if ((v0->clip | v1->clip | v2->clip) & (16 | 32)) { s_n_edge++; return 0; }
+    if (s_fs.textured && persp_split(v0, v1, v2)) { s_n_edge++; return 0; }
     s_n_fast++;
     {
         int32_t det = (v1->x - v0->x) * (v2->y - v0->y) - (v2->x - v0->x) * (v1->y - v0->y);
@@ -1959,8 +2118,8 @@ static void triangle(int ia, int ib, int ic)
         int r, g, b;
         c->x = v[k]->cx; c->y = v[k]->cy; c->z = v[k]->cz; c->w = v[k]->cw;
         if (d.textured) {
-            c->u = tc32(v[k]->s, d.s0, d.shifts);
-            c->v = tc32(v[k]->t, d.t0, d.shiftt);
+            c->u = tc32(v[k]->s, d.s0, d.shifts) << d.tex->up;
+            c->v = tc32(v[k]->t, d.t0, d.shiftt) << d.tex->up;
         } else {
             c->u = c->v = 0;
         }
@@ -2000,18 +2159,8 @@ static void triangle(int ia, int ib, int ic)
     }
     if (n < 3)
         return;
-    {
-        SV sv[12];
-        for (k = 0; k < n; k++) {
-            const CV *c = &poly[cur][k];
-            project(c->x, c->y, c->z, c->w < W_NEAR ? W_NEAR : c->w, &sv[k].x, &sv[k].y, &sv[k].z);
-            sv[k].u = c->u; sv[k].v = c->v;
-            sv[k].r = (int16_t)c->r; sv[k].g = (int16_t)c->g; sv[k].b = (int16_t)c->b;
-            sv[k].fr = (int16_t)c->fr; sv[k].fg = (int16_t)c->fg; sv[k].fb = (int16_t)c->fb;
-        }
-        for (k = 1; k + 1 < n; k++)
-            emit_tri(&sv[0], &sv[k], &sv[k + 1], &pr, 0);
-    }
+    for (k = 1; k + 1 < n; k++)
+        emit_cv(&poly[cur][0], &poly[cur][k], &poly[cur][k + 1], &pr, 0);
 }
 
 /* a textured rectangle as a 4-point textured polygon */
@@ -2158,7 +2307,9 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             int a, b, ya, yb, gy0, gy1, va, vb;
             s_band_y0 = band ? b0 : 0;
             s_band_h = band;
+            s_in_rect = 1;
             draw_state(&d, tile, 1, mask);
+            s_in_rect = 0;
             s_band_y0 = s_band_h = 0;
             if (!d.textured) {
                 if (s_log)
@@ -2347,6 +2498,182 @@ static void dl_census(uint32_t a, int depth)
     }
 }
 
+/* a display-list command that sets state (everything but the matrices,
+ * vertices, triangles, lists and texture rectangles) */
+static void exec_state(int op, uint32_t w0, uint32_t w1)
+{
+    s_dstamp++;
+    switch (op) {
+    case 0xB6: s_geom &= ~w1; break;
+    case 0xB7: s_geom |= w1; break;
+    case 0xB9: case 0xBA: {
+        int sh = (w0 >> 8) & 0xFF, len = w0 & 0xFF;
+        s_texgen++;
+        uint32_t mask = (len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1)) << sh;
+        uint32_t *m = op == 0xB9 ? &s_oml : &s_omh;
+        *m = (*m & ~mask) | w1;
+        break;
+    }
+    case 0xBB:                                    /* G_TEXTURE */
+        s_tex.on = w0 & 0xFF;
+        s_tex.tile = (w0 >> 8) & 7;
+        s_tex.level = (w0 >> 11) & 7;
+        s_tex.ss = (uint16_t)(w1 >> 16);
+        s_tex.ts = (uint16_t)w1;
+        break;
+    case 0xBC: {                                  /* G_MOVEWORD */
+        int idx = w0 & 0xFF, ofs = (w0 >> 8) & 0xFFFF;
+        if (idx == 0x02)
+            s_nlights = (int)((w1 - 0x80000000u) / 32) - 1;
+        else if (idx == 0x06)
+            s_seg[(ofs / 4) & 15] = w1 & 0x3FFFFF;
+        else if (idx == 0x08) {             /* G_MW_FOG */
+            s_fog_mul = (int16_t)(w1 >> 16);
+            s_fog_ofs = (int16_t)w1;
+        }
+        else if (idx == 0x0A) {
+            int k = ofs / 0x20;
+            s_light_stamp++;
+            if ((ofs & 0x1F) == 0 && k < 8) {
+                s_light[k].col[0] = (uint8_t)(w1 >> 24);
+                s_light[k].col[1] = (uint8_t)(w1 >> 16);
+                s_light[k].col[2] = (uint8_t)(w1 >> 8);
+            }
+        }
+        if (s_nlights < 0) s_nlights = 0;
+        if (s_nlights > 7) s_nlights = 7;
+        break;
+    }
+    case 0xED:                                    /* G_SETSCISSOR */
+        s_scissor[0] = (int)((w0 >> 12) & 0xFFF) / 4;
+        s_scissor[1] = (int)(w0 & 0xFFF) / 4;
+        s_scissor[2] = (int)((w1 >> 12) & 0xFFF) / 4;
+        s_scissor[3] = (int)(w1 & 0xFFF) / 4;
+        scissor(s_scissor[0], s_scissor[1], s_scissor[2], s_scissor[3]);
+        break;
+    case 0xEF: s_omh = w0 & 0xFFFFFF; s_oml = w1; s_texgen++; break;
+    case 0xF0: {                                  /* G_LOADTLUT */
+        s_texgen++;
+        Load l;
+        int t = (w1 >> 24) & 7;
+        memset(&l, 0, sizeof l);
+        l.kind = 3;
+        l.src = s_timg;
+        l.a0 = (int)(((w1 >> 12) & 0xFFF) >> 2) + 1;
+        l.tmem = s_tile[t].tmem;
+        l.words = l.a0;
+        note_load(&l);
+        break;
+    }
+    case 0xF2: {                                  /* G_SETTILESIZE */
+        s_texgen++;
+        int t = (w1 >> 24) & 7;
+        s_tile[t].uls = (w0 >> 12) & 0xFFF;
+        s_tile[t].ult = w0 & 0xFFF;
+        s_tile[t].lrs = (w1 >> 12) & 0xFFF;
+        s_tile[t].lrt = w1 & 0xFFF;
+        break;
+    }
+    case 0xF3: {                                  /* G_LOADBLOCK */
+        s_texgen++;
+        Load l;
+        int t = (w1 >> 24) & 7, texels, bytes;
+        memset(&l, 0, sizeof l);
+        l.kind = 1;
+        l.src = s_timg;
+        l.siz = s_timg_siz;
+        l.w = s_timg_w;
+        l.a0 = (w0 >> 12) & 0xFFF;
+        l.a1 = w0 & 0xFFF;
+        l.a2 = (w1 >> 12) & 0xFFF;
+        l.a3 = w1 & 0xFFF;
+        l.tmem = s_tile[t].tmem;
+        texels = l.a2 - l.a0 + 1;
+        bytes = l.siz == 0 ? (texels + 1) / 2 : texels * ((4 << l.siz) / 8);
+        l.words = (bytes + 7) / 8;
+        note_load(&l);
+        break;
+    }
+    case 0xF4: {                                  /* G_LOADTILE */
+        s_texgen++;
+        Load l;
+        int t = (w1 >> 24) & 7;
+        memset(&l, 0, sizeof l);
+        l.kind = 2;
+        l.src = s_timg;
+        l.siz = s_timg_siz;
+        l.w = s_timg_w;
+        l.a0 = (w0 >> 12) & 0xFFF;
+        l.a1 = w0 & 0xFFF;
+        l.a2 = (w1 >> 12) & 0xFFF;
+        l.a3 = w1 & 0xFFF;
+        l.line = s_tile[t].line;
+        l.tmem = s_tile[t].tmem;
+        l.words = ((l.a3 >> 2) - (l.a1 >> 2) + 1) * l.line;
+        note_load(&l);
+        break;
+    }
+    case 0xF5: {                                  /* G_SETTILE */
+        s_texgen++;
+        int t = (w1 >> 24) & 7;
+        s_tile[t].fmt = (w0 >> 21) & 7;
+        s_tile[t].siz = (w0 >> 19) & 3;
+        s_tile[t].line = (w0 >> 9) & 0x1FF;
+        s_tile[t].tmem = w0 & 0x1FF;
+        s_tile[t].pal = (w1 >> 20) & 15;
+        s_tile[t].cmt = (w1 >> 18) & 3;
+        s_tile[t].maskt = (w1 >> 14) & 15;
+        s_tile[t].shiftt = (w1 >> 10) & 15;
+        s_tile[t].cms = (w1 >> 8) & 3;
+        s_tile[t].masks = (w1 >> 4) & 15;
+        s_tile[t].shifts = w1 & 15;
+        break;
+    }
+    case 0xF6: rect_fill(w0, w1); break;
+    case 0xF7: s_fill = w1; break;
+    case 0xF8:
+        s_fogc[0] = (uint8_t)(w1 >> 24); s_fogc[1] = (uint8_t)(w1 >> 16);
+        s_fogc[2] = (uint8_t)(w1 >> 8); s_fogc[3] = (uint8_t)w1;
+        break;
+    case 0xF9:
+        s_blend[0] = (uint8_t)(w1 >> 24); s_blend[1] = (uint8_t)(w1 >> 16);
+        s_blend[2] = (uint8_t)(w1 >> 8); s_blend[3] = (uint8_t)w1;
+        break;
+    case 0xFA:
+        s_prim[0] = (uint8_t)(w1 >> 24); s_prim[1] = (uint8_t)(w1 >> 16);
+        s_prim[2] = (uint8_t)(w1 >> 8); s_prim[3] = (uint8_t)w1;
+        s_prim_lod = (uint8_t)w0;
+        break;
+    case 0xFB:
+        s_env[0] = (uint8_t)(w1 >> 24); s_env[1] = (uint8_t)(w1 >> 16);
+        s_env[2] = (uint8_t)(w1 >> 8); s_env[3] = (uint8_t)w1;
+        break;
+    case 0xFC: s_cc0 = w0 & 0xFFFFFF; s_cc1 = w1; break;
+    case 0xFD:                                    /* G_SETTIMG */
+        s_timg = seg_addr(w1);
+        s_timg_siz = (w0 >> 19) & 3;
+        s_timg_w = (int)(w0 & 0xFFF) + 1;
+        break;
+    case 0xFE: s_zimg = seg_addr(w1); break;
+    case 0xFF: {                                  /* G_SETCIMG */
+        uint32_t a = seg_addr(w1);
+        if (s_log)
+            tgr_log("rcp: cimg %06X w %d zimg %06X\n", a, (int)(w0 & 0xFFF) + 1, s_zimg);
+        s_cimg = a;
+        if (a != s_zimg && ((int)(w0 & 0xFFF) + 1 == 320 || (int)(w0 & 0xFFF) + 1 == 640)) {
+            int t = fb_index(a), hires = (int)(w0 & 0xFFF) + 1 == 640;
+            if (t != s_target || hires != s_hires) {
+                frame_end();
+                frame_begin(t, hires);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 static void run(uint32_t dl)
 {
     uint32_t stack[18];
@@ -2358,9 +2685,6 @@ static void run(uint32_t dl)
         pc += 8;
         if (s_dlstats)
             s_opcount[op]++;
-        if (op != 0x04 && op != 0xB1 && op != 0xBF && op != 0x06 && op != 0xB8 && op != 0x01 && op != 0xBD &&
-            op != 0x03)
-            s_dstamp++;
         switch (op) {
         case 0x01: {                                  /* G_MTX */
             M4 m;
@@ -2436,188 +2760,25 @@ static void run(uint32_t dl)
         case 0xBF:                                    /* G_TRI1 */
             triangle(((w1 >> 16) & 0xFF) / 2, ((w1 >> 8) & 0xFF) / 2, (w1 & 0xFF) / 2);
             break;
-        case 0xB6: s_geom &= ~w1; break;
-        case 0xB7: s_geom |= w1; break;
         case 0xB8:                                    /* G_ENDDL */
             if (sp == 0)
                 return;
             pc = stack[--sp];
             break;
-        case 0xB9: case 0xBA: {
-            int sh = (w0 >> 8) & 0xFF, len = w0 & 0xFF;
-            s_texgen++;
-            uint32_t mask = (len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1)) << sh;
-            uint32_t *m = op == 0xB9 ? &s_oml : &s_omh;
-            *m = (*m & ~mask) | w1;
-            break;
-        }
-        case 0xBB:                                    /* G_TEXTURE */
-            s_tex.on = w0 & 0xFF;
-            s_tex.tile = (w0 >> 8) & 7;
-            s_tex.level = (w0 >> 11) & 7;
-            s_tex.ss = (uint16_t)(w1 >> 16);
-            s_tex.ts = (uint16_t)w1;
-            break;
-        case 0xBC: {                                  /* G_MOVEWORD */
-            int idx = w0 & 0xFF, ofs = (w0 >> 8) & 0xFFFF;
-            if (idx == 0x02)
-                s_nlights = (int)((w1 - 0x80000000u) / 32) - 1;
-            else if (idx == 0x06)
-                s_seg[(ofs / 4) & 15] = w1 & 0x3FFFFF;
-            else if (idx == 0x08) {             /* G_MW_FOG */
-                s_fog_mul = (int16_t)(w1 >> 16);
-                s_fog_ofs = (int16_t)w1;
-            }
-            else if (idx == 0x0A) {
-                int k = ofs / 0x20;
-                s_light_stamp++;
-                if ((ofs & 0x1F) == 0 && k < 8) {
-                    s_light[k].col[0] = (uint8_t)(w1 >> 24);
-                    s_light[k].col[1] = (uint8_t)(w1 >> 16);
-                    s_light[k].col[2] = (uint8_t)(w1 >> 8);
-                }
-            }
-            if (s_nlights < 0) s_nlights = 0;
-            if (s_nlights > 7) s_nlights = 7;
-            break;
-        }
         case 0xBD:                                    /* G_POPMTX */
             if (s_mvn > 0)
                 s_mvn--;
             s_mvp_dirty = 1;
             break;
         case 0xE4: case 0xE5: {                       /* G_TEXRECT: the halves follow */
+            s_dstamp++;
             uint32_t h2 = rd32(pc + 4), hc = rd32(pc + 12);
             pc += 16;
             rect_tex(w0, w1, h2, hc);
             break;
         }
-        case 0xED:                                    /* G_SETSCISSOR */
-            s_scissor[0] = (int)((w0 >> 12) & 0xFFF) / 4;
-            s_scissor[1] = (int)(w0 & 0xFFF) / 4;
-            s_scissor[2] = (int)((w1 >> 12) & 0xFFF) / 4;
-            s_scissor[3] = (int)(w1 & 0xFFF) / 4;
-            scissor(s_scissor[0], s_scissor[1], s_scissor[2], s_scissor[3]);
-            break;
-        case 0xEF: s_omh = w0 & 0xFFFFFF; s_oml = w1; s_texgen++; break;
-        case 0xF0: {                                  /* G_LOADTLUT */
-            s_texgen++;
-            Load l;
-            int t = (w1 >> 24) & 7;
-            memset(&l, 0, sizeof l);
-            l.kind = 3;
-            l.src = s_timg;
-            l.a0 = (int)(((w1 >> 12) & 0xFFF) >> 2) + 1;
-            l.tmem = s_tile[t].tmem;
-            l.words = l.a0;
-            note_load(&l);
-            break;
-        }
-        case 0xF2: {                                  /* G_SETTILESIZE */
-            s_texgen++;
-            int t = (w1 >> 24) & 7;
-            s_tile[t].uls = (w0 >> 12) & 0xFFF;
-            s_tile[t].ult = w0 & 0xFFF;
-            s_tile[t].lrs = (w1 >> 12) & 0xFFF;
-            s_tile[t].lrt = w1 & 0xFFF;
-            break;
-        }
-        case 0xF3: {                                  /* G_LOADBLOCK */
-            s_texgen++;
-            Load l;
-            int t = (w1 >> 24) & 7, texels, bytes;
-            memset(&l, 0, sizeof l);
-            l.kind = 1;
-            l.src = s_timg;
-            l.siz = s_timg_siz;
-            l.w = s_timg_w;
-            l.a0 = (w0 >> 12) & 0xFFF;
-            l.a1 = w0 & 0xFFF;
-            l.a2 = (w1 >> 12) & 0xFFF;
-            l.a3 = w1 & 0xFFF;
-            l.tmem = s_tile[t].tmem;
-            texels = l.a2 - l.a0 + 1;
-            bytes = l.siz == 0 ? (texels + 1) / 2 : texels * ((4 << l.siz) / 8);
-            l.words = (bytes + 7) / 8;
-            note_load(&l);
-            break;
-        }
-        case 0xF4: {                                  /* G_LOADTILE */
-            s_texgen++;
-            Load l;
-            int t = (w1 >> 24) & 7;
-            memset(&l, 0, sizeof l);
-            l.kind = 2;
-            l.src = s_timg;
-            l.siz = s_timg_siz;
-            l.w = s_timg_w;
-            l.a0 = (w0 >> 12) & 0xFFF;
-            l.a1 = w0 & 0xFFF;
-            l.a2 = (w1 >> 12) & 0xFFF;
-            l.a3 = w1 & 0xFFF;
-            l.line = s_tile[t].line;
-            l.tmem = s_tile[t].tmem;
-            l.words = ((l.a3 >> 2) - (l.a1 >> 2) + 1) * l.line;
-            note_load(&l);
-            break;
-        }
-        case 0xF5: {                                  /* G_SETTILE */
-            s_texgen++;
-            int t = (w1 >> 24) & 7;
-            s_tile[t].fmt = (w0 >> 21) & 7;
-            s_tile[t].siz = (w0 >> 19) & 3;
-            s_tile[t].line = (w0 >> 9) & 0x1FF;
-            s_tile[t].tmem = w0 & 0x1FF;
-            s_tile[t].pal = (w1 >> 20) & 15;
-            s_tile[t].cmt = (w1 >> 18) & 3;
-            s_tile[t].maskt = (w1 >> 14) & 15;
-            s_tile[t].shiftt = (w1 >> 10) & 15;
-            s_tile[t].cms = (w1 >> 8) & 3;
-            s_tile[t].masks = (w1 >> 4) & 15;
-            s_tile[t].shifts = w1 & 15;
-            break;
-        }
-        case 0xF6: rect_fill(w0, w1); break;
-        case 0xF7: s_fill = w1; break;
-        case 0xF8:
-            s_fogc[0] = (uint8_t)(w1 >> 24); s_fogc[1] = (uint8_t)(w1 >> 16);
-            s_fogc[2] = (uint8_t)(w1 >> 8); s_fogc[3] = (uint8_t)w1;
-            break;
-        case 0xF9:
-            s_blend[0] = (uint8_t)(w1 >> 24); s_blend[1] = (uint8_t)(w1 >> 16);
-            s_blend[2] = (uint8_t)(w1 >> 8); s_blend[3] = (uint8_t)w1;
-            break;
-        case 0xFA:
-            s_prim[0] = (uint8_t)(w1 >> 24); s_prim[1] = (uint8_t)(w1 >> 16);
-            s_prim[2] = (uint8_t)(w1 >> 8); s_prim[3] = (uint8_t)w1;
-            s_prim_lod = (uint8_t)w0;
-            break;
-        case 0xFB:
-            s_env[0] = (uint8_t)(w1 >> 24); s_env[1] = (uint8_t)(w1 >> 16);
-            s_env[2] = (uint8_t)(w1 >> 8); s_env[3] = (uint8_t)w1;
-            break;
-        case 0xFC: s_cc0 = w0 & 0xFFFFFF; s_cc1 = w1; break;
-        case 0xFD:                                    /* G_SETTIMG */
-            s_timg = seg_addr(w1);
-            s_timg_siz = (w0 >> 19) & 3;
-            s_timg_w = (int)(w0 & 0xFFF) + 1;
-            break;
-        case 0xFE: s_zimg = seg_addr(w1); break;
-        case 0xFF: {                                  /* G_SETCIMG */
-            uint32_t a = seg_addr(w1);
-            if (s_log)
-                tgr_log("rcp: cimg %06X w %d zimg %06X\n", a, (int)(w0 & 0xFFF) + 1, s_zimg);
-            s_cimg = a;
-            if (a != s_zimg && ((int)(w0 & 0xFFF) + 1 == 320 || (int)(w0 & 0xFFF) + 1 == 640)) {
-                int t = fb_index(a), hires = (int)(w0 & 0xFFF) + 1 == 640;
-                if (t != s_target || hires != s_hires) {
-                    frame_end();
-                    frame_begin(t, hires);
-                }
-            }
-            break;
-        }
         default:
+            exec_state(op, w0, w1);
             break;
         }
     }
@@ -2666,6 +2827,13 @@ void tgr_rcp_task(uint32_t dl)
         init();
     s_frame_no++;
     s_mvn = 0;
+    if (s_tex_full) {
+        /* the shelves are held by textures this frame may not use: all go, and
+         * what it does use packs again (the uploads land after the last frame's
+         * list has drawn) */
+        s_tex_full = 0;
+        tex_flush_all();
+    }
     run(dl);
     frame_end();
 }
@@ -2757,6 +2925,32 @@ void tgr_rcp_present(uint32_t frame)
                     (unsigned)s_n_clip, (unsigned)s_n_gte, (unsigned)s_gte_flagor, s_gte_ok, s_gte_k,
                     (unsigned)s_n_fast, (unsigned)s_n_cull, (unsigned)s_n_rej, (unsigned)s_n_stamp, (unsigned)s_n_notok,
                     (unsigned)s_n_edge);
+        {
+            extern uint32_t fm_calls[8];
+            fprintf(stderr, "perf: calls catf %u rotvec %u rotvect %u mulvecrows %u sinf %u cosf %u slow3 %u exact3 %u\n",
+                    (unsigned)fm_calls[0], (unsigned)fm_calls[1], (unsigned)fm_calls[2], (unsigned)fm_calls[3],
+                    (unsigned)fm_calls[4], (unsigned)fm_calls[5], (unsigned)fm_calls[6], (unsigned)fm_calls[7]);
+            memset(fm_calls, 0, sizeof fm_calls);
+        }
+        {
+            extern void tgr_perf_marks_report(void);
+            tgr_perf_marks_report();
+        }
+        {
+            int i, n = 0;
+            uint32_t hw = 0, lost = 0;
+            for (i = 0; i < s_ntex; i++)
+                if (s_texs[i].used + 1 >= s_frame_no) {
+                    n++;
+                    hw += (uint32_t)((s_texs[i].w + tex_k(&s_texs[i]) - 1) / tex_k(&s_texs[i])) * s_texs[i].h;
+                }
+            for (i = 0; i < s_nshelf; i++)
+                lost += (uint32_t)(384 - s_shelf[i].x) * (uint32_t)s_shelf[i].h;
+            fprintf(stderr, "perf: packets dropped %u, peak words %u of %d\n", (unsigned)s_n_over, (unsigned)s_peak_used, PKT_WORDS);
+            s_n_over = s_peak_used = 0;
+            fprintf(stderr, "perf: textures %d in use, %u halfwords; %d shelves, %u halfwords free at shelf ends\n", n,
+                    (unsigned)hw, s_nshelf, (unsigned)lost);
+        }
         s_n_vtx = s_n_tri = s_n_piece = s_n_clip = s_n_gte = s_gte_flagor = s_n_fast = s_n_cull = 0;
         s_n_rej = s_n_stamp = s_n_notok = s_n_edge = 0;
         t0 = t;
