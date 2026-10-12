@@ -1,17 +1,19 @@
 #!/bin/sh
 # builder/build.sh: build Rally Builder for macOS and Windows.
 #
-#   build/builder/dist/RallyBuilder-VERSION-macOS.zip    Rally Builder.app, universal
+#   build/builder/dist/RallyBuilder-VERSION-macOS.zip    Rally Builder.app, universal: builds
+#                                                        Top Gear Rally Remastered for the Mac or
+#                                                        the iPhone
 #   build/builder/dist/RallyBuilder-VERSION-Windows.zip  Rally Builder\RallyBuilder.exe
 #                                                        and games\ (the payload), x64
 #
-# Each carries the two games' executables (the payload) built with none of the
-# games' data in them: ports/brally with IMAGE=runtime, ports/tgrally with
+# Each carries Top Gear Rally Remastered (ports/remastered) built with none of
+# the games' data in it: ports/brally with IMAGE=runtime, ports/tgrally with
 # ROMDATA=file. check_payload.py proves that before anything is packaged.
 # VERSION is builder/version.py's (the average M2 percentage) unless set.
 #
-# Needs the toolchains the ports already use: Xcode's clang (macOS), and
-# mingw-w64 (x86_64-w64-mingw32-*) for Windows.
+# Needs the toolchains the ports already use: Xcode's clang and the iOS SDK
+# with xcodegen (macOS), and mingw-w64 (x86_64-w64-mingw32-*) for Windows.
 set -e
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
@@ -21,34 +23,50 @@ export VERSION                     # the game executables' version info too (Win
 B=build/builder
 DIST=$B/dist
 WINCC=$PWD/ports/brally/tools/wincc.sh
-mkdir -p $DIST $B/payload-macos $B/payload-windows $B/win
+rm -rf $B/payload-macos $B/payload-windows
+mkdir -p $DIST $B/payload-macos/ios $B/payload-windows $B/win
 echo "Rally Builder $VERSION"
+# the games' data read from the build at start-up, never compiled in
+IMAGE=runtime ROMDATA=file
+export IMAGE ROMDATA
 
-# ---- the payload ---------------------------------------------------------------------------
+# ---- the payload: the Mac ----------------------------------------------------------------------
 for A in arm64 x86_64; do
-    MACOSX_DEPLOYMENT_TARGET=11.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/brally-macos-$A \
-        HOST=macos RENDER=metal IMAGE=runtime GFLAG=-g0 ports/brally/link64.sh | tail -1
-    MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDFLAGS_TGR="-arch $A" OUT=$B/tgrally-macos-$A \
-        HOST=macos RENDER=metal ROMDATA=file GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
+    MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/remastered-macos-$A \
+        HOST=macos RENDER=metal GFLAG=-g0 ports/remastered/link.sh | grep -E "FAIL|linked"
 done
-lipo -create $B/brally-macos-arm64/brally64 $B/brally-macos-x86_64/brally64 -output $B/payload-macos/brally64
-lipo -create $B/tgrally-macos-arm64/tgrally $B/tgrally-macos-x86_64/tgrally -output $B/payload-macos/tgrally
-strip -S $B/payload-macos/brally64 $B/payload-macos/tgrally
+lipo -create $B/remastered-macos-arm64/remastered $B/remastered-macos-x86_64/remastered \
+    -output $B/payload-macos/remastered
+strip -S $B/payload-macos/remastered
+IS=$B/AppIcon.iconset
+rm -rf $IS && mkdir -p $IS
+for s in 16 32 128 256 512; do
+    sips -z $s $s ports/remastered/icon.png --out $IS/icon_${s}x${s}.png >/dev/null
+    sips -z $((s * 2)) $((s * 2)) ports/remastered/icon.png --out $IS/icon_${s}x${s}@2x.png >/dev/null
+done
+iconutil -c icns $IS -o $B/payload-macos/AppIcon.icns
+rm -rf $IS
 
-# Windows: each game drawn with Vulkan (the GPU, as Metal on the Mac) and, for
-# a PC without a Vulkan driver, in software; the builder picks
+# ---- the payload: the iPhone (unsigned; the builder adds the data and signs it) -------------------
+ports/remastered/ios/build.sh --payload | grep -E "FAIL|built"
+cp -R "build/remastered/ios-payload/derived/Build/Products/Release-iphoneos/Top Gear Rally Remastered.app" \
+    $B/payload-macos/ios/app
+cp builder/src/mac/ios_sign.sh $B/payload-macos/ios_sign.sh
+
+# ---- the payload: Windows ---------------------------------------------------------------------
+# drawn with Vulkan (the GPU, as Metal on the Mac) and, for a PC without a
+# Vulkan driver, in software; the builder picks
 for R in vulkan soft; do
     S=; [ $R = soft ] && S=-soft
-    CC=$WINCC OUT=$B/brally-windows-$R HOST=windows RENDER=$R IMAGE=runtime GFLAG=-g0 ports/brally/link64.sh | tail -1
-    CC=$WINCC OUT=$B/tgrally-windows-$R HOST=windows RENDER=$R ROMDATA=file GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
-    x86_64-w64-mingw32-strip -o $B/payload-windows/brally64$S.exe $B/brally-windows-$R/brally64.exe
-    x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally$S.exe $B/tgrally-windows-$R/tgrally.exe
+    CC=$WINCC OUT=$B/remastered-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/remastered/link.sh | grep -E "FAIL|linked"
+    x86_64-w64-mingw32-strip -o $B/payload-windows/remastered$S.exe $B/remastered-windows-$R/remastered.exe
 done
+cp $B/remastered-windows-vulkan/icon.ico $B/payload-windows/icon.ico
 
 # x86-64 game code must not assume 16-byte alignment of the original's data
-$PY builder/check_alignment.py $B/brally-macos-x86_64/obj $B/tgrally-macos-x86_64/obj \
-    $B/brally-windows-vulkan/obj $B/tgrally-windows-vulkan/obj
-$PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally \
+$PY builder/check_alignment.py $B/remastered-macos-x86_64/brally/obj $B/remastered-macos-x86_64/tgrally/obj \
+    $B/remastered-windows-vulkan/brally/obj $B/remastered-windows-vulkan/tgrally/obj
+$PY builder/check_payload.py $B/payload-macos/remastered "$B/payload-macos/ios/app/Top Gear Rally Remastered" \
     $B/payload-windows/*.exe
 
 # ---- macOS: Rally Builder.app -------------------------------------------------------------------
@@ -60,8 +78,8 @@ clang -arch arm64 -arch x86_64 -mmacosx-version-min=11.0 -O2 -Wall -fobjc-arc -D
     -o "$APP/Contents/MacOS/RallyBuilder"
 sed "s/@VERSION@/$VERSION/g" builder/src/mac/Info.plist > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
-cp $B/payload-macos/brally64 $B/payload-macos/tgrally "$APP/Contents/Resources/payload/"
-codesign --force --sign - "$APP/Contents/Resources/payload/brally64" "$APP/Contents/Resources/payload/tgrally"
+cp -R $B/payload-macos/ "$APP/Contents/Resources/payload/"
+codesign --force --sign - "$APP/Contents/Resources/payload/remastered"
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict "$APP"
 rm -f $DIST/RallyBuilder-*-macOS.zip
@@ -86,8 +104,8 @@ for s in builder/src/core/*.c builder/src/win/main.c; do
 done
 x86_64-w64-mingw32-gcc -municode -mwindows -static -s -o "$B/win/Rally Builder/RallyBuilder.exe" \
     $OBJS $B/win/builder.res.o -lcomctl32 -lole32 -lshell32 -luuid
-# the games beside it as plain files: the builder copies them, it carries no
-# executable inside itself
-cp $B/payload-windows/*.exe "$B/win/Rally Builder/games/"
+# the game and its icon beside it as plain files: the builder copies them, it
+# carries no executable inside itself
+cp $B/payload-windows/*.exe $B/payload-windows/icon.ico "$B/win/Rally Builder/games/"
 (cd $B/win && zip -qrX "$PWD/../dist/RallyBuilder-$VERSION-Windows.zip" "Rally Builder")
 ls -la $DIST

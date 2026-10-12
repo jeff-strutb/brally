@@ -201,7 +201,41 @@ int rb_rmtree(const char *path)
 }
 
 int rb_set_exec(const char *path) { return chmod(path, 0755) == 0; }
+
+int rb_copy_tree(const char *from, const char *to)
+{
+    struct stat st;
+    DIR *d;
+    struct dirent *e;
+    int ok;
+    if (stat(from, &st) != 0)
+        return 0;
+    if (!S_ISDIR(st.st_mode))
+        return rb_copy_file(from, to) && chmod(to, st.st_mode & 0777) == 0;
+    if (!rb_mkdirs(to) || !(d = opendir(from)))
+        return 0;
+    ok = 1;
+    while (ok && (e = readdir(d)) != NULL) {
+        char a[2048], b[2048];
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
+            continue;
+        rb_join(a, sizeof a, from, e->d_name);
+        rb_join(b, sizeof b, to, e->d_name);
+        ok = rb_copy_tree(a, b);
+    }
+    closedir(d);
+    return ok;
+}
 #endif
+
+int rb_copy_file(const char *from, const char *to)
+{
+    size_t n;
+    void *d = rb_read_file(from, &n);
+    int ok = d && rb_write_file(to, d, n);
+    free(d);
+    return ok;
+}
 
 int rb_mkdirs(const char *path)
 {

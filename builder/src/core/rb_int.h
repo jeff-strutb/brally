@@ -25,6 +25,8 @@ void    *rb_read_file(const char *path, size_t *n);   /* malloc'd; NULL when unr
 void     rb_join(char *out, size_t n, const char *a, const char *b);
 void     rb_dirname(char *out, size_t n, const char *path);
 int      rb_set_exec(const char *path);               /* chmod 755 (POSIX) */
+int      rb_copy_file(const char *from, const char *to);
+int      rb_copy_tree(const char *from, const char *to);   /* cp -R of a folder (POSIX) */
 
 /* ---- the disc (disc.c) --------------------------------------------------------------- */
 typedef struct rb_track { int number, audio; uint32_t start, count; } rb_track;   /* sectors */
@@ -33,16 +35,6 @@ int rb_cue_parse(const char *path, rb_cue *cue, uint64_t bin_size, char *err, si
 /* the files of the data track the game reads into dir (disc.c KEEP_*) */
 int rb_extract_data_track(const char *bin, const char *dir, rb_progress cb, void *ctx, double lo, double hi,
                           volatile int *cancel, char *err, size_t errlen);
-
-/* ---- FLAC (flac.c) ------------------------------------------------------------------- */
-/* stereo 16-bit 44.1 kHz little-endian PCM of `frames` frames, read from f at
- * its position, to a FLAC file; 1 on success */
-int rb_flac_encode(FILE *f, uint64_t frames, const char *path, rb_progress cb, void *ctx, double lo, double hi,
-                   volatile int *cancel, char *err, size_t errlen);
-
-/* ---- icons (icon.c) ------------------------------------------------------------------ */
-/* an .ico's largest image as an .icns (PNG entries, nearest-neighbour scaled) */
-int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen);
 
 void rb_err(char *err, size_t errlen, const char *fmt, ...);
 

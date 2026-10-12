@@ -1,15 +1,15 @@
 /* build.c: checking the player's dumps and assembling the build.
  *
- * macOS: an app bundle
- *   Boss Rally.app/Contents/MacOS/brally64           the game
- *                 /Contents/Resources/disc/          the data track
- *                 /Contents/Resources/music/cd/      tracks 2..13 as FLAC
- *                 /Contents/Resources/BossRally.icns the disc's icon
- *   Top Gear Rally.app/Contents/MacOS/tgrally
- *                     /Contents/Resources/romdata.bin
+ * Mac: an app bundle
+ *   Top Gear Rally Remastered.app/Contents/MacOS/remastered     the games
+ *                                /Contents/Resources/disc/        Boss Rally's data track
+ *                                /Contents/Resources/romdata.bin  the cartridge's data
+ *                                /Contents/Resources/AppIcon.icns
+ * iPhone: Top Gear Rally Remastered.ipa, the app (Payload/...app) with disc/
+ *   and romdata.bin inside, signed with the player's Xcode signing when this
+ *   Mac has it (rb_ios_signing), else unsigned for the player to sign
  * Windows: a folder
- *   Boss Rally\Boss Rally.exe, icon.ico, disc\, music\cd\
- *   Top Gear Rally\Top Gear Rally.exe, romdata.bin
+ *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, disc\, romdata.bin
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -21,6 +21,7 @@
 #ifdef __APPLE__
 #include <spawn.h>
 #include <sys/wait.h>
+#include <unistd.h>
 extern char **environ;
 #endif
 
@@ -32,19 +33,16 @@ extern char **environ;
 #define BRGLIDE_MD5 "5d6417cd547097fd00954c6874f85e97"   /* BRGlide.dll on the retail disc */
 #define TGR_DATA 0x70AB0u                                 /* ROM bytes the port reads: 0x70AB0 to the end */
 #define TGR_ROM_SIZE 0x800000u
+#define IOS_APP RB_PRODUCT ".app"
 
-const char *rb_game_name(int game) { return game == RB_BOSS_RALLY ? "Boss Rally" : "Top Gear Rally"; }
+const char *rb_target_name(int t) { return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : "Windows"; }
 
-const char *rb_output_name(int game)
+const char *rb_output_name(int t)
 {
-#ifdef __APPLE__
-    return game == RB_BOSS_RALLY ? "Boss Rally.app" : "Top Gear Rally.app";
-#else
-    return rb_game_name(game);
-#endif
+    return t == RB_MACOS ? RB_PRODUCT ".app" : t == RB_IOS ? RB_PRODUCT ".ipa" : RB_PRODUCT;
 }
 
-void rb_output_path(const rb_job *job, char *out, size_t n) { rb_join(out, n, job->dest_dir, rb_output_name(job->game)); }
+void rb_output_path(const rb_job *job, char *out, size_t n) { rb_join(out, n, job->dest_dir, rb_output_name(job->target)); }
 
 /* ---- checks --------------------------------------------------------------------------- */
 static int md5_file(const char *path, char hex[33], rb_progress cb, void *ctx, volatile int *cancel)
@@ -184,24 +182,104 @@ int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
 }
 
 /* ---- the output ------------------------------------------------------------------------- */
-static void marker_path(const char *root, char *out, size_t n)
-{
 #ifdef __APPLE__
-    char r[2048];
-    rb_join(r, sizeof r, root, "Contents/Resources");
-    rb_join(out, n, r, MARKER);
+/* a tool, waited for: its exit status (-1 when it could not start); its
+ * output to out (n bytes) when out is given */
+static int run(char *const argv[], char *out, size_t n)
+{
+    pid_t pid;
+    int st = 0, fd[2] = { -1, -1 };
+    posix_spawn_file_actions_t fa;
+    posix_spawn_file_actions_init(&fa);
+    if (out) {
+        if (pipe(fd) != 0)
+            return -1;
+        posix_spawn_file_actions_adddup2(&fa, fd[1], 1);
+        posix_spawn_file_actions_addclose(&fa, fd[0]);
+    }
+    if (posix_spawn(&pid, argv[0], &fa, NULL, argv, environ) != 0) {
+        posix_spawn_file_actions_destroy(&fa);
+        if (out) {
+            close(fd[0]);
+            close(fd[1]);
+        }
+        return -1;
+    }
+    posix_spawn_file_actions_destroy(&fa);
+    if (out) {
+        size_t got = 0;
+        ssize_t r;
+        close(fd[1]);
+        while (got + 1 < n && (r = read(fd[0], out + got, n - 1 - got)) > 0)
+            got += (size_t)r;
+        out[got] = 0;
+        close(fd[0]);
+    }
+    waitpid(pid, &st, 0);
+    return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+}
+
+int rb_ios_signing(char *desc, size_t n)
+{
+    char sh[2048], err[256], line[2048] = "";
+    char *argv[] = { "/bin/sh", sh, "check", NULL };
+    if (!rb_host_payload("ios-sign", sh, sizeof sh, err, sizeof err) || run(argv, line, sizeof line) != 0 || !line[0])
+        return 0;
+    if (strchr(line, '\t'))
+        *strchr(line, '\t') = 0;                      /* the certificate's name */
+    snprintf(desc, n, "%s", line);
+    return 1;
+}
 #else
-    rb_join(out, n, root, MARKER);
+int rb_ios_signing(char *desc, size_t n)
+{
+    (void)desc, (void)n;
+    return 0;
+}
 #endif
+
+/* the marker sits in the app's Resources (Mac), the app inside the .ipa
+ * (iPhone), or the folder (Windows) */
+static void marker_path(int target, const char *root, char *out, size_t n)
+{
+    char r[2048], a[2048];
+    if (target == RB_MACOS) {
+        rb_join(r, sizeof r, root, "Contents/Resources");
+        rb_join(out, n, r, MARKER);
+    } else if (target == RB_IOS) {
+        rb_join(a, sizeof a, root, "Payload");
+        rb_join(r, sizeof r, a, IOS_APP);
+        rb_join(out, n, r, MARKER);
+    } else {
+        rb_join(out, n, root, MARKER);
+    }
+}
+
+/* an .ipa is a zip: this builder's has its marker among the names */
+static int ipa_ours(const char *path)
+{
+    static const char name[] = "Payload/" IOS_APP "/" MARKER;
+    size_t n, i;
+    char *d = rb_read_file(path, &n);
+    int ours = 0;
+    for (i = 0; d && !ours && i + sizeof name - 1 <= n; i++)
+        ours = d[i] == 'P' && !memcmp(d + i, name, sizeof name - 1);
+    free(d);
+    return ours;
 }
 
 int rb_output_exists(const rb_job *job, int *ours)
 {
     char out[2048], mk[2048];
     rb_output_path(job, out, sizeof out);
-    marker_path(out, mk, sizeof mk);
-    if (ours)
-        *ours = rb_exists(mk);
+    if (ours) {
+        if (job->target == RB_IOS) {
+            *ours = ipa_ours(out);
+        } else {
+            marker_path(job->target, out, mk, sizeof mk);
+            *ours = rb_exists(mk);
+        }
+    }
     return rb_exists(out);
 }
 
@@ -212,7 +290,9 @@ typedef struct ctx {
     volatile int *cancel;
     char *err;
     size_t errlen;
-    char root[2048], res[2048], exe[2048];    /* the staged build, its resources, its executable */
+    char root[2048];           /* the staged build */
+    char app[2048];            /* the app inside it (Mac, iPhone) */
+    char res[2048];            /* where the data goes */
 } ctx;
 
 static void say(ctx *c, double f, const char *s)
@@ -221,30 +301,27 @@ static void say(ctx *c, double f, const char *s)
         c->cb(c->cctx, f, s);
 }
 
-static int plist(ctx *c, const char *name, const char *exe, const char *id, const char *min, const char *icon)
+static int mac_plist(ctx *c)
 {
-#ifdef __APPLE__
-    char path[2048], buf[4096], ic[256] = "", contents[2048];
-    if (icon)
-        snprintf(ic, sizeof ic, "    <key>CFBundleIconFile</key><string>%s</string>\n", icon);
+    char path[2048], buf[4096], contents[2048];
     snprintf(buf, sizeof buf,
              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
              "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
              "<plist version=\"1.0\">\n<dict>\n"
-             "    <key>CFBundleName</key><string>%s</string>\n"
-             "    <key>CFBundleDisplayName</key><string>%s</string>\n"
-             "    <key>CFBundleIdentifier</key><string>%s</string>\n"
-             "    <key>CFBundleExecutable</key><string>%s</string>\n"
+             "    <key>CFBundleName</key><string>" RB_PRODUCT "</string>\n"
+             "    <key>CFBundleDisplayName</key><string>" RB_PRODUCT "</string>\n"
+             "    <key>CFBundleIdentifier</key><string>com.strutb.tgrally-remastered</string>\n"
+             "    <key>CFBundleExecutable</key><string>remastered</string>\n"
+             "    <key>CFBundleIconFile</key><string>AppIcon</string>\n"
              "    <key>CFBundlePackageType</key><string>APPL</string>\n"
              "    <key>CFBundleShortVersionString</key><string>%s</string>\n"
              "    <key>CFBundleVersion</key><string>%s</string>\n"
-             "%s"
              "    <key>LSApplicationCategoryType</key><string>public.app-category.racing-games</string>\n"
-             "    <key>LSMinimumSystemVersion</key><string>%s</string>\n"
+             "    <key>LSMinimumSystemVersion</key><string>12.0</string>\n"
              "    <key>NSHighResolutionCapable</key><true/>\n"
              "    <key>GCSupportsControllerUserInteraction</key><true/>\n"
              "</dict>\n</plist>\n",
-             name, name, id, exe, RB_VERSION, RB_VERSION, ic, min);
+             RB_VERSION, RB_VERSION);
     rb_join(contents, sizeof contents, c->root, "Contents");
     rb_join(path, sizeof path, contents, "Info.plist");
     if (!rb_write_file(path, buf, strlen(buf))) {
@@ -253,63 +330,108 @@ static int plist(ctx *c, const char *name, const char *exe, const char *id, cons
     }
     rb_join(path, sizeof path, contents, "PkgInfo");
     return rb_write_file(path, "APPL????", 8);
-#else
-    (void)c, (void)name, (void)exe, (void)id, (void)min, (void)icon;
-    return 1;
-#endif
 }
 
-/* the staged folder layout and the game executable */
-static int stage(ctx *c, const char *payload)
+/* a piece of the payload copied to `to` */
+static int payload(ctx *c, const char *name, const char *to, int tree)
 {
-    char out[2048], dir[2048], tmpname[512];
-    rb_output_path(c->job, out, sizeof out);
-    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(c->job->game));
+    char src[2048];
+    if (!rb_host_payload(name, src, sizeof src, c->err, c->errlen))
+        return 0;
+#ifndef _WIN32
+    if (tree ? !rb_copy_tree(src, to) : !rb_copy_file(src, to)) {
+#else
+    (void)tree;
+    if (!rb_copy_file(src, to)) {
+#endif
+        rb_err(c->err, c->errlen, "cannot copy the builder's %s to %s", name, to);
+        return 0;
+    }
+    return 1;
+}
+
+/* the staged layout, with the game and its icon in it */
+static int stage(ctx *c)
+{
+    char tmpname[512], path[2048], dir[2048];
+    int t = c->job->target;
+    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(t));
     rb_join(c->root, sizeof c->root, c->job->dest_dir, tmpname);
     if (rb_exists(c->root) && !rb_rmtree(c->root)) {        /* a build that stopped partway */
         rb_err(c->err, c->errlen, "cannot clear %s", c->root);
         return 0;
     }
-#ifdef __APPLE__
-    rb_join(dir, sizeof dir, c->root, "Contents/MacOS");
-    rb_join(c->res, sizeof c->res, c->root, "Contents/Resources");
-    rb_join(c->exe, sizeof c->exe, dir, payload);
-#else
-    snprintf(dir, sizeof dir, "%s", c->root);
+    if (t == RB_MACOS) {
+        snprintf(c->app, sizeof c->app, "%s", c->root);
+        rb_join(c->res, sizeof c->res, c->root, "Contents/Resources");
+        rb_join(dir, sizeof dir, c->root, "Contents/MacOS");
+        if (!rb_mkdirs(dir) || !rb_mkdirs(c->res))
+            goto nodir;
+        rb_join(path, sizeof path, dir, "remastered");
+        if (!payload(c, "remastered", path, 0))
+            return 0;
+        rb_set_exec(path);
+        rb_join(path, sizeof path, c->res, "AppIcon.icns");
+        return payload(c, "icon", path, 0) && mac_plist(c);
+    }
+    if (t == RB_IOS) {
+        rb_join(dir, sizeof dir, c->root, "Payload");
+        rb_join(c->app, sizeof c->app, dir, IOS_APP);
+        snprintf(c->res, sizeof c->res, "%s", c->app);
+        if (!rb_mkdirs(dir))
+            goto nodir;
+        return payload(c, "ios-app", c->app, 1);
+    }
+    snprintf(c->app, sizeof c->app, "%s", c->root);
     snprintf(c->res, sizeof c->res, "%s", c->root);
-    {
-        char exe[512];
-        snprintf(exe, sizeof exe, "%s.exe", rb_game_name(c->job->game));
-        rb_join(c->exe, sizeof c->exe, dir, exe);
-    }
-#endif
-    if (!rb_mkdirs(dir) || !rb_mkdirs(c->res)) {
-        rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->job->dest_dir);
+    if (!rb_mkdirs(c->root))
+        goto nodir;
+    rb_join(path, sizeof path, c->root, RB_PRODUCT ".exe");
+    if (!payload(c, "remastered", path, 0))
         return 0;
-    }
-    if (!rb_host_payload(payload, c->exe, c->err, c->errlen))
-        return 0;
-    rb_set_exec(c->exe);
-    return 1;
+    rb_join(path, sizeof path, c->root, "icon.ico");     /* the window's icon (host/windows) */
+    return payload(c, "icon", path, 0);
+nodir:
+    rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->job->dest_dir);
+    return 0;
 }
 
+/* sealed and moved into place */
 static int finish(ctx *c)
 {
-    char out[2048], mk[2048];
-    int ours = 0;
-    marker_path(c->root, mk, sizeof mk);
+    char out[2048], mk[2048], staged[2048];
+    int ours = 0, t = c->job->target;
+    marker_path(t, c->root, mk, sizeof mk);
     if (!rb_write_file(mk, RB_VERSION "\n", strlen(RB_VERSION "\n"))) {
         rb_err(c->err, c->errlen, "cannot write in %s", c->root);
         return 0;
     }
+    snprintf(staged, sizeof staged, "%s", c->root);
 #ifdef __APPLE__
-    {   /* sign the bundle as a whole (ad hoc), so its parts are sealed together */
-        pid_t pid;
-        int st = 0;
-        char *argv[] = { "codesign", "--force", "--sign", "-", c->root, NULL };
-        say(c, 0.99, "Signing the app");
-        if (posix_spawn(&pid, "/usr/bin/codesign", NULL, NULL, argv, environ) == 0)
-            waitpid(pid, &st, 0);
+    if (t == RB_MACOS) {       /* sign the bundle as a whole (ad hoc), so its parts are sealed together */
+        char *argv[] = { "/usr/bin/codesign", "--force", "--sign", "-", c->root, NULL };
+        say(c, 0.97, "Signing the app");
+        run(argv, NULL, 0);
+    } else if (t == RB_IOS) {
+        char sh[2048], payload_dir[2048], dummy[16];
+        char *sign[] = { "/bin/sh", sh, "sign", c->app, NULL };
+        char *zip[] = { "/usr/bin/ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", payload_dir, staged, NULL };
+        if (rb_ios_signing(dummy, sizeof dummy)) {
+            say(c, 0.95, "Signing the app with your Xcode signing");
+            if (!rb_host_payload("ios-sign", sh, sizeof sh, c->err, c->errlen) || run(sign, NULL, 0) != 0) {
+                rb_err(c->err, c->errlen, "signing the iPhone app failed (codesign); check your certificate in Xcode");
+                return 0;
+            }
+        }
+        say(c, 0.97, "Packing the .ipa");
+        rb_join(payload_dir, sizeof payload_dir, c->root, "Payload");
+        snprintf(staged, sizeof staged, "%s.zip", c->root);
+        if (run(zip, NULL, 0) != 0) {
+            rb_err(c->err, c->errlen, "cannot pack the .ipa");
+            return 0;
+        }
+        rb_rmtree(c->root);
+        snprintf(c->root, sizeof c->root, "%s", staged);       /* what is left to clear on failure */
     }
 #endif
     rb_output_path(c->job, out, sizeof out);
@@ -323,94 +445,24 @@ static int finish(ctx *c)
             return 0;
         }
     }
-    if (!rb_rename(c->root, out)) {
+    if (!rb_rename(staged, out)) {
         rb_err(c->err, c->errlen, "cannot move the build into place at %s", out);
         return 0;
     }
     return 1;
 }
 
-static int build_br(ctx *c)
+/* the two games' data, from the dumps */
+static int data(ctx *c)
 {
-    char disc[2048], music[2048], path[2048], icon[2048] = "", hex[33];
+    char disc[2048], path[2048], hex[33], md5[33];
     rb_cue cue;
-    FILE *bin;
-    uint64_t bin_size = rb_file_size(c->job->bin), audio = 0, done = 0;
-    int i;
-    if (!rb_cue_parse(c->job->cue, &cue, bin_size, c->err, c->errlen))
-        return 0;
-    say(c, 0, "Preparing");
-    if (!stage(c, "brally64"))
-        return 0;
-    rb_join(disc, sizeof disc, c->res, "disc");
-    if (!rb_extract_data_track(c->job->bin, disc, c->cb, c->cctx, 0.0, 0.1, c->cancel, c->err, c->errlen))
-        return 0;
-    rb_join(path, sizeof path, disc, "BRGlide.dll");
-    if (!md5_file(path, hex, NULL, NULL, NULL) || strcmp(hex, BRGLIDE_MD5)) {
-        rb_err(c->err, c->errlen, "the disc's BRGlide.dll is not the retail one");
-        return 0;
-    }
-    /* the soundtrack */
-    rb_join(path, sizeof path, c->res, "music");
-    rb_join(music, sizeof music, path, "cd");
-    if (!rb_mkdirs(music) || !(bin = rb_fopen(c->job->bin, "rb"))) {
-        rb_err(c->err, c->errlen, "cannot make %s", music);
-        return 0;
-    }
-    for (i = 0; i < cue.ntracks; i++)
-        audio += cue.t[i].audio ? cue.t[i].count : 0;
-    for (i = 0; i < cue.ntracks; i++) {
-        char name[32], status[64];
-        double lo = 0.1 + 0.88 * (double)done / (double)(audio ? audio : 1);
-        if (!cue.t[i].audio)
-            continue;
-        snprintf(name, sizeof name, "track%02d.flac", cue.t[i].number);
-        snprintf(status, sizeof status, "Encoding the soundtrack: track %d", cue.t[i].number);
-        say(c, lo, status);
-        rb_join(path, sizeof path, music, name);
-        if (!rb_seek(bin, (uint64_t)cue.t[i].start * 2352) ||
-            !rb_flac_encode(bin, (uint64_t)cue.t[i].count * 588, path, c->cb, c->cctx, lo,
-                            0.1 + 0.88 * (double)(done + cue.t[i].count) / (double)(audio ? audio : 1),
-                            c->cancel, c->err, c->errlen)) {
-            fclose(bin);
-            return 0;
-        }
-        done += cue.t[i].count;
-    }
-    fclose(bin);
-    /* the icon */
-    say(c, 0.98, "Finishing");
-    rb_join(path, sizeof path, disc, "Boss.ico");
-    if (rb_file_size(path)) {
-#ifdef __APPLE__
-        rb_join(icon, sizeof icon, c->res, "BossRally.icns");
-        if (!rb_ico_to_icns(path, icon, c->err, c->errlen))
-            return 0;
-#else
-        {   /* the game sets its window's icon from this at start-up */
-            char ico[2048];
-            size_t n;
-            void *d = rb_read_file(path, &n);
-            rb_join(ico, sizeof ico, c->root, "icon.ico");
-            if (!d || !rb_write_file(ico, d, n)) {
-                free(d);
-                rb_err(c->err, c->errlen, "cannot write %s", ico);
-                return 0;
-            }
-            free(d);
-        }
-#endif
-    }
-    return plist(c, "Boss Rally", "brally64", "com.strutb.bossrally64", "11.0", icon[0] ? "BossRally" : NULL) && finish(c);
-}
-
-static int build_tgr(ctx *c)
-{
-    char path[2048], md5[33];
     size_t n;
     int order;
     uint8_t *r;
-    say(c, 0, "Reading the ROM");
+    if (!rb_cue_parse(c->job->cue, &cue, rb_file_size(c->job->bin), c->err, c->errlen))
+        return 0;
+    say(c, 0.02, "Reading the ROM");
     if (!(r = load_rom(c->job->rom, &n, md5, &order))) {
         rb_err(c->err, c->errlen, "cannot read the ROM");
         return 0;
@@ -420,11 +472,7 @@ static int build_tgr(ctx *c)
         rb_err(c->err, c->errlen, "the ROM is not 8 MB");
         return 0;
     }
-    if (!stage(c, "tgrally")) {
-        free(r);
-        return 0;
-    }
-    say(c, 0.5, "Writing the game's data");
+    say(c, 0.05, "Writing Top Gear Rally's data");
     rb_join(path, sizeof path, c->res, "romdata.bin");
     if (!rb_write_file(path, r + TGR_DATA, n - TGR_DATA)) {
         free(r);
@@ -432,8 +480,18 @@ static int build_tgr(ctx *c)
         return 0;
     }
     free(r);
-    say(c, 0.9, "Finishing");
-    return plist(c, "Top Gear Rally", "tgrally", "com.strutb.tgrally", "12.0", NULL) && finish(c);
+    rb_join(disc, sizeof disc, c->res, "disc");
+    if (!rb_extract_data_track(c->job->bin, disc, c->cb, c->cctx, 0.1, 0.9, c->cancel, c->err, c->errlen))
+        return 0;
+    rb_join(path, sizeof path, disc, "BRGlide.dll");
+    if (!md5_file(path, hex, NULL, NULL, NULL) || strcmp(hex, BRGLIDE_MD5)) {
+        rb_err(c->err, c->errlen, "the disc's BRGlide.dll is not the retail one");
+        return 0;
+    }
+    rb_join(path, sizeof path, disc, "Boss.ico");            /* the disc's icon: the app has its own */
+    if (rb_exists(path))
+        remove(path);
+    return 1;
 }
 
 int rb_build(const rb_job *job, rb_progress cb, void *cctx, volatile int *cancel, char *err, size_t errlen)
@@ -453,7 +511,8 @@ int rb_build(const rb_job *job, rb_progress cb, void *cctx, volatile int *cancel
         rb_err(err, errlen, "cannot make the folder %s", job->dest_dir);
         return 0;
     }
-    ok = job->game == RB_BOSS_RALLY ? build_br(&c) : build_tgr(&c);
+    say(&c, 0, "Preparing");
+    ok = stage(&c) && data(&c) && finish(&c);
     if (!ok) {
         if (c.root[0])
             rb_rmtree(c.root);                         /* leave nothing half-made behind */
