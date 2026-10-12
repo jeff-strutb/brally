@@ -65,23 +65,26 @@ static void hex(const char *name, uint32_t v)
     ps1_tty(b);
 }
 
-/* a fault: where and why, the registers, then stop (written to fatal.txt too) */
+/* a fault: where and why, the registers, then stop (on the TTY and in fatal.txt) */
 void ps1_fault(uint32_t cause, uint32_t epc, uint32_t bad, const uint32_t *frame)
 {
     static const char *names[] = {"at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5",
                                   "t6", "t7", "t8", "t9", "ra", "sp", "gp", "s0", "s1", "s2", "s3", "s4", "s5",
                                   "s6", "s7", "fp"};
+    static const char d[] = "0123456789ABCDEF";
+    static char msg[512];
+    char *p = msg;
     int i;
-    ps1_tty("\nFAULT ");
-    hex("cause=", cause);
-    hex("epc=", epc);
-    hex("badvaddr=", bad);
-    ps1_tty("\n");
+#define PUT(s) do { const char *q_ = (s); while (*q_) *p++ = *q_++; } while (0)
+#define HEX(v) do { int k_; for (k_ = 0; k_ < 8; k_++) *p++ = d[((v) >> (28 - 4 * k_)) & 15]; *p++ = ' '; } while (0)
+    PUT("fault cause="); HEX(cause);
+    PUT("epc="); HEX(epc);
+    PUT("badvaddr="); HEX(bad);
+    PUT("\n");
     for (i = 0; i < 29; i++) {
-        ps1_tty(names[i]);
-        hex("=", frame[i]);
-        if (i % 6 == 5)
-            ps1_tty("\n");
+        PUT(names[i]); PUT("="); HEX(frame[i]);
+        if (i % 6 == 5) PUT("\n");
     }
-    ps1_fatal("fault (registers on the TTY)");
+    *p = 0;
+    ps1_fatal(msg);
 }

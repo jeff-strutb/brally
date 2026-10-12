@@ -81,18 +81,23 @@ void gpu_fill(int x, int y, int w, int h, uint32_t rgb)
     GP0 = (uint32_t)h << 16 | (uint32_t)((w + 15) & ~15);
 }
 
-/* CPU to VRAM, now (w x h halfwords from p, w * h even) */
+/* CPU to VRAM, now (w x h halfwords from p; an odd count is padded) */
 void gpu_load(int x, int y, int w, int h, const uint16_t *p)
 {
-    int n = (w * h + 1) / 2, i;
-    const uint32_t *q = (const uint32_t *)p;
+    int n = w * h, i;
     gpu_wait();
     GP0 = 0x01000000;                       /* clear the texture cache */
     GP0 = 0xA0000000;
     GP0 = (uint32_t)y << 16 | (uint32_t)x;
     GP0 = (uint32_t)h << 16 | (uint32_t)w;
-    for (i = 0; i < n; i++)
-        GP0 = q[i];
+    if (((uint32_t)p & 3) == 0)
+        for (i = 0; i + 1 < n; i += 2)
+            GP0 = *(const uint32_t *)(p + i);
+    else
+        for (i = 0; i + 1 < n; i += 2)
+            GP0 = p[i] | (uint32_t)p[i + 1] << 16;
+    if (n & 1)
+        GP0 = p[n - 1];
     wait_cmd();
 }
 

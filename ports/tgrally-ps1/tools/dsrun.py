@@ -56,6 +56,52 @@ def settings(rundir, ram8, speed, gdb=False, cpu='Recompiler'):
         c.write(f, space_around_delimiters=True)
 
 
+class Launched:
+    """the DuckStation open(1) started, found by its executable's path"""
+
+    def __init__(self, exe):
+        self.exe = exe
+        self.pid = None
+        self.returncode = None
+        for _ in range(50):
+            r = subprocess.run(['pgrep', '-f', exe], capture_output=True, text=True)
+            if r.stdout.split():
+                self.pid = int(r.stdout.split()[-1])
+                return
+            time.sleep(0.1)
+
+    def poll(self):
+        if self.pid is None:
+            return 0
+        try:
+            os.kill(self.pid, 0)
+            return None
+        except OSError:
+            self.returncode = self.returncode if self.returncode is not None else 0
+            return self.returncode
+
+    def terminate(self):
+        if self.pid:
+            try:
+                os.kill(self.pid, 15)
+            except OSError:
+                pass
+
+    def kill(self):
+        if self.pid:
+            try:
+                os.kill(self.pid, 9)
+            except OSError:
+                pass
+
+    def wait(self, timeout):
+        t = time.time()
+        while self.poll() is None:
+            if time.time() - t > timeout:
+                raise subprocess.TimeoutExpired('duckstation', timeout)
+            time.sleep(0.1)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ram8', action='store_true', help='the 8 MB dev-kit RAM')
@@ -78,9 +124,12 @@ def main():
     log = os.path.join(APP, 'duckstation.log')
     if os.path.exists(log):
         os.remove(log)
-    err = open(os.path.join(rundir, 'duckstation.err'), 'w')
-    p = subprocess.Popen([EXE, '-batch', '-fastboot', '--', os.path.abspath(a.image)],
-                         stdout=err, stderr=subprocess.STDOUT)
+    # launched in the background and hidden (open -g -j): it never takes the focus
+    err = os.path.join(rundir, 'duckstation.err')
+    app = os.path.dirname(os.path.dirname(APP))
+    subprocess.run(['open', '-g', '-j', '-n', '-a', app, '--stdout', err, '--stderr', err, '--args',
+                    '-batch', '-fastboot', '-nogui', '--', os.path.abspath(a.image)], check=True)
+    p = Launched(EXE)
     t0 = time.time()
     gdb_done = a.gdb_at is None
     while time.time() - t0 < a.timeout and p.poll() is None and not os.path.exists(done):
@@ -98,7 +147,7 @@ def main():
             print(r.stdout + r.stderr)
     finished = os.path.exists(done)
     if p.poll() is not None and not finished:
-        print('dsrun: DuckStation exited by itself (status %d)' % p.returncode)
+        print('dsrun: DuckStation exited by itself')
     if p.poll() is None:
         p.terminate()
         try:

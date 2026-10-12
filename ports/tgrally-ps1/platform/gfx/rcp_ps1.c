@@ -12,9 +12,7 @@
  * Textures are what the RDP's TMEM held, keyed by the loads that filled it
  * (source address, layout, palette) and a sample of the source's bytes,
  * decoded on a miss into the GPU's own formats (4- and 8-bit CLUT, 15-bit)
- * in VRAM beside the frame buffers.  The uploads ride at the head of the
- * frame's packet list, so they land before the primitives that use them and
- * after the previous frame has been drawn. */
+ * in VRAM beside the frame buffers, uploaded at once. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +37,6 @@ static uint16_t rd16(uint32_t phys) { const uint8_t *p = mem(phys); return (uint
 static uint32_t s_pkt[2][PKT_WORDS];
 static int s_buf, s_used;
 static uint32_t *s_head, *s_tail;               /* the frame's list */
-static uint32_t *s_uphead, *s_uptail;           /* its uploads, sent first */
 static uint32_t *s_ot_head[OT_LEN], *s_ot_tail[OT_LEN];
 static int s_zrun, s_ot_lo, s_ot_hi;            /* a depth-sorted run is open; its buckets in use */
 static int s_overflow;
@@ -460,9 +457,11 @@ static int vram_alloc(int w, int h, int *px, int *py)
 {
     int i, x, best = -1;
     uint32_t oldest = 0xFFFFFFFF;
+    int hc = (h + 3) & ~3;                      /* shelves come in heights of 4 */
     for (i = 0; i < s_nshelf; i++)
-        if (s_shelf[i].h >= h && s_shelf[i].h <= 2 * h + 8 && (x = shelf_fit(i, w)) >= 0)
+        if (s_shelf[i].h >= h && s_shelf[i].h <= hc + (hc >> 1) + 4 && (x = shelf_fit(i, w)) >= 0)
             goto found;
+    h = hc;
     for (i = 0; i < 2; i++)
         if (s_nshelf < NSHELF && s_half_top[i] + h <= 256) {
             int k = s_nshelf++;
@@ -508,17 +507,52 @@ static uint16_t tex_tpage(const Tex *t, int hx)  /* hx: the halfword column */
     return (uint16_t)((hx / 64) | (t->vy / 256) << 4 | t->mode << 7);
 }
 
+/* the intensity formats' palettes, shared: every IA4, I4, IA8 and I8 texel is
+ * its own index (lossless); IA16 keeps 6 bits of intensity and 2 of alpha.
+ * Row 480 holds IA4, I4 and IA8, row 481 I8 and IA16; the textures' own
+ * palettes follow from row 482. */
+enum { GP_IA4, GP_I4, GP_IA8, GP_I8, GP_IA16, GP_N };
+static const uint16_t GREY_X[GP_N] = { 0, 16, 32, 0, 256 }, GREY_Y[GP_N] = { 480, 480, 480, 481, 481 };
+static int s_grey_up;
+static void upload(int x, int y, int w, int h, const uint16_t *px);
+static uint16_t ps1_col(int r, int g, int b, int a);
+
+static void grey_palettes(void)
+{
+    uint16_t pal[256];
+    int i, k;
+    if (s_grey_up)
+        return;
+    s_grey_up = 1;
+    for (k = 0; k < GP_N; k++) {
+        int n = k <= GP_I4 ? 16 : 256;
+        for (i = 0; i < n; i++) {
+            int in, al;
+            switch (k) {
+            case GP_IA4: in = (i >> 1) * 255 / 7; al = (i & 1) ? 255 : 0; break;
+            case GP_I4: in = al = i * 17; break;
+            case GP_IA8: in = (i >> 4) * 17; al = (i & 15) * 17; break;
+            case GP_I8: in = al = i; break;
+            default: in = (i & 63) * 255 / 63; al = (i >> 6) * 85; break;
+            }
+            pal[i] = ps1_col(in, in, in, al);
+        }
+        upload(GREY_X[k], GREY_Y[k], n, 1, pal);
+    }
+}
+static uint16_t grey_clut(int k) { return (uint16_t)(GREY_Y[k] << 6 | GREY_X[k] >> 4); }
+
 static int clut_alloc(int n, int *cx, int *cy)
 {
     if (s_clut_x + n > 320) {
         s_clut_x = 0;
         s_clut_y++;
-        if (s_clut_y >= 32) {
+        if (s_clut_y >= 30) {
             s_clut_y = 0;                       /* wrap: the oldest palettes go (TODO: tracked reuse) */
         }
     }
     *cx = s_clut_x;
-    *cy = CLUT_Y + s_clut_y;
+    *cy = CLUT_Y + 2 + s_clut_y;
     s_clut_x += (n + 15) & ~15;
     return 0;
 }
@@ -544,31 +578,13 @@ static uint32_t src_check(const Load *l)
     return h;
 }
 
-/* the uploads ride at the head of the frame's packets: up to 255 words each */
+/* an upload goes to the GPU at once: the previous frame's list is drawn by
+ * then (gpu_load waits for it) and this frame's is not sent yet, so it lands
+ * after every primitive that used the old texels and before every one that
+ * uses the new */
 static void upload(int x, int y, int w, int h, const uint16_t *px)
 {
-    int rows_per = (252 * 2) / w, row = 0;
-    if (rows_per < 1)
-        rows_per = 1;
-    while (row < h) {
-        int n = h - row < rows_per ? h - row : rows_per;
-        int words = (w * n + 1) / 2;
-        uint32_t *p = pkt_alloc(words + 4);
-        if (!p)
-            return;
-        p[1] = 0x01000000;                      /* the texture cache is stale */
-        p[2] = 0xA0000000;
-        p[3] = (uint32_t)(y + row) << 16 | (uint32_t)x;
-        p[4] = (uint32_t)n << 16 | (uint32_t)w;
-        memcpy(&p[5], px + row * w, (size_t)w * n * 2);
-        if (w * n & 1)
-            ((uint16_t *)&p[5])[w * n] = 0;
-        if (s_uptail)
-            link_after(&s_uptail, p);
-        else
-            s_uphead = s_uptail = p;
-        row += n;
-    }
+    gpu_load(x, y, w, h, px);
 }
 
 static int tile_size(const Tile *tl, int *w, int *h)
@@ -588,7 +604,7 @@ static uint16_t s_dec[384 * 256];
 static const Tex *tile_texture(int t)
 {
     const Tile *tl = &s_tile[t];
-    int w, h, i, x, y, mode, ci, tlut = (s_omh >> 14) & 3;
+    int w, h, i, x, y, mode, ci, grey, tlut = (s_omh >> 14) & 3;
     uint32_t key = 0x811C9DC5u, check = 0;
     int px, py, pg, hw;
     Tex *tx;
@@ -626,7 +642,12 @@ static const Tex *tile_texture(int t)
     /* a miss: rebuild TMEM from the loads and decode */
     for (i = 0; i < s_nloads; i++)
         replay(&s_loads[i]);
-    mode = ci ? (tl->siz == 0 ? 0 : 1) : 2;
+    {
+        int f = tl->fmt << 4 | tl->siz;
+        grey = f == 0x30 ? GP_IA4 : f == 0x40 ? GP_I4 : f == 0x31 ? GP_IA8 : f == 0x41 ? GP_I8 :
+               f == 0x32 ? GP_IA16 : -1;
+    }
+    mode = ci || grey == GP_IA4 || grey == GP_I4 ? (ci && tl->siz != 0 ? 1 : 0) : grey >= 0 ? 1 : 2;
     hw = mode == 0 ? (w + 3) / 4 : mode == 1 ? (w + 1) / 2 : w;
     if (hw > 384) {
         w = (384 * (mode == 0 ? 4 : mode == 1 ? 2 : 1));
@@ -639,8 +660,11 @@ static const Tex *tile_texture(int t)
             if (s_texs[i].used < oldest) { oldest = s_texs[i].used; k = i; }
         s_texs[k] = s_texs[--s_ntex];
     }
-    if ((pg = vram_alloc(hw, h, &px, &py)) < 0)
+    if ((pg = vram_alloc(hw, h, &px, &py)) < 0) {
+        if (s_log)
+            tgr_log("rcp: no room for %dx%d (%d halfwords wide), %d shelves\n", w, h, hw, s_nshelf);
         return NULL;
+    }
     tx = &s_texs[s_ntex++];
     memset(tx, 0, sizeof *tx);
     tx->key = key;
@@ -652,7 +676,26 @@ static const Tex *tile_texture(int t)
     tx->used = s_frame_no;
     tx->vx = (uint16_t)px;
     tx->vy = (uint16_t)py;
-    if (ci) {
+    if (grey >= 0) {
+        grey_palettes();
+        tx->clut = grey_clut(grey);
+        tx->has_alpha = grey != GP_I4 && grey != GP_I8;
+        for (y = 0; y < h; y++)
+            for (x = 0; x < hw; x++) {
+                uint16_t v = 0;
+                int k, per = mode == 0 ? 4 : 2;
+                for (k = 0; k < per; k++) {
+                    uint32_t t;
+                    if (x * per + k >= w)
+                        break;
+                    t = texel_raw(tl, x * per + k, y);
+                    if (grey == GP_IA16)
+                        t = (t >> 10 & 63) | (t & 255) * 3 / 255 << 6;
+                    v |= (uint16_t)(t << ((16 / per) * k));
+                }
+                s_dec[y * hw + x] = v;
+            }
+    } else if (ci) {
         int n = mode == 0 ? 16 : 256, cx, cy;
         uint16_t pal[256];
         for (i = 0; i < n; i++) {
@@ -969,8 +1012,11 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     if (x1 <= x0 || y1 <= y0)
         return;
     draw_state(&d, tile, 1);
-    if (!d.textured)
+    if (!d.textured) {
+        if (s_log)
+            tgr_log("rcp: texrect without a texture (tile %d fmt %d siz %d)\n", tile, s_tile[tile].fmt, s_tile[tile].siz);
         return;
+    }
     u0 = (s - d.s0) >> 5;
     v0 = (t - d.t0) >> 5;
     u1 = u0 + (int)((dsdx * (x1 - x0)) >> 10);
@@ -990,6 +1036,9 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     r = cyc == 2 ? 128 : col.a[0] >> 1;
     g = cyc == 2 ? 128 : col.a[1] >> 1;
     b = cyc == 2 ? 128 : col.a[2] >> 1;
+    if (s_log && cyc == 1)
+        tgr_log("rcp: texrect2 %d,%d-%d,%d uv %d,%d-%d,%d rgb %d %d %d a %d/%d semi %d abr %d tex %dx%d m%d\n", x0, y0, x1, y1,
+                u0, v0, u1, v1, r, g, b, col.a[3], col.b[3], semi, abr, d.tex->w, d.tex->h, d.tex->mode);
     {
         /* a piece per texture page the texels cross (the GPU's u is 8 bits
          * within a page); x scaled between the texel bounds */
@@ -1123,13 +1172,10 @@ static void frame_end(void)
         return;
     zrun_close();
     gpu_wait();                                 /* the previous frame is drawn */
-    if (s_uphead) {
-        link_after(&s_uptail, s_head);
-        gpu_send_list(s_uphead);
-    } else {
-        gpu_send_list(s_head);
-    }
-    s_uphead = s_uptail = NULL;
+    if (s_overflow && s_log)
+        tgr_log("rcp: the frame's packets overflowed\n");
+    s_overflow = 0;
+    gpu_send_list(s_head);
     s_buf ^= 1;
     s_used = 0;
     s_target = -1;
@@ -1445,6 +1491,22 @@ static void shot(uint32_t frame)
     pcdrv_close(fd);
 }
 
+/* the whole of VRAM to a file (TGR_VRAMDUMP=1 with a shot): vramNNNNN_1024x512.raw */
+static void vram_dump(uint32_t frame)
+{
+    static uint16_t row[1024 * 4];
+    char name[40];
+    int fd, y;
+    sprintf(name, "vram%05u_1024x512.raw", (unsigned)frame);
+    if ((fd = pcdrv_creat(name)) < 0)
+        return;
+    for (y = 0; y < 512; y += 4) {
+        gpu_read(0, y, 1024, 4, row);
+        pcdrv_write(fd, row, (int)sizeof row);
+    }
+    pcdrv_close(fd);
+}
+
 void tgr_rcp_present(uint32_t frame)
 {
     int i;
@@ -1457,5 +1519,7 @@ void tgr_rcp_present(uint32_t frame)
         if (s_shot_at[i] == frame) {
             gpu_wait();
             shot(frame);
+            if (getenv("TGR_VRAMDUMP"))
+                vram_dump(frame);
         }
 }
