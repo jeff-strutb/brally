@@ -11,6 +11,7 @@ ln -f build/tgrally/ps1/assets/romdata.bin $R/romdata.bin
 cp tools/tgrally/n64box_scripts/$S.txt $R/
 find $R -maxdepth 1 \( -name 'shot*' -o -name 'fatal.txt' \) -exec rm -f {} +
 printf 'script=%s.txt\nframes=%s\nheadless=1\nTGR_SHOT_AT=%s\n' $S $N $AT > $R/run.cfg
+for l in $EXTRA; do echo "$l" >> $R/run.cfg; done
 .venv/bin/python ports/tgrally-ps1/tools/dsrun.py --cpu CachedInterpreter --ram8 --timeout ${TIMEOUT:-900} $R build/tgrally/ps1/tgrally.exe
 [ -f $R/fatal.txt ] && { cat $R/fatal.txt; echo; }
 for f in $(find $R -maxdepth 1 -name 'shot*.raw'); do mv $f $R/ps1/; done

@@ -184,6 +184,26 @@ NOI void tgr_bench(void)
     for (i = 0; i < 1000; i++)
         acc += (uint32_t)((int64_t)(int32_t)acc * (int32_t)i >> 16);
     d[4] = (c8() - t) & 0xFFFF;
+    {
+        /* the GTE: 6 vertex words in, RTPT, 6 results out */
+        uint32_t dg, dn;
+        __asm__ volatile("ctc2 %0, $0; ctc2 %0, $2; ctc2 %0, $4; ctc2 %1, $1; ctc2 %1, $3; ctc2 %0, $5; ctc2 %0, $6; ctc2 %2, $7; ctc2 %2, $26"
+                         : : "r"(0x1000), "r"(0), "r"(1000));
+        t = c8();
+        for (i = 0; i < 1000; i++) {
+            uint32_t a0, a1, a2;
+            __asm__ volatile("mtc2 %3, $0; mtc2 %4, $1; mtc2 %3, $2; mtc2 %4, $3; mtc2 %3, $4; mtc2 %4, $5; nop; nop;"
+                             ".word 0x4A280030; mfc2 %0, $12; mfc2 %1, $13; mfc2 %2, $14; nop"
+                             : "=r"(a0), "=r"(a1), "=r"(a2) : "r"(i), "r"(100));
+            acc += a0 + a1 + a2;
+        }
+        dg = (c8() - t) & 0xFFFF;
+        t = c8();
+        for (i = 0; i < 1000; i++)
+            __asm__ volatile("nop");
+        dn = (c8() - t) & 0xFFFF;
+        fprintf(stderr, "bench: RTPT loop %u cycles a loop (an empty loop %u)\n", (unsigned)(dg * 8 / 1000), (unsigned)(dn * 8 / 1000));
+    }
     fprintf(stderr, "bench (cycles for 1000 loops): 4 adds %u, 4 RAM loads %u, 4 fast loads %u, 4 RAM stores %u, mult %u (%u)\n",
             (unsigned)(d[0] * 8), (unsigned)(d[1] * 8), (unsigned)(d[2] * 8), (unsigned)(d[3] * 8), (unsigned)(d[4] * 8),
             (unsigned)acc);

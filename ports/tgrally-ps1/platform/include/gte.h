@@ -6,6 +6,16 @@
 /* data registers */
 #define GTE_VXY0 0
 #define GTE_VZ0  1
+#define GTE_VXY1 2
+#define GTE_VZ1  3
+#define GTE_VXY2 4
+#define GTE_VZ2  5
+#define GTE_SXY0 12
+#define GTE_SXY1 13
+#define GTE_SZ1  17
+#define GTE_SZ2  18
+#define GTE_RGB0 20
+#define GTE_RGB1 21
 #define GTE_RGB2 22
 #define GTE_IR1  9
 #define GTE_IR2  10
@@ -50,6 +60,8 @@
 
 /* commands (cop2 imm25) */
 #define gte_rtps()  __asm__ volatile("nop\n\tnop\n\t.word 0x4A180001")    /* perspective: V0 */
+#define gte_rtpt()  __asm__ volatile("nop\n\tnop\n\t.word 0x4A280030")    /* perspective: V0, V1, V2 */
+#define gte_nct()   __asm__ volatile("nop\n\tnop\n\t.word 0x4AD80420")    /* light V0, V1, V2: RGB0-2 */
 #define gte_ncs()   __asm__ volatile("nop\n\tnop\n\t.word 0x4AC8041E")    /* light V0 (a normal): RGB2 */
 #define gte_mvmva_rt_v0_tr_sf1() __asm__ volatile("nop\n\tnop\n\t.word 0x4A480012")
 

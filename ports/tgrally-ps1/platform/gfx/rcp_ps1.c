@@ -27,15 +27,15 @@
 
 /* TGR_PERF region timers: root counter 2 (the system clock / 8), inclusive */
 enum { RG_TASK, RG_DLC, RG_MESHV, RG_KTRI, RG_CLIP, RG_TRI, RG_RECT, RG_STATE, RG_TEX, RG_VTX, RG_END, RG_TOPTRI,
-       RG_MTX, RG_MOVEMEM, RG_FILL, RG_RUNTRI, RG_CUTCLIP, RG_CUTEMIT, RG_GRID, RG_N };
+       RG_MTX, RG_MOVEMEM, RG_FILL, RG_RUNTRI, RG_CUTCLIP, RG_CUTEMIT, RG_GRID, RG_SETUP, RG_N };
 static const char *const s_rg_name[RG_N] = { "task", "kept lists", "kept vertices", "kept drawn", "kept cut",
                                              "slow triangles", "rectangles", "state", "texture lookup", "vertices",
-                                             "frame end", "run", "matrices", "movemem", "fills", "run triangles", "cut: clipping", "cut: emit", "cut: grids" };
-static uint32_t s_rg[RG_N];
+                                             "frame end", "run", "matrices", "movemem", "fills", "run triangles", "cut: clipping", "cut: emit", "cut: grids", "matrix and light setup" };
+static uint64_t s_rg[RG_N];                     /* (nanoseconds) */
 static uint32_t s_runops[256];
 uint64_t ps1_time_ns(void);
 #define RG_BEGIN(id) uint64_t rg_t_##id = ps1_time_ns()
-#define RG_END(id) (s_rg[id] += (uint32_t)((ps1_time_ns() - rg_t_##id) / 1000))   /* (microseconds) */
+#define RG_END(id) (s_rg[id] += ps1_time_ns() - rg_t_##id)
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
@@ -342,6 +342,26 @@ static int s_nogte = -1;
 
 static int32_t sh_r(int64_t v, int sh) { return (int32_t)(sh >= 0 ? v >> sh : v << -sh); }
 
+static uint32_t s_gte_cfg[3][8];                /* the rotation and translation registers at each scale */
+static int s_gte_cur = -1;
+static const int8_t s_gte_scale[3] = { 0, -3, 4 };
+
+static void gte_cfg(int c)
+{
+    const uint32_t *g = s_gte_cfg[c];
+    if (s_gte_cur == c)
+        return;
+    s_gte_cur = c;
+    gte_ctc(GTE_RT11RT12, g[0]);
+    gte_ctc(GTE_RT13RT21, g[1]);
+    gte_ctc(GTE_RT22RT23, g[2]);
+    gte_ctc(GTE_RT31RT32, g[3]);
+    gte_ctc(GTE_RT33, g[4]);
+    gte_ctc(GTE_TRX, g[5]);
+    gte_ctc(GTE_TRY, g[6]);
+    gte_ctc(GTE_TRZ, g[7]);
+}
+
 static void gte_setup(void)
 {
     const M4 *m = &s_mvp;
@@ -380,19 +400,30 @@ static void gte_setup(void)
 
     {
         int32_t rt[3][3], tr[3];
+        int c;
         for (r = 0; r < 3; r++) {
             for (i = 0; i < 3; i++)
                 rt[r][i] = sh_r(e[r][i], 4 + k);
             tr[r] = sh_r(t[r], 16 + k);
         }
-        gte_ctc(GTE_RT11RT12, (rt[0][0] & 0xFFFF) | (uint32_t)rt[0][1] << 16);
-        gte_ctc(GTE_RT13RT21, (rt[0][2] & 0xFFFF) | (uint32_t)rt[1][0] << 16);
-        gte_ctc(GTE_RT22RT23, (rt[1][1] & 0xFFFF) | (uint32_t)rt[1][2] << 16);
-        gte_ctc(GTE_RT31RT32, (rt[2][0] & 0xFFFF) | (uint32_t)rt[2][1] << 16);
-        gte_ctc(GTE_RT33, rt[2][2] & 0xFFFF);
-        gte_ctc(GTE_TRX, tr[0]);
-        gte_ctc(GTE_TRY, tr[1]);
-        gte_ctc(GTE_TRZ, tr[2]);
+        /* the same transform at three scales (their w a power of two apart):
+         * the base one; 8 times larger (a vertex too near for the base one's
+         * divide); 16 times smaller (one too far for its 16-bit depth) */
+        for (c = 0; c < 3; c++) {
+            static const int8_t sc[3] = { 0, -3, 4 };
+            int m = sc[c];
+            uint32_t *g = s_gte_cfg[c];
+            g[0] = (sh_r(rt[0][0], m) & 0xFFFF) | (uint32_t)sh_r(rt[0][1], m) << 16;
+            g[1] = (sh_r(rt[0][2], m) & 0xFFFF) | (uint32_t)sh_r(rt[1][0], m) << 16;
+            g[2] = (sh_r(rt[1][1], m) & 0xFFFF) | (uint32_t)sh_r(rt[1][2], m) << 16;
+            g[3] = (sh_r(rt[2][0], m) & 0xFFFF) | (uint32_t)sh_r(rt[2][1], m) << 16;
+            g[4] = sh_r(rt[2][2], m) & 0xFFFF;
+            g[5] = (uint32_t)sh_r(tr[0], m);
+            g[6] = (uint32_t)sh_r(tr[1], m);
+            g[7] = (uint32_t)sh_r(tr[2], m);
+        }
+        s_gte_cur = -1;
+        gte_cfg(0);
         gte_ctc(GTE_OFX, (uint32_t)s_vp.tx << 14);
         gte_ctc(GTE_OFY, (uint32_t)(s_vp.ty >> s_ysh) << 14);
         gte_ctc(GTE_H, (uint32_t)(s_vp.sx >> 2));
@@ -439,7 +470,7 @@ static uint32_t hash32(uint32_t h, uint32_t v);
 static uint32_t s_lsig;                         /* the last lit vertices' lighting (display lists kept) */
 
 /* a vertex as the display list holds it, in the CPU's byte order */
-typedef struct { int16_t x, y, z, s, t; uint8_t c[4]; } NVtx;
+typedef struct { int16_t x, y, z, pad, s, t; uint8_t c[4]; } NVtx;   /* (16 bytes: x and y one word) */
 
 static void load_vertices_n(const NVtx *nv, int n, int v0);
 
@@ -600,6 +631,7 @@ static const NVtx *s_mvsrc[32];
 static uint32_t s_mvstale;                      /* slots whose s_vtx is not yet made from s_mvsrc */
 static int s_mb_x0, s_mb_x1, s_mb_y0, s_mb_y1, s_mb_gx0, s_mb_gx1, s_mb_gy0, s_mb_gy1;
 static uint32_t s_mb_stamp;
+static uint32_t s_flagbits[32], s_flagbits2[3][32];                 /* TGR_PERF: RTPT triples clean ([0]) and each flag bit's */
 
 /* a slot's full vertex, made now if the list's loader left it short */
 static void mesh_fill(int slot)
@@ -612,7 +644,301 @@ static void mesh_fill(int slot)
 }
 
 /* 0 when the GTE cannot take them (then the general loader does) */
-static int mesh_vertices(const NVtx *nv, int n, int v0)
+static int mesh_vertices_one(const NVtx *nv, int n, int v0, int lit);
+
+/* the GTE three at a time (RTPT, and NCT for the shades): a triple it flags
+ * goes vertex by vertex */
+static __attribute__((noinline)) int mesh_vertices_gen(const NVtx *nv, int n, int v0, int lit)
+{
+    int i, sh, zb;
+    {
+        RG_BEGIN(RG_SETUP);
+        mvp_update();
+        if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
+            gte_setup();
+        if (lit && s_gte_ok)
+            light_setup(NULL);
+        RG_END(RG_SETUP);
+    }
+    if (!s_gte_ok)
+        return 0;
+    if (s_mb_stamp != s_mvp_stamp) {            /* the screen's sides and the guard band, in pixels */
+        int ys = 2 + s_ysh;
+        s_mb_stamp = s_mvp_stamp;
+        s_mb_x0 = (s_vp.tx - s_vp.sx) >> 2; s_mb_x1 = (s_vp.tx + s_vp.sx) >> 2;
+        s_mb_y0 = (s_vp.ty - s_vp.sy) >> ys; s_mb_y1 = (s_vp.ty + s_vp.sy) >> ys;
+        s_mb_gx0 = (s_vp.tx - GUARD * s_vp.sx) >> 2; s_mb_gx1 = (s_vp.tx + GUARD * s_vp.sx) >> 2;
+        s_mb_gy0 = (s_vp.ty - GUARD * s_vp.sy) >> ys; s_mb_gy1 = (s_vp.ty + GUARD * s_vp.sy) >> ys;
+    }
+    sh = 8 + s_gte_k;
+    zb = 32 * sh;                               /* (the bucket of w = SZ << sh: SZ's, 32 an octave on) */
+    if (n > 32 - v0)
+        n = 32 - v0;
+    for (i = 0; i + 3 <= n; i += 3) {
+        const uint32_t *q0 = (const uint32_t *)&nv[i], *q1 = (const uint32_t *)&nv[i + 1], *q2 = (const uint32_t *)&nv[i + 2];
+        int cfg, nearm;
+        uint32_t flagged;
+        uint32_t sxy[3], sz[3], rgb[3] = { 0, 0, 0 };
+        int k;
+        uint32_t tc0 = *(volatile uint32_t *)0xBF801120;
+        gte_mtc(GTE_VXY0, q0[0]); gte_mtc(GTE_VZ0, (uint32_t)(int32_t)(int16_t)q0[1]);
+        gte_mtc(GTE_VXY1, q1[0]); gte_mtc(GTE_VZ1, (uint32_t)(int32_t)(int16_t)q1[1]);
+        gte_mtc(GTE_VXY2, q2[0]); gte_mtc(GTE_VZ2, (uint32_t)(int32_t)(int16_t)q2[1]);
+        gte_rtpt();
+        cfg = 0;
+        flagged = gte_cfc(GTE_FLAG) & 0x7FC7F000u;
+        if (flagged)
+            s_flagbits[1]++;
+        else
+            s_flagbits[0]++;
+        sxy[0] = gte_mfc(GTE_SXY0); sxy[1] = gte_mfc(GTE_SXY1); sxy[2] = gte_mfc(GTE_SXY2);
+        sz[0] = gte_mfc(GTE_SZ1); sz[1] = gte_mfc(GTE_SZ2); sz[2] = gte_mfc(GTE_SZ3);
+        nearm = 0;
+        if (flagged) {
+            /* in front but too near for the divide: the transform 8 times larger
+             * puts them back in its reach */
+            int hz = (s_vp.sx >> 3) + 1;
+            for (k = 0; k < 3; k++)
+                if (sz[k] && (int32_t)sz[k] < hz)
+                    nearm |= 1 << k;
+            if (nearm) {
+                uint32_t nxy[3], nz[3], f2;
+                gte_cfg(1);
+                gte_rtpt();
+                f2 = gte_cfc(GTE_FLAG);
+                nxy[0] = gte_mfc(GTE_SXY0); nxy[1] = gte_mfc(GTE_SXY1); nxy[2] = gte_mfc(GTE_SXY2);
+                nz[0] = gte_mfc(GTE_SZ1); nz[1] = gte_mfc(GTE_SZ2); nz[2] = gte_mfc(GTE_SZ3);
+                gte_cfg(0);
+                (void)f2;
+                for (k = 0; k < 3; k++)
+                    if (nearm >> k & 1) {
+                        if ((int32_t)nz[k] >= hz && nz[k] < 0xFFFF) {
+                            sxy[k] = nxy[k];
+                            sz[k] = nz[k];
+                        } else {
+                            nearm &= ~(1 << k);
+                            sz[k] = 1;          /* (still too near: by itself) */
+                        }
+                    }
+            }
+        }
+        if (lit) {
+            gte_mtc(GTE_VXY0, (uint32_t)((int32_t)(int8_t)nv[i].c[1] * 32 << 16) | (uint16_t)((int8_t)nv[i].c[0] * 32));
+            gte_mtc(GTE_VZ0, (uint32_t)((int32_t)(int8_t)nv[i].c[2] * 32));
+            gte_mtc(GTE_VXY1, (uint32_t)((int32_t)(int8_t)nv[i + 1].c[1] * 32 << 16) | (uint16_t)((int8_t)nv[i + 1].c[0] * 32));
+            gte_mtc(GTE_VZ1, (uint32_t)((int32_t)(int8_t)nv[i + 1].c[2] * 32));
+            gte_mtc(GTE_VXY2, (uint32_t)((int32_t)(int8_t)nv[i + 2].c[1] * 32 << 16) | (uint16_t)((int8_t)nv[i + 2].c[0] * 32));
+            gte_mtc(GTE_VZ2, (uint32_t)((int32_t)(int8_t)nv[i + 2].c[2] * 32));
+            gte_nct();
+            rgb[0] = gte_mfc(GTE_RGB0); rgb[1] = gte_mfc(GTE_RGB1); rgb[2] = gte_mfc(GTE_RGB2);
+        }
+        for (k = 0; k < 3; k++) {
+            MVtx *q = &s_mvx[v0 + i + k];
+            int x = (int16_t)(sxy[k] & 0xFFFF), y = (int16_t)(sxy[k] >> 16), c = 0;
+            int shc = sh + s_gte_scale[nearm >> k & 1 ? 1 : cfg];
+            int32_t w = shc >= 0 ? (int32_t)sz[k] << shc : (int32_t)sz[k] >> -shc;
+            s_mvsrc[v0 + i + k] = &nv[i + k];
+            if (flagged) {
+                /* the GTE flags the three at once: behind the eye (the depth saturated at
+                 * 0: no CPU work, the triangles' clip path sorts them out), too near for its
+                 * divide or saturated on the screen (by itself), else this one is good */
+                if (!sz[k]) {
+                    s_flagbits[2]++;
+                    q->ok = 0;
+                    q->clip = 16;
+                    q->lit = (uint8_t)lit;
+                    q->r = (uint8_t)rgb[k]; q->g = (uint8_t)(rgb[k] >> 8); q->b = (uint8_t)(rgb[k] >> 16);
+                    s_mvstale |= 1u << (v0 + i + k);
+                    continue;
+                }
+                if ((!(nearm >> k & 1) && (int32_t)sz[k] < (s_vp.sx >> 3) + 1) || x <= -1024 || x >= 1023 ||
+                    y <= -1024 || y >= 1023 || sz[k] >= 0xFFFF) {
+                    /* (too near even so, or off the GTE's screen: the clip path's; its flags the CPU's) */
+                    const M4 *mm = &s_mvp;
+                    int32_t X = nv[i + k].x, Y = nv[i + k].y, Z = nv[i + k].z, ccx, ccy, ccw;
+                    s_flagbits[(!(nearm >> k & 1) && (int32_t)sz[k] < (s_vp.sx >> 3) + 1) ? 3 : sz[k] >= 0xFFFF ? 4 : 5]++;
+                    ccx = (int32_t)(((int64_t)X * mm->m[0][0] + (int64_t)Y * mm->m[1][0] + (int64_t)Z * mm->m[2][0] + mm->m[3][0]) >> 8);
+                    ccy = (int32_t)(((int64_t)X * mm->m[0][1] + (int64_t)Y * mm->m[1][1] + (int64_t)Z * mm->m[2][1] + mm->m[3][1]) >> 8);
+                    ccw = (int32_t)(((int64_t)X * mm->m[0][3] + (int64_t)Y * mm->m[1][3] + (int64_t)Z * mm->m[2][3] + mm->m[3][3]) >> 8);
+                    c = 0;
+                    if (ccw < W_NEAR) c |= 16;
+                    if (ccx < -ccw) c |= 1;
+                    if (ccx > ccw) c |= 2;
+                    if (ccy < -ccw) c |= 4;
+                    if (ccy > ccw) c |= 8;
+                    q->ok = 0;
+                    q->clip = (uint8_t)c;
+                    q->lit = (uint8_t)lit;
+                    q->r = (uint8_t)rgb[k]; q->g = (uint8_t)(rgb[k] >> 8); q->b = (uint8_t)(rgb[k] >> 16);
+                    s_mvstale |= 1u << (v0 + i + k);
+                    continue;
+                }
+            }
+            if (!sz[k] || w < W_NEAR) {         /* (too near: the vertex by itself) */
+                mesh_vertices_one(nv + i + k, 1, v0 + i + k, lit);
+                continue;
+            }
+            if (x < s_mb_x0) c |= 1;
+            if (x > s_mb_x1) c |= 2;
+            if (y < s_mb_y0) c |= 4;
+            if (y > s_mb_y1) c |= 8;
+            q->ok = !(x < s_mb_gx0 || x > s_mb_gx1 || y < s_mb_gy0 || y > s_mb_gy1);
+            q->clip = (uint8_t)c;
+            q->x = (int16_t)x;
+            q->y = (int16_t)y;
+            q->z = (int16_t)(wbucket((int32_t)sz[k]) + zb + 32 * s_gte_scale[nearm >> k & 1 ? 1 : cfg]);
+            q->w = w;
+            q->lit = (uint8_t)lit;
+            if (lit) {
+                q->r = (uint8_t)rgb[k]; q->g = (uint8_t)(rgb[k] >> 8); q->b = (uint8_t)(rgb[k] >> 16);
+            }
+        }
+        s_mvstale |= 7u << (v0 + i);
+        s_n_gte += 3;
+        s_n_vtx += 3;
+        if (!flagged) {
+            s_flagbits[6] += (*(volatile uint32_t *)0xBF801120 - tc0) & 0xFFFF;
+            s_flagbits[7]++;
+        }
+    }
+    if (i < n)
+        mesh_vertices_one(nv + i, n - i, v0 + i, lit);
+    return 1;
+}
+
+/* the screen's sides, the guard band and the depth scaling, for the vertex
+ * pass: in the CPU's fast RAM (one cycle a load) */
+typedef struct { int32_t x0, x1, y0, y1, gx0, gx1, gy0, gy1, sh, zb, hz; } MBnd;
+#define s_mbk ((MBnd *)0x1F800300u)
+static const int8_t s_lg8[256] = {      /* the top bit's place in a byte */
+    0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7 };
+
+/* one vertex of a clean triple (the GTE took all three) into its record */
+static inline __attribute__((always_inline)) void mv_put(MVtx *q, uint32_t sxy, uint32_t sz, uint32_t rgb, const MBnd *K)
+{
+    int x = (int16_t)sxy, y = (int32_t)sxy >> 16, p;
+    q->clip = (uint8_t)((x < K->x0) | (x > K->x1) << 1 | (y < K->y0) << 2 | (y > K->y1) << 3);
+    q->ok = (uint8_t)!((x < K->gx0) | (x > K->gx1) | (y < K->gy0) | (y > K->gy1));
+    *(uint32_t *)&q->x = sxy;                   /* (x and y in one store) */
+    p = sz >> 8 ? 8 + s_lg8[sz >> 8] : s_lg8[sz];
+    q->z = (int16_t)(p * 32 + (int)((sz << (15 - p)) >> 10 & 31) + K->zb);
+    q->w = K->sh >= 0 ? (int32_t)sz << K->sh : (int32_t)sz >> -K->sh;
+    *(uint32_t *)&q->r = rgb;                   /* (r, g, b and the lit flag) */
+}
+
+/* one vertex of a triple the GTE flagged: good if its own results are (in
+ * front, past the near plane and the divide's limit, on its screen, its
+ * depth not saturated); else for the clip path, flagged behind the eye (a
+ * depth of 0) or by the sides its clamped screen place is past (a too-near
+ * vertex's true place is further out the same way) */
+static inline __attribute__((always_inline)) void mv_put_rough(MVtx *q, uint32_t sxy, uint32_t sz, uint32_t rgb, const MBnd *K)
+{
+    int x = (int16_t)sxy, y = (int32_t)sxy >> 16;
+    int32_t hz = K->hz & 0xFFFFF;
+    if (sz >= (uint32_t)hz && sz < 0xFFFF && x > -1024 && x < 1023 && y > -1024 && y < 1023 &&
+        (K->sh >= 0 ? (int32_t)sz << K->sh : (int32_t)sz >> -K->sh) >= W_NEAR) {
+        mv_put(q, sxy, sz, rgb, K);
+        return;
+    }
+    q->ok = 0;
+    if (!sz)
+        q->clip = 16;
+    else if (sz >= 0xFFFF)
+        q->clip = 0;                            /* (too far: no telling) */
+    else
+        q->clip = (uint8_t)((x < K->x0) | (x > K->x1) << 1 | (y < K->y0) << 2 | (y > K->y1) << 3);
+    *(uint32_t *)&q->r = rgb;
+}
+
+static inline __attribute__((always_inline)) uint32_t nrm_xy(uint32_t c) /* a packed normal's x, y (x32) */
+{
+    return (uint32_t)(((int32_t)(c << 16) >> 24) * 32) << 16 | (uint16_t)(((int32_t)(c << 24) >> 24) * 32);
+}
+
+/* the GTE three at a time (RTPT, and NCT for the shades); a triple it flags
+ * (behind the eye, too near, off its screen) goes the careful way */
+static int mesh_vertices(const NVtx *nv, int n, int v0, int lit)
+{
+    MBnd *K = s_mbk;
+    MVtx *q;
+    int i;
+    {
+        RG_BEGIN(RG_SETUP);
+        mvp_update();
+        if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
+            gte_setup();
+        if (lit && s_gte_ok)
+            light_setup(NULL);
+        RG_END(RG_SETUP);
+    }
+    if (!s_gte_ok)
+        return 0;
+    if (s_mb_stamp != s_mvp_stamp || K->hz != (s_vp.sx >> 3) + 1 + (s_gte_k << 20)) {
+        int ys = 2 + s_ysh;
+        s_mb_stamp = s_mvp_stamp;
+        s_mb_x0 = (s_vp.tx - s_vp.sx) >> 2; s_mb_x1 = (s_vp.tx + s_vp.sx) >> 2;
+        s_mb_y0 = (s_vp.ty - s_vp.sy) >> ys; s_mb_y1 = (s_vp.ty + s_vp.sy) >> ys;
+        s_mb_gx0 = (s_vp.tx - GUARD * s_vp.sx) >> 2; s_mb_gx1 = (s_vp.tx + GUARD * s_vp.sx) >> 2;
+        s_mb_gy0 = (s_vp.ty - GUARD * s_vp.sy) >> ys; s_mb_gy1 = (s_vp.ty + GUARD * s_vp.sy) >> ys;
+        K->x0 = s_mb_x0; K->x1 = s_mb_x1; K->y0 = s_mb_y0; K->y1 = s_mb_y1;
+        K->gx0 = s_mb_gx0; K->gx1 = s_mb_gx1; K->gy0 = s_mb_gy0; K->gy1 = s_mb_gy1;
+        K->sh = 8 + s_gte_k;
+        K->zb = 32 * (8 + s_gte_k);
+        K->hz = (s_vp.sx >> 3) + 1 + (s_gte_k << 20);
+    }
+    if (n > 32 - v0)
+        n = 32 - v0;
+    q = &s_mvx[v0];
+    for (i = 0; i + 3 <= n; i += 3, q += 3) {
+        const uint32_t *p0 = (const uint32_t *)&nv[i];
+        uint32_t s0, s1, s2, z0, z1, z2, c0 = (uint32_t)lit << 24, c1 = c0, c2 = c0, flagged;
+        gte_mtc(GTE_VXY0, p0[0]); gte_mtc(GTE_VZ0, (uint32_t)(int32_t)(int16_t)p0[1]);
+        gte_mtc(GTE_VXY1, p0[4]); gte_mtc(GTE_VZ1, (uint32_t)(int32_t)(int16_t)p0[5]);
+        gte_mtc(GTE_VXY2, p0[8]); gte_mtc(GTE_VZ2, (uint32_t)(int32_t)(int16_t)p0[9]);
+        gte_rtpt();
+        flagged = gte_cfc(GTE_FLAG) & 0x7FC7F000u;
+        s_flagbits[flagged ? 1 : 0]++;
+        s0 = gte_mfc(GTE_SXY0); s1 = gte_mfc(GTE_SXY1); s2 = gte_mfc(GTE_SXY2);
+        z0 = gte_mfc(GTE_SZ1); z1 = gte_mfc(GTE_SZ2); z2 = gte_mfc(GTE_SZ3);
+        if (lit) {
+            uint32_t n0 = p0[3], n1 = p0[7], n2 = p0[11];   /* (the packed normals) */
+            gte_mtc(GTE_VXY0, nrm_xy(n0)); gte_mtc(GTE_VZ0, (uint32_t)(((int32_t)(n0 << 8) >> 24) * 32));
+            gte_mtc(GTE_VXY1, nrm_xy(n1)); gte_mtc(GTE_VZ1, (uint32_t)(((int32_t)(n1 << 8) >> 24) * 32));
+            gte_mtc(GTE_VXY2, nrm_xy(n2)); gte_mtc(GTE_VZ2, (uint32_t)(((int32_t)(n2 << 8) >> 24) * 32));
+            gte_nct();
+            c0 = (gte_mfc(GTE_RGB0) & 0xFFFFFF) | 1u << 24;
+            c1 = (gte_mfc(GTE_RGB1) & 0xFFFFFF) | 1u << 24;
+            c2 = (gte_mfc(GTE_RGB2) & 0xFFFFFF) | 1u << 24;
+        }
+        if (flagged || ((int32_t)z0 << K->sh) < W_NEAR || ((int32_t)z1 << K->sh) < W_NEAR || ((int32_t)z2 << K->sh) < W_NEAR) {
+            mv_put_rough(q, s0, z0, c0, K);
+            mv_put_rough(q + 1, s1, z1, c1, K);
+            mv_put_rough(q + 2, s2, z2, c2, K);
+        } else {
+            mv_put(q, s0, z0, c0, K);
+            mv_put(q + 1, s1, z1, c1, K);
+            mv_put(q + 2, s2, z2, c2, K);
+        }
+        s_mvsrc[v0 + i] = &nv[i];
+        s_mvsrc[v0 + i + 1] = &nv[i + 1];
+        s_mvsrc[v0 + i + 2] = &nv[i + 2];
+        s_mvstale |= 7u << (v0 + i);
+    }
+    s_n_gte += (uint32_t)i;
+    s_n_vtx += (uint32_t)i;
+    if (i < n)
+        mesh_vertices_gen(nv + i, n - i, v0 + i, lit);
+    return 1;
+}
+
+static int mesh_vertices_one(const NVtx *nv, int n, int v0, int lit)
 {
     int i, sh;
     mvp_update();
@@ -620,7 +946,7 @@ static int mesh_vertices(const NVtx *nv, int n, int v0)
         gte_setup();
     if (!s_gte_ok)
         return 0;
-    if (s_geom & G_LIGHTING)
+    if (lit)
         light_setup(NULL);
     if (s_mb_stamp != s_mvp_stamp) {            /* the screen's sides and the guard band, in pixels */
         int ys = 2 + s_ysh;
@@ -649,7 +975,7 @@ static int mesh_vertices(const NVtx *nv, int n, int v0)
         sxy = gte_mfc(GTE_SXY2);
         w = sh_r(m3, -sh);
         q->lit = 0;
-        if (s_geom & G_LIGHTING) {              /* its shade: the lights on its normal, by the GTE */
+        if (lit) {                              /* its shade: the lights on its normal, by the GTE */
             uint32_t rgb;
             gte_mtc(GTE_VXY0, (uint32_t)((int32_t)(int8_t)nv[i].c[1] * 32 << 16) | (uint16_t)((int8_t)nv[i].c[0] * 32));
             gte_mtc(GTE_VZ0, (uint32_t)((int32_t)(int8_t)nv[i].c[2] * 32));
@@ -3344,7 +3670,26 @@ typedef struct {
     int16_t r[3], g[3], b[3];                   /* the GPU colour before fog */
     uint8_t prim;
     uint8_t kind;                               /* 0 not yet seen, 1 kept, 2 always the slow way */
+    uint8_t cull;                               /* the geometry mode's culling when it was last drawn (1 front, 2 back) */
 } Tpl;
+
+/* a kept list as a PlayStation mesh: its vertex batches and, for each
+ * triangle, its packet with the screen places (and a lit one's colours) left
+ * to fill in */
+typedef struct {
+    uint32_t idx;                               /* a | b << 5 | c << 10 | prim << 15 | flags << 24 */
+    uint8_t nw, off;                            /* the packet's words; the first corner's colour word */
+    const uint32_t *w;
+} NTri;
+enum { NT_CULLF = 1, NT_CULLB = 2, NT_LIT = 4, NT_FLAT = 8, NT_ZS = 16, NT_TEX = 32, NT_CUT = 64 };
+typedef struct { const NVtx *nv; uint8_t n, v0, lit, pad; uint16_t t0, nt; } NBat;
+typedef struct {
+    int nbat, nst;
+    uint32_t place[48];                         /* each draw state's texture as baked: its key and VRAM place */
+    NBat *bat;
+    NTri *tri;
+    const uint32_t *st;                         /* the list's state commands (w0, w1), run after it draws */
+} NMesh;
 #define DLC_PRIMS 48
 #define DLC_SRCS 6
 typedef struct {
@@ -3357,6 +3702,8 @@ typedef struct {
     Load src[DLC_SRCS];                         /* the texture sources the triangles read */
     uint32_t srcsig[DLC_SRCS];
     int nsrc;
+    uint32_t vlit, vfog;                        /* the vertex batches loaded lit, fogged (by their order) */
+    NMesh *nm;                                  /* (made once every triangle's draw is kept) */
 } DlcVar;
 typedef struct Dlc {
     struct Dlc *next;
@@ -3374,6 +3721,7 @@ static uint32_t s_dlc_arena[DLC_ARENA / 4];
 static int s_dlc_used;
 static Dlc *s_dlc[DLC_HASH];
 static int s_dlc_on = -1;
+static int s_nm_on = 1;                         /* TGR_NOMESH: kept lists not drawn as meshes */
 static uint32_t s_n_dlc_hit, s_n_dlc_tpl, s_n_dlc_rec;  /* TGR_PERF */
 /* TGR_PERF counts: why lists were compiled or recorded again (compiled, changed, new key, texture
  * table, source, lights); kept-list triangles without a kept draw; the paths triangles took (off or
@@ -3403,7 +3751,7 @@ static void dlc_flush(void)
 
 static uint32_t rot(uint32_t h, uint32_t w) { return (h << 5 | h >> 27) + w; }
 
-/* the list's words and its vertex blocks' first and last vertices */
+/* the list's words and its vertex blocks' */
 static uint32_t dlc_sum(const Dlc *d)
 {
     const uint32_t *w = (const uint32_t *)mem(d->addr);
@@ -3415,11 +3763,9 @@ static uint32_t dlc_sum(const Dlc *d)
         if ((d->cmd[i].w0 >> 24) == 0x04) {
             const uint32_t *v = (const uint32_t *)mem(d->cmd[i].w1);
             int n = (int)((d->cmd[i].w0 >> 10) & 0x3F);
-            h = rot(rot(rot(rot(h, v[0]), v[1]), v[2]), v[3]);
-            if (n > 1) {
-                v += (n - 1) * 4;
-                h = rot(rot(rot(rot(h, v[0]), v[1]), v[2]), v[3]);
-            }
+            int j;
+            for (j = 0; j < n * 4; j += 4)     /* (every vertex: the game rewrites some each frame) */
+                h = rot(rot(rot(rot(h, v[j]), v[j + 1]), v[j + 2]), v[j + 3]);
         }
     return h;
 }
@@ -3894,7 +4240,7 @@ static void vtx_clip(int slot, CV *c, int *clip)
 /* a kept triangle the GPU cannot take whole (reaching behind the eye, past
  * the guard band, or deep enough to need cutting): clipped and cut from its
  * kept draw */
-static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
+static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic, int cull)
 {
     CV poly[2][12];
     int k, n = 3, cur = 0, cl[3];
@@ -3925,7 +4271,7 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
         int64_t det = (int64_t)v0->x * (((int64_t)v1->y * v2->w - (int64_t)v2->y * v1->w) >> 8) -
                       (int64_t)v0->y * (((int64_t)v1->x * v2->w - (int64_t)v2->x * v1->w) >> 8) +
                       (int64_t)v0->w * (((int64_t)v1->x * v2->y - (int64_t)v2->x * v1->y) >> 8);
-        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0)) {
+        if (((cull & 2) && det <= 0) || ((cull & 1) && det >= 0)) {
             s_cutw[1]++;
             return;
         }
@@ -3970,15 +4316,249 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
     }
 }
 
+/* ---- kept lists as PlayStation meshes ------------------------------------------------- */
+/* the mesh of a variant whose every triangle has its draw kept (none fogged):
+ * NULL while it cannot be one */
+static NMesh *nm_build(const Dlc *d, const DlcVar *v)
+{
+    NMesh *nm;
+    uint32_t *words;
+    int i, k, nb = 0, nst = 0, ti = 0, b = -1;
+    if (v->vfog || !d->ntri)
+        return NULL;
+    for (i = 0; i < d->ntri; i++)
+        if (v->tpl[i].kind != 1 || v->prim[v->tpl[i].prim].fog)
+            return NULL;
+    for (i = 0; i < d->ncmd; i++) {
+        int op = (int)(d->cmd[i].w0 >> 24);
+        if (op == 0x04)
+            nb++;
+        else if (op != 0xB1 && op != 0xBF && op != 0xB8 && op != 0xE6 && op != 0xE7 && op != 0xE8 && op != 0x00)
+            nst++;
+    }
+    if (nb > 32)
+        return NULL;
+    nm = (NMesh *)dlc_alloc((int)sizeof(NMesh));
+    if (!nm)
+        return NULL;
+    nm->bat = (NBat *)dlc_alloc(nb * (int)sizeof(NBat));
+    nm->tri = (NTri *)dlc_alloc(d->ntri * (int)sizeof(NTri));
+    words = (uint32_t *)dlc_alloc(d->ntri * 12 * 4);
+    nm->st = (const uint32_t *)dlc_alloc(nst * 8 + 4);
+    if (!nm->bat || !nm->tri || !words || !nm->st)
+        return NULL;
+    nm->nbat = nb;
+    nm->nst = nst;
+    nst = 0;
+    for (k = 0; k < v->nprim && k < 48; k++) {
+        const Tex *tx = v->prim[k].tex;
+        nm->place[k] = tx ? tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u : 0;
+    }
+    for (i = 0; i < d->ncmd; i++) {
+        uint32_t w0 = d->cmd[i].w0, w1 = d->cmd[i].w1;
+        int op = (int)(w0 >> 24), m, nt;
+        if (op == 0x04) {
+            NBat *bt = &nm->bat[++b];
+            bt->nv = (const NVtx *)d->cmd[i].aux;
+            bt->n = (uint8_t)((w0 >> 10) & 0x3F);
+            bt->v0 = (uint8_t)(((w0 >> 16) & 0xFF) / 2);
+            bt->lit = (uint8_t)(v->vlit >> b & 1);
+            bt->t0 = (uint16_t)ti;
+            bt->nt = 0;
+            continue;
+        }
+        if (op != 0xB1 && op != 0xBF) {
+            if (op != 0xB8 && op != 0xE6 && op != 0xE7 && op != 0xE8 && op != 0x00) {
+                ((uint32_t *)nm->st)[nst * 2] = w0;
+                ((uint32_t *)nm->st)[nst * 2 + 1] = w1;
+                nst++;
+            }
+            continue;
+        }
+        if (b < 0)
+            return NULL;
+        nt = op == 0xB1 ? 2 : 1;
+        for (m = 0; m < nt; m++, ti++) {
+            uint32_t x = op == 0xB1 && m == 0 ? w0 : w1;
+            int ia = (int)((x >> 16) & 0xFF) / 2, ib = (int)((x >> 8) & 0xFF) / 2, ic = (int)(x & 0xFF) / 2;
+            const Tpl *t = &v->tpl[ti];
+            const Prim *pr = &v->prim[t->prim];
+            NTri *nt3 = &nm->tri[ti];
+            uint32_t *w = words + ti * 12, fl = t->cull;
+            int n = 0, su = 0, sv = 0;
+            nm->bat[b].nt++;
+            if (pr->lit && nm->bat[b].lit) fl |= NT_LIT;
+            if (pr->flat) fl |= NT_FLAT;
+            if (pr->zsort) fl |= NT_ZS;
+            if (pr->textured) fl |= NT_TEX;
+            if (pr->textured && pr->tex) {
+                int32_t mnu = t->u[0], mxu = t->u[0], mnv = t->v[0], mxv = t->v[0];
+                for (k = 1; k < 3; k++) {
+                    if (t->u[k] < mnu) mnu = t->u[k];
+                    if (t->u[k] > mxu) mxu = t->u[k];
+                    if (t->v[k] < mnv) mnv = t->v[k];
+                    if (t->v[k] > mxv) mxv = t->v[k];
+                }
+                if ((pr->wraps && mxu - mnu > 192 * 32) || (pr->wrapt && mxv - mnv > 192 * 32))
+                    fl |= NT_CUT;               /* (wider than a page: split by the cut path) */
+                su = pr->wraps ? (mnu >> 5) & ~(pr->tex->w - 1) : 0;
+                sv = pr->wrapt ? (mnv >> 5) & ~(pr->tex->h - 1) : 0;
+            }
+            if (pr->semi)
+                w[n++] = 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 |
+                         (pr->tex ? tex_tpage(pr->tex, pr->tex->vx) & 0x1FF : 0);
+            if (pr->window)
+                w[n++] = pr->window;
+            nt3->off = (uint8_t)n;
+            for (k = 0; k < 3; k++) {
+                uint32_t rgb = (uint32_t)clamp255(t->r[k]) | (uint32_t)clamp255(t->g[k]) << 8 | (uint32_t)clamp255(t->b[k]) << 16;
+                if (k == 0)
+                    rgb |= (uint32_t)pr->cmd << 24;
+                w[n++] = rgb;
+                w[n++] = 0;                     /* (the screen place) */
+                if (pr->textured && pr->tex) {
+                    int u = t->u[k] >> 5, vv = t->v[k] >> 5;
+                    u = pr->wraps ? u - su : pr->ub + (u < 0 ? 0 : u >= pr->tex->w ? pr->tex->w - 1 : u);
+                    vv = pr->wrapt ? vv - sv : pr->vb + (vv < 0 ? 0 : vv >= pr->tex->h ? pr->tex->h - 1 : vv);
+                    w[n] = (uint32_t)clamp255(u) | (uint32_t)clamp255(vv) << 8;
+                    if (k == 0)
+                        w[n] |= (uint32_t)pr->tex->clut << 16;
+                    if (k == 1)
+                        w[n] |= (uint32_t)(tex_tpage(pr->tex, pr->tex->vx) | pr->abr << 5) << 16;
+                    n++;
+                }
+            }
+            if (pr->window)
+                w[n++] = 0xE2000000;
+            nt3->nw = (uint8_t)n;
+            nt3->w = w;
+            nt3->idx = (uint32_t)ia | (uint32_t)ib << 5 | (uint32_t)ic << 10 | (uint32_t)t->prim << 15 | fl << 24;
+        }
+    }
+    return nm;
+}
+
+/* a kept list drawn as its mesh: 0 when the GTE does not hold a transform */
+static int nm_draw(const Dlc *d, DlcVar *v)
+{
+    const NMesh *nm = v->nm;
+    int b, i;
+    for (b = 0; b < v->nprim && b < 48; b++) {    /* (the textures where they were baked) */
+        const Tex *tx = v->prim[b].tex;
+        if (tx && (tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u) != nm->place[b]) {
+            v->nm = NULL;
+            return 0;
+        }
+    }
+    mvp_update();
+    if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
+        gte_setup();
+    if (!s_gte_ok)
+        return 0;
+    for (b = 0; b < nm->nbat; b++) {
+        const NBat *bt = &nm->bat[b];
+        const NTri *tr = &nm->tri[bt->t0];
+        {
+            uint32_t c0 = *(volatile uint32_t *)0xBF801120;
+            mesh_vertices(bt->nv, bt->n, bt->v0, bt->lit);
+            s_flagbits[8] += (*(volatile uint32_t *)0xBF801120 - c0) & 0xFFFF;
+            s_flagbits[10] += bt->n;
+        }
+        for (i = 0; i < bt->nt; i++, tr++) {
+            uint32_t idx = tr->idx, fl = idx >> 24;
+            int ia = (int)(idx & 31), ib = (int)(idx >> 5 & 31), ic = (int)(idx >> 10 & 31);
+            const MVtx *A = &s_mvx[ia], *B = &s_mvx[ib], *C = &s_mvx[ic];
+            const Prim *pr = &v->prim[idx >> 15 & 63];
+            const Tpl *tp = &v->tpl[bt->t0 + i];
+            uint32_t *p, *w;
+            int32_t det;
+            s_n_tri++;
+            if (A->clip & B->clip & C->clip & 31) {
+                s_n_rej++;
+                s_path[0]++;
+                continue;
+            }
+            if (!(A->ok & B->ok & C->ok) || (fl & NT_CUT)) {
+                RG_BEGIN(RG_CLIP);
+                s_n_tri--;
+                dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                RG_END(RG_CLIP);
+                s_path[2]++;
+                continue;
+            }
+            det = (B->x - A->x) * (C->y - A->y) - (C->x - A->x) * (B->y - A->y);
+            if (((fl & NT_CULLB) && det >= 0) || ((fl & NT_CULLF) && det <= 0)) {
+                s_n_cull++;
+                s_path[0]++;
+                continue;
+            }
+            if ((fl & NT_TEX) && (edge_split(A->w, B->w, A->x, A->y, B->x, B->y) ||
+                                  edge_split(B->w, C->w, B->x, B->y, C->x, C->y) ||
+                                  edge_split(C->w, A->w, C->x, C->y, A->x, A->y))) {
+                RG_BEGIN(RG_CLIP);
+                s_n_tri--;
+                dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                RG_END(RG_CLIP);
+                s_path[2]++;
+                continue;
+            }
+            if (!(p = pkt_alloc(tr->nw)))
+                continue;
+            {
+                const uint32_t *src = tr->w;
+                int k;
+                w = p + 1;
+                for (k = 0; k < tr->nw; k++)
+                    w[k] = src[k];
+            }
+            w += tr->off;
+            if (fl & NT_TEX) {
+                w[1] = (uint32_t)(uint16_t)A->y << 16 | (uint16_t)A->x;
+                w[4] = (uint32_t)(uint16_t)B->y << 16 | (uint16_t)B->x;
+                w[7] = (uint32_t)(uint16_t)C->y << 16 | (uint16_t)C->x;
+            } else {
+                w[1] = (uint32_t)(uint16_t)A->y << 16 | (uint16_t)A->x;
+                w[3] = (uint32_t)(uint16_t)B->y << 16 | (uint16_t)B->x;
+                w[5] = (uint32_t)(uint16_t)C->y << 16 | (uint16_t)C->x;
+            }
+            if (fl & NT_LIT) {
+                const MVtx *cs[3];
+                int k, step = fl & NT_TEX ? 3 : 2;
+                cs[0] = A;
+                cs[1] = fl & NT_FLAT ? A : B;
+                cs[2] = fl & NT_FLAT ? A : C;
+                for (k = 0; k < 3; k++) {
+                    int r = pr->c0[0] + (pr->sl[0] * cs[k]->r >> 8), g = pr->c0[1] + (pr->sl[1] * cs[k]->g >> 8);
+                    int bb = pr->c0[2] + (pr->sl[2] * cs[k]->b >> 8);
+                    w[k * step] = (w[k * step] & 0xFF000000u) | (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 |
+                                  (uint32_t)clamp255(bb) << 16;
+                }
+            }
+            s_n_piece++;
+            s_n_dlc_tpl++;
+            s_path[1]++;
+            if (fl & NT_ZS)
+                put_sorted(p, (A->z + B->z + C->z) * 85 >> 8);
+            else
+                put_flat(p);
+        }
+    }
+    for (i = 0; i < nm->nst; i++)
+        exec_state((int)(nm->st[i * 2] >> 24), nm->st[i * 2], nm->st[i * 2 + 1]);
+    return 1;
+}
+
 /* a call of the list at a drawn from its kept form: 0 when it is not kept */
 static int dlc_call(uint32_t a)
 {
     Dlc *d;
     DlcVar *v;
     uint32_t sig;
-    int i, k, ti = 0;
-    if (s_dlc_on < 0)
+    int i, k, ti = 0, vb = 0;
+    if (s_dlc_on < 0) {
         s_dlc_on = getenv("TGR_NODLC") == NULL;
+        s_nm_on = getenv("TGR_NOMESH") == NULL;
+    }
     if (!s_dlc_on || s_target < 0)
         return 0;
     for (d = s_dlc[(a >> 3) & (DLC_HASH - 1)]; d && d->addr != a; d = d->next)
@@ -4023,6 +4603,7 @@ static int dlc_call(uint32_t a)
         d->nextvar ^= 1;
         v->sig = sig;
         s_dlc_why[2]++;
+        v->nm = NULL;
         v->recorded = 0;
         v->nprim = 0;
         v->nsrc = 0;
@@ -4041,6 +4622,7 @@ static int dlc_call(uint32_t a)
                 s_dlc_why[4]++;
             }
         if (stale) {
+            v->nm = NULL;
             v->recorded = 0;
             v->nprim = 0;
             v->nsrc = 0;
@@ -4059,6 +4641,8 @@ static int dlc_call(uint32_t a)
             ((Tex *)v->prim[k].tex)->used = s_frame_no;
             s_shelf[v->prim[k].tex->shelf].used = s_frame_no;
         }
+    if (v->nm && s_nm_on && nm_draw(d, v))
+        return 1;
     for (i = 0; i < d->ncmd; i++) {
         uint32_t w0 = d->cmd[i].w0, w1 = d->cmd[i].w1;
         int op = (int)(w0 >> 24), m, nt;
@@ -4068,7 +4652,12 @@ static int dlc_call(uint32_t a)
             {
                 int ok;
                 RG_BEGIN(RG_MESHV);
-                ok = !(s_geom & G_FOG) && mesh_vertices((const NVtx *)d->cmd[i].aux, vn, v0);
+                if (vb < 32) {
+                    if (s_geom & G_LIGHTING) v->vlit |= 1u << vb; else v->vlit &= ~(1u << vb);
+                    if (s_geom & G_FOG) v->vfog |= 1u << vb; else v->vfog &= ~(1u << vb);
+                }
+                vb++;
+                ok = !(s_geom & G_FOG) && mesh_vertices((const NVtx *)d->cmd[i].aux, vn, v0, (s_geom & G_LIGHTING) != 0);
                 RG_END(RG_MESHV);
                 if (ok)
                     break;
@@ -4086,8 +4675,10 @@ static int dlc_call(uint32_t a)
                 uint32_t x = op == 0xB1 && m == 0 ? w0 : w1;
                 int ia = (int)((x >> 16) & 0xFF) / 2, ib = (int)((x >> 8) & 0xFF) / 2, ic = (int)(x & 0xFF) / 2;
                 Tpl *t = &v->tpl[ti];
+                t->cull = (uint8_t)((s_geom >> 12) & 3);
                 if (t->kind == 1 && (s_geom & G_LIGHTING) && !v->prim[t->prim].lit && v->lsig != s_lsig) {
                     t->kind = 0;                /* kept colours and the lights moved: kept again */
+                    v->nm = NULL;
                     s_dlc_why[5]++;
                 }
                 {
@@ -4145,7 +4736,7 @@ static int dlc_call(uint32_t a)
                     }
                     {
                         RG_BEGIN(RG_CLIP);
-                        dlc_tri_clip(t, pr, ia, ib, ic);
+                        dlc_tri_clip(t, pr, ia, ib, ic, (int)(s_geom >> 12) & 3);
                         RG_END(RG_CLIP);
                     }
                     s_path[2]++;
@@ -4189,6 +4780,8 @@ static int dlc_call(uint32_t a)
         }
     }
     v->recorded = 1;
+    if (!v->nm && s_nm_on)
+        v->nm = nm_build(d, v);
     return 1;
 }
 
@@ -4382,10 +4975,10 @@ void tgr_rcp_task(uint32_t dl)
         run(dl);
         t2 = ps1_time_ns();
         frame_end();
-        s_rg[RG_END] += (uint32_t)((ps1_time_ns() - t2) / 1000);
-        s_rg[RG_TOPTRI] += (uint32_t)((t2 - t1) / 1000);
+        s_rg[RG_END] += ps1_time_ns() - t2;
+        s_rg[RG_TOPTRI] += t2 - t1;
     }
-    s_rg[RG_TASK] += (uint32_t)((ps1_time_ns() - task_t0) / 1000);
+    s_rg[RG_TASK] += ps1_time_ns() - task_t0;
 }
 
 void tgr_dump_state(const char *path, uint32_t dl) { (void)path; (void)dl; }
@@ -4505,7 +5098,7 @@ void tgr_rcp_present(uint32_t frame)
                 int r;
                 fprintf(stderr, "perf: regions (ms):");
                 for (r = 0; r < RG_N; r++) {
-                    fprintf(stderr, " %s %u", s_rg_name[r], (unsigned)(s_rg[r] / 1000));
+                    fprintf(stderr, " %s %u", s_rg_name[r], (unsigned)(s_rg[r] / 1000000));
                     s_rg[r] = 0;
                 }
                 fprintf(stderr, "\n");
@@ -4535,6 +5128,24 @@ void tgr_rcp_present(uint32_t frame)
             fprintf(stderr, "perf: cut path: off %u away %u; drawn: whole %u behind %u guard %u both %u\n", (unsigned)s_cutw[0],
                     (unsigned)s_cutw[1], (unsigned)s_cutw[2], (unsigned)s_cutw[3], (unsigned)s_cutw[4], (unsigned)s_cutw[5]);
             memset(s_cutw, 0, sizeof s_cutw);
+            {
+                int bit;
+                fprintf(stderr, "perf: mesh vertices: first pass %u cycles a vertex, again %u; ",
+                        (unsigned)(s_flagbits[10] ? s_flagbits[8] * 8 / s_flagbits[10] : 0),
+                        (unsigned)(s_flagbits[10] ? s_flagbits[9] * 8 / s_flagbits[10] : 0));
+                fprintf(stderr, "perf: triples clean %u flagged %u: behind %u near %u far %u screen %u;", (unsigned)s_flagbits[0],
+                        (unsigned)s_flagbits[1], (unsigned)s_flagbits[2], (unsigned)s_flagbits[3], (unsigned)s_flagbits[4],
+                        (unsigned)s_flagbits[5]);
+                for (bit = 12; bit < 31; bit++)
+                    if (s_flagbits[bit])
+                        fprintf(stderr, " b%d %u", bit, (unsigned)s_flagbits[bit]);
+                for (bit = 12; bit < 31; bit++)
+                    if (s_flagbits2[1][bit] | s_flagbits2[2][bit])
+                        fprintf(stderr, " retry b%d near %u far %u", bit, (unsigned)s_flagbits2[1][bit], (unsigned)s_flagbits2[2][bit]);
+                fprintf(stderr, "\n");
+                memset(s_flagbits, 0, sizeof s_flagbits);
+                memset(s_flagbits2, 0, sizeof s_flagbits2);
+            }
             fprintf(stderr, "perf: splits: size %u texels %u\n", (unsigned)s_splitw[1], (unsigned)s_splitw[2]);
             memset(s_splitw, 0, sizeof s_splitw);
             fprintf(stderr, "perf: texture table moved: flush %u merge %u shelf %u redo %u full %u\n", (unsigned)s_epw[0],
