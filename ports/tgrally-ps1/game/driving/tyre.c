@@ -46,6 +46,7 @@ extern BrTyreVec D_802A4B94;            /* (0, 0, -1): the body's down axis */
 extern unsigned short D_8037EA88[];     /* each grid cell's plane count */
 extern float D_80379F80[][150][8];      /* and its planes (normal, d, corners...) */
 extern short g_pbox[4][150][4];          /* (PlayStation: their triangles' x, y boxes: collresp.c) */
+extern int g_pfx[4][150][4];             /* (and the planes in fixed point) */
 short BrCollGridCellAcquire(float, float);
 void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
 void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);
@@ -102,6 +103,14 @@ void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
  * All three mount additions are written mount[k] = mount[k] + world[k]:
  * ugen picks a temporary by the slot it is stored to, so the loop's stores
  * also decide the registers at the entry. */
+/* PlayStation: a point of a triangle is in its x, y box (whole units widened
+ * by one, the point's own rounding another): one outside is not in it */
+static int probe_in_box(const short b[4], const float p[3])
+{
+  int x = (int)p[0], y = (int)p[1];
+  return x >= b[0] - 1 && x <= b[1] + 1 && y >= b[2] - 1 && y <= b[3] + 1;
+}
+
 /* @implements 0x8025E96C tgr BrWheelGroundProbe */
 float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
 {
@@ -139,12 +148,25 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
    * that and the whole units' rounding */
   int wx = (int)world[0], wy = (int)world[1];
   const short (*bx)[4] = g_pbox[cell];
+  const int (*pf)[4] = g_pfx[cell];
+  int w64[3];
   static int nobox = -1;
   if (nobox < 0)
     nobox = getenv("TGR_NOPROBEBOX") != 0;
+  w64[0] = (int)(world[0] * 64.0f);
+  w64[1] = (int)(world[1] * 64.0f);
+  w64[2] = (int)(world[2] * 64.0f);
   for (i = 0; i < n; i++, pPl += 8) {
     if (!nobox && i < 150 && (wx < bx[i][0] - 3 || wx > bx[i][1] + 3 || wy < bx[i][2] - 3 || wy > bx[i][3] + 3))
       continue;
+    if (!nobox && i < 150) {
+      /* (the plane's distance in fixed point, within 0.13 of the float one:
+       * beyond 2.25 the probe's -2 < d < 2 cannot hold) */
+      long long dd = (long long)pf[i][0] * w64[0] + (long long)pf[i][1] * w64[1] + (long long)pf[i][2] * w64[2] +
+                     ((long long)pf[i][3] << 3);
+      if (dd > (9LL << 20) || dd < -(9LL << 20))
+        continue;
+    }
     d = BrCrPlaneDist(pPl, pPl[3], world);
     if (d > -2.0 && d < 2.0) {
       t = pPl[0] * dir[0] + pPl[1] * dir[1] + pPl[2] * dir[2];
@@ -157,7 +179,8 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
         mount[0] = mount[0] + world[0];
         mount[1] = mount[1] + world[1];
         mount[2] = mount[2] + world[2];
-        if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 && BrCrTriContainsPoint(pPl, mount) != 0) {
+        if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 &&
+            (nobox || i >= 150 || probe_in_box(bx[i], mount)) && BrCrTriContainsPoint(pPl, mount) != 0) {
           w->hit = tgr_addr32(pPl);
           w->surface = ((unsigned char *)pPl)[0x1e];
           best = h;
