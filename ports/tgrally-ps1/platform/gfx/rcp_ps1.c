@@ -2309,6 +2309,43 @@ static void frame_end(void)
 /* TGR_DLSTATS: commands by opcode, and G_DL targets by how much they hold */
 static uint32_t s_opcount[256];
 static int s_dlstats = -1;
+#define NDLT 512
+static struct { uint32_t a; uint32_t calls, cmds, tris, vtx, state, mtx, dl, movemem, depth; } s_dlt[NDLT];
+static int s_ndlt;
+
+static void dl_census(uint32_t a, int depth)
+{
+    int i, guard = 0;
+    uint32_t pc = a;
+    for (i = 0; i < s_ndlt; i++)
+        if (s_dlt[i].a == a) {
+            s_dlt[i].calls++;
+            return;
+        }
+    if (s_ndlt == NDLT)
+        return;
+    i = s_ndlt++;
+    memset(&s_dlt[i], 0, sizeof s_dlt[i]);
+    s_dlt[i].a = a;
+    s_dlt[i].calls = 1;
+    s_dlt[i].depth = (uint32_t)depth;
+    while (guard++ < 4000) {
+        uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
+        int op = (int)(w0 >> 24);
+        pc += 8;
+        s_dlt[i].cmds++;
+        if (op == 0xB8) break;
+        if (op == 0xB1) s_dlt[i].tris += 2;
+        else if (op == 0xBF) s_dlt[i].tris++;
+        else if (op == 0x04) s_dlt[i].vtx++;
+        else if (op == 0x01 || op == 0xBD) s_dlt[i].mtx++;
+        else if (op == 0x06) { s_dlt[i].dl++; if (((w0 >> 16) & 0xFF) == 1) break; }
+        else if (op == 0x03) s_dlt[i].movemem++;
+        else if (op == 0xE4 || op == 0xE5) { pc += 16; s_dlt[i].state++; }
+        else s_dlt[i].state++;
+        (void)w1;
+    }
+}
 
 static void run(uint32_t dl)
 {
@@ -2386,6 +2423,8 @@ static void run(uint32_t dl)
             load_vertices(seg_addr(w1), (w0 >> 10) & 0x3F, ((w0 >> 16) & 0xFF) / 2);
             break;
         case 0x06:                                    /* G_DL */
+            if (s_dlstats == 1 && tgr_frame() + 1 >= (uint32_t)atoi(getenv("TGR_DLSTATS")))
+                dl_census(seg_addr(w1), sp);
             if (((w0 >> 16) & 0xFF) == 0 && sp < 18)
                 stack[sp++] = pc;
             pc = seg_addr(w1);
@@ -2614,6 +2653,11 @@ void tgr_rcp_task(uint32_t dl)
             if (s_opcount[i])
                 fprintf(stderr, " %02X:%u", i, (unsigned)s_opcount[i]);
         fprintf(stderr, "\n");
+        for (i = 0; i < s_ndlt; i++)
+            fprintf(stderr, "dlt %06X calls %u cmds %u tris %u vtx %u state %u mtx %u dl %u movemem %u depth %u\n",
+                    (unsigned)s_dlt[i].a, (unsigned)s_dlt[i].calls, (unsigned)s_dlt[i].cmds, (unsigned)s_dlt[i].tris,
+                    (unsigned)s_dlt[i].vtx, (unsigned)s_dlt[i].state, (unsigned)s_dlt[i].mtx, (unsigned)s_dlt[i].dl,
+                    (unsigned)s_dlt[i].movemem, (unsigned)s_dlt[i].depth);
         s_dlstats = 2;
     }
     if (s_dlstats == 1)

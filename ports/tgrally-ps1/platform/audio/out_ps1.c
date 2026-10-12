@@ -2,7 +2,8 @@
 #include <stdint.h>
 #include "plat.h"
 
-void tgr_audio_init(void) {}
+void snd_init(void);
+void tgr_audio_init(void) { snd_init(); }
 void tgr_audio_lowpass(int hz) { (void)hz; }
 void tgr_audio_buffer(const int16_t *lr, int frames, int rate) { (void)lr; (void)frames; (void)rate; }
 int  tgr_audio_buffered_ms(void) { return 0; }

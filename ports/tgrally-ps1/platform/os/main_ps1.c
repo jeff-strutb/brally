@@ -94,6 +94,10 @@ int main(void)
     tgr_os_wait();
     fprintf(stderr, "tgr: %u retraces\n", tgr_frame());
     tgr_trace_close();
+    {
+        extern void spu_log_flush(void);
+        spu_log_flush();
+    }
     ps1_pc_dump();
     finish();
     for (;;)

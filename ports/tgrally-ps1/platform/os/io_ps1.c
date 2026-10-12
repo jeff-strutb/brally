@@ -196,6 +196,8 @@ uint32_t osAiGetStatus(void)
     return s_ain >= 2 ? 0x80000000u : 0;
 }
 
+uint32_t tgr_ai_rate(void) { return s_airate ? s_airate : 22050; }
+
 int32_t osAiSetFrequency(uint32_t f)
 {
     uint32_t dac = (uint32_t)((double)AI_CLOCK / f + 0.5);
