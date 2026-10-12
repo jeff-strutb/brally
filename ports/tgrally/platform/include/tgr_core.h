@@ -25,6 +25,49 @@ typedef struct { uint8_t b[2]; } be16_t;
 typedef struct { uint8_t b[4]; } be32_t;
 typedef struct { uint8_t b[4]; } bef_t;     /* a float */
 
+#ifdef TGR_PS1
+/* the PlayStation reads RAM a word at a time far faster than a byte at a
+ * time (no data cache: every load waits on RAM): an aligned field is one
+ * load and a swap in registers */
+static inline uint32_t tgr_swap32(uint32_t v)
+{
+    return v << 24 | (v & 0xFF00u) << 8 | (v >> 8 & 0xFF00u) | v >> 24;
+}
+static inline uint32_t tgr_rd32(const void *p)
+{
+    const uint8_t *b = (const uint8_t *)p;
+    if (!((uintptr_t)p & 3))
+        return tgr_swap32(*(const uint32_t *)p);
+    return (uint32_t)b[0] << 24 | (uint32_t)b[1] << 16 | (uint32_t)b[2] << 8 | b[3];
+}
+static inline uint16_t tgr_rd16(const void *p)
+{
+    const uint8_t *b = (const uint8_t *)p;
+    if (!((uintptr_t)p & 1)) {
+        uint32_t v = *(const uint16_t *)p;
+        return (uint16_t)(v << 8 | v >> 8);
+    }
+    return (uint16_t)(b[0] << 8 | b[1]);
+}
+static inline void tgr_wr32(void *p, uint32_t v)
+{
+    uint8_t *b = (uint8_t *)p;
+    if (!((uintptr_t)p & 3)) {
+        *(uint32_t *)p = tgr_swap32(v);
+        return;
+    }
+    b[0] = (uint8_t)(v >> 24); b[1] = (uint8_t)(v >> 16); b[2] = (uint8_t)(v >> 8); b[3] = (uint8_t)v;
+}
+static inline void tgr_wr16(void *p, uint16_t v)
+{
+    uint8_t *b = (uint8_t *)p;
+    if (!((uintptr_t)p & 1)) {
+        *(uint16_t *)p = (uint16_t)(v << 8 | v >> 8);
+        return;
+    }
+    b[0] = (uint8_t)(v >> 8); b[1] = (uint8_t)v;
+}
+#else
 static inline uint32_t tgr_rd32(const void *p)
 {
     const uint8_t *b = (const uint8_t *)p;
@@ -45,6 +88,7 @@ static inline void tgr_wr16(void *p, uint16_t v)
     uint8_t *b = (uint8_t *)p;
     b[0] = (uint8_t)(v >> 8); b[1] = (uint8_t)v;
 }
+#endif
 static inline float tgr_rdf(const void *p)
 {
     union { uint32_t u; float f; } x;

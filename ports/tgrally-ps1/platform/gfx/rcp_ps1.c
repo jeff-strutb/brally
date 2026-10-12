@@ -39,8 +39,26 @@ static int s_black;                             /* osViBlack: the display is off
 static uint32_t s_seg[16];
 static uint32_t seg_addr(uint32_t a) { return (s_seg[(a >> 24) & 0xF] + (a & 0xFFFFFF)) & 0x3FFFFF; }
 static const uint8_t *mem(uint32_t phys) { return tgr_rdram + (phys & 0x3FFFFF); }
-static uint32_t rd32(uint32_t phys) { const uint8_t *p = mem(phys); return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3]; }
-static uint16_t rd16(uint32_t phys) { const uint8_t *p = mem(phys); return (uint16_t)(p[0] << 8 | p[1]); }
+/* big-endian words: one load and a byte swap when aligned (a load from RAM
+ * costs the CPU several cycles, a shift one) */
+static uint32_t rd32(uint32_t phys)
+{
+    const uint8_t *p = mem(phys);
+    if (!((uintptr_t)p & 3)) {
+        uint32_t v = *(const uint32_t *)p;
+        return v << 24 | (v & 0xFF00) << 8 | (v >> 8 & 0xFF00) | v >> 24;
+    }
+    return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3];
+}
+static uint16_t rd16(uint32_t phys)
+{
+    const uint8_t *p = mem(phys);
+    if (!((uintptr_t)p & 1)) {
+        uint32_t v = *(const uint16_t *)p;
+        return (uint16_t)(v << 8 | v >> 8);
+    }
+    return (uint16_t)(p[0] << 8 | p[1]);
+}
 
 /* ---- the frame's packets ------------------------------------------------------ */
 #define PKT_WORDS (128 * 1024 / 4)
@@ -1031,7 +1049,7 @@ static uint32_t src_check_now(const Load *l)
         n = (uint32_t)l->a0 * 2;
     if (l->kind == 2)
         n = (uint32_t)((l->a3 >> 2) - (l->a1 >> 2) + 1) * (uint32_t)l->w * (l->siz ? (1u << l->siz) / 2 : 1);
-    step = n > 256 ? (n / 64) & ~3u : 4;
+    step = n > 256 ? (n / 32) & ~3u : 4;        /* (a small one whole: the HUD's digits change a few words) */
     for (i = 0; i + 4 <= n; i += step)
         h = hash32(h, rd32(l->src + i));
     return h;
@@ -3103,7 +3121,7 @@ typedef struct {
 } DlcVar;
 typedef struct Dlc {
     struct Dlc *next;
-    uint32_t addr, sum, reads;
+    uint32_t addr, sum, reads, checked;         /* (checked: the frame its bytes were last checked in) */
     int ncmd, ntri, bad;
     DCmd *cmd;
     uint32_t segmask, segval[16];
@@ -3118,7 +3136,8 @@ static int s_dlc_used;
 static Dlc *s_dlc[DLC_HASH];
 static int s_dlc_on = -1;
 static uint32_t s_n_dlc_hit, s_n_dlc_tpl, s_n_dlc_rec;  /* TGR_PERF */
-static uint32_t s_dlc_why[6], s_dlc_tw[5];     /* (triangles: kind 0, kind 2, clipped, perspective, kept) */                   /* TGR_PERF: compiled, changed, new key, texture table, source, moved while drawn */
+static uint32_t s_dlc_why[6], s_dlc_tw[5];
+static uint32_t s_path[8];                      /* TGR_PERF: kept-list triangles: off/away, kept drawn, kept cut, slow; general */     /* (triangles: kind 0, kind 2, clipped, perspective, kept) */                   /* TGR_PERF: compiled, changed, new key, texture table, source, moved while drawn */
 
 static void *dlc_alloc(int n)
 {
@@ -3392,14 +3411,15 @@ static uint32_t dlc_sig(uint32_t reads)
 static void dlc_capture(DlcVar *v, Tpl *t, int ia, int ib, int ic)
 {
     Vtx *vv[3];
-    int k, p;
+    int k, p, other;
     if (s_geom & G_LIGHTING)
         v->lsig = s_lsig;                       /* (its colours follow the lights) */
     if (s_fs.stamp != s_dstamp) {
         s_dlc_tw[3]++;
         return;                                 /* the slow path did not get to it: next time */
     }
-    if (!s_fs.ok) {
+    other = s_tex.on && uses_other();         /* (the second texture: sampled at the vertices, as triangle() does) */
+    if (!s_fs.ok && !other) {
         t->kind = 2;
         return;
     }
@@ -3445,7 +3465,13 @@ static void dlc_capture(DlcVar *v, Tpl *t, int ia, int ib, int ic)
         Lin col;
         int r, g, b;
         sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = vv[k]->a;
-        combine(&col, sh, NULL);
+        if (other) {
+            uint8_t ot[4];
+            sample((s_tex.tile + 1) & 7, vv[k]->s, vv[k]->t, ot);
+            combine(&col, sh, ot);
+        } else {
+            combine(&col, sh, NULL);
+        }
         if (s_fs.textured && s_fs.mask) {
             r = col.b[0] >> 1; g = col.b[1] >> 1; b = col.b[2] >> 1;
         } else if (s_fs.textured) {
@@ -3652,7 +3678,7 @@ static int dlc_call(uint32_t a)
         for (k = 0; k < 16; k++)
             if ((d->segmask >> k & 1) && d->segval[k] != s_seg[k])
                 break;
-        if (k < 16 || dlc_sum(d) != d->sum) {
+        if (k < 16 || (d->checked != s_frame_no && dlc_sum(d) != d->sum)) {
             d->addr = 0xFFFFFFFF;               /* changed: compiled again */
             d = NULL;
             s_dlc_why[1]++;
@@ -3670,6 +3696,7 @@ static int dlc_call(uint32_t a)
     }
     if (d->bad)
         return 0;
+    d->checked = s_frame_no;
     sig = dlc_sig(d->reads);
     v = d->var[0] && d->var[0]->sig == sig ? d->var[0] : d->var[1] && d->var[1]->sig == sig ? d->var[1] : NULL;
     if (!v) {
@@ -3758,12 +3785,14 @@ static int dlc_call(uint32_t a)
                         if (a0->clip & a1->clip & a2->clip) {
                             s_n_tri++;
                             s_n_rej++;
+                            s_path[0]++;
                             continue;
                         }
                         det = (a1->x - a0->x) * (a2->y - a0->y) - (a2->x - a0->x) * (a1->y - a0->y);
                         if (((s_geom & G_CULL_BACK) && det >= 0) || ((s_geom & G_CULL_FRONT) && det <= 0)) {
                             s_n_tri++;
                             s_n_cull++;
+                            s_path[0]++;
                             continue;
                         }
                     }
@@ -3777,12 +3806,39 @@ static int dlc_call(uint32_t a)
                                            edge_split(a1->w, a2->w, a1->x, a1->y, a2->x, a2->y) ||
                                            edge_split(a2->w, a0->w, a2->x, a2->y, a0->x, a0->y)))) {
                         dlc_tri(t, pr, a0, a1, a2);
+                        s_path[1]++;
                         continue;
                     }
                     dlc_tri_clip(t, pr, ia, ib, ic);
+                    s_path[2]++;
                     continue;
                 }
+                if (!(s_mvx[ia].ok && s_mvx[ib].ok && s_mvx[ic].ok) && (s_mvstale >> ia & s_mvstale >> ib & s_mvstale >> ic & 1)) {
+                    /* near the eye or past the guard band: off the screen or facing away, found
+                     * from clip space before any full vertex is made */
+                    CV q[3];
+                    int cl[3];
+                    int64_t det;
+                    vtx_clip(ia, &q[0], &cl[0]);
+                    vtx_clip(ib, &q[1], &cl[1]);
+                    vtx_clip(ic, &q[2], &cl[2]);
+                    if (cl[0] & cl[1] & cl[2] & 31) {
+                        s_n_tri++;
+                        s_n_rej++;
+                        s_path[0]++;
+                        continue;
+                    }
+                    det = (int64_t)q[0].x * (((int64_t)q[1].y * q[2].w - (int64_t)q[2].y * q[1].w) >> 8) -
+                          (int64_t)q[0].y * (((int64_t)q[1].x * q[2].w - (int64_t)q[2].x * q[1].w) >> 8) +
+                          (int64_t)q[0].w * (((int64_t)q[1].x * q[2].y - (int64_t)q[2].x * q[1].y) >> 8);
+                    if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0)) {
+                        s_n_tri++;
+                        s_path[0]++;
+                        continue;
+                    }
+                }
                 triangle(ia, ib, ic);
+                s_path[3]++;
                 if (t->kind == 0)
                     dlc_capture(v, t, ia, ib, ic);
             }
@@ -3880,6 +3936,7 @@ static void run(uint32_t dl)
             pc = seg_addr(w1);
             break;
         case 0xB1:                                    /* G_TRI2 */
+            s_path[4] += 2;
             triangle(((w0 >> 16) & 0xFF) / 2, ((w0 >> 8) & 0xFF) / 2, (w0 & 0xFF) / 2);
             triangle(((w1 >> 16) & 0xFF) / 2, ((w1 >> 8) & 0xFF) / 2, (w1 & 0xFF) / 2);
             break;
@@ -4087,6 +4144,9 @@ void tgr_rcp_present(uint32_t frame)
             fprintf(stderr, "perf: list triangles without a kept draw: not yet %u, never %u; capture missed %u\n", (unsigned)s_dlc_tw[0],
                     (unsigned)s_dlc_tw[2], (unsigned)s_dlc_tw[3]);
             memset(s_dlc_tw, 0, sizeof s_dlc_tw);
+            fprintf(stderr, "perf: triangles: kept off/away %u drawn %u cut %u slow %u; general %u+\n", (unsigned)s_path[0],
+                    (unsigned)s_path[1], (unsigned)s_path[2], (unsigned)s_path[3], (unsigned)s_path[4]);
+            memset(s_path, 0, sizeof s_path);
             fprintf(stderr, "perf: texture table moved: flush %u merge %u shelf %u redo %u full %u\n", (unsigned)s_epw[0],
                     (unsigned)s_epw[1], (unsigned)s_epw[2], (unsigned)s_epw[3], (unsigned)s_epw[4]);
             memset(s_epw, 0, sizeof s_epw);
