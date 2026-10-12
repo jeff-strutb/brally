@@ -40,7 +40,8 @@ for s in $SRCS; do
   OBJS="$OBJS $o"
   if [ ! -f $o ] || [ $s -nt $o ] || [ $0 -nt $o ] || [ -n "$(find $Q/include $Q/libc/include $P/include -newer $o -name '*.h' 2>/dev/null | head -1)" ]; then
     case $s in
-      */gfx/rcp_ps1.c|*/fp/softfloat.c|*/fastmath/fastmath.c) $TC-gcc $CF ${HOTFLAGS:--O3} -c $s -o $o || fail=1;;   # the hot paths
+      */gfx/rcp_ps1.c) $TC-gcc $CF ${HOTFLAGS:--O3} $RCPFLAGS -c $s -o $o || fail=1;;   # the hot paths (RCPFLAGS: the renderer's own)
+      */fp/softfloat.c|*/fastmath/fastmath.c) $TC-gcc $CF ${HOTFLAGS:--O3} -c $s -o $o || fail=1;;
       *) $TC-gcc $CF -c $s -o $o || fail=1;;
     esac
   fi
