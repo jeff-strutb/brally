@@ -454,7 +454,7 @@ void BrCrListPrintCount(void)
  * macro, but here each arm is written out line by line (a one-line macro
  * expansion schedules the edge loads differently). */
 /* @implements 0x8025D060 tgr BrCollRespBroadPhase */
-unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4], g_rw_tested, g_rw_hit;   /* (PlayStation: TGR_PERF counts, timers) */
+unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4], g_rw_tested, g_rw_hit, g_ss_t[4];   /* (PlayStation: TGR_PERF counts, timers) */
 
 /* PlayStation: a triangle whose plane misses the car's test cube cannot meet
  * it, so BrTriCubeTest would say no: it is not put to it (its three vertices
@@ -485,24 +485,24 @@ static int bp_far(const BrCrPlane *pP, const BrTipBody *b)
   return dist > r * 5.25f + 0.01f;
 }
 /* PlayStation: bp_far in fixed point: the plane's normal x 65536 and constant
- * x 2^19 (g_pfx), the car's point x 8 and axes x 65536, the products 64 bits.
- * The distance is then within 0.25 of the float one, so it is taken a whole
- * unit nearer before the test: whatever bp_far would keep, this keeps. */
+ * x 2^19 (g_pfx), the car's point x 64 and axes x 65536, the products 64
+ * bits.  The distance is then within 0.13 of the float one, so it is taken a
+ * quarter unit nearer before the test: whatever bp_far would keep, this keeps. */
 static int bp_far_fx(const int *pf, const int c[3], const int ax[3][3])
 {
   long long dist, r, a, lhs;
   int k;
-  dist = (long long)pf[0] * c[0] + (long long)pf[1] * c[1] + (long long)pf[2] * c[2] + pf[3];
+  dist = (long long)pf[0] * c[0] + (long long)pf[1] * c[1] + (long long)pf[2] * c[2] + ((long long)pf[3] << 3);
   if (dist < 0)
     dist = -dist;
-  if (dist <= 6LL << 19)
-    return 0;                   /* (5, and the unit) */
+  if (dist <= (5LL << 22) + (1LL << 20))
+    return 0;                   /* (5, and the quarter) */
   r = 0;
   for (k = 0; k < 3; k++) {
     a = (long long)pf[0] * ax[k][0] + (long long)pf[1] * ax[k][1] + (long long)pf[2] * ax[k][2];
     r += a < 0 ? -a : a;
   }
-  lhs = (dist - (1LL << 19)) << 13;     /* (2^32 a unit, as r) */
+  lhs = (dist - (1LL << 20)) << 10;     /* (2^32 a unit, as r; a quarter unit nearer) */
   return lhs > r * 5 + (r >> 2) + 42949673LL + (1LL << 22);   /* (r 5.25, 0.01, and r's own rounding) */
 }
 #define BP_NOW() (*(volatile unsigned int *)0xBF801120 & 0xFFFF)
@@ -538,7 +538,7 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
     nofx = getenv("TGR_NOBPFX") != 0 || getenv("TGR_NOBPFAR") != 0;
   }
   for (c = 0; c < 3; c++)
-    cf[c] = (int)(b->m[3][c] * 8.0f);
+    cf[c] = (int)(b->m[3][c] * 64.0f);
   for (r = 0; r < 3; r++)
     for (c = 0; c < 3; c++)
       ax[r][c] = (int)(b->m[r][c] * 65536.0f);
@@ -809,6 +809,28 @@ static int rw_far(const BrCrPlane *pP, const BrTipBody *b, float bm[4][4])
   return dist > r * 0.525f + 0.01f;
 }
 
+/* PlayStation: rw_far in fixed point: the box's centre x 64, its axes scaled
+ * by its half sizes x 65536, the plane from g_pfx (normal x 65536); the
+ * distance then within 0.13 of the float one, taken a quarter unit nearer,
+ * so whatever rw_far keeps, this keeps */
+static int rw_far_fx(const int *pf, const int c[3], const int ax[3][3])
+{
+  long long dist, r, a, lhs;
+  int k;
+  dist = (long long)pf[0] * c[0] + (long long)pf[1] * c[1] + (long long)pf[2] * c[2] + ((long long)pf[3] << 3);
+  if (dist < 0)
+    dist = -dist;
+  if (dist <= 1LL << 20)
+    return 0;
+  r = 0;
+  for (k = 0; k < 3; k++) {
+    a = (long long)pf[0] * ax[k][0] + (long long)pf[1] * ax[k][1] + (long long)pf[2] * ax[k][2];
+    r += a < 0 ? -a : a;
+  }
+  lhs = (dist - (1LL << 20)) << 10;     /* (2^32 a unit, as r; a quarter unit nearer) */
+  return lhs > ((r * 17) >> 5) + (r >> 7) + 42949673LL + (1LL << 22);   /* (r 17/32, past 0.525; 0.01; r's rounding) */
+}
+
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
   BrCrNode *node;
@@ -831,13 +853,35 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
   int pad[2];                   /* the frame holds them */
 
   float bm0[4][4];
+  int cfx[3], afx[3][3], fxok = 1;
+  static int nofx = -1;
   memcpy(bm0, b->m, sizeof bm0);
+  if (nofx < 0)
+    nofx = getenv("TGR_NORWFX") != 0 || getenv("TGR_NORWFAR") != 0;
+  if (D_802A4A20 && !nofx) {
+    float up = b->f1E8 * b->f1E4, ext[3];
+    int k, j;
+    ext[0] = b->f1DC;
+    ext[1] = b->f1E0;
+    ext[2] = b->f1E4;
+    for (k = 0; k < 3; k++)
+      cfx[k] = (int)((bm0[3][k] + bm0[2][k] * up) * 64.0f);
+    for (k = 0; k < 3; k++)
+      for (j = 0; j < 3; j++)
+        afx[k][j] = (int)(bm0[k][j] * ext[k] * 65536.0f);
+  }
   ret = 0;
   cnt = 0;
   for (node = D_802A4A20; node != 0; node = TGR_PTR(struct BrCrNode *, node->next)) {
     pP = TGR_PTR(void *, node->plane);
-    if (rw_far(pP, b, bm0))
-      continue;
+    {
+      int pi = (int)(pP - &D_80379F80[0][0]);
+      if (!nofx && fxok && pi >= 0 && pi < 4 * 150 && pi % 150 < D_8037EA88[pi / 150]) {
+        if (rw_far_fx(g_pfx[pi / 150][pi % 150], cfx, afx))
+          continue;
+      } else if (rw_far(pP, b, bm0))
+        continue;
+    }
     BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
     BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
     BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
@@ -970,18 +1014,23 @@ void BrCarPhysAdvance(BrTipBody *b)
   s[2] = 1.0f / b->f1E4;
   dt = t / 4;
   while (t > 0.002f) {
+    unsigned int q0 = BP_NOW(), q1;
     if (BrCollRespTipKick(b) != 0) {
       osSyncPrintf("Standing on it's F'in Nose damnit\n");
     }
+    q1 = BP_NOW(); g_ss_t[0] += (q1 - q0) & 0xFFFF; q0 = q1;
     BrCarCarCollide();
+    q1 = BP_NOW(); g_ss_t[1] += (q1 - q0) & 0xFFFF; q0 = q1;
     BrRbStateStep(b->cur, b->state, dt);
     BrQuatToMat(b->m, b->cur);
     BrMat4InvertScaled(b->m, m, s);
     m[3][2] -= b->f1E8;
+    q1 = BP_NOW(); g_ss_t[2] += (q1 - q0) & 0xFFFF; q0 = q1;
     if (BrCrRespWalk(b, m) != 0) {
       BrRbQuatDerivative(b->cur);
       BrQuatToMat(b->m, b->cur);
     }
+    q1 = BP_NOW(); g_ss_t[3] += (q1 - q0) & 0xFFFF; q0 = q1;
     memcpy(b->state, b->cur, 0x44);
     t -= dt;
   }

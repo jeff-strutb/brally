@@ -58,6 +58,14 @@ void tgr_perf_marks_report(void)
                 g_bp_tested, g_bp_hit, g_bp_t[0] * 8 / 33869, g_bp_t[1] * 8 / 33869, g_bp_t[2] * 8 / 33869);
         g_bp_t[0] = g_bp_t[1] = g_bp_t[2] = g_bp_t[3] = 0;
         fprintf(stderr, "perf: response walk cube tests %u hit %u\n", g_rw_tested, g_rw_hit);
+        {
+            extern unsigned int g_ss_t[4] __attribute__((weak));
+            if (g_ss_t)
+                fprintf(stderr, "perf: substeps (ms): tip kick %u car-car %u step %u walk %u\n", g_ss_t[0] * 8 / 33869,
+                        g_ss_t[1] * 8 / 33869, g_ss_t[2] * 8 / 33869, g_ss_t[3] * 8 / 33869);
+            if (g_ss_t)
+                g_ss_t[0] = g_ss_t[1] = g_ss_t[2] = g_ss_t[3] = 0;
+        }
         g_rw_tested = g_rw_hit = 0;
         g_bp_calls = g_bp_tested = g_bp_hit = 0;
     }
