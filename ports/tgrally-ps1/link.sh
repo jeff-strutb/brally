@@ -48,7 +48,7 @@ for s in $SRCS; do
 done
 [ $fail = 0 ] || { echo "link: platform failed to compile" >&2; exit 1; }
 # PROF=list: inclusive timing wrappers for the functions named in it (tools/profwrap.py)
-ASMS="$Q/hw/crt0.s $Q/hw/ctx.s $Q/hw/exc.s $OUT/plat/arena.s"
+ASMS="$Q/hw/crt0.s $Q/hw/ctx.s $Q/hw/exc.s $Q/fp/sf.s $OUT/plat/arena.s"
 if [ -n "$PROF" ]; then
   $PY ports/tgrally-ps1/tools/profwrap.py $PROF $OUT/plat/prof.s
   ASMS="$ASMS $OUT/plat/prof.s"

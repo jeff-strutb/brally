@@ -212,6 +212,47 @@ NOI void tgr_bench(void)
         dn = (c8() - t) & 0xFFFF;
         fprintf(stderr, "bench: RTPT loop %u cycles a loop (an empty loop %u)\n", (unsigned)(dg * 8 / 1000), (unsigned)(dn * 8 / 1000));
     }
+    {
+        volatile float fa = 1.2345f, fb = 0.9876f, fc;
+        uint32_t dm, da;
+        float x = fa, y = fb;
+        t = c8();
+        for (i = 0; i < 1000; i++)
+            x = x * y;
+        dm = (c8() - t) & 0xFFFF;
+        fc = x;
+        x = fa;
+        t = c8();
+        for (i = 0; i < 1000; i++)
+            x = x + y;
+        da = (c8() - t) & 0xFFFF;
+        fc += x;
+        fprintf(stderr, "bench: float multiply %u cycles, add %u (loop included)\n", (unsigned)(dm * 8 / 1000),
+                (unsigned)(da * 8 / 1000));
+        (void)fc;
+    }
+    {
+        /* sf.s against softfloat.c's C (the reference): random operands, near
+         * exponents and far, and the cancelling ones */
+        extern float sf_mul_c(float, float), sf_add_c(float, float), sf_sub_c(float, float);
+        union { float f; uint32_t u; } x, y, r1, r2;
+        uint32_t seed = 12345, bad = 0, k;
+        for (k = 0; k < 300000; k++) {
+            seed = seed * 1664525u + 1013904223u;
+            x.u = seed;
+            seed = seed * 1664525u + 1013904223u;
+            y.u = (k & 1) ? (seed & 0x807FFFFFu) | ((x.u & 0x7F800000u) + ((seed >> 7 & 31) << 23) - (16u << 23)) : seed;
+            if (k % 3 == 0)
+                y.u = x.u ^ (seed & 0x800003FFu);  /* near cancellation */
+            r1.f = x.f * y.f; r2.f = sf_mul_c(x.f, y.f);
+            if (r1.u != r2.u && bad++ < 5) fprintf(stderr, "sf: mul %08X %08X: %08X want %08X\n", x.u, y.u, r1.u, r2.u);
+            r1.f = x.f + y.f; r2.f = sf_add_c(x.f, y.f);
+            if (r1.u != r2.u && bad++ < 5) fprintf(stderr, "sf: add %08X %08X: %08X want %08X\n", x.u, y.u, r1.u, r2.u);
+            r1.f = x.f - y.f; r2.f = sf_sub_c(x.f, y.f);
+            if (r1.u != r2.u && bad++ < 5) fprintf(stderr, "sf: sub %08X %08X: %08X want %08X\n", x.u, y.u, r1.u, r2.u);
+        }
+        fprintf(stderr, "sf: %u differences in 900000 operations\n", (unsigned)bad);
+    }
     fprintf(stderr, "bench (cycles for 1000 loops): 4 adds %u, 4 RAM loads %u, 4 fast loads %u, 4 RAM stores %u, mult %u (%u)\n",
             (unsigned)(d[0] * 8), (unsigned)(d[1] * 8), (unsigned)(d[2] * 8), (unsigned)(d[3] * 8), (unsigned)(d[4] * 8),
             (unsigned)acc);

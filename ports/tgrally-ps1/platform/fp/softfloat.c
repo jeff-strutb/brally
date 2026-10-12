@@ -20,7 +20,7 @@ int __gcc_ltsf2(float a, float b);
 #define EXP(u) (((u) >> 23) & 0xFF)
 #define NORMAL(e) ((uint32_t)((e) - 1) < 0xFEu)
 
-float __mulsf3(float fa, float fb)
+float sf_mul_c(float fa, float fb)          /* (sf.s is __mulsf3: this, its reference) */
 {
     F a, b, r;
     uint32_t ea, eb, ma, mb, m, rem, half, sign;
@@ -121,7 +121,7 @@ static float add_normal(uint32_t a, uint32_t b, float fa, float fb, int sub)
     return r.f;
 }
 
-float __addsf3(float fa, float fb)
+float sf_add_c(float fa, float fb)          /* (sf.s: __addsf3) */
 {
     F a, b;
     a.f = fa;
@@ -136,7 +136,7 @@ float __addsf3(float fa, float fb)
     return add_normal(a.u, b.u, fa, fb, 0);
 }
 
-float __subsf3(float fa, float fb)
+float sf_sub_c(float fa, float fb)          /* (sf.s: __subsf3) */
 {
     F a, b;
     a.f = fa;
