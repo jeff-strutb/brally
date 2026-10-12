@@ -42,6 +42,7 @@ static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3], s_nmoff[3
 #define ST_NOW() (*(volatile uint32_t *)0xBF801120)
 #define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
 static int s_perfops;                           /* TGR_PERFOPS (or TGR_DLSTATS): commands counted and timed */
+static int s_perfcalls;                         /* TGR_PERF or TGR_LISTLOG: list calls timed (two clock reads a call) */
 static uint32_t s_runops[256], s_runopt[256];   /* TGR_PERF: top-level commands run, and their time (cycles / 8) */
 uint64_t ps1_time_ns(void);
 #define RG_BEGIN(id) uint32_t rg_t_##id = ST_NOW()
@@ -5232,14 +5233,12 @@ static int nm_draw(const Dlc *d, DlcVar *v)
             const Prim *pr;
             uint32_t *p, *w;
             int32_t det, ax, ay, bx, by, cx, cy;
-            uint32_t tt0 = ST_NOW();
             n_tri++;
             ka = *(const uint16_t *)&A->clip;  /* (clip, and ok above it) */
             kb = *(const uint16_t *)&B->clip;
             kc = *(const uint16_t *)&C->clip;
             if (ka & kb & kc & 31) {
                 n_rej++;
-                s_tt[0] += (ST_NOW() - tt0) & 0xFFFF;
                 continue;
             }
             if (!(ka & kb & kc & 0x100) || (fl & NT_CUT)) {
@@ -5259,7 +5258,6 @@ static int nm_draw(const Dlc *d, DlcVar *v)
             det = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
             if (((fl & NT_CULLB) && det >= 0) || ((fl & NT_CULLF) && det <= 0)) {
                 n_cull++;
-                s_tt[1] += (ST_NOW() - tt0) & 0xFFFF;
                 continue;
             }
             pr = &prims[idx >> 15 & 63];
@@ -5311,8 +5309,6 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                     continue;
                 }
             }
-            uint32_t tt1 = ST_NOW(), tt2, tt3;
-            s_tq2[0] += (tt1 - tt0) & 0xFFFF;
             if (!(ka & kb & kc & 0x200)) {
                 /* past the guard band: drawn whole only if the GPU takes its size */
                 int32_t x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax, y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
@@ -5356,8 +5352,6 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                 w[3] = xb;
                 w[5] = xc;
             }
-            tt2 = ST_NOW();
-            s_tq2[1] += (tt2 - tt1) & 0xFFFF;
             if (fl & NT_LIT) {
                 const MVtx *cs[3];
                 int k, step = fl & NT_TEX ? 3 : 2;
@@ -5371,8 +5365,6 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                                   (uint32_t)clamp255(bb) << 16;
                 }
             }
-            tt3 = ST_NOW();
-            s_tq2[2] += (tt3 - tt2) & 0xFFFF;
             n_piece++;
             if (fl & NT_ZS) {
                 int z = (int)(((uint32_t)(A->z + B->z + C->z) * 21846u) >> 16);   /* (/ 3) */
@@ -5397,9 +5389,6 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                 put_flat(p);
                 NM_IN();
             }
-            s_tt[2] += (ST_NOW() - tt0) & 0xFFFF;
-            s_tq2[3] += (ST_NOW() - tt3) & 0xFFFF;
-            s_tt[3]++;
         }
         NM_OUT();
 #undef NM_OUT
@@ -5839,7 +5828,10 @@ static void run(uint32_t dl)
         case 0x06:                                    /* G_DL */
             if (s_dlstats == 1 && tgr_frame() + 1 >= (uint32_t)atoi(getenv("TGR_DLSTATS")))
                 dl_census(seg_addr(w1), sp);
-            if (((w0 >> 16) & 0xFF) == 0) {
+            if (((w0 >> 16) & 0xFF) == 0 && !s_perfcalls) {
+                if (dlc_call(seg_addr(w1)))
+                    break;                            /* drawn from its kept form */
+            } else if (((w0 >> 16) & 0xFF) == 0) {
                 int done;
                 uint64_t c0 = ps1_time_ns();
                 uint32_t la = seg_addr(w1), why0 = s_dlc_why[0], why1 = s_dlc_why[1], why2 = s_dlc_why[2], cut0 = s_cutc;
@@ -5951,8 +5943,10 @@ void tgr_rcp_task(uint32_t dl)
         memset(s_opcount, 0, sizeof s_opcount);
     if (!s_inited)
         init();
-    if (s_listlog < 0)
+    if (s_listlog < 0) {
         s_perfops = getenv("TGR_PERFOPS") != NULL || getenv("TGR_DLSTATS") != NULL;
+        s_perfcalls = (getenv("TGR_PERF") && atoi(getenv("TGR_PERF")) != 2) || getenv("TGR_LISTLOG") != NULL;   /* (TGR_PERF=2: the frame times only) */
+    }
     if (s_listlog < 0)
         s_listlog = getenv("TGR_LISTLOG") ? atoi(getenv("TGR_LISTLOG")) : 0;   /* (list calls over 2 ms, from that frame for 10) */
     s_frame_no++;
