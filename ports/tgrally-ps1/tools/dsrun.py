@@ -57,17 +57,24 @@ def settings(rundir, ram8, speed, gdb=False, cpu='Recompiler'):
         c.write(f, space_around_delimiters=True)
 
 
-class Launched:
-    """the DuckStation open(1) started, found by its executable's path"""
+def running(exe):
+    """the pids of DuckStation instances of this executable now running"""
+    r = subprocess.run(['pgrep', '-f', exe], capture_output=True, text=True)
+    return {int(x) for x in r.stdout.split()}
 
-    def __init__(self, exe):
+
+class Launched:
+    """the DuckStation open(1) started: the instance of its executable that
+    was not running before (before: the pids that were)"""
+
+    def __init__(self, exe, before):
         self.exe = exe
         self.pid = None
         self.returncode = None
         for _ in range(50):
-            r = subprocess.run(['pgrep', '-f', exe], capture_output=True, text=True)
-            if r.stdout.split():
-                self.pid = int(r.stdout.split()[-1])
+            new = running(exe) - before
+            if new:
+                self.pid = max(new)
                 return
             time.sleep(0.1)
 
@@ -121,6 +128,12 @@ def main():
     done = os.path.join(rundir, 'done')
     if os.path.exists(done):
         os.remove(done)
+    # one run at a time: the instances share one settings file, so a second
+    # would run with the first's (and could not be told apart from it)
+    before = running(EXE)
+    if before:
+        sys.exit('dsrun: DuckStation is already running (pid %s); one run at a time' %
+                 ', '.join(str(x) for x in sorted(before)))
     settings(rundir, a.ram8, a.speed, a.gdb_at is not None, a.cpu)
     log = os.path.join(APP, 'duckstation.log')
     if os.path.exists(log):
@@ -130,7 +143,7 @@ def main():
     app = os.path.dirname(os.path.dirname(APP))
     subprocess.run(['open', '-g', '-j', '-n', '-a', app, '--stdout', err, '--stderr', err, '--args',
                     '-batch', '-fastboot', '-nogui', '--', os.path.abspath(a.image)], check=True)
-    p = Launched(EXE)
+    p = Launched(EXE, before)
     t0 = time.time()
     gdb_done = a.gdb_at is None
     while time.time() - t0 < a.timeout and p.poll() is None and not os.path.exists(done):
