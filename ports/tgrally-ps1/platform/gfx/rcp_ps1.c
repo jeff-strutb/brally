@@ -23,6 +23,7 @@
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
+static int s_black;                             /* osViBlack: the display is off */
 
 /* ---- game memory ----------------------------------------------------------- */
 static uint32_t s_seg[16];
@@ -312,7 +313,7 @@ static uint32_t s_omh, s_oml, s_fill;
 static uint32_t s_timg;
 static int s_timg_siz, s_timg_w;
 static uint32_t s_cc0, s_cc1;
-static uint8_t s_prim[4], s_env[4], s_blend[4];
+static uint8_t s_prim[4], s_env[4], s_blend[4], s_prim_lod;
 static int s_scissor[4];
 typedef struct {
     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
@@ -932,25 +933,28 @@ static const Tex *tile_texture(int t)
 /* ---- the combiner, reduced ------------------------------------------------------- *
  * Each input is "a * texel + b" per channel (8.8 fixed); (A - B) * C + D of
  * those is again of that form when C is not the texel.  The result per
- * vertex: textured with colour a, or untextured with colour b. */
+ * vertex: textured, the GPU modulating the texel by a + b (the combiner's
+ * value at texel 1: exact for a texel times a colour, near for a lerp by
+ * the texel), or untextured with colour b. */
 typedef struct { int16_t a[4], b[4]; } Lin;
 /* TX0/TX1: the combiner's TEXEL0 and TEXEL1.  In a cycle one of them is the
  * texture drawn (symbolic, a); the other is the second texture sampled at
  * the vertex (a number, b): cycle 1 draws TEXEL0, cycle 2 TEXEL1 (the RDP's
  * second cycle sees the texels swapped, so either way the tile drawn) */
 enum { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO, IN_TX0A, IN_TX1A, IN_PRIMA,
-       IN_SHADEA, IN_ENVA, IN_COMBA };
+       IN_SHADEA, IN_ENVA, IN_COMBA, IN_PRIMLOD };
 static const int8_t CA[16] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
 static const int8_t CB[16] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ZERO, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
+/* (the LOD fraction is 0: the finest level of a mipmapped texture is the one drawn) */
 static const int8_t CC[32] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_COMBA,
-                               IN_TX0A, IN_TX1A, IN_PRIMA, IN_SHADEA, IN_ENVA, IN_ONE, IN_PRIMA, IN_ZERO,
+                               IN_TX0A, IN_TX1A, IN_PRIMA, IN_SHADEA, IN_ENVA, IN_ZERO, IN_PRIMLOD, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
 static const int8_t CD[8] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
 static const int8_t AABD[8] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
-static const int8_t AC[8] = { IN_ONE, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
+static const int8_t AC[8] = { IN_ZERO, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_PRIMLOD, IN_ZERO };
 
 static const uint8_t WHITE[4] = { 255, 255, 255, 255 };
 
@@ -983,6 +987,7 @@ static void lin_in(Lin *o, int in, const Lin *comb, const uint8_t shade[4], cons
         case IN_ENV: o->b[k] = (int16_t)to256(s_env[c]); break;
         case IN_ENVA: o->b[k] = (int16_t)to256(s_env[3]); break;
         case IN_ONE: o->b[k] = 256; break;
+        case IN_PRIMLOD: o->b[k] = (int16_t)to256(s_prim_lod); break;
         default: break;
         }
     }
@@ -1194,20 +1199,25 @@ static void draw_state(Draw *d, int tile, int want_tex, int mask)
  * from the texture is the texels' STP bit (set on the decoded texels whose
  * alpha is between 1/4 and 3/4), which blends half and half on a
  * semi-transparent primitive and leaves the others opaque; a constant alpha
- * picks the nearest of the GPU's modes (a bright colour at a low alpha adds
- * a quarter, else half and half) */
+ * picks the nearest of the GPU's modes: opaque from 3/4, half and half from
+ * 1/4, below that a bright colour adds a quarter and a dark one is not drawn
+ * (a fade to black steps through these) */
 static int blend_mode(const Lin *c, int textured, int *abr)
 {
     int al;
     *abr = 0;
     if (textured && c->a[3])
         return 1;
-    al = c->b[3] > 255 ? 255 : c->b[3];
-    if (al >= 230)
+    al = c->b[3] > 255 ? 255 : c->b[3] < 0 ? 0 : c->b[3];
+    if (al >= 192)                              /* nearly opaque: opaque (a fade's last steps) */
         return 0;
-    if (al < 96 && c->b[0] + c->b[1] + c->b[2] > 384)
+    if (al >= 64)
+        return 1;
+    if (c->b[0] + c->b[1] + c->b[2] > 384) {    /* faint and bright: a quarter added */
         *abr = 3;
-    return 1;
+        return 1;
+    }
+    return -1;                                  /* faint and dark: nothing to see */
 }
 
 /* a texel coordinate (10.5, scaled by G_TEXTURE) to the texture's u or v */
@@ -1446,7 +1456,8 @@ static void triangle(int ia, int ib, int ic)
         semi = 1;
         abr = d.abr;
     } else if (d.semi == 2) {
-        semi = blend_mode(&col[0], d.textured, &abr);
+        if ((semi = blend_mode(&col[0], d.textured, &abr)) < 0)
+            return;
     }
     memset(&pr, 0, sizeof pr);
     pr.tex = d.tex;
@@ -1477,8 +1488,9 @@ static void triangle(int ia, int ib, int ic)
         }
         if (d.textured && mask) {               /* white texels times the colour */
             r = col[k].b[0] >> 1; g = col[k].b[1] >> 1; b = col[k].b[2] >> 1;
-        } else if (d.textured) {                /* the GPU modulates: 128 is 1.0 */
-            r = col[k].a[0] >> 1; g = col[k].a[1] >> 1; b = col[k].a[2] >> 1;
+        } else if (d.textured) {                /* the GPU modulates (128 is 1.0) by the colour at texel 1 */
+            r = (col[k].a[0] + col[k].b[0]) >> 1; g = (col[k].a[1] + col[k].b[1]) >> 1;
+            b = (col[k].a[2] + col[k].b[2]) >> 1;
         } else {
             r = col[k].b[0]; g = col[k].b[1]; b = col[k].b[2];
         }
@@ -1631,9 +1643,9 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     }
     mask = cyc != 2 && !(col[0].a[0] | col[0].a[1] | col[0].a[2]) && col[0].a[3];
     for (k = 0; k < 4; k++) {                   /* the GPU modulates: 128 is 1.0 */
-        rgb[k][0] = clamp255((mask ? col[k].b[0] : col[k].a[0]) >> 1);
-        rgb[k][1] = clamp255((mask ? col[k].b[1] : col[k].a[1]) >> 1);
-        rgb[k][2] = clamp255((mask ? col[k].b[2] : col[k].a[2]) >> 1);
+        rgb[k][0] = clamp255((mask ? col[k].b[0] : col[k].a[0] + col[k].b[0]) >> 1);
+        rgb[k][1] = clamp255((mask ? col[k].b[1] : col[k].a[1] + col[k].b[1]) >> 1);
+        rgb[k][2] = clamp255((mask ? col[k].b[2] : col[k].a[2] + col[k].b[2]) >> 1);
     }
     if (!tile_size(&s_tile[tile], &tw, &th))
         return;
@@ -1667,8 +1679,8 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
                             s_tile[tile].siz);
                 return;
             }
-            if (cyc != 2 && d.semi == 2)
-                semi = blend_mode(&col[0], 1, &abr);
+            if (cyc != 2 && d.semi == 2 && (semi = blend_mode(&col[0], 1, &abr)) < 0)
+                return;
             else if (cyc != 2 && d.semi == 1) {
                 semi = 1;
                 abr = 1;
@@ -1700,7 +1712,7 @@ static void rect_fill(uint32_t w0, uint32_t w1)
 {
     int x1 = (int)((w0 >> 12) & 0xFFF) >> 2, y1 = (int)(w0 & 0xFFF) >> 2;
     int x0 = (int)((w1 >> 12) & 0xFFF) >> 2, y0 = (int)(w1 & 0xFFF) >> 2;
-    int cyc = (s_omh >> 20) & 3, r, g, b, semi = 0;
+    int cyc = (s_omh >> 20) & 3, r, g, b, semi = 0, abr = 0;
     uint32_t *p;
     if (s_target < 0)
         return;
@@ -1719,8 +1731,10 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         combine(&col, WHITE, NULL);
         draw_state(&d, 0, 0, 0);
         r = col.b[0]; g = col.b[1]; b = col.b[2];
-        if (d.semi == 1 || (d.semi == 2 && col.b[3] < 230))
+        if (d.semi == 1)
             semi = 1;
+        else if (d.semi == 2 && (semi = blend_mode(&col, 0, &abr)) < 0)
+            return;
     }
     y0 >>= s_ysh;
     y1 >>= s_ysh;
@@ -1729,7 +1743,7 @@ static void rect_fill(uint32_t w0, uint32_t w1)
     if (!(p = pkt_alloc(semi ? 4 : 3)))
         return;
     if (semi) {
-        p[1] = 0xE1000600;                      /* 50% blend */
+        p[1] = 0xE1000600 | (uint32_t)abr << 5;   /* the blend mode */
         p[2] = (uint32_t)0x62 << 24 | (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 | (uint32_t)clamp255(b) << 16;
         p[3] = (uint32_t)y0 << 16 | (uint16_t)x0;
         p[4] = (uint32_t)(y1 - y0) << 16 | (uint16_t)(x1 - x0);
@@ -2022,6 +2036,7 @@ static void run(uint32_t dl)
         case 0xFA:
             s_prim[0] = (uint8_t)(w1 >> 24); s_prim[1] = (uint8_t)(w1 >> 16);
             s_prim[2] = (uint8_t)(w1 >> 8); s_prim[3] = (uint8_t)w1;
+            s_prim_lod = (uint8_t)w0;
             break;
         case 0xFB:
             s_env[0] = (uint8_t)(w1 >> 24); s_env[1] = (uint8_t)(w1 >> 16);
@@ -2085,15 +2100,33 @@ void tgr_rcp_task(uint32_t dl)
 
 void tgr_dump_state(const char *path, uint32_t dl) { (void)path; (void)dl; }
 
+/* osViBlack: the display off (black) or on again */
+void tgr_rcp_black(int on)
+{
+    s_black = on;
+    gpu_display(!on);
+}
+
 /* the swap: the buffer is shown at the next retrace, once drawn */
 void tgr_rcp_swap(uint32_t fb)
 {
     int i;
     if (s_log)
-        tgr_log("rcp: swap %08X\n", fb);
+        tgr_log("rcp: swap %08X frame %u black %d\n", fb, (unsigned)tgr_frame(), s_black);
     for (i = 0; i < 2; i++)
-        if (s_fbaddr[i] == (fb & 0x3FFFFF))
+        if (s_fbaddr[i] == (fb & 0x3FFFFF)) {
             s_show_pending = i;
+            return;
+        }
+    /* an image nothing was drawn into (a loading screen): black, as fresh RAM */
+    i = fb_index(fb & 0x3FFFFF);
+    if (i >= 0 && s_target != i) {
+        int x, y, w, h;
+        fb_rect(i, &x, &y, &w, &h);
+        gpu_fill(x, y, 640, h, 0);
+        s_fbclear[i] = 0;
+        s_show_pending = i;
+    }
 }
 
 /* a named frame to a file: shotNNNNN.raw, 320 x 240 15-bit (TGR_SHOT_AT=F1,F2,...) */
@@ -2109,7 +2142,10 @@ static void shot(uint32_t frame)
     if ((fd = pcdrv_creat(name)) < 0)
         return;
     for (y = 0; y < h; y += 8) {
-        gpu_read(x0, y0 + y, w, 8, row);
+        if (s_black)                            /* the display is off: what shows is black */
+            memset(row, 0, sizeof row);
+        else
+            gpu_read(x0, y0 + y, w, 8, row);
         pcdrv_write(fd, row, w * 8 * 2);
     }
     pcdrv_close(fd);

@@ -44,6 +44,11 @@ void gpu_mode(int hires)
     GP1 = hires ? 0x08000003 : 0x08000001;
 }
 
+void gpu_display(int on)
+{
+    GP1 = on ? 0x03000000 : 0x03000001;
+}
+
 void gpu_show(int x, int y)
 {
     GP1 = 0x05000000 | (uint32_t)y << 10 | (uint32_t)x;

@@ -7,6 +7,7 @@ void gpu_wait(void);
 int  gpu_busy(void);
 void gpu_show(int x, int y);
 void gpu_mode(int hires);
+void gpu_display(int on);
 int  gpu_env(uint32_t *p, int x, int y, int w, int h);
 void gpu_send_list(const uint32_t *first);
 void gpu_fill(int x, int y, int w, int h, uint32_t rgb);

@@ -50,7 +50,8 @@ void osViSetSpecialFeatures(uint32_t f)
 }
 
 uint32_t tgr_vi_ctrl(void) { return s_vi_ctrl; }
-void osViBlack(uint8_t on) { (void)on; }
+void tgr_rcp_black(int on);
+void osViBlack(uint8_t on) { tgr_rcp_black(on); }   /* the screen blanked (the loading screens) */
 void osInvalDCache(void *p, int32_t n) { (void)p; (void)n; }
 void osWritebackDCacheAll(void) {}
 
