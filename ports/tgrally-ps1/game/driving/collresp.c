@@ -452,7 +452,7 @@ void BrCrListPrintCount(void)
  * macro, but here each arm is written out line by line (a one-line macro
  * expansion schedules the edge loads differently). */
 /* @implements 0x8025D060 tgr BrCollRespBroadPhase */
-unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4];   /* (PlayStation: TGR_PERF counts, timers) */
+unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4], g_rw_tested, g_rw_hit;   /* (PlayStation: TGR_PERF counts, timers) */
 
 /* PlayStation: a triangle whose plane misses the car's test cube cannot meet
  * it, so BrTriCubeTest would say no: it is not put to it (its three vertices
@@ -734,6 +734,36 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * plane offset and the push-out distance add the first two products and
  * then the third; the last two angular copies share a line. */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
+/* PlayStation: the same for the response walk's cube, the car's own box: half
+ * its size each way along its axes (f1DC, f1E0, f1E4), centred f1E8 of its
+ * height above the body's point (m's last row less f1E8); a plane that misses
+ * it gives BrTriCubeTest no, so the triangle is not put to it.  The box is
+ * the car's matrix as the walk began (m was made from it; a contact in the
+ * walk moves the car, not m). */
+static int rw_far(const BrCrPlane *pP, const BrTipBody *b, float bm[4][4])
+{
+  static int off = -1;
+  float c[3], dist, r, a, up;
+  if (off < 0)
+    off = getenv("TGR_NORWFAR") != 0;
+  if (off)
+    return 0;
+  up = b->f1E8 * b->f1E4;
+  c[0] = bm[3][0] + bm[2][0] * up;
+  c[1] = bm[3][1] + bm[2][1] * up;
+  c[2] = bm[3][2] + bm[2][2] * up;
+  dist = pP->n[0] * c[0] + pP->n[1] * c[1] + pP->n[2] * c[2] + pP->d;
+  if (dist < 0.0f)
+    dist = -dist;
+  a = pP->n[0] * bm[0][0] + pP->n[1] * bm[0][1] + pP->n[2] * bm[0][2];
+  r = (a < 0.0f ? -a : a) * b->f1DC;
+  a = pP->n[0] * bm[1][0] + pP->n[1] * bm[1][1] + pP->n[2] * bm[1][2];
+  r += (a < 0.0f ? -a : a) * b->f1E0;
+  a = pP->n[0] * bm[2][0] + pP->n[1] * bm[2][1] + pP->n[2] * bm[2][2];
+  r += (a < 0.0f ? -a : a) * b->f1E4;
+  return dist > r * 0.525f + 0.01f;
+}
+
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
   BrCrNode *node;
@@ -755,10 +785,14 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
   float dp[3];
   int pad[2];                   /* the frame holds them */
 
+  float bm0[4][4];
+  memcpy(bm0, b->m, sizeof bm0);
   ret = 0;
   cnt = 0;
   for (node = D_802A4A20; node != 0; node = TGR_PTR(struct BrCrNode *, node->next)) {
     pP = TGR_PTR(void *, node->plane);
+    if (rw_far(pP, b, bm0))
+      continue;
     BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
     BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
     BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
@@ -771,9 +805,11 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
     nrm[0] = e1[1] * e2[2] - e1[2] * e2[1];
     nrm[1] = e1[2] * e2[0] - e1[0] * e2[2];
     nrm[2] = e1[0] * e2[1] - e1[1] * e2[0];
+    g_rw_tested++;
     if (BrTriCubeTest(v, nrm) == 0) {
       continue;
     }
+    g_rw_hit++;
     BrVec3NormaliseF(nrm);
     flag = 1;
     D_802A4A28 = 0;
