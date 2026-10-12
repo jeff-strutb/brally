@@ -37,7 +37,7 @@ static uint64_t s_cls_t[4];                    /* (nanoseconds) */
 static uint64_t s_lh_t[2][5];                   /* TGR_PERF: list calls by length (< 0.25, 1, 4, 16 ms, more), compiled or not */
 static uint32_t s_lh_n[2][5];
 static int s_listlog = -1;                     /* TGR_LISTLOG=F */
-static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4], s_tt[4], s_tq2[4], s_su[6], s_dryq[4];
+static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4], s_tt[4], s_tq2[4], s_su[6], s_dryq[4], s_rq[4], s_rqo, s_stop[256], s_stopn[256];
 static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3], s_nmoff[3];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
 #define ST_NOW() (*(volatile uint32_t *)0xBF801120)
 #define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
@@ -1130,10 +1130,12 @@ static Tile s_tile[8];
 
 /* what filled TMEM: each load's source and shape, replayed on a cache miss */
 typedef struct {
-    int kind;                                   /* 1 block, 2 tile, 3 tlut */
+    uint8_t kind;                               /* 1 block, 2 tile, 3 tlut */
+    uint8_t siz;
+    uint16_t w;
     uint32_t src;
-    int siz, w, a0, a1, a2, a3, line, tmem, words;
-} Load;
+    int16_t a0, a1, a2, a3, line, tmem, words, pad;
+} Load;                                         /* (24 bytes: copied whole as the loads change) */
 #define NLOADS 16
 static Load s_loads[NLOADS];
 static int s_nloads;
@@ -1141,6 +1143,22 @@ static int s_nloads;
 static void note_load(const Load *l)
 {
     int i, j;
+    if (s_nloads) {
+        /* the common case: it overlaps the last load only (the same TMEM again):
+         * that one goes and this one is last, in its place */
+        const Load *o = &s_loads[s_nloads - 1];
+        if (!(o->tmem + o->words <= l->tmem || l->tmem + l->words <= o->tmem)) {
+            for (i = 0; i < s_nloads - 1; i++) {
+                const Load *e = &s_loads[i];
+                if (!(e->tmem + e->words <= l->tmem || l->tmem + l->words <= e->tmem))
+                    break;
+            }
+            if (i == s_nloads - 1) {
+                s_loads[s_nloads - 1] = *l;
+                return;
+            }
+        }
+    }
     /* a load replaces any earlier one it overlaps */
     for (i = j = 0; i < s_nloads; i++) {
         const Load *o = &s_loads[i];
@@ -2143,6 +2161,10 @@ enum { K_CONST, K_TEX, K_OTHER, K_SHADE, K_COMB };
 typedef struct { int8_t kind[2][4][4]; int16_t val[2][4][4]; int cycles; } CCode;
 static CCode s_cc;
 static uint32_t s_cc_key[6] = { 0xFFFFFFFF };
+#define CCC_N 8
+static struct { uint32_t key[6], stamp; CCode cc; } s_ccc[CCC_N];   /* (the last compiled combiner states) */
+static int s_ccc_next;
+static uint32_t s_cc_stamps = 1;                /* (the last stamp given) */
 static uint32_t s_cc_stamp = 1;                 /* bumped when the compiled combiner changes */
 
 static void cc_slot(int cyc, int slot, int in, int sym, int alpha)
@@ -2196,7 +2218,18 @@ static void cc_compile(void)
     if (!memcmp(key, s_cc_key, sizeof key))
         return;
     memcpy(s_cc_key, key, sizeof key);
-    s_cc_stamp++;
+    {
+        /* one of the last few combiner states again: as it was compiled, under
+         * its stamp (colours combined under it still hold) */
+        int i;
+        for (i = 0; i < CCC_N; i++)
+            if (s_ccc[i].stamp && !memcmp(s_ccc[i].key, key, sizeof key)) {
+                s_cc = s_ccc[i].cc;
+                s_cc_stamp = s_ccc[i].stamp;
+                return;
+            }
+    }
+    s_cc_stamp = ++s_cc_stamps;
     s_cc.cycles = ((s_omh >> 20) & 3) == 1 ? 2 : 1;
     cc_slot(0, 0, CA[(s_cc0 >> 20) & 15], 0, 0);
     cc_slot(0, 1, CB[(s_cc1 >> 28) & 15], 0, 0);
@@ -2214,6 +2247,12 @@ static void cc_compile(void)
     cc_slot(1, 1, AABD[(s_cc1 >> 3) & 7], 1, 1);
     cc_slot(1, 2, AC[(s_cc1 >> 18) & 7], 1, 1);
     cc_slot(1, 3, AABD[s_cc1 & 7], 1, 1);
+    {
+        int i = s_ccc_next++ % CCC_N;
+        memcpy(s_ccc[i].key, key, sizeof key);
+        s_ccc[i].cc = s_cc;
+        s_ccc[i].stamp = s_cc_stamp;
+    }
 }
 
 /* the combiner's results by shade, for a combiner state, without a second
@@ -2349,8 +2388,25 @@ static void sample(int t, int32_t ss, int32_t tt, uint8_t out[4])
     uint32_t check, key;
     int w, h, i, slot = -1, x, y;
     uint32_t oldest = 0xFFFFFFFF;
+    static struct { uint32_t gen, frame, key, check; int t, op, mk, w, h; } km;   /* (the tile's key, kept while nothing it reads changes) */
     memcpy(out, WHITE, 4);
-    key = tile_key(t, &check, &w, &h);
+    if (km.gen == s_texgen && km.frame == s_frame_no && km.t == t && km.op == s_opaque && km.mk == s_mask) {
+        key = km.key;
+        check = km.check;
+        w = km.w;
+        h = km.h;
+    } else {
+        key = tile_key(t, &check, &w, &h);
+        km.gen = s_texgen;
+        km.frame = s_frame_no;
+        km.t = t;
+        km.op = s_opaque;
+        km.mk = s_mask;
+        km.key = key;
+        km.check = check;
+        km.w = w;
+        km.h = h;
+    }
     if (!key || w * h > 4096)
         return;
     for (i = 0; i < NSAMP; i++)
@@ -3544,6 +3600,8 @@ static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     }
     if (x1 <= x0 || y1 <= y0)
         return;
+    uint32_t rq0 = ST_NOW();
+    s_rq[3]++;
     cc_compile();
     if (cyc == 2) {
         memset(col, 0, sizeof col);
@@ -3551,6 +3609,7 @@ static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             col[k].a[0] = col[k].a[1] = col[k].a[2] = col[k].a[3] = 256;
     } else if (uses_other()) {
         int32_t s1 = s + ((dsdx * (x1 - x0)) >> 5), t1 = t + ((dtdy * (y1 - y0)) >> 5);
+        s_rqo++;
         for (k = 0; k < 4; k++) {
             uint8_t ot[4];
             sample((tile + 1) & 7, (k & 1) ? s1 : s, (k & 2) ? t1 : t, ot);
@@ -3567,6 +3626,7 @@ static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
         rgb[k][1] = clamp255((mask ? col[k].b[1] : col[k].a[1] + col[k].b[1]) >> 1);
         rgb[k][2] = clamp255((mask ? col[k].b[2] : col[k].a[2] + col[k].b[2]) >> 1);
     }
+    s_rq[0] += (ST_NOW() - rq0) & 0xFFFF;
     if (!tile_size(&s_tile[tile], &tw, &th))
         return;
     band = th > 64 ? BAND : 0;
@@ -3592,7 +3652,11 @@ static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             s_band_y0 = band ? b0 : 0;
             s_band_h = band;
             s_in_rect = 1;
-            draw_state(&d, tile, 1, mask);
+            {
+                uint32_t q = ST_NOW();
+                draw_state(&d, tile, 1, mask);
+                s_rq[1] += (ST_NOW() - q) & 0xFFFF;
+            }
             s_in_rect = 0;
             s_band_y0 = s_band_h = 0;
             if (!d.textured) {
@@ -3625,7 +3689,11 @@ static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             yb = gy1 >> s_ysh;
             if (yb <= ya)
                 yb = ya + 1;
-            put_texrect(d.tex, x0, ya, x1, yb, u0, va, u1, vb, rgb, shaded, semi, abr);
+            {
+                uint32_t q = ST_NOW();
+                put_texrect(d.tex, x0, ya, x1, yb, u0, va, u1, vb, rgb, shaded, semi, abr);
+                s_rq[2] += (ST_NOW() - q) & 0xFFFF;
+            }
         }
     }
 }
@@ -5240,8 +5308,12 @@ static int nm_draw(const Dlc *d, DlcVar *v)
     s_nmempty[1]++;
     {
         uint32_t c0 = ST_NOW();
-        for (i = 0; i < nm->nst; i++)
+        for (i = 0; i < nm->nst; i++) {
+            uint32_t q = ST_NOW();
             exec_state((int)(nm->st[i * 2] >> 24), nm->st[i * 2], nm->st[i * 2 + 1]);
+            s_stop[nm->st[i * 2] >> 24] += (ST_NOW() - q) & 0xFFFF;
+            s_stopn[nm->st[i * 2] >> 24]++;
+        }
         ST_ADD(6, c0);
     }
     return 1;
@@ -5929,6 +6001,20 @@ void tgr_rcp_present(uint32_t frame)
                         (unsigned)(s_decq[1] * 8 / 33869), (unsigned)(s_decq[2] * 8 / 33869));
                 memset(s_decq, 0, sizeof s_decq);
                 memset(s_tq, 0, sizeof s_tq);
+                {
+                    int o;
+                    fprintf(stderr, "perf: mesh state replay (ms/n):");
+                    for (o = 0; o < 256; o++)
+                        if (s_stopn[o])
+                            fprintf(stderr, " %02X:%u/%u", o, (unsigned)(s_stop[o] * 8 / 33869), (unsigned)s_stopn[o]);
+                    fprintf(stderr, "\n");
+                    memset(s_stop, 0, sizeof s_stop);
+                    memset(s_stopn, 0, sizeof s_stopn);
+                }
+                fprintf(stderr, "perf: rectangles %u, %u two-texture (ms): colours %u draw state %u put %u\n", (unsigned)s_rq[3], (unsigned)s_rqo,
+                        (unsigned)(s_rq[0] * 8 / 33869), (unsigned)(s_rq[1] * 8 / 33869), (unsigned)(s_rq[2] * 8 / 33869));
+                memset(s_rq, 0, sizeof s_rq);
+                s_rqo = 0;
                 fprintf(stderr, "perf: dry triangles (ms): colours %u draw state %u\n", (unsigned)(s_dryq[0] * 8 / 33869),
                         (unsigned)(s_dryq[1] * 8 / 33869));
                 memset(s_dryq, 0, sizeof s_dryq);
