@@ -20,10 +20,12 @@
 #include "plat.h"
 #include "ps1.h"
 #include "gpu.h"
+#include "gte.h"
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
-static uint32_t s_n_tri, s_n_piece, s_n_vtx, s_n_clip;  /* TGR_PERF counts */
+static uint32_t s_n_tri, s_n_piece, s_n_vtx, s_n_clip, s_n_gte, s_gte_flagor, s_n_fast, s_n_cull, s_n_rej, s_n_stamp, s_n_notok, s_n_edge;  /* TGR_PERF counts */
+static uint32_t s_dstamp = 1;                   /* bumped by every display-list command that changes how triangles draw */
 static uint32_t s_texgen = 1;                   /* bumped whenever tiles, loads or the TLUT mode change */
 static uint32_t s_texepoch = 1;                 /* bumped whenever the texture table moves */
 static int s_fog_mul, s_fog_ofs;                /* G_MW_FOG */
@@ -161,6 +163,7 @@ static void fb_rect(int t, int *x, int *y, int *w, int *h)
 typedef struct { int32_t m[4][4]; } M4;         /* s15.16 */
 static M4 s_mv[10], s_proj, s_mvp;
 static int s_mvn, s_mvp_dirty;
+static uint32_t s_mvp_stamp = 1;                /* bumped whenever the MVP changes (the GTE's copy follows) */
 static uint32_t s_geom;
 static struct { int32_t sx, sy, sz, tx, ty, tz; } s_vp;     /* 13.2 */
 static struct { uint8_t col[3]; int8_t dir[3]; } s_light[8];
@@ -175,8 +178,11 @@ typedef struct {
     int16_t z;                                  /* ordering depth, 0 near .. OT_LEN far */
     uint8_t r, g, b, a;
     int32_t s, t;                               /* texel coordinates, 10.5 after G_TEXTURE's scale */
-    uint8_t clip;                               /* 1 x<-w, 2 x>w, 4 y<-w, 8 y>w, 16 behind */
+    uint8_t clip;                               /* 1 x<-w, 2 x>w, 4 y<-w, 8 y>w, 16 behind, 32 outside the guard band */
     uint32_t cc_stamp;                          /* the combiner state its colour was combined under */
+    uint32_t fstamp;                            /* the draw state its fast-path fields were made under: */
+    int16_t fr, fg, fb, ffr, ffg, ffb;          /* the GPU colour, the fog's added colour */
+    int32_t fu, fv;                             /* texels from the tile's origin, 1/32 */
     uint8_t cc_flat;                            /* ... and whether with a flat shade (the first vertex's) */
     Lin col;
 } Vtx;
@@ -208,6 +214,7 @@ static void mvp_update(void)
     if (s_mvp_dirty) {
         m4_mul(&s_mvp, &s_mv[s_mvn], &s_proj);
         s_mvp_dirty = 0;
+        s_mvp_stamp++;
     }
 }
 
@@ -239,10 +246,27 @@ static void model_dir(const int8_t d[3], int32_t out[3])
         out[i] = (int32_t)((v[i] << 14) / l);
 }
 
+/* the ordering-table bucket of a depth: the clip w (8 fraction bits) on a
+ * log scale, 32 buckets an octave (near 0 .. far OT_LEN - 1) */
+static int wbucket(int32_t w)
+{
+    int p = 0;
+    uint32_t u = (uint32_t)w;
+    if (w <= 0)
+        return 0;
+    if (u >> 16) { p += 16; u >>= 16; }
+    if (u >> 8) { p += 8; u >>= 8; }
+    if (u >> 4) { p += 4; u >>= 4; }
+    if (u >> 2) { p += 2; u >>= 2; }
+    if (u >> 1) p += 1;
+    return p * 32 + (int)(((uint32_t)w << (31 - p)) >> 26 & 31);
+}
+
 /* clip space (8 fraction bits, w at least W_NEAR) to the screen: the
  * viewport's translation plus the normalised coordinates times its scale
  * (13.2); z the ordering-table bucket from the normalised depth */
 #define W_NEAR 16
+#define GUARD 2                                 /* the guard band: |x|, |y| <= GUARD * w */
 static void project(int32_t cx, int32_t cy, int32_t cz, int32_t cw, int16_t *px, int16_t *py, int16_t *pz)
 {
     int32_t sx, sy, sz, w = cw, xx = cx, yy = cy, zz = cz;
@@ -258,8 +282,115 @@ static void project(int32_t cx, int32_t cy, int32_t cz, int32_t cw, int16_t *px,
     sy >>= 2 + s_ysh;
     *px = (int16_t)(sx < -2048 ? -2048 : sx > 2047 ? 2047 : sx);
     *py = (int16_t)(sy < -2048 ? -2048 : sy > 2047 ? 2047 : sy);
-    sz = (sz + 256) * (OT_LEN / 2) >> 8;
-    *pz = (int16_t)(sz < 0 ? 0 : sz >= OT_LEN ? OT_LEN - 1 : sz);
+    (void)sz;
+    *pz = (int16_t)wbucket(cw);
+}
+
+/* ---- the GTE's transform --------------------------------------------------------- *
+ * The MVP's x, y and w columns are the GTE's rotation rows, scaled by 2^-k
+ * to its 4.12 range (the ratios a projection divides are unchanged), y
+ * folded with the viewport's aspect and flip, so RTPS gives the screen
+ * position (OFX/OFY the viewport's centre, H its x scale, w as SZ3) and in
+ * MAC1-3 the scaled clip coordinates.  A vertex the GTE saturates or
+ * cannot divide for goes the CPU's way. */
+static uint32_t s_gte_stamp;
+static int s_gte_ok, s_gte_k, s_gte_ysh;
+static int32_t s_gte_fy;                        /* the y row's factor: -(sy / sx) / 2^ysh, 16.16 */
+static int32_t s_gte_ify;                       /* its inverse, 16.16 */
+static int s_nogte = -1;
+
+static int32_t sh_r(int64_t v, int sh) { return (int32_t)(sh >= 0 ? v >> sh : v << -sh); }
+
+static void gte_setup(void)
+{
+    const M4 *m = &s_mvp;
+    int64_t e[3][3], t[3], mx = 0;
+    int r, i, k;
+    s_gte_stamp = s_mvp_stamp;
+    s_gte_ysh = s_ysh;
+    s_gte_ok = 0;
+    if (s_nogte < 0)
+        s_nogte = getenv("TGR_NOGTE") != NULL;
+    if (s_nogte || s_vp.sx <= 0 || s_vp.sy <= 0)
+        return;
+    s_gte_fy = -(int32_t)(((int64_t)s_vp.sy << 16) / s_vp.sx) >> s_ysh;
+    if (!s_gte_fy)
+        return;
+    s_gte_ify = (int32_t)(((int64_t)1 << 32) / s_gte_fy);
+    for (i = 0; i < 3; i++) {
+        e[0][i] = m->m[i][0];
+        e[1][i] = ((int64_t)m->m[i][1] * s_gte_fy) >> 16;
+        e[2][i] = m->m[i][3];
+    }
+    t[0] = m->m[3][0];
+    t[1] = ((int64_t)m->m[3][1] * s_gte_fy) >> 16;
+    t[2] = m->m[3][3];
+    for (r = 0; r < 3; r++)
+        for (i = 0; i < 3; i++) {
+            int64_t a = e[r][i] < 0 ? -e[r][i] : e[r][i];
+            if (a > mx) mx = a;
+        }
+    if (!mx)
+        return;
+    for (k = -12; k < 20; k++)                  /* the largest entry inside 1.0: headroom for the outputs */
+        if (sh_r(mx, 4 + k) <= 4095)
+            break;
+    s_gte_k = k;
+    {
+        int32_t rt[3][3], tr[3];
+        for (r = 0; r < 3; r++) {
+            for (i = 0; i < 3; i++)
+                rt[r][i] = sh_r(e[r][i], 4 + k);
+            tr[r] = sh_r(t[r], 16 + k);
+        }
+        gte_ctc(GTE_RT11RT12, (rt[0][0] & 0xFFFF) | (uint32_t)rt[0][1] << 16);
+        gte_ctc(GTE_RT13RT21, (rt[0][2] & 0xFFFF) | (uint32_t)rt[1][0] << 16);
+        gte_ctc(GTE_RT22RT23, (rt[1][1] & 0xFFFF) | (uint32_t)rt[1][2] << 16);
+        gte_ctc(GTE_RT31RT32, (rt[2][0] & 0xFFFF) | (uint32_t)rt[2][1] << 16);
+        gte_ctc(GTE_RT33, rt[2][2] & 0xFFFF);
+        gte_ctc(GTE_TRX, tr[0]);
+        gte_ctc(GTE_TRY, tr[1]);
+        gte_ctc(GTE_TRZ, tr[2]);
+        gte_ctc(GTE_OFX, (uint32_t)s_vp.tx << 14);
+        gte_ctc(GTE_OFY, (uint32_t)(s_vp.ty >> s_ysh) << 14);
+        gte_ctc(GTE_H, (uint32_t)(s_vp.sx >> 2));
+    }
+    s_gte_ok = 1;
+}
+
+/* a vertex through the GTE: 1 when it gave the screen and clip coordinates */
+static int gte_vertex(Vtx *v, int32_t x, int32_t y, int32_t z)
+{
+    uint32_t flag, sxy;
+    int32_t m1, m2, m3, sh = 8 + s_gte_k;
+    gte_mtc(GTE_VXY0, (uint32_t)(y << 16) | (uint32_t)(x & 0xFFFF));
+    gte_mtc(GTE_VZ0, (uint32_t)z);
+    gte_rtps();
+    flag = gte_cfc(GTE_FLAG);
+    m3 = (int32_t)gte_mfc(GTE_MAC3);
+    /* any saturation (MAC, IR, SZ, SX/SY) or a divide overflow: the CPU's way */
+    s_gte_flagor |= flag;
+    if ((flag & 0x7FC7F000u) || m3 <= 0)
+        return 0;
+    m1 = (int32_t)gte_mfc(GTE_MAC1);
+    m2 = (int32_t)gte_mfc(GTE_MAC2);
+    sxy = gte_mfc(GTE_SXY2);
+    v->cw = sh_r(m3, -sh);
+    if (v->cw < W_NEAR)
+        return 0;
+    v->cx = sh_r(m1, -sh);
+    v->cy = (int32_t)(((int64_t)sh_r(m2, -sh) * s_gte_ify) >> 16);
+    v->x = (int16_t)(sxy & 0xFFFF);
+    v->y = (int16_t)(sxy >> 16);
+    v->z = (int16_t)wbucket(v->cw);
+    v->clip = 0;
+    if (v->cx < -v->cw) v->clip |= 1;
+    if (v->cx > v->cw) v->clip |= 2;
+    if (v->cy < -v->cw) v->clip |= 4;
+    if (v->cy > v->cw) v->clip |= 8;
+    if (abs(v->cx) > GUARD * v->cw || abs(v->cy) > GUARD * v->cw)
+        v->clip |= 32;                          /* outside the guard band: clipped in triangle() */
+    return 1;
 }
 
 static void load_vertices(uint32_t a, int n, int v0)
@@ -269,6 +400,8 @@ static void load_vertices(uint32_t a, int n, int v0)
     const M4 *m;
     mvp_update();
     m = &s_mvp;
+    if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
+        gte_setup();
     if (s_geom & G_LIGHTING)
         for (k = 0; k < s_nlights; k++)
             model_dir(s_light[k].dir, ldir[k]);
@@ -279,6 +412,14 @@ static void load_vertices(uint32_t a, int n, int v0)
         int32_t x = (int16_t)rd16(p), y = (int16_t)rd16(p + 2), z = (int16_t)rd16(p + 4);
         int32_t s = (int16_t)rd16(p + 8), t = (int16_t)rd16(p + 10);
         Vtx *v = &s_vtx[v0 + i];
+        if (s_gte_ok && gte_vertex(v, x, y, z)) {
+            s_n_gte++;
+            if (s_geom & G_FOG)
+                v->cz = (int32_t)(((int64_t)x * m->m[0][2] + (int64_t)y * m->m[1][2] + (int64_t)z * m->m[2][2] +
+                                   m->m[3][2]) >> 8);
+            goto colours;
+        }
+        {
         int32_t cx = (int32_t)(((int64_t)x * m->m[0][0] + (int64_t)y * m->m[1][0] + (int64_t)z * m->m[2][0] + m->m[3][0]) >> 8);
         int32_t cy = (int32_t)(((int64_t)x * m->m[0][1] + (int64_t)y * m->m[1][1] + (int64_t)z * m->m[2][1] + m->m[3][1]) >> 8);
         int32_t cz = (int32_t)(((int64_t)x * m->m[0][2] + (int64_t)y * m->m[1][2] + (int64_t)z * m->m[2][2] + m->m[3][2]) >> 8);
@@ -291,8 +432,12 @@ static void load_vertices(uint32_t a, int n, int v0)
         if (cx > cw) v->clip |= 2;
         if (cy < -cw) v->clip |= 4;
         if (cy > cw) v->clip |= 8;
+        if (abs(cx) > GUARD * cw || abs(cy) > GUARD * cw)
+            v->clip |= 32;
         if (!(v->clip & 16))
             project(cx, cy, cz, cw, &v->x, &v->y, &v->z);
+        }
+colours:
         if (s_geom & G_LIGHTING) {
             int r = s_light[s_nlights].col[0], g = s_light[s_nlights].col[1], b = s_light[s_nlights].col[2];
             int32_t nx = (int8_t)c[0], ny = (int8_t)c[1], nz = (int8_t)c[2];
@@ -314,8 +459,9 @@ static void load_vertices(uint32_t a, int n, int v0)
         }
         v->a = c[3];
         v->cc_stamp = 0;
+        v->fstamp = 0;
         if (s_geom & G_FOG) {                   /* the shade alpha is the fog: depth times mul plus offset */
-            int32_t f, w = cw < W_NEAR ? W_NEAR : cw, zz = cz;
+            int32_t f, w = v->cw < W_NEAR ? W_NEAR : v->cw, zz = v->cz;
             while (w > 0x7FFF || zz > 0x3FFFFF || zz < -0x3FFFFF) { w >>= 1; zz >>= 1; }
             f = ((zz << 8) / (w ? w : 1)) * s_fog_mul / 256 + s_fog_ofs;
             v->a = (uint8_t)(f < 0 ? 0 : f > 255 ? 255 : f);
@@ -1375,7 +1521,6 @@ static int clamp_u(int u, int w) { return u < 0 ? 0 : u > w ? w : u; }
 typedef struct { int32_t x, y, z, w, u, v, r, g, b, fr, fg, fb; } CV;   /* clip space; u, v 1/32 texel */
 typedef struct { int16_t x, y, z; int32_t u, v; int16_t r, g, b, fr, fg, fb; } SV; /* screen */
 
-#define GUARD 2                                 /* the guard band: |x|, |y| <= GUARD * w */
 
 static int32_t plane_d(const CV *c, int pl)
 {
@@ -1553,6 +1698,87 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
         put_flat(p);
 }
 
+/* what the slow path worked out for the current draw state, reused by the
+ * triangles after it while nothing changes (most of a model's) */
+static struct {
+    uint32_t stamp;
+    int ok, flat, mask, textured;
+    Prim pr;
+    int32_t s0, t0;
+    int shifts, shiftt;
+} s_fs;
+
+static void vtx_fast(Vtx *vk, const Vtx *v0)
+{
+    uint8_t sh[4];
+    Lin col;
+    const Vtx *q = s_fs.flat ? v0 : vk;
+    int r, g, b;
+    sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = vk->a;
+    if (!s_fs.flat && vk->cc_stamp == s_cc_stamp) {
+        col = vk->col;
+    } else {
+        combine(&col, sh, NULL);
+        if (!s_fs.flat) {
+            vk->col = col;
+            vk->cc_stamp = s_cc_stamp;
+        }
+    }
+    if (s_fs.textured && s_fs.mask) {
+        r = col.b[0] >> 1; g = col.b[1] >> 1; b = col.b[2] >> 1;
+    } else if (s_fs.textured) {
+        r = (col.a[0] + col.b[0]) >> 1; g = (col.a[1] + col.b[1]) >> 1; b = (col.a[2] + col.b[2]) >> 1;
+    } else {
+        r = col.b[0]; g = col.b[1]; b = col.b[2];
+    }
+    vk->ffr = vk->ffg = vk->ffb = 0;
+    if (s_fs.pr.fog) {
+        int f = vk->a, nf = 255 - f;
+        r = r * nf / 255; g = g * nf / 255; b = b * nf / 255;
+        vk->ffr = (int16_t)(s_fogc[0] * f / 255); vk->ffg = (int16_t)(s_fogc[1] * f / 255);
+        vk->ffb = (int16_t)(s_fogc[2] * f / 255);
+    }
+    vk->fr = (int16_t)r; vk->fg = (int16_t)g; vk->fb = (int16_t)b;
+    if (s_fs.textured) {
+        vk->fu = tc32(vk->s, s_fs.s0, s_fs.shifts);
+        vk->fv = tc32(vk->t, s_fs.t0, s_fs.shiftt);
+    } else {
+        vk->fu = vk->fv = 0;
+    }
+    vk->fstamp = s_fs.stamp;
+}
+
+/* a triangle wholly inside the frustum under an unchanged draw state */
+static int tri_fast(Vtx *v0, Vtx *v1, Vtx *v2)
+{
+    Vtx *v[3];
+    SV sv[3];
+    int k;
+    if (s_fs.stamp != s_dstamp) { s_n_stamp++; return 0; }
+    if (!s_fs.ok) { s_n_notok++; return 0; }
+    if ((v0->clip | v1->clip | v2->clip) & (16 | 32)) { s_n_edge++; return 0; }
+    s_n_fast++;
+    {
+        int32_t det = (v1->x - v0->x) * (v2->y - v0->y) - (v2->x - v0->x) * (v1->y - v0->y);
+        if (((s_geom & G_CULL_BACK) && det >= 0) || ((s_geom & G_CULL_FRONT) && det <= 0)) {
+            s_n_cull++;
+            return 1;
+        }
+    }
+    v[0] = v0; v[1] = v1; v[2] = v2;
+    cc_compile();
+    for (k = 0; k < 3; k++) {
+        if (v[k]->fstamp != s_fs.stamp || s_fs.flat)
+            vtx_fast(v[k], v0);
+        sv[k].x = v[k]->x; sv[k].y = v[k]->y; sv[k].z = v[k]->z;
+        sv[k].u = v[k]->fu; sv[k].v = v[k]->fv;
+        sv[k].r = v[k]->fr; sv[k].g = v[k]->fg; sv[k].b = v[k]->fb;
+        sv[k].fr = v[k]->ffr; sv[k].fg = v[k]->ffg; sv[k].fb = v[k]->ffb;
+    }
+    emit_tri(&sv[0], &sv[1], &sv[2], &s_fs.pr, 0);
+    return 1;
+}
+
 static void triangle(int ia, int ib, int ic)
 {
     const Vtx *v[3];
@@ -1566,8 +1792,12 @@ static void triangle(int ia, int ib, int ic)
         return;
     s_n_tri++;
     v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
-    if (v[0]->clip & v[1]->clip & v[2]->clip & 31)
+    if (v[0]->clip & v[1]->clip & v[2]->clip & 31) {
+        s_n_rej++;
         return;                                 /* wholly off one side, or behind the eye */
+    }
+    if (tri_fast(&s_vtx[ia], &s_vtx[ib], &s_vtx[ic]))
+        return;
     {
         /* the facing, from the homogeneous coordinates: det(x, y, w) keeps its
          * sign for a triangle reaching behind the eye (as the RSP's does) */
@@ -1634,6 +1864,16 @@ static void triangle(int ia, int ib, int ic)
         uint32_t bl = s_oml >> 16;
         pr.fog = (s_geom & G_FOG) && ((bl >> 14) & 3) == 3 && ((bl >> 10) & 3) == 2;
     }
+    /* the fast path may take the next triangles: no second texture to sample, a
+     * blend that does not hang on this triangle's colours */
+    s_fs.ok = !(s_tex.on && uses_other()) && (d.semi != 2 || (d.textured && col[0].a[3]));
+    s_fs.stamp = s_dstamp;
+    s_fs.flat = !(s_geom & G_SHADING_SMOOTH);
+    s_fs.mask = mask;
+    s_fs.textured = d.textured;
+    s_fs.pr = pr;
+    s_fs.s0 = d.s0; s_fs.t0 = d.t0;
+    s_fs.shifts = d.shifts; s_fs.shiftt = d.shiftt;
     for (k = 0; k < 3; k++) {
         CV *c = &poly[0][k];
         int r, g, b;
@@ -1995,6 +2235,9 @@ static void run(uint32_t dl)
         uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
         int op = (int)(w0 >> 24);
         pc += 8;
+        if (op != 0x04 && op != 0xB1 && op != 0xBF && op != 0x06 && op != 0xB8 && op != 0x01 && op != 0xBD &&
+            op != 0x03)
+            s_dstamp++;
         switch (op) {
         case 0x01: {                                  /* G_MTX */
             M4 m;
@@ -2022,6 +2265,7 @@ static void run(uint32_t dl)
             int idx = (w0 >> 16) & 0xFF;
             uint32_t a = seg_addr(w1);
             if (idx == 0x80) {
+                s_mvp_stamp++;
                 s_vp.sx = (int16_t)rd16(a);
                 s_vp.sy = (int16_t)rd16(a + 2);
                 s_vp.sz = (int16_t)rd16(a + 4);
@@ -2039,6 +2283,7 @@ static void run(uint32_t dl)
                 int q = quarter[(idx - 0x98) / 2], j;
                 int32_t *f = &s_mvp.m[0][0];
                 mvp_update();
+                s_mvp_stamp++;
                 for (j = 0; j < 8; j++) {
                     int e = q * 8 + j;
                     uint32_t h = rd16(a + j * 2);
@@ -2362,10 +2607,13 @@ void tgr_rcp_present(uint32_t frame)
         uint64_t t = ps1_time_ns();
         if (t0)
             fprintf(stderr, "perf: retraces %u-%u took %u ms of console time, %u frames drawn; %u vertices, %u triangles, "
-                    "%u pieces, %u clip passes\n", (unsigned)f0, (unsigned)frame, (unsigned)((t - t0) / 1000000),
+                    "%u pieces, %u clip passes, %u by the GTE (flags %08X, ok %d k %d), %u fast (%u culled), rejected %u, slow: state %u, kind %u, edge %u\n", (unsigned)f0, (unsigned)frame, (unsigned)((t - t0) / 1000000),
                     (unsigned)(tgr_rcp_frames - d0), (unsigned)s_n_vtx, (unsigned)s_n_tri, (unsigned)s_n_piece,
-                    (unsigned)s_n_clip);
-        s_n_vtx = s_n_tri = s_n_piece = s_n_clip = 0;
+                    (unsigned)s_n_clip, (unsigned)s_n_gte, (unsigned)s_gte_flagor, s_gte_ok, s_gte_k,
+                    (unsigned)s_n_fast, (unsigned)s_n_cull, (unsigned)s_n_rej, (unsigned)s_n_stamp, (unsigned)s_n_notok,
+                    (unsigned)s_n_edge);
+        s_n_vtx = s_n_tri = s_n_piece = s_n_clip = s_n_gte = s_gte_flagor = s_n_fast = s_n_cull = 0;
+        s_n_rej = s_n_stamp = s_n_notok = s_n_edge = 0;
         t0 = t;
         f0 = frame;
         d0 = tgr_rcp_frames;
