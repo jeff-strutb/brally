@@ -109,6 +109,7 @@ typedef struct {
 } Sample;
 static Sample s_samp[NSAMP];
 static int s_nsamp;
+static uint32_t s_sgen;                         /* (bumped when the samples start again: a sample_get memo is stale) */
 static uint32_t s_spu_top = SPU_RAM_FIRST + 16;
 #define SILENCE SPU_RAM_FIRST       /* a block of silence that loops on itself */
 
@@ -139,7 +140,27 @@ static int16_t seq(const Sample *s, const uint8_t *d, uint32_t i)
     return (int16_t)((int8_t)d[ls + (i - ls) % s->loop] * 256);
 }
 
+static const Sample *sample_get_(uint32_t start, uint32_t len, uint32_t loop);
+
+/* a sample found again within the same retrace: as it was (its bytes checked
+ * once a retrace, not at every voice's look) */
 static const Sample *sample_get(uint32_t start, uint32_t len, uint32_t loop)
+{
+    static struct { uint32_t start, len, loop, frame, n; const Sample *s; } memo[16];
+    uint32_t h = ((start >> 4) ^ (start >> 12) ^ len) & 15, f = tgr_frame();
+    if (memo[h].s && memo[h].start == start && memo[h].len == len && memo[h].loop == loop && memo[h].frame == f &&
+        memo[h].n == s_sgen)
+        return memo[h].s;
+    memo[h].s = sample_get_(start, len, loop);
+    memo[h].start = start;
+    memo[h].len = len;
+    memo[h].loop = loop;
+    memo[h].frame = f;
+    memo[h].n = s_sgen;
+    return memo[h].s;
+}
+
+static const Sample *sample_get_(uint32_t start, uint32_t len, uint32_t loop)
 {
     uint32_t check = sample_check(start, len), total, nblk, loop_blk = 0, b, k;
     Sample *s;
@@ -172,6 +193,7 @@ static const Sample *sample_get(uint32_t start, uint32_t len, uint32_t loop)
         if (s_spu_top + nblk * 16 + 16 > SPU_RAM_END || s_nsamp == NSAMP) {
             /* sound RAM full: start again (every voice is keyed again on use) */
             s_nsamp = 0;
+            s_sgen++;
             s_spu_top = SPU_RAM_FIRST + 16;
         }
         s = &s_samp[s_nsamp++];
