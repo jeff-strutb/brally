@@ -37,7 +37,7 @@ static uint64_t s_cls_t[4];                    /* (nanoseconds) */
 static uint64_t s_lh_t[2][5];                   /* TGR_PERF: list calls by length (< 0.25, 1, 4, 16 ms, more), compiled or not */
 static uint32_t s_lh_n[2][5];
 static int s_listlog = -1;                     /* TGR_LISTLOG=F */
-static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4], s_tt[4], s_tq2[4], s_su[6];
+static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4], s_tt[4], s_tq2[4], s_su[6], s_dryq[4];
 static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3], s_nmoff[3];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
 #define ST_NOW() (*(volatile uint32_t *)0xBF801120)
 #define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
@@ -1156,11 +1156,18 @@ static void note_load(const Load *l)
 }
 
 /* ---- TMEM, rebuilt for a decode ------------------------------------------------------ */
-static uint8_t s_tmem[4096];
+static uint8_t s_tmem[4096] __attribute__((aligned(8)));
 
 static void tmem_put64(int addr, const uint8_t *src, int odd)
 {
     int k;
+    if (!((uintptr_t)src & 3)) {                /* (two words, the halves swapped on an odd row) */
+        uint32_t *t = (uint32_t *)&s_tmem[(addr * 8) & 0xFF8];
+        uint32_t w0 = ((const uint32_t *)src)[0], w1 = ((const uint32_t *)src)[1];
+        t[odd ? 1 : 0] = w0;
+        t[odd ? 0 : 1] = w1;
+        return;
+    }
     for (k = 0; k < 8; k++)
         s_tmem[((addr * 8) + (k ^ (odd ? 4 : 0))) & 0xFFF] = src[k];
 }
@@ -1607,8 +1614,8 @@ static int tile_size(const Tile *tl, int *w, int *h)
     return ww > 0 && hh > 0;
 }
 
-static uint16_t s_dec[384 * 256];
-static uint32_t s_tq[4];                        /* TGR_PERF: texture lookups' key, table search (cycles / 8), decodes; lookups */
+static uint16_t s_dec[384 * 256] __attribute__((aligned(8)));
+static uint32_t s_tq[4], s_decx, s_decq[4];                        /* TGR_PERF: texture lookups' key, table search (cycles / 8), decodes; lookups */
 static uint16_t s_xmap[1536];                   /* (a decode's columns through the tile's mask) */
 static uint32_t s_row[1536 + 4];                /* (a decode's row of texels) */
 
@@ -1680,8 +1687,13 @@ static const Tex *tile_texture_(int t)
             return s_tcache[i].tex;
         }
     {
+        uint32_t q = s_tq[1];
         RG_BEGIN(RG_TEX);
+        uint32_t rg_t_RG_DECODE = rg_t_RG_TEX;
         tx = tile_texture_find(t);
+        if (s_tq[1] == q) {                     /* (not found in the table: decoded, or none) */
+            RG_END(RG_DECODE);
+        }
         RG_END(RG_TEX);
     }
     i = s_tcache_next++ & 3;
@@ -1720,6 +1732,24 @@ static int tex_index(uint32_t key)
     return -1;
 }
 
+/* rows of 4- or 8-bit texels into s_dec as words (the tile's columns as they are) */
+static void tex_rows_words(const Tile *tl, int by0, int w, int h, int hw)
+{
+    int y, i, nw = tl->siz ? w / 4 : w / 8, line8 = tl->line * 8, base8 = tl->tmem * 8;
+    for (y = 0; y < h; y++) {
+        int ym = axis_map(y + by0, tl->maskt, tl->cmt & 1), rb = base8 + ym * line8, sw = (ym & 1) ? 4 : 0;
+        uint32_t *o = (uint32_t *)&s_dec[y * hw];
+        if (tl->siz)
+            for (i = 0; i < nw; i++)
+                o[i] = *(const uint32_t *)&s_tmem[((rb + i * 4) ^ sw) & 0xFFC];
+        else
+            for (i = 0; i < nw; i++) {
+                uint32_t v = *(const uint32_t *)&s_tmem[((rb + i * 4) ^ sw) & 0xFFC];
+                o[i] = ((v >> 4) & 0x0F0F0F0Fu) | ((v << 4) & 0xF0F0F0F0u);
+            }
+    }
+}
+
 static const Tex *tile_texture_find(int t)
 {
     const Tile *tl = &s_tile[t];
@@ -1727,7 +1757,7 @@ static const Tex *tile_texture_find(int t)
     uint32_t key, check;
     int px, py, pg, hw;
     Tex *tx, old = { 0 };
-    int reuse = 0, ri = -1, wrap_s = 0, wrap_t = 0, up, inplace = 0;
+    int reuse = 0, ri = -1, wrap_s = 0, wrap_t = 0, up, inplace = 0, xid = 0;
     int by0 = s_band_y0;
     uint32_t tq0 = ST_NOW();
     s_tq[3]++;
@@ -1871,17 +1901,39 @@ static const Tex *tile_texture_find(int t)
     }
     if (s_log)
         tgr_log("rcp: decode f%d s%d %dx%d at %d,%d mode %d tlut %d opaque %d mask %d clut %04X frame %u src %06X tmem %d line %d wrap %d%d cm %d%d mask %d%d uls %d lrs %d\n", tl->fmt, tl->siz, w, h, px, py, mode, tlut, s_opaque, s_mask, tx->clut, (unsigned)tgr_frame(), s_nloads ? (unsigned)s_loads[s_nloads - 1].src : 0u, tl->tmem, tl->line, wrap_s, wrap_t, tl->cms, tl->cmt, tl->masks, tl->maskt, tl->uls, tl->lrs);
-    for (i = 0; i < s_nloads; i++)
-        replay(&s_loads[i]);
+    s_tq[2]++;
+    s_decx += (uint32_t)(w * h);
+    if (s_listlog > 0 && tgr_frame() >= (uint32_t)s_listlog && tgr_frame() < (uint32_t)s_listlog + 60)
+        fprintf(stderr, "decode %u f%d s%d %dx%d mode %d grey %d ci %d reuse %d inplace %d up %d src %06X\n", (unsigned)tgr_frame(), tl->fmt,
+                tl->siz, w, h, mode, grey, ci, reuse, inplace, up, s_nloads ? (unsigned)s_loads[s_nloads - 1].src : 0u);
+    {
+        uint32_t q = ST_NOW();
+        for (i = 0; i < s_nloads; i++)
+            replay(&s_loads[i]);
+        s_decq[0] += (ST_NOW() - q) & 0xFFFF;
+        s_decq[3] = ST_NOW();
+    }
     {
         int n = hw * (mode == 0 ? 4 : mode == 1 ? 2 : 1);
         if (n > 1536)
             n = 1536;
-        for (x = 0; x < n; x++)
+        xid = 1;
+        for (x = 0; x < n; x++) {
             s_xmap[x] = (uint16_t)axis_map(x, tl->masks, tl->cms & 1);
+            if (s_xmap[x] != x)
+                xid = 0;
+        }
     }
     s_last_pal_n = 0;
-    if (grey >= 0) {
+    if (grey >= 0 && grey != GP_IA16 && xid && !(w & 7) && tl->siz <= 1) {
+        /* 4 or 8 bits, the columns as they are: whole words of TMEM, each
+         * row's halves of 8 bytes swapped on odd rows as TMEM keeps them; 4
+         * bits with the two texels of a byte the other way round */
+        grey_palettes();
+        tx->clut = grey_clut(grey);
+        tx->has_alpha = grey != GP_I4 && grey != GP_I8;
+        tex_rows_words(tl, by0, w, h, hw);
+    } else if (grey >= 0) {
         grey_palettes();
         tx->clut = grey_clut(grey);
         tx->has_alpha = grey != GP_I4 && grey != GP_I8;
@@ -1927,6 +1979,9 @@ static const Tex *tile_texture_find(int t)
         if (s_log)
             tgr_log("rcp: clut %d,%d for %dx%d frame %u\n", cx, cy, w, h, (unsigned)tgr_frame());
         tx->clut = (uint16_t)(cy << 6 | cx >> 4);
+        if (xid && !(w & 7) && tl->siz <= 1)
+            tex_rows_words(tl, by0, w, h, hw);
+        else
         for (y = 0; y < h; y++) {
             uint16_t *o = &s_dec[y * hw];
             tile_row(tl, y + by0, w, s_xmap, s_row);
@@ -1938,13 +1993,40 @@ static const Tex *tile_texture_find(int t)
                 for (x = 0; x < hw; x++)
                     o[x] = (uint16_t)(s_row[x * 2] | s_row[x * 2 + 1] << 8);
         }
+    } else if (tl->fmt == 0 && tl->siz == 2) {
+        /* 16-bit RGBA, the common one: read and made in one pass (ps1_col of
+         * n64_5551, the alpha a bit) */
+        int op = s_opaque, mk = s_mask, ha = 0, line8 = tl->line * 8, base8 = tl->tmem * 8;
+        for (y = 0; y < h; y++) {
+            int ym = axis_map(y + by0, tl->maskt, tl->cmt & 1), rb = base8 + ym * line8, sw = (ym & 1) ? 4 : 0;
+            uint16_t *o = &s_dec[y * hw];
+            for (x = 0; x < w; x++) {
+                int a = (rb + s_xmap[x] * 2) ^ sw;
+                uint32_t c = (uint32_t)s_tmem[a & 0xFFF] << 8 | s_tmem[(a + 1) & 0xFFF];
+                uint32_t q;
+                if (!((c & 1) | op)) {
+                    q = 0;
+                    ha = 1;
+                } else {
+                    q = mk ? 0x7FFF : ((c >> 11) & 31) | ((c >> 6) & 31) << 5 | ((c >> 1) & 31) << 10;
+                    if (!q) {
+                        q = 0x8000;
+                        ha = 1;
+                    }
+                }
+                o[x] = (uint16_t)q;
+            }
+        }
+        if (ha)
+            tx->has_alpha = 1;
     } else {
+        int f = tl->fmt << 4 | tl->siz, ha = 0;
         for (y = 0; y < h; y++) {
             tile_row(tl, y + by0, w, s_xmap, s_row);
             for (x = 0; x < w; x++) {
                 uint32_t v = s_row[x];
                 uint16_t c;
-                switch (tl->fmt << 4 | tl->siz) {
+                switch (f) {
                 case 0x02: c = n64_5551((uint16_t)v); break;
                 case 0x03: c = ps1_col(v >> 24, (v >> 16) & 255, (v >> 8) & 255, v & 255); break;
                 case 0x30: { int i8 = (int)(v >> 1) * 255 / 7; c = ps1_col(i8, i8, i8, (v & 1) ? 255 : 0); break; }
@@ -1954,10 +2036,12 @@ static const Tex *tile_texture_find(int t)
                 default:   c = ps1_col((int)v, (int)v, (int)v, (int)v); break;
                 }
                 if (!c || (c & 0x8000))
-                    tx->has_alpha = 1;
+                    ha = 1;
                 s_dec[y * hw + x] = c;
             }
         }
+        if (ha)
+            tx->has_alpha = 1;
     }
     if (up) {
         /* each texel and the halfway points to its right and below it (the next
@@ -1989,7 +2073,12 @@ static const Tex *tile_texture_find(int t)
         upload(px, py, w2, h * 2, big);
         return tx;
     }
-    upload(px, py, hw, h, s_dec);
+    s_decq[1] += (ST_NOW() - s_decq[3]) & 0xFFFF;
+    {
+        uint32_t q = ST_NOW();
+        upload(px, py, hw, h, s_dec);
+        s_decq[2] += (ST_NOW() - q) & 0xFFFF;
+    }
     if (inplace && hw * h <= DC_MAX) {
         /* a texture whose bytes the game rewrites (an animation): this frame kept */
         int k = 0;
@@ -3224,6 +3313,7 @@ static void triangle_(int ia, int ib, int ic)
             return;
     }
     }
+    uint32_t dq0 = ST_NOW(), dq1;
     cc_compile();
     {
         int other = s_tex.on && uses_other(), flat = !(s_geom & G_SHADING_SMOOTH);
@@ -3251,7 +3341,12 @@ static void triangle_(int ia, int ib, int ic)
         mask = !rgb_t && col[0].a[3] != 0;
         want_tex = s_tex.on && (rgb_t || mask);
     }
+    dq1 = ST_NOW();
+    if (s_dry)
+        s_dryq[0] += (dq1 - dq0) & 0xFFFF;
     draw_state(&d, tile, want_tex, mask);
+    if (s_dry)
+        s_dryq[1] += (ST_NOW() - dq1) & 0xFFFF;
     if (d.semi == 1) {
         semi = 1;
         abr = d.abr;
@@ -5825,9 +5920,16 @@ void tgr_rcp_present(uint32_t frame)
                     fprintf(stderr, "\n");
                 }
                 memset(s_lh_t, 0, sizeof s_lh_t);
-                fprintf(stderr, "perf: texture lookups %u: key %u ms, found %u ms\n", (unsigned)s_tq[3],
-                        (unsigned)(s_tq[0] * 8 / 33869), (unsigned)(s_tq[1] * 8 / 33869));
+                fprintf(stderr, "perf: texture lookups %u: key %u ms, found %u ms; decodes %u, %u texels\n", (unsigned)s_tq[3],
+                        (unsigned)(s_tq[0] * 8 / 33869), (unsigned)(s_tq[1] * 8 / 33869), (unsigned)s_tq[2], (unsigned)s_decx);
+                s_decx = 0;
+                fprintf(stderr, "perf: decode parts (ms): tmem %u convert %u upload %u\n", (unsigned)(s_decq[0] * 8 / 33869),
+                        (unsigned)(s_decq[1] * 8 / 33869), (unsigned)(s_decq[2] * 8 / 33869));
+                memset(s_decq, 0, sizeof s_decq);
                 memset(s_tq, 0, sizeof s_tq);
+                fprintf(stderr, "perf: dry triangles (ms): colours %u draw state %u\n", (unsigned)(s_dryq[0] * 8 / 33869),
+                        (unsigned)(s_dryq[1] * 8 / 33869));
+                memset(s_dryq, 0, sizeof s_dryq);
                 fprintf(stderr, "perf: recording (ms): vertices %u triangle %u capture %u\n", (unsigned)(s_recq[0] * 8 / 33869),
                         (unsigned)(s_recq[1] * 8 / 33869), (unsigned)(s_recq[2] * 8 / 33869));
                 memset(s_recq, 0, sizeof s_recq);
