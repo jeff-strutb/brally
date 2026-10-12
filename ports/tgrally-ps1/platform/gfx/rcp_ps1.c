@@ -25,6 +25,18 @@
 #undef abs
 #define abs(x) __builtin_abs(x)                 /* (freestanding: else a call) */
 
+/* TGR_PERF region timers: root counter 2 (the system clock / 8), inclusive */
+enum { RG_TASK, RG_DLC, RG_MESHV, RG_KTRI, RG_CLIP, RG_TRI, RG_RECT, RG_STATE, RG_TEX, RG_VTX, RG_END, RG_TOPTRI,
+       RG_MTX, RG_MOVEMEM, RG_FILL, RG_RUNTRI, RG_N };
+static const char *const s_rg_name[RG_N] = { "task", "kept lists", "kept vertices", "kept drawn", "kept cut",
+                                             "slow triangles", "rectangles", "state", "texture lookup", "vertices",
+                                             "frame end", "run", "matrices", "movemem", "fills", "run triangles" };
+static uint32_t s_rg[RG_N];
+static uint32_t s_runops[256];
+uint64_t ps1_time_ns(void);
+#define RG_BEGIN(id) uint64_t rg_t_##id = ps1_time_ns()
+#define RG_END(id) (s_rg[id] += (uint32_t)((ps1_time_ns() - rg_t_##id) / 1000))   /* (microseconds) */
+
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
 static uint32_t s_n_tri, s_n_piece, s_n_vtx, s_n_clip, s_n_gte, s_gte_flagor, s_n_fast, s_n_cull, s_n_rej, s_n_stamp, s_n_notok, s_n_edge;  /* TGR_PERF counts */
@@ -1135,7 +1147,17 @@ static int s_upsample = -1;                     /* TGR_UPSAMPLE=1: on (it costs 
 static struct { uint32_t gen, epoch, frame; int t, opaque, mask, by0, bh, rect; const Tex *tex; } s_tcache[4];
 static int s_tcache_next;
 
+static const Tex *tile_texture_(int t);
 static const Tex *tile_texture(int t)
+{
+    const Tex *r;
+    RG_BEGIN(RG_TEX);
+    r = tile_texture_(t);
+    RG_END(RG_TEX);
+    return r;
+}
+
+static const Tex *tile_texture_(int t)
 {
     int i;
     const Tex *tx;
@@ -2285,6 +2307,13 @@ static void emit_cv(const CV *a, const CV *b, const CV *c, const Prim *pr, int d
             lg = k2;
         if (lg > 0 && emit_grid(a, b, c, pr, lg))
             return;
+        if (lg == 0) {
+            emit_tri(&sv[0], &sv[1], &sv[2], pr, 0);
+            return;
+        }
+    } else if (!pr->textured) {
+        emit_tri(&sv[0], &sv[1], &sv[2], pr, 0);
+        return;
     }
     emit_cv3(a, &sv[0], b, &sv[1], c, &sv[2], pr, depth);
 }
@@ -2418,7 +2447,15 @@ static int tri_fast(Vtx *v0, Vtx *v1, Vtx *v2)
     return 1;
 }
 
+static void triangle_(int ia, int ib, int ic);
 static void triangle(int ia, int ib, int ic)
+{
+    RG_BEGIN(RG_TRI);
+    triangle_(ia, ib, ic);
+    RG_END(RG_TRI);
+}
+
+static void triangle_(int ia, int ib, int ic)
 {
     const Vtx *v[3];
     Draw d;
@@ -2646,7 +2683,15 @@ static void put_texrect(const Tex *tex, int x0, int y0, int x1, int y1, int u0, 
 
 /* a textured rectangle (G_TEXRECT); a tile taller than a band is drawn a band
  * of rows at a time, each its own texture */
+static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc);
 static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
+{
+    RG_BEGIN(RG_RECT);
+    rect_tex_(w0, w1, h2, hc);
+    RG_END(RG_RECT);
+}
+
+static void rect_tex_(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
 {
     int x1 = (int)((w0 >> 12) & 0xFFF) >> 2, y1 = (int)(w0 & 0xFFF) >> 2;
     int x0 = (int)((w1 >> 12) & 0xFFF) >> 2, y0 = (int)(w1 & 0xFFF) >> 2;
@@ -2906,7 +2951,15 @@ static void dl_census(uint32_t a, int depth)
 
 /* a display-list command that sets state (everything but the matrices,
  * vertices, triangles, lists and texture rectangles) */
+static void exec_state_(int op, uint32_t w0, uint32_t w1);
 static void exec_state(int op, uint32_t w0, uint32_t w1)
+{
+    RG_BEGIN(RG_STATE);
+    exec_state_(op, w0, w1);
+    RG_END(RG_STATE);
+}
+
+static void exec_state_(int op, uint32_t w0, uint32_t w1)
 {
     s_dstamp++;
     switch (op) {
@@ -3565,9 +3618,11 @@ static void dlc_tri(const Tpl *t, const Prim *pr, const MVtx *v0, const MVtx *v1
 /* a kept list's vertex in clip space and its clip flags, for the clip and
  * cut path (no colour: the kept draw has it): the GTE's MACs when it took
  * the vertex, else the CPU's product */
+
 static void vtx_clip(int slot, CV *c, int *clip)
 {
     const NVtx *nv = s_mvsrc[slot];
+
     int32_t x = nv->x, y = nv->y, z = nv->z, cx, cy, cw;
     int k = 0;
     if (s_mvx[slot].ok) {
@@ -3756,8 +3811,14 @@ static int dlc_call(uint32_t a)
         switch (op) {
         case 0x04: {
             int vn = (int)((w0 >> 10) & 0x3F), v0 = (int)((w0 >> 16) & 0xFF) / 2, j;
-            if (!(s_geom & G_FOG) && mesh_vertices((const NVtx *)d->cmd[i].aux, vn, v0))
-                break;
+            {
+                int ok;
+                RG_BEGIN(RG_MESHV);
+                ok = !(s_geom & G_FOG) && mesh_vertices((const NVtx *)d->cmd[i].aux, vn, v0);
+                RG_END(RG_MESHV);
+                if (ok)
+                    break;
+            }
             load_vertices_n((const NVtx *)d->cmd[i].aux, vn, v0);
             for (j = v0; j < v0 + vn && j < 32; j++) {
                 s_mvx[j].ok = 0;                /* (the full vertices: the general path) */
@@ -3805,11 +3866,17 @@ static int dlc_call(uint32_t a)
                         !(pr->textured && (edge_split(a0->w, a1->w, a0->x, a0->y, a1->x, a1->y) ||
                                            edge_split(a1->w, a2->w, a1->x, a1->y, a2->x, a2->y) ||
                                            edge_split(a2->w, a0->w, a2->x, a2->y, a0->x, a0->y)))) {
+                        RG_BEGIN(RG_KTRI);
                         dlc_tri(t, pr, a0, a1, a2);
+                        RG_END(RG_KTRI);
                         s_path[1]++;
                         continue;
                     }
-                    dlc_tri_clip(t, pr, ia, ib, ic);
+                    {
+                        RG_BEGIN(RG_CLIP);
+                        dlc_tri_clip(t, pr, ia, ib, ic);
+                        RG_END(RG_CLIP);
+                    }
                     s_path[2]++;
                     continue;
                 }
@@ -3865,10 +3932,12 @@ static void run(uint32_t dl)
         pc += 8;
         if (s_dlstats)
             s_opcount[op]++;
+        s_runops[op]++;
         switch (op) {
         case 0x01: {                                  /* G_MTX */
             M4 m;
             int p = (w0 >> 16) & 0xFF;
+            RG_BEGIN(RG_MTX);
             m4_load(&m, seg_addr(w1));
             if (p & 1) {
                 if (p & 2)
@@ -3886,10 +3955,12 @@ static void run(uint32_t dl)
                     m4_mul(&s_mv[s_mvn], &m, &s_mv[s_mvn]);
             }
             s_mvp_dirty = 1;
+            RG_END(RG_MTX);
             break;
         }
         case 0x03: {                                  /* G_MOVEMEM */
             int idx = (w0 >> 16) & 0xFF;
+            RG_BEGIN(RG_MOVEMEM);
             uint32_t a = seg_addr(w1);
             if (idx == 0x80) {
                 s_mvp_stamp++;
@@ -3921,28 +3992,45 @@ static void run(uint32_t dl)
                         f[e - 16] = (int32_t)(((uint32_t)f[e - 16] & 0xFFFF0000u) | h);
                 }
             }
+            RG_END(RG_MOVEMEM);
             break;
         }
-        case 0x04:                                    /* G_VTX */
+        case 0x04: {                                  /* G_VTX */
+            RG_BEGIN(RG_VTX);
             load_vertices(seg_addr(w1), (w0 >> 10) & 0x3F, ((w0 >> 16) & 0xFF) / 2);
+            RG_END(RG_VTX);
+            break;
+        }
             break;
         case 0x06:                                    /* G_DL */
             if (s_dlstats == 1 && tgr_frame() + 1 >= (uint32_t)atoi(getenv("TGR_DLSTATS")))
                 dl_census(seg_addr(w1), sp);
-            if (((w0 >> 16) & 0xFF) == 0 && dlc_call(seg_addr(w1)))
-                break;                                /* drawn from its kept form */
+            if (((w0 >> 16) & 0xFF) == 0) {
+                int done;
+                RG_BEGIN(RG_DLC);
+                done = dlc_call(seg_addr(w1));
+                RG_END(RG_DLC);
+                if (done)
+                    break;                            /* drawn from its kept form */
+            }
             if (((w0 >> 16) & 0xFF) == 0 && sp < 18)
                 stack[sp++] = pc;
             pc = seg_addr(w1);
             break;
-        case 0xB1:                                    /* G_TRI2 */
+        case 0xB1: {                                  /* G_TRI2 */
+            RG_BEGIN(RG_RUNTRI);
             s_path[4] += 2;
             triangle(((w0 >> 16) & 0xFF) / 2, ((w0 >> 8) & 0xFF) / 2, (w0 & 0xFF) / 2);
             triangle(((w1 >> 16) & 0xFF) / 2, ((w1 >> 8) & 0xFF) / 2, (w1 & 0xFF) / 2);
+            RG_END(RG_RUNTRI);
             break;
-        case 0xBF:                                    /* G_TRI1 */
+        }
+        case 0xBF: {                                  /* G_TRI1 */
+            RG_BEGIN(RG_RUNTRI);
             triangle(((w1 >> 16) & 0xFF) / 2, ((w1 >> 8) & 0xFF) / 2, (w1 & 0xFF) / 2);
+            RG_END(RG_RUNTRI);
             break;
+        }
         case 0xB8:                                    /* G_ENDDL */
             if (sp == 0)
                 return;
@@ -3988,6 +4076,7 @@ static void init(void)
 
 void tgr_rcp_task(uint32_t dl)
 {
+    uint64_t task_t0 = ps1_time_ns();
     if (s_dlstats < 0)
         s_dlstats = getenv("TGR_DLSTATS") != NULL;
     if (s_dlstats && tgr_frame() >= (uint32_t)atoi(getenv("TGR_DLSTATS")) && s_dlstats == 1) {
@@ -4017,8 +4106,15 @@ void tgr_rcp_task(uint32_t dl)
         s_tex_full = 0;
         tex_flush_all();
     }
-    run(dl);
-    frame_end();
+    {
+        uint64_t t1 = ps1_time_ns(), t2;
+        run(dl);
+        t2 = ps1_time_ns();
+        frame_end();
+        s_rg[RG_END] += (uint32_t)((ps1_time_ns() - t2) / 1000);
+        s_rg[RG_TOPTRI] += (uint32_t)((t2 - t1) / 1000);
+    }
+    s_rg[RG_TASK] += (uint32_t)((ps1_time_ns() - task_t0) / 1000);
 }
 
 void tgr_dump_state(const char *path, uint32_t dl) { (void)path; (void)dl; }
@@ -4133,6 +4229,21 @@ void tgr_rcp_present(uint32_t frame)
                 extern uint64_t gpu_wait_ns;
                 fprintf(stderr, "perf: waiting for the GPU %u ms\n", (unsigned)(gpu_wait_ns / 1000000));
                 gpu_wait_ns = 0;
+            }
+            {
+                int r;
+                fprintf(stderr, "perf: regions (ms):");
+                for (r = 0; r < RG_N; r++) {
+                    fprintf(stderr, " %s %u", s_rg_name[r], (unsigned)(s_rg[r] / 1000));
+                    s_rg[r] = 0;
+                }
+                fprintf(stderr, "\n");
+                fprintf(stderr, "perf: run commands:");
+                for (r = 0; r < 256; r++)
+                    if (s_runops[r] > 300)
+                        fprintf(stderr, " %02X:%u", r, (unsigned)s_runops[r]);
+                fprintf(stderr, "\n");
+                memset(s_runops, 0, sizeof s_runops);
             }
             fprintf(stderr, "perf: lists kept %u, recorded %u, triangles from them %u\n", (unsigned)s_n_dlc_hit,
                     (unsigned)s_n_dlc_rec, (unsigned)s_n_dlc_tpl);
