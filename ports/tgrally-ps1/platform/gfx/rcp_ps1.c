@@ -167,6 +167,7 @@ static uint32_t s_mvp_stamp = 1;                /* bumped whenever the MVP chang
 static uint32_t s_geom;
 static struct { int32_t sx, sy, sz, tx, ty, tz; } s_vp;     /* 13.2 */
 static struct { uint8_t col[3]; int8_t dir[3]; } s_light[8];
+static uint32_t s_light_stamp;                  /* bumped when a light changes */
 static int s_nlights = 1;
 static struct { int on, tile, level; uint32_t ss, ts; } s_tex;
 
@@ -201,7 +202,7 @@ static void m4_mul(M4 *r, const M4 *a, const M4 *b)
     *r = t;
 }
 
-static void m4_load(M4 *r, uint32_t a)
+static __attribute__((noinline)) void m4_load(M4 *r, uint32_t a)
 {
     int i, j;
     for (i = 0; i < 4; i++)
@@ -222,7 +223,7 @@ static int clamp255(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 
 /* a light's direction in model space: the modelview's upper 3x3 applied
  * transposed, normalised to 1.14 */
-static void model_dir(const int8_t d[3], int32_t out[3])
+static __attribute__((noinline)) void model_dir(const int8_t d[3], int32_t out[3])
 {
     const M4 *m = &s_mv[s_mvn];
     int64_t v[3], l2;
@@ -359,7 +360,7 @@ static void gte_setup(void)
 }
 
 /* a vertex through the GTE: 1 when it gave the screen and clip coordinates */
-static int gte_vertex(Vtx *v, int32_t x, int32_t y, int32_t z)
+static __attribute__((noinline)) int gte_vertex(Vtx *v, int32_t x, int32_t y, int32_t z)
 {
     uint32_t flag, sxy;
     int32_t m1, m2, m3, sh = 8 + s_gte_k;
@@ -393,7 +394,7 @@ static int gte_vertex(Vtx *v, int32_t x, int32_t y, int32_t z)
     return 1;
 }
 
-static void load_vertices(uint32_t a, int n, int v0)
+static __attribute__((noinline)) void load_vertices(uint32_t a, int n, int v0)
 {
     int32_t ldir[8][3];
     int i, k;
@@ -402,9 +403,19 @@ static void load_vertices(uint32_t a, int n, int v0)
     m = &s_mvp;
     if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
         gte_setup();
-    if (s_geom & G_LIGHTING)
-        for (k = 0; k < s_nlights; k++)
-            model_dir(s_light[k].dir, ldir[k]);
+    if (s_geom & G_LIGHTING) {
+        /* the lights in model space: again only when the modelview or the lights changed */
+        static int32_t cached[8][3];
+        static uint32_t cached_stamp, cached_lights;
+        uint32_t ls = s_light_stamp ^ (uint32_t)s_nlights << 24 ^ (uint32_t)s_mvn << 28;
+        if (cached_stamp != s_mvp_stamp || cached_lights != ls) {
+            for (k = 0; k < s_nlights; k++)
+                model_dir(s_light[k].dir, cached[k]);
+            cached_stamp = s_mvp_stamp;
+            cached_lights = ls;
+        }
+        memcpy(ldir, cached, sizeof ldir);
+    }
     s_n_vtx += (uint32_t)n;
     for (i = 0; i < n && v0 + i < 32; i++) {
         uint32_t p = a + i * 16;
@@ -466,8 +477,8 @@ colours:
             f = ((zz << 8) / (w ? w : 1)) * s_fog_mul / 256 + s_fog_ofs;
             v->a = (uint8_t)(f < 0 ? 0 : f > 255 ? 255 : f);
         }
-        v->s = (int32_t)(((int64_t)s * s_tex.ss) >> 16);
-        v->t = (int32_t)(((int64_t)t * s_tex.ts) >> 16);
+        v->s = (s * (int32_t)s_tex.ss) >> 16;   /* (16 by 16 bits: a 32-bit product) */
+        v->t = (t * (int32_t)s_tex.ts) >> 16;
     }
 }
 
@@ -1231,9 +1242,14 @@ static void cc_slot(int cyc, int slot, int in, int sym, int alpha)
     }
 }
 
+static uint32_t s_cc_dstamp;
+
 static void cc_compile(void)
 {
     uint32_t key[6];
+    if (s_cc_dstamp == s_dstamp)
+        return;                                 /* nothing that could change it was drawn since */
+    s_cc_dstamp = s_dstamp;
     key[0] = s_cc0;
     key[1] = s_cc1;
     key[2] = (s_omh & 0x00310000) | (uint32_t)same_tile();
@@ -1263,13 +1279,25 @@ static void cc_compile(void)
     cc_slot(1, 3, AABD[s_cc1 & 7], 1, 1);
 }
 
+/* the combiner's results by shade, for a combiner state, without a second
+ * texture: vertices share colours */
+static struct { uint32_t stamp, shade; Lin res; } s_cmemo[64];
+
 /* the combiner for a vertex: shade its colour, other the second texture there */
 static void combine(Lin *out, const uint8_t shade[4], const uint8_t *other)
 {
     int c, k, sl;
     Lin res = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
-    if (!other)
+    uint32_t sk = 0, h = 0;
+    if (!other) {
+        sk = (uint32_t)shade[0] | (uint32_t)shade[1] << 8 | (uint32_t)shade[2] << 16 | (uint32_t)shade[3] << 24;
+        h = (sk * 2654435761u) >> 26;
+        if (s_cmemo[h].stamp == s_cc_stamp && s_cmemo[h].shade == sk) {
+            *out = s_cmemo[h].res;
+            return;
+        }
         other = WHITE;
+    }
     for (c = 0; c < s_cc.cycles; c++) {
         Lin prev = res;
         for (k = 0; k < 4; k++) {
@@ -1299,6 +1327,11 @@ static void combine(Lin *out, const uint8_t shade[4], const uint8_t *other)
         }
     }
     *out = res;
+    if (other == WHITE && sk | h) {
+        s_cmemo[h].stamp = s_cc_stamp;
+        s_cmemo[h].shade = sk;
+        s_cmemo[h].res = res;
+    }
 }
 
 /* whether the combiner's result depends on the second texture (TEXEL1 in
@@ -2115,7 +2148,7 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     }
 }
 
-static void rect_fill(uint32_t w0, uint32_t w1)
+static __attribute__((noinline)) void rect_fill(uint32_t w0, uint32_t w1)
 {
     int x1 = (int)((w0 >> 12) & 0xFFF) >> 2, y1 = (int)(w0 & 0xFFF) >> 2;
     int x0 = (int)((w1 >> 12) & 0xFFF) >> 2, y0 = (int)(w1 & 0xFFF) >> 2;
@@ -2226,6 +2259,10 @@ static void frame_end(void)
     tgr_rcp_frames++;
 }
 
+/* TGR_DLSTATS: commands by opcode, and G_DL targets by how much they hold */
+static uint32_t s_opcount[256];
+static int s_dlstats = -1;
+
 static void run(uint32_t dl)
 {
     uint32_t stack[18];
@@ -2235,6 +2272,8 @@ static void run(uint32_t dl)
         uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
         int op = (int)(w0 >> 24);
         pc += 8;
+        if (s_dlstats)
+            s_opcount[op]++;
         if (op != 0x04 && op != 0xB1 && op != 0xBF && op != 0x06 && op != 0xB8 && op != 0x01 && op != 0xBD &&
             op != 0x03)
             s_dstamp++;
@@ -2274,6 +2313,7 @@ static void run(uint32_t dl)
                 s_vp.tz = (int16_t)rd16(a + 12);
             } else if (idx >= 0x86 && idx <= 0x94) {
                 int k = (idx - 0x86) / 2, j;
+                s_light_stamp++;
                 for (j = 0; j < 3; j++) {
                     s_light[k].col[j] = mem(a)[j];
                     s_light[k].dir[j] = (int8_t)mem(a + 8)[j];
@@ -2344,6 +2384,7 @@ static void run(uint32_t dl)
             }
             else if (idx == 0x0A) {
                 int k = ofs / 0x20;
+                s_light_stamp++;
                 if ((ofs & 0x1F) == 0 && k < 8) {
                     s_light[k].col[0] = (uint8_t)(w1 >> 24);
                     s_light[k].col[1] = (uint8_t)(w1 >> 16);
@@ -2517,6 +2558,19 @@ static void init(void)
 
 void tgr_rcp_task(uint32_t dl)
 {
+    if (s_dlstats < 0)
+        s_dlstats = getenv("TGR_DLSTATS") != NULL;
+    if (s_dlstats && tgr_frame() >= (uint32_t)atoi(getenv("TGR_DLSTATS")) && s_dlstats == 1) {
+        int i;
+        fprintf(stderr, "dlstats frame %u:", (unsigned)tgr_frame());
+        for (i = 0; i < 256; i++)
+            if (s_opcount[i])
+                fprintf(stderr, " %02X:%u", i, (unsigned)s_opcount[i]);
+        fprintf(stderr, "\n");
+        s_dlstats = 2;
+    }
+    if (s_dlstats == 1)
+        memset(s_opcount, 0, sizeof s_opcount);
     if (!s_inited)
         init();
     s_frame_no++;

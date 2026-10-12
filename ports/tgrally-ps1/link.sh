@@ -38,8 +38,11 @@ fail=0
 for s in $SRCS; do
   o=$OUT/plat/$(echo $s | sed 's#/#_#g; s#\.c$#.o#')
   OBJS="$OBJS $o"
-  if [ ! -f $o ] || [ $s -nt $o ] || [ -n "$(find $Q/include $Q/libc/include $P/include -newer $o -name '*.h' 2>/dev/null | head -1)" ]; then
-    $TC-gcc $CF -c $s -o $o || fail=1
+  if [ ! -f $o ] || [ $s -nt $o ] || [ $0 -nt $o ] || [ -n "$(find $Q/include $Q/libc/include $P/include -newer $o -name '*.h' 2>/dev/null | head -1)" ]; then
+    case $s in
+      */gfx/rcp_ps1.c|*/fp/softfloat.c) $TC-gcc $CF ${HOTFLAGS:--O3} -c $s -o $o || fail=1;;   # the hot paths
+      *) $TC-gcc $CF -c $s -o $o || fail=1;;
+    esac
   fi
 done
 [ $fail = 0 ] || { echo "link: platform failed to compile" >&2; exit 1; }
