@@ -56,7 +56,7 @@ fi
 for s in $ASMS; do
   o=$OUT/plat/$(basename $s .s).o
   OBJS="$OBJS $o"
-  $TC-gcc -march=r3000 -msoft-float -fno-pic -mno-abicalls -c $s -o $o
+  $TC-gcc -march=r3000 -msoft-float -fno-pic -mno-abicalls $ASFLAGS -c $s -o $o
 done
 # libgcc with its single-precision routines renamed __gcc_*: platform/fp/softfloat.c
 # takes their names and hands them the cases it does not do itself

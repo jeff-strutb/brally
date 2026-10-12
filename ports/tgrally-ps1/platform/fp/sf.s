@@ -12,6 +12,13 @@
     .globl __mulsf3
     .type __mulsf3, @function
 __mulsf3:
+.ifdef SFCOUNT
+    lui     $t0, %hi(sf_count)
+    lw      $t1, %lo(sf_count)($t0)
+    nop
+    addiu   $t1, $t1, 1
+    sw      $t1, %lo(sf_count)($t0)
+.endif
     srl     $t0, $a0, 23
     andi    $t0, $t0, 0xFF          # ea
     srl     $t1, $a1, 23
@@ -103,6 +110,13 @@ __subsf3:
 __addsf3:
     move    $t9, $a1
 .Ladd:
+.ifdef SFCOUNT
+    lui     $t0, %hi(sf_count)
+    lw      $t1, %lo(sf_count)+4($t0)
+    nop
+    addiu   $t1, $t1, 1
+    sw      $t1, %lo(sf_count)+4($t0)
+.endif
     # t9 = b (negated for a subtract); a0 = a
     srl     $t0, $a0, 23
     andi    $t0, $t0, 0xFF          # ea
@@ -245,3 +259,9 @@ __addsf3:
 1:  j       __gcc_subsf3
     nop
     .size __addsf3, . - __addsf3
+
+.ifdef SFCOUNT
+    .data
+    .globl sf_count
+sf_count: .word 0, 0
+.endif

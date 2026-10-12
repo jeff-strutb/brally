@@ -32,6 +32,10 @@ static const char *const s_rg_name[RG_N] = { "task", "kept lists", "kept vertice
                                              "slow triangles", "rectangles", "state", "texture lookup", "vertices",
                                              "frame end", "run", "matrices", "movemem", "fills", "run triangles", "cut: clipping", "cut: emit", "cut: grids", "matrix and light setup" };
 static uint64_t s_rg[RG_N];                     /* (nanoseconds) */
+static uint32_t s_cls_t[4], s_cls_n[4];
+static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
+#define ST_NOW() (*(volatile uint32_t *)0xBF801120)
+#define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
 static uint32_t s_runops[256];
 uint64_t ps1_time_ns(void);
 #define RG_BEGIN(id) uint64_t rg_t_##id = ps1_time_ns()
@@ -1529,11 +1533,7 @@ static int s_tcache_next;
 static const Tex *tile_texture_(int t);
 static const Tex *tile_texture(int t)
 {
-    const Tex *r;
-    RG_BEGIN(RG_TEX);
-    r = tile_texture_(t);
-    RG_END(RG_TEX);
-    return r;
+    return tile_texture_(t);
 }
 
 static const Tex *tile_texture_(int t)
@@ -2591,11 +2591,7 @@ static int emit_grid_slow(const CV *a, const CV *b, const CV *c, const Prim *pr,
 
 static int emit_grid(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
 {
-    int r;
-    RG_BEGIN(RG_GRID);
-    r = (lg <= 2 && emit_grid_words(a, b, c, pr, lg)) || emit_grid_slow(a, b, c, pr, lg);
-    RG_END(RG_GRID);
-    return r;
+    return (lg <= 2 && emit_grid_words(a, b, c, pr, lg)) || emit_grid_slow(a, b, c, pr, lg);
 }
 
 /* the fast way: one texture window shift for the whole triangle (its texels
@@ -2958,9 +2954,7 @@ static void triangle_(int ia, int ib, int ic);
 static int s_dry;                               /* triangle() works out the draw (s_fs) and draws nothing */
 static void triangle(int ia, int ib, int ic)
 {
-    RG_BEGIN(RG_TRI);
     triangle_(ia, ib, ic);
-    RG_END(RG_TRI);
 }
 
 static void triangle_(int ia, int ib, int ic)
@@ -3466,9 +3460,7 @@ static void dl_census(uint32_t a, int depth)
 static void exec_state_(int op, uint32_t w0, uint32_t w1);
 static void exec_state(int op, uint32_t w0, uint32_t w1)
 {
-    RG_BEGIN(RG_STATE);
     exec_state_(op, w0, w1);
-    RG_END(RG_STATE);
 }
 
 static void exec_state_(int op, uint32_t w0, uint32_t w1)
@@ -3707,7 +3699,8 @@ typedef struct {
 } DlcVar;
 typedef struct Dlc {
     struct Dlc *next;
-    uint32_t addr, sum, reads, checked;         /* (checked: the frame its bytes were last checked in) */
+    uint32_t addr, sum, qsum, reads, checked;   /* (checked: the frame its bytes were last checked in) */
+    int vol;                                    /* (its address's lists change: checked whole every frame) */
     int ncmd, ntri, bad;
     DCmd *cmd;
     uint32_t segmask, segval[16];
@@ -3721,6 +3714,7 @@ static uint32_t s_dlc_arena[DLC_ARENA / 4];
 static int s_dlc_used;
 static Dlc *s_dlc[DLC_HASH];
 static int s_dlc_on = -1;
+static uint32_t s_root_dl;                      /* the frame's display list (where the game builds its lists) */
 static int s_nm_on = 1;                         /* TGR_NOMESH: kept lists not drawn as meshes */
 static uint32_t s_n_dlc_hit, s_n_dlc_tpl, s_n_dlc_rec;  /* TGR_PERF */
 /* TGR_PERF counts: why lists were compiled or recorded again (compiled, changed, new key, texture
@@ -3751,8 +3745,37 @@ static void dlc_flush(void)
 
 static uint32_t rot(uint32_t h, uint32_t w) { return (h << 5 | h >> 27) + w; }
 
-/* the list's words and its vertex blocks' */
-static uint32_t dlc_sum(const Dlc *d)
+/* the list's words and its vertex blocks': all of them, or (quick) each
+ * block's first and last vertex */
+static uint32_t dlc_sum_(const Dlc *d, int quick);
+static uint32_t dlc_sum(const Dlc *d) { return dlc_sum_(d, 0); }
+
+/* addresses whose lists have changed under them: checked whole every frame */
+static uint32_t s_dlc_vol[256];
+
+static int dlc_volatile(uint32_t a)
+{
+    uint32_t h = (a >> 3) * 2654435761u >> 24;
+    int k;
+    for (k = 0; k < 8; k++)
+        if (s_dlc_vol[(h + k) & 255] == a)
+            return 1;
+    return 0;
+}
+
+static void dlc_set_volatile(uint32_t a)
+{
+    uint32_t h = (a >> 3) * 2654435761u >> 24;
+    int k;
+    for (k = 0; k < 8; k++)
+        if (!s_dlc_vol[(h + k) & 255] || s_dlc_vol[(h + k) & 255] == a) {
+            s_dlc_vol[(h + k) & 255] = a;
+            return;
+        }
+    s_dlc_vol[h] = a;
+}
+
+static uint32_t dlc_sum_(const Dlc *d, int quick)
 {
     const uint32_t *w = (const uint32_t *)mem(d->addr);
     uint32_t h = 0x9E3779B9u;
@@ -3764,8 +3787,14 @@ static uint32_t dlc_sum(const Dlc *d)
             const uint32_t *v = (const uint32_t *)mem(d->cmd[i].w1);
             int n = (int)((d->cmd[i].w0 >> 10) & 0x3F);
             int j;
-            for (j = 0; j < n * 4; j += 4)     /* (every vertex: the game rewrites some each frame) */
-                h = rot(rot(rot(rot(h, v[j]), v[j + 1]), v[j + 2]), v[j + 3]);
+            if (quick) {
+                h = rot(rot(rot(rot(h, v[0]), v[1]), v[2]), v[3]);
+                v += (n - 1) * 4;
+                h = rot(rot(rot(rot(h, v[0]), v[1]), v[2]), v[3]);
+            } else {
+                for (j = 0; j < n * 4; j += 4) /* (every vertex: the game rewrites some each frame) */
+                    h = rot(rot(rot(rot(h, v[j]), v[j + 1]), v[j + 2]), v[j + 3]);
+            }
         }
     return h;
 }
@@ -3952,7 +3981,9 @@ static Dlc *dlc_compile(uint32_t a)
             d->cmd[i].aux = nv;
         }
     }
-    d->sum = dlc_sum(d);
+    d->sum = dlc_sum_(d, 0);
+    d->qsum = dlc_sum_(d, 1);
+    d->vol = dlc_volatile(a);
     return d;
 }
 
@@ -4317,6 +4348,18 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic, i
 }
 
 /* ---- kept lists as PlayStation meshes ------------------------------------------------- */
+static int nm_why(const Dlc *d, const DlcVar *v)    /* (TGR_PERF: why a variant has no mesh) */
+{
+    int i;
+    if (v->vfog) return 0;
+    for (i = 0; i < d->ntri; i++) {
+        if (v->tpl[i].kind == 0) return 1;
+        if (v->tpl[i].kind == 2) return 2;
+        if (v->prim[v->tpl[i].prim].fog) return 3;
+    }
+    return 4;
+}
+
 /* the mesh of a variant whose every triangle has its draw kept (none fogged):
  * NULL while it cannot be one */
 static NMesh *nm_build(const Dlc *d, const DlcVar *v)
@@ -4443,6 +4486,7 @@ static int nm_draw(const Dlc *d, DlcVar *v)
 {
     const NMesh *nm = v->nm;
     int b, i;
+    uint32_t pieces0 = s_n_piece, cut0 = s_path[2];
     for (b = 0; b < v->nprim && b < 48; b++) {    /* (the textures where they were baked) */
         const Tex *tx = v->prim[b].tex;
         if (tx && (tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u) != nm->place[b]) {
@@ -4461,9 +4505,12 @@ static int nm_draw(const Dlc *d, DlcVar *v)
         {
             uint32_t c0 = *(volatile uint32_t *)0xBF801120;
             mesh_vertices(bt->nv, bt->n, bt->v0, bt->lit);
+            ST_ADD(4, c0);
             s_flagbits[8] += (*(volatile uint32_t *)0xBF801120 - c0) & 0xFFFF;
             s_flagbits[10] += bt->n;
         }
+        {
+        uint32_t tl0 = ST_NOW();
         for (i = 0; i < bt->nt; i++, tr++) {
             uint32_t idx = tr->idx, fl = idx >> 24;
             int ia = (int)(idx & 31), ib = (int)(idx >> 5 & 31), ic = (int)(idx >> 10 & 31);
@@ -4479,10 +4526,8 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                 continue;
             }
             if (!(A->ok & B->ok & C->ok) || (fl & NT_CUT)) {
-                RG_BEGIN(RG_CLIP);
                 s_n_tri--;
                 dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
-                RG_END(RG_CLIP);
                 s_path[2]++;
                 continue;
             }
@@ -4495,10 +4540,8 @@ static int nm_draw(const Dlc *d, DlcVar *v)
             if ((fl & NT_TEX) && (edge_split(A->w, B->w, A->x, A->y, B->x, B->y) ||
                                   edge_split(B->w, C->w, B->x, B->y, C->x, C->y) ||
                                   edge_split(C->w, A->w, C->x, C->y, A->x, A->y))) {
-                RG_BEGIN(RG_CLIP);
                 s_n_tri--;
                 dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
-                RG_END(RG_CLIP);
                 s_path[2]++;
                 continue;
             }
@@ -4542,9 +4585,18 @@ static int nm_draw(const Dlc *d, DlcVar *v)
             else
                 put_flat(p);
         }
+        ST_ADD(5, tl0);
+        }
     }
-    for (i = 0; i < nm->nst; i++)
-        exec_state((int)(nm->st[i * 2] >> 24), nm->st[i * 2], nm->st[i * 2 + 1]);
+    if (s_n_piece == pieces0 && s_path[2] == cut0)
+        s_nmempty[0]++;
+    s_nmempty[1]++;
+    {
+        uint32_t c0 = ST_NOW();
+        for (i = 0; i < nm->nst; i++)
+            exec_state((int)(nm->st[i * 2] >> 24), nm->st[i * 2], nm->st[i * 2 + 1]);
+        ST_ADD(6, c0);
+    }
     return 1;
 }
 
@@ -4559,15 +4611,22 @@ static int dlc_call(uint32_t a)
         s_dlc_on = getenv("TGR_NODLC") == NULL;
         s_nm_on = getenv("TGR_NOMESH") == NULL;
     }
+    uint32_t st0 = ST_NOW();
     if (!s_dlc_on || s_target < 0)
         return 0;
     for (d = s_dlc[(a >> 3) & (DLC_HASH - 1)]; d && d->addr != a; d = d->next)
         ;
+    ST_ADD(0, st0);
+    st0 = ST_NOW();
     if (d && !d->bad) {
         for (k = 0; k < 16; k++)
             if ((d->segmask >> k & 1) && d->segval[k] != s_seg[k])
                 break;
-        if (k < 16 || (d->checked != s_frame_no && dlc_sum(d) != d->sum)) {
+        if (k < 16 || (d->checked != s_frame_no &&
+                       ((d->vol || !((s_frame_no + (a >> 3)) & 7)) ? dlc_sum_(d, 0) != d->sum : dlc_sum_(d, 1) != d->qsum))) {
+            dlc_set_volatile(a);
+            if (getenv("TGR_LOG"))
+                tgr_log("rcp: list %06X changed (root %06X)\n", (unsigned)a, (unsigned)s_root_dl);
             d->addr = 0xFFFFFFFF;               /* changed: compiled again */
             d = NULL;
             s_dlc_why[1]++;
@@ -4586,7 +4645,11 @@ static int dlc_call(uint32_t a)
     if (d->bad)
         return 0;
     d->checked = s_frame_no;
+    ST_ADD(1, st0);
+    st0 = ST_NOW();
     sig = dlc_sig(d->reads);
+    ST_ADD(2, st0);
+    st0 = ST_NOW();
     v = d->var[0] && d->var[0]->sig == sig ? d->var[0] : d->var[1] && d->var[1]->sig == sig ? d->var[1] : NULL;
     if (!v) {
         if (!d->var[d->nextvar]) {
@@ -4641,8 +4704,14 @@ static int dlc_call(uint32_t a)
             ((Tex *)v->prim[k].tex)->used = s_frame_no;
             s_shelf[v->prim[k].tex->shelf].used = s_frame_no;
         }
-    if (v->nm && s_nm_on && nm_draw(d, v))
+    ST_ADD(3, st0);
+    if (v->nm && s_nm_on && nm_draw(d, v)) {
+        s_st[7] += 1u << 16;
         return 1;
+    }
+    s_st[7]++;
+    if (!v->nm)
+        s_nmwhy[v->recorded ? nm_why(d, v) : 7]++;
     for (i = 0; i < d->ncmd; i++) {
         uint32_t w0 = d->cmd[i].w0, w1 = d->cmd[i].w1;
         int op = (int)(w0 >> 24), m, nt;
@@ -4681,6 +4750,19 @@ static int dlc_call(uint32_t a)
                     v->nm = NULL;
                     s_dlc_why[5]++;
                 }
+                if (t->kind == 0) {
+                    /* its draw worked out once, whether or not it shows (so the list becomes a mesh) */
+                    mesh_fill(ia);
+                    mesh_fill(ib);
+                    mesh_fill(ic);
+                    s_dry = 1;
+                    triangle(ia, ib, ic);
+                    dlc_capture(v, t, ia, ib, ic);
+                    s_dry = 0;
+                    s_n_dlc_rec++;
+                }
+                if (t->kind != 1)
+                    s_dlc_tw[t->kind]++;
                 {
                     /* off the screen or facing away: nothing to keep or draw */
                     const MVtx *a0 = &s_mvx[ia], *a1 = &s_mvx[ib], *a2 = &s_mvx[ic];
@@ -4707,19 +4789,6 @@ static int dlc_call(uint32_t a)
                         }
                     }
                 }
-                if (t->kind == 0) {
-                    /* its draw worked out once, when it first shows */
-                    mesh_fill(ia);
-                    mesh_fill(ib);
-                    mesh_fill(ic);
-                    s_dry = 1;
-                    triangle(ia, ib, ic);
-                    dlc_capture(v, t, ia, ib, ic);
-                    s_dry = 0;
-                    s_n_dlc_rec++;
-                }
-                if (t->kind != 1)
-                    s_dlc_tw[t->kind]++;
                 if (t->kind == 1 &&
                     (!v->prim[t->prim].tex || v->prim[t->prim].tex->key == v->pkey[t->prim])) {
                     const MVtx *a0 = &s_mvx[ia], *a1 = &s_mvx[ib], *a2 = &s_mvx[ic];
@@ -4728,9 +4797,7 @@ static int dlc_call(uint32_t a)
                         !(pr->textured && (edge_split(a0->w, a1->w, a0->x, a0->y, a1->x, a1->y) ||
                                            edge_split(a1->w, a2->w, a1->x, a1->y, a2->x, a2->y) ||
                                            edge_split(a2->w, a0->w, a2->x, a2->y, a0->x, a0->y)))) {
-                        RG_BEGIN(RG_KTRI);
                         dlc_tri(t, pr, a0, a1, a2);
-                        RG_END(RG_KTRI);
                         s_path[1]++;
                         continue;
                     }
@@ -4871,9 +4938,13 @@ static void run(uint32_t dl)
                 dl_census(seg_addr(w1), sp);
             if (((w0 >> 16) & 0xFF) == 0) {
                 int done;
-                RG_BEGIN(RG_DLC);
-                done = dlc_call(seg_addr(w1));
-                RG_END(RG_DLC);
+                uint32_t c0 = *(volatile uint32_t *)0xBF801120, la = seg_addr(w1);
+                done = dlc_call(la);
+                {
+                    int cls = la >= 0x3E0000 ? 3 : la >= 0x2F0000 ? 2 : la >= 0x200000 ? 1 : 0;
+                    s_cls_t[cls] += (*(volatile uint32_t *)0xBF801120 - c0) & 0xFFFF;
+                    s_cls_n[cls]++;
+                }
                 if (done)
                     break;                            /* drawn from its kept form */
             }
@@ -4963,6 +5034,7 @@ void tgr_rcp_task(uint32_t dl)
         init();
     s_frame_no++;
     s_mvn = 0;
+    s_root_dl = seg_addr(dl);
     if (s_tex_full) {
         /* the shelves are held by textures this frame may not use: all go, and
          * what it does use packs again (the uploads land after the last frame's
@@ -5102,6 +5174,22 @@ void tgr_rcp_present(uint32_t frame)
                     s_rg[r] = 0;
                 }
                 fprintf(stderr, "\n");
+                fprintf(stderr, "perf: lists by place (ms/calls): <2M %u/%u 2M %u/%u 2F %u/%u 3E %u/%u\n",
+                        (unsigned)(s_cls_t[0] * 8 / 33869), (unsigned)s_cls_n[0], (unsigned)(s_cls_t[1] * 8 / 33869), (unsigned)s_cls_n[1],
+                        (unsigned)(s_cls_t[2] * 8 / 33869), (unsigned)s_cls_n[2], (unsigned)(s_cls_t[3] * 8 / 33869), (unsigned)s_cls_n[3]);
+                memset(s_cls_t, 0, sizeof s_cls_t);
+                memset(s_cls_n, 0, sizeof s_cls_n);
+                fprintf(stderr, "perf: list stages (ms): find %u check %u key %u variant %u vertices %u triangles %u state %u\n",
+                        (unsigned)(s_st[0] * 8 / 33869), (unsigned)(s_st[1] * 8 / 33869), (unsigned)(s_st[2] * 8 / 33869),
+                        (unsigned)(s_st[3] * 8 / 33869), (unsigned)(s_st[4] * 8 / 33869), (unsigned)(s_st[5] * 8 / 33869),
+                        (unsigned)(s_st[6] * 8 / 33869));
+                fprintf(stderr, "perf: lists as meshes %u, replayed %u (no mesh: fog %u unseen %u slow %u fogprim %u other %u unrecorded %u)\n",
+                        (unsigned)(s_st[7] >> 16), (unsigned)(s_st[7] & 0xFFFF), (unsigned)s_nmwhy[0], (unsigned)s_nmwhy[1],
+                        (unsigned)s_nmwhy[2], (unsigned)s_nmwhy[3], (unsigned)s_nmwhy[4], (unsigned)s_nmwhy[7]);
+                memset(s_nmwhy, 0, sizeof s_nmwhy);
+                fprintf(stderr, "perf: meshes drawing nothing %u of %u\n", (unsigned)s_nmempty[0], (unsigned)s_nmempty[1]);
+                s_nmempty[0] = s_nmempty[1] = 0;
+                memset(s_st, 0, sizeof s_st);
                 fprintf(stderr, "perf: run commands:");
                 for (r = 0; r < 256; r++)
                     if (s_runops[r] > 300)
