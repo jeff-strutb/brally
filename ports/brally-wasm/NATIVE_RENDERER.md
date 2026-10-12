@@ -1,5 +1,8 @@
 # Spec: a Mac-native renderer and frame loop for the playable port
 
+**Deprecated 2026-10-12** with the 32-bit lane (`ports/README.md`): kept as
+prior art for the 64-bit port's renderer.
+
 Status: **phases 1-6 done** (phase 6 found nothing dead; see section 5) (spec written 2026-09-29; phases the same day,
 see section 5). Scope: the playable Mac
 build, `build/brally/wasm32/brally` (the 32-bit lane, `ports/brally-wasm/wasm/`). The decomp

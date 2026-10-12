@@ -12,7 +12,7 @@ carries its own differences.
 | folder | what |
 |---|---|
 | `brally/` | Boss Rally, native 64-bit: a retyped fork of the decomp's core (`src/`, `include/`) plus a cross-platform layer (`platform/`: hosts null / macOS / Windows, renderers null / soft / Metal / Vulkan). `PORTABLE-CORE.md` describes it. |
-| `brally-wasm/` | Boss Rally, the 32-bit lane: the decomp's MSVC arm compiled to wasm32 and translated to native arm64 C, with the original data at its original addresses, plus a native macOS host (`wasm/host`, `wasm/native`). Ships as the Remastered `Boss Rally.app`. `NATIVE_RENDERER.md` describes its renderer. |
+| `brally-wasm/` | **Deprecated 2026-10-12**: no new work here; the 64-bit port (`brally/`, shipped by `remastered/`) is the game, and Remastered features land there (`docs/brally/remaster/lighting/DESIGN.md`). It stays buildable as a reference, since the port-sync and audit tools read its build. Boss Rally, the 32-bit lane: the decomp's MSVC arm compiled to wasm32 and translated to native arm64 C, with the original data at its original addresses, plus a native macOS host (`wasm/host`, `wasm/native`). Ships as the Remastered `Boss Rally.app`. `NATIVE_RENDERER.md` describes its renderer. |
 | `tgrally/` | Top Gear Rally, native: a fork of the N64 decomp with an arena memory model and the same hosts. `PORT.md` describes it. |
 | `remastered/` | Top Gear Rally Remastered: Top Gear Rally's menus with Boss Rally's engine running the races, the two native ports in one executable over one host (macOS, Windows, the iPhone; Linux headless). `README.md` describes it. |
 | `common/` | the Remastered assets (models, textures, music). The binaries stay out of git; their recipes are tracked. |

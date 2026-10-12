@@ -1,5 +1,11 @@
 # Remastered Mac port (wasm build)
 
+**Deprecated 2026-10-12.** The 32-bit lane takes no new work. Remastered
+features land in the 64-bit port (`ports/brally`, shipped by
+`ports/remastered`); the new lighting is designed in
+`docs/brally/remaster/lighting/DESIGN.md`. What follows describes the lane as
+it stands, as prior art.
+
 <p>
 <img src="docs/brally/img/mac-port-coastline-original.png" width="49%" alt="Coastline at 83 mph in the Mac port with Original on: the game's own picture and its 1999 car model">
 <img src="docs/brally/img/mac-port-coastline-remastered.png" width="49%" alt="The same moment with Remastered on: modern lighting, sun shadows and the high-detail model of the player's car">
