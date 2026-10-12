@@ -112,19 +112,27 @@ static int s_hires = -1;                        /* the display mode set: 1 640 x
 static int s_ysh;                               /* 1: game y halved (640-wide images) */
 static uint32_t s_cimg, s_zimg;
 
+/* the VRAM buffer standing for the game's colour image at a: a new image
+ * takes the buffer used least recently (the menus' two give way to the
+ * race's) */
+static uint32_t s_fbused[2];
+static uint32_t s_fbclock;
+static int s_fbclear[2];                        /* newly given to an image: black first, as fresh RAM */
+
 static int fb_index(uint32_t a)
 {
-    int i;
+    int i, k;
     for (i = 0; i < 2; i++)
-        if (s_fbaddr[i] == a)
-            return i;
-    for (i = 0; i < 2; i++)
-        if (s_fbaddr[i] == 0xFFFFFFFF) {
-            tgr_log("rcp: frame buffer %d at %06X\n", i, a);
-            s_fbaddr[i] = a;
+        if (s_fbaddr[i] == a) {
+            s_fbused[i] = ++s_fbclock;
             return i;
         }
-    return -1;
+    k = s_fbused[0] <= s_fbused[1] ? 0 : 1;
+    tgr_log("rcp: frame buffer %d at %06X\n", k, a);
+    s_fbaddr[k] = a;
+    s_fbclear[k] = 1;
+    s_fbused[k] = ++s_fbclock;
+    return k;
 }
 
 static void fb_rect(int t, int *x, int *y, int *w, int *h)
@@ -155,6 +163,7 @@ static int s_nlights = 1;
 static struct { int on, tile, level; uint32_t ss, ts; } s_tex;
 
 typedef struct {
+    int32_t cx, cy, cz, cw;                     /* clip space, 8 fraction bits */
     int16_t x, y;                               /* screen, pixels */
     int16_t z;                                  /* ordering depth, 0 near .. OT_LEN far */
     uint8_t r, g, b, a;
@@ -220,6 +229,29 @@ static void model_dir(const int8_t d[3], int32_t out[3])
         out[i] = (int32_t)((v[i] << 14) / l);
 }
 
+/* clip space (8 fraction bits, w at least W_NEAR) to the screen: the
+ * viewport's translation plus the normalised coordinates times its scale
+ * (13.2); z the ordering-table bucket from the normalised depth */
+#define W_NEAR 16
+static void project(int32_t cx, int32_t cy, int32_t cz, int32_t cw, int16_t *px, int16_t *py, int16_t *pz)
+{
+    int32_t sx, sy, sz, w = cw, xx = cx, yy = cy, zz = cz;
+    while (w > 0x7FFF || xx > 0x3FFFFF || xx < -0x3FFFFF || yy > 0x3FFFFF || yy < -0x3FFFFF ||
+           zz > 0x3FFFFF || zz < -0x3FFFFF) {
+        w >>= 1; xx >>= 1; yy >>= 1; zz >>= 1;
+    }
+    if (w < 1) w = 1;
+    sx = s_vp.tx + (int32_t)(((xx << 8) / w) * s_vp.sx >> 8);
+    sy = s_vp.ty - (int32_t)(((yy << 8) / w) * s_vp.sy >> 8);
+    sz = (zz << 8) / w;                         /* normalised depth, 8 fraction bits */
+    sx >>= 2;
+    sy >>= 2 + s_ysh;
+    *px = (int16_t)(sx < -2048 ? -2048 : sx > 2047 ? 2047 : sx);
+    *py = (int16_t)(sy < -2048 ? -2048 : sy > 2047 ? 2047 : sy);
+    sz = (sz + 256) * (OT_LEN / 2) >> 8;
+    *pz = (int16_t)(sz < 0 ? 0 : sz >= OT_LEN ? OT_LEN - 1 : sz);
+}
+
 static void load_vertices(uint32_t a, int n, int v0)
 {
     int32_t ldir[8][3];
@@ -236,41 +268,20 @@ static void load_vertices(uint32_t a, int n, int v0)
         int32_t x = (int16_t)rd16(p), y = (int16_t)rd16(p + 2), z = (int16_t)rd16(p + 4);
         int32_t s = (int16_t)rd16(p + 8), t = (int16_t)rd16(p + 10);
         Vtx *v = &s_vtx[v0 + i];
-        int32_t cx = (int32_t)(((int64_t)x * m->m[0][0] + (int64_t)y * m->m[1][0] + (int64_t)z * m->m[2][0]) >> 16) + (m->m[3][0] >> 16);
-        int32_t cy = (int32_t)(((int64_t)x * m->m[0][1] + (int64_t)y * m->m[1][1] + (int64_t)z * m->m[2][1]) >> 16) + (m->m[3][1] >> 16);
-        int32_t cz = (int32_t)(((int64_t)x * m->m[0][2] + (int64_t)y * m->m[1][2] + (int64_t)z * m->m[2][2]) >> 16) + (m->m[3][2] >> 16);
+        int32_t cx = (int32_t)(((int64_t)x * m->m[0][0] + (int64_t)y * m->m[1][0] + (int64_t)z * m->m[2][0] + m->m[3][0]) >> 8);
+        int32_t cy = (int32_t)(((int64_t)x * m->m[0][1] + (int64_t)y * m->m[1][1] + (int64_t)z * m->m[2][1] + m->m[3][1]) >> 8);
+        int32_t cz = (int32_t)(((int64_t)x * m->m[0][2] + (int64_t)y * m->m[1][2] + (int64_t)z * m->m[2][2] + m->m[3][2]) >> 8);
         int32_t cw = (int32_t)(((int64_t)x * m->m[0][3] + (int64_t)y * m->m[1][3] + (int64_t)z * m->m[2][3] + m->m[3][3]) >> 8);
-        /* cx..cz are whole units; cw 8 fraction bits (an orthographic w is 1) */
-        int32_t sx, sy, sz;
+        v->cx = cx; v->cy = cy; v->cz = cz; v->cw = cw;
         v->clip = 0;
-        if (cw < 16) {                          /* behind (or on) the eye */
-            v->clip = 16;
-            cw = 16;
-        }
-        cx <<= 8; cy <<= 8; cz <<= 8;
+        if (cw < W_NEAR)
+            v->clip = 16;                       /* behind (or at) the eye: clipped in triangle() */
         if (cx < -cw) v->clip |= 1;
         if (cx > cw) v->clip |= 2;
         if (cy < -cw) v->clip |= 4;
         if (cy > cw) v->clip |= 8;
-        {
-            /* screen = viewport translation + ndc * viewport scale (13.2) */
-            int sh = 0;
-            int32_t w = cw, xx = cx, yy = cy, zz = cz;
-            while (w > 0x7FFF || xx > 0x3FFFFF || xx < -0x3FFFFF || yy > 0x3FFFFF || yy < -0x3FFFFF ||
-                   zz > 0x3FFFFF || zz < -0x3FFFFF) {
-                w >>= 1; xx >>= 1; yy >>= 1; zz >>= 1;
-                sh++;
-            }
-            if (w < 1) w = 1;
-            sx = s_vp.tx + (int32_t)(((xx << 8) / w) * s_vp.sx >> 8);
-            sy = s_vp.ty - (int32_t)(((yy << 8) / w) * s_vp.sy >> 8);
-            sz = (zz << 8) / w;                 /* ndc z, 8 fraction bits */
-        }
-        sx >>= 2; sy >>= 2 + s_ysh;
-        v->x = (int16_t)(sx < -2048 ? -2048 : sx > 2047 ? 2047 : sx);
-        v->y = (int16_t)(sy < -2048 ? -2048 : sy > 2047 ? 2047 : sy);
-        sz = (sz + 256) * (OT_LEN / 2) >> 8;
-        v->z = (int16_t)(sz < 0 ? 0 : sz >= OT_LEN ? OT_LEN - 1 : sz);
+        if (!(v->clip & 16))
+            project(cx, cy, cz, cw, &v->x, &v->y, &v->z);
         if (s_geom & G_LIGHTING) {
             int r = s_light[s_nlights].col[0], g = s_light[s_nlights].col[1], b = s_light[s_nlights].col[2];
             int32_t nx = (int8_t)c[0], ny = (int8_t)c[1], nz = (int8_t)c[2];
@@ -435,6 +446,7 @@ typedef struct {
     uint16_t clut, vx, vy;                      /* the texture's place in VRAM, halfwords */
     uint16_t w, h;                              /* texels */
     uint8_t mode, shelf, has_alpha;             /* mode: 0 4-bit, 1 8-bit, 2 15-bit */
+    uint8_t wraps, wrapt;                       /* repeats across (down): placed aligned to its size */
     uint32_t used;
 } Tex;
 #define NTEX 384
@@ -453,9 +465,14 @@ static void tex_flush_all(void)
     s_half_top[0] = s_half_top[1] = 0;
 }
 
+static int s_align_x = 1, s_align_y = 1;        /* the next allocation's alignment (halfwords, rows) */
+
 static int shelf_fit(int i, int w)
 {
     int x = s_shelf[i].x;
+    if (s_shelf[i].y % s_align_y)
+        return -1;
+    x = (x + s_align_x - 1) / s_align_x * s_align_x;
     if (w <= 64 && (x & 63) + w > 64)           /* no straddling a page */
         x = (x + 63) & ~63;
     return x + w <= 384 ? x : -1;
@@ -472,8 +489,9 @@ static int vram_alloc(int w, int h, int *px, int *py)
             goto found;
     h = hc;
     for (i = 0; i < 2; i++)
-        if (s_nshelf < NSHELF && s_half_top[i] + h <= 256) {
+        if (s_nshelf < NSHELF && (s_half_top[i] + s_align_y - 1) / s_align_y * s_align_y + h <= 256) {
             int k = s_nshelf++;
+            s_half_top[i] = (s_half_top[i] + s_align_y - 1) / s_align_y * s_align_y;
             s_shelf[k].half = (int16_t)i;
             s_shelf[k].y = (int16_t)s_half_top[i];
             s_shelf[k].h = (int16_t)h;
@@ -730,7 +748,7 @@ static const Tex *tile_texture(int t)
     uint32_t key, check;
     int px, py, pg, hw;
     Tex *tx, old;
-    int reuse = 0;
+    int reuse = 0, wrap_s = 0, wrap_t = 0;
     int by0 = s_band_y0;
     if (!(key = tile_key(t, &check, &w, &h)))
         return NULL;
@@ -776,12 +794,25 @@ static const Tex *tile_texture(int t)
             if (s_texs[i].used < oldest) { oldest = s_texs[i].used; k = i; }
         s_texs[k] = s_texs[--s_ntex];
     }
+    {
+        /* a power-of-two size that the tile repeats: the GPU's texture window
+         * repeats it if it sits aligned to its size within the page */
+        int ws = !s_band_h && tl->masks && !(tl->cms & 2) && w == (1 << tl->masks) && w >= 8 && w <= 256;
+        int wt = !s_band_h && tl->maskt && !(tl->cmt & 2) && h == (1 << tl->maskt) && h >= 8 && h <= 256;
+        int k = mode == 0 ? 4 : mode == 1 ? 2 : 1;
+        s_align_x = ws ? (w / k < 1 ? 1 : w / k) : 1;
+        s_align_y = wt ? h : 1;
+        if (ws && w / k > 64) { ws = 0; s_align_x = 1; }
+        wrap_s = ws;
+        wrap_t = wt;
+    }
     if (reuse && old.used != s_frame_no && old.w == w && old.h == h && old.mode == mode) {
         px = old.vx;
         py = old.vy;
         pg = old.shelf;
         s_shelf[pg].used = s_frame_no;
     } else if ((pg = vram_alloc(hw, h, &px, &py)) < 0) {
+        s_align_x = s_align_y = 1;
         if (s_log)
         {
             int j;
@@ -803,6 +834,9 @@ static const Tex *tile_texture(int t)
     tx->used = s_frame_no;
     tx->vx = (uint16_t)px;
     tx->vy = (uint16_t)py;
+    tx->wraps = (uint8_t)wrap_s;
+    tx->wrapt = (uint8_t)wrap_t;
+    s_align_x = s_align_y = 1;
     if (s_log) {                                /* (a check: no two live textures share VRAM) */
         int j;
         for (j = 0; j < s_ntex - 1; j++) {
@@ -1188,30 +1222,120 @@ static int tc(int32_t st, int32_t origin, int shift)
 }
 
 /* ---- primitives ------------------------------------------------------------------------ */
+/* a texture coordinate (10.5, scaled by G_TEXTURE) to texels from the tile's origin, 1/32 texel */
+static int32_t tc32(int32_t st, int32_t origin, int shift)
+{
+    int32_t v = st;
+    if (shift > 10)
+        v <<= 16 - shift;
+    else
+        v >>= shift;
+    return v - origin;
+}
 static int clamp_u(int u, int w) { return u < 0 ? 0 : u > w ? w : u; }
 
-static void triangle(int ia, int ib, int ic)
+/* ---- triangles: clipped in clip space, split to what the GPU draws -------------------- */
+typedef struct { int32_t x, y, z, w, u, v, r, g, b; } CV;            /* clip space; u, v 1/32 texel */
+typedef struct { int16_t x, y, z; int32_t u, v; int16_t r, g, b; } SV; /* screen */
+
+#define GUARD 2                                 /* the guard band: |x|, |y| <= GUARD * w */
+
+static int32_t plane_d(const CV *c, int pl)
 {
-    const Vtx *v[3];
-    Draw d;
-    Lin col[3];
-    int k, words, cmd, semi = 0, abr = 0, mask;
-    uint32_t *p;
-    int tile = s_tex.tile, want_tex;
-    if (ia >= 32 || ib >= 32 || ic >= 32 || s_target < 0)
+    switch (pl) {
+    case 0: return c->w - W_NEAR;
+    case 1: return GUARD * c->w - c->x;
+    case 2: return GUARD * c->w + c->x;
+    case 3: return GUARD * c->w - c->y;
+    default: return GUARD * c->w + c->y;
+    }
+}
+
+static void cv_lerp(CV *o, const CV *a, const CV *b, int32_t t)   /* t 16.16 */
+{
+#define L(f) o->f = a->f + (int32_t)(((int64_t)(b->f - a->f) * t) >> 16)
+    L(x); L(y); L(z); L(w); L(u); L(v); L(r); L(g); L(b);
+#undef L
+}
+
+/* Sutherland-Hodgman against one plane: n vertices in, the count out */
+static int clip_plane(const CV *in, int n, CV *out, int pl)
+{
+    int i, m = 0;
+    for (i = 0; i < n; i++) {
+        const CV *a = &in[i], *b = &in[(i + 1) % n];
+        int32_t da = plane_d(a, pl), db = plane_d(b, pl);
+        if (da >= 0)
+            out[m++] = *a;
+        if ((da >= 0) != (db >= 0)) {
+            int32_t t = (int32_t)(((int64_t)da << 16) / ((int64_t)da - db));
+            cv_lerp(&out[m++], a, b, t);
+        }
+    }
+    return m;
+}
+
+/* what the primitive draws with, shared by its pieces */
+typedef struct {
+    const Tex *tex;
+    int textured, semi, abr, cmd, zsort;
+    int wraps, wrapt, ub, vb;                   /* wrapping (a texture window) and the texels' base in the page */
+    uint32_t window;
+} Prim;
+
+static int span_ok(const SV *a, const SV *b, const SV *c, const Prim *pr, int *split)
+{
+    int minx = a->x, maxx = a->x, miny = a->y, maxy = a->y, k;
+    const SV *v[3] = { a, b, c };
+    int32_t minu = a->u, maxu = a->u, minv = a->v, maxv = a->v;
+    for (k = 1; k < 3; k++) {
+        if (v[k]->x < minx) minx = v[k]->x;
+        if (v[k]->x > maxx) maxx = v[k]->x;
+        if (v[k]->y < miny) miny = v[k]->y;
+        if (v[k]->y > maxy) maxy = v[k]->y;
+        if (v[k]->u < minu) minu = v[k]->u;
+        if (v[k]->u > maxu) maxu = v[k]->u;
+        if (v[k]->v < minv) minv = v[k]->v;
+        if (v[k]->v > maxv) maxv = v[k]->v;
+    }
+    *split = 0;
+    if (maxx - minx > 1000 || maxy - miny > 500)
+        *split = 1;
+    else if (pr->textured && (maxx - minx > 160 || maxy - miny > 120))
+        *split = 1;                             /* (the GPU maps affinely: smaller pieces bend less) */
+    else if (pr->textured && ((pr->wraps && maxu - minu > 192 * 32) || (pr->wrapt && maxv - minv > 192 * 32)))
+        *split = 2;
+    return !*split;
+}
+
+static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, int depth)
+{
+    const SV *v[3] = { v0, v1, v2 };
+    uint32_t *p, *w;
+    int k, split, words;
+    if (!span_ok(v0, v1, v2, pr, &split) && depth < 7) {
+        /* split the longest edge (on the screen, or in texels when the span is the trouble) */
+        SV m;
+        int e = 0, i;
+        int32_t best = -1;
+        for (i = 0; i < 3; i++) {
+            const SV *a = v[i], *b = v[(i + 1) % 3];
+            int32_t len = split == 2 ? (abs(a->u - b->u) + abs(a->v - b->v)) >> 5 : abs(a->x - b->x) + abs(a->y - b->y);
+            if (len > best) { best = len; e = i; }
+        }
+        {
+            const SV *a = v[e], *b = v[(e + 1) % 3], *c = v[(e + 2) % 3];
+            m.x = (int16_t)((a->x + b->x) >> 1); m.y = (int16_t)((a->y + b->y) >> 1);
+            m.z = (int16_t)((a->z + b->z) >> 1);
+            m.u = (a->u + b->u) >> 1; m.v = (a->v + b->v) >> 1;
+            m.r = (int16_t)((a->r + b->r) >> 1); m.g = (int16_t)((a->g + b->g) >> 1); m.b = (int16_t)((a->b + b->b) >> 1);
+            emit_tri(a, &m, c, pr, depth + 1);
+            emit_tri(&m, b, c, pr, depth + 1);
+        }
         return;
-    v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
-    if (v[0]->clip & v[1]->clip & v[2]->clip & 15)
-        return;
-    if ((v[0]->clip | v[1]->clip | v[2]->clip) & 16)
-        return;                                 /* reaching behind the eye: not yet clipped */
-    {
-        int32_t det = (v[1]->x - v[0]->x) * (v[2]->y - v[0]->y) - (v[2]->x - v[0]->x) * (v[1]->y - v[0]->y);
-        if (((s_geom & G_CULL_BACK) && det >= 0) || ((s_geom & G_CULL_FRONT) && det <= 0))
-            return;
     }
     {
-        int minx = v[0]->x, maxx = v[0]->x, miny = v[0]->y, maxy = v[0]->y;
+        int minx = v0->x, maxx = v0->x, miny = v0->y, maxy = v0->y;
         for (k = 1; k < 3; k++) {
             if (v[k]->x < minx) minx = v[k]->x;
             if (v[k]->x > maxx) maxx = v[k]->x;
@@ -1219,7 +1343,86 @@ static void triangle(int ia, int ib, int ic)
             if (v[k]->y > maxy) maxy = v[k]->y;
         }
         if (maxx - minx > 1023 || maxy - miny > 511)
-            return;                             /* larger than the GPU draws: not yet split */
+            return;
+    }
+    words = (pr->textured ? 9 : 6) + (pr->semi ? 1 : 0) + (pr->window ? 2 : 0);
+    if (!(p = pkt_alloc(words)))
+        return;
+    w = p + 1;
+    if (pr->semi)
+        *w++ = 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 | (pr->tex ? tex_tpage(pr->tex, pr->tex->vx) & 0x1FF : 0);
+    if (pr->window)
+        *w++ = pr->window;
+    {
+        /* the texels: a wrapping axis moved by whole periods to start at 0 (the
+         * window adds the base), a clamped one held inside the texture */
+        int32_t su = 0, sv = 0;
+        if (pr->textured && pr->wraps) {
+            int32_t mn = v0->u < v1->u ? v0->u : v1->u;
+            if (v2->u < mn) mn = v2->u;
+            su = (mn >> 5) & ~(pr->tex->w - 1);
+        }
+        if (pr->textured && pr->wrapt) {
+            int32_t mn = v0->v < v1->v ? v0->v : v1->v;
+            if (v2->v < mn) mn = v2->v;
+            sv = (mn >> 5) & ~(pr->tex->h - 1);
+        }
+        for (k = 0; k < 3; k++) {
+            w[0] = (uint32_t)clamp255(v[k]->r) | (uint32_t)clamp255(v[k]->g) << 8 | (uint32_t)clamp255(v[k]->b) << 16;
+            if (k == 0)
+                w[0] |= (uint32_t)pr->cmd << 24;
+            w[1] = (uint32_t)(uint16_t)v[k]->y << 16 | (uint16_t)v[k]->x;
+            if (pr->textured) {
+                int u = v[k]->u >> 5, vv = v[k]->v >> 5;
+                if (pr->wraps)
+                    u = u - su;
+                else
+                    u = pr->ub + clamp_u(u, pr->tex->w - 1);
+                if (pr->wrapt)
+                    vv = vv - sv;
+                else
+                    vv = pr->vb + clamp_u(vv, pr->tex->h - 1);
+                w[2] = (uint32_t)(clamp255(u)) | (uint32_t)(clamp255(vv)) << 8;
+                if (k == 0)
+                    w[2] |= (uint32_t)pr->tex->clut << 16;
+                if (k == 1)
+                    w[2] |= (uint32_t)(tex_tpage(pr->tex, pr->tex->vx) | pr->abr << 5) << 16;
+                w += 3;
+            } else {
+                w += 2;
+            }
+        }
+    }
+    if (pr->window)
+        *w++ = 0xE2000000;
+    if (pr->zsort)
+        put_sorted(p, (v0->z + v1->z + v2->z) / 3);
+    else
+        put_flat(p);
+}
+
+static void triangle(int ia, int ib, int ic)
+{
+    const Vtx *v[3];
+    Draw d;
+    Lin col[3];
+    Prim pr;
+    CV poly[2][12];
+    int k, n, semi = 0, abr = 0, mask, cur;
+    int tile = s_tex.tile, want_tex;
+    if (ia >= 32 || ib >= 32 || ic >= 32 || s_target < 0)
+        return;
+    v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
+    if (v[0]->clip & v[1]->clip & v[2]->clip & 31)
+        return;                                 /* wholly off one side, or behind the eye */
+    {
+        /* the facing, from the homogeneous coordinates: det(x, y, w) keeps its
+         * sign for a triangle reaching behind the eye (as the RSP's does) */
+        int64_t det = (int64_t)v[0]->cx * (((int64_t)v[1]->cy * v[2]->cw - (int64_t)v[2]->cy * v[1]->cw) >> 8) -
+                      (int64_t)v[0]->cy * (((int64_t)v[1]->cx * v[2]->cw - (int64_t)v[2]->cx * v[1]->cw) >> 8) +
+                      (int64_t)v[0]->cw * (((int64_t)v[1]->cx * v[2]->cy - (int64_t)v[2]->cx * v[1]->cy) >> 8);
+        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
+            return;
     }
     {
         int other = s_tex.on && uses_other();
@@ -1245,49 +1448,72 @@ static void triangle(int ia, int ib, int ic)
     } else if (d.semi == 2) {
         semi = blend_mode(&col[0], d.textured, &abr);
     }
-    cmd = d.textured ? 0x34 : 0x30;
-    if (semi)
-        cmd |= 2;
-    words = d.textured ? 9 : 6;
-    if (!(p = pkt_alloc(words + (semi ? 1 : 0))))
-        return;
+    memset(&pr, 0, sizeof pr);
+    pr.tex = d.tex;
+    pr.textured = d.textured;
+    pr.semi = semi;
+    pr.abr = abr;
+    pr.zsort = d.zsort;
+    pr.cmd = (d.textured ? 0x34 : 0x30) | (semi ? 2 : 0);
+    if (d.textured) {
+        pr.wraps = d.tex->wraps;
+        pr.wrapt = d.tex->wrapt;
+        pr.ub = (d.tex->vx & 63) * tex_k(d.tex);
+        pr.vb = d.tex->vy & 255;
+        if (pr.wraps || pr.wrapt)
+            pr.window = 0xE2000000 |
+                        (pr.wraps ? (uint32_t)((~(d.tex->w - 1) & 0xFF) >> 3) | (uint32_t)(pr.ub >> 3) << 10 : 0) |
+                        (pr.wrapt ? (uint32_t)((~(d.tex->h - 1) & 0xFF) >> 3) << 5 | (uint32_t)(pr.vb >> 3) << 15 : 0);
+    }
+    for (k = 0; k < 3; k++) {
+        CV *c = &poly[0][k];
+        int r, g, b;
+        c->x = v[k]->cx; c->y = v[k]->cy; c->z = v[k]->cz; c->w = v[k]->cw;
+        if (d.textured) {
+            c->u = tc32(v[k]->s, d.s0, d.shifts);
+            c->v = tc32(v[k]->t, d.t0, d.shiftt);
+        } else {
+            c->u = c->v = 0;
+        }
+        if (d.textured && mask) {               /* white texels times the colour */
+            r = col[k].b[0] >> 1; g = col[k].b[1] >> 1; b = col[k].b[2] >> 1;
+        } else if (d.textured) {                /* the GPU modulates: 128 is 1.0 */
+            r = col[k].a[0] >> 1; g = col[k].a[1] >> 1; b = col[k].a[2] >> 1;
+        } else {
+            r = col[k].b[0]; g = col[k].b[1]; b = col[k].b[2];
+        }
+        c->r = r; c->g = g; c->b = b;
+    }
+    n = 3;
+    cur = 0;
     {
-        uint32_t *w = p + 1;
-        if (semi)
-            *w++ = 0xE1000000 | 0x200 | 0x400 | (uint32_t)abr << 5 | (d.tex ? tex_tpage(d.tex, d.tex->vx) & 0x1FF : 0);
-        for (k = 0; k < 3; k++) {
-            int r, g, b;
-            if (d.textured && mask) {            /* white texels times the colour */
-                r = col[k].b[0] >> 1; g = col[k].b[1] >> 1; b = col[k].b[2] >> 1;
-            } else if (d.textured) {             /* the GPU modulates: 128 is 1.0 */
-                r = col[k].a[0] >> 1; g = col[k].a[1] >> 1; b = col[k].a[2] >> 1;
-            } else {
-                r = col[k].b[0]; g = col[k].b[1]; b = col[k].b[2];
-            }
-            w[0] = (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 | (uint32_t)clamp255(b) << 16;
-            if (k == 0)
-                w[0] |= (uint32_t)cmd << 24;
-            w[1] = (uint32_t)(uint16_t)v[k]->y << 16 | (uint16_t)v[k]->x;
-            if (d.textured) {
-                /* (a texture wider than a page: drawn from its first page) */
-                int kk = tex_k(d.tex), lim = (64 - (d.tex->vx & 63)) * kk - 1;
-                int u = clamp_u(tc(v[k]->s, d.s0, d.shifts), d.tex->w - 1 < lim ? d.tex->w - 1 : lim);
-                int vv = clamp_u(tc(v[k]->t, d.t0, d.shiftt), d.tex->h - 1);
-                w[2] = (uint32_t)(((d.tex->vx & 63) * kk + u) & 255) | (uint32_t)(((d.tex->vy & 255) + vv) & 255) << 8;
-                if (k == 0)
-                    w[2] |= (uint32_t)d.tex->clut << 16;
-                if (k == 1)
-                    w[2] |= (uint32_t)(tex_tpage(d.tex, d.tex->vx) | abr << 5) << 16;
-                w += 3;
-            } else {
-                w += 2;
-            }
+        int pl, any = (v[0]->clip | v[1]->clip | v[2]->clip) & 16;
+        int far = 0;
+        for (k = 0; k < 3 && !any; k++)         /* the guard band: only when a vertex is outside it */
+            if (abs(v[k]->cx) > GUARD * v[k]->cw || abs(v[k]->cy) > GUARD * v[k]->cw)
+                far = 1;
+        for (pl = 0; pl < 5 && n >= 3; pl++) {
+            if (pl == 0 && !any)
+                continue;
+            if (pl > 0 && !far && !any)
+                break;
+            n = clip_plane(poly[cur], n, poly[cur ^ 1], pl);
+            cur ^= 1;
         }
     }
-    if (d.zsort)
-        put_sorted(p, (v[0]->z + v[1]->z + v[2]->z) / 3);
-    else
-        put_flat(p);
+    if (n < 3)
+        return;
+    {
+        SV sv[12];
+        for (k = 0; k < n; k++) {
+            const CV *c = &poly[cur][k];
+            project(c->x, c->y, c->z, c->w < W_NEAR ? W_NEAR : c->w, &sv[k].x, &sv[k].y, &sv[k].z);
+            sv[k].u = c->u; sv[k].v = c->v;
+            sv[k].r = (int16_t)c->r; sv[k].g = (int16_t)c->g; sv[k].b = (int16_t)c->b;
+        }
+        for (k = 1; k + 1 < n; k++)
+            emit_tri(&sv[0], &sv[k], &sv[k + 1], &pr, 0);
+    }
 }
 
 /* a textured rectangle as a 4-point textured polygon */
@@ -1550,6 +1776,16 @@ static void frame_begin(int target, int hires)
     p = pkt_alloc(5);
     gpu_env(p + 1, x, y, w, h);
     s_head = s_tail = p;
+    if (s_fbclear[target]) {
+        uint32_t *f = pkt_alloc(3);
+        s_fbclear[target] = 0;
+        if (f) {
+            f[1] = 0x02000000;                  /* fill the buffer black */
+            f[2] = (uint32_t)y << 16 | (uint32_t)x;
+            f[3] = (uint32_t)h << 16 | 640;
+            link_after(&s_tail, f);
+        }
+    }
 }
 
 static void frame_end(void)
