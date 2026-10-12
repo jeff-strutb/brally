@@ -1800,9 +1800,56 @@ static int tri_fast(Vtx *v0, Vtx *v1, Vtx *v2)
     }
     v[0] = v0; v[1] = v1; v[2] = v2;
     cc_compile();
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < 3; k++)
         if (v[k]->fstamp != s_fs.stamp || s_fs.flat)
             vtx_fast(v[k], v0);
+    {
+        /* the common case written straight out: a plain (Gouraud, maybe
+         * textured, clamped) triangle the GPU takes whole */
+        const Prim *pr = &s_fs.pr;
+        int minx = v0->x, maxx = v0->x, miny = v0->y, maxy = v0->y;
+        if (v1->x < minx) minx = v1->x;
+        if (v1->x > maxx) maxx = v1->x;
+        if (v2->x < minx) minx = v2->x;
+        if (v2->x > maxx) maxx = v2->x;
+        if (v1->y < miny) miny = v1->y;
+        if (v1->y > maxy) maxy = v1->y;
+        if (v2->y < miny) miny = v2->y;
+        if (v2->y > maxy) maxy = v2->y;
+        if (!pr->window && !pr->fog && !pr->semi && maxx - minx <= (pr->textured ? 160 : 1000) &&
+            maxy - miny <= (pr->textured ? 120 : 500)) {
+            uint32_t *p = pkt_alloc(pr->textured ? 9 : 6), *w;
+            if (!p)
+                return 1;
+            w = p + 1;
+            for (k = 0; k < 3; k++) {
+                const Vtx *q = v[k];
+                w[0] = (uint32_t)clamp255(q->fr) | (uint32_t)clamp255(q->fg) << 8 | (uint32_t)clamp255(q->fb) << 16;
+                w[1] = (uint32_t)(uint16_t)q->y << 16 | (uint16_t)q->x;
+                if (pr->textured) {
+                    int u = q->fu >> 5, vv = q->fv >> 5;
+                    u = pr->ub + (u < 0 ? 0 : u >= pr->tex->w ? pr->tex->w - 1 : u);
+                    vv = pr->vb + (vv < 0 ? 0 : vv >= pr->tex->h ? pr->tex->h - 1 : vv);
+                    w[2] = (uint32_t)(u & 255) | (uint32_t)(vv & 255) << 8;
+                    w += 3;
+                } else {
+                    w += 2;
+                }
+            }
+            p[1] |= (uint32_t)pr->cmd << 24;
+            if (pr->textured) {
+                p[3] |= (uint32_t)pr->tex->clut << 16;
+                p[6] |= (uint32_t)tex_tpage(pr->tex, pr->tex->vx) << 16;
+            }
+            s_n_piece++;
+            if (pr->zsort)
+                put_sorted(p, (v0->z + v1->z + v2->z) / 3);
+            else
+                put_flat(p);
+            return 1;
+        }
+    }
+    for (k = 0; k < 3; k++) {
         sv[k].x = v[k]->x; sv[k].y = v[k]->y; sv[k].z = v[k]->z;
         sv[k].u = v[k]->fu; sv[k].v = v[k]->fv;
         sv[k].r = v[k]->fr; sv[k].g = v[k]->fg; sv[k].b = v[k]->fb;
