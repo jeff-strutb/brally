@@ -40,9 +40,17 @@ extern struct ProfEntry prof_table[] __attribute__((weak));
 extern uint32_t prof_count __attribute__((weak));
 
 void tgr_fn_report(void);
+extern unsigned int g_bp_tested __attribute__((weak)), g_bp_hit __attribute__((weak)), g_bp_calls __attribute__((weak));
+extern unsigned int g_bp_t[4] __attribute__((weak));
 void tgr_perf_marks_report(void)
 {
     int i;
+    if (&g_bp_tested) {
+        fprintf(stderr, "perf: broadphase calls %u triangles tested %u hit %u; ms: cell %u tests %u invert %u\n", g_bp_calls,
+                g_bp_tested, g_bp_hit, g_bp_t[0] * 8 / 33869, g_bp_t[1] * 8 / 33869, g_bp_t[2] * 8 / 33869);
+        g_bp_t[0] = g_bp_t[1] = g_bp_t[2] = 0;
+        g_bp_calls = g_bp_tested = g_bp_hit = 0;
+    }
     tgr_fn_report();
     if (&prof_count)                            /* PROF=list builds: the wrapped functions */
         for (i = 0; i < (int)prof_count; i++) {

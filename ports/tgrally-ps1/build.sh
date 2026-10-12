@@ -27,12 +27,12 @@ mkdir -p $OUT/obj
 OUT=$OUT TGR_TARGET=mipsel-unknown-none-elf $PY ports/tgrally/tools/globals.py >&2
 if [ $# -gt 0 ]; then
   for f in "$@"; do
-    ports/tgrally/cc.sh "$f"
+    ports/tgrally-ps1/cc_ps1.sh "$f"
     n=$(echo "$f" | sed 's#ports/tgrally/src/##; s#/#__#g')
     grep -A3 "error:" $OUT/obj/$n.err | head -${ERRS:-12}
   done
   exit 0
 fi
 find ports/tgrally/src -name '*.c' | grep -v -f ports/tgrally-ps1/skip.txt | sort > $OUT/tus.txt
-xargs -P $JOBS -n 1 ports/tgrally/cc.sh < $OUT/tus.txt | sort > $OUT/compile.txt
+xargs -P $JOBS -n 1 ports/tgrally-ps1/cc_ps1.sh < $OUT/tus.txt | sort > $OUT/compile.txt
 echo "core: $(grep -c '^OK' $OUT/compile.txt) of $(wc -l < $OUT/tus.txt | tr -d ' ') TUs compiled"
