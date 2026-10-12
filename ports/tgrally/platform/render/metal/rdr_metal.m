@@ -12,11 +12,14 @@
  * own shape, letterboxed. */
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
+#include <TargetConditionals.h>
 #include <simd/simd.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../rdr.h"
+
+extern volatile int tgr_frames_shown;   /* os/thread.c (TGR_STATS) */
 
 CAMetalLayer *host_macos_metal_layer(void);
 void host_macos_layer_fit(int *w, int *h);
@@ -496,6 +499,18 @@ void rdr_frame_end(void)
                 [e setFragmentBytes:&s_gamma length:sizeof s_gamma atIndex:0];
                 [e drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
                 [e endEncoding];
+                if (getenv("TGR_STATS")) {     /* the frames the screen showed */
+                    if (tgr_frames_shown < 0)
+                        tgr_frames_shown = 0;
+#if TARGET_OS_SIMULATOR                 /* (no presented time there: each frame handed over) */
+                    __atomic_add_fetch(&tgr_frames_shown, 1, __ATOMIC_RELAXED);
+#else
+                    [dr addPresentedHandler:^(id<MTLDrawable> d) {
+                        if (d.presentedTime > 0)
+                            __atomic_add_fetch(&tgr_frames_shown, 1, __ATOMIC_RELAXED);
+                    }];
+#endif
+                }
                 [s_cb presentDrawable:dr];
             }
         }

@@ -71,6 +71,9 @@ volatile int tgr_paused;                /* set by the host loop while the window
  * the time spent presenting, and the audio the host has buffered */
 extern uint32_t tgr_rcp_frames;
 extern uint64_t tgr_rcp_end_ns, tgr_rcp_end_max_ns;
+/* frames the screen actually showed, counted by a renderer that is told
+ * (render/metal: the drawable's presented time); -1 by one that is not */
+volatile int tgr_frames_shown = -1;
 int tgr_audio_buffered_ms(void);
 
 static void stats(void)
@@ -78,6 +81,7 @@ static void stats(void)
     static int on = -1;
     static uint64_t t0, last, worst;
     static uint32_t f0, r0;
+    static int s0;
     static uint64_t c0;
     uint64_t now;
     if (on < 0)
@@ -93,13 +97,19 @@ static void stats(void)
         f0 = s_frame;
         c0 = s_count;
         r0 = tgr_rcp_frames;
+        s0 = tgr_frames_shown;
         return;
     }
     if (s_frame - f0 >= 60) {
         uint32_t frames = tgr_rcp_frames - r0;
-        fprintf(stderr, "stats: %u retraces (%.3f s of N64 time) in %.3f s, %u frames, worst gap %.1f ms, present %.2f ms avg %.1f max, audio %d ms\n",
-                s_frame - f0, (s_count - c0) / 46875000.0, (now - t0) / 1e9, frames, worst / 1e6,
+        int shown = tgr_frames_shown;
+        char sh[32] = "";
+        if (shown >= 0)
+            snprintf(sh, sizeof sh, " (%d shown)", shown - s0);
+        fprintf(stderr, "stats: %u retraces (%.3f s of N64 time) in %.3f s, %u frames%s, worst gap %.1f ms, present %.2f ms avg %.1f max, audio %d ms\n",
+                s_frame - f0, (s_count - c0) / 46875000.0, (now - t0) / 1e9, frames, sh, worst / 1e6,
                 frames ? tgr_rcp_end_ns / 1e6 / frames : 0.0, tgr_rcp_end_max_ns / 1e6, tgr_audio_buffered_ms());
+        s0 = shown;
         t0 = now;
         f0 = s_frame;
         c0 = s_count;

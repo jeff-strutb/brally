@@ -20,6 +20,7 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 #import <ImageIO/ImageIO.h>
+#include <TargetConditionals.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -696,6 +697,36 @@ static int write_shot(const char *path)
     return ok;
 }
 
+/* BR_STATS: once a second, the frames drawn and those the screen showed
+ * (the drawable's presented time; in the iOS Simulator, which has none,
+ * those handed to it) */
+static volatile int s_shown;
+
+static void stats(void)
+{
+    static int on = -1;
+    static double t0;
+    static unsigned long f0;
+    static int s0;
+    double now;
+    if (on < 0)
+        on = getenv("BR_STATS") != NULL;
+    if (!on)
+        return;
+    now = CACurrentMediaTime();
+    if (t0 == 0) {
+        t0 = now;
+        f0 = s_frame;
+        s0 = s_shown;
+    } else if (now - t0 >= 1.0) {
+        int shown = s_shown;
+        fprintf(stderr, "brr stats: %lu frames drawn, %d shown in %.3f s\n", s_frame - f0, shown - s0, now - t0);
+        t0 = now;
+        f0 = s_frame;
+        s0 = shown;
+    }
+}
+
 void brr_present(void)
 {
     @autoreleasepool {
@@ -740,6 +771,16 @@ void brr_present(void)
                     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
                 }
                 [e endEncoding];
+                if (getenv("BR_STATS")) {
+#if TARGET_OS_SIMULATOR                 /* (no presented time there: each frame handed over) */
+                    __atomic_add_fetch(&s_shown, 1, __ATOMIC_RELAXED);
+#else
+                    [dr addPresentedHandler:^(id<MTLDrawable> d) {
+                        if (d.presentedTime > 0)
+                            __atomic_add_fetch(&s_shown, 1, __ATOMIC_RELAXED);
+                    }];
+#endif
+                }
                 [s_cmd presentDrawable:dr];
             }
         }
@@ -755,6 +796,7 @@ void brr_present(void)
         }
         s_cmd = nil;
         s_frame++;
+        stats();
         if (ml) {                              /* the next frame at the window's size */
             int w, h;
             CGSize ds = [ml drawableSize];
