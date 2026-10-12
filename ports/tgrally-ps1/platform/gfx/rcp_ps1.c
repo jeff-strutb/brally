@@ -23,6 +23,7 @@
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
+static uint32_t s_n_tri, s_n_piece, s_n_vtx, s_n_clip;  /* TGR_PERF counts */
 static uint32_t s_texgen = 1;                   /* bumped whenever tiles, loads or the TLUT mode change */
 static uint32_t s_texepoch = 1;                 /* bumped whenever the texture table moves */
 static int s_fog_mul, s_fog_ofs;                /* G_MW_FOG */
@@ -166,6 +167,8 @@ static struct { uint8_t col[3]; int8_t dir[3]; } s_light[8];
 static int s_nlights = 1;
 static struct { int on, tile, level; uint32_t ss, ts; } s_tex;
 
+typedef struct { int16_t a[4], b[4]; } Lin;    /* a colour as a * texel + b per channel (rgba, 8.8): the combiner's */
+
 typedef struct {
     int32_t cx, cy, cz, cw;                     /* clip space, 8 fraction bits */
     int16_t x, y;                               /* screen, pixels */
@@ -173,6 +176,9 @@ typedef struct {
     uint8_t r, g, b, a;
     int32_t s, t;                               /* texel coordinates, 10.5 after G_TEXTURE's scale */
     uint8_t clip;                               /* 1 x<-w, 2 x>w, 4 y<-w, 8 y>w, 16 behind */
+    uint32_t cc_stamp;                          /* the combiner state its colour was combined under */
+    uint8_t cc_flat;                            /* ... and whether with a flat shade (the first vertex's) */
+    Lin col;
 } Vtx;
 static Vtx s_vtx[32];
 
@@ -266,6 +272,7 @@ static void load_vertices(uint32_t a, int n, int v0)
     if (s_geom & G_LIGHTING)
         for (k = 0; k < s_nlights; k++)
             model_dir(s_light[k].dir, ldir[k]);
+    s_n_vtx += (uint32_t)n;
     for (i = 0; i < n && v0 + i < 32; i++) {
         uint32_t p = a + i * 16;
         const uint8_t *c = mem(p + 12);
@@ -306,6 +313,7 @@ static void load_vertices(uint32_t a, int n, int v0)
             v->b = c[2];
         }
         v->a = c[3];
+        v->cc_stamp = 0;
         if (s_geom & G_FOG) {                   /* the shade alpha is the fog: depth times mul plus offset */
             int32_t f, w = cw < W_NEAR ? W_NEAR : cw, zz = cz;
             while (w > 0x7FFF || zz > 0x3FFFFF || zz < -0x3FFFFF) { w >>= 1; zz >>= 1; }
@@ -1005,7 +1013,6 @@ static const Tex *tile_texture_find(int t)
  * vertex: textured, the GPU modulating the texel by a + b (the combiner's
  * value at texel 1: exact for a texel times a colour, near for a lerp by
  * the texel), or untextured with colour b. */
-typedef struct { int16_t a[4], b[4]; } Lin;
 /* TX0/TX1: the combiner's TEXEL0 and TEXEL1.  In a cycle one of them is the
  * texture drawn (symbolic, a); the other is the second texture sampled at
  * the vertex (a number, b): cycle 1 draws TEXEL0, cycle 2 TEXEL1 (the RDP's
@@ -1033,84 +1040,119 @@ static int to256(int v) { return v + (v >> 7); }          /* 0..255 to 0..256 */
  * texel is the same tile's: both are the texture drawn */
 static int same_tile(void) { return ((s_omh >> 16) & 1) && s_tex.level == 0; }
 
-static void lin_in(Lin *o, int in, const Lin *comb, const uint8_t shade[4], const uint8_t other[4], int sym, int alpha)
+/* The combiner compiled for its state (the combine mode, the cycle type, the
+ * colours): each cycle's A, B, C, D per channel as a kind and a value, so a
+ * vertex runs straight through.  Kinds: a constant (value), the texture
+ * drawn, the second texture's or the shade's channel (value), the first
+ * cycle's result's channel (value). */
+enum { K_CONST, K_TEX, K_OTHER, K_SHADE, K_COMB };
+typedef struct { int8_t kind[2][4][4]; int16_t val[2][4][4]; int cycles; } CCode;
+static CCode s_cc;
+static uint32_t s_cc_key[6] = { 0xFFFFFFFF };
+static uint32_t s_cc_stamp = 1;                 /* bumped when the compiled combiner changes */
+
+static void cc_slot(int cyc, int slot, int in, int sym, int alpha)
 {
     int k;
-    o->a[0] = o->a[1] = o->a[2] = o->a[3] = 0;
-    o->b[0] = o->b[1] = o->b[2] = o->b[3] = 0;
-    if (in == IN_ZERO)
-        return;
     if (in == IN_TX0 || in == IN_TX1)
-        in = (in == IN_TX1) == sym || same_tile() ? -1 : -2;   /* -1: the texture drawn, -2: the sampled one */
+        in = (in == IN_TX1) == sym || same_tile() ? -1 : -2;
     else if (in == IN_TX0A || in == IN_TX1A)
         in = (in == IN_TX1A) == sym || same_tile() ? -3 : -4;
     for (k = 0; k < 4; k++) {
-        int c = alpha ? 3 : k;
+        int c = alpha ? 3 : k, kind = K_CONST, val = 0;
         switch (in) {
-        case IN_COMB: o->a[k] = comb->a[c]; o->b[k] = comb->b[c]; break;
-        case IN_COMBA: o->a[k] = comb->a[3]; o->b[k] = comb->b[3]; break;
-        case -1: case -3: o->a[k] = 256; break; /* (the drawn texel's alpha taken as the texel) */
-        case -2: o->b[k] = (int16_t)to256(other[c]); break;
-        case -4: o->b[k] = (int16_t)to256(other[3]); break;
-        case IN_PRIM: o->b[k] = (int16_t)to256(s_prim[c]); break;
-        case IN_PRIMA: o->b[k] = (int16_t)to256(s_prim[3]); break;
-        case IN_SHADE: o->b[k] = (int16_t)to256(shade[c]); break;
-        case IN_SHADEA: o->b[k] = (int16_t)to256(shade[3]); break;
-        case IN_ENV: o->b[k] = (int16_t)to256(s_env[c]); break;
-        case IN_ENVA: o->b[k] = (int16_t)to256(s_env[3]); break;
-        case IN_ONE: o->b[k] = 256; break;
-        case IN_PRIMLOD: o->b[k] = (int16_t)to256(s_prim_lod); break;
+        case IN_COMB: kind = K_COMB; val = c; break;
+        case IN_COMBA: kind = K_COMB; val = 3; break;
+        case -1: case -3: kind = K_TEX; break;
+        case -2: kind = K_OTHER; val = c; break;
+        case -4: kind = K_OTHER; val = 3; break;
+        case IN_PRIM: val = to256(s_prim[c]); break;
+        case IN_PRIMA: val = to256(s_prim[3]); break;
+        case IN_SHADE: kind = K_SHADE; val = c; break;
+        case IN_SHADEA: kind = K_SHADE; val = 3; break;
+        case IN_ENV: val = to256(s_env[c]); break;
+        case IN_ENVA: val = to256(s_env[3]); break;
+        case IN_ONE: val = 256; break;
+        case IN_PRIMLOD: val = to256(s_prim_lod); break;
         default: break;
         }
+        if (alpha && k != 3)
+            continue;
+        if (!alpha && k == 3)
+            continue;
+        s_cc.kind[cyc][slot][k] = (int8_t)kind;
+        s_cc.val[cyc][slot][k] = (int16_t)val;
     }
 }
 
-static void lin_eval(Lin *out, int a, int b, int c, int d, const Lin *comb, const uint8_t shade[4],
-                     const uint8_t other[4], int sym, int alpha)
+static void cc_compile(void)
 {
-    Lin A, B, C, D;
-    int k;
-    lin_in(&A, a, comb, shade, other, sym, alpha);
-    lin_in(&B, b, comb, shade, other, sym, alpha);
-    lin_in(&C, c, comb, shade, other, sym, alpha);
-    lin_in(&D, d, comb, shade, other, sym, alpha);
-    for (k = 0; k < 4; k++) {
-        int32_t ca = C.a[k], cb = C.b[k];
-        int32_t da = A.a[k] - B.a[k], db = A.b[k] - B.b[k];
-        if (ca && !da)                          /* (const) * texel */
-            out->a[k] = (int16_t)((db * ca >> 8) + D.a[k]), out->b[k] = D.b[k];
-        else if (ca)                            /* texel * texel: as one texel */
-            out->a[k] = (int16_t)(((da * ca >> 8) + (db * ca >> 8)) + D.a[k]), out->b[k] = D.b[k];
-        else
-            out->a[k] = (int16_t)((da * cb >> 8) + D.a[k]), out->b[k] = (int16_t)((db * cb >> 8) + D.b[k]);
-    }
+    uint32_t key[6];
+    key[0] = s_cc0;
+    key[1] = s_cc1;
+    key[2] = (s_omh & 0x00310000) | (uint32_t)same_tile();
+    key[3] = (uint32_t)s_prim[0] << 24 | s_prim[1] << 16 | s_prim[2] << 8 | s_prim[3];
+    key[4] = (uint32_t)s_env[0] << 24 | s_env[1] << 16 | s_env[2] << 8 | s_env[3];
+    key[5] = s_prim_lod;
+    if (!memcmp(key, s_cc_key, sizeof key))
+        return;
+    memcpy(s_cc_key, key, sizeof key);
+    s_cc_stamp++;
+    s_cc.cycles = ((s_omh >> 20) & 3) == 1 ? 2 : 1;
+    cc_slot(0, 0, CA[(s_cc0 >> 20) & 15], 0, 0);
+    cc_slot(0, 1, CB[(s_cc1 >> 28) & 15], 0, 0);
+    cc_slot(0, 2, CC[(s_cc0 >> 15) & 31], 0, 0);
+    cc_slot(0, 3, CD[(s_cc1 >> 15) & 7], 0, 0);
+    cc_slot(0, 0, AABD[(s_cc0 >> 12) & 7], 0, 1);
+    cc_slot(0, 1, AABD[(s_cc1 >> 12) & 7], 0, 1);
+    cc_slot(0, 2, AC[(s_cc0 >> 9) & 7], 0, 1);
+    cc_slot(0, 3, AABD[(s_cc1 >> 9) & 7], 0, 1);
+    cc_slot(1, 0, CA[(s_cc0 >> 5) & 15], 1, 0);
+    cc_slot(1, 1, CB[(s_cc1 >> 24) & 15], 1, 0);
+    cc_slot(1, 2, CC[s_cc0 & 31], 1, 0);
+    cc_slot(1, 3, CD[(s_cc1 >> 6) & 7], 1, 0);
+    cc_slot(1, 0, AABD[(s_cc1 >> 21) & 7], 1, 1);
+    cc_slot(1, 1, AABD[(s_cc1 >> 3) & 7], 1, 1);
+    cc_slot(1, 2, AC[(s_cc1 >> 18) & 7], 1, 1);
+    cc_slot(1, 3, AABD[s_cc1 & 7], 1, 1);
 }
 
 /* the combiner for a vertex: shade its colour, other the second texture there */
 static void combine(Lin *out, const uint8_t shade[4], const uint8_t *other)
 {
-    Lin c1, c2, al;
-    int cyc2 = ((s_omh >> 20) & 3) == 1;
+    int c, k, sl;
+    Lin res = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
     if (!other)
         other = WHITE;
-    memset(&c1, 0, sizeof c1);
-    lin_eval(&c1, CA[(s_cc0 >> 20) & 15], CB[(s_cc1 >> 28) & 15], CC[(s_cc0 >> 15) & 31], CD[(s_cc1 >> 15) & 7],
-             &c1, shade, other, 0, 0);
-    lin_eval(&al, AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7],
-             &c1, shade, other, 0, 1);
-    c1.a[3] = al.a[3];
-    c1.b[3] = al.b[3];
-    if (!cyc2) {
-        *out = c1;
-        return;
+    for (c = 0; c < s_cc.cycles; c++) {
+        Lin prev = res;
+        for (k = 0; k < 4; k++) {
+            int32_t ia[4], ib[4], ca, cb, da, db;
+            for (sl = 0; sl < 4; sl++) {
+                int v = s_cc.val[c][sl][k];
+                switch (s_cc.kind[c][sl][k]) {
+                case K_CONST: ia[sl] = 0; ib[sl] = v; break;
+                case K_TEX:   ia[sl] = 256; ib[sl] = 0; break;
+                case K_OTHER: ia[sl] = 0; ib[sl] = to256(other[v]); break;
+                case K_SHADE: ia[sl] = 0; ib[sl] = to256(shade[v]); break;
+                default:      ia[sl] = prev.a[v]; ib[sl] = prev.b[v]; break;
+                }
+            }
+            ca = ia[2]; cb = ib[2];
+            da = ia[0] - ia[1]; db = ib[0] - ib[1];
+            if (ca && !da) {                    /* (const) * texel */
+                res.a[k] = (int16_t)((db * ca >> 8) + ia[3]);
+                res.b[k] = (int16_t)ib[3];
+            } else if (ca) {                    /* texel * texel: as one texel */
+                res.a[k] = (int16_t)(((da * ca >> 8) + (db * ca >> 8)) + ia[3]);
+                res.b[k] = (int16_t)ib[3];
+            } else {
+                res.a[k] = (int16_t)((da * cb >> 8) + ia[3]);
+                res.b[k] = (int16_t)((db * cb >> 8) + ib[3]);
+            }
+        }
     }
-    lin_eval(&c2, CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7], &c1, shade,
-             other, 1, 0);
-    lin_eval(&al, AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7],
-             &c1, shade, other, 1, 1);
-    c2.a[3] = al.a[3];
-    c2.b[3] = al.b[3];
-    *out = c2;
+    *out = res;
 }
 
 /* whether the combiner's result depends on the second texture (TEXEL1 in
@@ -1134,6 +1176,7 @@ static int uses_other(void)
         result = 0;
     } else {
         Lin a, b;
+        cc_compile();
         combine(&a, WHITE, BLACK);
         combine(&b, WHITE, WHITE);
         result = memcmp(&a, &b, sizeof a) != 0;
@@ -1405,6 +1448,7 @@ static int span_ok(const SV *a, const SV *b, const SV *c, const Prim *pr, int *s
 
 static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, int depth)
 {
+    s_n_piece++;
     const SV *v[3] = { v0, v1, v2 };
     uint32_t *p, *w;
     int k, split, words;
@@ -1520,6 +1564,7 @@ static void triangle(int ia, int ib, int ic)
     int tile = s_tex.tile, want_tex;
     if (ia >= 32 || ib >= 32 || ic >= 32 || s_target < 0)
         return;
+    s_n_tri++;
     v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
     if (v[0]->clip & v[1]->clip & v[2]->clip & 31)
         return;                                 /* wholly off one side, or behind the eye */
@@ -1532,15 +1577,25 @@ static void triangle(int ia, int ib, int ic)
         if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
             return;
     }
+    cc_compile();
     {
-        int other = s_tex.on && uses_other();
+        int other = s_tex.on && uses_other(), flat = !(s_geom & G_SHADING_SMOOTH);
         for (k = 0; k < 3; k++) {
             uint8_t sh[4], ot[4];
-            const Vtx *q = (s_geom & G_SHADING_SMOOTH) ? v[k] : v[0];
+            Vtx *vk = &s_vtx[k == 0 ? ia : k == 1 ? ib : ic];
+            const Vtx *q = flat ? v[0] : v[k];
+            if (!other && !flat && vk->cc_stamp == s_cc_stamp) {   /* combined for an earlier triangle */
+                col[k] = vk->col;
+                continue;
+            }
             sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = v[k]->a;
             if (other)
                 sample((tile + 1) & 7, v[k]->s, v[k]->t, ot);
             combine(&col[k], sh, other ? ot : NULL);
+            if (!other && !flat) {
+                vk->col = col[k];
+                vk->cc_stamp = s_cc_stamp;
+            }
         }
     }
     {
@@ -1619,6 +1674,7 @@ static void triangle(int ia, int ib, int ic)
             if (pl > 0 && !far && !any)
                 break;
             n = clip_plane(poly[cur], n, poly[cur ^ 1], pl);
+            s_n_clip++;
             cur ^= 1;
         }
     }
@@ -1735,6 +1791,7 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     }
     if (x1 <= x0 || y1 <= y0)
         return;
+    cc_compile();
     if (cyc == 2) {
         memset(col, 0, sizeof col);
         for (k = 0; k < 4; k++)
@@ -1838,6 +1895,7 @@ static void rect_fill(uint32_t w0, uint32_t w1)
     } else {
         Lin col;
         Draw d;
+        cc_compile();
         combine(&col, WHITE, NULL);
         draw_state(&d, 0, 0, 0);
         r = col.b[0]; g = col.b[1]; b = col.b[2];
@@ -2303,8 +2361,11 @@ void tgr_rcp_present(uint32_t frame)
     if (perf && frame % 60 == 0) {              /* TGR_PERF: the console's time per 60 retraces, frames drawn */
         uint64_t t = ps1_time_ns();
         if (t0)
-            fprintf(stderr, "perf: retraces %u-%u took %u ms of console time, %u frames drawn\n", (unsigned)f0,
-                    (unsigned)frame, (unsigned)((t - t0) / 1000000), (unsigned)(tgr_rcp_frames - d0));
+            fprintf(stderr, "perf: retraces %u-%u took %u ms of console time, %u frames drawn; %u vertices, %u triangles, "
+                    "%u pieces, %u clip passes\n", (unsigned)f0, (unsigned)frame, (unsigned)((t - t0) / 1000000),
+                    (unsigned)(tgr_rcp_frames - d0), (unsigned)s_n_vtx, (unsigned)s_n_tri, (unsigned)s_n_piece,
+                    (unsigned)s_n_clip);
+        s_n_vtx = s_n_tri = s_n_piece = s_n_clip = 0;
         t0 = t;
         f0 = frame;
         d0 = tgr_rcp_frames;
