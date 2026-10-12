@@ -65,6 +65,14 @@ void tgr_perf_marks_report(void)
                         g_ss_t[1] * 8 / 33869, g_ss_t[2] * 8 / 33869, g_ss_t[3] * 8 / 33869);
             if (g_ss_t)
                 g_ss_t[0] = g_ss_t[1] = g_ss_t[2] = g_ss_t[3] = 0;
+            {
+                extern unsigned int g_cell_t[4] __attribute__((weak));
+                if (g_cell_t) {
+                    fprintf(stderr, "perf: collision cells loaded %u (%u planes) in %u ms\n", g_cell_t[1], g_cell_t[0],
+                            g_cell_t[2] * 8 / 33869);
+                    g_cell_t[0] = g_cell_t[1] = g_cell_t[2] = 0;
+                }
+            }
         }
         g_rw_tested = g_rw_hit = 0;
         g_bp_calls = g_bp_tested = g_bp_hit = 0;

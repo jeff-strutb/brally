@@ -454,7 +454,7 @@ void BrCrListPrintCount(void)
  * macro, but here each arm is written out line by line (a one-line macro
  * expansion schedules the edge loads differently). */
 /* @implements 0x8025D060 tgr BrCollRespBroadPhase */
-unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4], g_rw_tested, g_rw_hit, g_ss_t[4];   /* (PlayStation: TGR_PERF counts, timers) */
+unsigned int g_bp_tested, g_bp_hit, g_bp_calls, g_bp_t[4], g_rw_tested, g_rw_hit, g_ss_t[4], g_cell_t[4];   /* (PlayStation: TGR_PERF counts, timers) */
 
 /* PlayStation: a triangle whose plane misses the car's test cube cannot meet
  * it, so BrTriCubeTest would say no: it is not put to it (its three vertices
@@ -1082,6 +1082,52 @@ void BrCarPhysAdvance(BrTipBody *b)
  * the planes' scratch vectors; the count n is an int; the high half of the
  * packed range is masked, (packed >> 16) & 0xffff, and stored first. */
 /* @implements 0x8025F18C tgr BrCollGridCellAcquire */
+/* PlayStation: cells loaded before, behind the game's four slots: their plane
+ * records (and boxes and fixed-point planes) copied back instead of worked
+ * out again, for the track they were made from */
+#define CELL2_N 4
+static struct {
+  short key;
+  unsigned int tris, used;
+  int n;
+  BrCrPlane rec[150];
+  short box[150][4];
+  int fx[150][4];
+} s_cell2[CELL2_N];
+static unsigned int s_cell2_clock;
+static int cell2_get(short key, int victim)
+{
+  unsigned int tris = BE32(D_80025C00.tris);
+  int i, n;
+  for (i = 0; i < CELL2_N; i++)
+    if (s_cell2[i].used && s_cell2[i].key == key && s_cell2[i].tris == tris) {
+      n = s_cell2[i].n;
+      memcpy(D_80379F80[victim], s_cell2[i].rec, (size_t)n * sizeof(BrCrPlane));
+      memcpy(g_pbox[victim], s_cell2[i].box, (size_t)(n < 150 ? n : 150) * sizeof s_cell2[i].box[0]);
+      memcpy(g_pfx[victim], s_cell2[i].fx, (size_t)(n < 150 ? n : 150) * sizeof s_cell2[i].fx[0]);
+      D_8037EA88[victim] = (unsigned short)n;
+      s_cell2[i].used = ++s_cell2_clock;
+      return 1;
+    }
+  return 0;
+}
+static void cell2_put(short key, int victim)
+{
+  int i, k = 0, n = D_8037EA88[victim];
+  if (n > 150)
+    return;
+  for (i = 1; i < CELL2_N; i++)
+    if (s_cell2[i].used < s_cell2[k].used)
+      k = i;
+  s_cell2[k].key = key;
+  s_cell2[k].tris = BE32(D_80025C00.tris);
+  s_cell2[k].n = n;
+  memcpy(s_cell2[k].rec, D_80379F80[victim], (size_t)n * sizeof(BrCrPlane));
+  memcpy(s_cell2[k].box, g_pbox[victim], (size_t)n * sizeof s_cell2[k].box[0]);
+  memcpy(s_cell2[k].fx, g_pfx[victim], (size_t)n * sizeof s_cell2[k].fx[0]);
+  s_cell2[k].used = ++s_cell2_clock;
+}
+
 short BrCollGridCellAcquire(float x, float y)
 {
   unsigned short *t0;
@@ -1115,6 +1161,10 @@ short BrCollGridCellAcquire(float x, float y)
   }
   D_8037EA90[victim] = D_8037EAA0;
   D_8037EA80[victim] = key;
+  if (cell2_get(key, victim))
+    return victim;              /* (PlayStation: loaded before, as it was) */
+  g_cell_t[1]++;
+  g_cell_t[3] = BP_NOW();
   n = 0;
   p = D_80379F80[victim][0].n;
   packed = BrGridCellRangeAt(x, y);
@@ -1173,6 +1223,9 @@ short BrCollGridCellAcquire(float x, float y)
     }
   }
   D_8037EA88[victim] = n;
+  g_cell_t[2] += (BP_NOW() - g_cell_t[3]) & 0xFFFF;
+  g_cell_t[0] += n;
+  cell2_put(key, victim);
   return victim;
 }
 
