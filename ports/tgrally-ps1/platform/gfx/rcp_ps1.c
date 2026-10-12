@@ -33,7 +33,7 @@ static const char *const s_rg_name[RG_N] = { "task", "kept lists", "kept vertice
                                              "frame end", "run", "matrices", "movemem", "fills", "run triangles", "cut: clipping", "cut: emit", "cut: grids", "matrix and light setup" };
 static uint64_t s_rg[RG_N];                     /* (nanoseconds) */
 static uint32_t s_cls_t[4], s_cls_n[4];
-static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
+static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
 #define ST_NOW() (*(volatile uint32_t *)0xBF801120)
 #define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
 static uint32_t s_runops[256];
@@ -2633,6 +2633,7 @@ typedef struct { uint32_t xy, uv, rgb; int32_t z; } GPt;
 #define s_gpt ((GPt *)0x1F800200u)               /* (at most 15 points: 240 bytes) */
 
 static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg);
+static int s_grid_strict;                       /* emit_grid_words: a point the GTE cannot take fails the grid (nothing written) */
 static int emit_grid_slow(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg);
 
 static int emit_grid(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
@@ -2692,6 +2693,8 @@ static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr
                 if (ok) {
                     q->xy = gte_mfc(GTE_SXY2);
                     q->z = wbucket(sh_r(m3, -sh));
+                } else if (s_grid_strict) {
+                    return 0;
                 } else {
                     int16_t sx, sy, sz;
                     project(cx, cy, cz, cw < W_NEAR ? W_NEAR : cw, &sx, &sy, &sz);
@@ -4573,8 +4576,12 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                 continue;
             }
             if (!(A->ok & B->ok & C->ok) || (fl & NT_CUT)) {
-                s_n_tri--;
-                dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                {
+                    uint32_t cc = ST_NOW();
+                    s_n_tri--;
+                    dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                }
                 s_path[2]++;
                 continue;
             }
@@ -4584,11 +4591,54 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                 s_path[0]++;
                 continue;
             }
+            if ((fl & NT_TEX) && !pr->fog && pr->tex) {
+                /* a whole triangle deep enough to need cutting: its grid straight from the
+                 * vertex records and the kept draw (the clip path only when that fails) */
+                int k0 = edge_cuts(A->w, B->w, A->x, A->y, B->x, B->y);
+                int k1 = edge_cuts(B->w, C->w, B->x, B->y, C->x, C->y);
+                int k2 = edge_cuts(C->w, A->w, C->x, C->y, A->x, A->y);
+                int lg = k0 > k1 ? k0 : k1;
+                if (k2 > lg)
+                    lg = k2;
+                if (lg) {
+                    CV q[3];
+                    const MVtx *m3[3];
+                    const int ix[3] = { ia, ib, ic };
+                    int k, done;
+                    uint32_t cc = ST_NOW();
+                    m3[0] = A; m3[1] = B; m3[2] = C;
+                    for (k = 0; k < 3; k++) {
+                        const NVtx *nv = s_mvsrc[ix[k]];
+                        int r, g, bb;
+                        corner_rgb(tp, pr, fl & NT_FLAT ? A : m3[k], k, &r, &g, &bb);
+                        q[k].mx = nv->x * 16; q[k].my = nv->y * 16; q[k].mz = nv->z * 16;
+                        q[k].x = q[k].y = q[k].z = 0;
+                        q[k].w = m3[k]->w;
+                        q[k].u = tp->u[k]; q[k].v = tp->v[k];
+                        q[k].r = r; q[k].g = g; q[k].b = bb;
+                        q[k].fr = q[k].fg = q[k].fb = 0;
+                    }
+                    s_grid_strict = 1;
+                    done = lg <= 2 && emit_grid_words(&q[0], &q[1], &q[2], pr, lg);
+                    s_grid_strict = 0;
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                    s_gridn[done ? 0 : lg > 2 ? 1 : 2]++;
+                    if (done) {
+                        s_n_tri++;
+                        s_path[2]++;
+                        continue;
+                    }
+                }
+            }
             if ((fl & NT_TEX) && (edge_split(A->w, B->w, A->x, A->y, B->x, B->y) ||
                                   edge_split(B->w, C->w, B->x, B->y, C->x, C->y) ||
                                   edge_split(C->w, A->w, C->x, C->y, A->x, A->y))) {
-                s_n_tri--;
-                dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                {
+                    uint32_t cc = ST_NOW();
+                    s_n_tri--;
+                    dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                }
                 s_path[2]++;
                 continue;
             }
@@ -5229,6 +5279,10 @@ void tgr_rcp_present(uint32_t frame)
                         (unsigned)(s_st[0] * 8 / 33869), (unsigned)(s_st[1] * 8 / 33869), (unsigned)(s_st[2] * 8 / 33869),
                         (unsigned)(s_st[3] * 8 / 33869), (unsigned)(s_st[4] * 8 / 33869), (unsigned)(s_st[5] * 8 / 33869),
                         (unsigned)(s_st[6] * 8 / 33869));
+                fprintf(stderr, "perf: mesh cut path %u ms; direct grids %u, too deep %u, failed %u\n", (unsigned)(s_cutc * 8 / 33869),
+                        (unsigned)s_gridn[0], (unsigned)s_gridn[1], (unsigned)s_gridn[2]);
+                memset(s_gridn, 0, sizeof s_gridn);
+                s_cutc = 0;
                 fprintf(stderr, "perf: lists as meshes %u, replayed %u (no mesh: fog %u unseen %u slow %u fogprim %u other %u unrecorded %u)\n",
                         (unsigned)(s_st[7] >> 16), (unsigned)(s_st[7] & 0xFFFF), (unsigned)s_nmwhy[0], (unsigned)s_nmwhy[1],
                         (unsigned)s_nmwhy[2], (unsigned)s_nmwhy[3], (unsigned)s_nmwhy[4], (unsigned)s_nmwhy[7]);
