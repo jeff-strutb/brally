@@ -53,8 +53,10 @@
 #define GTE_H        26
 #define GTE_FLAG     31
 
-#define gte_ctc(reg, v) __asm__ volatile("ctc2 %0, $%1\n\tnop\n\tnop" : : "r"((uint32_t)(v)), "i"(reg))
-#define gte_mtc(reg, v) __asm__ volatile("mtc2 %0, $%1\n\tnop\n\tnop" : : "r"((uint32_t)(v)), "i"(reg))
+/* (a register written is ready for a command two instructions on: the
+ * commands begin with the two; writes in a row need none between them) */
+#define gte_ctc(reg, v) __asm__ volatile("ctc2 %0, $%1" : : "r"((uint32_t)(v)), "i"(reg))
+#define gte_mtc(reg, v) __asm__ volatile("mtc2 %0, $%1" : : "r"((uint32_t)(v)), "i"(reg))
 #define gte_mfc(reg) ({ uint32_t v_; __asm__ volatile("mfc2 %0, $%1\n\tnop" : "=r"(v_) : "i"(reg)); v_; })
 #define gte_cfc(reg) ({ uint32_t v_; __asm__ volatile("cfc2 %0, $%1\n\tnop" : "=r"(v_) : "i"(reg)); v_; })
 
