@@ -61,15 +61,14 @@ CLUT or 15-bit textures in VRAM. `TGR_SHOT_AT=F1,F2` in `run.cfg` dumps the
 shown frame at those retraces (`shotNNNNN_WxH.raw`, `tools/shot2png.py`).
 
 State: the title screen and the Options screen draw as the native port's do,
-but for the items below. Textures are uploaded to VRAM as they are decoded
+but for the items below. A second texture the combiner reads (the fonts'
+colour ramps) is sampled on the CPU at each vertex and folded into the
+vertex colours; blending by a texture's alpha is the texels' STP bit. Textures are uploaded to VRAM as they are decoded
 (the previous frame drawn, this one not yet sent); the intensity formats are
 indexed through shared grey palettes. `TGR_VRAMDUMP=1` with a shot also
 dumps the whole of VRAM. `tools/dsrun.py` starts DuckStation hidden in the
 background (it never takes the focus).
 Open:
-- TEXEL1 used as a lerp factor (the fonts' colour gradient: a 1-texel ramp in
-  tile t+1, 2-cycle): to be sampled per vertex.
-- Textured colour should be the combiner at texel 1 (a + b), not a alone.
 - The textures' own palettes wrap round their 30 rows without tracking use.
 - Not yet: the GTE for vertices, near-plane and large-polygon clipping,
   texture wrap (texture windows), fog, the SPU, the CD, 2 MB.

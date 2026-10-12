@@ -601,15 +601,15 @@ static int tile_size(const Tile *tl, int *w, int *h)
 
 static uint16_t s_dec[384 * 256];
 
-static const Tex *tile_texture(int t)
+/* a tile's texture: its key (the tile, the loads under it, the palette
+ * mode) and a sample of its source bytes; 0 for no texture */
+static uint32_t tile_key(int t, uint32_t *pcheck, int *pw, int *ph)
 {
     const Tile *tl = &s_tile[t];
-    int w, h, i, x, y, mode, ci, grey, tlut = (s_omh >> 14) & 3;
+    int w, h, i, ci, tlut = (s_omh >> 14) & 3;
     uint32_t key = 0x811C9DC5u, check = 0;
-    int px, py, pg, hw;
-    Tex *tx;
     if (!tile_size(tl, &w, &h))
-        return NULL;
+        return 0;
     if (w > 384 * 4)
         w = 384 * 4;
     key = hash32(key, (uint32_t)(tl->fmt << 28 | tl->siz << 26 | tl->line << 16 | tl->tmem << 4 | tl->pal));
@@ -629,6 +629,22 @@ static const Tex *tile_texture(int t)
         key = hash32(key, (uint32_t)(l->a2 << 16 | l->a3));
         check = hash32(check, src_check(l));
     }
+    *pcheck = check;
+    *pw = w;
+    *ph = h;
+    return key ? key : 1;
+}
+
+static const Tex *tile_texture(int t)
+{
+    const Tile *tl = &s_tile[t];
+    int w, h, i, x, y, mode, ci, grey, tlut = (s_omh >> 14) & 3;
+    uint32_t key, check;
+    int px, py, pg, hw;
+    Tex *tx;
+    if (!(key = tile_key(t, &check, &w, &h)))
+        return NULL;
+    ci = tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2);
     for (i = 0; i < s_ntex; i++)
         if (s_texs[i].key == key) {
             if (s_texs[i].check == check) {
@@ -754,52 +770,69 @@ static const Tex *tile_texture(int t)
  * those is again of that form when C is not the texel.  The result per
  * vertex: textured with colour a, or untextured with colour b. */
 typedef struct { int16_t a[4], b[4]; } Lin;
-enum { IN_COMB, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO, IN_TEXA, IN_PRIMA, IN_SHADEA, IN_ENVA, IN_COMBA };
-static const int8_t CA[16] = { IN_COMB, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO,
+/* TX0/TX1: the combiner's TEXEL0 and TEXEL1.  In a cycle one of them is the
+ * texture drawn (symbolic, a); the other is the second texture sampled at
+ * the vertex (a number, b): cycle 1 draws TEXEL0, cycle 2 TEXEL1 (the RDP's
+ * second cycle sees the texels swapped, so either way the tile drawn) */
+enum { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO, IN_TX0A, IN_TX1A, IN_PRIMA,
+       IN_SHADEA, IN_ENVA, IN_COMBA };
+static const int8_t CA[16] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
-static const int8_t CB[16] = { IN_COMB, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ZERO, IN_ZERO,
+static const int8_t CB[16] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ZERO, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
-static const int8_t CC[32] = { IN_COMB, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_COMBA,
-                               IN_TEXA, IN_TEXA, IN_PRIMA, IN_SHADEA, IN_ENVA, IN_ONE, IN_PRIMA, IN_ZERO,
+static const int8_t CC[32] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_COMBA,
+                               IN_TX0A, IN_TX1A, IN_PRIMA, IN_SHADEA, IN_ENVA, IN_ONE, IN_PRIMA, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO,
                                IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO, IN_ZERO };
-static const int8_t CD[8] = { IN_COMB, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
-static const int8_t AABD[8] = { IN_COMB, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
-static const int8_t AC[8] = { IN_ONE, IN_TEX, IN_TEX, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
+static const int8_t CD[8] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
+static const int8_t AABD[8] = { IN_COMB, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
+static const int8_t AC[8] = { IN_ONE, IN_TX0, IN_TX1, IN_PRIM, IN_SHADE, IN_ENV, IN_ONE, IN_ZERO };
 
-static void lin_in(Lin *o, int in, const Lin *comb, const uint8_t shade[4], int alpha)
+static const uint8_t WHITE[4] = { 255, 255, 255, 255 };
+
+static int to256(int v) { return v + (v >> 7); }          /* 0..255 to 0..256 */
+
+/* with texture LOD on and no further level (G_TEXTURE's level 0) the second
+ * texel is the same tile's: both are the texture drawn */
+static int same_tile(void) { return ((s_omh >> 16) & 1) && s_tex.level == 0; }
+
+static void lin_in(Lin *o, int in, const Lin *comb, const uint8_t shade[4], const uint8_t other[4], int sym, int alpha)
 {
     int k;
     memset(o, 0, sizeof *o);
+    if (in == IN_TX0 || in == IN_TX1)
+        in = (in == IN_TX1) == sym || same_tile() ? -1 : -2;   /* -1: the texture drawn, -2: the sampled one */
+    else if (in == IN_TX0A || in == IN_TX1A)
+        in = (in == IN_TX1A) == sym || same_tile() ? -3 : -4;
     for (k = 0; k < 4; k++) {
         int c = alpha ? 3 : k;
         switch (in) {
-        case IN_COMB: o->a[k] = comb->a[alpha ? 3 : k]; o->b[k] = comb->b[alpha ? 3 : k]; break;
+        case IN_COMB: o->a[k] = comb->a[c]; o->b[k] = comb->b[c]; break;
         case IN_COMBA: o->a[k] = comb->a[3]; o->b[k] = comb->b[3]; break;
-        case IN_TEX: if (alpha) o->a[k] = 256; else o->a[k] = 256; break;
-        case IN_TEXA: o->a[k] = 256; break;     /* (texel alpha, taken as the texel) */
-        case IN_PRIM: o->b[k] = s_prim[c]; break;
-        case IN_PRIMA: o->b[k] = s_prim[3]; break;
-        case IN_SHADE: o->b[k] = shade[c]; break;
-        case IN_SHADEA: o->b[k] = shade[3]; break;
-        case IN_ENV: o->b[k] = s_env[c]; break;
-        case IN_ENVA: o->b[k] = s_env[3]; break;
+        case -1: case -3: o->a[k] = 256; break; /* (the drawn texel's alpha taken as the texel) */
+        case -2: o->b[k] = (int16_t)to256(other[c]); break;
+        case -4: o->b[k] = (int16_t)to256(other[3]); break;
+        case IN_PRIM: o->b[k] = (int16_t)to256(s_prim[c]); break;
+        case IN_PRIMA: o->b[k] = (int16_t)to256(s_prim[3]); break;
+        case IN_SHADE: o->b[k] = (int16_t)to256(shade[c]); break;
+        case IN_SHADEA: o->b[k] = (int16_t)to256(shade[3]); break;
+        case IN_ENV: o->b[k] = (int16_t)to256(s_env[c]); break;
+        case IN_ENVA: o->b[k] = (int16_t)to256(s_env[3]); break;
         case IN_ONE: o->b[k] = 256; break;
         default: break;
         }
-        if (o->b[k] && o->b[k] < 256 && in != IN_ONE && in != IN_COMB && in != IN_COMBA)
-            o->b[k] = (int16_t)(o->b[k] + (o->b[k] >> 7));   /* 0..255 to 0..256 */
     }
 }
 
-static void lin_eval(Lin *out, int a, int b, int c, int d, const Lin *comb, const uint8_t shade[4], int alpha)
+static void lin_eval(Lin *out, int a, int b, int c, int d, const Lin *comb, const uint8_t shade[4],
+                     const uint8_t other[4], int sym, int alpha)
 {
     Lin A, B, C, D;
     int k;
-    lin_in(&A, a, comb, shade, alpha);
-    lin_in(&B, b, comb, shade, alpha);
-    lin_in(&C, c, comb, shade, alpha);
-    lin_in(&D, d, comb, shade, alpha);
+    lin_in(&A, a, comb, shade, other, sym, alpha);
+    lin_in(&B, b, comb, shade, other, sym, alpha);
+    lin_in(&C, c, comb, shade, other, sym, alpha);
+    lin_in(&D, d, comb, shade, other, sym, alpha);
     for (k = 0; k < 4; k++) {
         int32_t ca = C.a[k], cb = C.b[k];
         int32_t da = A.a[k] - B.a[k], db = A.b[k] - B.b[k];
@@ -812,33 +845,139 @@ static void lin_eval(Lin *out, int a, int b, int c, int d, const Lin *comb, cons
     }
 }
 
-static void combine(Lin *out, const uint8_t shade[4])
+/* the combiner for a vertex: shade its colour, other the second texture there */
+static void combine(Lin *out, const uint8_t shade[4], const uint8_t *other)
 {
-    Lin c1, c2;
+    Lin c1, c2, al;
     int cyc2 = ((s_omh >> 20) & 3) == 1;
+    if (!other)
+        other = WHITE;
     memset(&c1, 0, sizeof c1);
     lin_eval(&c1, CA[(s_cc0 >> 20) & 15], CB[(s_cc1 >> 28) & 15], CC[(s_cc0 >> 15) & 31], CD[(s_cc1 >> 15) & 7],
-             &c1, shade, 0);
-    {
-        Lin al;
-        lin_eval(&al, AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7],
-                 &c1, shade, 1);
-        c1.a[3] = al.a[3];
-        c1.b[3] = al.b[3];
-    }
+             &c1, shade, other, 0, 0);
+    lin_eval(&al, AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7],
+             &c1, shade, other, 0, 1);
+    c1.a[3] = al.a[3];
+    c1.b[3] = al.b[3];
     if (!cyc2) {
         *out = c1;
         return;
     }
-    lin_eval(&c2, CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7], &c1, shade, 0);
-    {
-        Lin al;
-        lin_eval(&al, AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7],
-                 &c1, shade, 1);
-        c2.a[3] = al.a[3];
-        c2.b[3] = al.b[3];
-    }
+    lin_eval(&c2, CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7], &c1, shade,
+             other, 1, 0);
+    lin_eval(&al, AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7],
+             &c1, shade, other, 1, 1);
+    c2.a[3] = al.a[3];
+    c2.b[3] = al.b[3];
     *out = c2;
+}
+
+/* whether the combiner reads the second texture: TEXEL1 in cycle 1, TEXEL0 in cycle 2 */
+static int uses_other(void)
+{
+    int cyc2 = ((s_omh >> 20) & 3) == 1;
+    if (same_tile())
+        return 0;
+    int in1[8] = { CA[(s_cc0 >> 20) & 15], CB[(s_cc1 >> 28) & 15], CC[(s_cc0 >> 15) & 31], CD[(s_cc1 >> 15) & 7],
+                   AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7] };
+    int in2[8] = { CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7],
+                   AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7] };
+    int k;
+    for (k = 0; k < 8; k++)
+        if (in1[k] == IN_TX1 || in1[k] == IN_TX1A)
+            return 1;
+    if (cyc2)
+        for (k = 0; k < 8; k++)
+            if (in2[k] == IN_TX0 || in2[k] == IN_TX0A)
+                return 1;
+    return 0;
+}
+
+/* ---- the second texture, sampled on the CPU ---------------------------------------- *
+ * A tile decoded to RGBA8 on a miss (TMEM rebuilt from the loads), kept by
+ * the same key as the VRAM cache; up to 4096 texels (the ramps and masks the
+ * game pairs with a texture), else read as white. */
+#define NSAMP 6
+static struct { uint32_t key, check; int w, h; uint8_t *rgba; uint32_t used; } s_samp[NSAMP];
+
+static void texel_rgba(const Tile *tl, int x, int y, int tlut, uint8_t out[4])
+{
+    uint32_t v = texel_raw(tl, x, y);
+    int f = tl->fmt << 4 | tl->siz;
+    if (tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2)) {
+        int idx = tl->siz == 0 ? (tl->pal << 4) | (int)v : (int)v;
+        uint16_t c = (uint16_t)(tm8(0x800 + idx * 8) << 8 | tm8(0x800 + idx * 8 + 1));
+        if (tlut == 3) {
+            out[0] = out[1] = out[2] = (uint8_t)(c >> 8);
+            out[3] = (uint8_t)c;
+            return;
+        }
+        v = c;
+        f = 0x02;
+    }
+    switch (f) {
+    case 0x02:
+        out[0] = (uint8_t)(((v >> 11) & 31) * 255 / 31); out[1] = (uint8_t)(((v >> 6) & 31) * 255 / 31);
+        out[2] = (uint8_t)(((v >> 1) & 31) * 255 / 31); out[3] = (v & 1) ? 255 : 0;
+        break;
+    case 0x03: out[0] = (uint8_t)(v >> 24); out[1] = (uint8_t)(v >> 16); out[2] = (uint8_t)(v >> 8); out[3] = (uint8_t)v; break;
+    case 0x30: out[0] = out[1] = out[2] = (uint8_t)((v >> 1) * 255 / 7); out[3] = (v & 1) ? 255 : 0; break;
+    case 0x31: out[0] = out[1] = out[2] = (uint8_t)((v >> 4) * 17); out[3] = (uint8_t)((v & 15) * 17); break;
+    case 0x32: out[0] = out[1] = out[2] = (uint8_t)(v >> 8); out[3] = (uint8_t)v; break;
+    case 0x40: out[0] = out[1] = out[2] = out[3] = (uint8_t)(v * 17); break;
+    default: out[0] = out[1] = out[2] = out[3] = (uint8_t)v; break;
+    }
+}
+
+
+/* tile t's texel at the texture coordinate (s, t) (10.5, after G_TEXTURE's scale) */
+static void sample(int t, int32_t ss, int32_t tt, uint8_t out[4])
+{
+    const Tile *tl = &s_tile[t];
+    uint32_t check, key;
+    int w, h, i, slot = -1, x, y;
+    uint32_t oldest = 0xFFFFFFFF;
+    memcpy(out, WHITE, 4);
+    key = tile_key(t, &check, &w, &h);
+    if (!key || w * h > 4096)
+        return;
+    for (i = 0; i < NSAMP; i++)
+        if (s_samp[i].rgba && s_samp[i].key == key && s_samp[i].check == check) {
+            slot = i;
+            break;
+        }
+    if (slot < 0) {
+        for (i = 0; i < NSAMP; i++)
+            if (!s_samp[i].rgba || s_samp[i].used < oldest) {
+                oldest = s_samp[i].rgba ? s_samp[i].used : 0;
+                slot = i;
+            }
+        if (!s_samp[slot].rgba)
+            s_samp[slot].rgba = (uint8_t *)malloc(4096 * 4);
+        for (i = 0; i < s_nloads; i++)
+            replay(&s_loads[i]);
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++)
+                texel_rgba(tl, x, y, (s_omh >> 14) & 3, s_samp[slot].rgba + (y * w + x) * 4);
+        s_samp[slot].key = key;
+        s_samp[slot].check = check;
+        s_samp[slot].w = w;
+        s_samp[slot].h = h;
+    }
+    s_samp[slot].used = s_frame_no;
+    {
+        int32_t origin_s = (tl->uls > tl->lrs ? tl->uls - 4096 : tl->uls) << 3;
+        int32_t origin_t = (tl->ult > tl->lrt ? tl->ult - 4096 : tl->ult) << 3;
+        int32_t vs = tl->shifts > 10 ? ss << (16 - tl->shifts) : ss >> tl->shifts;
+        int32_t vt = tl->shiftt > 10 ? tt << (16 - tl->shiftt) : tt >> tl->shiftt;
+        x = (vs - origin_s) >> 5;
+        y = (vt - origin_t) >> 5;
+        if (tl->masks && !(tl->cms & 2)) x &= (1 << tl->masks) - 1;
+        if (tl->maskt && !(tl->cmt & 2)) y &= (1 << tl->maskt) - 1;
+        x = x < 0 ? 0 : x >= w ? w - 1 : x;
+        y = y < 0 ? 0 : y >= h ? h - 1 : y;
+        memcpy(out, s_samp[slot].rgba + (y * w + x) * 4, 4);
+    }
 }
 
 /* ---- the primitive's draw state ------------------------------------------------------ */
@@ -877,6 +1016,26 @@ static void draw_state(Draw *d, int tile, int want_tex)
     if (d->textured && d->tex && d->tex->has_alpha && !d->semi && (s_oml & 0x1000))
         d->semi = 0;                            /* texture edges cut: the transparent texel does it */
     d->zsort = (s_geom & G_ZBUFFER) && (s_oml & 0x30);
+}
+
+/* blending by alpha (IN * A + MEM * (1 - A)) on the GPU: an alpha that comes
+ * from the texture is the texels' STP bit (set on the decoded texels whose
+ * alpha is between 1/4 and 3/4), which blends half and half on a
+ * semi-transparent primitive and leaves the others opaque; a constant alpha
+ * picks the nearest of the GPU's modes (a bright colour at a low alpha adds
+ * a quarter, else half and half) */
+static int blend_mode(const Lin *c, int textured, int *abr)
+{
+    int al;
+    *abr = 0;
+    if (textured && c->a[3])
+        return 1;
+    al = c->b[3] > 255 ? 255 : c->b[3];
+    if (al >= 230)
+        return 0;
+    if (al < 96 && c->b[0] + c->b[1] + c->b[2] > 384)
+        *abr = 3;
+    return 1;
 }
 
 /* a texel coordinate (10.5, scaled by G_TEXTURE) to the texture's u or v */
@@ -924,11 +1083,16 @@ static void triangle(int ia, int ib, int ic)
         if (maxx - minx > 1023 || maxy - miny > 511)
             return;                             /* larger than the GPU draws: not yet split */
     }
-    for (k = 0; k < 3; k++) {
-        uint8_t sh[4];
-        const Vtx *q = (s_geom & G_SHADING_SMOOTH) ? v[k] : v[0];
-        sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = v[k]->a;
-        combine(&col[k], sh);
+    {
+        int other = s_tex.on && uses_other();
+        for (k = 0; k < 3; k++) {
+            uint8_t sh[4], ot[4];
+            const Vtx *q = (s_geom & G_SHADING_SMOOTH) ? v[k] : v[0];
+            sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = v[k]->a;
+            if (other)
+                sample((tile + 1) & 7, v[k]->s, v[k]->t, ot);
+            combine(&col[k], sh, other ? ot : NULL);
+        }
     }
     want_tex = s_tex.on && (col[0].a[0] | col[0].a[1] | col[0].a[2] | col[1].a[0] | col[2].a[0]) != 0;
     draw_state(&d, tile, want_tex);
@@ -936,11 +1100,7 @@ static void triangle(int ia, int ib, int ic)
         semi = 1;
         abr = d.abr;
     } else if (d.semi == 2) {
-        int al = (col[0].a[3] ? col[0].a[3] * 255 >> 8 : col[0].b[3]);
-        if (al < 230) {
-            semi = 1;
-            abr = al < 96 ? 3 : 0;
-        }
+        semi = blend_mode(&col[0], d.textured, &abr);
     }
     cmd = d.textured ? 0x34 : 0x30;
     if (semi)
@@ -986,6 +1146,9 @@ static void triangle(int ia, int ib, int ic)
 }
 
 /* a textured rectangle as a 4-point textured polygon */
+/* a textured rectangle: GPU quads, one per texture page its texels cross
+ * (the GPU's u is 8 bits within a page), Gouraud-shaded when the combiner
+ * reads the second texture (its colour taken at the four corners) */
 static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
 {
     int x1 = (int)((w0 >> 12) & 0xFFF) >> 2, y1 = (int)(w0 & 0xFFF) >> 2;
@@ -994,9 +1157,9 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     int32_t s = (int16_t)(h2 >> 16), t = (int16_t)h2;          /* 10.5 */
     int32_t dsdx = (int16_t)(hc >> 16), dtdy = (int16_t)hc;    /* 5.10 */
     Draw d;
-    Lin col;
-    uint8_t white[4] = { 255, 255, 255, 255 };
-    int u0, v0, u1, v1, semi = 0, abr = 0, r, g, b;
+    Lin col[4];                                 /* the corners: top left, top right, bottom left, bottom right */
+    int rgb[4][3];
+    int u0, v0, u1, v1, semi = 0, abr = 0, k, shaded = 0;
     uint32_t *p;
     if (s_target < 0)
         return;
@@ -1004,13 +1167,25 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
         dsdx >>= 2;
         x1++;
         y1++;
-        memset(&col, 0, sizeof col);
-        col.a[0] = col.a[1] = col.a[2] = col.a[3] = 256;
-    } else {
-        combine(&col, white);
     }
     if (x1 <= x0 || y1 <= y0)
         return;
+    if (cyc == 2) {
+        memset(col, 0, sizeof col);
+        for (k = 0; k < 4; k++)
+            col[k].a[0] = col[k].a[1] = col[k].a[2] = col[k].a[3] = 256;
+    } else if (uses_other()) {
+        int32_t s1 = s + ((dsdx * (x1 - x0)) >> 5), t1 = t + ((dtdy * (y1 - y0)) >> 5);
+        for (k = 0; k < 4; k++) {
+            uint8_t ot[4];
+            sample((tile + 1) & 7, (k & 1) ? s1 : s, (k & 2) ? t1 : t, ot);
+            combine(&col[k], WHITE, ot);
+        }
+        shaded = 1;
+    } else {
+        combine(&col[0], WHITE, NULL);
+        col[1] = col[2] = col[3] = col[0];
+    }
     draw_state(&d, tile, 1);
     if (!d.textured) {
         if (s_log)
@@ -1024,24 +1199,17 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
     u0 = clamp_u(u0, d.tex->w); u1 = clamp_u(u1, d.tex->w);
     v0 = clamp_u(v0, d.tex->h); v1 = clamp_u(v1, d.tex->h);
     if (cyc != 2 && d.semi == 2) {
-        int al = col.a[3] ? col.a[3] * 255 >> 8 : col.b[3];
-        if (al < 230) {
-            semi = 1;
-            abr = al < 96 ? 3 : 0;
-        }
+        semi = blend_mode(&col[0], 1, &abr);
     } else if (cyc != 2 && d.semi == 1) {
         semi = 1;
         abr = 1;
     }
-    r = cyc == 2 ? 128 : col.a[0] >> 1;
-    g = cyc == 2 ? 128 : col.a[1] >> 1;
-    b = cyc == 2 ? 128 : col.a[2] >> 1;
-    if (s_log && cyc == 1)
-        tgr_log("rcp: texrect2 %d,%d-%d,%d uv %d,%d-%d,%d rgb %d %d %d a %d/%d semi %d abr %d tex %dx%d m%d\n", x0, y0, x1, y1,
-                u0, v0, u1, v1, r, g, b, col.a[3], col.b[3], semi, abr, d.tex->w, d.tex->h, d.tex->mode);
+    for (k = 0; k < 4; k++) {                   /* the GPU modulates: 128 is 1.0 */
+        rgb[k][0] = clamp255(col[k].a[0] >> 1);
+        rgb[k][1] = clamp255(col[k].a[1] >> 1);
+        rgb[k][2] = clamp255(col[k].a[2] >> 1);
+    }
     {
-        /* a piece per texture page the texels cross (the GPU's u is 8 bits
-         * within a page); x scaled between the texel bounds */
         int kk = tex_k(d.tex), lo = u0 < u1 ? u0 : u1, hi = u0 < u1 ? u1 : u0, ua = lo;
         int vy0 = (d.tex->vy & 255) + v0, vy1 = (d.tex->vy & 255) + v1;
         if (hi == lo)
@@ -1050,7 +1218,8 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             int hx = d.tex->vx + ua / kk;                       /* the halfword column of texel ua */
             int pg_end = ((hx / 64) + 1) * 64;                  /* the page's end, halfwords */
             int ub = (pg_end - d.tex->vx) * kk;                 /* the first texel past it */
-            int pa, pb, xa, xb, uu0, uu1;
+            int pa, pb, xa, xb, uu0, uu1, c, fa, fb;
+            uint32_t ca[2], cb[2];
             uint16_t tp = tex_tpage(d.tex, hx);
             if (ub > hi)
                 ub = hi;
@@ -1067,9 +1236,31 @@ static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
             }
             if (uu1 > 255) uu1 = 255;
             if (uu0 > 255) uu0 = 255;
-            if (xb > xa && (p = pkt_alloc(9))) {
-                p[1] = (uint32_t)(0x2C | (semi ? 2 : 0)) << 24 | (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 |
-                       (uint32_t)clamp255(b) << 16;
+            fa = (xa - x0) * 256 / (x1 - x0);           /* the piece's ends across the rectangle */
+            fb = (xb - x0) * 256 / (x1 - x0);
+            for (c = 0; c < 2; c++) {                   /* top (corners 0, 1), bottom (2, 3) */
+                const int *l = rgb[c * 2], *r = rgb[c * 2 + 1];
+                ca[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fa >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fa >> 8)) << 8 |
+                        (uint32_t)(l[2] + ((r[2] - l[2]) * fa >> 8)) << 16;
+                cb[c] = (uint32_t)(l[0] + ((r[0] - l[0]) * fb >> 8)) | (uint32_t)(l[1] + ((r[1] - l[1]) * fb >> 8)) << 8 |
+                        (uint32_t)(l[2] + ((r[2] - l[2]) * fb >> 8)) << 16;
+            }
+            if (xb > xa && shaded && (p = pkt_alloc(12))) {
+                p[1] = (uint32_t)(0x3C | (semi ? 2 : 0)) << 24 | ca[0];
+                p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
+                p[3] = (uint32_t)d.tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
+                p[4] = cb[0];
+                p[5] = (uint32_t)y0 << 16 | (uint16_t)xb;
+                p[6] = (uint32_t)(tp | abr << 5) << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu1;
+                p[7] = ca[1];
+                p[8] = (uint32_t)y1 << 16 | (uint16_t)xa;
+                p[9] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu0;
+                p[10] = cb[1];
+                p[11] = (uint32_t)y1 << 16 | (uint16_t)xb;
+                p[12] = (uint32_t)(vy1 & 255) << 8 | (uint32_t)uu1;
+                put_flat(p);
+            } else if (xb > xa && !shaded && (p = pkt_alloc(9))) {
+                p[1] = (uint32_t)(0x2C | (semi ? 2 : 0)) << 24 | ca[0];
                 p[2] = (uint32_t)y0 << 16 | (uint16_t)xa;
                 p[3] = (uint32_t)d.tex->clut << 16 | (uint32_t)(vy0 & 255) << 8 | (uint32_t)uu0;
                 p[4] = (uint32_t)y0 << 16 | (uint16_t)xb;
@@ -1104,9 +1295,8 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         b = ((c >> 1) & 31) << 3;
     } else {
         Lin col;
-        uint8_t white[4] = { 255, 255, 255, 255 };
         Draw d;
-        combine(&col, white);
+        combine(&col, WHITE, NULL);
         draw_state(&d, 0, 0);
         r = col.b[0]; g = col.b[1]; b = col.b[2];
         if (d.semi == 1 || (d.semi == 2 && col.b[3] < 230))
