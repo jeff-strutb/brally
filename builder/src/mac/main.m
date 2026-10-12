@@ -200,13 +200,13 @@ static void progress_cb(void *ctx, double f, const char *s)
 - (void)showChoose
 {
     NSButton *mac = [NSButton radioButtonWithTitle:@"Mac" target:self action:@selector(pickTarget:)];
-    NSButton *ios = [NSButton radioButtonWithTitle:@"iPhone (an .ipa)" target:self action:@selector(pickTarget:)];
+    NSButton *ios = [NSButton radioButtonWithTitle:@"iPhone and iPad (an .ipa)" target:self action:@selector(pickTarget:)];
     NSTextField *sign;
     mac.tag = RB_MACOS;
     ios.tag = RB_IOS;
     (self.target == RB_IOS ? ios : mac).state = NSControlStateValueOn;
     if (self.signing) {
-        sign = label([NSString stringWithFormat:@"Signed with your Xcode signing (%@), ready to install on your iPhone.", self.signing], 12, NO);
+        sign = label([NSString stringWithFormat:@"Signed with your Xcode signing (%@), ready to install on your iPhone or iPad.", self.signing], 12, NO);
         sign.textColor = NSColor.secondaryLabelColor;
     } else {
         sign = label(@"No Xcode signing certificate with a provisioning profile was found on this Mac, so this will be an "
@@ -452,8 +452,8 @@ static void progress_cb(void *ctx, double f, const char *s)
         NSArray<NSButton *> *buttons;
         show.identifier = out;
         if (self.target == RB_IOS) {
-            how = self.signing ? @"It is signed with your Xcode signing. Install it on your iPhone from Xcode (Window, Devices and Simulators: "
-                                 @"drag it onto the iPhone's installed apps) or Apple Configurator."
+            how = self.signing ? @"It is signed with your Xcode signing. Install it on your iPhone or iPad from Xcode (Window, Devices and Simulators: "
+                                 @"drag it onto the device's installed apps) or Apple Configurator."
                                : @"It is not signed: sign and install it yourself, for example with AltStore or Sideloadly.";
             show.keyEquivalent = @"\r";
             buttons = @[ done, show ];

@@ -8,7 +8,7 @@ from the repository's Releases page; nothing here ships game data.
 1. What to build for: the system the builder runs on. On macOS, the Mac or the
    iPhone (an .ipa, signed with the player's own Xcode signing when the Mac
    has a code-signing certificate with a provisioning profile for it, else
-   unsigned, with a warning in red); on Windows, Windows. And the folder to
+   unsigned, with a warning in red; it runs on the iPad too); on Windows, Windows. And the folder to
    build into.
 2. The dumps: the Top Gear Rally (USA) ROM and the retail Boss Rally CD as
    BIN/CUE. The builder shows the MD5 it expects and each file's own, and

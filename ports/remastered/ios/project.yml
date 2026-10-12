@@ -1,4 +1,4 @@
-# The iPhone app (xcodegen): the Swift host and the touch controls in Sources
+# The iPhone and iPad app (xcodegen): the Swift host and the touch controls in Sources
 # over libgames.a (ports/remastered/link.sh, HOST=ios: both games, the
 # multiplexer and the process), Boss Rally's disc data (Resources/disc) and the
 # icon (Assets.xcassets), which build.sh makes. It generates the project into
@@ -29,7 +29,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.strutb.tgrally
         PRODUCT_NAME: "Top Gear Rally Remastered"
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/remastered/ios/Sources/Bridge.h"
         HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"
@@ -47,6 +47,7 @@ targets:
         UIRequiresFullScreen: true
         UIStatusBarHidden: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationLandscapeLeft]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationLandscapeLeft]
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UIRequiredDeviceCapabilities: [arm64, metal]

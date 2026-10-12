@@ -38,7 +38,7 @@ VERSION=$VERSION builder/build.sh
 NOTES=$(mktemp)
 $PY builder/version.py --detail | sed '$d' > $NOTES.m2
 cat > $NOTES <<EOF
-Rally Builder makes a native build of **Top Gear Rally Remastered** from your own copies of **Top Gear Rally** (Nintendo 64, 1997) and **Boss Rally** (PC, 1999): Top Gear Rally's menus, seasons and soundtrack, with every race run by Boss Rally's engine on the same tracks. It builds for the system it runs on: on a Mac, for the Mac or for the iPhone; on Windows, for Windows. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5, takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
+Rally Builder makes a native build of **Top Gear Rally Remastered** from your own copies of **Top Gear Rally** (Nintendo 64, 1997) and **Boss Rally** (PC, 1999): Top Gear Rally's menus, seasons and soundtrack, with every race run by Boss Rally's engine on the same tracks. It builds for the system it runs on: on a Mac, for the Mac or for the iPhone and iPad; on Windows, for Windows. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5, takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
 
 Version $VERSION is the decompilations' byte-exact (M2) progress, the average of the two:
 \`\`\`
@@ -59,13 +59,13 @@ Both dumps:
 
 ### What it makes
 - Mac: \`Top Gear Rally Remastered.app\`.
-- iPhone (from the Mac builder, iOS 16 or later): \`Top Gear Rally Remastered.ipa\`. When your Mac has Xcode signing (a development certificate with a provisioning profile for it), the .ipa is signed with it, ready to install from Xcode (Devices and Simulators) or Apple Configurator. Otherwise the builder says so in red and the .ipa is unsigned, for you to sign and install with a tool such as AltStore or Sideloadly.
+- iPhone and iPad (from the Mac builder, iOS 16 or later): \`Top Gear Rally Remastered.ipa\`. When your Mac has Xcode signing (a development certificate with a provisioning profile for it), the .ipa is signed with it, ready to install from Xcode (Devices and Simulators) or Apple Configurator. Otherwise the builder says so in red and the .ipa is unsigned, for you to sign and install with a tool such as AltStore or Sideloadly.
 - Windows: a \`Top Gear Rally Remastered\` folder with \`Top Gear Rally Remastered.exe\`.
 
 ### Playing
-The game starts in **Remastered**: the menus are Top Gear Rally's, each race is run by Boss Rally's engine and its result goes back into Top Gear Rally's results, season and records, and the window can take any shape (it opens at 16:9; a race fills it, menus stay 4:3). **Tab** switches to **Original**, Top Gear Rally's own races in its 4:3 picture, and back; the controller's **View** button does the same. On the iPhone, touch drives it: in a race a finger on the right steers and accelerates, one on the left brakes; in the menus, tap and swipe; two fingers pause.
+The game starts in **Remastered**: the menus are Top Gear Rally's, each race is run by Boss Rally's engine and its result goes back into Top Gear Rally's results, season and records, and the window can take any shape (it opens at 16:9; a race fills it, menus stay 4:3). **Tab** switches to **Original**, Top Gear Rally's own races in its 4:3 picture, and back; the controller's **View** button does the same. On the iPhone and iPad, touch drives it: in a race a finger on the right steers and accelerates, one on the left brakes; in the menus, tap and swipe; two fingers pause.
 
-Saves live in your user folder (Application Support on macOS and the iPhone, AppData on Windows), so rebuilding never touches them. Source: [builder/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/builder), [ports/remastered/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/ports/remastered).
+Saves live in your user folder (Application Support on macOS, the iPhone and the iPad, AppData on Windows), so rebuilding never touches them. Source: [builder/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/builder), [ports/remastered/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/ports/remastered).
 EOF
 
 if [ $DRY = 1 ]; then

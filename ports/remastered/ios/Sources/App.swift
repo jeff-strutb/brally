@@ -1,7 +1,9 @@
-// App.swift: Top Gear Rally Remastered on the iPhone. Landscape only; the
-// games are drawn into a 16:9 Metal layer centred on the screen (the
-// Remastered profile's race fills it, menus keep the N64's 4:3 inside it),
-// with the touch surface over the whole screen. The process
+// App.swift: Top Gear Rally Remastered on the iPhone and the iPad. Landscape
+// only; the games are drawn into a Metal layer as large as the screen, clear
+// of the sensor housing at its sides (the safe area across, the whole height),
+// whatever its shape: the Remastered profile's race fills it, its camera
+// widened or heightened to the shape, and menus keep the N64's 4:3 inside it.
+// The touch surface is over the whole screen. The process
 // (ports/remastered/platform/main.c: Top Gear Rally's main loop, Boss Rally
 // started at the first race) runs on a thread of its own once the layer is
 // laid out.
@@ -71,10 +73,10 @@ final class GameViewController: UIViewController {
         super.viewDidLayoutSubviews()
         let b = view.bounds
         surface.frame = b
-        // the largest 16:9 the screen holds, centred
-        var w = b.width, h = (w * 9 / 16).rounded()
-        if h > b.height { h = b.height; w = (h * 16 / 9).rounded() }
-        screenView.frame = CGRect(x: ((b.width - w) / 2).rounded(), y: ((b.height - h) / 2).rounded(), width: w, height: h)
+        // the screen, less the safe area's sides (the iPhone's sensor housing)
+        let ins = view.safeAreaInsets
+        let w = (b.width - ins.left - ins.right).rounded(), h = b.height
+        screenView.frame = CGRect(x: ins.left.rounded(), y: 0, width: w, height: h)
         surface.gameFrame = screenView.frame
         let scale = view.window?.screen.nativeScale ?? UIScreen.main.nativeScale
         let ml = screenView.layer as! CAMetalLayer

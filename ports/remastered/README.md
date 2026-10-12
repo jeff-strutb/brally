@@ -75,8 +75,10 @@ the process as `rm_main`), puts Boss Rally's data track in the app as
 with xcodegen into `build/remastered/ios-metal` and signs it (`--sim`: a
 Simulator build; `--install` puts it on the first paired iPhone). It replaced
 `ports/tgrally/ios` (the same bundle identifier, so it installs over it).
-Landscape only; the games draw into a 16:9 area centred on the screen
-(Remastered: a race fills it, menus keep 4:3 inside it). Touch drives the game
+It runs on the iPhone and the iPad. Landscape only; the games draw into the
+whole screen, clear of the iPhone's sensor housing at the sides, whatever its
+shape (Remastered: a race fills it, its camera widened or heightened to the
+shape, menus keep 4:3 inside it). Touch drives the game
 in front (`mux_front_game`), and the fingers on the glass are let go when the
 other comes in front:
 
