@@ -321,7 +321,7 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
     {
       Gfx *g_ = D_8028A858++;
 
-      tgr_wr32(&g_->words.w0, 0x06000000);
+      tgr_wr32(&g_->words.w0, 0x0A000000 | idx);   /* PlayStation: the object by number (its model), not its list */
       tgr_wr32(&g_->words.w1, TGR_W1(start));
     }
     G(0xE7000000, 0);
@@ -713,7 +713,7 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       tgr_wr32(&g_->words.w1, TGR_W1(0xFFFFFFFF));
     }
     G(0xE8000000, 0);
-    G(0x06000000, start);
+    G(0x0A000000 | idx, start);   /* PlayStation: the object by number (its model), not its list */
     D_8028AA10 += BE16(obj->vtxs);
     D_8028AA08 += BE16(obj->tris);
     D_8028AA38 += BE16(obj->x52);
@@ -1312,7 +1312,7 @@ void BrTrackDraw(int pass)
     if (D_8028C788 < i && i < D_8028C78C) {
       G(0xBB001001, 0xFFFFFFFF);
       G(0xE8000000, 0);
-      G(0x06000000, BE32(o->dl));
+      G(0x0A000000 | obj, BE32(o->dl));   /* PlayStation: the object by number (its model), not its list */
       D_8028AA10 += BES16(o->vtxs);
       D_8028AA08 += BES16(o->tris);
       D_8028AA38 += BES16(o->x52);

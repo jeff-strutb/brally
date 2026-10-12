@@ -4106,7 +4106,7 @@ typedef struct Dlc {
     void *mem;                                  /* (its blocks in the list arena, itself among them; its meshes' are their own) */
 } Dlc;
 
-#define DLC_ARENA (1024 * 1024)
+#define DLC_ARENA (512 * 1024)
 #define DLC_HASH 256
 static uint32_t s_dlc_arena[DLC_ARENA / 4];
 static int s_dlc_used;
@@ -4351,6 +4351,11 @@ static void tmem_fill(uint32_t *bits, int a, int n)
             bits[i >> 5] |= 1u << (i & 31);
 }
 
+/* (a list flattened from its calls, for the track's models: dlc_compile reads it
+ * from here, its first word at s_flat_a) */
+static const uint32_t *s_flat;
+static uint32_t s_flat_a;
+#define DLC_RD(pc) (s_flat ? s_flat[((pc) - s_flat_a) >> 2] : rd32(pc))
 static Dlc *dlc_compile(uint32_t a)
 {
     Dlc *d;
@@ -4362,7 +4367,7 @@ static Dlc *dlc_compile(uint32_t a)
     memset(td, 0, sizeof td);
     /* the list's length and whether it is the kind kept */
     while (n < 512) {
-        uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
+        uint32_t w0 = DLC_RD(pc), w1 = DLC_RD(pc + 4);
         int op = (int)(w0 >> 24);
         pc += 8;
         n++;
@@ -4454,7 +4459,7 @@ static Dlc *dlc_compile(uint32_t a)
             int t = (int)((w1 >> 24) & 7), words;
             reads |= (R_TIMG | (R_TDESC << t)) & ~written;
             if (op == 0xF3) {
-                int siz = (int)((rd32(pc - 16) >> 19) & 3);   /* (unused: the SETTIMG's size is the state's) */
+                int siz = (int)((DLC_RD(pc - 16) >> 19) & 3);   /* (unused: the SETTIMG's size is the state's) */
                 int texels = (int)((w1 >> 12) & 0xFFF) - (int)((w0 >> 12) & 0xFFF) + 1;
                 (void)siz;
                 words = (texels * 2 + 7) / 8 + 1;              /* (at most 16 bits a texel) */
@@ -4503,7 +4508,7 @@ static Dlc *dlc_compile(uint32_t a)
     d->tsa_on = (uint8_t)(s_tex.on != 0);
     d->tsa_tile = (uint8_t)s_tex.tile;
     for (i = 0, pc = a; i < n; i++, pc += 8) {
-        uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
+        uint32_t w0 = DLC_RD(pc), w1 = DLC_RD(pc + 4);
         int op = (int)(w0 >> 24);
         d->cmd[i].w0 = w0;
         d->cmd[i].w1 = w1;
@@ -5423,6 +5428,993 @@ static int nm_draw(const Dlc *d, DlcVar *v)
     return 1;
 }
 
+/* ---- the track's objects as PlayStation models ----------------------------------- *
+ * The track drawer asks for an object by number (command 0x0A: the object in
+ * w0's low half, its display list in w1) instead of calling its display list.
+ * The first time an object is asked for under a draw state, its list is
+ * worked through once (its state commands run, every triangle's draw worked
+ * out as a kept list's is) into a model: the list's vertex batches, its
+ * materials (the GPU's command, texture page, palette and colour line), and
+ * for each triangle its corners, culling, texture coordinates and colours.
+ * The model is kept for the track (not in the list arena, not checked over
+ * every frame), drawn straight from then on, and the list's state commands
+ * run after it so the state is as the list leaves it.  An object the model
+ * cannot hold (fog, a vertex from before the call, a triangle drawn the slow
+ * way) is drawn from its display list.  TGR_NAT=1 turns it on (off: every
+ * object from its display list, as before). */
+typedef struct {
+    uint8_t a, b, c, mat;                       /* vertex slots, material */
+    uint8_t fl, pad;                            /* NT_ flags (culling, cut) */
+    uint16_t uv[3];                             /* the GPU's u, v for the whole triangle */
+    uint32_t rgb[3];                            /* the corners' GPU colours (unlit; the command byte on the first) */
+    int32_t u[3], v[3];                         /* 1/32 texel from the tile's origin (the cut path's) */
+} NFace;
+typedef struct {
+    Prim pr;
+    uint32_t place;                             /* the texture's key and VRAM place as built */
+    uint32_t clut16, tpage16;                   /* (the words' high halves: the palette, the page and blend) */
+    uint8_t nw, off, pre, post;                 /* the packet's words, where its first colour is, words before and after */
+    uint32_t prew[2];                           /* (a blend's draw mode, a texture window) */
+} NMat;
+typedef struct { const NVtx *nv; uint8_t n, v0, lit, pad; uint16_t f0, nf; } NBatN;
+typedef struct NModel {
+    uint32_t sig, check;                        /* the draw state built under; the list's words, sampled */
+    uint32_t used;                              /* the frame it was last drawn in */
+    int nbat, nmat, nf, nst, bytes;
+    NBatN *bat;
+    NMat *mat;
+    NFace *f;
+    uint32_t *st;                               /* the list's state commands, run after it draws */
+} NModel;
+#define NAT_OBJ 1024
+static struct {
+    NModel *m[2];
+    uint32_t addr, reads;
+    uint8_t tsa, tsa_on, tsa_tile, next;
+    uint32_t badsig;                            /* (a state it could not be built under) */
+    uint8_t next_ext;
+    uint16_t ext[4][2];                         /* texture memory its triangles read that it does not load: start, words (0xFFFF: all) */
+} s_nat[NAT_OBJ];
+static uint32_t s_nat_tbits[16];                /* (while a model is built: the texture memory its list has loaded, by word) */
+static Load s_nat_pre[NLOADS];                  /* (and the loads as they stood at its call) */
+static int s_nat_npre;
+static int s_nat_on = -1;
+static uint32_t s_nat_n[6];                     /* TGR_PERF: drawn, built, not buildable, from the list, stale, bytes held */
+static uint32_t s_natb[3];                      /* TGR_PERF: builds of an object's first, second, a third draw state */
+static uint32_t s_natw[10];                     /* TGR_PERF: why not buildable: flatten, compile, no triangles, fog, stamp, slow, fog draw, materials, room, vertex */
+
+/* the models' memory: one block each from a pool of their own (first fit,
+ * neighbours merged when freed) */
+#define NAT_POOL (512 * 1024)
+static uint32_t s_npool[NAT_POOL / 4];          /* blocks: a word of size (bytes, the low bit set while in use), then the block */
+static int s_npool_init;
+static void *nat_alloc(int n)
+{
+    uint32_t i, need = (uint32_t)((n + 7) & ~3) + 4;
+    if (!s_npool_init) {
+        s_npool[0] = NAT_POOL;
+        s_npool_init = 1;
+    }
+    for (i = 0; i < NAT_POOL / 4;) {
+        uint32_t sz = s_npool[i] & ~1u;
+        if (!(s_npool[i] & 1)) {
+            /* (the free blocks after it first: one) */
+            while (i + sz / 4 < NAT_POOL / 4 && !(s_npool[i + sz / 4] & 1))
+                sz += s_npool[i + sz / 4];
+            s_npool[i] = sz;
+            if (sz >= need) {
+                if (sz - need >= 16) {
+                    s_npool[i + need / 4] = sz - need;
+                    sz = need;
+                }
+                s_npool[i] = sz | 1;
+                return &s_npool[i + 1];
+            }
+        }
+        i += sz / 4;
+    }
+    return NULL;
+}
+static int nat_pool_ok(const char *where, int o)
+{
+    uint32_t i, last = 0;
+    for (i = 0; i < NAT_POOL / 4;) {
+        uint32_t sz = s_npool[i] & ~1u;
+        if (!sz || sz > NAT_POOL || (sz & 3)) {
+            static int told;
+            if (!told++)
+                fprintf(stderr, "pool: broken at word %u (size %08X) after block at %u, %s object %d\n", (unsigned)i,
+                        (unsigned)s_npool[i], (unsigned)last, where, o);
+            return 0;
+        }
+        last = i;
+        i += sz / 4;
+    }
+    return 1;
+}
+static void nat_mfree(void *p)
+{
+    if (p)
+        ((uint32_t *)p)[-1] &= ~1u;
+}
+
+static void nat_free(NModel *m)
+{
+    if (!m)
+        return;
+    s_nat_n[5] -= (uint32_t)m->bytes;
+    nat_mfree(m);
+}
+
+/* room made: the models not drawn for a second go */
+static void nat_evict(void)
+{
+    int o, k;
+    for (o = 0; o < NAT_OBJ; o++)
+        for (k = 0; k < 2; k++)
+            if (s_nat[o].m[k] && s_nat[o].m[k]->used + 30 < s_frame_no) {
+                nat_free(s_nat[o].m[k]);
+                s_nat[o].m[k] = NULL;
+            }
+}
+
+/* a few of the list's words: the same object, the same list */
+static uint32_t nat_check(uint32_t a)
+{
+    return hash32(hash32(hash32(rd32(a), rd32(a + 4)), rd32(a + 8)), rd32(a + 20));
+}
+
+/* the draw state as a list with these reads sees it (dlc_sig) */
+static uint32_t nat_sig_reads(int o, uint32_t reads)
+{
+    Dlc d;
+    d.reads = reads;
+    d.tsa = s_nat[o].tsa;
+    d.tsa_on = s_nat[o].tsa_on;
+    d.tsa_tile = s_nat[o].tsa_tile;
+    return dlc_sig(&d);
+}
+static uint32_t nat_sig(int o)
+{
+    Dlc d;
+    d.reads = s_nat[o].reads;
+    d.tsa = s_nat[o].tsa;
+    d.tsa_on = s_nat[o].tsa_on;
+    d.tsa_tile = s_nat[o].tsa_tile;
+    return dlc_sig(&d);
+}
+
+/* the colours the combiner and the blender read as they stand (the primitive
+ * and environment colours, the blend colour's alpha for the alpha compare) */
+static uint32_t s_natneed;
+static uint32_t nat_need_in(int in)
+{
+    if (in == IN_PRIM || in == IN_PRIMA || in == IN_PRIMLOD)
+        return R_PRIM;
+    if (in == IN_ENV || in == IN_ENVA)
+        return R_ENV;
+    return 0;
+}
+/* (a, b, c, d) of one cycle's colour or alpha: what it reads, and whether it takes the first cycle's result */
+static uint32_t nat_need_eq(int a, int b, int c, int d, int *comb)
+{
+    uint32_t r = nat_need_in(c) | nat_need_in(d);
+    int ab = c != IN_ZERO && a != b;
+    if (ab)
+        r |= nat_need_in(a) | nat_need_in(b);
+    if (d == IN_COMB || d == IN_COMBA || c == IN_COMB || c == IN_COMBA ||
+        (ab && (a == IN_COMB || a == IN_COMBA || b == IN_COMB || b == IN_COMBA)))
+        *comb = 1;
+    return r;
+}
+static uint32_t nat_need(void)
+{
+    uint32_t r0 = 0, r1 = 0, r = 0;
+    int comb = 0, two = ((s_omh >> 20) & 3) == 1, dummy = 0;
+    r0 = nat_need_eq(CA[(s_cc0 >> 20) & 15], CB[(s_cc1 >> 28) & 15], CC[(s_cc0 >> 15) & 31], CD[(s_cc1 >> 15) & 7], &dummy) |
+         nat_need_eq(AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7], &dummy);
+    if (two) {
+        r1 = nat_need_eq(CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7], &comb) |
+             nat_need_eq(AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7], &comb);
+        r = r1 | (comb ? r0 : 0);
+    } else {
+        r = r0;
+    }
+    if ((s_oml & 3) == 1)
+        r |= R_BLEND;
+    return r;
+}
+
+/* the loads that filled the texture memory the object reads without loading it */
+static uint32_t nat_ext_key(int o, const Load *loads, int n)
+{
+    uint32_t h = 0x811C9DC5u;
+    int i, e;
+    for (e = 0; e < s_nat[o].next_ext; e++) {
+        int a = s_nat[o].ext[e][0], w = s_nat[o].ext[e][1];
+        for (i = 0; i < n; i++) {
+            const Load *l = &loads[i];
+            if (w != 0xFFFF && (l->tmem + l->words <= a || a + w <= l->tmem))
+                continue;
+            h = hash32(h, l->src);
+            h = hash32(h, (uint32_t)(l->kind << 28 | l->siz << 24 | l->w << 12 | l->tmem));
+            h = hash32(h, (uint32_t)(l->a0 << 16 | l->a1));
+            h = hash32(h, (uint32_t)(l->a2 << 16 | l->a3) ^ (uint32_t)l->line << 7 ^ (uint32_t)l->words << 13);
+        }
+    }
+    return h;
+}
+/* a range of texture memory a triangle reads: kept as the object's when its list did not load all of it */
+static void nat_ext_add(int o, int a, int w)
+{
+    int e;
+    if (w <= 0)
+        return;
+    if (a + w > 512)
+        w = 512 - a;
+    if (tmem_have(s_nat_tbits, a, w))
+        return;
+    for (e = 0; e < s_nat[o].next_ext; e++) {
+        int a0 = s_nat[o].ext[e][0], w0 = s_nat[o].ext[e][1];
+        if (w0 == 0xFFFF || (a0 <= a && a + w <= a0 + w0))
+            return;
+        if (a <= a0 + w0 && a0 <= a + w) {      /* (touching: one range) */
+            int lo = a < a0 ? a : a0, hi = a + w > a0 + w0 ? a + w : a0 + w0;
+            s_nat[o].ext[e][0] = (uint16_t)lo;
+            s_nat[o].ext[e][1] = (uint16_t)(hi - lo);
+            return;
+        }
+    }
+    if (s_nat[o].next_ext < 4) {
+        s_nat[o].ext[s_nat[o].next_ext][0] = (uint16_t)a;
+        s_nat[o].ext[s_nat[o].next_ext][1] = (uint16_t)w;
+        s_nat[o].next_ext++;
+    } else {
+        s_nat[o].ext[0][0] = 0;
+        s_nat[o].ext[0][1] = 0xFFFF;            /* (too many: all of it) */
+        s_nat[o].next_ext = 1;
+    }
+}
+/* the texture memory the current draw reads: its tile's texels (and the second tile's), its palette */
+static void nat_ext_tri(int o)
+{
+    int t, k, other = s_tex.on && uses_other();
+    if (!s_fs.textured)
+        return;
+    for (k = 0; k < (other ? 2 : 1); k++) {
+        const Tile *tl;
+        int rows, ci;
+        t = (s_tex.tile + k) & 7;
+        tl = &s_tile[t];
+        rows = ((tl->lrt - tl->ult) >> 2) + 1;
+        nat_ext_add(o, tl->tmem, tl->line * (rows < 1 ? 1 : rows));
+        ci = tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2);
+        if (ci)
+            nat_ext_add(o, 256 + (tl->siz == 0 ? tl->pal * 16 : 0), tl->siz == 0 ? 16 : 256);
+    }
+}
+
+/* one triangle's draw kept into the model (dlc_capture's): 0 when it cannot be */
+static int nat_capture(NModel *m, int cap, NFace *f, int ia, int ib, int ic, uint32_t *mstamp)
+{
+    Vtx *vv[3];
+    int k, p, other;
+    const Prim *pr;
+    if (s_fs.stamp != s_dstamp)
+        return 4;
+    other = s_tex.on && uses_other();
+    if (!s_fs.ok && !other)
+        return 5;
+    if (s_fs.pr.fog)
+        return 6;
+    cc_compile();
+    for (p = 0; p < m->nmat; p++)
+        if (mstamp[p] == s_fs.stamp)
+            break;
+    if (p == m->nmat) {
+        NMat *mt;
+        if (p == cap)
+            return 7;
+        mt = &m->mat[p];
+        memset(mt, 0, sizeof *mt);
+        s_natneed |= nat_need();
+        mt->pr = s_fs.pr;
+        mt->pr.flat = s_fs.flat;
+        mt->pr.lit = 0;
+        mstamp[p] = s_fs.stamp;
+        if ((s_geom & G_LIGHTING) && !other) {
+            int c, j, e[3][3];
+            static const uint8_t lv[3] = { 0, 128, 255 };
+            for (j = 0; j < 3; j++) {
+                uint8_t sh[4];
+                Lin col;
+                sh[0] = sh[1] = sh[2] = lv[j];
+                sh[3] = s_vtx[ia].a;
+                combine(&col, sh, NULL);
+                for (c = 0; c < 3; c++)
+                    e[j][c] = s_fs.textured && s_fs.mask ? col.b[c] >> 1 : s_fs.textured ? (col.a[c] + col.b[c]) >> 1 : col.b[c];
+            }
+            mt->pr.lit = 1;
+            for (c = 0; c < 3; c++) {
+                mt->pr.c0[c] = (int16_t)e[0][c];
+                mt->pr.sl[c] = (int16_t)(e[2][c] - e[0][c]);
+                if (abs(e[0][c] + ((e[2][c] - e[0][c]) * 128 >> 8) - e[1][c]) > 3)
+                    mt->pr.lit = 0;
+            }
+        }
+        {
+            const Tex *tx = mt->pr.tex;
+            int n = 0;
+            pr = &mt->pr;
+            mt->place = tx ? tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u : 0;
+            if (pr->semi)
+                mt->prew[n++] = 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 | (tx ? tex_tpage(tx, tx->vx) & 0x1FF : 0);
+            if (pr->window)
+                mt->prew[n++] = pr->window;
+            mt->pre = (uint8_t)n;
+            mt->post = pr->window ? 1 : 0;
+            mt->nw = (uint8_t)(n + (pr->textured && tx ? 9 : 6) + mt->post);
+            mt->off = (uint8_t)n;
+            if (pr->textured && tx) {
+                mt->clut16 = (uint32_t)tx->clut << 16;
+                mt->tpage16 = (uint32_t)(tex_tpage(tx, tx->vx) | pr->abr << 5) << 16;
+            }
+        }
+        m->nmat++;
+    }
+    pr = &m->mat[p].pr;
+    vv[0] = &s_vtx[ia]; vv[1] = &s_vtx[ib]; vv[2] = &s_vtx[ic];
+    f->a = (uint8_t)ia; f->b = (uint8_t)ib; f->c = (uint8_t)ic;
+    f->mat = (uint8_t)p;
+    f->fl = (uint8_t)((s_geom >> 12) & 3);
+    if (pr->lit) f->fl |= NT_LIT;
+    if (pr->flat) f->fl |= NT_FLAT;
+    if (pr->zsort) f->fl |= NT_ZS;
+    if (pr->textured) f->fl |= NT_TEX;
+    for (k = 0; k < 3; k++) {
+        const Vtx *q = s_fs.flat ? vv[0] : vv[k];
+        uint8_t sh[4];
+        Lin col;
+        int r, g, b;
+        sh[0] = q->r; sh[1] = q->g; sh[2] = q->b; sh[3] = vv[k]->a;
+        if (other) {
+            uint8_t ot[4];
+            sample((s_tex.tile + 1) & 7, vv[k]->s, vv[k]->t, ot);
+            combine(&col, sh, ot);
+        } else {
+            combine(&col, sh, NULL);
+        }
+        if (s_fs.textured && s_fs.mask) {
+            r = col.b[0] >> 1; g = col.b[1] >> 1; b = col.b[2] >> 1;
+        } else if (s_fs.textured) {
+            r = (col.a[0] + col.b[0]) >> 1; g = (col.a[1] + col.b[1]) >> 1; b = (col.a[2] + col.b[2]) >> 1;
+        } else {
+            r = col.b[0]; g = col.b[1]; b = col.b[2];
+        }
+        f->rgb[k] = (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 | (uint32_t)clamp255(b) << 16;
+        if (s_fs.textured) {
+            f->u[k] = tc32(vv[k]->s, s_fs.s0, s_fs.shifts) << s_fs.pr.tex->up;
+            f->v[k] = tc32(vv[k]->t, s_fs.t0, s_fs.shiftt) << s_fs.pr.tex->up;
+        } else {
+            f->u[k] = f->v[k] = 0;
+        }
+    }
+    f->rgb[0] |= (uint32_t)pr->cmd << 24;
+    if (pr->textured && pr->tex) {
+        int32_t mnu = f->u[0], mxu = f->u[0], mnv = f->v[0], mxv = f->v[0];
+        int su, sv;
+        for (k = 1; k < 3; k++) {
+            if (f->u[k] < mnu) mnu = f->u[k];
+            if (f->u[k] > mxu) mxu = f->u[k];
+            if (f->v[k] < mnv) mnv = f->v[k];
+            if (f->v[k] > mxv) mxv = f->v[k];
+        }
+        if ((pr->wraps && mxu - mnu > 192 * 32) || (pr->wrapt && mxv - mnv > 192 * 32))
+            f->fl |= NT_CUT;
+        su = pr->wraps ? (mnu >> 5) & ~(pr->tex->w - 1) : 0;
+        sv = pr->wrapt ? (mnv >> 5) & ~(pr->tex->h - 1) : 0;
+        for (k = 0; k < 3; k++) {
+            int u = f->u[k] >> 5, vq = f->v[k] >> 5;
+            u = pr->wraps ? u - su : pr->ub + (u < 0 ? 0 : u >= pr->tex->w ? pr->tex->w - 1 : u);
+            vq = pr->wrapt ? vq - sv : pr->vb + (vq < 0 ? 0 : vq >= pr->tex->h ? pr->tex->h - 1 : vq);
+            f->uv[k] = (uint16_t)(clamp255(u) | clamp255(vq) << 8);
+        }
+    } else {
+        f->uv[0] = f->uv[1] = f->uv[2] = 0;
+    }
+    return 0;
+}
+
+/* the model of the list at a under the draw state now: its state commands
+ * run as the list would (so the state is the list's after), nothing drawn */
+/* the list at a with the lists it calls in line (their ends dropped), into s_flatbuf: its commands, or -1 */
+static uint32_t s_flatbuf[2 * 512];
+static int nat_flatten(uint32_t a)
+{
+    uint32_t stack[8], pc = a & ~7u;
+    int sp = 0, n = 0, guard = 0;
+    while (n < 511 && guard++ < 4096) {
+        uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
+        int op = (int)(w0 >> 24);
+        pc += 8;
+        if (op == 0x06) {
+            if (((w0 >> 16) & 0xFF) == 0) {
+                if (sp == 8)
+                    return -1;
+                stack[sp++] = pc;
+            }
+            pc = seg_addr(w1) & ~7u;
+            continue;
+        }
+        if (op == 0xB8) {
+            if (sp == 0)
+                break;
+            pc = stack[--sp];
+            continue;
+        }
+        s_flatbuf[2 * n] = w0;
+        s_flatbuf[2 * n + 1] = w1;
+        n++;
+    }
+    if (n >= 511 || guard >= 4096)
+        return -1;
+    s_flatbuf[2 * n] = 0xB8000000u;
+    s_flatbuf[2 * n + 1] = 0;
+    return n + 1;
+}
+
+static NModel *nat_build(int o, uint32_t a, uint32_t *psig)
+{
+    Dlc *d;
+    NModel *m;
+    int i, nb = 0, nst = 0, ti = 0, b = -1, ok = 1, cap;
+    uint32_t mstamp[DLC_PRIMS], sigsub[16];
+    int nmat0 = 0;
+    NVtx *nvq = NULL;
+    if (nat_flatten(a) < 0) {
+        s_natw[0]++;
+        return NULL;
+    }
+    s_flat = s_flatbuf;
+    s_flat_a = a & ~7u;
+    d = dlc_compile(a);
+    if (!d) {
+        dlc_flush();
+        d = dlc_compile(a);
+    }
+    s_flat = NULL;
+    if (!d) {
+        s_natw[1]++;
+        return NULL;
+    }
+    if (d->bad || !d->ntri) {
+        s_natw[d->bad ? 1 : 2]++;
+        *psig = 0;
+        dlc_free(d, a);
+        return NULL;
+    }
+    /* (texture memory as loaded before the call is no part of the key: it changes with
+     * the order the objects draw in; the textures the model was built with are checked
+     * at every draw instead) */
+    d->reads &= ~(uint32_t)R_TMEM;
+    *psig = dlc_sig(d);
+    s_nat[o].reads = d->reads;
+    s_nat[o].tsa = d->tsa;
+    s_nat[o].tsa_on = d->tsa_on;
+    s_nat[o].tsa_tile = d->tsa_tile;
+    {
+        /* (the key without each set of the colours the caller left: which the list reads is known after) */
+        static const uint32_t cbit[4] = { R_PRIM, R_ENV, R_BLEND, R_FOGC };
+        int q, j;
+        for (q = 0; q < 16; q++) {
+            uint32_t drop = 0;
+            for (j = 0; j < 4; j++)
+                if (q >> j & 1)
+                    drop |= cbit[j];
+            sigsub[q] = nat_sig_reads(o, d->reads & ~drop);
+        }
+    }
+    s_natneed = 0;
+    memset(s_nat_tbits, 0, sizeof s_nat_tbits);
+    memcpy(s_nat_pre, s_loads, sizeof s_nat_pre);
+    s_nat_npre = s_nloads;
+    for (i = 0; i < d->ncmd; i++) {
+        int op = (int)(d->cmd[i].w0 >> 24);
+        if (op == 0x04)
+            nb++;
+        else if (op != 0xB1 && op != 0xBF && op != 0xB8 && op != 0xE6 && op != 0xE7 && op != 0xE8 && op != 0x00)
+            nst++;
+    }
+    cap = d->maxprim;
+    {
+        /* one block: the model, its batches, materials, triangles, state, then the vertices */
+        int nvx = 0, bytes;
+        char *q;
+        for (i = 0; i < d->ncmd; i++)
+            if ((int)(d->cmd[i].w0 >> 24) == 0x04)
+                nvx += (int)((d->cmd[i].w0 >> 10) & 0x3F);
+        bytes = (int)(((sizeof *m + 7) & ~7u) + nb * sizeof(NBatN) + cap * sizeof(NMat) + d->ntri * sizeof(NFace) +
+                      (nst + 6) * 8 + 8 + nvx * sizeof(NVtx));
+        m = (NModel *)nat_alloc(bytes);
+        if (!m) {
+            nat_evict();
+            m = (NModel *)nat_alloc(bytes);
+        }
+        if (!m) {
+            s_natw[8]++;
+            dlc_free(d, a);
+            return NULL;
+        }
+        memset(m, 0, (size_t)bytes);
+        m->bytes = bytes;
+        q = (char *)m + ((sizeof *m + 7) & ~7u);
+        m->mat = (NMat *)q; q += cap * sizeof(NMat);
+        m->f = (NFace *)q; q += d->ntri * sizeof(NFace);
+        m->bat = (NBatN *)q; q += nb * sizeof(NBatN);
+        m->st = (uint32_t *)q; q += (nst + 6) * 8 + 8;
+        nvq = (NVtx *)q;
+    }
+    m->sig = *psig;
+    m->check = nat_check(a);
+    m->nbat = nb;
+    nst = 0;
+    for (i = 0; i < d->ncmd; i++) {
+        uint32_t w0 = d->cmd[i].w0, w1 = d->cmd[i].w1;
+        int op = (int)(w0 >> 24), k, nt, k2;
+        switch (op) {
+        case 0x04: {
+            int vn = (int)((w0 >> 10) & 0x3F), v0 = (int)((w0 >> 16) & 0xFF) / 2;
+            NBatN *bt = &m->bat[++b];
+            NVtx *nv = nvq;
+            if (s_geom & G_FOG) {
+                s_natw[3]++;
+                ok = 0;
+                break;
+            }
+            nvq += vn;
+            memcpy(nv, d->cmd[i].aux, (size_t)vn * sizeof(NVtx));
+            bt->nv = nv;
+            bt->n = (uint8_t)vn;
+            bt->v0 = (uint8_t)v0;
+            bt->lit = (s_geom & G_LIGHTING) != 0;
+            bt->f0 = (uint16_t)ti;
+            bt->nf = 0;
+            load_vertices_n((const NVtx *)d->cmd[i].aux, vn, v0);
+            break;
+        }
+        case 0xB1: case 0xBF:
+            nt = op == 0xB1 ? 2 : 1;
+            for (k = 0; k < nt && ok; k++, ti++) {
+                uint32_t x = op == 0xB1 && k == 0 ? w0 : w1;
+                int ia = (int)((x >> 16) & 0xFF) / 2, ib = (int)((x >> 8) & 0xFF) / 2, ic = (int)(x & 0xFF) / 2;
+                if (b < 0) {
+                    s_natw[9]++;
+                    ok = 0;
+                    break;
+                }
+                s_dry = 1;
+                triangle(ia, ib, ic);
+                s_dry = 0;
+                if ((k2 = nat_capture(m, cap, &m->f[ti], ia, ib, ic, mstamp)) != 0) {
+                    s_natw[k2]++;
+                    ok = 0;
+                } else if (!m->bat[b].lit && (m->f[ti].fl & NT_LIT)) {
+                    m->f[ti].fl &= ~NT_LIT;     /* (its vertices loaded unlit: their kept colours) */
+                    if (m->f[ti].mat >= nmat0) {
+                        nmat0 = m->f[ti].mat + 1;
+                        nat_ext_tri(o);
+                    }
+                } else if (m->f[ti].mat >= nmat0) {
+                    nmat0 = m->f[ti].mat + 1;
+                    nat_ext_tri(o);             /* (a new material: what it reads) */
+                }
+                m->bat[b].nf++;
+            }
+            break;
+        case 0xB8: case 0x00: case 0xE6: case 0xE7: case 0xE8:
+            break;
+        default:
+            exec_state(op, w0, w1);
+            if ((op == 0xF3 || op == 0xF4 || op == 0xF0) && s_nloads) {
+                const Load *l = &s_loads[s_nloads - 1];
+                tmem_fill(s_nat_tbits, l->tmem, l->words);
+            }
+            m->st[nst * 2] = w0;
+            m->st[nst * 2 + 1] = w1;
+            nst++;
+            break;
+        }
+        if (!ok)
+            break;
+    }
+    m->nf = ti;
+    m->nst = nst;
+    dlc_free(d, a);
+    if (!ok) {
+        /* (the list drawn from its commands: its state commands run again from the start) */
+        nat_mfree(m);
+        return NULL;
+    }
+    m->nst = st_compress(m->st, m->nst);
+    m->used = s_frame_no;
+    {
+        /* (the colours the caller left that no material reads: not part of its key) */
+        uint32_t unread = ~s_natneed & s_nat[o].reads;
+        int q = (unread & R_PRIM ? 1 : 0) | (unread & R_ENV ? 2 : 0) | (unread & R_BLEND ? 4 : 0) | (unread & R_FOGC ? 8 : 0);
+        s_nat[o].reads &= ~(unread & (uint32_t)(R_PRIM | R_ENV | R_BLEND | R_FOGC));
+        m->sig = hash32(sigsub[q], nat_ext_key(o, s_nat_pre, s_nat_npre));
+    }
+    s_nat_n[5] += (uint32_t)m->bytes;
+    return m;
+}
+
+/* the model drawn: 0 when its textures moved (built again) or the GTE holds no transform */
+static int nat_draw(NModel *m)
+{
+    int b, i;
+    m->used = s_frame_no;
+    for (b = 0; b < m->nmat; b++) {
+        const Tex *tx = m->mat[b].pr.tex;
+        if (tx) {
+            if ((tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u) != m->mat[b].place)
+                return -1;
+            ((Tex *)tx)->used = s_frame_no;
+            s_shelf[tx->shelf].used = s_frame_no;
+        }
+    }
+    mvp_update();
+    if (s_gte_stamp != s_mvp_stamp || s_gte_ysh != s_ysh)
+        gte_setup();
+    if (!s_gte_ok)
+        return 0;
+    for (b = 0; b < m->nbat; b++) {
+        const NBatN *bt = &m->bat[b];
+        const NFace *f = &m->f[bt->f0];
+        const NMat *mats = m->mat;
+        uint32_t *base, *pk, *pend;
+        int lo, hi, zr;
+        uint32_t n_rej = 0, n_cull = 0, n_piece = 0, n_cut = 0, n_tri = 0, tl0;
+        {
+            uint32_t c0 = ST_NOW();
+            mesh_vertices(bt->nv, bt->n, bt->v0, bt->lit);
+            ST_ADD(4, c0);
+        }
+        tl0 = ST_NOW();
+        base = s_pkt[s_buf];
+        pk = base + s_used;
+        pend = base + PKT_WORDS - 16;
+        lo = s_ot_lo; hi = s_ot_hi; zr = s_zrun;
+#define NM_OUT() (s_used = (int)(pk - base), s_ot_lo = lo, s_ot_hi = hi, s_zrun = zr)
+#define NM_IN() (pk = base + s_used, lo = s_ot_lo, hi = s_ot_hi, zr = s_zrun)
+        for (i = 0; i < bt->nf; i++, f++) {
+            uint32_t fl = f->fl, ka, kb, kc, xa, xb, xc;
+            int ia = f->a, ib = f->b, ic = f->c;
+            const MVtx *A = &s_mvx[ia], *B = &s_mvx[ib], *C = &s_mvx[ic];
+            const NMat *mt;
+            const Prim *pr;
+            uint32_t *p, *w;
+            int32_t det, ax, ay, bx, by, cx, cy;
+            n_tri++;
+            ka = *(const uint16_t *)&A->clip;
+            kb = *(const uint16_t *)&B->clip;
+            kc = *(const uint16_t *)&C->clip;
+            if (ka & kb & kc & 31) {
+                n_rej++;
+                continue;
+            }
+            mt = &mats[f->mat];
+            pr = &mt->pr;
+            if (!(ka & kb & kc & 0x100) || (fl & NT_CUT)) {
+                Tpl t;
+                int k;
+                uint32_t cc = ST_NOW();
+                for (k = 0; k < 3; k++) {
+                    t.u[k] = f->u[k]; t.v[k] = f->v[k];
+                    t.r[k] = (int16_t)(f->rgb[k] & 0xFF); t.g[k] = (int16_t)(f->rgb[k] >> 8 & 0xFF);
+                    t.b[k] = (int16_t)(f->rgb[k] >> 16 & 0xFF);
+                }
+                NM_OUT();
+                s_n_tri--;
+                dlc_tri_clip(&t, pr, ia, ib, ic, (int)(fl & 3));
+                NM_IN();
+                s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                n_cut++;
+                continue;
+            }
+            xa = *(const uint32_t *)A; xb = *(const uint32_t *)B; xc = *(const uint32_t *)C;
+            ax = (int16_t)xa; ay = (int32_t)xa >> 16;
+            bx = (int16_t)xb; by = (int32_t)xb >> 16;
+            cx = (int16_t)xc; cy = (int32_t)xc >> 16;
+            det = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+            if (((fl & NT_CULLB) && det >= 0) || ((fl & NT_CULLF) && det <= 0)) {
+                n_cull++;
+                continue;
+            }
+            if (fl & NT_TEX) {
+                int lg = ecut(A->w, B->w, ax, ay, bx, by), k1 = ecut(B->w, C->w, bx, by, cx, cy),
+                    k2 = ecut(C->w, A->w, cx, cy, ax, ay);
+                if (k1 > lg) lg = k1;
+                if (k2 > lg) lg = k2;
+                if (lg) {
+                    uint32_t cc = ST_NOW();
+                    int done = 0, k;
+                    Tpl t;
+                    for (k = 0; k < 3; k++) {
+                        t.u[k] = f->u[k]; t.v[k] = f->v[k];
+                        t.r[k] = (int16_t)(f->rgb[k] & 0xFF); t.g[k] = (int16_t)(f->rgb[k] >> 8 & 0xFF);
+                        t.b[k] = (int16_t)(f->rgb[k] >> 16 & 0xFF);
+                    }
+                    NM_OUT();
+                    if (pr->tex && lg <= 2) {
+                        CV q[3];
+                        const MVtx *m3[3];
+                        const int ix[3] = { ia, ib, ic };
+                        m3[0] = A; m3[1] = B; m3[2] = C;
+                        for (k = 0; k < 3; k++) {
+                            const NVtx *nv = s_mvsrc[ix[k]];
+                            int r, g, bb;
+                            corner_rgb(&t, pr, fl & NT_FLAT ? A : m3[k], k, &r, &g, &bb);
+                            q[k].mx = nv->x * 16; q[k].my = nv->y * 16; q[k].mz = nv->z * 16;
+                            q[k].x = q[k].y = q[k].z = 0;
+                            q[k].w = m3[k]->w;
+                            q[k].u = t.u[k]; q[k].v = t.v[k];
+                            q[k].r = r; q[k].g = g; q[k].b = bb;
+                            q[k].fr = q[k].fg = q[k].fb = 0;
+                        }
+                        s_grid_strict = 1;
+                        done = emit_grid_words(&q[0], &q[1], &q[2], pr, lg);
+                        s_grid_strict = 0;
+                        s_gridn[done ? 0 : 2]++;
+                    }
+                    if (!done) {
+                        s_n_tri--;
+                        dlc_tri_clip(&t, pr, ia, ib, ic, (int)(fl & 3));
+                    } else {
+                        s_n_tri++;
+                    }
+                    NM_IN();
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                    n_cut++;
+                    continue;
+                }
+            }
+            if (!(ka & kb & kc & 0x200)) {
+                int32_t x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax, y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
+                if (cx < x0) x0 = cx;
+                if (cx > x1) x1 = cx;
+                if (cy < y0) y0 = cy;
+                if (cy > y1) y1 = cy;
+                if (x1 - x0 > 1023 || y1 - y0 > 511) {
+                    Tpl t;
+                    int k;
+                    uint32_t cc = ST_NOW();
+                    for (k = 0; k < 3; k++) {
+                        t.u[k] = f->u[k]; t.v[k] = f->v[k];
+                        t.r[k] = (int16_t)(f->rgb[k] & 0xFF); t.g[k] = (int16_t)(f->rgb[k] >> 8 & 0xFF);
+                        t.b[k] = (int16_t)(f->rgb[k] >> 16 & 0xFF);
+                    }
+                    NM_OUT();
+                    s_n_tri--;
+                    dlc_tri_clip(&t, pr, ia, ib, ic, (int)(fl & 3));
+                    NM_IN();
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                    n_cut++;
+                    continue;
+                }
+            }
+            {
+                int nw = mt->nw;
+                if (pk + nw + 1 > pend) {
+                    s_overflow = 1;
+                    s_n_over++;
+                    continue;
+                }
+                p = pk;
+                pk += nw + 1;
+                p[0] = (uint32_t)nw << 24 | 0xFFFFFF;
+                w = p + 1;
+                if (mt->pre) {
+                    w[0] = mt->prew[0];
+                    if (mt->pre > 1)
+                        w[1] = mt->prew[1];
+                    w += mt->pre;
+                }
+            }
+            if (fl & NT_TEX) {
+                w[0] = f->rgb[0];
+                w[1] = xa;
+                w[2] = f->uv[0] | mt->clut16;
+                w[3] = f->rgb[1];
+                w[4] = xb;
+                w[5] = f->uv[1] | mt->tpage16;
+                w[6] = f->rgb[2];
+                w[7] = xc;
+                w[8] = f->uv[2];
+                if (mt->post)
+                    w[9] = 0xE2000000;
+            } else {
+                w[0] = f->rgb[0];
+                w[1] = xa;
+                w[2] = f->rgb[1];
+                w[3] = xb;
+                w[4] = f->rgb[2];
+                w[5] = xc;
+                if (mt->post)
+                    w[6] = 0xE2000000;
+            }
+            if (fl & NT_LIT) {
+                const MVtx *cs[3];
+                int k, step = fl & NT_TEX ? 3 : 2;
+                cs[0] = A;
+                cs[1] = fl & NT_FLAT ? A : B;
+                cs[2] = fl & NT_FLAT ? A : C;
+                for (k = 0; k < 3; k++) {
+                    int r = pr->c0[0] + (pr->sl[0] * cs[k]->r >> 8), g = pr->c0[1] + (pr->sl[1] * cs[k]->g >> 8);
+                    int bb = pr->c0[2] + (pr->sl[2] * cs[k]->b >> 8);
+                    w[k * step] = (w[k * step] & 0xFF000000u) | (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 |
+                                  (uint32_t)clamp255(bb) << 16;
+                }
+            }
+            n_piece++;
+            if (fl & NT_ZS) {
+                int z = (int)(((uint32_t)(A->z + B->z + C->z) * 21846u) >> 16);
+                if (z < 0) z = 0;
+                if (z >= OT_LEN) z = OT_LEN - 1;
+                if (!zr) {
+                    zr = 1;
+                    lo = OT_LEN;
+                    hi = -1;
+                }
+                if (z < lo) lo = z;
+                if (z > hi) hi = z;
+                if (s_ot_head[z]) {
+                    uint32_t *t = s_ot_tail[z];
+                    t[0] = (t[0] & 0xFF000000u) | ((uint32_t)p & 0xFFFFFF);
+                } else {
+                    s_ot_head[z] = p;
+                }
+                s_ot_tail[z] = p;
+            } else {
+                NM_OUT();
+                put_flat(p);
+                NM_IN();
+            }
+        }
+        NM_OUT();
+#undef NM_OUT
+#undef NM_IN
+        s_n_tri += n_tri;
+        s_n_rej += n_rej;
+        s_n_cull += n_cull;
+        s_path[0] += n_rej + n_cull;
+        s_path[1] += n_piece;
+        s_path[2] += n_cut;
+        s_n_piece += n_piece;
+        if ((uint32_t)s_used > s_peak_used)
+            s_peak_used = (uint32_t)s_used;
+        ST_ADD(5, tl0);
+    }
+    {
+        uint32_t c0 = ST_NOW();
+        st_replay(m->st, m->nst);
+        ST_ADD(6, c0);
+    }
+    return 1;
+}
+
+/* command 0x0A: track object o, its list at a; 0 when it is to be drawn from the list */
+static int nat_obj(int o, uint32_t a)
+{
+    uint32_t sig;
+    NModel *m;
+    int k;
+    if (s_nat_on < 0)
+        s_nat_on = getenv("TGR_NAT") != NULL;   /* (for now asked for: a windmill and a wall still draw wrong) */
+    if (!s_nat_on || o >= NAT_OBJ || s_target < 0 || (s_geom & G_FOG))
+        return 0;
+    {
+        static int lo = -1, hi;
+        if (lo < 0) {
+            const char *e = getenv("TGR_NATRANGE");
+            lo = 0;
+            hi = NAT_OBJ;
+            if (e) {
+                const char *d = strchr(e, '-');
+                lo = atoi(e);
+                hi = d ? atoi(d + 1) : NAT_OBJ;
+            }
+        }
+        if (o < lo || o >= hi)
+            return 0;
+    }
+    if (s_nat[o].addr != a || (s_nat[o].m[0] && s_nat[o].m[0]->check != nat_check(a))) {
+        /* another track (or list) under this number: its models go */
+        nat_free(s_nat[o].m[0]);
+        nat_free(s_nat[o].m[1]);
+        s_nat[o].m[0] = s_nat[o].m[1] = NULL;
+        s_nat[o].addr = a;
+        s_nat[o].badsig = 0;
+        s_nat[o].reads = 0xFFFFFFFFu;
+        s_nat[o].next_ext = 0;
+    }
+    m = NULL;
+    if (s_nat[o].reads == 0xFFFFFFFEu) {          /* (a list no model can hold) */
+        s_nat_n[3]++;
+        return 0;
+    }
+    if (s_nat[o].reads != 0xFFFFFFFFu) {
+        uint32_t base = nat_sig(o);
+        sig = hash32(base, nat_ext_key(o, s_loads, s_nloads));
+        for (k = 0; k < 2; k++)
+            if (s_nat[o].m[k] && s_nat[o].m[k]->sig == sig)
+                m = s_nat[o].m[k];
+        if (!m && s_nat[o].badsig == base) {
+            s_nat_n[3]++;
+            return 0;
+        }
+    }
+    if (m) {
+        int r = nat_draw(m);
+        if (r > 0) {
+            s_nat_n[0]++;
+            return 1;
+        }
+        if (r == 0)
+            return 0;
+        /* (its textures moved: made again) */
+        s_nat_n[4]++;
+        for (k = 0; k < 2; k++)
+            if (s_nat[o].m[k] == m)
+                s_nat[o].m[k] = NULL;
+        nat_free(m);
+    }
+    if (s_nat[o].m[0] && s_nat[o].m[1] && getenv("TGR_NATDBG")) {
+        static int told;
+        if (told++ < 40)
+            fprintf(stderr, "natdbg obj %d reads %08X sigs %08X %08X new %08X: cc %08X %08X omh %08X oml %08X prim %08X env %08X blend %08X fogc %08X geom %08X tex %d/%d/%d %08X\n",
+                    o, (unsigned)s_nat[o].reads, (unsigned)s_nat[o].m[0]->sig, (unsigned)s_nat[o].m[1]->sig, (unsigned)nat_sig(o),
+                    (unsigned)s_cc0, (unsigned)s_cc1, (unsigned)s_omh, (unsigned)s_oml,
+                    (unsigned)(s_prim[0] << 24 | s_prim[1] << 16 | s_prim[2] << 8 | s_prim[3]),
+                    (unsigned)(s_env[0] << 24 | s_env[1] << 16 | s_env[2] << 8 | s_env[3]),
+                    (unsigned)(s_blend[0] << 24 | s_blend[1] << 16 | s_blend[2] << 8 | s_blend[3]),
+                    (unsigned)(s_fogc[0] << 24 | s_fogc[1] << 16 | s_fogc[2] << 8 | s_fogc[3]), (unsigned)s_geom,
+                    s_tex.on, s_tex.tile, s_tex.level, (unsigned)(s_tex.ss << 16 | s_tex.ts));
+    }
+    {
+        uint32_t presig = 0;
+        RG_BEGIN(RG_REC);
+        m = nat_build(o, a, &presig);
+        RG_END(RG_REC);
+        if (!m) {
+            s_nat[o].badsig = presig;
+            if (!presig)
+                s_nat[o].reads = 0xFFFFFFFEu;
+            s_nat_n[2]++;
+            return 0;
+        }
+    }
+    s_nat_n[1]++;
+    if (s_nat[o].m[0] && s_nat[o].m[1])
+        s_natb[2]++;                            /* (a third draw state: one put out) */
+    else if (s_nat[o].m[0] || s_nat[o].m[1])
+        s_natb[1]++;                            /* (a second) */
+    else
+        s_natb[0]++;                            /* (its first) */
+    k = s_nat[o].next;
+    s_nat[o].next ^= 1;
+    nat_free(s_nat[o].m[k]);
+    s_nat[o].m[k] = m;
+    {
+        /* drawn now; its state commands have run already */
+        int nst = m->nst;
+        m->nst = 0;
+        nat_draw(m);
+        m->nst = nst;
+    }
+    s_nat_n[0]++;
+    return 1;
+}
+
 /* TGR_LISTLOG: a list drawn straight, its commands */
 static void list_dump(uint32_t a)
 {
@@ -5732,15 +6724,25 @@ static int dlc_call(uint32_t a)
     return 1;
 }
 
+/* TGR_PERF: the task's time by what the top level was doing: a list called
+ * through segment k (k), an absolute address (16), any other command (17) */
+static uint32_t s_cat_t[18], s_cat_n[18];
 static void run(uint32_t dl)
 {
     uint32_t stack[18];
-    int sp = 0, guard = 0, opp = 0;
-    uint32_t pc = seg_addr(dl) & ~7u, opt = ST_NOW();
+    int sp = 0, guard = 0, opp = 0, cat = 17;
+    uint32_t pc = seg_addr(dl) & ~7u, opt = ST_NOW(), cat_t = opt;
     while (guard++ < 400000) {
         uint32_t w0 = rd32a(pc), w1 = rd32a(pc + 4);
         int op = (int)(w0 >> 24);
         pc += 8;
+        if (sp == 0 && s_perfcalls) {
+            uint32_t now = ST_NOW();
+            s_cat_t[cat] += (now - cat_t) & 0xFFFF;
+            cat_t = now;
+            cat = op == 0x06 ? (w1 >= 0x80000000u ? 16 : (int)(w1 >> 24) & 15) : 17;
+            s_cat_n[cat]++;
+        }
         if (s_perfops) {
             uint32_t now = ST_NOW();
             if (s_dlstats)
@@ -5825,6 +6827,11 @@ static void run(uint32_t dl)
             break;
         }
             break;
+        case 0x0A:                                    /* (the track drawer's object: w0 its number, w1 its list) */
+            if (nat_obj((int)(w0 & 0xFFFF), seg_addr(w1)))
+                break;
+            w0 = 0x06000000;
+            /* fall through: its list */
         case 0x06:                                    /* G_DL */
             if (s_dlstats == 1 && tgr_frame() + 1 >= (uint32_t)atoi(getenv("TGR_DLSTATS")))
                 dl_census(seg_addr(w1), sp);
@@ -6091,6 +7098,38 @@ void tgr_rcp_present(uint32_t frame)
                     s_rg[r] = 0;
                 }
                 fprintf(stderr, "\n");
+                {
+                    int k;
+                    fprintf(stderr, "perf: task by top-level segment (ms/calls):");
+                    for (k = 0; k < 18; k++)
+                        if (s_cat_n[k])
+                            fprintf(stderr, " %s%d %u/%u", k == 16 ? "abs" : k == 17 ? "cmd" : "seg", k < 16 ? k : 0,
+                                    (unsigned)(s_cat_t[k] * 8 / 33869), (unsigned)s_cat_n[k]);
+                    fprintf(stderr, "\n");
+                    memset(s_cat_t, 0, sizeof s_cat_t);
+                    memset(s_cat_n, 0, sizeof s_cat_n);
+                }
+                {
+                    uint32_t i, used = 0, nu = 0, fr = 0, big = 0;
+                    for (i = 0; s_npool_init && i < NAT_POOL / 4;) {
+                        uint32_t sz = s_npool[i] & ~1u;
+                        if (!sz) { fprintf(stderr, "perf: pool broken at %u\n", (unsigned)i); break; }
+                        if (s_npool[i] & 1) { used += sz; nu++; } else { fr += sz; if (sz > big) big = sz; }
+                        i += sz / 4;
+                    }
+                    fprintf(stderr, "perf: model pool: %u blocks %u KB used, %u KB free, largest %u KB\n", (unsigned)nu,
+                            (unsigned)(used / 1024), (unsigned)(fr / 1024), (unsigned)(big / 1024));
+                }
+                fprintf(stderr, "perf: track models: drawn %u built %u unbuildable %u from the list %u stale %u; %u KB held\n",
+                        (unsigned)s_nat_n[0], (unsigned)s_nat_n[1], (unsigned)s_nat_n[2], (unsigned)s_nat_n[3],
+                        (unsigned)s_nat_n[4], (unsigned)(s_nat_n[5] / 1024));
+                s_nat_n[0] = s_nat_n[1] = s_nat_n[2] = s_nat_n[3] = s_nat_n[4] = 0;
+                fprintf(stderr, "perf: track models not built: flatten %u compile %u empty %u fog %u stamp %u slow %u fogdraw %u materials %u room %u vertex %u\n",
+                        (unsigned)s_natw[0], (unsigned)s_natw[1], (unsigned)s_natw[2], (unsigned)s_natw[3], (unsigned)s_natw[4],
+                        (unsigned)s_natw[5], (unsigned)s_natw[6], (unsigned)s_natw[7], (unsigned)s_natw[8], (unsigned)s_natw[9]);
+                memset(s_natw, 0, sizeof s_natw);
+                fprintf(stderr, "perf: track model builds: first %u second %u third %u\n", (unsigned)s_natb[0], (unsigned)s_natb[1], (unsigned)s_natb[2]);
+                memset(s_natb, 0, sizeof s_natb);
                 fprintf(stderr, "perf: lists by place (ms/calls): <2M %u/%u 2M %u/%u 2F %u/%u 3E %u/%u\n",
                         (unsigned)(s_cls_t[0] / 1000000), (unsigned)s_cls_n[0], (unsigned)(s_cls_t[1] / 1000000), (unsigned)s_cls_n[1],
                         (unsigned)(s_cls_t[2] / 1000000), (unsigned)s_cls_n[2], (unsigned)(s_cls_t[3] / 1000000), (unsigned)s_cls_n[3]);
