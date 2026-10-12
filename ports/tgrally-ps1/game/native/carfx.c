@@ -1781,3 +1781,77 @@ void BrFxCarStep(BrCar *car)
   if (s_dbg == 2)
     tgr_trace("fxchk", "%u walk-mismatch %u walk-far-missed %u broad-mismatch %u", g_fx_chk[0], g_fx_chk[1], g_fx_chk[2], g_fx_chk[3]);
 }
+
+/* ---- the draw matrices ---------------------------------------------------- */
+/* r = a b (3x3, Q30) */
+static void fx_mul3(int r[3][3], const int a[3][3], const int b[3][3])
+{
+  int i, j;
+  for (i = 0; i < 3; i++)
+    for (j = 0; j < 3; j++)
+      r[i][j] = (int)(((i64)a[i][0] * b[0][j] + (i64)a[i][1] * b[1][j] + (i64)a[i][2] * b[2][j]) >> 30);
+}
+/* guRotateF about one axis (0 x, 1 y, 2 z) by an angle in radians (Q28) */
+static void fx_rot_axis(int m[3][3], int axis, int a)
+{
+  int s, c, i, j, u = (axis + 1) % 3, w = (axis + 2) % 3;
+  fx_sincos(a, &s, &c);
+  for (i = 0; i < 3; i++)
+    for (j = 0; j < 3; j++)
+      m[i][j] = i == j ? Q30(1.0) : 0;
+  m[u][u] = c;
+  m[w][w] = c;
+  m[u][w] = s;
+  m[w][u] = -s;
+}
+/* a float matrix from a rotation (Q30) and a position (Q16) */
+static void fx_mat_out(float *o, const int r[3][3], const int p[3])
+{
+  int i, j;
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++)
+      ((unsigned int *)o)[i * 4 + j] = q2f(r[i][j], 30);
+    o[i * 4 + 3] = 0.0f;
+    ((unsigned int *)o)[12 + i] = q2f(p[i], 16);
+  }
+  o[15] = 1.0f;
+}
+#define DEG_Q28(d) ((int)(((i64)(d) * QK(3.14159265358979 / 180.0, 28)) >> 16))   /* degrees Q16 to radians Q28 */
+
+/* BrCarBuildMatrices, natively: the body rolled by its roll angle; each
+ * wheel spun about its axle (the steered pair also turned, by twice the
+ * steering angle) at its mount 0.254 lower in the body's frame */
+void BrFxBuildMatrices(BrCar *car)
+{
+  static const unsigned char k_slot[4][2] = { { 0, 2 }, { 1, 3 }, { 2, 1 }, { 3, 0 } };  /* (wheel body, matrix) */
+  FxCar *c = fx_of(car);
+  FxMirror *v = &c->v;
+  int S[3][3], R[3][3], T[3][3], U[3][3], i, k, p[3], q[3];
+  fx_import(c, car);
+  for (i = 0; i < 3; i++)
+    for (k = 0; k < 3; k++)
+      S[i][k] = v->m[i][k];
+  fx_rot_axis(R, 0, DEG_Q28(v->roll));
+  fx_mul3(T, R, (const int (*)[3])S);
+  fx_mat_out(&car->mtx0[0][0], (const int (*)[3])T, v->m[3]);
+  for (i = 0; i < 4; i++) {
+    FxWheel *w = &v->w[k_slot[i][0]];
+    fx_rot_axis(R, 1, DEG_Q28(w->angle));
+    if (k_slot[i][0] >= 2) {                            /* (the steered pair) */
+      fx_rot_axis(U, 2, w->steer << 13);
+      fx_mul3(T, (const int (*)[3])R, (const int (*)[3])U);
+      fx_mul3(R, (const int (*)[3])T, (const int (*)[3])S);
+    } else {
+      fx_mul3(T, (const int (*)[3])R, (const int (*)[3])S);
+      memcpy(R, T, sizeof R);
+    }
+    q[0] = w->tr[0];
+    q[1] = w->tr[1];
+    q[2] = w->tr[2] + Q16(0.254);
+    fx_rott(p, (const int (*)[3])S, q);
+    p[0] += v->m[3][0];
+    p[1] += v->m[3][1];
+    p[2] += v->m[3][2];
+    fx_mat_out(&car->wheelMtx[k_slot[i][1]][0][0], (const int (*)[3])R, p);
+  }
+}

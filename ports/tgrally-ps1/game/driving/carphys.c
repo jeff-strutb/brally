@@ -4,6 +4,7 @@
 #include "tgr/common.h"
 #include "tgr/car.h"
 void BrFxCarStep(BrCar *car);   /* (PlayStation: the step in fixed point, native/carfx.c) */
+void BrFxBuildMatrices(BrCar *car);
 
 /* -- declarations -- */
 void BrMatToQuat(float *param_1,float *param_2);
@@ -652,6 +653,15 @@ void BrCarBuildMatrices(BrCar *car)
   float spin[4][4];
   float m[4][4];
   float steer[4][4];
+  static int fxoff = -1;
+
+  /* PlayStation: in fixed point (TGR_FXOFF: as the game does it) */
+  if (fxoff < 0)
+    fxoff = getenv("TGR_FXOFF") != 0;
+  if (!fxoff) {
+    BrFxBuildMatrices(car);
+    return;
+  }
 
   guRotateF(m, car->spin, 1.0f, 0.0f, 0.0f);
   guMtxCatF(m, car->stMtx, car->mtx0);
