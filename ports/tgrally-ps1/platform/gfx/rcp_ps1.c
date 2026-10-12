@@ -37,14 +37,15 @@ static uint64_t s_cls_t[4];                    /* (nanoseconds) */
 static uint64_t s_lh_t[2][5];                   /* TGR_PERF: list calls by length (< 0.25, 1, 4, 16 ms, more), compiled or not */
 static uint32_t s_lh_n[2][5];
 static int s_listlog = -1;                     /* TGR_LISTLOG=F */
-static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4];
-static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
+static uint32_t s_ll_sig, s_ll_reads, s_ll_ntri, s_recq[4], s_tt[4], s_tq2[4], s_su[6];
+static uint32_t s_st[8], s_nmwhy[8], s_nmempty[2], s_cutc, s_gridn[3], s_nmoff[3];                        /* TGR_PERF: list call stages (cycles / 8): find, check, key, variant, mesh vertices, triangles, state */
 #define ST_NOW() (*(volatile uint32_t *)0xBF801120)
 #define ST_ADD(k, t) (s_st[k] += (ST_NOW() - (t)) & 0xFFFF)         /* TGR_PERF: list time by where the list is (below 2 MB, 2 MB.., 0x2F.., 0x3E..) */
+static int s_perfops;                           /* TGR_PERFOPS (or TGR_DLSTATS): commands counted and timed */
 static uint32_t s_runops[256], s_runopt[256];   /* TGR_PERF: top-level commands run, and their time (cycles / 8) */
 uint64_t ps1_time_ns(void);
-#define RG_BEGIN(id) uint64_t rg_t_##id = ps1_time_ns()
-#define RG_END(id) (s_rg[id] += ps1_time_ns() - rg_t_##id)
+#define RG_BEGIN(id) uint32_t rg_t_##id = ST_NOW()
+#define RG_END(id) (s_rg[id] += (uint64_t)(((ST_NOW() - rg_t_##id) & 0xFFFF) * 236u))   /* (counter 2 counts 8 cycles: 236 ns) */
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
@@ -70,6 +71,12 @@ static uint32_t rd32(uint32_t phys)
         return v << 24 | (v & 0xFF00) << 8 | (v >> 8 & 0xFF00) | v >> 24;
     }
     return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3];
+}
+/* a display list's words: 8-byte aligned */
+static inline __attribute__((always_inline)) uint32_t rd32a(uint32_t phys)
+{
+    uint32_t v = *(const uint32_t *)(tgr_rdram + (phys & 0x3FFFFF));
+    return v << 24 | (v & 0xFF00) << 8 | (v >> 8 & 0xFF00) | v >> 24;
 }
 static uint16_t rd16(uint32_t phys)
 {
@@ -259,10 +266,33 @@ static __attribute__((noinline)) void m4_load(M4 *r, uint32_t a)
             r->m[i][j] = (int32_t)((uint32_t)rd16(a + (i * 4 + j) * 2) << 16 | rd16(a + 32 + (i * 4 + j) * 2));
 }
 
+/* r = a b where b has zeros (a projection): only b's other entries' products */
+static void m4_mul_sparse(M4 *r, const M4 *a, const M4 *b)
+{
+    M4 t;
+    int i, j, k;
+    for (j = 0; j < 4; j++) {
+        int nk = 0, ks[4];
+        for (k = 0; k < 4; k++)
+            if (b->m[k][j])
+                ks[nk++] = k;
+        for (i = 0; i < 4; i++) {
+            int64_t s = 0;
+            for (k = 0; k < nk; k++)
+                s += (int64_t)a->m[i][ks[k]] * b->m[ks[k]][j];
+            t.m[i][j] = (int32_t)(s >> 16);
+        }
+    }
+    *r = t;
+}
+
 static void mvp_update(void)
 {
     if (s_mvp_dirty) {
-        m4_mul(&s_mvp, &s_mv[s_mvn], &s_proj);
+        uint32_t q = ST_NOW();
+        m4_mul_sparse(&s_mvp, &s_mv[s_mvn], &s_proj);
+        s_su[0] += (ST_NOW() - q) & 0xFFFF;
+        s_su[3]++;
         s_mvp_dirty = 0;
         s_mvp_stamp++;
     }
@@ -275,25 +305,32 @@ static int clamp255(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 static __attribute__((noinline)) void model_dir(const int8_t d[3], int32_t out[3])
 {
     const M4 *m = &s_mv[s_mvn];
-    int64_t v[3], l2;
-    int i;
-    uint32_t l;
-    for (i = 0; i < 3; i++)
-        v[i] = ((int64_t)d[0] * m->m[i][0] + (int64_t)d[1] * m->m[i][1] + (int64_t)d[2] * m->m[i][2]) >> 8;
-    l2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-    l = 1;
-    while ((int64_t)l * l < l2)                  /* integer square root, coarse */
-        l <<= 1;
-    {
-        uint32_t lo = l >> 1, hi = l;
-        while (lo + 1 < hi) {
-            uint32_t mid = (lo + hi) / 2;
-            if ((int64_t)mid * mid <= l2) lo = mid; else hi = mid;
-        }
-        l = lo ? lo : 1;
+    int32_t v[3], mx = 0;
+    uint32_t l2, l, b, r;
+    int i, sh = 0;
+    for (i = 0; i < 3; i++) {
+        /* (an 8-bit direction by a 16.16 rotation: 32 bits do with a shift first) */
+        v[i] = (d[0] * (m->m[i][0] >> 4) + d[1] * (m->m[i][1] >> 4) + d[2] * (m->m[i][2] >> 4)) >> 4;
+        if (abs(v[i]) > mx)
+            mx = abs(v[i]);
     }
+    while ((mx >> sh) >= 0x4000)                /* (14 bits a part: the squares' sum in 32) */
+        sh++;
     for (i = 0; i < 3; i++)
-        out[i] = (int32_t)((v[i] << 14) / l);
+        v[i] >>= sh;
+    l2 = (uint32_t)(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    for (l = 0, r = l2, b = 1u << 30; b; b >>= 2) {    /* the square root, a bit at a time */
+        if (r >= l + b) {
+            r -= l + b;
+            l = (l >> 1) + b;
+        } else {
+            l >>= 1;
+        }
+    }
+    if (!l)
+        l = 1;
+    for (i = 0; i < 3; i++)
+        out[i] = (v[i] << 14) / (int32_t)l;
 }
 
 /* the ordering-table bucket of a depth: the clip w (8 fraction bits) on a
@@ -317,6 +354,8 @@ static int wbucket(int32_t w)
  * (13.2); z the ordering-table bucket from the normalised depth */
 #define W_NEAR 16
 #define GUARD 2                                 /* the guard band: |x|, |y| <= GUARD * w */
+#define WIDE 1000                               /* a mesh vertex the GPU takes as it is: |x|, |y| <= WIDE (it reaches 1024; a
+                                                 * triangle at most 1023 by 511): its record's ok 1, and 2 inside the guard band */
 static void project(int32_t cx, int32_t cy, int32_t cz, int32_t cw, int16_t *px, int16_t *py, int16_t *pz)
 {
     int32_t sx, sy, sz, w = cw, xx = cx, yy = cy, zz = cz;
@@ -355,11 +394,31 @@ static uint32_t s_gte_cfg[3][8];                /* the rotation and translation 
 static int s_gte_cur = -1;
 static const int8_t s_gte_scale[3] = { 0, -3, 4 };
 
+static int32_t s_gte_rt[3][3], s_gte_tr[3];
+static uint8_t s_gte_have;                      /* (the configurations built: 1 << c) */
+static void gte_cfg_build(int c)
+{
+    static const int8_t sc[3] = { 0, -3, 4 };
+    int m = sc[c];
+    uint32_t *g = s_gte_cfg[c];
+    g[0] = (sh_r(s_gte_rt[0][0], m) & 0xFFFF) | (uint32_t)sh_r(s_gte_rt[0][1], m) << 16;
+    g[1] = (sh_r(s_gte_rt[0][2], m) & 0xFFFF) | (uint32_t)sh_r(s_gte_rt[1][0], m) << 16;
+    g[2] = (sh_r(s_gte_rt[1][1], m) & 0xFFFF) | (uint32_t)sh_r(s_gte_rt[1][2], m) << 16;
+    g[3] = (sh_r(s_gte_rt[2][0], m) & 0xFFFF) | (uint32_t)sh_r(s_gte_rt[2][1], m) << 16;
+    g[4] = sh_r(s_gte_rt[2][2], m) & 0xFFFF;
+    g[5] = (uint32_t)sh_r(s_gte_tr[0], m);
+    g[6] = (uint32_t)sh_r(s_gte_tr[1], m);
+    g[7] = (uint32_t)sh_r(s_gte_tr[2], m);
+    s_gte_have |= (uint8_t)(1 << c);
+}
+
 static void gte_cfg(int c)
 {
     const uint32_t *g = s_gte_cfg[c];
     if (s_gte_cur == c)
         return;
+    if (!(s_gte_have >> c & 1))
+        gte_cfg_build(c);
     s_gte_cur = c;
     gte_ctc(GTE_RT11RT12, g[0]);
     gte_ctc(GTE_RT13RT21, g[1]);
@@ -371,7 +430,17 @@ static void gte_cfg(int c)
     gte_ctc(GTE_TRZ, g[7]);
 }
 
+static void gte_setup_(void);
+static uint32_t s_gsw[4];
 static void gte_setup(void)
+{
+    uint32_t q = ST_NOW();
+    s_gsw[s_gte_ysh != s_ysh ? 1 : s_gte_stamp + 1 == s_mvp_stamp ? 0 : 2]++;
+    gte_setup_();
+    s_su[1] += (ST_NOW() - q) & 0xFFFF;
+    s_su[4]++;
+}
+static void gte_setup_(void)
 {
     const M4 *m = &s_mvp;
     int64_t e[3][3], t[3], mx = 0;
@@ -383,10 +452,18 @@ static void gte_setup(void)
         s_nogte = getenv("TGR_NOGTE") != NULL;
     if (s_nogte || s_vp.sx <= 0 || s_vp.sy <= 0)
         return;
-    s_gte_fy = -(int32_t)(((int64_t)s_vp.sy << 16) / s_vp.sx) >> s_ysh;
+    {
+        static int32_t vsx, vsy, vys = -1;     /* (the viewport's: worked out when it changes) */
+        if (vsx != s_vp.sx || vsy != s_vp.sy || vys != s_ysh) {
+            vsx = s_vp.sx;
+            vsy = s_vp.sy;
+            vys = s_ysh;
+            s_gte_fy = -(int32_t)(((int64_t)s_vp.sy << 16) / s_vp.sx) >> s_ysh;
+            s_gte_ify = s_gte_fy ? (int32_t)(((int64_t)1 << 32) / s_gte_fy) : 0;
+        }
+    }
     if (!s_gte_fy)
         return;
-    s_gte_ify = (int32_t)(((int64_t)1 << 32) / s_gte_fy);
     for (i = 0; i < 3; i++) {
         e[0][i] = m->m[i][0];
         e[1][i] = ((int64_t)m->m[i][1] * s_gte_fy) >> 16;
@@ -402,35 +479,38 @@ static void gte_setup(void)
         }
     if (!mx)
         return;
-    for (k = -12; k < 20; k++)                  /* the largest entry inside 1.0: headroom for the outputs */
-        if (sh_r(mx, 4 + k) <= 4095)
-            break;
+    {
+        /* the largest entry inside 1.0: headroom for the outputs (the first k from -12
+         * with mx >> (4 + k) <= 4095, from mx's length) */
+        uint32_t hi32 = (uint32_t)((uint64_t)mx >> 32), lo32 = (uint32_t)mx, u = hi32 ? hi32 : lo32;
+        int bl = hi32 ? 32 : 0;
+        while (u) {
+            bl++;
+            u >>= 1;
+        }
+        k = bl - 16;                            /* (mx < 2^bl: mx >> (bl - 12) <= 4095) */
+        if (k < -12)
+            k = -12;
+        if (k > 20)
+            k = 20;
+        while (k > -12 && sh_r(mx, 4 + k - 1) <= 4095)
+            k--;
+        while (k < 20 && sh_r(mx, 4 + k) > 4095)
+            k++;
+    }
     s_gte_k = k;
 
     {
-        int32_t rt[3][3], tr[3];
-        int c;
         for (r = 0; r < 3; r++) {
             for (i = 0; i < 3; i++)
-                rt[r][i] = sh_r(e[r][i], 4 + k);
-            tr[r] = sh_r(t[r], 16 + k);
+                s_gte_rt[r][i] = (int32_t)sh_r(e[r][i], 4 + k);
+            s_gte_tr[r] = (int32_t)sh_r(t[r], 16 + k);
         }
         /* the same transform at three scales (their w a power of two apart):
          * the base one; 8 times larger (a vertex too near for the base one's
-         * divide); 16 times smaller (one too far for its 16-bit depth) */
-        for (c = 0; c < 3; c++) {
-            static const int8_t sc[3] = { 0, -3, 4 };
-            int m = sc[c];
-            uint32_t *g = s_gte_cfg[c];
-            g[0] = (sh_r(rt[0][0], m) & 0xFFFF) | (uint32_t)sh_r(rt[0][1], m) << 16;
-            g[1] = (sh_r(rt[0][2], m) & 0xFFFF) | (uint32_t)sh_r(rt[1][0], m) << 16;
-            g[2] = (sh_r(rt[1][1], m) & 0xFFFF) | (uint32_t)sh_r(rt[1][2], m) << 16;
-            g[3] = (sh_r(rt[2][0], m) & 0xFFFF) | (uint32_t)sh_r(rt[2][1], m) << 16;
-            g[4] = sh_r(rt[2][2], m) & 0xFFFF;
-            g[5] = (uint32_t)sh_r(tr[0], m);
-            g[6] = (uint32_t)sh_r(tr[1], m);
-            g[7] = (uint32_t)sh_r(tr[2], m);
-        }
+         * divide); 16 times smaller (one too far for its 16-bit depth); the
+         * last two made when first wanted */
+        s_gte_have = 0;
         s_gte_cur = -1;
         gte_cfg(0);
         gte_ctc(GTE_OFX, (uint32_t)s_vp.tx << 14);
@@ -510,7 +590,8 @@ static void light_setup(int32_t ldir[8][3])
     uint32_t ls = s_light_stamp ^ (uint32_t)s_nlights << 24 ^ (uint32_t)s_mvn << 28;
     int k;
     if (cached_stamp != s_mvp_stamp || cached_lights != ls) {
-        uint32_t h = 0x811C9DC5u ^ (uint32_t)s_nlights;
+        uint32_t h = 0x811C9DC5u ^ (uint32_t)s_nlights, q = ST_NOW();
+        s_su[5]++;
         for (k = 0; k < s_nlights; k++)
             model_dir(s_light[k].dir, cached[k]);
         cached_stamp = s_mvp_stamp;
@@ -547,6 +628,7 @@ static void light_setup(int32_t ldir[8][3])
             h = hash32(h, (uint32_t)s_light[k].col[0] << 16 | s_light[k].col[1] << 8 | s_light[k].col[2]);
         }
         s_lsig = h;
+        s_su[2] += (ST_NOW() - q) & 0xFFFF;
     }
     if (ldir)
         memcpy(ldir, cached, sizeof cached);
@@ -791,7 +873,8 @@ static __attribute__((noinline)) int mesh_vertices_gen(const NVtx *nv, int n, in
             if (x > s_mb_x1) c |= 2;
             if (y < s_mb_y0) c |= 4;
             if (y > s_mb_y1) c |= 8;
-            q->ok = !(x < s_mb_gx0 || x > s_mb_gx1 || y < s_mb_gy0 || y > s_mb_gy1);
+            q->ok = (uint8_t)((!(x < -WIDE || x > WIDE || y < -WIDE || y > WIDE)) |
+                              (!(x < s_mb_gx0 || x > s_mb_gx1 || y < s_mb_gy0 || y > s_mb_gy1)) << 1);
             q->clip = (uint8_t)c;
             q->x = (int16_t)x;
             q->y = (int16_t)y;
@@ -834,7 +917,8 @@ static inline __attribute__((always_inline)) void mv_put(MVtx *q, uint32_t sxy, 
 {
     int x = (int16_t)sxy, y = (int32_t)sxy >> 16, p;
     q->clip = (uint8_t)((x < K->x0) | (x > K->x1) << 1 | (y < K->y0) << 2 | (y > K->y1) << 3);
-    q->ok = (uint8_t)!((x < K->gx0) | (x > K->gx1) | (y < K->gy0) | (y > K->gy1));
+    q->ok = (uint8_t)((!((x < -WIDE) | (x > WIDE) | (y < -WIDE) | (y > WIDE))) |
+                      (!((x < K->gx0) | (x > K->gx1) | (y < K->gy0) | (y > K->gy1))) << 1);
     *(uint32_t *)&q->x = sxy;                   /* (x and y in one store) */
     p = sz >> 8 ? 8 + s_lg8[sz >> 8] : s_lg8[sz];
     q->z = (int16_t)(p * 32 + (int)((sz << (15 - p)) >> 10 & 31) + K->zb);
@@ -1019,7 +1103,8 @@ static int mesh_vertices_one(const NVtx *nv, int n, int v0, int lit)
         if (x > s_mb_x1) c |= 2;
         if (y < s_mb_y0) c |= 4;
         if (y > s_mb_y1) c |= 8;
-        q->ok = !(x < s_mb_gx0 || x > s_mb_gx1 || y < s_mb_gy0 || y > s_mb_gy1);
+        q->ok = (uint8_t)((!(x < -WIDE || x > WIDE || y < -WIDE || y > WIDE)) |
+                          (!(x < s_mb_gx0 || x > s_mb_gx1 || y < s_mb_gy0 || y > s_mb_gy1)) << 1);
         q->clip = (uint8_t)c;
         q->x = (int16_t)x;
         q->y = (int16_t)y;
@@ -1523,6 +1608,7 @@ static int tile_size(const Tile *tl, int *w, int *h)
 }
 
 static uint16_t s_dec[384 * 256];
+static uint32_t s_tq[4];                        /* TGR_PERF: texture lookups' key, table search (cycles / 8), decodes; lookups */
 static uint16_t s_xmap[1536];                   /* (a decode's columns through the tile's mask) */
 static uint32_t s_row[1536 + 4];                /* (a decode's row of texels) */
 
@@ -1619,6 +1705,21 @@ static struct { uint32_t key, check, used; uint16_t hw, h, n, alpha; uint16_t pa
 static uint16_t s_last_pal[256];
 static int s_last_pal_n;
 
+/* the table entry with a key: where it was last found, else a search */
+static uint16_t s_tfi[256];
+static int tex_index(uint32_t key)
+{
+    int h = (int)((key * 2654435761u) >> 24), i = s_tfi[h];
+    if (i < s_ntex && s_texs[i].key == key)
+        return i;
+    for (i = 0; i < s_ntex; i++)
+        if (s_texs[i].key == key) {
+            s_tfi[h] = (uint16_t)i;
+            return i;
+        }
+    return -1;
+}
+
 static const Tex *tile_texture_find(int t)
 {
     const Tile *tl = &s_tile[t];
@@ -1628,8 +1729,12 @@ static const Tex *tile_texture_find(int t)
     Tex *tx, old = { 0 };
     int reuse = 0, ri = -1, wrap_s = 0, wrap_t = 0, up, inplace = 0;
     int by0 = s_band_y0;
+    uint32_t tq0 = ST_NOW();
+    s_tq[3]++;
     if (!(key = tile_key(t, &check, &w, &h)))
         return NULL;
+    s_tq[0] += (ST_NOW() - tq0) & 0xFFFF;
+    tq0 = ST_NOW();
     key = hash32(key, (uint32_t)s_in_rect);
     if (!key)
         key = 1;                                /* (0: an empty entry) */
@@ -1642,18 +1747,18 @@ static const Tex *tile_texture_find(int t)
         by0 = 0;
     }
     ci = tl->fmt == 2 || (tl->fmt == 0 && tl->siz < 2);
-    for (i = 0; i < s_ntex; i++)
-        if (s_texs[i].key == key) {
-            if (s_texs[i].check == check) {
-                s_texs[i].used = s_frame_no;
-                s_shelf[s_texs[i].shelf].used = s_frame_no;
-                return &s_texs[i];
-            }
-            old = s_texs[i];                    /* changed (the game wrote it): decode again, in its place */
-            reuse = 1;
-            ri = i;
-            break;
+    i = tex_index(key);
+    if (i >= 0) {
+        if (s_texs[i].check == check) {
+            s_texs[i].used = s_frame_no;
+            s_shelf[s_texs[i].shelf].used = s_frame_no;
+            s_tq[1] += (ST_NOW() - tq0) & 0xFFFF;
+            return &s_texs[i];
         }
+        old = s_texs[i];                        /* changed (the game wrote it): decode again, in its place */
+        reuse = 1;
+        ri = i;
+    }
     /* a miss: decode (from TMEM rebuilt from the loads), or a frame of an
      * animated texture decoded before */
     {
@@ -2771,6 +2876,27 @@ static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr
             rcx += dcxj; rcy += dcyj; rcz += dczj; rcw += dcwj;
         }
     }
+    if (s_grid_strict) {
+        /* each piece no bigger than the GPU draws (the corners may be past the guard band) */
+        int row = 0;
+        for (j = 0; j < n; j++) {
+            int next = row + (n + 1 - j);
+            for (i = 0; i < n - j; i++) {
+                const GPt *q[4] = { &s_gpt[row + i], &s_gpt[row + i + 1], &s_gpt[next + i], &s_gpt[i + 1 < n - j ? next + i + 1 : next + i] };
+                int32_t x0 = 4096, x1 = -4096, y0 = 4096, y1 = -4096, e;
+                for (e = 0; e < 4; e++) {
+                    int32_t x = (int16_t)q[e]->xy, y = (int32_t)q[e]->xy >> 16;
+                    if (x < x0) x0 = x;
+                    if (x > x1) x1 = x;
+                    if (y < y0) y0 = y;
+                    if (y > y1) y1 = y;
+                }
+                if (x1 - x0 > 1023 || y1 - y0 > 511)
+                    return 0;
+            }
+            row = next;
+        }
+    }
     {
         uint32_t clut = (uint32_t)pr->tex->clut << 16, tpage = (uint32_t)(tex_tpage(pr->tex, pr->tex->vx) | pr->abr << 5) << 16;
         uint32_t cmd = (uint32_t)pr->cmd << 24, pre = pr->semi ? 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 | (tpage >> 16 & 0x1FF) : 0;
@@ -3602,8 +3728,10 @@ static void exec_state_(int op, uint32_t w0, uint32_t w1)
         }
         else if (idx == 0x0A) {
             int k = ofs / 0x20;
-            s_light_stamp++;
             if ((ofs & 0x1F) == 0 && k < 8) {
+                if (s_light[k].col[0] != (uint8_t)(w1 >> 24) || s_light[k].col[1] != (uint8_t)(w1 >> 16) ||
+                    s_light[k].col[2] != (uint8_t)(w1 >> 8))
+                    s_light_stamp++;            /* (only a change) */
                 s_light[k].col[0] = (uint8_t)(w1 >> 24);
                 s_light[k].col[1] = (uint8_t)(w1 >> 16);
                 s_light[k].col[2] = (uint8_t)(w1 >> 8);
@@ -3806,6 +3934,7 @@ typedef struct Dlc {
     int vol;                                    /* (its address's lists change: checked whole every frame) */
     int stable;                                 /* (frames it passed a whole check: from 64, mostly the quick one) */
     int ncmd, ntri, bad, maxprim;
+    uint8_t tsa, tsa_on, tsa_tile;              /* (its triangles' texture from the caller's G_TEXTURE: as it was at the compile) */
     DCmd *cmd;
     uint32_t segmask, segval[16];
     DlcVar *var[2];                             /* (made at the list's first draw under a key) */
@@ -4063,7 +4192,7 @@ static Dlc *dlc_compile(uint32_t a)
     Dlc *d;
     uint32_t pc = a, written = 0, reads = 0, tbits[16];
     uint32_t loaded = 0;                        /* the vertex slots the list loads */
-    int n = 0, i, k, ntri = 0, bad = 0, textile = -1, runs = 0, chg = 1;
+    int n = 0, i, k, ntri = 0, bad = 0, textile = -1, runs = 0, chg = 1, tsa = 0;
     struct { int fmt, siz, line, tmem, pal, uls, ult, lrs, lrt; } td[8];
     memset(tbits, 0, sizeof tbits);
     memset(td, 0, sizeof td);
@@ -4099,15 +4228,21 @@ static Dlc *dlc_compile(uint32_t a)
                         bad = 1;                /* a vertex from before the call */
                 }
             ntri += nt;
-            if ((written & R_TEX) && textile >= 0) {
-                int t, ok = 1;
-                for (t = textile; t <= textile + 1 && t < 8; t++) {
+            if (!(written & R_TEX) && !s_tex.on) {
+                tsa = 1;                        /* (texturing off as called: no tile read while it stays so) */
+            } else {
+                int t, ok = 1, tt = textile;
+                if (!(written & R_TEX)) {
+                    tt = s_tex.tile;            /* (the caller's tile, as it is now) */
+                    tsa = 1;
+                }
+                for (t = tt; t <= tt + 1 && t < 8; t++) {
                     need |= (R_TDESC << t) | (R_TSIZE << t);
                     if (!((written >> 11 >> t) & 1) || !((written >> 19 >> t) & 1)) {
                         ok = 0;
                         continue;
                     }
-                    if (t == textile) {
+                    if (t == tt) {
                         int rows = ((td[t].lrt - td[t].ult) >> 2) + 1, ci = td[t].fmt == 2 || (td[t].fmt == 0 && td[t].siz < 2);
                         if (!tmem_have(tbits, td[t].tmem, td[t].line * (rows < 1 ? 1 : rows)))
                             ok = 0;
@@ -4117,8 +4252,6 @@ static Dlc *dlc_compile(uint32_t a)
                 }
                 if (!ok)
                     need |= R_TMEM;
-            } else {
-                need |= R_TMEM | (0xFFu * R_TDESC) | (0xFFu * R_TSIZE);
             }
             reads |= need & ~written;
             break;
@@ -4202,6 +4335,9 @@ static Dlc *dlc_compile(uint32_t a)
     d->ntri = ntri;
     d->reads = reads;
     d->maxprim = runs < 1 ? 1 : runs > DLC_PRIMS ? DLC_PRIMS : runs;
+    d->tsa = (uint8_t)tsa;
+    d->tsa_on = (uint8_t)(s_tex.on != 0);
+    d->tsa_tile = (uint8_t)s_tex.tile;
     for (i = 0, pc = a; i < n; i++, pc += 8) {
         uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
         int op = (int)(w0 >> 24);
@@ -4242,6 +4378,8 @@ static Dlc *dlc_compile(uint32_t a)
 static uint32_t dlc_sig(const Dlc *d)
 {
     uint32_t reads = d->reads;
+    if (d->tsa && ((s_tex.on != 0) != d->tsa_on || s_tex.tile != d->tsa_tile))
+        reads |= R_TMEM | (0xFFu * R_TDESC) | (0xFFu * R_TSIZE);   /* (called with another texture tile: all it could read) */
     uint32_t h = 0x811C9DC5u;
     int t;
     if (reads & R_CC) { h = hash32(h, s_cc0); h = hash32(h, s_cc1); }
@@ -4508,7 +4646,21 @@ static void vtx_clip(int slot, CV *c, int *clip)
 /* a kept triangle the GPU cannot take whole (reaching behind the eye, past
  * the guard band, or deep enough to need cutting): clipped and cut from its
  * kept draw */
+static uint32_t s_cwt[6];                       /* TGR_PERF: the clip path's time by outcome (cycles / 8) */
+static void dlc_tri_clip_(const Tpl *t, const Prim *pr, int ia, int ib, int ic, int cull);
 static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic, int cull)
+{
+    uint32_t q = ST_NOW(), w0[6];
+    memcpy(w0, s_cutw, sizeof w0);
+    dlc_tri_clip_(t, pr, ia, ib, ic, cull);
+    {
+        int k;
+        for (k = 0; k < 6; k++)
+            if (s_cutw[k] != w0[k])
+                s_cwt[k] += (ST_NOW() - q) & 0xFFFF;
+    }
+}
+static void dlc_tri_clip_(const Tpl *t, const Prim *pr, int ia, int ib, int ic, int cull)
 {
     CV poly[2][12];
     int k, n = 3, cur = 0, cl[3];
@@ -4725,11 +4877,36 @@ static NMesh *nm_build(const Dlc *d, const DlcVar *v)
 }
 
 /* a kept list drawn as its mesh: 0 when the GTE does not hold a transform */
+/* edge_cuts for the mesh loop, inline */
+static inline __attribute__((always_inline)) int ecut(int32_t wa, int32_t wb, int ax, int ay, int bx, int by)
+{
+    int32_t l = abs(ax - bx) + abs(ay - by), d, sum, e;
+    int k;
+    if (l <= 6)
+        return 0;
+    if (wa < W_NEAR) wa = W_NEAR;
+    if (wb < W_NEAR) wb = W_NEAR;
+    d = abs(wb - wa);
+    sum = wa + wb;
+    if (sum >= 0x10000) {                       /* (the halvings that bring sum under 0x10000, at once) */
+        int sh = sum >= 0x1000000 ? (sum >= 0x10000000 ? (sum >= 0x40000000 ? 15 : 13) : (sum >= 0x4000000 ? 11 : 9))
+                                  : (sum >= 0x100000 ? (sum >= 0x400000 ? 7 : 5) : (sum >= 0x40000 ? 3 : 1));
+        if (sum >> sh >= 0x10000)
+            sh++;
+        sum >>= sh;
+        d >>= sh;
+    }
+    e = l * d;
+    for (k = 0; k < 2 && e > 6 * sum; k++)
+        e >>= 2;
+    return k;
+}
+
 static int nm_draw(const Dlc *d, DlcVar *v)
 {
     const NMesh *nm = v->nm;
     int b, i;
-    uint32_t pieces0 = s_n_piece, cut0 = s_path[2];
+    uint32_t pieces0 = s_n_piece, cut0 = s_path[2], rej0 = s_n_rej, tri0 = s_n_tri, mv0 = s_n_vtx;
     for (b = 0; b < v->nprim && b < 48; b++) {    /* (the textures where they were baked) */
         const Tex *tx = v->prim[b].tex;
         if (tx && (tx->key ^ ((uint32_t)tx->vx << 20 | (uint32_t)tx->vy << 10 | tx->clut) * 2654435761u) != nm->place[b]) {
@@ -4755,106 +4932,147 @@ static int nm_draw(const Dlc *d, DlcVar *v)
         }
         {
         uint32_t tl0 = ST_NOW();
+        const Prim *prims = v->prim;
+        const Tpl *tpls = v->tpl + bt->t0;
+        uint32_t *base = s_pkt[s_buf], *pk = base + s_used, *pend = base + PKT_WORDS - 16;
+        int lo = s_ot_lo, hi = s_ot_hi, zr = s_zrun;
+        uint32_t n_rej = 0, n_cull = 0, n_piece = 0, n_cut = 0, n_tri = 0;
+        /* (the packet cursor and the depth run in registers: written back round anything that adds packets) */
+#define NM_OUT() (s_used = (int)(pk - base), s_ot_lo = lo, s_ot_hi = hi, s_zrun = zr)
+#define NM_IN() (pk = base + s_used, lo = s_ot_lo, hi = s_ot_hi, zr = s_zrun)
         for (i = 0; i < bt->nt; i++, tr++) {
-            uint32_t idx = tr->idx, fl = idx >> 24;
+            uint32_t idx = tr->idx, fl = idx >> 24, ka, kb, kc, xa, xb, xc;
             int ia = (int)(idx & 31), ib = (int)(idx >> 5 & 31), ic = (int)(idx >> 10 & 31);
             const MVtx *A = &s_mvx[ia], *B = &s_mvx[ib], *C = &s_mvx[ic];
-            const Prim *pr = &v->prim[idx >> 15 & 63];
-            const Tpl *tp = &v->tpl[bt->t0 + i];
+            const Prim *pr;
             uint32_t *p, *w;
-            int32_t det;
-            s_n_tri++;
-            if (A->clip & B->clip & C->clip & 31) {
-                s_n_rej++;
-                s_path[0]++;
+            int32_t det, ax, ay, bx, by, cx, cy;
+            uint32_t tt0 = ST_NOW();
+            n_tri++;
+            ka = *(const uint16_t *)&A->clip;  /* (clip, and ok above it) */
+            kb = *(const uint16_t *)&B->clip;
+            kc = *(const uint16_t *)&C->clip;
+            if (ka & kb & kc & 31) {
+                n_rej++;
+                s_tt[0] += (ST_NOW() - tt0) & 0xFFFF;
                 continue;
             }
-            if (!(A->ok & B->ok & C->ok) || (fl & NT_CUT)) {
-                {
-                    uint32_t cc = ST_NOW();
-                    s_n_tri--;
-                    dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
-                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
-                }
-                s_path[2]++;
+            if (!(ka & kb & kc & 0x100) || (fl & NT_CUT)) {
+                uint32_t cc = ST_NOW();
+                NM_OUT();
+                s_n_tri--;
+                dlc_tri_clip(&tpls[i], &prims[idx >> 15 & 63], ia, ib, ic, (int)(fl & 3));
+                NM_IN();
+                s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                n_cut++;
                 continue;
             }
-            det = (B->x - A->x) * (C->y - A->y) - (C->x - A->x) * (B->y - A->y);
+            xa = *(const uint32_t *)A; xb = *(const uint32_t *)B; xc = *(const uint32_t *)C;
+            ax = (int16_t)xa; ay = (int32_t)xa >> 16;
+            bx = (int16_t)xb; by = (int32_t)xb >> 16;
+            cx = (int16_t)xc; cy = (int32_t)xc >> 16;
+            det = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
             if (((fl & NT_CULLB) && det >= 0) || ((fl & NT_CULLF) && det <= 0)) {
-                s_n_cull++;
-                s_path[0]++;
+                n_cull++;
+                s_tt[1] += (ST_NOW() - tt0) & 0xFFFF;
                 continue;
             }
-            if ((fl & NT_TEX) && !pr->fog && pr->tex) {
-                /* a whole triangle deep enough to need cutting: its grid straight from the
-                 * vertex records and the kept draw (the clip path only when that fails) */
-                int k0 = edge_cuts(A->w, B->w, A->x, A->y, B->x, B->y);
-                int k1 = edge_cuts(B->w, C->w, B->x, B->y, C->x, C->y);
-                int k2 = edge_cuts(C->w, A->w, C->x, C->y, A->x, A->y);
-                int lg = k0 > k1 ? k0 : k1;
-                if (k2 > lg)
-                    lg = k2;
+            pr = &prims[idx >> 15 & 63];
+            if (fl & NT_TEX) {
+                int lg = ecut(A->w, B->w, ax, ay, bx, by), k1 = ecut(B->w, C->w, bx, by, cx, cy),
+                    k2 = ecut(C->w, A->w, cx, cy, ax, ay);
+                if (k1 > lg) lg = k1;
+                if (k2 > lg) lg = k2;
                 if (lg) {
-                    CV q[3];
-                    const MVtx *m3[3];
-                    const int ix[3] = { ia, ib, ic };
-                    int k, done;
+                    /* deep enough to need cutting: its grid straight from the vertex records
+                     * and the kept draw, else the clip path */
                     uint32_t cc = ST_NOW();
-                    m3[0] = A; m3[1] = B; m3[2] = C;
-                    for (k = 0; k < 3; k++) {
-                        const NVtx *nv = s_mvsrc[ix[k]];
-                        int r, g, bb;
-                        corner_rgb(tp, pr, fl & NT_FLAT ? A : m3[k], k, &r, &g, &bb);
-                        q[k].mx = nv->x * 16; q[k].my = nv->y * 16; q[k].mz = nv->z * 16;
-                        q[k].x = q[k].y = q[k].z = 0;
-                        q[k].w = m3[k]->w;
-                        q[k].u = tp->u[k]; q[k].v = tp->v[k];
-                        q[k].r = r; q[k].g = g; q[k].b = bb;
-                        q[k].fr = q[k].fg = q[k].fb = 0;
+                    int done = 0;
+                    NM_OUT();
+                    if (!pr->fog && pr->tex && lg <= 2) {
+                        const Tpl *tp = &tpls[i];
+                        CV q[3];
+                        const MVtx *m3[3];
+                        const int ix[3] = { ia, ib, ic };
+                        int k;
+                        m3[0] = A; m3[1] = B; m3[2] = C;
+                        for (k = 0; k < 3; k++) {
+                            const NVtx *nv = s_mvsrc[ix[k]];
+                            int r, g, bb;
+                            corner_rgb(tp, pr, fl & NT_FLAT ? A : m3[k], k, &r, &g, &bb);
+                            q[k].mx = nv->x * 16; q[k].my = nv->y * 16; q[k].mz = nv->z * 16;
+                            q[k].x = q[k].y = q[k].z = 0;
+                            q[k].w = m3[k]->w;
+                            q[k].u = tp->u[k]; q[k].v = tp->v[k];
+                            q[k].r = r; q[k].g = g; q[k].b = bb;
+                            q[k].fr = q[k].fg = q[k].fb = 0;
+                        }
+                        s_grid_strict = 1;
+                        done = emit_grid_words(&q[0], &q[1], &q[2], pr, lg);
+                        s_grid_strict = 0;
+                        s_gridn[done ? 0 : 2]++;
+                    } else if (!pr->fog && pr->tex) {
+                        s_gridn[1]++;
                     }
-                    s_grid_strict = 1;
-                    done = lg <= 2 && emit_grid_words(&q[0], &q[1], &q[2], pr, lg);
-                    s_grid_strict = 0;
-                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
-                    s_gridn[done ? 0 : lg > 2 ? 1 : 2]++;
-                    if (done) {
+                    if (!done) {
+                        s_n_tri--;
+                        dlc_tri_clip(&tpls[i], pr, ia, ib, ic, (int)(fl & 3));
+                    } else {
                         s_n_tri++;
-                        s_path[2]++;
-                        continue;
                     }
-                }
-            }
-            if ((fl & NT_TEX) && (edge_split(A->w, B->w, A->x, A->y, B->x, B->y) ||
-                                  edge_split(B->w, C->w, B->x, B->y, C->x, C->y) ||
-                                  edge_split(C->w, A->w, C->x, C->y, A->x, A->y))) {
-                {
-                    uint32_t cc = ST_NOW();
-                    s_n_tri--;
-                    dlc_tri_clip(tp, pr, ia, ib, ic, (int)(fl & 3));
+                    NM_IN();
                     s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                    n_cut++;
+                    continue;
                 }
-                s_path[2]++;
-                continue;
             }
-            if (!(p = pkt_alloc(tr->nw)))
-                continue;
+            uint32_t tt1 = ST_NOW(), tt2, tt3;
+            s_tq2[0] += (tt1 - tt0) & 0xFFFF;
+            if (!(ka & kb & kc & 0x200)) {
+                /* past the guard band: drawn whole only if the GPU takes its size */
+                int32_t x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax, y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
+                if (cx < x0) x0 = cx;
+                if (cx > x1) x1 = cx;
+                if (cy < y0) y0 = cy;
+                if (cy > y1) y1 = cy;
+                if (x1 - x0 > 1023 || y1 - y0 > 511) {
+                    uint32_t cc = ST_NOW();
+                    NM_OUT();
+                    s_n_tri--;
+                    dlc_tri_clip(&tpls[i], pr, ia, ib, ic, (int)(fl & 3));
+                    NM_IN();
+                    s_cutc += (ST_NOW() - cc) & 0xFFFF;
+                    n_cut++;
+                    continue;
+                }
+            }
             {
+                int nw = tr->nw, k;
                 const uint32_t *src = tr->w;
-                int k;
+                if (pk + nw + 1 > pend) {
+                    s_overflow = 1;
+                    s_n_over++;
+                    continue;
+                }
+                p = pk;
+                pk += nw + 1;
+                p[0] = (uint32_t)nw << 24 | 0xFFFFFF;
                 w = p + 1;
-                for (k = 0; k < tr->nw; k++)
+                for (k = 0; k < nw; k++)
                     w[k] = src[k];
             }
             w += tr->off;
             if (fl & NT_TEX) {
-                w[1] = (uint32_t)(uint16_t)A->y << 16 | (uint16_t)A->x;
-                w[4] = (uint32_t)(uint16_t)B->y << 16 | (uint16_t)B->x;
-                w[7] = (uint32_t)(uint16_t)C->y << 16 | (uint16_t)C->x;
+                w[1] = xa;
+                w[4] = xb;
+                w[7] = xc;
             } else {
-                w[1] = (uint32_t)(uint16_t)A->y << 16 | (uint16_t)A->x;
-                w[3] = (uint32_t)(uint16_t)B->y << 16 | (uint16_t)B->x;
-                w[5] = (uint32_t)(uint16_t)C->y << 16 | (uint16_t)C->x;
+                w[1] = xa;
+                w[3] = xb;
+                w[5] = xc;
             }
+            tt2 = ST_NOW();
+            s_tq2[1] += (tt2 - tt1) & 0xFFFF;
             if (fl & NT_LIT) {
                 const MVtx *cs[3];
                 int k, step = fl & NT_TEX ? 3 : 2;
@@ -4868,19 +5086,60 @@ static int nm_draw(const Dlc *d, DlcVar *v)
                                   (uint32_t)clamp255(bb) << 16;
                 }
             }
-            s_n_piece++;
-            s_n_dlc_tpl++;
-            s_path[1]++;
-            if (fl & NT_ZS)
-                put_sorted(p, (A->z + B->z + C->z) / 3);
-            else
+            tt3 = ST_NOW();
+            s_tq2[2] += (tt3 - tt2) & 0xFFFF;
+            n_piece++;
+            if (fl & NT_ZS) {
+                int z = (int)(((uint32_t)(A->z + B->z + C->z) * 21846u) >> 16);   /* (/ 3) */
+                if (z < 0) z = 0;
+                if (z >= OT_LEN) z = OT_LEN - 1;
+                if (!zr) {
+                    zr = 1;
+                    lo = OT_LEN;
+                    hi = -1;
+                }
+                if (z < lo) lo = z;
+                if (z > hi) hi = z;
+                if (s_ot_head[z]) {
+                    uint32_t *t = s_ot_tail[z];
+                    t[0] = (t[0] & 0xFF000000u) | ((uint32_t)p & 0xFFFFFF);
+                } else {
+                    s_ot_head[z] = p;
+                }
+                s_ot_tail[z] = p;
+            } else {
+                NM_OUT();
                 put_flat(p);
+                NM_IN();
+            }
+            s_tt[2] += (ST_NOW() - tt0) & 0xFFFF;
+            s_tq2[3] += (ST_NOW() - tt3) & 0xFFFF;
+            s_tt[3]++;
         }
+        NM_OUT();
+#undef NM_OUT
+#undef NM_IN
+        s_n_tri += n_tri;
+        s_n_rej += n_rej;
+        s_n_cull += n_cull;
+        s_path[0] += n_rej + n_cull;
+        s_path[1] += n_piece;
+        s_path[2] += n_cut;
+        s_n_piece += n_piece;
+        s_n_dlc_tpl += n_piece;
+        if ((uint32_t)s_used > s_peak_used)
+            s_peak_used = (uint32_t)s_used;
         ST_ADD(5, tl0);
         }
     }
-    if (s_n_piece == pieces0 && s_path[2] == cut0)
+    if (s_n_piece == pieces0 && s_path[2] == cut0) {
         s_nmempty[0]++;
+        if (s_n_rej - rej0 == s_n_tri - tri0) {
+            s_nmoff[0]++;                       /* (every triangle off the screen) */
+            s_nmoff[1] += s_n_vtx - mv0;
+        }
+    }
+    s_nmoff[2] += s_n_vtx - mv0;
     s_nmempty[1]++;
     {
         uint32_t c0 = ST_NOW();
@@ -5014,6 +5273,10 @@ static int dlc_call(uint32_t a)
             if (v->prim[i].tex && v->prim[i].tex->key != v->pkey[i]) {
                 stale = 1;
                 s_dlc_why[3]++;
+                if (s_listlog > 0 && tgr_frame() >= (uint32_t)s_listlog && tgr_frame() < (uint32_t)s_listlog + 10)
+                    fprintf(stderr, "stale %u list %06X prim %d key %08X was %08X at %d,%d %dx%d used %u\n", (unsigned)tgr_frame(),
+                            (unsigned)d->addr, i, (unsigned)v->prim[i].tex->key, (unsigned)v->pkey[i], v->prim[i].tex->vx,
+                            v->prim[i].tex->vy, v->prim[i].tex->w, v->prim[i].tex->h, (unsigned)v->prim[i].tex->used);
             }
         /* (a texture's bytes changing does not matter: the draws keep where it is, not what) */
         if (stale) {
@@ -5134,7 +5397,7 @@ static int dlc_call(uint32_t a)
                     (!v->prim[t->prim].tex || v->prim[t->prim].tex->key == v->pkey[t->prim])) {
                     const MVtx *a0 = &s_mvx[ia], *a1 = &s_mvx[ib], *a2 = &s_mvx[ic];
                     const Prim *pr = &v->prim[t->prim];
-                    if (a0->ok && a1->ok && a2->ok &&
+                    if ((a0->ok & a1->ok & a2->ok & 2) &&
                         !(pr->textured && (edge_split(a0->w, a1->w, a0->x, a0->y, a1->x, a1->y) ||
                                            edge_split(a1->w, a2->w, a1->x, a1->y, a2->x, a2->y) ||
                                            edge_split(a2->w, a0->w, a2->x, a2->y, a0->x, a0->y)))) {
@@ -5180,7 +5443,7 @@ static int dlc_call(uint32_t a)
                     dlc_capture(v, t, ia, ib, ic);
             }
             break;
-        case 0xB8:
+        case 0xB8: case 0x00: case 0xE6: case 0xE7: case 0xE8:
             break;
         default:
             exec_state(op, w0, w1);
@@ -5200,21 +5463,23 @@ static void run(uint32_t dl)
 {
     uint32_t stack[18];
     int sp = 0, guard = 0, opp = 0;
-    uint32_t pc = seg_addr(dl), opt = ST_NOW();
+    uint32_t pc = seg_addr(dl) & ~7u, opt = ST_NOW();
     while (guard++ < 400000) {
-        uint32_t w0 = rd32(pc), w1 = rd32(pc + 4);
+        uint32_t w0 = rd32a(pc), w1 = rd32a(pc + 4);
         int op = (int)(w0 >> 24);
         pc += 8;
-        if (s_dlstats)
-            s_opcount[op]++;
-        s_runops[op]++;
-        {
+        if (s_perfops) {
             uint32_t now = ST_NOW();
+            if (s_dlstats)
+                s_opcount[op]++;
+            s_runops[op]++;
             s_runopt[opp] += (now - opt) & 0xFFFF;
             opt = now;
             opp = op;
         }
         switch (op) {
+        case 0x00: case 0xE6: case 0xE7: case 0xE8:   /* (no-ops here: the syncs) */
+            break;
         case 0x01: {                                  /* G_MTX */
             M4 m;
             int p = (w0 >> 16) & 0xFF;
@@ -5244,17 +5509,21 @@ static void run(uint32_t dl)
             RG_BEGIN(RG_MOVEMEM);
             uint32_t a = seg_addr(w1);
             if (idx == 0x80) {
-                s_mvp_stamp++;
-                s_vp.sx = (int16_t)rd16(a);
-                s_vp.sy = (int16_t)rd16(a + 2);
-                s_vp.sz = (int16_t)rd16(a + 4);
-                s_vp.tx = (int16_t)rd16(a + 8);
-                s_vp.ty = (int16_t)rd16(a + 10);
-                s_vp.tz = (int16_t)rd16(a + 12);
+                int16_t sx = (int16_t)rd16(a), sy = (int16_t)rd16(a + 2), sz = (int16_t)rd16(a + 4);
+                int16_t tx = (int16_t)rd16(a + 8), ty = (int16_t)rd16(a + 10), tz = (int16_t)rd16(a + 12);
+                if (sx != s_vp.sx || sy != s_vp.sy || sz != s_vp.sz || tx != s_vp.tx || ty != s_vp.ty || tz != s_vp.tz)
+                    s_mvp_stamp++;              /* (the same viewport again: nothing to work out again) */
+                s_vp.sx = sx;
+                s_vp.sy = sy;
+                s_vp.sz = sz;
+                s_vp.tx = tx;
+                s_vp.ty = ty;
+                s_vp.tz = tz;
             } else if (idx >= 0x86 && idx <= 0x94) {
                 int k = (idx - 0x86) / 2, j;
-                s_light_stamp++;
                 for (j = 0; j < 3; j++) {
+                    if (s_light[k].col[j] != mem(a)[j] || s_light[k].dir[j] != (int8_t)mem(a + 8)[j])
+                        s_light_stamp++;        /* (only a change: the lights worked out again) */
                     s_light[k].col[j] = mem(a)[j];
                     s_light[k].dir[j] = (int8_t)mem(a + 8)[j];
                 }
@@ -5398,6 +5667,8 @@ void tgr_rcp_task(uint32_t dl)
         memset(s_opcount, 0, sizeof s_opcount);
     if (!s_inited)
         init();
+    if (s_listlog < 0)
+        s_perfops = getenv("TGR_PERFOPS") != NULL || getenv("TGR_DLSTATS") != NULL;
     if (s_listlog < 0)
         s_listlog = getenv("TGR_LISTLOG") ? atoi(getenv("TGR_LISTLOG")) : 0;   /* (list calls over 2 ms, from that frame for 10) */
     s_frame_no++;
@@ -5554,9 +5825,24 @@ void tgr_rcp_present(uint32_t frame)
                     fprintf(stderr, "\n");
                 }
                 memset(s_lh_t, 0, sizeof s_lh_t);
+                fprintf(stderr, "perf: texture lookups %u: key %u ms, found %u ms\n", (unsigned)s_tq[3],
+                        (unsigned)(s_tq[0] * 8 / 33869), (unsigned)(s_tq[1] * 8 / 33869));
+                memset(s_tq, 0, sizeof s_tq);
                 fprintf(stderr, "perf: recording (ms): vertices %u triangle %u capture %u\n", (unsigned)(s_recq[0] * 8 / 33869),
                         (unsigned)(s_recq[1] * 8 / 33869), (unsigned)(s_recq[2] * 8 / 33869));
                 memset(s_recq, 0, sizeof s_recq);
+                fprintf(stderr, "perf: mesh triangles (ms): off %u away %u drawn %u (%u)\n", (unsigned)(s_tt[0] * 8 / 33869),
+                        (unsigned)(s_tt[1] * 8 / 33869), (unsigned)(s_tt[2] * 8 / 33869), (unsigned)s_tt[3]);
+                memset(s_tt, 0, sizeof s_tt);
+                fprintf(stderr, "perf: drawn parts (ms): tests %u copy %u lit %u link %u\n", (unsigned)(s_tq2[0] * 8 / 33869),
+                        (unsigned)(s_tq2[1] * 8 / 33869), (unsigned)(s_tq2[2] * 8 / 33869), (unsigned)(s_tq2[3] * 8 / 33869));
+                memset(s_tq2, 0, sizeof s_tq2);
+                fprintf(stderr, "perf: gte setups: one stamp on %u, ysh %u, more %u\n", (unsigned)s_gsw[0], (unsigned)s_gsw[1], (unsigned)s_gsw[2]);
+                memset(s_gsw, 0, sizeof s_gsw);
+                fprintf(stderr, "perf: setup (ms/calls): matrix %u/%u gte %u/%u lights %u/%u\n", (unsigned)(s_su[0] * 8 / 33869),
+                        (unsigned)s_su[3], (unsigned)(s_su[1] * 8 / 33869), (unsigned)s_su[4], (unsigned)(s_su[2] * 8 / 33869),
+                        (unsigned)s_su[5]);
+                memset(s_su, 0, sizeof s_su);
                 memset(s_lh_n, 0, sizeof s_lh_n);
                 memset(s_cls_n, 0, sizeof s_cls_n);
                 fprintf(stderr, "perf: list stages (ms): find %u check %u key %u variant %u vertices %u triangles %u state %u\n",
@@ -5571,6 +5857,9 @@ void tgr_rcp_present(uint32_t frame)
                         (unsigned)(s_st[7] >> 16), (unsigned)(s_st[7] & 0xFFFF), (unsigned)s_nmwhy[0], (unsigned)s_nmwhy[1],
                         (unsigned)s_nmwhy[2], (unsigned)s_nmwhy[3], (unsigned)s_nmwhy[4], (unsigned)s_nmwhy[7]);
                 memset(s_nmwhy, 0, sizeof s_nmwhy);
+                fprintf(stderr, "perf: meshes all off the screen %u (vertices %u of %u)\n", (unsigned)s_nmoff[0],
+                        (unsigned)s_nmoff[1], (unsigned)s_nmoff[2]);
+                memset(s_nmoff, 0, sizeof s_nmoff);
                 fprintf(stderr, "perf: meshes drawing nothing %u of %u\n", (unsigned)s_nmempty[0], (unsigned)s_nmempty[1]);
                 s_nmempty[0] = s_nmempty[1] = 0;
                 memset(s_st, 0, sizeof s_st);
@@ -5600,6 +5889,10 @@ void tgr_rcp_present(uint32_t frame)
             fprintf(stderr, "perf: never kept why: no draw %u, not ok %u, fog %u, prims %u\n", (unsigned)s_k2why[0],
                     (unsigned)s_k2why[1], (unsigned)s_k2why[2], (unsigned)s_k2why[3]);
             memset(s_k2why, 0, sizeof s_k2why);
+            fprintf(stderr, "perf: cut path (ms): off %u away %u whole %u behind %u guard %u both %u\n",
+                    (unsigned)(s_cwt[0] * 8 / 33869), (unsigned)(s_cwt[1] * 8 / 33869), (unsigned)(s_cwt[2] * 8 / 33869),
+                    (unsigned)(s_cwt[3] * 8 / 33869), (unsigned)(s_cwt[4] * 8 / 33869), (unsigned)(s_cwt[5] * 8 / 33869));
+            memset(s_cwt, 0, sizeof s_cwt);
             fprintf(stderr, "perf: cut path: off %u away %u; drawn: whole %u behind %u guard %u both %u\n", (unsigned)s_cutw[0],
                     (unsigned)s_cutw[1], (unsigned)s_cutw[2], (unsigned)s_cutw[3], (unsigned)s_cutw[4], (unsigned)s_cutw[5]);
             memset(s_cutw, 0, sizeof s_cutw);

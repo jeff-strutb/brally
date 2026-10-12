@@ -2,7 +2,7 @@
 """profwrap.py LIST OUT.s -- inclusive timing wrappers for the functions named
 in LIST (one a line): link.sh renames each in the core object that defines it
 to __prof_NAME, and NAME becomes a wrapper that notes root counter 2 (the
-system clock / 8) on a shadow stack, calls the function on the caller's own
+an HBlank count, 63.6 us, which counts 4 s before it wraps) on a shadow stack, calls the function on the caller's own
 stack (so arguments passed on it still line up), and adds the time and a call
 to the function's entry in prof_table, which perf_ps1.c prints."""
 import sys
@@ -12,11 +12,11 @@ o = ['    .set noreorder', '    .set noat', '    .text']
 for i, n in enumerate(names):
     o += ['    .globl %s' % n, '    .type %s,@function' % n, '%s:' % n,
           '    la $t0, prof_sp', '    lw $t1, 0($t0)',
-          '    lui $t2, 0x1F80', '    lw $t2, 0x1120($t2)',
+          '    lui $t2, 0x1F80', '    lw $t2, 0x1110($t2)',
           '    sw $ra, 0($t1)', '    sw $t2, 4($t1)', '    addiu $t1, $t1, 8',
           '    jal __prof_%s' % n, '    sw $t1, 0($t0)',
           '    la $t0, prof_sp', '    lw $t1, 0($t0)', '    lui $t3, 0x1F80',
-          '    lw $t3, 0x1120($t3)', '    addiu $t1, $t1, -8', '    sw $t1, 0($t0)',
+          '    lw $t3, 0x1110($t3)', '    addiu $t1, $t1, -8', '    sw $t1, 0($t0)',
           '    lw $ra, 0($t1)', '    lw $t2, 4($t1)', '    la $t4, prof_table + %d' % (12 * i + 4),
           '    subu $t3, $t3, $t2', '    andi $t3, $t3, 0xFFFF', '    lw $t5, 0($t4)', '    lw $t6, 4($t4)',
           '    addu $t5, $t5, $t3', '    addiu $t6, $t6, 1', '    sw $t5, 0($t4)', '    jr $ra', '    sw $t6, 4($t4)']

@@ -66,8 +66,8 @@ void tgr_perf_marks_report(void)
         for (i = 0; i < (int)prof_count; i++) {
             if (prof_table[i].n)
                 fprintf(stderr, "perf: fn %-28s %5u ms %6u calls %5u us each\n", prof_table[i].name,
-                        (unsigned)((uint64_t)prof_table[i].t8 * 8 / 33869), (unsigned)prof_table[i].n,
-                        (unsigned)((uint64_t)prof_table[i].t8 * 8000 / 33869 / prof_table[i].n));
+                        (unsigned)((uint64_t)prof_table[i].t8 * 63556 / 1000000), (unsigned)prof_table[i].n,
+                        (unsigned)((uint64_t)prof_table[i].t8 * 63556 / 1000 / prof_table[i].n));   /* (HBlanks) */
             prof_table[i].t8 = prof_table[i].n = 0;
         }
     for (i = 0; i < NSEC && s_ra[i]; i++) {
