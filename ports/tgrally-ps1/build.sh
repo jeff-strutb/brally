@@ -34,5 +34,7 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 find ports/tgrally/src -name '*.c' | grep -v -f ports/tgrally-ps1/skip.txt | sort > $OUT/tus.txt
+# the game's code that is the PlayStation's own, with no core TU behind it
+find ports/tgrally-ps1/game/native -name '*.c' | sort >> $OUT/tus.txt
 xargs -P $JOBS -n 1 ports/tgrally-ps1/cc_ps1.sh < $OUT/tus.txt | sort > $OUT/compile.txt
 echo "core: $(grep -c '^OK' $OUT/compile.txt) of $(wc -l < $OUT/tus.txt | tr -d ' ') TUs compiled"

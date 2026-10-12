@@ -38,15 +38,35 @@ static void state_hash(void)
     tgr_trace("cars", "%08x", (unsigned)h);
 }
 
+/* TGR_CARTRACE=1: each car's position and velocity (in 1/1000) at every
+ * retrace ("car"), to compare one physics with another */
+static int s_cartrace = -1;
+typedef struct { float pos[3], vel[3]; } CarSt;
+
+static void car_trace(void)
+{
+    int i;
+    for (i = 0; i < 4; i++) {
+        const CarSt *s = (const CarSt *)(D_8031B760 + 0x2090 * i + 0x1C0);
+        tgr_trace("car", "%d %d %d %d %d %d %d", i, (int)(s->pos[0] * 1000.0f), (int)(s->pos[1] * 1000.0f),
+                  (int)(s->pos[2] * 1000.0f), (int)(s->vel[0] * 1000.0f), (int)(s->vel[1] * 1000.0f),
+                  (int)(s->vel[2] * 1000.0f));
+    }
+}
+
 /* the retrace: the controllers sampled, the frame shown */
 void tgr_vi_retrace(void)
 {
     tgr_input_frame(tgr_frame());
     tgr_gfx_present();
-    if (s_statehash < 0)
+    if (s_statehash < 0) {
         s_statehash = getenv("TGR_STATEHASH") != NULL;
+        s_cartrace = getenv("TGR_CARTRACE") != NULL;
+    }
     if (s_statehash && g_tgr.trace)
         state_hash();
+    if (s_cartrace && g_tgr.trace)
+        car_trace();
 }
 
 void tgr_trace_close(void)

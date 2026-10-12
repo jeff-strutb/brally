@@ -77,6 +77,18 @@ void tgr_perf_marks_report(void)
         g_rw_tested = g_rw_hit = 0;
         g_bp_calls = g_bp_tested = g_bp_hit = 0;
     }
+    {
+        extern unsigned int g_fx_t[6] __attribute__((weak)), g_fx_bp[4] __attribute__((weak));
+        extern unsigned int g_fx_cells __attribute__((weak)), g_fx_cell_t __attribute__((weak));
+        if (g_fx_t) {
+            fprintf(stderr, "perf: fixed-point physics (ms): forces %u advance %u probes %u out %u; broad phase %u/%u, "
+                    "walk %u/%u; cells %u in %u ms\n", g_fx_t[0] * 8 / 33869, g_fx_t[1] * 8 / 33869, g_fx_t[2] * 8 / 33869,
+                    g_fx_t[3] * 8 / 33869, g_fx_bp[1], g_fx_bp[0], g_fx_bp[3], g_fx_bp[2], g_fx_cells, g_fx_cell_t * 8 / 33869);
+            g_fx_t[0] = g_fx_t[1] = g_fx_t[2] = g_fx_t[3] = 0;
+            g_fx_bp[0] = g_fx_bp[1] = g_fx_bp[2] = g_fx_bp[3] = 0;
+            g_fx_cells = g_fx_cell_t = 0;
+        }
+    }
     tgr_fn_report();
     if (&prof_count)                            /* PROF=list builds: the wrapped functions */
         for (i = 0; i < (int)prof_count; i++) {
