@@ -27,10 +27,10 @@
 
 /* TGR_PERF region timers: root counter 2 (the system clock / 8), inclusive */
 enum { RG_TASK, RG_DLC, RG_MESHV, RG_KTRI, RG_CLIP, RG_TRI, RG_RECT, RG_STATE, RG_TEX, RG_VTX, RG_END, RG_TOPTRI,
-       RG_MTX, RG_MOVEMEM, RG_FILL, RG_RUNTRI, RG_N };
+       RG_MTX, RG_MOVEMEM, RG_FILL, RG_RUNTRI, RG_CUTCLIP, RG_CUTEMIT, RG_GRID, RG_N };
 static const char *const s_rg_name[RG_N] = { "task", "kept lists", "kept vertices", "kept drawn", "kept cut",
                                              "slow triangles", "rectangles", "state", "texture lookup", "vertices",
-                                             "frame end", "run", "matrices", "movemem", "fills", "run triangles" };
+                                             "frame end", "run", "matrices", "movemem", "fills", "run triangles", "cut: clipping", "cut: emit", "cut: grids" };
 static uint32_t s_rg[RG_N];
 static uint32_t s_runops[256];
 uint64_t ps1_time_ns(void);
@@ -82,6 +82,7 @@ static uint32_t *s_ot_head[OT_LEN], *s_ot_tail[OT_LEN];
 static int s_zrun, s_ot_lo, s_ot_hi;            /* a depth-sorted run is open; its buckets in use */
 static int s_overflow;
 static uint32_t s_n_over, s_peak_used;          /* TGR_PERF */
+static uint32_t s_splitw[3];                    /* TGR_PERF: emit_tri's splits: by size, by texel span */
 
 static uint32_t *pkt_alloc(int words)
 {
@@ -376,6 +377,7 @@ static void gte_setup(void)
         if (sh_r(mx, 4 + k) <= 4095)
             break;
     s_gte_k = k;
+
     {
         int32_t rt[3][3], tr[3];
         for (r = 0; r < 3; r++) {
@@ -473,6 +475,31 @@ static void light_setup(int32_t ldir[8][3])
             model_dir(s_light[k].dir, cached[k]);
         cached_stamp = s_mvp_stamp;
         cached_lights = ls;
+        {
+            /* the GTE's lights the same: directions (4.12) as the light matrix's
+             * rows, colours (x16) as the colour matrix's columns, the ambient as
+             * the back colour; NCS on a normal gives the RSP's shade (the first 3 lights) */
+            int32_t l[3][3], c[3][3];
+            int j;
+            for (k = 0; k < 3; k++)
+                for (j = 0; j < 3; j++) {
+                    l[k][j] = k < s_nlights ? cached[k][j] >> 2 : 0;
+                    c[j][k] = k < s_nlights ? s_light[k].col[j] * 16 : 0;
+                }
+            gte_ctc(GTE_L11L12, (l[0][0] & 0xFFFF) | (uint32_t)l[0][1] << 16);
+            gte_ctc(GTE_L13L21, (l[0][2] & 0xFFFF) | (uint32_t)l[1][0] << 16);
+            gte_ctc(GTE_L22L23, (l[1][1] & 0xFFFF) | (uint32_t)l[1][2] << 16);
+            gte_ctc(GTE_L31L32, (l[2][0] & 0xFFFF) | (uint32_t)l[2][1] << 16);
+            gte_ctc(GTE_L33, l[2][2] & 0xFFFF);
+            gte_ctc(GTE_LR1LR2, (c[0][0] & 0xFFFF) | (uint32_t)c[0][1] << 16);
+            gte_ctc(GTE_LR3LG1, (c[0][2] & 0xFFFF) | (uint32_t)c[1][0] << 16);
+            gte_ctc(GTE_LG2LG3, (c[1][1] & 0xFFFF) | (uint32_t)c[1][2] << 16);
+            gte_ctc(GTE_LB1LB2, (c[2][0] & 0xFFFF) | (uint32_t)c[2][1] << 16);
+            gte_ctc(GTE_LB3, c[2][2] & 0xFFFF);
+            gte_ctc(GTE_RBK, s_light[s_nlights & 7].col[0] * 16);
+            gte_ctc(GTE_GBK, s_light[s_nlights & 7].col[1] * 16);
+            gte_ctc(GTE_BBK, s_light[s_nlights & 7].col[2] * 16);
+        }
         for (k = 0; k <= s_nlights && k < 8; k++) {
             if (k < s_nlights)
                 h = hash32(hash32(hash32(h, (uint32_t)(cached[k][0] >> 6)), (uint32_t)(cached[k][1] >> 6)),
@@ -567,7 +594,7 @@ colours:
  * place, the ordering bucket, w, which sides of the screen it is past);
  * the full vertex (clip space, colour, texture coordinates) is made only for
  * a triangle that needs the general path. */
-typedef struct { int16_t x, y, z; uint8_t clip, ok; int32_t w; } MVtx;
+typedef struct { int16_t x, y, z; uint8_t clip, ok; int32_t w; uint8_t r, g, b, lit; } MVtx;
 #define s_mvx ((MVtx *)0x1F800000u)              /* in the CPU's 1 KB of fast RAM (512 bytes of it) */
 static const NVtx *s_mvsrc[32];
 static uint32_t s_mvstale;                      /* slots whose s_vtx is not yet made from s_mvsrc */
@@ -608,7 +635,7 @@ static int mesh_vertices(const NVtx *nv, int n, int v0)
     for (i = 0; i < n && v0 + i < 32; i++) {
         MVtx *q = &s_mvx[v0 + i];
         uint32_t flag, sxy;
-        int32_t m3, w;
+        int32_t m3, m1, m2, w;
         int x, y, c;
         s_mvsrc[v0 + i] = &nv[i];
         s_mvstale |= 1u << (v0 + i);
@@ -617,11 +644,37 @@ static int mesh_vertices(const NVtx *nv, int n, int v0)
         gte_rtps();
         flag = gte_cfc(GTE_FLAG);
         m3 = (int32_t)gte_mfc(GTE_MAC3);
+        m1 = (int32_t)gte_mfc(GTE_MAC1);
+        m2 = (int32_t)gte_mfc(GTE_MAC2);
         sxy = gte_mfc(GTE_SXY2);
         w = sh_r(m3, -sh);
+        q->lit = 0;
+        if (s_geom & G_LIGHTING) {              /* its shade: the lights on its normal, by the GTE */
+            uint32_t rgb;
+            gte_mtc(GTE_VXY0, (uint32_t)((int32_t)(int8_t)nv[i].c[1] * 32 << 16) | (uint16_t)((int8_t)nv[i].c[0] * 32));
+            gte_mtc(GTE_VZ0, (uint32_t)((int32_t)(int8_t)nv[i].c[2] * 32));
+            gte_ncs();
+            rgb = gte_mfc(GTE_RGB2);
+            q->r = (uint8_t)rgb; q->g = (uint8_t)(rgb >> 8); q->b = (uint8_t)(rgb >> 16);
+            q->lit = 1;
+        }
         if ((flag & 0x7FC7F000u) || m3 <= 0 || w < W_NEAR) {
-            q->ok = 0;                          /* behind, saturated: the general path */
-            q->clip = 0;
+            /* behind, saturated: the general path; its clip flags the CPU's (the
+             * GTE's accumulators are too coarse this near) */
+            const M4 *mm = &s_mvp;
+            int32_t X = nv[i].x, Y = nv[i].y, Z = nv[i].z;
+            int32_t ccx = (int32_t)(((int64_t)X * mm->m[0][0] + (int64_t)Y * mm->m[1][0] + (int64_t)Z * mm->m[2][0] + mm->m[3][0]) >> 8);
+            int32_t ccy = (int32_t)(((int64_t)X * mm->m[0][1] + (int64_t)Y * mm->m[1][1] + (int64_t)Z * mm->m[2][1] + mm->m[3][1]) >> 8);
+            int32_t ccw = (int32_t)(((int64_t)X * mm->m[0][3] + (int64_t)Y * mm->m[1][3] + (int64_t)Z * mm->m[2][3] + mm->m[3][3]) >> 8);
+            (void)m1; (void)m2;
+            c = 0;
+            if (ccw < W_NEAR) c |= 16;
+            if (ccx < -ccw) c |= 1;
+            if (ccx > ccw) c |= 2;
+            if (ccy < -ccw) c |= 4;
+            if (ccy > ccw) c |= 8;
+            q->ok = 0;
+            q->clip = (uint8_t)c;
             continue;
         }
         x = (int16_t)(sxy & 0xFFFF);
@@ -1866,6 +1919,8 @@ typedef struct {
     int wraps, wrapt, ub, vb;                   /* wrapping (a texture window) and the texels' base in the page */
     uint32_t window;
     int fog;                                    /* a second pass adds the fog colour (fr, fg, fb) */
+    int lit, flat;                              /* (kept lists) lit: the GPU colour is c0 + sl * shade / 256 per channel */
+    int16_t c0[3], sl[3];
 } Prim;
 
 static int span_ok(const SV *a, const SV *b, const SV *c, const Prim *pr, int *split)
@@ -1898,6 +1953,7 @@ static void emit_tri(const SV *v0, const SV *v1, const SV *v2, const Prim *pr, i
     uint32_t *p, *w;
     int k, split, words;
     if (!span_ok(v0, v1, v2, pr, &split) && depth < 7) {
+        s_splitw[split]++;
         /* split the longest edge (on the screen, or in texels when the span is the trouble) */
         SV m;
         int e = 0, i;
@@ -2200,7 +2256,132 @@ typedef struct { int16_t x, y, z, u, v; uint8_t r, g, b, ok; } GP;
 /* a textured triangle cut into an n by n grid of pieces (n a power of two):
  * every point through the GTE once, from its model-space place; 0 when the
  * GTE cannot take a point (then the halving way) */
+/* a grid point as its packet words, in the CPU's fast RAM after the vertex records */
+typedef struct { uint32_t xy, uv, rgb; int32_t z; } GPt;
+#define s_gpt ((GPt *)0x1F800200u)               /* (at most 15 points: 240 bytes) */
+
+static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg);
+static int emit_grid_slow(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg);
+
 static int emit_grid(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
+{
+    int r;
+    RG_BEGIN(RG_GRID);
+    r = (lg <= 2 && emit_grid_words(a, b, c, pr, lg)) || emit_grid_slow(a, b, c, pr, lg);
+    RG_END(RG_GRID);
+    return r;
+}
+
+/* the fast way: one texture window shift for the whole triangle (its texels
+ * span under 192 in each repeating direction), the points' words made once by
+ * stepping, the pieces' packets copied from them */
+static int emit_grid_words(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
+{
+    int n = 1 << lg, i, j, k, sh = 8 + s_gte_k;
+    int tw = pr->tex->w, th = pr->tex->h, su = 0, svv = 0;
+    int32_t mn, mx;
+    /* the window shift: the triangle's least texel, whole periods */
+    if (pr->wraps) {
+        mn = a->u < b->u ? a->u : b->u; if (c->u < mn) mn = c->u;
+        mx = a->u > b->u ? a->u : b->u; if (c->u > mx) mx = c->u;
+        if (mx - mn > 192 * 32)
+            return 0;
+        su = (mn >> 5) & ~(tw - 1);
+    }
+    if (pr->wrapt) {
+        mn = a->v < b->v ? a->v : b->v; if (c->v < mn) mn = c->v;
+        mx = a->v > b->v ? a->v : b->v; if (c->v > mx) mx = c->v;
+        if (mx - mn > 192 * 32)
+            return 0;
+        svv = (mn >> 5) & ~(th - 1);
+    }
+    {
+        /* steps along i (towards b) and j (towards c); model space 4 fraction
+         * bits, texels 1/32, colours 8.8 */
+        int32_t dxi = (b->mx - a->mx) >> lg, dyi = (b->my - a->my) >> lg, dzi = (b->mz - a->mz) >> lg;
+        int32_t dxj = (c->mx - a->mx) >> lg, dyj = (c->my - a->my) >> lg, dzj = (c->mz - a->mz) >> lg;
+        int32_t dui = (b->u - a->u) >> lg, dvi = (b->v - a->v) >> lg, duj = (c->u - a->u) >> lg, dvj = (c->v - a->v) >> lg;
+        int32_t dri = ((b->r - a->r) << 8) >> lg, dgi = ((b->g - a->g) << 8) >> lg, dbi = ((b->b - a->b) << 8) >> lg;
+        int32_t drj = ((c->r - a->r) << 8) >> lg, dgj = ((c->g - a->g) << 8) >> lg, dbj = ((c->b - a->b) << 8) >> lg;
+        /* (and clip space, for a point too near for the GTE's divide: the CPU projects it) */
+        int32_t dcxi = (b->x - a->x) >> lg, dcyi = (b->y - a->y) >> lg, dczi = (b->z - a->z) >> lg, dcwi = (b->w - a->w) >> lg;
+        int32_t dcxj = (c->x - a->x) >> lg, dcyj = (c->y - a->y) >> lg, dczj = (c->z - a->z) >> lg, dcwj = (c->w - a->w) >> lg;
+        int32_t rx = a->mx, ry = a->my, rz = a->mz, ru = a->u, rv = a->v, rr = a->r << 8, rg = a->g << 8, rb = a->b << 8;
+        int32_t rcx = a->x, rcy = a->y, rcz = a->z, rcw = a->w;
+        for (j = 0, k = 0; j <= n; j++) {
+            int32_t x = rx, y = ry, z = rz, u = ru, v = rv, r = rr, g = rg, bb = rb;
+            int32_t cx = rcx, cy = rcy, cz = rcz, cw = rcw;
+            for (i = 0; i + j <= n; i++, k++) {
+                int32_t px = (x + 8) >> 4, py = (y + 8) >> 4, pz = (z + 8) >> 4, m3 = 0, uu, vv;
+                GPt *q = &s_gpt[k];
+                int ok = s_gte_ok && px == (int16_t)px && py == (int16_t)py && pz == (int16_t)pz;
+                if (ok) {
+                    gte_mtc(GTE_VXY0, (uint32_t)(py << 16) | (uint32_t)(px & 0xFFFF));
+                    gte_mtc(GTE_VZ0, (uint32_t)pz);
+                    gte_rtps();
+                    ok = !(gte_cfc(GTE_FLAG) & 0x7FC7F000u) && (m3 = (int32_t)gte_mfc(GTE_MAC3)) > 0;
+                }
+                if (ok) {
+                    q->xy = gte_mfc(GTE_SXY2);
+                    q->z = wbucket(sh_r(m3, -sh));
+                } else {
+                    int16_t sx, sy, sz;
+                    project(cx, cy, cz, cw < W_NEAR ? W_NEAR : cw, &sx, &sy, &sz);
+                    q->xy = (uint32_t)(uint16_t)sy << 16 | (uint16_t)sx;
+                    q->z = sz;
+                }
+                uu = u >> 5;
+                vv = v >> 5;
+                uu = pr->wraps ? uu - su : pr->ub + (uu < 0 ? 0 : uu >= tw ? tw - 1 : uu);
+                vv = pr->wrapt ? vv - svv : pr->vb + (vv < 0 ? 0 : vv >= th ? th - 1 : vv);
+                q->uv = (uint32_t)(uu & 255) | (uint32_t)(vv & 255) << 8;
+                q->rgb = (uint32_t)clamp255(r >> 8) | (uint32_t)clamp255(g >> 8) << 8 | (uint32_t)clamp255(bb >> 8) << 16;
+                x += dxi; y += dyi; z += dzi; u += dui; v += dvi; r += dri; g += dgi; bb += dbi;
+                cx += dcxi; cy += dcyi; cz += dczi; cw += dcwi;
+            }
+            rx += dxj; ry += dyj; rz += dzj; ru += duj; rv += dvj; rr += drj; rg += dgj; rb += dbj;
+            rcx += dcxj; rcy += dcyj; rcz += dczj; rcw += dcwj;
+        }
+    }
+    {
+        uint32_t clut = (uint32_t)pr->tex->clut << 16, tpage = (uint32_t)(tex_tpage(pr->tex, pr->tex->vx) | pr->abr << 5) << 16;
+        uint32_t cmd = (uint32_t)pr->cmd << 24, pre = pr->semi ? 0xE1000000 | 0x200 | 0x400 | (uint32_t)pr->abr << 5 | (tpage >> 16 & 0x1FF) : 0;
+        int row = 0, words = 9 + (pr->semi ? 1 : 0) + (pr->window ? 2 : 0), zs = pr->zsort;
+        for (j = 0; j < n; j++) {
+            int next = row + (n + 1 - j);
+            for (i = 0; i < n - j; i++) {
+                int tri;
+                for (tri = 0; tri < (i + 1 < n - j ? 2 : 1); tri++) {
+                    const GPt *p0, *p1, *p2;
+                    uint32_t *p, *w;
+                    if (!tri) { p0 = &s_gpt[row + i]; p1 = &s_gpt[row + i + 1]; p2 = &s_gpt[next + i]; }
+                    else { p0 = &s_gpt[row + i + 1]; p1 = &s_gpt[next + i + 1]; p2 = &s_gpt[next + i]; }
+                    if (!(p = pkt_alloc(words)))
+                        return 1;
+                    s_n_piece++;
+                    w = p + 1;
+                    if (pre)
+                        *w++ = pre;
+                    if (pr->window)
+                        *w++ = pr->window;
+                    w[0] = p0->rgb | cmd; w[1] = p0->xy; w[2] = p0->uv | clut;
+                    w[3] = p1->rgb; w[4] = p1->xy; w[5] = p1->uv | tpage;
+                    w[6] = p2->rgb; w[7] = p2->xy; w[8] = p2->uv;
+                    if (pr->window)
+                        w[9] = 0xE2000000;
+                    if (zs)
+                        put_sorted(p, (p0->z + p1->z + p2->z) * 85 >> 8);
+                    else
+                        put_flat(p);
+                }
+            }
+            row = next;
+        }
+    }
+    return 1;
+}
+
+static int emit_grid_slow(const CV *a, const CV *b, const CV *c, const Prim *pr, int lg)
 {
     GP pt[45];
     int n = 1 << lg, i, j, k, sh = 8 + s_gte_k;
@@ -2448,6 +2629,7 @@ static int tri_fast(Vtx *v0, Vtx *v1, Vtx *v2)
 }
 
 static void triangle_(int ia, int ib, int ic);
+static int s_dry;                               /* triangle() works out the draw (s_fs) and draws nothing */
 static void triangle(int ia, int ib, int ic)
 {
     RG_BEGIN(RG_TRI);
@@ -2471,8 +2653,9 @@ static void triangle_(int ia, int ib, int ic)
         mesh_fill(ib);
         mesh_fill(ic);
     }
-    s_n_tri++;
     v[0] = &s_vtx[ia]; v[1] = &s_vtx[ib]; v[2] = &s_vtx[ic];
+    if (!s_dry) {
+    s_n_tri++;
     if (v[0]->clip & v[1]->clip & v[2]->clip & 31) {
         s_n_rej++;
         return;                                 /* wholly off one side, or behind the eye */
@@ -2487,6 +2670,7 @@ static void triangle_(int ia, int ib, int ic)
                       (int64_t)v[0]->cw * (((int64_t)v[1]->cx * v[2]->cy - (int64_t)v[2]->cx * v[1]->cy) >> 8);
         if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
             return;
+    }
     }
     cc_compile();
     {
@@ -2555,6 +2739,8 @@ static void triangle_(int ia, int ib, int ic)
     s_fs.pr = pr;
     s_fs.s0 = d.s0; s_fs.t0 = d.t0;
     s_fs.shifts = d.shifts; s_fs.shiftt = d.shiftt;
+    if (s_dry)
+        return;
     for (k = 0; k < 3; k++) {
         CV *c = &poly[0][k];
         int r, g, b;
@@ -3159,7 +3345,7 @@ typedef struct {
     uint8_t prim;
     uint8_t kind;                               /* 0 not yet seen, 1 kept, 2 always the slow way */
 } Tpl;
-#define DLC_PRIMS 12
+#define DLC_PRIMS 48
 #define DLC_SRCS 6
 typedef struct {
     uint32_t sig, texepoch, frame, stamp, lsig;
@@ -3182,15 +3368,20 @@ typedef struct Dlc {
     int nextvar;
 } Dlc;
 
-#define DLC_ARENA (384 * 1024)
+#define DLC_ARENA (1280 * 1024)
 #define DLC_HASH 256
 static uint32_t s_dlc_arena[DLC_ARENA / 4];
 static int s_dlc_used;
 static Dlc *s_dlc[DLC_HASH];
 static int s_dlc_on = -1;
 static uint32_t s_n_dlc_hit, s_n_dlc_tpl, s_n_dlc_rec;  /* TGR_PERF */
+/* TGR_PERF counts: why lists were compiled or recorded again (compiled, changed, new key, texture
+ * table, source, lights); kept-list triangles without a kept draw; the paths triangles took (off or
+ * away, drawn kept, cut, slow, general); why a triangle was never kept; the cut path's outcomes */
 static uint32_t s_dlc_why[6], s_dlc_tw[5];
-static uint32_t s_path[8];                      /* TGR_PERF: kept-list triangles: off/away, kept drawn, kept cut, slow; general */     /* (triangles: kind 0, kind 2, clipped, perspective, kept) */                   /* TGR_PERF: compiled, changed, new key, texture table, source, moved while drawn */
+static uint32_t s_path[8];
+static uint32_t s_k2why[4];
+static uint32_t s_cutw[6];
 
 static void *dlc_alloc(int n)
 {
@@ -3465,22 +3656,24 @@ static void dlc_capture(DlcVar *v, Tpl *t, int ia, int ib, int ic)
 {
     Vtx *vv[3];
     int k, p, other;
-    if (s_geom & G_LIGHTING)
-        v->lsig = s_lsig;                       /* (its colours follow the lights) */
     if (s_fs.stamp != s_dstamp) {
         s_dlc_tw[3]++;
+        if (s_dry) {
+            t->kind = 2;
+            s_k2why[0]++;
+        }                        /* (no draw to keep: the slow way) */
         return;                                 /* the slow path did not get to it: next time */
     }
     other = s_tex.on && uses_other();         /* (the second texture: sampled at the vertices, as triangle() does) */
     if (!s_fs.ok && !other) {
-        t->kind = 2;
+        t->kind = 2; s_k2why[1]++;
         return;
     }
     cc_compile();
     if (s_fs.pr.fog)
         for (k = 0; k < 3; k++)
             if (s_cc.kind[0][2][k] == K_SHADE && s_cc.val[0][2][k] == 3) {
-                t->kind = 2;                    /* the colour uses the shade alpha, the fog's */
+                t->kind = 2; s_k2why[2]++;                    /* the colour uses the shade alpha, the fog's */
                 return;
             }
     for (p = 0; p < v->nprim; p++)
@@ -3488,11 +3681,38 @@ static void dlc_capture(DlcVar *v, Tpl *t, int ia, int ib, int ic)
             break;
     if (p == v->nprim) {
         if (p == DLC_PRIMS) {
-            t->kind = 2;
+            t->kind = 2; s_k2why[3]++;
             return;
         }
         v->prim[p] = s_fs.pr;
         v->pstamp[p] = s_fs.stamp;
+        v->prim[p].flat = s_fs.flat;
+        if (s_geom & G_LIGHTING)
+            v->lsig = s_lsig;
+        v->prim[p].lit = 0;
+        if ((s_geom & G_LIGHTING) && !other) {
+            /* the GPU colour from the shade, worked out each frame from the GTE's
+             * lighting: the combiner's result is a straight line in the shade
+             * (checked at its middle) */
+            int c, j, e[3][3];
+            static const uint8_t lv[3] = { 0, 128, 255 };
+            for (j = 0; j < 3; j++) {
+                uint8_t sh[4];
+                Lin col;
+                sh[0] = sh[1] = sh[2] = lv[j];
+                sh[3] = s_vtx[ia].a;
+                combine(&col, sh, NULL);
+                for (c = 0; c < 3; c++)
+                    e[j][c] = s_fs.textured && s_fs.mask ? col.b[c] >> 1 : s_fs.textured ? (col.a[c] + col.b[c]) >> 1 : col.b[c];
+            }
+            v->prim[p].lit = 1;
+            for (c = 0; c < 3; c++) {
+                v->prim[p].c0[c] = (int16_t)e[0][c];
+                v->prim[p].sl[c] = (int16_t)(e[2][c] - e[0][c]);
+                if (abs(e[0][c] + ((e[2][c] - e[0][c]) * 128 >> 8) - e[1][c]) > 3)
+                    v->prim[p].lit = 0;         /* not a line: kept colours (the lights stay put) */
+            }
+        }
         v->pkey[p] = s_fs.pr.tex ? s_fs.pr.tex->key : 0;
         v->nprim++;
         /* the texture's sources, checked once a frame */
@@ -3548,6 +3768,18 @@ static int edge_split(int32_t wa, int32_t wb, int ax, int ay, int bx, int by);
 
 /* a kept triangle drawn from its vertices' short records (all on the GTE's
  * screen, inside the guard band) */
+/* a kept corner's GPU colour: kept, or from its vertex's shade by the draw's line */
+static void corner_rgb(const Tpl *t, const Prim *pr, const MVtx *m, int k, int *r, int *g, int *b)
+{
+    if (pr->lit) {
+        *r = pr->c0[0] + (pr->sl[0] * m->r >> 8);
+        *g = pr->c0[1] + (pr->sl[1] * m->g >> 8);
+        *b = pr->c0[2] + (pr->sl[2] * m->b >> 8);
+    } else {
+        *r = t->r[k]; *g = t->g[k]; *b = t->b[k];
+    }
+}
+
 static void dlc_tri(const Tpl *t, const Prim *pr, const MVtx *v0, const MVtx *v1, const MVtx *v2)
 {
     const MVtx *v[3];
@@ -3581,7 +3813,9 @@ static void dlc_tri(const Tpl *t, const Prim *pr, const MVtx *v0, const MVtx *v1
                 return;
             w = p + 1;
             for (k = 0; k < 3; k++) {
-                w[0] = (uint32_t)clamp255(t->r[k]) | (uint32_t)clamp255(t->g[k]) << 8 | (uint32_t)clamp255(t->b[k]) << 16;
+                int r, g, b;
+                corner_rgb(t, pr, pr->flat ? v0 : v[k], k, &r, &g, &b);
+                w[0] = (uint32_t)clamp255(r) | (uint32_t)clamp255(g) << 8 | (uint32_t)clamp255(b) << 16;
                 w[1] = (uint32_t)(uint16_t)v[k]->y << 16 | (uint16_t)v[k]->x;
                 if (pr->textured) {
                     int u = t->u[k] >> 5, vv = t->v[k] >> 5;
@@ -3610,7 +3844,11 @@ static void dlc_tri(const Tpl *t, const Prim *pr, const MVtx *v0, const MVtx *v1
         sv[k].x = v[k]->x; sv[k].y = v[k]->y; sv[k].z = v[k]->z;
         sv[k].u = t->u[k]; sv[k].v = t->v[k];
         sv[k].fr = sv[k].fg = sv[k].fb = 0;
-        sv[k].r = t->r[k]; sv[k].g = t->g[k]; sv[k].b = t->b[k];
+        {
+            int r, g, b;
+            corner_rgb(t, pr, pr->flat ? v0 : v[k], k, &r, &g, &b);
+            sv[k].r = (int16_t)r; sv[k].g = (int16_t)g; sv[k].b = (int16_t)b;
+        }
     }
     emit_tri(&sv[0], &sv[1], &sv[2], pr, 0);
 }
@@ -3661,33 +3899,25 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
     CV poly[2][12];
     int k, n = 3, cur = 0, cl[3];
     const int idx[3] = { ia, ib, ic };
+    s_n_tri++;
     if (pr->fog) {                              /* (the fog wants the full vertices' depth cue) */
         mesh_fill(ia);
         mesh_fill(ib);
         mesh_fill(ic);
-    }
-    s_n_tri++;
-    for (k = 0; k < 3; k++) {
-        CV *c = &poly[0][k];
-        if (pr->fog && !(s_mvstale >> idx[k] & 1)) {
+        for (k = 0; k < 3; k++) {
             const Vtx *q = &s_vtx[idx[k]];
+            CV *c = &poly[0][k];
             c->x = q->cx; c->y = q->cy; c->z = q->cz; c->w = q->cw;
             c->mx = q->mx * 16; c->my = q->my * 16; c->mz = q->mz * 16;
             cl[k] = q->clip;
-        } else {
-            vtx_clip(idx[k], c, &cl[k]);
         }
-        c->u = t->u[k]; c->v = t->v[k];
-        c->r = t->r[k]; c->g = t->g[k]; c->b = t->b[k];
-        c->fr = c->fg = c->fb = 0;
-        if (pr->fog) {
-            int f = s_vtx[idx[k]].a, nf = 255 - f;
-            c->r = c->r * nf / 255; c->g = c->g * nf / 255; c->b = c->b * nf / 255;
-            c->fr = s_fogc[0] * f / 255; c->fg = s_fogc[1] * f / 255; c->fb = s_fogc[2] * f / 255;
-        }
+    } else {
+        for (k = 0; k < 3; k++)
+            vtx_clip(idx[k], &poly[0][k], &cl[k]);
     }
-    if (cl[0] & cl[1] & cl[2] & 31) {
+    if (cl[0] & cl[1] & cl[2] & 31) {           /* off one side or behind the eye: first, before any colour */
         s_n_rej++;
+        s_cutw[0]++;
         return;
     }
     {
@@ -3695,9 +3925,27 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
         int64_t det = (int64_t)v0->x * (((int64_t)v1->y * v2->w - (int64_t)v2->y * v1->w) >> 8) -
                       (int64_t)v0->y * (((int64_t)v1->x * v2->w - (int64_t)v2->x * v1->w) >> 8) +
                       (int64_t)v0->w * (((int64_t)v1->x * v2->y - (int64_t)v2->x * v1->y) >> 8);
-        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0))
+        if (((s_geom & G_CULL_BACK) && det <= 0) || ((s_geom & G_CULL_FRONT) && det >= 0)) {
+            s_cutw[1]++;
             return;
+        }
     }
+    s_cutw[2 + !!((cl[0] | cl[1] | cl[2]) & 16) + 2 * !!((cl[0] | cl[1] | cl[2]) & 32)]++;
+    for (k = 0; k < 3; k++) {
+        CV *c = &poly[0][k];
+        int r, g, b;
+        corner_rgb(t, pr, &s_mvx[pr->flat ? ia : idx[k]], k, &r, &g, &b);
+        c->u = t->u[k]; c->v = t->v[k];
+        c->r = r; c->g = g; c->b = b;
+        c->fr = c->fg = c->fb = 0;
+        if (pr->fog) {
+            int f = s_vtx[idx[k]].a, nf = 255 - f;
+            c->r = c->r * nf / 255; c->g = c->g * nf / 255; c->b = c->b * nf / 255;
+            c->fr = s_fogc[0] * f / 255; c->fg = s_fogc[1] * f / 255; c->fb = s_fogc[2] * f / 255;
+        }
+    }
+    {
+    RG_BEGIN(RG_CUTCLIP);
     {
         int pl, any = (cl[0] | cl[1] | cl[2]) & 16, far = (cl[0] | cl[1] | cl[2]) & 32;
         for (pl = 0; pl < 5 && n >= 3; pl++) {
@@ -3712,8 +3960,14 @@ static void dlc_tri_clip(const Tpl *t, const Prim *pr, int ia, int ib, int ic)
     }
     if (n < 3)
         return;
+    RG_END(RG_CUTCLIP);
+    }
+    {
+    RG_BEGIN(RG_CUTEMIT);
     for (k = 1; k + 1 < n; k++)
         emit_cv(&poly[cur][0], &poly[cur][k], &poly[cur][k + 1], pr, 0);
+    RG_END(RG_CUTEMIT);
+    }
 }
 
 /* a call of the list at a drawn from its kept form: 0 when it is not kept */
@@ -3832,15 +4086,19 @@ static int dlc_call(uint32_t a)
                 uint32_t x = op == 0xB1 && m == 0 ? w0 : w1;
                 int ia = (int)((x >> 16) & 0xFF) / 2, ib = (int)((x >> 8) & 0xFF) / 2, ic = (int)(x & 0xFF) / 2;
                 Tpl *t = &v->tpl[ti];
-                if (t->kind != 1)
-                    s_dlc_tw[t->kind]++;
-                if (t->kind == 1 && (s_geom & G_LIGHTING) && v->lsig != s_lsig) {
-                    t->kind = 0;                /* the lights moved: kept again */
+                if (t->kind == 1 && (s_geom & G_LIGHTING) && !v->prim[t->prim].lit && v->lsig != s_lsig) {
+                    t->kind = 0;                /* kept colours and the lights moved: kept again */
                     s_dlc_why[5]++;
                 }
                 {
                     /* off the screen or facing away: nothing to keep or draw */
                     const MVtx *a0 = &s_mvx[ia], *a1 = &s_mvx[ib], *a2 = &s_mvx[ic];
+                    if (a0->clip & a1->clip & a2->clip & 31) {
+                        s_n_tri++;
+                        s_n_rej++;
+                        s_path[0]++;
+                        continue;
+                    }
                     if (a0->ok && a1->ok && a2->ok) {
                         int32_t det;
                         if (a0->clip & a1->clip & a2->clip) {
@@ -3858,7 +4116,20 @@ static int dlc_call(uint32_t a)
                         }
                     }
                 }
-                if (t->kind == 1 && v->recorded &&
+                if (t->kind == 0) {
+                    /* its draw worked out once, when it first shows */
+                    mesh_fill(ia);
+                    mesh_fill(ib);
+                    mesh_fill(ic);
+                    s_dry = 1;
+                    triangle(ia, ib, ic);
+                    dlc_capture(v, t, ia, ib, ic);
+                    s_dry = 0;
+                    s_n_dlc_rec++;
+                }
+                if (t->kind != 1)
+                    s_dlc_tw[t->kind]++;
+                if (t->kind == 1 &&
                     (!v->prim[t->prim].tex || v->prim[t->prim].tex->key == v->pkey[t->prim])) {
                     const MVtx *a0 = &s_mvx[ia], *a1 = &s_mvx[ib], *a2 = &s_mvx[ic];
                     const Prim *pr = &v->prim[t->prim];
@@ -4258,6 +4529,14 @@ void tgr_rcp_present(uint32_t frame)
             fprintf(stderr, "perf: triangles: kept off/away %u drawn %u cut %u slow %u; general %u+\n", (unsigned)s_path[0],
                     (unsigned)s_path[1], (unsigned)s_path[2], (unsigned)s_path[3], (unsigned)s_path[4]);
             memset(s_path, 0, sizeof s_path);
+            fprintf(stderr, "perf: never kept why: no draw %u, not ok %u, fog %u, prims %u\n", (unsigned)s_k2why[0],
+                    (unsigned)s_k2why[1], (unsigned)s_k2why[2], (unsigned)s_k2why[3]);
+            memset(s_k2why, 0, sizeof s_k2why);
+            fprintf(stderr, "perf: cut path: off %u away %u; drawn: whole %u behind %u guard %u both %u\n", (unsigned)s_cutw[0],
+                    (unsigned)s_cutw[1], (unsigned)s_cutw[2], (unsigned)s_cutw[3], (unsigned)s_cutw[4], (unsigned)s_cutw[5]);
+            memset(s_cutw, 0, sizeof s_cutw);
+            fprintf(stderr, "perf: splits: size %u texels %u\n", (unsigned)s_splitw[1], (unsigned)s_splitw[2]);
+            memset(s_splitw, 0, sizeof s_splitw);
             fprintf(stderr, "perf: texture table moved: flush %u merge %u shelf %u redo %u full %u\n", (unsigned)s_epw[0],
                     (unsigned)s_epw[1], (unsigned)s_epw[2], (unsigned)s_epw[3], (unsigned)s_epw[4]);
             memset(s_epw, 0, sizeof s_epw);
