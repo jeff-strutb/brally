@@ -31,7 +31,8 @@ enum tgr_flag {
      * each race the player starts is handed to Boss Rally (the same tracks;
      * host_race.h, src/racing/handoff.c), its outcome taken back into the
      * results, the season and the records.  Only where the host carries Boss
-     * Rally (the iPhone app); elsewhere, and off, the race is the N64's. */
+     * Rally (Top Gear Rally Remastered, ports/remastered); elsewhere, and
+     * off, the race is the N64's. */
     TGR_FLAG_BR_RACES,
     TGR_FLAG_COUNT
 };

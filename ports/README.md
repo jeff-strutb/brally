@@ -14,6 +14,7 @@ carries its own differences.
 | `brally/` | Boss Rally, native 64-bit: a retyped fork of the decomp's core (`src/`, `include/`) plus a cross-platform layer (`platform/`: hosts null / macOS / Windows, renderers null / soft / Metal / Vulkan). `PORTABLE-CORE.md` describes it. |
 | `brally-wasm/` | Boss Rally, the 32-bit lane: the decomp's MSVC arm compiled to wasm32 and translated to native arm64 C, with the original data at its original addresses, plus a native macOS host (`wasm/host`, `wasm/native`). Ships as the Remastered `Boss Rally.app`. `NATIVE_RENDERER.md` describes its renderer. |
 | `tgrally/` | Top Gear Rally, native: a fork of the N64 decomp with an arena memory model and the same hosts. `PORT.md` describes it. |
+| `remastered/` | Top Gear Rally Remastered: Top Gear Rally's menus with Boss Rally's engine running the races, the two native ports in one executable over one host (macOS, Windows, the iPhone; Linux headless). `README.md` describes it. |
 | `common/` | the Remastered assets (models, textures, music). The binaries stay out of git; their recipes are tracked. |
 
 ## Building and checking
@@ -35,6 +36,11 @@ HOST=macos RENDER=metal ports/tgrally/link.sh
 .venv/bin/python ports/tgrally/tools/suite.py       # every n64box script vs the original's streams
 .venv/bin/python ports/tgrally/tools/sync.py        # carry decomp changes into the fork
 ports/tgrally/package_app.sh                        # build/tgrally/macos-metal/Top Gear Rally.app
+
+# Top Gear Rally Remastered (both games) -> build/remastered/HOST-RENDER/
+HOST=macos RENDER=metal ports/remastered/link.sh
+ports/remastered/package_app.sh                     # build/remastered/macos-metal/Top Gear Rally Remastered.app
+ports/remastered/ios/build.sh [--sim]               # build/remastered/ios-metal: the iPhone app
 ```
 
 `Boss Rally.app` carries everything it reads: the whole data track as its CD

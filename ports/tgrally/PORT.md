@@ -137,29 +137,14 @@ the N64's 4:3. View > Enter Full Screen (Ctrl-Cmd-F). In the background the
 game is paused: the N64's clock stops. Without a window, `TGR_WINDOW=WxH`
 stands in for one (screenshots).
 
-**iPhone.** `ios/build.sh [--rom FILE] [--bin FILE] [--sim] [--install [--device ID]]`
-builds the game as `libtgrally.a` (`link.sh` with `HOST=ios`, the same Metal
-renderer) and Boss Rally's engine as `libbrally.a` (`ports/brally/link64.sh`
-with `HOST=ios`; its data track from the builder's disc image goes in the app
-as `Resources/disc`), each linked into one object that shows only its entry
-points (the two share some hundred function names), under a Swift host
-(`ios/Sources`: the window, touch, Core Audio, the save folders),
-generates the Xcode project with xcodegen into `build/tgrally/ios-metal`
-and signs it (`--sim`: a Simulator build; `--install` puts it on the first
-paired iPhone). Landscape only; the game draws into a 16:9 area centred on the
-screen (Remastered: a race fills it, menus keep 4:3 inside it). Touch:
-
-| | |
-|---|---|
-| in a race | a finger right of the brake zone holds the accelerator; sideways steers (full lock 90 points either way, the neutral point sliding with the finger past it), a wheel drawn under the finger turning with it; lift to coast. A finger on the left 30% of the screen (a pedal is drawn there) brakes and, the car stopped, reverses; it lets the accelerator go while held. In Boss Rally's races it is that game's reverse (the gamepad's button 2), which drives backwards at any speed, slowing the car first; in this game's own it is B until the car is below 3 km/h (`tgr_race_speed`), then A with the stick pulled back (this game reverses only from first gear) |
-| menus, pause menu | tap an item: the carousel's arrows step it, the item between them is A, a list row moves the cursor there and chooses it, the button prompts (Select, Go Back, OK, Cancel, Exit) press their button; a tap on a screen with nothing to choose is A. Swipe: the content follows the finger (left brings on the next item, up the row below); a value row (a volume) goes up with the finger |
-| anywhere | two-finger tap: START; three-finger tap: the sound's low-pass filter, off / 8 / 7 / 6 / 5 kHz (5 at first, kept between runs; `TGR_AUDIO_LOWPASS=Hz` on the desktop) |
-
+**iPhone.** The iPhone app is Top Gear Rally Remastered's (`ports/remastered/ios`,
+`ports/remastered/README.md`): this game and Boss Rally's engine under one
+Swift host, with touch controls. It replaced `ports/tgrally/ios` on 2026-10-12.
 The menus name their tap targets as they draw (port lines in `src/`, `platform/os/touch.c`);
 `TGR_TOUCHLOG=1` logs each tap and what it met.
 
-**Boss Rally's races** (`TGR_FLAG_BR_RACES`, Remastered; the iPhone app is
-the first host to carry it). The menus are Top Gear Rally's; each race the
+**Boss Rally's races** (`TGR_FLAG_BR_RACES`, Remastered; only where the
+host carries Boss Rally: Top Gear Rally Remastered, `ports/remastered`). The menus are Top Gear Rally's; each race the
 player starts is run by Boss Rally's engine, whose tracks are the N64 track
 images (`host_race.h`). At `BrRaceTick`'s first call `src/racing/handoff.c`
 hands over the race the menus chose (the courses numbered alike, mirrors at
@@ -176,13 +161,13 @@ locally), the demos, the season-end ceremony. Not carried back: the instant
 replay and a Time Attack ghost (each an input recording for its own
 engine's physics). Boss Rally boots at the first race and waits at its
 menus between races; while it races it has the screen, the sound, the
-events and the touch (its pause menu reads the keyboard: a swipe is an
-arrow key, a tap Return, two fingers Escape), its "quit game" ends only the
+events, the pad and the touch (its pause menu reads the keyboard: on the
+iPhone a swipe is an arrow key, a tap Return, two fingers Escape), its "quit game" ends only the
 race. The music is this game's: the track's own (`BrMusicLoadTrack`), its
 mixer playing on while the game thread waits on a message queue for the
 race (the other engine runs on a host thread); the host mixes it with Boss
-Rally's effects (`ios/Sources/Host.swift`, those taken from 44.1 kHz to this
-game's 48 kHz). Boss Rally's CD music is not in the app.
+Rally's effects (`ports/remastered/platform/mux.c`, those taken from 44.1 kHz
+to this game's 48 kHz). Boss Rally's CD music is not in the app.
 Checks: `BR_HANDOFF_TEST=mode,track,mirrored,weather,laps,car[;...]` runs
 Boss Rally's races alone (headless: `build/brally/null-null/brally64`, the
 autopilot driving; in the app it starts in front), `BR_HANDOFF_AUTOPILOT=1`
@@ -194,7 +179,7 @@ N64's count advancing exactly a retrace's worth (781,250) each, and audio
 played as the audio interface reads it from RAM (the game mixes into one ring
 only 46 ms ahead of the DMA, so a buffer is not final when it is queued),
 60 ms behind, trimmed by up to 0.2% to the output device's clock. `TGR_STATS=1` reports, each second, the
-retraces and the N64 time they covered, frames drawn, the worst gap between
+retraces and the N64 time they covered, frames drawn (and, with the Metal renderer, how many the screen showed), the worst gap between
 retraces, the time spent presenting and the audio buffered.
 
 ## Verification

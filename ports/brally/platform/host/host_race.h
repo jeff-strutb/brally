@@ -1,5 +1,6 @@
 /* host_race.h: one game's race run by another game's engine, through the
- * host.  The iPhone app (ports/tgrally/ios) runs Top Gear Rally's front end
+ * host.  Top Gear Rally Remastered (ports/remastered: the desktop and
+ * iPhone apps) runs Top Gear Rally's front end
  * and, with the Remastered flag on, hands each race to Boss Rally's engine
  * (ports/brally/platform/common/race_handoff.c), then gives the outcome back
  * to Top Gear Rally's results, season and records

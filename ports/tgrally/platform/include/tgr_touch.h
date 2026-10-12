@@ -1,5 +1,5 @@
 /* tgr_touch.h: the game's menus by touch, for a host with a touch screen
- * (ports/tgrally/ios).  Nothing here changes what the game does with a pad:
+ * (ports/remastered/ios).  Nothing here changes what the game does with a pad:
  * a touch becomes presses of the N64 pad, played in at the retrace as a
  * player's thumb would (platform/os/touch.c).
  *

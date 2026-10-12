@@ -1,12 +1,12 @@
-// Host.swift: the iPhone host -- what the platform layers ask of the
+// Host.swift: the iPhone host -- what the platform layer asks of the
 // operating system (ports/brally/platform/host/host.h) that host/posix does
 // not already give: the window (a Metal layer the view controller owns), the
-// event queues the games' threads drain, the pad (touch, TouchPad.swift),
-// Core Audio out, the save folders and Boss Rally's disc.
+// event queue, the pad (touch, TouchPad.swift), Core Audio out, the save
+// folder and Boss Rally's disc.
 //
-// Two games share it (Engines.swift): Top Gear Rally, and Boss Rally when it
-// runs the races. One is in front at a time: the events, the sound and the
-// screen are its; the other waits.
+// It is one host, as host/macos is on the Mac: the two games share it through
+// the multiplexer (ports/remastered/platform/mux.c), which gives the one in
+// front the events, the pad, the screen and its sound, and mixes the two.
 //
 // Each function is exported under its C name; the Swift names differ so they
 // do not collide with host.h's declarations imported through Bridge.h.
@@ -18,29 +18,41 @@ import UIKit
 
 // ---- process -------------------------------------------------------------------
 
-/// Each game's save folder, in Application Support.
-private let saveDirs: [UnsafeMutablePointer<CChar>] = ["Top Gear Rally", "Boss Rally"].map { name in
-    let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-    let dir = base.appendingPathComponent(name, isDirectory: true)
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    return strdup(dir.path)
-}
-private let discDir: UnsafeMutablePointer<CChar> = strdup((Bundle.main.resourcePath ?? ".") + "/disc")
+/// The app's folder name for its saves (main.c names it before host_init).
+private var appDir = "Top Gear Rally Remastered"
 
 @_cdecl("host_set_app_name")
-func hostSetAppName(_ dir: UnsafePointer<CChar>?, _ title: UnsafePointer<CChar>?) {}
+func hostSetAppName(_ dir: UnsafePointer<CChar>?, _ title: UnsafePointer<CChar>?) {
+    if let dir { appDir = String(cString: dir) }
+}
 
 @_cdecl("host_init")
 func hostInit(_ argc: Int32, _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?) {}
 
-@_cdecl("host_save_dir")
-func hostSaveDir() -> UnsafePointer<CChar>? { UnsafePointer(saveDirs[Engines.caller().rawValue]) }
+/// The saves, in Application Support (Boss Rally's in a folder inside: mux.c)
+private let saveDir: UnsafeMutablePointer<CChar> = {
+    let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+    let dir = base.appendingPathComponent(appDir, isDirectory: true)
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    return strdup(dir.path)
+}()
+private let resourceDir: UnsafeMutablePointer<CChar> = strdup(Bundle.main.resourcePath ?? ".")
+private let discDir: UnsafeMutablePointer<CChar> = strdup((Bundle.main.resourcePath ?? ".") + "/disc")
 
-/// Boss Rally's CD root: its data track, in the app
+@_cdecl("host_save_dir")
+func hostSaveDir() -> UnsafePointer<CChar>? { UnsafePointer(saveDir) }
+
+/// Boss Rally's CD root and install: its data track, in the app
 @_cdecl("host_cd_dir")
 func hostCdDir() -> UnsafePointer<CChar>? { UnsafePointer(discDir) }
 
-/// The CD's audio tracks are not in the app: Boss Rally's music is off.
+@_cdecl("host_game_dir")
+func hostGameDir() -> UnsafePointer<CChar>? { UnsafePointer(discDir) }
+
+@_cdecl("host_resource_dir")
+func hostResourceDir() -> UnsafePointer<CChar>? { UnsafePointer(resourceDir) }
+
+/// The CD's audio tracks are not in the app (the music under a race is Top Gear Rally's).
 @_cdecl("host_music_dir")
 func hostMusicDir() -> UnsafePointer<CChar>? { nil }
 
@@ -53,9 +65,8 @@ func hostStreamRead(_ s: OpaquePointer?, _ lr: UnsafeMutablePointer<Float>?, _ f
 @_cdecl("host_stream_close")
 func hostStreamClose(_ s: OpaquePointer?) {}
 
-/// Only Top Gear Rally ends the app's sound (Boss Rally stays behind it).
 @_cdecl("host_shutdown")
-func hostShutdown() { if Engines.caller() == .tgr { hostAudioClose() } }
+func hostShutdown() { hostAudioClose() }
 
 @_cdecl("host_message_box")
 func hostMessageBox(_ text: UnsafePointer<CChar>?, _ caption: UnsafePointer<CChar>?) {
@@ -64,8 +75,8 @@ func hostMessageBox(_ text: UnsafePointer<CChar>?, _ caption: UnsafePointer<CCha
 
 // ---- the window: the view controller's Metal layer -------------------------------
 
-/// The layer the renderer draws into, and its size in pixels: set on the main
-/// thread when the view lays out, read on the game's.
+/// The layer the renderers draw into, and its size in pixels: set on the main
+/// thread when the view lays out, read on the games'.
 enum Screen {
     static var layer: CAMetalLayer?
     private static let lock = NSLock()
@@ -85,9 +96,11 @@ func hostWindowOpen(_ w: Int32, _ h: Int32, _ title: UnsafePointer<CChar>?) -> I
     Screen.layer != nil ? 1 : 0
 }
 
-/// The game in front sees its window; the other draws nothing meanwhile.
+@_cdecl("host_window_close")
+func hostWindowClose() {}
+
 @_cdecl("host_window_visible")
-func hostWindowVisible() -> Int32 { Engines.active == Engines.caller() ? 1 : 0 }
+func hostWindowVisible() -> Int32 { Screen.layer != nil ? 1 : 0 }
 
 @_cdecl("host_window_lock_aspect")
 func hostWindowLockAspect(_ lock: Int32) {}      // the screen's shape is fixed (16:9, landscape)
@@ -100,6 +113,9 @@ func hostMetalLayer() -> UnsafeMutableRawPointer? {
     Screen.layer.map { Unmanaged.passUnretained($0).toOpaque() }
 }
 
+@_cdecl("host_window_handle")
+func hostWindowHandle() -> UnsafeMutableRawPointer? { hostMetalLayer() }
+
 @_cdecl("host_macos_layer_fit")
 func hostLayerFit(_ w: UnsafeMutablePointer<Int32>, _ h: UnsafeMutablePointer<Int32>) {
     (w.pointee, h.pointee) = Screen.pixels()
@@ -110,15 +126,14 @@ func hostWindowPixels(_ w: UnsafeMutablePointer<Int32>, _ h: UnsafeMutablePointe
     (w.pointee, h.pointee) = Screen.pixels()
 }
 
-// ---- events: the app pushes, the game's main loop drains --------------------------
+// ---- events: the app pushes, the multiplexer drains ----------------------------------
 
-/// The game in front gets the events; each drains its own queue.
 enum Events {
     private static let cond = NSCondition()
-    private static var queues: [[host_event]] = [[], []]
+    private static var queue: [host_event] = []
 
     static func push(_ e: host_event) {
-        cond.lock(); queues[Engines.active.rawValue].append(e); cond.broadcast(); cond.unlock()
+        cond.lock(); queue.append(e); cond.broadcast(); cond.unlock()
     }
     static func focus(_ on: Bool) {
         var e = host_event()
@@ -127,15 +142,14 @@ enum Events {
         push(e)
     }
     static func pop(_ ev: UnsafeMutablePointer<host_event>, _ waitMs: UInt32) -> Int32 {
-        let q = Engines.caller().rawValue
         cond.lock(); defer { cond.unlock() }
-        if queues[q].isEmpty && waitMs > 0 {
+        if queue.isEmpty && waitMs > 0 {
             let until = waitMs == 0xFFFF_FFFF ? Date.distantFuture
                                               : Date(timeIntervalSinceNow: Double(waitMs) / 1000)
-            while queues[q].isEmpty && cond.wait(until: until) {}
+            while queue.isEmpty && cond.wait(until: until) {}
         }
-        if queues[q].isEmpty { return 0 }
-        ev.pointee = queues[q].removeFirst()
+        if queue.isEmpty { return 0 }
+        ev.pointee = queue.removeFirst()
         return 1
     }
 }
@@ -159,82 +173,27 @@ func hostPadRead(_ p: UnsafeMutablePointer<host_pad>) -> Int32 {
     return 1
 }
 
-// ---- audio out: a RemoteIO unit pulling the games' mixers -------------------------------
-// Each game opens its sound once (its mixer and rate are kept). The unit runs at
-// the first one's rate (Top Gear Rally's). While Boss Rally races, the music is
-// still Top Gear Rally's (its mixer plays on: src/racing/handoff.c) and Boss
-// Rally's effects are added, taken from its own rate to the unit's.
+// ---- audio out: a RemoteIO unit pulling the multiplexer's mix -------------------------
 
 private var audioUnit: AudioComponentInstance?
-private var audioFns: [host_audio_fn?] = [nil, nil]
-private var audioUsers: [UnsafeMutableRawPointer?] = [nil, nil]
-private var audioRates: [Int32] = [0, 0]
-private var audioRate: Int32 = 0
-
+private var audioFn: host_audio_fn?
+private var audioUser: UnsafeMutableRawPointer?
 
 private let audioRender: AURenderCallback = { _, _, _, _, frames, io in
     guard let io else { return noErr }
     let buf = UnsafeMutableAudioBufferListPointer(io)[0]
     guard let data = buf.mData else { return noErr }
-    let out = data.assumingMemoryBound(to: Float.self)
-    let n = Int(frames)
-    memset(data, 0, Int(buf.mDataByteSize))
-    for e in 0..<2 where audioFns[e] != nil {
-        if e == Engine.br.rawValue && Engines.active != .br { continue }   // between races it is silent
-        if audioRates[e] == audioRate {
-            if e == 0 {
-                audioFns[e]!(out, Int32(n), audioUsers[e])
-            } else {
-                audioFns[e]!(audioScratch, Int32(n), audioUsers[e])
-                for i in 0..<2 * n { out[i] += audioScratch[i] }
-            }
-        } else {
-            addResampled(e, out, n)
-        }
+    if let fn = audioFn {
+        fn(data.assumingMemoryBound(to: Float.self), Int32(frames), audioUser)
+    } else {
+        memset(data, 0, Int(buf.mDataByteSize))
     }
     return noErr
 }
 
-/// Room for a callback's frames from a mixer (stereo), and the other rate's
-/// resampling state: the position between its samples, its last sample
-private let audioScratchFrames = 8192
-private let audioScratch = UnsafeMutablePointer<Float>.allocate(capacity: 2 * (8192 + 2))
-private var resamplePos = 0.0
-private var resampleLast: (Float, Float) = (0, 0)
-
-/// A mixer at another rate than the unit's, added in: its samples read
-/// between with a straight line (its effects only, close to the unit's rate)
-private func addResampled(_ e: Int, _ out: UnsafeMutablePointer<Float>, _ n: Int) {
-    guard let fn = audioFns[e], audioRates[e] > 0, audioRate > 0 else { return }
-    let ratio = Double(audioRates[e]) / Double(audioRate)
-    // src[0] is the last sample of the call before; src[1...] new ones
-    let need = Int(floor(resamplePos + Double(n - 1) * ratio)) + 1
-    guard need + 1 <= audioScratchFrames else { return }
-    audioScratch[0] = resampleLast.0
-    audioScratch[1] = resampleLast.1
-    fn(audioScratch + 2, Int32(need), audioUsers[e])
-    for i in 0..<n {
-        let x = resamplePos + Double(i) * ratio
-        let k = Int(x)
-        let f = Float(x - Double(k))
-        out[2 * i] += audioScratch[2 * k] * (1 - f) + audioScratch[2 * k + 2] * f
-        out[2 * i + 1] += audioScratch[2 * k + 1] * (1 - f) + audioScratch[2 * k + 3] * f
-    }
-    let end = resamplePos + Double(n) * ratio
-    let used = Int(end)
-    resampleLast = (audioScratch[2 * used], audioScratch[2 * used + 1])
-    resamplePos = end - Double(used)
-}
-
 @_cdecl("host_audio_open")
 func hostAudioOpen(_ rate: Int32, _ fn: host_audio_fn?, _ user: UnsafeMutableRawPointer?) -> Int32 {
-    let e = Engines.caller().rawValue
-    audioFns[e] = fn
-    audioUsers[e] = user
-    audioRates[e] = rate
-    if audioUnit != nil {
-        return 1
-    }
+    if audioUnit != nil { return 1 }
     let session = AVAudioSession.sharedInstance()
     try? session.setCategory(.playback, mode: .default, options: [])
     try? session.setPreferredSampleRate(Double(rate))
@@ -253,23 +212,27 @@ func hostAudioOpen(_ rate: Int32, _ fn: host_audio_fn?, _ user: UnsafeMutableRaw
                                           mBytesPerPacket: 8, mFramesPerPacket: 1, mBytesPerFrame: 8,
                                           mChannelsPerFrame: 2, mBitsPerChannel: 32, mReserved: 0)
     var cb = AURenderCallbackStruct(inputProc: audioRender, inputProcRefCon: nil)
-    audioRate = rate
+    audioFn = fn
+    audioUser = user
     if AudioUnitSetProperty(unit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0,
                             &fmt, UInt32(MemoryLayout.size(ofValue: fmt))) != noErr ||
         AudioUnitSetProperty(unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0,
                              &cb, UInt32(MemoryLayout.size(ofValue: cb))) != noErr ||
         AudioUnitInitialize(unit) != noErr || AudioOutputUnitStart(unit) != noErr {
         AudioComponentInstanceDispose(unit)
+        audioFn = nil
         return 0
     }
     audioUnit = unit
     return 1
 }
 
+@_cdecl("host_audio_close")
 func hostAudioClose() {
     guard let unit = audioUnit else { return }
     AudioOutputUnitStop(unit)
     AudioUnitUninitialize(unit)
     AudioComponentInstanceDispose(unit)
     audioUnit = nil
+    audioFn = nil
 }

@@ -1,6 +1,6 @@
 /* race_handoff.c: Boss Rally's races, run for another game's front end
- * (host_race.h: the iPhone app runs Top Gear Rally's menus and hands each
- * race here).
+ * (host_race.h: Top Gear Rally Remastered, ports/remastered, runs Top Gear
+ * Rally's menus and hands each race here).
  *
  * Boss Rally already runs race after race in one process: its menus (app
  * state 4) leave by shutting their phase down, the next frame loads the race

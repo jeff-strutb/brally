@@ -27,6 +27,12 @@
 
 import UIKit
 
+/// Which game is in front (ports/remastered/platform/mux.c): the one the
+/// touches drive. Boss Rally while it runs a race, else Top Gear Rally.
+enum Front {
+    static var bossRally: Bool { Int(mux_front_game()) == MUX_BR }
+}
+
 final class TouchPad {
     static let shared = TouchPad()
 
@@ -51,7 +57,7 @@ final class TouchPad {
             reversing = false
             return (x, 0, gas ? 1 << 0 : 0)
         }
-        if Engines.active == .br {
+        if Front.bossRally {
             return (x, 0, 1 << 2)                                   // its reverse: brakes, then backs up
         }
         if !reversing && tgr_race_speed() < TouchPad.reverseBelowKph { reversing = true }
@@ -95,12 +101,12 @@ final class TouchSurface: UIView {
     private let note = UILabel()
     private var link: CADisplayLink?
 
-    /// The surface on screen (the engines reset it when one hands over to the other)
-    static weak var current: TouchSurface?
+    /// The game in front at the last screen refresh: when the other comes
+    /// in front, the fingers on the glass are let go
+    private var lastFront = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        TouchSurface.current = self
         isMultipleTouchEnabled = true
         backgroundColor = .clear
         wheel.isHidden = true
@@ -126,8 +132,12 @@ final class TouchSurface: UIView {
         pedal.center = CGPoint(x: (zone * 0.5).rounded(), y: (bounds.height * 0.62).rounded())
     }
 
-    /// The pedal is shown while a race is driven.
+    /// The pedal is shown while a race is driven; a hand-over starts afresh.
     @objc private func tick() {
+        if Front.bossRally != lastFront {
+            lastFront = Front.bossRally
+            reset()
+        }
         let driving = TouchSurface.driving
         if pedal.isHidden == driving { pedal.isHidden = !driving }
     }
@@ -219,7 +229,7 @@ final class TouchSurface: UIView {
         }
         if fingers.isEmpty && !cancelled && !gestureMoved && now - gestureBegan <= TouchSurface.tapMaxSeconds + 0.15 {
             if gestureFingers == 2 {
-                if Engines.active == .br {
+                if Front.bossRally {
                     br_race_key(Int32(BR_KEY_ESCAPE))                       // its pause
                 } else {
                     tgr_touch_press(0x1000)                                 // START
@@ -241,11 +251,11 @@ final class TouchSurface: UIView {
 
     /// The game in front's race is being driven: touch is the wheel and the pedals.
     static var driving: Bool {
-        Engines.active == .br ? br_race_driving() != 0 : tgr_view_driving() != 0
+        Front.bossRally ? br_race_driving() != 0 : tgr_view_driving() != 0
     }
 
     private func swipe(_ dx: CGFloat, _ dy: CGFloat) {
-        guard Engines.active == .br else {
+        guard Front.bossRally else {
             tgr_touch_swipe(Float(dx), Float(dy))
             return
         }
@@ -254,7 +264,7 @@ final class TouchSurface: UIView {
     }
 
     private func tap(at p: CGPoint) {
-        if Engines.active == .br {
+        if Front.bossRally {
             br_race_key(Int32(BR_KEY_ENTER))
             return
         }

@@ -2,9 +2,9 @@
 # Link the portable 64-bit game: the core (build64.sh), the data lifted from
 # the user's BRGlide.dll (tools/brally/datalift.py, generated under build/), and
 # the platform layer for one host.
-#   env: HOST   null (default, headless) | macos | windows | ios (a static library,
-#               libbrally.a, for the iPhone app in ports/tgrally/ios: the host
-#               is its Swift code, and main() is br_main, run on a thread of the app's)
+#   env: HOST   null (default, headless) | macos | windows | lib (a static library,
+#               libbrally.a, for an app that brings its own host: ports/remastered,
+#               desktop and iPhone; main() is br_main)
 #        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
 #               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
 #               on macOS it runs on MoltenVK)
@@ -68,7 +68,7 @@ case "$HOST" in
   null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c";;
   windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
            LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
-  ios)   SRCS="$SRCS $OSHOST";;                  # the app's Swift (ports/tgrally/ios)
+  lib)   SRCS="$SRCS $OSHOST";;                  # the app's own (ports/remastered)
   macos) SRCS="$SRCS $OSHOST $P/host/macos/host_macos.m"
          LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
 esac
@@ -76,7 +76,7 @@ OBJS=""
 for s in $SRCS; do
   o=$OUT/plat/$(basename "$s").o
   case "$s" in *.m) X="-x objective-c -fobjc-arc";; *) X="";; esac
-  [ "$HOST" = ios ] && [ "$s" = $P/common/main.c ] && X=-Dmain=br_main    # UIKit owns main()
+  [ "$HOST" = lib ] && [ "$s" = $P/common/main.c ] && X=-Dmain=br_main   # the app owns main()
   if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ]; then
     # the OS layer sees the real system headers, not the game's Win32 surface
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$P/host -c "$s" -o "$o"
@@ -85,14 +85,16 @@ for s in $SRCS; do
   fi
   OBJS="$OBJS $o"
 done
-if [ -n "$EXE" ]; then          # Windows: name, version and manifest
+if [ -n "$EXE" ] && [ "$HOST" != lib ]; then   # Windows: name, version and manifest
   ports/brally/platform/host/windows/game_rc.sh "Boss Rally" "Boss Rally.exe" $OUT/plat/game.res.o
   OBJS="$OBJS $OUT/plat/game.res.o"
 fi
-if [ "$HOST" = ios ]; then
+if [ "$HOST" = lib ]; then
   rm -f $OUT/libbrally.a
-  ar rcs $OUT/libbrally.a $OUT/obj/*.o $OBJS
-  echo "archived $OUT/libbrally.a (host ios, renderer $RENDER)"
+  # the target's own archiver (the system one cannot index Windows objects)
+  case "$EXE" in .exe) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
+  $AR rcs $OUT/libbrally.a $OUT/obj/*.o $OBJS
+  echo "archived $OUT/libbrally.a (host $HOST, renderer $RENDER)"
   exit 0
 fi
 $LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $OSLIBS

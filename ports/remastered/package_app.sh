@@ -1,0 +1,90 @@
+#!/bin/sh
+# Build "Top Gear Rally Remastered.app": link.sh with the macOS host and the
+# Metal renderer, Boss Rally's data track as its CD root and the icon.
+# Top Gear Rally's data (from your ROM) and Boss Rally's BRGlide.dll data are
+# built into the executable, so the app needs neither ROM nor disc once built.
+#
+#   Contents/MacOS/remastered            the two games and the host
+#   Contents/Resources/disc              Boss Rally's data track, less the installer and the video
+#   Contents/Resources/AppIcon.icns      from icon.png
+#
+# Saves go to ~/Library/Application Support/Top Gear Rally Remastered (Boss
+# Rally's in its Boss Rally folder).
+#
+# Usage: ports/remastered/package_app.sh [--rom FILE] [--bin FILE] [--no-build]
+#   --rom FILE  Top Gear Rally's ROM (default: $TGR_ROM, else reference/tgrally/Top Gear Rally (USA).z64)
+#   --bin FILE  Boss Rally's disc image, when its data track is not already extracted
+#               (default reference/brally/BossRally.BIN)
+set -e
+cd "$(dirname "$0")/../.."
+BUILD=1
+BIN=reference/brally/BossRally.BIN
+while [ $# -gt 0 ]; do
+    case $1 in
+        --rom) TGR_ROM=$2; export TGR_ROM; shift 2 ;;
+        --bin) BIN=$2; shift 2 ;;
+        --no-build) BUILD=0; shift ;;
+        *) echo "package_app: unknown argument $1" >&2; exit 2 ;;
+    esac
+done
+PY=.venv/bin/python
+[ -x $PY ] || PY=python3
+
+OUT=build/remastered/macos-metal
+APP="$OUT/Top Gear Rally Remastered.app"
+if [ $BUILD = 1 ]; then
+    OUT=$OUT HOST=macos RENDER=metal GFLAG=-g0 ports/remastered/link.sh
+fi
+[ -x $OUT/remastered ] || { echo "package_app: no build at $OUT/remastered" >&2; exit 1; }
+
+# ---- Boss Rally's data track: the tree's, else the disc image's ---------------------
+DISC=reference/brally/data/disc
+if [ ! -f $DISC/BRGlide.dll ]; then
+    DISC=build/brally/macos-metal/extract/disc
+    if [ ! -f $DISC/BRGlide.dll ]; then
+        [ -f "$BIN" ] || { echo "package_app: no Boss Rally disc image at $BIN" >&2; exit 1; }
+        mkdir -p $DISC
+        $PY tools/brally/extract_disc.py "$BIN" $DISC
+    fi
+fi
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp $OUT/remastered "$APP/Contents/MacOS/remastered"
+rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*.EXE' \
+    --exclude '_INST32I.EX_' --exclude '_SETUP.DLL' --exclude 'dsetup*.dll' --exclude 'Msvcrt.dll' \
+    --exclude 'BRD3D.dll' --exclude 'SETUP.INI' --exclude 'setup.*' --exclude 'Setup.BMP' \
+    --exclude 'Autorun.inf' --exclude '*.url' --exclude 'layout.bin' \
+    $DISC/ "$APP/Contents/Resources/disc/"
+
+# ---- the icon ------------------------------------------------------------------------
+IS=$OUT/AppIcon.iconset
+rm -rf $IS && mkdir -p $IS
+for s in 16 32 128 256 512; do
+    sips -z $s $s ports/remastered/icon.png --out $IS/icon_${s}x${s}.png >/dev/null
+    sips -z $((s * 2)) $((s * 2)) ports/remastered/icon.png --out $IS/icon_${s}x${s}@2x.png >/dev/null
+done
+iconutil -c icns $IS -o "$APP/Contents/Resources/AppIcon.icns"
+rm -rf $IS
+
+cat > "$APP/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>Top Gear Rally Remastered</string>
+    <key>CFBundleDisplayName</key><string>Top Gear Rally Remastered</string>
+    <key>CFBundleIdentifier</key><string>com.strutb.tgrally-remastered</string>
+    <key>CFBundleExecutable</key><string>remastered</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleVersion</key><string>$(git rev-parse --short HEAD)</string>
+    <key>LSMinimumSystemVersion</key><string>12.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>GCSupportsControllerUserInteraction</key><true/>
+</dict>
+</plist>
+EOF
+codesign --force --sign - "$APP" >/dev/null 2>&1 || true
+echo "packaged $APP"

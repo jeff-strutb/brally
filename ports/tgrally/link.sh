@@ -2,9 +2,9 @@
 # Link Top Gear Rally: the core (build.sh), the symbol table and arena
 # generated from the source (tools/globals.py), the platform layer, and one
 # host (shared with the Boss Rally port: ports/brally/platform/host).
-#   env: HOST    null (default, headless) | macos | windows | ios (a static library,
-#                libtgrally.a, for the iPhone app in ports/tgrally/ios: the host is
-#                its Swift code, and main() is tgr_main, run on a thread of the app's)
+#   env: HOST    null (default, headless) | macos | windows | lib (a static library,
+#                libtgrally.a, for an app that brings its own host: ports/remastered,
+#                desktop and iPhone; main() is tgr_main)
 #        RENDER  null (default) | soft | metal (needs HOST=macos) | vulkan (Windows; on
 #                macOS through MoltenVK: VULKAN_SDK, else Homebrew's)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
@@ -87,7 +87,7 @@ case "$HOST" in
   null)  SRCS="$SRCS $H/null/host_null.c";;
   macos) SRCS="$SRCS $H/macos/host_macos.m"
          LIBS="$LIBS -framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -framework AVFoundation";;
-  ios)   ;;                                    # the app's Swift (ports/tgrally/ios)
+  lib)   ;;                                    # the app's own (ports/remastered)
   windows) SRCS="$SRCS $H/windows/host_windows.c"
            LIBS="$LIBS -lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
   *) echo "link: unknown HOST $HOST" >&2; exit 2;;
@@ -96,7 +96,7 @@ OBJS=
 for s in $SRCS; do
   o=$OUT/plat/$(echo "$s" | sed 's#/#__#g').o
   case "$s" in */render/metal/*) XF=-fobjc-arc;; *) XF=;; esac   # the Metal renderer is ARC
-  [ "$HOST" = ios ] && [ "$s" = $P/os/main.c ] && XF=-Dmain=tgr_main   # UIKit owns main()
+  [ "$HOST" = lib ] && [ "$s" = $P/os/main.c ] && XF=-Dmain=tgr_main   # the app owns main()
   if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ]; then
     # the OS layer sees the real system headers, not the game's
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H -c "$s" -o "$o"
@@ -107,14 +107,16 @@ for s in $SRCS; do
 done
 # the core objects of the TUs build.sh compiled (not a stale one of a deleted TU)
 CORE=$(sed "s#ports/tgrally/src/##; s#/#__#g; s#^#$OUT/obj/#; s#\$#.o#" $OUT/tus.txt)
-if [ -n "$EXE" ]; then          # Windows: name, version and manifest
+if [ -n "$EXE" ] && [ "$HOST" != lib ]; then   # Windows: name, version and manifest
   $H/windows/game_rc.sh "Top Gear Rally" "Top Gear Rally.exe" $OUT/plat/game.res.o
   OBJS="$OBJS $OUT/plat/game.res.o"
 fi
-if [ "$HOST" = ios ]; then
+if [ "$HOST" = lib ]; then
   rm -f $OUT/libtgrally.a
-  ar rcs $OUT/libtgrally.a $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS
-  echo "archived $OUT/libtgrally.a (host ios, renderer $RENDER)"
+  # the target's own archiver (the system one cannot index Windows objects)
+  case "$EXE" in .exe) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
+  $AR rcs $OUT/libtgrally.a $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS
+  echo "archived $OUT/libtgrally.a (host $HOST, renderer $RENDER)"
   exit 0
 fi
 $LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $VKLIBS $OSLIBS

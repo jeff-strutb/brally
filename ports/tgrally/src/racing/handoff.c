@@ -1,7 +1,7 @@
 /* handoff.c (port): a race run by another engine (host_race.h).
  *
- * With TGR_FLAG_BR_RACES on and a host that carries Boss Rally's engine (the
- * iPhone app sets it with tgr_race_engine), a race the player starts from
+ * With TGR_FLAG_BR_RACES on and a host that carries Boss Rally's engine (Top
+ * Gear Rally Remastered, ports/remastered, sets it with tgr_race_engine), a race the player starts from
  * the menus is not run here: at BrRaceTick's first call, before any of its
  * set-up, the race the menus chose (track, mirror, weather, laps, car and
  * its set-up) is handed over and this thread waits.  The two games share

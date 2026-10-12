@@ -1,8 +1,10 @@
-// App.swift: Top Gear Rally on the iPhone. Landscape only; the game is drawn
-// into a 16:9 Metal layer centred on the screen (the Remastered profile's race
-// fills it, menus keep the N64's 4:3 inside it), with the touch surface over
-// the whole screen. The game runs its own main loop (os/main.c) on a thread
-// of its own once the layer is laid out.
+// App.swift: Top Gear Rally Remastered on the iPhone. Landscape only; the
+// games are drawn into a 16:9 Metal layer centred on the screen (the
+// Remastered profile's race fills it, menus keep the N64's 4:3 inside it),
+// with the touch surface over the whole screen. The process
+// (ports/remastered/platform/main.c: Top Gear Rally's main loop, Boss Rally
+// started at the first race) runs on a thread of its own once the layer is
+// laid out.
 
 import Metal
 import QuartzCore
@@ -86,19 +88,17 @@ final class GameViewController: UIViewController {
         super.viewDidAppear(animated)
         guard !started, Screen.pixels().0 > 0 else { return }
         started = true
-        tgr_race_engine(BossRally.raceEngine)
-        if ProcessInfo.processInfo.environment["BR_HANDOFF_TEST"] != nil {
-            // a check of Boss Rally alone: its test race (race_handoff.c), in front from the start
-            Engines.bringToFront(.br)
-            BossRally.start()
-            return
-        }
+        // the process (ports/remastered/platform/main.c): Top Gear Rally on this
+        // thread, Boss Rally on one of its own at the first race; the app's
+        // options go to it (a test run's --script; the system's own, before
+        // them, do not)
+        let all = CommandLine.arguments
+        let opts = all.firstIndex { $0.hasPrefix("--") }.map { Array(all[$0...]) } ?? []
         let t = Thread {
-            Engines.tgrThread = pthread_self()
-            var argv: [UnsafeMutablePointer<CChar>?] = [strdup("tgrally"), nil]
-            _ = tgr_main(1, &argv)
+            var argv: [UnsafeMutablePointer<CChar>?] = ([all.first ?? "remastered"] + opts).map { strdup($0) } + [nil]
+            _ = rm_main(Int32(argv.count - 1), &argv)
         }
-        t.name = "tgrally"
+        t.name = "remastered"
         t.stackSize = 16 << 20
         t.qualityOfService = .userInteractive
         t.start()

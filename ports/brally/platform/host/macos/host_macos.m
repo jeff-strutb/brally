@@ -12,6 +12,8 @@
  *   BR_CDROOT   the CD's files       (default reference/brally/data/disc, then the app's Resources/disc)
  *   BR_GAMEDIR  the install          (default: the CD root)
  *   BR_SAVEDIR  saves and settings   (default ~/Library/Application Support/Boss Rally 64)
+ *
+ * BR_NOACTIVATE=1: the window opens without taking the focus (test runs).
  */
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
@@ -349,7 +351,8 @@ int host_window_open(int width, int height, const char *title)
         [s_win center];
         [s_win makeKeyAndOrderFront:nil];
         [s_win makeFirstResponder:s_view];
-        [NSApp activateIgnoringOtherApps:YES];
+        if (!getenv("BR_NOACTIVATE"))         /* a test run launched in the background stays there */
+            [NSApp activateIgnoringOtherApps:YES];
         s_rgb = CGColorSpaceCreateDeviceRGB();
     }
     return 1;

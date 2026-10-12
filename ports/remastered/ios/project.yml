@@ -1,0 +1,52 @@
+# The iPhone app (xcodegen): the Swift host and the touch controls in Sources
+# over libgames.a (ports/remastered/link.sh, HOST=ios: both games, the
+# multiplexer and the process), Boss Rally's disc data (Resources/disc) and the
+# icon (Assets.xcassets), which build.sh makes. It generates the project into
+# build/remastered/ios-metal (paths here are relative to that folder) and
+# builds, signs and installs it. The bundle identifier is the one the iPhone
+# app had when it was ports/tgrally/ios, so the app replaces it.
+name: TopGearRallyRemastered
+options:
+  bundleIdPrefix: com.strutb
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: "7892TK9529"
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+targets:
+  TopGearRallyRemastered:
+    type: application
+    platform: iOS
+    sources:
+      - path: ../../../ports/remastered/ios/Sources
+      - path: Assets.xcassets
+      - path: disc
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.strutb.tgrally
+        PRODUCT_NAME: "Top Gear Rally Remastered"
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/remastered/ios/Sources/Bridge.h"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)"
+        OTHER_LDFLAGS: "-lgames -lz -lc++"
+        ENABLE_BITCODE: NO
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: "$(SRCROOT)/Info.plist"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: "TGR Remastered"
+        CFBundleShortVersionString: "1.0"
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationLandscapeRight, UIInterfaceOrientationLandscapeLeft]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiredDeviceCapabilities: [arm64, metal]
