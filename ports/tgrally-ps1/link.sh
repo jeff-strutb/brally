@@ -30,7 +30,7 @@ mkdir -p $OUT/plat
 # the arena: the N64's 4 MB (the game never addresses past it)
 sed 's/^\.space 0x800000/.space 0x400000/; s/^\.size tgr_rdram, 0x800000/.size tgr_rdram, 0x400000/' \
   $OUT/gen/arena.s > $OUT/plat/arena.s
-SRCS="$P/os/addr.c $P/os/thread.c $P/os/si.c $P/os/view.c $P/os/touch.c $P/os/sha1.c $P/audio/mixer.c $P/libc/xprintf.c \
+SRCS="$Q/os/addr_ps1.c $P/os/thread.c $P/os/si.c $P/os/view.c $P/os/touch.c $P/os/sha1.c $P/audio/mixer.c $P/libc/xprintf.c \
       $Q/hw/ps1hw.c $Q/hw/irq.c $Q/hw/gpu.c $Q/os/host_ps1.c $Q/os/main_ps1.c $Q/os/io_ps1.c $Q/os/lift_ps1.c $Q/os/trace_ps1.c \
       $Q/gfx/gfx_ps1.c $Q/gfx/rcp_ps1.c $Q/audio/out_ps1.c $Q/libc/libc.c $OUT/gen/tgr_syms.c"
 OBJS=

@@ -21,7 +21,8 @@ void     ps1_exc_install(void);      /* the port's exception vector (hw/exc.s, h
 void     ps1_flush_icache(void);
 uint32_t ps1_vblanks(void);          /* VBlank interrupts so far */
 void     ps1_on_vblank(void (*fn)(void));
-void     ps1_pc_sample(uint32_t every);  /* print the interrupted pc every n VBlanks */
+void     ps1_pc_sample(uint32_t every);  /* sample the interrupted pc every n VBlanks */
+void     ps1_pc_dump(void);              /* the samples to pcsamples.bin */
 
 /* PCDRV (hw/crt0.s): the debugger's host files */
 int pcdrv_init(void);

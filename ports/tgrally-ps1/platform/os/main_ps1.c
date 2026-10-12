@@ -76,7 +76,7 @@ int main(void)
         extern int ps1_hostlog;
         ps1_hostlog = getenv("TGR_HOSTLOG") != NULL;
     }
-    if (getenv("TGR_PCSAMPLE"))
+    if (getenv("TGR_PCSAMPLE") && !getenv("TGR_PCSAMPLE_FROM"))
         ps1_pc_sample((uint32_t)atoi(getenv("TGR_PCSAMPLE")));
     if (g_tgr.script)
         tgr_script_load(g_tgr.script);
@@ -94,6 +94,7 @@ int main(void)
     tgr_os_wait();
     fprintf(stderr, "tgr: %u retraces\n", tgr_frame());
     tgr_trace_close();
+    ps1_pc_dump();
     finish();
     for (;;)
         ;

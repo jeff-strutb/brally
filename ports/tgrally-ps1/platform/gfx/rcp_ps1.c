@@ -23,6 +23,8 @@
 
 extern uint32_t tgr_rcp_frames;
 static int s_log;                               /* TGR_RCPLOG */
+static uint32_t s_texgen = 1;                   /* bumped whenever tiles, loads or the TLUT mode change */
+static uint32_t s_texepoch = 1;                 /* bumped whenever the texture table moves */
 static int s_fog_mul, s_fog_ofs;                /* G_MW_FOG */
 static int s_black;                             /* osViBlack: the display is off */
 
@@ -468,7 +470,7 @@ static uint32_t s_frame_no;
 
 static void tex_flush_all(void)
 {
-    s_ntex = 0;
+    s_ntex = 0; s_texepoch++;
     s_nshelf = 0;
     s_half_top[0] = s_half_top[1] = 0;
 }
@@ -568,7 +570,7 @@ static int vram_alloc(int w, int h, int *px, int *py)
                     s_texs[j].shelf = (uint8_t)sh;
                     s_texs[k++] = s_texs[j];
                 }
-                s_ntex = k;
+                s_ntex = k; s_texepoch++;
                 s_nshelf = n;
                 best = keep;
                 break;
@@ -582,7 +584,7 @@ static int vram_alloc(int w, int h, int *px, int *py)
         for (j = k = 0; j < s_ntex; j++)
             if (s_texs[j].shelf != best)
                 s_texs[k++] = s_texs[j];
-        s_ntex = k;
+        s_ntex = k; s_texepoch++;
         s_shelf[best].x = 0;
     }
     i = best;
@@ -672,7 +674,35 @@ static uint32_t hash32(uint32_t h, uint32_t v)
 }
 
 /* a sample of a load's source bytes: whether the game changed them */
+static uint32_t src_check_now(const Load *l);
+
+/* (once a frame for a given source, a texture drawn many times read once,
+ * unless four words of it say the game rewrote it between two draws) */
+static struct { uint32_t src, n, frame, h, sig; } s_chk[64];
+
+static uint32_t src_sig(const Load *l)
+{
+    uint32_t n = (uint32_t)l->words * 8;
+    if (n < 16)
+        return rd32(l->src);
+    return rd32(l->src) ^ rd32(l->src + (n / 3 & ~3u)) * 3 ^ rd32(l->src + (2 * n / 3 & ~3u)) * 5 ^ rd32(l->src + n - 4) * 7;
+}
+
 static uint32_t src_check(const Load *l)
+{
+    uint32_t k = ((l->src >> 3) ^ (l->src >> 11)) & 63, n = (uint32_t)(l->kind << 28 | l->words << 12 | l->a0);
+    uint32_t sig = src_sig(l);
+    if (s_chk[k].src == l->src && s_chk[k].n == n && s_chk[k].frame == s_frame_no && s_chk[k].sig == sig)
+        return s_chk[k].h;
+    s_chk[k].src = l->src;
+    s_chk[k].n = n;
+    s_chk[k].frame = s_frame_no;
+    s_chk[k].sig = sig;
+    s_chk[k].h = src_check_now(l);
+    return s_chk[k].h;
+}
+
+static uint32_t src_check_now(const Load *l)
 {
     uint32_t h = 0x811C9DC5u, n = (uint32_t)l->words * 8, step, i;
     if (l->kind == 3)
@@ -749,7 +779,39 @@ static uint32_t tile_key(int t, uint32_t *pcheck, int *pw, int *ph)
 static int s_band_y0, s_band_h;
 static int s_band_y0_of(int band, int b0) { return band ? b0 : 0; }
 
+static const Tex *tile_texture_find(int t);
+
+/* the texture tile t draws, cached until the tiles, loads or modes change;
+ * the source's bytes checked for the game's writes once a frame */
+static struct { uint32_t gen, epoch, frame; int t, opaque, mask, by0, bh; const Tex *tex; } s_tcache[4];
+static int s_tcache_next;
+
 static const Tex *tile_texture(int t)
+{
+    int i;
+    const Tex *tx;
+    for (i = 0; i < 4; i++)
+        if (s_tcache[i].gen == s_texgen && s_tcache[i].epoch == s_texepoch && s_tcache[i].frame == s_frame_no &&
+            s_tcache[i].t == t && s_tcache[i].opaque == s_opaque && s_tcache[i].mask == s_mask &&
+            s_tcache[i].by0 == s_band_y0 && s_tcache[i].bh == s_band_h) {
+            ((Tex *)s_tcache[i].tex)->used = s_frame_no;
+            return s_tcache[i].tex;
+        }
+    tx = tile_texture_find(t);
+    i = s_tcache_next++ & 3;
+    s_tcache[i].gen = s_texgen;
+    s_tcache[i].epoch = s_texepoch;
+    s_tcache[i].frame = s_frame_no;
+    s_tcache[i].t = t;
+    s_tcache[i].opaque = s_opaque;
+    s_tcache[i].mask = s_mask;
+    s_tcache[i].by0 = s_band_y0;
+    s_tcache[i].bh = s_band_h;
+    s_tcache[i].tex = tx;
+    return tx;
+}
+
+static const Tex *tile_texture_find(int t)
 {
     const Tile *tl = &s_tile[t];
     int w, h, i, x, y, mode, ci, grey, tlut = (s_omh >> 14) & 3;
@@ -778,7 +840,7 @@ static const Tex *tile_texture(int t)
             }
             old = s_texs[i];                    /* changed (the game wrote it): decode again, in its place */
             reuse = 1;
-            s_texs[i] = s_texs[--s_ntex];
+            s_texs[i] = s_texs[--s_ntex]; s_texepoch++;
             break;
         }
     /* a miss: rebuild TMEM from the loads and decode */
@@ -800,7 +862,7 @@ static const Tex *tile_texture(int t)
         int k = 0;
         for (i = 0; i < s_ntex; i++)
             if (s_texs[i].used < oldest) { oldest = s_texs[i].used; k = i; }
-        s_texs[k] = s_texs[--s_ntex];
+        s_texs[k] = s_texs[--s_ntex]; s_texepoch++;
     }
     {
         /* a power-of-two size that the tile repeats: the GPU's texture window
@@ -831,7 +893,7 @@ static const Tex *tile_texture(int t)
         }
         return NULL;
     }
-    tx = &s_texs[s_ntex++];
+    tx = &s_texs[s_ntex++]; s_texepoch++;
     memset(tx, 0, sizeof *tx);
     tx->key = key;
     tx->check = check;
@@ -974,7 +1036,10 @@ static int same_tile(void) { return ((s_omh >> 16) & 1) && s_tex.level == 0; }
 static void lin_in(Lin *o, int in, const Lin *comb, const uint8_t shade[4], const uint8_t other[4], int sym, int alpha)
 {
     int k;
-    memset(o, 0, sizeof *o);
+    o->a[0] = o->a[1] = o->a[2] = o->a[3] = 0;
+    o->b[0] = o->b[1] = o->b[2] = o->b[3] = 0;
+    if (in == IN_ZERO)
+        return;
     if (in == IN_TX0 || in == IN_TX1)
         in = (in == IN_TX1) == sym || same_tile() ? -1 : -2;   /* -1: the texture drawn, -2: the sampled one */
     else if (in == IN_TX0A || in == IN_TX1A)
@@ -1048,25 +1113,37 @@ static void combine(Lin *out, const uint8_t shade[4], const uint8_t *other)
     *out = c2;
 }
 
-/* whether the combiner reads the second texture: TEXEL1 in cycle 1, TEXEL0 in cycle 2 */
+/* whether the combiner's result depends on the second texture (TEXEL1 in
+ * cycle 1, TEXEL0 in cycle 2): the combiner run with it black and with it
+ * white, for every shade; kept per combiner state */
+static const uint8_t BLACK[4] = { 0, 0, 0, 0 };
+
 static int uses_other(void)
 {
-    int cyc2 = ((s_omh >> 20) & 3) == 1;
-    if (same_tile())
-        return 0;
-    int in1[8] = { CA[(s_cc0 >> 20) & 15], CB[(s_cc1 >> 28) & 15], CC[(s_cc0 >> 15) & 31], CD[(s_cc1 >> 15) & 7],
-                   AABD[(s_cc0 >> 12) & 7], AABD[(s_cc1 >> 12) & 7], AC[(s_cc0 >> 9) & 7], AABD[(s_cc1 >> 9) & 7] };
-    int in2[8] = { CA[(s_cc0 >> 5) & 15], CB[(s_cc1 >> 24) & 15], CC[s_cc0 & 31], CD[(s_cc1 >> 6) & 7],
-                   AABD[(s_cc1 >> 21) & 7], AABD[(s_cc1 >> 3) & 7], AC[(s_cc1 >> 18) & 7], AABD[s_cc1 & 7] };
-    int k;
-    for (k = 0; k < 8; k++)
-        if (in1[k] == IN_TX1 || in1[k] == IN_TX1A)
-            return 1;
-    if (cyc2)
-        for (k = 0; k < 8; k++)
-            if (in2[k] == IN_TX0 || in2[k] == IN_TX0A)
-                return 1;
-    return 0;
+    static uint32_t key_cc0 = 0xFFFFFFFF, key_cc1, key_omh;
+    static int key_same, result;
+    uint32_t omh = s_omh & 0x00310000;          /* the cycle type and LOD */
+    int same = same_tile();
+    if (key_cc0 == s_cc0 && key_cc1 == s_cc1 && key_omh == omh && key_same == same)
+        return result;
+    key_cc0 = s_cc0;
+    key_cc1 = s_cc1;
+    key_omh = omh;
+    key_same = same;
+    if (same) {
+        result = 0;
+    } else {
+        Lin a, b;
+        combine(&a, WHITE, BLACK);
+        combine(&b, WHITE, WHITE);
+        result = memcmp(&a, &b, sizeof a) != 0;
+        if (!result) {
+            combine(&a, BLACK, BLACK);
+            combine(&b, BLACK, WHITE);
+            result = memcmp(&a, &b, sizeof a) != 0;
+        }
+    }
+    return result;
 }
 
 /* ---- the second texture, sampled on the CPU ---------------------------------------- *
@@ -1939,6 +2016,7 @@ static void run(uint32_t dl)
             break;
         case 0xB9: case 0xBA: {
             int sh = (w0 >> 8) & 0xFF, len = w0 & 0xFF;
+            s_texgen++;
             uint32_t mask = (len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1)) << sh;
             uint32_t *m = op == 0xB9 ? &s_oml : &s_omh;
             *m = (*m & ~mask) | w1;
@@ -1991,8 +2069,9 @@ static void run(uint32_t dl)
             s_scissor[3] = (int)(w1 & 0xFFF) / 4;
             scissor(s_scissor[0], s_scissor[1], s_scissor[2], s_scissor[3]);
             break;
-        case 0xEF: s_omh = w0 & 0xFFFFFF; s_oml = w1; break;
+        case 0xEF: s_omh = w0 & 0xFFFFFF; s_oml = w1; s_texgen++; break;
         case 0xF0: {                                  /* G_LOADTLUT */
+            s_texgen++;
             Load l;
             int t = (w1 >> 24) & 7;
             memset(&l, 0, sizeof l);
@@ -2005,6 +2084,7 @@ static void run(uint32_t dl)
             break;
         }
         case 0xF2: {                                  /* G_SETTILESIZE */
+            s_texgen++;
             int t = (w1 >> 24) & 7;
             s_tile[t].uls = (w0 >> 12) & 0xFFF;
             s_tile[t].ult = w0 & 0xFFF;
@@ -2013,6 +2093,7 @@ static void run(uint32_t dl)
             break;
         }
         case 0xF3: {                                  /* G_LOADBLOCK */
+            s_texgen++;
             Load l;
             int t = (w1 >> 24) & 7, texels, bytes;
             memset(&l, 0, sizeof l);
@@ -2032,6 +2113,7 @@ static void run(uint32_t dl)
             break;
         }
         case 0xF4: {                                  /* G_LOADTILE */
+            s_texgen++;
             Load l;
             int t = (w1 >> 24) & 7;
             memset(&l, 0, sizeof l);
@@ -2050,6 +2132,7 @@ static void run(uint32_t dl)
             break;
         }
         case 0xF5: {                                  /* G_SETTILE */
+            s_texgen++;
             int t = (w1 >> 24) & 7;
             s_tile[t].fmt = (w0 >> 21) & 7;
             s_tile[t].siz = (w0 >> 19) & 3;
@@ -2210,6 +2293,22 @@ static void vram_dump(uint32_t frame)
 
 void tgr_rcp_present(uint32_t frame)
 {
+    static int perf = -1;
+    static uint64_t t0;
+    static uint32_t f0, d0;
+    if (perf < 0)
+        perf = getenv("TGR_PERF") != NULL;
+    if (getenv("TGR_PCSAMPLE_FROM") && frame == (uint32_t)atoi(getenv("TGR_PCSAMPLE_FROM")))
+        ps1_pc_sample((uint32_t)atoi(getenv("TGR_PCSAMPLE") ? getenv("TGR_PCSAMPLE") : "1"));
+    if (perf && frame % 60 == 0) {              /* TGR_PERF: the console's time per 60 retraces, frames drawn */
+        uint64_t t = ps1_time_ns();
+        if (t0)
+            fprintf(stderr, "perf: retraces %u-%u took %u ms of console time, %u frames drawn\n", (unsigned)f0,
+                    (unsigned)frame, (unsigned)((t - t0) / 1000000), (unsigned)(tgr_rcp_frames - d0));
+        t0 = t;
+        f0 = frame;
+        d0 = tgr_rcp_frames;
+    }
     int i;
     if (s_show_pending >= 0 && !gpu_busy()) {
         s_shown = s_show_pending;

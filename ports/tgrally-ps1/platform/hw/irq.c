@@ -27,10 +27,23 @@ void ps1_exc_install(void)
 uint32_t ps1_vblanks(void) { return s_vblank; }
 
 /* a sample of where the CPU is, every n VBlanks (TGR_PCSAMPLE=n): the
- * interrupted PC and return address, for finding a hang without a debugger */
+ * interrupted PC and return address, a profile (tools/profile.py) */
 extern uint32_t exc_frame[];
 static uint32_t s_sample;
+#define PCSAMP_MAX 16384
+static uint32_t s_samp[PCSAMP_MAX][2];          /* the interrupted pc and ra */
+static int s_nsamp;
 void ps1_pc_sample(uint32_t every) { s_sample = every; }
+
+/* the samples to a host file (pcsamples.bin: pc, ra pairs) */
+void ps1_pc_dump(void)
+{
+    int fd;
+    if (!s_nsamp || (fd = pcdrv_creat("pcsamples.bin")) < 0)
+        return;
+    pcdrv_write(fd, s_samp, s_nsamp * 8);
+    pcdrv_close(fd);
+}
 static void hex(const char *name, uint32_t v);
 void ps1_on_vblank(void (*fn)(void)) { s_vblank_fn = fn; }
 
@@ -43,11 +56,10 @@ void ps1_irq(uint32_t cause)
         s_vblank++;
         if (s_vblank_fn)
             s_vblank_fn();
-        if (s_sample && s_vblank % s_sample == 0) {
-            hex("pc=", exc_frame[31]);
-            hex("ra=", exc_frame[17]);
-            hex("sp=", exc_frame[18]);
-            ps1_tty("\n");
+        if (s_sample && s_vblank % s_sample == 0 && s_nsamp < PCSAMP_MAX) {
+            s_samp[s_nsamp][0] = exc_frame[31];
+            s_samp[s_nsamp][1] = exc_frame[17];
+            s_nsamp++;
         }
     }
 }
