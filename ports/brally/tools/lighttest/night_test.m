@@ -211,6 +211,64 @@ int main(void)
             CHECK(worst < 1e-4f, "Purkinje weight: the shader's on the GPU against the C copy, 201 luminances 1e-5..1e3: worst %.2e", worst);
         }
     }
+    {   /* 6 the eye's adaptation: a cold start, then the time constants */
+        float ev = 1e9f, tgt = -2.3f, e1, e2;
+        ev = light_adapt_ev(ev, -1.0f, 1.0f / 60, 0);
+        CHECK(ev > 1e8f, "no samples leave an unset EV unset (it was set to the range's middle)");
+        ev = light_adapt_ev(ev, tgt, 1.0f / 60, 1);
+        CHECK(fabsf(ev - tgt) < 0.1f, "cold start: the first metered frame's EV %.3f, target %.3f (within 0.1 EV)", ev, tgt);
+        e1 = light_adapt_ev(-2.3f, -1.0f, 1.0f / 60, 0);
+        CHECK(e1 == -2.3f, "a frame with no samples holds the EV");
+        e1 = -2.0f; e2 = -2.0f;
+        for (i = 0; i < 60; i++) { e1 = light_adapt_ev(e1, -1.0f, 1.0f / 60, 1); e2 = light_adapt_ev(e2, -3.0f, 1.0f / 60, 1); }
+        CHECK(fabsf((e1 + 2.0f) - (1.0f - expf(-1.0f))) < 0.01f && fabsf((-2.0f - e2) - (1.0f - expf(-1.0f / 3.0f))) < 0.01f,
+              "after 1 s (60 frames) of a 1 EV step: brighter %.3f of it (1 - 1/e = 0.632, tau 1 s), darker %.3f (1 - e^-1/3 = 0.283, tau 3 s)",
+              e1 + 2.0f, -2.0f - e2);
+        e1 = -2.0f;
+        for (i = 0; i < 30; i++) e1 = light_adapt_ev(e1, -1.0f, 1.0f / 30, 1);
+        CHECK(fabsf((e1 + 2.0f) - (1.0f - expf(-1.0f))) < 0.01f, "the same at 30 frames a second: %.3f (frame rate free)", e1 + 2.0f);
+        CHECK(light_adapt_ev(-2.0f, 2.0f, 1.0f / 60, 1) == 2.0f, "a change of 4 stops (a cut, the race starting) snaps");
+    }
+    {   /* 7 the moon's disc integrates to its illuminance; the stars stay starlight */
+        float E = light_moon_normal(LIGHT_MOON_ELEV), R = LIGHT_MOON_R;
+        double sum = 0;
+        int n = 4000, s2;
+        for (s2 = 0; s2 < n; s2++) {   /* rings: L(r) 2 pi theta dtheta (small angles) */
+            double r = (s2 + 0.5) / n, th = r * R;
+            sum += light_moon_disc(E, (float)r) * 2.0 * M_PI * th * (R / n);
+        }
+        CHECK(fabs(sum - E) / E < 0.05, "moon's disc: %.4f lux integrated, %.4f lux its illuminance (within 5%%); centre %.0f cd/m2, mean %.0f cd/m2",
+              sum, E, light_moon_disc(E, 0), E / (M_PI * R * R));
+        {
+            double Eg = 0, Ef = 0, mean = 0;
+            int f, a, b, ncell = 0;
+            for (a = 0; a < 20000; a++)
+                mean += light_star_E((a + 0.5f) / 20000.0f) / 20000.0;
+            /* every cell of the cube's faces above the horizon: a star's expected illuminance on level ground
+               (sin of its elevation), dimmed by its air mass */
+            for (f = 0; f < 5; f++)   /* the top face and the four sides (by symmetry: one side, four times) */
+                for (a = 0; a < LIGHT_STAR_N; a++)
+                    for (b = 0; b < LIGHT_STAR_N; b++) {
+                        float u = (a + 0.5f) / LIGHT_STAR_N * 2 - 1, v = (b + 0.5f) / LIGHT_STAR_N * 2 - 1, d[3], l, el;
+                        if (f == 4) { d[0] = u; d[1] = v; d[2] = 1; } else { d[0] = 1; d[1] = u; d[2] = v; }
+                        if (d[2] <= 0)
+                            continue;
+                        l = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+                        el = asinf(d[2] / l) * 57.29578f;
+                        Ef += LIGHT_STAR_P * mean;
+                        Eg += LIGHT_STAR_P * mean * powf(10.0f, -0.4f * LIGHT_MOON_KV * light_airmass(el)) * (d[2] / l);
+                        ncell++;
+                    }
+            CHECK(Eg < 0.001 && Eg > 1e-5, "stars: %.0f above the horizon, %.2e lux on the ground (%.2e above the air; starlight is about 2e-4, < 0.001)",
+                  ncell * LIGHT_STAR_P, Eg, Ef);
+        }
+    }
+    {   /* 8 the Purkinje tint: a moonlit road reads grey-blue, not saturated blue */
+        float b[3] = { LIGHT_PURK_BLUE_R, LIGHT_PURK_BLUE_G, LIGHT_PURK_BLUE_B }, y = 0.2126f * b[0] + 0.7152f * b[1] + 0.0722f * b[2];
+        float L = 0.2f * 0.25f / (float)M_PI, w = light_purkinje_w(L), r = (1 - w) + w * b[0] / y, bl = (1 - w) + w * b[2] / y;
+        CHECK(bl / r > 1.2f && bl / r < 1.5f, "moonlit road (%.4f cd/m2, rods' share %.2f): blue/red %.2f (grey-blue 1.2..1.5; the old tint 2.21)", L, w, bl / r);
+        CHECK(strstr(BRR_NIGHT_SRC, "0.86, 0.98, 1.30") != NULL, "the post shader's tint is light_night.h's");
+    }
     printf(g_fail ? "night: FAIL\n" : "night: all pass\n");
     return g_fail;
 }

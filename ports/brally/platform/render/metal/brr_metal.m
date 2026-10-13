@@ -446,12 +446,13 @@ static BrrRtWorld s_rt;             /* the track for rays (brr_metal_rt_world) *
 static size_t s_ntris, s_captris;
 static id<MTLBuffer> s_hist[3];
 static float s_ev = 1e9f;
+static double s_ev_t;               /* when the EV last took a reading (seconds) */
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
                    float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
-typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4]; } KU;
+typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4], moon[4]; } KU;
 
 /* the sky per weather (brr_metal_sky.h): the Mie density (haze, fog), the
  * light at the top of the atmosphere (the sun's 128,000 lux, or a full moon's
@@ -801,12 +802,14 @@ const BrrRtWorld *brr_metal_rt_world(void)
  * percentiles (Unreal Engine's auto-exposure defaults: the darkest pixels and
  * the few brightest do not move it) sets the camera's EV100 as a light meter
  * does (sensor calibration K = 12.5), adapting over about a second (Lagarde
- * and de Rousiers 2014) */
+ * and de Rousiers 2014; light_night.h light_adapt_ev: 1 s brighter, 3 s darker,
+ * a snap on the first reading and on a change of 3 stops) */
 static float lit_exposure(int w)
 {
     uint32_t *c;
     unsigned ns = 0;
     float target;
+    double now;
     int i;
     if (!s_hist[0])
         for (i = 0; i < 3; i++)
@@ -816,9 +819,14 @@ static float lit_exposure(int w)
         ns += c[i];
     target = light_meter_ev(c, LUM_BINS, k_weather[w].plo, k_weather[w].phi, k_weather[w].evlo, k_weather[w].evhi, k_weather[w].comp);
     memset(c, 0, LUM_BINS * 4);
+    now = CACurrentMediaTime();
+    /* a histogram with no samples (its frame not yet drawn, or no lit
+       surface in it) holds the EV: it used to set it to the range's middle
+       and then pull toward it, a night race starting stops too dark */
+    s_ev = light_adapt_ev(s_ev, target, s_ev_t > 0 ? (float)(now - s_ev_t) : 0.0f, ns > 0);
+    s_ev_t = now;
     if (s_ev > 1e8f)
-        s_ev = target;
-    s_ev += (target - s_ev) * 0.05f;
+        return 1.0f / (1.2f * exp2f(target));
     if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
         fprintf(stderr, "light: frame %lu weather %d, %u meter samples, target EV %.2f, EV %.2f\n", s_frame, w, ns, target, s_ev);
     return 1.0f / (1.2f * exp2f(s_ev));
@@ -1449,6 +1457,10 @@ static void lit_present(void)
             ku.cld[1] = k_sky[w].dens;
             ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
             ku.cld[3] = getenv("BR_LIGHT_NOCLOUDS") ? 0.0f : 1.0f;    /* the cloud layer's tier flag */
+            ku.moon[0] = w == 4 ? light_moon_normal(k_weather[w].elev) : 0.0f;   /* at night the light's direction is the moon's: its disc (lux at the ground, facing it) */
+            ku.moon[1] = w == 4 ? light_moon_I0(1.0f) : 0.0f;                  /* the disc's centre luminance a lux */
+            ku.moon[2] = w == 4 ? 1.0f : 0.0f;                                  /* the stars */
+            ku.moon[3] = 0.0f;
             if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
                 fprintf(stderr, "sky: xft %g %g %g %g vpt %g %g %g %g m0 %g %g %g m1 %g %g %g m2 %g %g %g off %g %g %g eye %g %g %g tgt %g %g sun %g %g %g irr %g %g %g\n",
                         ku.xft[0], ku.xft[1], ku.xft[2], ku.xft[3], ku.vpt[0], ku.vpt[1], ku.vpt[2], ku.vpt[3],

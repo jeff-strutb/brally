@@ -129,7 +129,7 @@
    the soft rim, a smoothstep over the outer tenth of its solid angle, keeps \
    0.95 of it, divided back); kept within half float's range (the disc's \
    centre is about 1.6e9 cd/m2) */ \
-"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; float4 cld; };\n" \
+"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; float4 cld; float4 moon; };\n" \
 "static float3 camray(constant KU &k, float2 px) {\n" \
 "  float2 ndc = float2((px.x + 0.5) / k.tgt.x * 2.0 - 1.0, 1.0 - (px.y + 0.5) / k.tgt.y * 2.0);\n" \
 "  float2 g = float2((ndc.x - k.xft.y) / k.xft.x, (ndc.y - k.xft.w) / k.xft.z);\n" \
@@ -137,9 +137,39 @@
 "  float3 c = float3((g.x - k.vpt.y) / k.vpt.x - k.off.x, (g.y - k.vpt.w) / k.vpt.z - k.off.y, 1.0 - k.off.z);\n" \
 "  float3 p = float3(dot(k.m0.xyz, c), dot(k.m1.xyz, c), dot(k.m2.xyz, c));\n" \
 "  return normalize(p - k.eye.xyz); }\n" \
+/* the night sky (light_night.h): the moon's disc at the light's direction \
+   (0.26 degrees, linear limb darkening u 0.3, centre luminance moon.y a lux \
+   times moon.x, the illuminance reaching the ground facing it, about 3,300 \
+   cd/m2 at Coastline's 42 degrees), and the stars: on each face of the \
+   direction's cube a 512 x 512 grid, a star in 1.2% of its cells at a \
+   hashed spot, magnitude 6.5 + 2.5 log10 h (h uniform, at most -1), its \
+   illuminance 10^(-0.4 (m + 13.99)) lux over a disc of 0.035 degrees, dimmed \
+   by the air (0.172 magnitudes an air mass, Kasten and Young) and gone under \
+   the horizon; the clouds (skyfs) cover both */ \
+"static uint sh3(uint3 v) { uint h = v.x * 0x8da6b343u ^ v.y * 0xd8163841u ^ v.z * 0xcb1ab31fu; h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12; h *= 0x297a2d39u; h ^= h >> 15; return h; }\n" \
+"static float3 moonstars(constant KU &k, float3 d) {\n" \
+"  float3 L = 0.0; const float R = 0.26 * 3.14159265 / 180.0;\n" \
+"  float r = acos(clamp(dot(d, k.sun.xyz), -1.0, 1.0)) / R;\n" \
+"  if (r < 1.0) L += k.moon.x * k.moon.y * (1.0 - 0.3 * (1.0 - sqrt(1.0 - r * r))) * float3(1.0, 0.96, 0.90);\n" \
+"  if (k.moon.z > 0.0 && d.z > 0.0) {\n" \
+"    float3 a = abs(d); int ax = a.x >= a.y && a.x >= a.z ? 0 : (a.y >= a.z ? 1 : 2); float mj = a[ax];\n" \
+"    float2 uv = ax == 0 ? d.yz : (ax == 1 ? d.xz : d.xy); uv = uv / mj * 0.5 + 0.5;\n" \
+"    uint face = uint(ax * 2) + (d[ax] < 0.0 ? 1u : 0u); float2 g = uv * 512.0; uint2 c = uint2(min(g, 511.0));\n" \
+"    uint h = sh3(uint3(c, face));\n" \
+"    if (float(h & 0xffffu) / 65536.0 < 0.012) {\n" \
+"      uint h2 = sh3(uint3(c.yx, face + 17u));\n" \
+"      float2 sp = float2(c) + 0.2 + 0.6 * float2(float(h2 & 0xffu), float((h2 >> 8) & 0xffu)) / 255.0;\n" \
+"      float2 suv = sp / 512.0 * 2.0 - 1.0; float3 sd = ax == 0 ? float3(sign(d.x), suv.x, suv.y) : (ax == 1 ? float3(suv.x, sign(d.y), suv.y) : float3(suv.x, suv.y, sign(d.z)));\n" \
+"      sd = normalize(sd); const float rs = 0.035 * 3.14159265 / 180.0;\n" \
+"      if (dot(d, sd) > cos(rs)) {\n" \
+"        float hm = max(float(h >> 16) / 65536.0 + 0.5 / 65536.0, 1e-3), m = 6.5 + 2.5 * log10(hm);\n" \
+"        float el = asin(sd.z) * 57.29578, X = 1.0 / (max(sd.z, 0.0) + 0.50572 * pow(max(el, 0.0) + 6.07995, -1.6364));\n" \
+"        L += pow(10.0, -0.4 * (m + 13.99 + 0.172 * X)) / (3.14159265 * rs * rs); } } }\n" \
+"  return L; }\n" \
 "static float3 skyrad(constant KU &k, texture2d<float> S, texture2d<float> T, float3 d) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float3 L = S.sample(s, svuv(d)).rgb * k.ktop.x;\n" \
 "  float cd = dot(d, k.sun.xyz), cr = cos(0.2675 * 3.14159 / 180.0);\n" \
+"  if (k.moon.x > 0.0) { L += moonstars(k, d); return L; }\n" \
 "  if (cd > cr && d.z > -0.01) L += trans(T, RG + k.eye.w, d.z) * k.ktop.x * k.ktop.y / (3.14159 * pow(0.2675 * 3.14159 / 180.0, 2.0)) * smoothstep(cr, mix(cr, 1.0, 0.1), cd) / 0.95;\n" \
 "  return L; }\n" \
 BRR_CLOUD_SRC \
