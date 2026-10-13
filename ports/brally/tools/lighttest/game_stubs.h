@@ -8,6 +8,7 @@ int light_capture_camera(LightCamera *c) { (void)c; return 0; }
 int light_capture_eye(float eye[3]) { (void)eye; return 0; }
 const LightTrack *light_game_track(void) { return NULL; }
 int light_game_weather(void) { return 0; }
+int light_game_beams(float pos[][3], float xaxis[][3], int max) { (void)pos, (void)xaxis, (void)max; return 0; }
 int light_glide_flip(void) { return 0; }
 int light_scene_spots(LightSpot *out, int max) { (void)out; (void)max; return 0; }
 #ifndef LT_HAVE_LIGHT_WORLD   /* night_test.m links the real light_world.c */

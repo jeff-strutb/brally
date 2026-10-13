@@ -185,6 +185,122 @@ int main(void)
             }
         }
     }
+    {   /* 9 lamplight only from blended decals: a warm sandy texture passes lit_emask's colour test, but drawn
+           opaque (Glide ONE, ZERO, as the rock and hill walls are) it neither glows nor makes lights; the
+           same texels as a blended window decal (SRC_ALPHA, ONE_MINUS_SRC_ALPHA) do, their flux kept */
+        enum { TW = 16 };
+        static uint8_t sand[TW * TW * 4];
+        float tri[6 * 9], eye[3] = { 5, -30, 3 }, rgb[3];
+        LightSpot s[LIGHT_WORLD_MAX];
+        double flux = 0;
+        int n, nl_opq, nl_bl, q;
+        for (i = 0; i < TW * TW; i++) {   /* sandstone: r 205, g 170, b 125 */
+            sand[4 * i] = 205; sand[4 * i + 1] = 170; sand[4 * i + 2] = 125; sand[4 * i + 3] = 255;
+        }
+        lit_emask(9, sand, TW, TW);
+        printf("INFO  a sandstone texture's glowing share by colour alone: %.2f (the colour test passes it)\n", s_eshare[9]);
+        for (q = 0; q < 3; q++) {   /* three 2 x 2 m patches of wall at y = 10 facing the eye */
+            float x0 = q * 4.0f, *a = &tri[18 * q];
+            float p[18] = { x0, 10, 0, x0 + 2, 10, 0, x0 + 2, 10, 2, x0, 10, 0, x0 + 2, 10, 2, x0, 10, 2 };
+            memcpy(a, p, sizeof p);
+            flux += M_PI * 100.0 * s_eshare[9] * 4.0;
+        }
+        memcpy(rgb, s_ecol[9], sizeof rgb);
+        /* the renderer's gate (brr_metal.m brr_draw): gather only when light_draw_may_glow */
+        light_world_gather(20, tri, light_draw_may_glow(4, 0) ? 6 : 0, s_eshare[9], rgb, eye);
+        for (q = 0; q < 61; q++)
+            light_world_refresh();
+        nl_opq = light_world_spots(s, LIGHT_WORLD_MAX, 0);
+        CHECK(!light_draw_may_glow(4, 0) && light_world_emitters() == 0 && nl_opq == 0,
+              "opaque sandstone (ONE, ZERO): may glow %d, %d emitters, %d lights", light_draw_may_glow(4, 0), light_world_emitters(), nl_opq);
+        light_world_gather(21, tri, light_draw_may_glow(1, 5) ? 6 : 0, s_eshare[9], rgb, eye);
+        for (q = 0; q < 61; q++)
+            light_world_refresh();
+        n = nl_bl = light_world_spots(s, LIGHT_WORLD_MAX, 0);
+        CHECK(light_draw_may_glow(1, 5) && light_draw_may_glow(4, 4) && light_world_emitters() == 6 && n > 0
+              && fabs(light_world_flux(s, n) - flux) / flux < 0.05,
+              "blended decal (SRC_ALPHA, 1-SRC_ALPHA): %d emitters, %d lights, %.0f lm against %.0f lm; additive may glow too", light_world_emitters(),
+              nl_bl, light_world_flux(s, n), flux);
+    }
+    {   /* 10 the lighthouse beam: which draws are it, and its light on the cone's facets */
+        enum { NF = 10 };
+        float apex[1][3] = { { 1296.18f, 853.266f, 17.1899f } }, cone[NF * 9], hill[9] = { 1290, 850, 10, 1300, 850, 12, 1295, 860, 30 };
+        float L = 77.0f, R = 9.0f, wb = 1.0f, worst_new = 0, worst_old = 0;
+        int f;
+        for (f = 0; f < NF; f++) {   /* a cone fanned from (near) the apex along -y, 77 m long, 10 facets */
+            float a0 = 2.0f * (float)M_PI * f / NF, a1 = 2.0f * (float)M_PI * (f + 1) / NF, *t = &cone[9 * f];
+            t[0] = apex[0][0] + 0.2f; t[1] = apex[0][1] - 0.4f; t[2] = apex[0][2];
+            t[3] = apex[0][0] + R * cosf(a0); t[4] = apex[0][1] - L; t[5] = apex[0][2] + R * sinf(a0);
+            t[6] = apex[0][0] + R * cosf(a1); t[7] = apex[0][1] - L; t[8] = apex[0][2] + R * sinf(a1);
+        }
+        CHECK(light_beam_draw(cone, NF, (const float (*)[3])apex, 1) && !light_beam_draw(hill, 1, (const float (*)[3])apex, 1)
+              && !light_beam_draw(cone, NF, (const float (*)[3])apex, 0),
+              "beam draws: the cone fanned from the beam instance is the beam; a hill triangle beside it is not; none without an instance");
+        /* the shader (brr_metal_lit.h fsf): a beam fragment is lin(colour) x 100 x white balance, the colour the
+           game's Gouraud gradient (1 at the apex to 0 at the end); the old path lit it as a surface, Lambert on the
+           facet's own normal (facen).  On each shared edge, at 9 points along it, both facets' values. */
+        for (f = 0; f < NF; f++) {
+            float *t = &cone[9 * f], *u2 = &cone[9 * ((f + 1) % NF)], na[3], nbv[3], l[3] = { 0.3f, 0.2f, 0.93f };
+            float e1[3] = { t[3] - t[0], t[4] - t[1], t[5] - t[2] }, e2[3] = { t[6] - t[0], t[7] - t[1], t[8] - t[2] };
+            float g1[3] = { u2[3] - u2[0], u2[4] - u2[1], u2[5] - u2[2] }, g2[3] = { u2[6] - u2[0], u2[7] - u2[1], u2[8] - u2[2] };
+            int k;
+            na[0] = e1[1] * e2[2] - e1[2] * e2[1]; na[1] = e1[2] * e2[0] - e1[0] * e2[2]; na[2] = e1[0] * e2[1] - e1[1] * e2[0];
+            nbv[0] = g1[1] * g2[2] - g1[2] * g2[1]; nbv[1] = g1[2] * g2[0] - g1[0] * g2[2]; nbv[2] = g1[0] * g2[1] - g1[1] * g2[0];
+            {
+                float la = sqrtf(na[0] * na[0] + na[1] * na[1] + na[2] * na[2]), lb = sqrtf(nbv[0] * nbv[0] + nbv[1] * nbv[1] + nbv[2] * nbv[2]);
+                for (k = 0; k < 3; k++) { na[k] /= la; nbv[k] /= lb; }
+            }
+            for (k = 1; k <= 9; k++) {
+                float s01 = k / 10.0f, col = 1.0f - s01;   /* the shared edge apex -> t[6..8] = u2[3..5]: the gradient's value there */
+                float ea = powf(col, 2.2f) * 100.0f * wb, eb = powf(col, 2.2f) * 100.0f * wb;   /* each facet's beam emission: no normal in it */
+                float oa = powf(col, 2.2f) * fmaxf(na[0] * l[0] + na[1] * l[1] + na[2] * l[2], 0.0f);
+                float ob = powf(col, 2.2f) * fmaxf(nbv[0] * l[0] + nbv[1] * l[1] + nbv[2] * l[2], 0.0f);
+                worst_new = fmaxf(worst_new, fabsf(ea - eb) / fmaxf(fmaxf(ea, eb), 1e-6f));
+                if (fmaxf(oa, ob) > 1e-6f)
+                    worst_old = fmaxf(worst_old, fabsf(oa - ob) / fmaxf(oa, ob));
+            }
+        }
+        CHECK(worst_new <= 0.01f, "beam emission: facets' values meet on every shared edge (worst step %.4f%%, limit 1%%); "
+              "lit as a surface on facet normals the steps were up to %.1f%%", 100.0f * worst_new, 100.0f * worst_old);
+        CHECK(LIGHT_BEAM_VOLW > 0.0f && LIGHT_BEAM_VOLW < 1.0f, "beam polygons at %.2f of their light with the volumetric fog on (the spot's in-scatter carries the beam)",
+              LIGHT_BEAM_VOLW);
+        {   /* the fixture's own beam triangles (Coastline 64 and 142) */
+            const char *path = getenv("TRACK_OBJ");
+            FILE *fo = path ? fopen(path, "r") : NULL;
+            if (!fo) {
+                printf("SKIP  beam draws on the fixture: no TRACK_OBJ\n");
+            } else {
+                static float vv[200000][3];
+                char line[1024], grp[32] = "";
+                int nv = 0, nbeam = 0, okb = 0, nother = 0, other = 0;
+                float lp[2][3] = { { 1296.18f, 853.266f, 17.1899f }, { 324.469f, 1194.27f, 40.3786f } };
+                while (fgets(line, sizeof line, fo)) {
+                    if (line[0] == 'v' && line[1] == ' ' && nv < 200000) {
+                        sscanf(line + 2, "%f %f %f", &vv[nv][0], &vv[nv][1], &vv[nv][2]);
+                        nv++;
+                    } else if (line[0] == 'g' && line[1] == ' ') {
+                        sscanf(line + 2, "%31s", grp);
+                    } else if (line[0] == 'f' && line[1] == ' ') {
+                        int a, b, c;
+                        float t9[9];
+                        if (sscanf(line + 2, "%d %d %d", &a, &b, &c) != 3 || a > nv || b > nv || c > nv)
+                            continue;
+                        memcpy(t9, vv[a - 1], 12); memcpy(t9 + 3, vv[b - 1], 12); memcpy(t9 + 6, vv[c - 1], 12);
+                        if (!strcmp(grp, "o64") || !strcmp(grp, "o142")) {
+                            nbeam++;
+                            okb += light_beam_draw(t9, 1, (const float (*)[3])lp, 2);
+                        } else {
+                            nother++;
+                            other += light_beam_draw(t9, 1, (const float (*)[3])lp, 2);
+                        }
+                    }
+                }
+                fclose(fo);
+                CHECK(nbeam > 0 && okb == nbeam && other == 0, "beam draws on Coastline's fixture: %d of %d beam triangles, %d of %d others",
+                      okb, nbeam, other, nother);
+            }
+        }
+    }
     {   /* 8 the shader's Purkinje weight on the GPU against the C copy */
         id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
         NSError *err = nil;

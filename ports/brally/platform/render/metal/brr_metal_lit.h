@@ -319,13 +319,16 @@ BRR_SHADOW_SRC \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
-"  if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
+/* a lighthouse beam: its own colour as light, the game's gradient along it, \
+   no face normal; under the volumetric fog the spot's in-scatter carries it */ \
+"  if (u.beam > 0.0) c = lin(h.o.rgb) * u.beam * lu.wb.rgb * (lu.vol.x > 0.5 ? u.beamw : 1.0);\n" \
+"  else if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
 "    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi);\n" \
 "  }\n" \
-"  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
+"  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 || u.beam > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \
 "fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n" \
