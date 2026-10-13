@@ -104,3 +104,27 @@ each surface.*
 Not yet: emissive lamps (the gantry's lights read as plain surfaces), the
 sky (the game's painted backdrop is kept), shadows from what is off screen,
 GPU timing.
+
+## Phase 2: the cars' lamps (2026-10-12)
+
+Every car in the race (`light_game.c` reads `g_aBrRaceDriver`: body frame,
+velocity, drive and brake torque, control word, model extent) carries four
+lamps (`light_scene.c`): low-beam headlights (about 20,000 cd, halogen
+white, the UN ECE R112 asymmetric pattern in the shader) at night, in fog and
+in rain; rear lamps (tail 5 cd red with the headlights, brake 80 cd, reverse
+300 cd white) from the car's own brake and reverse state. Unshadowed for
+now; the lamp positions are the faces of the model's extent (the lens faces
+are the refinement).
+
+Weather 4 is night: `28_weather_rain` runs it (`BR_LIGHT_STATS` prints
+weather 4) and its frames are night (black sky, lit windows); the script's
+"rain" comment is wrong.
+
+Exposure: the lighting pass bins every 16th pixel's luminance into a
+64-bin histogram; the mean log luminance between its 80th and 98.3rd
+percentiles (Unreal Engine's auto-exposure defaults) sets EV100 (K = 12.5).
+A plain mean failed at night: the moonlit dark pulled it to EV 1.4 and the
+headlit road burned out; the histogram band meters EV 2.7 there. Night's
+range is EV100 -2.5 to 7.5 (moonlight to a floodlit road).
+
+![Sunny and night, Original and the new lighting](phase2-headlights.png)

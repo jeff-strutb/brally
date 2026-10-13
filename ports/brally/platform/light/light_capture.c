@@ -260,9 +260,9 @@ void light_capture_swap(void)
         if (!t0)
             t0 = now;
         if (now - t0 >= 1000000000ull && s_st.frames) {
-            fprintf(stderr, "light: %u frames, %.0f camera + %.0f mirror + %.0f backdrop triangles a frame, reprojection error %.4f px max,"
+            fprintf(stderr, "light: weather %d, %u frames, %.0f camera + %.0f mirror + %.0f backdrop triangles a frame, reprojection error %.4f px max,"
                             " world x %.0f..%.0f y %.0f..%.0f z %.0f..%.0f\n",
-                    s_st.frames, (double)s_st.tris[0] / s_st.frames, (double)s_st.tris[2] / s_st.frames,
+                    light_game_weather(), s_st.frames, (double)s_st.tris[0] / s_st.frames, (double)s_st.tris[2] / s_st.frames,
                     (double)s_st.tris[3] / s_st.frames, s_st.err,
                     s_st.lo[0], s_st.hi[0], s_st.lo[1], s_st.hi[1], s_st.lo[2], s_st.hi[2]);
             memset(&s_st, 0, sizeof s_st);

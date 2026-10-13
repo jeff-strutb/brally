@@ -186,6 +186,23 @@ static NSString *const k_src = @
 /* the lighting: linear HDR in physical units (lux), a physical camera's
    exposure, Khronos PBR Neutral, sRGB; only where the G-buffer marks 3D */
 "struct LU { float4x4 sunvp; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; };\n"
+"struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n"
+/* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's
+   low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon
+   on the near side, stepping up 15 degrees on the kerb side, the hot spot a
+   degree and a half below the horizon and right of centre, a wide spread
+   below it), a rear lamp's broad cosine lobe */
+"static float lamp(LS l, float3 d) {\n"
+"  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n"
+"  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n"
+"  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n"
+"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958;\n"
+"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / 10.0) * ((h - 1.5) / 10.0));\n"
+"  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n"
+"  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n"
+"  float above = smoothstep(cut - 0.35, cut + 0.35, v);\n"
+"  return l.cd * spread * vert * mix(1.0, 0.012, above);\n"
+"}\n"
 "struct LO { float4 pos [[position]]; float2 uv; };\n"
 "vertex LO lvs(uint i [[vertex_id]]) { float2 p = float2((i << 1) & 2, i & 2); LO o; o.pos = float4(p * 2.0 - 1.0, 0, 1); o.uv = float2(p.x, 1.0 - p.y); return o; }\n"
 "static float3 neutral(float3 c) {\n"
@@ -197,7 +214,7 @@ static NSString *const k_src = @
 "static float srgb(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n"
 "fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> alb [[texture(0)]],\n"
 "                    texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]], depth2d<float> sm [[texture(3)]],\n"
-"                    device atomic_uint *lum [[buffer(1)]]) {\n"
+"                    device atomic_uint *lum [[buffer(1)]], const device LS *ls [[buffer(2)]]) {\n"
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n"
 "  if (a.a < 0.5) discard_fragment();\n"
 "  float4 P = pos.read(px), N4 = nrm.read(px); float3 p = P.xyz, n = N4.xyz, v = normalize(u.eye.xyz - p);\n"
@@ -215,6 +232,15 @@ static NSString *const k_src = @
 "  float dd = nh * nh * (r2 - 1.0) + 1.0, D = r2 / (3.14159 * dd * dd);\n"
 "  float F = 0.04 + 0.96 * pow(1.0 - max(dot(h, v), 0.0), 5.0);\n"
 "  float3 Lo = a.rgb / 3.14159 * (u.sunc.rgb * ndl * vis + sky) + u.sunc.rgb * (D * F * 0.25 * ndl * vis * u.misc.z);\n"
+"  for (int i = 0; i < int(u.eye.w); i++) {   /* the lamps: E = I cos / d^2, a smooth window at their range */\n"
+"    LS l = ls[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n"
+"    float nl = max(dot(n, ld), 0.0); if (nl <= 0.0) continue;\n"
+"    float win = 1.0 - smoothstep(0.7 * l.range, l.range, dl);\n"
+"    float E = lamp(l, -ld) * nl / d2 * win;\n"
+"    float3 hh = normalize(ld + v); float nh2 = max(dot(n, hh), 0.0), dd2 = nh2 * nh2 * (r2 - 1.0) + 1.0;\n"
+"    float D2 = r2 / (3.14159 * dd2 * dd2), F2 = 0.04 + 0.96 * pow(1.0 - max(dot(hh, v), 0.0), 5.0);\n"
+"    Lo += l.rgb.rgb * E * (a.rgb / 3.14159 + D2 * F2 * 0.25 * u.misc.z);\n"
+"  }\n"
 "  int dbg = int(u.misc.w);\n"
 "  if (dbg == 1) return float4(pow(a.rgb, 1.0 / 2.2), 1);\n"
 "  if (dbg == 2) return float4(n * 0.5 + 0.5, 1);\n"
@@ -222,9 +248,8 @@ static NSString *const k_src = @
 "  if (dbg == 4) return float4(float3(ndl), 1);\n"
 "  Lo *= u.gndc.w > 0 ? float3(u.sunc.w, u.skyc.w, u.gndc.w) : float3(1);   /* the camera's white balance */\n"
 "  float Y = dot(Lo, float3(0.2126, 0.7152, 0.0722));\n"
-"  if (((px.x | px.y) & 3) == 0) {   /* every 16th pixel: the frame's mean log luminance, for the exposure */\n"
-"    atomic_fetch_add_explicit(&lum[0], uint(clamp(log2(max(Y, 1e-4)) + 20.0, 0.0, 60.0) * 256.0), memory_order_relaxed);\n"
-"    atomic_fetch_add_explicit(&lum[1], 1u, memory_order_relaxed); }\n"
+"  if (((px.x | px.y) & 3) == 0)   /* every 16th pixel: the luminance histogram (log2, half stops from 2^-10) */\n"
+"    atomic_fetch_add_explicit(&lum[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed);\n"
 "  float3 c = neutral(Lo * u.misc.x);\n"
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n"
 "  float3 o = float3(srgb(c.r), srgb(c.g), srgb(c.b));\n"
@@ -965,20 +990,29 @@ typedef struct LU { float sunvp[16]; float eye[4], sun[4], sunc[4], skyc[4], gnd
  * illuminance and colour, the sky's and the ground's light on a surface
  * facing them, lux; the camera's exposure value at ISO 100 (the "sunny 16"
  * rule puts a sunlit scene near 15) and how glossy the ground is (wet) */
-static const struct { float sun, sky, gnd, ev, spec; float sunc[3], skyc[3], gndc[3]; } k_weather[5] = {
-    /* sunny */ { 100000, 20000, 6000, 14.8f, 0.15f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f } },
-    /* fog   */ {  12000, 16000, 6000, 13.0f, 0.30f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f } },
-    /* rain  */ {   6000, 11000, 3500, 12.3f, 1.00f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f } },
-    /* snow  */ {  25000, 22000, 16000, 13.8f, 0.30f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f } },
-    /* night */ {   0.30f, 0.08f, 0.02f, -2.2f, 0.20f, { 0.75f, 0.82f, 1.00f }, { 0.35f, 0.45f, 0.75f }, { 0.40f, 0.40f, 0.40f } },
+static const struct { float sun, sky, gnd, ev, evlo, evhi, spec; float sunc[3], skyc[3], gndc[3]; } k_weather[5] = {
+    /* sunny */ { 100000, 20000, 6000, 14.8f, 12.0f, 16.0f, 0.15f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f } },
+    /* fog   */ {  12000, 16000, 6000, 13.0f, 10.5f, 15.0f, 0.30f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f } },
+    /* rain  */ {   6000, 11000, 3500, 12.3f, 9.5f, 14.5f, 1.00f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f } },
+    /* snow  */ {  25000, 22000, 16000, 13.8f, 11.5f, 15.5f, 0.30f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f } },
+    /* night: a full moon's light and the night sky; the metered exposure
+       ranges from moonlight (EV100 about -2) to a headlamp- or floodlit road
+       (about 7), never to daylight */
+    /* night */ {   0.30f, 0.08f, 0.02f, 1.0f, -2.5f, 7.5f, 0.20f, { 0.75f, 0.82f, 1.00f }, { 0.35f, 0.45f, 0.75f }, { 0.40f, 0.40f, 0.40f } },
 };
 
-/* the exposure: the frame's mean log luminance, measured by the lighting
- * pass into one of three buffers (read back three frames later, when its
- * frame is done), sets the camera's EV100 as a light meter does (sensor
- * calibration K = 12.5), adapting smoothly (Lagarde and de Rousiers 2014) */
+/* the exposure: the lighting pass bins the frame's luminance into a
+ * histogram (one of three buffers, read back three frames later when its
+ * frame is done); the mean log luminance of the band between its 80th and
+ * 98.3rd percentiles (Unreal Engine's auto-exposure defaults: the darkest
+ * pixels and the few brightest do not move it) sets the camera's EV100 as a
+ * light meter does (sensor calibration K = 12.5), adapting smoothly (Lagarde
+ * and de Rousiers 2014) */
+#define LUM_BINS 64
 static id<MTLBuffer> s_lum[3];
 static float s_ev = 1e9f;
+static id<MTLBuffer> s_spots[3];
+#define SPOTS_MAX 128
 
 static void relight(void)
 {
@@ -998,8 +1032,9 @@ static void relight(void)
     }
     {   /* white balance: the camera balanced to the sun and sky together, as a camera's auto white balance */
         float wb[3], y;
-        for (k = 0; k < 3; k++)
-            wb[k] = k_weather[w].sunc[k] * k_weather[w].sun * 0.5f + k_weather[w].skyc[k] * k_weather[w].sky;
+        static const float halogen[3] = { 1.00f, 0.83f, 0.62f };
+        for (k = 0; k < 3; k++)            /* at night the lamps light the scene: balanced to the headlamps */
+            wb[k] = w == 4 ? halogen[k] : k_weather[w].sunc[k] * k_weather[w].sun * 0.5f + k_weather[w].skyc[k] * k_weather[w].sky;
         y = 0.2126f * wb[0] + 0.7152f * wb[1] + 0.0722f * wb[2];
         u.sunc[3] = y / wb[0];
         u.skyc[3] = y / wb[1];
@@ -1011,21 +1046,42 @@ static void relight(void)
         float target = k_weather[w].ev;
         if (!s_lum[0])
             for (k = 0; k < 3; k++)
-                s_lum[k] = [s_dev newBufferWithLength:8 options:MTLResourceStorageModeShared];
+                s_lum[k] = [s_dev newBufferWithLength:LUM_BINS * 4 options:MTLResourceStorageModeShared];
         b = s_lum[s_vbi];
         c = (uint32_t *)[b contents];
-        if (c[1] > 0) {
-            float lavg = exp2f((float)c[0] / 256.0f / (float)c[1] - 20.0f);
-            target = log2f(fmaxf(lavg, 1e-4f) * 100.0f / 12.5f);
-            target = fminf(fmaxf(target, k_weather[w].ev - 3.0f), k_weather[w].ev + 3.0f);
+        unsigned ns = 0, lo, hi, run = 0;
+        float mlog = 0.0f, wsum = 0.0f;
+        int i;
+        for (i = 0; i < LUM_BINS; i++)
+            ns += c[i];
+        lo = (unsigned)(ns * 0.80f);
+        hi = (unsigned)(ns * 0.983f);
+        for (i = 0; i < LUM_BINS; i++) {          /* the part of each bin inside [lo, hi) */
+            unsigned a0 = run, a1 = run + c[i];
+            float in = (float)((a1 < hi ? a1 : hi) > (a0 > lo ? a0 : lo) ? (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo) : 0);
+            mlog += in * ((i + 0.5f) / 2.0f - 10.0f);
+            wsum += in;
+            run = a1;
         }
-        c[0] = c[1] = 0;
+        if (wsum > 0) {
+            mlog /= wsum;
+            target = log2f(exp2f(mlog) * 100.0f / 12.5f);
+            target = fminf(fmaxf(target, k_weather[w].evlo), k_weather[w].evhi);
+        }
+        memset(c, 0, LUM_BINS * 4);
         if (s_ev > 1e8f)
             s_ev = target;
         s_ev += (target - s_ev) * 0.05f;                     /* about a second to adapt at 60 frames */
+        if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
+            fprintf(stderr, "light: frame %lu weather %d meter %u samples, mean log2 %.2f, target EV %.2f, EV %.2f, %d lamps\n", s_frame, w,
+                    ns, mlog, target, s_ev, (int)u.eye[3]);
         u.misc[0] = 1.0f / (1.2f * powf(2.0f, s_ev));
     }
     u.misc[2] = k_weather[w].spec;
+    if (!s_spots[0])
+        for (k = 0; k < 3; k++)
+            s_spots[k] = [s_dev newBufferWithLength:SPOTS_MAX * sizeof(LightSpot) options:MTLResourceStorageModeShared];
+    u.eye[3] = (float)light_scene_spots((LightSpot *)[s_spots[s_vbi] contents], SPOTS_MAX);
     {   /* BR_LIGHT_VIEW: 1 albedo, 2 normals, 3 sun shadow, 4 the sun's angle (the debug view) */
         const char *e = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e ? (float)atoi(e) : 0.0f;
@@ -1102,6 +1158,7 @@ static void relight(void)
         [e setFragmentTexture:s_gnrm atIndex:2];
         [e setFragmentTexture:s_shadow atIndex:3];
         [e setFragmentBuffer:s_lum[s_vbi] offset:0 atIndex:1];
+        [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:2];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e endEncoding];
     }

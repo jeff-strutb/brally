@@ -18,6 +18,34 @@ typedef struct LightCamera {
 void light_game_camera(LightCamera *c);
 /* the race's weather: 0 sunny, 1 fog, 2 rain, 3 snow, 4 night (MEASUREMENTS.md) */
 int  light_game_weather(void);
+/* a car as the race has it: its frame (rows of its body matrix), velocity,
+ * the drive torque (negative: driving backwards) and brake torque (negative
+ * while held) its physics applies, its control word (0x20000: reverse), and
+ * its model's extent in its own frame */
+typedef struct LightCar {
+    float fwd[3], side[3], up[3], pos[3], vel[3];
+    float drive, brake;
+    uint32_t ctl;
+    float lo[3], hi[3];
+    int has_box;
+} LightCar;
+int  light_game_cars(LightCar *out, int max);
+
+/* ---- the scene's lights (light_scene.c) ------------------------------------------
+ * every light this frame in world space, physical units: candela along the
+ * light's axis, its colour (luminance 1), its frame (axis, side, up) and
+ * kind */
+enum { LIGHT_HEAD, LIGHT_REAR };
+typedef struct LightSpot {
+    float pos[3];
+    float kind;          /* LIGHT_HEAD, LIGHT_REAR */
+    float axis[3];
+    float candela;
+    float side[3];
+    float range;
+    float rgb[4];
+} LightSpot;
+int  light_scene_spots(LightSpot *out, int max);
 
 /* ---- the capture (light_capture.c) --------------------------------------------
  * glide.c hands over every display-list triangle of the camera's view (0) or
