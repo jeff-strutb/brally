@@ -19,7 +19,7 @@ PY=.venv/bin/python
 [ -x "$PY" ] || PY=python3
 
 "$PY" "$T/metalsrc.py" "$M/brr_metal.m" "$OUT/metalsrc.c"
-cc -I"$M" -o "$OUT/metalsrc" "$OUT/metalsrc.c"
+cc -I"$M" -I"$M/../../light" -o "$OUT/metalsrc" "$OUT/metalsrc.c"
 "$OUT/metalsrc" > "$OUT/brr.metal"
 if xcrun -sdk macosx metal --version > /dev/null 2>&1; then
     for sdk in macosx iphoneos; do
@@ -36,5 +36,5 @@ fi
 cc -std=c99 -O2 -Wall -Wextra -ffp-contract=off -o "$OUT/shadowtest" "$T/shadowtest.c" -lm
 "$OUT/shadowtest"
 
-clang -fobjc-arc -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -o "$OUT/gputest" "$T/gputest.m" -I"$M" -framework Metal -framework Foundation
+clang -fobjc-arc -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-function -o "$OUT/gputest" "$T/gputest.m" -I"$M" -I"$M/../../light" -framework Metal -framework Foundation
 MTL_DEBUG_LAYER=1 "$OUT/gputest" "$OUT/brr.metal"
