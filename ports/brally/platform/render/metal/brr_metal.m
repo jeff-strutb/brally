@@ -37,6 +37,7 @@
 #include "brr_metal_sky.h"
 #include "brr_metal_rt.h"
 #include "brr_shadow.h"
+#include "brr_metal_taa_api.h"
 #include "br_flags.h"
 #include "light.h"
 #include "light_cluster.h"
@@ -220,6 +221,8 @@ static id<MTLTexture> s_col, s_dep;
 static int s_fresh;                 /* the targets are new: the next pass clears them */
 static id<MTLRenderPipelineState> s_pipes[16][16];     /* by blend src, dst */
 static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe, s_lfbsharp;
+static id<MTLBuffer> s_xtj;            /* the lit 3D's jittered copy of it (brr_metal_taa.m), while its passes draw */
+static int s_nxf[3];
 static id<MTLBuffer> s_xt[3];           /* each frame's map table (glide.c), with its vertex buffer */
 static id<MTLDepthStencilState> s_ds[2][8][2];         /* depth on, function, write */
 static id<MTLDepthStencilState> s_clear_ds[2];
@@ -660,7 +663,7 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
     if (with_depth)
         [e setDepthStencilState:ds_for(o->dmode, o->dfn, o->dmask)];
-    [e setVertexBuffer:s_xt[s_vbi] offset:0 atIndex:2];
+    [e setVertexBuffer:s_xtj ? s_xtj : s_xt[s_vbi] offset:0 atIndex:2];
     [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
     [e setVertexBytes:&o->u length:sizeof o->u atIndex:1];
     [e setFragmentBytes:&o->u length:sizeof o->u atIndex:0];
@@ -1081,6 +1084,10 @@ static void lit_present(void)
     BrrCascade cs[CASCADES];
     id<MTLRenderCommandEncoder> e;
     MTLRenderPassDescriptor *rp;
+    float taa_s[16];
+    id<MTLTexture> hdr = s_hdr;
+    id<MTLBuffer> xtj;
+    s_xtj = nil;
     lit_targets();
     lit_gpu_read();
     memset(s_gpu_frame_used, 0, sizeof s_gpu_frame_used);
@@ -1147,6 +1154,17 @@ static void lit_present(void)
         u.csoft[3] = CONTACT_LEN;
     }
     lit_lights(eye, have_cam ? cam.vp : NULL);
+    if (have_cam) {   /* TAA (brr_metal_taa.m): this frame's unjittered world-to-pixel matrix, and the jittered screen map */
+        int xf = 0;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
+            }
+        brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, taa_s);
+        s_xtj = brr_taa_begin(s_dev, s_xt[s_vbi], s_vbi, s_nxf[s_vbi], s_rw, s_rh, NULL);
+    }
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
         /* the atmosphere's tables: transmittance and multiple scattering when the
@@ -1435,6 +1453,8 @@ static void lit_present(void)
             break;
 
     /* the lighting, in HDR: the background and backdrop, then every G-buffer pixel */
+    xtj = s_xtj;
+    s_xtj = nil;
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -1484,6 +1504,7 @@ static void lit_present(void)
     [e endEncoding];
 
     /* the blended 3D, forward-lit, in the game's order */
+    s_xtj = xtj;
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
@@ -1504,6 +1525,11 @@ static void lit_present(void)
         }
     [e endEncoding];
 
+    if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post */
+        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_dep, taa_s, cam.vp, eye);
+        s_xtj = nil;
+    }
+
     /* bloom */
     for (k = 0; k < s_nbl; k++) {
         rp = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -1512,7 +1538,7 @@ static void lit_present(void)
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
         e = lit_encoder(rp, 6);   /* bloom down */
         [e setRenderPipelineState:s_lbd];
-        [e setFragmentTexture:k ? s_bl[k - 1] : s_hdr atIndex:0];
+        [e setFragmentTexture:k ? s_bl[k - 1] : hdr atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e endEncoding];
     }
@@ -1541,8 +1567,8 @@ static void lit_present(void)
         pu.bg[1] = u.bg[1];
         [e setFragmentBytes:&pu length:sizeof pu atIndex:0];
     }
-    [e setFragmentTexture:s_hdr atIndex:0];
-    [e setFragmentTexture:s_nbl ? s_bl[0] : s_hdr atIndex:1];
+    [e setFragmentTexture:hdr atIndex:0];
+    [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
     [e setFragmentTexture:s_galb atIndex:2];
     [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1589,6 +1615,7 @@ static void lit_reset(void)
 {
     int i;
     s_galb = s_gpos = s_gnrm = s_hdr = nil;
+    brr_taa_reset();
     for (i = 0; i < 6; i++)
         s_bl[i] = nil;
     s_nbl = 0;
@@ -2042,6 +2069,7 @@ void brr_xf(const float (*t)[4], int n)
             n = BRR_XF_MAX;
         frame_begin();                          /* the frame's command buffer, and so its slot */
         memcpy([s_xt[s_vbi] contents], t, (size_t)n * 16);
+        s_nxf[s_vbi] = n;
     }
 }
 
