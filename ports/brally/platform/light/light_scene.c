@@ -87,7 +87,7 @@ int light_scene_lights(LightSpot *out, int *id, int max)
                 o->candela = 20000.0f;
                 o->range = 150.0f;
                 o->cosout = 0.3420201f;    /* 70 degrees: past it the pattern is under 1% of its peak */
-                o->rgb[0] = 1.00f; o->rgb[1] = 0.83f; o->rgb[2] = 0.62f;
+                o->rgb[0] = 1.00f; o->rgb[1] = 0.95f; o->rgb[2] = 0.90f;   /* a cool white (HID/LED): Forza Horizon 6's pools read neutral to cool (NIGHT.md) */
             } else {
                 o->kind = LIGHT_REAR;
                 for (a = 0; a < 3; a++) {

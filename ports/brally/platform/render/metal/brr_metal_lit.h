@@ -263,7 +263,7 @@ BRR_SHADOW_SRC \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  r.alb = float4(delit(h.tex.rgb, h.it.rgb), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
+"  r.alb = float4(min(delit(h.tex.rgb, h.it.rgb) * u.albk, 0.9), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
 "  r.pos = float4(in.wp, float(fc)); r.nrm = float4(facen(in.wp), h.fog);\n" \
 "  return r;\n" \
@@ -337,7 +337,7 @@ BRR_SHADOW_SRC \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi, ign(in.pos.xy) * 6.2831853);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, min(delit(h.tex.rgb, h.it.rgb) * u.albk, 0.9), lu.misc.z, g, sv, bE, gi, ign(in.pos.xy) * 6.2831853);\n" \
 "  }\n" \
 /* the volumetric fog on, the same as the opaque surfaces behind it take (brr_metal_vol.h), never the game's */ \
 "  if (lu.vol.x > 0.5) return float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, preexp(lu, c), u.addk > 0.0 || u.beam > 0.0), h.o.a);\n" \
@@ -381,13 +381,13 @@ BRR_GLARE_SRC \
 "  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n" \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
 /* local exposure (light_night.h's light_local_exposure, the same numbers):
-   a region over the knee, by its blurred luminance, compressed to
-   emax e / (e + emax) stops over it; lexp: x emax, y the key (pre-exposed),
-   z the blur's scale (the bloom level holds the levels under it summed) */ \
-"static float locexp(float Ypix, float Yloc, float key, float emax) {\n" \
-"  float Y = min(Yloc, Ypix * 2.8284271), kn = key * 2.8284271;   /* LIGHT_LOCAL_EDGE, LIGHT_LOCAL_KNEE: 1.5 stops */\n" \
-"  if (!(Y > kn) || !(emax > 0.0)) return 1.0;\n" \
-"  float e = log2(Y / kn); return exp2(emax * e / (e + emax) - e); }\n" \
+   a region over the knee, by its blurred luminance, keeps c of its stops
+   over it; lexp: x c, y the knee (pre-exposed), z the blur's scale (the
+   bloom level holds the levels under it summed) */ \
+"static float locexp(float Ypix, float Yloc, float key, float c) {\n" \
+"  float Y = min(Yloc, Ypix * 2.8284271), kn = key;   /* LIGHT_LOCAL_EDGE 1.5 stops; key: LIGHT_LOCAL_LEVEL */\n" \
+"  if (!(Y > kn) || !(c > 0.0) || !(c < 1.0)) return 1.0;\n" \
+"  return exp2((c - 1.0) * log2(Y / kn)); }\n" \
 "fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
 "                    texture2d<float> alb [[texture(2)]], texture2d<float> blm [[texture(3)]],\n" \
 "                    device atomic_uint *hist [[buffer(1)]], constant GLU &gl [[buffer(2)]]) {\n" \
@@ -401,8 +401,9 @@ BRR_GLARE_SRC \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
 "                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
 "  if (u.lexp.x > 0.0 && alb.read(apx).a >= 0.25) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)) * u.lexp.z, u.lexp.y, u.lexp.x);   /* after the meter; surfaces only: the moon's bloom in the blur made a dark disc of the sky about it */\n" \
-"  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
+"  float pw = u.lexp.y > 0.0 ? purkinje_w(dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12)) : 0.0;   /* night only (lexp.y: the night's local exposure is set) */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
+"  c = purkinje(c, pw);   /* the eye at night: the rods' blue, display-referred */\n" \
 "  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n"

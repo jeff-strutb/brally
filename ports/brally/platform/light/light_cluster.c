@@ -753,7 +753,7 @@ void light_shadow_plan(LightSet *s, const int *ids, const LightClusterStats *st,
         int i2 = cand[k], id = ids ? ids[i2] & (LC_IDS - 1) : i2, sz = size[i2] * LS_TILE_MIN;
         int x = px[i2] * LS_TILE_MIN, y = py[i2] * LS_TILE_MIN, same, render = 0;
         uint64_t h;
-        if (!ok[i2])
+        if (!ok[i2] || getenv("BR_LIGHT_NOLAMPSHADOW"))   /* diagnostic: every lamp unshadowed */
             continue;
         h = dyn_hash(&s->l[i2], dyn, ndyn);
         same = s_sc[id].has && s_sc[id].placed + 1 == fr && s_sc[id].x == x && s_sc[id].y == y && s_sc[id].size == sz;

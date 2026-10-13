@@ -35,6 +35,7 @@
 #include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
 #include "light_night.h"
+#include "light_texmat.h"
 #include "light_world.h"
 #include "brr_metal_sky.h"
 #include "brr_skymask.h"
@@ -70,6 +71,7 @@ static NSString *const k_src = @
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
 "  float glow, addk, beam, beamw;\n"
+"  float albk, upad0, upad1, upad2;\n"
 "};\n"
 "struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
@@ -218,6 +220,7 @@ typedef struct U {
     float fog[64];
     float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
     float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
+    float albk, upad[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk) */
 } U;
 
 /* ---- state --------------------------------------------------------------------------- */
@@ -505,6 +508,66 @@ static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], sky
 static const float k_grade[5][2] = { { 1.12f, 1.05f }, { 1, 1 }, { 1, 1 }, { 1, 1 }, { 1, 1 } };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
+static uint8_t s_tmat[TEX_MAX];          /* a texture's material (light_texmat.h), 255 untagged */
+static float s_tmean[TEX_MAX];           /* its texels' mean linear luminance (opaque ones) */
+static int s_tm_up, s_tm_hit;            /* uploads, and of them tagged (BR_LIGHT_STATS) */
+/* the mean albedo of each material, linear: what a surface of it reflects
+ * (pavement solar reflectance: asphalt 0.05 new to 0.2 worn, concrete 0.25 to
+ * 0.4, LBNL Heat Island Group; soils, sand, rock, grass and snow from the
+ * albedo charts physically based engines author to, Frostbite's
+ * Lagarde and de Rousiers 2014, DONTNOD's chart); 0 keeps the game's
+ * painted level (signs, effects, lamps, water, vehicles, the untagged) */
+static const float k_mat_albedo[LIGHT_MAT_COUNT] = {
+    [LIGHT_MAT_ASPHALT] = 0.12f, [LIGHT_MAT_CONCRETE] = 0.35f, [LIGHT_MAT_SAND] = 0.35f, [LIGHT_MAT_DIRT] = 0.20f,
+    [LIGHT_MAT_ROCK] = 0.25f, [LIGHT_MAT_GRASS] = 0.21f, [LIGHT_MAT_FOLIAGE] = 0.15f, [LIGHT_MAT_BUILDING] = 0.60f,
+    [LIGHT_MAT_WOOD] = 0.25f, [LIGHT_MAT_SNOW] = 0.80f, [LIGHT_MAT_ICE] = 0.50f, [LIGHT_MAT_TUNNEL] = 0.30f,
+};
+/* the scale that brings a texture's de-lit mean (0.85 x its texels' linear
+ * mean, brr_metal_lit.h delit) to its material's albedo; its texture kept.
+ * The game's textures are painted bright (Coastline's road de-lit 0.7, a
+ * headlamp pool on it a white wash; asphalt is about 0.12) */
+static float lit_albk(uint32_t tid)
+{
+    float a;
+    if (tid >= TEX_MAX || s_tmat[tid] == 255 || !(a = k_mat_albedo[s_tmat[tid]]) || !(s_tmean[tid] > 0.002f))
+        return 1.0f;
+    a /= 0.85f * s_tmean[tid];
+    return a < 0.05f ? 0.05f : a > 2.0f ? 2.0f : a;
+}
+/* a texture's material: the FNV-1a hash of its RGBA8 texels (per 32-bit texel), as texmat.csv keys them */
+static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
+{
+    uint32_t hs = 2166136261u;
+    size_t i, n = (size_t)w * (size_t)h * 4;
+    int lo = 0, hi = (int)(sizeof k_light_texmat / sizeof k_light_texmat[0]) - 1;
+    double sum = 0;
+    long cnt = 0;
+    for (i = 0; i < n; i += 4)   /* per texel, its RGBA8 as one little-endian word */
+        hs = (hs ^ ((uint32_t)rgba[i] | (uint32_t)rgba[i + 1] << 8 | (uint32_t)rgba[i + 2] << 16 | (uint32_t)rgba[i + 3] << 24)) * 16777619u;
+    s_tmat[tid] = 255;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        if (k_light_texmat[m].hash == hs) {
+            s_tmat[tid] = k_light_texmat[m].mat;
+            break;
+        }
+        if (k_light_texmat[m].hash < hs)
+            lo = m + 1;
+        else
+            hi = m - 1;
+    }
+    for (i = 0; i < n; i += 4)
+        if (rgba[i + 3] >= 128) {
+            sum += 0.2126 * pow(rgba[i] / 255.0, 2.2) + 0.7152 * pow(rgba[i + 1] / 255.0, 2.2) + 0.0722 * pow(rgba[i + 2] / 255.0, 2.2);
+            cnt++;
+        }
+    s_tmean[tid] = cnt ? (float)(sum / cnt) : 0.0f;
+    s_tm_up++;
+    s_tm_hit += s_tmat[tid] != 255;
+    if (getenv("BR_LIGHT_TEXMATLOG"))
+        fprintf(stderr, "texmat: tex %u %dx%d hash %08X %s mean %.3f\n", tid, w, h, hs,
+                s_tmat[tid] != 255 ? k_light_mat_name[s_tmat[tid]] : "-", s_tmean[tid]);
+}
 
 static id<MTLRenderPipelineState> lit_pipe(NSString *vs, NSString *fs, const MTLPixelFormat *f, int nf, int depth,
                                            int blend_src, int blend_dst)
@@ -1177,6 +1240,16 @@ static void lit_lights(const float eye[3], const float *vp)
                 "%d drawn (%ld texels, %zu track triangles), %d cached, %d stale, %d unshadowed%s\n",
                 s_frame, st.lights, st.visible, st.entries, st.maxlist, s_lplan.n, s_lplan.rendered, s_lplan.texels, s_lcn / 3,
                 s_lplan.cached, s_lplan.stale, s_lplan.dropped, s_lplan.repacked ? ", repacked" : "");
+    if (getenv("BR_LIGHT_LAMPLOG") && s_frame % 120 == 0) {   /* diagnostic: the lamps nearest the eye */
+        fprintf(stderr, "lamps: frame %lu eye %.2f %.2f %.2f\n", s_frame, eye[0], eye[1], eye[2]);
+        for (k = 0; k < n; k++) {
+            const LightSpot *l = &set->l[k];
+            float dx = l->pos[0] - eye[0], dy = l->pos[1] - eye[1], dz = l->pos[2] - eye[2];
+            if (dx * dx + dy * dy + dz * dz < 400.0f)
+                fprintf(stderr, "  lamp %d kind %d pos %.2f %.2f %.2f axis %.3f %.3f %.3f cd %.0f range %.0f cosout %.3f\n", k, (int)l->kind,
+                        l->pos[0], l->pos[1], l->pos[2], l->axis[0], l->axis[1], l->axis[2], l->candela, l->range, l->cosout);
+        }
+    }
 }
 
 /* the lamps' shadow tiles the plan draws this frame */
@@ -1348,8 +1421,8 @@ static void lit_present(void)
     }
     u.misc[0] = lit_exposure(w);
     if (w == 4) {   /* night: the lamps' pools compressed (light_local_exposure) */
-        u.lexp[0] = LIGHT_LOCAL_EMAX;
-        u.lexp[1] = lit_night_key();
+        u.lexp[0] = getenv("BR_LIGHT_NOLOCAL") ? 0.0f : LIGHT_LOCAL_CONTRAST;   /* BR_LIGHT_NOLOCAL: diagnostic */
+        u.lexp[1] = LIGHT_LOCAL_LEVEL;
     }
     u.misc[2] = k_weather[w].rough;
     u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
@@ -1506,7 +1579,7 @@ static void lit_present(void)
             ku.ktop[2] = k_sky[w].skyk;
             ku.ktop[3] = u.misc[3];            /* the debug view */
             ku.cld[0] = k_sky[w].cover;
-            ku.cld[1] = k_sky[w].dens;
+            ku.cld[1] = getenv("BR_LIGHT_CLOUDDENS") ? (float)atof(getenv("BR_LIGHT_CLOUDDENS")) : k_sky[w].dens;   /* BR_LIGHT_CLOUDDENS: diagnostic */
             ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
             ku.cld[3] = getenv("BR_LIGHT_NOCLOUDS") ? 0.0f : 1.0f;    /* the cloud layer's tier flag */
             ku.moon[0] = w == 4 ? light_moon_normal(k_weather[w].elev) : 0.0f;   /* at night the light's direction is the moon's: its disc (lux at the ground, facing it) */
@@ -2034,6 +2107,7 @@ uint32_t brr_texture(uint32_t tid, const uint8_t *rgba, int w, int h)
         s_tex[tid] = t;
         s_skym[tid] = nil;
         lit_emask(tid, rgba, w, h);
+        lit_texmat(tid, rgba, w, h);
         light_glow_new(&s_glow, tid);
         return tid;
     }
@@ -2196,6 +2270,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.tc_alpha_fn = st->tc_alpha_fn; u.tc_alpha_factor = st->tc_alpha_factor;
         u.tc_rgb_invert = st->tc_rgb_invert; u.tc_alpha_invert = st->tc_alpha_invert;
         u.has_tex = st->texture != 0;
+        u.albk = u.has_tex ? lit_albk(st->texture) : 1.0f;
         u.atest_fn = st->atest_fn;
         u.atest_ref = st->atest_ref;
         u.fog_mode = st->fog_mode & 0xFF;

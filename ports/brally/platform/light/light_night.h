@@ -47,39 +47,42 @@ static inline float light_moon_ground(float elev_deg)
  * before the tonemap); the lamps' pools are brought down by the local
  * exposure (light_local_exposure).  EV100 from the camera's exposure
  * 1 / (1.2 2^EV): EV = log2(L / (1.2 key)), L = 0.18 Yamb / pi.  The key is
- * a night's, well under a day's mid-grey: Coastline's road and walls de-lit
- * are 0.6 to 0.8, not 18%, and at 0.12 the moonlit frame's ground read
- * 214/255 (an overcast day); at 0.02, 80. */
-#define LIGHT_NIGHT_KEY   0.02f
+ * Forza Horizon 6's night (NIGHT.md): its moonlit ground and road outside
+ * lamp light at display Y 0.008 to 0.03, its sky 0.015 to 0.057.  At 0.008
+ * Coastline's moonlit hills, walls and sea read 0.009 to 0.022 and its sky
+ * about 0.018 in the game's own frames (PBR Neutral's toe takes a grey x
+ * under 0.08 to 6.25 x^2, so the display goes as the key squared there). */
+#define LIGHT_NIGHT_KEY   0.008f
 #define LIGHT_LOCAL_EDGE 1.5f   /* stops: a pixel this far under its surroundings' mean is across an edge */
-#define LIGHT_LOCAL_KNEE 1.5f   /* stops over the key where the compression starts */
-#define LIGHT_LOCAL_EMAX 1.5f   /* stops: the most a region ends over the knee, however bright */
+#define LIGHT_LOCAL_LEVEL 0.45f   /* pre-exposed: where the compression starts, near the tonemap's shoulder (0.76):
+                                     at the night's key the headlamp pools already sit 5.3 stops over the moonlit
+                                     road, Forza Horizon 6's ratio; only what would clip is brought down */
+#define LIGHT_LOCAL_CONTRAST 0.7f   /* the highlights' contrast over it, in stops (Unreal's highlight contrast 0.6 to 0.8) */
 static inline float light_night_ev(float Yamb, float key)
 {
     return log2f(0.18f * Yamb / 3.14159265f / (1.2f * key));
 }
 
 /* ---- local exposure ---------------------------------------------------------------
- * A region brighter than the knee (LIGHT_LOCAL_KNEE stops over the key, its
- * local mean Yloc, pre-exposed: a blur of the frame) is brought down so its
- * excess e stops over the knee becomes emax e / (e + emax): a stop or two
- * nearly kept (the moonlit sky and the haze keep their gradation), a
- * headlamp pool 7 stops over it ends 1.25 over, the same factor over the
- * whole region (its texture kept), as Unreal Engine 5's local exposure.
- * Across an edge the pixel's own luminance: the region's level is
+ * Unreal Engine 5's local exposure, highlights only: a region brighter than
+ * the knee (key: LIGHT_LOCAL_LEVEL, pre-exposed; its level from a blur of the
+ * frame) keeps c of its stops over the knee (c the highlight contrast, 0.6 to
+ * 0.8 in Unreal's guidance), the same factor over the whole region so its
+ * texture is kept; nothing under the knee changes, so night stays dark and
+ * the headlamp pools keep their 5 stops over the moonlit road (Forza Horizon
+ * 6: 0.55 to 0.88 against 0.008 to 0.03, NIGHT.md).  The earlier curve,
+ * saturating 1.5 stops over a knee near the key, held the pools a stop over
+ * the road.  Across an edge the pixel's own luminance: the region's level is
  * min(Yloc, Ypix 2^LIGHT_LOCAL_EDGE), so the moonlit ground beside a pool,
- * far under the blur that carries the pool's light, is not darkened (no
- * dark ring).  The output Ypix f is non-decreasing in Ypix (in each branch
- * its log's slope is 1 or emax^2 / (e + emax)^2), so added light (a flare's
- * ghost) never darkens a pixel. */
-static inline float light_local_exposure(float Ypix, float Yloc, float key, float emax)
+ * far under the blur that carries the pool's light, is not darkened (no dark
+ * ring).  The output's log has slope 1 or c > 0 in log Ypix: added light never
+ * darkens a pixel. */
+static inline float light_local_exposure(float Ypix, float Yloc, float key, float c)
 {
-    float Y = fminf(Yloc, Ypix * exp2f(LIGHT_LOCAL_EDGE)), e;
-    key *= exp2f(LIGHT_LOCAL_KNEE);
-    if (!(Y > key) || !(emax > 0.0f))
+    float Y = fminf(Yloc, Ypix * exp2f(LIGHT_LOCAL_EDGE));
+    if (!(Y > key) || !(c > 0.0f) || !(c < 1.0f))
         return 1.0f;
-    e = log2f(Y / key);
-    return exp2f(emax * e / (e + emax) - e);
+    return exp2f((c - 1.0f) * log2f(Y / key));
 }
 
 /* ---- the meter -----------------------------------------------------------------
@@ -128,7 +131,7 @@ static inline unsigned light_meter_weight(float u, float v)
  * under), between them a smoothstep in log L (mesopic).  The blend: toward
  * the scotopic luminance V = Y (1.33 (1 + (Y + Z) / X) - 1.68) (Larson et al.
  * 1997, as Jensen 2000 uses it), carried by a blue of luminance 1. */
-#define LIGHT_PURK_LO   0.001f
+#define LIGHT_PURK_LO   0.003f
 #define LIGHT_PURK_HI   3.0f
 static inline float light_purkinje_w(float L)
 {
@@ -270,12 +273,13 @@ static inline float light_star_E(float h)   /* lux, above the atmosphere, for th
 }
 
 /* ---- the Purkinje tint ------------------------------------------------------------
- * The colour the rods' share carries, of luminance 1: a grey-blue (x 0.286,
- * y 0.297, against D65's 0.313 0.329; it was 0.248 0.251, a saturated blue
- * whose blue channel was 2.9 times its red).  A moonlit road (0.016 cd/m2, a
- * rods' share of 0.72) reads grey-blue: blue 1.36 times red (2.21 before). */
-#define LIGHT_PURK_BLUE_R 0.86f
-#define LIGHT_PURK_BLUE_G 0.98f
-#define LIGHT_PURK_BLUE_B 1.30f
+ * The colour the rods' share carries, of luminance 1, chosen so the frame
+ * after the tonemap shows Forza Horizon 6's night blue, linear R : G : B
+ * 0.45 : 1 : 2.4 in its moonlit ground, road and sky (hue 213 to 217,
+ * saturation 0.4 to 0.7; NIGHT.md).  It was a grey-blue
+ * (0.86 : 0.98 : 1.30) that left the moonlit frame grey (saturation 0.1). */
+#define LIGHT_PURK_BLUE_R 0.45f   /* display-referred: applied after the tonemap (brr_metal_night.h) */
+#define LIGHT_PURK_BLUE_G 1.00f
+#define LIGHT_PURK_BLUE_B 2.40f
 
 #endif

@@ -142,7 +142,8 @@ fragment float4 t_facen(LO in [[stage_in]], constant int &mode [[buffer(0)]]) {
 kernel void t_post(const device float4 *in [[buffer(0)]], constant float4 &p [[buffer(1)]], device float4 *o [[buffer(2)]], uint i [[thread_position_in_grid]]) {
   float3 c = in[i].rgb * p.x;
   c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), in[i].w * p.x * p.w, p.y, p.z);   /* w: the bloom level's sum; p.w its scale, as pfs */
-  c = purkinje(c, p.x);
+  float pw = purkinje_w(dot(c, float3(0.2126, 0.7152, 0.0722)) / max(p.x, 1e-12));   /* as pfs */
   c = neutral(c);
+  c = purkinje(c, pw);
   o[i] = float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 0.0);
 }

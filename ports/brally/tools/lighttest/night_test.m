@@ -380,11 +380,13 @@ int main(void)
                   ncell * LIGHT_STAR_P, Eg, Ef);
         }
     }
-    {   /* 8 the Purkinje tint: a moonlit road reads grey-blue, not saturated blue */
+    {   /* 8 the Purkinje tint: Forza Horizon 6's night blue (NIGHT.md: its moonlit ground, road and sky at blue/red
+           2.4 / 0.45 = 5.3 in display-linear, hue 213 to 217); applied after the tonemap, a moonlit road at the rods' share
+           w carries (1 - w) + w b / y of each channel of its grey */
         float b[3] = { LIGHT_PURK_BLUE_R, LIGHT_PURK_BLUE_G, LIGHT_PURK_BLUE_B }, y = 0.2126f * b[0] + 0.7152f * b[1] + 0.0722f * b[2];
         float L = 0.2f * 0.25f / (float)M_PI, w = light_purkinje_w(L), r = (1 - w) + w * b[0] / y, bl = (1 - w) + w * b[2] / y;
-        CHECK(bl / r > 1.2f && bl / r < 1.5f, "moonlit road (%.4f cd/m2, rods' share %.2f): blue/red %.2f (grey-blue 1.2..1.5; the old tint 2.21)", L, w, bl / r);
-        CHECK(strstr(BRR_NIGHT_SRC, "0.86, 0.98, 1.30") != NULL, "the post shader's tint is light_night.h's");
+        CHECK(bl / r > 3.0f && bl / r < 6.0f, "moonlit road (%.4f cd/m2, rods' share %.2f): blue/red %.2f (FH6's moonlit 3 to 6)", L, w, bl / r);
+        CHECK(strstr(BRR_NIGHT_SRC, "0.45, 1.00, 2.40") != NULL, "the post shader's tint is light_night.h's");
     }
     printf(g_fail ? "night: FAIL\n" : "night: all pass\n");
     return g_fail;

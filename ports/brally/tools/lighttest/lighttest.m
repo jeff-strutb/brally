@@ -1600,13 +1600,27 @@ static void test_delit(void)
  * shift and tonemap (t_post runs pfs's chain on the GPU), against what must
  * be readable; and the moon in the camera's view */
 #define NIGHT_BLM_N 4.0f   /* the post pass's blur, bloom level 2 of 6, holds 4 levels summed (brr_metal.m pu.lexp[2]) */
-static float night_post1(float x, float Y, float Yl)   /* one grey pixel through t_post: display luminance 0..1 */
+static float night_post1(float x, float Y, float Yl)   /* one grey pixel through t_post: display-linear luminance 0..1 */
 {
-    float in[4] = { Y, Y, Y, Yl * NIGHT_BLM_N }, o[4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+    float in[4] = { Y, Y, Y, Yl * NIGHT_BLM_N }, o[4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
     id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
     kern(@"t_post", 1, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
     memcpy(o, [bo contents], sizeof o);
-    return 0.2126f * o[0] + 0.7152f * o[1] + 0.0722f * o[2];
+    {
+        float c[3];
+        int k;
+        for (k = 0; k < 3; k++)
+            c[k] = o[k] <= 0.04045f ? o[k] / 12.92f : powf((o[k] + 0.055f) / 1.055f, 2.4f);
+        return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];   /* display-linear */
+    }
+}
+static float night_dlin(const float o[4])   /* a t_post output (sRGB) as display-linear luminance */
+{
+    float c[3];
+    int k;
+    for (k = 0; k < 3; k++)
+        c[k] = o[k] <= 0.04045f ? o[k] / 12.92f : powf((o[k] + 0.055f) / 1.055f, 2.4f);
+    return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];
 }
 static float night_hg(float g, float c) { return (1 - g * g) / (4 * (float)M_PI * powf(1 + g * g - 2 * g * c, 1.5f)); }
 static void test_night_frame(void)
@@ -1623,7 +1637,7 @@ static void test_night_frame(void)
         float L[5] = { 0.7f * Yamb / (float)M_PI, 0.18f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
                        0.1f * Epool / (float)M_PI, 0.3f * Epool / (float)M_PI };
         float Yl[5] = { L[0], L[0], L[2], 0.2f * Epool / (float)M_PI, 0.2f * Epool / (float)M_PI };
-        float in[5][4], o[5][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+        float in[5][4], o[5][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
         int i;
         for (i = 0; i < 5; i++)
             in[i][0] = in[i][1] = in[i][2] = L[i], in[i][3] = Yl[i] * NIGHT_BLM_N;
@@ -1639,17 +1653,19 @@ static void test_night_frame(void)
             printf("    sky %.0f%% of the moon: moon %.3f lux normal, %.3f on the ground, ambient %.3f lux, EV100 %.2f;"
                    " 0.7 ground %.0f/255, 18%% ground %.0f, wall facing the moon %.0f, headlamp pool 10%%/30%% %.0f/%.0f\n",
                    100 * skyfrac[sk], En, Eh, Yamb, ev, g18, g5, wall, p1, p3);
-            report(g18 >= 40 && g18 <= 120, "moonlit ground (albedo 0.7) readable, and night", "%.0f/255 (40..120; the game's night frame: 80)", g18);
-            report(g5 >= 10, "a dark 18% surface not black", "%.0f/255 (10 and up)", g5);
-            report(p3 <= 245 && p3 - p1 >= 30, "headlamp pool keeps its texture", "10%% %.0f, 30%% %.0f/255 (under 245, 30 apart)", p1, p3);
-            report(p1 > 2.0f * g5, "the pool well over moonlight at a like albedo", "10%% texel in the pool %.0f > 2 x the moonlit 18%% ground %.0f", p1, g5);
+            float yg = night_dlin(o[0]), yp1 = night_dlin(o[3]), yp3 = night_dlin(o[4]);
+            (void)g5, (void)wall;
+            report(yg >= 0.004f && yg <= 0.03f, "moonlit ground at Forza Horizon 6's night level", "display Y %.4f (0.004..0.03; FH6 0.008..0.03)", yg);
+            report(yp1 >= 0.3f && yp1 <= 0.9f && yp3 > yp1 + 0.03f && p3 < 254.0f, "headlamp pool at FH6's level, its texture kept",
+                   "display Y 10%% %.2f, 30%% %.2f (FH6 pools 0.55..0.88)", yp1, yp3);
+            report(yp1 > 16.0f * yg, "the pool 4 stops and more over the moonlit ground", "%.2f vs %.4f (FH6: 20 to 60 x)", yp1, yg);
         }
     }
     {   /* across the pool's edge: the local mean is a blur (the bloom chain's mid level: about 2% of the frame's width,
            taken as a Gaussian of that sigma); the moonlit ground 3 sigma from the edge must stay within 25% of its level far away */
         float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
         float Lg = 0.18f * Yamb / (float)M_PI, Lp = 0.2f * 20.0f / (float)M_PI, sig = 1.0f;
-        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
         int i;
         for (i = 0; i < 3; i++) {   /* the ground at d sigma outside a straight edge: the blur's share of the pool */
             float f = 0.5f * erfcf(d[i] / (sig * 1.41421356f));
@@ -1662,14 +1678,14 @@ static void test_night_frame(void)
             memcpy(o, [bo contents], sizeof o);
         }
         printf("    moonlit ground beside the pool: 1, 2, 3 sigma out %.0f, %.0f, %.0f/255; far %.0f\n", 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
-        report(o[2][1] >= 0.75f * o[3][1], "no dark ring beside the pool at 3 sigma", "%.0f vs %.0f far away (within 25%%)", 255 * o[2][1], 255 * o[3][1]);
+        report(night_dlin(o[2]) >= 0.75f * night_dlin(o[3]), "no dark ring beside the pool at 3 sigma", "display Y %.4f vs %.4f far away (within 25%%)", night_dlin(o[2]), night_dlin(o[3]));
     }
     {   /* the lighthouse beam (brr_metal_vol.h vol_beam, the C reference of the shader's march: 2,000,000 cd, full to
            1.5 degrees, none past 2.5, the night haze k_vol[4]) seen side-on from 100 m, its crossing D from the lamp,
            through the same chain next to the moonlit ground; the blur around a thin beam is the ground's */
         float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
         float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma, ss = st * k_vol[4].albedo;
-        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N }, Lb[3];
+        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N }, Lb[3];
         const float A[3] = { 0, 0, 0 }, ax[3] = { 1, 0, 0 }, dir[3] = { 0, 1, 0 };
         int i;
         for (i = 0; i < 3; i++) {
@@ -1685,15 +1701,15 @@ static void test_night_frame(void)
         }
         printf("    lighthouse beam side-on from 100 m: %.4f, %.4f, %.4f cd/m2 at 100, 300, 1000 m from the lamp -> %.0f, %.0f, %.0f/255 over the ground's %.0f\n",
                Lb[0], Lb[1], Lb[2], 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
-        report(o[0][1] < 0.97f && o[0][1] - o[3][1] > 40.0f / 255, "the beam near the lighthouse: bright, not clipped", "%.0f/255 (ground %.0f)", 255 * o[0][1], 255 * o[3][1]);
-        report(o[1][1] - o[3][1] > 15.0f / 255, "the beam 300 m out still visible", "%.0f/255 (ground %.0f)", 255 * o[1][1], 255 * o[3][1]);
+        report(o[0][1] < 0.97f && night_dlin(o[0]) > 0.05f, "the beam near the lighthouse: bright, not clipped", "display Y %.3f (ground %.4f)", night_dlin(o[0]), night_dlin(o[3]));
+        report(night_dlin(o[1]) > 2.0f * night_dlin(o[3]), "the beam 300 m out still visible", "display Y %.3f (ground %.4f)", night_dlin(o[1]), night_dlin(o[3]));
         report(o[2][1] >= o[3][1] && o[2][1] < o[1][1], "the beam fades with distance", "%.0f < %.0f", 255 * o[2][1], 255 * o[1][1]);
     }
     {   /* the local exposure over the whole range (the GPU's locexp through the chain): added light never darkens a
            pixel (a flare's ghost over the haze), and regions 1, 2, 3 stops over the moonlit ground keep their steps */
         enum { NP = 400, NB = 9 };
         float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Lg = 0.18f * Yamb / (float)M_PI, (*in)[4] = malloc(16 * NP * NB), (*o)[4] = malloc(16 * NP * NB), pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+        float Lg = 0.18f * Yamb / (float)M_PI, (*in)[4] = malloc(16 * NP * NB), (*o)[4] = malloc(16 * NP * NB), pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
         float reg[5], worst = 0;
         int i, b, bad = 0;
         for (b = 0; b < NB; b++)
@@ -1715,10 +1731,10 @@ static void test_night_frame(void)
             }
         report(bad == 0, "local exposure: more light never darker", "%d decreasing steps of %d (pixel 2^-4..2^12 x ground, blur 2^-2..2^10), worst %.4f", bad, NB * (NP - 1), worst);
         for (i = 0; i < 5; i++)
-            reg[i] = 255 * night_post1(x, Lg * exp2f((float)i), Lg * exp2f((float)i));
-        printf("    regions 0..4 stops over the moonlit ground: %.0f %.0f %.0f %.0f %.0f/255\n", reg[0], reg[1], reg[2], reg[3], reg[4]);
-        report(reg[1] - reg[0] >= 12 && reg[2] - reg[1] >= 12 && reg[3] - reg[2] >= 12, "brighter regions keep their gradation",
-               "steps %.0f, %.0f, %.0f/255 (12 and up)", reg[1] - reg[0], reg[2] - reg[1], reg[3] - reg[2]);
+            reg[i] = night_post1(x, Lg * exp2f((float)i), Lg * exp2f((float)i));
+        printf("    regions 0..4 stops over the moonlit 18%% ground, display Y: %.4f %.4f %.4f %.4f %.4f\n", reg[0], reg[1], reg[2], reg[3], reg[4]);
+        report(reg[1] > 1.4f * reg[0] && reg[2] > 1.4f * reg[1] && reg[3] > 1.4f * reg[2], "brighter regions keep their gradation",
+               "ratios %.2f, %.2f, %.2f (1.4 and up)", reg[1] / reg[0], reg[2] / reg[1], reg[3] / reg[2]);
         free(in), free(o);
     }
     {   /* the night air toward the moon (k_vol[4]: its extinction, albedo and phase; the camera 5 degrees off the moon,
@@ -1729,11 +1745,11 @@ static void test_night_frame(void)
         float Lin = k_vol[4].albedo * (En * night_hg(k_vol[4].g, cosf(5.0f * 0.017453293f)) + 0.10f * En / (float)M_PI);
         float t3 = expf(-st * 300.0f), t30 = expf(-st * 3000.0f);
         float L300 = Lg * t3 + (1 - t3) * Lin, L3k = Lg * t30 + (1 - t30) * Lin;
-        float g = 255 * night_post1(x, Lg, Lg), a = 255 * night_post1(x, L300, L300), h = 255 * night_post1(x, L3k, L3k);
-        printf("    night air toward the moon: object at 300 m +%.2f stops (%.0f/255), far horizon +%.2f stops (%.0f/255), ground %.0f\n",
+        float g = night_post1(x, Lg, Lg), a = night_post1(x, L300, L300), h = night_post1(x, L3k, L3k);
+        printf("    night air toward the moon: object at 300 m +%.2f stops (display Y %.4f), far horizon +%.2f stops (%.4f), ground %.4f\n",
                log2f(L300 / Lg), a, log2f(L3k / Lg), h, g);
         report(log2f(L300 / Lg) < 0.75f, "an object 300 m away keeps its level", "+%.2f stops of air light (under 0.75)", log2f(L300 / Lg));
-        report(h < 180.0f && h > g, "the far horizon a lit haze, not a wall", "%.0f/255 (ground %.0f; under 180)", h, g);
+        report(h < 0.057f && h > g, "the far horizon a lit haze, not a wall", "display Y %.4f (ground %.4f; FH6's sky at most 0.057)", h, g);
     }
     {   /* the moon in view: the start camera (the game's view x projection: forward (0.6225, 0.7826, 0), vertical half-angle
            atan(1 / 3.732) = 15 degrees), the moon opposite the sun's bearing (-1, -1.5) */
