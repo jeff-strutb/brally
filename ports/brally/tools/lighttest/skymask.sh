@@ -10,4 +10,15 @@ OUT=${OUT:-$ROOT/build/brally/lighttest}
 mkdir -p "$OUT/skymask"
 clang -O2 -std=gnu11 -Wall -Wno-unused-function -I"$ROOT/ports/brally/platform/render/metal" -I"$ROOT/ports/brally/platform/light" \
   "$HERE/skymask_test.c" -o "$OUT/skymask_test" -lm || exit 2
+# The game's Coastline backdrop where it has been dumped (game data, never
+# committed): build/lighttest/backdrops/{20_quickrace_drive,33_weather_fog}/
+# <tex>_64x64.rgba, checked against the classification in skymask_test.c,
+# each mask written next to its texture as <tex>_64x64_mask.pgm.
+BD=${BACKDROPS:-$ROOT/build/lighttest/backdrops}
+if [ -d "$BD/20_quickrace_drive" ] && [ -d "$BD/33_weather_fog" ]; then
+  export BACKDROPS="$BD"
+else
+  echo "SKIP  the game's backdrop dumps ($BD) are absent"
+  export BACKDROPS=
+fi
 "$OUT/skymask_test" "$OUT/skymask" "$@"
