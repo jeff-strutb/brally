@@ -943,6 +943,35 @@ pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
 
+## The low beam's cut-off, softened (2026-10-13)
+
+The hard line where the low beam ends was the pattern's own: `lamp()` blended
+1.92 decades of log intensity over a smoothstep 0.7 degrees wide, so R112's
+sharpness G (log drop per 0.1 degree) peaked at 0.41, above the 0.13..0.3 a
+lamp's own aperture and lens blur give, with a gradient kink at both ends of
+the smoothstep; the elbow (the cut-off's turn up 15 degrees at V-V) and the
+top of the step (2 degrees up) were corners (min, ternary), and the sideways
+spread was cut to zero by the outer cone's window over 64..70 degrees, about
+90 cd at its start. Now the cut-off is a Gaussian of 0.28 degrees in log
+intensity (tanh's form of the normal CDF), the elbow and the step's top are a
+smooth max and min (0.15 degree), and the pattern is tapered by a smoothstep
+in cosine from the axis to the outer cone, zero with zero slope there.
+
+| check (maths.sh) | before | after |
+|---|---|---|
+| cut-off sharpness G per 0.1 degree (R112 0.13..0.3) | 0.41 | 0.272 at every column |
+| pattern continuity, 0.05 degree steps, change of step against the step before (max 4%: the blur's own curvature is 3.4%) | 8.8% at the elbow | 2.87% |
+| cut-off line position (0.57D, 15 degree rise; +-0.1) | 0.005 | 0.017 |
+| R112 75R (min 10,100) / 50V (min 5,100) / zone III (max 625) | | 11,453 / 12,120 / 254 |
+
+Every R112 point and zone passes (75 of 75 in maths.sh); lights.sh,
+carpaint.sh pass; the shaders compile offline for macOS and iOS with no
+warnings. Not yet done: the lamps' shadow atlas penumbra from the lamp's size
+(PCSS), and the opponents' lighting (below the cut-off sits only the bottom
+of a car ahead: the lamp is placed at 0.36 of the body's height, about 0.4 m,
+and everything on a car 10 to 20 m ahead above about 0.3 m gets the 1.2%
+above the line; not yet confirmed as the whole cause).
+
 ## The backdrop's structural sky mask and the cloud layer (2026-10-12)
 
 fsbk2's colour test (bluish neighbourhood above the horizon) is replaced by a
