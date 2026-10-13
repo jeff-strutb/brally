@@ -35,6 +35,7 @@
 #include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
 #include "light_night.h"
+#include "light_world.h"
 #include "brr_metal_sky.h"
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
@@ -486,6 +487,7 @@ static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], sky
     /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
 };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
+static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
 
 static id<MTLRenderPipelineState> lit_pipe(NSString *vs, NSString *fs, const MTLPixelFormat *f, int nf, int depth,
                                            int blend_src, int blend_dst)
@@ -635,7 +637,8 @@ static void lit_targets(void)
 static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
 {
     uint8_t *m;
-    int i, any = 0;
+    int i, any = 0, ng = 0;
+    double col[3] = { 0, 0, 0 };
     s_emask[tid] = nil;
     if (!(m = (uint8_t *)malloc((size_t)w * (size_t)h)))
         return;
@@ -644,6 +647,17 @@ static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
         int r = p[0], g = p[1], b = p[2];
         m[i] = (uint8_t)(p[3] >= 128 && r >= 180 && g >= 128 && r - b >= 60 ? 255 : 0);
         any |= m[i];
+        if (m[i]) {
+            ng++;
+            col[0] += pow(r / 255.0, 2.2);
+            col[1] += pow(g / 255.0, 2.2);
+            col[2] += pow(b / 255.0, 2.2);
+        }
+    }
+    if (tid < LIGHT_GLOW_TEX) {
+        s_eshare[tid] = w * h > 0 ? (float)ng / (float)(w * h) : 0.0f;
+        for (i = 0; i < 3; i++)
+            s_ecol[tid][i] = ng ? (float)(col[i] / ng) : 1.0f;
     }
     if (any) {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
@@ -2048,6 +2062,22 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 const float tri[9] = { v[0].wx, v[0].wy, v[0].wz, v[1].wx, v[1].wy, v[1].wz, v[2].wx, v[2].wy, v[2].wz };
                 light_glow_drawn(&s_glow, st->texture, light_capture_ontrack(tri));
                 u.glow = light_glow_on(&s_glow, st->texture) ? 1.0f : 0.0f;
+                if (u.glow > 0 && st->texture < LIGHT_GLOW_TEX && s_eshare[st->texture] > 0) {
+                    /* the track's lights: its glowing triangles, once a track generation (light_world.c) */
+                    const LightTrack *trk = light_game_track();
+                    float eye[3] = { 0, 0, 0 }, *wt = malloc((size_t)(n / 3) * 9 * sizeof(float));
+                    int q;
+                    light_capture_eye(eye);
+                    if (trk && wt) {
+                        for (q = 0; q < n / 3 * 3; q++) {
+                            wt[3 * q] = v[q].wx;
+                            wt[3 * q + 1] = v[q].wy;
+                            wt[3 * q + 2] = v[q].wz;
+                        }
+                        light_world_gather(trk->gen, wt, n / 3, s_eshare[st->texture], s_ecol[st->texture], eye);
+                    }
+                    free(wt);
+                }
             }
             u.addk = kind == K_BLEND && st->blend_rgb_dst == 4 ? 100.0f : 0.0f;   /* dst ONE: light it adds */
             op->u = u;

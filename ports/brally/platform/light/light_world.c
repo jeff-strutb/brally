@@ -147,3 +147,103 @@ int light_world_spots(LightSpot *out, int max, float t)
         light_world_lighthouse(&out[n++], s_lh, t, LIGHT_LH_DEG_S);
     return n;
 }
+
+/* ---- gathering the track's glow ---------------------------------------------------
+ * The renderer hands over each glowing draw of the track's scene (brr_metal.m:
+ * its world triangles, the share of its texture's texels that glow and their
+ * mean colour).  Each triangle becomes an emitter once a track generation
+ * (its centroid to 5 cm is its identity), facing the camera that saw it (a
+ * lit window is seen from outside), its luminance the glow's 100 cd/m2 times
+ * the share.  The set is clustered again when it has grown, at most every
+ * 60th call (light_world_refresh). */
+#define GATHER_MAX 16384
+static LightEmitter s_em[GATHER_MAX];
+static uint64_t s_ekey[2 * GATHER_MAX];
+static int s_ne, s_dirty;
+static unsigned s_egen;
+
+static int seen(uint64_t k)
+{
+    unsigned h = (unsigned)((k * 0x9E3779B97F4A7C15ull) >> 49) & (2 * GATHER_MAX - 1);
+    while (s_ekey[h]) {
+        if (s_ekey[h] == k)
+            return 1;
+        h = (h + 1) & (2 * GATHER_MAX - 1);
+    }
+    s_ekey[h] = k;
+    return 0;
+}
+
+void light_world_gather(unsigned gen, const float *tri, int n, float share, const float rgb[3], const float eye[3])
+{
+    int i, k;
+    if (gen != s_egen) {
+        s_egen = gen;
+        s_ne = 0;
+        memset(s_ekey, 0, sizeof s_ekey);
+        s_dirty = 1;
+    }
+    if (!(share > 0))
+        return;
+    for (i = 0; i < n && s_ne < GATHER_MAX; i++) {
+        const float *a = tri + 9 * i, *b = a + 3, *c = a + 6;
+        float e1[3], e2[3], nn[3], m[3], l, d = 0;
+        uint64_t key;
+        LightEmitter *o;
+        for (k = 0; k < 3; k++) {
+            e1[k] = b[k] - a[k];
+            e2[k] = c[k] - a[k];
+            m[k] = (a[k] + b[k] + c[k]) / 3.0f;
+        }
+        nn[0] = e1[1] * e2[2] - e1[2] * e2[1];
+        nn[1] = e1[2] * e2[0] - e1[0] * e2[2];
+        nn[2] = e1[0] * e2[1] - e1[1] * e2[0];
+        l = sqrtf(nn[0] * nn[0] + nn[1] * nn[1] + nn[2] * nn[2]);
+        if (!(l > 1e-6f))
+            continue;
+        key = ((uint64_t)(uint32_t)(int32_t)lrintf(m[0] * 20.0f) << 42) ^ ((uint64_t)(uint32_t)(int32_t)lrintf(m[1] * 20.0f) << 21)
+              ^ (uint64_t)(uint32_t)(int32_t)lrintf(m[2] * 20.0f) ^ 1ull;
+        if (seen(key))
+            continue;
+        o = &s_em[s_ne++];
+        for (k = 0; k < 3; k++) {
+            nn[k] /= l;
+            d += nn[k] * (eye[k] - m[k]);
+        }
+        for (k = 0; k < 3; k++) {
+            o->p[k] = m[k];
+            o->n[k] = d < 0 ? -nn[k] : nn[k];
+            o->rgb[k] = rgb[k];
+        }
+        o->area = 0.5f * l;
+        o->lum = 100.0f * share;
+        s_dirty = 1;
+    }
+}
+
+int light_world_refresh(void)
+{
+    static LightSpot s[LIGHT_WORLD_MAX];
+    static int calls;
+    int n;
+    calls++;
+    if (!s_dirty || (calls % 60 && s_n))
+        return s_n;
+    n = light_world_cluster(s_em, s_ne, s, LIGHT_WORLD_MAX);
+    light_world_set(s, n);
+    s_dirty = 0;
+    return n;
+}
+
+int light_world_emitters(void)
+{
+    return s_ne;
+}
+
+/* a lighthouse beam as the race turns it: its instance's position and its
+ * model's x axis (the beam; the special turns it about the model's y, which
+ * is the world's up on Coastline) */
+void light_world_beam(LightSpot *o, const float pos[3], const float xaxis[3])
+{
+    light_world_lighthouse(o, pos, atan2f(xaxis[1], xaxis[0]) / 0.017453293f, 1.0f);
+}

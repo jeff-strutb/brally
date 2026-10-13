@@ -110,14 +110,20 @@ int light_scene_lights(LightSpot *out, int *id, int max)
         }
     }
     if (w == 4 && k < max) {   /* the track's own lights at night (light_world.c): ids from 1000 */
-        struct timespec ts;
-        int m, q;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        m = light_world_spots(out + k, max - k, (float)(ts.tv_sec % 86400) + ts.tv_nsec * 1e-9f);
+        float bp[4][3], bx[4][3];
+        int m, q, nb;
+        light_world_refresh();
+        m = light_world_spots(out + k, max - k, 0.0f);
         for (q = 0; q < m; q++)
             if (id)
                 id[k + q] = 1000 + q;
         k += m;
+        nb = light_game_beams(bp, bx, 4);   /* the lighthouses, as the race turns them: ids from 2000 */
+        for (q = 0; q < nb && k < max; q++, k++) {
+            light_world_beam(&out[k], bp[q], bx[q]);
+            if (id)
+                id[k] = 2000 + q;
+        }
     }
     return k;
 }
