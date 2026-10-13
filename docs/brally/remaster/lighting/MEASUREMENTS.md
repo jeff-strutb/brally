@@ -1059,3 +1059,32 @@ RGBA16F 3D textures (two cells for the history, the integrated volume),
 - The ground height is the eye's less 2 m, not the track's; the medium per
   weather and the noise are first guesses for the project lead's review in
   frame dumps. No game run was made: the look is unseen.
+
+## Diffuse GI: irradiance probes (2026-10-12)
+
+DDGI (Majercik et al. 2019) over the track BVH's compute traversal:
+brr_metal_gi.h, brr_metal_gi_src.h, brr_metal_gi.m; tests in
+ports/brally/tools/lighttest/gi.sh (gi_test.m), in run.sh's list. Probe hits
+are lit by the directional light (u.sun / u.sunc, sun or moon, shadowed by
+an any-hit ray), every lamp of the frame's LSet (unshadowed), emission from
+the surface records, the sky and ground radiance on a miss, and last frame's
+probes (multi-bounce). Albedo from the surface record, 0.3 where it is 0.
+Behind BR_LIGHT_GI=1 (LU.gi.x); off by default. When on, the probes'
+irradiance replaces the sky's ambient term in radiance().
+
+All on the M4 Pro, synthetic worlds built by brr_rt_update, no game run:
+
+| test | result |
+|---|---|
+| furnace: closed box, albedo 0.5020, walls emitting 1 cd/m2, 800 frames | every probe texel 6.30791 lux against pi Le / (1 - a) = 6.30792; max rel err 0.0002% |
+| lamp: 100 cd point lamp at the centre of a 6 m box, first bounce only, 256 rays | 64 texels of the centre probe against a quadrature of the closed-form integrand: max rel err 0.047% |
+| fold: GPU vs CPU of one frame's irradiance and distance folds on the same rays | irradiance max abs diff 4.8e-7 lux (of 6.31); distance max rel diff 1.9e-7 |
+| leak: emitter beside an opaque wall, receivers d metres either side | Chebyshev on: 9.65% at 0.1 m, 0.20% at 0.3 m, 0.10% at 0.6 and 0.9 m. Off: 76.8%, 36.7%, 4.2%, 0.16% |
+| cost: 16 x 8 x 16 probes, 64 rays, 131,072 triangle terrain, sunlit | 1.35 ms a frame GPU (best 1.28) for trace and both folds |
+| memory | 18.4 MB: irradiance RGBA32F and distance RG32F atlases, two of each, plus the ray buffer; BVH 11.0 MB for that terrain (shared with the other ray users) |
+| offline compile | the GI library's source (BRR_RT_SRC, lights, GI) for macOS and iOS: 0 errors |
+
+The 0.1 m leak is the normal bias reaching through the wall (as in the
+paper); the test holds the leak under 1% from 0.3 m. Atlases are 32-bit
+float: at half precision a 0.97 hysteresis stalls about 0.8% short of the
+converged value.

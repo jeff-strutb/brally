@@ -468,7 +468,7 @@ static void test_contact(void)
 int main(void)
 {
     printf("LU %zu bytes\n", sizeof(LU));
-    CHECK(sizeof(LU) == 576, "LU is %zu bytes, the shader's is 576", sizeof(LU));
+    CHECK(sizeof(LU) == 592, "LU is %zu bytes, the shader's is 592", sizeof(LU));
     test_penumbra();
     test_cache();
     test_screen();
