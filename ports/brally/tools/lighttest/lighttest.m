@@ -985,11 +985,11 @@ static double expose_one(const double *Y, int w, int h, int weather, double *wan
             s[j + 1] = s[j], j--;
         s[j + 1] = t;
     }
-    lo = (int)(ns * 0.80), hi = (int)(ns * 0.983);
+    lo = (int)(ns * k_weather[weather].plo), hi = (int)(ns * k_weather[weather].phi);   /* the weather's band and compensation */
     for (i = lo; i < hi; i++)
         m += log2(s[i]);
     m /= (hi - lo);
-    *want = fmin(fmax(m + log2(100.0 / 12.5), k_weather[weather].evlo), k_weather[weather].evhi);
+    *want = fmin(fmax(m + log2(100.0 / 12.5) - k_weather[weather].comp, k_weather[weather].evlo), k_weather[weather].evhi);
     memset(&u, 0, sizeof u);
     u.misc[0] = 1.0f;
     u.bg[1] = 1.0f;                       /* the bloom texture is the image itself: mix(c, c, 0.04) = c */
