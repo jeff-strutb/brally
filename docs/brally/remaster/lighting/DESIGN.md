@@ -353,9 +353,15 @@ and writes the file back.
   resampling, visibility by ray query against the TLAS, temporal and spatial
   reuse, denoised. The number of shadowed lights stops being a budget.
 - **Sun shadows**: cascades with cached static pages (the static track is
-  re-rendered only when a cascade's window moves past a texel snap), cars as
-  a per-frame overlay, screen-space contact shadows for fine detail
-  (Bend Studio's 2023 method). Virtual shadow maps (UE5) were considered: a
+  re-rendered only when a cascade's window moves a step, an eighth of its
+  width, with the window an eighth wider than its slice so the step costs no
+  coverage), cars and the race's own objects composited per frame in a
+  scratch tile their size and blitted in, soft shadows from the sun's real
+  disc (PCSS: blocker search, penumbra 2 D tan 0.2675 degrees, a Vogel disc
+  turned per pixel), and a screen-space contact march toward the sun for
+  fine detail (the classic single-layer march with a thickness; Bend
+  Studio's 2023 wavefront method is the faster form of it, for later).
+  Built and measured: MEASUREMENTS.md, "Soft sun shadows". Virtual shadow maps (UE5) were considered: a
   track is a narrow ribbon seen from low and far, and three cascades cover it
   for a fraction of the page-management cost. T1 traces the far shadow by ray
   query; T2 traces the sun everywhere.

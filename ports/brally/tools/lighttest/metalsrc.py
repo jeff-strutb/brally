@@ -1,0 +1,22 @@
+"""metalsrc.py: the Metal renderer's whole shader source as brr_open builds it
+(brr_metal.m's k_src, then BRR_LIT_SRC and BRR_SKY_SRC), as a C program that
+prints it, so the C compiler joins the string literals exactly as the build
+does.  Usage: metalsrc.py BRR_METAL_M OUT_C
+"""
+import sys
+
+
+def main():
+    src, out = sys.argv[1], sys.argv[2]
+    lines = open(src).read().split('\n')
+    start = next(i for i, l in enumerate(lines) if l.startswith('static NSString *const k_src = @'))
+    end = next(i for i in range(start + 1, len(lines)) if lines[i].rstrip().endswith('";'))
+    body = '\n'.join(lines[start + 1:end + 1])
+    with open(out, 'w') as f:
+        f.write('#include <stdio.h>\n#include "brr_metal_lit.h"\n#include "brr_metal_sky.h"\n')
+        f.write('static const char *const k_src =\n' + body + '\n')
+        f.write('int main(void) { fputs(k_src, stdout); fputs(BRR_LIT_SRC, stdout); fputs(BRR_SKY_SRC, stdout); return 0; }\n')
+
+
+if __name__ == '__main__':
+    main()

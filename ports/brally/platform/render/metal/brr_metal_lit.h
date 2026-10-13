@@ -22,8 +22,115 @@
 #ifndef BRR_METAL_LIT_H
 #define BRR_METAL_LIT_H
 
+/* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
+ * cascades: their matrices, where each ends in view depth, metres per texel,
+ * one texel in depth units, metres per unit of depth; csoft: tan of the
+ * sun's angular radius, the blocker search's and the penumbra filter's
+ * widest radius in texels, the contact shadow's march in metres (0: off);
+ * scr: world to the target's pixels (brr_shadow.h, brr_screen_matrix) */
+#define BRR_LU_SRC \
+"struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
+"            float4 cdepth; float4 csoft; float4x4 scr; };\n"
+
+/* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
+ * by ports/brally/tools/lighttest against synthetic maps) */
+#define BRR_SHADOW_SRC \
+/* interleaved gradient noise (Jimenez 2014): a pixel's own rotation of the \
+   sample discs, so neighbouring pixels see different samples */ \
+"static float ign(float2 px) { return fract(52.9829189 * fract(dot(px, float2(0.06711056, 0.00583715)))); }\n" \
+/* point i of n of a Vogel (golden angle) disc of radius 1, turned by the \
+   angle whose cosine and sine are rot: even cover of the disc for any n. \
+   The point's own angle is a constant once the loops unroll; only the \
+   pixel's turn is computed, once */ \
+"static float2 vogel(int i, int n, float2 rot) {\n" \
+"  float r = sqrt((float(i) + 0.5) / float(n)), t = float(i) * 2.39996323; float2 v = r * float2(cos(t), sin(t));\n" \
+"  return float2(v.x * rot.x - v.y * rot.y, v.x * rot.y + v.y * rot.x); }\n" \
+/* the sun's visibility from cascade k, a disc of the sun 0.535 degrees \
+ * across (percentage-closer soft shadows, Fernando 2005, for a directional \
+ * light): the receiver pushed along its normal by one to three texels and \
+ * compared one texel nearer, both growing as the surface turns from the sun \
+ * (slope-scaled); a blocker search over a disc as wide as the sun's \
+ * penumbra from the farthest possible caster (the window reaches back to \
+ * it: depth 0), the blockers' mean depth, the penumbra's radius from that \
+ * distance, D x tan(sun's radius), and the filtered comparisons over a disc \
+ * that wide: for a straight edge that is the share of the sun's disc in \
+ * view, the physical penumbra.  Widths clamped to sane texel counts; the \
+ * bilinear comparison adds its one texel. */ \
+"static float casvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n, int k, float2 rot) {\n" \
+"  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
+"  constexpr sampler ps(filter::nearest, address::clamp_to_edge);\n" \
+"  float nl = clamp(dot(n, u.sun.xyz), 0.05, 1.0), tn = min(sqrt(1.0 - nl * nl) / nl, 8.0);\n" \
+"  float4 c = u.sunvp[k] * float4(p + n * u.ctexel[k] * (1.0 + 2.0 * (1.0 - nl)), 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
+"  if (any(st <= 0.0) || any(st >= 1.0) || c.z >= 1.0) return 1.0;\n" \
+"  float tx = 1.0 / float(sm.get_width()), zr = c.z - u.cbias[k] * (1.0 + tn);\n" \
+"  float tpd = u.cdepth[k] * u.csoft.x / u.ctexel[k];   /* penumbra radius in texels per unit of depth from blocker to receiver */\n" \
+"  float rs = clamp(c.z * tpd, 1.0, u.csoft.y), zb = 0.0, nb = 0.0;\n" \
+"  for (int i = 0; i < 16; i++) {\n" \
+"    float4 g = sm.gather(ps, st + vogel(i, 16, rot) * (rs * tx), uint(k)), b = select(float4(0.0), float4(1.0), g < zr);\n" \
+"    zb += dot(g, b); nb += dot(b, float4(1.0));\n" \
+"  }\n" \
+"  if (nb == 0.0) return 1.0;\n" \
+"  float wr = min((c.z - zb / nb) * tpd, u.csoft.z), vis = 0.0;\n" \
+"  for (int i = 0; i < 24; i++) vis += sm.sample_compare(cs, st + vogel(i, 24, rot) * (wr * tx), uint(k), zr);\n" \
+"  return vis / 24.0;\n" \
+"}\n" \
+/* the cascade by view depth, the next one blended in over the last tenth of \
+   each, faded out at the end of the last */ \
+"static float sunvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n, float phi) {\n" \
+"  if (u.misc.y < 0.5) return 1.0;\n" \
+"  float d = dot(p - u.eye.xyz, u.cfwd.xyz); int k = 0;\n" \
+"  while (k < 3 && d > u.csplit[k]) k++;\n" \
+"  if (d > u.csplit[3]) return 1.0;\n" \
+"  float d0 = k ? u.csplit[k - 1] : 0.0, w = saturate((d - mix(d0, u.csplit[k], 0.9)) / max(0.1 * (u.csplit[k] - d0), 1e-3));\n" \
+"  float2 rot = float2(cos(phi), sin(phi)); float vis = casvis(u, sm, p, n, k, rot);\n" \
+"  if (w > 0.0) vis = mix(vis, k < 3 ? casvis(u, sm, p, n, k + 1, rot) : 1.0, w);\n" \
+"  return vis;\n" \
+"}\n" \
+/* screen-space contact shadow: steps toward the sun over CONTACT_LEN \
+ * (jittered by j), one for each pixel the march crosses on screen, at most \
+ * 16, none when it stays within its own pixel (the far ground, where the \
+ * cascades hold all there is); each step's point taken to its pixel and \
+ * tested against \
+ * the G-buffer's surface there: the surface seen is nearer the camera than \
+ * the point by less than a thickness (two steps, and about four pixels of \
+ * depth at 1080p) and stands off the receiver's own plane (so a flat \
+ * receiver never shadows itself, whatever the pixel rounding).  A single \
+ * depth layer cannot tell a point inside a thing from one just behind its \
+ * silhouette: the thickness keeps that fringe to a pixel or two (lighttest \
+ * measures it).  For what the cascades' texels are too coarse to hold (a \
+ * wheel on the road, a kerb, a post's foot); hits fade out over the march's \
+ * last quarter, where the cascades take over.  An empty pixel (no 3D: \
+ * position 0) is passed over. */ \
+"static float contact(constant LU &u, texture2d<float> pos, float3 p, float3 n, float j) {\n" \
+"  if (u.csoft.w <= 0.0 || dot(n, u.sun.xyz) <= 0.0) return 1.0;\n" \
+"  float2 wh = float2(pos.get_width(), pos.get_height());\n" \
+"  float4 h0 = u.scr * float4(p, 1.0), h1 = u.scr * float4(p + u.sun.xyz * u.csoft.w, 1.0);\n" \
+"  float lpx = h0.w > 1e-6 && h1.w > 1e-6 ? length(h1.xy / h1.w - h0.xy / h0.w) : 16.0;\n" \
+"  if (lpx < 1.0) return 1.0;\n" \
+"  int ns = int(min(ceil(lpx), 16.0));\n" \
+"  for (int i = 0; i < ns; i++) {\n" \
+"    float t = (float(i) + j) / float(ns) * u.csoft.w; float3 q = p + u.sun.xyz * t;\n" \
+"    float4 h = u.scr * float4(q, 1.0); if (h.w <= 1e-6) return 1.0;\n" \
+"    float2 s = h.xy / h.w; if (any(s < 0.0) || any(s >= wh)) return 1.0;\n" \
+"    float3 P = pos.read(uint2(s)).xyz; if (all(P == 0.0)) continue;\n" \
+"    float dq = dot(q - u.eye.xyz, u.cfwd.xyz), ds = dot(P - u.eye.xyz, u.cfwd.xyz);\n" \
+"    if (ds < dq && dq - ds < 0.0625 + 0.004 * dq && dot(P - p, n) > 0.02 + 0.002 * dq) return saturate((t / u.csoft.w - 0.75) * 4.0);\n" \
+"  }\n" \
+"  return 1.0;\n" \
+"}\n" \
+/* the sun's shadow map: world triangles through a cascade's matrix */ \
+"struct SO { float4 pos [[position]]; };\n" \
+"vertex SO svs(uint i [[vertex_id]], const device packed_float3 *v [[buffer(0)]], constant float4x4 &m [[buffer(1)]]) {\n" \
+"  SO o; o.pos = m * float4(float3(v[i]), 1.0); return o; }\n" \
+/* a cascade's static casters copied from the cache into the moving casters' \
+   tile (brr_shadow.h): depth for depth, k.x the cascade, k.yz the tile's \
+   corner in the cache */ \
+"struct SCD { float d [[depth(any)]]; };\n" \
+"fragment SCD scopy(float4 pos [[position]], depth2d_array<float> c [[texture(0)]], constant uint4 &k [[buffer(0)]]) {\n" \
+"  SCD o; o.d = c.read(uint2(pos.xy) + k.yz, k.x); return o; }\n"
+
 #define BRR_LIT_SRC \
-"struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc; };\n" \
+BRR_LU_SRC \
 "struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n" \
 /* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
    low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
@@ -59,35 +166,15 @@
 "  float F = 0.04 + 0.96 * pow(1.0 - max(dot(h, v), 0.0), 5.0);\n" \
 "  return (alb / 3.14159 * (1.0 - F) + D * Vs * F) * nl;\n" \
 "}\n" \
-/* the sun's visibility from its cascades: the cascade by view depth, the
- * next one blended in over the last tenth of each, faded out at the end of
- * the last; the receiver pushed along its normal by one to three texels of
- * its cascade and compared one texel nearer, both growing as the surface
- * turns from the sun (slope-scaled: the depth a texel spans on it); 3x3
- * filtered comparisons */ \
-"static float casvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n, int k) {\n" \
-"  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
-"  float nl = clamp(dot(n, u.sun.xyz), 0.05, 1.0), tn = min(sqrt(1.0 - nl * nl) / nl, 8.0);\n" \
-"  float4 c = u.sunvp[k] * float4(p + n * u.ctexel[k] * (1.0 + 2.0 * (1.0 - nl)), 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
-"  if (any(st <= 0.0) || any(st >= 1.0) || c.z >= 1.0) return 1.0;\n" \
-"  float2 tx = 1.0 / float2(sm.get_width(), sm.get_height()); float vis = 0.0;\n" \
-"  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) vis += sm.sample_compare(cs, st + float2(x, y) * tx, uint(k), c.z - u.cbias[k] * (1.0 + tn));\n" \
-"  return vis / 9.0;\n" \
-"}\n" \
-"static float sunvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n) {\n" \
-"  if (u.misc.y < 0.5) return 1.0;\n" \
-"  float d = dot(p - u.eye.xyz, u.cfwd.xyz); int k = 0;\n" \
-"  while (k < 3 && d > u.csplit[k]) k++;\n" \
-"  if (d > u.csplit[3]) return 1.0;\n" \
-"  float d0 = k ? u.csplit[k - 1] : 0.0, w = saturate((d - mix(d0, u.csplit[k], 0.9)) / max(0.1 * (u.csplit[k] - d0), 1e-3));\n" \
-"  float vis = casvis(u, sm, p, n, k);\n" \
-"  if (w > 0.0) vis = mix(vis, k < 3 ? casvis(u, sm, p, n, k + 1) : 1.0, w);\n" \
-"  return vis;\n" \
-"}\n" \
-/* the light leaving a surface toward the eye, cd/m2, before exposure */ \
-"static float3 radiance(constant LU &u, const device LS *ls, depth2d_array<float> sm, float3 p, float3 n, float3 alb, float rough, float glow) {\n" \
-"  float3 v = normalize(u.eye.xyz - p); if (dot(n, v) < 0) n = -n;\n" \
-"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sunvis(u, sm, p, n);\n" \
+BRR_SHADOW_SRC \
+/* a surface's normal turned toward the eye (the game's faces are seen from \
+   either side) */ \
+"static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
+/* the light leaving a surface toward the eye, cd/m2, before exposure; n \
+   toward the eye (toeye), sv how much of the sun reaches it */ \
+"static float3 radiance(constant LU &u, const device LS *ls, float3 p, float3 n, float3 alb, float rough, float glow, float sv) {\n" \
+"  float3 v = normalize(u.eye.xyz - p);\n" \
+"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sv;\n" \
 "  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
 "  for (int i = 0; i < int(u.eye.w); i++) {\n" \
 "    LS l = ls[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
@@ -138,12 +225,20 @@
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
 "  float glow = saturate((a.a * 255.0 - 128.0) / 127.0);\n" \
 "  int dbg = int(u.misc.w);\n" \
+"  float j = ign(in.pos.xy);\n" \
+"  float3 n = toeye(u, P.xyz, N.xyz);\n" \
+/* the sun's visibility: none to look up on a face turned from it (the BRDF \
+   is zero there), and no contact march where the cascades already shadow \
+   it fully */ \
+"  float sv = dot(n, u.sun.xyz) > 0.0 ? sunvis(u, sm, P.xyz, n, j * 6.2831853) : 0.0;\n" \
+"  if (sv > 0.0) sv = min(sv, contact(u, pos, P.xyz, n, j));\n" \
 "  if (dbg == 1) return float4(a.rgb, 1);\n" \
 "  if (dbg == 2) return float4((N.xyz * 0.5 + 0.5), 1);\n" \
-"  if (dbg == 3) return float4(float3(sunvis(u, sm, P.xyz, N.xyz)), 1);\n" \
+"  if (dbg == 3) return float4(float3(sv), 1);\n" \
 "  if (dbg == 5) return float4(float3(glow), 1);\n" \
+"  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, sm, P.xyz, N.xyz, a.rgb, u.misc.z, glow)), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, P.xyz, n, a.rgb, u.misc.z, glow, sv)), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
@@ -151,9 +246,12 @@
 "                    depth2d_array<float> shm [[texture(3)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  float3 n = facen(in.wp);\n" \
-"  float3 c = u.addk > 0.0 ? lin(h.o.rgb) * u.addk * lu.wb.rgb\n" \
-"                          : radiance(lu, ls, shm, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g);\n" \
+"  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
+"  if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
+"  else {\n" \
+"    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
+"    c = radiance(lu, ls, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv);\n" \
+"  }\n" \
 "  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \
@@ -192,10 +290,6 @@
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed);\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
-"}\n" \
-/* the sun's shadow map */ \
-"struct SO { float4 pos [[position]]; };\n" \
-"vertex SO svs(uint i [[vertex_id]], const device packed_float3 *v [[buffer(0)]], constant float4x4 &m [[buffer(1)]]) {\n" \
-"  SO o; o.pos = m * float4(float3(v[i]), 1.0); return o; }\n"
+"}\n"
 
 #endif

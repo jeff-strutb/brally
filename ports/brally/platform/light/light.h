@@ -83,6 +83,9 @@ int  light_capture_on(void);
 int  light_capture_eye(float eye[3]);
 /* the main camera this frame (its view x projection and viewport); 0 when no 3D was drawn */
 int  light_capture_camera(LightCamera *c);
+/* 1 when a world triangle (3 corners x xyz) lies on one of the track's
+ * triangles (light_game_track): the track's shadow already holds it */
+int  light_capture_ontrack(const float tri[9]);
 /* the game's pixel rows as Glide takes them: its height when the origin is
  * the lower left (y up, as the game's viewport works), else 0 (glide.c) */
 int  light_glide_flip(void);
