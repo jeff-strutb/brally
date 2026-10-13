@@ -166,4 +166,72 @@ static inline int light_beam_draw(const float *xyz, int ntri, const float pos[][
     return 0;
 }
 
+/* ---- the eye's adaptation ----------------------------------------------------------
+ * The exposure follows the meter's EV as the eye adapts: toward a brighter
+ * scene with a time constant of LIGHT_ADAPT_UP seconds, toward a darker one
+ * LIGHT_ADAPT_DOWN (the eye's light adaptation is quicker than its dark).
+ * An unset EV (ev > 1e8) takes the first valid reading whole; a change of
+ * LIGHT_ADAPT_SNAP stops or more (a camera cut, the race starting) too.  A
+ * reading with no samples (valid 0: a frame with no lit surface) leaves it
+ * as it is.  dt: seconds since the last reading, kept to 0..0.25. */
+#define LIGHT_ADAPT_UP    1.0f
+#define LIGHT_ADAPT_DOWN  3.0f
+#define LIGHT_ADAPT_SNAP  3.0f
+static inline float light_adapt_ev(float ev, float target, float dt, int valid)
+{
+    float tau;
+    if (!valid)
+        return ev;
+    if (ev > 1e8f || fabsf(target - ev) >= LIGHT_ADAPT_SNAP)
+        return target;
+    dt = fminf(fmaxf(dt, 0.0f), 0.25f);
+    tau = target > ev ? LIGHT_ADAPT_UP : LIGHT_ADAPT_DOWN;
+    return ev + (target - ev) * (1.0f - expf(-dt / tau));
+}
+
+/* ---- the moon's disc and the stars -----------------------------------------------
+ * The disc: LIGHT_MOON_R radians (0.26 degrees), limb darkened by the linear
+ * law I(mu) = I0 (1 - u (1 - mu)), u = LIGHT_MOON_LIMB (the full moon is
+ * nearly flat: a mild darkening), its mean luminance (1 - u/3) I0.  I0 so
+ * the disc integrates to the illuminance E reaching the ground facing it:
+ * I0 = E / (pi R^2 (1 - u/3)); at Coastline's 42 degrees (0.213 lux) the mean
+ * is 3,290 cd/m2 (the published full moon's 2,500 to 4,000).
+ * The stars: one at most to a cell of a LIGHT_STAR_N x LIGHT_STAR_N grid on
+ * each face of the direction's cube, present with probability LIGHT_STAR_P;
+ * its magnitude m = M1 + 2.5 log10(h) for a hash h uniform in (0,1], so the
+ * count brighter than m grows as 10^(0.4 m) (faint stars the most); its illuminance
+ * 10^(-0.4 (m + 13.99)) lux (a magnitude 0 star 2.54e-6 lux), spread over
+ * its cell. */
+#define LIGHT_MOON_R      (0.26f * 0.017453293f)
+#define LIGHT_MOON_LIMB   0.3f
+#define LIGHT_STAR_N      512
+#define LIGHT_STAR_P      0.012f
+#define LIGHT_STAR_M1     6.5f
+static inline float light_moon_I0(float E)
+{
+    return E / (3.14159265f * LIGHT_MOON_R * LIGHT_MOON_R * (1.0f - LIGHT_MOON_LIMB / 3.0f));
+}
+static inline float light_moon_disc(float E, float r)   /* r: angle from the centre over the radius */
+{
+    float mu;
+    if (r >= 1.0f)
+        return 0.0f;
+    mu = sqrtf(1.0f - r * r);
+    return light_moon_I0(E) * (1.0f - LIGHT_MOON_LIMB * (1.0f - mu));
+}
+static inline float light_star_E(float h)   /* lux, above the atmosphere, for the star's hash h in (0,1] */
+{
+    float m = LIGHT_STAR_M1 + 2.5f * log10f(fmaxf(h, 1e-3f));
+    return powf(10.0f, -0.4f * (m + 13.99f));
+}
+
+/* ---- the Purkinje tint ------------------------------------------------------------
+ * The colour the rods' share carries, of luminance 1: a grey-blue (x 0.286,
+ * y 0.297, against D65's 0.313 0.329; it was 0.248 0.251, a saturated blue
+ * whose blue channel was 2.9 times its red).  A moonlit road (0.016 cd/m2, a
+ * rods' share of 0.72) reads grey-blue: blue 1.36 times red (2.21 before). */
+#define LIGHT_PURK_BLUE_R 0.86f
+#define LIGHT_PURK_BLUE_G 0.98f
+#define LIGHT_PURK_BLUE_B 1.30f
+
 #endif

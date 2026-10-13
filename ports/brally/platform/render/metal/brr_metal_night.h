@@ -4,7 +4,8 @@
  * light_night.h's light_purkinje_w, the same numbers: 0 at 3 cd/m2 and up, 1
  * at 0.001 and under, a smoothstep in log L between.  The colour goes toward
  * the scotopic luminance V = Y (1.33 (1 + (Y + Z) / X) - 1.68) (Jensen et al.
- * 2000), relative to a D65 white's, carried by a blue of luminance 1.  c is
+ * 2000), relative to a D65 white's, carried by light_night.h's grey-blue
+ * (LIGHT_PURK_BLUE) of luminance 1.  c is
  * pre-exposed linear sRGB; ex the exposure. */
 #ifndef BRR_METAL_NIGHT_H
 #define BRR_METAL_NIGHT_H
@@ -18,7 +19,7 @@
 "  float w = purkinje_w(Y / max(ex, 1e-12));\n" \
 "  if (w <= 0.0 || X <= 1e-12) return c;\n" \
 "  float V = max(Y * (1.33 * (1.0 + (Y + Z) / X) - 1.68), 0.0) / 2.5731;   /* a white (D65) pixel keeps its luminance */\n" \
-"  const float3 blue = float3(0.62, 0.92, 1.80) / dot(float3(0.62, 0.92, 1.80), float3(0.2126, 0.7152, 0.0722));\n" \
+"  const float3 blue = float3(0.86, 0.98, 1.30) / dot(float3(0.86, 0.98, 1.30), float3(0.2126, 0.7152, 0.0722));\n" \
 "  return mix(c, V * blue, w); }\n"
 
 #endif

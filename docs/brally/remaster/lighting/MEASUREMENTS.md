@@ -1530,3 +1530,35 @@ by 0.0000% (limit 1%); lit on facet normals they differed by up to 100%.
 maths.sh (73 pass, offline macOS and iOS compiles 0 warnings), vol.sh pass;
 link64.sh links.  Not seen in a run: the beam's blend mode as the game sets
 it (the classification does not depend on it).
+
+## Night: the eye's adaptation, the moon's disc, the stars (night_test 6 to 8)
+
+- Why a night race started too dark: lit_exposure (brr_metal.m) took the
+  first histogram whole, and that buffer had no samples yet (read three
+  frames before its frame was drawn), so light_meter_ev gave the range's
+  middle (EV -1 at night) instead of the moonlit scene's -2.0; every frame
+  with no lit samples pulled the EV back there at 5% a frame. Now
+  light_adapt_ev (light_night.h): no samples hold the EV, the first reading
+  and any change of 3 stops snap, otherwise time constants of 1 s toward
+  brighter and 3 s toward darker, in seconds (frame rate free). Checked:
+  cold start lands on the target on the first metered frame; after 1 s of a
+  1 EV step 0.632 (brighter) and 0.283 (darker), the same at 30 and 60 fps.
+- GI probes already take their first trace whole (gi_fresh: no hysteresis
+  for a probe new to the volume or the volume's first update,
+  brr_metal_gi_src.h gi_fold), so they are not what brightened the start.
+- Purkinje tint: the blue carried by the rods' share was (0.62, 0.92, 1.80)
+  (xy 0.248 0.251; a moonlit road at 0.016 cd/m2, rods' share 0.72, came out
+  blue 2.21 times red). Now (0.86, 0.98, 1.30) (xy 0.286 0.297): the road
+  blue 1.36 times red, grey-blue. The blend follows each pixel's luminance
+  with the exposure divided out, so it does not move as the exposure adapts.
+- The moon: at night the sky drew the sun's disc at the moon's direction
+  (0.2675 degrees, from the sky's top scale, 4,700 cd/m2, flat). Now its own
+  disc: 0.26 degrees, linear limb darkening u = 0.3, integrating to
+  light_moon_normal (0.2131 lux at Coastline's 42 degrees; integrated 0.2131),
+  centre 3,661 cd/m2, mean 3,295. Clouds cover it. At 42 degrees it sits
+  above a chase camera's view: the track's moon elevation decides whether it
+  is in frame.
+- Stars: 1.2% of a 512 x 512 grid's cells on each cube face, magnitudes
+  6.5 + 2.5 log10 h (at most -1), 0.035 degree discs, extinction 0.172
+  magnitudes an air mass: 9,437 above the horizon, 1.85e-4 lux on the ground
+  (4.75e-4 above the air), under the 0.001 lux bound.
