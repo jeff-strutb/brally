@@ -33,15 +33,21 @@
 /* the medium per weather (the order of brr_metal.m's k_sky and k_weather):
  * extinction at the ground, 1/m (Koschmieder: visibility = 3.912 / sigma);
  * single-scattering albedo; the height over which it thins by e, metres;
- * the noise's amplitude */
-static const struct { float sigma, albedo, height, noise; } k_vol[5] = {
-    /* sunny: a light haze, 20 km  */ { 0.0002f, 0.90f, 300.0f, 0.15f },
-    /* fog:   150 m                */ { 0.0260f, 0.98f,  40.0f, 0.25f },
-    /* rain:  1 km                 */ { 0.0040f, 0.95f, 120.0f, 0.20f },
-    /* snow:  700 m                */ { 0.0055f, 0.97f, 150.0f, 0.20f },
-    /* night: a coastal haze, 1.3 km */ { 0.0030f, 0.95f,  60.0f, 0.20f },
+ * the noise's amplitude; the Henyey-Greenstein asymmetry (the day's hazes
+ * forward-scattering aerosol; the clear night's air near molecular, so
+ * isotropic: a forward lobe toward the low moon ahead of the start fills
+ * the frame, +5.6 stops on an object 300 m away at 0.003/m and 0.7, where
+ * 0.0002/m and 0 adds 0.4 and leaves the far horizon 1.8 stops over the
+ * moonlit ground, the lighthouse beam 2 stops over it at 300 m: maths.sh
+ * section 10) */
+static const struct { float sigma, albedo, height, noise, g; } k_vol[5] = {
+    /* sunny: a light haze, 20 km  */ { 0.0002f, 0.90f, 300.0f, 0.15f, 0.7f },
+    /* fog:   150 m                */ { 0.0260f, 0.98f,  40.0f, 0.25f, 0.7f },
+    /* rain:  1 km                 */ { 0.0040f, 0.95f, 120.0f, 0.20f, 0.7f },
+    /* snow:  700 m                */ { 0.0055f, 0.97f, 150.0f, 0.20f, 0.7f },
+    /* night: clear air, 20 km     */ { 0.0002f, 0.95f,  60.0f, 0.20f, 0.0f },
 };
-#define VOL_G 0.7f              /* Henyey-Greenstein asymmetry: a forward-scattering haze */
+#define VOL_G 0.7f              /* Henyey-Greenstein asymmetry of the day's hazes (k_vol's g) */
 #define VOL_BEAMS 2             /* the lighthouse beams the full-screen pass scatters (Coastline's two) */
 #define VOL_BEAM_STEPS 32       /* the march's steps over the lit stretch of a ray (the shader's loop) */
 #define VOL_BEAM_SKY 3000.0f    /* metres: the distance an empty pixel (the sky, the backdrop) gives the beam's march */

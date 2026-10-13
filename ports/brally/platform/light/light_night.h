@@ -48,33 +48,35 @@ static inline float light_moon_ground(float elev_deg)
  * exposure (light_local_exposure).  EV100 from the camera's exposure
  * 1 / (1.2 2^EV): EV = log2(L / (1.2 key)), L = 0.18 Yamb / pi. */
 #define LIGHT_NIGHT_KEY   0.12f
-#define LIGHT_LOCAL_EDGE0 1.5f
-#define LIGHT_LOCAL_EDGE1 3.0f
-#define LIGHT_LOCAL_KNEE 2.0f
-#define LIGHT_NIGHT_LOCAL_K 0.85f   
+#define LIGHT_LOCAL_EDGE 1.5f   /* stops: a pixel this far under its surroundings' mean is across an edge */
+#define LIGHT_LOCAL_KNEE 1.5f   /* stops over the key where the compression starts */
+#define LIGHT_LOCAL_EMAX 1.5f   /* stops: the most a region ends over the knee, however bright */
 static inline float light_night_ev(float Yamb, float key)
 {
     return log2f(0.18f * Yamb / 3.14159265f / (1.2f * key));
 }
 
 /* ---- local exposure ---------------------------------------------------------------
- * A region brighter than the key (its local mean Yloc, pre-exposed: a blur
- * of the frame) is brought down by (Yloc / key)^-k: its contrast with the
- * rest of the frame compressed by k, the detail inside it kept (the same
- * factor over the whole region), as Unreal Engine 5's local exposure
- * ("highlight contrast" 1 - k).  Regions at or under the key unchanged. */
-static inline float light_local_exposure(float Ypix, float Yloc, float key, float k)
+ * A region brighter than the knee (LIGHT_LOCAL_KNEE stops over the key, its
+ * local mean Yloc, pre-exposed: a blur of the frame) is brought down so its
+ * excess e stops over the knee becomes emax e / (e + emax): a stop or two
+ * nearly kept (the moonlit sky and the haze keep their gradation), a
+ * headlamp pool 7 stops over it ends 1.25 over, the same factor over the
+ * whole region (its texture kept), as Unreal Engine 5's local exposure.
+ * Across an edge the pixel's own luminance: the region's level is
+ * min(Yloc, Ypix 2^LIGHT_LOCAL_EDGE), so the moonlit ground beside a pool,
+ * far under the blur that carries the pool's light, is not darkened (no
+ * dark ring).  The output Ypix f is non-decreasing in Ypix (in each branch
+ * its log's slope is 1 or emax^2 / (e + emax)^2), so added light (a flare's
+ * ghost) never darkens a pixel. */
+static inline float light_local_exposure(float Ypix, float Yloc, float key, float emax)
 {
-    /* edge-aware: a pixel LIGHT_LOCAL_EDGE0..1 stops from its surroundings' mean
-       is across an edge (the moonlit ground beside a pool): it is compressed by
-       its own luminance, not the pool's (no dark ring); inside a region (its
-       texture within a stop or so of the mean) by the region's mean */
-    float d = fabsf(log2f(fmaxf(Ypix, 1e-9f) / fmaxf(Yloc, 1e-9f)));
-    float t = fminf(fmaxf((d - LIGHT_LOCAL_EDGE0) / (LIGHT_LOCAL_EDGE1 - LIGHT_LOCAL_EDGE0), 0.0f), 1.0f);
-    float Y = exp2f(log2f(fmaxf(Yloc, 1e-9f)) + (log2f(fmaxf(Ypix, 1e-9f)) - log2f(fmaxf(Yloc, 1e-9f))) * t * t * (3.0f - 2.0f * t));
-    /* only well above the key (LIGHT_LOCAL_KNEE stops): the moonlit scene keeps its exposure */
+    float Y = fminf(Yloc, Ypix * exp2f(LIGHT_LOCAL_EDGE)), e;
     key *= exp2f(LIGHT_LOCAL_KNEE);
-    return Y > key && k > 0.0f ? powf(Y / key, -k) : 1.0f;
+    if (!(Y > key) || !(emax > 0.0f))
+        return 1.0f;
+    e = log2f(Y / key);
+    return exp2f(emax * e / (e + emax) - e);
 }
 
 /* ---- the meter -----------------------------------------------------------------

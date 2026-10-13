@@ -373,12 +373,13 @@ BRR_GLARE_SRC \
 "  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n" \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
 /* local exposure (light_night.h's light_local_exposure, the same numbers):
-   a region brighter than the key, by its blurred luminance, brought down by
-   (Yloc / key)^-k; lexp: x k, y the key (pre-exposed) */ \
-"static float locexp(float Ypix, float Yloc, float key, float k) {\n" \
-"  float lp = log2(max(Ypix, 1e-9)), ll = log2(max(Yloc, 1e-9)), t = smoothstep(1.5, 3.0, abs(lp - ll));   /* edge-aware: across an edge, the pixel's own */\n" \
-"  float Y = exp2(ll + (lp - ll) * t); key *= 4.0;   /* only well above the key (2 stops) */\n" \
-"  return Y > key && k > 0.0 ? pow(Y / key, -k) : 1.0; }\n" \
+   a region over the knee, by its blurred luminance, compressed to
+   emax e / (e + emax) stops over it; lexp: x emax, y the key (pre-exposed),
+   z the blur's scale (the bloom level holds the levels under it summed) */ \
+"static float locexp(float Ypix, float Yloc, float key, float emax) {\n" \
+"  float Y = min(Yloc, Ypix * 2.8284271), kn = key * 2.8284271;   /* LIGHT_LOCAL_EDGE, LIGHT_LOCAL_KNEE: 1.5 stops */\n" \
+"  if (!(Y > kn) || !(emax > 0.0)) return 1.0;\n" \
+"  float e = log2(Y / kn); return exp2(emax * e / (e + emax) - e); }\n" \
 "fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
 "                    texture2d<float> alb [[texture(2)]], texture2d<float> blm [[texture(3)]],\n" \
 "                    device atomic_uint *hist [[buffer(1)]], constant GLU &gl [[buffer(2)]]) {\n" \
@@ -391,7 +392,7 @@ BRR_GLARE_SRC \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
 "                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
-"  if (u.lexp.x > 0.0) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)), u.lexp.y, u.lexp.x);   /* after the meter */\n" \
+"  if (u.lexp.x > 0.0) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)) * u.lexp.z, u.lexp.y, u.lexp.x);   /* after the meter */\n" \
 "  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \

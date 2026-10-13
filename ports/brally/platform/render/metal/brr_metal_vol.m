@@ -101,7 +101,7 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
     v->tgt[3] = VOL_NEAR;
     v->med[0] = k_vol[w].sigma; v->med[1] = k_vol[w].albedo; v->med[2] = k_vol[w].height;
     v->med[3] = eye[2] - 2.0f;          /* the ground, about a car's camera height below the eye */
-    v->nse[0] = k_vol[w].noise; v->nse[1] = 1.0f / 24.0f; v->nse[2] = (float)fmod(time, 1000.0); v->nse[3] = VOL_G;
+    v->nse[0] = k_vol[w].noise; v->nse[1] = 1.0f / 24.0f; v->nse[2] = (float)fmod(time, 1000.0); v->nse[3] = k_vol[w].g;
     v->hist[0] = VOL_HISTORY;
     {
         int k;

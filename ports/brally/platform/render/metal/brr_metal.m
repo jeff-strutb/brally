@@ -1342,7 +1342,7 @@ static void lit_present(void)
     }
     u.misc[0] = lit_exposure(w);
     if (w == 4) {   /* night: the lamps' pools compressed (light_local_exposure) */
-        u.lexp[0] = LIGHT_NIGHT_LOCAL_K;
+        u.lexp[0] = LIGHT_LOCAL_EMAX;
         u.lexp[1] = LIGHT_NIGHT_KEY;
     }
     u.misc[2] = k_weather[w].rough;
@@ -1852,6 +1852,9 @@ static void lit_present(void)
         LU pu = u;
         pu.misc[0] = u.misc[0];
         pu.bg[1] = u.bg[1];
+        /* the local exposure's blur, bloom level m, holds levels m..s_nbl-1 summed (each up pass adds
+           the level under it): its mean is that over s_nbl - m */
+        pu.lexp[2] = s_nbl ? 1.0f / (float)(s_nbl - (s_nbl > 3 ? 2 : s_nbl - 1)) : 1.0f;
         [e setFragmentBytes:&pu length:sizeof pu atIndex:0];
     }
     [e setFragmentTexture:hdr atIndex:0];

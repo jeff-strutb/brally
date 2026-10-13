@@ -1599,6 +1599,16 @@ static void test_delit(void)
  * pool through the real exposure (light_night_ev), local exposure, Purkinje
  * shift and tonemap (t_post runs pfs's chain on the GPU), against what must
  * be readable; and the moon in the camera's view */
+#define NIGHT_BLM_N 4.0f   /* the post pass's blur, bloom level 2 of 6, holds 4 levels summed (brr_metal.m pu.lexp[2]) */
+static float night_post1(float x, float Y, float Yl)   /* one grey pixel through t_post: display luminance 0..1 */
+{
+    float in[4] = { Y, Y, Y, Yl * NIGHT_BLM_N }, o[4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+    id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
+    kern(@"t_post", 1, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
+    memcpy(o, [bo contents], sizeof o);
+    return 0.2126f * o[0] + 0.7152f * o[1] + 0.0722f * o[2];
+}
+static float night_hg(float g, float c) { return (1 - g * g) / (4 * (float)M_PI * powf(1 + g * g - 2 * g * c, 1.5f)); }
 static void test_night_frame(void)
 {
     const float el = LIGHT_MOON_ELEV, En = light_moon_normal(el), Eh = En * sinf(el * 0.017453293f);
@@ -1612,10 +1622,10 @@ static void test_night_frame(void)
         float L[5] = { 0.18f * Yamb / (float)M_PI, 0.05f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
                        0.1f * Epool / (float)M_PI, 0.3f * Epool / (float)M_PI };
         float Yl[5] = { L[0], L[0], L[2], 0.2f * Epool / (float)M_PI, 0.2f * Epool / (float)M_PI };
-        float in[5][4], o[5][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 };
+        float in[5][4], o[5][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
         int i;
         for (i = 0; i < 5; i++)
-            in[i][0] = in[i][1] = in[i][2] = L[i], in[i][3] = Yl[i];
+            in[i][0] = in[i][1] = in[i][2] = L[i], in[i][3] = Yl[i] * NIGHT_BLM_N;
         {
             id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
             kern(@"t_post", 5, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
@@ -1638,13 +1648,13 @@ static void test_night_frame(void)
            taken as a Gaussian of that sigma); the moonlit ground 3 sigma from the edge must stay within 25% of its level far away */
         float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
         float Lg = 0.18f * Yamb / (float)M_PI, Lp = 0.2f * 20.0f / (float)M_PI, sig = 1.0f;
-        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 };
+        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
         int i;
         for (i = 0; i < 3; i++) {   /* the ground at d sigma outside a straight edge: the blur's share of the pool */
             float f = 0.5f * erfcf(d[i] / (sig * 1.41421356f));
-            in[i][0] = in[i][1] = in[i][2] = Lg, in[i][3] = Lg + f * (Lp - Lg);
+            in[i][0] = in[i][1] = in[i][2] = Lg, in[i][3] = (Lg + f * (Lp - Lg)) * NIGHT_BLM_N;
         }
-        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg;
+        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg * NIGHT_BLM_N;
         {
             id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
             kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
@@ -1658,15 +1668,15 @@ static void test_night_frame(void)
            through the same chain next to the moonlit ground; the blur around a thin beam is the ground's */
         float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
         float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma, ss = st * k_vol[4].albedo;
-        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 }, Lb[3];
+        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N }, Lb[3];
         const float A[3] = { 0, 0, 0 }, ax[3] = { 1, 0, 0 }, dir[3] = { 0, 1, 0 };
         int i;
         for (i = 0; i < 3; i++) {
             float org[3] = { Dd[i], -100.0f, 0.0f };
-            Lb[i] = 2.0e6f * ss * vol_beam(org, dir, A, ax, cosf(2.5f * 0.017453293f), cosf(1.5f * 0.017453293f), st, 0.7f, 3000.0f, 0.5f, 256);
-            in[i][0] = in[i][1] = in[i][2] = Lg + Lb[i], in[i][3] = Lg;   /* the beam over the ground behind it (vol_beam includes the path to the eye) */
+            Lb[i] = 2.0e6f * ss * vol_beam(org, dir, A, ax, cosf(2.5f * 0.017453293f), cosf(1.5f * 0.017453293f), st, k_vol[4].g, 3000.0f, 0.5f, 256);
+            in[i][0] = in[i][1] = in[i][2] = Lg + Lb[i], in[i][3] = Lg * NIGHT_BLM_N;   /* the beam over the ground behind it (vol_beam includes the path to the eye) */
         }
-        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg;
+        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg * NIGHT_BLM_N;
         {
             id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
             kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
@@ -1677,6 +1687,52 @@ static void test_night_frame(void)
         report(o[0][1] < 0.97f && o[0][1] - o[3][1] > 40.0f / 255, "the beam near the lighthouse: bright, not clipped", "%.0f/255 (ground %.0f)", 255 * o[0][1], 255 * o[3][1]);
         report(o[1][1] - o[3][1] > 15.0f / 255, "the beam 300 m out still visible", "%.0f/255 (ground %.0f)", 255 * o[1][1], 255 * o[3][1]);
         report(o[2][1] >= o[3][1] && o[2][1] < o[1][1], "the beam fades with distance", "%.0f < %.0f", 255 * o[2][1], 255 * o[1][1]);
+    }
+    {   /* the local exposure over the whole range (the GPU's locexp through the chain): added light never darkens a
+           pixel (a flare's ghost over the haze), and regions 1, 2, 3 stops over the moonlit ground keep their steps */
+        enum { NP = 400, NB = 9 };
+        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
+        float Lg = 0.18f * Yamb / (float)M_PI, (*in)[4] = malloc(16 * NP * NB), (*o)[4] = malloc(16 * NP * NB), pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
+        float reg[5], worst = 0;
+        int i, b, bad = 0;
+        for (b = 0; b < NB; b++)
+            for (i = 0; i < NP; i++) {
+                float Y = Lg * exp2f(-4.0f + 16.0f * i / (NP - 1)), Yl = Lg * exp2f(-2.0f + 12.0f * b / (NB - 1));
+                in[b * NP + i][0] = in[b * NP + i][1] = in[b * NP + i][2] = Y, in[b * NP + i][3] = Yl * NIGHT_BLM_N;
+            }
+        {
+            id<MTLBuffer> bi = B(in, 16 * NP * NB), bo = B(NULL, 16 * NP * NB), bp = B(pr, sizeof pr);
+            kern(@"t_post", NP * NB, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
+            memcpy(o, [bo contents], 16 * NP * NB);
+        }
+        for (b = 0; b < NB; b++)
+            for (i = 1; i < NP; i++) {
+                float a = 0.2126f * o[b * NP + i - 1][0] + 0.7152f * o[b * NP + i - 1][1] + 0.0722f * o[b * NP + i - 1][2];
+                float c = 0.2126f * o[b * NP + i][0] + 0.7152f * o[b * NP + i][1] + 0.0722f * o[b * NP + i][2];
+                if (c < a - 1e-6f)
+                    bad++, worst = fmaxf(worst, a - c);
+            }
+        report(bad == 0, "local exposure: more light never darker", "%d decreasing steps of %d (pixel 2^-4..2^12 x ground, blur 2^-2..2^10), worst %.4f", bad, NB * (NP - 1), worst);
+        for (i = 0; i < 5; i++)
+            reg[i] = 255 * night_post1(x, Lg * exp2f((float)i), Lg * exp2f((float)i));
+        printf("    regions 0..4 stops over the moonlit ground: %.0f %.0f %.0f %.0f %.0f/255\n", reg[0], reg[1], reg[2], reg[3], reg[4]);
+        report(reg[1] - reg[0] >= 12 && reg[2] - reg[1] >= 12 && reg[3] - reg[2] >= 12, "brighter regions keep their gradation",
+               "steps %.0f, %.0f, %.0f/255 (12 and up)", reg[1] - reg[0], reg[2] - reg[1], reg[3] - reg[2]);
+        free(in), free(o);
+    }
+    {   /* the night air toward the moon (k_vol[4]: its extinction, albedo and phase; the camera 5 degrees off the moon,
+           the medium's full density along a level ray): its light over an object 300 m away and over the far horizon
+           (3 km), through the chain, against the moonlit ground; it must read as night air, not a wall */
+        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
+        float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma;
+        float Lin = k_vol[4].albedo * (En * night_hg(k_vol[4].g, cosf(5.0f * 0.017453293f)) + 0.10f * En / (float)M_PI);
+        float t3 = expf(-st * 300.0f), t30 = expf(-st * 3000.0f);
+        float L300 = Lg * t3 + (1 - t3) * Lin, L3k = Lg * t30 + (1 - t30) * Lin;
+        float g = 255 * night_post1(x, Lg, Lg), a = 255 * night_post1(x, L300, L300), h = 255 * night_post1(x, L3k, L3k);
+        printf("    night air toward the moon: object at 300 m +%.2f stops (%.0f/255), far horizon +%.2f stops (%.0f/255), ground %.0f\n",
+               log2f(L300 / Lg), a, log2f(L3k / Lg), h, g);
+        report(log2f(L300 / Lg) < 0.75f, "an object 300 m away keeps its level", "+%.2f stops of air light (under 0.75)", log2f(L300 / Lg));
+        report(h < 180.0f && h > g, "the far horizon a lit haze, not a wall", "%.0f/255 (ground %.0f; under 180)", h, g);
     }
     {   /* the moon in view: the start camera (the game's view x projection: forward (0.6225, 0.7826, 0), vertical half-angle
            atan(1 / 3.732) = 15 degrees), the moon opposite the sun's bearing (-1, -1.5) */
