@@ -15,7 +15,15 @@
  *   gi_blend   the rays folded into two octahedral atlases: irradiance (8 x 8
  *              texels a probe, 1 texel border; lux) and the mean and mean
  *              square of the distance to the nearest surface (16 x 16, 1
- *              texel border; metres), hysteresis par.x
+ *              texel border; metres), hysteresis par.x a frame
+ *
+ * The update is spread over upd.x frames (4): a quarter of the probes, by
+ * slot, traced and folded each frame, with the hysteresis raised to the 4th
+ * power so the light settles in the same time; a slot new to the volume is
+ * updated the frame it comes in.  The hits' lamps come from a light grid
+ * (gi_grid, a compute pass a frame): cubes of 16 m or more over the volume
+ * and the rays' reach, each listing the lamps whose range overlaps it, at
+ * most BRR_GI_CELL, the most intense first.
  *
  * gi_irr(p, n, v) is a surface's indirect irradiance from the 8 probes
  * around it: trilinear, times the backface and Chebyshev visibility weights,
@@ -43,12 +51,16 @@ typedef struct BrrGiU {
     float par[4];            /* hysteresis, albedo without a record, emission scale (cd/m2), normal bias */
     float rot0[4], rot1[4], rot2[4];   /* this frame's ray rotation, rows */
     float lim[4];            /* ray length (metres), Chebyshev visibility on, lamps in the set, bounces past the first on */
+    float gorg[4];           /* the light grid's corner, its cubes' side (metres) */
+    int gdim[4];             /* its cubes x, y, z; lamps a cube at most (BRR_GI_CELL at most) */
+    int upd[4];              /* frames a probe's update is spread over, this frame's share */
 } BrrGiU;
 
 typedef struct BrrGi {
     id<MTLComputePipelineState> trace, birr, bdst;
     id<MTLTexture> irr[2], dst[2];   /* ping-pong: [cur] last written */
-    id<MTLBuffer> ray, leaf;
+    id<MTLComputePipelineState> grid;
+    id<MTLBuffer> ray, leaf, gcnt, glst;   /* the light grid: a cube's count, its list */
     BrrGiU u;
     int cur, nx, ny, nz, nr, ready;
     unsigned gen;                    /* the world's track generation leaf was made for */

@@ -12,10 +12,17 @@
  *             without the Chebyshev visibility; held under 1% from 0.3 m
  *             (closer than that the normal bias reaches through the wall,
  *             as in the paper)
+ *   grid      the light grid: 128 lamps of random places and ranges binned on
+ *             the GPU; every cube's list against the spheres of influence
+ *             on the CPU (a lamp whose sphere misses the cube never listed,
+ *             one that reaches it always, while the cube holds fewer than
+ *             BRR_GI_CELL), and lit hits against every lamp of the set
  *   fold      the GPU's fold of one frame's rays against this file's CPU fold
  *             of the same rays
  *   cost      a 16 x 8 x 16 volume, 64 rays a probe, over a 131k triangle
- *             terrain in sunlight: the GPU's time for one update, and memory
+ *             terrain in sunlight, without lamps and with 128 along 1 km:
+ *             the GPU's time for one update (a quarter of the probes), and
+ *             memory
  *
  * Usage: gi_test   (gi.sh) */
 #import <Foundation/Foundation.h>
@@ -167,13 +174,13 @@ static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float
                 if (dist) { float w = powf(c, 50.0f), t = fminf(r[3], u->lim[0]); acc[0] += w * t; acc[1] += w * t * t; ws += w; }
                 else { for (k = 0; k < 3; k++) acc[k] += c * r[k]; ws += c; }
             }
-            if (ws <= 0.0f) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
-            int wv[3], fresh = u->pbase[3] == 0;
+            int wv[3], fresh = u->pbase[3] == 0, per = u->upd[0] > 1 ? u->upd[0] : 1;
             for (k = 0; k < 3; k++) {
                 wv[k] = u->base[k] + imod(s[k] - u->base[k], u->n[k]);
                 if (wv[k] < u->pbase[k] || wv[k] >= u->pbase[k] + u->n[k]) fresh = 1;
             }
-            float h = fresh ? 0.0f : u->par[0];
+            if ((pl % per != u->upd[1] && !fresh) || ws <= 0.0f) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
+            float h = fresh ? 0.0f : powf(u->par[0], (float)per);
             for (k = 0; k < (dist ? 2 : 3); k++) {
                 float nw = acc[k] / ws * (dist ? 1.0f : 3.14159265f);
                 o[k] = nw + (old[k] - nw) * h;
@@ -282,7 +289,7 @@ static void lampbox(void)
         }
     printf("lamp       point lamp %.0f cd at the centre of a 6 m box, a %.4f: first bounce %.4f lux (texel 0), 64 texels max rel err %.3f%%\n",
            I, a, e0, err * 100.0f);
-    check("lamp first bounce within 2%", err < 0.02f);
+    check("lamp first bounce within 0.1%", err < 0.001f);
     free(irr);
     brr_gi_release(&g); brr_rt_release(&w);
 }
@@ -326,6 +333,59 @@ static void leak(void)
     brr_rt_release(&w);
 }
 
+/* the light grid against the spheres on the CPU */
+static void gridtest(void)
+{
+    Mesh m = { 0 };
+    BrrRtWorld w = { 0 };
+    BrrGi g;
+    float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 };
+    id<MTLBuffer> ls = [s_dev newBufferWithLength:sizeof(float) * 16 * 128 + 224 options:MTLResourceStorageModeShared];
+    float *L = (float *)((char *)[ls contents] + 224);
+    uint32_t r = 777u;
+#define RN() ((float)((r = r * 1664525u + 1013904223u) >> 8) / 16777216.0f)
+    memset([ls contents], 0, ls.length);
+    for (int i = 0; i < 128; i++) {
+        float rec[16] = { -300 + 600 * RN(), -300 + 600 * RN(), -100 + 200 * RN(), 2.0f, 0, 0, -1, 100 + 1000 * RN(),
+                          1, 0, 0, 3 + 37 * RN(), 1, 1, 1, 0 };
+        memcpy(L + i * 16, rec, sizeof rec);
+    }
+    box(&m, 3.0f, grey(128), 0);
+    world(&w, &m, 5);
+    brr_gi_init(&g, s_dev, 16, 8, 16, 64);
+    frame(&g, 8.0f, sun, zero);
+    run(&g, &w, ls, 128);
+    const BrrGiU *u = &g.u;
+    const uint32_t *cnt = [g.gcnt contents];
+    const uint16_t *lst = [g.glst contents];
+    int nc = u->gdim[0] * u->gdim[1] * u->gdim[2], wrong = 0, full = 0, listed = 0, checked = 0;
+    for (int c = 0; c < nc; c++) {
+        int cx = c % u->gdim[0], cy = (c / u->gdim[0]) % u->gdim[1], cz = c / (u->gdim[0] * u->gdim[1]);
+        float lo[3] = { u->gorg[0] + cx * u->gorg[3], u->gorg[1] + cy * u->gorg[3], u->gorg[2] + cz * u->gorg[3] };
+        int in[128] = { 0 };
+        if (cnt[c] > BRR_GI_CELL) { wrong++; continue; }
+        for (unsigned k = 0; k < cnt[c]; k++) in[lst[c * 32 + k]] = 1;
+        listed += (int)cnt[c];
+        if (cnt[c] == BRR_GI_CELL) { full++; }
+        for (int i = 0; i < 128; i++) {
+            const float *l = L + i * 16;
+            double d2 = 0.0, R = l[11];
+            for (int k = 0; k < 3; k++) {
+                double q = l[k], e = q < lo[k] ? lo[k] - q : q > lo[k] + u->gorg[3] ? q - lo[k] - u->gorg[3] : 0.0;
+                d2 += e * e;
+            }
+            double gap = sqrt(d2) - R;            /* < 0: the sphere reaches the cube */
+            if (gap > 1e-3 && in[i]) wrong++;    /* misses it: never listed */
+            if (gap < -1e-3 && !in[i] && cnt[c] < BRR_GI_CELL) wrong++;   /* reaches it: always */
+            checked++;
+        }
+    }
+    printf("grid       %d x %d x %d cubes of %.1f m, 128 lamps: %d lamp-cube pairs checked, %d listed, %d cubes full, %d wrong\n",
+           u->gdim[0], u->gdim[1], u->gdim[2], u->gorg[3], checked, listed, full, wrong);
+    check("grid lists exactly the lamps that reach a cube", wrong == 0 && listed > 0);
+    brr_gi_release(&g); brr_rt_release(&w);
+}
+
 static void cost(void)
 {
     Mesh m = { 0 };
@@ -342,18 +402,34 @@ static void cost(void)
             tri(&m, a, b, c, grey(90), 0); tri(&m, a, c, d, grey(90), 0);
         }
     world(&w, &m, 4);
-    brr_gi_init(&g, s_dev, 16, 8, 16, 64);
-    double best = 1e30, sum = 0.0;
-    int nt = 0;
-    for (int f = 0; f < 40; f++) {
-        float eye[3] = { f * 0.5f, 0, 4 };
-        brr_gi_frame(&g, eye, 8.0f, sun, sunc, sky, gnd);
-        double ms = run(&g, &w, nil, 0);
-        if (f >= 10) { best = fmin(best, ms); sum += ms; nt++; }
+    /* the night's set: 128 lamps (the set's most) spread along a 1 km line
+       through the volume, points and spots, 20 .. 60 m range */
+    id<MTLBuffer> ls = [s_dev newBufferWithLength:sizeof(float) * 16 * 128 + 224 options:MTLResourceStorageModeShared];
+    memset([ls contents], 0, ls.length);
+    {
+        float *L = (float *)((char *)[ls contents] + 224);
+        uint32_t r = 12345u;
+        for (int i = 0; i < 128; i++) {
+            float x = -500.0f + 1000.0f * (i + 0.5f) / 128.0f, y = ((int)(r = r * 1664525u + 1013904223u) >> 8) / 8388608.0f * 30.0f;
+            float rec[16] = { x, y, 5.0f, i & 1 ? 3.0f : 2.0f, 0, 0, -1, 3000.0f, 0.95f, 0, 0, 20.0f + (i % 5) * 10.0f, 1, 0.8f, 0.6f, 0.5f };
+            memcpy(L + i * 16, rec, sizeof rec);
+        }
     }
-    printf("cost       %d probes x %d rays over %d triangles: %.3f ms a frame (best %.3f), GPU memory %.2f MB (atlases x2 + rays), BVH %.2f MB\n",
-           16 * 8 * 16, 64, m.n, sum / nt, best, g.bytes / 1048576.0, w.bvh_bytes / 1048576.0);
-    brr_gi_release(&g); brr_rt_release(&w);
+    for (int lit = 0; lit < 2; lit++) {
+        brr_gi_init(&g, s_dev, 16, 8, 16, 64);
+        double best = 1e30, sum = 0.0;
+        int nt = 0;
+        for (int f = 0; f < 40; f++) {
+            float eye[3] = { f * 0.5f, 0, 4 };
+            brr_gi_frame(&g, eye, 8.0f, sun, sunc, sky, gnd);
+            double ms = run(&g, &w, lit ? ls : nil, lit ? 128 : 0);
+            if (f >= 10) { best = fmin(best, ms); sum += ms; nt++; }
+        }
+        printf("cost       %d probes x %d rays over %d triangles, %d lamps: %.3f ms a frame (best %.3f), GPU memory %.2f MB (atlases x2 + rays), BVH %.2f MB\n",
+               16 * 8 * 16, 64, m.n, lit ? 128 : 0, sum / nt, best, g.bytes / 1048576.0, w.bvh_bytes / 1048576.0);
+        brr_gi_release(&g);
+    }
+    brr_rt_release(&w);
 }
 
 static const char *k_eval =
@@ -370,10 +446,11 @@ int main(void)
         id<MTLLibrary> lib = brr_rt_library(s_dev, [NSString stringWithFormat:@"%s%s%s%s", BRR_GI_DEFS, BRR_LIGHTS_SRC, BRR_GI_SRC, k_eval], &err);
         if (!lib) { printf("FAIL compile: %s\n", [[err description] UTF8String]); return 1; }
         s_eval = [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_eval"] error:&err];
-        check("GiU is 13 float4", sizeof(BrrGiU) == 13 * 16);
+        check("GiU is 16 float4", sizeof(BrrGiU) == 16 * 16);
         furnace();
         lampbox();
         leak();
+        gridtest();
         cost();
         printf(s_fail ? "gi: FAIL\n" : "gi: all passed\n");
         return s_fail;
