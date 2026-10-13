@@ -26,6 +26,8 @@
 
 #include "brr_metal_gi_src.h"
 
+#include "brr_metal_glare.h"
+
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
  * cascades: their matrices, where each ends in view depth, metres per texel,
  * one texel in depth units, metres per unit of depth; csoft: tan of the
@@ -355,6 +357,7 @@ BRR_SHADOW_SRC \
 "}\n" \
 /* post: bloom, exposure, the meter's histogram, the Purkinje shift (brr_metal_night.h), Khronos PBR Neutral, sRGB */ \
 BRR_NIGHT_SRC \
+BRR_GLARE_SRC \
 /* the meter's centre weighting (light_night.h light_meter_weight): 1 at the \
    frame's edge, 4 at its centre, 1 + 3 (1 - r^2) within the ellipse r < 1 */ \
 "static uint mweight(float2 uv) { float2 q = (uv - 0.5) * 2.0; return 1u + uint(3.0 * saturate(1.0 - dot(q, q)) + 0.5); }\n" \
@@ -371,10 +374,11 @@ BRR_NIGHT_SRC \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
 "fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
 "                    texture2d<float> alb [[texture(2)]],\n" \
-"                    device atomic_uint *hist [[buffer(1)]]) {\n" \
+"                    device atomic_uint *hist [[buffer(1)]], constant GLU &gl [[buffer(2)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
+"  c += glare(gl, in.uv, alb);   /* the sun's (moon's) glare and flare (brr_metal_glare.h), metered with the frame */\n" \
 "  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
 "  uint2 apx = uint2(float2(px) * float2(alb.get_width(), alb.get_height()) / float2(hdr.get_width(), hdr.get_height()));   /* the G-buffer at the lit 3D's size */\n" \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
