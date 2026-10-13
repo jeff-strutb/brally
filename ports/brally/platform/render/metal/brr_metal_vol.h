@@ -128,11 +128,32 @@ static inline void vol_inverse(const float s[16], BrrVU *v)
     v->tr[0] = s[12]; v->tr[1] = s[13]; v->tr[2] = s[15];
 }
 
-#define BRR_VOL_SRC \
+/* the volume's sampling, shared by its full-screen pass and the forward-lit
+ * blended 3D (BRR_LIT_SRC's fsf, which comes before BRR_VOL_SRC): every 3D
+ * surface of the lit frame, opaque or blended, takes the same (in-scattered
+ * light, transmittance) at its pixel and distance */
+#define BRR_VOL_AT_SRC \
 "struct VU { float4 ir0; float4 ir1; float4 ir2; float4 tr; float4x4 pscr; float4 peye; float4 grid; float4 tgt; float4 med; float4 nse; float4 hist; };\n" \
-"static float vol_hg(float g, float c) { float d = 1.0 + g * g - 2.0 * g * c; return (1.0 - g * g) / (4.0 * 3.14159265 * d * sqrt(d)); }\n" \
 "static float vol_dist(constant VU &v, float s) { return v.tgt.w * pow(v.grid.w / v.tgt.w, s / v.grid.z); }\n" \
 "static float vol_slice(constant VU &v, float t) { return v.grid.z * log(max(t, 1e-4) / v.tgt.w) / log(v.grid.w / v.tgt.w); }\n" \
+/* the volume at distance t along a pixel's ray: (light, transmittance) */ \
+"static float4 vol_at(constant VU &v, texture3d<float> iv, float2 px, float t) {\n" \
+"  constexpr sampler s3(filter::linear, address::clamp_to_edge);\n" \
+"  float i = vol_slice(v, min(t, v.grid.w)) - 1.0;\n" \
+"  float4 r = iv.sample(s3, float3(px / v.tgt.xy, (max(i, 0.0) + 0.5) / v.grid.z));\n" \
+"  if (i < 0.0) { float k = saturate(t / vol_dist(v, 1.0)); r = mix(float4(0, 0, 0, 1), r, k); }\n" \
+"  return r; }\n" \
+/* a surface at world point P on target pixel px, seen from eye: (light, transmittance); \
+   P zero is an empty pixel (the sky, the backdrop), at the grid's far side */ \
+"static float4 vol_pix(constant VU &v, texture3d<float> iv, float2 px, float3 P, float3 eye) {\n" \
+"  return vol_at(v, iv, px, all(P == 0.0) ? v.grid.w : length(P - eye)); }\n" \
+/* a blended surface's colour c through the volume: c * T + S; an additive one (light it adds) only c * T, \
+   the in-scattered light being the surface's behind it already */ \
+"static float3 vol_fwd(constant VU &v, texture3d<float> iv, float2 px, float3 wp, float3 eye, float3 c, bool add) {\n" \
+"  float4 r = vol_pix(v, iv, px, wp, eye); return c * r.a + (add ? float3(0.0) : min(r.rgb, float3(60000.0))); }\n"
+
+#define BRR_VOL_SRC \
+"static float vol_hg(float g, float c) { float d = 1.0 + g * g - 2.0 * g * c; return (1.0 - g * g) / (4.0 * 3.14159265 * d * sqrt(d)); }\n" \
 /* the world ray through a target pixel: the screen map solved for w = 1 */ \
 "static float3 vol_ray(constant VU &v, float3 eye, float2 px) {\n" \
 "  float3 c = float3(px, 1.0) - v.tr.xyz; float3 p = float3(dot(v.ir0.xyz, c), dot(v.ir1.xyz, c), dot(v.ir2.xyz, c));\n" \
@@ -203,19 +224,10 @@ static inline void vol_inverse(const float s[16], BrrVU *v)
 "    out.write(float4(S, T), uint3(id, z));\n" \
 "  }\n" \
 "}\n" \
-/* the volume at distance t along a pixel's ray: (light, transmittance) */ \
-"static float4 vol_at(constant VU &v, texture3d<float> iv, float2 px, float t) {\n" \
-"  constexpr sampler s3(filter::linear, address::clamp_to_edge);\n" \
-"  float i = vol_slice(v, min(t, v.grid.w)) - 1.0;\n" \
-"  float4 r = iv.sample(s3, float3(px / v.tgt.xy, (max(i, 0.0) + 0.5) / v.grid.z));\n" \
-"  if (i < 0.0) { float k = saturate(t / vol_dist(v, 1.0)); r = mix(float4(0, 0, 0, 1), r, k); }\n" \
-"  return r; }\n" \
 /* the full-screen pass: blended (one, source alpha), colour * T + S; an empty pixel (the sky, the backdrop) at the grid's far side */ \
 "fragment float4 vol_apply(LO in [[stage_in]], constant LU &u [[buffer(0)]], constant VU &v [[buffer(1)]],\n" \
 "                          texture2d<float> pos [[texture(0)]], texture3d<float> iv [[texture(1)]]) {\n" \
-"  float4 P = pos.read(uint2(in.pos.xy));\n" \
-"  float t = all(P.xyz == 0.0) ? v.grid.w : length(P.xyz - u.eye.xyz);\n" \
-"  float4 r = vol_at(v, iv, in.pos.xy, t);\n" \
+"  float4 r = vol_pix(v, iv, in.pos.xy, pos.read(uint2(in.pos.xy)).xyz, u.eye.xyz);\n" \
 "  return float4(min(r.rgb, float3(60000.0)), r.a); }\n"
 
 #ifdef __OBJC__
@@ -229,6 +241,9 @@ int brr_vol_on(id<MTLDevice> dev);
 void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> cmd, const void *lu, size_t lusz,
                    id<MTLBuffer> lset, id<MTLTexture> shadow, id<MTLTexture> gpos, id<MTLTexture> hdr,
                    const float eye[3], const float scr[16], int w, double time);
+/* this frame's volume (its uniforms at buf, the integrated volume at tex)
+ * for the forward pass's fsf */
+void brr_vol_bind(id<MTLRenderCommandEncoder> e, NSUInteger buf, NSUInteger tex);
 #endif
 
 #endif

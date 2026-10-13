@@ -1732,6 +1732,7 @@ static void lit_present(void)
             [e setFragmentTexture:s_latl atIndex:4];
             [e setFragmentTexture:s_brdfE atIndex:5];
             lit_gi_bind(e, 3);
+            brr_vol_bind(e, 4, 8);      /* the volumetric fog, when u.vol is on */
             op_draw(e, &s_ops[i], 1);
         }
     [e endEncoding];
