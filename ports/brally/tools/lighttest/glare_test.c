@@ -97,12 +97,7 @@ int main(void)
         check(mono && last == 0, "visibility falls monotonically as the taps are covered", last, mono);
     }
 
-    /* 5. clouds: transmittance in (0, 1], falling with the extinction; none with the tier off */
-    {
-        float dir[3] = { 0.3f, 0.4f, 0.866f }, c1[4] = { 0.9f, 0.002f, 0, 1 }, c2[4] = { 0.9f, 0.02f, 0, 1 }, c0[4] = { 0.9f, 0.02f, 0, 0 };
-        float t1 = brr_glare_cloud_T(dir, 0, c1), t2 = brr_glare_cloud_T(dir, 0, c2), t0 = brr_glare_cloud_T(dir, 0, c0);
-        check(t1 > 0 && t1 <= 1 && t2 <= t1 && t0 == 1, "the clouds' transmittance toward the light", t1, t2);
-    }
+    /* 5. the clouds' transmittance toward the light is the GPU's (brr_metal_clouds.h cloud_light_t): maths.sh section 11 */
     printf("%s\n", fails ? "glare: FAIL" : "glare: all pass");
     return fails != 0;
 }

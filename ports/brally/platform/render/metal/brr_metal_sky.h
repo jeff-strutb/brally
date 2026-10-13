@@ -129,7 +129,7 @@
    the soft rim, a smoothstep over the outer tenth of its solid angle, keeps \
    0.95 of it, divided back); kept within half float's range (the disc's \
    centre is about 1.6e9 cd/m2) */ \
-"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; float4 cld; float4 moon; };\n" \
+"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; float4 cld; float4 moon; float4 camb; };\n" \
 "static float3 camray(constant KU &k, float2 px) {\n" \
 "  float2 ndc = float2((px.x + 0.5) / k.tgt.x * 2.0 - 1.0, 1.0 - (px.y + 0.5) / k.tgt.y * 2.0);\n" \
 "  float2 g = float2((ndc.x - k.xft.y) / k.xft.x, (ndc.y - k.xft.w) / k.xft.z);\n" \
@@ -174,18 +174,19 @@
 "  return L; }\n" \
 BRR_CLOUD_SRC \
 /* the cloud's ambient (brr_metal_clouds.h): isotropic scattering, albedo \
-   0.98, of the sky above (its zenith radiance over the upper hemisphere) and \
-   the ground below (albedo 0.3, Lambertian, lit by the sun Esun and the sky \
-   pi Lz): 0.98 / 2 (Lz + 0.3 (Esun / pi + Lz)) */ \
-"static float3 camb(float3 Lz, float3 Esun) { return 0.49 * (Lz + 0.3 * (Esun / 3.14159265 + Lz)); }\n" \
+   0.98, of the sky above and the ground below, their mean radiance from the \
+   sky's measured irradiance (KU.camb, brr_metal.m) */ \
 /* the sky with the cloud layer (brr_metal_clouds.h) in front of it */ \
-"fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]]) {\n" \
+"fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]],\n" \
+"                      texture3d<float> cn [[texture(2)]], texture3d<float> cdt [[texture(3)]]) {\n" \
 "  float3 d = camray(k, in.pos.xy);\n" \
 "  if (k.ktop.w == 9.0) return float4(d * 0.5 + 0.5, 1);   /* debug: the ray */\n" \
 "  if (k.ktop.w == 10.0) { constexpr sampler s(filter::linear, address::clamp_to_edge); return float4(S.sample(s, svuv(d)).rgb * 20.0, 1); }\n" \
+"  if (k.ktop.w == 11.0) { constexpr sampler rs(filter::linear, address::repeat); float3 q = d / max(d.z, 0.05) * 2.2; return float4(cn.sample(rs, q / 24.0).rgb, 1); }   /* debug: the shape noise on the layer's mid plane */\n" \
 "  float3 L = skyrad(k, S, T, d);\n" \
-"  { constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
-"    float4 c = clouds(d, k.sun.xyz, k.eye.w, k.cld, trans(T, RG + 2.0, k.sun.z) * k.ktop.y, camb(S.sample(s, svuv(float3(0, 0, 1))).rgb, trans(T, RG + 0.0, k.sun.z) * k.ktop.y * max(k.sun.z, 0.0)));\n" \
+"  {\n" \
+"    float jit = fract(ign(in.pos.xy) + 0.6180340 * floor(k.cld.z * 60.0));   /* a step's offset per pixel and frame: the temporal resolve averages it */\n" \
+"    float4 c = clouds(d, k.sun.xyz, k.eye.w, k.cld, trans(T, RG + 2.0, k.sun.z) * k.ktop.y, k.camb.rgb, cn, cdt, jit);   /* the ambient: the sky's and the ground's mean radiance (brr_metal.m), not the zenith's: a thin edge darker than the sky behind it drew dark rims */\n" \
 "    L = L * c.a + c.rgb * k.ktop.x; }\n" \
 "  return float4(min(L * k.ktop.z * k.tgt.z, float3(60000.0)), 1); }   /* pre-exposed (k.tgt.z the exposure) */\n" \
 /* the game's painted backdrop over the sky: its hills, coast and sea stay, \

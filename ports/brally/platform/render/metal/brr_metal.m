@@ -463,7 +463,7 @@ static float lit_night_key(void)
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
                    float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], lexp[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
-typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4], moon[4]; } KU;
+typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4], moon[4], camb[4]; } KU;
 
 /* the sky per weather (brr_metal_sky.h): the Mie density (haze, fog), the
  * light at the top of the atmosphere (the sun's 128,000 lux, or a full moon's
@@ -478,6 +478,9 @@ static const struct { float mie, top, through, skyk, cover, dens; } k_sky[5] = {
 };   /* cover: the cloud layer's fBm coverage; dens: its extinction per metre at full density (brr_metal_clouds.h) */
 static id<MTLTexture> s_atmT, s_atmM, s_atmS, s_atmI[3];
 static id<MTLRenderPipelineState> s_patmT, s_patmM, s_patmS, s_patmI, s_psky, s_pbk2;
+static id<MTLTexture> s_cn, s_cdt;              /* the clouds' shape and detail noises (brr_metal_clouds.h), made once */
+static id<MTLComputePipelineState> s_pclt;      /* the clouds' transmittance toward the light (the glare's) */
+static id<MTLBuffer> s_cltb[3];
 static float s_atm_mie = -1.0f;
 
 /* the light per weather, in physical units: the sun's (or moon's)
@@ -619,6 +622,41 @@ static void lit_init(void)
         s_patmI = lit_pipe(@"lvs", @"atm_irr", &f32, 1, 0, -1, -1);
         s_psky = lit_pipe(@"lvs", @"skyfs", &hf, 1, 0, -1, -1);
         s_pbk2 = lit_pipe(@"vs", @"fsbk2", &hf, 1, 0, 1, 5);     /* source alpha, one minus source alpha */
+    }
+    {   /* the clouds' noises, once (brr_metal_clouds.h cloud_noise): 128^3 shape, 32^3 detail */
+        NSError *err = nil;
+        id<MTLComputePipelineState> pn = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cloud_noise"] error:&err];
+        int k2;
+        s_pclt = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cloud_light_t"] error:&err];
+        for (k2 = 0; k2 < 3; k2++)
+            s_cltb[k2] = [s_dev newBufferWithLength:32 options:MTLResourceStorageModeShared];
+        if (pn) {
+            id<MTLCommandBuffer> cb = [s_q commandBuffer];
+            id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
+            for (k2 = 0; k2 < 2; k2++) {
+                int n = k2 ? 32 : 128, det = k2;
+                MTLTextureDescriptor *t3 = [MTLTextureDescriptor new];
+                id<MTLTexture> t;
+                t3.textureType = MTLTextureType3D;
+                t3.pixelFormat = MTLPixelFormatRGBA16Unorm;   /* 16 bits: the shape is stretched 4 x, then the coverage's remap; 8 bits drew contours */
+                t3.width = t3.height = t3.depth = (NSUInteger)n;
+                t3.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+                t3.storageMode = MTLStorageModePrivate;
+                t = [s_dev newTextureWithDescriptor:t3];
+                [ce setComputePipelineState:pn];
+                [ce setTexture:t atIndex:0];
+                [ce setBytes:&det length:4 atIndex:0];
+                [ce dispatchThreads:MTLSizeMake((NSUInteger)n, (NSUInteger)n, (NSUInteger)n) threadsPerThreadgroup:MTLSizeMake(4, 4, 4)];
+                if (k2)
+                    s_cdt = t;
+                else
+                    s_cn = t;
+            }
+            [ce endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+        } else
+            fprintf(stderr, "brr: cloud noise: %s\n", err ? [[err localizedDescription] UTF8String] : "no kernel");
     }
     dd.depthCompareFunction = MTLCompareFunctionLessEqual;
     dd.depthWriteEnabled = YES;
@@ -1578,6 +1616,8 @@ static void lit_present(void)
             ku.ktop[1] = k_sky[w].through;
             ku.ktop[2] = k_sky[w].skyk;
             ku.ktop[3] = u.misc[3];            /* the debug view */
+            for (k = 0; k < 3; k++)   /* the clouds' ambient: the isotropic mean of the sky's and the ground's radiance, per unit of top light */
+                ku.camb[k] = 0.49f * (u.skyc[k] + u.gndc[k]) / (3.14159265f * fmaxf(k_sky[w].top, 1e-6f));
             ku.cld[0] = k_sky[w].cover;
             ku.cld[1] = getenv("BR_LIGHT_CLOUDDENS") ? (float)atof(getenv("BR_LIGHT_CLOUDDENS")) : k_sky[w].dens;   /* BR_LIGHT_CLOUDDENS: diagnostic */
             ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
@@ -1803,12 +1843,28 @@ static void lit_present(void)
     lit_split(1);
     lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
     lit_split(2);
+    {   /* the clouds' transmittance toward the sun or moon, for the post pass's glare */
+        float one = 1.0f;
+        memcpy([s_cltb[s_vbi] contents], &one, 4);
+        if (sky && s_pclt && s_cn) {
+            id<MTLComputeCommandEncoder> ce = [s_cmd computeCommandEncoder];
+            [ce setComputePipelineState:s_pclt];
+            [ce setBytes:&ku length:sizeof ku atIndex:0];
+            [ce setBuffer:s_cltb[s_vbi] offset:0 atIndex:1];
+            [ce setTexture:s_cn atIndex:0];
+            [ce setTexture:s_cdt atIndex:1];
+            [ce dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+            [ce endEncoding];
+        }
+    }
     e = lit_encoder(rp, 4);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
         [e setFragmentBytes:&ku length:sizeof ku atIndex:0];
         [e setFragmentTexture:s_atmS atIndex:0];
         [e setFragmentTexture:s_atmT atIndex:1];
+        [e setFragmentTexture:s_cn atIndex:2];
+        [e setFragmentTexture:s_cdt atIndex:3];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e setRenderPipelineState:s_pbk2];
         for (i = 0; i < s_nops; i++)
@@ -1943,6 +1999,7 @@ static void lit_present(void)
     [e setFragmentTexture:s_nbl ? s_bl[s_nbl > 3 ? 2 : s_nbl - 1] : hdr atIndex:3];   /* the local exposure's blur: a mid level of the bloom chain */
     [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
     [e setFragmentBytes:&gl length:sizeof gl atIndex:2];   /* the sun's glare (brr_metal_glare.h) */
+    [e setFragmentBuffer:s_cltb[s_vbi] offset:0 atIndex:3];   /* the clouds' transmittance toward it */
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 

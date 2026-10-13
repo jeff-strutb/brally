@@ -22,8 +22,8 @@
  *
  * all times the light's visibility: the fraction of 16 taps on a small disc
  * about it that the G-buffer leaves as sky (its alpha under 0.25), times the
- * cloud layer's transmittance toward it (brr_glare_cloud_T: a C copy of
- * brr_metal_clouds.h's density), times (in E) the air's.  Off the frame by
+ * cloud layer's transmittance toward it (the GPU's, brr_metal_clouds.h
+ * cloud_light_t, read in glare()), times (in E) the air's.  Off the frame by
  * more than the glare's radius, or behind the camera, nothing.
  *
  * GLU (MSL) and BrrGlare (C) have the same layout: three float4s.
@@ -67,11 +67,11 @@ GLARE_PSF_SRC \
 /* the glare and flare at uv, pre-exposed radiance: the energy over one \
    internal pixel's area (frame heights squared: aspect / count) times each \
    term's density per unit area, whatever hdr's size */ \
-"static float3 glare(constant GLU &gl, float2 uv, texture2d<float> alb) {\n" \
+"static float3 glare(constant GLU &gl, float2 uv, texture2d<float> alb, float ct) {   /* ct: the clouds' transmittance toward the light */\n" \
 "  if (gl.sp.w < 0.5) return 0.0;\n" \
 "  float v = gvis(gl, alb); if (v <= 0.0) return 0.0;\n" \
 "  float ar = gl.g.x, ph = ar / max(gl.e.w, 1.0);   /* one internal pixel's area, frame heights squared */\n" \
-"  float3 E = gl.e.rgb * v;\n" \
+"  float3 E = gl.e.rgb * v * ct;\n" \
 "  float2 d = (uv - gl.sp.xy) * float2(ar, 1.0); float r = length(d);\n" \
 "  float3 L = E * 0.04 * gpsf(r) * (gl.g.z > 0.5 ? 0.01 : 1.0);   /* GLARE_SCATTER; the moon a glow only */\n" \
 "  if (gl.g.z < 0.5) { float rh = 0.22, w = 0.012; L += E * 2e-4 * float3(exp(-0.5 * pow((r - rh * 1.02) / w, 2.0)), exp(-0.5 * pow((r - rh) / w, 2.0)), exp(-0.5 * pow((r - rh * 0.98) / w, 2.0))) / (2.0 * 3.14159265 * rh * w * 2.5066283); }\n" \
@@ -110,51 +110,6 @@ static inline float brr_glare_vis(const unsigned char cover[16])
     for (i = 0; i < 16; i++)
         n += !cover[i];
     return n / 16.0f;
-}
-
-/* the C copy of brr_metal_clouds.h's density (vhash, vnoise, cfbm, cdens) */
-static inline float brr_fract(float x) { return x - floorf(x); }
-static inline float brr_vhash(float px, float py)
-{
-    float d;
-    px = brr_fract(px * 0.1031f), py = brr_fract(py * 0.1030f);
-    d = px * (py + 33.33f) + py * (px + 33.33f);
-    px += d, py += d;
-    return brr_fract((px + py) * px);
-}
-static inline float brr_vnoise(float px, float py)
-{
-    float ix = floorf(px), iy = floorf(py), fx = px - ix, fy = py - iy, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
-    float a = brr_vhash(ix, iy), b = brr_vhash(ix + 1, iy), c = brr_vhash(ix, iy + 1), d = brr_vhash(ix + 1, iy + 1);
-    float ab = a + (b - a) * ux, cd = c + (d - c) * ux;
-    return ab + (cd - ab) * uy;
-}
-static inline float brr_cdens(float x, float y, float cover)
-{
-    float a = 0.5f, s = 0, n, t, px = x * 0.4f, py = y * 0.4f;
-    int i;
-    for (i = 0; i < 5; i++) {
-        s += a * brr_vnoise(px, py);
-        px = px * 2 + 17.1f, py = py * 2 + 5.3f, a *= 0.5f;
-    }
-    n = s / 0.96875f;
-    t = (n - (1 - cover)) / fmaxf(cover, 0.05f) * 2;
-    return t < 0 ? 0 : t > 1 ? 1 : t;
-}
-/* the cloud layer's transmittance toward the light d (z up), seen from h km;
-   cld as KU.cld (cover, extinction per metre, clock, tier flag), as clouds()'s alpha */
-static inline float brr_glare_cloud_T(const float d[3], float h, const float cld[4])
-{
-    float t0, L, px, py, tau, T, f, x;
-    if (cld[3] < 0.5f || d[2] < 0.005f || h > 1.8f)
-        return 1;
-    t0 = (1.8f - h) / d[2], L = fminf(0.6f / d[2], 30.0f);
-    px = d[0] * (t0 + 0.5f * L) + 0.012f * cld[2], py = d[1] * (t0 + 0.5f * L) + 0.005f * cld[2];
-    tau = cld[1] * 1000 * brr_cdens(px, py, cld[0]) * L, T = expf(-tau);
-    x = (d[2] - 0.005f) / (0.087f - 0.005f);
-    x = x < 0 ? 0 : x > 1 ? 1 : x;
-    f = x * x * (3 - 2 * x);
-    return 1 + (T - 1) * f;
 }
 
 /* the sky's camera ray through pixel (x, y) of the lit 3D, as skyfs's camray;
@@ -242,7 +197,7 @@ static inline BrrGlare brr_glare_setup(const float k[][4], const float s[3], con
         return g;
     g.sp[2] = (float)fmax(3.0 / H, 0.01);   /* the taps: a hundredth of the frame's height, or three pixels */
     g.sp[3] = 1;
-    T = brr_glare_cloud_T(s, k[6][3], k[10]);
+    T = 1;   /* the clouds' transmittance toward it: the GPU's (brr_metal_clouds.h cloud_light_t), in glare() */
     for (i = 0; i < 3; i++)
         g.e[i] = (float)(illum[i] * skyk * expo / om * T);
     g.e[3] = (float)(W * H);

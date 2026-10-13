@@ -1760,6 +1760,66 @@ static void test_night_frame(void)
     }
 }
 
+/* the volumetric clouds' transmittance toward the light (brr_metal_clouds.h cloud_light_t, the glare's), on the
+   renderer's own noise (cloud_noise): in (0, 1], falling as the extinction rises, 1 with the tier off or the light
+   under the horizon */
+static void test_cloud_light(void)
+{
+    id<MTLTexture> tn[2];
+    float T[5];
+    int k;
+    for (k = 0; k < 2; k++) {
+        MTLTextureDescriptor *t3 = [MTLTextureDescriptor new];
+        int n = k ? 32 : 128, det = k;
+        t3.textureType = MTLTextureType3D;
+        t3.pixelFormat = MTLPixelFormatRGBA16Unorm;   /* 16 bits: the shape is stretched 4 x, then the coverage's remap; 8 bits drew contours */
+        t3.width = t3.height = t3.depth = (NSUInteger)n;
+        t3.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+        t3.storageMode = MTLStorageModeShared;
+        id<MTLTexture> t = [s_dev newTextureWithDescriptor:t3];
+        tn[k] = t;
+        kern3(@"cloud_noise", MTLSizeMake((NSUInteger)n, (NSUInteger)n, (NSUInteger)n), ^(id<MTLComputeCommandEncoder> e) {
+            [e setTexture:t atIndex:0];
+            [e setBytes:&det length:4 atIndex:0];
+        });
+        {   /* the noise's channels' means: made, not empty */
+            size_t nn = (size_t)n * n * n;
+            uint16_t *px = malloc(nn * 8);
+            double m[4] = { 0, 0, 0, 0 };
+            size_t q;
+            [t getBytes:px bytesPerRow:(NSUInteger)n * 8 bytesPerImage:(NSUInteger)n * n * 8 fromRegion:MTLRegionMake3D(0, 0, 0, (NSUInteger)n, (NSUInteger)n, (NSUInteger)n) mipmapLevel:0 slice:0];
+            for (q = 0; q < nn * 4; q++)
+                m[q & 3] += px[q] / 65535.0;
+            printf("    noise %d^3 channel means %.3f %.3f %.3f %.3f\n", n, m[0] / nn, m[1] / nn, m[2] / nn, m[3] / nn);
+            free(px);
+        }
+    }
+    id<MTLTexture> tshape = tn[0], tdet = tn[1];
+    for (k = 0; k < 5; k++) {
+        KU ku;
+        static const float dens[5] = { 0.005f, 0.03f, 0.12f, 0.03f, 0.03f };
+        id<MTLBuffer> bo = B(NULL, 32);
+        memset(&ku, 0, sizeof ku);
+        ku.sun[0] = 0.3f, ku.sun[1] = 0.4f, ku.sun[2] = k == 4 ? -0.2f : 0.866f;
+        ku.eye[3] = 0.002f;
+        ku.cld[0] = 1.0f, ku.cld[1] = dens[k]   /* full coverage: the ray is sure to meet cloud */, ku.cld[2] = 0, ku.cld[3] = k == 3 ? 0.0f : 1.0f;
+        kern(@"cloud_light_t", 1, ^(id<MTLComputeCommandEncoder> e) {
+            [e setBytes:&ku length:sizeof ku atIndex:0];
+            [e setBuffer:bo offset:0 atIndex:1];
+            [e setTexture:tshape atIndex:0];
+            [e setTexture:tdet atIndex:1];
+        });
+        T[k] = ((const float *)[bo contents])[0];
+        { const float *r = (const float *)[bo contents]; printf("    case %d: T %.4f, optical depth %.3f over %.2f..%.2f km\n", k, r[0], r[1], r[2], r[3]); }
+    }
+    section("11. Volumetric clouds (the renderer's noise and cloud_light_t on the GPU)");
+    printf("    transmittance toward the light at extinction 0.005, 0.03, 0.12 /m: %.4f %.4f %.4f; tier off %.4f; light under the horizon %.4f\n",
+           T[0], T[1], T[2], T[3], T[4]);
+    report(T[0] > 0 && T[0] <= 1 && T[1] <= T[0] && T[2] <= T[1] && T[2] < T[0], "the clouds' transmittance toward the light",
+           "in (0, 1], falling with the extinction: %.4f >= %.4f >= %.4f", T[0], T[1], T[2]);
+    report(T[3] == 1.0f && T[4] == 1.0f, "no clouds: tier off, light under the horizon", "%.4f, %.4f", T[3], T[4]);
+}
+
 static void test_misc(void)
 {
     section("8. sRGB, normals, finite output");
@@ -2056,6 +2116,7 @@ int main(int argc, char **argv)
         test_delit();
         test_misc();
         test_night_frame();
+        test_cloud_light();
         printf("\n");
         report(g_nonfin == 0, "every kernel output finite", "%zu non-finite of %zu values read back", g_nonfin, g_scanned);
         printf("\n%d passed, %d failed\n", g_pass, g_fail);

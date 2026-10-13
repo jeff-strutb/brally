@@ -67,3 +67,20 @@ Each element is checked in the game's own frames (headless runs, named
 shots) at the same sample points as the reference, against the table above;
 the frame statistics (median, dark fraction, saturation) against the
 reference frames' range.
+
+## Results (the game's own frames, Coastline night, 1280 x 720)
+
+| element | Forza Horizon 6 | Remastered now |
+|---|---|---|
+| moonlit hills, walls, sea | 0.008 to 0.03, hue 213 to 217 | 0.009 to 0.022, hue 214 to 220, saturation 0.6 |
+| sky | 0.015 to 0.057 | 0.013 to 0.026 |
+| clouds | 2 to 3 x the sky | 0.8 to 1.4 x the sky (the moon 11 degrees up: a cumulus base gets sin 11 of its light) |
+| headlamp pool, near road | 0.55 to 0.88, near neutral | 0.78 to 0.83, hue 222 to 227, saturation 0.1 |
+
+Clouds: volumetric cumulus (brr_metal_clouds.h) in place of the 2D slab.
+Albedo: each tagged texture's mean set to its material's (texmat.csv).
+
+Open: the bumper camera fills the lower frame with the beam's hottest
+metres over a 32 x 32 road texture (an asset limit); cloud interiors read
+flat where the diffusion light is uniform; the clouds cost about 1.5 to
+2.5 ms at 1280 x 720 on an M4 Pro.
