@@ -1343,3 +1343,29 @@ Measured (lighttest maths.sh test_carpaint, carpaint.sh):
 
 Left: glass and wheels as their own materials, a flake term, and a check of
 the classification's hit rate in a race (a run).
+
+## Reflections: trace threshold, half resolution, strided march (2026-10-13)
+
+The pass cost 0.27 ms by day and 5.7 ms at night (M4 Pro, 1080p, in game):
+night's roughness 0.60 sat under the old 0.6 skip, so every pixel marched 64
+steps. Now: only surfaces at or below REFL_TRACE_MAX 0.45 (after wetness)
+trace; 0.45..0.6 take the sky's specular alone. The trace runs at half
+resolution in each axis (reflk, into an RGBA16F target, validity in alpha)
+and a depth and normal aware upsample adds it (reflc). The march steps every
+2 px, at most 32 steps, then refines by six halvings; a step that crossed a
+silhouette is accepted after the refine when within the surface's thickness.
+
+Measured (refl.sh, refl_test):
+
+| check | result |
+|---|---|
+| offline compiles, macOS and iOS | 0 errors |
+| SSR hit against the analytic mirror hit | max 0.095 px |
+| visible hits found | 90.4% (was 98.3%: the box face's 1 to 2 px sliver under its top edge falls between 2 px steps) |
+| false hits | 30 of 36,648 plane pixels |
+| GPU = CPU reference march | 36,648 of 36,648 |
+| bilateral upsample against full resolution, nearer than 40 m, off edges | max relative 0.012 (bilinear of the test function across 2 px) |
+| bleed across a depth edge (values 100 apart) | 0 of 3,648 edge pixels |
+
+Not yet measured: the kernel's GPU time on a synthetic 1920 x 1080 road
+G-buffer before and after.

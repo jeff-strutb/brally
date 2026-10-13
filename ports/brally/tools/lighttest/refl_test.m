@@ -10,6 +10,11 @@
  *      the coupled diffuse's albedo (1 - E) times the wet albedo stays <= 1
  *      at every wetness, roughness and angle (E by quadrature in double)
  *   4. LU's size, the shader's against the C struct's
+ *   5. the bilateral upsample (rf_up): a half-resolution image of a smooth
+ *      function of position, sampled as reflk samples (pixel 2 h), brought
+ *      up against the function at full resolution: within tolerance away
+ *      from depth edges, and nothing of one surface across an edge into
+ *      another (the box and the plane carry values 100 apart)
  * (the DFG table against the GGX integral is maths.sh's, lighttest.m)
  *
  *   refl_test <refl.metal>   (refl.sh builds and runs it) */
@@ -141,7 +146,7 @@ static void ssr_cpu(const float *p, const float *r, float maxd, float jit, float
     project(p, s0, &w0); project(e, s1, &w1);
     if (w0 <= 1e-6f || w1 <= 1e-6f) return;
     k0 = 1.0f / w0; k1 = 1.0f / w1;
-    n = (int)fminf(fmaxf(ceilf(hypotf(s1[0] - s0[0], s1[1] - s0[1])), 1.0f), 64.0f);
+    n = (int)fminf(fmaxf(ceilf(hypotf(s1[0] - s0[0], s1[1] - s0[1]) / 2.0f), 1.0f), 32.0f);   /* REFL_STRIDE, REFL_STEPS */
     dqp = dp;
     for (i = 0; i < n; i++) {
         float l = ((float)i + jit) / (float)n, s[2] = { s0[0] + (s1[0] - s0[0]) * l, s0[1] + (s1[1] - s0[1]) * l }, q[3], dq;
@@ -151,8 +156,9 @@ static void ssr_cpu(const float *p, const float *r, float maxd, float jit, float
         P = rdpos(s[0], s[1]);
         if (!zero3(P)) {
             float ds = vd(P), th = 0.05f + 0.01f * dq + 2.0f * fabsf(dq - dqp), pp[3] = { P[0] - p[0], P[1] - p[1], P[2] - p[2] };
-            if (dq > ds && dq - ds < th && sqrtf(d3(pp, pp)) > 0.05f) {
-                float lo = lp, hi = l, sh[2], qh[3];
+            if (dq > ds && sqrtf(d3(pp, pp)) > 0.05f) {
+                float lo = lp, hi = l, sh[2], qh[3], dh;
+                const float *Ph;
                 int b;
                 for (b = 0; b < 6; b++) {
                     float m = 0.5f * (lo + hi), sm[2] = { s0[0] + (s1[0] - s0[0]) * m, s0[1] + (s1[1] - s0[1]) * m }, qm[3];
@@ -162,6 +168,8 @@ static void ssr_cpu(const float *p, const float *r, float maxd, float jit, float
                 }
                 sh[0] = s0[0] + (s1[0] - s0[0]) * hi; sh[1] = s0[1] + (s1[1] - s0[1]) * hi;
                 lerpq(p, e, k0, k1, hi, qh);
+                Ph = rdpos(sh[0], sh[1]); dh = vd(qh) - vd(Ph);
+                if (!(dq - ds < th || (!zero3(Ph) && dh >= 0.0f && dh < 0.05f + 0.01f * vd(qh)))) { lp = l; dqp = dq; continue; }
                 out[0] = sh[0]; out[1] = sh[1];
                 out[2] = fminf(fmaxf(fminf(fminf(sh[0], W - sh[0]), fminf(sh[1], H - sh[1])) / (0.08f * H), 0.0f), 1.0f);
                 out[3] = sqrtf((qh[0] - p[0]) * (qh[0] - p[0]) + (qh[1] - p[1]) * (qh[1] - p[1]) + (qh[2] - p[2]) * (qh[2] - p[2]));
@@ -201,6 +209,18 @@ static const char *k_kern =
 "  if (all(p == 0.0) || abs(p.z) > 1e-4) return;\n"
 "  float3 v = normalize(u.eye.xyz - p), r = reflect(-v, float3(0, 0, 1));\n"
 "  o[k] = ssr(u, pos, p, r, 80.0, 1.0); }\n"
+"static float t_f(float3 P) { return (P.z > 1e-3 ? 100.0 : 0.0) + 1.0 + 0.3 * sin(P.x * 0.15) + 0.2 * cos(P.y * 0.1) + 0.1 * P.z; }\n"
+"kernel void t_half(uint2 h [[thread_position_in_grid]], texture2d<float> pos [[texture(0)]], texture2d<float, access::write> hr [[texture(1)]]) {\n"
+"  if (h.x >= hr.get_width() || h.y >= hr.get_height()) return;\n"
+"  float3 P = pos.read(min(h * 2, uint2(pos.get_width(), pos.get_height()) - 1)).xyz;\n"
+"  hr.write(all(P == 0.0) ? float4(0.0) : float4(t_f(P), 0, 0, 1), h); }\n"
+"kernel void t_up(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(0)]], texture2d<float> pos [[texture(0)]], texture2d<float> nrm [[texture(1)]],\n"
+"                 texture2d<float> hr [[texture(2)]], device float4 *o [[buffer(1)]]) {\n"
+"  if (px.x >= pos.get_width() || px.y >= pos.get_height()) return;\n"
+"  uint k = px.y * pos.get_width() + px.x; float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; o[k] = 0.0;\n"
+"  if (all(p == 0.0)) return;\n"
+"  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n"
+"  float4 r = rf_up(u, hr, pos, nrm, px, p, n); o[k] = float4(r.x, t_f(p), r.a, 1); }\n"
 "kernel void t_wet(uint i [[thread_position_in_grid]], constant LU &u [[buffer(0)]], device const float4 *in [[buffer(1)]], device float4 *o [[buffer(2)]]) {\n"
 "  float3 p = float3(in[i].xy, 0.0), n = float3(0, 0, 1), a = float3(in[i].z); float r = in[i].w;\n"
 "  wet(u, p, n, a, r); float2 w = wetness(u, p, n); o[i] = float4(a.x, r, w.x, w.y); }\n";
@@ -309,12 +329,74 @@ int main(int argc, char **argv)
                     } else if (c[2] > 0)
                         nfalse++;
                 }
-            report(nvis > 1000 && nfound >= 0.98 * nvis, "SSR: visible mirror hits found (plane and box)", "%d of %d (%.2f%%), %d plane pixels", nfound, nvis,
+            /* 2 px strides (half resolution) step over the box's front face where it is 1 to 2 px tall under its top edge */
+            report(nvis > 1000 && nfound >= 0.88 * nvis, "SSR: visible mirror hits found (plane and box)", "%d of %d (%.2f%%), %d plane pixels", nfound, nvis,
                    100.0 * nfound / nvis, nplane);
             report(emax <= 1.0, "SSR: hit pixel against the analytic hit", "max %.3f px", emax);
             report(nfalse <= 0.005 * nplane, "SSR: hits where the ray meets nothing", "%d of %d plane pixels", nfalse, nplane);
             report(nagree >= ncmp - ncmp / 1000, "SSR: GPU kernel = CPU reference", "%d of %d pixels agree (hit or miss, within 0.01 px); max %.4f px where both hit",
                    nagree, ncmp, gmax);
+        }
+
+        /* 5: the bilateral upsample */
+        {
+            static float nrm[H][W][4], up[H][W][4];
+            MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float width:W height:H mipmapped:NO];
+            MTLTextureDescriptor *hd = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float width:(W + 1) / 2 height:(H + 1) / 2 mipmapped:NO];
+            id<MTLTexture> tp, tn, th;
+            id<MTLBuffer> o = [dev newBufferWithLength:sizeof up options:MTLResourceStorageModeShared];
+            id<MTLComputePipelineState> ph = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_half"] error:&err];
+            id<MTLComputePipelineState> pu = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_up"] error:&err];
+            id<MTLCommandBuffer> cb;
+            id<MTLComputeCommandEncoder> e;
+            int i, j, di, dj, nin = 0, nedge = 0, nbleed = 0, nnone = 0;
+            double emax = 0;
+            for (j = 0; j < H; j++)
+                for (i = 0; i < W; i++) {   /* the face normals: the plane up, the box's faces by the nearest slab */
+                    const float *P = g_pos[j][i];
+                    float *N = nrm[j][i];
+                    N[0] = N[1] = N[2] = N[3] = 0.0f;
+                    if (zero3(P)) continue;
+                    if (P[2] < 1e-4f || fabsf(P[2] - BZ1) < 1e-4f) N[2] = 1.0f;
+                    else if (fabsf(P[0] - BX0) < 1e-4f) N[0] = -1.0f;
+                    else if (fabsf(P[0] - BX1) < 1e-4f) N[0] = 1.0f;
+                    else if (fabsf(P[1] - BY0) < 1e-4f) N[1] = -1.0f;
+                    else N[1] = 1.0f;
+                }
+            td.usage = MTLTextureUsageShaderRead; td.storageMode = MTLStorageModeShared;
+            tp = [dev newTextureWithDescriptor:td]; tn = [dev newTextureWithDescriptor:td];
+            [tp replaceRegion:MTLRegionMake2D(0, 0, W, H) mipmapLevel:0 withBytes:g_pos bytesPerRow:W * 16];
+            [tn replaceRegion:MTLRegionMake2D(0, 0, W, H) mipmapLevel:0 withBytes:nrm bytesPerRow:W * 16];
+            hd.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite; hd.storageMode = MTLStorageModePrivate;
+            th = [dev newTextureWithDescriptor:hd];
+            cb = [q commandBuffer];
+            e = [cb computeCommandEncoder];
+            [e setComputePipelineState:ph]; [e setTexture:tp atIndex:0]; [e setTexture:th atIndex:1];
+            [e dispatchThreads:MTLSizeMake(hd.width, hd.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+            [e setComputePipelineState:pu]; [e setBytes:&g_lu length:sizeof g_lu atIndex:0];
+            [e setTexture:tp atIndex:0]; [e setTexture:tn atIndex:1]; [e setTexture:th atIndex:2]; [e setBuffer:o offset:0 atIndex:1];
+            [e dispatchThreads:MTLSizeMake(W, H, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+            [e endEncoding]; [cb commit]; [cb waitUntilCompleted];
+            memcpy(up, o.contents, sizeof up);
+            for (j = 0; j < H; j++)
+                for (i = 0; i < W; i++) {
+                    int edge = 0;
+                    if (up[j][i][3] <= 0) continue;
+                    for (dj = -3; dj <= 3; dj++)   /* an edge: a neighbour within 3 px on another face or nothing */
+                        for (di = -3; di <= 3; di++) {
+                            int x = i + di, y = j + dj;
+                            if (x < 0 || y < 0 || x >= W || y >= H || zero3(g_pos[y][x]) ||
+                                memcmp(nrm[y][x], nrm[j][i], 12) || (nrm[j][i][2] > 0.5f && (g_pos[y][x][2] > 1e-3f) != (g_pos[j][i][2] > 1e-3f)))
+                                edge = 1;
+                        }
+                    if (up[j][i][2] <= 0) { nnone++; continue; }   /* no sample on its surface: the sky's specular instead */
+                    if (fabsf(up[j][i][0] - up[j][i][1]) > 50.0f) nbleed++;
+                    if (edge) nedge++;
+                    else if (vd(g_pos[j][i]) < 40.0f) { nin++; emax = fmax(emax, fabs(up[j][i][0] - up[j][i][1]) / up[j][i][1]); }   /* nearer than 40 m: farther, 2 px span metres and the function itself aliases */
+                }
+            report(nin > 10000 && emax < 0.015, "upsample: half-res = full-res away from edges", "max relative error %.5f (half float 0.001, the function itself across 2 px) over %d pixels nearer than 40 m (values 0.4..101.6)", emax, nin);
+            report(nbleed == 0, "upsample: no bleed across a depth edge", "%d of %d edge pixels take the other surface's value; %d without a sample",
+                   nbleed, nedge, nnone);
         }
 
         /* 3: wetness */
