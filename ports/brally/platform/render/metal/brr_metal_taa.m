@@ -245,8 +245,9 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
 
 /* the lit 3D's internal scale for a target tw x th: 1 without MetalFX (or
  * with TAA off); BR_LIGHT_SCALE fixes it (0.5 to 1); otherwise, on a target
- * over 2.5 MP, from 0.67, the dynamic resolution controller's (16.6 ms, 0.5
- * to 1) fed with the last whole frame's GPU time (gpu_ms <= 0: none yet).
+ * over 2.5 MP, 0.67, or with BR_LIGHT_DYNRES=1 from 0.67 the dynamic
+ * resolution controller's (16.6 ms, 0.5 to 1) fed with the last whole frame's
+ * GPU time (gpu_ms <= 0: none yet).
  * *up: 1 when the frame goes through MetalFX's scaler (at any scale, so a
  * move to 1.0 keeps the same look) */
 float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
@@ -278,8 +279,15 @@ float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
         d.scale = 0.67f;
         d.ms = 16.6f;
     }
-    if (gpu_ms > 0.0f)
-        brr_taa_dynres(&d, gpu_ms, 16.6f, 0.5f);
+    {   /* the controller only with BR_LIGHT_DYNRES=1: a change of scale rebuilds
+           the targets and drops the TAA history (a visible hitch) until it
+           moves MetalFX's input content size inside full-size targets instead */
+        static int dyn = -1;
+        if (dyn < 0)
+            dyn = getenv("BR_LIGHT_DYNRES") && atoi(getenv("BR_LIGHT_DYNRES")) > 0;
+        if (dyn && gpu_ms > 0.0f)
+            brr_taa_dynres(&d, gpu_ms, 16.6f, 0.5f);
+    }
     return d.scale;
 }
 
