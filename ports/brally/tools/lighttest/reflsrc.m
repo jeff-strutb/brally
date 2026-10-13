@@ -7,6 +7,6 @@
 #include "brr_metal_rt.h"
 int main(void)
 {
-    printf("#include <metal_stdlib>\nusing namespace metal;\n#define BRR_RT_HW 0\n%s%s%s%s", BRR_RT_SRC, BRR_LU_SRC, BRR_WET_SRC, BRR_REFL_SRC);
+    printf("#include <metal_stdlib>\nusing namespace metal;\n#define BRR_RT_HW 1\n%s%s%s%s%s%s", BRR_RT_SRC, BRR_RT_HW_SRC, BRR_RT_SEL_SRC, BRR_LU_SRC, BRR_WET_SRC, BRR_REFL_SRC);
     return 0;
 }

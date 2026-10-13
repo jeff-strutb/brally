@@ -5,6 +5,7 @@
 #import <Metal/Metal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "brr_metal_lit.h"
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
@@ -34,7 +35,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil;
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
         if (!s_rpipe) {
-            fprintf(stderr, "brr: reflections: %s\n", [[err description] UTF8String]);
+            fprintf(stderr, "brr: reflections: %s\n", lib ? [[err description] UTF8String] : "off: no hardware ray tracing");
             s_rfail = 1;
             return;
         }
@@ -58,7 +59,18 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         for (k = 0; k < 3; k++)
             [e setBuffer:s_rnull offset:0 atIndex:(NSUInteger)k];
     }
-    [e setBytes:lu length:lusz atIndex:3];
+    if (rt && rt->built && rt->as)   /* the misses traced in hardware (RT_AS(8)) */
+        [e setAccelerationStructure:rt->as atBufferIndex:8];
+    {   /* no world yet: nothing traced (LU.wet, the last field: w the roughness below which misses trace) */
+        uint8_t ul[1024];
+        if (!(rt && rt->built && rt->as) && lusz <= sizeof ul) {
+            float zero = 0.0f;
+            memcpy(ul, lu, lusz);
+            memcpy(ul + lusz - sizeof(float), &zero, sizeof zero);
+            [e setBytes:ul length:lusz atIndex:3];
+        } else
+            [e setBytes:lu length:lusz atIndex:3];
+    }
     [e setTexture:alb atIndex:0];
     [e setTexture:pos atIndex:1];
     [e setTexture:nrm atIndex:2];

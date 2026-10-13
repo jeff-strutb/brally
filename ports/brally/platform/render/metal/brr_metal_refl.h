@@ -120,7 +120,7 @@
    (pre-exposed), dst the same plus the reflection; sky the sky-view table \
    (cd/m2), bE the lobe's albedo table; the BVH's buffers 0..2 (rt_closest) */ \
 "kernel void reflk(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]],\n" \
-"                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]],\n" \
+"                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]] RT_AS(8),\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> dst [[texture(4)]],\n" \
 "                  texture2d<float> sky [[texture(5)]], texture2d<float> bE [[texture(6)]]) {\n" \
@@ -141,7 +141,7 @@
 "  float3 Lss = s.z > 0.0 ? src.read(uint2(s.xy)).rgb : float3(0), Lfb;\n" \
 "  constexpr sampler ls(filter::linear, address::clamp_to_edge);\n" \
 "  RtHit hh; hh.tri = -1;\n" \
-"  if (s.z < 1.0 && u.wet.z > 1.5 && rough < u.wet.w) hh = rt_closest(node, tri, id, p + n * 0.02, r, 0.0, 300.0);\n" \
+"  if (s.z < 1.0 && u.wet.z > 1.5 && rough < u.wet.w) hh = RT_CLOSEST(p + n * 0.02, r, 0.0, 300.0);\n" \
 "  if (hh.tri >= 0) Lfb = 0.3 / 3.14159 * (u.sunc.rgb * max(u.sun.z, 0.0) + u.skyc.rgb);   /* grey ground under the sun and sky */\n" \
 "  else Lfb = sky.sample(ls, rf_svuv(r.z < 0.0 ? float3(r.xy, -r.z) : r)).rgb;   /* below the horizon: the sky it mirrors */\n" \
 "  Lfb = min(Lfb * u.wb.rgb * u.misc.x, float3(60000.0));\n" \

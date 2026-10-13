@@ -148,6 +148,15 @@
 "  return rt_hw_trace(as, o, d, tmin, tmax, true).tri >= 0;\n" \
 "}\n"
 
+/* the trace the effects call: Metal's intersector over the acceleration
+ * structure, bound at a kernel's RT_AS buffer.  Hardware ray tracing only (the
+ * project lead's rule): on a GPU without it the effects that trace are off,
+ * never traced in shader code (the compute BVH above is the tests' reference) */
+#define BRR_RT_SEL_SRC \
+"#define RT_AS(n) , raytracing::primitive_acceleration_structure rt_as [[buffer(n)]]\n" \
+"#define RT_CLOSEST(o, d, t0, t1) rt_hw_closest(rt_as, o, d, t0, t1)\n" \
+"#define RT_ANY(o, d, t0, t1) rt_hw_any(rt_as, o, d, t0, t1)\n"
+
 #ifdef __OBJC__
 #import <Metal/Metal.h>
 #include "light.h"
@@ -180,7 +189,8 @@ void brr_rt_bind(const BrrRtWorld *w, id<MTLComputeCommandEncoder> e, int base);
 /* a library of BRR_RT_SRC (and BRR_RT_HW_SRC where the device supports ray
  * tracing; BRR_RT_HW defined to 1 then) followed by src, compiled without
  * fast math */
-id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err);
+id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err);   /* nil without hardware ray tracing */
+int brr_rt_hardware(id<MTLDevice> dev);   /* 1 where the GPU traces rays in hardware */
 /* the renderer's world for the current track (brr_metal.m), built on first
  * use; NULL without a track */
 const BrrRtWorld *brr_metal_rt_world(void);

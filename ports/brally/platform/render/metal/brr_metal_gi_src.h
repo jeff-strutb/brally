@@ -91,7 +91,7 @@ BRR_GI_SAMPLE_SRC \
 "kernel void gi_trace(constant GiU &u [[buffer(0)]], device float4 *out [[buffer(1)]], device const uint *leaf [[buffer(2)]],\n" \
 "                     const device LSet &ls [[buffer(3)]],\n" \
 "                     device const RtNode *node [[buffer(4)]], device const float *tri [[buffer(5)]],\n" \
-"                     device const uint *id [[buffer(6)]], device const RtPrim *prim [[buffer(7)]],\n" \
+"                     device const uint *id [[buffer(6)]], device const RtPrim *prim [[buffer(7)]] RT_AS(8),\n" \
 "                     texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]],\n" \
 "                     uint2 gid [[thread_position_in_grid]]) {\n" \
 "  int nr = u.n.w, np = u.n.x * u.n.y * u.n.z;\n" \
@@ -99,7 +99,7 @@ BRR_GI_SAMPLE_SRC \
 "  int pl = int(gid.y); int3 sl = int3(pl % u.n.x, (pl / u.n.x) % u.n.y, pl / (u.n.x * u.n.y));\n" \
 "  int3 g = gi_mod(sl - u.base.xyz, u.n.xyz);\n" \
 "  float3 o = gi_pos(u, g), d = gi_ray(u, int(gid.x));\n" \
-"  RtHit h = rt_closest(node, tri, id, o, d, 0.0, u.lim.x);\n" \
+"  RtHit h = RT_CLOSEST(o, d, 0.0, u.lim.x);\n" \
 "  float3 L;\n" \
 "  if (h.tri < 0) L = mix(u.gnd.rgb, u.sky.rgb, d.z * 0.5 + 0.5);\n" \
 "  else {\n" \
@@ -111,7 +111,7 @@ BRR_GI_SAMPLE_SRC \
 "    float3 alb = pr.albedo ? gi_rgb(pr.albedo) : float3(u.par.y);\n" \
 "    float3 hp = o + d * h.t, E = 0.0;\n" \
 "    float nl = dot(n, u.sun.xyz);\n" \
-"    if (nl > 0.0 && any(u.sunc.rgb > 0.0) && !rt_any(node, tri, id, hp + n * 1e-3 * max(1.0, h.t), u.sun.xyz, 0.0, 1e30))\n" \
+"    if (nl > 0.0 && any(u.sunc.rgb > 0.0) && !RT_ANY(hp + n * 1e-3 * max(1.0, h.t), u.sun.xyz, 0.0, 1e30))\n" \
 "      E += u.sunc.rgb * nl;\n" \
 "    E += gi_lamps(u, ls, hp, n);\n" \
 "    if (u.lim.w > 0.5) E += gi_irr(u, irr, dst, hp, n, -d);\n" \

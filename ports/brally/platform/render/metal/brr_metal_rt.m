@@ -79,7 +79,7 @@ int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const
 {
     double t0;
     size_t nb;
-    if (!t || t->ntri <= 0) {
+    if (!t || t->ntri <= 0 || !brr_rt_hardware(dev)) {   /* hardware ray tracing or none */
         brr_rt_release(w);
         return 0;
     }
@@ -100,18 +100,19 @@ int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const
         return 0;
     }
     w->bvh_bytes = nb + (size_t)w->bvh.ntri * (9 * sizeof(float) + sizeof(uint32_t) + sizeof(LightBvhPrim));
-    w->hw = 0;
+    w->hw = 1;
     w->as_ms = 0.0;
     w->as_bytes = 0;
-    if (dev.supportsRaytracing) {
-        if (@available(macOS 10.15, iOS 13.0, *))
-            w->hw = [dev supportsFamily:MTLGPUFamilyApple9];
+    {
         t0 = ms_now();
         w->as = build_as(dev, q, t);
         w->as_ms = ms_now() - t0;
         w->as_bytes = w->as ? w->as.size : 0;
-        if (!w->as)
-            w->hw = 0;
+        if (!w->as) {   /* the effects' kernels are built for the intersector here: no world without it */
+            fprintf(stderr, "brr: ray tracing: the acceleration structure did not build\n");
+            brr_rt_release(w);
+            return 0;
+        }
     }
     w->ntri = t->ntri;
     w->gen = t->gen;
@@ -125,15 +126,26 @@ void brr_rt_bind(const BrrRtWorld *w, id<MTLComputeCommandEncoder> e, int base)
     [e setBuffer:w->tri offset:0 atIndex:base + 1];
     [e setBuffer:w->id offset:0 atIndex:base + 2];
     [e setBuffer:w->prim offset:0 atIndex:base + 3];
-    if (w->as)
-        [e useResource:w->as usage:MTLResourceUsageRead];
+    if (w->as)   /* the kernels' RT_AS(base + 4) */
+        [e setAccelerationStructure:w->as atBufferIndex:base + 4];
+}
+
+/* hardware ray tracing: the intersector on Apple GPU family 9 and later
+ * (M3, A17 Pro and on), which trace in dedicated units */
+int brr_rt_hardware(id<MTLDevice> dev)
+{
+    if (!dev.supportsRaytracing)
+        return 0;
+    if (@available(macOS 10.15, iOS 13.0, *))
+        return [dev supportsFamily:MTLGPUFamilyApple9];
+    return 0;
 }
 
 id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err)
 {
     MTLCompileOptions *o = [MTLCompileOptions new];
     NSString *all;
-    int hw = dev.supportsRaytracing;
+    int hw = brr_rt_hardware(dev);
     if (@available(macOS 15.0, iOS 18.0, *))
         o.mathMode = MTLMathModeSafe;
     else {
@@ -142,7 +154,9 @@ id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err)
         o.fastMathEnabled = NO;     /* what mathMode replaced, before macOS 15 and iOS 18 */
 #pragma clang diagnostic pop
     }
-    all = [NSString stringWithFormat:@"#include <metal_stdlib>\nusing namespace metal;\n#define BRR_RT_HW %d\n%s%s%@",
-           hw, BRR_RT_SRC, hw ? BRR_RT_HW_SRC : "", src ? src : @""];
+    if (!hw)   /* no hardware ray tracing: the effects that trace are off */
+        return nil;
+    all = [NSString stringWithFormat:@"#include <metal_stdlib>\nusing namespace metal;\n#define BRR_RT_HW 1\n%s%s%s%@",
+           BRR_RT_SRC, BRR_RT_HW_SRC, BRR_RT_SEL_SRC, src ? src : @""];
     return [dev newLibraryWithSource:all options:o error:err];
 }
