@@ -30,6 +30,10 @@ const LightTrack *light_game_track(void) { return NULL; }
 int light_game_weather(void) { return 0; }
 int light_glide_flip(void) { return 0; }
 int light_scene_spots(LightSpot *out, int max) { (void)out; (void)max; return 0; }
+void light_world_gather(unsigned gen, const float *tri, int n, float share, const float rgb[3], const float eye[3])   /* night.sh's */
+{
+    (void)gen, (void)tri, (void)n, (void)share, (void)rgb, (void)eye;
+}
 int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)   /* the track's rays: rt.sh's */
 {
     (void)w, (void)dev, (void)q, (void)t;

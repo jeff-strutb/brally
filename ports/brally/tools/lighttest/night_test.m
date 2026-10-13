@@ -137,6 +137,91 @@ int main(void)
                   "lighthouse: one turn in %.1f s (axis back to +x: %.4f %.4f)", 360.0f / LIGHT_LH_DEG_S, lh.axis[0], lh.axis[1]);
         }
     }
+    {   /* 6 the gather: the same window triangles drawn frame after frame count once; their flux kept */
+        enum { NW = 60 };
+        float tri[2 * NW * 9], eye[3] = { 20, -30, 5 }, rgb[3] = { 1.0f, 0.6f, 0.25f }, share = 0.35f;
+        LightSpot s[LIGHT_WORLD_MAX];
+        double flux = 0;
+        int f, n, face = 1;
+        for (i = 0; i < NW; i++) {   /* windows 1.2 x 1.5 m in a wall at y = 10 facing -y (toward the eye), two triangles each */
+            float x0 = (i % 15) * 2.5f, z0 = 1.0f + (i / 15) * 3.0f, *a = &tri[18 * i];
+            float q[18] = { x0, 10, z0, x0 + 1.2f, 10, z0, x0 + 1.2f, 10, z0 + 1.5f,
+                            x0, 10, z0, x0 + 1.2f, 10, z0 + 1.5f, x0, 10, z0 + 1.5f };
+            memcpy(a, q, sizeof q);
+            flux += M_PI * 100.0 * share * 1.2 * 1.5;
+        }
+        for (f = 0; f < 5; f++)
+            light_world_gather(7, tri, 2 * NW, share, rgb, eye);
+        for (f = 0; f < 61; f++)
+            n = light_world_refresh();
+        n = light_world_spots(s, LIGHT_WORLD_MAX, 0);
+        for (i = 0; i < n; i++)
+            face &= s[i].pos[1] < 10.0f;
+        CHECK(light_world_emitters() == 2 * NW && fabs(light_world_flux(s, n) - flux) / flux < 0.05 && face,
+              "gather: %d triangles over 5 frames kept once (%d), %d lights, %.0f lm against %.0f lm, all on the eye's side",
+              2 * NW, light_world_emitters(), n, light_world_flux(s, n), flux);
+        light_world_gather(8, tri, 0, share, rgb, eye);
+        CHECK(light_world_emitters() == 0, "gather: a new track generation starts empty");
+    }
+    {   /* 7 the lighthouses on Coastline's track (the OBJ fixture's instance records) */
+        const char *path = getenv("TRACK_OBJ");
+        FILE *fo = path ? fopen(path, "r") : NULL;
+        if (!fo) {
+            printf("SKIP  lighthouses: no track fixture (TRACK_OBJ)\n");
+        } else {
+            char line[1024];
+            int nb = 0, ids[8];
+            float bp[8][3], bx[8][3];
+            while (fgets(line, sizeof line, fo) && line[0] == '#') {
+                int o;
+                unsigned f0, f1, f2, f3, dl;
+                float m[16];
+                if (sscanf(line, "# o%d flags %x %x %x %x dl %x m %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", &o, &f0, &f1, &f2, &f3, &dl,
+                           &m[0], &m[1], &m[2], &m[3], &m[4], &m[5], &m[6], &m[7], &m[8], &m[9], &m[10], &m[11], &m[12], &m[13], &m[14], &m[15]) != 22)
+                    continue;
+                if (light_beam_record((unsigned char)f0, (unsigned char)f1) && nb < 8) {
+                    ids[nb] = o;
+                    memcpy(bp[nb], m + 12, 12);
+                    memcpy(bx[nb], m, 12);
+                    nb++;
+                }
+            }
+            fclose(fo);
+            CHECK(nb == 2 && ids[0] == 64 && ids[1] == 142, "lighthouses: %d beam instances (%d, %d)", nb, nb > 0 ? ids[0] : -1, nb > 1 ? ids[1] : -1);
+            for (i = 0; i < nb; i++) {
+                LightSpot lh;
+                light_world_beam(&lh, bp[i], bx[i]);
+                printf("INFO  lighthouse o%d at %.2f %.2f %.2f, beam toward %.3f %.3f %.3f\n", ids[i], lh.pos[0], lh.pos[1], lh.pos[2],
+                       lh.axis[0], lh.axis[1], lh.axis[2]);
+            }
+        }
+    }
+    {   /* 8 the shader's Purkinje weight on the GPU against the C copy */
+        id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+        NSError *err = nil;
+        NSString *src = [@"#include <metal_stdlib>\nusing namespace metal;\n" stringByAppendingString:[@BRR_NIGHT_SRC stringByAppendingString:
+            @"kernel void pw(device float *o [[buffer(0)]], uint i [[thread_position_in_grid]]) { o[i] = purkinje_w(pow(10.0, -5.0 + float(i) * 0.04)); }\n"]];
+        id<MTLLibrary> lib = dev ? [dev newLibraryWithSource:src options:nil error:&err] : nil;
+        if (!lib) {
+            CHECK(0, "Purkinje on the GPU: %s", dev ? [[err description] UTF8String] : "no device");
+        } else {
+            id<MTLComputePipelineState> ps = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"pw"] error:&err];
+            id<MTLBuffer> b = [dev newBufferWithLength:201 * 4 options:MTLResourceStorageModeShared];
+            id<MTLCommandQueue> q = [dev newCommandQueue];
+            id<MTLCommandBuffer> cb = [q commandBuffer];
+            id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
+            float worst = 0;
+            [ce setComputePipelineState:ps];
+            [ce setBuffer:b offset:0 atIndex:0];
+            [ce dispatchThreads:MTLSizeMake(201, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+            [ce endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+            for (i = 0; i < 201; i++)
+                worst = fmaxf(worst, fabsf(((float *)[b contents])[i] - light_purkinje_w(powf(10.0f, -5.0f + i * 0.04f))));
+            CHECK(worst < 1e-4f, "Purkinje weight: the shader's on the GPU against the C copy, 201 luminances 1e-5..1e3: worst %.2e", worst);
+        }
+    }
     printf(g_fail ? "night: FAIL\n" : "night: all pass\n");
     return g_fail;
 }

@@ -1225,7 +1225,26 @@ outer 3 degrees, 2 km, turning 1.25 degrees a race step (30 Hz: 37.5
 degrees a second, one turn in 9.6 s).  light_scene_lights appends these at
 night (ids from 1000).
 
-Not yet fed: the renderer does not yet gather the glowing track patches
-(per draw: the triangles' area x the mask's share of texels x its colour)
-into light_world_set, and the lighthouse's position is not yet read from
-Coastline's beam instance (64/142, light_world_set_lighthouse).
+Fed (second pass): every glowing draw of the track's scene at night hands
+its world triangles to light_world_gather with its texture's glowing share
+and their mean linear colour (lit_emask measures both when the texture is
+made).  A triangle counts once a track generation (its centroid to 5 cm),
+facing the camera that saw it; the set is clustered again when it grows,
+at most every 60th frame.  Test: 120 window triangles handed over 5 frames
+kept once (120), 27 lights, 11,875 lm against 11,875 lm, every light on
+the eye's side; a new generation starts empty.  The share is the whole
+texture's, not the part of it a triangle maps: a texture with a glowing
+window and a dark wall gives every triangle of it the mean.
+
+The lighthouses come from the instance records live: flag bytes 0x4C 0x4D
+= 6f 06 (light_world.h light_beam_record), on Coastline's fixture exactly
+instances 64 and 142.  64 at (1296.18, 853.27, 17.19), 142 at (324.47,
+1194.27, 40.38); the beam is the model's x row, (-0.065, 0.998, 0) at
+rest, its turn the model's y row, the world's up (0, 0, 1).  The spot's
+axis follows the live x row each frame, so it turns with the race's
+special.  How many window lights Coastline yields needs its textures,
+which only a run makes (the OBJ fixture carries no textures): not
+measured here.
+
+The shader's Purkinje weight on the GPU against light_purkinje_w, 201
+luminances 1e-5..1e3 cd/m2: worst difference 2.1e-7.

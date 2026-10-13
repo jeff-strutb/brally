@@ -13,6 +13,7 @@
 #include "br_cartypes.h"   /* BrRaceCtl */
 #include "br_trkhdr.h"   /* g_brTrkHdr */
 #include "light.h"
+#include "light_world.h"
 
 /* the camera the display list draws through: its view x projection (the
  * "projection" slot BrGbiMatrix fills, row vectors) and the viewport that
@@ -190,6 +191,27 @@ static void trk_dl(uint32_t addr, const float *m, float (*vb)[3], int obj, int d
             s_trk.unknown++;     /* a matrix inside an object's list: none expected */
         }
     }
+}
+
+/* the lighthouse beams: the instance records whose flag bytes are the beam's
+ * (light_world.h light_beam_record; on Coastline 64 and 142 only), their
+ * live matrices (BrRaceStepSpecials turns them in place) */
+int light_game_beams(float pos[][3], float xaxis[][3], int max)
+{
+    const char *recs = BR_PTR32(const char *, g_brTrkHdr.aInstances);
+    int count = g_brTrkHdr.cInstances, i, n = 0;
+    if (!recs || count <= 0 || count > 65536)
+        return 0;
+    for (i = 0; i < count && n < max; i++) {
+        const unsigned char *r = (const unsigned char *)recs + (size_t)i * 0x54;
+        const float *f = (const float *)r;
+        if (!light_beam_record(r[0x4C], r[0x4D]))
+            continue;
+        memcpy(pos[n], f + 12, 12);
+        memcpy(xaxis[n], f, 12);
+        n++;
+    }
+    return n;
 }
 
 const LightTrack *light_game_track(void)
