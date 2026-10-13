@@ -70,6 +70,11 @@ int  light_capture_on(void);
 /* the main camera's position this frame, from its view x projection; 0 when
  * no 3D was drawn */
 int  light_capture_eye(float eye[3]);
+/* the main camera this frame (its view x projection and viewport); 0 when no 3D was drawn */
+int  light_capture_camera(LightCamera *c);
+/* the game's pixel rows as Glide takes them: its height when the origin is
+ * the lower left (y up, as the game's viewport works), else 0 (glide.c) */
+int  light_glide_flip(void);
 
 #ifdef __cplusplus
 }

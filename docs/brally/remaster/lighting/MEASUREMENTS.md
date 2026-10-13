@@ -158,3 +158,30 @@ fill drawn over the scene (draws before the first 3D are background now).
 | game state | `lightcheck.sh` with the lit Metal build, `28_weather_rain` (night): identical, 26 dumps |
 
 ![Sunny and night through the passes](phase2-passes.png)
+
+## Sky, sun and atmosphere (2026-10-12)
+
+The project lead chose the sun for Coastline (high, behind the start: option
+B of `sun-options.png`) and a physical sky. `brr_metal_sky.h`: Hillaire 2020
+(transmittance 256 x 64, multiple scattering 32 x 32, sky view 192 x 108,
+Earth's Rayleigh, Mie and ozone constants), the sun's disc at 0.2675 degrees,
+the sunlight reaching the ground and the sky's light on an up-facing
+surface both read from the same atmosphere (a 3 x 1 reduction, read three
+frames later), and the fog's colour the air's light at the horizon. The
+weather sets the haze (Mie x1 sunny, x30 fog, x12 rain, x8 snow) and how much
+sun the clouds let through. The game's painted backdrop stays in front: its
+hills, coast and sea; its painted sky (blue or neutral in a texel's
+neighbourhood, above the horizon) gives way. Daylight white balance is to
+the sun's own light, so the sky stays blue.
+
+Found on the way: the sky's rays came out upside down (the top of the screen
+looked 24 degrees down): the game sets Glide's origin to the lower left, so
+its viewport's rows run up; the capture uses the game's own coordinates
+(right), the sky's rays now turn the target's rows back the same way.
+
+| check | result |
+|---|---|
+| Original unchanged | sunny and night frames 1,000 and 3,000 byte-identical to c8194344 |
+| game state | `lightcheck.sh`, `20_quickrace_drive`: identical |
+
+![Sunny and night with the physical sky](phase2-sky.png)

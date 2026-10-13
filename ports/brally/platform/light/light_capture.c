@@ -176,6 +176,12 @@ int light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const Ligh
     return 1;
 }
 
+int light_capture_camera(LightCamera *c)
+{
+    *c = s_cam_main;
+    return s_cam_main.sx != 0.0f;
+}
+
 /* where the main camera is: the point its view x projection takes to
  * x = y = w = 0 */
 int light_capture_eye(float eye[3])

@@ -177,6 +177,7 @@ void plat_glide_wide(void)
     s_wide = plat_flag(BR_FLAG_ANY_ASPECT) && (long)s_rw * s_h != (long)s_rh * s_w;
 }
 void plat_glide_view(int view) { s_view = view; }
+int light_glide_flip(void) { return s_lower_left ? s_h : 0; }
 
 static xmap map_of(int which);
 

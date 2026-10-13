@@ -23,7 +23,7 @@
 #define BRR_METAL_LIT_H
 
 #define BRR_LIT_SRC \
-"struct LU { float4x4 sunvp; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; };\n" \
+"struct LU { float4x4 sunvp; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc; };\n" \
 "struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n" \
 /* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
    low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
@@ -82,7 +82,9 @@
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
-"static float3 fogged(constant LU &u, float3 c, float fog, float3 fogc) { return mix(c, lin(fogc) * u.bg.x, fog); }\n" \
+/* the game's fog amount, toward the air's own light at the horizon (the sky \
+   model's) where there is a sky, else the game's fog colour */ \
+"static float3 fogged(constant LU &u, float3 c, float fog, float3 fogc) { return mix(c, u.fogc.w > 0.5 ? u.fogc.rgb : lin(fogc) * u.bg.x, fog); }\n" \
 /* a face's normal from the world position's screen derivatives; straight up \
    for a sliver too thin to have one (normalize(0) would be NaN) */ \
 "static float3 facen(float3 wp) { float3 c = cross(dfdx(wp), dfdy(wp)); float l = length(c); return l > 1e-12 ? c / l : float3(0, 0, 1); }\n" \
