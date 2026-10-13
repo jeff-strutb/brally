@@ -143,6 +143,11 @@
 "  if (cd > cr && d.z > -0.01) L += trans(T, RG + k.eye.w, d.z) * k.ktop.x * k.ktop.y / (3.14159 * pow(0.2675 * 3.14159 / 180.0, 2.0)) * smoothstep(cr, mix(cr, 1.0, 0.1), cd) / 0.95;\n" \
 "  return L; }\n" \
 BRR_CLOUD_SRC \
+/* the cloud's ambient (brr_metal_clouds.h): isotropic scattering, albedo \
+   0.98, of the sky above (its zenith radiance over the upper hemisphere) and \
+   the ground below (albedo 0.3, Lambertian, lit by the sun Esun and the sky \
+   pi Lz): 0.98 / 2 (Lz + 0.3 (Esun / pi + Lz)) */ \
+"static float3 camb(float3 Lz, float3 Esun) { return 0.49 * (Lz + 0.3 * (Esun / 3.14159265 + Lz)); }\n" \
 /* the sky with the cloud layer (brr_metal_clouds.h) in front of it */ \
 "fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]]) {\n" \
 "  float3 d = camray(k, in.pos.xy);\n" \
@@ -150,7 +155,7 @@ BRR_CLOUD_SRC \
 "  if (k.ktop.w == 10.0) { constexpr sampler s(filter::linear, address::clamp_to_edge); return float4(S.sample(s, svuv(d)).rgb * 20.0, 1); }\n" \
 "  float3 L = skyrad(k, S, T, d);\n" \
 "  { constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
-"    float4 c = clouds(d, k.sun.xyz, k.eye.w, k.cld, trans(T, RG + 2.0, k.sun.z) * k.ktop.y, S.sample(s, svuv(float3(0, 0, 1))).rgb * 0.5);\n" \
+"    float4 c = clouds(d, k.sun.xyz, k.eye.w, k.cld, trans(T, RG + 2.0, k.sun.z) * k.ktop.y, camb(S.sample(s, svuv(float3(0, 0, 1))).rgb, trans(T, RG + 0.0, k.sun.z) * k.ktop.y * max(k.sun.z, 0.0)));\n" \
 "    L = L * c.a + c.rgb * k.ktop.x; }\n" \
 "  return float4(min(L * k.ktop.z * k.tgt.z, float3(60000.0)), 1); }   /* pre-exposed (k.tgt.z the exposure) */\n" \
 /* the game's painted backdrop over the sky: its hills, coast and sea stay, \
