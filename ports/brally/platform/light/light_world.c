@@ -92,9 +92,11 @@ float light_world_flux(const LightSpot *s, int n)
 
 /* the lighthouse: a spot turning about the lantern's vertical, one turn a
  * period (Coastline's: 1.25 degrees a race step, the beam instance's
- * special, remaster-lighthouse-2026-10-01.md), its optic about 300,000 cd (a
- * small coastal light's fourth-order lens), a narrow 3 degree beam (cosine
- * of the inner 1.5, outer 3 degrees), reaching 2 km.  t: seconds; deg_s: its
+ * special, remaster-lighthouse-2026-10-01.md), its optic a major light's
+ * 2,000,000 cd (a first-order lens), a narrow beam: full intensity within
+ * 1.5 degrees of the axis, a smooth falloff to nothing at 2.5 (cosines of
+ * the inner and outer angles), reaching 2 km on surfaces.  The air it lights
+ * is the volumetric fog's (brr_metal_vol.h vol_beam).  t: seconds; deg_s: its
  * turn in degrees a second. */
 void light_world_lighthouse(LightSpot *o, const float pos[3], float t, float deg_s)
 {
@@ -110,9 +112,9 @@ void light_world_lighthouse(LightSpot *o, const float pos[3], float t, float deg
         o->axis[0] /= l; o->axis[1] /= l; o->axis[2] /= l;
     }
     o->side[0] = 0.99965732f;  /* cos 1.5 degrees: the inner cone (light.h LIGHT_SPOT) */
-    o->candela = 300000.0f;
+    o->candela = 2000000.0f;
     o->range = 2000.0f;
-    o->cosout = 0.99862953f;   /* cos 3 degrees */
+    o->cosout = 0.99904822f;   /* cos 2.5 degrees */
     o->rgb[0] = 1.0f; o->rgb[1] = 0.93f; o->rgb[2] = 0.80f;
     {
         float y = 0.2126f * o->rgb[0] + 0.7152f * o->rgb[1] + 0.0722f * o->rgb[2];

@@ -116,3 +116,35 @@ degrees over the ground there a texel is half a metre of depth, and the
 plane-following reference reads lit ground under the board's foot for up to
 0.9 m behind it. Offline compiles: the same 2 warnings as before (unused
 cphase, one per SDK), none added.
+
+## Lighthouse beam: single scattering from the spot (2026-10-13)
+
+The game's beam polygons are no longer drawn in the lit frame; the beam is
+the light the night's haze scatters from the lighthouse spot (2,000,000 cd,
+full within 1.5 degrees, smooth to 0 at 2.5), marched in the volume's
+full-screen pass over each ray's interval inside the cone (vol_beam,
+brr_metal_vol.h). Night medium: extinction 0.003/m, albedo 0.95, g 0.7.
+vol.sh:
+
+- 32 equiangular steps against a 4,000,000-point midpoint quadrature over
+  the whole ray, 8 rays (30 to 1500 m, 20 to 150 degrees) x 8 jitters: max
+  error 0.006%.
+- Rays beside the cone, behind the lamp, ending short of it, leaving it: 0.
+- The beam turning 1 degree a step over 16 degrees past rays at 100, 300
+  and 400 m: max change 4.6% a step; the march's change matches the
+  quadrature's within 0.006%. (Farther out the true change exceeds 5%: at
+  600 m a degree moves the crossing 10 m along the ray, 5.4%.)
+- The shader's vol_beam against the C one, 8 rays: 3.9e-5.
+
+Luminance seen side-on, the eye 100 m from the crossing (before exposure):
+
+| from the lighthouse | beam       | moonlit road |
+|---------------------|------------|--------------|
+| 100 m               | 0.050 cd/m2 | 0.01 cd/m2  |
+| 300 m               | 0.0091 cd/m2 | 0.01 cd/m2 |
+| 1000 m              | 0.0003 cd/m2 | 0.01 cd/m2 |
+
+Looking along the beam toward the lamp the forward phase (g 0.7) and the
+longer path make it far brighter. The lamp's own glare is not added: the
+glare module is driven by the post pass, which is being changed for the
+night exposure and the moon.
