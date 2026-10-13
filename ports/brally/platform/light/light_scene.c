@@ -35,6 +35,11 @@ static void norm(float v[3])
 
 int light_scene_spots(LightSpot *out, int max)
 {
+    return light_scene_lights(out, NULL, max);
+}
+
+int light_scene_lights(LightSpot *out, int *id, int max)
+{
     LightCar cars[MAX_CARS];
     int n = light_game_cars(cars, MAX_CARS), w = light_game_weather(), i, k = 0, j;
     int heads = w == 1 || w == 2 || w == 4;
@@ -75,6 +80,7 @@ int light_scene_spots(LightSpot *out, int max)
                 memcpy(o->side, s, 12);
                 o->candela = 20000.0f;
                 o->range = 150.0f;
+                o->cosout = 0.3420201f;    /* 70 degrees: past it the pattern is under 1% of its peak */
                 o->rgb[0] = 1.00f; o->rgb[1] = 0.83f; o->rgb[2] = 0.62f;
             } else {
                 o->kind = LIGHT_REAR;
@@ -85,6 +91,7 @@ int light_scene_spots(LightSpot *out, int max)
                 cd = reversing ? 300.0f : braking ? 80.0f : 5.0f;
                 o->candela = cd;
                 o->range = 25.0f;
+                o->cosout = 0.0f;          /* the half space behind the car */
                 if (reversing) {
                     o->rgb[0] = 1.0f; o->rgb[1] = 0.95f; o->rgb[2] = 0.9f;
                 } else {
@@ -95,7 +102,8 @@ int light_scene_spots(LightSpot *out, int max)
                 float y = 0.2126f * o->rgb[0] + 0.7152f * o->rgb[1] + 0.0722f * o->rgb[2];
                 o->rgb[0] /= y; o->rgb[1] /= y; o->rgb[2] /= y;
             }
-            o->rgb[3] = 0;
+            if (id)
+                id[k] = i * 4 + j;
             k++;
         }
     }

@@ -32,12 +32,14 @@
 #include <string.h>
 
 #include "brr.h"
+#include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
 #include "brr_metal_rt.h"
 #include "brr_shadow.h"
 #include "br_flags.h"
 #include "light.h"
+#include "light_cluster.h"
 
 CAMetalLayer *host_macos_metal_layer(void);
 void host_macos_layer_fit(int *w, int *h);   /* host_macos.m: drawable = the view in pixels */      /* host_macos.m */
@@ -426,10 +428,9 @@ static int s_trkn;
 static float s_trklo[3], s_trkhi[3];
 static BrrRtWorld s_rt;             /* the track for rays (brr_metal_rt_world) */
 static size_t s_ntris, s_captris;
-static id<MTLBuffer> s_hist[3], s_spots[3];
+static id<MTLBuffer> s_hist[3];
 static float s_ev = 1e9f;
 #define LUM_BINS 64
-#define SPOTS_MAX 128
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
                    float cdepth[4], csoft[4], scr[16]; } LU;   /* brr_metal_lit.h's LU, the same layout */
@@ -786,9 +787,9 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
 /* BR_LIGHT_GPU=1: each lit pass's GPU time, from Metal's timestamp counters
  * at the encoders' stage boundaries (the samples Apple GPUs take), summed per
  * pass over a second and printed as milliseconds a frame */
-#define GPU_PASSES 9
-static const char *const k_pass_names[GPU_PASSES] = { "sky tables", "g-buffer", "sun shadow", "lighting", "transparent",
-                                                     "bloom down", "bloom up", "post", "2d" };
+#define GPU_PASSES 10
+static const char *const k_pass_names[GPU_PASSES] = { "sky tables", "g-buffer", "sun shadow", "lamp shadows", "lighting",
+                                                     "transparent", "bloom down", "bloom up", "post", "2d" };
 static id<MTLCounterSampleBuffer> s_gpuctr[3];
 static int s_gpu_on = -1;
 static double s_gpu_ms[GPU_PASSES], s_gpu_span, s_gpu_t0;
@@ -887,6 +888,158 @@ static void lit_gpu_read(void)
     }
 }
 
+/* ---- many lights (DESIGN.md 7.4): the clusters and the lamps' shadow atlas -------------
+ * Each frame the scene's lights (light_scene.c) go into this frame's light set
+ * (light_cluster.h's LightSet, which brr_metal_lights.h's lamps() reads): the
+ * clusters' lists for the camera, and the shadow plan, whose tiles are drawn
+ * into the atlas after the sun's cascades: each cleared, then the track's
+ * triangles in the lamp's frustum (binned at load) and this frame's moving
+ * objects (lit_dynamic's: the captured 3D not on the track).  The iPhone's atlas is a quarter of the Mac's. */
+#if TARGET_OS_IPHONE
+#define LS_ATLAS 2048
+#else
+#define LS_ATLAS 4096
+#endif
+#define LS_BUDGET ((long)LS_ATLAS * LS_ATLAS)     /* texels drawn a frame: the whole atlas */
+static id<MTLBuffer> s_lset[3], s_lcib[3];
+static id<MTLTexture> s_latl;
+static int s_latl_new;
+static id<MTLRenderPipelineState> s_lcclr, s_lccas;
+static id<MTLDepthStencilState> s_lcds_all, s_lcds_less;
+static uint32_t *s_lcidx;               /* this frame's track casters, tile after tile */
+static size_t s_lccap, s_lcn;
+static size_t s_lctile[LC_LIGHTS][2];   /* each plan tile's casters: first, count */
+static LightShadowPlan s_lplan;
+
+/* the frame's lights, their clusters for the camera vp (NULL: no 3D this
+ * frame, no lights) and the shadow plan, into this frame's light set */
+static void lit_lights(const float eye[3], const float *vp)
+{
+    static const float ident[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+    LightSet *set;
+    LightClusterStats st;
+    int ids[LC_LIGHTS], n = 0, k;
+    const LightTrack *t;
+    if (!s_lset[0]) {
+        MTLTextureDescriptor *td;
+        MTLRenderPipelineDescriptor *pd;
+        MTLDepthStencilDescriptor *dd;
+        NSError *err = nil;
+        for (k = 0; k < 3; k++)
+            s_lset[k] = [s_dev newBufferWithLength:sizeof(LightSet) options:MTLResourceStorageModeShared];
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:LS_ATLAS height:LS_ATLAS
+                                                            mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_latl = [s_dev newTextureWithDescriptor:td];
+        s_latl_new = 1;
+        light_shadow_reset();
+        pd = [MTLRenderPipelineDescriptor new];
+        pd.vertexFunction = [s_lib newFunctionWithName:@"lcclr"];
+        pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+        s_lcclr = [s_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+        pd.vertexFunction = [s_lib newFunctionWithName:@"lcvs"];
+        s_lccas = [s_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+        if (!s_lcclr || !s_lccas)
+            fprintf(stderr, "brr: metal lamp shadow pipelines: %s\n", [[err description] UTF8String]);
+        dd = [MTLDepthStencilDescriptor new];
+        dd.depthCompareFunction = MTLCompareFunctionAlways;
+        dd.depthWriteEnabled = YES;
+        s_lcds_all = [s_dev newDepthStencilStateWithDescriptor:dd];
+        dd.depthCompareFunction = MTLCompareFunctionLessEqual;
+        s_lcds_less = [s_dev newDepthStencilStateWithDescriptor:dd];
+    }
+    set = (LightSet *)[s_lset[s_vbi] contents];
+    if (vp)
+        n = light_scene_lights(set->l, ids, LC_LIGHTS);
+    light_cluster_build(set, n, vp ? vp : ident, eye, &st);
+    t = light_game_track();
+    if (t)
+        light_shadow_track(t->tri, t->ntri, t->gen);
+    else
+        light_shadow_track(NULL, 0, 0);
+    light_shadow_plan(set, ids, &st, eye, s_dyn, (int)s_ndyn, LS_ATLAS, LS_BUDGET, &s_lplan);
+    /* the track's casters of each tile drawn this frame */
+    s_lcn = 0;
+    for (k = 0; k < s_lplan.n; k++) {
+        const LightShadowTile *tl = &s_lplan.t[k];
+        size_t need = s_lcn + (size_t)(t ? t->ntri : 0) * 3;
+        s_lctile[k][0] = s_lcn;
+        s_lctile[k][1] = 0;
+        if (!tl->render || !t || !s_trkn)
+            continue;
+        if (need > s_lccap) {
+            size_t c = s_lccap ? s_lccap : 65536;
+            uint32_t *q;
+            while (c < need)
+                c *= 2;
+            if (!(q = realloc(s_lcidx, c * sizeof *q)))
+                continue;
+            s_lcidx = q;
+            s_lccap = c;
+        }
+        s_lctile[k][1] = (size_t)light_shadow_track_casters(&set->s[tl->light], &set->l[tl->light], s_lcidx + s_lcn,
+                                                            (int)(s_lccap - s_lcn));
+        s_lcn += s_lctile[k][1];
+    }
+    if (s_lcn && (!s_lcib[s_vbi] || [s_lcib[s_vbi] length] < s_lcn * 4))
+        s_lcib[s_vbi] = [s_dev newBufferWithLength:s_lccap * 4 options:MTLResourceStorageModeShared];
+    if (s_lcn)
+        memcpy([s_lcib[s_vbi] contents], s_lcidx, s_lcn * 4);
+    if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
+        fprintf(stderr, "lights: frame %lu, %d lights (%d seen), %ld cluster entries (longest list %d); lamp shadows %d tiles: "
+                "%d drawn (%ld texels, %zu track triangles), %d cached, %d stale, %d unshadowed%s\n",
+                s_frame, st.lights, st.visible, st.entries, st.maxlist, s_lplan.n, s_lplan.rendered, s_lplan.texels, s_lcn / 3,
+                s_lplan.cached, s_lplan.stale, s_lplan.dropped, s_lplan.repacked ? ", repacked" : "");
+}
+
+/* the lamps' shadow tiles the plan draws this frame */
+static void lit_lamp_shadows(void)
+{
+    const LightSet *set = (const LightSet *)[s_lset[s_vbi] contents];
+    MTLRenderPassDescriptor *rp;
+    id<MTLRenderCommandEncoder> e;
+    id<MTLBuffer> dyn = nil;
+    int k;
+    for (k = 0; k < s_lplan.n && !s_lplan.t[k].render; k++)
+        ;
+    if (k == s_lplan.n)
+        return;
+    if (s_ndyn)
+        dyn = [s_dev newBufferWithBytes:s_dyn length:s_ndyn * 3 * sizeof(float) options:MTLResourceStorageModeShared];
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.depthAttachment.texture = s_latl;
+    rp.depthAttachment.loadAction = s_latl_new ? MTLLoadActionClear : MTLLoadActionLoad;
+    rp.depthAttachment.clearDepth = 1.0;
+    rp.depthAttachment.storeAction = MTLStoreActionStore;
+    s_latl_new = 0;
+    e = lit_encoder(rp, 3);   /* lamp shadows */
+    [e setCullMode:MTLCullModeNone];
+    for (k = 0; k < s_lplan.n; k++) {
+        const LightShadowTile *t = &s_lplan.t[k];
+        if (!t->render)
+            continue;
+        [e setViewport:(MTLViewport){ t->x, t->y, t->size, t->size, 0.0, 1.0 }];
+        [e setScissorRect:(MTLScissorRect){ (NSUInteger)t->x, (NSUInteger)t->y, (NSUInteger)t->size, (NSUInteger)t->size }];
+        [e setRenderPipelineState:s_lcclr];
+        [e setDepthStencilState:s_lcds_all];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        [e setRenderPipelineState:s_lccas];
+        [e setDepthStencilState:s_lcds_less];
+        [e setVertexBytes:set->s[t->light].m length:sizeof set->s[t->light].m atIndex:1];
+        if (s_lctile[k][1]) {
+            [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
+            [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:s_lctile[k][1] indexType:MTLIndexTypeUInt32
+                         indexBuffer:s_lcib[s_vbi] indexBufferOffset:s_lctile[k][0] * 4];
+        }
+        if (dyn) {
+            [e setVertexBuffer:dyn offset:0 atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ndyn];
+        }
+    }
+    [e endEncoding];
+}
+
 static void lit_present(void)
 {
     LU u;
@@ -935,10 +1088,6 @@ static void lit_present(void)
         const char *e2 = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;
     }
-    if (!s_spots[0])
-        for (k = 0; k < 3; k++)
-            s_spots[k] = [s_dev newBufferWithLength:SPOTS_MAX * sizeof(LightSpot) options:MTLResourceStorageModeShared];
-    u.eye[3] = (float)light_scene_spots((LightSpot *)[s_spots[s_vbi] contents], SPOTS_MAX);
     {   /* the track's triangles, once a track: the shadows' static casters */
         const LightTrack *t = light_game_track();
         if (t && t->gen != s_trkgen && t->ntri) {
@@ -968,6 +1117,7 @@ static void lit_present(void)
                           (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, u.scr);
         u.csoft[3] = CONTACT_LEN;
     }
+    lit_lights(eye, have_cam ? cam.vp : NULL);
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
         /* the atmosphere's tables: transmittance and multiple scattering when the
@@ -1247,6 +1397,8 @@ static void lit_present(void)
         }
     }
 
+    lit_lamp_shadows();
+
     /* what the game drew before its 3D (its clears and background fills) is
        the background: behind the scene, not over it */
     for (first3d = 0; first3d < s_nops; first3d++)
@@ -1267,7 +1419,7 @@ static void lit_present(void)
             rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-    e = lit_encoder(rp, 3);   /* lighting */
+    e = lit_encoder(rp, 4);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
         [e setFragmentBytes:&ku length:sizeof ku atIndex:0];
@@ -1292,11 +1444,12 @@ static void lit_present(void)
     [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
     [e setRenderPipelineState:s_lpl];
     [e setFragmentBytes:&u length:sizeof u atIndex:0];
-    [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:1];
+    [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:1];
     [e setFragmentTexture:s_galb atIndex:0];
     [e setFragmentTexture:s_gpos atIndex:1];
     [e setFragmentTexture:s_gnrm atIndex:2];
     [e setFragmentTexture:s_shadow atIndex:3];
+    [e setFragmentTexture:s_latl atIndex:4];
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
@@ -1308,13 +1461,14 @@ static void lit_present(void)
     rp.depthAttachment.texture = s_dep;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
-    e = lit_encoder(rp, 4);   /* transparent */
+    e = lit_encoder(rp, 5);   /* transparent */
     for (i = 0; i < s_nops; i++)
         if (s_ops[i].kind == K_BLEND) {
             [e setRenderPipelineState:lit_forward(s_ops[i].src, s_ops[i].dst)];
             [e setFragmentBytes:&u length:sizeof u atIndex:1];
-            [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:2];
+            [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:2];
             [e setFragmentTexture:s_shadow atIndex:3];
+            [e setFragmentTexture:s_latl atIndex:4];
             op_draw(e, &s_ops[i], 1);
         }
     [e endEncoding];
@@ -1325,7 +1479,7 @@ static void lit_present(void)
         rp.colorAttachments[0].texture = s_bl[k];
         rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        e = lit_encoder(rp, 5);   /* bloom down */
+        e = lit_encoder(rp, 6);   /* bloom down */
         [e setRenderPipelineState:s_lbd];
         [e setFragmentTexture:k ? s_bl[k - 1] : s_hdr atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1336,7 +1490,7 @@ static void lit_present(void)
         rp.colorAttachments[0].texture = s_bl[k - 1];
         rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        e = lit_encoder(rp, 6);   /* bloom up */
+        e = lit_encoder(rp, 7);   /* bloom up */
         [e setRenderPipelineState:s_lbua];
         [e setFragmentTexture:s_bl[k] atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1348,7 +1502,7 @@ static void lit_present(void)
     rp.colorAttachments[0].texture = s_col;
     rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-    e = lit_encoder(rp, 7);   /* post */
+    e = lit_encoder(rp, 8);   /* post */
     [e setRenderPipelineState:s_lpp];
     {
         LU pu = u;
@@ -1364,7 +1518,7 @@ static void lit_present(void)
     [e endEncoding];
 
     memcpy(s_gpu_used[s_vbi], s_gpu_frame_used, sizeof s_gpu_frame_used);   /* set by the time 2d begins, below */
-    s_gpu_used[s_vbi][8] = 1;
+    s_gpu_used[s_vbi][9] = 1;
     /* the game's 2D, mirror and LFB writes over it, as it drew them */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_col;
@@ -1373,7 +1527,7 @@ static void lit_present(void)
     rp.depthAttachment.texture = s_dep;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
-    e = lit_encoder(rp, 8);   /* 2d */
+    e = lit_encoder(rp, 9);   /* 2d */
     for (i = first3d; i < s_nops; i++) {
         const Op *o = &s_ops[i];
         if (o->kind == K_OTHER) {
@@ -1422,7 +1576,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[k_src stringByAppendingString:@BRR_LIT_SRC] stringByAppendingString:@BRR_SKY_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_SKY_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);

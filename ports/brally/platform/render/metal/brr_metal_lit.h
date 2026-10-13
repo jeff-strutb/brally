@@ -131,22 +131,6 @@
 
 #define BRR_LIT_SRC \
 BRR_LU_SRC \
-"struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n" \
-/* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
-   low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
-   on the near side, stepping up 15 degrees on the kerb side, the hot spot a \
-   degree and a half below the horizon and right of centre, a wide spread \
-   below it), a rear lamp's broad lobe */ \
-"static float lamp(LS l, float3 d) {\n" \
-"  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
-"  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n" \
-"  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n" \
-"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958;\n" \
-"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / 10.0) * ((h - 1.5) / 10.0));\n" \
-"  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n" \
-"  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n" \
-"  return l.cd * spread * vert * mix(1.0, 0.012, smoothstep(cut - 0.35, cut + 0.35, v));\n" \
-"}\n" \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
@@ -171,17 +155,13 @@ BRR_SHADOW_SRC \
    either side) */ \
 "static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
 /* the light leaving a surface toward the eye, cd/m2, before exposure; n \
-   toward the eye (toeye), sv how much of the sun reaches it */ \
-"static float3 radiance(constant LU &u, const device LS *ls, float3 p, float3 n, float3 alb, float rough, float glow, float sv) {\n" \
+   toward the eye (toeye), sv how much of the sun reaches it; the lamps from \
+   the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h) */ \
+"static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv) {\n" \
 "  float3 v = normalize(u.eye.xyz - p);\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sv;\n" \
 "  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
-"  for (int i = 0; i < int(u.eye.w); i++) {\n" \
-"    LS l = ls[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
-"    if (dot(n, ld) <= 0.0) continue;\n" \
-"    float E = lamp(l, -ld) / d2 * (1.0 - smoothstep(0.7 * l.range, l.range, dl));\n" \
-"    Lo += l.rgb.rgb * E * brdf(n, v, ld, alb, rough);\n" \
-"  }\n" \
+"  Lo += lamps(ls, atl, p, n, v, alb, rough);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
@@ -217,9 +197,9 @@ BRR_SHADOW_SRC \
 "struct LO { float4 pos [[position]]; float2 uv; };\n" \
 "vertex LO lvs(uint i [[vertex_id]]) { float2 p = float2((i << 1) & 2, i & 2); LO o; o.pos = float4(p * 2.0 - 1.0, 0, 1); o.uv = float2(p.x, 1.0 - p.y); return o; }\n" \
 /* the deferred lighting */ \
-"fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LS *ls [[buffer(1)]],\n" \
+"fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]],\n" \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
-"                    depth2d_array<float> sm [[texture(3)]]) {\n" \
+"                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -237,20 +217,21 @@ BRR_SHADOW_SRC \
 "  if (dbg == 3) return float4(float3(sv), 1);\n" \
 "  if (dbg == 5) return float4(float3(glow), 1);\n" \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
+"  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, P.xyz, n, a.rgb, u.misc.z, glow, sv)), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv)), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LS *ls [[buffer(2)]],\n" \
-"                    depth2d_array<float> shm [[texture(3)]]) {\n" \
+"                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
+"                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
 "  if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
-"    c = radiance(lu, ls, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv);\n" \
 "  }\n" \
 "  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
