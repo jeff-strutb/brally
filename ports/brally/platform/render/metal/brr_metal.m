@@ -449,6 +449,12 @@ static id<MTLBuffer> s_hist[3];
 static float s_ev = 1e9f;
 static double s_ev_t;               /* when the EV last took a reading (seconds) */
 static float s_amb_Y;               /* the ambient light on level ground, lux (the sky's readback): the night's exposure */
+/* the night's key: BR_LIGHT_NIGHTKEY overrides it (diagnostic) */
+static float lit_night_key(void)
+{
+    const char *e = getenv("BR_LIGHT_NIGHTKEY");
+    return e && atof(e) > 0 ? (float)atof(e) : LIGHT_NIGHT_KEY;
+}
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
@@ -851,7 +857,7 @@ static float lit_exposure(int w)
         ns += c[i];
     target = light_meter_ev(c, LUM_BINS, k_weather[w].plo, k_weather[w].phi, k_weather[w].evlo, k_weather[w].evhi, k_weather[w].comp);
     if (w == 4 && s_amb_Y > 0.0f) {   /* night: the eye adapts to the moon and the moonlit sky, not the lamps */
-        target = fminf(fmaxf(light_night_ev(s_amb_Y, LIGHT_NIGHT_KEY), k_weather[w].evlo), k_weather[w].evhi);
+        target = fminf(fmaxf(light_night_ev(s_amb_Y, lit_night_key()), k_weather[w].evlo), k_weather[w].evhi);
         ns = ns ? ns : 1;
     }
     memset(c, 0, LUM_BINS * 4);
@@ -864,7 +870,7 @@ static float lit_exposure(int w)
     if (s_ev > 1e8f)
         return 1.0f / (1.2f * exp2f(target));
     if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
-        fprintf(stderr, "light: frame %lu weather %d, %u meter samples, target EV %.2f, EV %.2f\n", s_frame, w, ns, target, s_ev);
+        fprintf(stderr, "light: frame %lu weather %d, %u meter samples, target EV %.2f, EV %.2f, ambient %.4g lux\n", s_frame, w, ns, target, s_ev, s_amb_Y);
     return 1.0f / (1.2f * exp2f(s_ev));
 }
 
@@ -1343,7 +1349,7 @@ static void lit_present(void)
     u.misc[0] = lit_exposure(w);
     if (w == 4) {   /* night: the lamps' pools compressed (light_local_exposure) */
         u.lexp[0] = LIGHT_LOCAL_EMAX;
-        u.lexp[1] = LIGHT_NIGHT_KEY;
+        u.lexp[1] = lit_night_key();
     }
     u.misc[2] = k_weather[w].rough;
     u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
@@ -1519,6 +1525,7 @@ static void lit_present(void)
                 for (k = 0; k < 3; k++)
                     il[k] = w == 4 ? ku.moon[0] * (k == 0 ? 1.0f : k == 1 ? 0.96f : 0.90f) : u.sunc[k];
                 gl = brr_glare_setup((const float (*)[4])(const void *)&ku, sun, il, ku.ktop[2], ku.tgt[2]);
+                gl.g[2] = w == 4 ? 1.0f : 0.0f;   /* the moon: a glow only (brr_metal_glare.h) */
             }
         }
     }

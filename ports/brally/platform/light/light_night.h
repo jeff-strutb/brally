@@ -46,8 +46,11 @@ static inline float light_moon_ground(float elev_deg)
  * (Yamb: lux on level ground) at LIGHT_NIGHT_KEY on the display (linear,
  * before the tonemap); the lamps' pools are brought down by the local
  * exposure (light_local_exposure).  EV100 from the camera's exposure
- * 1 / (1.2 2^EV): EV = log2(L / (1.2 key)), L = 0.18 Yamb / pi. */
-#define LIGHT_NIGHT_KEY   0.12f
+ * 1 / (1.2 2^EV): EV = log2(L / (1.2 key)), L = 0.18 Yamb / pi.  The key is
+ * a night's, well under a day's mid-grey: Coastline's road and walls de-lit
+ * are 0.6 to 0.8, not 18%, and at 0.12 the moonlit frame's ground read
+ * 214/255 (an overcast day); at 0.02, 80. */
+#define LIGHT_NIGHT_KEY   0.02f
 #define LIGHT_LOCAL_EDGE 1.5f   /* stops: a pixel this far under its surroundings' mean is across an edge */
 #define LIGHT_LOCAL_KNEE 1.5f   /* stops over the key where the compression starts */
 #define LIGHT_LOCAL_EMAX 1.5f   /* stops: the most a region ends over the knee, however bright */

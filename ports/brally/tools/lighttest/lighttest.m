@@ -1618,8 +1618,9 @@ static void test_night_frame(void)
     for (sk = 0; sk < 2; sk++) {
         float Yamb = Eh + skyfrac[sk] * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
         float Epool = 20.0f;   /* lux on the road 10 m ahead under two low beams */
-        /* rows: moonlit level ground albedo 0.18 and 0.05, a wall facing the moon 0.18, the pool at albedo 0.1 and 0.3 */
-        float L[5] = { 0.18f * Yamb / (float)M_PI, 0.05f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
+        /* rows: moonlit level ground at Coastline's de-lit albedo (road and walls 0.6 to 0.8: 0.7) and a dark 18%, a wall facing
+           the moon 0.18, the pool at albedo 0.1 and 0.3 */
+        float L[5] = { 0.7f * Yamb / (float)M_PI, 0.18f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
                        0.1f * Epool / (float)M_PI, 0.3f * Epool / (float)M_PI };
         float Yl[5] = { L[0], L[0], L[2], 0.2f * Epool / (float)M_PI, 0.2f * Epool / (float)M_PI };
         float in[5][4], o[5][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_LOCAL_EMAX, 1.0f / NIGHT_BLM_N };
@@ -1636,12 +1637,12 @@ static void test_night_frame(void)
             float wall = 255 * (0.2126f * o[2][0] + 0.7152f * o[2][1] + 0.0722f * o[2][2]);
             float p1 = 255 * (0.2126f * o[3][0] + 0.7152f * o[3][1] + 0.0722f * o[3][2]), p3 = 255 * (0.2126f * o[4][0] + 0.7152f * o[4][1] + 0.0722f * o[4][2]);
             printf("    sky %.0f%% of the moon: moon %.3f lux normal, %.3f on the ground, ambient %.3f lux, EV100 %.2f;"
-                   " 18%% ground %.0f/255, 5%% ground %.0f, wall facing the moon %.0f, headlamp pool 10%%/30%% %.0f/%.0f\n",
+                   " 0.7 ground %.0f/255, 18%% ground %.0f, wall facing the moon %.0f, headlamp pool 10%%/30%% %.0f/%.0f\n",
                    100 * skyfrac[sk], En, Eh, Yamb, ev, g18, g5, wall, p1, p3);
-            report(g18 >= 60 && g18 <= 120, "moonlit 18% ground readable", "%.0f/255 (60..120)", g18);
-            report(g5 >= 22, "moonlit 5% ground still visible", "%.0f/255 (22 and up)", g5);
+            report(g18 >= 40 && g18 <= 120, "moonlit ground (albedo 0.7) readable, and night", "%.0f/255 (40..120; the game's night frame: 80)", g18);
+            report(g5 >= 10, "a dark 18% surface not black", "%.0f/255 (10 and up)", g5);
             report(p3 <= 245 && p3 - p1 >= 30, "headlamp pool keeps its texture", "10%% %.0f, 30%% %.0f/255 (under 245, 30 apart)", p1, p3);
-            report(p1 > g18, "the pool brighter than the moonlit ground", "%.0f > %.0f", p1, g18);
+            report(p1 > 2.0f * g5, "the pool well over moonlight at a like albedo", "10%% texel in the pool %.0f > 2 x the moonlit 18%% ground %.0f", p1, g5);
         }
     }
     {   /* across the pool's edge: the local mean is a blur (the bloom chain's mid level: about 2% of the frame's width,

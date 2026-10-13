@@ -31,7 +31,9 @@
  *       radius as a fraction of the frame's height, 1 when on
  *   e   E (rgb) times the clouds' transmittance, per pixel of the lit 3D's
  *       internal size; w: the internal size's pixel count
- *   g   the frame's aspect (width / height), the starburst's angle, 0, 0 */
+ *   g   the frame's aspect (width / height), the starburst's angle, 1 for the
+ *       moon (a hundredth of the veil, no halo, ghosts or starburst: the night's
+ *       exposure made the full set a second sun), 0 */
 #ifndef BRR_METAL_GLARE_H
 #define BRR_METAL_GLARE_H
 
@@ -71,15 +73,15 @@ GLARE_PSF_SRC \
 "  float ar = gl.g.x, ph = ar / max(gl.e.w, 1.0);   /* one internal pixel's area, frame heights squared */\n" \
 "  float3 E = gl.e.rgb * v;\n" \
 "  float2 d = (uv - gl.sp.xy) * float2(ar, 1.0); float r = length(d);\n" \
-"  float3 L = E * 0.04 * gpsf(r);   /* GLARE_SCATTER */\n" \
-"  { float rh = 0.22, w = 0.012; L += E * 2e-4 * float3(exp(-0.5 * pow((r - rh * 1.02) / w, 2.0)), exp(-0.5 * pow((r - rh) / w, 2.0)), exp(-0.5 * pow((r - rh * 0.98) / w, 2.0))) / (2.0 * 3.14159265 * rh * w * 2.5066283); }\n" \
-"  { float2 c = float2(0.5, 0.5), ax = (c - gl.sp.xy);\n" \
+"  float3 L = E * 0.04 * gpsf(r) * (gl.g.z > 0.5 ? 0.01 : 1.0);   /* GLARE_SCATTER; the moon a glow only */\n" \
+"  if (gl.g.z < 0.5) { float rh = 0.22, w = 0.012; L += E * 2e-4 * float3(exp(-0.5 * pow((r - rh * 1.02) / w, 2.0)), exp(-0.5 * pow((r - rh) / w, 2.0)), exp(-0.5 * pow((r - rh * 0.98) / w, 2.0))) / (2.0 * 3.14159265 * rh * w * 2.5066283); }\n" \
+"  if (gl.g.z < 0.5) { float2 c = float2(0.5, 0.5), ax = (c - gl.sp.xy);\n" \
 "    const float gt[5] = { 0.5, 0.8, 1.25, 1.6, 2.1 }, gr[5] = { 0.05, 0.02, 0.08, 0.035, 0.12 };\n" \
 "    const float3 gc[5] = { float3(1.0, 0.7, 0.4), float3(0.5, 0.8, 1.0), float3(0.6, 1.0, 0.6), float3(1.0, 0.5, 0.8), float3(0.4, 0.6, 1.0) };\n" \
 "    for (int i = 0; i < 5; i++) { float2 gp = (gl.sp.xy + ax * gt[i]); float rg = length((uv - gp) * float2(ar, 1.0)), R = gr[i];\n" \
 "      float3 m = float3(smoothstep(R * 1.04, R * 0.9, rg), smoothstep(R, R * 0.86, rg), smoothstep(R * 0.96, R * 0.82, rg));\n" \
 "      L += E * 1.5e-4 * gc[i] * m / (3.14159265 * R * R); } }\n" \
-"  { float a = atan2(d.y, d.x) - gl.g.y, s = pow(abs(cos(3.0 * a)), 400.0), r0 = 0.004;\n" \
+"  if (gl.g.z < 0.5) { float a = atan2(d.y, d.x) - gl.g.y, s = pow(abs(cos(3.0 * a)), 400.0), r0 = 0.004;\n" \
 "    L += E * 6e-4 * s / (2.0 * 3.14159265 * r0 * r0 * 0.0886) * r0 * r0 / (r * r + r0 * r0) * exp(-r / 0.3); }\n" \
 "  return L * ph; }\n"
 

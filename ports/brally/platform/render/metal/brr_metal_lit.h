@@ -237,6 +237,12 @@ BRR_SHADOW_SRC \
 "  Lo += alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
 "  Lo += lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
+/* BR_LIGHT_VIEW 9..12 (diagnostic): one term alone, the moon or sun, the ambient, the lamps, the glow */ \
+"  int dv = int(u.misc.w);\n" \
+"  if (dv == 9) Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
+"  if (dv == 10) Lo = alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
+"  if (dv == 11) Lo = lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
+"  if (dv == 12) Lo = alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
 /* the game's fog amount, toward the air's own light at the horizon (the sky \
@@ -346,7 +352,9 @@ BRR_SHADOW_SRC \
 "  float3 k = t.sample(s, uv + d * float2(-1, -1)).rgb, l = t.sample(s, uv + d * float2(1, -1)).rgb;\n" \
 "  float3 m = t.sample(s, uv + d * float2(-1, 1)).rgb, n = t.sample(s, uv + d * float2(1, 1)).rgb;\n" \
 "  float3 r = f * 0.125 + (a + c + hh + j) * 0.03125 + (b + e + g + i) * 0.0625 + (k + l + m + n) * 0.125;\n" \
-"  return float4(select(r, float3(0), isnan(r) || isinf(r)), 1);\n" \
+"  r = select(r, float3(0), isnan(r) || isinf(r));\n" \
+"  float y = dot(r, float3(0.2126, 0.7152, 0.0722)); if (y > 1000.0) r *= 1000.0 / y;   /* the sun's and moon's discs (to 60000) are the glare pass's: in the bloom too they were a second veil, a white blob about the moon */\n" \
+"  return float4(r, 1);\n" \
 "}\n" \
 "fragment float4 bup(LO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 d = 1.0 / float2(t.get_width(), t.get_height()), uv = in.uv;\n" \
@@ -392,7 +400,7 @@ BRR_GLARE_SRC \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
 "                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
-"  if (u.lexp.x > 0.0) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)) * u.lexp.z, u.lexp.y, u.lexp.x);   /* after the meter */\n" \
+"  if (u.lexp.x > 0.0 && alb.read(apx).a >= 0.25) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)) * u.lexp.z, u.lexp.y, u.lexp.x);   /* after the meter; surfaces only: the moon's bloom in the blur made a dark disc of the sky about it */\n" \
 "  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \
