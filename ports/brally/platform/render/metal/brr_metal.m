@@ -1128,8 +1128,8 @@ static void lit_lamp_shadows(void)
     [e endEncoding];
 }
 
-/* diffuse GI (DESIGN.md 8.2; brr_metal_gi.h), BR_LIGHT_GI=1 (off by default
- * until its tier is decided): a 16 x 8 x 16 volume of probes 8 m apart
+/* diffuse GI (DESIGN.md 8.2; brr_metal_gi.h), on unless BR_LIGHT_GI=0 (the
+ * project lead's choice, 2026-10-13, pending the tier decision): a 16 x 8 x 16 volume of probes 8 m apart
  * around the eye, 64 rays a probe a frame, its hits lit by the directional
  * light (sun or moon), the sky and the frame's lamps; u->gi.x on when it ran */
 static BrrGi s_gi;
@@ -1141,7 +1141,7 @@ static void lit_gi(LU *u, const float eye[3])
     int k;
     u->gi[0] = 0.0f;
     if (on < 0)
-        on = getenv("BR_LIGHT_GI") && atoi(getenv("BR_LIGHT_GI")) > 0;
+        on = !getenv("BR_LIGHT_GI") || atoi(getenv("BR_LIGHT_GI")) > 0;
     if (!on || !(w = brr_metal_rt_world()))
         return;
     if (!s_gi.ready && !brr_gi_init(&s_gi, s_dev, 16, 8, 16, 64)) {
