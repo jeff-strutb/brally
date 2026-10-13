@@ -36,6 +36,7 @@
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
 #include "brr_metal_rt.h"
+#include "brr_metal_gi.h"
 #include "brr_shadow.h"
 #include "br_flags.h"
 #include "light.h"
@@ -434,7 +435,7 @@ static float s_ev = 1e9f;
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16]; } LU;   /* brr_metal_lit.h's LU, the same layout */
+                   float cdepth[4], csoft[4], scr[16], gi[4]; } LU;   /* brr_metal_lit.h's LU, the same layout */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
 typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4]; } KU;
 
@@ -931,6 +932,7 @@ static void lit_gpu_read(void)
 #endif
 #define LS_BUDGET ((long)LS_ATLAS * LS_ATLAS)     /* texels drawn a frame: the whole atlas */
 static id<MTLBuffer> s_lset[3], s_lcib[3];
+static int s_nlamp;                  /* lamps in this frame's set (the probes light their hits by them) */
 static id<MTLTexture> s_latl;
 static int s_latl_new;
 static id<MTLRenderPipelineState> s_lcclr, s_lccas;
@@ -981,6 +983,7 @@ static void lit_lights(const float eye[3], const float *vp)
     set = (LightSet *)[s_lset[s_vbi] contents];
     if (vp)
         n = light_scene_lights(set->l, ids, LC_LIGHTS);
+    s_nlamp = n;
     light_cluster_build(set, n, vp ? vp : ident, eye, &st);
     t = light_game_track();
     if (t)
@@ -1067,6 +1070,46 @@ static void lit_lamp_shadows(void)
         }
     }
     [e endEncoding];
+}
+
+/* diffuse GI (DESIGN.md 8.2; brr_metal_gi.h), BR_LIGHT_GI=1 (off by default
+ * until its tier is decided): a 16 x 8 x 16 volume of probes 8 m apart
+ * around the eye, 64 rays a probe a frame, its hits lit by the directional
+ * light (sun or moon), the sky and the frame's lamps; u->gi.x on when it ran */
+static BrrGi s_gi;
+static void lit_gi(LU *u, const float eye[3])
+{
+    static int on = -1;
+    const BrrRtWorld *w;
+    float sky[3], gnd[3];
+    int k;
+    u->gi[0] = 0.0f;
+    if (on < 0)
+        on = getenv("BR_LIGHT_GI") && atoi(getenv("BR_LIGHT_GI")) > 0;
+    if (!on || !(w = brr_metal_rt_world()))
+        return;
+    if (!s_gi.ready && !brr_gi_init(&s_gi, s_dev, 16, 8, 16, 64)) {
+        fprintf(stderr, "brr: irradiance probes: no pipelines, off\n");
+        on = 0;
+        return;
+    }
+    for (k = 0; k < 3; k++) {
+        sky[k] = u->skyc[k] / 3.14159265f;      /* a miss's radiance: the sky's irradiance over pi */
+        gnd[k] = u->gndc[k] / 3.14159265f;
+    }
+    brr_gi_frame(&s_gi, eye, 8.0f, u->sun, u->sunc, sky, gnd);
+    brr_gi_encode(&s_gi, s_cmd, w, s_lset[s_vbi], s_nlamp);
+    u->gi[0] = 1.0f;
+}
+/* the probes for the lighting's fragment stage: the volume at buffer idx,
+ * irradiance and distance at textures 6 and 7 (placeholders when off) */
+static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
+{
+    static const BrrGiU zero;
+    int on = s_gi.ready && s_gi.frame;
+    [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
+    [e setFragmentTexture:on ? brr_gi_irr(&s_gi) : s_brdfE atIndex:6];
+    [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
 }
 
 static void lit_present(void)
@@ -1448,6 +1491,7 @@ static void lit_present(void)
             rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
     e = lit_encoder(rp, 4);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
@@ -1480,6 +1524,7 @@ static void lit_present(void)
     [e setFragmentTexture:s_shadow atIndex:3];
     [e setFragmentTexture:s_latl atIndex:4];
     [e setFragmentTexture:s_brdfE atIndex:5];
+    lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
@@ -1500,6 +1545,7 @@ static void lit_present(void)
             [e setFragmentTexture:s_shadow atIndex:3];
             [e setFragmentTexture:s_latl atIndex:4];
             [e setFragmentTexture:s_brdfE atIndex:5];
+            lit_gi_bind(e, 3);
             op_draw(e, &s_ops[i], 1);
         }
     [e endEncoding];

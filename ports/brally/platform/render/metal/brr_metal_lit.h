@@ -22,15 +22,19 @@
 #ifndef BRR_METAL_LIT_H
 #define BRR_METAL_LIT_H
 
+#include "brr_metal_gi_src.h"
+
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
  * cascades: their matrices, where each ends in view depth, metres per texel,
  * one texel in depth units, metres per unit of depth; csoft: tan of the
  * sun's angular radius, the blocker search's and the penumbra filter's
  * widest radius in texels, the contact shadow's march in metres (0: off);
- * scr: world to the target's pixels (brr_shadow.h, brr_screen_matrix) */
+ * scr: world to the target's pixels (brr_shadow.h, brr_screen_matrix); gi.x:
+ * the irradiance probes on (brr_metal_gi.h), which then replace the sky's
+ * ambient term */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 gi; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -131,6 +135,8 @@
 
 #define BRR_LIT_SRC \
 BRR_LU_SRC \
+BRR_GI_DEFS \
+BRR_GI_SAMPLE_SRC \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
@@ -193,12 +199,14 @@ BRR_SHADOW_SRC \
 "static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
 /* the light leaving a surface toward the eye, cd/m2, before exposure; n \
    toward the eye (toeye), sv how much of the sun reaches it; the lamps from \
-   the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h) */ \
+   the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h); \
+   gi the probes' indirect irradiance (gi_irr, lux) where u.gi.x is on: the \
+   diffuse's albedo / pi of it (nothing metallic) in place of the sky's term */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
-"                       texture2d<float> bE) {\n" \
+"                       texture2d<float> bE, float3 gi) {\n" \
 "  float3 v = normalize(u.eye.xyz - p);\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough, bE) * sv;\n" \
-"  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
+"  Lo += alb / 3.14159 * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
 "  Lo += lamps(ls, atl, p, n, v, alb, rough, bE);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
@@ -253,7 +261,8 @@ BRR_SHADOW_SRC \
 "fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]],\n" \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
-"                    texture2d<float> bE [[texture(5)]]) {\n" \
+"                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(2)]],\n" \
+"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -272,21 +281,25 @@ BRR_SHADOW_SRC \
 "  if (dbg == 5) return float4(float3(glow), 1);\n" \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
+"  float3 gi = u.gi.x > 0.5 ? gi_irr(gu, girr, gdst, P.xyz, n, normalize(u.eye.xyz - P.xyz)) : float3(0);\n" \
+"  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE)), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE, gi)), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
 "                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
-"                    texture2d<float> bE [[texture(5)]]) {\n" \
+"                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(3)]],\n" \
+"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
 "  if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE);\n" \
+"    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi);\n" \
 "  }\n" \
 "  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
