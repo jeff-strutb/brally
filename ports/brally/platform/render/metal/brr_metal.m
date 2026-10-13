@@ -879,6 +879,7 @@ static const char *const k_pass_names[GPU_PASSES] = { "sky tables", "g-buffer", 
 static id<MTLCounterSampleBuffer> s_gpuctr[3];
 static int s_gpu_on = -1;
 static double s_gpu_ms[GPU_PASSES], s_gpu_span, s_gpu_t0;
+static long s_gpu_cb_us, s_gpu_cb_n;   /* the frames' whole GPU time (command buffer start to end) */
 static unsigned s_gpu_frames;
 static MTLTimestamp s_cpu0, s_gpu0;
 static double s_tick_ns = 1.0;
@@ -964,8 +965,11 @@ static void lit_gpu_read(void)
                 fprintf(stderr, " %s %.2f", k_pass_names[k], s_gpu_ms[k] / s_gpu_frames);
                 total += s_gpu_ms[k] / s_gpu_frames;
             }
-            fprintf(stderr, " | total %.2f, first start to last end %.2f, %ux%u\n", total, s_gpu_span / s_gpu_frames,
-                    (unsigned)s_rw, (unsigned)s_rh);
+            {
+                long us = __atomic_exchange_n(&s_gpu_cb_us, 0, __ATOMIC_RELAXED), n = __atomic_exchange_n(&s_gpu_cb_n, 0, __ATOMIC_RELAXED);
+                fprintf(stderr, " | total %.2f, first start to last end %.2f, whole frame %.2f, %ux%u\n", total, s_gpu_span / s_gpu_frames,
+                        n ? us / 1000.0 / n : 0.0, (unsigned)s_rw, (unsigned)s_rh);
+            }
             memset(s_gpu_ms, 0, sizeof s_gpu_ms);
             s_gpu_span = 0;
             s_gpu_frames = 0;
@@ -2349,6 +2353,14 @@ void brr_present(void)
                 [s_cmd presentDrawable:dr];
             }
         }
+        if (s_gpu_on > 0)   /* the whole frame's GPU time, every pass (BR_LIGHT_GPU) */
+            [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> c) {
+                double ms = (c.GPUEndTime - c.GPUStartTime) * 1000.0;
+                if (ms > 0 && ms < 1000) {
+                    __atomic_add_fetch(&s_gpu_cb_us, (long)(ms * 1000.0), __ATOMIC_RELAXED);
+                    __atomic_add_fetch(&s_gpu_cb_n, 1, __ATOMIC_RELAXED);
+                }
+            }];
         [s_cmd commit];
         if (want_shot) {
             [s_cmd waitUntilCompleted];
