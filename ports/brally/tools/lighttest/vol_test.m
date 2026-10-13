@@ -15,6 +15,14 @@
  *                bounds with it on), the reprojection's lookup, vol_integrate
  *                against vol_step, vol_at's lookup at slice sides, and the
  *                homogeneous closed form through the GPU; the kernels' time
+ *   beam         the lighthouse beam's single scattering (vol_beam): the
+ *                march against a fine quadrature of the same integral over
+ *                the whole ray for 8 rays crossing the beam at different
+ *                distances and angles (< 2% at every jitter), zero for rays
+ *                that miss the cone, the change for a 1 degree turn of the
+ *                beam (< 5%), the shader's vol_beam against the C one, and
+ *                the beam's luminance seen side-on (night's medium, the
+ *                lighthouse's 2,000,000 cd)
  *
  * Build and run: ports/brally/tools/lighttest/vol.sh */
 #import <Metal/Metal.h>
@@ -486,14 +494,190 @@ static void gpu(const char *path)
     free(got); free(want); free(ref);
 }
 
+/* the lighthouse: a lamp 30 m up, its axis turned phi degrees, 0.02 under the horizon (light_world.c) */
+#define BEAM_CD 2000000.0f
+static void beam_axis(float phi, float a[3])
+{
+    float r = phi * 0.017453293f, l;
+    a[0] = cosf(r); a[1] = sinf(r); a[2] = -0.02f;
+    l = sqrtf(vol_dot3(a, a));
+    a[0] /= l; a[1] /= l; a[2] /= l;
+}
+/* a ray crossing the axis s metres out (offset off metres sideways), at
+ * alpha degrees to it, from an eye back metres before the crossing */
+static void beam_ray(const float A[3], const float a[3], float s, float off, float alpha, float back, float o[3], float d[3])
+{
+    float h[3] = { -a[1], a[0], 0.0f }, l = sqrtf(h[0] * h[0] + h[1] * h[1]), ca = cosf(alpha * 0.017453293f), sa = sinf(alpha * 0.017453293f);
+    int k;
+    h[0] /= l; h[1] /= l;
+    for (k = 0; k < 3; k++) {
+        float x = A[k] + a[k] * s + h[k] * off;
+        d[k] = a[k] * ca + h[k] * sa;
+        o[k] = x - d[k] * back;
+    }
+}
+/* the reference: the integrand summed at n midpoints over the whole ray, no cone, no change of variable */
+static double beam_ref(const float o[3], const float d[3], const float A[3], const float a[3], float st, float tmax, int n)
+{
+    double s = 0, dt = tmax / (double)n;
+    int i;
+    for (i = 0; i < n; i++)
+        s += vol_beam_f(o, d, A, a, 0.99904822f, 0.99965732f, st, VOL_G, (float)((i + 0.5) * dt));
+    return s * dt;
+}
+static const float k_bA[3] = { 0.0f, 0.0f, 30.0f };
+static void beam(void)
+{
+    static const float cs[8][4] = {   /* s, sideways offset, alpha, eye back */
+        { 30, 0.0f, 90, 100 }, { 100, 1.0f, 60, 150 }, { 200, -3.0f, 120, 80 }, { 300, 0.0f, 30, 200 },
+        { 600, 8.0f, 150, 300 }, { 1000, 0.0f, 45, 100 }, { 1500, -20.0f, 75, 400 }, { 50, 0.5f, 20, 60 } };
+    const float st = k_vol[4].sigma, cout = 0.99904822f, cin = 0.99965732f;
+    float a[3], o[3], d[3], worst = 0, worst_turn = 0;
+    int c, k;
+    beam_axis(17.0f, a);
+    for (c = 0; c < 8; c++) {
+        double ref;
+        beam_ray(k_bA, a, cs[c][0], cs[c][1], cs[c][2], cs[c][3], o, d);
+        ref = beam_ref(o, d, k_bA, a, st, VOL_BEAM_SKY, 4000000);
+        CHECK(ref > 0, "beam ray %d: the reference is zero", c);
+        for (k = 0; k < 8; k++) {
+            float m = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, (k + 0.5f) / 8.0f, VOL_BEAM_STEPS);
+            float e = (float)(fabs(m - ref) / ref);
+            worst = fmaxf(worst, e);
+            CHECK(e < 0.02f, "beam ray %d jitter %d: march %g, quadrature %g (%.2f%%)", c, k, m, ref, e * 100);
+        }
+    }
+    printf("beam: march (%d steps) against a %d-point quadrature, 8 rays x 8 jitters: max rel error %.3f%%\n",
+           VOL_BEAM_STEPS, 4000000, worst * 100);
+    {   /* rays that miss: beside the cone, behind the lamp, ending before it, from inside going out the back */
+        float m[4];
+        beam_ray(k_bA, a, 300, 0.0f, 90, 100, o, d);            /* 30 m over the axis at 300 m: outside 2.5 degrees (13 m) */
+        o[2] += 30.0f;
+        m[0] = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, 0.5f, VOL_BEAM_STEPS);
+        beam_ray(k_bA, a, -200, 0.0f, 90, 100, o, d);           /* behind the lamp: the other nappe */
+        m[1] = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, 0.5f, VOL_BEAM_STEPS);
+        beam_ray(k_bA, a, 300, 0.0f, 90, 100, o, d);            /* a wall 50 m short of the beam */
+        m[2] = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, 50.0f, 0.5f, VOL_BEAM_STEPS);
+        beam_ray(k_bA, a, 300, 0.0f, 90, 0.0f, o, d);           /* 50 m over the axis, going up and out */
+        o[2] += 50.0f; d[0] = 0.3f * a[0]; d[1] = 0.3f * a[1]; d[2] = 0.954f;
+        m[3] = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, 0.5f, VOL_BEAM_STEPS);
+        for (k = 0; k < 4; k++)
+            CHECK(m[k] == 0.0f, "beam miss %d: %g, not zero", k, m[k]);
+        printf("beam: rays missing the cone (beside, behind the lamp, short of it, going away): %g %g %g %g\n", m[0], m[1], m[2], m[3]);
+    }
+    /* the beam turning past fixed rays (side-on and oblique, 100 to 400 m), 1 degree a frame over 16
+       degrees, the ray crossing the whole cone throughout: the change a step under 5%, and the march's
+       change the quadrature's (no banding: within 0.5% of it) */
+    {
+        static const float rs[3][3] = { { 100, 90, 100 }, { 300, 60, 150 }, { 400, 90, 200 } };
+        float worst_track = 0;
+        int r;
+        for (r = 0; r < 3; r++) {
+            float a0[3], prev = -1;
+            double pref = -1;
+            int deg;
+            beam_axis(17.0f, a0);
+            beam_ray(k_bA, a0, rs[r][0], 0.0f, rs[r][1], rs[r][2], o, d);
+            for (deg = -8; deg <= 8; deg++) {
+                float m;
+                double ref;
+                beam_axis(17.0f + deg, a);
+                m = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, 0.5f, VOL_BEAM_STEPS);
+                ref = beam_ref(o, d, k_bA, a, st, VOL_BEAM_SKY, 1000000);
+                if (prev > 0 && m > 0) {
+                    float e = fabsf(m - prev) / prev, tr = (float)fabs((m / prev) - (ref / pref));
+                    worst_turn = fmaxf(worst_turn, e);
+                    worst_track = fmaxf(worst_track, tr);
+                    CHECK(e < 0.05f, "beam turn ray %d at %d degrees: %g after %g (%.1f%%)", r, deg, m, prev, e * 100);
+                    CHECK(tr < 0.005f, "beam turn ray %d at %d degrees: the march's change off the quadrature's by %.2f%%", r, deg, tr * 100);
+                }
+                CHECK(m > 0, "beam turn ray %d at %d degrees: the ray no longer crosses the beam", r, deg);
+                prev = m;
+                pref = ref;
+            }
+        }
+        printf("beam: turning 1 degree a step over 16 degrees past 3 rays: max change %.2f%%, the march's change off the quadrature's by at most %.3f%%\n",
+               worst_turn * 100, worst_track * 100);
+    }
+    /* the beam's luminance side-on, an eye 100 m from the crossing: sigma_s I (the march) */
+    {
+        static const float dist[3] = { 100, 300, 1000 };
+        beam_axis(17.0f, a);
+        for (k = 0; k < 3; k++) {
+            float m;
+            beam_ray(k_bA, a, dist[k], 0.0f, 90, 100, o, d);
+            m = vol_beam(o, d, k_bA, a, cout, cin, st, VOL_G, VOL_BEAM_SKY, 0.5f, VOL_BEAM_STEPS) * st * k_vol[4].albedo * BEAM_CD;
+            printf("beam: side-on %4.0f m from the lighthouse, eye 100 m off: %.4f cd/m2 (a moonlit road 0.01)\n", dist[k], m);
+        }
+    }
+}
+
+/* the shader's vol_beam against the C reference, at the same rays and jitter */
+static const char *k_beam =
+"kernel void t_beam(device const float4 *in [[buffer(0)]], device float *out [[buffer(1)]], uint i [[thread_position_in_grid]]) {\n"
+"  float4 o = in[i * 4], d = in[i * 4 + 1], A = in[i * 4 + 2], a = in[i * 4 + 3];\n"
+"  out[i] = vol_beam(o.xyz, d.xyz, A.xyz, a.xyz, a.w, o.w, A.w, d.w, 3000.0, 0.5); }\n";
+static void beam_gpu(const char *path)
+{
+    id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
+    NSError *err = nil;
+    NSString *src = [NSString stringWithContentsOfFile:[NSString stringWithUTF8String:path] encoding:NSUTF8StringEncoding error:&err];
+    id<MTLLibrary> lib;
+    id<MTLComputePipelineState> pl;
+    float in[8][16], want[8], *got, a[3], worst = 0;
+    int c;
+    if (!dev || !src)
+        return;
+    lib = [dev newLibraryWithSource:[src stringByAppendingString:[NSString stringWithUTF8String:k_beam]] options:nil error:&err];
+    pl = lib ? [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_beam"] error:&err] : nil;
+    if (!pl) {
+        CHECK(0, "the beam kernel: %s", [[err description] UTF8String]);
+        return;
+    }
+    beam_axis(17.0f, a);
+    for (c = 0; c < 8; c++) {
+        float o[3], d[3];
+        beam_ray(k_bA, a, 30.0f + 180.0f * c, (float)(c % 3) - 1.0f, 25.0f + 18.0f * c, 120.0f, o, d);
+        memcpy(in[c], o, 12); in[c][3] = 0.99965732f;
+        memcpy(in[c] + 4, d, 12); in[c][7] = VOL_G;
+        memcpy(in[c] + 8, k_bA, 12); in[c][11] = k_vol[4].sigma;
+        memcpy(in[c] + 12, a, 12); in[c][15] = 0.99904822f;
+        want[c] = vol_beam(o, d, k_bA, a, 0.99904822f, 0.99965732f, k_vol[4].sigma, VOL_G, 3000.0f, 0.5f, VOL_BEAM_STEPS);
+    }
+    {
+        id<MTLCommandQueue> q = [dev newCommandQueue];
+        id<MTLBuffer> bi = [dev newBufferWithBytes:in length:sizeof in options:MTLResourceStorageModeShared];
+        id<MTLBuffer> bo = [dev newBufferWithLength:sizeof want options:MTLResourceStorageModeShared];
+        id<MTLCommandBuffer> cb = [q commandBuffer];
+        id<MTLComputeCommandEncoder> e = [cb computeCommandEncoder];
+        [e setComputePipelineState:pl];
+        [e setBuffer:bi offset:0 atIndex:0];
+        [e setBuffer:bo offset:0 atIndex:1];
+        [e dispatchThreads:MTLSizeMake(8, 1, 1) threadsPerThreadgroup:MTLSizeMake(8, 1, 1)];
+        [e endEncoding];
+        [cb commit];
+        [cb waitUntilCompleted];
+        got = (float *)[bo contents];
+        for (c = 0; c < 8; c++) {
+            float e2 = fabsf(got[c] - want[c]) / fmaxf(want[c], 1e-20f);
+            CHECK(want[c] > 0 && e2 < 2e-3f, "beam gpu ray %d: shader %g, C %g", c, got[c], want[c]);
+            worst = fmaxf(worst, e2);
+        }
+    }
+    printf("beam: the shader's vol_beam against the C one, 8 rays: max rel difference %.2e\n", worst);
+}
+
 int main(int argc, char **argv)
 {
     @autoreleasepool {
         homogeneous();
         steps();
         phase();
-        if (argc > 1)
+        beam();
+        if (argc > 1) {
             gpu(argv[1]);
+            beam_gpu(argv[1]);
+        }
         printf("memory: cells 2 x %.1f MB + the integrated volume %.1f MB (RGBA16F, %dx%dx%d)\n",
                VOL_NX * VOL_NY * VOL_NZ * 8 / 1048576.0, VOL_NX * VOL_NY * VOL_NZ * 8 / 1048576.0, VOL_NX, VOL_NY, VOL_NZ);
     }

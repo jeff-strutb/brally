@@ -1761,6 +1761,14 @@ static void lit_present(void)
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
                           (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, vs);
+        {   /* the lighthouse beams, as light the air scatters (brr_metal_vol.h vol_beam) */
+            float bp[VOL_BEAMS][3], bx[VOL_BEAMS][3];
+            LightSpot bs[VOL_BEAMS];
+            int nb = w == 4 ? light_game_beams(bp, bx, VOL_BEAMS) : 0, q;   /* lit at night (light_scene.c) */
+            for (q = 0; q < nb; q++)
+                light_world_beam(&bs[q], bp[q], bx[q]);
+            brr_vol_beams(bs, nb);
+        }
         brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
     }
 
@@ -2185,8 +2193,9 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             int opaque = light_draw_opaque(st->blend_rgb_src, st->blend_rgb_dst);
             int kind = v[0].lit > 1.5f && v[0].lit < 2.5f ? K_BACK : v[0].lit > 0.5f ? (opaque ? K_OPQ : K_BLEND) : K_OTHER;
             int beam = (kind == K_OPQ || kind == K_BLEND) && lit_beam(v, n);
-            if (beam)                   /* a lighthouse beam: emitted light, forward-drawn, never in the G-buffer or a caster */
-                kind = K_BLEND;
+            if (beam)                   /* a lighthouse beam's polygons: never drawn in the lit frame; the beam is
+                                           the light the air scatters from the lighthouse's spot (brr_metal_vol.h vol_beam) */
+                return;
             Op *op = op_new(kind);
             if (!op)
                 return;

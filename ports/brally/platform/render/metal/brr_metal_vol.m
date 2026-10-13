@@ -15,6 +15,15 @@ static BrrVU s_vu;
 static float s_pscr[16], s_peye[3];
 static int s_vcur, s_vhave, s_vfailed;
 static unsigned s_vframe;
+static LightSpot s_vbeam[VOL_BEAMS];
+static int s_nvbeam;
+
+void brr_vol_beams(const LightSpot *s, int n)
+{
+    s_nvbeam = n < 0 ? 0 : n > VOL_BEAMS ? VOL_BEAMS : n;
+    if (s_nvbeam)
+        memcpy(s_vbeam, s, (size_t)s_nvbeam * sizeof *s);
+}
 
 /* the tier: the volume on the GPUs of the Remastered tier (Apple GPU family 7
  * or Metal 3); BR_LIGHT_VOL=0 turns it off, =1 forces it on */
@@ -94,6 +103,17 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
     v->med[3] = eye[2] - 2.0f;          /* the ground, about a car's camera height below the eye */
     v->nse[0] = k_vol[w].noise; v->nse[1] = 1.0f / 24.0f; v->nse[2] = (float)fmod(time, 1000.0); v->nse[3] = VOL_G;
     v->hist[0] = VOL_HISTORY;
+    {
+        int k;
+        for (k = 0; k < s_nvbeam; k++) {
+            memcpy(v->bpos[k], s_vbeam[k].pos, 12);
+            v->bpos[k][3] = s_vbeam[k].candela;
+            memcpy(v->baxis[k], s_vbeam[k].axis, 12);
+            v->baxis[k][3] = s_vbeam[k].cosout;
+            memcpy(v->bcol, s_vbeam[k].rgb, 12);
+            v->bcol[3] = s_vbeam[k].side[0];
+        }
+    }
     prev = s_vcur;
     s_vcur ^= 1;
 
