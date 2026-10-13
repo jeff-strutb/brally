@@ -11,9 +11,10 @@
 #   vol.sh     the volumetric fog: its integration against closed forms, its kernels against the CPU reference
 #   night.sh   the moon, the Purkinje weight, the night meter, the glow's gating, the track's lights
 #   refl.sh    reflections and wet roads: the march, wetness and LU against references; offline compiles
+#   carpaint.sh car paint's clear coat: the capture's car classification (its BRDF checks run in maths.sh)
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh night.sh refl.sh; do
+for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh night.sh refl.sh carpaint.sh; do
     echo "== $t"
     sh "./$t"
 done

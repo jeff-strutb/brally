@@ -1,6 +1,6 @@
 /* brr_metal_refl.h: specular reflections and wet roads (DESIGN.md 8.4).
  *
- *   BRR_WET_SRC   wet surfaces (needs LU): weather 2 (rain) and 3 (snow
+ *   BRR_WET_SRC   the G-buffer's material byte (car paint) and wet surfaces (needs LU): weather 2 (rain) and 3 (snow
  *                 melt) wet what faces up (n.z > 0.9), the road; wetness
  *                 darkens a porous surface's albedo (Lagarde 2013, "Water
  *                 drop 3b", the porosity model) and smooths it, and a
@@ -33,6 +33,16 @@
 #define REFL_RT_ROUGH 0.4f       /* below this a miss traces the BVH */
 
 #define BRR_WET_SRC \
+/* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
+   and the reflections skip it); 64..127 the 3D's car paint (BRR_MAT_CAR, \
+   no glow; the capture's car flag, lit 3, glide.c); 128..255 the 3D's \
+   other surfaces, 128 + 127 x their glow */ \
+"#define BRR_MAT_CAR 96.0\n" \
+"static bool carpaint(float a) { a *= 255.0; return a > 63.5 && a < 127.5; }\n" \
+/* car paint's two roughnesses: its clear coat's and the paint's under it \
+   (brr_metal_lit.h: brdf) */ \
+"#define BRR_COAT_ROUGH 0.05\n" \
+"#define BRR_CAR_ROUGH 0.35\n" \
 "static float wet_h(float2 c) { return fract(sin(dot(c, float2(127.1, 311.7))) * 43758.5453); }\n" \
 /* value noise, smooth between the lattice's corners: 0..1 */ \
 "static float wet_n(float2 x) { float2 i = floor(x), f = x - i, w = f * f * (3.0 - 2.0 * f);\n" \
@@ -119,7 +129,8 @@
 "  if (a.a < 0.25 || u.wet.z < 0.5) { dst.write(c, px); return; }\n" \
 "  float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; float fog = u.vol.x > 0.5 ? 0.0 : nrm.read(px).w;\n" \
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n" \
-"  float3 al = a.rgb; float rough = u.misc.z; wet(u, p, n, al, rough);\n" \
+"  float3 al = a.rgb; bool car = carpaint(a.a); float rough = car ? BRR_CAR_ROUGH : u.misc.z; wet(u, p, n, al, rough);\n" \
+"  if (car) rough = BRR_COAT_ROUGH;   /* car paint: the coat's mirror, its own roughness, weighted by its Fresnel (E below) */\n" \
 "  if (rough > 0.6) { dst.write(c, px); return; }\n" \
 "  float3 v = normalize(u.eye.xyz - p); float nv = clamp(dot(n, v), 1e-3, 1.0);\n" \
 "  float j = fract(52.9829189 * fract(dot(float2(px) + 0.5, float2(0.06711056, 0.00583715))));\n" \

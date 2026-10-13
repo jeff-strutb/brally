@@ -71,7 +71,7 @@ static NSString *const k_src = @
 "  float fog[64];\n"
 "  float glow, addk;\n"
 "};\n"
-"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; };\n"
+"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
    u.xf of this frame's table */
 "vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
@@ -80,7 +80,7 @@ static NSString *const k_src = @
 "  float w = a.oow > 0 ? 1.0 / a.oow : 1.0;\n"
 "  float2 ndc = float2(a.pos.x * T.x + T.y, a.pos.y * T.z + T.w);\n"
 "  o.pos = float4(ndc * w, clamp(a.z, 0.0, 1.0) * w, w);\n"
-"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z; o.wp = a.wld.xyz;\n"
+"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z; o.wp = a.wld.xyz; o.mat = a.wld.w;\n"
 "  return o;\n"
 "}\n"
 "static float comb(int fn, float f, float l, float la, float ot, int inv) {\n"
@@ -2042,7 +2042,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             u.fog[i] = st->fog_table[i] / 255.0f;
         if (s_litf) {                   /* recorded; replayed in the lighting's passes (lit_present) */
             int opaque = st->blend_rgb_src == 4 && st->blend_rgb_dst == 0;
-            int kind = v[0].lit > 1.5f ? K_BACK : v[0].lit > 0.5f ? (opaque ? K_OPQ : K_BLEND) : K_OTHER;
+            int kind = v[0].lit > 1.5f && v[0].lit < 2.5f ? K_BACK : v[0].lit > 0.5f ? (opaque ? K_OPQ : K_BLEND) : K_OTHER;
             Op *op = op_new(kind);
             if (!op)
                 return;

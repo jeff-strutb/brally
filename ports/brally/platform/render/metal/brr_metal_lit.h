@@ -139,6 +139,7 @@
 
 #define BRR_LIT_SRC \
 BRR_LU_SRC \
+BRR_WET_SRC \
 BRR_GI_DEFS \
 BRR_GI_SAMPLE_SRC \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
@@ -189,7 +190,7 @@ BRR_GI_SAMPLE_SRC \
    replaces reflected up to 1.79 of it at grazing views); nothing with the \
    light or the eye below the surface (there l = -v made h = normalize(0); \
    radiance turns n to the eye, so the eye never is) */ \
-"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE) {\n" \
+"static float3 brdf0(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE) {\n" \
 "  float nl = min(dot(n, l), 1.0); if (nl <= 0.0 || dot(n, v) < 0.0) return 0.0;\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 sz = float2(bE.get_width(), bE.get_height());\n" \
 "  float nv = clamp(dot(n, v), 1e-3, 1.0), ry = saturate((rough - 0.0447) / 0.9553);   /* the table from the roughness floor (a^2 = 2e-3) */\n" \
@@ -197,8 +198,23 @@ BRR_GI_SAMPLE_SRC \
 "  float fd = (1.0 - ev.x) * (1.0 - el) / (3.14159 * max(1.0 - ev.y, 1e-3));\n" \
 "  return (alb * fd + ggxspec(n, v, l, rough)) * nl;\n" \
 "}\n" \
+/* car paint, a clear coat over the paint (MEASUREMENTS.md, car paint): the \
+   coat a GGX lobe of roughness BRR_COAT_ROUGH with F0 0.04 (ggxspec's), the \
+   paint under it the coupled diffuse and lobe above at BRR_CAR_ROUGH, seen \
+   through what the coat leaves: f = f_base (1 - Ec(n.v)) + f_coat, Ec the \
+   coat's directional albedo (the table at its roughness), the albedo-scaled \
+   form of Filament's f_base (1 - Fc) + f_coat, so white reflects at most all \
+   that arrives (coat + transmitted base <= 1); a negative roughness asks for \
+   it (radiance, lamps), -rough the paint's */ \
+"static float coatE(float nv, texture2d<float> bE) {\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 sz = float2(bE.get_width(), bE.get_height());\n" \
+"  return bE.sample(s, (0.5 + float2(sqrt(clamp(nv, 1e-3, 1.0)), saturate((BRR_COAT_ROUGH - 0.0447) / 0.9553)) * (sz - 1.0)) / sz).r; }\n" \
+"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE) {\n" \
+"  if (rough >= 0.0) return brdf0(n, v, l, alb, rough, bE);\n" \
+"  float nl = min(dot(n, l), 1.0); if (nl <= 0.0 || dot(n, v) < 0.0) return 0.0;\n" \
+"  return brdf0(n, v, l, alb, -rough, bE) * (1.0 - coatE(dot(n, v), bE)) + ggxspec(n, v, l, BRR_COAT_ROUGH) * nl;\n" \
+"}\n" \
 BRR_SHADOW_SRC \
-BRR_WET_SRC \
 /* a surface's normal turned toward the eye (the game's faces are seen from \
    either side) */ \
 "static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
@@ -206,13 +222,16 @@ BRR_WET_SRC \
    toward the eye (toeye), sv how much of the sun reaches it; the lamps from \
    the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h); \
    gi the probes' indirect irradiance (gi_irr, lux) where u.gi.x is on: the \
-   diffuse's albedo / pi of it (nothing metallic) in place of the sky's term */ \
+   diffuse's albedo / pi of it (nothing metallic) in place of the sky's term; \
+   a negative rough is car paint (brdf), the coat's own mirror of the \
+   surroundings the reflection pass's (brr_metal_refl.h) */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
 "                       texture2d<float> bE, float3 gi) {\n" \
-"  float3 v = normalize(u.eye.xyz - p); wet(u, p, n, alb, rough);\n" \
-"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough, bE) * sv;\n" \
-"  Lo += alb / 3.14159 * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
-"  Lo += lamps(ls, atl, p, n, v, alb, rough, bE);\n" \
+"  float3 v = normalize(u.eye.xyz - p); bool coat = rough < 0.0; rough = abs(rough); wet(u, p, n, alb, rough);\n" \
+"  float rb = coat ? -rough : rough, tb = coat ? 1.0 - coatE(dot(n, v), bE) : 1.0;   /* car paint: the coat's layering (brdf) */\n" \
+"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
+"  Lo += alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
+"  Lo += lamps(ls, atl, p, n, v, alb, rb, bE);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
@@ -234,7 +253,7 @@ BRR_WET_SRC \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  r.alb = float4(delit(h.tex.rgb, h.it.rgb), (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
+"  r.alb = float4(delit(h.tex.rgb, h.it.rgb), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
 "  r.pos = float4(in.wp, float(fc)); r.nrm = float4(facen(in.wp), h.fog);\n" \
 "  return r;\n" \
@@ -289,7 +308,7 @@ BRR_WET_SRC \
 "  float3 gi = u.gi.x > 0.5 ? gi_irr(gu, girr, gdst, P.xyz, n, normalize(u.eye.xyz - P.xyz)) : float3(0);\n" \
 "  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE, gi)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, glow, sv, bE, gi)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
