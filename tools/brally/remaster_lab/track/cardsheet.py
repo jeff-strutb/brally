@@ -1,7 +1,7 @@
 import json, sys, numpy as np
 from PIL import Image, ImageDraw
 from trkparse import parse
-D='build/brally/wasm32/app/extract/disc/tracks/'
+D='reference/brally/data/disc/'
 cat=json.load(open('catalog.json'))
 for T in cat:
     texs,_=parse(D+T['id']+'.trk')

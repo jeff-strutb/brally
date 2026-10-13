@@ -309,11 +309,11 @@ They live in `ports/common/models/es/`:
 Rebuilding the pack from the sources:
 
 ```bash
-blender --background --python ports/brally-wasm/tools/remaster_bake.py -- ports/common/models/es/source/body_raw.blend ports/common/models/es/decimated body 1000000
+blender --background --python ports/common/models/tools/remaster_bake.py -- ports/common/models/es/source/body_raw.blend ports/common/models/es/decimated body 1000000
 ```
 
 ```bash
-blender --background --python ports/brally-wasm/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.blend ports/common/models/es/decimated wheel 250000
+blender --background --python ports/common/models/tools/remaster_bake.py -- ports/common/models/es/source/wheel_raw.blend ports/common/models/es/decimated wheel 250000
 ```
 
 The lower levels of detail are the same Blender step at lower targets, into
@@ -322,27 +322,27 @@ wheel 3000). Then the pack, the windows at each level, the livery and the
 dent maps:
 
 ```bash
-python3 ports/brally-wasm/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack --lods ports/common/models/es/decimated/lod1 ports/common/models/es/decimated/lod2
+python3 ports/common/models/tools/remaster_car.py --body ports/common/models/es/decimated/body.glb --wheel ports/common/models/es/decimated/wheel.glb --out ports/common/models/es/pack --lods ports/common/models/es/decimated/lod1 ports/common/models/es/decimated/lod2
 ```
 
 ```bash
-blender --background --python ports/brally-wasm/tools/remaster_glass.py -- ports/common/models/es/pack
+blender --background --python ports/common/models/tools/remaster_glass.py -- ports/common/models/es/pack
 ```
 
 ```bash
-GLASS_EDGE=0.08 GLASS_OUT=glass_lod1 blender --background --python ports/brally-wasm/tools/remaster_glass.py -- ports/common/models/es/pack
+GLASS_EDGE=0.08 GLASS_OUT=glass_lod1 blender --background --python ports/common/models/tools/remaster_glass.py -- ports/common/models/es/pack
 ```
 
 ```bash
-GLASS_EDGE=0.2 GLASS_OUT=glass_lod2 blender --background --python ports/brally-wasm/tools/remaster_glass.py -- ports/common/models/es/pack
+GLASS_EDGE=0.2 GLASS_OUT=glass_lod2 blender --background --python ports/common/models/tools/remaster_glass.py -- ports/common/models/es/pack
 ```
 
 ```bash
-python3 ports/brally-wasm/tools/remaster_livery.py ports/common/models/es/pack
+python3 ports/common/models/tools/remaster_livery.py ports/common/models/es/pack
 ```
 
 ```bash
-python3 ports/brally-wasm/tools/remaster_dent.py reference/brally/data/disc/cars/es.rca ports/common/models/es/pack
+python3 ports/common/models/tools/remaster_dent.py reference/brally/data/disc/cars/es.rca ports/common/models/es/pack
 ```
 
 Each level is made from the source's own `.blend` (a GLB import carries
@@ -389,7 +389,7 @@ there; without it, Remastered falls back as listed.
 The sky pack is rebuilt from its sources with:
 
 ```bash
-python3 ports/brally-wasm/tools/remaster_sky.py
+python3 ports/common/models/tools/remaster_sky.py
 ```
 
 **Not there yet.**

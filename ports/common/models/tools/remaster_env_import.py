@@ -3,7 +3,7 @@ glTF, Collada, .blend) into the shape remaster_env_bake.py reads: one .blend
 whose variants are meshes named <asset>_<variant>_LOD0 in an <asset>_LOD0
 collection, images packed in.  Run by Blender:
 
-    blender --background --python ports/brally-wasm/tools/remaster_env_import.py -- \
+    blender --background --python ports/common/models/tools/remaster_env_import.py -- \
         <source file> <asset> <out.blend>
 
 Each top-level object of the file becomes one variant: its meshes are joined

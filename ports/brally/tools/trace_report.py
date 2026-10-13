@@ -160,7 +160,7 @@ def main():
     # an object's extent never runs past the next address any original
     # code references on its own (a byte array declared huge in one file
     # would otherwise swallow its neighbours)
-    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))
+    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/placement/sites.csv'))
                    if r['addend'] == '0' and 0x10077000 <= int(r['va'], 16) < 0x118F2000})
     capped = []
     for va, end, nm, rec, esz, isbytes in canon:

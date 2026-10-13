@@ -15,7 +15,7 @@ import concurrent.futures, json, os, re, sys, urllib.request
 import numpy as np
 from PIL import Image
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 DEM = os.path.join(ROOT, "ports", "common", "models", "terrain", "dem", "alti2m")
 STAC = "https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissalti3d/items"
 

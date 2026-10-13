@@ -27,9 +27,9 @@ ROOT = vm.ROOT
 
 
 def ctor_map():
-    pl = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/brally/wasm32/placement.csv'))}
+    pl = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/brally/placement/placement.csv'))}
     out = {}
-    for r in csv.reader(open('build/brally/wasm32/sites.csv')):
+    for r in csv.reader(open('build/brally/placement/sites.csv')):
         if len(r) >= 5 and r[1].startswith('??0'):
             cls = r[2].split('::')[0]
             out[(r[0].replace('src/brally/core/', 'ports/brally/src/core/'), cls)] = pl.get(int(r[4], 16))

@@ -1,6 +1,6 @@
 import numpy as np, collections, sys, pickle
 from trkparse import parse
-D='build/brally/wasm32/app/extract/disc/tracks/'
+D='reference/brally/data/disc/'
 def stats(inst):
     M=inst['M']; sc=np.linalg.norm(M[0,:3])
     A=0; up=0; vert=0; cut=0; xlu=0; keys=collections.Counter()

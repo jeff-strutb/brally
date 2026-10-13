@@ -28,8 +28,8 @@ Writes ports/common/models/placements/<track>.env, text:
 import colorsys, json, math, os, random, struct, sys
 import numpy as np
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-TRACKS = os.path.join(ROOT, "build", "brally", "wasm32", "app", "extract", "disc", "tracks")
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+TRACKS = os.path.join(ROOT, "reference", "brally", "data", "disc")
 MODELS = os.path.join(ROOT, "ports", "common", "models")
 BASE = 0x80025C00
 
@@ -471,12 +471,12 @@ def value_noise(seed, cell):
 _TEXMAT = None
 
 def texmat():
-    """ports/brally-wasm/wasm/texmat.csv: what every game texture shows, by the
+    """ports/common/models/texmat.csv: what every game texture shows, by the
     FNV-1a of its large level as the game uploads it (host_glide.m)."""
     global _TEXMAT
     if _TEXMAT is None:
         _TEXMAT = {}
-        for l in open(os.path.join(ROOT, "ports", "brally-wasm", "wasm", "texmat.csv")):
+        for l in open(os.path.join(ROOT, "ports", "common", "models", "texmat.csv")):
             if l.startswith("#") or "," not in l:
                 continue
             h, m = l.split(",")[:2]

@@ -3,7 +3,7 @@
 way the old card paints it (a grey beam across a brown post).  The placement
 tool lays bays end to end along each card's line.  Run by Blender:
 
-    blender --background --python ports/brally-wasm/tools/remaster_env_guardrail.py -- <out.blend>
+    blender --background --python ports/common/models/tools/remaster_env_guardrail.py -- <out.blend>
 
 Writes a .blend in the shape remaster_env_bake.py reads (collection
 guardrail_LOD0, mesh guardrail_a_LOD0) with Poly Haven's corrugated_iron
@@ -16,7 +16,7 @@ import bpy, bmesh, math, os, sys
 from mathutils import Vector
 
 out = sys.argv[sys.argv.index("--") + 1]
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 TEX = os.path.join(ROOT, "ports", "common", "models", "env", "polyhaven", "textures")
 
 BAY = 2.0                 # metres between posts

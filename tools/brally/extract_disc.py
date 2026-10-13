@@ -3,10 +3,9 @@
 
 The retail game reads its data from the CD: it finds the drive by volume
 label ("Boss Rally") and opens tracks/, cars/, sfx/, Images/ ... under that
-root. A Mac build has no drive, so the CD root is this directory instead. The
-current ports/brally-wasm harness still reads the per-asset extracts under
-reference/brally/data/ (tools/brally/extract_assets.sh); this tree is the root for the real boot
-path (RallyMain), which needs the whole disc, not a curated subset.
+root. A Mac build has no drive, so the CD root is this directory instead: the
+root for the real boot path (RallyMain), which needs the whole disc, not a
+curated subset.
 
 Everything on the data track is copied except directx/ (the DirectX 6
 redistributable -- 1,483 files the game never opens). Names keep the disc's

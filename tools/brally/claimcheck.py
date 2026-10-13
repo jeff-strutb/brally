@@ -212,7 +212,7 @@ def c_calls(text, symbol):
 
 
 def find(name):
-    for base in ('src/brally/core', 'src/brally/include', 'ports/brally-wasm'):
+    for base in ('src/brally/core', 'src/brally/include'):
         for dirpath, _, files in os.walk(base):
             if name in files:
                 return os.path.join(dirpath, name)

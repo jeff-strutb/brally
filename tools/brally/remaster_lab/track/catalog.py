@@ -2,7 +2,7 @@ import numpy as np, collections, json, base64, io
 from PIL import Image
 from trkparse import parse
 from render import render
-D='build/brally/wasm32/app/extract/disc/tracks/'
+D='reference/brally/data/disc/'
 TR=[('amazon','Amazon'),('coast','Coast'),('desert','Desert'),('mine','Mine'),('mountain','Mountain'),('race','Race (circuit)'),('bonus','Bonus stage'),('gamewin','Game-win scene')]
 def b64(im,q=78):
     f=io.BytesIO(); Image.fromarray(im).save(f,'WEBP',quality=q); return base64.b64encode(f.getvalue()).decode()

@@ -1,5 +1,5 @@
 import sys, struct, numpy as np, collections
-sys.argv=['x']; sys.path.insert(0,'ports/brally-wasm/tools')
+sys.argv=['x']; sys.path.insert(0,'ports/common/models/tools')
 import remaster_env_place as P
 DUMP='build/brally/remaster/lab/trkdump/'
 tm=P.texmat()

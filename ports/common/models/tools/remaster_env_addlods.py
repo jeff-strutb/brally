@@ -3,7 +3,7 @@ that remaster_env_import.py brought in from its finest level alone (the
 glTF a model site serves carries only LOD0; the source archive has the
 rest as separate files).  Run by Blender:
 
-    blender --background --python ports/brally-wasm/tools/remaster_env_addlods.py -- \
+    blender --background --python ports/common/models/tools/remaster_env_addlods.py -- \
         <model.blend> <asset> <LOD1 file> [<LOD2 file> ...]
 
 Each file's meshes are joined into <asset>_a_LOD<n> in the model's LOD0

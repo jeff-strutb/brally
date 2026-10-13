@@ -66,7 +66,7 @@ def methods_of(ast, cls):
 def main():
     os.chdir(ROOT)
     done, skipped = 0, []
-    for r in csv.DictReader(open('build/brally/wasm32/placement.csv')):
+    for r in csv.DictReader(open('build/brally/placement/placement.csv')):
         f = 'ports/brally/' + r['src']
         placed = r['name']
         if not f.endswith('.cpp') or not os.path.exists(f):

@@ -2,7 +2,7 @@ import sys, numpy as np
 from PIL import Image, ImageDraw
 from trkparse import parse
 from render import render
-D='build/brally/wasm32/app/extract/disc/tracks/'
+D='reference/brally/data/disc/'
 tr=sys.argv[1]; start=int(sys.argv[2]) if len(sys.argv)>2 else 0; cnt=int(sys.argv[3]) if len(sys.argv)>3 else 200
 texs,insts=parse(D+tr+'.trk')
 C=112; COLS=16

@@ -135,8 +135,9 @@ docs/tgrally/progress-map.svg`.
   the PC game.
 - [docs/brally/port/splitscreen.md](docs/brally/port/splitscreen.md): the PC game's complete but unreachable
   two-player split-screen renderer.
-- [docs/brally/remaster/REMASTER.md](docs/brally/remaster/REMASTER.md): the 32-bit Mac port (wasm build) and its
-  Remastered lighting, car, skies and music.
+- [docs/brally/remaster/REMASTER.md](docs/brally/remaster/REMASTER.md): the Remastered car, skies and music
+  (written for the 32-bit lane, removed 2026-10-12); the Remastered lighting is
+  [docs/brally/remaster/lighting/DESIGN.md](docs/brally/remaster/lighting/DESIGN.md).
 
 ## Boss Rally (PC) decompilation
 
@@ -256,7 +257,6 @@ derived platform code, not byte-matched.
     docs/{brally,tgrally}/       procedure, rules, and everything the work learned
     ports/brally/                the native 64-bit port: a retyped fork of the core
                                  plus a cross-platform layer (macOS, Windows)
-    ports/brally-wasm/           macOS/Metal 32-bit lane: NEW code, no `@implements`
     ports/tgrally/               the native Top Gear Rally port
     ports/common/                Remastered assets (recipes tracked, binaries not)
     reference/                   the original disc, ROM, compilers and corpora (not tracked)
@@ -285,9 +285,8 @@ Further reading: [docs/brally/ARCHITECTURE.md](docs/brally/ARCHITECTURE.md), [do
   patches matches back into the DLL for drop-in testing.
 - The playable builds are the [native port](#native-port-64-bit-cross-platform)
   (macOS, Windows, headless; its scenario suite is `ports/brally/tools/suite.sh`)
-  and the [Remastered Mac port](docs/brally/remaster/REMASTER.md)'s 32-bit lane
-  (`sh ports/brally-wasm/wasm/build_wasm.sh`, packaged by
-  `ports/brally-wasm/wasm/package_app.sh`).
+  and Top Gear Rally Remastered (`ports/remastered`), which runs it behind Top
+  Gear Rally's menus on macOS, Windows and the iPhone.
 
 ### Reference data (you supply; none tracked in git)
 

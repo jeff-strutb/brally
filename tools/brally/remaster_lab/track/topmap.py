@@ -1,10 +1,10 @@
 import sys, struct, numpy as np
 from PIL import Image, ImageDraw
-sys.path.insert(0,"ports/brally-wasm/tools")
+sys.path.insert(0,"ports/common/models/tools")
 import remaster_env_place as P
 tr=sys.argv[1]; x0,y0,x1,y1=[float(v) for v in sys.argv[2:6]] if len(sys.argv)>5 else (0,200,2050,1700)
 out=sys.argv[6] if len(sys.argv)>6 else "build/brally/remaster/lab/top.png"
-b=open(f"build/brally/wasm32/app/extract/disc/tracks/{tr}.trk","rb").read()
+b=open(f"reference/brally/data/disc/{tr}.trk","rb").read()
 S=1600/(x1-x0); W,H=int((x1-x0)*S),int((y1-y0)*S)
 im=Image.new("RGB",(W,H),(255,255,255)); d=ImageDraw.Draw(im)
 T=lambda p:((p[0]-x0)*S,H-(p[1]-y0)*S)

@@ -1,8 +1,8 @@
 import sys, struct, numpy as np, time, math
-sys.path.insert(0,"ports/brally-wasm/tools")
+sys.path.insert(0,"ports/common/models/tools")
 import remaster_env_place as P
 tr=sys.argv[1] if len(sys.argv)>1 else "mountain"
-b=open(f"build/brally/wasm32/app/extract/disc/tracks/{tr}.trk","rb").read()
+b=open(f"reference/brally/data/disc/{tr}.trk","rb").read()
 rc,rw=P.road_points(b)
 t=time.time(); R=P.Reach(b,rc); print("reach",len(R.faces),"faces",round(R.area),"m2", round(time.time()-t,1),"s", len(R.z),"cells")
 ia,ci=P.be32(b,0x60),P.be32(b,0x64)

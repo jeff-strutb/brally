@@ -1,8 +1,8 @@
 import sys, json, numpy as np, collections
-sys.path.insert(0,"ports/brally-wasm/tools")
+sys.path.insert(0,"ports/common/models/tools")
 import remaster_env_place as P
 env=sys.argv[1]
-b=open("build/brally/wasm32/app/extract/disc/tracks/mountain.trk","rb").read()
+b=open("reference/brally/data/disc/mountain.trk","rb").read()
 rc,_=P.road_points(b)
 A={}; puts=[]
 J={}

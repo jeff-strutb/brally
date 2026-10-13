@@ -1,7 +1,7 @@
 """remaster_glass.py -- the Remastered car's windows, from its body.  Run by
 Blender on a pack remaster_car.py has written:
 
-    blender --background --python ports/brally-wasm/tools/remaster_glass.py -- <pack dir>
+    blender --background --python ports/common/models/tools/remaster_glass.py -- <pack dir>
             [belt 0.72] [x0 -1.56] [x1 0.62] [ymax 0.84] [inset 0.02] [xc -1.2]
 
 The body has window openings but no glass, and its surface is shell

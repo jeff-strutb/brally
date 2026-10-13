@@ -5,8 +5,8 @@ The decompiled files call one original function under several names (the
 32-bit lane resolved them all by address). The 64-bit core links by name, so:
 
   * the canonical name of a function is the one the verified build placed at
-    its address (build/brally/wasm32/placement.csv);
-  * every other C name a file uses for that address (build/brally/wasm32/sites.csv)
+    its address (build/brally/placement/placement.csv);
+  * every other C name a file uses for that address (build/brally/placement/sites.csv)
     becomes `#define ALIAS CANONICAL` in that file's alias header
     (ports/brally/alias/<file>.h, appended to what unify.py wrote);
   * a body defined under an alias name -- a stand-in stub -- is removed, so
@@ -32,7 +32,7 @@ DRY = '--dry' in sys.argv
 
 def main():
     os.chdir(ROOT)
-    place = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/brally/wasm32/placement.csv'))}
+    place = {int(r['va'], 16): r['name'] for r in csv.DictReader(open('build/brally/placement/placement.csv'))}
     canon_names = set(place.values())
     fwd = {}
     if os.path.exists('build/brally/null-soft/method_fwd.csv'):
@@ -49,7 +49,7 @@ def main():
             n = ORD.get(r['name'], re.sub(r'@\d+$', '', r['name']).lstrip('_'))
             if re.match(r'^[A-Za-z_]\w*$', n):
                 thunk[int(r['va'], 16)] = n
-    for r in csv.DictReader(open('build/brally/wasm32/sites.csv')):
+    for r in csv.DictReader(open('build/brally/placement/sites.csv')):
         va = int(r['va'], 16)
         if va in thunk and r['name'] != thunk[va] and re.match(r'^[A-Za-z_]\w*$', r['name']):
             fork = 'ports/brally/' + r['src']

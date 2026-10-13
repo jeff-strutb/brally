@@ -69,7 +69,7 @@ Usage:
 """
 import sys, os, re, csv, glob
 
-SRC = ('src/brally/core/**/*.c', 'src/brally/include/**/*.h', 'ports/brally-wasm/**/*.c')
+SRC = ('src/brally/core/**/*.c', 'src/brally/include/**/*.h')
 RE_IMPL = re.compile(
     r'/\*\s*@implements\s+0x([0-9A-Fa-f]{8})\s+(glide|d3d)\s+(\w+)\s*\*/')
 

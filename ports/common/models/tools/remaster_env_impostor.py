@@ -3,7 +3,7 @@ the tree, rendered by Blender from eight directions around it, that the game
 draws on a card facing the camera once the tree is far enough away.  Run by
 Blender, after remaster_env_bake.py:
 
-    blender --background --python ports/brally-wasm/tools/remaster_env_impostor.py -- \
+    blender --background --python ports/common/models/tools/remaster_env_impostor.py -- \
         <models_dir> <asset> [frame_px 256]
 
 The tree is rebuilt in Blender from its own baked mesh (level 0, the .rcm files)

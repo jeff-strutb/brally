@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 
 BASE = 0x80025C00
-D = 'build/brally/wasm32/app/extract/disc/tracks/'
+D = 'reference/brally/data/disc/'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tex')
 os.makedirs(OUT, exist_ok=True)
 

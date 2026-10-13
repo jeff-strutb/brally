@@ -1,5 +1,5 @@
 import sys, struct, numpy as np, collections, json
-ARGS=sys.argv[1:]; sys.argv=['x']; sys.path.insert(0,'ports/brally-wasm/tools')
+ARGS=sys.argv[1:]; sys.argv=['x']; sys.path.insert(0,'ports/common/models/tools')
 import remaster_env_place as P
 from cihash import walk_tluts, unswap, DUMP
 from PIL import Image, ImageDraw

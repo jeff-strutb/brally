@@ -3,7 +3,7 @@ rock, a clump of grass) from its source .blend, by the same Blender route as
 the car: Collapse Decimate to 200k, Subdivision Surface level 3, Collapse
 Decimate to the target, normals smooth by angle.  Run by Blender:
 
-    blender --background --python ports/brally-wasm/tools/remaster_env_bake.py -- \
+    blender --background --python ports/common/models/tools/remaster_env_bake.py -- \
         <source.blend> <asset> <models_out> <lod0_tris> <lod1_tris> <lod2_tris>
 
 The source's own variants are kept (a model file usually holds several: tree

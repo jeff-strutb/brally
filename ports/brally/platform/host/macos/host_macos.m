@@ -88,13 +88,13 @@ void host_init(int argc, char **argv)
             snprintf(s_save, sizeof s_save, "%s/%s", base ? [base fileSystemRepresentation] : ".", s_app_dir);
         }
         host_mkdir(s_save);
-        /* the CD's audio tracks: BR_MUSICDIR, the extracted ones in the tree,
-         * or the app's Resources/music/cd */
+        /* the CD's audio tracks: BR_MUSICDIR, the extracted ones in the tree
+         * (package_app.sh's), or the app's Resources/music/cd */
         e = getenv("BR_MUSICDIR");
         if (e) {
             snprintf(s_music, sizeof s_music, "%s", e);
-        } else if (is_dir("build/brally/wasm32/app/extract/music/cd")) {
-            snprintf(s_music, sizeof s_music, "build/brally/wasm32/app/extract/music/cd");
+        } else if (is_dir("build/brally/macos-metal/extract/music/cd")) {
+            snprintf(s_music, sizeof s_music, "build/brally/macos-metal/extract/music/cd");
         } else {
             NSString *r = [[NSBundle mainBundle] resourcePath];
             snprintf(s_music, sizeof s_music, "%s/music/cd", r ? [r fileSystemRepresentation] : ".");

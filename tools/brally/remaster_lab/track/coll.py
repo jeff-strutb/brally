@@ -1,5 +1,5 @@
 import struct, numpy as np, sys
-b=open("build/brally/wasm32/app/extract/disc/tracks/%s.trk"%(sys.argv[1] if len(sys.argv)>1 else "mountain"),"rb").read()
+b=open("reference/brally/data/disc/%s.trk"%(sys.argv[1] if len(sys.argv)>1 else "mountain"),"rb").read()
 be=lambda o: struct.unpack_from(">I",b,o)[0]
 B=0x80025C00
 nf,fo,nv,vo,fe=be(8),be(0xC)-B,be(0x10),be(0x14)-B,be(0x94)-B
@@ -10,7 +10,7 @@ fl=np.frombuffer(b,"u1",nf,fe)
 print(V.min(0),V.max(0)); print(F[:5]); print(np.unique(fl,return_counts=True))
 T=V[F[:,:3]]; n=np.cross(T[:,1]-T[:,0],T[:,2]-T[:,0]); a=np.linalg.norm(n,axis=1); nz=n[:,2]/np.maximum(a,1e-9)
 print("nz hist",np.histogram(nz,[-1.01,-0.5,0,0.3,0.5,0.7,0.9,1.01])); print("area", (a/2).sum())
-sys.path.insert(0,"ports/brally-wasm/tools")
+sys.path.insert(0,"ports/common/models/tools")
 import remaster_env_place as P
 rc,rw=P.road_points(b)
 print("road",rc.min(0),rc.max(0),rw.mean())

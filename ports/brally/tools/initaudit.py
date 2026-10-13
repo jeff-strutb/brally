@@ -70,7 +70,7 @@ def defs(src):
 
 def main():
     os.chdir(ROOT)
-    verified = {r['name'] for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))}
+    verified = {r['name'] for r in csv.DictReader(open('build/brally/placement/sites.csv'))}
     canon = {r['name'] for r in csv.DictReader(open('build/brally/null-soft/canon.csv'))}
     rows = []
     for f in sorted(glob.glob('src/brally/core/**/*.c*', recursive=True)):

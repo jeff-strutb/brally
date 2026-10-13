@@ -13,5 +13,5 @@ kept for their method rather than as maintained tools:
 - `view/`: a frame viewer and log tail used during headless runs.
 
 Run from the repository root; scratch output goes to build/brally/remaster/lab/.
-The maintained pipeline is ports/brally-wasm/tools (remaster_*.py) and the
+The maintained pipeline is ports/common/models/tools (remaster_*.py) and the
 recipes under ports/common/models.

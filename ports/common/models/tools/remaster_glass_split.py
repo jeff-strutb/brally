@@ -3,7 +3,7 @@ parts by the model's own texture, for a model whose glass came out painted
 (an opaque light grey) instead of see-through.  Run by Blender on a model
 remaster_bake.py has written:
 
-    blender --background --python ports/brally-wasm/tools/remaster_glass_split.py -- \
+    blender --background --python ports/common/models/tools/remaster_glass_split.py -- \
         <dir> <name> [min_value 0.70] [max_sat 0.10]
 
 Each face is glass when most of the texels under its corners and centre are

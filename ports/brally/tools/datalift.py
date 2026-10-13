@@ -274,7 +274,7 @@ class Syms:
                     if len(p) == 3:
                         defined.add(p[2].lstrip('_'))
         self.defined = defined
-        for line in open('build/brally/wasm32/placement.csv'):
+        for line in open('build/brally/placement/placement.csv'):
             p = line.strip().split(',')
             if len(p) >= 2 and p[0].startswith('0x') and p[1] in defined:
                 self.fn[int(p[0], 16)] = p[1]

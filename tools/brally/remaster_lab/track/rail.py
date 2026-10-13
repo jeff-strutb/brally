@@ -1,7 +1,7 @@
 import sys, struct, numpy as np
-sys.path.insert(0,"ports/brally-wasm/tools")
+sys.path.insert(0,"ports/common/models/tools")
 import remaster_env_place as P
-b=open("build/brally/wasm32/app/extract/disc/tracks/mountain.trk","rb").read()
+b=open("reference/brally/data/disc/mountain.trk","rb").read()
 ia,ci=P.be32(b,0x60),P.be32(b,0x64)
 G=[]
 for i in range(ci):

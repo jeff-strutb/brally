@@ -11,13 +11,14 @@ per-object resolution the A5 oracle certified them under).
 This runs that build's collectors unchanged (no image is written) with its
 placer wrapped, and records:
 
-  build/brally/wasm32/placement.csv  va,name,lane,src      one row per placed function
-  build/brally/wasm32/sites.csv      src,symbol,addend,va  every resolved slot: the
+  build/brally/placement/placement.csv  va,name,lane,src      one row per placed function
+  build/brally/placement/sites.csv      src,symbol,addend,va  every resolved slot: the
                             original address `symbol + addend` means in that
                             source file
 
-The port's linker (w2c.py) takes function ownership and addresses from these
-first; anything they do not cover is code outside the verified build.
+The 64-bit port's tools (datalift.py, funcs.py, vafix.py and the rest of
+ports/brally/tools) take function ownership and addresses from these; link64.sh
+makes them when they are missing.
 """
 import csv
 import os
@@ -235,15 +236,15 @@ def main():
         return (p[3] if len(p) > 3 and p[3] else
                 file_of_va.get(va) or src(p[2]))
 
-    os.makedirs('build/brally/wasm32', exist_ok=True)
-    with open('build/brally/wasm32/placement.csv', 'w', newline='') as f:
+    os.makedirs('build/brally/placement', exist_ok=True)
+    with open('build/brally/placement/placement.csv', 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['va', 'name', 'lane', 'src'])
         for va in sorted(placements):
             name, lane = placements[va][:2]
             w.writerow(['0x%08X' % va, name, lane, placed_file(va)])
     n_amb = 0
-    with open('build/brally/wasm32/sites.csv', 'w', newline='') as f:
+    with open('build/brally/placement/sites.csv', 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['src', 'symbol', 'name', 'addend', 'va'])
         for (obj, sym, add), vs in sorted(sites.items(), key=lambda x: (x[0][0] or '', x[0][1], x[0][2])):
@@ -260,7 +261,7 @@ def main():
     lanes = {}
     for _n, lane, *_o in placements.values():
         lanes[lane] = lanes.get(lane, 0) + 1
-    print('t3manifest: %d functions placed (%s), %d resolved slots '
+    print('placement: %d functions placed (%s), %d resolved slots '
           '(%d ambiguous dropped); slots from %d annexed bodies\' objects, '
           '%d placed bodies with no recorded compile' % (
               len(placements), ', '.join('%s %d' % kv for kv in sorted(lanes.items())),

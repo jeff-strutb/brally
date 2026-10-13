@@ -2,7 +2,7 @@
 """The true prototype of every original function, in one header.
 
 A function's definition is the truth. This reads every core definition of a
-function the verified build placed (build/brally/wasm32/placement.csv) from clang's
+function the verified build placed (build/brally/placement/placement.csv) from clang's
 syntax tree and writes its prototype -- types spelled through struct tags so
 the header needs only forward declarations -- to
 ports/brally/include/br_funcs.h, which every core file includes. Prototypes
@@ -91,7 +91,7 @@ def tags_of(t):
 
 def main():
     os.chdir(ROOT)
-    rows = list(csv.DictReader(open('build/brally/wasm32/placement.csv')))
+    rows = list(csv.DictReader(open('build/brally/placement/placement.csv')))
     place = {r['name'] for r in rows}
     home = {r['name']: os.path.join('ports/brally', r['src']) for r in rows}
     if os.path.exists('build/brally/null-soft/method_fwd.csv'):

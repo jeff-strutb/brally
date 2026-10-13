@@ -1,6 +1,6 @@
 import struct, sys, os, json, collections, math
 BASE = 0x80025C00
-D = 'build/brally/wasm32/app/extract/disc/tracks/'
+D = 'reference/brally/data/disc/'
 
 def be32(b, o): return struct.unpack_from('>I', b, o)[0]
 def bef(b, o): return struct.unpack_from('>f', b, o)[0]

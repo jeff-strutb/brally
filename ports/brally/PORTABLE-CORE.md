@@ -24,14 +24,9 @@ backends (window, input, audio out, timing, files, CD audio, renderer).
 ## What stands in the way
 
 The matching source is ILP32: int, long and pointers are all 4 bytes, and
-it depends on that in five ways. `ports/brally/tools/lp64audit.py`
-measures each one from the compiler's own view of the tree. Run it for the
-current counts (never copy a count from here):
-
-```sh
-.venv/bin/python ports/brally/tools/lp64audit.py   # needs build/brally/wasm32 from build_wasm.sh
-cat build/brally/analysis/lp64audit/summary.txt
-```
+it depends on that in five ways. (They were measured with an audit,
+lp64audit.py, over the 32-bit lane's build; the lane and the audit were removed
+on 2026-10-12, when every core unit compiled for 64 bits.)
 
 1. **The original image's data.** The 32-bit lane loads BRGlide.dll's own
    `.data` and `.rdata` at their original addresses. The source defines only

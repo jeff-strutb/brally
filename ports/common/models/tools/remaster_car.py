@@ -265,7 +265,7 @@ def main():
     y0, yw = -(bh[1] - bl[1]) / 2 - 0.05, bh[1] - bl[1] + 0.1
     livery(a.out, x0, xl, z0, zh, y0, yw)
     with open(os.path.join(a.out, 'car.cfg'), 'w') as f:
-        f.write('# written by ports/brally-wasm/tools/remaster_car.py\n')
+        f.write('# written by ports/common/models/tools/remaster_car.py\n')
         f.write('paint %s\n' % a.paint.replace(',', ' '))
         f.write('paint_ai %s\n' % a.paint_ai.replace(',', ' '))
         f.write(f'livery_side {x0:.4f} {xl:.4f} {z0:.4f} {zh:.4f}\n')

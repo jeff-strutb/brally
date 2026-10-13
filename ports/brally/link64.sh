@@ -35,6 +35,10 @@ if grep -q '^FAIL' $OUT/compile.txt; then
   echo "link64: core TUs failed to compile; not linking" >&2
   exit 1
 fi
+# the verified build's placement (which function owns each original address),
+# made once from tools/brally's image build
+PY=.venv/bin/python; [ -x $PY ] || PY=python3       # the image build reads code with capstone
+[ -f build/brally/placement/placement.csv ] || $PY ports/brally/tools/placement.py >/dev/null
 python3 ports/brally/tools/datalift.py ${DLL:+--dll "$DLL"} $([ "${IMAGE:-embed}" = runtime ] && echo --runtime-image) >/dev/null
 ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 # the script commands that read the game (core types, so core flags)

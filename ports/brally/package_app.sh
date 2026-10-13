@@ -15,8 +15,7 @@
 # Source: --bin BossRally.BIN with its .cue beside it (default
 # reference/brally/). ffmpeg on PATH (FLAC encoder for the CD audio).
 # The extract is cached in build/brally/macos-metal/extract, keyed on the MD5 of the
-# image and cue; an extract of the same disc already made for the 32-bit
-# app (build/brally/wasm32/app/extract) is cloned instead of ripped again.
+# image and cue.
 #
 # Usage: ports/brally/package_app.sh [--bin X] [--no-build]
 set -e
@@ -49,19 +48,12 @@ mkdir -p $OUT
 KEY="3 $(md5 -q "$BIN" "$CUE" | tr '\n' ' ')"   # 3: the extract's layout
 if [ ! -f $EX/.complete ] || [ "$(cat $EX/.complete)" != "$KEY" ]; then
     rm -rf $EX
-    if [ -f build/brally/wasm32/app/extract/.complete ] && [ "$(cat build/brally/wasm32/app/extract/.complete)" = "$KEY" ]; then
-        echo "extract: cloned from build/brally/wasm32/app/extract"
-        mkdir -p $EX/music
-        cp -Rc build/brally/wasm32/app/extract/disc $EX/disc 2>/dev/null || cp -R build/brally/wasm32/app/extract/disc $EX/disc
-        cp -Rc build/brally/wasm32/app/extract/music/cd $EX/music/cd 2>/dev/null || cp -R build/brally/wasm32/app/extract/music/cd $EX/music/cd
-    else
-        command -v ffmpeg >/dev/null || { echo "package_app: ffmpeg not on PATH (FLAC encoder)" >&2; exit 1; }
-        mkdir -p $EX/music
-        echo "extract: data track <- $BIN"
-        $PY tools/brally/extract_disc.py "$BIN" $EX/disc
-        echo "extract: CD audio <- $CUE"
-        $PY tools/brally/extract_cdaudio.py -q "$CUE" $EX/music/cd
-    fi
+    command -v ffmpeg >/dev/null || { echo "package_app: ffmpeg not on PATH (FLAC encoder)" >&2; exit 1; }
+    mkdir -p $EX/music
+    echo "extract: data track <- $BIN"
+    $PY tools/brally/extract_disc.py "$BIN" $EX/disc
+    echo "extract: CD audio <- $CUE"
+    $PY tools/brally/extract_cdaudio.py -q "$CUE" $EX/music/cd
     # the stamp goes last: a run that died partway claims nothing
     echo "$KEY" > $EX/.complete
 else

@@ -2,7 +2,7 @@
 Remastered car with Blender's Collapse Decimate, keeping the model's own UVs
 and textures.  Run by Blender:
 
-    blender --background --python ports/brally-wasm/tools/remaster_bake.py -- \
+    blender --background --python ports/common/models/tools/remaster_bake.py -- \
         <source.blend | raw.glb> <out_dir> <name> <target_tris> [crease_deg 45]
 
 The source is the model's own .blend (the API's GLB carries extra seams and

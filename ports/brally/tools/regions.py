@@ -5,7 +5,7 @@ From build/brally/null-soft/trace/objects.csv: every access that ran past the ob
 the core declares at that address (OVERRUN:<object>) belongs to an
 undeclared region starting there. Each region's extent: from the object's
 address through the highest byte the game touched, then on to the next
-address any original code references on its own (build/brally/wasm32/sites.csv) --
+address any original code references on its own (build/brally/placement/sites.csv) --
 nothing between two referenced addresses can belong to anything else.
 
 Output build/brally/null-soft/trace/regions.csv: base object, VA, measured end,
@@ -29,7 +29,7 @@ def main():
     for r in csv.DictReader(open('ports/brally/types/globals.csv')):
         if r['va']:
             va_of.setdefault(r['name'], int(r['va'], 16))
-    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/wasm32/sites.csv'))
+    refd = sorted({int(r['va'], 16) for r in csv.DictReader(open('build/brally/placement/sites.csv'))
                    if r['addend'] == '0' and 0x10077000 <= int(r['va'], 16) < 0x118F2000})
     agg = collections.defaultdict(lambda: {'hi': 0, 'ptr': 0, 'n': 0, 'files': collections.Counter()})
     for r in csv.DictReader(open('build/brally/null-soft/trace/objects.csv')):
