@@ -942,3 +942,94 @@ argument (unread there); `compile_test.m` also builds the table's two
 pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
+
+## Night: the moon, the eye, the glow (2026-10-12)
+
+The project lead's report (iPhone, Coastline, weather 4): night too dark to
+play, only the headlamp pool and the car ahead visible; the car ahead glowing
+yellow-white.  Two causes, both measured in night_test.m:
+
+* the meter read the 80th to 98.3rd percentile band, which at night is the
+  headlamp pool: with 15% of the frame a pool 1,000 times the moonlit ground,
+  the old meter settles at EV 4.25 and the moonlit ground lands 7.2 stops
+  under mid-grey (black);
+* the glow mask (lit_emask: warm, bright, saturated texels) passed yellow
+  car paint, and every draw at night glowed through it.
+
+### The moon (brr_metal.m k_weather, light_night.h)
+
+The directional light at night is a full moon: magnitude -12.7, 0.27 lux
+facing it above the atmosphere (Krisciunas and Schaefer 1991), extinction
+0.172 magnitudes an air mass (k_V), Kasten and Young's air mass.
+
+| elevation | air mass | facing it (lux) | level ground (lux) |
+|-----------|----------|-----------------|--------------------|
+| 90        | 1.000    | 0.231           | 0.231              |
+| 50        | 1.304    | 0.220           | 0.168              |
+| 45        | 1.413    | 0.216           | 0.153              |
+| 42 (Coastline) | 1.492 | 0.213       | 0.143              |
+| 35        | 1.740    | 0.205           | 0.118              |
+
+Overhead 0.231 lux, 7.8% from the published 0.25; every elevation from 35
+to 90 degrees inside the published 0.1 to 0.3 lux.  Coastline's moon: 42
+degrees, the sun's bearing (a fixed choice; the project lead sets each
+track's later).  Colour: the sun's spectrum reddened by the lunar albedo,
+about 4,100 K, linear sRGB (1.00, 0.669, 0.402) (Kim et al.'s Planckian
+locus).  Sky: starlight and airglow 0.001 lux, blue (0.45, 0.60, 1.00).
+Ground bounce unchanged (0.02 lux).  White balance at night stays the
+headlamps' halogen.
+
+### The eye: the Purkinje shift (brr_metal_night.h, before PBR Neutral)
+
+The rods' share w of a pixel of luminance L (the exposure divided back out):
+0 at 3 cd/m2 and up (photopic), 1 at 0.001 and under (scotopic), a smoothstep
+in log10 L between (mesopic; Jensen et al. 2000, Kirk and O'Brien 2011).
+Measured: w(3) = w(100) = w(30000) = 0; w(0.001) = w(1e-5) = 1; w(1) =
+0.051, w(0.1) = 0.388, w(0.01) = 0.799; monotonic over 1e-5..1e3 (201
+samples).  The colour goes toward the scotopic luminance V = Y (1.33 (1 +
+(Y + Z) / X) - 1.68), divided by a D65 white's 2.5731 so a white keeps its
+luminance, carried by a blue of luminance 1.  The C copy (light_purkinje_w)
+is what the test checks; the shader's is the same expression.
+
+### Night exposure (light_meter_ev; k_weather plo, phi, comp)
+
+| weather | meter band (percentiles) | EV100 range | compensation |
+|---------|--------------------------|-------------|--------------|
+| day, fog, rain, snow | 80 to 98.3 | as before | 0 |
+| night   | 30 to 75                 | -6 to 4     | -1 EV        |
+
+The night band is the scene's middle: the moonlit hills and road set the
+exposure, the headlamp pool and lamps above the 75th percentile do not.
+One stop under mid-grey keeps night dark but readable (the Forza Horizon
+night look).  The synthetic moonlit scene (albedo 0.2 under 0.25 lux: L =
+0.0159 cd/m2, 85% of the frame; a pool at 15.9 cd/m2 on 15%) meters to EV
+-1.97 and exposes to 0.0519 = the meter's mid-grey 0.1042 x 2^-1.00: the
+compensation to within 0.01 EV.
+
+### The glow: track textures only (light_night.h LightGlow)
+
+At night a 3D draw's first triangle is tested against the track
+(light_capture_ontrack): on it, its texture becomes the track's; off it (a
+car, what the race adds), its texture never glows until it is remade.  A
+draw glows only when its texture is the track's.  Test: 10,000 draws, 31
+car textures (first drawn off the track, then every seventh draw over it)
+and 31 track textures: no car texture ever emissive, every track texture
+emissive; a texture drawn on a car and then on the track stays dark.
+
+### The track's lights (light_world.c)
+
+Glowing patches cluster by a 4 m grid and the way they face into point
+lights carrying their flux: a Lambertian patch emits pi L A lumens, the
+point light I = sum(L A) / 4 cd, 0.3 m in front of the mean surface, range
+to 0.001 lux (at most 80 m), the brightest LIGHT_WORLD_MAX (96) kept.
+Synthetic street, 3 buildings x 40 windows (1.2 x 1.5 m, 60 cd/m2): 48
+lights, 40,715 lm against the surfaces' 40,715 lm (0.000%); every light in
+front of its wall.  The lighthouse: a spot of 300,000 cd, inner 1.5 and
+outer 3 degrees, 2 km, turning 1.25 degrees a race step (30 Hz: 37.5
+degrees a second, one turn in 9.6 s).  light_scene_lights appends these at
+night (ids from 1000).
+
+Not yet fed: the renderer does not yet gather the glowing track patches
+(per draw: the triangles' area x the mask's share of texels x its colour)
+into light_world_set, and the lighthouse's position is not yet read from
+Coastline's beam instance (64/142, light_world_set_lighthouse).

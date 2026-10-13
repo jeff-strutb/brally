@@ -34,6 +34,7 @@
 #include "brr.h"
 #include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
+#include "light_night.h"
 #include "brr_metal_sky.h"
 #include "brr_metal_rt.h"
 #include "brr_shadow.h"
@@ -458,13 +459,24 @@ static float s_atm_mie = -1.0f;
  * facing them, lux; the camera's EV100 range the meter keeps to (the "sunny
  * 16" rule puts a sunlit scene near 15; a headlamp-lit road near 7) and how
  * rough the ground is (wet: smooth) */
-static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; } k_weather[5] = {
-    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f } },
-    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f } },
-    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f } },
-    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f } },
-    /* night */ {   0.30f, 0.08f, 0.02f, -2.5f, 7.5f, 0.60f, { 0.75f, 0.82f, 1.00f }, { 0.35f, 0.45f, 0.75f }, { 0.40f, 0.40f, 0.40f } },
+/* At night the directional light is the full moon (light_night.h): sun is its
+ * illuminance facing it at elevation elev (light_moon_normal(42) = 0.213 lux;
+ * 0.143 on level ground), its colour the sun's spectrum reddened by the
+ * moon's albedo, about 4,100 K (linear sRGB, Kim et al.'s Planckian locus);
+ * the sky starlight and airglow, about 0.001 lux, blue.  elev 0: the track's
+ * sun direction as it is.  The meter's band (percentiles plo..phi) and its
+ * compensation comp (stops brighter): at night the band is the scene's
+ * middle (30th to 75th percentile), so the moonlit hills and road set the
+ * exposure, not the headlamp pool and the lamps above it, and a stop under
+ * the meter's mid-grey, so night reads as night (MEASUREMENTS.md). */
+static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; float elev, plo, phi, comp; } k_weather[5] = {
+    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.80f, 0.983f, 0 },
+    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0 },
+    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0 },
+    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0 },
+    /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f },
 };
+static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 
 static id<MTLRenderPipelineState> lit_pipe(NSString *vs, NSString *fs, const MTLPixelFormat *f, int nf, int depth,
                                            int blend_src, int blend_dst)
@@ -704,8 +716,8 @@ const BrrRtWorld *brr_metal_rt_world(void)
 static float lit_exposure(int w)
 {
     uint32_t *c;
-    unsigned ns = 0, lo, hi, run = 0;
-    float mlog = 0.0f, wsum = 0.0f, target;
+    unsigned ns = 0;
+    float target;
     int i;
     if (!s_hist[0])
         for (i = 0; i < 3; i++)
@@ -713,19 +725,7 @@ static float lit_exposure(int w)
     c = (uint32_t *)[s_hist[s_vbi] contents];
     for (i = 0; i < LUM_BINS; i++)
         ns += c[i];
-    lo = (unsigned)(ns * 0.80f);
-    hi = (unsigned)(ns * 0.983f);
-    for (i = 0; i < LUM_BINS; i++) {
-        unsigned a0 = run, a1 = run + c[i], b0 = a0 > lo ? a0 : lo, b1 = a1 < hi ? a1 : hi;
-        float in = b1 > b0 ? (float)(b1 - b0) : 0.0f;
-        mlog += in * ((i + 0.5f) / 16.0f - 10.0f);
-        wsum += in;
-        run = a1;
-    }
-    target = (k_weather[w].evlo + k_weather[w].evhi) * 0.5f;
-    if (wsum > 0)
-        target = log2f(exp2f(mlog / wsum) * 100.0f / 12.5f);
-    target = fminf(fmaxf(target, k_weather[w].evlo), k_weather[w].evhi);
+    target = light_meter_ev(c, LUM_BINS, k_weather[w].plo, k_weather[w].phi, k_weather[w].evlo, k_weather[w].evhi, k_weather[w].comp);
     memset(c, 0, LUM_BINS * 4);
     if (s_ev > 1e8f)
         s_ev = target;
@@ -1091,6 +1091,14 @@ static void lit_present(void)
             sscanf(e2, "%f,%f,%f", &sun[0], &sun[1], &sun[2]);
     }
     light_capture_eye(eye);
+    if (k_weather[w].elev > 0) {   /* the moon: the sun's bearing, at its own elevation */
+        float hz = sqrtf(sun[0] * sun[0] + sun[1] * sun[1]), el = k_weather[w].elev * 0.017453293f;
+        if (hz > 0) {
+            sun[0] = sun[0] / hz * cosf(el);
+            sun[1] = sun[1] / hz * cosf(el);
+        }
+        sun[2] = sinf(el);
+    }
     len = sqrtf(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
     for (k = 0; k < 3; k++) {
         sun[k] /= len;
@@ -1706,6 +1714,7 @@ uint32_t brr_texture(uint32_t tid, const uint8_t *rgba, int w, int h)
         [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:rgba bytesPerRow:(NSUInteger)w * 4];
         s_tex[tid] = t;
         lit_emask(tid, rgba, w, h);
+        light_glow_new(&s_glow, tid);
         return tid;
     }
 }
@@ -1899,7 +1908,13 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 op->sc[0] = x0; op->sc[1] = y0; op->sc[2] = x1 - x0; op->sc[3] = y1 - y0;
                 op->has_sc = 1;
             }
-            u.glow = light_game_weather() == 4 ? 1.0f : 0.0f;
+            u.glow = 0.0f;
+            if (light_game_weather() == 4 && u.has_tex && (kind == K_OPQ || kind == K_BLEND) && n >= 3) {
+                /* lamplight glows only in the track's own scene, never on a car (light_night.h) */
+                const float tri[9] = { v[0].wx, v[0].wy, v[0].wz, v[1].wx, v[1].wy, v[1].wz, v[2].wx, v[2].wy, v[2].wz };
+                light_glow_drawn(&s_glow, st->texture, light_capture_ontrack(tri));
+                u.glow = light_glow_on(&s_glow, st->texture) ? 1.0f : 0.0f;
+            }
             u.addk = kind == K_BLEND && st->blend_rgb_dst == 4 ? 100.0f : 0.0f;   /* dst ONE: light it adds */
             op->u = u;
             op->src = st->blend_rgb_src;
