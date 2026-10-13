@@ -1295,6 +1295,52 @@ static void test_lamp(void)
         }
         report(worst <= 0.1, "cut-off line position", "max |found - R112 nominal| %.3f degrees (horizontal part 0.57D, 15 degree rise right of V-V)", worst);
     }
+    {   /* the cut-off's sharpness, R112's G = log E(v) - log E(v + 0.1 degree), steepest by column,
+           within 0.13 (sharp enough to aim) and 0.3 (the lens's blur, no hard line) */
+        static const double cols[] = { -6.0, -3.43, -1.0, 0.5, 1.15, 2.0, 4.0 };
+        double gmin = 1e9, gmax = 0;
+        for (j = 0; j < 7; j++) {
+            double best = 0;
+            n = 0;
+            for (i = 0; i <= 500; i++)
+                hv[n][0] = cols[j], hv[n][1] = -3.0 + i * 0.01, n++;
+            lamp_dirs(hv, n, o);
+            for (i = 0; i + 10 < n; i++)
+                best = WMAX(best, log10(fmax(o[i], 1e-6)) - log10(fmax(o[i + 10], 1e-6)));
+            gmin = fmin(gmin, best), gmax = WMAX(gmax, best);
+        }
+        report(gmin >= 0.13 && gmax <= 0.3, "cut-off sharpness G per 0.1 degree", "%.3f..%.3f (0.13..0.3)", gmin, gmax);
+    }
+    {   /* no discontinuity: across the whole pattern (80L..80R, 10D..5U) on a 0.05 degree grid,
+           each step between neighbours against the step before it along the same line: a jump
+           shows as a step its neighbours do not share, while the cut-off's own gradient (R112's
+           G of at least 0.13 a 0.1 degree, over 14% a 0.05 degree step) is shared by the steps
+           around it; under 4% (1 cd added to each: 0.1 lux at 3 m, where the pattern tapers to
+           zero at the outer cone): the cut-off's blur, a Gaussian of 0.28 degrees in log intensity
+           over its 1.92 decades, bends the steps by 3.4% at most (1.92 ln 10 max|phi'| (0.05 /
+           0.28)^2), a smoothstep's ends or a corner far more (8.8% at the old elbow) */
+        double worst = 0, wh = 0, wv = 0;
+        int nh = 3201, nv = 301, a, b, dir;
+        float *oo = malloc(sizeof(float) * (size_t)nh * nv);
+        double (*hh)[2] = malloc(sizeof(double) * 2 * (size_t)nh * nv);
+        n = 0;
+        for (a = 0; a < nh; a++)
+            for (b = 0; b < nv; b++)
+                hh[n][0] = -80.0 + a * 0.05, hh[n][1] = -10.0 + b * 0.05, n++;
+        lamp_dirs(hh, n, oo);
+        for (dir = 0; dir < 2; dir++)
+            for (a = dir == 0; a + (dir == 0) < nh; a++)
+                for (b = dir == 1; b + (dir == 1) < nv; b++) {
+                    int s0 = dir == 0 ? (a - 1) * nv + b : a * nv + b - 1, s1 = a * nv + b, s2 = dir == 0 ? (a + 1) * nv + b : a * nv + b + 1;
+                    double f0 = oo[s0] + 1.0, f1 = oo[s1] + 1.0, f2 = oo[s2] + 1.0;
+                    double r = fabs(f2 / f1 - f1 / f0) / fmax(f1 / f0, 1.0);
+                    if (r > worst)
+                        worst = r, wh = hh[s1][0], wv = hh[s1][1];
+                }
+        report(worst < 0.04, "pattern continuity (0.05 degree steps)", "max jump %.2f%% at %.2f, %.2f (max 4%%)", worst * 100.0, wh, wv);
+        free(oo);
+        free(hh);
+    }
     {   /* the flux the pattern carries */
         double flux = 0, step = 0.25;
         n = 0;

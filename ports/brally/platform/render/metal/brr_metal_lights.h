@@ -22,7 +22,14 @@
    elbow on the kerb side; the hot spot below the cut-off and right of \
    centre, the near side dimmer, a wide spread below it; the cut-off a \
    blend in log intensity, so its line, R112's steepest log gradient, sits \
-   where it is placed; checked against R112's test points by \
+   where it is placed, its profile the lens's blur: a Gaussian of 0.28 \
+   degrees in log intensity (tanh's form of the normal CDF), R112's \
+   sharpness G (log drop per 0.1 degree) at most 0.27, inside its 0.13..0.3, \
+   where a smoothstep over 0.7 degrees made 0.41 and a kink at its ends; the \
+   sideways spread taken to zero smoothly at the outer cone (zero slope \
+   there), so no edge where it ends; the elbow and the step's top \
+   rounded (smooth max and min, 0.15 degree), so the line has no corner; \
+   checked against R112's test points by \
    ports/brally/tools/lighttest), a rear lamp's broad lobe; a point's or a \
    spot's candela (lwin shapes a spot) */ \
 "static float lamp(LS l, float3 d) {\n" \
@@ -34,8 +41,10 @@
 "  float hw = h < 1.5 ? 5.0 : 10.0;\n" \
 "  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / hw) * ((h - 1.5) / hw));\n" \
 "  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n" \
-"  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n" \
-"  return l.cd * spread * vert * pow(0.012, smoothstep(cut - 0.35, cut + 0.35, v));\n" \
+"  float a = h * 0.268, c0 = 0.5 * (a + sqrt(a * a + 0.0225)), cut = 2.0 - 0.5 * ((2.0 - c0) + sqrt((2.0 - c0) * (2.0 - c0) + 0.0225));\n" \
+"  float x = clamp((v - cut) / 0.28, -4.0, 4.0), ph = 0.5 + 0.5 * tanh(0.7978846 * (x + 0.044715 * x * x * x));\n" \
+"  float t = saturate((al - l.cosout) / (1.0 - l.cosout)), side = t * t * (3.0 - 2.0 * t);\n" \
+"  return l.cd * spread * vert * side * pow(0.012, ph);\n" \
 "}\n" \
 /* where a light reaches: none from its range on (a smooth window from 0.7 of \
    it, Karis 2013), none outside a cone's outer angle (a spot's from its inner \
