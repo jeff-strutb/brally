@@ -34,6 +34,7 @@
 #include "brr.h"
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
+#include "brr_metal_rt.h"
 #include "br_flags.h"
 #include "light.h"
 
@@ -417,6 +418,7 @@ static id<MTLBuffer> s_trkbuf;       /* the whole track's triangles (light_game_
 static unsigned s_trkgen;
 static int s_trkn;
 static float s_trklo[3], s_trkhi[3];
+static BrrRtWorld s_rt;             /* the track for rays (brr_metal_rt_world) */
 static size_t s_ntris, s_captris;
 static id<MTLBuffer> s_hist[3], s_spots[3];
 static float s_ev = 1e9f;
@@ -631,6 +633,24 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         [e setFragmentTexture:s_black atIndex:1];
     }
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)o->n];
+}
+
+/* the track's ray-tracing world (DESIGN.md 8.1; brr_metal_rt.m): built the
+ * first time a pass asks for it on a track, again when the track changes.
+ * Nothing traces rays yet; GI and reflections will. */
+const BrrRtWorld *brr_metal_rt_world(void)
+{
+    const LightTrack *t = light_game_track();
+    unsigned gen = s_rt.gen;
+    int was = s_rt.built;
+    if (!s_dev || !brr_rt_update(&s_rt, s_dev, s_q, t))
+        return NULL;
+    if (!was || gen != s_rt.gen)
+        fprintf(stderr, "brr: ray tracing world: %d triangles, BVH %d nodes %.1f ms %zu KB, %s %.1f ms %zu KB\n",
+                s_rt.ntri, s_rt.bvh.nnode, s_rt.bvh_ms, s_rt.bvh_bytes >> 10,
+                s_rt.as ? (s_rt.hw ? "hardware structure" : "structure (shader-traced)") : "no structure",
+                s_rt.as_ms, s_rt.as_bytes >> 10);
+    return &s_rt;
 }
 
 /* the exposure: the post pass bins the frame's luminance into a histogram

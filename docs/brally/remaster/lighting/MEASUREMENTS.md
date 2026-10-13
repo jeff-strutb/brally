@@ -262,3 +262,134 @@ renderer frame number: the green light is past frame 10,000, and frame
 20,000 is 1.16 s into the race.
 
 ![Frame 20,000, 1080p: the gantry beam's shadow from off screen](phase3-cascades.png)
+
+## The track for rays: BVH and acceleration structure (2026-10-12)
+
+DESIGN.md 8.1's world representation, built and verified without running
+the game. `platform/light/light_bvh.c` builds a bounding volume hierarchy
+over `light_game_track()`'s triangles: binned SAH (16 bins a axis,
+traversal and triangle cost 1, leaves of at most 4), 32-byte nodes stored
+depth first (an interior node's first child follows it, so the traversal
+stacks only the far child), the triangles copied in leaf order with their
+track numbers beside them, and a 16-byte surface record a triangle (object;
+material, albedo and emission left zero for the materials work).
+`render/metal/brr_metal_rt.m` uploads it as four buffers and, where the
+device has `supportsRaytracing`, builds a primitive acceleration structure
+over the same triangles in track order (compacted after the build), so both
+paths name a triangle by the same number. `brr_metal_rt.h` holds the Metal
+traversal (`rt_closest`, `rt_any`) and the intersector's
+(`rt_hw_closest`, `rt_hw_any`), and `brr_rt_library` compiles them without
+fast math (the slabs need IEEE infinities). The renderer exposes the world
+as `brr_metal_rt_world()`, built the first time a pass asks for it on a
+track; nothing traces rays yet.
+
+The triangle test is Woop, Benthin and Wald's watertight test with one
+change, found by the brute-force comparison: in plain float a small, thin
+triangle far from the ray can lose two of its edge functions to
+cancellation, and a ray 100 m away "hit" a millimetre sliver (the soup
+scene, 2 rays in 20,000). The paper falls back to double precision for an
+exact zero; the GPU has none. The edge functions are instead computed as a
+difference of products with Kahan's algorithm (one fma each side), whose
+relative error is at most two units in the last place (Jeannerod, Louvet
+and Muller 2013): the sign is the exact sign and zero only when the exact
+value is, which is also what makes the test watertight. Every multiply-add
+in the traversal is an explicit fma on the CPU and the GPU, and the C is
+built with `-ffp-contract=off`, so the two agree bit for bit.
+
+Instruments (`ports/brally/tools/lighttest/run.sh`, which builds and runs
+all three): `bvh_test` (the BVH against brute force on the CPU),
+`rt_gpu` (the GPU against the CPU, through the renderer's own
+`brr_rt_update`), `rt_compile` (the shader source at each language
+version). Scenes: Coastline's whole track (`BR_LIGHT_TRACKOBJ`, 11,364
+triangles, kept under `build/` as game data), and three synthetic ones:
+soup (20,000 triangles of every size and orientation, overlapping, 1 km from
+the origin), terrain (a 100 x 100 heightfield at 2 km sharing every edge,
+with a flat terrace and a wall) and rooms (700 stacked 4 m boxes with shared
+faces, every other box's triangles duplicated, 500 needles, 500 points and
+500 slivers 40 m long and a millimetre wide). A million rays a set: random
+(origins in the scene's box, directions uniform) and surface (a point on a
+triangle by area, cosine-weighted about its normal on a random side, tmin a
+millimetre: how GI's rays leave a hit). Any-hit gets a segment of half to
+one and a half times the closest hit's distance.
+
+Counting ties: the brute force tests every triangle in order and keeps the
+first at the smallest distance; the BVH finds them in another order. A
+difference counts as a tie only when both triangles are hit by the same
+test at the distances reported and the two hit points are the same point to
+the precision of the coordinates (one unit in the last place of the point's
+largest coordinate). Every other difference fails the test.
+
+### CPU against brute force, 1,000,000 rays a set
+
+| scene | build | nodes | depth | SAH | closest: identical / ties / mismatches | any-hit | nodes, triangles a ray | one thread |
+|---|---|---|---|---|---|---|---|---|
+| Coastline, random | 11.3 ms | 11,487 | 17 | 8.36 | 999,998 / 2 / 0 | 100% | 5.1, 0.53 | 9.9 Mrays/s |
+| Coastline, surface | | | | | 999,989 / 11 / 0 | 100% | 14.4, 2.71 | 3.7 Mrays/s |
+| soup, random | 26.2 ms | 39,127 | 18 | 73.5 | 1,000,000 / 0 / 0 | 100% | 38.5, 1.72 | 1.3 Mrays/s |
+| soup, surface | | | | | 1,000,000 / 0 / 0 | 100% | 51.1, 3.33 | 1.0 Mrays/s |
+| terrain, random | 17.5 ms | 20,099 | 14 | 19.5 | 1,000,000 / 0 / 0 | 100% | 10.3, 1.23 | 5.2 Mrays/s |
+| terrain, surface | | | | | 1,000,000 / 0 / 0 | 100% | 15.2, 2.27 | 3.4 Mrays/s |
+| rooms, random | 8.1 ms | 9,049 | 18 | 321.5 | 730,107 / 269,893 / 0 | 100% | 128.7, 46.1 | 0.38 Mrays/s |
+| rooms, surface | | | | | 496,499 / 503,501 / 0 | 100% | 170.0, 62.0 | 0.30 Mrays/s |
+
+Coastline's ties are all at the identical distance (shared edges). Rooms'
+are its duplicates and shared faces: 267,740 and 501,504 at the identical
+distance, 2,153 and 1,997 a fraction of a micrometre apart (9.5e-7 m at
+most, coplanar triangles whose computed distances differ in the last
+places). The tree's invariants (every triangle in exactly one leaf, inside
+its box, every child inside its parent) hold in every scene. Coastline's
+tree is 980 KB with its surface records. As a second check of the triangle
+test itself, the brute force's distances agree with Moller-Trumbore in
+double precision within 1e-4 on every ray except 8 of rooms' random set
+(origins that land exactly on a face with tmin 0, where any answer near
+zero is right).
+
+### GPU against CPU, M4 Pro, 1,000,000 rays a set
+
+The compute traversal: every closest hit identical to the CPU's in
+distance, both weights and triangle, and every any-hit identical, on all
+eight sets (8,000,000 rays, zero differences). GPU time from the command
+buffer's start and end, best of 5, one thread a ray, 64 a threadgroup;
+repeated runs vary by about 15%.
+
+| scene, rays | compute closest | compute any | hardware closest | hardware any |
+|---|---|---|---|---|
+| Coastline, random | 670 to 770 Mrays/s | 880 to 1,080 | 2,550 to 3,160 | 4,870 to 5,100 |
+| Coastline, surface | 350 to 540 | 560 | 2,610 to 2,700 | 3,890 to 3,920 |
+| soup, random | 170 to 200 | 210 | 1,570 | 2,000 |
+| soup, surface | 180 | 190 | 1,190 to 1,210 | 1,480 to 1,500 |
+| terrain, random | 380 to 440 | 460 to 510 | 2,150 to 3,120 | 4,160 to 4,320 |
+| terrain, surface | 360 to 680 | 760 | 2,550 | 3,240 to 3,330 |
+| rooms, random | 42 | 60 | 1,260 | 2,610 |
+| rooms, surface | 38 | 60 | 840 | 1,590 |
+
+The hardware structure for Coastline: built in 10 ms (the first build in a
+process 21 ms), 585 KB compacted. The intersector does its own arithmetic,
+so it is compared, not required to be bit-identical. On Coastline it finds
+the same triangle as the CPU for 999,995 and 999,978 rays and ties for the
+rest; its distances on the same triangle are within 16 units of the hit's
+coordinates (about 2 mm at 2 km). Every remaining difference, on all
+scenes, is one `rt_gpu` explains from the exact answer (long double) for
+the triangles involved, and the run fails on any it cannot: 2 segments
+ending exactly at the hit (the intersector includes the end, the CPU
+excludes it), 9 rays starting on a face with tmin 0 (rooms), 3 rays passing
+within 1e-7 (barycentric) of an edge no other triangle shares (soup, where
+the exact answer is a miss by 8e-8 and either side may round it), and 5
+hardware hits on rooms' 40,000:1 slivers 1 to 2 mm from a ray's origin,
+where the exact hit is behind the origin and the CPU correctly misses. None
+on Coastline's surface rays or the terrain.
+
+The shader source compiles, run through this Mac's Metal compiler at
+language versions 2.4, 3.0, 3.1 and 3.2, without fast math, with and
+without the intersector, with no warnings (`rt_compile`). The offline
+compiler (`xcrun metal`) is not installed on this Mac (Xcode reports the
+Metal Toolchain component uninstalled), so the `-sdk macosx` and `-sdk
+iphoneos` offline compiles are still to do once it is. `brr_metal_rt.m` and
+`light_bvh.c` compile for iOS 16 (arm64) and macOS 12 (x86_64), and the
+game links (`HOST=null RENDER=metal ports/brally/link64.sh`, no warnings).
+
+Against DESIGN.md 12's acceleration structure budget (15 MB T0, 40 MB T1
+and T2): Coastline's world is 1.6 MB with both representations. At the
+measured rates a T1 frame's GI probe update (32x32x8 probes x 3 cascades,
+a quarter a frame, 64 rays each: about 400,000 rays) costs about 0.15 ms of
+hardware tracing or 0.7 ms in the compute BVH on this GPU, before shading.

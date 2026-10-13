@@ -46,7 +46,9 @@ ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK"
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
       $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c \
-      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
+      $P/light/light_bvh.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
+# the track's ray-tracing world on the GPU (brr_metal_rt.h)
+[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
