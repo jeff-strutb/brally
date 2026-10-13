@@ -8,12 +8,16 @@
  * overcast in fog and rain) and scaled by its extinction (KU.cld.y, per
  * metre).  Along the view ray through the slab, optical depth tau and Beer's
  * law T = exp(-tau); the sun's light into the slab is its transmittance down
- * the atmosphere to 2 km, its self-shadow exp(-tau_sun / 4) (the first octave
- * of the multiple-scattering approximation, Wrenninge 2015), a two-lobe
- * Henyey-Greenstein phase (forward g 0.6, back -0.3, weights 0.7 and 0.3; each
- * lobe and so the mix integrates to 1 over the sphere) and the powder term
- * 1 - exp(-2 tau) (Schneider 2015); the sky's light is the sky view at the
- * zenith.  The slab's own light is (1 - T) times that; the sky behind it is
+ * the atmosphere to 2 km, then multiple scattering by Wrenninge's octaves
+ * (Wrenninge 2013, as Hillaire 2016 and Schneider 2015 use them: four
+ * octaves, the n-th weighted a^n, its self-shadow optical depth scaled b^n,
+ * its phase's eccentricities c^n, a = b = c = 1/2; the weights normalised so
+ * the slab's albedo is 0.98 at most) over a two-lobe Henyey-Greenstein phase
+ * (forward g 0.6, back -0.3, weights 0.7 and 0.3; each lobe and so the mix
+ * integrates to 1 over the sphere).  The light the deep octaves carry through
+ * the self-shadow is what makes a thick cumulus white, not grey.  The ambient
+ * (amb, from skyfs) is isotropic scattering of the sky above and the sunlit
+ * ground below: albedo / 2 (L_zenith + L_ground).  The slab's own light is (1 - T) times that; the sky behind it is
  * dimmed by T.  The layer fades out over the last 5 degrees above the
  * horizon.  KU.cld.z is the wind's clock (seconds), KU.cld.w the tier flag. */
 #ifndef BRR_METAL_CLOUDS_H
@@ -30,13 +34,30 @@
 "  float n = cfbm(km * 0.4); return saturate((n - (1.0 - cover)) / max(cover, 0.05) * 2.0); }\n" \
 /* the slab seen along d from height h km: rgb, its own light per unit of the \
    sun's top-of-atmosphere illuminance; a, its transmittance */ \
+"#define CMS_N 4\n" \
+"#define CMS_A 0.5\n" \
+"#define CMS_B 0.5\n" \
+"#define CMS_C 0.5\n" \
+"#define CMS_W 0.98\n" \
+/* the sun's light scattered toward the eye per unit of the light into the \
+   slab: Wrenninge's octaves (Hillaire 2016), octave n weighted a^n, its \
+   self-shadow optical depth scaled b^n and its phase's eccentricities c^n; \
+   the weights normalised to the single-scattering albedo CMS_W, so with no \
+   self-shadow the slab scatters CMS_W of what reaches it (energy kept) */ \
+"static float cms(float ts, float c) {\n" \
+"  float s = 0.0, a = 1.0, b = 1.0, g = 1.0, an = 0.0;\n" \
+"  for (int n = 0; n < CMS_N; n++) { an += a; a *= CMS_A; } a = 1.0;\n" \
+"  for (int n = 0; n < CMS_N; n++) {\n" \
+"    s += a * exp(-b * ts) * (0.7 * hgp(c, 0.6 * g) + 0.3 * hgp(c, -0.3 * g));\n" \
+"    a *= CMS_A; b *= CMS_B; g *= CMS_C; }\n" \
+"  return s * CMS_W / an; }\n" \
 "static float4 clouds(float3 d, float3 sun, float h, float4 cld, float3 tsun, float3 amb) {\n" \
 "  if (cld.w < 0.5 || d.z < 0.005 || h > 1.8) return float4(0, 0, 0, 1);\n" \
 "  float t0 = (1.8 - h) / d.z, L = min(0.6 / d.z, 30.0); float2 wind = float2(0.012, 0.005) * cld.z;\n" \
 "  float2 p = d.xy * (t0 + 0.5 * L) + wind; float rho = cdens(p, cld.x);\n" \
 "  float tau = cld.y * 1000.0 * rho * L, T = exp(-tau);\n" \
 "  float ts = cld.y * 1000.0 * cdens(p + sun.xy / max(sun.z, 0.15) * 0.3, cld.x) * 0.3 / max(sun.z, 0.15);\n" \
-"  float3 Ls = tsun * exp(-0.25 * ts) * cphase(dot(d, sun)) * (1.0 - exp(-2.0 * tau)) + amb;\n" \
+"  float3 Ls = tsun * cms(ts, dot(d, sun)) + amb;\n" \
 "  float f = smoothstep(0.005, 0.087, d.z);\n" \
 "  return float4(Ls * (1.0 - T) * f, mix(1.0, T, f)); }\n"
 

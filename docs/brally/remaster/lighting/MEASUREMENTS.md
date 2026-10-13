@@ -1445,3 +1445,33 @@ the other per-pixel lit 3D passes shrink by the same 55%. MetalFX's own cost
 at this size is not yet measured cleanly (the harness's frames include
 clearing synthetic targets). Open: the cost of the scaler in a frame and
 the dynamic resolution's behaviour in a race (a run).
+
+## Sunny daylight: cloud brightness and the day meter (2026-10-13)
+
+From `ports/brally/tools/lighttest/skymask.sh` (closed forms, no game run).
+
+Clouds (brr_metal_clouds.h), radiance per unit of the top-of-atmosphere
+illuminance, sun at 45 degrees, viewed at 90 degrees to it:
+
+| | before (single scattering, ambient 0.5 L_zenith) | now (4 Wrenninge octaves, sky + ground ambient) |
+|---|---|---|
+| sunlit face (self-shadow tau 2) | | 0.0748 |
+| shadowed base (self-shadow tau 25) | 0.0251 | 0.0585 |
+| clear zenith sky (reference) | 0.050 | 0.050 |
+
+The old base sat a stop under the zenith sky: grey cloud on a bright sky,
+the "overcast" read. The octaves' albedo over the sphere is 0.98 at most for
+any self-shadow (energy kept). Sunny cover 0.30 to 0.25, extinction 0.06 to
+0.03 per metre: sparser, thinner cumulus.
+
+Meter (light_meter_ev, light_meter_weight): a sunlit road, albedo 0.12 under
+100,000 lux sun and 20,000 lux sky, is 4,600 cd/m2. With the sunny band 5th
+to 95th percentile, centre-weighted (1 at the edge, 4 at the centre) and
+compensation +1.5 stops, the meter sets EV100 13.66 and the road lands at
+0.297 pre-exposed, mid-grey (0.18) +0.72 stops; a sunlit wall 4 stops
+brighter over the frame's top corners leaves it at +0.72. The old band (80th
+to 98.3rd, no compensation) put the same road at -1.44 stops: it metered on
+the brightest fifth.
+
+Grade (brr_metal_lit.h grade, after PBR Neutral): sunny saturation 1.12,
+contrast 1.05 about mid-grey; other weathers none.

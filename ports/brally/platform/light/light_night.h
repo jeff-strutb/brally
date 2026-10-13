@@ -66,6 +66,16 @@ static inline float light_meter_ev(const uint32_t *c, int nbins, float plo, floa
     return fminf(fmaxf(t, evlo), evhi);
 }
 
+/* The meter's centre weighting, as the post pass bins each sample: 1 at the
+ * frame's edge, 4 at its centre (1 + 3 (1 - r^2), rounded, inside the
+ * ellipse touching the frame's edges; uv in 0..1). */
+static inline unsigned light_meter_weight(float u, float v)
+{
+    float qx = (u - 0.5f) * 2.0f, qy = (v - 0.5f) * 2.0f, k = 1.0f - (qx * qx + qy * qy);
+    k = fminf(fmaxf(k, 0.0f), 1.0f);
+    return 1u + (unsigned)(3.0f * k + 0.5f);
+}
+
 /* ---- the Purkinje shift ----------------------------------------------------------
  * The eye's rods take over below the cones' range: colour fades and what is
  * left looks blue (Jensen, Premoze, Shirley et al. 2000, "A Physically-Based

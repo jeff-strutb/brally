@@ -347,6 +347,14 @@ BRR_SHADOW_SRC \
 "}\n" \
 /* post: bloom, exposure, the meter's histogram, the Purkinje shift (brr_metal_night.h), Khronos PBR Neutral, sRGB */ \
 BRR_NIGHT_SRC \
+/* the meter's centre weighting (light_night.h light_meter_weight): 1 at the \
+   frame's edge, 4 at its centre, 1 + 3 (1 - r^2) within the ellipse r < 1 */ \
+"static uint mweight(float2 uv) { float2 q = (uv - 0.5) * 2.0; return 1u + uint(3.0 * saturate(1.0 - dot(q, q)) + 0.5); }\n" \
+/* the grade for a high-key day (the weather's bg.z saturation, bg.w contrast \
+   about the mid-grey 0.18, both 1 for none), on the tonemapped colour */ \
+"static float3 grade(float3 c, float sat, float con) {\n" \
+"  float y = dot(c, float3(0.2126, 0.7152, 0.0722)); c = max(mix(float3(y), c, sat), 0.0);\n" \
+"  return 0.18 * pow(max(c, 1e-6) / 0.18, con); }\n" \
 "static float3 neutral(float3 c) {\n" \
 "  const float start = 0.8 - 0.04, desat = 0.15;\n" \
 "  float x = min(c.r, min(c.g, c.b)); float off = x < 0.08 ? x - 6.25 * x * x : 0.04; c -= off;\n" \
@@ -362,9 +370,11 @@ BRR_NIGHT_SRC \
 "  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
 "  uint2 apx = uint2(float2(px) * float2(alb.get_width(), alb.get_height()) / float2(hdr.get_width(), hdr.get_height()));   /* the G-buffer at the lit 3D's size */\n" \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
-"    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))], 1u, memory_order_relaxed);\n" \
+"    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
+"                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
 "  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
+"  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n"
 

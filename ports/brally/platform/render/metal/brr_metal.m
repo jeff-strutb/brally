@@ -458,7 +458,7 @@ typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], t
  * 0.32 at night), the part of the sun the clouds let through, and the
  * clouds' brightening of the sky */
 static const struct { float mie, top, through, skyk, cover, dens; } k_sky[5] = {
-    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f, 0.30f, 0.06f },
+    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f, 0.25f, 0.03f },
     /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f, 0.95f, 0.10f },
     /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f, 1.00f, 0.16f },
     /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f, 0.85f, 0.10f },
@@ -484,12 +484,16 @@ static float s_atm_mie = -1.0f;
  * exposure, not the headlamp pool and the lamps above it, and a stop under
  * the meter's mid-grey, so night reads as night (MEASUREMENTS.md). */
 static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; float elev, plo, phi, comp; float wet, pud; } k_weather[5] = {   /* wet, pud: brr_metal_refl.h */
-    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
+    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.05f, 0.95f, 1.5f, 0.0f, 0.0f },
     /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
     /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0, 1.0f, 0.6f },
     /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0, 0.5f, 0.3f },
     /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
 };
+/* the grade per weather (saturation, contrast about mid-grey): sunny a
+ * modest lift for the high-key day PBR Neutral's highlight desaturation
+ * greys; the rest none */
+static const float k_grade[5][2] = { { 1.12f, 1.05f }, { 1, 1 }, { 1, 1 }, { 1, 1 }, { 1, 1 } };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
 
@@ -797,9 +801,11 @@ const BrrRtWorld *brr_metal_rt_world(void)
 /* the exposure: the post pass bins the frame's luminance into a histogram
  * (16 bins a stop, so a bin centre is within 1/32 EV of what it holds; one
  * of three buffers, read back three frames later when its frame is
- * done); the mean log luminance of the band between its 80th and 98.3rd
- * percentiles (Unreal Engine's auto-exposure defaults: the darkest pixels and
- * the few brightest do not move it) sets the camera's EV100 as a light meter
+ * done), each sample weighted toward the frame's centre (1 at the edge, 4 at
+ * the centre: light_meter_weight); the mean log luminance of the weather's
+ * percentile band (by day 5th to 95th: a centre-weighted average, the
+ * outliers trimmed; the old 80th to 98.3rd band metered on the brightest
+ * fifth and darkened the rest) less its compensation sets the camera's EV100 as a light meter
  * does (sensor calibration K = 12.5), adapting over about a second (Lagarde
  * and de Rousiers 2014) */
 static float lit_exposure(int w)
@@ -1300,6 +1306,8 @@ static void lit_present(void)
     u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
     u.bg[0] = 0.9f;                         /* the backdrop and fog: shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
+    u.bg[2] = k_grade[w][0];                /* the grade after the tonemap: saturation, contrast (brr_metal_lit.h) */
+    u.bg[3] = k_grade[w][1];
     {
         const char *e2 = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;

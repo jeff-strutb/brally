@@ -8,6 +8,6 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../../.." && pwd)
 OUT=${OUT:-$ROOT/build/brally/lighttest}
 mkdir -p "$OUT/skymask"
-clang -O2 -std=gnu11 -Wall -Wno-unused-function -I"$ROOT/ports/brally/platform/render/metal" \
+clang -O2 -std=gnu11 -Wall -Wno-unused-function -I"$ROOT/ports/brally/platform/render/metal" -I"$ROOT/ports/brally/platform/light" \
   "$HERE/skymask_test.c" -o "$OUT/skymask_test" -lm || exit 2
 "$OUT/skymask_test" "$OUT/skymask" "$@"
