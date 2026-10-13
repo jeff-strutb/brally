@@ -1595,6 +1595,73 @@ static void test_delit(void)
 /* =========================================================================================
  * 8. Closed forms and robustness
  * ========================================================================================= */
+/* the night as the player sees it: a physical moonlit scene and a headlamp
+ * pool through the real exposure (light_night_ev), local exposure, Purkinje
+ * shift and tonemap (t_post runs pfs's chain on the GPU), against what must
+ * be readable; and the moon in the camera's view */
+static void test_night_frame(void)
+{
+    const float el = LIGHT_MOON_ELEV, En = light_moon_normal(el), Eh = En * sinf(el * 0.017453293f);
+    const float skyfrac[2] = { 0.10f, 0.25f };   /* the moonlit sky's light on level ground, a fraction of the moon's normal illuminance (clear sky) */
+    int sk;
+    section("10. Night as seen (exposure, local exposure, Purkinje, tonemap on the GPU)");
+    for (sk = 0; sk < 2; sk++) {
+        float Yamb = Eh + skyfrac[sk] * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
+        float Epool = 20.0f;   /* lux on the road 10 m ahead under two low beams */
+        /* rows: moonlit level ground albedo 0.18 and 0.05, a wall facing the moon 0.18, the pool at albedo 0.1 and 0.3 */
+        float L[5] = { 0.18f * Yamb / (float)M_PI, 0.05f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
+                       0.1f * Epool / (float)M_PI, 0.3f * Epool / (float)M_PI };
+        float Yl[5] = { L[0], L[0], L[2], 0.2f * Epool / (float)M_PI, 0.2f * Epool / (float)M_PI };
+        float in[5][4], o[5][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 };
+        int i;
+        for (i = 0; i < 5; i++)
+            in[i][0] = in[i][1] = in[i][2] = L[i], in[i][3] = Yl[i];
+        {
+            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
+            kern(@"t_post", 5, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
+            memcpy(o, [bo contents], sizeof o);
+        }
+        {
+            float g18 = 255 * (0.2126f * o[0][0] + 0.7152f * o[0][1] + 0.0722f * o[0][2]), g5 = 255 * (0.2126f * o[1][0] + 0.7152f * o[1][1] + 0.0722f * o[1][2]);
+            float wall = 255 * (0.2126f * o[2][0] + 0.7152f * o[2][1] + 0.0722f * o[2][2]);
+            float p1 = 255 * (0.2126f * o[3][0] + 0.7152f * o[3][1] + 0.0722f * o[3][2]), p3 = 255 * (0.2126f * o[4][0] + 0.7152f * o[4][1] + 0.0722f * o[4][2]);
+            printf("    sky %.0f%% of the moon: moon %.3f lux normal, %.3f on the ground, ambient %.3f lux, EV100 %.2f;"
+                   " 18%% ground %.0f/255, 5%% ground %.0f, wall facing the moon %.0f, headlamp pool 10%%/30%% %.0f/%.0f\n",
+                   100 * skyfrac[sk], En, Eh, Yamb, ev, g18, g5, wall, p1, p3);
+            report(g18 >= 60 && g18 <= 120, "moonlit 18% ground readable", "%.0f/255 (60..120)", g18);
+            report(g5 >= 22, "moonlit 5% ground still visible", "%.0f/255 (22 and up)", g5);
+            report(p3 <= 245 && p3 - p1 >= 30, "headlamp pool keeps its texture", "10%% %.0f, 30%% %.0f/255 (under 245, 30 apart)", p1, p3);
+            report(p1 > g18, "the pool brighter than the moonlit ground", "%.0f > %.0f", p1, g18);
+        }
+    }
+    {   /* across the pool's edge: the local mean is a blur (the bloom chain's mid level: about 2% of the frame's width,
+           taken as a Gaussian of that sigma); the moonlit ground 3 sigma from the edge must stay within 25% of its level far away */
+        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
+        float Lg = 0.18f * Yamb / (float)M_PI, Lp = 0.2f * 20.0f / (float)M_PI, sig = 1.0f;
+        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 };
+        int i;
+        for (i = 0; i < 3; i++) {   /* the ground at d sigma outside a straight edge: the blur's share of the pool */
+            float f = 0.5f * erfcf(d[i] / (sig * 1.41421356f));
+            in[i][0] = in[i][1] = in[i][2] = Lg, in[i][3] = Lg + f * (Lp - Lg);
+        }
+        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg;
+        {
+            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
+            kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
+            memcpy(o, [bo contents], sizeof o);
+        }
+        printf("    moonlit ground beside the pool: 1, 2, 3 sigma out %.0f, %.0f, %.0f/255; far %.0f\n", 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
+        report(o[2][1] >= 0.75f * o[3][1], "no dark ring beside the pool at 3 sigma", "%.0f vs %.0f far away (within 25%%)", 255 * o[2][1], 255 * o[3][1]);
+    }
+    {   /* the moon in view: the start camera (the game's view x projection: forward (0.6225, 0.7826, 0), vertical half-angle
+           atan(1 / 3.732) = 15 degrees), the moon opposite the sun's bearing (-1, -1.5) */
+        float sb[2] = { -1.0f, -1.5f }, n = sqrtf(sb[0] * sb[0] + sb[1] * sb[1]), mb[2] = { -sb[0] / n, -sb[1] / n };
+        float az = acosf(mb[0] * 0.6225f + mb[1] * 0.7826f) * 57.29578f, vhalf = atanf(1.0f / 3.732f) * 57.29578f;
+        report(LIGHT_MOON_ELEV + 0.26f < vhalf - 1.0f && az < 20.0f, "the moon in the start camera's view",
+               "%.1f degrees up (view to %.1f), %.1f degrees off the view's heading", LIGHT_MOON_ELEV, vhalf, az);
+    }
+}
+
 static void test_misc(void)
 {
     section("8. sRGB, normals, finite output");
@@ -1890,6 +1957,7 @@ int main(int argc, char **argv)
         test_bloom();
         test_delit();
         test_misc();
+        test_night_frame();
         printf("\n");
         report(g_nonfin == 0, "every kernel output finite", "%zu non-finite of %zu values read back", g_nonfin, g_scanned);
         printf("\n%d passed, %d failed\n", g_pass, g_fail);

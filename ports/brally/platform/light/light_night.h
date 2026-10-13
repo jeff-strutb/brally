@@ -20,7 +20,9 @@
  * published 0.1 to 0.3 lux of a full moon high in the sky. */
 #define LIGHT_MOON_TOA   0.27f    /* lux, normal, above the atmosphere */
 #define LIGHT_MOON_KV    0.172f   /* magnitudes an air mass */
-#define LIGHT_MOON_ELEV  42.0f    /* degrees: Coastline's moon, high (the project lead sets each track's later) */
+#define LIGHT_MOON_ELEV  11.0f    /* degrees: low enough to be seen (the camera's vertical half-angle is 15 degrees,
+                                     from the game's projection: cot = 3.732); a full moon stands opposite
+                                     the sun, so on Coastline it is ahead of the start, over the straight */
 
 static inline float light_airmass(float elev_deg)
 {
@@ -36,6 +38,43 @@ static inline float light_moon_normal(float elev_deg)
 static inline float light_moon_ground(float elev_deg)
 {
     return light_moon_normal(elev_deg) * sinf(elev_deg * 0.017453293f);
+}
+
+/* ---- the night's exposure ---------------------------------------------------------
+ * At night the eye adapts to the scene's ambient light, not to the lamps:
+ * the exposure puts an 18% grey surface under the moon and the moonlit sky
+ * (Yamb: lux on level ground) at LIGHT_NIGHT_KEY on the display (linear,
+ * before the tonemap); the lamps' pools are brought down by the local
+ * exposure (light_local_exposure).  EV100 from the camera's exposure
+ * 1 / (1.2 2^EV): EV = log2(L / (1.2 key)), L = 0.18 Yamb / pi. */
+#define LIGHT_NIGHT_KEY   0.12f
+#define LIGHT_LOCAL_EDGE0 1.5f
+#define LIGHT_LOCAL_EDGE1 3.0f
+#define LIGHT_LOCAL_KNEE 2.0f
+#define LIGHT_NIGHT_LOCAL_K 0.85f   
+static inline float light_night_ev(float Yamb, float key)
+{
+    return log2f(0.18f * Yamb / 3.14159265f / (1.2f * key));
+}
+
+/* ---- local exposure ---------------------------------------------------------------
+ * A region brighter than the key (its local mean Yloc, pre-exposed: a blur
+ * of the frame) is brought down by (Yloc / key)^-k: its contrast with the
+ * rest of the frame compressed by k, the detail inside it kept (the same
+ * factor over the whole region), as Unreal Engine 5's local exposure
+ * ("highlight contrast" 1 - k).  Regions at or under the key unchanged. */
+static inline float light_local_exposure(float Ypix, float Yloc, float key, float k)
+{
+    /* edge-aware: a pixel LIGHT_LOCAL_EDGE0..1 stops from its surroundings' mean
+       is across an edge (the moonlit ground beside a pool): it is compressed by
+       its own luminance, not the pool's (no dark ring); inside a region (its
+       texture within a stop or so of the mean) by the region's mean */
+    float d = fabsf(log2f(fmaxf(Ypix, 1e-9f) / fmaxf(Yloc, 1e-9f)));
+    float t = fminf(fmaxf((d - LIGHT_LOCAL_EDGE0) / (LIGHT_LOCAL_EDGE1 - LIGHT_LOCAL_EDGE0), 0.0f), 1.0f);
+    float Y = exp2f(log2f(fmaxf(Yloc, 1e-9f)) + (log2f(fmaxf(Ypix, 1e-9f)) - log2f(fmaxf(Yloc, 1e-9f))) * t * t * (3.0f - 2.0f * t));
+    /* only well above the key (LIGHT_LOCAL_KNEE stops): the moonlit scene keeps its exposure */
+    key *= exp2f(LIGHT_LOCAL_KNEE);
+    return Y > key && k > 0.0f ? powf(Y / key, -k) : 1.0f;
 }
 
 /* ---- the meter -----------------------------------------------------------------

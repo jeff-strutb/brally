@@ -24,7 +24,7 @@
 #include <string.h>
 
 typedef struct LU { float sunvp[4][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4]; } LU;
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], lexp[4]; } LU;
 
 static int g_fail;
 static void report(int ok, const char *name, const char *fmt, ...) __attribute__((format(printf, 3, 4)));

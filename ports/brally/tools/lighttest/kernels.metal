@@ -135,3 +135,14 @@ fragment float4 t_facen(LO in [[stage_in]], constant int &mode [[buffer(0)]]) {
   float3 wp = mode == 0 ? float3(1.0, 2.0, 3.0) : mode == 1 ? float3(in.pos.x, in.pos.y, 0.0) : float3(in.pos.x * 0.5, 7.0, in.pos.y * 3.0);
   return float4(facen(wp), 1.0);
 }
+
+// the post's colour chain on one pixel, as pfs runs it: in.rgb the scene's
+// luminance (cd/m2), in.w the local mean around it (cd/m2); p.x the exposure,
+// p.y the local exposure's key, p.z its strength; out: sRGB
+kernel void t_post(const device float4 *in [[buffer(0)]], constant float4 &p [[buffer(1)]], device float4 *o [[buffer(2)]], uint i [[thread_position_in_grid]]) {
+  float3 c = in[i].rgb * p.x;
+  c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), in[i].w * p.x, p.y, p.z);
+  c = purkinje(c, p.x);
+  c = neutral(c);
+  o[i] = float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 0.0);
+}

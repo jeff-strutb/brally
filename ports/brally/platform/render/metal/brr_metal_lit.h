@@ -38,7 +38,7 @@
  * ambient term */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; float4 lexp; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -372,8 +372,15 @@ BRR_GLARE_SRC \
 "  float p = max(c.r, max(c.g, c.b)); if (p < start) return c;\n" \
 "  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n" \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
+/* local exposure (light_night.h's light_local_exposure, the same numbers):
+   a region brighter than the key, by its blurred luminance, brought down by
+   (Yloc / key)^-k; lexp: x k, y the key (pre-exposed) */ \
+"static float locexp(float Ypix, float Yloc, float key, float k) {\n" \
+"  float lp = log2(max(Ypix, 1e-9)), ll = log2(max(Yloc, 1e-9)), t = smoothstep(1.5, 3.0, abs(lp - ll));   /* edge-aware: across an edge, the pixel's own */\n" \
+"  float Y = exp2(ll + (lp - ll) * t); key *= 4.0;   /* only well above the key (2 stops) */\n" \
+"  return Y > key && k > 0.0 ? pow(Y / key, -k) : 1.0; }\n" \
 "fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
-"                    texture2d<float> alb [[texture(2)]],\n" \
+"                    texture2d<float> alb [[texture(2)]], texture2d<float> blm [[texture(3)]],\n" \
 "                    device atomic_uint *hist [[buffer(1)]], constant GLU &gl [[buffer(2)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
@@ -384,6 +391,7 @@ BRR_GLARE_SRC \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
 "                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
+"  if (u.lexp.x > 0.0) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)), u.lexp.y, u.lexp.x);   /* after the meter */\n" \
 "  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \

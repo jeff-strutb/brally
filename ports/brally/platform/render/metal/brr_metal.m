@@ -448,10 +448,11 @@ static size_t s_ntris, s_captris;
 static id<MTLBuffer> s_hist[3];
 static float s_ev = 1e9f;
 static double s_ev_t;               /* when the EV last took a reading (seconds) */
+static float s_amb_Y;               /* the ambient light on level ground, lux (the sky's readback): the night's exposure */
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], lexp[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
 typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4], moon[4]; } KU;
 
@@ -849,6 +850,10 @@ static float lit_exposure(int w)
     for (i = 0; i < LUM_BINS; i++)
         ns += c[i];
     target = light_meter_ev(c, LUM_BINS, k_weather[w].plo, k_weather[w].phi, k_weather[w].evlo, k_weather[w].evhi, k_weather[w].comp);
+    if (w == 4 && s_amb_Y > 0.0f) {   /* night: the eye adapts to the moon and the moonlit sky, not the lamps */
+        target = fminf(fmaxf(light_night_ev(s_amb_Y, LIGHT_NIGHT_KEY), k_weather[w].evlo), k_weather[w].evhi);
+        ns = ns ? ns : 1;
+    }
     memset(c, 0, LUM_BINS * 4);
     now = CACurrentMediaTime();
     /* a histogram with no samples (its frame not yet drawn, or no lit
@@ -1309,11 +1314,11 @@ static void lit_present(void)
             sscanf(e2, "%f,%f,%f", &sun[0], &sun[1], &sun[2]);
     }
     light_capture_eye(eye);
-    if (k_weather[w].elev > 0) {   /* the moon: the sun's bearing, at its own elevation */
+    if (k_weather[w].elev > 0) {   /* the moon: full, so opposite the sun's bearing, at its own elevation */
         float hz = sqrtf(sun[0] * sun[0] + sun[1] * sun[1]), el = k_weather[w].elev * 0.017453293f;
         if (hz > 0) {
-            sun[0] = sun[0] / hz * cosf(el);
-            sun[1] = sun[1] / hz * cosf(el);
+            sun[0] = -sun[0] / hz * cosf(el);
+            sun[1] = -sun[1] / hz * cosf(el);
         }
         sun[2] = sinf(el);
     }
@@ -1336,6 +1341,10 @@ static void lit_present(void)
             u.wb[k] = y / wb[k];
     }
     u.misc[0] = lit_exposure(w);
+    if (w == 4) {   /* night: the lamps' pools compressed (light_local_exposure) */
+        u.lexp[0] = LIGHT_NIGHT_LOCAL_K;
+        u.lexp[1] = LIGHT_NIGHT_KEY;
+    }
     u.misc[2] = k_weather[w].rough;
     u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
     u.bg[0] = 0.9f;                         /* the backdrop and fog: shown as the game drew them (pre-exposed) */
@@ -1423,6 +1432,9 @@ static void lit_present(void)
                 }
                 for (k = 0; k < 3; k++)          /* the ground's light back up: albedo 0.2 of what falls on it */
                     u.gndc[k] = 0.2f * (u.sunc[k] * fmaxf(sun[2], 0.0f) + u.skyc[k]);
+                /* the ambient light on level ground, for the night's exposure (next frame's) */
+                s_amb_Y = (0.2126f * u.sunc[0] + 0.7152f * u.sunc[1] + 0.0722f * u.sunc[2]) * fmaxf(sun[2], 0.0f)
+                        + 0.2126f * u.skyc[0] + 0.7152f * u.skyc[1] + 0.0722f * u.skyc[2];
                 u.fogc[3] = 1.0f;
             }
         }
@@ -1837,6 +1849,7 @@ static void lit_present(void)
     [e setFragmentTexture:hdr atIndex:0];
     [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
     [e setFragmentTexture:s_galb atIndex:2];
+    [e setFragmentTexture:s_nbl ? s_bl[s_nbl > 3 ? 2 : s_nbl - 1] : hdr atIndex:3];   /* the local exposure's blur: a mid level of the bloom chain */
     [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
     [e setFragmentBytes:&gl length:sizeof gl atIndex:2];   /* the sun's glare (brr_metal_glare.h) */
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
