@@ -202,6 +202,132 @@ static void gpu_converge(id<MTLDevice> dev, int karis, float A, float B, float x
     check(maxc < 0.02, what, "max coverage error %.4f (limit %.2f)", maxc, 0.02);
 }
 
+/* (6) the lit frame's scaled path through brr_taa_resolve: a 3024 x 1964
+ * target (a 14" Retina) at the default scale and at the controller's ends,
+ * synthetic colour, depth (Depth32Float, cleared to 1, less-than: not
+ * reversed) and G-buffer positions; the output at the target's size, the
+ * command buffer completes without an error */
+static id<MTLTexture> synth(id<MTLDevice> dev, MTLPixelFormat f, int w, int h, MTLTextureUsage use)
+{
+    MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:f width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+    td.usage = use;
+    td.storageMode = MTLStorageModePrivate;
+    return [dev newTextureWithDescriptor:td];
+}
+
+static void metalfx_upscale(id<MTLDevice> dev)
+{
+    static const float sc[3] = { 0.67f, 0.5f, 1.0f };
+    const int tw = 3024, th = 1964;
+    float S[16], vp[16], e[3] = { 0, 0, 5 }, t[3] = { 50, 0, 0 }, xft[4] = { 2.0f / 640.0f, -1.0f, -2.0f / 480.0f, 1.0f };
+    int k, up = 0;
+    float d = brr_taa_scale(dev, tw, th, 0.0f, &up);
+    check(fabsf(d - 0.67f) < 1e-6f && up, "default scale on a 3024x1964 target (over 2.5 MP)", "%.2f, through MetalFX %.0f", d, up);
+    d = brr_taa_scale(dev, 1920, 1080, 0.0f, &up);
+    check(d == 1.0f && !up, "scale on a 1920x1080 target (2.1 MP)", "%.2f, through MetalFX %.0f", d, up);
+    camvp(e, t, 1.0f, (float)tw / th, vp);
+    for (k = 0; k < 3; k++) {
+        int lw = (int)lroundf(tw * sc[k]), lh = (int)lroundf(th * sc[k]), f;
+        id<MTLCommandQueue> q = [dev newCommandQueue];
+        id<MTLCommandBuffer> cb = nil;
+        id<MTLTexture> hdr = synth(dev, MTLPixelFormatRGBA16Float, lw, lh, MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead);
+        id<MTLTexture> gpos = synth(dev, MTLPixelFormatRGBA32Float, lw, lh, MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead);
+        id<MTLTexture> dep = synth(dev, MTLPixelFormatDepth32Float, lw, lh, MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead);
+        id<MTLBuffer> xt = [dev newBufferWithBytes:xft length:sizeof xft options:MTLResourceStorageModeShared];
+        id<MTLTexture> out = nil;
+        double ms = 0;
+        brr_screen_matrix(vp, 320, 320, 240, 240, 0, xft, (float)lw, (float)lh, S);
+        brr_taa_reset();
+        for (f = 0; f < 4; f++) {
+            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+            cb = [q commandBuffer];
+            rp.colorAttachments[0].texture = hdr;
+            rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+            rp.colorAttachments[0].clearColor = MTLClearColorMake(0.2 * f, 0.5, 0.8, 1);
+            rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+            rp.colorAttachments[1].texture = gpos;
+            rp.colorAttachments[1].loadAction = MTLLoadActionClear;
+            rp.colorAttachments[1].clearColor = MTLClearColorMake(40, 3, 1, 1);
+            rp.colorAttachments[1].storeAction = MTLStoreActionStore;
+            rp.depthAttachment.texture = dep;
+            rp.depthAttachment.loadAction = MTLLoadActionClear;
+            rp.depthAttachment.clearDepth = 0.5 + 0.1 * f;
+            rp.depthAttachment.storeAction = MTLStoreActionStore;
+            [[cb renderCommandEncoderWithDescriptor:rp] endEncoding];
+            brr_taa_begin(dev, xt, 0, 1, lw, lh, NULL);
+            out = brr_taa_resolve(dev, cb, hdr, gpos, dep, S, vp, e, tw, th, 1);
+            [cb commit];
+            [cb waitUntilCompleted];
+            if (cb.status != MTLCommandBufferStatusCompleted)
+                break;
+            ms = (cb.GPUEndTime - cb.GPUStartTime) * 1000.0;
+        }
+        {
+            char what[200];
+            snprintf(what, sizeof what, "MetalFX upscale %dx%d -> %dx%d (scale %.2f): output at the target's size, 4 frames complete", lw, lh, tw, th, sc[k]);
+            check(out && (int)out.width == tw && (int)out.height == th && cb.status == MTLCommandBufferStatusCompleted, what,
+                  "status %.0f, last frame %.3f ms GPU", (double)cb.status, ms);
+        }
+    }
+    brr_taa_reset();
+}
+
+/* (5) the lit 3D at an internal size: the screen map (brr_screen_matrix) at
+ * the internal size takes the game's viewport corners to the internal
+ * target's corners, and a world point to its full-size pixel x the scale */
+static void scaled_map(void)
+{
+    static const int T[3][2] = { { 3024, 1964 }, { 2560, 1600 }, { 1920, 1080 } };
+    static const float S[3] = { 0.67f, 0.5f, 0.85f };
+    float e[3] = { 10, -40, 12 }, t[3] = { 60, 30, 0 }, vp[16];
+    float xft[4] = { 2.0f / 640.0f, -1.0f, -2.0f / 480.0f, 1.0f };   /* the game's 640 x 480 to ndc, rows down */
+    double worst_c = 0, worst_p = 0, worst_m = 0;
+    int a, b, k, q;
+    camvp(e, t, 1.0f, 640.0f / 480.0f, vp);
+    for (a = 0; a < 3; a++)
+        for (b = 0; b < 3; b++) {
+            float tw = (float)T[a][0], th = (float)T[a][1];
+            float lw = roundf(tw * S[b]), lh = roundf(th * S[b]), Sf[16], Si[16];
+            brr_screen_matrix(vp, 320.0f, 320.0f, 240.0f, 240.0f, 0.0f, xft, tw, th, Sf);
+            brr_screen_matrix(vp, 320.0f, 320.0f, 240.0f, 240.0f, 0.0f, xft, lw, lh, Si);
+            /* the viewport's corners (clip x / w, y / w = +-1: the game's x = +-sx + ox) through the
+               internal matrix: a clip point [cx w, cy w, *, w] gives (A cx w + B w, C cy w + D w, w),
+               the matrix's rows being A vp0 + B vp3 and C vp1 + D vp3 */
+            for (k = 0; k < 4; k++) {
+                float cx = (k & 1) ? 1.0f : -1.0f, cy = (k & 2) ? 1.0f : -1.0f, ww = 7.0f, cc[4], hh[4];
+                double ex = cx > 0 ? lw : 0.0, ey = cy > 0 ? lh : 0.0;   /* the game's rows run down: its y = sy + oy is the bottom */
+                /* recover the rows' action on clip space: S = M vp with M's rows (A,0,0,B), (0,C,0,D), (0,0,0,0), (0,0,0,1) */
+                float A = 0.5f * lw * xft[0] * 320.0f, B = 0.5f * lw * (1.0f + xft[0] * 320.0f + xft[1]);
+                float C = -0.5f * lh * xft[2] * 240.0f, D = 0.5f * lh * (1.0f - xft[2] * 240.0f - xft[3]);
+                cc[0] = cx * ww; cc[1] = cy * ww; cc[2] = 0.0f; cc[3] = ww;
+                hh[0] = A * cc[0] + B * cc[3];
+                hh[1] = C * cc[1] + D * cc[3];
+                hh[3] = cc[3];
+                worst_c = fmax(worst_c, fabs(hh[0] / hh[3] - ex) + fabs(hh[1] / hh[3] - ey));
+            }
+            {   /* the matrix built is M vp: check M against S on vp's columns */
+                int i;
+                float A = 0.5f * lw * xft[0] * 320.0f, B = 0.5f * lw * (1.0f + xft[0] * 320.0f + xft[1]);
+                float C = -0.5f * lh * xft[2] * 240.0f, D = 0.5f * lh * (1.0f - xft[2] * 240.0f - xft[3]);
+                for (i = 0; i < 4; i++)
+                    worst_m = fmax(worst_m, fabs(Si[4 * i] - (A * vp[4 * i] + B * vp[4 * i + 3])) +
+                                            fabs(Si[4 * i + 1] - (C * vp[4 * i + 1] + D * vp[4 * i + 3])));
+            }
+            /* world points across the view: internal pixel = full pixel x (internal / full size) */
+            for (q = 0; q < 64; q++) {
+                float p[3] = { 20.0f + 7.0f * (float)(q % 8), -10.0f + 9.0f * (float)(q / 8), (float)(q % 5) }, f[2], g[2];
+                if (!brr_taa_reproject(Sf, p, 1.0f, f) || !brr_taa_reproject(Si, p, 1.0f, g))
+                    continue;
+                worst_p = fmax(worst_p, fmax(fabs(g[0] - f[0] * lw / tw), fabs(g[1] - f[1] * lh / th)));
+            }
+        }
+    check(worst_c < 1e-3, "scaled screen map: the game's viewport corners on the internal target's corners (3 targets x 3 scales, float32 rounding)",
+          "max error %.3g px (limit %.0g)", worst_c, 1e-3);
+    check(worst_m < 1e-3, "scaled screen map: the matrix built = the viewport map above x the view projection", "max error %.2g (limit %.0g)", worst_m, 1e-3);
+    check(worst_p < 0.01, "scaled screen map: a world point at internal pixel = full pixel x scale (64 points, 9 sizes)",
+          "max error %.4f px (limit %.2f)", worst_p, 0.01);
+}
+
 int main(void)
 {
     @autoreleasepool {
@@ -209,6 +335,7 @@ int main(void)
         int i, n, ok;
         double mx = 0, my = 0, worst = 0;
         float jit[2], ndc[2];
+        scaled_map();
         /* (1) Halton and the jitter */
         for (n = 0; n < TAA_PHASES; n++) {
             brr_taa_jitter((unsigned)n, 640, 480, jit, ndc);
@@ -337,6 +464,7 @@ int main(void)
                 id fx = brr_taa_metalfx_make(dev, 858, 483, 1280, 720);
                 id fx1 = brr_taa_metalfx_make(dev, 1280, 720, 1280, 720);
                 check(fx != nil && fx1 != nil, "MetalFX scaler made (0.67 internal scale, and 1:1)", "%.0f %.0f", fx != nil, fx1 != nil);
+                metalfx_upscale(dev);
             }
         }
         printf("%s\n", fails ? "TAA: FAIL" : "TAA: all pass");

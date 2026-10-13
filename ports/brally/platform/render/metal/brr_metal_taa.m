@@ -22,12 +22,22 @@ static id<MTLLibrary> s_tlib;
 static id<MTLRenderPipelineState> s_tres, s_tmot;
 static id<MTLTexture> s_th[2], s_td[2], s_tmv;
 static id<MTLBuffer> s_txt[3];
-static int s_tw, s_tptr, s_tmode = -1, s_thave;
+static long s_tw;
+static int s_tptr, s_tmode = -1, s_thave;
 static unsigned s_tn;
 static float s_tjit[2], s_tS[16];
 #ifdef BRR_HAVE_METALFX
 static id s_fx;                         /* id<MTLFXTemporalScaler> */
 #endif
+
+static int s_fxok(void)
+{
+#ifdef BRR_HAVE_METALFX
+    return s_fx != nil;
+#else
+    return 0;
+#endif
+}
 
 int brr_taa_mode(void)
 {
@@ -130,28 +140,34 @@ id<MTLBuffer> brr_taa_begin(id<MTLDevice> dev, id<MTLBuffer> xt, int slot, int n
 }
 
 id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> hdr, id<MTLTexture> gpos,
-                               id<MTLTexture> depth, const float S[16], const float vp[16], const float eye[3])
+                               id<MTLTexture> depth, const float S[16], const float vp[16], const float eye[3],
+                               int ow, int oh, int fx)
 {
     TU u;
     float F[16], cen[2] = { 0, 0 }, ctr[3];
     int w = (int)hdr.width, h = (int)hdr.height, k, reset;
+    long key = ((long)w * 65536 + h) * 4 + (fx ? 2 : 0) + (ow != w || oh != h);
     MTLRenderPassDescriptor *rp;
     id<MTLRenderCommandEncoder> e;
     if (!brr_taa_mode() || !s_tres)
         return hdr;
     s_tn++;
-    if (!s_th[0] || s_tw != w * 65536 + h) {
+    if (!s_th[0] || s_tw != key || (int)s_th[0].width != ow || (int)s_th[0].height != oh) {
+        /* the output (history) at the target's size, motion and the view
+           distances at the input's; MetalFX from input to output */
         for (k = 0; k < 2; k++) {
-            s_th[k] = tex(dev, MTLPixelFormatRGBA16Float, w, h);
+            s_th[k] = tex(dev, MTLPixelFormatRGBA16Float, ow, oh);
             s_td[k] = tex(dev, MTLPixelFormatR32Float, w, h);
         }
         s_tmv = tex(dev, MTLPixelFormatRG16Float, w, h);
-        s_tw = w * 65536 + h;
+        s_tw = key;
         s_thave = 0;
 #ifdef BRR_HAVE_METALFX
-        s_fx = brr_taa_mode() == 2 ? brr_taa_metalfx_make(dev, w, h, w, h) : nil;
+        s_fx = brr_taa_mode() == 2 || fx ? brr_taa_metalfx_make(dev, w, h, ow, oh) : nil;
 #endif
     }
+    if (!s_fxok() && (ow != w || oh != h))
+        return hdr;                     /* no scaler for a scaled frame: the caller does not ask for one (brr_taa_scale) */
     memset(&u, 0, sizeof u);
     memcpy(u.S, s_tS, sizeof u.S);
     brr_taa_full(S, vp, F);
@@ -194,6 +210,7 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
             fx.motionVectorScaleX = 1.0f;
             fx.motionVectorScaleY = 1.0f;
             fx.reset = reset ? YES : NO;
+            fx.depthReversed = NO;      /* the lit 3D's depth: cleared to 1, less-than (near 0, far 1) */
             [fx encodeToCommandBuffer:cb];
             id<MTLTexture> out = s_th[s_tptr];
             s_tptr ^= 1;
@@ -224,6 +241,46 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
         s_tptr ^= 1;
         return out;
     }
+}
+
+/* the lit 3D's internal scale for a target tw x th: 1 without MetalFX (or
+ * with TAA off); BR_LIGHT_SCALE fixes it (0.5 to 1); otherwise, on a target
+ * over 2.5 MP, from 0.67, the dynamic resolution controller's (16.6 ms, 0.5
+ * to 1) fed with the last whole frame's GPU time (gpu_ms <= 0: none yet).
+ * *up: 1 when the frame goes through MetalFX's scaler (at any scale, so a
+ * move to 1.0 keeps the same look) */
+float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
+{
+    static int env = -1, sup = -1;
+    static float fixed;
+    static BrrDynRes d;
+    const char *e;
+    *up = 0;
+    if (!brr_taa_mode())
+        return 1.0f;
+    if (sup < 0)
+        sup = brr_taa_metalfx_supported(dev);
+    if (env < 0) {
+        e = getenv("BR_LIGHT_SCALE");
+        env = e != NULL;
+        fixed = e ? fminf(1.0f, fmaxf(0.5f, (float)atof(e))) : 1.0f;
+    }
+    if (!sup)
+        return 1.0f;
+    if (env) {
+        *up = fixed < 1.0f || brr_taa_mode() == 2;
+        return fixed;
+    }
+    if ((double)tw * (double)th <= 2.5e6)
+        return 1.0f;
+    *up = 1;
+    if (d.scale <= 0.0f) {
+        d.scale = 0.67f;
+        d.ms = 16.6f;
+    }
+    if (gpu_ms > 0.0f)
+        brr_taa_dynres(&d, gpu_ms, 16.6f, 0.5f);
+    return d.scale;
 }
 
 void brr_taa_reset(void)

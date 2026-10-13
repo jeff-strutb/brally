@@ -1343,3 +1343,41 @@ Measured (lighttest maths.sh test_carpaint, carpaint.sh):
 
 Left: glass and wheels as their own materials, a flake term, and a check of
 the classification's hit rate in a race (a run).
+
+## The lit 3D at an internal resolution, MetalFX upscale (2026-10-13)
+
+The lit frame's 3D (G-buffer, its depth, HDR, lighting, reflections, fog,
+transparents) is drawn at target x scale and taken to the target's size by
+MetalFX's temporal scaler; bloom, post and the 2D, HUD and LFB replay stay
+at the target's size. The scale (brr_taa_scale, brr_metal_taa.m): 1 without
+MetalFX or with BR_LIGHT_TAA=0 (the own TAA as before); on a target over
+2.5 MP it starts at 0.67 and the dynamic resolution controller moves it (16.6
+ms, 0.5 to 1) from the last lit frame's command buffer GPU time;
+BR_LIGHT_SCALE fixes it. At 2.5 MP or less nothing changes.
+
+The screen map table needs no scale of its own: it maps to ndc, so the lit
+3D lands in the smaller targets as it is; the jitter is in the internal
+target's pixels, the scissors are scaled outward to whole pixels, and the
+world-to-pixel matrices (TAA motion, contact shadows, volumetric fog, the
+sky's target size) are built at the internal size. The 2D pass clears its
+depth when the 3D is scaled (the 3D's depth is not at its size). MetalFX:
+motion in input pixels, previous minus current (scale 1, 1); depth
+Depth32Float cleared to 1, less-than (depthReversed NO); jitter negated
+(the scaler's convention is the offset to undo); auto exposure off, the HDR
+is pre-exposed.
+
+| check (taa.sh) | result |
+|---|---|
+| viewport corners to the internal target's corners, 3 targets x 3 scales | 7e-5 px (float32) |
+| a world point at internal pixel = full pixel x scale, 64 points x 9 sizes | 0.0005 px |
+| default scale 3024x1964 / 1920x1080 | 0.67 through MetalFX / 1.00 own TAA |
+| MetalFX 2026x1316, 1512x982, 3024x1964 to 3024x1964 (synthetic, 4 frames) | output at target size, buffers complete |
+| maths.sh, shadow.sh; macOS link64, iOS compile | pass; 0 errors |
+
+Pixels: 3024x1964 is 5.94 MP, 2.86 times 1080p; at 0.67, 2026x1316 is 2.67
+MP (45%, 55% fewer), 1.29 times 1080p. The day lighting at 6.9 ms at 1080p
+would be about 19.7 ms at the full Retina size and about 8.9 ms at 0.67;
+the other per-pixel lit 3D passes shrink by the same 55%. MetalFX's own cost
+at this size is not yet measured cleanly (the harness's frames include
+clearing synthetic targets). Open: the cost of the scaler in a frame and
+the dynamic resolution's behaviour in a race (a run).
