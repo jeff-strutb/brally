@@ -23,7 +23,7 @@
 #define BRR_METAL_LIT_H
 
 #define BRR_LIT_SRC \
-"struct LU { float4x4 sunvp; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc; };\n" \
+"struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc; };\n" \
 "struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n" \
 /* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
    low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
@@ -59,17 +59,33 @@
 "  float F = 0.04 + 0.96 * pow(1.0 - max(dot(h, v), 0.0), 5.0);\n" \
 "  return (alb / 3.14159 * (1.0 - F) + D * Vs * F) * nl;\n" \
 "}\n" \
-"static float sunvis(constant LU &u, depth2d<float> sm, float3 p, float3 n) {\n" \
-"  if (u.misc.y < 0.5) return 1.0;\n" \
+/* the sun's visibility from its cascades: the cascade by view depth, the
+ * next one blended in over the last tenth of each, faded out at the end of
+ * the last; the receiver pushed along its normal by one to three texels of
+ * its cascade and compared one texel nearer, both growing as the surface
+ * turns from the sun (slope-scaled: the depth a texel spans on it); 3x3
+ * filtered comparisons */ \
+"static float casvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n, int k) {\n" \
 "  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
-"  float4 c = u.sunvp * float4(p + n * 0.05, 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
+"  float nl = clamp(dot(n, u.sun.xyz), 0.05, 1.0), tn = min(sqrt(1.0 - nl * nl) / nl, 8.0);\n" \
+"  float4 c = u.sunvp[k] * float4(p + n * u.ctexel[k] * (1.0 + 2.0 * (1.0 - nl)), 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
 "  if (any(st <= 0.0) || any(st >= 1.0) || c.z >= 1.0) return 1.0;\n" \
 "  float2 tx = 1.0 / float2(sm.get_width(), sm.get_height()); float vis = 0.0;\n" \
-"  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) vis += sm.sample_compare(cs, st + float2(x, y) * tx, c.z - 0.0008);\n" \
+"  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) vis += sm.sample_compare(cs, st + float2(x, y) * tx, uint(k), c.z - u.cbias[k] * (1.0 + tn));\n" \
 "  return vis / 9.0;\n" \
 "}\n" \
+"static float sunvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n) {\n" \
+"  if (u.misc.y < 0.5) return 1.0;\n" \
+"  float d = dot(p - u.eye.xyz, u.cfwd.xyz); int k = 0;\n" \
+"  while (k < 3 && d > u.csplit[k]) k++;\n" \
+"  if (d > u.csplit[3]) return 1.0;\n" \
+"  float d0 = k ? u.csplit[k - 1] : 0.0, w = saturate((d - mix(d0, u.csplit[k], 0.9)) / max(0.1 * (u.csplit[k] - d0), 1e-3));\n" \
+"  float vis = casvis(u, sm, p, n, k);\n" \
+"  if (w > 0.0) vis = mix(vis, k < 3 ? casvis(u, sm, p, n, k + 1) : 1.0, w);\n" \
+"  return vis;\n" \
+"}\n" \
 /* the light leaving a surface toward the eye, cd/m2, before exposure */ \
-"static float3 radiance(constant LU &u, const device LS *ls, depth2d<float> sm, float3 p, float3 n, float3 alb, float rough, float glow) {\n" \
+"static float3 radiance(constant LU &u, const device LS *ls, depth2d_array<float> sm, float3 p, float3 n, float3 alb, float rough, float glow) {\n" \
 "  float3 v = normalize(u.eye.xyz - p); if (dot(n, v) < 0) n = -n;\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sunvis(u, sm, p, n);\n" \
 "  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
@@ -111,7 +127,7 @@
 /* the deferred lighting */ \
 "fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LS *ls [[buffer(1)]],\n" \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
-"                    depth2d<float> sm [[texture(3)]]) {\n" \
+"                    depth2d_array<float> sm [[texture(3)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -127,7 +143,7 @@
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LS *ls [[buffer(2)]],\n" \
-"                    depth2d<float> shm [[texture(3)]]) {\n" \
+"                    depth2d_array<float> shm [[texture(3)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = facen(in.wp);\n" \

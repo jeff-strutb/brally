@@ -30,6 +30,17 @@ typedef struct LightCar {
     int has_box;
 } LightCar;
 int  light_game_cars(LightCar *out, int max);
+/* the track: every scene object's triangles in world space (as the
+ * capture's), rebuilt when the race's object table changes (gen counts the
+ * rebuilds) */
+typedef struct LightTrack {
+    float *tri;              /* ntri x 3 corners x xyz */
+    int *obj;                /* the object each triangle belongs to */
+    int ntri, nobj, nbill;    /* nbill: objects with no rotation */
+    unsigned gen;
+    float lo[3], hi[3];
+} LightTrack;
+const LightTrack *light_game_track(void);
 
 /* ---- the scene's lights (light_scene.c) ------------------------------------------
  * every light this frame in world space, physical units: candela along the

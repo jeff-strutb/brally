@@ -237,6 +237,132 @@ static void dump(const char *path)
     fprintf(stderr, "light: frame %u, %d camera triangles -> %s (and %s)\n", s_frame, n / 3, path, png);
 }
 
+/* BR_LIGHT_TRACKCHECK=1: does the track (light_game_track) hold what the
+ * camera drew?  Every camera vertex is tested for lying on a track
+ * triangle (within 0.05 units: clipping makes corners that are no track
+ * vertex, but they lie on its surface); once a second, the share that do.
+ * The cars and their effects are not track, so they are the expected rest. */
+#define TC_CELL 16.0f
+#define TC_HASH 65536
+static struct { unsigned gen; int *head, *next, *tri, n, cap; double on, all, car, miss[5]; unsigned mstate[256]; } s_tc;
+
+static unsigned tc_key(int x, int y, int z) { return ((unsigned)x * 73856093u ^ (unsigned)y * 19349663u ^ (unsigned)z * 83492791u) & (TC_HASH - 1); }
+
+static void tc_build(const LightTrack *t)
+{
+    int i;
+    s_tc.gen = t->gen;
+    s_tc.n = 0;
+    if (!s_tc.head)
+        s_tc.head = malloc(TC_HASH * sizeof *s_tc.head);
+    for (i = 0; i < TC_HASH; i++)
+        s_tc.head[i] = -1;
+    for (i = 0; i < t->ntri; i++) {
+        const float *p = &t->tri[9 * i];
+        int lo[3], hi[3], a, x, y, z;
+        for (a = 0; a < 3; a++) {
+            lo[a] = (int)floorf(fminf(fminf(p[a], p[3 + a]), p[6 + a]) / TC_CELL);
+            hi[a] = (int)floorf(fmaxf(fmaxf(p[a], p[3 + a]), p[6 + a]) / TC_CELL);
+            if (hi[a] - lo[a] > 32)
+                hi[a] = lo[a] + 32;
+        }
+        for (x = lo[0]; x <= hi[0]; x++)
+            for (y = lo[1]; y <= hi[1]; y++)
+                for (z = lo[2]; z <= hi[2]; z++) {
+                    unsigned k = tc_key(x, y, z);
+                    if (s_tc.n == s_tc.cap) {
+                        int c = s_tc.cap ? s_tc.cap * 2 : 1 << 20;
+                        s_tc.next = realloc(s_tc.next, (size_t)c * sizeof *s_tc.next);
+                        s_tc.tri = realloc(s_tc.tri, (size_t)c * sizeof *s_tc.tri);
+                        s_tc.cap = c;
+                    }
+                    s_tc.tri[s_tc.n] = i;
+                    s_tc.next[s_tc.n] = s_tc.head[k];
+                    s_tc.head[k] = s_tc.n++;
+                }
+    }
+}
+
+/* the distance from p to triangle abc (Ericson, Real-Time Collision Detection 5.1.5) */
+static float tc_dist(const float *p, const float *a, const float *b, const float *c)
+{
+    float ab[3], ac[3], ap[3], bp[3], cp[3], q[3], d1, d2, d3, d4, d5, d6, va, vb, vc, v, w, den;
+    int k;
+    for (k = 0; k < 3; k++) { ab[k] = b[k] - a[k]; ac[k] = c[k] - a[k]; ap[k] = p[k] - a[k]; bp[k] = p[k] - b[k]; cp[k] = p[k] - c[k]; }
+#define D(u, v) ((u)[0] * (v)[0] + (u)[1] * (v)[1] + (u)[2] * (v)[2])
+    d1 = D(ab, ap); d2 = D(ac, ap); d3 = D(ab, bp); d4 = D(ac, bp); d5 = D(ab, cp); d6 = D(ac, cp);
+#undef D
+    if (d1 <= 0 && d2 <= 0) { memcpy(q, a, 12); goto out; }
+    if (d3 >= 0 && d4 <= d3) { memcpy(q, b, 12); goto out; }
+    vc = d1 * d4 - d3 * d2;
+    if (vc <= 0 && d1 >= 0 && d3 <= 0) { v = d1 / (d1 - d3); for (k = 0; k < 3; k++) q[k] = a[k] + v * ab[k]; goto out; }
+    if (d6 >= 0 && d5 <= d6) { memcpy(q, c, 12); goto out; }
+    vb = d5 * d2 - d1 * d6;
+    if (vb <= 0 && d2 >= 0 && d6 <= 0) { w = d2 / (d2 - d6); for (k = 0; k < 3; k++) q[k] = a[k] + w * ac[k]; goto out; }
+    va = d3 * d6 - d5 * d4;
+    if (va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0) {
+        w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        for (k = 0; k < 3; k++) q[k] = b[k] + w * (c[k] - b[k]);
+        goto out;
+    }
+    den = 1.0f / (va + vb + vc);
+    v = vb * den; w = vc * den;
+    for (k = 0; k < 3; k++) q[k] = a[k] + ab[k] * v + ac[k] * w;
+out:
+    for (k = 0; k < 3; k++) q[k] -= p[k];
+    return sqrtf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
+}
+
+static void tc_frame(void)
+{
+    const LightTrack *t = light_game_track();
+    LightCar car[20];
+    int i, j, nc = light_game_cars(car, 20);
+    if (!t || !t->ntri)
+        return;
+    if (nc && s_frame == 1000)
+        fprintf(stderr, "light: car 0 pos %.2f %.2f %.2f fwd %.2f %.2f %.2f up %.2f %.2f %.2f box %d %.2f..%.2f %.2f..%.2f %.2f..%.2f\n",
+                car[0].pos[0], car[0].pos[1], car[0].pos[2], car[0].fwd[0], car[0].fwd[1], car[0].fwd[2], car[0].up[0], car[0].up[1], car[0].up[2],
+                car[0].has_box, car[0].lo[0], car[0].hi[0], car[0].lo[1], car[0].hi[1], car[0].lo[2], car[0].hi[2]);
+    if (t->gen != s_tc.gen)
+        tc_build(t);
+    for (i = 0; i < s_ntri; i++) {
+        if (s_tri[i].view != 0)
+            continue;
+        for (j = 0; j < 3; j++) {
+            const float *p = s_tri[i].p[j];
+            int c, oncar = 0;
+            for (c = 0; c < nc && !oncar; c++) {   /* a car is not track: inside its box, in its own frame */
+                float d[3] = { p[0] - car[c].pos[0], p[1] - car[c].pos[1], p[2] - car[c].pos[2] };
+                float l[3] = { d[0] * car[c].fwd[0] + d[1] * car[c].fwd[1] + d[2] * car[c].fwd[2],
+                               d[0] * car[c].side[0] + d[1] * car[c].side[1] + d[2] * car[c].side[2],
+                               d[0] * car[c].up[0] + d[1] * car[c].up[1] + d[2] * car[c].up[2] };
+                int a;
+                oncar = car[c].has_box;
+                for (a = 0; a < 3 && oncar; a++)
+                    oncar = l[a] > car[c].lo[a] - 0.5f && l[a] < car[c].hi[a] + 0.5f;
+            }
+            if (oncar) {
+                s_tc.car++;
+                continue;
+            }
+            unsigned k = tc_key((int)floorf(p[0] / TC_CELL), (int)floorf(p[1] / TC_CELL), (int)floorf(p[2] / TC_CELL));
+            int e, on = 0;
+            float best = 1e30f;
+            for (e = s_tc.head[k]; e >= 0 && !on; e = s_tc.next[e]) {
+                const float *q = &t->tri[9 * s_tc.tri[e]];
+                best = fminf(best, tc_dist(p, q, q + 3, q + 6));
+                on = best < 0.05f;
+            }
+            s_tc.on += on;
+            s_tc.all++;
+            s_tc.miss[best < 0.05f ? 0 : best < 0.5f ? 1 : best < 5.0f ? 2 : best < 1e29f ? 3 : 4]++;
+            if (!on && j == 0)
+                s_tc.mstate[s_tri[i].state & 0xFF]++;
+        }
+    }
+}
+
 void light_capture_swap(void)
 {
     static int stats = -1, dump_at = -1;
@@ -259,6 +385,13 @@ void light_capture_swap(void)
         if (log && s_ntri)
             fprintf(log, "%u %u %u %u\n", s_frame, s_fr[0], s_fr[2], s_fr[3]);
         memset(s_fr, 0, sizeof s_fr);
+    }
+    {
+        static int tc = -1;
+        if (tc < 0)
+            tc = getenv("BR_LIGHT_TRACKCHECK") != NULL;
+        if (tc && s_ntri)
+            tc_frame();
     }
     s_frame++;
     if (s_ntri)
@@ -283,6 +416,21 @@ void light_capture_swap(void)
                         fprintf(stderr, " %d/%d x%u", b & 15, b >> 4, s_blend[b]);
                 fprintf(stderr, "\n");
                 memset(s_blend, 0, sizeof s_blend);
+            }
+            if (s_tc.all > 0) {
+                int b;
+                fprintf(stderr, "light: %.2f%% of %.0f camera vertices off the cars lie on the track (%.0f on cars); nearest track triangle"
+                                " <0.05 %.0f, <0.5 %.0f, <5 %.0f, farther %.0f, none in the cell %.0f\n",
+                        100.0 * s_tc.on / s_tc.all, s_tc.all, s_tc.car, s_tc.miss[0], s_tc.miss[1], s_tc.miss[2], s_tc.miss[3], s_tc.miss[4]);
+                s_tc.car = 0;
+                fprintf(stderr, "light: triangles off the track by blend (src/dst):");
+                for (b = 0; b < 256; b++)
+                    if (s_tc.mstate[b])
+                        fprintf(stderr, " %d/%d x%u", b & 15, b >> 4, s_tc.mstate[b]);
+                fprintf(stderr, "\n");
+                memset(s_tc.miss, 0, sizeof s_tc.miss);
+                memset(s_tc.mstate, 0, sizeof s_tc.mstate);
+                s_tc.on = s_tc.all = 0;
             }
             memset(&s_st, 0, sizeof s_st);
             t0 = now;

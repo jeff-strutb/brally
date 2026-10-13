@@ -25,6 +25,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <ImageIO/ImageIO.h>
 #include <TargetConditionals.h>
+#include <simd/simd.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -411,15 +412,21 @@ static int s_nbl;
 static id<MTLTexture> s_emask[TEX_MAX], s_black;
 static id<MTLRenderPipelineState> s_lpg, s_lpb, s_lpl, s_lpf[16][16], s_lbd, s_lbu, s_lbua, s_lpp, s_shpipe;
 static id<MTLDepthStencilState> s_shds, s_nods;
-static float *s_tris;               /* this frame's opaque 3D in world space: the shadow map's casters */
+static float *s_tris;               /* this frame's opaque 3D in world space: its moving casters (cars, start lights) */
+static id<MTLBuffer> s_trkbuf;       /* the whole track's triangles (light_game_track): the static casters */
+static unsigned s_trkgen;
+static int s_trkn;
+static float s_trklo[3], s_trkhi[3];
 static size_t s_ntris, s_captris;
 static id<MTLBuffer> s_hist[3], s_spots[3];
 static float s_ev = 1e9f;
 #define SHADOW_SIZE 2048
+#define CASCADES 4
+#define SHADOW_FAR 300.0f       /* metres: the cascades cover the view this far */
 #define LUM_BINS 64
 #define SPOTS_MAX 128
 
-typedef struct LU { float sunvp[16]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4]; } LU;
+typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4]; } LU;
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
 typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4]; } KU;
 
@@ -550,6 +557,8 @@ static void lit_targets(void)
     if (!s_shadow) {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
                                                                                      width:SHADOW_SIZE height:SHADOW_SIZE mipmapped:NO];
+        td.textureType = MTLTextureType2DArray;
+        td.arrayLength = CASCADES;
         td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
         td.storageMode = MTLStorageModePrivate;
         s_shadow = [s_dev newTextureWithDescriptor:td];
@@ -665,38 +674,93 @@ static float lit_exposure(int w)
     return 1.0f / (1.2f * exp2f(s_ev));
 }
 
-/* the sun's view: an orthographic box around the frame's opaque 3D,
- * looking along the light, column-major */
-static int lit_sunvp(const float sun[3], float m[16])
+/* the sun's shadow cascades (DESIGN.md 5.1): the camera's view out to
+ * SHADOW_FAR split at the practical-scheme distances (lambda 0.7, Zhang
+ * 2006), each split's slice of the view fitted by its bounding sphere in an
+ * orthographic box looking along the light and moved in whole texels (so a
+ * shadow's edge holds still while the camera moves); the box reaches back
+ * toward the sun to the farthest caster: the whole track and this frame's
+ * moving objects.  Matrices column-major. */
+static int lit_cascades(const float sun[3], const float eye[3], LU *u)
 {
-    float f[3] = { -sun[0], -sun[1], -sun[2] }, up[3] = { 0, 0, 1 }, r[3], v[3], len;
-    float lo[3] = { 1e30f, 1e30f, 1e30f }, hi[3] = { -1e30f, -1e30f, -1e30f };
+    LightCamera cam;
+    float f[3] = { -sun[0], -sun[1], -sun[2] }, up[3] = { 0, 0, 1 }, r[3], v[3], len, ray[4][3], fwd[3];
+    float lo = 1e30f, near = 0.5f, far = SHADOW_FAR, lambda = 0.7f;
+    simd_float4x4 a, ia;
     size_t i;
-    int k;
-    if (s_ntris < 3)
+    int k, c;
+    if (!light_capture_camera(&cam) || (s_ntris < 3 && !s_trkn))
         return 0;
     r[0] = f[1] * up[2] - f[2] * up[1]; r[1] = f[2] * up[0] - f[0] * up[2]; r[2] = f[0] * up[1] - f[1] * up[0];
     len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
     for (k = 0; k < 3; k++) r[k] /= len;
     v[0] = r[1] * f[2] - r[2] * f[1]; v[1] = r[2] * f[0] - r[0] * f[2]; v[2] = r[0] * f[1] - r[1] * f[0];
+    /* the view's corner rays and its forward axis, from the inverse of view x projection */
+    memcpy(&a, cam.vp, sizeof a);                /* row vectors stored row-major: a x p is clip */
+    ia = simd_inverse(a);
+    for (c = 0; c < 5; c++) {
+        float x = c == 4 ? 0.0f : (c & 1 ? 1.0f : -1.0f), y = c == 4 ? 0.0f : (c & 2 ? 1.0f : -1.0f), d[3];
+        simd_float4 p0 = simd_mul(ia, simd_make_float4(x, y, 0.0f, 1.0f)), p1 = simd_mul(ia, simd_make_float4(x, y, 0.5f, 1.0f));
+        for (k = 0; k < 3; k++)
+            d[k] = p1[k] / p1[3] - p0[k] / p0[3];
+        len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+        if (!(len > 0))
+            return 0;
+        for (k = 0; k < 3; k++)
+            (c == 4 ? fwd : ray[c])[k] = d[k] / len;
+    }
+    if (fwd[0] * ray[0][0] + fwd[1] * ray[0][1] + fwd[2] * ray[0][2] < 0)   /* the rays point away from the eye */
+        for (k = 0; k < 3; k++) {
+            fwd[k] = -fwd[k];
+            for (c = 0; c < 4; c++)
+                ray[c][k] = -ray[c][k];
+        }
+    /* the casters' reach toward the sun: the track's extent and this frame's 3D */
+    for (c = 0; c < 8 && s_trkn; c++) {
+        float p[3] = { c & 1 ? s_trkhi[0] : s_trklo[0], c & 2 ? s_trkhi[1] : s_trklo[1], c & 4 ? s_trkhi[2] : s_trklo[2] };
+        lo = fminf(lo, p[0] * f[0] + p[1] * f[1] + p[2] * f[2]);
+    }
     for (i = 0; i < s_ntris; i++) {
         const float *p = &s_tris[3 * i];
-        float q[3] = { p[0] * r[0] + p[1] * r[1] + p[2] * r[2], p[0] * v[0] + p[1] * v[1] + p[2] * v[2],
-                       p[0] * f[0] + p[1] * f[1] + p[2] * f[2] };
-        for (k = 0; k < 3; k++) {
-            lo[k] = fminf(lo[k], q[k]);
-            hi[k] = fmaxf(hi[k], q[k]);
-        }
+        lo = fminf(lo, p[0] * f[0] + p[1] * f[1] + p[2] * f[2]);
     }
-    lo[2] -= 50.0f;
-    hi[2] += 1.0f;
-    {
-        float sx = 2.0f / (hi[0] - lo[0] + 1e-3f), sy = 2.0f / (hi[1] - lo[1] + 1e-3f), sz = 1.0f / (hi[2] - lo[2]);
-        float ox = -(hi[0] + lo[0]) * 0.5f * sx, oy = -(hi[1] + lo[1]) * 0.5f * sy, oz = -lo[2] * sz;
+    for (k = 0; k < 3; k++)
+        u->cfwd[k] = fwd[k];
+    for (c = 0; c < CASCADES; c++) {
+        float d0 = c ? u->csplit[c - 1] : near, t = (float)(c + 1) / CASCADES;
+        float d1 = lambda * near * powf(far / near, t) + (1.0f - lambda) * (near + (far - near) * t);
+        float pt[8][3], ctr[3] = { 0, 0, 0 }, rad = 0, q[3], texel, sx, sz, ox, oy, oz, hz;
+        float *m = u->sunvp[c];
+        int j;
+        u->csplit[c] = d1;
+        for (j = 0; j < 8; j++) {
+            float d = j < 4 ? d0 : d1, *rr = ray[j & 3], tt = d / (rr[0] * fwd[0] + rr[1] * fwd[1] + rr[2] * fwd[2]);
+            for (k = 0; k < 3; k++) {
+                pt[j][k] = eye[k] + rr[k] * tt;
+                ctr[k] += pt[j][k] / 8.0f;
+            }
+        }
+        for (j = 0; j < 8; j++) {
+            float dd[3] = { pt[j][0] - ctr[0], pt[j][1] - ctr[1], pt[j][2] - ctr[2] };
+            rad = fmaxf(rad, sqrtf(dd[0] * dd[0] + dd[1] * dd[1] + dd[2] * dd[2]));
+        }
+        rad = ceilf(rad * 16.0f) / 16.0f;             /* a radius that does not flicker with the view's turn */
+        texel = 2.0f * rad / SHADOW_SIZE;
+        q[0] = floorf((ctr[0] * r[0] + ctr[1] * r[1] + ctr[2] * r[2]) / texel) * texel;
+        q[1] = floorf((ctr[0] * v[0] + ctr[1] * v[1] + ctr[2] * v[2]) / texel) * texel;
+        q[2] = ctr[0] * f[0] + ctr[1] * f[1] + ctr[2] * f[2];
+        hz = q[2] + rad + 1.0f;
+        sx = 1.0f / rad;
+        sz = 1.0f / (hz - fminf(lo, q[2] - rad) + 1.0f);
+        ox = -q[0] * sx;
+        oy = -q[1] * sx;
+        oz = -(fminf(lo, q[2] - rad) - 1.0f) * sz;
         m[0] = r[0] * sx; m[4] = r[1] * sx; m[8]  = r[2] * sx; m[12] = ox;
-        m[1] = v[0] * sy; m[5] = v[1] * sy; m[9]  = v[2] * sy; m[13] = oy;
+        m[1] = v[0] * sx; m[5] = v[1] * sx; m[9]  = v[2] * sx; m[13] = oy;
         m[2] = f[0] * sz; m[6] = f[1] * sz; m[10] = f[2] * sz; m[14] = oz;
         m[3] = 0;         m[7] = 0;         m[11] = 0;         m[15] = 1;
+        u->ctexel[c] = texel;
+        u->cbias[c] = texel * sz;                     /* one texel, in this cascade's depth */
     }
     return 1;
 }
@@ -856,7 +920,19 @@ static void lit_present(void)
         for (k = 0; k < 3; k++)
             s_spots[k] = [s_dev newBufferWithLength:SPOTS_MAX * sizeof(LightSpot) options:MTLResourceStorageModeShared];
     u.eye[3] = (float)light_scene_spots((LightSpot *)[s_spots[s_vbi] contents], SPOTS_MAX);
-    u.misc[1] = (float)lit_sunvp(sun, u.sunvp);
+    {   /* the track's triangles, once a track: the shadows' static casters */
+        const LightTrack *t = light_game_track();
+        if (t && t->gen != s_trkgen && t->ntri) {
+            s_trkbuf = [s_dev newBufferWithBytes:t->tri length:(size_t)t->ntri * 9 * sizeof(float) options:MTLResourceStorageModeShared];
+            s_trkn = t->ntri * 3;
+            s_trkgen = t->gen;
+            memcpy(s_trklo, t->lo, sizeof s_trklo);
+            memcpy(s_trkhi, t->hi, sizeof s_trkhi);
+        } else if (!t) {
+            s_trkn = 0;
+        }
+    }
+    u.misc[1] = (float)lit_cascades(sun, eye, &u);
     have_cam = light_capture_camera(&cam);
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
@@ -1023,23 +1099,33 @@ static void lit_present(void)
             op_draw(e, &s_ops[i], 1);
     [e endEncoding];
 
-    /* the sun's shadow map */
+    /* the sun's shadow cascades: the track and this frame's moving objects in each */
     if (u.misc[1] > 0.5f) {
-        id<MTLBuffer> b = [s_dev newBufferWithBytes:s_tris length:s_ntris * 3 * sizeof(float) options:MTLResourceStorageModeShared];
-        rp = [MTLRenderPassDescriptor renderPassDescriptor];
-        rp.depthAttachment.texture = s_shadow;
-        rp.depthAttachment.loadAction = MTLLoadActionClear;
-        rp.depthAttachment.clearDepth = 1.0;
-        rp.depthAttachment.storeAction = MTLStoreActionStore;
-        e = lit_encoder(rp, 2);   /* sun shadow */
-        [e setRenderPipelineState:s_shpipe];
-        [e setDepthStencilState:s_shds];
-        [e setCullMode:MTLCullModeNone];
-        [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
-        [e setVertexBuffer:b offset:0 atIndex:0];
-        [e setVertexBytes:u.sunvp length:sizeof u.sunvp atIndex:1];
-        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ntris];
-        [e endEncoding];
+        id<MTLBuffer> b = s_ntris ? [s_dev newBufferWithBytes:s_tris length:s_ntris * 3 * sizeof(float) options:MTLResourceStorageModeShared] : nil;
+        int c;
+        for (c = 0; c < CASCADES; c++) {
+            rp = [MTLRenderPassDescriptor renderPassDescriptor];
+            rp.depthAttachment.texture = s_shadow;
+            rp.depthAttachment.slice = (NSUInteger)c;
+            rp.depthAttachment.loadAction = MTLLoadActionClear;
+            rp.depthAttachment.clearDepth = 1.0;
+            rp.depthAttachment.storeAction = MTLStoreActionStore;
+            e = lit_encoder(rp, 2);   /* sun shadow */
+            [e setRenderPipelineState:s_shpipe];
+            [e setDepthStencilState:s_shds];
+            [e setCullMode:MTLCullModeNone];
+            [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
+            [e setVertexBytes:u.sunvp[c] length:sizeof u.sunvp[c] atIndex:1];
+            if (s_trkn) {
+                [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_trkn];
+            }
+            if (b) {
+                [e setVertexBuffer:b offset:0 atIndex:0];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ntris];
+            }
+            [e endEncoding];
+        }
     }
 
     /* what the game drew before its 3D (its clears and background fills) is

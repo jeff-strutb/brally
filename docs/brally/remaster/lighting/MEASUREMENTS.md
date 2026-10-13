@@ -224,3 +224,41 @@ One of eight baseline runs started together drew night frame 3,000
 differently; run again, the baseline and this build agree byte for byte.
 That is run-to-run variation in the baseline under load, which the
 Original check has to allow for by repeating a mismatch before reporting it.
+
+## The whole track and the sun's cascades (2026-10-12)
+
+**The track at load** (`light_game_track`, `light_game.c`): the track's
+instance table (`g_brTrkHdr.aInstances`, 0x54-byte records, the table the
+scene draw walks) gives each object's model matrix (an unrotated object,
+flag 0x20 at +0x4D: its scale and position) and its display list at +0x44,
+walked read-only (G_VTX, G_TRI1/2, G_DL, G_ENDDL) into world triangles in
+the capture's space. Coastline: 673 objects (661 unrotated), 643 lists,
+11,364 triangles, x -61..2039, y -10..2116, z -3..49.
+
+Checked against what the camera draws (`BR_LIGHT_TRACKCHECK=1`: each captured
+camera vertex tested for lying within 0.05 on a track triangle): 53% of the
+camera's vertices lie on the track. The rest, at frame 1,000 of
+`20_quickrace_drive` grouped into connected pieces (`BR_LIGHT_TRACKOBJ`,
+`BR_LIGHT_DUMP`), are what the race draws itself: the twelve start-light
+bulbs (3 x 4 hexagons of 18 faces, 1.5..3.6 up), the tyre trail and the cars.
+Those stay this frame's captured casters.
+
+**Cascaded sun shadows**: four 2048^2 cascades over the view to 300 m,
+split at the practical-scheme distances (lambda 0.7), each fitted by its
+slice's bounding sphere and moved in whole texels; reaching back toward the
+sun to the track's extent, so what is behind or above the view casts (the
+start gantry's beam across the road, frame 20,000 below). Bias slope-scaled:
+one texel in the cascade's depth x (1 + tan theta), the receiver pushed one
+to three texels along its normal; the first fit (a flat texel) showed acne
+rings in `BR_LIGHT_VIEW=3`, this one none on the road and banks.
+
+| check | result |
+|---|---|
+| Original unchanged | sunny 1,000 and 1,600, night 1,000 and 3,000: byte-identical to c8194344 |
+| game state | `lightcheck.sh`, `20_quickrace_drive`: identical, 16 dumps |
+
+Headless runs draw about 17 frames a race step, so a race frame is a high
+renderer frame number: the green light is past frame 10,000, and frame
+20,000 is 1.16 s into the race.
+
+![Frame 20,000, 1080p: the gantry beam's shadow from off screen](phase3-cascades.png)
