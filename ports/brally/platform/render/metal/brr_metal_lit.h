@@ -136,12 +136,14 @@
 "  SCD o; o.d = c.read(uint2(pos.xy) + k.yz, k.x); return o; }\n"
 
 #include "brr_metal_night.h"
+#include "brr_metal_vol.h"
 
 #define BRR_LIT_SRC \
 BRR_LU_SRC \
 BRR_WET_SRC \
 BRR_GI_DEFS \
 BRR_GI_SAMPLE_SRC \
+BRR_VOL_AT_SRC \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
@@ -310,12 +312,13 @@ BRR_SHADOW_SRC \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
 "  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, glow, sv, bE, gi)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
 "}\n" \
-/* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
+/* the game's blended 3D, forward-lit; an additive draw is light it adds; vu, iv: the volumetric fog's (brr_vol_bind) */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
 "                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(3)]],\n" \
-"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]]) {\n" \
+"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]],\n" \
+"                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
@@ -325,6 +328,8 @@ BRR_SHADOW_SRC \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
 "    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi);\n" \
 "  }\n" \
+/* the volumetric fog on, the same as the opaque surfaces behind it take (brr_metal_vol.h), never the game's */ \
+"  if (lu.vol.x > 0.5) return float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, preexp(lu, c), u.addk > 0.0), h.o.a);\n" \
 "  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \

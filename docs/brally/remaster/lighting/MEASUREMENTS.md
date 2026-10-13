@@ -1445,3 +1445,28 @@ the other per-pixel lit 3D passes shrink by the same 55%. MetalFX's own cost
 at this size is not yet measured cleanly (the harness's frames include
 clearing synthetic targets). Open: the cost of the scaler in a frame and
 the dynamic resolution's behaviour in a race (a run).
+
+## Volumetric fog on the blended 3D (2026-10-13)
+
+Fog weather showed some buildings and a sign gantry as dark flat shapes.
+Cause: they are blended draws (alpha-tested or alpha-blended textures, so
+not ONE/ZERO: K_BLEND in brr_metal.m's op recording). The volume's
+full-screen pass runs before the transparent pass and fogs only what the
+G-buffer holds (the opaque 3D, the sky, the backdrop); fsf (brr_metal_lit.h)
+then drew the blended 3D with the game's fog amount and colour, which on
+those draws is little or none, over a background the volume had already
+faded. Fix: fsf takes this frame's volume (brr_vol_bind: its uniforms and the
+integrated texture) and, with LU.vol on, returns c * T + S at its pixel and
+distance through vol_fwd, the same lookup (vol_pix, vol_at) the full-screen
+pass uses; an additive draw c * T only. The game's fog colour is not applied
+anywhere in the lit 3D while the volume is on (lfs already dropped it).
+Main-view 3D draws are always captured (K_OPQ, K_BLEND or K_BACK); K_OTHER
+after the 3D is the 2D and the mirror, drawn as the game drew them.
+
+| check (vol.sh) | result |
+|---|---|
+| opaque surface (position target, vol_pix) vs the CPU integration, 256 slice sides | 0 |
+| blended surface (vol_fwd: S, T) vs the CPU integration | 2.4e-7 |
+| blended vs opaque, 512 surfaces at any distance | 2.4e-7 (gate 1e-3) |
+| additive: transmittance only | 0 |
+| vol.sh, maths.sh (73 passed), macOS and iOS offline compiles, link64 | pass |

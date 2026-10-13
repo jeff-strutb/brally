@@ -129,3 +129,21 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
     memcpy(s_peye, eye, sizeof s_peye);
     s_vhave = 1;
 }
+
+/* the forward pass's binding of this frame's volume (fsf: vu, iv), after
+ * brr_vol_frame: the blended 3D fogged as the opaque behind it was */
+void brr_vol_bind(id<MTLRenderCommandEncoder> e, NSUInteger buf, NSUInteger tex)
+{
+    static id<MTLTexture> none;         /* the volume off: a texture to bind, never read */
+    if (!s_vint3 && !none) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor new];
+        td.textureType = MTLTextureType3D;
+        td.pixelFormat = MTLPixelFormatRGBA16Float;
+        td.width = td.height = td.depth = 1;
+        td.usage = MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        none = [e.device newTextureWithDescriptor:td];
+    }
+    [e setFragmentBytes:&s_vu length:sizeof s_vu atIndex:buf];
+    [e setFragmentTexture:s_vint3 ? s_vint3 : none atIndex:tex];
+}

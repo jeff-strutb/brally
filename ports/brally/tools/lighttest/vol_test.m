@@ -182,7 +182,17 @@ static void wr3(id<MTLTexture> t, const float *px)
 
 static const char *k_at =
     "kernel void t_at(uint id [[thread_position_in_grid]], constant VU &v [[buffer(1)]], const device float4 *q [[buffer(2)]],\n"
-    "                 device float4 *o [[buffer(3)]], texture3d<float> iv [[texture(0)]]) { o[id] = vol_at(v, iv, q[id].xy, q[id].z); }\n";
+    "                 device float4 *o [[buffer(3)]], texture3d<float> iv [[texture(0)]]) { o[id] = vol_at(v, iv, q[id].xy, q[id].z); }\n"
+    /* an opaque surface (the full-screen pass's lookup, its world point read from a position target) and a
+       blended one (fsf's, its colour c through the volume: c = 0 gives S, c = 1 gives T + S; additive: T alone)
+       at the same pixel and distance; q: (pixel, distance, the CPU's texel) */
+    "kernel void t_same(uint id [[thread_position_in_grid]], constant VU &v [[buffer(1)]], const device float4 *q [[buffer(2)]],\n"
+    "                   device float4 *o [[buffer(3)]], texture3d<float> iv [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n"
+    "  float3 eye = v.peye.xyz, wp = pos.read(uint2(id, 0)).xyz;\n"
+    "  o[4 * id] = vol_pix(v, iv, q[id].xy, wp, eye);\n"
+    "  o[4 * id + 1] = float4(vol_fwd(v, iv, q[id].xy, wp, eye, float3(0.0), false), 0.0);\n"
+    "  o[4 * id + 2] = float4(vol_fwd(v, iv, q[id].xy, wp, eye, float3(1.0), false), 0.0);\n"
+    "  o[4 * id + 3] = float4(vol_fwd(v, iv, q[id].xy, wp, eye, float3(1.0), true), 0.0); }\n";
 
 static double run(id<MTLCommandQueue> q, id<MTLComputePipelineState> p, __strong id<MTLBuffer> b[4], __strong id<MTLTexture> t[3], MTLSize n, MTLSize g,
                   const LU *u, const BrrVU *v)
@@ -210,7 +220,7 @@ static void gpu(const char *path)
     NSError *err = nil;
     NSString *src = [NSString stringWithContentsOfFile:[NSString stringWithUTF8String:path] encoding:NSUTF8StringEncoding error:&err];
     id<MTLLibrary> lib;
-    id<MTLComputePipelineState> pinj, pint, pat;
+    id<MTLComputePipelineState> pinj, pint, pat, psame;
     id<MTLCommandQueue> q;
     id<MTLTexture> shadow, cell, prev, integ;
     id<MTLBuffer> lsb, b[4] = { nil, nil, nil, nil };
@@ -233,6 +243,7 @@ static void gpu(const char *path)
     pinj = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"vol_inject"] error:&err];
     pint = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"vol_integrate"] error:&err];
     pat = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_at"] error:&err];
+    psame = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_same"] error:&err];
     q = [dev newCommandQueue];
     {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:16 height:16 mipmapped:NO];
@@ -394,6 +405,56 @@ static void gpu(const char *path)
         }
         printf("gpu: vol_at at slices' far sides: max rel diff to the slice %.2e\n", md);
         CHECK(md < 5e-3, "vol_at %g", md);
+    }
+    {   /* every 3D surface the same fog: an opaque and a blended surface at the same pixel and distance take the
+           same transmittance and in-scatter, at slices' far sides the CPU's integration (the slice's value);
+           at any distance the same as each other; an additive one only the transmittance */
+        enum { NQ = 512 };
+        id<MTLBuffer> qb = [dev newBufferWithLength:NQ * 16 options:MTLResourceStorageModeShared];
+        id<MTLBuffer> ob = [dev newBufferWithLength:NQ * 4 * 16 options:MTLResourceStorageModeShared];
+        MTLTextureDescriptor *pd = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float width:NQ height:1 mipmapped:NO];
+        id<MTLTexture> pos;
+        float *qq = [qb contents], *oo, wpos[NQ * 4];
+        double dop = 0, dtr = 0, dsame = 0, dadd = 0;
+        id<MTLBuffer> bb[4] = { nil, nil, qb, ob };
+        pd.usage = MTLTextureUsageShaderRead;
+        pos = [dev newTextureWithDescriptor:pd];
+        memcpy(v.peye, E, sizeof E);
+        for (k = 0; k < NQ; k++) {
+            int xx = (k * 37) % VOL_NX, yy = (k * 11) % VOL_NY, zz = 1 + k % (VOL_NZ - 1);
+            float t = k < NQ / 2 ? vol_t1(zz) : 1.0f + (float)((k * 7919) % 2970) / 10.0f, a = (float)k * 0.731f, el = 0.3f * sinf((float)k);
+            qq[4 * k] = ((float)xx + 0.5f) / VOL_NX * TW; qq[4 * k + 1] = ((float)yy + 0.5f) / VOL_NY * TH;
+            qq[4 * k + 2] = t;
+            qq[4 * k + 3] = (float)(IX(xx, yy, zz) / 4);
+            wpos[4 * k] = E[0] + t * cosf(el) * cosf(a);
+            wpos[4 * k + 1] = E[1] + t * cosf(el) * sinf(a);
+            wpos[4 * k + 2] = E[2] + t * sinf(el);
+            wpos[4 * k + 3] = 0;
+        }
+        [pos replaceRegion:MTLRegionMake2D(0, 0, NQ, 1) mipmapLevel:0 withBytes:wpos bytesPerRow:NQ * 16];
+        {
+            id<MTLTexture> t[3] = { integ, pos, nil };
+            run(q, psame, bb, t, MTLSizeMake(NQ, 1, 1), MTLSizeMake(64, 1, 1), NULL, &v);
+        }
+        oo = [ob contents];
+        for (k = 0; k < NQ; k++) {
+            const float *op = &oo[16 * k], *f0 = &oo[16 * k + 4], *f1 = &oo[16 * k + 8], *fa = &oo[16 * k + 12];
+            const float *w = &got[(size_t)qq[4 * k + 3] * 4];
+            int j;
+            for (j = 0; j < 3; j++) {
+                float tr = f1[j] - f0[j];   /* the blended surface's transmittance and in-scatter */
+                dsame = fmax(dsame, fmax(fabs(f0[j] - op[j]) / fmax(fabs(op[j]), 1.0), fabs(tr - op[3])));
+                dadd = fmax(dadd, fabs(fa[j] - op[3]));
+                if (k < NQ / 2) {
+                    dop = fmax(dop, fmax(fabs(op[j] - w[j]) / fmax(fabs(w[j]), 1.0), fabs(op[3] - w[3])));
+                    dtr = fmax(dtr, fmax(fabs(f0[j] - w[j]) / fmax(fabs(w[j]), 1.0), fabs(tr - w[3])));
+                }
+            }
+        }
+        printf("gpu: an opaque and a blended surface at the same pixel and distance: opaque against the CPU %.2e, blended against the CPU %.2e, "
+               "blended against opaque %.2e (%d surfaces), additive's transmittance %.2e\n", dop, dtr, dsame, NQ, dadd);
+        CHECK(dop < 1e-3 && dtr < 1e-3 && dsame < 1e-3 && dadd < 1e-3, "opaque/blended %g %g %g %g", dop, dtr, dsame, dadd);
+        memset(v.peye, 0, sizeof v.peye);
     }
     {   /* the homogeneous closed form through the GPU: sun and lamp off, the sky an ambient of L = skyc / pi, no height falloff */
         LightSet *l2 = ls;
