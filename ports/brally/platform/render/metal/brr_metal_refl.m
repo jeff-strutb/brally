@@ -1,7 +1,9 @@
 /* brr_metal_refl.m: the reflection pass (brr_metal_refl.h, DESIGN.md 8.4):
  * its compute pipeline, compiled with the BVH's traversal (brr_rt_library),
- * and its dispatch after the deferred lighting: the lit target read, the
- * reflections added into a copy, the copy blitted back. */
+ * and its dispatch after the deferred lighting: the trace at half
+ * resolution into a half-size target (reflk), then the composite (reflc)
+ * reading the lit target and adding the upsampled reflections into a copy,
+ * the copy blitted back. */
 #import <Metal/Metal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,8 +12,8 @@
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
 
-static id<MTLComputePipelineState> s_rpipe;
-static id<MTLTexture> s_rdst;
+static id<MTLComputePipelineState> s_rpipe, s_cpipe;
+static id<MTLTexture> s_rdst, s_rhalf;
 static id<MTLBuffer> s_rnull;
 static int s_rfail;
 
@@ -32,9 +34,10 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     if (!s_rpipe) {
         NSError *err = nil;
         id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_REFL_SRC, &err);
-        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil;
+        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil, fc = lib ? [lib newFunctionWithName:@"reflc"] : nil;
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
-        if (!s_rpipe) {
+        s_cpipe = s_rpipe && fc ? [dev newComputePipelineStateWithFunction:fc error:&err] : nil;
+        if (!s_rpipe || !s_cpipe) {
             fprintf(stderr, "brr: reflections: %s\n", lib ? [[err description] UTF8String] : "off: no hardware ray tracing");
             s_rfail = 1;
             return;
@@ -47,6 +50,11 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         td.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
         td.storageMode = MTLStorageModePrivate;
         s_rdst = [dev newTextureWithDescriptor:td];
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float width:(hdr.width + 1) / 2
+                                                               height:(hdr.height + 1) / 2 mipmapped:NO];
+        td.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_rhalf = [dev newTextureWithDescriptor:td];
     }
     e = [cb computeCommandEncoder];
     [e setComputePipelineState:s_rpipe];
@@ -75,9 +83,14 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     [e setTexture:pos atIndex:1];
     [e setTexture:nrm atIndex:2];
     [e setTexture:hdr atIndex:3];
-    [e setTexture:s_rdst atIndex:4];
+    [e setTexture:s_rhalf atIndex:4];
     [e setTexture:sky atIndex:5];
+    [e dispatchThreads:MTLSizeMake(s_rhalf.width, s_rhalf.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    /* the composite: the same encoder (LU at 3, the G-buffer and the lit target bound) */
+    [e setComputePipelineState:s_cpipe];
+    [e setTexture:s_rdst atIndex:4];
     [e setTexture:bE atIndex:6];
+    [e setTexture:s_rhalf atIndex:7];
     [e dispatchThreads:MTLSizeMake(hdr.width, hdr.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
     [e endEncoding];
     b = [cb blitCommandEncoder];
