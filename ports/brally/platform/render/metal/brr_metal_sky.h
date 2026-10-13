@@ -118,9 +118,9 @@
 "  return L; }\n" \
 "fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]]) {\n" \
 "  float3 d = camray(k, in.pos.xy);\n" \
-"  if (k.ktop.w == 9.0) return float4((d * 0.5 + 0.5) / k.tgt.z, 1);   /* debug: the ray */\n" \
-"  if (k.ktop.w == 10.0) { constexpr sampler s(filter::linear, address::clamp_to_edge); return float4(S.sample(s, svuv(d)).rgb * 20.0 / k.tgt.z, 1); }\n" \
-"  return float4(skyrad(k, S, T, d) * k.ktop.z, 1); }\n" \
+"  if (k.ktop.w == 9.0) return float4(d * 0.5 + 0.5, 1);   /* debug: the ray */\n" \
+"  if (k.ktop.w == 10.0) { constexpr sampler s(filter::linear, address::clamp_to_edge); return float4(S.sample(s, svuv(d)).rgb * 20.0, 1); }\n" \
+"  return float4(min(skyrad(k, S, T, d) * k.ktop.z * k.tgt.z, float3(60000.0)), 1); }   /* pre-exposed (k.tgt.z the exposure) */\n" \
 /* the game's painted backdrop over the sky: its hills, coast and sea stay, \
    its painted sky (blue or neutral, looking up past the horizon) gives way */ \
 "fragment float4 fsbk2(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \

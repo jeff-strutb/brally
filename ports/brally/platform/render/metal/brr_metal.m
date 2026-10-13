@@ -910,7 +910,7 @@ static void lit_present(void)
     }
     u.misc[0] = lit_exposure(w);
     u.misc[2] = k_weather[w].rough;
-    u.bg[0] = 0.9f / u.misc[0];             /* the backdrop and fog: shown as the game drew them */
+    u.bg[0] = 0.9f;                         /* the backdrop and fog: shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
     {
         const char *e2 = getenv("BR_LIGHT_VIEW");
@@ -1039,7 +1039,7 @@ static void lit_present(void)
                         ku.m0[0], ku.m0[1], ku.m0[2], ku.m1[0], ku.m1[1], ku.m1[2], ku.m2[0], ku.m2[1], ku.m2[2],
                         ku.off[0], ku.off[1], ku.off[2], ku.eye[0], ku.eye[1], ku.eye[2], ku.tgt[0], ku.tgt[1],
                         ku.sun[0], ku.sun[1], ku.sun[2], u.skyc[0], u.skyc[1], u.skyc[2]);
-            ku.tgt[2] = u.misc[0];             /* the exposure, for the debug views */
+            ku.tgt[2] = u.misc[0];             /* the exposure: the sky is written pre-exposed */
         }
     }
     if (getenv("BR_LIGHT_BACKLOG") && s_frame == (unsigned long)atoi(getenv("BR_LIGHT_BACKLOG")))

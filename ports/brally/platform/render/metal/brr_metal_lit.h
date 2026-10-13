@@ -100,7 +100,12 @@
 "}\n" \
 /* the game's fog amount, toward the air's own light at the horizon (the sky \
    model's) where there is a sky, else the game's fog colour */ \
-"static float3 fogged(constant LU &u, float3 c, float fog, float3 fogc) { return mix(c, u.fogc.w > 0.5 ? u.fogc.rgb : lin(fogc) * u.bg.x, fog); }\n" \
+"static float3 fogged(constant LU &u, float3 c, float fog, float3 fogc) { return mix(c, u.fogc.w > 0.5 ? u.fogc.rgb * u.misc.x : lin(fogc) * u.bg.x, fog); }\n" \
+/* pre-exposure (as Frostbite and Unreal store HDR): light in cd/m2 times the \
+   camera's exposure, so the half-float targets hold about 0..100 instead of \
+   sunlit glints and skies past their 65504 (which overflowed to infinity and \
+   NaN); held finite below it for the sun's own disc */ \
+"static float3 preexp(constant LU &u, float3 c) { return min(c * u.misc.x, float3(60000.0)); }\n" \
 /* a face's normal from the world position's screen derivatives; straight up \
    for a sliver too thin to have one (normalize(0) would be NaN) */ \
 "static float3 facen(float3 wp) { float3 c = cross(dfdx(wp), dfdy(wp)); float l = length(c); return l > 1e-12 ? c / l : float3(0, 0, 1); }\n" \
@@ -133,12 +138,12 @@
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
 "  float glow = saturate((a.a * 255.0 - 128.0) / 127.0);\n" \
 "  int dbg = int(u.misc.w);\n" \
-"  if (dbg == 1) return float4(a.rgb / max(u.misc.x, 1e-9), 1);\n" \
-"  if (dbg == 2) return float4((N.xyz * 0.5 + 0.5) / max(u.misc.x, 1e-9), 1);\n" \
-"  if (dbg == 3) return float4(float3(sunvis(u, sm, P.xyz, N.xyz)) / max(u.misc.x, 1e-9), 1);\n" \
-"  if (dbg == 5) return float4(float3(glow) / max(u.misc.x, 1e-9), 1);\n" \
+"  if (dbg == 1) return float4(a.rgb, 1);\n" \
+"  if (dbg == 2) return float4((N.xyz * 0.5 + 0.5), 1);\n" \
+"  if (dbg == 3) return float4(float3(sunvis(u, sm, P.xyz, N.xyz)), 1);\n" \
+"  if (dbg == 5) return float4(float3(glow), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, radiance(u, ls, sm, P.xyz, N.xyz, a.rgb, u.misc.z, glow), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, sm, P.xyz, N.xyz, a.rgb, u.misc.z, glow)), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
@@ -149,7 +154,7 @@
 "  float3 n = facen(in.wp);\n" \
 "  float3 c = u.addk > 0.0 ? lin(h.o.rgb) * u.addk * lu.wb.rgb\n" \
 "                          : radiance(lu, ls, shm, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g);\n" \
-"  return float4(fogged(lu, c, u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
+"  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \
 "fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n" \
@@ -182,10 +187,10 @@
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = hdr.read(px).rgb;\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
-"  float Y = dot(c, float3(0.2126, 0.7152, 0.0722));\n" \
+"  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(px).a >= 0.25)   /* the meter reads lit surfaces only */\n" \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed);\n" \
-"  c = neutral(c * u.misc.x);\n" \
+"  c = neutral(c);   /* pre-exposed already */\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n" \
 /* the sun's shadow map */ \
