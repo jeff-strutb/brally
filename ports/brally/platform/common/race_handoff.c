@@ -35,12 +35,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
 #include "br_addr32.h"
 #include "br_coretypes.h"
 #include "slice3_41.h"     /* BrDriverCar, BrDriver */
 #include "br_phase.h"
 #include "br_race.h"         /* g_brRaceRules */
 #include "br_gamestep.h"     /* g_pfnStep */
+#include "../host/host.h"    /* host_pad_read */
 #include "slice2_25.h"       /* g_brPAA29B8 */
 #include "../host/host_race.h"
 
@@ -137,6 +141,7 @@ static int test_request(void)
  * Boss Rally's strings 131-135), and BrRaceDifficultySet (0x100627B0) sets
  * the same four flags in the same order as Top Gear Rally's BrRaceSetKind */
 /* the race's settings, where the game's command line and menus put them */
+static void controls(void);
 static void configure(const HostRace *r)
 {
     int track = r->track + (r->mirrored ? 6 : 0);
@@ -161,11 +166,29 @@ static void configure(const HostRace *r)
             fprintf(stderr, "\n");
         }
     }
-    /* touch reaches the game as the joystick (dx.c), in the gamepad profile (2:
-       the stick's x steers, button 0 accelerates, button 1 brakes); the
-       headless check drives the keys (profile 0) */
-    g_BrCtrlCfg.active = AUTOPILOT ? 0 : 2;
-    g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg.profile[g_BrCtrlCfg.active];
+    controls();
+}
+
+/* the race's controls: touch reaches the game as the joystick (dx.c), in the
+   gamepad profile (2: the stick's x steers, button 0 accelerates, button 1
+   brakes); a desktop's keyboard drives the keyboard profile (0: the arrows),
+   its pad the gamepad profile while one is connected (looked at every frame);
+   the headless check drives the keys */
+static void controls(void)
+{
+    int pr;
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+    pr = 2;
+#else
+    host_pad p;
+    pr = host_pad_read(&p) ? 2 : 0;
+#endif
+    if (AUTOPILOT)
+        pr = 0;
+    if (g_BrCtrlCfg.active != pr || g_BrPadModeBytes != (const unsigned char *)&g_BrCtrlCfg.profile[pr]) {
+        g_BrCtrlCfg.active = pr;
+        g_BrPadModeBytes = (const unsigned char *)&g_BrCtrlCfg.profile[pr];
+    }
 }
 
 static void result(void)
@@ -256,6 +279,8 @@ void plat_race_frame(void)
     int racing = g_pfnStep == (BrGameStepFn)BrRaceStep;
     init();
     keys();
+    if (s_phase == RACE)
+        controls();
     switch (s_phase) {
     case IDLE:
         /* the menus are up (state 4, a phase built) */
