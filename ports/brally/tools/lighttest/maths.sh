@@ -1,10 +1,10 @@
 #!/bin/bash
-# run_all.sh: the Remastered lighting's verification suite.  Builds the
+# maths.sh: the lighting's shader maths against closed forms and CPU references.  Builds the
 # standalone Metal harness (lighttest.m, which includes the renderer's
 # brr_metal.m; no game), runs every check (PASS or FAIL with its numbers), and
 # compiles the renderer's whole shader source offline for macOS and iOS.
 #
-#   ports/brally/tools/lighttest/run_all.sh        (from the repo root or anywhere)
+#   ports/brally/tools/lighttest/maths.sh        (from the repo root or anywhere; run.sh runs it with the other suites)
 #
 # Exit status: 0 when every check passes.
 set -u

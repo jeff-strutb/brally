@@ -56,8 +56,10 @@ kernel void t_btab(texture2d<float> bE [[texture(0)]], const device float2 *q [[
   o[i] = bE.sample(s, (0.5 + float2(sqrt(q[i].x), saturate((q[i].y - 0.0447) / 0.9553)) * (sz - 1.0)) / sz).rg;
 }
 
+// a lamp's candela toward d as the lighting applies it: lamp() through its
+// window lwin() (the outer cone), at 1 m, well inside its range
 kernel void t_lamp(constant LS &l [[buffer(0)]], const device float4 *d [[buffer(1)]], device float *o [[buffer(2)]], uint i [[thread_position_in_grid]]) {
-  o[i] = lamp(l, d[i].xyz);
+  o[i] = lamp(l, d[i].xyz) * lwin(l, d[i].xyz, 1.0);
 }
 
 // x -> lin(x) (one channel), srgb1(x)
@@ -108,14 +110,18 @@ kernel void t_skyrad(constant KU &k [[buffer(0)]], texture2d<float> S [[texture(
   o[2 * i + 1] = float4(L - S.sample(s, svuv(d[i].xyz)).rgb * k.ktop.x, 0.0);
 }
 
-// the light leaving a surface (the deferred and forward passes' radiance), and the fog over it
+// the light leaving a surface as the deferred pass computes it: the normal to
+// the eye, the sun's soft-shadowed visibility, radiance (sun, sky, the
+// cluster's lamps through their atlas), pre-exposure and the fog over it
 struct TRad { float4 p; float4 n; float4 alb; float4 fog; };   // alb.w roughness, fog.x amount, fog.y glow
-kernel void t_radiance(constant LU &u [[buffer(0)]], const device LS *ls [[buffer(1)]], depth2d_array<float> sm [[texture(0)]],
+kernel void t_radiance(constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]], depth2d_array<float> sm [[texture(0)]],
                        const device TRad *in [[buffer(2)]], device float4 *o [[buffer(3)]], texture2d<float> bE [[texture(1)]],
-                       uint i [[thread_position_in_grid]]) {
+                       depth2d<float> atl [[texture(2)]], uint i [[thread_position_in_grid]]) {
   TRad t = in[i];
-  float3 c = radiance(u, ls, sm, t.p.xyz, t.n.xyz, t.alb.rgb, t.alb.w, t.fog.y, bE);
-  o[i] = float4(fogged(u, c, t.fog.x, t.alb.rgb), 0.0);
+  float3 n = toeye(u, t.p.xyz, t.n.xyz);
+  float sv = dot(n, u.sun.xyz) > 0.0 ? sunvis(u, sm, t.p.xyz, n, float(i % 64) * 0.098) : 0.0;
+  float3 c = radiance(u, ls, atl, t.p.xyz, n, t.alb.rgb, t.alb.w, t.fog.y, sv, bE);
+  o[i] = float4(fogged(u, preexp(u, c), t.fog.x, t.alb.rgb), 0.0);
 }
 
 // a value written to a half-float target, as the HDR target stores it

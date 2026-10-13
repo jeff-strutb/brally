@@ -29,6 +29,11 @@ const LightTrack *light_game_track(void) { return NULL; }
 int light_game_weather(void) { return 0; }
 int light_glide_flip(void) { return 0; }
 int light_scene_spots(LightSpot *out, int max) { (void)out; (void)max; return 0; }
+int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)   /* the track's rays: rt.sh's */
+{
+    (void)w, (void)dev, (void)q, (void)t;
+    return 0;
+}
 
 /* ---- reporting ------------------------------------------------------------------------ */
 static int g_pass, g_fail;
@@ -1082,6 +1087,7 @@ static void lamp_dirs(const double (*hv)[2], int n, float *out)
     l.side[1] = -1;
     l.candela = 20000.0f;
     l.range = 150.0f;
+    l.cosout = 0.3420201f;           /* the outer cone, 70 degrees, as light_scene.c sets it */
     for (i = 0; i < n; i++) {        /* a point on a screen 25 m ahead: h right, v up, degrees */
         double x = 25.0, y = -25.0 * tan(hv[i][0] * R_PI / 180.0), z = 25.0 * tan(hv[i][1] * R_PI / 180.0), ln = sqrt(x * x + y * y + z * z);
         d[i][0] = (float)(x / ln), d[i][1] = (float)(y / ln), d[i][2] = (float)(z / ln), d[i][3] = 0;
@@ -1215,7 +1221,7 @@ static void test_lamp(void)
         float d[3][4] = { { 1, 0, 0, 0 }, { 0.5f, 0.8660254f, 0, 0 }, { -1, 0, 0, 0 } }, ro[3];
         id<MTLBuffer> bd = B(d, sizeof d), bo = B(NULL, sizeof ro);
         memset(&l, 0, sizeof l);
-        l.kind = LIGHT_REAR, l.axis[0] = 1, l.side[1] = -1, l.candela = 80.0f;
+        l.kind = LIGHT_REAR, l.axis[0] = 1, l.side[1] = -1, l.candela = 80.0f, l.range = 25.0f, l.cosout = 0.0f;   /* as light_scene.c */
         kern(@"t_lamp", 3, ^(id<MTLComputeCommandEncoder> e) {
             [e setBytes:&l length:sizeof l atIndex:0];
             [e setBuffer:bd offset:0 atIndex:1];
@@ -1545,10 +1551,11 @@ static void test_misc(void)
     {   /* radiance (sun, cascades, sky, lamps, glow) and fog over random scenes */
         enum { N = 100000, NL = 6 };
         LU u;
-        LightSpot ls[NL];
+        LightSet *set = calloc(1, sizeof *set);   /* every cluster lists all NL lamps; none shadowed */
+        LightSpot *ls = set->l;
         struct { float p[4], n[4], alb[4], fog[4]; } *in = calloc(N, sizeof *in);
         float *o = malloc(N * 16);
-        id<MTLTexture> sm;
+        id<MTLTexture> sm, atl;
         id<MTLBuffer> bl, bi, bo;
         int i, k, bad = 0;
         {
@@ -1569,6 +1576,21 @@ static void test_misc(void)
             [cb commit];
             [cb waitUntilCompleted];
         }
+        {   /* the lamps' atlas, cleared to the far plane */
+            MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:16 height:16 mipmapped:NO];
+            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+            id<MTLCommandBuffer> cb = [g_q commandBuffer];
+            td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+            td.storageMode = MTLStorageModePrivate;
+            atl = [s_dev newTextureWithDescriptor:td];
+            rp.depthAttachment.texture = atl;
+            rp.depthAttachment.loadAction = MTLLoadActionClear;
+            rp.depthAttachment.clearDepth = 1.0;
+            rp.depthAttachment.storeAction = MTLStoreActionStore;
+            [[cb renderCommandEncoderWithDescriptor:rp] endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+        }
         memset(&u, 0, sizeof u);
         for (k = 0; k < CASCADES; k++) {
             int j;
@@ -1577,7 +1599,9 @@ static void test_misc(void)
             u.csplit[k] = 20.0f * (k + 1);
             u.ctexel[k] = 0.05f;
             u.cbias[k] = 0.001f;
+            u.cdepth[k] = 100.0f;
         }
+        u.csoft[0] = 0.00467f, u.csoft[1] = 16.0f, u.csoft[2] = 16.0f, u.csoft[3] = 0.0f;   /* the sun's radius; no contact march (needs a G-buffer) */
         u.cfwd[0] = 1;
         u.eye[0] = 0, u.eye[1] = 0, u.eye[2] = 2, u.eye[3] = NL;
         u.sun[0] = 0.3f, u.sun[1] = 0.2f, u.sun[2] = 0.93f;
@@ -1587,7 +1611,15 @@ static void test_misc(void)
         u.misc[2] = 0.6f;
         u.bg[0] = 1000;
         u.fogc[3] = 1;
-        memset(ls, 0, sizeof ls);
+        for (k = 0; k < 16; k++)
+            set->h.vp[k] = k % 5 == 0 ? 1.0f : 0.0f;
+        set->h.eye[3] = NL;
+        set->h.zk[0] = 1.0f, set->h.zk[1] = 1.0f;
+        for (k = 0; k < LC_N; k++)
+            set->cl[k] = NL;              /* offset 0, NL lights */
+        for (k = 0; k < NL; k++)
+            set->idx[k] = (uint8_t)k;
+        set->h.atl[0] = 16.0f, set->h.atl[1] = 1.0f / 16.0f;
         for (k = 0; k < NL; k++) {
             ls[k].pos[0] = (float)(urand() * 40 - 20), ls[k].pos[1] = (float)(urand() * 40 - 20), ls[k].pos[2] = (float)(urand() * 2);
             ls[k].kind = k & 1 ? LIGHT_REAR : LIGHT_HEAD;
@@ -1595,6 +1627,7 @@ static void test_misc(void)
             ls[k].candela = k & 1 ? 300.0f : 20000.0f;
             ls[k].range = 150;
             ls[k].rgb[0] = ls[k].rgb[1] = ls[k].rgb[2] = 1;
+            ls[k].cosout = k & 1 ? 0.0f : 0.3420201f;
         }
         for (i = 0; i < N; i++) {
             double n[3];
@@ -1617,7 +1650,7 @@ static void test_misc(void)
             in[i].fog[0] = (float)urand();
             in[i].fog[1] = (float)urand();
         }
-        bl = B(ls, sizeof ls);
+        bl = B(set, sizeof *set);
         bi = B(in, (size_t)N * sizeof *in);
         bo = B(NULL, (size_t)N * 16);
         kern(@"t_radiance", N, ^(id<MTLComputeCommandEncoder> e) {
@@ -1627,13 +1660,14 @@ static void test_misc(void)
             [e setBuffer:bi offset:0 atIndex:2];
             [e setBuffer:bo offset:0 atIndex:3];
             [e setTexture:s_brdfE atIndex:1];
+            [e setTexture:atl atIndex:2];
         });
         memcpy(o, bo.contents, (size_t)N * 16);
         nf_scan((const float *)bo.contents, ((size_t)N * 16) / 4);
         for (i = 0; i < N; i++)
             bad += !finite4(&o[i * 4]);
         report(bad == 0, "radiance + fog finite, random scenes", "%d non-finite of %d (on a lamp, back-facing, sun behind the view, roughness 0)", bad, N);
-        free(in), free(o);
+        free(in), free(o), free(set);
     }
     {   /* lamp, neutral, delit over degenerate inputs */
         int bad = 0, i;
@@ -1665,7 +1699,7 @@ int main(int argc, char **argv)
             return 2;
         }
         /* the renderer's shader source, the same expression brr_open compiles */
-        src = [[k_src stringByAppendingString:@BRR_LIT_SRC] stringByAppendingString:@BRR_SKY_SRC];
+        src = [[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC] stringByAppendingString:@BRR_SKY_SRC];
         if (argc >= 4 && !strcmp(argv[2], "--dump")) {
             [src writeToFile:[NSString stringWithUTF8String:argv[3]] atomically:YES encoding:NSUTF8StringEncoding error:&err];
             return 0;

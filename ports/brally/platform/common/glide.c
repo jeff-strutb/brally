@@ -167,6 +167,8 @@ static int   s_nel;
 static int   s_wide;                 /* this frame fills the target */
 static int   s_black;                /* the last one did: this one starts from black */
 static int   s_view = 1;             /* the next draw's view (br_platview.h) */
+static long  s_dl_every = -1, s_dl_swap;   /* BR_LIGHT_DRAWLOG (diagnostic) */
+static int   s_dl_k;
 static float s_mirror_r[4];          /* the mirror's clip window this frame */
 static int   s_mirror_ok;
 
@@ -483,6 +485,7 @@ void grBufferSwap(int interval)
     resolve();
     brr_present();
     light_capture_swap();               /* after the present: a dump can take this frame's picture */
+    s_dl_swap++;
     brr_target(&s_rw, &s_rh);           /* the next frame's target */
     s_black = s_wide;
     s_wide = 0;
@@ -765,6 +768,21 @@ static void vert(brr_vertex *o, const GrVertex *v)
     o->wx = o->wy = o->wz = o->lit = 0.0f;
 }
 
+/* BR_LIGHT_DRAWLOG=N (diagnostic): every Nth frame, a line a draw: its view,
+ * what the capture made of it (1 world, 2 backdrop, 0 refused, -1 not
+ * offered), its state and first vertex */
+static void drawlog(const GrVertex *a, int n)
+{
+    if (s_dl_every < 0) {
+        const char *e = getenv("BR_LIGHT_DRAWLOG");
+        s_dl_every = e ? atol(e) : 0;
+    }
+    if (s_dl_every > 0 && s_dl_swap % s_dl_every == 0)
+        fprintf(stderr, "draw: frame %ld view %d k %d n %d tex %u blend %d/%d depth %d/%d/%d atest %d fog %d cull %d oow %g xy %.1f %.1f rgba %.0f %.0f %.0f %.0f\n",
+                s_dl_swap, s_view, s_dl_k, n, s_st.texture, s_st.blend_rgb_src, s_st.blend_rgb_dst, s_st.depth_mode, s_st.depth_fn,
+                s_st.depth_mask, s_st.atest_fn, s_st.fog_mode, s_st.cull, a->oow, a->x, a->y, a->r, a->g, a->b, a->a);
+}
+
 /* a display-list triangle of the camera's view or the mirror's, as drawn,
  * to the lighting's capture (platform/light): read, never changed */
 static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr_vertex *o)
@@ -773,6 +791,7 @@ static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr
     LightVtx v[3];
     float world[3][3];
     int i;
+    s_dl_k = -1;
     if ((s_view != 0 && s_view != 2) || !light_capture_on())
         return;
     for (i = 0; i < 3; i++) {
@@ -791,6 +810,7 @@ static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr
                               (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
                               (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
                               (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16, world);
+    s_dl_k = k;
     if (!k || s_view != 0 || !plat_flag(BR_FLAG_LIGHTING))
         return;                         /* the mirror: recorded, drawn as the game drew it */
     if (k == 2) {                       /* the backdrop: drawn behind the lit scene */
@@ -837,6 +857,7 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     if (s_src_dirty && s_src_set)
         tex_resolve();
     capture(a, b, c, v);
+    drawlog(a, 3);
     route(v, 3);
     brr_draw(&s_st, v, 3);
 }
@@ -865,6 +886,7 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
         capture(&vl[0], &vl[i], &vl[i + 1], &v[k - 3]);
     }
     if (k) {
+        drawlog(&vl[0], k);
         if (!routed++)
             route(v, k);
         brr_draw(&s_st, v, k);

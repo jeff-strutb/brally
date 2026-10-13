@@ -263,6 +263,485 @@ renderer frame number: the green light is past frame 10,000, and frame
 
 ![Frame 20,000, 1080p: the gantry beam's shadow from off screen](phase3-cascades.png)
 
+## The track for rays: BVH and acceleration structure (2026-10-12)
+
+DESIGN.md 8.1's world representation, built and verified without running
+the game. `platform/light/light_bvh.c` builds a bounding volume hierarchy
+over `light_game_track()`'s triangles: binned SAH (16 bins a axis,
+traversal and triangle cost 1, leaves of at most 4), 32-byte nodes stored
+depth first (an interior node's first child follows it, so the traversal
+stacks only the far child), the triangles copied in leaf order with their
+track numbers beside them, and a 16-byte surface record a triangle (object;
+material, albedo and emission left zero for the materials work).
+`render/metal/brr_metal_rt.m` uploads it as four buffers and, where the
+device has `supportsRaytracing`, builds a primitive acceleration structure
+over the same triangles in track order (compacted after the build), so both
+paths name a triangle by the same number. `brr_metal_rt.h` holds the Metal
+traversal (`rt_closest`, `rt_any`) and the intersector's
+(`rt_hw_closest`, `rt_hw_any`), and `brr_rt_library` compiles them without
+fast math (the slabs need IEEE infinities). The renderer exposes the world
+as `brr_metal_rt_world()`, built the first time a pass asks for it on a
+track; nothing traces rays yet.
+
+The triangle test is Woop, Benthin and Wald's watertight test with one
+change, found by the brute-force comparison: in plain float a small, thin
+triangle far from the ray can lose two of its edge functions to
+cancellation, and a ray 100 m away "hit" a millimetre sliver (the soup
+scene, 2 rays in 20,000). The paper falls back to double precision for an
+exact zero; the GPU has none. The edge functions are instead computed as a
+difference of products with Kahan's algorithm (one fma each side), whose
+relative error is at most two units in the last place (Jeannerod, Louvet
+and Muller 2013): the sign is the exact sign and zero only when the exact
+value is, which is also what makes the test watertight. Every multiply-add
+in the traversal is an explicit fma on the CPU and the GPU, and the C is
+built with `-ffp-contract=off`, so the two agree bit for bit.
+
+Instruments (`ports/brally/tools/lighttest/run.sh`, which builds and runs
+all three): `bvh_test` (the BVH against brute force on the CPU),
+`rt_gpu` (the GPU against the CPU, through the renderer's own
+`brr_rt_update`), `rt_compile` (the shader source at each language
+version). Scenes: Coastline's whole track (`BR_LIGHT_TRACKOBJ`, 11,364
+triangles, kept under `build/` as game data), and three synthetic ones:
+soup (20,000 triangles of every size and orientation, overlapping, 1 km from
+the origin), terrain (a 100 x 100 heightfield at 2 km sharing every edge,
+with a flat terrace and a wall) and rooms (700 stacked 4 m boxes with shared
+faces, every other box's triangles duplicated, 500 needles, 500 points and
+500 slivers 40 m long and a millimetre wide). A million rays a set: random
+(origins in the scene's box, directions uniform) and surface (a point on a
+triangle by area, cosine-weighted about its normal on a random side, tmin a
+millimetre: how GI's rays leave a hit). Any-hit gets a segment of half to
+one and a half times the closest hit's distance.
+
+Counting ties: the brute force tests every triangle in order and keeps the
+first at the smallest distance; the BVH finds them in another order. A
+difference counts as a tie only when both triangles are hit by the same
+test at the distances reported and the two hit points are the same point to
+the precision of the coordinates (one unit in the last place of the point's
+largest coordinate). Every other difference fails the test.
+
+### CPU against brute force, 1,000,000 rays a set
+
+| scene | build | nodes | depth | SAH | closest: identical / ties / mismatches | any-hit | nodes, triangles a ray | one thread |
+|---|---|---|---|---|---|---|---|---|
+| Coastline, random | 11.3 ms | 11,487 | 17 | 8.36 | 999,998 / 2 / 0 | 100% | 5.1, 0.53 | 9.9 Mrays/s |
+| Coastline, surface | | | | | 999,989 / 11 / 0 | 100% | 14.4, 2.71 | 3.7 Mrays/s |
+| soup, random | 26.2 ms | 39,127 | 18 | 73.5 | 1,000,000 / 0 / 0 | 100% | 38.5, 1.72 | 1.3 Mrays/s |
+| soup, surface | | | | | 1,000,000 / 0 / 0 | 100% | 51.1, 3.33 | 1.0 Mrays/s |
+| terrain, random | 17.5 ms | 20,099 | 14 | 19.5 | 1,000,000 / 0 / 0 | 100% | 10.3, 1.23 | 5.2 Mrays/s |
+| terrain, surface | | | | | 1,000,000 / 0 / 0 | 100% | 15.2, 2.27 | 3.4 Mrays/s |
+| rooms, random | 8.1 ms | 9,049 | 18 | 321.5 | 730,107 / 269,893 / 0 | 100% | 128.7, 46.1 | 0.38 Mrays/s |
+| rooms, surface | | | | | 496,499 / 503,501 / 0 | 100% | 170.0, 62.0 | 0.30 Mrays/s |
+
+Coastline's ties are all at the identical distance (shared edges). Rooms'
+are its duplicates and shared faces: 267,740 and 501,504 at the identical
+distance, 2,153 and 1,997 a fraction of a micrometre apart (9.5e-7 m at
+most, coplanar triangles whose computed distances differ in the last
+places). The tree's invariants (every triangle in exactly one leaf, inside
+its box, every child inside its parent) hold in every scene. Coastline's
+tree is 980 KB with its surface records. As a second check of the triangle
+test itself, the brute force's distances agree with Moller-Trumbore in
+double precision within 1e-4 on every ray except 8 of rooms' random set
+(origins that land exactly on a face with tmin 0, where any answer near
+zero is right).
+
+### GPU against CPU, M4 Pro, 1,000,000 rays a set
+
+The compute traversal: every closest hit identical to the CPU's in
+distance, both weights and triangle, and every any-hit identical, on all
+eight sets (8,000,000 rays, zero differences). GPU time from the command
+buffer's start and end, best of 5, one thread a ray, 64 a threadgroup;
+repeated runs vary by about 15%.
+
+| scene, rays | compute closest | compute any | hardware closest | hardware any |
+|---|---|---|---|---|
+| Coastline, random | 670 to 770 Mrays/s | 880 to 1,080 | 2,550 to 3,160 | 4,870 to 5,100 |
+| Coastline, surface | 350 to 540 | 560 | 2,610 to 2,700 | 3,890 to 3,920 |
+| soup, random | 170 to 200 | 210 | 1,570 | 2,000 |
+| soup, surface | 180 | 190 | 1,190 to 1,210 | 1,480 to 1,500 |
+| terrain, random | 380 to 440 | 460 to 510 | 2,150 to 3,120 | 4,160 to 4,320 |
+| terrain, surface | 360 to 680 | 760 | 2,550 | 3,240 to 3,330 |
+| rooms, random | 42 | 60 | 1,260 | 2,610 |
+| rooms, surface | 38 | 60 | 840 | 1,590 |
+
+The hardware structure for Coastline: built in 10 ms (the first build in a
+process 21 ms), 585 KB compacted. The intersector does its own arithmetic,
+so it is compared, not required to be bit-identical. On Coastline it finds
+the same triangle as the CPU for 999,995 and 999,978 rays and ties for the
+rest; its distances on the same triangle are within 16 units of the hit's
+coordinates (about 2 mm at 2 km). Every remaining difference, on all
+scenes, is one `rt_gpu` explains from the exact answer (long double) for
+the triangles involved, and the run fails on any it cannot: 2 segments
+ending exactly at the hit (the intersector includes the end, the CPU
+excludes it), 9 rays starting on a face with tmin 0 (rooms), 3 rays passing
+within 1e-7 (barycentric) of an edge no other triangle shares (soup, where
+the exact answer is a miss by 8e-8 and either side may round it), and 5
+hardware hits on rooms' 40,000:1 slivers 1 to 2 mm from a ray's origin,
+where the exact hit is behind the origin and the CPU correctly misses. None
+on Coastline's surface rays or the terrain.
+
+The shader source compiles, run through this Mac's Metal compiler at
+language versions 2.4, 3.0, 3.1 and 3.2, without fast math, with and
+without the intersector, with no warnings (`rt_compile`). The offline
+compiler (`xcrun metal`) is not installed on this Mac (Xcode reports the
+Metal Toolchain component uninstalled), so the `-sdk macosx` and `-sdk
+iphoneos` offline compiles are still to do once it is. `brr_metal_rt.m` and
+`light_bvh.c` compile for iOS 16 (arm64) and macOS 12 (x86_64), and the
+game links (`HOST=null RENDER=metal ports/brally/link64.sh`, no warnings).
+
+Against DESIGN.md 12's acceleration structure budget (15 MB T0, 40 MB T1
+and T2): Coastline's world is 1.6 MB with both representations. At the
+measured rates a T1 frame's GI probe update (32x32x8 probes x 3 cascades,
+a quarter a frame, 64 rays each: about 400,000 rays) costs about 0.15 ms of
+hardware tracing or 0.7 ms in the compute BVH on this GPU, before shading.
+
+## Soft sun shadows (2026-10-12)
+
+Three changes to the sun's shadows (`brr_metal_lit.h`, `brr_metal.m`, the
+arithmetic in `brr_shadow.h`), verified by arithmetic alone: the game was not
+run for any of this. `ports/brally/tools/lighttest/run.sh` builds and runs
+every check below (CPU programs, and the shader's own functions on this
+Mac's GPU in compute kernels over synthetic maps, with Metal's validation
+layer on); it needs no game data.
+
+**Soft shadows from the sun's disc.** The sun is 0.535 degrees across, so a
+blocker D metres above a surface casts a penumbra 2 D tan(0.2675 degrees)
+wide, 9.3 mm per metre of D. Each cascade evaluation (PCSS, Fernando 2005,
+for a directional light) searches for blockers over a disc as wide as the
+penumbra of the farthest possible caster (the window reaches back toward
+the sun to it, so the receiver's depth gives that distance; 16 gathers, 64
+texels), takes the blockers' mean depth, and filters 24 hardware comparisons
+over a disc of radius D tan(0.2675 degrees). For a straight edge that is the
+share of the sun's disc in view: the physical profile, not only its width.
+Both discs are Vogel (golden angle) discs turned per pixel by interleaved
+gradient noise; widths are capped at 16 texels (about 35 cm in the nearest
+cascade, a blocker 75 m up). The cascade blend is kept. The cascades'
+constants carry metres per unit of depth (`LU.cdepth`) and the sun's angular
+radius (`LU.csoft`).
+
+**Contact shadows.** From each lit pixel, a march toward the sun over 0.5 m
+in the G-buffer's world positions, one step per pixel the march crosses on
+screen (at most 16, none when it stays inside its own pixel), jittered per
+pixel. A step is shadowed when the surface seen at its pixel is nearer the
+camera than the step by less than a thickness (two steps, plus about four
+pixels of depth at 1080p) and stands off the receiver's own plane by 2 cm
+(so a flat receiver never shadows itself). Hits fade out over the march's
+last quarter, where the cascades take over; the sun's visibility is the
+lesser of the two. The world to pixel map (`LU.scr`) is the inverse of the
+sky's camera ray, checked against it below. `BR_LIGHT_VIEW=6` shows the
+contact shadow alone, `BR_LIGHT_NOCONTACT=1` turns it off.
+
+**The static cache.** Each cascade's window is an eighth wider than its
+slice's bounding sphere and moves in steps of an eighth of its width (256
+texels): anywhere within a step the sphere stays inside, so the matrix
+holds still to the bit until the slice crosses a step. Its reach toward the
+sun moves in 16 m steps. The track is drawn into a cache array only when a
+cascade's matrix or the track changes. The moving casters are the frame's
+opaque 3D less what lies on a track triangle (each corner within 0.05 of the
+same one, `light_capture_ontrack`; the track's own shadow already holds
+those): the cars, the start lights, what the race draws itself. Per frame
+and cascade, the live map is restored from the cache where last frame's
+movers were (a region blit; the whole slice after a redraw), the movers are
+composited over the cache's depth in a scratch tile their size (the
+cascade's matrix cropped to the tile: the same texel grid), and the tile is
+blitted in. A cascade with no movers now or last frame costs nothing. The
+blits for all the cascades share two encoders.
+
+### The checks
+
+`ports/brally/tools/lighttest/run.sh`, Apple M4 Pro.
+
+The penumbra, on the CPU twin of the shader (`shadowcpu.h`, step for step,
+the hardware's gather and filtered comparison written out): the sun
+overhead, 2 cm texels, a flat blocker D above a flat receiver over half the
+map; 2,401 receivers 0.5 mm apart across the edge, each at 64 turns of the
+discs. "Width" is the span where the mean over the turns is strictly between
+0 and 1, less the one texel the hardware's bilinear comparison adds; "rms"
+and "max" compare the mean with the physical profile (the share of the
+sun's disc in view) seen through that one-texel comparison; "noise" is the
+largest standard deviation over the turns at one receiver (what one pixel
+can show before any temporal filter); "drops" counts places where one
+turn's result gets darker moving away from the blocker.
+
+| D | 2 D tan, mm | width, mm | off by, texels | rms | max | noise | drops |
+|---|---|---|---|---|---|---|---|
+| 0.05 m (contact) | 0.47 | 0.5 | 0.00 | 0.0000 | 0.0010 | 0.000 | 0 |
+| 2 m | 18.68 | 18.5 | -0.01 | 0.0001 | 0.0010 | 0.007 | 0 |
+| 5 m | 46.69 | 46.5 | -0.01 | 0.0001 | 0.0010 | 0.011 | 0 |
+| 10 m | 93.38 | 92.5 | -0.04 | 0.0001 | 0.0006 | 0.013 | 0 |
+| 20 m | 186.75 | 184.5 | -0.11 | 0.0001 | 0.0007 | 0.018 | 0 |
+| 40 m | 373.50 | 369.5 | -0.20 | 0.0003 | 0.0020 | 0.026 | 0 |
+| 60 m | 560.25 | 554.5 | -0.29 | 0.0004 | 0.0023 | 0.028 | 0 |
+
+Every width is within a third of a texel of 2 D tan(0.2675 degrees) (the
+outermost of 24 Vogel points sits at 0.99 of the radius, hence the slight
+shortfall growing with D); the contact case is a hard edge, its whole
+transition one texel (20.5 mm); receivers well inside the shadow are
+exactly 0 and well outside exactly 1, at every turn.
+
+The same functions on the GPU against the CPU twin, all 153,664 receivers
+per D: the largest difference 7.1e-4 (the hardware's 1/256 texel sample
+positions); no darkening away from the blocker on the GPU either; the GPU's
+own penumbra widths the same within 1 mm. At 60 m, 2 receivers of
+153,664 differ by one sample of 24: at the penumbra's outermost tip (shadow
+under 4%) the GPU's blocker search missed the blocker's last texel column
+that the CPU's caught, and took PCSS's "no blocker, fully lit" exit. That
+exit is PCSS's own discontinuity, bounded by the shadow the search's gaps
+can hide at the rim.
+
+The cache, a simulated drive (`shadowtest.c`): 3,920 static triangles
+(ground and 60 posts over 400 m), three cars as moving casters, four
+cascades of 256^2 through `brr_cascade_fit`, `brr_shc_plan`, `brr_shc_rect`,
+`brr_shc_tile`, every live map compared bit for bit with the scene drawn
+from scratch with the same matrix, every frame:
+
+| phase | static redraws, cascades 0..3 |
+|---|---|
+| camera still 20 frames, cars moving | 1 1 1 1 (the first frame only) |
+| driving 0.3 m a frame (18 m/s), 300 frames | 20 11 5 1 |
+| the track rebuilt | 1 1 1 1 |
+| turning 1 degree a frame, 60 frames | 3 4 8 7 |
+
+Live maps differing from brute force: 0 of 1,524. Redraws without a matrix
+change: 0; matrix changes without a redraw: 0. The moving casters are in
+the live maps (568 texels a frame nearer than the cached track). Slice
+corners outside their window: 0. The cropped tile matrix puts every point
+within 7.6e-6 texels of its map texel less the tile's corner.
+
+On the GPU: the region and whole-slice restore blits are bit-exact (0
+texels differ, 0 outside the region changed). The tile path against drawing
+the movers straight into the slice (a dozen triangles over random cache
+depths, the game's depth bias): 0 texels changed outside the rectangle;
+6,338 inside differ, by at most 8.4e-6 in depth (1% of one texel's depth,
+0.4 mm at that test's scale), from the rasteriser snapping corners to 1/256
+texel at positions the crop moves by 1e-5 texel. No covered texel changes.
+
+The world to pixel map against the sky's camera ray (2,000 random cameras,
+viewports, screen maps, both row orders): the ray through the computed
+pixel passes the point within 1.2e-5 rad.
+
+The contact shadow against ray-traced truth (a 30 x 30 x 12 cm block on
+flat ground, the sun 33 degrees up behind it, a 320 x 240 G-buffer ray
+traced through the game's camera conventions): of 214 ground pixels the
+block shadows within 0.30 m along the sun, 196 (91.6%) found; the 18 missed
+are rays that only graze the block's corner between steps, or stay within
+the 2 cm plane margin before leaving its side. Of 74,445 ground pixels with
+nothing within 0.55 m, 2 shadowed: the method's silhouette fringe (a point
+just behind the block's top edge cannot be told from one inside it by a
+single depth layer; a fixed 0.25 m thickness gave 8, the thickness used
+gives 2 with the same 196 found). GPU and CPU agree at all 74,659 ground
+pixels.
+
+The whole shader source, extracted as `brr_open` builds it, compiles with
+the system's Metal compiler with no diagnostics and holds all 18 functions
+the lit frame makes pipelines of; the LU struct is 560 bytes in the shader
+and in C. Not done: the offline `metal` compiles for macOS and iOS. This
+Mac's Xcode 27 ships the offline compiler as a separate component (the
+Metal Toolchain, `xcodebuild -downloadComponent MetalToolchain`), not
+installed; installing it is the project lead's call. `run.sh` uses it when
+present.
+
+`HOST=null RENDER=metal ports/brally/link64.sh` builds and links with no
+warnings.
+
+### Cost
+
+Per lit pixel: the sun's visibility is 16 gathers and 24 filtered
+comparisons a cascade evaluation (40 texture reads, against 9), twice in the
+blend bands (the last tenth of each cascade); none on a face turned from the
+sun; 16 where no blocker is in reach (most lit ground). One sincos a pixel;
+the disc points are constants once the loops unroll (turned by a 2 x 2
+rotation, 4 FMAs a point). The contact march: up to 16 reads of the 16-byte
+position texel and a 4 x 4 transform each; none where the cascades already
+shadow fully or the march stays inside one pixel.
+
+Measured in compute kernels over a 1920 x 1080 G-buffer of ground seen from
+2 m (four 2048^2 cascades split at the fit's distances, half the ground
+under a 10 m blocker), M4 Pro, milliseconds over the G-buffer reads alone,
+the range of the medians of six runs (other work was sharing the GPU):
+
+| | ms at 1080p |
+|---|---|
+| sun, the previous 3x3 filter | 0.13 to 0.23 |
+| sun, PCSS | 0.35 to 0.56 |
+| contact march | 0.46 to 0.66 |
+| sun and contact, as the lighting pass does them | 0.52 to 0.79 |
+
+So the soft sun and contact shadows add about 0.4 to 0.6 ms at 1080p on
+the M4 Pro over the 3x3 filter. An A15-class phone GPU has roughly a
+quarter of the M4 Pro's throughput: an estimated 1 ms more at T0's 1280 x
+720, against DESIGN.md 12's 1.6 ms for culling and shadows together. The
+knobs if a device run shows it over budget: 12 and 16 samples instead of 16
+and 24, and 8 contact steps.
+
+The shadow update (the maps themselves): a height field of 11,250
+triangles (as many as Coastline's track) and 36 moving triangles in a 276 x
+180 texel rectangle, M4 Pro, the minimum of 41 runs (the work itself; the
+medians, 0.5 to 0.9 ms, carry the other load), two runs:
+
+| | min, ms |
+|---|---|
+| before: four maps drawn afresh each frame | 0.25 to 0.28 |
+| cache, movers in 2 cascades | 0.13 to 0.14 |
+| cache, movers in 4 cascades | 0.17 |
+| cache, no movers | 0 |
+| cache, a frame that redraws one cascade | 0.18 to 0.21 |
+
+A depth pass costs its whole 2048^2 attachment however little it draws
+(measured: 0.07 to 0.09 ms a slice, about the same for a 256^2 draw as for a
+full one, whatever the load action), a 256^2 region blit 0.005 ms, and an
+encoder about as much as the texels a small blit moves: hence the tiles and
+the shared blit encoders. The simulated drive redraws cascade 0 once in 15
+frames at 18 m/s, cascade 3 once in 300.
+
+Memory: the cache doubles the cascades, 64 MB more (two 2048^2 x 4 arrays of
+32-bit depth, 128 MB), plus a tile per cascade grown to the largest it has
+needed (1 MB at 512^2). The live array alone was already over DESIGN.md
+12's 40 MB for T0's sun and local shadows: T0 needs 1024^2 cascades or
+16-bit depth (a quarter or half of this), a tier decision for the device
+runs.
+
+The CPU's share: the on-track test is one grid lookup and a point to
+triangle distance per candidate in the centroid's cell, for a few hundred
+triangles a frame.
+
+### Open
+
+- No frame of the game has been looked at with these changes (the project
+  lead's rule for this work: verification by arithmetic). The first look
+  should be `BR_LIGHT_VIEW=3` (the sun's visibility) and `=6` (contact
+  alone) on Coastline, sunny, with `BR_LIGHT_STATS=1` for the cache's
+  redraw and composite counts on a real drive.
+- The penumbra's per-pixel grain (up to 0.028 standard deviation in the
+  widest penumbrae) waits for the temporal filter DESIGN.md 4 plans.
+- The offline compiles for macOS and iOS, once the Metal Toolchain is
+  installed.
+- `BR_LIGHT_GPU` times a pass's first encoder only; the shadow update is
+  several encoders and blits, so its line there undercounts it.
+
+## Many lights: clusters and the lamps' shadow atlas (2026-10-12)
+
+DESIGN.md 7.4's clustered culling and shadow atlas, for every lamp of the
+20-car night grid. Verified without running the game: the CPU code against
+brute force, the renderer's own shader code on the GPU in a standalone
+harness with synthetic scenes, the whole shader source compiled, and the
+game linked. `ports/brally/tools/lighttest/lights.sh` runs all of it (and
+`run.sh` with the other suites).
+
+**Clusters** (`platform/light/light_cluster.c`). The camera's view in 16 x 9
+screen tiles (equal steps of its clip x/w and y/w) and 24 depth slices: the
+first to 2 m, 22 exponential ones from 2 m to 600 m, the last open beyond.
+The outermost tiles and the first and last slices drop their outer plane,
+so any point in front of the camera has a cluster that holds it. A light's
+reach is a sphere of its range (a point; the reserved rect and tube kinds,
+whose range is to cover their emitter) or a sphere-capped cone of its outer
+angle (every other kind), and the extent of such a body along a plane's
+normal has a closed form (the cap's direction nearest the normal is at
+max(psi - theta, 0) from it), so a light stays in a cluster unless it lies
+wholly outside one of the cluster's six planes. Those planes separate by
+axis, so each light is tested against 16 + 9 + 24 tiles' planes and the
+clusters are the products (128-bit masks); a closed cluster then also drops
+a cone that misses its bounding sphere (a conservative cone and sphere test).
+Every test keeps a margin of 5 cm plus 1e-5 of the distances, for the
+rounding between the CPU and the shader. The build runs on the CPU (0.3 to
+0.45 ms for 128 lights on one M4 Pro core) and goes up with the lights and
+the shadow tiles in one buffer a frame (`LightSet`, 466 KiB, three in
+flight); the shader only finds a point's cluster (`lc_index`, its slice
+settled against the same boundary table) and walks its list (`lamps()` in
+`brr_metal_lights.h`, used by the deferred lighting and the forward pass
+alike).
+
+Light types: the low beam and the rear lamp as before, a point, and a spot
+(inner and outer cone); rect and tube are reserved kinds the culling
+already bounds. The low beam now has an outer cone of 70 degrees (a soft
+edge from 64): past it the R112 pattern is under 1% of its peak. The rear
+lamps keep their half space.
+
+**Lamp shadows.** A 4096^2 Depth32Float atlas on the Mac (64 MiB), 2048^2
+(16 MiB) on the iPhone. Each low beam or spot in view (cones up to 80
+degrees: no perspective tile holds a rear lamp's half space, and points wait
+for octahedral tiles) gets a square perspective tile around its cone, near
+plane 0.25 m (its own lens and bumper are nearer), far plane its range.
+Importance is candela x screen coverage (its tiles over all tiles) /
+distance^2 from the eye, x 1.25 for a lamp that held a tile last frame; the
+tile is 1024 texels for a quarter of the screen or more, then 512, 256,
+128; while the tiles exceed the atlas the least important is halved, the
+most important lamps keeping theirs. Tiles are aligned power-of-two blocks
+of 128-texel cells, last frame's places kept where they still fit, the rest
+placed largest first in Morton order (which always packs a set whose area
+fits; a fragmented atlas is packed afresh). A tile is drawn again only when
+its lamp, its place or the moving casters near it (this frame's captured
+triangles in the lamp's reach, hashed) changed, the most important first,
+within a budget of texels a frame (the whole atlas); a tile that misses the
+budget keeps last frame's depth and the transform it was drawn with, and
+one with no depth yet is unshadowed for the frame. Casters: the track's
+triangles binned at load into 16 m cells (each cell's extent tested against
+the lamp's frustum) and the frame's moving objects. Sampling: the receiver
+pushed along its normal one to three texels of the tile at its depth (three
+at grazing light, so the kernel's nearest row stays on the receiver's far
+side), compared nearer by one texel x (1 + tan theta), 3 x 3 bilinear
+comparisons kept inside the tile. A new GPU pass, "lamp shadows", follows
+the sun's cascades in `BR_LIGHT_GPU`; `BR_LIGHT_VIEW=7` shows the lights a
+pixel's cluster lists; `BR_LIGHT_STATS` prints the clusters and the plan.
+
+| check | result |
+|---|---|
+| cluster lists, CPU (300 random cameras, up to 128 random lights of all four kinds, 5.6 M points in view and in lights' reach) | 26.3 M (point, light) pairs reaching: none missing from the point's cluster |
+| false positives | 12.05 lights listed a point, 4.70 reaching it: 61% of listings do not reach the point; per cluster, 32% of listings reach none of 512 samples inside it |
+| cluster lists, GPU (`lc_index`, `lamp`, `lwin` as compiled for the renderer; 100 cameras, 6.6 M points) | 32.9 M pairs reaching on the GPU: none missing from the shader's walk of the cluster list |
+| GPU against CPU | cluster index equal at all but 1,269 points (a boundary, by rounding); reach equal but for 539,946 pairs where the CPU's light is under 1e-30 cd (the GPU flushes it to zero) and 965 at a range or cone edge (what the margin covers) |
+| a point in a lamp's cone (312,237 points, 2,000 random lamps) | inside its atlas tile and 0 <= z/w <= 1: all |
+| depth along 40,000 rays from the lamp | increases with distance at every step |
+| occluder (a 2 x 2 m board 10 m in front of a spot 1 m up, the ground to 55 m) | the shader's test in C and on the GPU: 108,550 ground points, 0 wrong (behind the board under 0.05, in the open over 0.95; the 3-texel penumbra and the board's foot left out); the first bias (1.5 texels along the normal) lost 5 to 10% to grazing acne at 25 to 55 m |
+| the drawn tile against a ray cast | 130,074 texels: mean relative depth error 1.6e-5, largest 4.1e-4 |
+| allocator | 80 lamps in the 4096^2 atlas: all placed (14 at 1024, 3 at 512, 63 at 128), none overlapping; 80 in 2048^2: all placed; 128 lamps all wanting 1024: all placed; 500 frames of 20 to 127 lamps coming and going: all placed, none overlapping |
+| cache | a still frame draws no tile; one lamp moved, one tile; a caster near one lamp, the tiles whose reach it is in; a 4 Mtexel budget: 22 tiles drawn, 58 kept |
+| track casters (200 lamps, 12,000 random triangles) | every triangle in a lamp's reach drawn into its tile; 136 a lamp |
+| clustered against every light, the grid at 1080p on the GPU | the same light to the bit at all 1.23 M lit pixels |
+| shader source | the renderer's whole source (as `brr_open` assembles it) compiled by this Mac's Metal compiler; G-buffer, lighting, forward, sun shadow and atlas pipelines built |
+| build | `HOST=null RENDER=metal ports/brally/link64.sh` links; `brr_metal.m`, `light_cluster.c`, `light_scene.c` compile for arm64 iOS |
+
+The offline compile (`xcrun -sdk macosx|iphoneos metal -c`) needs Xcode's
+Metal Toolchain component, which is not installed here; `lights.sh compile`
+does it once it is.
+
+**The 20-car night grid**, synthetic (`scene.h`): two columns, 8 m between
+rows, each car's two low beams (20,000 cd, 150 m) and two tail lamps (5 cd,
+25 m), a chase camera 6 m behind and 2.2 m above the last car, 1920 x 1080.
+
+| | |
+|---|---|
+| cluster build, shadow plan (CPU) | 0.31 to 0.35 ms, 0.06 to 0.08 ms |
+| lights listed a ground pixel | 18.3 (longest list 48) instead of 80 |
+| lights reaching it | 14.5: 2.9 low beams (all shadowed), 11.5 tail lamps |
+| shadow tiles | 40 (the low beams), 16.4 Mtexels |
+| GPU, M4 Pro (20 cores), the lamps alone, median of 41, over five runs | clustered and shadowed 1.04 to 1.55 ms; every light, shadowed 2.20 to 3.20 ms; clustered unshadowed 0.92 to 1.57 ms; the atlas, 40 tiles of 242 casters, 0.14 to 0.43 ms |
+
+The spread between runs is the GPU's clock; clustered is 2.0 to 2.3 times
+faster than every light in each run, and the shadows cost little beside
+the light itself.
+
+Cost per pixel, counted from the shader: a listed light about 25 ALU
+operations (its record, the distance, the normal test); a reaching low beam
+about 165 (the pattern's two atan2 and three exp, the windows, the BRDF); a
+reaching tail lamp about 85; a shadow lookup about 75 and nine bilinear
+compares. The grid's mean ground pixel: 18.3 x 25 + 2.9 x 165 + 11.5 x 85
++ 2.9 x 75, about 2,140 operations and 26 compares, 2.6 G operations a
+frame at 1080p. The M4 Pro's 20 cores at about 4 T simple operations a
+second give 0.65 ms; the measured 1.0 to 1.5 ms is about half that rate.
+Scaled by GPU throughput (estimates until measured on the devices): an
+A17 Pro (6 cores, about 3.8 times less) about 4 to 6 ms at 1080p, and at
+T0's 1280 x 720 about 1.8 to 2.6 ms on an A17 Pro, more on A15/A16: over
+DESIGN.md 12's 1.6 ms for T0's direct light. The tail lamps are most of it
+(11.5 a pixel at 85 operations): a 5 cd lamp gives 0.008 lux at its 25 m
+range, against a night exposure whose mid grey is near 8 lux. A range from
+each lamp's intensity and the exposure (where it falls under 1% of mid
+grey: 8 m for a tail lamp, 31 m for a brake lamp) would cut that by about
+ten; it changes what the lamps light, so it is the project lead's call.
+
+Not done here (the game was not run for this work): the lit frames, the
+Original check and `lightcheck.sh` with this build; with the flag off none
+of this code runs (it is all inside `lit_present`).
+
 ## Verification suite (2026-10-12)
 
 The lighting's maths checked by mathematics, without running the game:
@@ -446,3 +925,20 @@ next frame dumps.
 - The white balance (inline in `lit_present`), the cascades' shadow
   lookups (checked only for finite output), and the GPU time of the
   changes.
+
+### Merged with pre-exposure, soft shadows, clustered lights and the BVH
+
+The suite now runs as `ports/brally/tools/lighttest/maths.sh`, the fourth of
+`run.sh`'s suites. With main merged, all ten fixes stand: `brdf` takes its
+table `bE`, which `radiance` and `lamps` (`brr_metal_lights.h`) pass on and
+the deferred and forward passes bind at texture 5 (4 is the lamps' atlas);
+the R112 pattern is in the merged `lamp()`, and the checks now go through
+`lamp()` times its outer cone `lwin()` (70 degrees, soft from 64): every R112
+point unchanged; the meter reads the pre-exposed HDR divided back to cd/m2
+in 16 bins a stop. The black sun cannot recur: the sky is pre-exposed and
+held below 60000 (main), and the post pass still clamps what it reads to
+half float's largest. `metal_test.m`'s stand-in brdf takes the table
+argument (unread there); `compile_test.m` also builds the table's two
+pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
+the whole shader source compiles offline for macOS and iOS with no errors
+and no warnings.

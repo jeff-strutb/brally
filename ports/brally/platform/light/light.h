@@ -45,18 +45,34 @@ const LightTrack *light_game_track(void);
 /* ---- the scene's lights (light_scene.c) ------------------------------------------
  * every light this frame in world space, physical units: candela along the
  * light's axis, its colour (luminance 1), its frame (axis, side, up) and
- * kind */
-enum { LIGHT_HEAD, LIGHT_REAR };
+ * kind.  Every light reaches no further than its range; a cone's (every kind
+ * but a point) no wider than its outer angle, cosout = its cosine, 0 for a
+ * hemisphere (cones wider than that are not supported: cosout >= 0).
+ *
+ *   LIGHT_HEAD   a headlamp's low beam (the shader's UN ECE R112 pattern)
+ *   LIGHT_REAR   a rear lamp's broad lobe
+ *   LIGHT_POINT  the same in every direction (axis, side unused)
+ *   LIGHT_SPOT   candela on the axis inside the inner cone (cosine side[0]),
+ *                falling to none at the outer
+ *   LIGHT_RECT, LIGHT_TUBE   reserved for the area lights (DESIGN.md 7.1):
+ *                the culling bounds them by the sphere of their range about
+ *                pos (light_cluster.c: lc_bounds), which their range has to
+ *                cover from every point of the emitter */
+enum { LIGHT_HEAD, LIGHT_REAR, LIGHT_POINT, LIGHT_SPOT, LIGHT_RECT, LIGHT_TUBE };
 typedef struct LightSpot {
     float pos[3];
-    float kind;          /* LIGHT_HEAD, LIGHT_REAR */
+    float kind;
     float axis[3];
     float candela;
     float side[3];
     float range;
-    float rgb[4];
+    float rgb[3];
+    float cosout;
 } LightSpot;
 int  light_scene_spots(LightSpot *out, int max);
+/* the same, with each light's identity (stable from frame to frame: car x 4
+ * + lamp), for the shadow cache */
+int  light_scene_lights(LightSpot *out, int *id, int max);
 
 /* ---- the capture (light_capture.c) --------------------------------------------
  * glide.c hands over every display-list triangle of the camera's view (0) or
@@ -83,6 +99,9 @@ int  light_capture_on(void);
 int  light_capture_eye(float eye[3]);
 /* the main camera this frame (its view x projection and viewport); 0 when no 3D was drawn */
 int  light_capture_camera(LightCamera *c);
+/* 1 when a world triangle (3 corners x xyz) lies on one of the track's
+ * triangles (light_game_track): the track's shadow already holds it */
+int  light_capture_ontrack(const float tri[9]);
 /* the game's pixel rows as Glide takes them: its height when the origin is
  * the lower left (y up, as the game's viewport works), else 0 (glide.c) */
 int  light_glide_flip(void);

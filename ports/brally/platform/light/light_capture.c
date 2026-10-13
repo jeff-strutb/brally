@@ -313,6 +313,34 @@ out:
     return sqrtf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2]);
 }
 
+/* 1 when a triangle lies on one of the track's triangles: every corner
+ * within 0.05 of the same one (what the camera drew of the track, clipped
+ * into pieces).  Its shadow is the track's own, which the cascades' static
+ * cache already holds; brr_metal.m draws only the rest (the cars, the start
+ * lights, what the race adds) as the moving casters.  A triangle within 0.05
+ * of a track triangle at its corners is within 0.05 of it everywhere (both
+ * are convex), so leaving it out changes no shadow by more than that.  The
+ * candidates are those of the grid cell holding its centroid; a miss only
+ * keeps it as a moving caster. */
+int light_capture_ontrack(const float tri[9])
+{
+    const LightTrack *t = light_game_track();
+    float m[3];
+    int k, e;
+    if (!t || !t->ntri)
+        return 0;
+    if (t->gen != s_tc.gen || !s_tc.head)
+        tc_build(t);
+    for (k = 0; k < 3; k++)
+        m[k] = (tri[k] + tri[3 + k] + tri[6 + k]) / 3.0f;
+    for (e = s_tc.head[tc_key((int)floorf(m[0] / TC_CELL), (int)floorf(m[1] / TC_CELL), (int)floorf(m[2] / TC_CELL))]; e >= 0; e = s_tc.next[e]) {
+        const float *q = &t->tri[9 * s_tc.tri[e]];
+        if (tc_dist(tri, q, q + 3, q + 6) < 0.05f && tc_dist(tri + 3, q, q + 3, q + 6) < 0.05f && tc_dist(tri + 6, q, q + 3, q + 6) < 0.05f)
+            return 1;
+    }
+    return 0;
+}
+
 static void tc_frame(void)
 {
     const LightTrack *t = light_game_track();
