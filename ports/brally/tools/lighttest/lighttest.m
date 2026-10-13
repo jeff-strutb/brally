@@ -956,6 +956,10 @@ static void post_run(id<MTLTexture> hdr, id<MTLTexture> bl, id<MTLTexture> alb, 
         [e setFragmentTexture:bl atIndex:1];
         [e setFragmentTexture:alb atIndex:2];
         [e setFragmentBuffer:hist offset:0 atIndex:1];
+        {
+            BrrGlare gl = { { 0 }, { 0 }, { 0 } };   /* no glare: the post alone */
+            [e setFragmentBytes:&gl length:sizeof gl atIndex:2];
+        }
     });
     if (out)
         [t getBytes:out bytesPerRow:t.width * 4 fromRegion:MTLRegionMake2D(0, 0, t.width, t.height) mipmapLevel:0];

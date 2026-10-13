@@ -1291,6 +1291,7 @@ static void lit_present(void)
     int w = light_game_weather(), k, i, first3d, have_cam, sky;
     LightCamera cam;
     KU ku;
+    BrrGlare gl = { { 0 }, { 0 }, { 0 } };
     BrrCascade cs[CASCADES];
     id<MTLRenderCommandEncoder> e;
     MTLRenderPassDescriptor *rp;
@@ -1501,6 +1502,12 @@ static void lit_present(void)
                         ku.off[0], ku.off[1], ku.off[2], ku.eye[0], ku.eye[1], ku.eye[2], ku.tgt[0], ku.tgt[1],
                         ku.sun[0], ku.sun[1], ku.sun[2], u.skyc[0], u.skyc[1], u.skyc[2]);
             ku.tgt[2] = u.misc[0];             /* the exposure: the sky is written pre-exposed */
+            if (!getenv("BR_LIGHT_NOGLARE")) {   /* the glare: the disc's illuminance as the sky draws it (the sun's after the air and the weather; the moon's lux) */
+                float il[3];
+                for (k = 0; k < 3; k++)
+                    il[k] = w == 4 ? ku.moon[0] * (k == 0 ? 1.0f : k == 1 ? 0.96f : 0.90f) : u.sunc[k];
+                gl = brr_glare_setup((const float (*)[4])(const void *)&ku, sun, il, ku.ktop[2], ku.tgt[2]);
+            }
         }
     }
     if (getenv("BR_LIGHT_BACKLOG") && s_frame == (unsigned long)atoi(getenv("BR_LIGHT_BACKLOG")))
@@ -1831,6 +1838,7 @@ static void lit_present(void)
     [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
     [e setFragmentTexture:s_galb atIndex:2];
     [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
+    [e setFragmentBytes:&gl length:sizeof gl atIndex:2];   /* the sun's glare (brr_metal_glare.h) */
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
