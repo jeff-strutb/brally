@@ -185,3 +185,42 @@ its viewport's rows run up; the capture uses the game's own coordinates
 | game state | `lightcheck.sh`, `20_quickrace_drive`: identical |
 
 ![Sunny and night with the physical sky](phase2-sky.png)
+
+## GPU time per pass (2026-10-12)
+
+`BR_LIGHT_GPU=1` puts Metal timestamp counters on each lit pass's first
+encoder (start of vertex work, end of fragment work) and prints the
+milliseconds a frame each second. The GPU starts a pass while the one
+before it is still shading, so a pass is timed from the later of its start
+and the previous pass's end (the frame's first pass from the last frame's
+end); the passes then add up to the frame's span. `BR_SIZE=WxH` sets a
+headless run's target size.
+
+Apple M4 Pro, headless, `BR_VCLOCK=0.25`, steady state, ms a frame:
+
+| pass | sunny 1080p | night 1080p | sunny 4K | night 4K |
+|---|---|---|---|---|
+| sky tables | 0.07 | 0.07 | 0.07 | 0.07 |
+| G-buffer | 0.31 | 0.36 | 0.98 | 1.14 |
+| sun shadow | 0.02 | 0.02 | 0.02 | 0.02 |
+| lighting | 0.62 | 0.46 | 2.40 | 1.74 |
+| transparent | 0.02 | 0.04 | 0.03 | 0.07 |
+| bloom down | 0.06 | 0.06 | 0.24 | 0.24 |
+| bloom up | 0.06 | 0.06 | 0.12 | 0.12 |
+| post | 0.13 | 0.14 | 0.48 | 0.48 |
+| 2D | 0.04 | 0.03 | 0.07 | 0.07 |
+| **total** | **1.34** | **1.25** | **4.42** | **3.96** |
+
+At 640 x 480: 0.67 sunny, 0.66 night. The lighting pass is the largest and
+grows with the pixels; the scene's few hundred triangles make the shadow
+map almost free. The iPhone and tier budgets are measured on the devices
+(each phone run needs the project lead's go-ahead).
+
+| check | result |
+|---|---|
+| Original unchanged | sunny frames 1,000 and 1,600, night 1,000 and 3,000: byte-identical to c8194344 |
+
+One of eight baseline runs started together drew night frame 3,000
+differently; run again, the baseline and this build agree byte for byte.
+That is run-to-run variation in the baseline under load, which the
+Original check has to allow for by repeating a mismatch before reporting it.

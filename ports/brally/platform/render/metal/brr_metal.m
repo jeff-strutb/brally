@@ -701,6 +701,110 @@ static int lit_sunvp(const float sun[3], float m[16])
     return 1;
 }
 
+/* BR_LIGHT_GPU=1: each lit pass's GPU time, from Metal's timestamp counters
+ * at the encoders' stage boundaries (the samples Apple GPUs take), summed per
+ * pass over a second and printed as milliseconds a frame */
+#define GPU_PASSES 9
+static const char *const k_pass_names[GPU_PASSES] = { "sky tables", "g-buffer", "sun shadow", "lighting", "transparent",
+                                                     "bloom down", "bloom up", "post", "2d" };
+static id<MTLCounterSampleBuffer> s_gpuctr[3];
+static int s_gpu_on = -1;
+static double s_gpu_ms[GPU_PASSES], s_gpu_span, s_gpu_t0;
+static unsigned s_gpu_frames;
+static MTLTimestamp s_cpu0, s_gpu0;
+static double s_tick_ns = 1.0;
+static uint8_t s_gpu_used[3][GPU_PASSES];
+static uint8_t s_gpu_frame_used[GPU_PASSES];
+
+static id<MTLRenderCommandEncoder> lit_encoder(MTLRenderPassDescriptor *rp, int pass)
+{
+    if (s_gpu_on < 0) {
+        s_gpu_on = getenv("BR_LIGHT_GPU") != NULL && [s_dev supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary];
+        if (s_gpu_on) {
+            MTLCounterSampleBufferDescriptor *d = [MTLCounterSampleBufferDescriptor new];
+            int k;
+            for (id<MTLCounterSet> cs in s_dev.counterSets)
+                if ([cs.name isEqualToString:MTLCommonCounterSetTimestamp])
+                    d.counterSet = cs;
+            d.sampleCount = 2 * 64;
+            d.storageMode = MTLStorageModeShared;
+            for (k = 0; k < 3 && d.counterSet; k++)
+                s_gpuctr[k] = [s_dev newCounterSampleBufferWithDescriptor:d error:nil];
+            if (!s_gpuctr[0])
+                s_gpu_on = 0;
+            else
+                [s_dev sampleTimestamps:&s_cpu0 gpuTimestamp:&s_gpu0];
+        }
+    }
+    if (s_gpu_on && pass >= 0 && pass < GPU_PASSES && !s_gpu_frame_used[pass]) {   /* a pass's first encoder */
+        rp.sampleBufferAttachments[0].sampleBuffer = s_gpuctr[s_vbi];
+        rp.sampleBufferAttachments[0].startOfVertexSampleIndex = (NSUInteger)(2 * pass);
+        rp.sampleBufferAttachments[0].endOfVertexSampleIndex = MTLCounterDontSample;
+        rp.sampleBufferAttachments[0].startOfFragmentSampleIndex = MTLCounterDontSample;
+        rp.sampleBufferAttachments[0].endOfFragmentSampleIndex = (NSUInteger)(2 * pass + 1);
+        s_gpu_frame_used[pass] = 1;
+    }
+    return [s_cmd renderCommandEncoderWithDescriptor:rp];
+}
+
+/* the samples of the frame that last used this slot (three frames ago, done) */
+static void lit_gpu_read(void)
+{
+    int k;
+    if (s_gpu_on <= 0)
+        return;
+    {
+        NSData *d = [s_gpuctr[s_vbi] resolveCounterRange:NSMakeRange(0, 2 * GPU_PASSES)];
+        const MTLCounterResultTimestamp *t = d ? (const MTLCounterResultTimestamp *)d.bytes : NULL;
+        /* the GPU overlaps one pass's start with the last one's fragments
+         * (the frame's first pass with the last frame's last), so a pass
+         * costs from the later of its start and the previous pass's end to
+         * its own end (the passes' ends follow the order they ran in; the
+         * slots are read in frame order) */
+        if (t) {
+            static uint64_t prev;
+            uint64_t first = 0, last = 0;
+            for (k = 0; k < GPU_PASSES; k++) {
+                uint64_t a0 = t[2 * k].timestamp, a1 = t[2 * k + 1].timestamp;
+                if (!s_gpu_used[s_vbi][k] || a0 == MTLCounterErrorValue || a1 == MTLCounterErrorValue || a1 < a0)
+                    continue;
+                if (prev > a0)
+                    a0 = prev < a1 ? prev : a1;
+                s_gpu_ms[k] += (double)(a1 - a0) * s_tick_ns / 1e6;
+                if (!first)
+                    first = a0;
+                last = prev = a1;
+            }
+            if (last > first)
+                s_gpu_span += (double)(last - first) * s_tick_ns / 1e6;
+            s_gpu_frames++;
+        }
+    }
+    {
+        double now = CACurrentMediaTime();
+        if (!s_gpu_t0)
+            s_gpu_t0 = now;
+        if (now - s_gpu_t0 >= 1.0 && s_gpu_frames) {
+            MTLTimestamp c1, g1;
+            double total = 0;
+            [s_dev sampleTimestamps:&c1 gpuTimestamp:&g1];   /* GPU ticks to nanoseconds */
+            if (g1 > s_gpu0)
+                s_tick_ns = (double)(c1 - s_cpu0) / (double)(g1 - s_gpu0);
+            fprintf(stderr, "light gpu (ms a frame, %u frames):", s_gpu_frames);
+            for (k = 0; k < GPU_PASSES; k++) {
+                fprintf(stderr, " %s %.2f", k_pass_names[k], s_gpu_ms[k] / s_gpu_frames);
+                total += s_gpu_ms[k] / s_gpu_frames;
+            }
+            fprintf(stderr, " | total %.2f, first start to last end %.2f, %ux%u\n", total, s_gpu_span / s_gpu_frames,
+                    (unsigned)s_rw, (unsigned)s_rh);
+            memset(s_gpu_ms, 0, sizeof s_gpu_ms);
+            s_gpu_span = 0;
+            s_gpu_frames = 0;
+            s_gpu_t0 = now;
+        }
+    }
+}
+
 static void lit_present(void)
 {
     LU u;
@@ -713,6 +817,8 @@ static void lit_present(void)
     id<MTLRenderCommandEncoder> e;
     MTLRenderPassDescriptor *rp;
     lit_targets();
+    lit_gpu_read();
+    memset(s_gpu_frame_used, 0, sizeof s_gpu_frame_used);
     memset(&u, 0, sizeof u);
     {   /* BR_LIGHT_SUN=x,y,z: the sun's direction (towards it; Z up), until the tracks' manifests carry it */
         const char *e2 = getenv("BR_LIGHT_SUN");
@@ -798,7 +904,7 @@ static void lit_present(void)
                 rp.colorAttachments[0].texture = tg[k];
                 rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
                 rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-                e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+                e = lit_encoder(rp, 0);   /* sky tables */
                 [e setRenderPipelineState:pp[k]];
                 [e setFragmentBytes:&a length:sizeof a atIndex:0];
                 [e setFragmentTexture:k == 3 ? s_atmS : s_atmT atIndex:0];
@@ -910,7 +1016,7 @@ static void lit_present(void)
     rp.depthAttachment.loadAction = MTLLoadActionClear;
     rp.depthAttachment.clearDepth = 1.0;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
-    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    e = lit_encoder(rp, 1);   /* g-buffer */
     [e setRenderPipelineState:s_lpg];
     for (i = 0; i < s_nops; i++)
         if (s_ops[i].kind == K_OPQ)
@@ -925,7 +1031,7 @@ static void lit_present(void)
         rp.depthAttachment.loadAction = MTLLoadActionClear;
         rp.depthAttachment.clearDepth = 1.0;
         rp.depthAttachment.storeAction = MTLStoreActionStore;
-        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        e = lit_encoder(rp, 2);   /* sun shadow */
         [e setRenderPipelineState:s_shpipe];
         [e setDepthStencilState:s_shds];
         [e setCullMode:MTLCullModeNone];
@@ -956,7 +1062,7 @@ static void lit_present(void)
             rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    e = lit_encoder(rp, 3);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
         [e setFragmentBytes:&ku length:sizeof ku atIndex:0];
@@ -997,7 +1103,7 @@ static void lit_present(void)
     rp.depthAttachment.texture = s_dep;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
-    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    e = lit_encoder(rp, 4);   /* transparent */
     for (i = 0; i < s_nops; i++)
         if (s_ops[i].kind == K_BLEND) {
             [e setRenderPipelineState:lit_forward(s_ops[i].src, s_ops[i].dst)];
@@ -1014,7 +1120,7 @@ static void lit_present(void)
         rp.colorAttachments[0].texture = s_bl[k];
         rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        e = lit_encoder(rp, 5);   /* bloom down */
         [e setRenderPipelineState:s_lbd];
         [e setFragmentTexture:k ? s_bl[k - 1] : s_hdr atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1025,7 +1131,7 @@ static void lit_present(void)
         rp.colorAttachments[0].texture = s_bl[k - 1];
         rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        e = lit_encoder(rp, 6);   /* bloom up */
         [e setRenderPipelineState:s_lbua];
         [e setFragmentTexture:s_bl[k] atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1037,7 +1143,7 @@ static void lit_present(void)
     rp.colorAttachments[0].texture = s_col;
     rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    e = lit_encoder(rp, 7);   /* post */
     [e setRenderPipelineState:s_lpp];
     {
         LU pu = u;
@@ -1052,6 +1158,8 @@ static void lit_present(void)
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
+    memcpy(s_gpu_used[s_vbi], s_gpu_frame_used, sizeof s_gpu_frame_used);   /* set by the time 2d begins, below */
+    s_gpu_used[s_vbi][8] = 1;
     /* the game's 2D, mirror and LFB writes over it, as it drew them */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_col;
@@ -1060,7 +1168,7 @@ static void lit_present(void)
     rp.depthAttachment.texture = s_dep;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
-    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    e = lit_encoder(rp, 8);   /* 2d */
     for (i = first3d; i < s_nops; i++) {
         const Op *o = &s_ops[i];
         if (o->kind == K_OTHER) {
@@ -1115,7 +1223,16 @@ int brr_open(int width, int height)
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
             return 0;
         }
-        targets(width, height);
+        {
+            /* headless, BR_SIZE=WxH sets the targets' size (a window's drawable
+             * sets it otherwise): shots and GPU timings at a display's size */
+            const char *e = getenv("BR_SIZE");
+            int tw = 0, th = 0;
+            if (!host_macos_metal_layer() && e && sscanf(e, "%dx%d", &tw, &th) == 2 && tw > 0 && th > 0)
+                targets(tw, th);
+            else
+                targets(width, height);
+        }
         for (i = 0; i < 3; i++) {
             s_vb[i] = [s_dev newBufferWithLength:VB_SIZE options:MTLResourceStorageModeShared];
             s_xt[i] = [s_dev newBufferWithLength:BRR_XF_MAX * 16 options:MTLResourceStorageModeShared];
