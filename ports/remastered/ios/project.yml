@@ -34,7 +34,7 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/remastered/ios/Sources/Bridge.h"
         HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"
         LIBRARY_SEARCH_PATHS: "$(SRCROOT)"
-        OTHER_LDFLAGS: "-lgames -lz -lc++"
+        OTHER_LDFLAGS: "-lgames -lz -lc++ -weak_framework MetalFX"
         ENABLE_BITCODE: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: "$(SRCROOT)/Info.plist"

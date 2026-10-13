@@ -117,7 +117,7 @@
 "  if (px.x >= dst.get_width() || px.y >= dst.get_height()) return;\n" \
 "  float4 c = src.read(px), a = alb.read(px);\n" \
 "  if (a.a < 0.25 || u.wet.z < 0.5) { dst.write(c, px); return; }\n" \
-"  float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; float fog = nrm.read(px).w;\n" \
+"  float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; float fog = u.vol.x > 0.5 ? 0.0 : nrm.read(px).w;\n" \
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n" \
 "  float3 al = a.rgb; float rough = u.misc.z; wet(u, p, n, al, rough);\n" \
 "  if (rough > 0.6) { dst.write(c, px); return; }\n" \

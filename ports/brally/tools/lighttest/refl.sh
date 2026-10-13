@@ -19,3 +19,7 @@ for sdk in macosx iphoneos; do
     xcrun -sdk "$sdk" metal -c "$OUT/refl.metal" -o "$OUT/refl_$sdk.air" 2> "$OUT/refl_$sdk.log"
     echo "PASS  reflection shaders, $sdk: $(grep -c 'error:' "$OUT/refl_$sdk.log" || true) errors, $(grep -c 'warning:' "$OUT/refl_$sdk.log" || true) warnings"
 done
+
+# the march, the wet surfaces and LU against their references, on this Mac's GPU
+clang -fobjc-arc -O2 -Wall -ffp-contract=off "$T/refl_test.m" -o "$OUT/refl_test" -framework Metal -framework Foundation
+"$OUT/refl_test" "$OUT/refl.metal"

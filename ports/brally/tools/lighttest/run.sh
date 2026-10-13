@@ -4,11 +4,15 @@
 #   rt.sh      the track BVH and its traversal (CPU, GPU, hardware) against brute force
 #   shadow.sh  the sun's soft shadows, contact shadows and cascade cache
 #   lights.sh  clustered light culling and the lamps' shadow atlas
+#   skymask.sh the backdrop's structural sky mask and the cloud layer's phase and Beer law
+#   gi.sh      the irradiance probes (DDGI): furnace, a lamp's first bounce, leaks, the fold against the CPU, cost
+#   taa.sh     the lit frame's TAA: jitter, reprojection, clipping, convergence (GPU vs CPU), MetalFX
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
-#   refl.sh    the reflection pass and wet roads: offline compiles (macOS, iOS)
+#   vol.sh     the volumetric fog: its integration against closed forms, its kernels against the CPU reference
+#   refl.sh    reflections and wet roads: the march, wetness and LU against references; offline compiles
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh maths.sh refl.sh; do
+for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh refl.sh; do
     echo "== $t"
     sh "./$t"
 done

@@ -35,9 +35,13 @@
 #include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
+#include "brr_skymask.h"
+#include "brr_metal_vol.h"
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
+#include "brr_metal_gi.h"
 #include "brr_shadow.h"
+#include "brr_metal_taa_api.h"
 #include "br_flags.h"
 #include "light.h"
 #include "light_cluster.h"
@@ -221,6 +225,8 @@ static id<MTLTexture> s_col, s_dep;
 static int s_fresh;                 /* the targets are new: the next pass clears them */
 static id<MTLRenderPipelineState> s_pipes[16][16];     /* by blend src, dst */
 static id<MTLRenderPipelineState> s_clear[2], s_blit, s_sharp, s_lfbpipe, s_lfbsharp;
+static id<MTLBuffer> s_xtj;            /* the lit 3D's jittered copy of it (brr_metal_taa.m), while its passes draw */
+static int s_nxf[3];
 static id<MTLBuffer> s_xt[3];           /* each frame's map table (glide.c), with its vertex buffer */
 static id<MTLDepthStencilState> s_ds[2][8][2];         /* depth on, function, write */
 static id<MTLDepthStencilState> s_clear_ds[2];
@@ -351,6 +357,7 @@ static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int co
  * (as the wasm lane draws) */
 static void lit_reset(void);
 static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h);
+static id<MTLTexture> lit_skymask(uint32_t tid);
 
 static void targets(int w, int h)
 {
@@ -415,6 +422,7 @@ static int s_litf;                  /* this frame is lit (the flag, read when it
 static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_hdr, s_shadow, s_shcache, s_bl[6];
 static int s_nbl;
 static id<MTLTexture> s_emask[TEX_MAX], s_black;
+static id<MTLTexture> s_skym[TEX_MAX];   /* a backdrop texture's painted sky (brr_skymask.h), made on its first use as one */
 static id<MTLTexture> s_brdfE;        /* the GGX lobe's albedo by (mu, roughness): the diffuse's coupling (brdf_lut) */
 static id<MTLRenderPipelineState> s_lpg, s_lpb, s_lpl, s_lpf[16][16], s_lbd, s_lbu, s_lbua, s_lpp, s_shpipe, s_shcopy;
 static id<MTLDepthStencilState> s_shds, s_nods, s_shcopyds;
@@ -435,21 +443,21 @@ static float s_ev = 1e9f;
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], wet[4]; } LU;   /* brr_metal_lit.h's LU, the same layout */
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
-typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4]; } KU;
+typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4]; } KU;
 
 /* the sky per weather (brr_metal_sky.h): the Mie density (haze, fog), the
  * light at the top of the atmosphere (the sun's 128,000 lux, or a full moon's
  * 0.32 at night), the part of the sun the clouds let through, and the
  * clouds' brightening of the sky */
-static const struct { float mie, top, through, skyk; } k_sky[5] = {
-    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f },
-    /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f },
-    /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f },
-    /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f },
-    /* night */ { 1.0f, 0.32f, 1.00f, 1.0f },
-};
+static const struct { float mie, top, through, skyk, cover, dens; } k_sky[5] = {
+    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f, 0.30f, 0.06f },
+    /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f, 0.95f, 0.10f },
+    /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f, 1.00f, 0.16f },
+    /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f, 0.85f, 0.10f },
+    /* night */ { 1.0f, 0.32f, 1.00f, 1.0f, 0.35f, 0.06f },
+};   /* cover: the cloud layer's fBm coverage; dens: its extinction per metre at full density (brr_metal_clouds.h) */
 static id<MTLTexture> s_atmT, s_atmM, s_atmS, s_atmI[3];
 static id<MTLRenderPipelineState> s_patmT, s_patmM, s_patmS, s_patmI, s_psky, s_pbk2;
 static float s_atm_mie = -1.0f;
@@ -635,6 +643,38 @@ static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
     free(m);
 }
 
+/* a backdrop texture's sky mask (brr_skymask.h): made once, the first time
+ * the texture is drawn as the backdrop, from its texels; s_black (all
+ * scenery, the painting kept) without one */
+static id<MTLTexture> lit_skymask(uint32_t tid)
+{
+    id<MTLTexture> t;
+    uint8_t *px, *m;
+    int *sky, w, h;
+    if (tid >= TEX_MAX || !(t = s_tex[tid]))
+        return s_black;
+    if (s_skym[tid])
+        return s_skym[tid];
+    w = (int)t.width;
+    h = (int)t.height;
+    px = malloc((size_t)w * h * 4);
+    m = malloc((size_t)w * h);
+    sky = malloc((size_t)w * sizeof(int));
+    if (px && m && sky) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                                                                     width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+        [t getBytes:px bytesPerRow:(NSUInteger)w * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0];
+        brr_skymask(px, w, h, sky, m);
+        td.usage = MTLTextureUsageShaderRead;
+        s_skym[tid] = [s_dev newTextureWithDescriptor:td];
+        [s_skym[tid] replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:m bytesPerRow:(NSUInteger)w];
+    }
+    free(px);
+    free(m);
+    free(sky);
+    return s_skym[tid] ? s_skym[tid] : s_black;
+}
+
 static Op *op_new(int kind)
 {
     Op *o;
@@ -661,7 +701,7 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
     if (with_depth)
         [e setDepthStencilState:ds_for(o->dmode, o->dfn, o->dmask)];
-    [e setVertexBuffer:s_xt[s_vbi] offset:0 atIndex:2];
+    [e setVertexBuffer:s_xtj ? s_xtj : s_xt[s_vbi] offset:0 atIndex:2];
     [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
     [e setVertexBytes:&o->u length:sizeof o->u atIndex:1];
     [e setFragmentBytes:&o->u length:sizeof o->u atIndex:0];
@@ -669,6 +709,8 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         NSArray *pair = s_frametex[(NSUInteger)o->texobj];
         [e setFragmentTexture:pair[0] atIndex:0];
         [e setFragmentTexture:pair[1] atIndex:1];
+        if (pair.count > 2)
+            [e setFragmentTexture:pair[2] atIndex:2];
         [e setFragmentSamplerState:samp_for(o->filt, o->cs, o->ct) atIndex:0];
     } else {
         [e setFragmentTexture:s_black atIndex:1];
@@ -932,6 +974,7 @@ static void lit_gpu_read(void)
 #endif
 #define LS_BUDGET ((long)LS_ATLAS * LS_ATLAS)     /* texels drawn a frame: the whole atlas */
 static id<MTLBuffer> s_lset[3], s_lcib[3];
+static int s_nlamp;                  /* lamps in this frame's set (the probes light their hits by them) */
 static id<MTLTexture> s_latl;
 static int s_latl_new;
 static id<MTLRenderPipelineState> s_lcclr, s_lccas;
@@ -982,6 +1025,7 @@ static void lit_lights(const float eye[3], const float *vp)
     set = (LightSet *)[s_lset[s_vbi] contents];
     if (vp)
         n = light_scene_lights(set->l, ids, LC_LIGHTS);
+    s_nlamp = n;
     light_cluster_build(set, n, vp ? vp : ident, eye, &st);
     t = light_game_track();
     if (t)
@@ -1070,6 +1114,46 @@ static void lit_lamp_shadows(void)
     [e endEncoding];
 }
 
+/* diffuse GI (DESIGN.md 8.2; brr_metal_gi.h), BR_LIGHT_GI=1 (off by default
+ * until its tier is decided): a 16 x 8 x 16 volume of probes 8 m apart
+ * around the eye, 64 rays a probe a frame, its hits lit by the directional
+ * light (sun or moon), the sky and the frame's lamps; u->gi.x on when it ran */
+static BrrGi s_gi;
+static void lit_gi(LU *u, const float eye[3])
+{
+    static int on = -1;
+    const BrrRtWorld *w;
+    float sky[3], gnd[3];
+    int k;
+    u->gi[0] = 0.0f;
+    if (on < 0)
+        on = getenv("BR_LIGHT_GI") && atoi(getenv("BR_LIGHT_GI")) > 0;
+    if (!on || !(w = brr_metal_rt_world()))
+        return;
+    if (!s_gi.ready && !brr_gi_init(&s_gi, s_dev, 16, 8, 16, 64)) {
+        fprintf(stderr, "brr: irradiance probes: no pipelines, off\n");
+        on = 0;
+        return;
+    }
+    for (k = 0; k < 3; k++) {
+        sky[k] = u->skyc[k] / 3.14159265f;      /* a miss's radiance: the sky's irradiance over pi */
+        gnd[k] = u->gndc[k] / 3.14159265f;
+    }
+    brr_gi_frame(&s_gi, eye, 8.0f, u->sun, u->sunc, sky, gnd);
+    brr_gi_encode(&s_gi, s_cmd, w, s_lset[s_vbi], s_nlamp);
+    u->gi[0] = 1.0f;
+}
+/* the probes for the lighting's fragment stage: the volume at buffer idx,
+ * irradiance and distance at textures 6 and 7 (placeholders when off) */
+static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
+{
+    static const BrrGiU zero;
+    int on = s_gi.ready && s_gi.frame;
+    [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
+    [e setFragmentTexture:on ? brr_gi_irr(&s_gi) : s_brdfE atIndex:6];
+    [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
+}
+
 static void lit_present(void)
 {
     LU u;
@@ -1082,6 +1166,10 @@ static void lit_present(void)
     BrrCascade cs[CASCADES];
     id<MTLRenderCommandEncoder> e;
     MTLRenderPassDescriptor *rp;
+    float taa_s[16];
+    id<MTLTexture> hdr = s_hdr;
+    id<MTLBuffer> xtj;
+    s_xtj = nil;
     lit_targets();
     lit_gpu_read();
     memset(s_gpu_frame_used, 0, sizeof s_gpu_frame_used);
@@ -1149,6 +1237,18 @@ static void lit_present(void)
         u.csoft[3] = CONTACT_LEN;
     }
     lit_lights(eye, have_cam ? cam.vp : NULL);
+    u.vol[0] = have_cam && brr_vol_on(s_dev) ? 1.0f : 0.0f;   /* the volumetric fog in place of the game's */
+    if (have_cam) {   /* TAA (brr_metal_taa.m): this frame's unjittered world-to-pixel matrix, and the jittered screen map */
+        int xf = 0;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
+            }
+        brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, taa_s);
+        s_xtj = brr_taa_begin(s_dev, s_xt[s_vbi], s_vbi, s_nxf[s_vbi], s_rw, s_rh, NULL);
+    }
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
         /* the atmosphere's tables: transmittance and multiple scattering when the
@@ -1248,6 +1348,10 @@ static void lit_present(void)
             ku.ktop[1] = k_sky[w].through;
             ku.ktop[2] = k_sky[w].skyk;
             ku.ktop[3] = u.misc[3];            /* the debug view */
+            ku.cld[0] = k_sky[w].cover;
+            ku.cld[1] = k_sky[w].dens;
+            ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
+            ku.cld[3] = getenv("BR_LIGHT_NOCLOUDS") ? 0.0f : 1.0f;    /* the cloud layer's tier flag */
             if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
                 fprintf(stderr, "sky: xft %g %g %g %g vpt %g %g %g %g m0 %g %g %g m1 %g %g %g m2 %g %g %g off %g %g %g eye %g %g %g tgt %g %g sun %g %g %g irr %g %g %g\n",
                         ku.xft[0], ku.xft[1], ku.xft[2], ku.xft[3], ku.vpt[0], ku.vpt[1], ku.vpt[2], ku.vpt[3],
@@ -1437,6 +1541,8 @@ static void lit_present(void)
             break;
 
     /* the lighting, in HDR: the background and backdrop, then every G-buffer pixel */
+    xtj = s_xtj;
+    s_xtj = nil;
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionClear;
@@ -1450,6 +1556,7 @@ static void lit_present(void)
             rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
     e = lit_encoder(rp, 4);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
@@ -1482,12 +1589,27 @@ static void lit_present(void)
     [e setFragmentTexture:s_shadow atIndex:3];
     [e setFragmentTexture:s_latl atIndex:4];
     [e setFragmentTexture:s_brdfE atIndex:5];
+    lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, sky ? s_atmS : nil, s_brdfE);
 
+    if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
+        float vs[16];
+        int xf = 0;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
+            }
+        brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, vs);
+        brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
+    }
+
     /* the blended 3D, forward-lit, in the game's order */
+    s_xtj = xtj;
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
@@ -1504,9 +1626,15 @@ static void lit_present(void)
             [e setFragmentTexture:s_shadow atIndex:3];
             [e setFragmentTexture:s_latl atIndex:4];
             [e setFragmentTexture:s_brdfE atIndex:5];
+            lit_gi_bind(e, 3);
             op_draw(e, &s_ops[i], 1);
         }
     [e endEncoding];
+
+    if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post */
+        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_dep, taa_s, cam.vp, eye);
+        s_xtj = nil;
+    }
 
     /* bloom */
     for (k = 0; k < s_nbl; k++) {
@@ -1516,7 +1644,7 @@ static void lit_present(void)
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
         e = lit_encoder(rp, 6);   /* bloom down */
         [e setRenderPipelineState:s_lbd];
-        [e setFragmentTexture:k ? s_bl[k - 1] : s_hdr atIndex:0];
+        [e setFragmentTexture:k ? s_bl[k - 1] : hdr atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e endEncoding];
     }
@@ -1545,8 +1673,8 @@ static void lit_present(void)
         pu.bg[1] = u.bg[1];
         [e setFragmentBytes:&pu length:sizeof pu atIndex:0];
     }
-    [e setFragmentTexture:s_hdr atIndex:0];
-    [e setFragmentTexture:s_nbl ? s_bl[0] : s_hdr atIndex:1];
+    [e setFragmentTexture:hdr atIndex:0];
+    [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
     [e setFragmentTexture:s_galb atIndex:2];
     [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -1593,6 +1721,7 @@ static void lit_reset(void)
 {
     int i;
     s_galb = s_gpos = s_gnrm = s_hdr = nil;
+    brr_taa_reset();
     for (i = 0; i < 6; i++)
         s_bl[i] = nil;
     s_nbl = 0;
@@ -1611,8 +1740,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_SKY_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_SKY_SRC] stringByAppendingString:@BRR_VOL_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
@@ -1709,6 +1838,7 @@ uint32_t brr_texture(uint32_t tid, const uint8_t *rgba, int w, int h)
         t = [s_dev newTextureWithDescriptor:td];
         [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:rgba bytesPerRow:(NSUInteger)w * 4];
         s_tex[tid] = t;
+        s_skym[tid] = nil;
         lit_emask(tid, rgba, w, h);
         return tid;
     }
@@ -1918,7 +2048,10 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 id<MTLTexture> t = st->texture < TEX_MAX && s_tex[st->texture] ? s_tex[st->texture] : s_white;
                 id<MTLTexture> m = st->texture < TEX_MAX && s_emask[st->texture] ? s_emask[st->texture] : s_black;
                 op->texobj = (int)[s_frametex count];
-                [s_frametex addObject:@[ t, m ]];
+                if (kind == K_BACK)     /* a backdrop's painted sky, for the physical sky through it */
+                    [s_frametex addObject:@[ t, m, lit_skymask(st->texture) ]];
+                else
+                    [s_frametex addObject:@[ t, m ]];
             }
             op->filt = st->mag_filter || st->min_filter;
             op->cs = st->clamp_s;
@@ -2046,6 +2179,7 @@ void brr_xf(const float (*t)[4], int n)
             n = BRR_XF_MAX;
         frame_begin();                          /* the frame's command buffer, and so its slot */
         memcpy([s_xt[s_vbi] contents], t, (size_t)n * 16);
+        s_nxf[s_vbi] = n;
     }
 }
 

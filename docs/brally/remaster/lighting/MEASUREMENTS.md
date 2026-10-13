@@ -943,6 +943,202 @@ pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
 
+## The backdrop's structural sky mask and the cloud layer (2026-10-12)
+
+fsbk2's colour test (bluish neighbourhood above the horizon) is replaced by a
+per-texture sky mask (brr_skymask.h), made once per texture the first time it
+is drawn as the backdrop (K_BACK; lit_skymask in brr_metal.m) and sampled as
+an R8 texture with a two-texel soft edge.  Per column, going down from the top
+edge: the sky continues while the colour changes smoothly; the scenery starts
+at the first row whose step is at least 0.07 (max over the channels, after a
+[1 2 1] blur along the row) and whose next 3 rows stay at least 0.05 from the
+last 3 sky rows; a transparent run at the top is sky.  The skyline is median
+filtered over 5 columns; a column with no edge is all sky.  Textures not used
+as the backdrop get no mask and are drawn as before.
+
+skymask.sh (in run.sh), 24 synthetic 256 x 64 panoramas in 5-bit colour (a
+gradient sky, 6 soft white, grey and cream clouds, a sun glow, hazy blue
+distant hills with a hard edge over a near hill and a sea):
+
+| check | result | limit |
+|---|---|---|
+| skyline within 1 texel, fraction of columns | 0.9995 | > 0.99 |
+| cloud and glow texels classified as sky (outside the 1-texel edge band) | 1.000 | 1 |
+| blue hill and sea texels classified as sky (outside the band) | 0.000 | 0 |
+| pure-sky texture, fraction sky | 1.000 | 1 |
+
+The cloud layer (brr_metal_clouds.h, in skyfs): a slab 1.8 to 2.4 km, 2D fBm
+coverage and extinction per weather (k_sky.cover, k_sky.dens: sunny 0.30,
+fog 0.95, rain 1.00, snow 0.85, night 0.35), lit by the sun's transmittance
+to 2 km with a self-shadow exp(-tau_sun / 4), a two-lobe Henyey-Greenstein
+phase (0.7 x g 0.6 + 0.3 x g -0.3), Beer-Powder, and half the zenith sky
+radiance; drifting with the frame clock; BR_LIGHT_NOCLOUDS turns it off.
+
+| check | result | limit |
+|---|---|---|
+| HG integral over the sphere, g -0.3, 0, 0.6, 0.9 and the mix, worst abs(1 - I) | 1.1e-7 | 1e-4 |
+| Beer transmittance, marched vs exp(-sigma rho L), worst relative | 2.4e-13 | 1e-9 |
+| offline compile, macOS and iOS | 0 errors, 0 warnings | |
+
+Not yet measured: the detector on the shipped backdrop textures (the .trk
+textures are colour-indexed with palettes filled at run time; a
+BR_LIGHT_TEXDUMP dump from a race gives the RGBA, and skymask.sh takes
+`w h file.rgba` triples to report each texture's sky fraction and skyline
+smoothness and write its mask), and the clouds' look in a frame.
+
+## Volumetric fog: froxels (2026-10-12)
+
+DESIGN.md 9, the froxel method (Wronski 2014, Hillaire 2015), in
+`ports/brally/platform/render/metal/brr_metal_vol.h` (the CPU reference and
+the kernels' source, appended to the renderer's after the sky's) and
+`brr_metal_vol.m` (its textures, pipelines and passes; one call from
+`lit_present` after the deferred lighting, before the blended 3D).
+
+- Grid 160 x 90 x 64 over the camera's view (the target's pixels through the
+  screen map, `brr_screen_matrix`, inverted for w = 1), slices exponential in
+  distance from 0.5 m to 300 m (slice 0 starts at the eye).
+- Per cell: extinction from the weather (`k_vol`: sunny haze 0.0002/m
+  (20 km), fog 0.026/m (150 m), rain 0.004/m, snow 0.0055/m, night mist
+  0.001/m; albedo 0.90..0.98), thinning by e over 40..300 m of height above
+  the ground (taken 2 m under the eye), times 1 +/- a value noise (amplitude
+  0.15..0.25, 24 m cells, drifting). In-scattering: the sun through
+  Henyey-Greenstein g 0.7 with one bilinear comparison in its cascade (no
+  PCSS in the air), the sky's light as an isotropic ambient (skyc / pi), and
+  up to 16 lamps of the cell's light cluster (`lamp()` x `lwin()` over d^2,
+  the same phase; unshadowed). Pre-exposed like the rest of the HDR.
+- Temporal: the sample's depth in its slice jittered by golden-ratio steps a
+  frame; the cell blended 0.9 with last frame's at the same world point
+  (last frame's screen map and eye).
+- Integration: front to back per column, Hillaire's energy-conserving step
+  (in-scattering integrated as it fades through the cell), into (light,
+  transmittance) at each slice's far side.
+- Apply: a full-screen pass blended (one, source alpha): colour x T + S at
+  the pixel's distance from the G-buffer's position; an empty pixel (the sky,
+  the backdrop) at 300 m.
+- Switch: `LU.vol.x` (new last field, C and MSL; `shadowcpu.h`'s mirror
+  too). On, the deferred pass drops the game's fog amount (N.w) and the
+  volume replaces it; off, the game's fog as before. On by default on Apple
+  GPU family 7 or Metal 3 GPUs (the tier gate), `BR_LIGHT_VOL=0|1` overrides.
+
+### The checks (`ports/brally/tools/lighttest/vol.sh`, in `run.sh`)
+
+| check | result |
+|---|---|
+| homogeneous medium, 64 slices to 300 m (fog, rain, haze): transmittance vs exp(-sigma_t d) | max rel error 3.2e-7 |
+| same, ambient in-scatter vs L albedo (1 - exp(-sigma_t d)) | max rel error 4.5e-4 |
+| same on the GPU (rain), every slice | 9.9e-7 / 2.5e-5 |
+| uniform fog, in-scatter to 300 m, energy-conserving vs naive Riemann at 8 / 16 / 64 slices | 1.7e-8 vs 0.53, 1.1e-7 vs 0.23, 4.7e-7 vs 0.052 |
+| height fog on a rising ray (fine reference, 200,000 steps), 8 / 16 / 64 slices | 9.0e-4 vs 0.34 (378x), 2.4e-4 vs 0.16 (684x), 1.5e-5 vs 0.038 (2566x) |
+| Henyey-Greenstein over the sphere, g 0, 0.3, 0.7, 0.9, -0.5 | 1.000000, 1.000000, 1.000000, 1.000001, 1.000000 |
+| vol_inject vs CPU, 921,600 cells (sun, sky, a lamp, height fog) | max abs 4.3e-7, max rel 5.4e-6 |
+| noise 0.25: extinction over the noiseless | 0.751..1.245 |
+| reprojection, a still eye: last frame's cell found at its own coordinates | max diff 1.7e-5 |
+| vol_integrate vs vol_step, 14,400 columns | max abs 6.2e-6, max rel 2.4e-5 |
+| vol_at at slices' far sides | exact |
+| offline compile macOS + iOS (`xcrun metal -c`), runtime pipelines (compile_test) | 0 errors, 0 warnings |
+
+### Cost and memory
+
+M4 Pro, measured (vol_test, the best of five): vol_inject 0.25 ms (one lamp
+in every cluster, the sun unshadowed: the cascade tap adds one comparison a
+cell), vol_integrate 0.18 ms. Not measured: the apply pass, one texel read
+and one trilinear 3D sample a pixel, estimated about 0.1 ms at 1080p. About
+0.5 ms a frame in all on this Mac; an A15-class phone, at roughly a fifth of
+its throughput, about 2 to 2.5 ms (an estimate: no iOS run). Memory: three
+RGBA16F 3D textures (two cells for the history, the integrated volume),
+7.0 MB each, 21.1 MB.
+
+### Open
+
+- The blended 3D (fsf) still takes the game's fog amount when the volume is
+  on (they are not yet given the volume: it needs the integrated texture and
+  the volume's uniforms bound in the forward pass, a lookup of vol_at at the
+  fragment's distance), so smoke and glass are fogged the old way.
+- Lamp shadows in the air (the atlas lookup per cell) are not taken; the
+  lighthouse and street lamps' shafts are lit but unshadowed.
+- The ground height is the eye's less 2 m, not the track's; the medium per
+  weather and the noise are first guesses for the project lead's review in
+  frame dumps. No game run was made: the look is unseen.
+
+## Diffuse GI: irradiance probes (2026-10-12)
+
+DDGI (Majercik et al. 2019) over the track BVH's compute traversal:
+brr_metal_gi.h, brr_metal_gi_src.h, brr_metal_gi.m; tests in
+ports/brally/tools/lighttest/gi.sh (gi_test.m), in run.sh's list. Probe hits
+are lit by the directional light (u.sun / u.sunc, sun or moon, shadowed by
+an any-hit ray), every lamp of the frame's LSet (unshadowed), emission from
+the surface records, the sky and ground radiance on a miss, and last frame's
+probes (multi-bounce). Albedo from the surface record, 0.3 where it is 0.
+Behind BR_LIGHT_GI=1 (LU.gi.x); off by default. When on, the probes'
+irradiance replaces the sky's ambient term in radiance().
+
+All on the M4 Pro, synthetic worlds built by brr_rt_update, no game run:
+
+| test | result |
+|---|---|
+| furnace: closed box, albedo 0.5020, walls emitting 1 cd/m2, 800 frames | every probe texel 6.30791 lux against pi Le / (1 - a) = 6.30792; max rel err 0.0002% |
+| lamp: 100 cd point lamp at the centre of a 6 m box, first bounce only, 256 rays | 64 texels of the centre probe against a quadrature of the closed-form integrand: max rel err 0.047% |
+| fold: GPU vs CPU of one frame's irradiance and distance folds on the same rays | irradiance max abs diff 4.8e-7 lux (of 6.31); distance max rel diff 1.9e-7 |
+| leak: emitter beside an opaque wall, receivers d metres either side | Chebyshev on: 9.65% at 0.1 m, 0.20% at 0.3 m, 0.10% at 0.6 and 0.9 m. Off: 76.8%, 36.7%, 4.2%, 0.16% |
+| cost: 16 x 8 x 16 probes, 64 rays, 131,072 triangle terrain, sunlit | 1.35 ms a frame GPU (best 1.28) for trace and both folds |
+| memory | 18.4 MB: irradiance RGBA32F and distance RG32F atlases, two of each, plus the ray buffer; BVH 11.0 MB for that terrain (shared with the other ray users) |
+| offline compile | the GI library's source (BRR_RT_SRC, lights, GI) for macOS and iOS: 0 errors |
+
+The 0.1 m leak is the normal bias reaching through the wall (as in the
+paper); the test holds the leak under 1% from 0.3 m. Atlases are 32-bit
+float: at half precision a 0.97 hysteresis stalls about 0.8% short of the
+converged value.
+
+## Temporal anti-aliasing and MetalFX (2026-10-12)
+
+`brr_metal_taa.h` / `.m`, checked by `ports/brally/tools/lighttest/taa.sh`
+(in `run.sh`). The lit 3D (G-buffer and forward passes) is drawn through a
+jittered copy of the frame's screen map table; the 2D replay is not. The
+resolve runs after the forward pass, before bloom and post, in pre-exposed
+HDR. `BR_LIGHT_TAA`: 0 off, 1 the own TAA (default), 2 MetalFX's temporal
+scaler (at 1:1 for now), the own TAA where MetalFX is absent.
+
+| check | result | limit |
+|---|---|---|
+| jitter mean over 16 phases (Halton 2,3, indices 0..15 less the set's mean) | 0.0000 px x and y | 1e-3 |
+| jitter offset | max 0.469 px | inside the pixel |
+| 4x4 cells of the pixel hit by the 16 phases | 14 of 16 | |
+| world points through last frame's camera vs by hand | 0.00012 px | 0.01 |
+| sky directions at infinity vs a point 1e7 out | 0.0009 px | 0.05 |
+| ghost history outside the YCoCg box | clipped (Y 2.0 to 0.6) | |
+| valid history inside the box | kept exactly | |
+| GPU resolve vs CPU reference, 16 frames, static jittered edge | 0 / 3e-8 | 1e-4 |
+| edge coverage after 16 frames (plain / Karis, coverage recovered) | 1.25% / 1.25% | 2% |
+| dynamic resolution, 22 ms load at full size | holds at 0.85, back to 1.00 | |
+| MetalFX on Apple M4 Pro | supported; scalers made at 0.67 and 1:1 | |
+| TAA shaders offline, macOS and iOS | 0 errors, 0 warnings | |
+| `brr_metal_taa.m` for iOS arm64 (`-Werror`) | compiles | |
+
+Found on the way:
+
+- The sky check's first reference (a point 1e5 out) carried 0.06 px of
+  parallax between the two test cameras; at 1e7 the code agrees to 0.0009 px.
+  The double inverse stays (the ray is a difference of two near points).
+- Edge convergence: without clipping the 16 frames average to the
+  16-sample estimate exactly (0.3125 for a 0.3 edge: centred strata leave at
+  most 1/32). The variance box clipped the early history (to 0.077 when the
+  sample flipped) and added 1.5%; it now applies once the history holds a
+  whole Halton cycle (n >= 16), min/max only before. A floor weight of 0.1
+  gave 6.5% after 16 frames (the last samples weigh most); the floor is
+  1/16, one cycle.
+
+Cost: the resolve at 1920x1080 on the M4 Pro takes 0.61 ms of GPU time
+(synthetic textures, every pixel reprojected, 16 Catmull-Rom texel reads and
+9 neighbourhood reads a pixel); the jittered table copy is one memcpy of the
+frame's entries on the CPU; history 47.5 MB at 1080p (two RGBA16F colour
+plus two R32F view distance).
+
+Left: the cars' own motion (they move with the camera only); rendering the
+lit 3D at a reduced internal size so MetalFX upscales, with the dynamic
+resolution controller's scale driving it; MetalFX's depth convention and
+motion sign checked against the game's frame; the jitter's effect on the
+contact shadows' screen matrix (built unjittered, 0.5 px at most).
+
 ## Reflections and wet roads (DESIGN.md 8.4), first cut
 
 What is in: `brr_metal_refl.h` (shaders), `brr_metal_refl.m` (the pass),
@@ -950,35 +1146,43 @@ one hook in `radiance()` (`wet()`: the weather's wetness on up-facing
 surfaces, n.z > 0.9; Lagarde 2013's porosity darkening, the albedo times
 mix(1, mix(1, 0.2, porosity), wetness), porosity saturate((roughness -
 0.5) / 0.4); roughness toward 0.1 by the wetness and 0.03 in puddles, a
-two-octave world-space noise mask) and one in `lit_present` (the
-reflection compute pass after the deferred lighting: one VNDF GGX sample a
-pixel, a screen-space march of one step a pixel, at most 64, then six
-halvings, against the G-buffer's positions; confidence fading over the
-screen's last 8% and to nothing on a miss; the miss traced against the
-track BVH (`rt_closest`) below roughness 0.4, a hit shaded as grey ground,
-albedo 0.3 under sun and sky, else the sky-view table; the split sum's DFG
-term is the existing GGX albedo table (F0 0.04 everywhere, so E(mu,
-roughness) is F0 A + B); nothing above roughness 0.6). `k_weather` carries
-wetness and puddles (rain 1.0 / 0.6, snow melt 0.5 / 0.3); LU gained
-`wet` (x wetness, y puddles, z the tier gate: BR_REFL, default 2, 0 off;
-w the BVH's roughness limit), so LU is 576 bytes in C and MSL.
+two-octave world-space noise mask) and one in `lit_present` after the
+deferred lighting, before the volumetric fog (a compute pass: one VNDF GGX
+sample a pixel, a screen-space march of one step a pixel, at most 64, then
+six halvings, against the G-buffer's positions; confidence fading over the
+screen's last 8% and to nothing on a miss; a miss traced against the track
+BVH (`rt_closest`) below roughness 0.4, a hit shaded as grey ground, albedo
+0.3 under sun and sky, else the sky-view table; the split sum's DFG term is
+the existing GGX albedo table (F0 0.04 everywhere, so E(mu, roughness) is
+F0 A + B); nothing above roughness 0.6; the game's fog weight dropped when
+the volumetric fog is on). `k_weather` carries wetness and puddles (rain
+1.0 / 0.6, snow melt 0.5 / 0.3); `LU.wet` (x wetness, y puddles, z the tier
+gate: BR_REFL, default 2, 0 off; w the BVH's roughness limit) is last in
+LU, after vol and gi: 608 bytes in C and MSL.
 
-Measured: the reflection source compiles offline for macOS and iOS with 0
-errors (one warning, the RT header's unused `rt_any`); `link64.sh` links
-(host null, renderer metal); `run.sh` (rt, shadow, lights, maths, refl)
-passes, 69 of 69 in the maths suite.
+refl.sh (in run.sh): refl_test.m on a synthetic 320 x 180 G-buffer of a
+ground plane and a 3 x 2 x 2 m box, mirror rays from every plane pixel:
 
-Not yet measured (left): the CPU reference of the march on a synthetic
-plane and box (hits within one pixel), the GPU kernel against it, the
-table against a brute-force GGX integral (1%), Lagarde's darkening and the
-energy bound (E + albedo (1 - E) <= 1 holds by construction for albedo <=
-1, as darkening only lowers albedo, but is not yet checked numerically),
-and the GPU time. Estimate at 1080p: 2.07 M pixels, about 16 to 40 march
-steps a glossy pixel at one texture read each, so roughly 1 to 2 ms on an
-M-class GPU when the road fills the lower half, plus the BVH misses
-(software traversal, unmeasured here). Approximations to revisit: a BVH
-hit's normal is taken as up (the hit record gives the original triangle
-id, not the sorted slot), the screen-space sample is the current frame's
-lit opaque pass (no transparent, no fog on the reflected ray), one sample
-a pixel with no denoiser (DESIGN.md 8.5). Car paint (clear coat over the
-de-lit base, a G-buffer material id for car triangles) is not started.
+| check | result | limit |
+|---|---|---|
+| visible mirror hits found by the march | 1744 of 1775 (98.25%) | >= 98% |
+| a found hit's pixel against the analytic hit | max 0.057 px | <= 1 px |
+| hits where the ray meets nothing | 30 of 36648 plane pixels | <= 0.5% |
+| GPU ssr() against the CPU transcription | 36648 of 36648 agree, 0.0000 px | all |
+| DFG table against the GGX integral (lighttest.m, 1024 x 1024) | max 0.680% relative | < 1% |
+| wet(): albedo and roughness against Lagarde's formula in double | 6.2e-8, 8.7e-8 | 1e-5 |
+| E + albedo (1 - E), albedo 0.9, every wetness 0..1 | max 0.9595 | <= 1 |
+| LU, shader and C | 608 and 608 bytes | equal |
+
+The reflection source compiles offline for macOS and iOS with 0 errors
+(one warning: the RT header's unused rt_any); link64.sh links; every suite
+in run.sh passes. The 31 missed hits (1.75%) are not yet diagnosed (likely
+single-layer cases at the box's silhouette and foot); on a miss the pass
+falls back to the BVH. GPU time at 1080p is an estimate, not measured:
+about 16 to 40 march steps a glossy pixel at one read each, roughly 1 to 2
+ms on an M-class GPU with the road filling the lower half, plus the
+software BVH for misses. Approximations to revisit: a BVH hit's normal is
+taken as up; the screen-space sample is the frame's lit opaque pass; one
+sample a pixel, no denoiser (DESIGN.md 8.5). Car paint (a clear coat over
+the de-lit base, a G-buffer material id for car triangles from
+light_capture_ontrack and light_game_cars' boxes) is not started.

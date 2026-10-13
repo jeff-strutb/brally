@@ -15,6 +15,7 @@
  * --dump writes the renderer's whole shader source (as brr_open compiles it)
  * for the offline compiles in run_all.sh. */
 #include "brr_metal.m"
+#include "brr_metal_taa.m"
 
 #include <float.h>
 #include <stdarg.h>
@@ -37,6 +38,15 @@ int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const
     (void)w, (void)dev, (void)q, (void)t;
     return 0;
 }
+/* the irradiance probes: gi.sh's (no track here, so never reached) */
+int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr) { (void)g, (void)dev, (void)nx, (void)ny, (void)nz, (void)nr; return 0; }
+void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], const float sunc[3], const float sky[3], const float gnd[3])
+{
+    (void)g, (void)eye, (void)sp, (void)sun, (void)sunc, (void)sky, (void)gnd;
+}
+void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp) { (void)g, (void)cb, (void)w, (void)lset, (void)nlamp; }
+id<MTLTexture> brr_gi_irr(const BrrGi *g) { (void)g; return nil; }
+id<MTLTexture> brr_gi_dst(const BrrGi *g) { (void)g; return nil; }
 
 /* ---- reporting ------------------------------------------------------------------------ */
 static int g_pass, g_fail;
@@ -324,6 +334,17 @@ static void test_brdf(void)
             for (k = 0; k < NQ; k++)
                 s += p[k * 2] * 2.0 * ((k + 0.5) / NQ) / NQ;
             ta = WMAX(ta, fabs(s - p[1]));
+        }
+        {   /* the split sum's DFG term (brr_metal_refl.h reads this table): relative to the brute-force integral */
+            double rel = 0, rr = 0, rm = 0;
+            for (ir = 0; ir < FUR_NR; ir++)
+                for (im = 0; im < FUR_NM; im++) {
+                    double d = fabs(qo[(ir * FUR_NM + im) * 2] - E[ir][im][0]) / E[ir][im][0];
+                    if (!(d <= rel))
+                        rel = d, rr = k_rough[ir], rm = k_mu[im];
+                }
+            report(rel < 0.01, "DFG table (split sum) against the GGX integral", "max relative error %.3f%% (roughness %.3f, mu %.2f; 1024 x 1024 quadrature)",
+                   rel * 100.0, rr, rm);
         }
         report(te < 2e-3, "BRDF table: E(mu) = the lobe's albedo", "max |table - measured| %.2e (roughness %.3f, mu %.2f)", te, k_rough[wr], k_mu[wm]);
         report(ta < 1e-3, "BRDF table: E_avg = its cosine mean", "max |E_avg - integral of the table| %.2e", ta);

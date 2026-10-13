@@ -84,10 +84,10 @@ LIBS=
 case "$HOST" in
   null)    SRCS="$SRCS $H/null/host_null.c"
            # headless Metal (frames drawn offscreen): the frameworks the renderer uses
-           [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
+           [ "$RENDER" = metal ] && LIBS="-framework Metal -weak_framework MetalFX -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
   ios)     ;;                                  # the app's Swift (ios/Sources)
   macos)   SRCS="$SRCS $H/macos/host_macos.m"
-           LIBS="-framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -framework ImageIO -framework AVFoundation";;
+           LIBS="-framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -weak_framework MetalFX -framework ImageIO -framework AVFoundation";;
   windows) SRCS="$SRCS $H/windows/host_windows.c"
            LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
 esac
