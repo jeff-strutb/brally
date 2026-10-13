@@ -229,6 +229,101 @@ static void furnace_ref(double r, double mu, double out[3])
     (void)ed;
 }
 
+/* car paint's clear coat (brdf with a negative roughness): the layered BRDF
+ * on the GPU against the same layering in double (the coat's GGX lobe and
+ * its directional albedo Ec from the formulas, the paint's coupled BRDF as
+ * brdf evaluates it at 0.35, checked against its own reference above); its
+ * white furnace E(mu) = Ec(mu) + (1 - Ec(mu)) E_base(mu), E_base by
+ * cosine-stratified quadrature of the GPU's paint BRDF; the coat's split
+ * Ec + (1 - Ec) <= 1 */
+static double coat_ref(const double v[3], const double l[3])
+{
+    double a = fmax(0.05 * 0.05, 2e-3), a2 = a * a, h[3], hl, nh, nl = l[2], nv = fmax(v[2], 1e-3), vh;
+    int k;
+    for (k = 0; k < 3; k++)
+        h[k] = v[k] + l[k];
+    hl = sqrt(dot3(h, h));
+    for (k = 0; k < 3; k++)
+        h[k] /= hl;
+    nh = h[2];
+    vh = fmin(fmax(dot3(h, v), 0.0), 1.0);
+    if (nl <= 0.0)
+        return 0.0;
+    double d = nh * nh * a2 + (1.0 - nh * nh), D = a2 / (R_PI * d * d);
+    double V = 0.5 / (nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2));
+    return D * V * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * nl;
+}
+static void test_carpaint(void)
+{
+    enum { NS = 20000, NQ = 256, NMU = 8 };
+    static const double mus[NMU] = { 1.0, 0.8, 0.6, 0.4, 0.25, 0.1, 0.05, 0.02 };
+    TBrdf *in = calloc(3 * NS, sizeof *in);
+    float *out = malloc(3 * NS * 16);
+    double maxd = 0, maxf = 0, fmaxE = 0, maxEc = 0, wmu = 0;
+    int i, k, m;
+    for (i = 0; i < NS; i++) {   /* random v and l over the upper hemisphere, albedo 0..1 */
+        double v[3], l[3], al = urand();
+        udir(v); udir(l); v[2] = fabs(v[2]); l[2] = fabs(l[2]);
+        for (m = 0; m < 3; m++) {
+            TBrdf *b = &in[m * NS + i];
+            b->n[2] = 1;
+            for (k = 0; k < 3; k++)
+                b->v[k] = (float)v[k], b->l[k] = (float)l[k];
+            b->p[0] = (float)al;
+            b->p[1] = m == 0 ? -0.35f : m == 1 ? 0.35f : 0.05f;   /* layered, the paint, the coat (albedo 0) */
+            if (m == 2)
+                b->p[0] = 0;
+        }
+    }
+    brdf_eval(in, out, 3 * NS);
+    static double ect[257];   /* the coat's Ec(mu) in double, over sqrt(mu) */
+    for (k = 0; k <= 256; k++) {
+        double o[3], x = k / 256.0;
+        furnace_ref(0.05, fmax(x * x, 1e-3), o);
+        ect[k] = o[0];
+    }
+    for (i = 0; i < NS; i++) {
+        double v[3], l[3], x;
+        for (k = 0; k < 3; k++)
+            v[k] = in[i].v[k], l[k] = in[i].l[k];
+        x = sqrt(fmin(fmax(v[2], 1e-3), 1.0)) * 256.0;
+        k = (int)fmin(x, 255.0);
+        double ec = ect[k] + (ect[k + 1] - ect[k]) * (x - k);
+        double ref = out[(NS + i) * 4] * (1.0 - ec) + coat_ref(v, l);
+        double d = fabs(out[i * 4] - ref) / fmax(ref, 1e-2);
+        if (v[2] > 0.02 && d > maxd)
+            maxd = d;
+        maxf = fmax(maxf, ref);
+    }
+    for (m = 0; m < NMU; m++) {   /* the white furnace */
+        double mu = mus[m], o[3], eb = 0;
+        TBrdf *q = calloc(NQ * NQ, sizeof *q);
+        float *qo = malloc(NQ * NQ * 16);
+        for (i = 0; i < NQ * NQ; i++) {
+            double r = sqrt((i / NQ + 0.5) / NQ), ph = 2.0 * R_PI * ((i % NQ) + 0.5) / NQ;
+            q[i].n[2] = 1;
+            q[i].v[0] = (float)sqrt(1.0 - mu * mu), q[i].v[2] = (float)mu;
+            q[i].l[0] = (float)(r * cos(ph)), q[i].l[1] = (float)(r * sin(ph)), q[i].l[2] = (float)sqrt(fmax(1.0 - r * r, 0.0));
+            q[i].p[0] = 1, q[i].p[1] = 0.35f;
+        }
+        brdf_eval(q, qo, NQ * NQ);
+        for (i = 0; i < NQ * NQ; i++)   /* cosine-weighted: E = mean of f / (n.l) x pi; brdf returns f n.l */
+            eb += q[i].l[2] > 1e-6 ? qo[i * 4] / q[i].l[2] * R_PI : 0.0;
+        eb /= (double)NQ * NQ;
+        furnace_ref(0.05, mu, o);
+        double E = o[0] + (1.0 - o[0]) * eb;
+        if (E > fmaxE)
+            fmaxE = E, wmu = mu;
+        maxEc = fmax(maxEc, o[0]);
+        printf("  car paint furnace mu %.2f: coat Ec %.4f, paint %.4f, layered %.4f\n", mu, o[0], eb, E);
+        free(q); free(qo);
+    }
+    report(fmaxE <= 1.0 + 2e-3, "car paint: white furnace of the layered BRDF <= 1", "max %.5f at mu %.2f (albedo 1; %d x %d quadrature)", fmaxE, wmu, NQ, NQ);
+    report(maxEc <= 1.0, "car paint: coat + transmitted paint <= 1", "max Ec %.4f, so Ec + (1 - Ec) = 1 at most", maxEc);
+    report(maxd < 2e-2, "car paint: layered BRDF, GPU vs double", "max relative |GPU - CPU| %.2e over %d directions (n.v > 0.02); largest f %.3f", maxd, NS, maxf);
+    free(in); free(out);
+}
+
 static void test_brdf(void)
 {
     static const uint32_t P[4] = { FUR_N, FUR_NM, FUR_NR, 0 };
@@ -1737,6 +1832,7 @@ int main(int argc, char **argv)
             return 1;
         }
         test_brdf();
+        test_carpaint();
         test_sky();
         test_tonemap();
         test_exposure();

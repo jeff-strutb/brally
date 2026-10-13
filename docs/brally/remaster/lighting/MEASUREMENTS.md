@@ -1301,3 +1301,45 @@ measured here.
 
 The shader's Purkinje weight on the GPU against light_purkinje_w, 201
 luminances 1e-5..1e3 cd/m2: worst difference 2.1e-7.
+
+## Car paint: a clear coat (2026-10-12)
+
+Car bodies are lit as clear-coated paint.  What changed:
+
+- **Material byte.**  The G-buffer's alb.a is an 8-bit material code:
+  below 64 no 3D; 64..127 car paint (written as 96, no glow); 128..255 every
+  other 3D surface, 128 + 127 x its glow as before.  `carpaint()` and
+  `BRR_MAT_CAR` live at the head of `BRR_WET_SRC` (brr_metal_refl.h), which
+  both the lit source and the reflection pass compile.
+- **Classification.**  glide.c's capture marks a main-view world triangle
+  `lit = 3` when its centroid lies in a car's model box in that car's frame
+  (`light_car_inbox`, light.h, margin `LIGHT_CAR_MARGIN` 0.3 m; the cars read
+  once a frame) and it is not on the track (`light_capture_ontrack`).  The
+  vertex shader carries `wld.w` to fsgb as a flat `mat`; a lit-3 draw is
+  opaque 3D like lit 1 (only lit 2 is the backdrop).  Glass and wheels are
+  not told apart: everything inside the box is paint.
+- **BRDF.**  `brdf` with a negative roughness is the layered paint:
+  f = f_base (1 - Ec(n.v)) + f_coat, the coat GGX at roughness 0.05 with F0
+  0.04, the base the coupled diffuse + GGX at 0.35 (the de-lit albedo), Ec
+  the coat's directional albedo from the BRDF table.  This is the
+  albedo-scaled form of Filament's f_base (1 - F(v.h)) + f_coat, chosen
+  because its furnace is bounded by construction.  The sun or moon and the
+  lamps go through it; the ambient (sky or GI probes) is scaled by
+  1 - Ec(n.v).  No metallic flake yet.
+- **Reflection.**  reflk takes car pixels at the coat's roughness 0.05 (so
+  they trace the BVH below 0.4) and weights the reflection by the table's E
+  at 0.05, the coat's Fresnel-weighted albedo.
+
+Measured (lighttest maths.sh test_carpaint, carpaint.sh):
+
+| check | result |
+|---|---|
+| white furnace, layered, albedo 1, mu 1..0.02 (256 x 256 cosine quadrature of the GPU's base, Ec in double) | max 1.0000 (mu 0.25); 0.9965 at mu 0.02 |
+| coat Ec(mu): 1.0, 0.6, 0.4, 0.25, 0.1, 0.02 | 0.040, 0.050, 0.115, 0.268, 0.606, 0.894 |
+| Fresnel split, coat + transmitted base | Ec + (1 - Ec) = 1 by construction; max Ec 0.894 |
+| layered BRDF GPU vs double, 20,000 random (v, l, albedo), n.v > 0.02 | max relative 1.6e-2 (the 64 x 64 table's interpolation of Ec against its exact value) |
+| car classification, rotated box (yaw 0.7, pitch 0.2), 0.3 m margin: 12 face points 1 cm in/out, 100,000 random points, a car without a box | 0 wrong of 100,013 |
+| offline compiles (lit source, reflection pass), macOS and iOS | 0 errors |
+
+Left: glass and wheels as their own materials, a flake term, and a check of
+the classification's hit rate in a race (a run).

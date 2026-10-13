@@ -341,6 +341,25 @@ int light_capture_ontrack(const float tri[9])
     return 0;
 }
 
+int light_capture_oncar(const float tri[9])
+{
+    static LightCar car[20];
+    static int nc;
+    static unsigned at = ~0u;
+    float m[3];
+    int c, k;
+    if (at != s_frame) {                /* the cars once a frame */
+        at = s_frame;
+        nc = light_game_cars(car, 20);
+    }
+    for (k = 0; k < 3; k++)
+        m[k] = (tri[k] + tri[3 + k] + tri[6 + k]) / 3.0f;
+    for (c = 0; c < nc; c++)
+        if (light_car_inbox(&car[c], m, LIGHT_CAR_MARGIN))
+            return !light_capture_ontrack(tri);
+    return 0;
+}
+
 static void tc_frame(void)
 {
     const LightTrack *t = light_game_track();

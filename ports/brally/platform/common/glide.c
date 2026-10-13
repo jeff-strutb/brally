@@ -818,11 +818,14 @@ static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr
             o[i].lit = 2.0f;
         return;
     }
-    for (i = 0; i < 3; i++) {
-        o[i].wx = world[i][0];
-        o[i].wy = world[i][1];
-        o[i].wz = world[i][2];
-        o[i].lit = 1.0f;
+    {
+        float lit = light_capture_oncar(&world[0][0]) ? 3.0f : 1.0f;   /* 3: car paint (the G-buffer's material) */
+        for (i = 0; i < 3; i++) {
+            o[i].wx = world[i][0];
+            o[i].wy = world[i][1];
+            o[i].wz = world[i][2];
+            o[i].lit = lit;
+        }
     }
 }
 

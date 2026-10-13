@@ -102,6 +102,28 @@ int  light_capture_camera(LightCamera *c);
 /* 1 when a world triangle (3 corners x xyz) lies on one of the track's
  * triangles (light_game_track): the track's shadow already holds it */
 int  light_capture_ontrack(const float tri[9]);
+/* 1 when world point p lies inside car c's model box (lo..hi in its own
+ * frame: fwd, side, up about pos) grown by margin on every side */
+static inline int light_car_inbox(const LightCar *c, const float p[3], float margin)
+{
+    float d[3] = { p[0] - c->pos[0], p[1] - c->pos[1], p[2] - c->pos[2] };
+    const float *ax[3] = { c->fwd, c->side, c->up };
+    int a;
+    if (!c->has_box)
+        return 0;
+    for (a = 0; a < 3; a++) {
+        float l = d[0] * ax[a][0] + d[1] * ax[a][1] + d[2] * ax[a][2];
+        if (l < c->lo[a] - margin || l > c->hi[a] + margin)
+            return 0;
+    }
+    return 1;
+}
+#define LIGHT_CAR_MARGIN 0.3f
+/* 1 when a world triangle (3 corners x xyz) is car paint: its centroid in
+ * a car's box (light_car_inbox, LIGHT_CAR_MARGIN) and the triangle not on
+ * the track (light_capture_ontrack).  Glass and wheels are not told apart
+ * yet: everything of the car's model is its paint */
+int  light_capture_oncar(const float tri[9]);
 /* the game's pixel rows as Glide takes them: its height when the origin is
  * the lower left (y up, as the game's viewport works), else 0 (glide.c) */
 int  light_glide_flip(void);
