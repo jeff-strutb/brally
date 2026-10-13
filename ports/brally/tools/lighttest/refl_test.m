@@ -220,7 +220,29 @@ static const char *k_kern =
 "  uint k = px.y * pos.get_width() + px.x; float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; o[k] = 0.0;\n"
 "  if (all(p == 0.0)) return;\n"
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n"
-"  float4 r = rf_up(u, hr, pos, nrm, px, p, n); o[k] = float4(r.x, t_f(p), r.a, 1); }\n"
+"  float4 r = rf_up(u, hr, pos, nrm, px, p, n, 0.0); o[k] = float4(r.x, t_f(p), r.a, 1); }\n"
+/* the denoiser: one frame's noisy samples of a constant environment (1, \
+   +-35% uniform, as one GGX sample a pixel gives), on the plane and the box's \
+   top (100: what must not bleed); accumulated as reflt does (static camera: \
+   the same pixel) and filtered as reflc does at roughness 0.3 */ \
+"static float t_n(uint2 h, uint f) { uint x = h.x * 1973u + h.y * 9277u + f * 26699u; x ^= x >> 13; x *= 0x5bd1e995u; x ^= x >> 15; return float(x & 0xffffu) / 65535.0; }\n"
+"kernel void t_acc(uint2 h [[thread_position_in_grid]], constant uint &f [[buffer(0)]], texture2d<float> pos [[texture(0)]],\n"
+"                  texture2d<float> hs [[texture(1)]], texture2d<float, access::write> ho [[texture(2)]], texture2d<float, access::write> cur [[texture(3)]]) {\n"
+"  int2 hw = int2(ho.get_width(), ho.get_height()); if (int(h.x) >= hw.x || int(h.y) >= hw.y) return;\n"
+"  float3 P = pos.read(min(h * 2, uint2(pos.get_width(), pos.get_height()) - 1)).xyz; if (all(P == 0.0)) { ho.write(0.0, h); return; }\n"
+"  float base = P.z > 1e-3 ? 100.0 : 1.0, c = base * (1.0 + 0.7 * (t_n(h, f) - 0.5)), lo = c, hi = c;\n"
+"  for (int k = 0; k < 9; k++) { int2 q = clamp(int2(h) + int2(k % 3 - 1, k / 3 - 1), int2(0), hw - 1);\n"
+"    float3 Q = pos.read(min(uint2(q) * 2, uint2(pos.get_width(), pos.get_height()) - 1)).xyz; if (all(Q == 0.0)) continue;\n"
+"    float C = (Q.z > 1e-3 ? 100.0 : 1.0) * (1.0 + 0.7 * (t_n(uint2(q), f) - 0.5)); lo = min(lo, C); hi = max(hi, C); }\n"
+"  float4 H = hs.read(h); float cnt = f == 0u ? 0.0 : H.a; float3 L = cnt > 0.0 ? rf_hist(float3(c), H.rgb, float3(lo), float3(hi), cnt) : float3(c);\n"
+"  ho.write(float4(L, max(cnt, 1.0)), h); }\n"
+"kernel void t_filt(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(0)]], texture2d<float> pos [[texture(0)]], texture2d<float> nrm [[texture(1)]],\n"
+"                 texture2d<float> hr [[texture(2)]], device float4 *o [[buffer(1)]]) {\n"
+"  if (px.x >= pos.get_width() || px.y >= pos.get_height()) return;\n"
+"  uint k = px.y * pos.get_width() + px.x; float3 p = pos.read(px).xyz, n = nrm.read(px).xyz; o[k] = 0.0;\n"
+"  if (all(p == 0.0)) return;\n"
+"  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n"
+"  float4 r = rf_up(u, hr, pos, nrm, px, p, n, rf_rad(0.3)); o[k] = float4(r.x, p.z > 1e-3 ? 100.0 : 1.0, r.a, 1); }\n"
 "kernel void t_wet(uint i [[thread_position_in_grid]], constant LU &u [[buffer(0)]], device const float4 *in [[buffer(1)]], device float4 *o [[buffer(2)]]) {\n"
 "  float3 p = float3(in[i].xy, 0.0), n = float3(0, 0, 1), a = float3(in[i].z); float r = in[i].w;\n"
 "  wet(u, p, n, a, r); float2 w = wetness(u, p, n); o[i] = float4(a.x, r, w.x, w.y); }\n";
@@ -397,6 +419,42 @@ int main(int argc, char **argv)
             report(nin > 10000 && emax < 0.015, "upsample: half-res = full-res away from edges", "max relative error %.5f (half float 0.001, the function itself across 2 px) over %d pixels nearer than 40 m (values 0.4..101.6)", emax, nin);
             report(nbleed == 0, "upsample: no bleed across a depth edge", "%d of %d edge pixels take the other surface's value; %d without a sample",
                    nbleed, nedge, nnone);
+
+            /* 6: the denoiser, 16 frames of noisy samples accumulated and filtered */
+            {
+                id<MTLTexture> hh[2];
+                id<MTLComputePipelineState> pa = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_acc"] error:&err];
+                id<MTLComputePipelineState> pf = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"t_filt"] error:&err];
+                uint32_t fr;
+                double sum = 0, sq = 0, emean;
+                int npl = 0, nb2 = 0;
+                hh[0] = [dev newTextureWithDescriptor:hd]; hh[1] = [dev newTextureWithDescriptor:hd];
+                for (fr = 0; fr < 16; fr++) {
+                    cb = [q commandBuffer];
+                    e = [cb computeCommandEncoder];
+                    [e setComputePipelineState:pa]; [e setBytes:&fr length:4 atIndex:0];
+                    [e setTexture:tp atIndex:0]; [e setTexture:hh[fr & 1] atIndex:1]; [e setTexture:hh[(fr & 1) ^ 1] atIndex:2]; [e setTexture:th atIndex:3];
+                    [e dispatchThreads:MTLSizeMake(hd.width, hd.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+                    [e endEncoding]; [cb commit]; [cb waitUntilCompleted];
+                }
+                cb = [q commandBuffer];
+                e = [cb computeCommandEncoder];
+                [e setComputePipelineState:pf]; [e setBytes:&g_lu length:sizeof g_lu atIndex:0];
+                [e setTexture:tp atIndex:0]; [e setTexture:tn atIndex:1]; [e setTexture:hh[0] atIndex:2]; [e setBuffer:o offset:0 atIndex:1];
+                [e dispatchThreads:MTLSizeMake(W, H, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+                [e endEncoding]; [cb commit]; [cb waitUntilCompleted];
+                memcpy(up, o.contents, sizeof up);
+                for (j = 0; j < H; j++)
+                    for (i = 0; i < W; i++) {
+                        if (up[j][i][3] <= 0 || up[j][i][2] <= 0) continue;
+                        if (fabsf(up[j][i][0] - up[j][i][1]) > 50.0f) nb2++;
+                        if (up[j][i][1] == 1.0f && g_pos[j][i][2] < 1e-4f && vd(g_pos[j][i]) < 40.0f) { sum += up[j][i][0]; sq += (double)up[j][i][0] * up[j][i][0]; npl++; }
+                    }
+                emean = npl ? sum / npl : 0;
+                report(npl > 10000 && fabs(emean - 1.0) < 0.02, "denoise: 16 frames converge to the split-sum value", "mean %.4f of 1 (constant environment, +-35%% samples) over %d plane pixels", emean, npl);
+                report(npl > 10000 && sqrt(fmax(sq / npl - emean * emean, 0)) / emean < 0.01, "denoise: per-pixel deviation below 1%", "%.4f relative standard deviation after accumulation and the roughness 0.3 filter", sqrt(fmax(sq / npl - emean * emean, 0)) / emean);
+                report(nb2 == 0, "denoise: the spatial filter does not bleed across a depth edge", "%d pixels take the other surface's value", nb2);
+            }
         }
 
         /* 3: wetness */

@@ -153,50 +153,117 @@
 "  float3 al = a.rgb; bool car = carpaint(a.a); rough = car ? BRR_CAR_ROUGH : u.misc.z; wet(u, p, n, al, rough);\n" \
 "  if (car) rough = BRR_COAT_ROUGH;   /* car paint: the coat's mirror, its own roughness, weighted by its Fresnel (E) */\n" \
 "  return rough <= REFL_ROUGH_MAX; }\n" \
+/* the frame's reprojection (brr_metal_refl.m): the last frame's scr, the \
+   frame's number (the samples' rotation) and whether the last frame's \
+   history and lit target are this frame's size (1) or not (0) */ \
+"struct RP { float4x4 pscr; uint frame; float valid; float pad0; float pad1; };\n" \
+"#define REFL_MIRROR 0.1\n" \
+"#define REFL_HIST 16.0\n" \
 /* the half-resolution trace: px a pixel of the half-size target hr, the \
    full-resolution pixel 2 px its sample; rgb the reflected light (before \
-   the lobe's albedo), a 1 where traced, 0 where not (nothing reflects, or \
-   too rough to trace).  The BVH's buffers 0..2 (rt_closest) */ \
-"kernel void reflk(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]],\n" \
+   the lobe's albedo), a 0 where not traced (nothing reflects, or too rough \
+   to trace), else 1 + the ray's length to what it found (1e4 the sky).  One \
+   GGX sample a pixel, rotated each frame (the temporal pass averages them); \
+   below REFL_MIRROR the mirror direction alone.  A hit of the BVH: the last \
+   frame's lit target where the hit was on screen and is still what the \
+   G-buffer shows there, else albedo 0.3 under the sun (a shadow ray) and the \
+   sky's hemisphere about the triangle's normal.  The BVH's buffers 0..2 */ \
+"kernel void reflk(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
 "                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]] RT_AS(8),\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
-"                  texture2d<float> sky [[texture(5)]]) {\n" \
+"                  texture2d<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
-"  uint2 fp = min(px * 2, uint2(src.get_width(), src.get_height()) - 1);\n" \
+"  float2 wh = float2(src.get_width(), src.get_height());\n" \
+"  uint2 fp = min(px * 2, uint2(wh) - 1);\n" \
 "  float3 p, n; float rough, fog;\n" \
 "  if (!rf_surf(u, alb, pos, nrm, fp, p, n, rough, fog) || rough > REFL_TRACE_MAX) { hr.write(0.0, px); return; }\n" \
 "  float3 v = normalize(u.eye.xyz - p);\n" \
-"  float j = fract(52.9829189 * fract(dot(float2(px) + 0.5, float2(0.06711056, 0.00583715))));\n" \
+"  float j = fract(52.9829189 * fract(dot(float2(px) + 0.5, float2(0.06711056, 0.00583715))) + 0.618034 * float(rp.frame & 1023u));\n" \
 "  float ar = max(rough * rough, 0.0447);\n" \
-"  float3 h = rf_vndf(n, v, ar, float2(fract(j + 0.5), fract(j * 7.31 + 0.25))), r = reflect(-v, h);\n" \
-"  if (dot(r, n) <= 0.0) r = reflect(-v, n);\n" \
-"  float4 s = ssr(u, pos, p, r, 80.0, j);\n" \
-"  float3 Lss = s.z > 0.0 ? src.read(uint2(s.xy)).rgb : float3(0), Lfb;\n" \
+"  float3 r = reflect(-v, n);\n" \
+"  if (rough >= REFL_MIRROR) { float3 h = rf_vndf(n, v, ar, float2(fract(j + 0.5), fract(j * 7.31 + 0.25 + 0.7548777 * float(rp.frame & 1023u))));\n" \
+"    float3 rh = reflect(-v, h); if (dot(rh, n) > 0.0) r = rh; }\n" \
+"  float jm = rough < REFL_MIRROR ? 0.5 : j;\n" \
+"  float4 s = ssr(u, pos, p, r, 80.0, jm);\n" \
+"  float3 Lss = s.z > 0.0 ? src.read(uint2(s.xy)).rgb : float3(0), Lfb; float hd = s.z > 0.0 ? s.w : 1e4;\n" \
 "  RtHit hh; hh.tri = -1;\n" \
 "  if (s.z < 1.0 && u.wet.z > 1.5 && rough < u.wet.w) hh = RT_CLOSEST(p + n * 0.02, r, 0.0, 300.0);\n" \
-"  if (hh.tri >= 0) Lfb = min(0.3 / 3.14159 * (u.sunc.rgb * max(u.sun.z, 0.0) + u.skyc.rgb) * u.wb.rgb * u.misc.x, float3(60000.0));   /* grey ground under the sun and sky */\n" \
-"  else Lfb = rf_env(u, sky, r);\n" \
-"  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0), px);\n" \
+"  if (hh.tri >= 0) {\n" \
+"    float3 hp = p + n * 0.02 + r * hh.t; bool got = false;\n" \
+"    if (s.z <= 0.0) hd = hh.t;\n" \
+"    float4 hc = rp.pscr * float4(hp, 1.0);\n" \
+"    if (rp.valid > 0.5 && hc.w > 1e-6) { float2 sc = hc.xy / hc.w;\n" \
+"      if (all(sc >= 0.0) && all(sc < wh)) { float3 P = pos.read(uint2(sc)).xyz;\n" \
+"        if (!all(P == 0.0) && abs(rf_vd(u, P) - rf_vd(u, hp)) < 0.1 + 0.02 * rf_vd(u, hp)) { Lfb = prv.read(uint2(sc)).rgb; got = true; } } }\n" \
+"    if (!got) { uint b = uint(hh.tri) * 9u;\n" \
+"      float3 a0 = float3(tri[b], tri[b + 1], tri[b + 2]), a1 = float3(tri[b + 3], tri[b + 4], tri[b + 5]), a2 = float3(tri[b + 6], tri[b + 7], tri[b + 8]);\n" \
+"      float3 tn = cross(a1 - a0, a2 - a0); tn = dot(tn, tn) > 1e-12 ? normalize(tn) : -r; if (dot(tn, r) > 0.0) tn = -tn;\n" \
+"      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
+"      Lfb = min(0.3 / 3.14159 * (u.sunc.rgb * max(nl, 0.0) * vis + u.skyc.rgb * (0.5 + 0.5 * tn.z)) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
+"  } else Lfb = rf_env(u, sky, r);\n" \
+"  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0 + min(hd, 1e4)), px);\n" \
 "}\n" \
-/* the bilateral upsample: the four half-resolution samples around full \
-   pixel px (its sample pixels 2 h), bilinear weights times their validity, \
-   their nearness to px's tangent plane (1 cm per metre of depth, plus \
-   2 cm) and their normals' agreement (cos^8); rgb the weighted light, a the \
-   weights' sum (0: no sample on this surface) */ \
-"static float4 rf_up(constant LU &u, texture2d<float> hr, texture2d<float> pos, texture2d<float> nrm, uint2 px, float3 p, float3 n) {\n" \
+/* the temporal accumulation, at half resolution: cur reflk's target, hs the \
+   last frame's history, ho this frame's.  The history read where this \
+   pixel's reflection was a frame ago: for a mirror the reflected point (the \
+   ray's length behind the surface along the view), for a rough surface the \
+   surface itself, between the two by roughness; clamped to the box of the \
+   3 x 3 neighbourhood's new samples (no ghosts), then averaged in with \
+   weight 1 / n, n the history's count (a) up to REFL_HIST */ \
+"static float3 rf_hist(float3 cur, float3 h, float3 lo, float3 hi, thread float &cnt) {\n" \
+"  cnt = min(cnt + 1.0, REFL_HIST); return mix(clamp(h, lo, hi), cur, 1.0 / cnt); }\n" \
+"kernel void reflt(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
+"                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
+"                  texture2d<float> cur [[texture(3)]], texture2d<float> hs [[texture(4)]], texture2d<float, access::write> ho [[texture(5)]]) {\n" \
+"  int2 hw = int2(cur.get_width(), cur.get_height());\n" \
+"  if (int(px.x) >= hw.x || int(px.y) >= hw.y) return;\n" \
+"  float4 c = cur.read(px); if (c.a <= 0.0) { ho.write(0.0, px); return; }\n" \
+"  float3 lo = c.rgb, hi = c.rgb;\n" \
+"  for (int k = 0; k < 9; k++) { int2 q = clamp(int2(px) + int2(k % 3 - 1, k / 3 - 1), int2(0), hw - 1); float4 C = cur.read(uint2(q));\n" \
+"    if (C.a > 0.0) { lo = min(lo, C.rgb); hi = max(hi, C.rgb); } }\n" \
+"  uint2 fp = min(px * 2, uint2(pos.get_width(), pos.get_height()) - 1); float3 p, n; float rough, fog, cnt = 0.0; float3 L = c.rgb;\n" \
+"  if (rp.valid > 0.5 && rf_surf(u, alb, pos, nrm, fp, p, n, rough, fog)) {\n" \
+"    float3 dv = normalize(p - u.eye.xyz), q = mix(p + dv * min(c.a - 1.0, 1000.0), p, saturate((rough - REFL_MIRROR) / 0.3));\n" \
+"    float4 hc = rp.pscr * float4(q, 1.0);\n" \
+"    if (hc.w > 1e-6) { float2 hp = hc.xy / hc.w * 0.5;\n" \
+"      if (all(hp >= 0.0) && all(hp < float2(hw))) { float4 H = hs.read(uint2(hp));\n" \
+"        if (H.a > 0.0) { cnt = H.a; L = rf_hist(c.rgb, H.rgb, lo, hi, cnt); } } } }\n" \
+"  ho.write(float4(L, max(cnt, 1.0)), px);\n" \
+"}\n" \
+/* the bilateral upsample and spatial filter: the half-resolution samples \
+   around full pixel px (its sample pixels 2 h): within rad half-resolution \
+   pixels (rad <= 0.5: the four around it, bilinear; else a Gaussian of sigma \
+   rad / 1.6, the filter for rough lobes), weights times their validity, their \
+   nearness to px's tangent plane (1 cm per metre of depth, plus 2 cm) and \
+   their normals' agreement (cos^8); rgb the weighted light, a the weights' \
+   sum (0: no sample on this surface) */ \
+"static float rf_w(constant LU &u, texture2d<float> pos, texture2d<float> nrm, int2 h, int2 fw, float3 p, float3 n, float tol) {\n" \
+"  uint2 rp = uint2(min(h * 2, fw - 1)); float3 P = pos.read(rp).xyz, N = nrm.read(rp).xyz; if (dot(N, u.eye.xyz - P) < 0.0) N = -N;\n" \
+"  return saturate(1.0 - abs(dot(P - p, n)) / tol) * pow(saturate(dot(N, n)), 8.0); }\n" \
+"static float4 rf_up(constant LU &u, texture2d<float> hr, texture2d<float> pos, texture2d<float> nrm, uint2 px, float3 p, float3 n, float rad) {\n" \
 "  int2 hw = int2(hr.get_width(), hr.get_height()), fw = int2(pos.get_width(), pos.get_height());\n" \
 "  float2 hc = float2(px) * 0.5, b = floor(hc), f = hc - b; float tol = 0.01 * rf_vd(u, p) + 0.02;\n" \
 "  float4 acc = 0.0;\n" \
-"  for (int k = 0; k < 4; k++) {\n" \
-"    int2 o = int2(k & 1, k >> 1), h = clamp(int2(b) + o, int2(0), hw - 1); uint2 rp = uint2(min(h * 2, fw - 1));\n" \
-"    float4 L = hr.read(uint2(h)); if (L.a <= 0.0) continue;\n" \
-"    float3 P = pos.read(rp).xyz, N = nrm.read(rp).xyz; if (dot(N, u.eye.xyz - P) < 0.0) N = -N;\n" \
-"    float wb = (o.x ? f.x : 1.0 - f.x) * (o.y ? f.y : 1.0 - f.y) + 1e-4;\n" \
-"    float wd = saturate(1.0 - abs(dot(P - p, n)) / tol), wn = pow(saturate(dot(N, n)), 8.0);\n" \
-"    float w = wb * wd * wn * L.a; acc += float4(L.rgb * w, w);\n" \
+"  if (rad <= 0.5) {\n" \
+"    for (int k = 0; k < 4; k++) {\n" \
+"      int2 o = int2(k & 1, k >> 1), h = clamp(int2(b) + o, int2(0), hw - 1);\n" \
+"      float4 L = hr.read(uint2(h)); if (L.a <= 0.0) continue;\n" \
+"      float wb = (o.x ? f.x : 1.0 - f.x) * (o.y ? f.y : 1.0 - f.y) + 1e-4;\n" \
+"      float w = wb * rf_w(u, pos, nrm, h, fw, p, n, tol); acc += float4(L.rgb * w, w);\n" \
+"    }\n" \
+"  } else {\n" \
+"    int R = int(ceil(rad)); float is = 1.28 / (rad * rad);\n" \
+"    for (int dy = -R; dy <= R; dy++) for (int dx = -R; dx <= R; dx++) {\n" \
+"      int2 h = int2(b) + int2(dx, dy); if (any(h < 0) || any(h >= hw)) continue;\n" \
+"      float4 L = hr.read(uint2(h)); if (L.a <= 0.0) continue;\n" \
+"      float2 d = float2(h) - hc; float w = exp(-dot(d, d) * is) * rf_w(u, pos, nrm, h, fw, p, n, tol); acc += float4(L.rgb * w, w);\n" \
+"    }\n" \
 "  }\n" \
 "  return acc.a > 1e-5 ? float4(acc.rgb / acc.a, acc.a) : float4(0.0); }\n" \
+/* the spatial filter's radius in half-resolution pixels: none below \
+   REFL_MIRROR, growing to 4 at REFL_TRACE_MAX */ \
+"static float rf_rad(float rough) { return rough < REFL_MIRROR ? 0.0 : 1.0 + 3.0 * saturate((rough - REFL_MIRROR) / (REFL_TRACE_MAX - REFL_MIRROR)); }\n" \
 /* the composite: src the lit target as the deferred pass left it \
    (pre-exposed), dst the same plus the reflection; hr reflk's target; sky \
    the sky-view table (cd/m2), bE the lobe's albedo table.  The split-sum: \
@@ -209,7 +276,7 @@
 "  float4 c = src.read(px); float3 p, n; float rough, fog;\n" \
 "  if (!rf_surf(u, alb, pos, nrm, px, p, n, rough, fog)) { dst.write(c, px); return; }\n" \
 "  float3 v = normalize(u.eye.xyz - p); float nv = clamp(dot(n, v), 1e-3, 1.0);\n" \
-"  float4 h = rough <= REFL_TRACE_MAX ? rf_up(u, hr, pos, nrm, px, p, n) : float4(0.0);\n" \
+"  float4 h = rough <= REFL_TRACE_MAX ? rf_up(u, hr, pos, nrm, px, p, n, rf_rad(rough)) : float4(0.0);\n" \
 "  float3 L = h.a > 0.0 ? h.rgb : rf_env(u, sky, reflect(-v, n));\n" \
 "  constexpr sampler ls(filter::linear, address::clamp_to_edge);\n" \
 "  float2 sz = float2(bE.get_width(), bE.get_height()), tc = (0.5 + float2(sqrt(nv), saturate((rough - 0.0447) / 0.9553)) * (sz - 1.0)) / sz;\n" \
