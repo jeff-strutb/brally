@@ -133,6 +133,8 @@
 "fragment SCD scopy(float4 pos [[position]], depth2d_array<float> c [[texture(0)]], constant uint4 &k [[buffer(0)]]) {\n" \
 "  SCD o; o.d = c.read(uint2(pos.xy) + k.yz, k.x); return o; }\n"
 
+#include "brr_metal_night.h"
+
 #define BRR_LIT_SRC \
 BRR_LU_SRC \
 BRR_GI_DEFS \
@@ -321,7 +323,8 @@ BRR_SHADOW_SRC \
 "  r += t.sample(s, uv + d * float2(-1, -1)).rgb + t.sample(s, uv + d * float2(1, -1)).rgb + t.sample(s, uv + d * float2(-1, 1)).rgb + t.sample(s, uv + d * float2(1, 1)).rgb;\n" \
 "  return float4(r / 16.0, 1);\n" \
 "}\n" \
-/* post: bloom, exposure, the meter's histogram, Khronos PBR Neutral, sRGB */ \
+/* post: bloom, exposure, the meter's histogram, the Purkinje shift (brr_metal_night.h), Khronos PBR Neutral, sRGB */ \
+BRR_NIGHT_SRC \
 "static float3 neutral(float3 c) {\n" \
 "  const float start = 0.8 - 0.04, desat = 0.15;\n" \
 "  float x = min(c.r, min(c.g, c.b)); float off = x < 0.08 ? x - 6.25 * x * x : 0.04; c -= off;\n" \
@@ -337,6 +340,7 @@ BRR_SHADOW_SRC \
 "  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
 "  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(px).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
 "    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))], 1u, memory_order_relaxed);\n" \
+"  c = purkinje(c, u.misc.x);   /* the eye at night: rods, before the tonemap */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n"

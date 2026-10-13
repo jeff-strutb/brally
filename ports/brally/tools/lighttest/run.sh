@@ -9,9 +9,10 @@
 #   taa.sh     the lit frame's TAA: jitter, reprojection, clipping, convergence (GPU vs CPU), MetalFX
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
 #   vol.sh     the volumetric fog: its integration against closed forms, its kernels against the CPU reference
+#   night.sh   the moon, the Purkinje weight, the night meter, the glow's gating, the track's lights
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh; do
+for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh night.sh; do
     echo "== $t"
     sh "./$t"
 done

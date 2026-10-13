@@ -23,6 +23,8 @@
 #include <string.h>
 
 #include "light.h"
+#include "light_world.h"
+#include <time.h>
 
 #define MAX_CARS 20
 
@@ -106,6 +108,16 @@ int light_scene_lights(LightSpot *out, int *id, int max)
                 id[k] = i * 4 + j;
             k++;
         }
+    }
+    if (w == 4 && k < max) {   /* the track's own lights at night (light_world.c): ids from 1000 */
+        struct timespec ts;
+        int m, q;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        m = light_world_spots(out + k, max - k, (float)(ts.tv_sec % 86400) + ts.tv_nsec * 1e-9f);
+        for (q = 0; q < m; q++)
+            if (id)
+                id[k + q] = 1000 + q;
+        k += m;
     }
     return k;
 }
