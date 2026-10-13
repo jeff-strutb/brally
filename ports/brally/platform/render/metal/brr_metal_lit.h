@@ -230,12 +230,12 @@ BRR_SHADOW_SRC \
    a negative rough is car paint (brdf), the coat's own mirror of the \
    surroundings the reflection pass's (brr_metal_refl.h) */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
-"                       texture2d<float> bE, float3 gi) {\n" \
+"                       texture2d<float> bE, float3 gi, float phi) {\n" \
 "  float3 v = normalize(u.eye.xyz - p); bool coat = rough < 0.0; rough = abs(rough); wet(u, p, n, alb, rough);\n" \
 "  float rb = coat ? -rough : rough, tb = coat ? 1.0 - coatE(dot(n, v), bE) : 1.0;   /* car paint: the coat's layering (brdf) */\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
 "  Lo += alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
-"  Lo += lamps(ls, atl, p, n, v, alb, rb, bE);\n" \
+"  Lo += lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
@@ -312,7 +312,7 @@ BRR_SHADOW_SRC \
 "  float3 gi = u.gi.x > 0.5 ? gi_irr(gu, girr, gdst, P.xyz, n, normalize(u.eye.xyz - P.xyz)) : float3(0);\n" \
 "  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, glow, sv, bE, gi)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, glow, sv, bE, gi, j * 6.2831853)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds; vu, iv: the volumetric fog's (brr_vol_bind) */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
@@ -331,7 +331,7 @@ BRR_SHADOW_SRC \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE, gi, ign(in.pos.xy) * 6.2831853);\n" \
 "  }\n" \
 /* the volumetric fog on, the same as the opaque surfaces behind it take (brr_metal_vol.h), never the game's */ \
 "  if (lu.vol.x > 0.5) return float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, preexp(lu, c), u.addk > 0.0 || u.beam > 0.0), h.o.a);\n" \
