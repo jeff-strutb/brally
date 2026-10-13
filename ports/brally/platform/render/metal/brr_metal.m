@@ -880,6 +880,10 @@ static id<MTLCounterSampleBuffer> s_gpuctr[3];
 static int s_gpu_on = -1;
 static double s_gpu_ms[GPU_PASSES], s_gpu_span, s_gpu_t0;
 static long s_gpu_cb_us, s_gpu_cb_n;   /* the frames' whole GPU time (command buffer start to end) */
+#define GPU_SPLITS 9
+static const char *const k_split_names[GPU_SPLITS] = { "tables+gbuffer+sun", "lamp shadows", "gi update", "lighting", "reflections",
+                                                      "fog", "transparent", "taa", "bloom+post+2d" };
+static long s_split_us[GPU_SPLITS], s_split_n[GPU_SPLITS];
 static unsigned s_gpu_frames;
 static MTLTimestamp s_cpu0, s_gpu0;
 static double s_tick_ns = 1.0;
@@ -969,6 +973,14 @@ static void lit_gpu_read(void)
                 long us = __atomic_exchange_n(&s_gpu_cb_us, 0, __ATOMIC_RELAXED), n = __atomic_exchange_n(&s_gpu_cb_n, 0, __ATOMIC_RELAXED);
                 fprintf(stderr, " | total %.2f, first start to last end %.2f, whole frame %.2f, %ux%u\n", total, s_gpu_span / s_gpu_frames,
                         n ? us / 1000.0 / n : 0.0, (unsigned)s_rw, (unsigned)s_rh);
+                if (s_split_n[0]) {
+                    fprintf(stderr, "light gpu modules (ms a frame):");
+                    for (k = 0; k < GPU_SPLITS; k++) {
+                        long su = __atomic_exchange_n(&s_split_us[k], 0, __ATOMIC_RELAXED), sn = __atomic_exchange_n(&s_split_n[k], 0, __ATOMIC_RELAXED);
+                        fprintf(stderr, " %s %.2f", k_split_names[k], sn ? su / 1000.0 / sn : 0.0);
+                    }
+                    fprintf(stderr, "\n");
+                }
             }
             memset(s_gpu_ms, 0, sizeof s_gpu_ms);
             s_gpu_span = 0;
@@ -1170,6 +1182,33 @@ static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
     [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
     [e setFragmentTexture:on ? brr_gi_irr(&s_gi) : s_brdfE atIndex:6];
     [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
+}
+
+/* BR_LIGHT_GPU=2 (diagnostic): the frame's work committed in pieces at its
+ * modules' boundaries, each piece's GPU time (Metal's command buffer start and
+ * end) summed per module and printed with the pass timer's line.  Changes the
+ * frame's scheduling: for measuring only. */
+static double s_split_end;   /* the previous piece's GPU end (completion handlers run in queue order) */
+static void lit_split_add(id<MTLCommandBuffer> cb, int k)
+{
+    /* a piece costs from the later of its own start and the previous piece's
+       end to its own end: a piece's start includes waiting behind the last */
+    [cb addCompletedHandler:^(id<MTLCommandBuffer> c) {
+        double t0 = c.GPUStartTime > s_split_end ? c.GPUStartTime : s_split_end, ms = (c.GPUEndTime - t0) * 1000.0;
+        s_split_end = c.GPUEndTime;
+        if (ms >= 0 && ms < 1000) {
+            __atomic_add_fetch(&s_split_us[k], (long)(ms * 1000.0), __ATOMIC_RELAXED);
+            __atomic_add_fetch(&s_split_n[k], 1, __ATOMIC_RELAXED);
+        }
+    }];
+}
+static void lit_split(int k)
+{
+    if (s_gpu_on <= 0 || !getenv("BR_LIGHT_GPU") || atoi(getenv("BR_LIGHT_GPU")) != 2)
+        return;
+    lit_split_add(s_cmd, k);
+    [s_cmd commit];
+    s_cmd = [s_q commandBuffer];
 }
 
 static void lit_present(void)
@@ -1558,6 +1597,7 @@ static void lit_present(void)
         }
     }
 
+    lit_split(0);
     lit_lamp_shadows();
 
     /* what the game drew before its 3D (its clears and background fills) is
@@ -1582,7 +1622,9 @@ static void lit_present(void)
             rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    lit_split(1);
     lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
+    lit_split(2);
     e = lit_encoder(rp, 4);   /* lighting */
     if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
         [e setRenderPipelineState:s_psky];
@@ -1618,9 +1660,11 @@ static void lit_present(void)
     lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
+    lit_split(3);
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, sky ? s_atmS : nil, s_brdfE);
 
+    lit_split(4);
     if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
         float vs[16];
         int xf = 0;
@@ -1636,6 +1680,7 @@ static void lit_present(void)
 
     /* the blended 3D, forward-lit, in the game's order */
     s_xtj = xtj;
+    lit_split(5);
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
@@ -1657,11 +1702,13 @@ static void lit_present(void)
         }
     [e endEncoding];
 
+    lit_split(6);
     if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post */
         hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_dep, taa_s, cam.vp, eye);
         s_xtj = nil;
     }
 
+    lit_split(7);
     /* bloom */
     for (k = 0; k < s_nbl; k++) {
         rp = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -2353,6 +2400,8 @@ void brr_present(void)
                 [s_cmd presentDrawable:dr];
             }
         }
+        if (s_gpu_on > 0 && s_litf && getenv("BR_LIGHT_GPU") && atoi(getenv("BR_LIGHT_GPU")) == 2)
+            lit_split_add(s_cmd, GPU_SPLITS - 1);
         if (s_gpu_on > 0)   /* the whole frame's GPU time, every pass (BR_LIGHT_GPU) */
             [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> c) {
                 double ms = (c.GPUEndTime - c.GPUStartTime) * 1000.0;
