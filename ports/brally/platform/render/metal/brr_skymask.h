@@ -22,13 +22,18 @@
 
 #define BRR_SKY_EDGE 0.07f      /* one row's step, max over the channels, that may start scenery */
 #define BRR_SKY_KEEP 0.05f      /* how far the next 3 rows must stay from the last 3 sky rows */
+#define BRR_SKY_SOFT 0.03f      /* a soft edge (one 5-bit step a row: haze going down into the sea) ... */
+#define BRR_SKY_SOFTKEEP 0.06f  /* ... starts scenery when the next 3 rows stay this far, darker, from the last 3 */
+#define BRR_SKY_FLAT 0.03f      /* a texture with no edge whose row means vary less than this is a flat panel (the sea) */
+#define BRR_SKY_LEVEL 0.035f    /* the most a channel may vary down the rows under a soft edge (a 5-bit step, a glint) */
+#define BRR_SKY_RUN 10          /* how many rows under a soft edge must stay level */
 #define BRR_SKY_MED  5          /* the skyline's median filter, columns */
 
 static float brr_sky_px(const float *f, int w, int x, int y, int c) { return f[(y * w + x) * 3 + c]; }
 
 /* the skyline per column (row where the scenery starts, h for none) into sky[w];
  * the mask into m[w*h] when m is not NULL.  Returns the fraction of texels that are sky. */
-static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m)
+static float brr_skymask_half(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m)
 {
     float *f = (float *)malloc((size_t)w * (size_t)h * 3 * sizeof(float));
     int *raw = (int *)malloc((size_t)w * sizeof(int));
@@ -55,6 +60,7 @@ static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m
         for (y = 1; y < h && s == h; y++) {
             int a0 = rgba[((size_t)(y - 1) * w + x) * 4 + 3], a1 = rgba[((size_t)y * w + x) * 4 + 3];
             float step = 0.0f, keep = 0.0f;
+            int dark = 1;           /* every channel of the next 3 rows below the last 3 sky rows */
             if (a1 < 128)
                 continue;
             if (a0 < 128) {         /* the first opaque texel under the transparent sky */
@@ -73,6 +79,8 @@ static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m
                 for (k = 0; k < 3 && y + k < h; k++, n1++)
                     below += brr_sky_px(f, w, x, y + k, c);
                 d = below / n1 - above / n0;
+                if (d >= 0.0f)
+                    dark = 0;
                 if (d < 0.0f)
                     d = -d;
                 if (d > keep)
@@ -80,8 +88,39 @@ static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m
             }
             if (step >= BRR_SKY_EDGE && keep >= BRR_SKY_KEEP)
                 s = y;
+            else if (step >= BRR_SKY_SOFT && keep >= BRR_SKY_SOFTKEEP && dark && y + BRR_SKY_RUN <= h) {
+                int flat = 1, k;    /* and the BRR_SKY_RUN rows below it are level: a sea, not a cloud's shaded base */
+                for (c = 0; c < 3 && flat; c++) {
+                    float lo = 1e9f, hi = -1e9f;
+                    for (k = 1; k < BRR_SKY_RUN; k++) {
+                        float v = brr_sky_px(f, w, x, y + k, c);
+                        lo = v < lo ? v : lo;
+                        hi = v > hi ? v : hi;
+                    }
+                    flat = hi - lo < BRR_SKY_LEVEL;
+                }
+                if (flat)
+                    s = y;
+            }
         }
         raw[x] = s;
+    }
+    {   /* no edge anywhere and no gradient down it: a flat panel, the sea under the horizon */
+        float lo = 1e9f, hi = -1e9f;
+        int edge = 0;
+        for (x = 0; x < w; x++)
+            edge |= raw[x] < h;
+        for (y = 0; y < h && !edge; y++) {
+            float r = 0.0f;
+            for (x = 0; x < w; x++)
+                r += brr_sky_px(f, w, x, y, 0) + brr_sky_px(f, w, x, y, 1) + brr_sky_px(f, w, x, y, 2);
+            r /= 3.0f * w;
+            lo = r < lo ? r : lo;
+            hi = r > hi ? r : hi;
+        }
+        if (!edge && hi - lo < BRR_SKY_FLAT)
+            for (x = 0; x < w; x++)
+                raw[x] = 0;
     }
     for (x = 0; x < w; x++) {      /* the median across BRR_SKY_MED columns, clamped at the ends */
         int v[BRR_SKY_MED], n = 0, a, b;
@@ -105,6 +144,39 @@ static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m
     free(f);
     free(raw);
     return (float)nsky / ((float)w * (float)h);
+}
+
+/* The game's backdrop textures are stored as the picture over its mirror
+ * image (each row y equals row h-1-y; the lower half is the picture upright:
+ * its first row is the sky's zenith fill colour, the hills sit on the sea
+ * there).  Such a texture is analysed by its lower half, top down, and the
+ * mask mirrored into the upper half; sky[x] is the lower half's skyline. */
+static int brr_sky_mirrored(const uint8_t *rgba, int w, int h)
+{
+    int x, y, c;
+    if (h < 8 || h & 1)
+        return 0;
+    for (y = 0; y < h / 2; y++)
+        for (x = 0; x < w; x++)
+            for (c = 0; c < 4; c++)
+                if (rgba[((size_t)y * w + x) * 4 + c] != rgba[((size_t)(h - 1 - y) * w + x) * 4 + c])
+                    return 0;
+    return 1;
+}
+
+static float brr_skymask(const uint8_t *rgba, int w, int h, int *sky, uint8_t *m)
+{
+    int x, y, h2 = h / 2;
+    float fr;
+    if (!brr_sky_mirrored(rgba, w, h))
+        return brr_skymask_half(rgba, w, h, sky, m);
+    fr = brr_skymask_half(rgba + (size_t)h2 * w * 4, w, h2, sky, m ? m + (size_t)h2 * w : NULL);
+    for (x = 0; x < w; x++)
+        sky[x] += h2;
+    if (m)
+        for (y = 0; y < h2; y++)
+            memcpy(m + (size_t)y * w, m + (size_t)(h - 1 - y) * w, (size_t)w);
+    return fr;
 }
 
 #endif

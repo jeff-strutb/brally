@@ -122,6 +122,57 @@ static double road_only(int x, int y, int W, int H) { (void)x; (void)y; (void)W;
 /* the road below, a sunlit white wall (4 stops up) over the top fifth's corners */
 static double road_wall(int x, int y, int W, int H) { return (y < H / 5 && (x < W / 4 || x > 3 * W / 4)) ? 4600.0 * 16 : 4600.0; }
 
+/* The game's own backdrop (Coastline, sunny; the fog race draws the same
+ * textures), dumped as drawn: <tex>_64x64.rgba.  Every texture is the
+ * picture over its mirror image; the expected skyline is in the full
+ * texture's rows at column 20 (the lower, upright half starts at row 32),
+ * established from the texels down that column: the sky's 5-bit gradient
+ * 5a6a73 at the half's top, the first row of hill paint (brown/green
+ * 5a6252, 625a4a, 5a5a52...) or of the sea (525a62 / 4a5a62 after the
+ * haze), and the zenith fill colour 4a626a of the backdrop's 4x1 fill
+ * texture at the top of the sky tiles.  64: all sky, 32: all scenery. */
+static const struct { int tid, sky20; float lo, hi; } s_coast[] = {
+    { 6, 64, 1.0f, 1.0f }, { 8, 64, 1.0f, 1.0f }, { 11, 64, 1.0f, 1.0f },   /* the sky: gradient, clouds */
+    { 12, 64, 0.98f, 1.0f }, { 13, 64, 1.0f, 1.0f }, { 14, 64, 0.98f, 1.0f },
+    { 7, 32, 0.0f, 0.0f },                                                 /* the sea, flat, with glints */
+    { 9, 34, 0.05f, 0.13f }, { 10, 40, 0.18f, 0.27f },                    /* the headland's hills to the top */
+    { 22, 44, 0.38f, 0.47f }, { 23, 41, 0.23f, 0.31f },                   /* islands under haze */
+    { 21, 48, 0.44f, 0.50f }, { 24, 48, 0.44f, 0.50f },                   /* haze over the sea */
+};
+
+static void coastline(const char *dir)
+{
+    char path[1024];
+    static uint8_t p[64 * 64 * 4], m[64 * 64];
+    int sk[64], i, x, worst = 0;
+    for (i = 0; i < (int)(sizeof s_coast / sizeof s_coast[0]); i++) {
+        FILE *f;
+        float fr;
+        int mir = 1, ok;
+        snprintf(path, sizeof path, "%s/%d_64x64.rgba", dir, s_coast[i].tid);
+        if (!(f = fopen(path, "rb")) || fread(p, 1, sizeof p, f) != sizeof p) {
+            printf("FAIL  %s unreadable\n", path);
+            fails++;
+            if (f) fclose(f);
+            continue;
+        }
+        fclose(f);
+        fr = brr_skymask(p, 64, 64, sk, m);
+        for (x = 0; x < 64 * 32; x++)
+            mir &= m[x] == m[(63 - x / 64) * 64 + x % 64];
+        if (abs(sk[20] - s_coast[i].sky20) > worst)
+            worst = abs(sk[20] - s_coast[i].sky20);
+        ok = fr >= s_coast[i].lo - 1e-6f && fr <= s_coast[i].hi + 1e-6f && abs(sk[20] - s_coast[i].sky20) <= 1 && mir;
+        printf("%s  %s tex %2d: sky %.3f (expected %.2f..%.2f), skyline at column 20 row %d (expected %d)%s\n",
+               ok ? "PASS" : "FAIL", dir, s_coast[i].tid, fr, s_coast[i].lo, s_coast[i].hi, sk[20], s_coast[i].sky20,
+               mir ? "" : ", mask not mirrored");
+        fails += !ok;
+        snprintf(path, sizeof path, "%s/%d_64x64_mask.pgm", dir, s_coast[i].tid);
+        pgm(path, m, 64, 64);
+    }
+    printf("INFO  %s: worst skyline error at column 20, %d rows\n", dir, worst);
+}
+
 int main(int argc, char **argv)
 {
     enum { W = 256, H = 64, N = 24 };
@@ -249,6 +300,17 @@ int main(int argc, char **argv)
         check(log2(road2 / 0.18) >= 0.5 && log2(road2 / 0.18) <= 1.0, "sunlit road with a bright wall in frame, stops", log2(road2 / 0.18), 1.0);
         ev2 = light_meter_ev(h, 512, 0.80f, 0.983f, 12.0f, 16.0f, 0.0f);
         printf("INFO  meter, the old band (80..98.3%%, no compensation), same frame: road %+.2f stops from mid-grey\n", log2(4600.0 / (1.2 * exp2(ev2)) / 0.18));
+    }
+
+    /* the game's Coastline backdrop, where dumped (game data, never committed) */
+    {
+        const char *d = getenv("BACKDROPS");
+        if (d && *d) {
+            snprintf(path, sizeof path, "%s/20_quickrace_drive", d);
+            coastline(path);
+            snprintf(path, sizeof path, "%s/33_weather_fog", d);
+            coastline(path);
+        }
     }
 
     /* real textures: w h file.rgba triples */
