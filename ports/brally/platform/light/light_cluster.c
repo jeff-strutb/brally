@@ -767,8 +767,11 @@ void light_shadow_plan(LightSet *s, const int *ids, const LightClusterStats *st,
             s_sc[id].key = s->l[i2];
             s_sc[id].dyn = h;
             s_sc[id].rec = rec[i2];
-        } else if (same) {
-            p->stale++;              /* last frame's depth, with last frame's transform */
+        } else if (same && s_sc[id].dyn == h) {
+            /* last frame's depth, with last frame's transform: right only while the
+               moving casters near it have not moved; else a moving car is shadowed by
+               where it was (its whole rear, metal_test.m's car box), so unshadowed */
+            p->stale++;
         } else {
             s_sc[id].has = 0;        /* no depth here for it yet: unshadowed this frame */
             s_sc[id].placed = fr;

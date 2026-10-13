@@ -22,6 +22,7 @@
 #include "brr_metal_lights.h"
 
 static int g_fail;
+#define LAMP_TEST_HEIGHT 0.65f   /* light_scene.c: a headlamp 0.65 m up (UN ECE R48 6.2.4: 0.5 to 1.2 m) */
 #define CHECK(c, ...)                                                                    \
     do {                                                                                 \
         if (!(c)) {                                                                      \
@@ -65,6 +66,11 @@ BRDF_SRC
 "                device float *out [[buffer(2)]], uint g [[thread_position_in_grid]]) {\n"
 "  float3 p = pts[g].xyz; LS l = s.l[0];\n"
 "  out[g] = lampvis(s, atl, 0, p, float3(0, 0, 1), normalize(float3(l.pos) - p));\n"
+"}\n"
+"kernel void kbox(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], const device float4 *pts [[buffer(1)]],\n"
+"                 device float2 *out [[buffer(2)]], uint g [[thread_position_in_grid]]) {\n"
+"  float3 p = pts[g].xyz, n = float3(-1, 0, 0); LS l = s.l[0]; float3 L = float3(l.pos) - p; float d2 = dot(L, L), dl = sqrt(d2); float3 ld = L / dl;\n"
+"  out[g] = float2(lamp(l, -ld) * lwin(l, -ld, dl) / d2 * max(dot(n, ld), 0.0), lampvis(s, atl, 0, p, n, ld));\n"
 "}\n"
 "struct CU { float4 eye, fwd, right, up, tan; };\n"
 /* the ground under the camera's pixel, lit by the lamps: 0 clustered (the
@@ -381,6 +387,111 @@ static void test_shadow(void)
     CHECK(bad == 0 && nshad > 1000 && nlit > 1000, "%d ground points shadowed wrongly", bad);
 }
 
+/* ---- a car ahead in a headlamp ---------------------------------------------------- */
+static void box_tris(float x0, float x1, float y0, float y1, float z0, float z1, float *t)
+{
+    float c[8][3];
+    static const int f[12][3] = { { 0, 1, 3 }, { 0, 3, 2 }, { 4, 6, 7 }, { 4, 7, 5 }, { 0, 4, 5 }, { 0, 5, 1 },
+                                  { 2, 3, 7 }, { 2, 7, 6 }, { 0, 2, 6 }, { 0, 6, 4 }, { 1, 5, 7 }, { 1, 7, 3 } };
+    int i, k, j;
+    for (i = 0; i < 8; i++)
+        c[i][0] = i & 4 ? x1 : x0, c[i][1] = i & 2 ? y1 : y0, c[i][2] = i & 1 ? z1 : z0;
+    for (i = 0; i < 12; i++)
+        for (k = 0; k < 3; k++)
+            for (j = 0; j < 3; j++)
+                t[i * 9 + k * 3 + j] = c[f[i][k]][j];
+}
+
+/* the rear of a car-sized box (4 x 1.7 x 1.25 m, 0.15 m off the ground) D m ahead of a
+   headlamp at height hl, lit three ways: the pattern alone (no tile), through a freshly
+   drawn tile, and through a stale tile (light_shadow_plan's over-budget path: last
+   frame's depth with last frame's transform) after lamp and car both moved dx forward:
+   the rear face's mean illuminance, lux, and the lit fraction of it */
+static void box_case(float D, float hl, float dx, double *E, double *vf, double *vs)
+{
+    const int asz = 1024, tsz = 512, np = 32 * 24;
+    float tris[108];
+    id<MTLTexture> atl = atlas_tex(asz);
+    id<MTLBuffer> sb = [g_dev newBufferWithLength:sizeof(LightSet) options:MTLResourceStorageModeShared];
+    id<MTLBuffer> pb = [g_dev newBufferWithLength:(NSUInteger)np * 16 options:MTLResourceStorageModeShared];
+    id<MTLBuffer> ob = [g_dev newBufferWithLength:(NSUInteger)np * 8 options:MTLResourceStorageModeShared];
+    id<MTLBuffer> vb;
+    LightSpot *l = &g_set.l[0];
+    LightShadowPlan p;
+    int pass, i, j;
+    box_tris(D, D + 4.0f, -0.85f, 0.85f, 0.15f, 1.40f, tris);
+    vb = [g_dev newBufferWithBytes:tris length:sizeof tris options:MTLResourceStorageModeShared];
+    for (pass = 0; pass < 3; pass++) {
+        float sh = pass == 2 ? dx : 0.0f;
+        memset(&g_set.h, 0, sizeof g_set.h);
+        memset(l, 0, sizeof *l);
+        l->pos[2] = hl;
+        l->axis[0] = 1;
+        l->side[1] = -1;
+        l->kind = LIGHT_HEAD;
+        l->candela = 20000;
+        l->range = 150;
+        l->cosout = 0.3420201f;
+        l->rgb[0] = l->rgb[1] = l->rgb[2] = 1;
+        light_shadow_matrix(l, &g_set.s[0]);   /* the tile's transform: the lamp where the tile was drawn */
+        l->pos[0] = sh;                        /* the stale case: lamp and car have moved on since */
+        g_set.s[0].rect[0] = 0.5f, g_set.s[0].rect[1] = 0.25f, g_set.s[0].rect[2] = (float)tsz / asz;
+        g_set.s[0].rect[3] = pass == 0 ? 0.0f : 1.0f;
+        g_set.h.atl[0] = asz, g_set.h.atl[1] = 1.0f / asz, g_set.h.eye[3] = 1;
+        memcpy([sb contents], &g_set, sizeof g_set);
+        memset(&p, 0, sizeof p);
+        p.n = 1, p.t[0].x = asz / 2, p.t[0].y = asz / 4, p.t[0].size = tsz, p.t[0].render = 1;
+        {
+            float (*P)[4] = (float (*)[4])[pb contents];
+            id<MTLCommandBuffer> cb = [g_q commandBuffer];
+            id<MTLComputeCommandEncoder> e;
+            for (j = 0; j < 24; j++)
+                for (i = 0; i < 32; i++) {
+                    float *q = P[j * 32 + i];
+                    q[0] = D + sh, q[1] = -0.8f + 1.6f * (i + 0.5f) / 32, q[2] = 0.2f + 1.15f * (j + 0.5f) / 24, q[3] = 1;
+                }
+            draw_tiles(cb, atl, &p, vb, 36, 1);
+            e = [cb computeCommandEncoder];
+            [e setComputePipelineState:kernel_named(@"kbox")];
+            [e setBuffer:sb offset:0 atIndex:0];
+            [e setTexture:atl atIndex:0];
+            [e setBuffer:pb offset:0 atIndex:1];
+            [e setBuffer:ob offset:0 atIndex:2];
+            [e dispatchThreads:MTLSizeMake((NSUInteger)np, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+            [e endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+        }
+        {
+            const float (*o)[2] = (const float (*)[2])[ob contents];
+            double se = 0, sv = 0;
+            for (i = 0; i < np; i++)
+                se += o[i][0], sv += o[i][0] * o[i][1];
+            if (pass == 0)
+                *E = se / np;
+            else if (pass == 1)
+                *vf = sv / (se > 0 ? se : 1);
+            else
+                *vs = sv / (se > 0 ? se : 1);
+        }
+    }
+}
+
+static void test_carbox(void)
+{
+    static const float dist[] = { 10.0f, 15.0f, 20.0f };
+    int i;
+    for (i = 0; i < 3; i++) {
+        double E, vf, vs;
+        box_case(dist[i], LAMP_TEST_HEIGHT, 0.5f, &E, &vf, &vs);
+        printf("car box %2.0f m ahead, lamp %.2f m up: rear face %.1f lux unshadowed; lit fraction %.4f fresh tile, %.4f stale tile "
+               "(lamp and car 0.5 m on)\n", dist[i], LAMP_TEST_HEIGHT, E, vf, vs);
+        CHECK(vf > 0.98, "car box %.0f m: its rear shadows itself in a fresh tile (%.4f lit)", dist[i], vf);
+        /* the stale tile's figure is the mechanism the plan now refuses (light_shadow_plan keeps
+           a tile stale only while the moving casters near it are unchanged: cluster_test.c) */
+    }
+}
+
 /* ---- the 20-car night grid ------------------------------------------------------- */
 static double gpu_ms(id<MTLCommandBuffer> cb) { return (cb.GPUEndTime - cb.GPUStartTime) * 1e3; }
 static int dcmp(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return x < y ? -1 : x > y; }
@@ -567,6 +678,7 @@ int main(void)
         }
         test_clusters();
         test_shadow();
+        test_carbox();
         grid();
     }
     printf(g_fail ? "metal_test: %d FAILED\n" : "metal_test: all passed\n", g_fail);

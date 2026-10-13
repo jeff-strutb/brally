@@ -68,7 +68,11 @@ int light_scene_lights(LightSpot *out, int *id, int max)
             float hw = (c->hi[1] - c->lo[1]) * 0.5f * 0.72f, yc = (c->hi[1] + c->lo[1]) * 0.5f;
             float lx = j < 2 ? c->hi[0] - 0.08f : c->lo[0] + 0.05f;
             float ly = yc + (j & 1 ? -hw : hw);
-            float lz = c->lo[2] + (c->hi[2] - c->lo[2]) * (j < 2 ? 0.36f : 0.48f);
+            /* a headlamp 0.65 m above the model's lowest point (its wheels' contact): UN ECE
+               R48 6.2.4 mounts it 0.5 to 1.2 m up; 0.36 of the body's height put it at
+               about 0.49 m, under the minimum, so the cut-off (0.57 degrees down) left a
+               car ahead lit only along its bumper */
+            float lz = c->lo[2] + (j < 2 ? fminf(0.65f, (c->hi[2] - c->lo[2]) * 0.8f) : (c->hi[2] - c->lo[2]) * 0.48f);
             LightSpot *o = &out[k];
             int a;
             float cd;

@@ -443,7 +443,9 @@ static void test_alloc(void)
         light_shadow_plan(&g_set, ids, &st, eye, tri, 3, 4096, 1L << 40, &p);
         CHECK(p.rendered == near, "a caster within %d lamps' reach: %d drawn", near, p.rendered);
     }
-    /* a budget: the most important drawn, the rest kept (stale) */
+    /* a budget: the most important drawn, the rest kept (stale; the moving casters as they
+       were, none, after a frame that draws all with the caster gone) */
+    light_shadow_plan(&g_set, ids, &st, eye, NULL, 0, 4096, 1L << 40, &p);
     for (i = 0; i < 80; i++)
         g_set.l[i].pos[2] += 0.01f;
     budget = 4L * 1024 * 1024;
@@ -451,6 +453,17 @@ static void test_alloc(void)
     CHECK(p.texels <= budget && p.rendered > 0 && p.stale == 80 - p.rendered, "budget: %ld texels, %d drawn, %d stale",
           p.texels, p.rendered, p.stale);
     printf("  budget %ld texels: %d tiles drawn (%ld texels), %d kept from last frame\n", budget, p.rendered, p.texels, p.stale);
+    /* over budget with a moving caster near every lamp: no stale tile (it would shadow the
+       moved caster by where it was), the rest unshadowed this frame */
+    {
+        static const float big[9] = { -1e4f, -1e4f, 0, 1e4f, -1e4f, 0, 0, 1e4f, 1 };
+        for (i = 0; i < 80; i++)
+            g_set.l[i].pos[2] += 0.01f;
+        light_shadow_plan(&g_set, ids, &st, eye, big, 3, 4096, budget, &p);
+        CHECK(p.stale == 0 && p.dropped == 80 - p.rendered, "moved casters over budget: %d drawn, %d stale, %d dropped",
+              p.rendered, p.stale, p.dropped);
+        printf("  over budget, casters moved: %d drawn, %d stale, %d unshadowed\n", p.rendered, p.stale, p.dropped);
+    }
     /* 80 lamps in a 2048^2 atlas (the iPhone's) */
     light_shadow_reset();
     light_shadow_plan(&g_set, ids, &st, eye, NULL, 0, 2048, 1L << 40, &p);
