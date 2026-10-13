@@ -21,6 +21,8 @@
 #ifndef BRR_METAL_SKY_H
 #define BRR_METAL_SKY_H
 
+#include "brr_metal_clouds.h"
+
 #define BRR_SKY_SRC \
 "constant float RG = 6360.0, RT = 6460.0;\n" \
 "constant float3 RAYS = float3(5.802, 13.558, 33.1) * 1e-3;\n" \
@@ -127,7 +129,7 @@
    the soft rim, a smoothstep over the outer tenth of its solid angle, keeps \
    0.95 of it, divided back); kept within half float's range (the disc's \
    centre is about 1.6e9 cd/m2) */ \
-"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; };\n" \
+"struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; float4 cld; };\n" \
 "static float3 camray(constant KU &k, float2 px) {\n" \
 "  float2 ndc = float2((px.x + 0.5) / k.tgt.x * 2.0 - 1.0, 1.0 - (px.y + 0.5) / k.tgt.y * 2.0);\n" \
 "  float2 g = float2((ndc.x - k.xft.y) / k.xft.x, (ndc.y - k.xft.w) / k.xft.z);\n" \
@@ -140,21 +142,27 @@
 "  float cd = dot(d, k.sun.xyz), cr = cos(0.2675 * 3.14159 / 180.0);\n" \
 "  if (cd > cr && d.z > -0.01) L += trans(T, RG + k.eye.w, d.z) * k.ktop.x * k.ktop.y / (3.14159 * pow(0.2675 * 3.14159 / 180.0, 2.0)) * smoothstep(cr, mix(cr, 1.0, 0.1), cd) / 0.95;\n" \
 "  return L; }\n" \
+BRR_CLOUD_SRC \
+/* the sky with the cloud layer (brr_metal_clouds.h) in front of it */ \
 "fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]]) {\n" \
 "  float3 d = camray(k, in.pos.xy);\n" \
 "  if (k.ktop.w == 9.0) return float4(d * 0.5 + 0.5, 1);   /* debug: the ray */\n" \
 "  if (k.ktop.w == 10.0) { constexpr sampler s(filter::linear, address::clamp_to_edge); return float4(S.sample(s, svuv(d)).rgb * 20.0, 1); }\n" \
-"  return float4(min(skyrad(k, S, T, d) * k.ktop.z * k.tgt.z, float3(60000.0)), 1); }   /* pre-exposed (k.tgt.z the exposure) */\n" \
+"  float3 L = skyrad(k, S, T, d);\n" \
+"  { constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
+"    float4 c = clouds(d, k.sun.xyz, k.eye.w, k.cld, trans(T, RG + 2.0, k.sun.z) * k.ktop.y, S.sample(s, svuv(float3(0, 0, 1))).rgb * 0.5);\n" \
+"    L = L * c.a + c.rgb * k.ktop.x; }\n" \
+"  return float4(min(L * k.ktop.z * k.tgt.z, float3(60000.0)), 1); }   /* pre-exposed (k.tgt.z the exposure) */\n" \
 /* the game's painted backdrop over the sky: its hills, coast and sea stay, \
-   its painted sky (blue or neutral, looking up past the horizon) gives way */ \
+   its painted sky gives way.  The sky is the texture's structural mask \
+   (brr_skymask.h, texture 2: 1 above the skyline), sampled bilinearly at two \
+   rows half a texel apart: a soft edge of about two texels. */ \
 "fragment float4 fsbk2(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                      constant LU &lu [[buffer(1)]], constant KU &k [[buffer(2)]]) {\n" \
+"                      constant LU &lu [[buffer(1)]], constant KU &k [[buffer(2)]], texture2d<float> skym [[texture(2)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
-"  float3 c = h.o.rgb, d = camray(k, in.pos.xy), av = 0.0;\n" \
-"  float2 tx = 1.0 / float2(t.get_width(), t.get_height());\n" \
-"  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) av += t.sample(sm, in.st + float2(x, y) * tx * 1.5).rgb;\n" \
-"  av /= 9.0;   /* classified on the texel's neighbourhood: no speckle in hazy blue hills */\n" \
-"  float skyish = smoothstep(0.0, 0.06, av.b - av.r) * smoothstep(-0.06, 0.0, av.b - av.g) * smoothstep(-0.02, 0.02, d.z);\n" \
+"  constexpr sampler ms(filter::linear, s_address::repeat, t_address::clamp_to_edge);\n" \
+"  float3 c = h.o.rgb; float ty = 0.25 / float(skym.get_height());\n" \
+"  float skyish = 0.5 * (skym.sample(ms, in.st - float2(0, ty)).r + skym.sample(ms, in.st + float2(0, ty)).r);\n" \
 "  if (int(lu.misc.w) == 8) skyish = 1.0;   /* BR_LIGHT_VIEW=8: the sky alone */\n" \
 "  return float4(lin(c) * lu.bg.x, 1.0 - skyish); }\n"
 

@@ -942,3 +942,46 @@ argument (unread there); `compile_test.m` also builds the table's two
 pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
+
+## The backdrop's structural sky mask and the cloud layer (2026-10-12)
+
+fsbk2's colour test (bluish neighbourhood above the horizon) is replaced by a
+per-texture sky mask (brr_skymask.h), made once per texture the first time it
+is drawn as the backdrop (K_BACK; lit_skymask in brr_metal.m) and sampled as
+an R8 texture with a two-texel soft edge.  Per column, going down from the top
+edge: the sky continues while the colour changes smoothly; the scenery starts
+at the first row whose step is at least 0.07 (max over the channels, after a
+[1 2 1] blur along the row) and whose next 3 rows stay at least 0.05 from the
+last 3 sky rows; a transparent run at the top is sky.  The skyline is median
+filtered over 5 columns; a column with no edge is all sky.  Textures not used
+as the backdrop get no mask and are drawn as before.
+
+skymask.sh (in run.sh), 24 synthetic 256 x 64 panoramas in 5-bit colour (a
+gradient sky, 6 soft white, grey and cream clouds, a sun glow, hazy blue
+distant hills with a hard edge over a near hill and a sea):
+
+| check | result | limit |
+|---|---|---|
+| skyline within 1 texel, fraction of columns | 0.9995 | > 0.99 |
+| cloud and glow texels classified as sky (outside the 1-texel edge band) | 1.000 | 1 |
+| blue hill and sea texels classified as sky (outside the band) | 0.000 | 0 |
+| pure-sky texture, fraction sky | 1.000 | 1 |
+
+The cloud layer (brr_metal_clouds.h, in skyfs): a slab 1.8 to 2.4 km, 2D fBm
+coverage and extinction per weather (k_sky.cover, k_sky.dens: sunny 0.30,
+fog 0.95, rain 1.00, snow 0.85, night 0.35), lit by the sun's transmittance
+to 2 km with a self-shadow exp(-tau_sun / 4), a two-lobe Henyey-Greenstein
+phase (0.7 x g 0.6 + 0.3 x g -0.3), Beer-Powder, and half the zenith sky
+radiance; drifting with the frame clock; BR_LIGHT_NOCLOUDS turns it off.
+
+| check | result | limit |
+|---|---|---|
+| HG integral over the sphere, g -0.3, 0, 0.6, 0.9 and the mix, worst abs(1 - I) | 1.1e-7 | 1e-4 |
+| Beer transmittance, marched vs exp(-sigma rho L), worst relative | 2.4e-13 | 1e-9 |
+| offline compile, macOS and iOS | 0 errors, 0 warnings | |
+
+Not yet measured: the detector on the shipped backdrop textures (the .trk
+textures are colour-indexed with palettes filled at run time; a
+BR_LIGHT_TEXDUMP dump from a race gives the RGBA, and skymask.sh takes
+`w h file.rgba` triples to report each texture's sky fraction and skyline
+smoothness and write its mask), and the clouds' look in a frame.
