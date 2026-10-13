@@ -21,6 +21,7 @@
 #include <time.h>
 
 #include "scene.h"
+#include "lampvis_c.h"
 
 static int g_fail;
 #define CHECK(c, ...)                                                                    \
@@ -223,48 +224,74 @@ static void test_shadow_projection(void)
     CHECK(bad_mono == 0, "%ld non-monotonic depth steps", bad_mono);
 }
 
-/* the shader's lampvis, in C, over a depth tile (atlas texels, row 0 at the top) */
-static float sample_cmp(const float *dep, int asz, float s, float t, float ref)
+/* the penumbra scene's depth tile, cast: the blocker plane x = db where the
+   texel's ray has y >= 0, else the wall x = dr (the axis is x: depth = x) */
+static void pen_tile(const LightShadowRec *r, float *dep, int asz, int tx0, int ty0, int tsz, float db, float dr)
 {
-    float x = s * asz - 0.5f, y = t * asz - 0.5f, fx, fy, v = 0;
-    int x0 = (int)floorf(x), y0 = (int)floorf(y), i, j;
-    fx = x - x0;
-    fy = y - y0;
-    for (j = 0; j < 2; j++)
-        for (i = 0; i < 2; i++) {
-            int xx = x0 + i < 0 ? 0 : x0 + i >= asz ? asz - 1 : x0 + i, yy = y0 + j < 0 ? 0 : y0 + j >= asz ? asz - 1 : y0 + j;
-            float w = (i ? fx : 1 - fx) * (j ? fy : 1 - fy);
-            v += w * (ref <= dep[yy * asz + xx] ? 1.0f : 0.0f);
+    int x, y;
+    for (y = 0; y < asz * asz; y++)
+        dep[y] = 1.0f;
+    for (y = 0; y < tsz; y++)
+        for (x = 0; x < tsz; x++) {
+            float nx = (x + 0.5f) / tsz * 2 - 1, ny = 1 - (y + 0.5f) / tsz * 2;
+            float dy = r->m[1 * 4 + 3] + nx * r->prm[2] * r->m[1 * 4 + 0] * r->prm[2] + ny * r->prm[2] * r->m[1 * 4 + 1] * r->prm[2];
+            dep[(ty0 + y) * asz + tx0 + x] = r->prm[0] + r->prm[1] / (dy >= 0 ? db : dr);
         }
-    return v;
 }
-static float lampvis_c(const LightShadowRec *h, const float *dep, int asz, const float p[3], const float n[3], const float ld[3])
+
+/* the soft shadow's edge on a wall at 10 m from blockers at 2 m and 5 m: its
+   10%..90% width against the lamp disc's (0.15 m across) within a texel at
+   the wall, averaged over 16 turns of the discs (as the frames average the
+   pixels' noise); every turn monotonic, exactly 1 and 0 clear of the edge */
+static void test_shadow_penumbra(void)
 {
-    float c0[4], c[4], q[3], tx, nl, tn, nd[2], st[2], e, zr, vis = 0;
-    int k, x, y;
-    if (h->rect[3] < 0.5f)
-        return 1;
-    clipof(h, p, c0);
-    if (c0[3] <= h->prm[3])
-        return 1;
-    tx = 2.0f * c0[3] * h->prm[2] / (h->rect[2] * asz);
-    nl = fminf(fmaxf(n[0] * ld[0] + n[1] * ld[1] + n[2] * ld[2], 0.05f), 1.0f);
-    tn = fminf(sqrtf(1 - nl * nl) / nl, 8.0f);
-    for (k = 0; k < 3; k++)
-        q[k] = p[k] + n[k] * tx * (1.0f + 2.0f * (1.0f - nl));
-    clipof(h, q, c);
-    nd[0] = c[0] / c[3];
-    nd[1] = c[1] / c[3];
-    if (c[3] <= h->prm[3] || fabsf(nd[0]) >= 1 || fabsf(nd[1]) >= 1)
-        return 1;
-    e = 1.5f / asz;
-    st[0] = fminf(fmaxf(h->rect[0] + (nd[0] * 0.5f + 0.5f) * h->rect[2], h->rect[0] + e), h->rect[0] + h->rect[2] - e);
-    st[1] = fminf(fmaxf(h->rect[1] + (0.5f - nd[1] * 0.5f) * h->rect[2], h->rect[1] + e), h->rect[1] + h->rect[2] - e);
-    zr = h->prm[0] + h->prm[1] / fmaxf(c[3] - tx * (1 + tn), h->prm[3]);
-    for (y = -1; y <= 1; y++)
-        for (x = -1; x <= 1; x++)
-            vis += sample_cmp(dep, asz, st[0] + x / (float)asz, st[1] + y / (float)asz, zr);
-    return vis / 9;
+    const int asz = 1024, tsz = 512, tx0 = 512, ty0 = 256, nrot = 16;
+    const float dr = 10.0f, dbs[2] = { 2.0f, 5.0f };
+    float *dep = malloc((size_t)asz * asz * sizeof(float)), h10 = lv_disc_h10();
+    LightSpot l;
+    LightShadowRec r;
+    int bi, k, i;
+    lv_pen_lamp(&l);
+    light_shadow_matrix(&l, &r);
+    r.rect[0] = (float)tx0 / asz;
+    r.rect[1] = (float)ty0 / asz;
+    r.rect[2] = (float)tsz / asz;
+    r.rect[3] = 1;
+    for (bi = 0; bi < 2; bi++) {
+        float db = dbs[bi], avg[LV_NS], one[LV_NS], geo = 2 * h10 * 0.075f * (dr - db) / db, texel = 2 * dr * r.prm[2] / tsz;
+        float rise = 0, wmin = 1e9f, wmax = 0, w, ri;
+        int exact_bad = 0;
+        pen_tile(&r, dep, asz, tx0, ty0, tsz, db, dr);
+        memset(avg, 0, sizeof avg);
+        for (k = 0; k < nrot; k++) {
+            float rot[2] = { cosf(k * 6.2831853f / nrot), sinf(k * 6.2831853f / nrot) }, nn[3] = { -1, 0, 0 };
+            for (i = 0; i < LV_NS; i++) {
+                float p[3] = { dr, LV_Y0 + i * LV_DY, 1.0f }, ld[3] = { -dr, -p[1], 0 }, dl = sqrtf(dr * dr + p[1] * p[1]);
+                ld[0] /= dl;
+                ld[1] /= dl;
+                one[i] = lampvis_c(&r, dep, asz, p, nn, ld, rot);
+                avg[i] += one[i] / nrot;
+            }
+            w = lv_width(one, &ri);
+            rise = fmaxf(rise, ri);
+            wmin = fminf(wmin, w);
+            wmax = fmaxf(wmax, w);
+            for (i = 0; i < 2; i++) {     /* 1.5 m either side of the edge: clear of any penumbra */
+                float p[3] = { dr, i ? 1.5f : -1.5f, 1.0f }, ld[3] = { -dr, -p[1], 0 }, dl = sqrtf(dr * dr + p[1] * p[1]);
+                ld[0] /= dl;
+                ld[1] /= dl;
+                exact_bad += lampvis_c(&r, dep, asz, p, nn, ld, rot) != (i ? 0.0f : 1.0f);
+            }
+        }
+        w = lv_width(avg, &ri);
+        printf("  penumbra: blocker %.0f m, wall %.0f m: 10-90%% width %.4f m (one turn %.4f..%.4f), the lamp disc's %.4f m, "
+               "off by %.2f texel (%.4f m); largest rise %.2g; %d of %d clear points not exactly 1 / 0\n",
+               db, dr, w, wmin, wmax, geo, fabsf(w - geo) / texel, texel, rise, exact_bad, 2 * nrot);
+        CHECK(w > 0 && fabsf(w - geo) <= texel, "blocker %.0f m: penumbra %.4f m, geometric %.4f m", db, w, geo);
+        CHECK(rise <= 1e-6f, "blocker %.0f m: the edge rises by %g", db, rise);
+        CHECK(exact_bad == 0, "blocker %.0f m: %d clear points not 1 / 0", db, exact_bad);
+    }
+    free(dep);
 }
 
 /* the occluder scene, shared with the Metal test: a spot 1 m up looking down
@@ -306,6 +333,8 @@ static float ray_depth(const LightSpot *l, const LightShadowRec *r, float nx, fl
     }
     return best > 1e29f ? 1.0f : r->prm[0] + r->prm[1] / best;
 }
+
+static const float k_rot0[2] = { 1, 0 };
 
 static void test_shadow_occluder(void)
 {
@@ -353,9 +382,9 @@ static void test_shadow_occluder(void)
             texel = 2.0f * 10.0f * r.prm[2] / tsz;
             if (p[0] > 10.0f && fabsf(yc - 1.0f) < 3.0f * texel)
                 continue;
-            if (fabsf(p[0] - 10.0f) < 0.6f)
-                continue;               /* the board's foot: the bias's contact gap */
-            v = lampvis_c(&r, dep, asz, p, nn, ld);
+            if (fabsf(p[0] - 10.0f) < 1.0f)
+                continue;               /* the board's foot: the biases' contact gap (the lamp 5 degrees over the ground: a texel is half a metre of depth) */
+            v = lampvis_c(&r, dep, asz, p, nn, ld, k_rot0);
             n++;
             if (sh) {
                 nshad++;
@@ -646,6 +675,7 @@ int main(void)
     test_cluster_fp();
     test_shadow_projection();
     test_shadow_occluder();
+    test_shadow_penumbra();
     test_alloc();
     test_track_casters();
     grid();

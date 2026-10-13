@@ -74,42 +74,77 @@
 "  if (tz < 23 && z >= lczb(h, tz + 1)) tz++;\n" \
 "  return uint((tz * 9 + ty) * 16 + tx);\n" \
 "}\n" \
-/* a lamp's shadow from its atlas tile: the receiver pushed along its normal \
-   by one to three texels of the tile at its depth (three at grazing light: \
-   the 3x3 kernel's nearest row then still lies on the receiver's far side, \
-   where a low lamp's road is deeper by metres a texel), and compared nearer \
-   by one texel x (1 + tan theta), theta the light's angle on the surface \
-   (slope-scaled); 3x3 bilinear comparisons kept inside the tile.  1 outside \
-   the tile's frustum (the cone lies inside it) and for an unshadowed lamp. */ \
-"static float lampvis(const device LSet &s, depth2d<float> atl, uint i, float3 p, float3 n, float3 ld) {\n" \
+/* point i of n of a Vogel (golden angle) disc of radius 1 turned by rot (cos, \
+   sin): the sun's disc (brr_metal_lit.h), under its own name as this source \
+   comes first */ \
+"static float2 lvog(int i, int n, float2 rot) {\n" \
+"  float r = sqrt((float(i) + 0.5) / float(n)), t = float(i) * 2.39996323; float2 v = r * float2(cos(t), sin(t));\n" \
+"  return float2(v.x * rot.x - v.y * rot.y, v.x * rot.y + v.y * rot.x); }\n" \
+/* a lamp's shadow from its atlas tile, as soft as a lamp 0.15 m across \
+   makes it (percentage-closer soft shadows, Fernando 2005, for a \
+   perspective tile): the receiver pushed along its normal by one to three \
+   texels of the tile at its depth and compared nearer by one texel x (1 + \
+   tan theta), theta the light's angle on the surface (slope-scaled), each \
+   sample's reference following the receiver's plane across the tile (its \
+   z/w is affine in the tile, so its gradient from two points on the plane \
+   a texel off: the wide discs then never find the receiver itself); depth \
+   along the axis from the tile's z/w as w = B / (z - A).  A blocker search \
+   over a disc as wide as the lamp's penumbra from a caster at the near \
+   plane, the blockers' mean distance db, the penumbra's width at the \
+   receiver (depth dr) w = 0.15 (dr - db) / db, and the filtered comparisons \
+   over a disc that wide: for a straight edge the share of the lamp's disc \
+   in view.  A metre at depth d is T / (2 d tan) of the tile's texels (T its \
+   size), so the disc's radius in texels is 0.075 T / (2 tan) (1 / db - 1 / \
+   dr).  The search at most 12 texels across its radius, the disc 0.5 to \
+   16, every sample kept half a texel inside the tile; rot the pixel's turn \
+   of the discs (interleaved gradient noise).  1 outside the tile's frustum \
+   (the cone lies inside it), for an unshadowed lamp and where the search \
+   finds no blocker. */ \
+"static float lampvis(const device LSet &s, depth2d<float> atl, uint i, float3 p, float3 n, float3 ld, float2 rot) {\n" \
 "  const device LSH &h = s.s[i];\n" \
 "  if (h.rect.w < 0.5) return 1.0;\n" \
 "  float4 c0 = h.m * float4(p, 1.0); if (c0.w <= h.prm.w) return 1.0;\n" \
-"  float tx = 2.0 * c0.w * h.prm.z / (h.rect.z * s.h.atl.x);\n" \
+"  float T = h.rect.z * s.h.atl.x, tx = 2.0 * c0.w * h.prm.z / T;\n" \
 "  float nl = clamp(dot(n, ld), 0.05, 1.0), tn = min(sqrt(1.0 - nl * nl) / nl, 8.0);\n" \
 "  float4 c = h.m * float4(p + n * tx * (1.0 + 2.0 * (1.0 - nl)), 1.0); float2 nd = c.xy / c.w;\n" \
 "  if (c.w <= h.prm.w || any(abs(nd) >= 1.0)) return 1.0;\n" \
-"  float2 st = h.rect.xy + float2(nd.x * 0.5 + 0.5, 0.5 - nd.y * 0.5) * h.rect.z, e = float2(1.5 * s.h.atl.y);\n" \
-"  st = clamp(st, h.rect.xy + e, h.rect.xy + h.rect.z - e);\n" \
-"  float zr = h.prm.x + h.prm.y / max(c.w - tx * (1.0 + tn), h.prm.w);\n" \
+"  float ts = s.h.atl.y; float2 lo = h.rect.xy + 0.5 * ts, hi = h.rect.xy + h.rect.z - 0.5 * ts;\n" \
+"  float2 st = h.rect.xy + float2(nd.x * 0.5 + 0.5, 0.5 - nd.y * 0.5) * h.rect.z;\n" \
+"  float dr = max(c.w - tx * (1.0 + tn), h.prm.w), zr = h.prm.x + h.prm.y / dr;\n" \
+"  float3 t1 = normalize(cross(n, abs(n.z) < 0.9 ? float3(0, 0, 1) : float3(1, 0, 0))), t2 = cross(n, t1), q = p + n * tx * (1.0 + 2.0 * (1.0 - nl));\n" \
+"  float4 a1 = h.m * float4(q + t1 * tx, 1.0), a2 = h.m * float4(q + t2 * tx, 1.0);\n" \
+"  float2 e1 = (a1.xy / a1.w - nd) * float2(0.5, -0.5) * h.rect.z, e2 = (a2.xy / a2.w - nd) * float2(0.5, -0.5) * h.rect.z;\n" \
+"  float z1 = a1.z / a1.w - c.z / c.w, z2 = a2.z / a2.w - c.z / c.w, det = e1.x * e2.y - e1.y * e2.x;\n" \
+"  float2 gz = abs(det) > 1e-12 ? float2(z1 * e2.y - z2 * e1.y, z2 * e1.x - z1 * e2.x) / det : float2(0.0);   /* dz / dst */\n" \
+"  zr -= (abs(gz.x) + abs(gz.y)) * 0.5 * ts;   /* half a texel of the plane's slope: the texels a sample's footprint reaches */\n" \
+"  float kt = 0.075 * T / (2.0 * h.prm.z);   /* the lamp's radius in texels per unit of 1 / depth */\n" \
+"  float rs = clamp(kt * (1.0 / h.prm.w - 1.0 / dr), 1.0, 12.0), zb = 0.0, nb = 0.0;\n" \
+"  constexpr sampler ps(filter::nearest, address::clamp_to_edge);\n" \
+"  for (int k = 0; k < 16; k++) {\n" \
+"    float2 o = clamp(st + lvog(k, 16, rot) * (rs * ts), lo, hi); float4 g = atl.gather(ps, o); bool4 b = g < zr + dot(gz, o - st);\n" \
+"    zb += dot(select(float4(0.0), h.prm.y / (g - h.prm.x), b), float4(1.0)); nb += dot(select(float4(0.0), float4(1.0), b), float4(1.0));\n" \
+"  }\n" \
+"  if (nb == 0.0) return 1.0;\n" \
+"  float db = max(zb / nb, h.prm.w), wr = clamp(kt * (1.0 / db - 1.0 / dr), 0.5, 16.0), vis = 0.0;\n" \
 "  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
-"  float vis = 0.0;\n" \
-"  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) vis += atl.sample_compare(cs, st + float2(x, y) * s.h.atl.y, zr);\n" \
-"  return vis / 9.0;\n" \
+"  for (int k = 0; k < 24; k++) { float2 o = clamp(st + lvog(k, 24, rot) * (wr * ts), lo, hi); vis += atl.sample_compare(cs, o, zr + dot(gz, o - st)); }\n" \
+"  return vis / 24.0;\n" \
 "}\n" \
 /* the lamps' light leaving a surface toward v (cd/m2 before exposure): only \
-   the lights in the point's cluster, each shadowed from its tile; brdf is \
-   the lighting's (brr_metal_lit.h), bE its table */ \
+   the lights in the point's cluster, each shadowed from its tile, the \
+   shadow's discs turned by phi (radians: the pixel's noise); brdf is the \
+   lighting's (brr_metal_lit.h), bE its table */ \
 "static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE);\n" \
-"static float3 lamps(const device LSet &s, depth2d<float> atl, float3 p, float3 n, float3 v, float3 alb, float rough, texture2d<float> bE) {\n" \
-"  uint e = s.cl[lc_index(s.h, p)], o = e >> 8, cnt = e & 255u; float3 Lo = float3(0);\n" \
+"static float3 lamps(const device LSet &s, depth2d<float> atl, float3 p, float3 n, float3 v, float3 alb, float rough, texture2d<float> bE,\n" \
+"                    float phi) {\n" \
+"  uint e = s.cl[lc_index(s.h, p)], o = e >> 8, cnt = e & 255u; float3 Lo = float3(0); float2 rot = float2(cos(phi), sin(phi));\n" \
 "  for (uint k = 0; k < cnt; k++) {\n" \
 "    uint i = s.idx[o + k]; LS l = s.l[i];\n" \
 "    float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
 "    if (dot(n, ld) <= 0.0) continue;\n" \
 "    float E = lamp(l, -ld) * lwin(l, -ld, dl) / d2;\n" \
 "    if (E <= 0.0) continue;\n" \
-"    Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, rough, bE);\n" \
+"    Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld, rot) * brdf(n, v, ld, alb, rough, bE);\n" \
 "  }\n" \
 "  return Lo;\n" \
 "}\n" \

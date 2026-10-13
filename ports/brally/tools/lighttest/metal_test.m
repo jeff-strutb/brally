@@ -20,6 +20,7 @@
 
 #include "scene.h"
 #include "brr_metal_lights.h"
+#include "lampvis_c.h"
 
 static int g_fail;
 #define LAMP_TEST_HEIGHT 0.65f   /* light_scene.c: a headlamp 0.65 m up (UN ECE R48 6.2.4: 0.5 to 1.2 m) */
@@ -65,12 +66,17 @@ BRDF_SRC
 "kernel void ksh(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], const device float4 *pts [[buffer(1)]],\n"
 "                device float *out [[buffer(2)]], uint g [[thread_position_in_grid]]) {\n"
 "  float3 p = pts[g].xyz; LS l = s.l[0];\n"
-"  out[g] = lampvis(s, atl, 0, p, float3(0, 0, 1), normalize(float3(l.pos) - p));\n"
+"  out[g] = lampvis(s, atl, 0, p, float3(0, 0, 1), normalize(float3(l.pos) - p), float2(1, 0));\n"
+"}\n"
+"kernel void kpen(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], const device float4 *pts [[buffer(1)]],\n"
+"                 device float *out [[buffer(2)]], constant float2 &rot [[buffer(3)]], uint g [[thread_position_in_grid]]) {\n"
+"  float3 p = pts[g].xyz; LS l = s.l[0];\n"
+"  out[g] = lampvis(s, atl, 0, p, float3(-1, 0, 0), normalize(float3(l.pos) - p), rot);\n"
 "}\n"
 "kernel void kbox(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], const device float4 *pts [[buffer(1)]],\n"
 "                 device float2 *out [[buffer(2)]], uint g [[thread_position_in_grid]]) {\n"
 "  float3 p = pts[g].xyz, n = float3(-1, 0, 0); LS l = s.l[0]; float3 L = float3(l.pos) - p; float d2 = dot(L, L), dl = sqrt(d2); float3 ld = L / dl;\n"
-"  out[g] = float2(lamp(l, -ld) * lwin(l, -ld, dl) / d2 * max(dot(n, ld), 0.0), lampvis(s, atl, 0, p, n, ld));\n"
+"  out[g] = float2(lamp(l, -ld) * lwin(l, -ld, dl) / d2 * max(dot(n, ld), 0.0), lampvis(s, atl, 0, p, n, ld, float2(1, 0)));\n"
 "}\n"
 "struct CU { float4 eye, fwd, right, up, tan; };\n"
 /* the ground under the camera's pixel, lit by the lamps: 0 clustered (the
@@ -83,14 +89,14 @@ BRDF_SRC
 "  if (d.z >= 0.0) { out[g.y * W + g.x] = float4(0); return; }\n"
 "  float3 p = cu.eye.xyz + d * (-cu.eye.z / d.z), n = float3(0, 0, 1), v = normalize(cu.eye.xyz - p), alb = float3(0.3);\n"
 "  float3 Lo = float3(0);\n"
-"  if (mode == 0) Lo = lamps(s, atl, p, n, v, alb, 0.6, bE);\n"
+"  if (mode == 0) Lo = lamps(s, atl, p, n, v, alb, 0.6, bE, 0.0);\n"
 "  else {\n"
 "    for (uint i = 0; i < uint(s.h.eye.w); i++) {\n"
 "      LS l = s.l[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n"
 "      if (dot(n, ld) <= 0.0) continue;\n"
 "      float E = lamp(l, -ld) * lwin(l, -ld, dl) / d2;\n"
 "      if (E <= 0.0) continue;\n"
-"      Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, 0.6, bE);\n"
+"      Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld, float2(1, 0)) * brdf(n, v, ld, alb, 0.6, bE);\n"
 "    }\n"
 "  }\n"
 "  out[g.y * W + g.x] = float4(Lo, 1);\n"
@@ -368,7 +374,7 @@ static void test_shadow(void)
             for (x = 0; x < gw; x++) {
                 float px = 1.0f + x * 0.1f, py = -12.0f + y * 0.1f, yc = fabsf(py) * 10.0f / px, texel = 2.0f * 10.0f * g_rec_cpu.prm[2] / tsz, pt[3] = { px, py, 0 };
                 int sh = px > 10.0f && yc <= 1.0f;
-                if (light_influence(l, pt) <= 0.0f || (px > 10.0f && fabsf(yc - 1.0f) < 3.0f * texel) || fabsf(px - 10.0f) < 0.6f)
+                if (light_influence(l, pt) <= 0.0f || (px > 10.0f && fabsf(yc - 1.0f) < 3.0f * texel) || fabsf(px - 10.0f) < 1.0f)
                     continue;
                 n++;
                 if (sh) {
@@ -385,6 +391,115 @@ static void test_shadow(void)
            ndd, sumdd / (ndd ? ndd : 1), maxdd, n, nshad, nlit, bad);
     CHECK(ndd > 100000 && maxdd < 1e-3, "drawn depth off the ray cast: %g", maxdd);
     CHECK(bad == 0 && nshad > 1000 && nlit > 1000, "%d ground points shadowed wrongly", bad);
+}
+
+/* the soft shadow's edge drawn by the casters' pipelines: a blocker plane at
+   x = db over y >= 0, a wall at x = 10; the shader's lampvis along a line
+   across the edge against its C twin over the same drawn tile, and its
+   10%..90% width (averaged over 16 turns) against the lamp disc's */
+static void test_shadow_penumbra(void)
+{
+    const int asz = 1024, tsz = 512, tx0 = 512, ty0 = 256, nrot = 16, npt = LV_NS + 2;
+    const float dr = 10.0f, dbs[2] = { 2.0f, 5.0f };
+    LightSpot *l = &g_set.l[0];
+    LightShadowPlan p;
+    id<MTLTexture> atl = atlas_tex(asz);
+    id<MTLBuffer> sb = [g_dev newBufferWithLength:sizeof(LightSet) options:MTLResourceStorageModeShared];
+    id<MTLBuffer> rb = [g_dev newBufferWithLength:(NSUInteger)tsz * tsz * 4 options:MTLResourceStorageModeShared];
+    id<MTLBuffer> pb = [g_dev newBufferWithLength:(NSUInteger)npt * 16 options:MTLResourceStorageModeShared];
+    id<MTLBuffer> ob = [g_dev newBufferWithLength:(NSUInteger)npt * nrot * 4 options:MTLResourceStorageModeShared];
+    float *dep = malloc((size_t)asz * asz * sizeof(float)), h10 = lv_disc_h10();
+    int bi, k, i, y;
+    memset(&g_set.h, 0, sizeof g_set.h);
+    lv_pen_lamp(l);
+    light_shadow_matrix(l, &g_set.s[0]);
+    g_set.s[0].rect[0] = (float)tx0 / asz;
+    g_set.s[0].rect[1] = (float)ty0 / asz;
+    g_set.s[0].rect[2] = (float)tsz / asz;
+    g_set.s[0].rect[3] = 1;
+    g_set.h.atl[0] = asz;
+    g_set.h.atl[1] = 1.0f / asz;
+    g_set.h.eye[3] = 1;
+    memcpy([sb contents], &g_set, sizeof g_set);
+    memset(&p, 0, sizeof p);
+    p.n = 1;
+    p.t[0].x = tx0;
+    p.t[0].y = ty0;
+    p.t[0].size = tsz;
+    p.t[0].render = 1;
+    {
+        float (*P)[4] = (float (*)[4])[pb contents];
+        for (i = 0; i < npt; i++) {
+            P[i][0] = dr;
+            P[i][1] = i < LV_NS ? LV_Y0 + i * LV_DY : i == LV_NS ? -1.5f : 1.5f;
+            P[i][2] = 1;
+            P[i][3] = 1;
+        }
+    }
+    for (bi = 0; bi < 2; bi++) {
+        float db = dbs[bi], tris[4][9] = { { db, 0, -20, db, 20, -20, db, 20, 20 }, { db, 0, -20, db, 20, 20, db, 0, 20 },
+                                           { dr, -30, -30, dr, 30, -30, dr, 30, 30 }, { dr, -30, -30, dr, 30, 30, dr, -30, 30 } };
+        float avg[LV_NS], geo = 2 * h10 * 0.075f * (dr - db) / db, texel = 2 * dr * g_set.s[0].prm[2] / tsz, w, rise, ra, maxd = 0;
+        int exact_bad = 0;
+        id<MTLBuffer> vb = [g_dev newBufferWithBytes:tris length:sizeof tris options:MTLResourceStorageModeShared];
+        id<MTLCommandBuffer> cb = [g_q commandBuffer];
+        id<MTLBlitCommandEncoder> b;
+        id<MTLComputeCommandEncoder> e;
+        const float *gv = (const float *)[ob contents];
+        draw_tiles(cb, atl, &p, vb, 12, 1);
+        b = [cb blitCommandEncoder];
+        [b copyFromTexture:atl sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(tx0, ty0, 0) sourceSize:MTLSizeMake(tsz, tsz, 1)
+                  toBuffer:rb destinationOffset:0 destinationBytesPerRow:tsz * 4 destinationBytesPerImage:(NSUInteger)tsz * tsz * 4];
+        [b endEncoding];
+        e = [cb computeCommandEncoder];
+        [e setComputePipelineState:kernel_named(@"kpen")];
+        [e setBuffer:sb offset:0 atIndex:0];
+        [e setTexture:atl atIndex:0];
+        [e setBuffer:pb offset:0 atIndex:1];
+        for (k = 0; k < nrot; k++) {
+            float rot[2] = { cosf(k * 6.2831853f / nrot), sinf(k * 6.2831853f / nrot) };
+            [e setBuffer:ob offset:(NSUInteger)k * npt * 4 atIndex:2];
+            [e setBytes:rot length:8 atIndex:3];
+            [e dispatchThreads:MTLSizeMake((NSUInteger)npt, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+        }
+        [e endEncoding];
+        [cb commit];
+        [cb waitUntilCompleted];
+        for (i = 0; i < asz * asz; i++)
+            dep[i] = 1.0f;
+        for (y = 0; y < tsz; y++)
+            memcpy(dep + (size_t)(ty0 + y) * asz + tx0, (const float *)[rb contents] + (size_t)y * tsz, (size_t)tsz * 4);
+        memset(avg, 0, sizeof avg);
+        rise = 0;
+        for (k = 0; k < nrot; k++) {
+            float rot[2] = { cosf(k * 6.2831853f / nrot), sinf(k * 6.2831853f / nrot) }, nn[3] = { -1, 0, 0 }, ri;
+            const float *v = gv + (size_t)k * npt;
+            for (i = 0; i < npt; i++) {
+                float pt[3] = { dr, i < LV_NS ? LV_Y0 + i * LV_DY : i == LV_NS ? -1.5f : 1.5f, 1.0f }, ld[3], dl;
+                ld[0] = -dr;
+                ld[1] = -pt[1];
+                ld[2] = 0;
+                dl = sqrtf(dr * dr + pt[1] * pt[1]);
+                ld[0] /= dl;
+                ld[1] /= dl;
+                maxd = fmaxf(maxd, fabsf(v[i] - lampvis_c(&g_set.s[0], dep, asz, pt, nn, ld, rot)));
+                if (i < LV_NS)
+                    avg[i] += v[i] / nrot;
+            }
+            exact_bad += (v[LV_NS] != 1.0f) + (v[LV_NS + 1] != 0.0f);
+            lv_width(v, &ri);
+            rise = fmaxf(rise, ri);
+        }
+        w = lv_width(avg, &ra);
+        printf("gpu penumbra: blocker %.0f m, wall %.0f m: 10-90%% width %.4f m, the lamp disc's %.4f m, off by %.2f texel; "
+               "largest rise %.2g; %d of %d clear points not exactly 1 / 0; GPU against the C twin: largest difference %.4f\n",
+               db, dr, w, geo, fabsf(w - geo) / texel, rise, exact_bad, 2 * nrot, maxd);
+        CHECK(w > 0 && fabsf(w - geo) <= texel, "gpu blocker %.0f m: penumbra %.4f m, geometric %.4f m", db, w, geo);
+        CHECK(rise <= 1e-3f, "gpu blocker %.0f m: the edge rises by %g", db, rise);
+        CHECK(exact_bad == 0, "gpu blocker %.0f m: %d clear points not 1 / 0", db, exact_bad);
+        CHECK(maxd <= 0.02f, "gpu blocker %.0f m: lampvis off its C twin by %g", db, maxd);
+    }
+    free(dep);
 }
 
 /* ---- a car ahead in a headlamp ---------------------------------------------------- */
@@ -678,6 +793,7 @@ int main(void)
         }
         test_clusters();
         test_shadow();
+        test_shadow_penumbra();
         test_carbox();
         grid();
     }

@@ -85,3 +85,34 @@ edge notches one column), 0.000 on the sea, 0.09 / 0.23 / 0.43 / 0.27 on
 
 Open: the panorama's tile layout (which K_BACK quad uses which half) was
 read from the texels, not from the op recording.
+
+## Headlamp shadows: soft from a lamp 0.15 m across (2026-10-13)
+
+lampvis (brr_metal_lights.h) was a fixed 3x3 PCF, a hard line however far
+the caster stood from what it shadowed. Now a blocker search (16 gathers on
+a Vogel disc, radius from the lamp size and the receiver depth, at most 12
+texels), the blockers' mean distance from their z/w, the penumbra
+w = 0.15 (dr - db) / db, and 24 comparisons over that disc (0.5 to 16
+texels), turned per pixel by interleaved gradient noise; each sample's
+reference follows the receiver's plane across the tile (less half a texel
+of its slope), the normal offset and slope-scaled bias kept. The C twin is
+tools/lighttest/lampvis_c.h.
+
+A blocker plane over y >= 0 in front of a wall at 10 m, 512 tile, lamp 50
+degrees, a texel 0.0466 m at the wall; 10%..90% width averaged over 16
+turns of the discs, against the lamp disc's (2 x 0.687 x 0.075 x (dr - db) / db):
+
+| blocker | CPU      | GPU (drawn tile) | lamp disc | off      |
+|---------|----------|------------------|-----------|----------|
+| 2 m     | 0.4076 m | 0.4076 m         | 0.4122 m  | 0.10 tx  |
+| 5 m     | 0.1054 m | 0.1054 m         | 0.1031 m  | 0.05 tx  |
+
+One turn alone: 0.387..0.441 m and 0.102..0.109 m. Every turn monotonic
+(largest rise 4e-9 CPU, 0 GPU); 1.5 m either side of the edge exactly 1 and
+0; GPU against the C twin on the same tile within 0.0004.
+
+The board scene's foot exclusion grows from 0.6 m to 1.0 m: with the lamp 5
+degrees over the ground there a texel is half a metre of depth, and the
+plane-following reference reads lit ground under the board's foot for up to
+0.9 m behind it. Offline compiles: the same 2 warnings as before (unused
+cphase, one per SDK), none added.
