@@ -58,6 +58,16 @@ int main(int argc, char **argv)
             pipe_ok(dev, lib, @"lvs", @"brdf_lut", &rg, 1, 0);
             pipe_ok(dev, lib, @"lvs", @"brdf_avg", &rg, 1, 0);
         }
+        pipe_ok(dev, lib, @"lvs", @"vol_apply", &hf, 1, 0);   /* the volumetric fog (brr_metal_vol.h) */
+        for (NSString *k in @[ @"vol_inject", @"vol_integrate" ]) {
+            id<MTLFunction> fn = [lib newFunctionWithName:k];
+            if (!fn || ![dev newComputePipelineStateWithFunction:fn error:&err]) {
+                printf("FAIL kernel %s: %s\n", [k UTF8String], err ? [[err description] UTF8String] : "no function");
+                g_fail++;
+            } else {
+                printf("  kernel %s built\n", [k UTF8String]);
+            }
+        }
     }
     printf(g_fail ? "compile_test: %d FAILED\n" : "compile_test: all passed\n", g_fail);
     return g_fail != 0;

@@ -1,5 +1,5 @@
 """metalsrc.py: the Metal renderer's whole shader source as brr_open builds it
-(brr_metal.m's k_src, then BRR_LIGHTS_SRC, BRR_LIT_SRC and BRR_SKY_SRC), as a C program that
+(brr_metal.m's k_src, then BRR_LIGHTS_SRC, BRR_LIT_SRC, BRR_SKY_SRC and BRR_VOL_SRC), as a C program that
 prints it, so the C compiler joins the string literals exactly as the build
 does.  Usage: metalsrc.py BRR_METAL_M OUT_C
 """
@@ -13,13 +13,13 @@ def main():
     end = next(i for i in range(start + 1, len(lines)) if lines[i].rstrip().endswith('";'))
     body = '\n'.join(lines[start + 1:end + 1])
     flat = ' '.join(open(src).read().split())     # the order below has to be the renderer's
-    if ('[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC] '
-            'stringByAppendingString:@BRR_SKY_SRC]') not in flat:
-        sys.exit('metalsrc.py: brr_metal.m no longer assembles k_src + lights + lit + sky')
+    if ('[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC] '
+            'stringByAppendingString:@BRR_SKY_SRC] stringByAppendingString:@BRR_VOL_SRC]') not in flat:
+        sys.exit('metalsrc.py: brr_metal.m no longer assembles k_src + lights + lit + sky + vol')
     with open(out, 'w') as f:
-        f.write('#include <stdio.h>\n#include "brr_metal_lights.h"\n#include "brr_metal_lit.h"\n#include "brr_metal_sky.h"\n')
+        f.write('#include <stdio.h>\n#include "brr_metal_lights.h"\n#include "brr_metal_lit.h"\n#include "brr_metal_sky.h"\n#include "brr_metal_vol.h"\n')
         f.write('static const char *const k_src =\n' + body + '\n')
-        f.write('int main(void) { fputs(k_src, stdout); fputs(BRR_LIGHTS_SRC, stdout); fputs(BRR_LIT_SRC, stdout); fputs(BRR_SKY_SRC, stdout); return 0; }\n')
+        f.write('int main(void) { fputs(k_src, stdout); fputs(BRR_LIGHTS_SRC, stdout); fputs(BRR_LIT_SRC, stdout); fputs(BRR_SKY_SRC, stdout); fputs(BRR_VOL_SRC, stdout); return 0; }\n')
 
 
 if __name__ == '__main__':

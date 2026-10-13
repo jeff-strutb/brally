@@ -6,9 +6,10 @@
 #   lights.sh  clustered light culling and the lamps' shadow atlas
 #   skymask.sh the backdrop's structural sky mask and the cloud layer's phase and Beer law
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
+#   vol.sh     the volumetric fog: its integration against closed forms, its kernels against the CPU reference
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh maths.sh skymask.sh; do
+for t in rt.sh shadow.sh lights.sh maths.sh skymask.sh vol.sh; do
     echo "== $t"
     sh "./$t"
 done

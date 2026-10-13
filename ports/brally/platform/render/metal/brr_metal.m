@@ -36,6 +36,7 @@
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
 #include "brr_skymask.h"
+#include "brr_metal_vol.h"
 #include "brr_metal_rt.h"
 #include "brr_shadow.h"
 #include "br_flags.h"
@@ -437,7 +438,7 @@ static float s_ev = 1e9f;
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16]; } LU;   /* brr_metal_lit.h's LU, the same layout */
+                   float cdepth[4], csoft[4], scr[16], vol[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
 typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4]; } KU;
 
@@ -1184,6 +1185,7 @@ static void lit_present(void)
         u.csoft[3] = CONTACT_LEN;
     }
     lit_lights(eye, have_cam ? cam.vp : NULL);
+    u.vol[0] = have_cam && brr_vol_on(s_dev) ? 1.0f : 0.0f;   /* the volumetric fog in place of the game's */
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
         /* the atmosphere's tables: transmittance and multiple scattering when the
@@ -1524,6 +1526,19 @@ static void lit_present(void)
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
+    if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
+        float vs[16];
+        int xf = 0;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
+            }
+        brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, vs);
+        brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
+    }
+
     /* the blended 3D, forward-lit, in the game's order */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_hdr;
@@ -1648,8 +1663,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_SKY_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_SKY_SRC] stringByAppendingString:@BRR_VOL_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
