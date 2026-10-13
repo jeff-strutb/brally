@@ -942,3 +942,53 @@ argument (unread there); `compile_test.m` also builds the table's two
 pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
+
+## Temporal anti-aliasing and MetalFX (2026-10-12)
+
+`brr_metal_taa.h` / `.m`, checked by `ports/brally/tools/lighttest/taa.sh`
+(in `run.sh`). The lit 3D (G-buffer and forward passes) is drawn through a
+jittered copy of the frame's screen map table; the 2D replay is not. The
+resolve runs after the forward pass, before bloom and post, in pre-exposed
+HDR. `BR_LIGHT_TAA`: 0 off, 1 the own TAA (default), 2 MetalFX's temporal
+scaler (at 1:1 for now), the own TAA where MetalFX is absent.
+
+| check | result | limit |
+|---|---|---|
+| jitter mean over 16 phases (Halton 2,3, indices 0..15 less the set's mean) | 0.0000 px x and y | 1e-3 |
+| jitter offset | max 0.469 px | inside the pixel |
+| 4x4 cells of the pixel hit by the 16 phases | 14 of 16 | |
+| world points through last frame's camera vs by hand | 0.00012 px | 0.01 |
+| sky directions at infinity vs a point 1e7 out | 0.0009 px | 0.05 |
+| ghost history outside the YCoCg box | clipped (Y 2.0 to 0.6) | |
+| valid history inside the box | kept exactly | |
+| GPU resolve vs CPU reference, 16 frames, static jittered edge | 0 / 3e-8 | 1e-4 |
+| edge coverage after 16 frames (plain / Karis, coverage recovered) | 1.25% / 1.25% | 2% |
+| dynamic resolution, 22 ms load at full size | holds at 0.85, back to 1.00 | |
+| MetalFX on Apple M4 Pro | supported; scalers made at 0.67 and 1:1 | |
+| TAA shaders offline, macOS and iOS | 0 errors, 0 warnings | |
+| `brr_metal_taa.m` for iOS arm64 (`-Werror`) | compiles | |
+
+Found on the way:
+
+- The sky check's first reference (a point 1e5 out) carried 0.06 px of
+  parallax between the two test cameras; at 1e7 the code agrees to 0.0009 px.
+  The double inverse stays (the ray is a difference of two near points).
+- Edge convergence: without clipping the 16 frames average to the
+  16-sample estimate exactly (0.3125 for a 0.3 edge: centred strata leave at
+  most 1/32). The variance box clipped the early history (to 0.077 when the
+  sample flipped) and added 1.5%; it now applies once the history holds a
+  whole Halton cycle (n >= 16), min/max only before. A floor weight of 0.1
+  gave 6.5% after 16 frames (the last samples weigh most); the floor is
+  1/16, one cycle.
+
+Cost: the resolve at 1920x1080 on the M4 Pro takes 0.61 ms of GPU time
+(synthetic textures, every pixel reprojected, 16 Catmull-Rom texel reads and
+9 neighbourhood reads a pixel); the jittered table copy is one memcpy of the
+frame's entries on the CPU; history 47.5 MB at 1080p (two RGBA16F colour
+plus two R32F view distance).
+
+Left: the cars' own motion (they move with the camera only); rendering the
+lit 3D at a reduced internal size so MetalFX upscales, with the dynamic
+resolution controller's scale driving it; MetalFX's depth convention and
+motion sign checked against the game's frame; the jitter's effect on the
+contact shadows' screen matrix (built unjittered, 0.5 px at most).

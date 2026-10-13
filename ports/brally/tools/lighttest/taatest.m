@@ -90,7 +90,9 @@ static void cpu_resolve(float cur[H][W], float hist[H][W][4], int reset, float o
             for (k = 0; k < 3; k++) {
                 float sd;
                 m1[k] /= 9; m2[k] /= 9; sd = sqrtf(fmaxf(m2[k] - m1[k] * m1[k], 0));
-                lo[k] = fmaxf(lo[k], m1[k] - TAA_GAMMA * sd); hi[k] = fminf(hi[k], m1[k] + TAA_GAMMA * sd);
+                if (hist[y][x][3] >= TAA_PHASES) {
+                    lo[k] = fmaxf(lo[k], m1[k] - TAA_GAMMA * sd); hi[k] = fminf(hi[k], m1[k] + TAA_GAMMA * sd);
+                }
             }
             if (reset) {
                 for (k = 0; k < 3; k++) out[y][x][k] = c[k];
@@ -251,12 +253,12 @@ int main(void)
                 int k;
                 brr_taa_ray(Fi1, 100.0f + 20 * i, 200.0f + 10 * i, d);
                 l = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-                for (k = 0; k < 3; k++) q[k] = e1[k] + d[k] / l * 1e5f;
+                for (k = 0; k < 3; k++) q[k] = e1[k] + d[k] / l * 1e7f;
                 brr_taa_reproject(S0, d, 0, a);
                 byhand(vp0, xft, 320, 320, -240, 240, 1280, 960, q, b);
                 errs = fmax(errs, fmax(fabs(a[0] - b[0]), fabs(a[1] - b[1])));
             }
-            check(ok && errs < 0.05, "sky directions through last frame's camera (at infinity vs 1e5 out)", "max error %.4f px (limit %.2f)", errs, 0.05);
+            check(ok && errs < 0.05, "sky directions through last frame's camera (at infinity vs 1e7 out: 1e5 has 0.06 px of parallax between the cameras)", "max error %.4f px (limit %.2f)", errs, 0.05);
         }
         /* (3) variance clipping */
         {
@@ -279,6 +281,54 @@ int main(void)
         if (!dev) { printf("SKIP  GPU checks: no Metal device\n"); return fails != 0; }
         gpu_converge(dev, 0, 1.0f, 0.0f, 3.3f);
         gpu_converge(dev, 1, 1.0f, 0.0f, 3.3f);
+        {   /* the cost: the resolve at 1920x1080 on synthetic textures (history valid, every pixel reprojected) */
+            NSError *err = nil;
+            id<MTLLibrary> lib = [dev newLibraryWithSource:@BRR_TAA_SRC options:nil error:&err];
+            MTLRenderPipelineDescriptor *pd = [MTLRenderPipelineDescriptor new];
+            id<MTLCommandQueue> q = [dev newCommandQueue];
+            MTLTextureDescriptor *td;
+            id<MTLTexture> t[5];
+            static const MTLPixelFormat f[5] = { MTLPixelFormatRGBA16Float, MTLPixelFormatRGBA16Float, MTLPixelFormatR32Float,
+                                                 MTLPixelFormatRGBA32Float, MTLPixelFormatRGBA16Float };
+            float u[44];
+            double best = 1e9;
+            int r;
+            pd.vertexFunction = [lib newFunctionWithName:@"taa_vs"];
+            pd.fragmentFunction = [lib newFunctionWithName:@"taa_resolve"];
+            pd.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA16Float;
+            pd.colorAttachments[1].pixelFormat = MTLPixelFormatR32Float;
+            id<MTLRenderPipelineState> ps = [dev newRenderPipelineStateWithDescriptor:pd error:&err];
+            for (i = 0; i < 5; i++) {
+                td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:f[i] width:1920 height:1080 mipmapped:NO];
+                td.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+                td.storageMode = MTLStorageModePrivate;
+                t[i] = [dev newTextureWithDescriptor:td];
+            }
+            memset(u, 0, sizeof u);
+            u[0] = 1; u[5] = 1; u[15] = 1; u[40] = TAA_ALPHA; u[43] = TAA_GAMMA;
+            for (r = 0; r < 20; r++) {
+                id<MTLCommandBuffer> cb = [q commandBuffer];
+                MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+                id<MTLRenderCommandEncoder> e;
+                rp.colorAttachments[0].texture = t[4];
+                rp.colorAttachments[1].texture = t[2];
+                rp.colorAttachments[0].loadAction = rp.colorAttachments[1].loadAction = MTLLoadActionDontCare;
+                e = [cb renderCommandEncoderWithDescriptor:rp];
+                [e setRenderPipelineState:ps];
+                [e setFragmentBytes:u length:sizeof u atIndex:0];
+                [e setFragmentTexture:t[0] atIndex:0];
+                [e setFragmentTexture:t[1] atIndex:1];
+                [e setFragmentTexture:t[2] atIndex:2];
+                [e setFragmentTexture:t[3] atIndex:3];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+                [e endEncoding];
+                [cb commit];
+                [cb waitUntilCompleted];
+                if (r > 2) best = fmin(best, (cb.GPUEndTime - cb.GPUStartTime) * 1000.0);
+            }
+            printf("INFO  resolve at 1920x1080 on %s: %.3f ms GPU (best of 17); history 2 x (8 + 4) bytes a pixel = %.1f MB\n",
+                   [[dev name] UTF8String], best, 2.0 * 12 * 1920 * 1080 / 1048576.0);
+        }
         /* (4) MetalFX */
         {
             int sup = brr_taa_metalfx_supported(dev);

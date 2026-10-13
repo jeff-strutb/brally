@@ -27,7 +27,7 @@
 #include <math.h>
 
 #define TAA_PHASES 16
-#define TAA_ALPHA 0.0625f       /* this frame's floor weight: 1/16, one Halton cycle (0.1 leaves 3.6% edge error after 16 frames) */
+#define TAA_ALPHA 0.0625f       /* the floor weight of this frame, 1/16 (one Halton cycle; 1 / (n + 1) before it): 0.1 leaves a 6.5% edge error after 16 frames */
 #define TAA_GAMMA 1.25f         /* the variance box's half width in standard deviations */
 #define TAA_DISOCC 0.05f        /* a history view distance this far off (relative) is another surface */
 #define TAA_CUT_PX 64.0f        /* a camera cut: the screen centre's world point moves this far */
@@ -44,13 +44,20 @@ static float brr_halton(int i, int b)
     return r;
 }
 
-/* frame n's jitter: px (pixels, in [-0.5, 0.5), mean 0 over the phases; +x
- * right, +y down the target) and the ndc offset that draws it (y up) */
+/* frame n's jitter: px (pixels, inside the pixel, mean 0 over the phases;
+ * +x right, +y down the target) and the ndc offset that draws it (y up).
+ * Halton indices 0..15, less the 16-sample set's mean: base 2 then lands on
+ * the centres of 16 strata ((k - 7.5) / 16) */
 static void brr_taa_jitter(unsigned n, float tw, float th, float px[2], float ndc[2])
 {
-    int i = (int)(n % TAA_PHASES) + 1;          /* Halton from 1: index 0 is the corner */
-    px[0] = brr_halton(i, 2) - 0.5f;
-    px[1] = brr_halton(i, 3) - 0.5f;
+    int i = (int)(n % TAA_PHASES), k;
+    double m2 = 0.0, m3 = 0.0;
+    for (k = 0; k < TAA_PHASES; k++) {
+        m2 += brr_halton(k, 2);
+        m3 += brr_halton(k, 3);
+    }
+    px[0] = (float)((double)brr_halton(i, 2) - m2 / TAA_PHASES);
+    px[1] = (float)((double)brr_halton(i, 3) - m3 / TAA_PHASES);
     ndc[0] = 2.0f * px[0] / tw;
     ndc[1] = -2.0f * px[1] / th;
 }
@@ -82,10 +89,13 @@ static void brr_taa_full(const float S[16], const float vp[16], float F[16])
         F[4 * i + 2] = vp[4 * i + 2];
 }
 
-static int brr_inv4(const float m[16], float o[16])
+/* in double: the sky's rays come from the difference of two nearby points */
+static int brr_inv4(const float mf[16], float o[16])
 {
-    float inv[16], det;
+    double m[16], inv[16], det;
     int i;
+    for (i = 0; i < 16; i++)
+        m[i] = mf[i];
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
     inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
     inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
@@ -103,10 +113,10 @@ static int brr_inv4(const float m[16], float o[16])
     inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
     inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
     det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-    if (fabsf(det) < 1e-30f)
+    if (fabs(det) < 1e-300)
         return 0;
     for (i = 0; i < 16; i++)
-        o[i] = inv[i] / det;
+        o[i] = (float)(inv[i] / det);
     return 1;
 }
 
@@ -230,16 +240,17 @@ static float brr_taa_dynres(BrrDynRes *d, float gpu_ms, float target_ms, float l
 "  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {\n" \
 "    float3 y = ycocg(min(texl(cur, ip + int2(i, j)).rgb, 65504.0)); m1 += y; m2 += y * y; lo = min(lo, y); hi = max(hi, y); }\n" \
 "  m1 /= 9.0; m2 /= 9.0; float3 sd = sqrt(max(m2 - m1 * m1, 0.0));\n" \
-"  lo = max(lo, m1 - u.k.w * sd); hi = min(hi, m1 + u.k.w * sd);\n" \
 "  float4 pp = prevpos(u, gpos, px); o.d = pp.z;\n" \
 "  float2 tsz = float2(hist.get_width(), hist.get_height());\n" \
 "  if (u.k.y > 0.5 || pp.w < 0.5 || any(pp.xy < 0.0) || any(pp.xy >= tsz)) { o.c = float4(c, 1); return o; }\n" \
 "  float hd = hdist.read(uint2(pp.xy)).r;\n" \
 "  if (abs(hd - pp.z) > " "0.05" " * pp.z) { o.c = float4(c, 1); return o; }\n" \
+"  float n = hist.read(uint2(pp.xy)).a;   /* the variance box once the history has a whole Halton cycle: before, min/max only */\n" \
+"  if (n >= 16.0) { lo = max(lo, m1 - u.k.w * sd); hi = min(hi, m1 + u.k.w * sd); }\n" \
 "  float4 h4 = catrom(hist, pp.xy); float3 hy = max(ycocg(max(h4.rgb, 0.0)), float3(0, -65504, -65504));\n" \
 "  float3 v = hy - 0.5 * (hi + lo), e = 0.5 * (hi - lo) + 1e-5, r = abs(v) / e;\n" \
 "  float mx = max(1.0, max(r.x, max(r.y, r.z))); float3 h = rgbc(0.5 * (hi + lo) + v / mx);\n" \
-"  float n = hist.read(uint2(pp.xy)).a, a = max(1.0 / (n + 1.0), u.k.x);\n" \
+"  float a = max(1.0 / (n + 1.0), u.k.x);\n" \
 "  float wc = a, wh = 1.0 - a; if (u.k.z > 0.5) { wc /= 1.0 + luma(c); wh /= 1.0 + luma(h); }\n" \
 "  o.c = float4((c * wc + h * wh) / (wc + wh), min(n + 1.0, 255.0)); return o; }\n" \
 "/* MetalFX's motion: this pixel's offset to where it was, in pixels of the input */\n" \

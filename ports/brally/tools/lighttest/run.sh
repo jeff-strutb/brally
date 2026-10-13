@@ -4,10 +4,11 @@
 #   rt.sh      the track BVH and its traversal (CPU, GPU, hardware) against brute force
 #   shadow.sh  the sun's soft shadows, contact shadows and cascade cache
 #   lights.sh  clustered light culling and the lamps' shadow atlas
+#   taa.sh     the lit frame's TAA: jitter, reprojection, clipping, convergence (GPU vs CPU), MetalFX
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh maths.sh; do
+for t in rt.sh shadow.sh lights.sh taa.sh maths.sh; do
     echo "== $t"
     sh "./$t"
 done
