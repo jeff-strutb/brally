@@ -310,6 +310,17 @@ static void test_brdf(void)
                 s += p[k * 2] * 2.0 * ((k + 0.5) / NQ) / NQ;
             ta = WMAX(ta, fabs(s - p[1]));
         }
+        {   /* the split sum's DFG term (brr_metal_refl.h reads this table): relative to the brute-force integral */
+            double rel = 0, rr = 0, rm = 0;
+            for (ir = 0; ir < FUR_NR; ir++)
+                for (im = 0; im < FUR_NM; im++) {
+                    double d = fabs(qo[(ir * FUR_NM + im) * 2] - E[ir][im][0]) / E[ir][im][0];
+                    if (!(d <= rel))
+                        rel = d, rr = k_rough[ir], rm = k_mu[im];
+                }
+            report(rel < 0.01, "DFG table (split sum) against the GGX integral", "max relative error %.3f%% (roughness %.3f, mu %.2f; 1024 x 1024 quadrature)",
+                   rel * 100.0, rr, rm);
+        }
         report(te < 2e-3, "BRDF table: E(mu) = the lobe's albedo", "max |table - measured| %.2e (roughness %.3f, mu %.2f)", te, k_rough[wr], k_mu[wm]);
         report(ta < 1e-3, "BRDF table: E_avg = its cosine mean", "max |E_avg - integral of the table| %.2e", ta);
         free(q);

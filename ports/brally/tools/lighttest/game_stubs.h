@@ -10,6 +10,9 @@ const LightTrack *light_game_track(void) { return NULL; }
 int light_game_weather(void) { return 0; }
 int light_glide_flip(void) { return 0; }
 int light_scene_spots(LightSpot *out, int max) { (void)out; (void)max; return 0; }
+int brr_refl_tier(void) { return 0; }   /* reflections: off here (refl.sh tests them) */
+void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, const BrrRtWorld *rt, id<MTLTexture> alb, id<MTLTexture> pos,
+                   id<MTLTexture> nrm, id<MTLTexture> hdr, id<MTLTexture> sky, id<MTLTexture> bE) { }
 int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)   /* the track's rays: rt.sh's */
 {
     (void)w, (void)dev, (void)q, (void)t;

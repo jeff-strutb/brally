@@ -22,6 +22,8 @@
 #ifndef BRR_METAL_LIT_H
 #define BRR_METAL_LIT_H
 
+#include "brr_metal_refl.h"
+
 #include "brr_metal_gi_src.h"
 
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
@@ -34,7 +36,7 @@
  * ambient term */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -196,6 +198,7 @@ BRR_GI_SAMPLE_SRC \
 "  return (alb * fd + ggxspec(n, v, l, rough)) * nl;\n" \
 "}\n" \
 BRR_SHADOW_SRC \
+BRR_WET_SRC \
 /* a surface's normal turned toward the eye (the game's faces are seen from \
    either side) */ \
 "static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
@@ -206,7 +209,7 @@ BRR_SHADOW_SRC \
    diffuse's albedo / pi of it (nothing metallic) in place of the sky's term */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
 "                       texture2d<float> bE, float3 gi) {\n" \
-"  float3 v = normalize(u.eye.xyz - p);\n" \
+"  float3 v = normalize(u.eye.xyz - p); wet(u, p, n, alb, rough);\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough, bE) * sv;\n" \
 "  Lo += alb / 3.14159 * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
 "  Lo += lamps(ls, atl, p, n, v, alb, rough, bE);\n" \

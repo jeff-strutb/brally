@@ -1,0 +1,74 @@
+/* brr_metal_refl.m: the reflection pass (brr_metal_refl.h, DESIGN.md 8.4):
+ * its compute pipeline, compiled with the BVH's traversal (brr_rt_library),
+ * and its dispatch after the deferred lighting: the lit target read, the
+ * reflections added into a copy, the copy blitted back. */
+#import <Metal/Metal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "brr_metal_lit.h"
+#include "brr_metal_rt.h"
+#include "brr_metal_refl_api.h"
+
+static id<MTLComputePipelineState> s_rpipe;
+static id<MTLTexture> s_rdst;
+static id<MTLBuffer> s_rnull;
+static int s_rfail;
+
+int brr_refl_tier(void)
+{
+    const char *e = getenv("BR_REFL");
+    return e ? atoi(e) : 2;
+}
+
+void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, const BrrRtWorld *rt,
+                   id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
+                   id<MTLTexture> sky, id<MTLTexture> bE)
+{
+    id<MTLComputeCommandEncoder> e;
+    id<MTLBlitCommandEncoder> b;
+    if (s_rfail || !hdr || !sky || !bE)
+        return;
+    if (!s_rpipe) {
+        NSError *err = nil;
+        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_REFL_SRC, &err);
+        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil;
+        s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
+        if (!s_rpipe) {
+            fprintf(stderr, "brr: reflections: %s\n", [[err description] UTF8String]);
+            s_rfail = 1;
+            return;
+        }
+        s_rnull = [dev newBufferWithLength:64 options:MTLResourceStorageModePrivate];
+    }
+    if (!s_rdst || s_rdst.width != hdr.width || s_rdst.height != hdr.height) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:hdr.pixelFormat width:hdr.width
+                                                                                     height:hdr.height mipmapped:NO];
+        td.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_rdst = [dev newTextureWithDescriptor:td];
+    }
+    e = [cb computeCommandEncoder];
+    [e setComputePipelineState:s_rpipe];
+    if (rt && rt->built) {
+        [e setBuffer:rt->node offset:0 atIndex:0];
+        [e setBuffer:rt->tri offset:0 atIndex:1];
+        [e setBuffer:rt->id offset:0 atIndex:2];
+    } else {
+        int k;
+        for (k = 0; k < 3; k++)
+            [e setBuffer:s_rnull offset:0 atIndex:(NSUInteger)k];
+    }
+    [e setBytes:lu length:lusz atIndex:3];
+    [e setTexture:alb atIndex:0];
+    [e setTexture:pos atIndex:1];
+    [e setTexture:nrm atIndex:2];
+    [e setTexture:hdr atIndex:3];
+    [e setTexture:s_rdst atIndex:4];
+    [e setTexture:sky atIndex:5];
+    [e setTexture:bE atIndex:6];
+    [e dispatchThreads:MTLSizeMake(hdr.width, hdr.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    [e endEncoding];
+    b = [cb blitCommandEncoder];
+    [b copyFromTexture:s_rdst toTexture:hdr];
+    [b endEncoding];
+}

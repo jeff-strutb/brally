@@ -39,6 +39,7 @@
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
 #include "brr_metal_rt.h"
+#include "brr_metal_refl_api.h"
 #include "brr_metal_gi.h"
 #include "brr_shadow.h"
 #include "brr_metal_taa_api.h"
@@ -443,7 +444,7 @@ static float s_ev = 1e9f;
 #define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
 typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4]; } KU;
 
@@ -477,12 +478,12 @@ static float s_atm_mie = -1.0f;
  * middle (30th to 75th percentile), so the moonlit hills and road set the
  * exposure, not the headlamp pool and the lamps above it, and a stop under
  * the meter's mid-grey, so night reads as night (MEASUREMENTS.md). */
-static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; float elev, plo, phi, comp; } k_weather[5] = {
-    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.80f, 0.983f, 0 },
-    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0 },
-    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0 },
-    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0 },
-    /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f },
+static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; float elev, plo, phi, comp; float wet, pud; } k_weather[5] = {   /* wet, pud: brr_metal_refl.h */
+    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
+    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
+    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0, 1.0f, 0.6f },
+    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0, 0.5f, 0.3f },
+    /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
 };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 
@@ -1207,6 +1208,7 @@ static void lit_present(void)
     }
     u.misc[0] = lit_exposure(w);
     u.misc[2] = k_weather[w].rough;
+    u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
     u.bg[0] = 0.9f;                         /* the backdrop and fog: shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
     {
@@ -1598,6 +1600,8 @@ static void lit_present(void)
     lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
+    if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
+        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, sky ? s_atmS : nil, s_brdfE);
 
     if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
         float vs[16];

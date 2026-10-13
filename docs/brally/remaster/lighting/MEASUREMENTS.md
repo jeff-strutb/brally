@@ -1229,3 +1229,51 @@ Not yet fed: the renderer does not yet gather the glowing track patches
 (per draw: the triangles' area x the mask's share of texels x its colour)
 into light_world_set, and the lighthouse's position is not yet read from
 Coastline's beam instance (64/142, light_world_set_lighthouse).
+
+## Reflections and wet roads (DESIGN.md 8.4), first cut
+
+What is in: `brr_metal_refl.h` (shaders), `brr_metal_refl.m` (the pass),
+one hook in `radiance()` (`wet()`: the weather's wetness on up-facing
+surfaces, n.z > 0.9; Lagarde 2013's porosity darkening, the albedo times
+mix(1, mix(1, 0.2, porosity), wetness), porosity saturate((roughness -
+0.5) / 0.4); roughness toward 0.1 by the wetness and 0.03 in puddles, a
+two-octave world-space noise mask) and one in `lit_present` after the
+deferred lighting, before the volumetric fog (a compute pass: one VNDF GGX
+sample a pixel, a screen-space march of one step a pixel, at most 64, then
+six halvings, against the G-buffer's positions; confidence fading over the
+screen's last 8% and to nothing on a miss; a miss traced against the track
+BVH (`rt_closest`) below roughness 0.4, a hit shaded as grey ground, albedo
+0.3 under sun and sky, else the sky-view table; the split sum's DFG term is
+the existing GGX albedo table (F0 0.04 everywhere, so E(mu, roughness) is
+F0 A + B); nothing above roughness 0.6; the game's fog weight dropped when
+the volumetric fog is on). `k_weather` carries wetness and puddles (rain
+1.0 / 0.6, snow melt 0.5 / 0.3); `LU.wet` (x wetness, y puddles, z the tier
+gate: BR_REFL, default 2, 0 off; w the BVH's roughness limit) is last in
+LU, after vol and gi: 608 bytes in C and MSL.
+
+refl.sh (in run.sh): refl_test.m on a synthetic 320 x 180 G-buffer of a
+ground plane and a 3 x 2 x 2 m box, mirror rays from every plane pixel:
+
+| check | result | limit |
+|---|---|---|
+| visible mirror hits found by the march | 1744 of 1775 (98.25%) | >= 98% |
+| a found hit's pixel against the analytic hit | max 0.057 px | <= 1 px |
+| hits where the ray meets nothing | 30 of 36648 plane pixels | <= 0.5% |
+| GPU ssr() against the CPU transcription | 36648 of 36648 agree, 0.0000 px | all |
+| DFG table against the GGX integral (lighttest.m, 1024 x 1024) | max 0.680% relative | < 1% |
+| wet(): albedo and roughness against Lagarde's formula in double | 6.2e-8, 8.7e-8 | 1e-5 |
+| E + albedo (1 - E), albedo 0.9, every wetness 0..1 | max 0.9595 | <= 1 |
+| LU, shader and C | 608 and 608 bytes | equal |
+
+The reflection source compiles offline for macOS and iOS with 0 errors
+(one warning: the RT header's unused rt_any); link64.sh links; every suite
+in run.sh passes. The 31 missed hits (1.75%) are not yet diagnosed (likely
+single-layer cases at the box's silhouette and foot); on a miss the pass
+falls back to the BVH. GPU time at 1080p is an estimate, not measured:
+about 16 to 40 march steps a glossy pixel at one read each, roughly 1 to 2
+ms on an M-class GPU with the road filling the lower half, plus the
+software BVH for misses. Approximations to revisit: a BVH hit's normal is
+taken as up; the screen-space sample is the frame's lit opaque pass; one
+sample a pixel, no denoiser (DESIGN.md 8.5). Car paint (a clear coat over
+the de-lit base, a G-buffer material id for car triangles from
+light_capture_ontrack and light_game_cars' boxes) is not started.

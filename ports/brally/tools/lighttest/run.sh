@@ -10,9 +10,10 @@
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
 #   vol.sh     the volumetric fog: its integration against closed forms, its kernels against the CPU reference
 #   night.sh   the moon, the Purkinje weight, the night meter, the glow's gating, the track's lights
+#   refl.sh    reflections and wet roads: the march, wetness and LU against references; offline compiles
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh night.sh; do
+for t in rt.sh shadow.sh lights.sh gi.sh taa.sh maths.sh skymask.sh vol.sh night.sh refl.sh; do
     echo "== $t"
     sh "./$t"
 done
