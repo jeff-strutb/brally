@@ -128,3 +128,33 @@ headlit road burned out; the histogram band meters EV 2.7 there. Night's
 range is EV100 -2.5 to 7.5 (moonlight to a floodlit road).
 
 ![Sunny and night, Original and the new lighting](phase2-headlights.png)
+
+## The lit frame as passes (2026-10-12)
+
+Relighting the game's finished frame dropped or pasted back what the game
+draws blended (the lit windows are alpha-blended decals over the walls: the
+colour under each window is the wall's grey). A lit frame is now the game's
+draws recorded and replayed (`brr_metal.m`, `brr_metal_lit.h`): G-buffer of
+the opaque 3D; the sun's shadow map; HDR lighting with the game's
+background (what it drew before its 3D) and painted backdrop behind; the
+blended 3D forward-lit by the same lights in the game's order (additive
+draws as emitted light); bloom (13-tap down, tent up, Jimenez 2014); post
+(histogram exposure over lit surfaces only, Khronos PBR Neutral); then the
+game's 2D, mirror and LFB writes over it as drawn. Glow is a texture
+property decided when the texture is made (lamplight texels), about
+100 cd/m2 at night. Each recorded draw keeps the texture object it was drawn
+with (the game replaces its font pages within a frame).
+
+Bugs the frames showed, each fixed at its cause: glyphs all the last font
+page (texture identity, above); a black night (a sliver's zero normal made
+NaN, which bloom spread over the frame: guarded normals, finite bloom
+input); a dark exposure (the meter read the backdrop, whose level follows
+the exposure: it reads lit surfaces only); the night's black background
+fill drawn over the scene (draws before the first 3D are background now).
+
+| check | result |
+|---|---|
+| Original unchanged | sunny and night frames 1,000 and 3,000 byte-identical to c8194344 |
+| game state | `lightcheck.sh` with the lit Metal build, `28_weather_rain` (night): identical, 26 dumps |
+
+![Sunny and night through the passes](phase2-passes.png)

@@ -59,7 +59,8 @@ typedef struct LightVtx {
     float s, t;              /* texels (s/w, t/w already divided back by 1/w) */
 } LightVtx;
 /* 1 when the triangle has a world position (the camera's view or the
- * mirror's, not the backdrop): world[3][3] then holds its corners */
+ * mirror's, not the backdrop): world[3][3] then holds its corners; 2 for the
+ * main view's backdrop; 0 otherwise */
 int  light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const LightVtx *c,
                        uint32_t texture, uint32_t state, float world[3][3]);
 /* the frame is finished (grBufferSwap) */

@@ -45,6 +45,7 @@ static LightTri *s_tri;
 static int s_ntri, s_cap;
 static unsigned s_frame;
 static unsigned s_fr[4];                 /* this frame's triangles by view */
+static unsigned s_blend[256];            /* camera triangles by blend (src | dst << 4), for the stats */
 
 /* the camera of the triangles now arriving, and the inverse of its x, y, w
  * columns */
@@ -130,6 +131,7 @@ int light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const Ligh
     int i, k;
     if (!a->oow || !b->oow || !c->oow || !camera())
         return 0;
+    int main_view = view == 0;
     if (a->oow == BACKDROP_OOW || b->oow == BACKDROP_OOW || c->oow == BACKDROP_OOW)
         view = 3;
     if (s_ntri == s_cap) {
@@ -164,10 +166,12 @@ int light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const Ligh
                 s_st.hi[k] = fmaxf(s_st.hi[k], t->p[i][k]);
             }
     }
+    if (view == 0)
+        s_blend[state & 0xFF]++;
     s_st.tris[view & 3]++;
     s_fr[view & 3]++;
     if (view == 3)
-        return 0;
+        return main_view ? 2 : 0;   /* the main view's backdrop: 2 */
     memcpy(world, t->p, sizeof t->p);
     return 1;
 }
@@ -265,6 +269,15 @@ void light_capture_swap(void)
                     light_game_weather(), s_st.frames, (double)s_st.tris[0] / s_st.frames, (double)s_st.tris[2] / s_st.frames,
                     (double)s_st.tris[3] / s_st.frames, s_st.err,
                     s_st.lo[0], s_st.hi[0], s_st.lo[1], s_st.hi[1], s_st.lo[2], s_st.hi[2]);
+            {
+                int b;
+                fprintf(stderr, "light: camera triangles by blend (src/dst):");
+                for (b = 0; b < 256; b++)
+                    if (s_blend[b])
+                        fprintf(stderr, " %d/%d x%u", b & 15, b >> 4, s_blend[b]);
+                fprintf(stderr, "\n");
+                memset(s_blend, 0, sizeof s_blend);
+            }
             memset(&s_st, 0, sizeof s_st);
             t0 = now;
         }

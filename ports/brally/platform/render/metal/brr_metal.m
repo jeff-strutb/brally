@@ -18,15 +18,9 @@
  * The shader source is compiled at start-up, so the build needs no Metal
  * toolchain step.
  *
- * Remastered lighting (BR_FLAG_LIGHTING; docs/brally/remaster/lighting): the
- * game's frame is drawn exactly as above, and each triangle of the camera's
- * 3D view also writes a G-buffer beside it (its albedo with the game's baked
- * light taken out, its world position and surface direction; every other
- * draw marks its pixels as the game's).  At present the sun's shadow map is
- * drawn from the frame's 3D triangles and one lighting pass relights the 3D
- * pixels in linear HDR (physical units, a sun and a sky), exposes them and
- * tonemaps them (Khronos PBR Neutral); the HUD, text and mirror keep the
- * game's pixels.  Off: nothing of this runs. */
+ * With BR_FLAG_LIGHTING (the Remastered lighting, brr_metal_lit.h and its
+ * section below) a frame is recorded and replayed through the lighting's
+ * passes instead; without it, nothing of that runs. */
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 #import <ImageIO/ImageIO.h>
@@ -37,6 +31,7 @@
 #include <string.h>
 
 #include "brr.h"
+#include "brr_metal_lit.h"
 #include "br_flags.h"
 #include "light.h"
 
@@ -61,8 +56,9 @@ static NSString *const k_src = @
 "  float atest_ref, vw, vh, xf;\n"
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
+"  float glow, addk;\n"
 "};\n"
-"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float lit [[flat]]; };\n"
+"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
    u.xf of this frame's table */
 "vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
@@ -71,8 +67,7 @@ static NSString *const k_src = @
 "  float w = a.oow > 0 ? 1.0 / a.oow : 1.0;\n"
 "  float2 ndc = float2(a.pos.x * T.x + T.y, a.pos.y * T.z + T.w);\n"
 "  o.pos = float4(ndc * w, clamp(a.z, 0.0, 1.0) * w, w);\n"
-"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z;\n"
-"  o.wp = a.wld.xyz; o.lit = a.wld.w;\n"
+"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z; o.wp = a.wld.xyz;\n"
 "  return o;\n"
 "}\n"
 "static float comb(int fn, float f, float l, float la, float ot, int inv) {\n"
@@ -121,6 +116,37 @@ static NSString *const k_src = @
 "  return w < 0xFFFF ? w + 1 : w;\n"
 "}\n"
 "struct FO { float4 c [[color(0)]]; float d [[depth(any)]]; };\n"
+"fragment FO fs(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) {\n"
+"  float4 tex = float4(0);\n"
+"  if (u.has_tex) {\n"
+"    float4 tx = t.sample(sm, in.st);\n"
+"    tex.r = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.r, tx.a, 0, tx.a), tx.r, tx.a, 0, u.tc_rgb_invert);\n"
+"    tex.g = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.g, tx.a, 0, tx.a), tx.g, tx.a, 0, u.tc_rgb_invert);\n"
+"    tex.b = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.b, tx.a, 0, tx.a), tx.b, tx.a, 0, u.tc_rgb_invert);\n"
+"    tex.a = comb(u.tc_alpha_fn, fac(u.tc_alpha_factor, tx.a, tx.a, 0, tx.a), tx.a, tx.a, 0, u.tc_alpha_invert);\n"
+"  }\n"
+"  float4 it = in.col, k = u.konst;\n"
+"  float4 cl = u.cc_local == 1 ? k : it;\n"
+"  float4 co = u.cc_other == 1 ? tex : (u.cc_other == 2 ? k : it);\n"
+"  float al = u.ac_local == 1 ? k.a : it.a;\n"
+"  float ao = u.ac_other == 1 ? tex.a : (u.ac_other == 2 ? k.a : it.a);\n"
+"  float4 o;\n"
+"  o.a = comb(u.ac_fn, fac(u.ac_factor, al, al, ao, tex.a), al, al, ao, u.ac_invert);\n"
+"  o.r = comb(u.cc_fn, fac(u.cc_factor, cl.r, al, co.a, tex.a), cl.r, al, co.r, u.cc_invert);\n"
+"  o.g = comb(u.cc_fn, fac(u.cc_factor, cl.g, al, co.a, tex.a), cl.g, al, co.g, u.cc_invert);\n"
+"  o.b = comb(u.cc_fn, fac(u.cc_factor, cl.b, al, co.a, tex.a), cl.b, al, co.b, u.cc_invert);\n"
+"  if (u.atest_fn != 7 && !cmpf(u.atest_fn, floor(o.a * 255.0 + 0.5), u.atest_ref)) discard_fragment();\n"
+"  float f = 0;\n"
+"  if (u.fog_mode == 1) f = it.a;\n"
+"  else if (u.fog_mode == 2) f = fogt(u, in.oow > 0 ? 1.0 / in.oow : 65536.0);\n"
+"  else if (u.fog_mode == 3) f = clamp(in.z, 0.0, 1.0);\n"
+"  if (f > 0) o.rgb += (u.fog_color.rgb - o.rgb) * f;\n"
+"  FO r; r.c = o;\n"
+"  r.d = (u.depth_mode == 2 || u.depth_mode == 4) ? float(wfloat(in.oow)) / 65536.0 : floor(clamp(in.z * 65535.0, 0.0, 65535.0)) / 65536.0;\n"
+"  return r;\n"
+"}\n"
+/* the game's own fragment, for the lit shaders (brr_metal_lit.h): the same
+   equations as fs, with what they were made of */
 "struct SH { float4 o; float4 tex; float4 it; float fog; float d; bool keep; };\n"
 "static SH shade(O in, constant U &u, texture2d<float> t, sampler sm) {\n"
 "  SH r; float4 tex = float4(0);\n"
@@ -146,114 +172,9 @@ static NSString *const k_src = @
 "  if (u.fog_mode == 1) f = it.a;\n"
 "  else if (u.fog_mode == 2) f = fogt(u, in.oow > 0 ? 1.0 / in.oow : 65536.0);\n"
 "  else if (u.fog_mode == 3) f = clamp(in.z, 0.0, 1.0);\n"
-"  r.fog = f; r.tex = u.has_tex ? tex : float4(1); r.it = it;\n"
-"  if (f > 0) o.rgb += (u.fog_color.rgb - o.rgb) * f;\n"
-"  r.o = o;\n"
+"  r.fog = f; r.tex = u.has_tex ? tex : float4(1); r.it = it; r.o = o;\n"
 "  r.d = (u.depth_mode == 2 || u.depth_mode == 4) ? float(wfloat(in.oow)) / 65536.0 : floor(clamp(in.z * 65535.0, 0.0, 65535.0)) / 65536.0;\n"
 "  return r;\n"
-"}\n"
-"fragment FO fs(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) {\n"
-"  SH h = shade(in, u, t, sm);\n"
-"  if (!h.keep) discard_fragment();\n"
-"  FO r; r.c = h.o; r.d = h.d; return r;\n"
-"}\n"
-/* the Remastered G-buffer beside the game's colour: albedo (the texture
-   times the vertex colour's hue: its brightness is the game's baked light,
-   which the lighting replaces; a = 1 marks a 3D pixel to relight), the world
-   position (w the game's fog colour as 0xRRGGBB) and the surface's
-   direction (w the game's fog amount) */
-"struct GO { float4 c [[color(0)]]; float4 alb [[color(1)]]; float4 pos [[color(2)]]; float4 nrm [[color(3)]]; float d [[depth(any)]]; };\n"
-"fragment GO fsg(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]]) {\n"
-"  SH h = shade(in, u, t, sm);\n"
-"  if (!h.keep) discard_fragment();\n"
-"  GO r; r.c = h.o; r.d = h.d;\n"
-"  if (in.lit > 0.5) {\n"
-"    float3 vc = h.it.rgb, lin = pow(max(h.tex.rgb, 0.0), 2.2);\n"
-"    float lv = dot(vc, float3(0.2126, 0.7152, 0.0722));\n"
-"    float3 hue = lv > 0.02 ? clamp(vc / lv, 0.0, 2.0) : float3(1);\n"
-"    float3 alb = clamp(lin * pow(hue, 2.2) * 0.85, 0.0, 0.9);\n"
-"    r.alb = float4(alb, 1);\n"
-"    float3 n = normalize(cross(dfdx(in.wp), dfdy(in.wp)));\n"
-"    uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n"
-"    r.pos = float4(in.wp, float(fc)); r.nrm = float4(n, h.fog);\n"
-"  } else { r.alb = float4(0); r.pos = float4(0); r.nrm = float4(0); }\n"
-"  return r;\n"
-"}\n"
-/* the sun's shadow map: the frame's 3D triangles from the sun */
-"struct SO { float4 pos [[position]]; };\n"
-"vertex SO svs(uint i [[vertex_id]], const device packed_float3 *v [[buffer(0)]], constant float4x4 &m [[buffer(1)]]) {\n"
-"  SO o; o.pos = m * float4(float3(v[i]), 1.0); return o; }\n"
-/* the lighting: linear HDR in physical units (lux), a physical camera's
-   exposure, Khronos PBR Neutral, sRGB; only where the G-buffer marks 3D */
-"struct LU { float4x4 sunvp; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; };\n"
-"struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n"
-/* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's
-   low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon
-   on the near side, stepping up 15 degrees on the kerb side, the hot spot a
-   degree and a half below the horizon and right of centre, a wide spread
-   below it), a rear lamp's broad cosine lobe */
-"static float lamp(LS l, float3 d) {\n"
-"  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n"
-"  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n"
-"  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n"
-"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958;\n"
-"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / 10.0) * ((h - 1.5) / 10.0));\n"
-"  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n"
-"  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n"
-"  float above = smoothstep(cut - 0.35, cut + 0.35, v);\n"
-"  return l.cd * spread * vert * mix(1.0, 0.012, above);\n"
-"}\n"
-"struct LO { float4 pos [[position]]; float2 uv; };\n"
-"vertex LO lvs(uint i [[vertex_id]]) { float2 p = float2((i << 1) & 2, i & 2); LO o; o.pos = float4(p * 2.0 - 1.0, 0, 1); o.uv = float2(p.x, 1.0 - p.y); return o; }\n"
-"static float3 neutral(float3 c) {\n"
-"  const float start = 0.8 - 0.04, desat = 0.15;\n"
-"  float x = min(c.r, min(c.g, c.b)); float off = x < 0.08 ? x - 6.25 * x * x : 0.04; c -= off;\n"
-"  float p = max(c.r, max(c.g, c.b)); if (p < start) return c;\n"
-"  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n"
-"  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n"
-"static float srgb(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n"
-"fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> alb [[texture(0)]],\n"
-"                    texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]], depth2d<float> sm [[texture(3)]],\n"
-"                    device atomic_uint *lum [[buffer(1)]], const device LS *ls [[buffer(2)]]) {\n"
-"  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n"
-"  if (a.a < 0.5) discard_fragment();\n"
-"  float4 P = pos.read(px), N4 = nrm.read(px); float3 p = P.xyz, n = N4.xyz, v = normalize(u.eye.xyz - p);\n"
-"  if (dot(n, v) < 0) n = -n;\n"
-"  float3 l = u.sun.xyz; float ndl = max(dot(n, l), 0.0);\n"
-"  float vis = 1.0;\n"
-"  if (u.misc.y > 0.5 && ndl > 0) {\n"
-"    constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n"
-"    float4 c = u.sunvp * float4(p + n * 0.05, 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n"
-"    if (all(st > 0.0) && all(st < 1.0) && c.z < 1.0) { vis = 0; float2 tx = 1.0 / float2(sm.get_width(), sm.get_height());\n"
-"      for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) vis += sm.sample_compare(cs, st + float2(x, y) * tx, c.z - 0.0008);\n"
-"      vis /= 9.0; } }\n"
-"  float3 sky = mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n"
-"  float3 h = normalize(l + v); float nh = max(dot(n, h), 0.0), r2 = 0.6 * 0.6;\n"
-"  float dd = nh * nh * (r2 - 1.0) + 1.0, D = r2 / (3.14159 * dd * dd);\n"
-"  float F = 0.04 + 0.96 * pow(1.0 - max(dot(h, v), 0.0), 5.0);\n"
-"  float3 Lo = a.rgb / 3.14159 * (u.sunc.rgb * ndl * vis + sky) + u.sunc.rgb * (D * F * 0.25 * ndl * vis * u.misc.z);\n"
-"  for (int i = 0; i < int(u.eye.w); i++) {   /* the lamps: E = I cos / d^2, a smooth window at their range */\n"
-"    LS l = ls[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n"
-"    float nl = max(dot(n, ld), 0.0); if (nl <= 0.0) continue;\n"
-"    float win = 1.0 - smoothstep(0.7 * l.range, l.range, dl);\n"
-"    float E = lamp(l, -ld) * nl / d2 * win;\n"
-"    float3 hh = normalize(ld + v); float nh2 = max(dot(n, hh), 0.0), dd2 = nh2 * nh2 * (r2 - 1.0) + 1.0;\n"
-"    float D2 = r2 / (3.14159 * dd2 * dd2), F2 = 0.04 + 0.96 * pow(1.0 - max(dot(hh, v), 0.0), 5.0);\n"
-"    Lo += l.rgb.rgb * E * (a.rgb / 3.14159 + D2 * F2 * 0.25 * u.misc.z);\n"
-"  }\n"
-"  int dbg = int(u.misc.w);\n"
-"  if (dbg == 1) return float4(pow(a.rgb, 1.0 / 2.2), 1);\n"
-"  if (dbg == 2) return float4(n * 0.5 + 0.5, 1);\n"
-"  if (dbg == 3) return float4(float3(vis), 1);\n"
-"  if (dbg == 4) return float4(float3(ndl), 1);\n"
-"  Lo *= u.gndc.w > 0 ? float3(u.sunc.w, u.skyc.w, u.gndc.w) : float3(1);   /* the camera's white balance */\n"
-"  float Y = dot(Lo, float3(0.2126, 0.7152, 0.0722));\n"
-"  if (((px.x | px.y) & 3) == 0)   /* every 16th pixel: the luminance histogram (log2, half stops from 2^-10) */\n"
-"    atomic_fetch_add_explicit(&lum[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed);\n"
-"  float3 c = neutral(Lo * u.misc.x);\n"
-"  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n"
-"  float3 o = float3(srgb(c.r), srgb(c.g), srgb(c.b));\n"
-"  return float4(mix(o, fogc, N4.w), 1);\n"
 "}\n"
 /* the clear: a colour and a depth over a rectangle */
 "struct CO { float4 pos [[position]]; };\n"
@@ -282,6 +203,7 @@ typedef struct U {
     float atest_ref, vw, vh, xf;
     float konst[4], fog_color[4];
     float fog[64];
+    float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
 } U;
 
 /* ---- state --------------------------------------------------------------------------- */
@@ -317,18 +239,6 @@ static char s_shot_path[1024];
 static dispatch_semaphore_t s_inflight;
 static int s_offscreen;            /* BR_VCLOCK: frames never wait for the display */
 
-/* ---- the Remastered lighting (BR_FLAG_LIGHTING) ------------------------------------- */
-static int s_litf;                  /* this frame is lit: its encoder has the G-buffer too */
-static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_shadow;
-/* [variant][src][dst]: 0 a 3D draw (G-buffer written when opaque), 1 any other
-   (marks its pixels as the game's) */
-static id<MTLRenderPipelineState> s_gpipes[2][16][16];
-static id<MTLRenderPipelineState> s_gclear[2], s_glfb, s_glfbsharp, s_shpipe, s_lpipe;
-static id<MTLDepthStencilState> s_shds;
-static float *s_tris;               /* this frame's 3D triangles in world space, for the shadow map */
-static size_t s_ntris, s_captris;
-#define SHADOW_SIZE 2048
-
 static MTLBlendFactor bf(int k, int src)
 {
     switch (k) {
@@ -343,48 +253,6 @@ static MTLBlendFactor bf(int k, int src)
     case 0xF: return MTLBlendFactorZero;         /* min(src alpha, 1 - dst alpha), dst alpha one */
     default:  return MTLBlendFactorOne;
     }
-}
-
-static void gbuffer_formats(MTLRenderPipelineDescriptor *d, int write)
-{
-    d.colorAttachments[1].pixelFormat = MTLPixelFormatRGBA8Unorm;
-    d.colorAttachments[2].pixelFormat = MTLPixelFormatRGBA32Float;
-    d.colorAttachments[3].pixelFormat = MTLPixelFormatRGBA16Float;
-    d.colorAttachments[1].writeMask = write ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
-    d.colorAttachments[2].writeMask = write == 2 ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
-    d.colorAttachments[3].writeMask = write == 2 ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
-}
-
-/* a lit frame's pipeline: a 3D draw writes the whole G-buffer when it is
- * opaque and leaves it when it blends (smoke, the game's painted car
- * shadow); every other draw marks its pixels as the game's */
-static id<MTLRenderPipelineState> gpipe_for(int lit, int src, int dst)
-{
-    int v = lit ? 0 : 1;
-    src &= 15;
-    dst &= 15;
-    if (!s_gpipes[v][src][dst]) {
-        MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
-        NSError *err = nil;
-        int opaque = src == 4 && dst == 0;
-        d.vertexFunction = [s_lib newFunctionWithName:@"vs"];
-        d.fragmentFunction = [s_lib newFunctionWithName:@"fsg"];
-        d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
-        d.colorAttachments[0].writeMask = MTLColorWriteMaskRed | MTLColorWriteMaskGreen | MTLColorWriteMaskBlue;
-        if (!opaque) {
-            d.colorAttachments[0].blendingEnabled = YES;
-            d.colorAttachments[0].sourceRGBBlendFactor = bf(src, 1);
-            d.colorAttachments[0].destinationRGBBlendFactor = bf(dst, 0);
-            d.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorZero;
-            d.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
-        }
-        gbuffer_formats(d, lit ? (opaque ? 2 : 0) : 1);
-        s_gpipes[v][src][dst] = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
-        if (!s_gpipes[v][src][dst])
-            fprintf(stderr, "brr: metal lit pipeline: %s\n", [[err description] UTF8String]);
-    }
-    return s_gpipes[v][src][dst];
 }
 
 static id<MTLRenderPipelineState> pipe_for(int src, int dst)
@@ -451,7 +319,7 @@ static id<MTLSamplerState> samp_for(int filter, int cs, int ct)
     return s_samp[filter][cs][ct];
 }
 
-static id<MTLRenderPipelineState> simple_pipe_g(NSString *vs, NSString *fs, int colour, int depth, int gbuf)
+static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int colour, int depth)
 {
     MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
     NSError *err = nil;
@@ -459,8 +327,6 @@ static id<MTLRenderPipelineState> simple_pipe_g(NSString *vs, NSString *fs, int 
     d.vertexFunction = [s_lib newFunctionWithName:vs];
     d.fragmentFunction = [s_lib newFunctionWithName:fs];
     d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    if (gbuf)
-        gbuffer_formats(d, 0);
     if (!colour)
         d.colorAttachments[0].writeMask = MTLColorWriteMaskNone;
     if (depth)
@@ -471,16 +337,14 @@ static id<MTLRenderPipelineState> simple_pipe_g(NSString *vs, NSString *fs, int 
     return p;
 }
 
-static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int colour, int depth)
-{
-    return simple_pipe_g(vs, fs, colour, depth, 0);
-}
-
 /* the colour and depth targets at w x h pixels.  The game draws in the
  * resolution it opened (its Glide coordinates); the targets take the
  * window's size, so geometry, text and textures are rasterised and filtered
  * at the window's resolution rather than drawn at that size and enlarged
  * (as the wasm lane draws) */
+static void lit_reset(void);
+static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h);
+
 static void targets(int w, int h)
 {
     MTLTextureDescriptor *td;
@@ -494,7 +358,7 @@ static void targets(int w, int h)
     td.usage = MTLTextureUsageRenderTarget;
     td.storageMode = MTLStorageModePrivate;
     s_dep = [s_dev newTextureWithDescriptor:td];
-    s_galb = s_gpos = s_gnrm = nil;     /* the G-buffer follows, made at the next lit frame */
+    lit_reset();                        /* the lit frame's targets follow, at the next lit frame */
     s_rw = w;
     s_rh = h;
     s_fresh = 1;
@@ -513,6 +377,530 @@ static void target_size(double dw, double dh, int *w, int *h)
     if (*h < 1) *h = 1;
 }
 
+/* ---- the Remastered lighting: a lit frame (BR_FLAG_LIGHTING) -------------------------
+ * The game's draws are recorded as it makes them (their vertices go into the
+ * frame's vertex buffer as always) and replayed at present in passes
+ * (brr_metal_lit.h): the G-buffer, the sun's shadow map, the lighting with
+ * the backdrop behind it, the blended 3D forward-lit in the game's order,
+ * bloom, post, then everything else (2D, the mirror, LFB writes) over the
+ * result as the game drew it. */
+enum { K_OPQ, K_BLEND, K_BACK, K_OTHER, K_CLEAR, K_LFB };
+typedef struct Op {
+    int kind;
+    U u;
+    int src, dst, dmode, dfn, dmask, cull;
+    int sc[4], has_sc;
+    uint32_t tex;
+    int texobj;                     /* the texture object as it was when drawn (s_frametex): the game
+                                       replaces a texture's contents within a frame (the font pages) */
+    int filt, cs, ct;
+    long voff;
+    int n;
+    int lfb, sharp;                 /* K_LFB: its texture in s_lfbtex, sharp-bilinear */
+    int colour, depthbuf;           /* K_CLEAR */
+    float clear[4], depth;
+} Op;
+static Op *s_ops;
+static int s_nops, s_capops;
+static NSMutableArray *s_lfbtex, *s_frametex;
+static int s_litf;                  /* this frame is lit (the flag, read when it began) */
+static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_hdr, s_shadow, s_bl[6];
+static int s_nbl;
+static id<MTLTexture> s_emask[TEX_MAX], s_black;
+static id<MTLRenderPipelineState> s_lpg, s_lpb, s_lpl, s_lpf[16][16], s_lbd, s_lbu, s_lbua, s_lpp, s_shpipe;
+static id<MTLDepthStencilState> s_shds, s_nods;
+static float *s_tris;               /* this frame's opaque 3D in world space: the shadow map's casters */
+static size_t s_ntris, s_captris;
+static id<MTLBuffer> s_hist[3], s_spots[3];
+static float s_ev = 1e9f;
+#define SHADOW_SIZE 2048
+#define LUM_BINS 64
+#define SPOTS_MAX 128
+
+typedef struct LU { float sunvp[16]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4]; } LU;
+
+/* the light per weather, in physical units: the sun's (or moon's)
+ * illuminance and colour, the sky's and the ground's light on a surface
+ * facing them, lux; the camera's EV100 range the meter keeps to (the "sunny
+ * 16" rule puts a sunlit scene near 15; a headlamp-lit road near 7) and how
+ * rough the ground is (wet: smooth) */
+static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; } k_weather[5] = {
+    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f } },
+    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f } },
+    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f } },
+    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f } },
+    /* night */ {   0.30f, 0.08f, 0.02f, -2.5f, 7.5f, 0.60f, { 0.75f, 0.82f, 1.00f }, { 0.35f, 0.45f, 0.75f }, { 0.40f, 0.40f, 0.40f } },
+};
+
+static id<MTLRenderPipelineState> lit_pipe(NSString *vs, NSString *fs, const MTLPixelFormat *f, int nf, int depth,
+                                           int blend_src, int blend_dst)
+{
+    MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+    NSError *err = nil;
+    id<MTLRenderPipelineState> p;
+    int i;
+    d.vertexFunction = [s_lib newFunctionWithName:vs];
+    d.fragmentFunction = fs ? [s_lib newFunctionWithName:fs] : nil;
+    for (i = 0; i < nf; i++)
+        d.colorAttachments[i].pixelFormat = f[i];
+    if (blend_src >= 0) {
+        d.colorAttachments[0].blendingEnabled = YES;
+        d.colorAttachments[0].sourceRGBBlendFactor = blend_src == 99 ? MTLBlendFactorOne : bf(blend_src, 1);
+        d.colorAttachments[0].destinationRGBBlendFactor = blend_dst == 99 ? MTLBlendFactorOne : bf(blend_dst, 0);
+        d.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorZero;
+        d.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOne;
+    }
+    if (depth)
+        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    p = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+    if (!p)
+        fprintf(stderr, "brr: metal lit pipeline %s: %s\n", [(fs ? fs : vs) UTF8String], [[err description] UTF8String]);
+    return p;
+}
+
+static void lit_init(void)
+{
+    static const MTLPixelFormat gb[3] = { MTLPixelFormatRGBA8Unorm, MTLPixelFormatRGBA32Float, MTLPixelFormatRGBA16Float };
+    static const MTLPixelFormat hf = MTLPixelFormatRGBA16Float, cf = MTLPixelFormatBGRA8Unorm;
+    MTLDepthStencilDescriptor *dd = [MTLDepthStencilDescriptor new];
+    MTLTextureDescriptor *td;
+    static const uint8_t zero = 0;
+    s_lpg = lit_pipe(@"vs", @"fsgb", gb, 3, 1, -1, -1);
+    s_lpb = lit_pipe(@"vs", @"fsbk", &hf, 1, 0, -1, -1);
+    s_lpl = lit_pipe(@"lvs", @"lfs", &hf, 1, 0, -1, -1);
+    s_lbd = lit_pipe(@"lvs", @"bdn", &hf, 1, 0, -1, -1);
+    s_lbu = lit_pipe(@"lvs", @"bup", &hf, 1, 0, -1, -1);
+    s_lbua = lit_pipe(@"lvs", @"bup", &hf, 1, 0, 99, 99);          /* added onto the next level up */
+    s_lpp = lit_pipe(@"lvs", @"pfs", &cf, 1, 0, -1, -1);
+    s_shpipe = lit_pipe(@"svs", nil, NULL, 0, 1, -1, -1);
+    dd.depthCompareFunction = MTLCompareFunctionLessEqual;
+    dd.depthWriteEnabled = YES;
+    s_shds = [s_dev newDepthStencilStateWithDescriptor:dd];
+    dd = [MTLDepthStencilDescriptor new];
+    dd.depthCompareFunction = MTLCompareFunctionAlways;
+    dd.depthWriteEnabled = NO;
+    s_nods = [s_dev newDepthStencilStateWithDescriptor:dd];
+    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm width:1 height:1 mipmapped:NO];
+    s_black = [s_dev newTextureWithDescriptor:td];
+    [s_black replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&zero bytesPerRow:1];
+    s_lfbtex = [NSMutableArray new];
+    s_frametex = [NSMutableArray new];
+}
+
+static id<MTLRenderPipelineState> lit_forward(int src, int dst)
+{
+    static const MTLPixelFormat hf = MTLPixelFormatRGBA16Float;
+    src &= 15;
+    dst &= 15;
+    if (!s_lpf[src][dst])
+        s_lpf[src][dst] = lit_pipe(@"vs", @"fsf", &hf, 1, 1, src, dst);
+    return s_lpf[src][dst];
+}
+
+static id<MTLTexture> lit_tex(MTLPixelFormat f, int w, int h)
+{
+    MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:f width:(NSUInteger)(w < 1 ? 1 : w)
+                                                                                 height:(NSUInteger)(h < 1 ? 1 : h) mipmapped:NO];
+    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    td.storageMode = MTLStorageModePrivate;
+    return [s_dev newTextureWithDescriptor:td];
+}
+
+/* the lit frame's targets at the target's size (remade when it changes) */
+static void lit_targets(void)
+{
+    int i, w, h;
+    if (s_galb)
+        return;
+    s_galb = lit_tex(MTLPixelFormatRGBA8Unorm, s_rw, s_rh);
+    s_gpos = lit_tex(MTLPixelFormatRGBA32Float, s_rw, s_rh);
+    s_gnrm = lit_tex(MTLPixelFormatRGBA16Float, s_rw, s_rh);
+    s_hdr = lit_tex(MTLPixelFormatRGBA16Float, s_rw, s_rh);
+    for (i = 0, w = s_rw / 2, h = s_rh / 2; i < 6 && w >= 4 && h >= 4; i++, w /= 2, h /= 2)
+        s_bl[i] = lit_tex(MTLPixelFormatRGBA16Float, w, h);
+    s_nbl = i;
+    if (!s_shadow) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                                                     width:SHADOW_SIZE height:SHADOW_SIZE mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_shadow = [s_dev newTextureWithDescriptor:td];
+    }
+}
+
+/* a texture's lamplight, for the glow at night: its warm, bright, saturated
+ * texels (a lit window's yellow, a lamp, a lens), a mask beside it; none for
+ * a texture without any.  A material property of the texture, decided once
+ * when it is made. */
+static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
+{
+    uint8_t *m;
+    int i, any = 0;
+    s_emask[tid] = nil;
+    if (!(m = (uint8_t *)malloc((size_t)w * (size_t)h)))
+        return;
+    for (i = 0; i < w * h; i++) {
+        const uint8_t *p = &rgba[4 * i];
+        int r = p[0], g = p[1], b = p[2];
+        m[i] = (uint8_t)(p[3] >= 128 && r >= 180 && g >= 128 && r - b >= 60 ? 255 : 0);
+        any |= m[i];
+    }
+    if (any) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                                                                     width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+        td.usage = MTLTextureUsageShaderRead;
+        s_emask[tid] = [s_dev newTextureWithDescriptor:td];
+        [s_emask[tid] replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:m bytesPerRow:(NSUInteger)w];
+    }
+    free(m);
+}
+
+static Op *op_new(int kind)
+{
+    Op *o;
+    if (s_nops == s_capops) {
+        int c = s_capops ? s_capops * 2 : 1024;
+        Op *p = realloc(s_ops, (size_t)c * sizeof *p);
+        if (!p)
+            return NULL;
+        s_ops = p;
+        s_capops = c;
+    }
+    o = &s_ops[s_nops++];
+    memset(o, 0, sizeof *o);
+    o->kind = kind;
+    return o;
+}
+
+/* the frame's map, scissor and buffers for one recorded draw */
+static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
+{
+    if (o->has_sc)
+        [e setScissorRect:(MTLScissorRect){ (NSUInteger)o->sc[0], (NSUInteger)o->sc[1], (NSUInteger)o->sc[2], (NSUInteger)o->sc[3] }];
+    else
+        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+    if (with_depth)
+        [e setDepthStencilState:ds_for(o->dmode, o->dfn, o->dmask)];
+    [e setVertexBuffer:s_xt[s_vbi] offset:0 atIndex:2];
+    [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
+    [e setVertexBytes:&o->u length:sizeof o->u atIndex:1];
+    [e setFragmentBytes:&o->u length:sizeof o->u atIndex:0];
+    if (o->u.has_tex) {
+        NSArray *pair = s_frametex[(NSUInteger)o->texobj];
+        [e setFragmentTexture:pair[0] atIndex:0];
+        [e setFragmentTexture:pair[1] atIndex:1];
+        [e setFragmentSamplerState:samp_for(o->filt, o->cs, o->ct) atIndex:0];
+    } else {
+        [e setFragmentTexture:s_black atIndex:1];
+    }
+    [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)o->n];
+}
+
+/* the exposure: the post pass bins the frame's luminance into a histogram
+ * (one of three buffers, read back three frames later when its frame is
+ * done); the mean log luminance of the band between its 80th and 98.3rd
+ * percentiles (Unreal Engine's auto-exposure defaults: the darkest pixels and
+ * the few brightest do not move it) sets the camera's EV100 as a light meter
+ * does (sensor calibration K = 12.5), adapting over about a second (Lagarde
+ * and de Rousiers 2014) */
+static float lit_exposure(int w)
+{
+    uint32_t *c;
+    unsigned ns = 0, lo, hi, run = 0;
+    float mlog = 0.0f, wsum = 0.0f, target;
+    int i;
+    if (!s_hist[0])
+        for (i = 0; i < 3; i++)
+            s_hist[i] = [s_dev newBufferWithLength:LUM_BINS * 4 options:MTLResourceStorageModeShared];
+    c = (uint32_t *)[s_hist[s_vbi] contents];
+    for (i = 0; i < LUM_BINS; i++)
+        ns += c[i];
+    lo = (unsigned)(ns * 0.80f);
+    hi = (unsigned)(ns * 0.983f);
+    for (i = 0; i < LUM_BINS; i++) {
+        unsigned a0 = run, a1 = run + c[i], b0 = a0 > lo ? a0 : lo, b1 = a1 < hi ? a1 : hi;
+        float in = b1 > b0 ? (float)(b1 - b0) : 0.0f;
+        mlog += in * ((i + 0.5f) / 2.0f - 10.0f);
+        wsum += in;
+        run = a1;
+    }
+    target = (k_weather[w].evlo + k_weather[w].evhi) * 0.5f;
+    if (wsum > 0)
+        target = log2f(exp2f(mlog / wsum) * 100.0f / 12.5f);
+    target = fminf(fmaxf(target, k_weather[w].evlo), k_weather[w].evhi);
+    memset(c, 0, LUM_BINS * 4);
+    if (s_ev > 1e8f)
+        s_ev = target;
+    s_ev += (target - s_ev) * 0.05f;
+    if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
+        fprintf(stderr, "light: frame %lu weather %d, %u meter samples, target EV %.2f, EV %.2f\n", s_frame, w, ns, target, s_ev);
+    return 1.0f / (1.2f * exp2f(s_ev));
+}
+
+/* the sun's view: an orthographic box around the frame's opaque 3D,
+ * looking along the light, column-major */
+static int lit_sunvp(const float sun[3], float m[16])
+{
+    float f[3] = { -sun[0], -sun[1], -sun[2] }, up[3] = { 0, 0, 1 }, r[3], v[3], len;
+    float lo[3] = { 1e30f, 1e30f, 1e30f }, hi[3] = { -1e30f, -1e30f, -1e30f };
+    size_t i;
+    int k;
+    if (s_ntris < 3)
+        return 0;
+    r[0] = f[1] * up[2] - f[2] * up[1]; r[1] = f[2] * up[0] - f[0] * up[2]; r[2] = f[0] * up[1] - f[1] * up[0];
+    len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    for (k = 0; k < 3; k++) r[k] /= len;
+    v[0] = r[1] * f[2] - r[2] * f[1]; v[1] = r[2] * f[0] - r[0] * f[2]; v[2] = r[0] * f[1] - r[1] * f[0];
+    for (i = 0; i < s_ntris; i++) {
+        const float *p = &s_tris[3 * i];
+        float q[3] = { p[0] * r[0] + p[1] * r[1] + p[2] * r[2], p[0] * v[0] + p[1] * v[1] + p[2] * v[2],
+                       p[0] * f[0] + p[1] * f[1] + p[2] * f[2] };
+        for (k = 0; k < 3; k++) {
+            lo[k] = fminf(lo[k], q[k]);
+            hi[k] = fmaxf(hi[k], q[k]);
+        }
+    }
+    lo[2] -= 50.0f;
+    hi[2] += 1.0f;
+    {
+        float sx = 2.0f / (hi[0] - lo[0] + 1e-3f), sy = 2.0f / (hi[1] - lo[1] + 1e-3f), sz = 1.0f / (hi[2] - lo[2]);
+        float ox = -(hi[0] + lo[0]) * 0.5f * sx, oy = -(hi[1] + lo[1]) * 0.5f * sy, oz = -lo[2] * sz;
+        m[0] = r[0] * sx; m[4] = r[1] * sx; m[8]  = r[2] * sx; m[12] = ox;
+        m[1] = v[0] * sy; m[5] = v[1] * sy; m[9]  = v[2] * sy; m[13] = oy;
+        m[2] = f[0] * sz; m[6] = f[1] * sz; m[10] = f[2] * sz; m[14] = oz;
+        m[3] = 0;         m[7] = 0;         m[11] = 0;         m[15] = 1;
+    }
+    return 1;
+}
+
+static void lit_present(void)
+{
+    LU u;
+    float eye[3] = { 0, 0, 0 }, sun[3] = { 3.0f, 1.0f, 1.1f }, len;
+    int w = light_game_weather(), k, i, first3d;
+    id<MTLRenderCommandEncoder> e;
+    MTLRenderPassDescriptor *rp;
+    lit_targets();
+    memset(&u, 0, sizeof u);
+    light_capture_eye(eye);
+    len = sqrtf(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
+    for (k = 0; k < 3; k++) {
+        sun[k] /= len;
+        u.eye[k] = eye[k];
+        u.sun[k] = sun[k];
+        u.sunc[k] = k_weather[w].sunc[k] * k_weather[w].sun;
+        u.skyc[k] = k_weather[w].skyc[k] * k_weather[w].sky;
+        u.gndc[k] = k_weather[w].gndc[k] * k_weather[w].gnd;
+    }
+    {   /* white balance: to the sun and sky together, or at night to the headlamps */
+        static const float halogen[3] = { 1.00f, 0.83f, 0.62f };
+        float wb[3], y;
+        for (k = 0; k < 3; k++)
+            wb[k] = w == 4 ? halogen[k] : k_weather[w].sunc[k] * k_weather[w].sun * 0.5f + k_weather[w].skyc[k] * k_weather[w].sky;
+        y = 0.2126f * wb[0] + 0.7152f * wb[1] + 0.0722f * wb[2];
+        for (k = 0; k < 3; k++)
+            u.wb[k] = y / wb[k];
+    }
+    u.misc[0] = lit_exposure(w);
+    u.misc[2] = k_weather[w].rough;
+    u.bg[0] = 0.9f / u.misc[0];             /* the backdrop and fog: shown as the game drew them */
+    u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
+    {
+        const char *e2 = getenv("BR_LIGHT_VIEW");
+        u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;
+    }
+    if (!s_spots[0])
+        for (k = 0; k < 3; k++)
+            s_spots[k] = [s_dev newBufferWithLength:SPOTS_MAX * sizeof(LightSpot) options:MTLResourceStorageModeShared];
+    u.eye[3] = (float)light_scene_spots((LightSpot *)[s_spots[s_vbi] contents], SPOTS_MAX);
+    u.misc[1] = (float)lit_sunvp(sun, u.sunvp);
+
+    /* the G-buffer: the camera's opaque 3D */
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    {
+        id<MTLTexture> g[3] = { s_galb, s_gpos, s_gnrm };
+        for (k = 0; k < 3; k++) {
+            rp.colorAttachments[k].texture = g[k];
+            rp.colorAttachments[k].loadAction = MTLLoadActionClear;
+            rp.colorAttachments[k].clearColor = MTLClearColorMake(0, 0, 0, 0);
+            rp.colorAttachments[k].storeAction = MTLStoreActionStore;
+        }
+    }
+    rp.depthAttachment.texture = s_dep;
+    rp.depthAttachment.loadAction = MTLLoadActionClear;
+    rp.depthAttachment.clearDepth = 1.0;
+    rp.depthAttachment.storeAction = MTLStoreActionStore;
+    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    [e setRenderPipelineState:s_lpg];
+    for (i = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_OPQ)
+            op_draw(e, &s_ops[i], 1);
+    [e endEncoding];
+
+    /* the sun's shadow map */
+    if (u.misc[1] > 0.5f) {
+        id<MTLBuffer> b = [s_dev newBufferWithBytes:s_tris length:s_ntris * 3 * sizeof(float) options:MTLResourceStorageModeShared];
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.depthAttachment.texture = s_shadow;
+        rp.depthAttachment.loadAction = MTLLoadActionClear;
+        rp.depthAttachment.clearDepth = 1.0;
+        rp.depthAttachment.storeAction = MTLStoreActionStore;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_shpipe];
+        [e setDepthStencilState:s_shds];
+        [e setCullMode:MTLCullModeNone];
+        [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
+        [e setVertexBuffer:b offset:0 atIndex:0];
+        [e setVertexBytes:u.sunvp length:sizeof u.sunvp atIndex:1];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ntris];
+        [e endEncoding];
+    }
+
+    /* what the game drew before its 3D (its clears and background fills) is
+       the background: behind the scene, not over it */
+    for (first3d = 0; first3d < s_nops; first3d++)
+        if (s_ops[first3d].kind == K_OPQ || s_ops[first3d].kind == K_BLEND || s_ops[first3d].kind == K_BACK)
+            break;
+
+    /* the lighting, in HDR: the background and backdrop, then every G-buffer pixel */
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_hdr;
+    rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+    rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+    for (i = 0; i < first3d; i++)
+        if (s_ops[i].kind == K_CLEAR && s_ops[i].colour) {
+            float c3[3];
+            for (k = 0; k < 3; k++)
+                c3[k] = (s_ops[i].clear[k] <= 0.04045f ? s_ops[i].clear[k] / 12.92f
+                                                        : powf((s_ops[i].clear[k] + 0.055f) / 1.055f, 2.4f)) * u.bg[0];
+            rp.colorAttachments[0].clearColor = MTLClearColorMake(c3[0], c3[1], c3[2], 1);
+        }
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    [e setRenderPipelineState:s_lpb];
+    for (i = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_BACK || (s_ops[i].kind == K_OTHER && i < first3d)) {
+            [e setFragmentBytes:&u length:sizeof u atIndex:1];
+            op_draw(e, &s_ops[i], 0);
+        }
+    [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+    [e setRenderPipelineState:s_lpl];
+    [e setFragmentBytes:&u length:sizeof u atIndex:0];
+    [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:1];
+    [e setFragmentTexture:s_galb atIndex:0];
+    [e setFragmentTexture:s_gpos atIndex:1];
+    [e setFragmentTexture:s_gnrm atIndex:2];
+    [e setFragmentTexture:s_shadow atIndex:3];
+    [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [e endEncoding];
+
+    /* the blended 3D, forward-lit, in the game's order */
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_hdr;
+    rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    rp.depthAttachment.texture = s_dep;
+    rp.depthAttachment.loadAction = MTLLoadActionLoad;
+    rp.depthAttachment.storeAction = MTLStoreActionStore;
+    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    for (i = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_BLEND) {
+            [e setRenderPipelineState:lit_forward(s_ops[i].src, s_ops[i].dst)];
+            [e setFragmentBytes:&u length:sizeof u atIndex:1];
+            [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:2];
+            [e setFragmentTexture:s_shadow atIndex:3];
+            op_draw(e, &s_ops[i], 1);
+        }
+    [e endEncoding];
+
+    /* bloom */
+    for (k = 0; k < s_nbl; k++) {
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.colorAttachments[0].texture = s_bl[k];
+        rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_lbd];
+        [e setFragmentTexture:k ? s_bl[k - 1] : s_hdr atIndex:0];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        [e endEncoding];
+    }
+    for (k = s_nbl - 1; k > 0; k--) {
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.colorAttachments[0].texture = s_bl[k - 1];
+        rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_lbua];
+        [e setFragmentTexture:s_bl[k] atIndex:0];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        [e endEncoding];
+    }
+
+    /* post, into the game's colour target */
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_col;
+    rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    [e setRenderPipelineState:s_lpp];
+    {
+        LU pu = u;
+        pu.misc[0] = u.misc[0];
+        pu.bg[1] = u.bg[1];
+        [e setFragmentBytes:&pu length:sizeof pu atIndex:0];
+    }
+    [e setFragmentTexture:s_hdr atIndex:0];
+    [e setFragmentTexture:s_nbl ? s_bl[0] : s_hdr atIndex:1];
+    [e setFragmentTexture:s_galb atIndex:2];
+    [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
+    [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [e endEncoding];
+
+    /* the game's 2D, mirror and LFB writes over it, as it drew them */
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_col;
+    rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    rp.depthAttachment.texture = s_dep;
+    rp.depthAttachment.loadAction = MTLLoadActionLoad;
+    rp.depthAttachment.storeAction = MTLStoreActionStore;
+    e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    for (i = first3d; i < s_nops; i++) {
+        const Op *o = &s_ops[i];
+        if (o->kind == K_OTHER) {
+            [e setRenderPipelineState:pipe_for(o->src, o->dst)];
+            op_draw(e, o, 1);
+        } else if (o->kind == K_CLEAR) {
+            [e setRenderPipelineState:s_clear[o->colour ? 1 : 0]];
+            [e setDepthStencilState:s_clear_ds[o->depthbuf ? 1 : 0]];
+            [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+            [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
+            [e setFragmentBytes:o->clear length:sizeof o->clear atIndex:0];
+            [e setFragmentBytes:&o->depth length:sizeof o->depth atIndex:1];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+        } else if (o->kind == K_LFB) {
+            [e setRenderPipelineState:o->sharp ? s_lfbsharp : s_lfbpipe];
+            [e setDepthStencilState:s_clear_ds[0]];
+            [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+            [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
+            [e setFragmentTexture:s_lfbtex[(NSUInteger)o->lfb] atIndex:0];
+            [e setFragmentSamplerState:s_near atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+        }
+    }
+    [e endEncoding];
+}
+
+static void lit_reset(void)
+{
+    int i;
+    s_galb = s_gpos = s_gnrm = s_hdr = nil;
+    for (i = 0; i < 6; i++)
+        s_bl[i] = nil;
+    s_nbl = 0;
+}
+
 int brr_open(int width, int height)
 {
     @autoreleasepool {
@@ -526,7 +914,7 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:k_src options:nil error:&err];
+        s_lib = [s_dev newLibraryWithSource:[k_src stringByAppendingString:@BRR_LIT_SRC] options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
             return 0;
@@ -550,27 +938,7 @@ int brr_open(int width, int height)
         s_lfbsharp = simple_pipe(@"bvs", @"sfs", 1, 1);
         s_blit = simple_pipe(@"bvs", @"bfs", 1, 0);
         s_sharp = simple_pipe(@"bvs", @"sfs", 1, 0);
-        s_gclear[0] = simple_pipe_g(@"cvs", @"cfs", 0, 1, 1);
-        s_gclear[1] = simple_pipe_g(@"cvs", @"cfs", 1, 1, 1);
-        s_glfb = simple_pipe_g(@"bvs", @"bfs", 1, 1, 1);
-        s_glfbsharp = simple_pipe_g(@"bvs", @"sfs", 1, 1, 1);
-        {
-            MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
-            MTLDepthStencilDescriptor *dd = [MTLDepthStencilDescriptor new];
-            d.vertexFunction = [s_lib newFunctionWithName:@"svs"];
-            d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
-            s_shpipe = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
-            d = [MTLRenderPipelineDescriptor new];
-            d.vertexFunction = [s_lib newFunctionWithName:@"lvs"];
-            d.fragmentFunction = [s_lib newFunctionWithName:@"lfs"];
-            d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-            s_lpipe = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
-            if (!s_shpipe || !s_lpipe)
-                fprintf(stderr, "brr: metal lighting pipelines: %s\n", [[err description] UTF8String]);
-            dd.depthCompareFunction = MTLCompareFunctionLessEqual;
-            dd.depthWriteEnabled = YES;
-            s_shds = [s_dev newDepthStencilStateWithDescriptor:dd];
-        }
+        lit_init();
         for (i = 0; i < 2; i++) {
             MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
             d.depthCompareFunction = MTLCompareFunctionAlways;
@@ -633,6 +1001,7 @@ uint32_t brr_texture(uint32_t tid, const uint8_t *rgba, int w, int h)
         t = [s_dev newTextureWithDescriptor:td];
         [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:rgba bytesPerRow:(NSUInteger)w * 4];
         s_tex[tid] = t;
+        lit_emask(tid, rgba, w, h);
         return tid;
     }
 }
@@ -646,50 +1015,37 @@ void brr_texture_free(uint32_t id)
     }
 }
 
+/* the frame's command buffer and vertex buffer slot, begun on first use;
+ * whether the frame is lit is decided here, once */
+static void frame_begin(void)
+{
+    if (!s_cmd) {
+        dispatch_semaphore_wait(s_inflight, DISPATCH_TIME_FOREVER);
+        s_cmd = [s_q commandBuffer];
+        {
+            dispatch_semaphore_t sem = s_inflight;
+            [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> b) { (void)b; dispatch_semaphore_signal(sem); }];
+        }
+        s_vbi = (s_vbi + 1) % 3;
+        s_vused = 0;
+        s_litf = plat_flag(BR_FLAG_LIGHTING);
+        s_nops = 0;
+        s_ntris = 0;
+        [s_lfbtex removeAllObjects];
+        [s_frametex removeAllObjects];
+    }
+}
+
 /* the frame's encoder into the offscreen target, begun on first use */
 static id<MTLRenderCommandEncoder> enc(void)
 {
     if (!s_enc) {
         MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
-        if (!s_cmd) {
-            dispatch_semaphore_wait(s_inflight, DISPATCH_TIME_FOREVER);
-            s_cmd = [s_q commandBuffer];
-            {
-                dispatch_semaphore_t sem = s_inflight;
-                [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> b) { (void)b; dispatch_semaphore_signal(sem); }];
-            }
-            s_vbi = (s_vbi + 1) % 3;
-            s_vused = 0;
-            s_litf = plat_flag(BR_FLAG_LIGHTING);
-            s_ntris = 0;
-            if (s_litf && !s_galb) {
-                MTLTextureDescriptor *td;
-                MTLPixelFormat f[3] = { MTLPixelFormatRGBA8Unorm, MTLPixelFormatRGBA32Float, MTLPixelFormatRGBA16Float };
-                id<MTLTexture> __strong *t[3] = { &s_galb, &s_gpos, &s_gnrm };
-                int k;
-                for (k = 0; k < 3; k++) {
-                    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:f[k] width:(NSUInteger)s_rw
-                                                                           height:(NSUInteger)s_rh mipmapped:NO];
-                    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-                    td.storageMode = MTLStorageModePrivate;
-                    *t[k] = [s_dev newTextureWithDescriptor:td];
-                }
-            }
-        }
+        frame_begin();
         rp.colorAttachments[0].texture = s_col;
         rp.colorAttachments[0].loadAction = s_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
         rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        if (s_litf) {
-            id<MTLTexture> g[3] = { s_galb, s_gpos, s_gnrm };
-            int k;
-            for (k = 0; k < 3; k++) {
-                rp.colorAttachments[1 + k].texture = g[k];
-                rp.colorAttachments[1 + k].loadAction = MTLLoadActionClear;
-                rp.colorAttachments[1 + k].clearColor = MTLClearColorMake(0, 0, 0, 0);
-                rp.colorAttachments[1 + k].storeAction = MTLStoreActionStore;
-            }
-        }
         rp.depthAttachment.texture = s_dep;
         rp.depthAttachment.loadAction = s_fresh ? MTLLoadActionClear : MTLLoadActionLoad;
         rp.depthAttachment.clearDepth = 1.0;
@@ -724,7 +1080,7 @@ static long vb_take(size_t n)
 void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_state *clip)
 {
     @autoreleasepool {
-        id<MTLRenderCommandEncoder> e = enc();
+        id<MTLRenderCommandEncoder> e = nil;
         float x0 = (float)(clip->sx0 < 0 ? 0 : clip->sx0), y0 = (float)(clip->sy0 < 0 ? 0 : clip->sy0);
         float x1 = (float)(clip->sx1 > s_rw ? s_rw : clip->sx1), y1 = (float)(clip->sy1 > s_rh ? s_rh : clip->sy1);
         float c[4] = { ((argb >> 16) & 0xFF) / 255.0f, ((argb >> 8) & 0xFF) / 255.0f, (argb & 0xFF) / 255.0f, 1 };
@@ -741,10 +1097,23 @@ void brr_clear(uint32_t argb, float depth, int colour, int depthbuf, const brr_s
             q[i][2] = 0;
             q[i][3] = 1;
         }
+        frame_begin();
         if ((off = vb_take(sizeof q)) < 0)
             return;
         memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
-        [e setRenderPipelineState:s_litf ? s_gclear[colour ? 1 : 0] : s_clear[colour ? 1 : 0]];
+        if (s_litf) {                   /* replayed after the lighting (lit_present) */
+            Op *o = op_new(K_CLEAR);
+            if (o) {
+                o->voff = off;
+                o->colour = colour;
+                o->depthbuf = depthbuf;
+                memcpy(o->clear, c, sizeof c);
+                o->depth = depth;
+            }
+            return;
+        }
+        e = enc();
+        [e setRenderPipelineState:s_clear[colour ? 1 : 0]];
         [e setDepthStencilState:s_clear_ds[depthbuf ? 1 : 0]];
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
@@ -763,7 +1132,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         int i;
         if (n < 3)
             return;
-        e = enc();
+        frame_begin();
         if ((off = vb_take((size_t)n * sizeof(V))) < 0)
             return;
         {
@@ -782,26 +1151,8 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 o[i].wld[0] = v[i].wx;
                 o[i].wld[1] = v[i].wy;
                 o[i].wld[2] = v[i].wz;
-                o[i].wld[3] = s_litf ? v[i].lit : 0.0f;
+                o[i].wld[3] = v[i].lit;
             }
-        }
-        if (s_litf && v[0].lit > 0.5f && st->blend_rgb_src == 4 && st->blend_rgb_dst == 0) {
-            if (s_ntris + (size_t)n > s_captris) {          /* the shadow map's triangles */
-                size_t c = s_captris ? s_captris * 2 : 65536;
-                while (c < s_ntris + (size_t)n)
-                    c *= 2;
-                float *p = realloc(s_tris, c * 3 * sizeof(float));
-                if (p) {
-                    s_tris = p;
-                    s_captris = c;
-                }
-            }
-            if (s_ntris + (size_t)n <= s_captris)
-                for (i = 0; i < n; i++, s_ntris++) {
-                    s_tris[3 * s_ntris + 0] = v[i].wx;
-                    s_tris[3 * s_ntris + 1] = v[i].wy;
-                    s_tris[3 * s_ntris + 2] = v[i].wz;
-                }
         }
         memset(&u, 0, sizeof u);
         u.cc_fn = st->cc_fn; u.cc_factor = st->cc_factor; u.cc_local = st->cc_local;
@@ -828,8 +1179,64 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.fog_color[2] = (st->fog_color & 0xFF) / 255.0f;
         for (i = 0; i < 64; i++)
             u.fog[i] = st->fog_table[i] / 255.0f;
-        [e setRenderPipelineState:s_litf ? gpipe_for(v[0].lit > 0.5f, st->blend_rgb_src, st->blend_rgb_dst)
-                                         : pipe_for(st->blend_rgb_src, st->blend_rgb_dst)];
+        if (s_litf) {                   /* recorded; replayed in the lighting's passes (lit_present) */
+            int opaque = st->blend_rgb_src == 4 && st->blend_rgb_dst == 0;
+            int kind = v[0].lit > 1.5f ? K_BACK : v[0].lit > 0.5f ? (opaque ? K_OPQ : K_BLEND) : K_OTHER;
+            Op *op = op_new(kind);
+            if (!op)
+                return;
+            {
+                int x0 = st->sx0 < 0 ? 0 : st->sx0, y0 = st->sy0 < 0 ? 0 : st->sy0;
+                int x1 = st->sx1 > s_rw ? s_rw : st->sx1, y1 = st->sy1 > s_rh ? s_rh : st->sy1;
+                if (x1 <= x0 || y1 <= y0) {
+                    s_nops--;
+                    return;
+                }
+                op->sc[0] = x0; op->sc[1] = y0; op->sc[2] = x1 - x0; op->sc[3] = y1 - y0;
+                op->has_sc = 1;
+            }
+            u.glow = light_game_weather() == 4 ? 1.0f : 0.0f;
+            u.addk = kind == K_BLEND && st->blend_rgb_dst == 4 ? 100.0f : 0.0f;   /* dst ONE: light it adds */
+            op->u = u;
+            op->src = st->blend_rgb_src;
+            op->dst = st->blend_rgb_dst;
+            op->dmode = st->depth_mode;
+            op->dfn = st->depth_fn;
+            op->dmask = st->depth_mask;
+            op->tex = st->texture;
+            if (u.has_tex) {            /* this draw's texture and glow mask, as they are now */
+                id<MTLTexture> t = st->texture < TEX_MAX && s_tex[st->texture] ? s_tex[st->texture] : s_white;
+                id<MTLTexture> m = st->texture < TEX_MAX && s_emask[st->texture] ? s_emask[st->texture] : s_black;
+                op->texobj = (int)[s_frametex count];
+                [s_frametex addObject:@[ t, m ]];
+            }
+            op->filt = st->mag_filter || st->min_filter;
+            op->cs = st->clamp_s;
+            op->ct = st->clamp_t;
+            op->voff = off;
+            op->n = n;
+            if (kind == K_OPQ) {        /* the shadow map's casters */
+                if (s_ntris + (size_t)n > s_captris) {
+                    size_t c = s_captris ? s_captris * 2 : 65536;
+                    float *p;
+                    while (c < s_ntris + (size_t)n)
+                        c *= 2;
+                    if ((p = realloc(s_tris, c * 3 * sizeof(float)))) {
+                        s_tris = p;
+                        s_captris = c;
+                    }
+                }
+                if (s_ntris + (size_t)n <= s_captris)
+                    for (i = 0; i < n; i++, s_ntris++) {
+                        s_tris[3 * s_ntris + 0] = v[i].wx;
+                        s_tris[3 * s_ntris + 1] = v[i].wy;
+                        s_tris[3 * s_ntris + 2] = v[i].wz;
+                    }
+            }
+            return;
+        }
+        e = enc();
+        [e setRenderPipelineState:pipe_for(st->blend_rgb_src, st->blend_rgb_dst)];
         [e setDepthStencilState:ds_for(st->depth_mode, st->depth_fn, st->depth_mask)];
         if (!scissor(e, st))
             return;
@@ -880,7 +1287,7 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, co
         [t replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0
                withBytes:px bytesPerRow:(NSUInteger)w * 4];
         free(px);
-        e = enc();
+        frame_begin();
         {
             float px4[4][4] = { { (float)d[0], (float)d[1], 0, 0 }, { (float)d[2], (float)d[1], 1, 0 },
                                 { (float)d[0], (float)d[3], 0, 1 }, { (float)d[2], (float)d[3], 1, 1 } };
@@ -894,10 +1301,18 @@ void brr_lfb_write(int x, int y, int w, int h, const uint16_t *p, int stride, co
         if ((off = vb_take(sizeof q)) < 0)
             return;
         memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
-        if (s_litf)
-            [e setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_glfb : s_glfbsharp];
-        else
-            [e setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_lfbpipe : s_lfbsharp];
+        if (s_litf) {                   /* replayed after the lighting (lit_present) */
+            Op *o = op_new(K_LFB);
+            if (o) {
+                o->voff = off;
+                o->lfb = (int)[s_lfbtex count];
+                o->sharp = !(d[2] - d[0] == w && d[3] - d[1] == h);
+                [s_lfbtex addObject:t];
+            }
+            return;
+        }
+        e = enc();
+        [e setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_lfbpipe : s_lfbsharp];
         [e setDepthStencilState:s_clear_ds[0]];
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
         [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)off atIndex:0];
@@ -919,7 +1334,7 @@ void brr_xf(const float (*t)[4], int n)
     @autoreleasepool {
         if (n > BRR_XF_MAX)
             n = BRR_XF_MAX;
-        enc();                                  /* the frame's command buffer, and so its slot */
+        frame_begin();                          /* the frame's command buffer, and so its slot */
         memcpy([s_xt[s_vbi] contents], t, (size_t)n * 16);
     }
 }
@@ -983,187 +1398,6 @@ static void stats(void)
     }
 }
 
-/* ---- the Remastered lighting at the end of a lit frame ---------------------------------- */
-typedef struct LU { float sunvp[16]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4]; } LU;
-
-/* the light per weather, in physical units: the sun's (or moon's)
- * illuminance and colour, the sky's and the ground's light on a surface
- * facing them, lux; the camera's exposure value at ISO 100 (the "sunny 16"
- * rule puts a sunlit scene near 15) and how glossy the ground is (wet) */
-static const struct { float sun, sky, gnd, ev, evlo, evhi, spec; float sunc[3], skyc[3], gndc[3]; } k_weather[5] = {
-    /* sunny */ { 100000, 20000, 6000, 14.8f, 12.0f, 16.0f, 0.15f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f } },
-    /* fog   */ {  12000, 16000, 6000, 13.0f, 10.5f, 15.0f, 0.30f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f } },
-    /* rain  */ {   6000, 11000, 3500, 12.3f, 9.5f, 14.5f, 1.00f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f } },
-    /* snow  */ {  25000, 22000, 16000, 13.8f, 11.5f, 15.5f, 0.30f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f } },
-    /* night: a full moon's light and the night sky; the metered exposure
-       ranges from moonlight (EV100 about -2) to a headlamp- or floodlit road
-       (about 7), never to daylight */
-    /* night */ {   0.30f, 0.08f, 0.02f, 1.0f, -2.5f, 7.5f, 0.20f, { 0.75f, 0.82f, 1.00f }, { 0.35f, 0.45f, 0.75f }, { 0.40f, 0.40f, 0.40f } },
-};
-
-/* the exposure: the lighting pass bins the frame's luminance into a
- * histogram (one of three buffers, read back three frames later when its
- * frame is done); the mean log luminance of the band between its 80th and
- * 98.3rd percentiles (Unreal Engine's auto-exposure defaults: the darkest
- * pixels and the few brightest do not move it) sets the camera's EV100 as a
- * light meter does (sensor calibration K = 12.5), adapting smoothly (Lagarde
- * and de Rousiers 2014) */
-#define LUM_BINS 64
-static id<MTLBuffer> s_lum[3];
-static float s_ev = 1e9f;
-static id<MTLBuffer> s_spots[3];
-#define SPOTS_MAX 128
-
-static void relight(void)
-{
-    LU u;
-    float eye[3] = { 0, 0, 0 }, sun[3] = { 3.0f, 1.0f, 1.1f }, len;
-    int w = light_game_weather(), k;
-    memset(&u, 0, sizeof u);
-    light_capture_eye(eye);
-    len = sqrtf(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
-    for (k = 0; k < 3; k++) {
-        sun[k] /= len;
-        u.eye[k] = eye[k];
-        u.sun[k] = sun[k];
-        u.sunc[k] = k_weather[w].sunc[k] * k_weather[w].sun;
-        u.skyc[k] = k_weather[w].skyc[k] * k_weather[w].sky;
-        u.gndc[k] = k_weather[w].gndc[k] * k_weather[w].gnd;
-    }
-    {   /* white balance: the camera balanced to the sun and sky together, as a camera's auto white balance */
-        float wb[3], y;
-        static const float halogen[3] = { 1.00f, 0.83f, 0.62f };
-        for (k = 0; k < 3; k++)            /* at night the lamps light the scene: balanced to the headlamps */
-            wb[k] = w == 4 ? halogen[k] : k_weather[w].sunc[k] * k_weather[w].sun * 0.5f + k_weather[w].skyc[k] * k_weather[w].sky;
-        y = 0.2126f * wb[0] + 0.7152f * wb[1] + 0.0722f * wb[2];
-        u.sunc[3] = y / wb[0];
-        u.skyc[3] = y / wb[1];
-        u.gndc[3] = y / wb[2];
-    }
-    {
-        id<MTLBuffer> b;
-        uint32_t *c;
-        float target = k_weather[w].ev;
-        if (!s_lum[0])
-            for (k = 0; k < 3; k++)
-                s_lum[k] = [s_dev newBufferWithLength:LUM_BINS * 4 options:MTLResourceStorageModeShared];
-        b = s_lum[s_vbi];
-        c = (uint32_t *)[b contents];
-        unsigned ns = 0, lo, hi, run = 0;
-        float mlog = 0.0f, wsum = 0.0f;
-        int i;
-        for (i = 0; i < LUM_BINS; i++)
-            ns += c[i];
-        lo = (unsigned)(ns * 0.80f);
-        hi = (unsigned)(ns * 0.983f);
-        for (i = 0; i < LUM_BINS; i++) {          /* the part of each bin inside [lo, hi) */
-            unsigned a0 = run, a1 = run + c[i];
-            float in = (float)((a1 < hi ? a1 : hi) > (a0 > lo ? a0 : lo) ? (a1 < hi ? a1 : hi) - (a0 > lo ? a0 : lo) : 0);
-            mlog += in * ((i + 0.5f) / 2.0f - 10.0f);
-            wsum += in;
-            run = a1;
-        }
-        if (wsum > 0) {
-            mlog /= wsum;
-            target = log2f(exp2f(mlog) * 100.0f / 12.5f);
-            target = fminf(fmaxf(target, k_weather[w].evlo), k_weather[w].evhi);
-        }
-        memset(c, 0, LUM_BINS * 4);
-        if (s_ev > 1e8f)
-            s_ev = target;
-        s_ev += (target - s_ev) * 0.05f;                     /* about a second to adapt at 60 frames */
-        if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
-            fprintf(stderr, "light: frame %lu weather %d meter %u samples, mean log2 %.2f, target EV %.2f, EV %.2f, %d lamps\n", s_frame, w,
-                    ns, mlog, target, s_ev, (int)u.eye[3]);
-        u.misc[0] = 1.0f / (1.2f * powf(2.0f, s_ev));
-    }
-    u.misc[2] = k_weather[w].spec;
-    if (!s_spots[0])
-        for (k = 0; k < 3; k++)
-            s_spots[k] = [s_dev newBufferWithLength:SPOTS_MAX * sizeof(LightSpot) options:MTLResourceStorageModeShared];
-    u.eye[3] = (float)light_scene_spots((LightSpot *)[s_spots[s_vbi] contents], SPOTS_MAX);
-    {   /* BR_LIGHT_VIEW: 1 albedo, 2 normals, 3 sun shadow, 4 the sun's angle (the debug view) */
-        const char *e = getenv("BR_LIGHT_VIEW");
-        u.misc[3] = e ? (float)atoi(e) : 0.0f;
-    }
-    if (!s_shadow) {
-        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-                                                                                     width:SHADOW_SIZE height:SHADOW_SIZE mipmapped:NO];
-        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-        td.storageMode = MTLStorageModePrivate;
-        s_shadow = [s_dev newTextureWithDescriptor:td];
-    }
-    if (s_ntris >= 3) {
-        /* the sun's view: an orthographic box around the frame's 3D, looking along the light */
-        float f[3] = { -sun[0], -sun[1], -sun[2] }, up[3] = { 0, 0, 1 }, r[3], v[3], lo[3] = { 1e30f, 1e30f, 1e30f },
-              hi[3] = { -1e30f, -1e30f, -1e30f }, m[16];
-        size_t i;
-        r[0] = f[1] * up[2] - f[2] * up[1]; r[1] = f[2] * up[0] - f[0] * up[2]; r[2] = f[0] * up[1] - f[1] * up[0];
-        len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
-        for (k = 0; k < 3; k++) r[k] /= len;
-        v[0] = r[1] * f[2] - r[2] * f[1]; v[1] = r[2] * f[0] - r[0] * f[2]; v[2] = r[0] * f[1] - r[1] * f[0];
-        for (i = 0; i < s_ntris; i++) {
-            const float *p = &s_tris[3 * i];
-            float q[3] = { p[0] * r[0] + p[1] * r[1] + p[2] * r[2], p[0] * v[0] + p[1] * v[1] + p[2] * v[2],
-                           p[0] * f[0] + p[1] * f[1] + p[2] * f[2] };
-            for (k = 0; k < 3; k++) {
-                lo[k] = fminf(lo[k], q[k]);
-                hi[k] = fmaxf(hi[k], q[k]);
-            }
-        }
-        lo[2] -= 50.0f;                                      /* casters just off the frame's edge */
-        hi[2] += 1.0f;
-        {
-            float sx = 2.0f / (hi[0] - lo[0] + 1e-3f), sy = 2.0f / (hi[1] - lo[1] + 1e-3f), sz = 1.0f / (hi[2] - lo[2]);
-            float ox = -(hi[0] + lo[0]) * 0.5f * sx, oy = -(hi[1] + lo[1]) * 0.5f * sy, oz = -lo[2] * sz;
-            /* column-major: column j holds output row coefficients */
-            m[0] = r[0] * sx; m[4] = r[1] * sx; m[8]  = r[2] * sx; m[12] = ox;
-            m[1] = v[0] * sy; m[5] = v[1] * sy; m[9]  = v[2] * sy; m[13] = oy;
-            m[2] = f[0] * sz; m[6] = f[1] * sz; m[10] = f[2] * sz; m[14] = oz;
-            m[3] = 0;         m[7] = 0;         m[11] = 0;         m[15] = 1;
-        }
-        memcpy(u.sunvp, m, sizeof m);
-        {
-            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
-            id<MTLRenderCommandEncoder> e;
-            id<MTLBuffer> b = [s_dev newBufferWithBytes:s_tris length:s_ntris * 3 * sizeof(float)
-                                                options:MTLResourceStorageModeShared];
-            rp.depthAttachment.texture = s_shadow;
-            rp.depthAttachment.loadAction = MTLLoadActionClear;
-            rp.depthAttachment.clearDepth = 1.0;
-            rp.depthAttachment.storeAction = MTLStoreActionStore;
-            e = [s_cmd renderCommandEncoderWithDescriptor:rp];
-            [e setRenderPipelineState:s_shpipe];
-            [e setDepthStencilState:s_shds];
-            [e setCullMode:MTLCullModeNone];
-            [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
-            [e setVertexBuffer:b offset:0 atIndex:0];
-            [e setVertexBytes:m length:sizeof m atIndex:1];
-            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ntris];
-            [e endEncoding];
-        }
-        u.misc[1] = 1.0f;
-    }
-    {
-        MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
-        id<MTLRenderCommandEncoder> e;
-        rp.colorAttachments[0].texture = s_col;
-        rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
-        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
-        [e setRenderPipelineState:s_lpipe];
-        [e setFragmentBytes:&u length:sizeof u atIndex:0];
-        [e setFragmentTexture:s_galb atIndex:0];
-        [e setFragmentTexture:s_gpos atIndex:1];
-        [e setFragmentTexture:s_gnrm atIndex:2];
-        [e setFragmentTexture:s_shadow atIndex:3];
-        [e setFragmentBuffer:s_lum[s_vbi] offset:0 atIndex:1];
-        [e setFragmentBuffer:s_spots[s_vbi] offset:0 atIndex:2];
-        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
-        [e endEncoding];
-    }
-}
-
 void brr_present(void)
 {
     @autoreleasepool {
@@ -1173,11 +1407,14 @@ void brr_present(void)
         CAMetalLayer *ml = s_offscreen || !host_window_visible() ? nil : host_macos_metal_layer();
         id<CAMetalDrawable> dr;
         int want_shot = (long)(s_frame + 1) == s_shot_frame;
-        enc();                                 /* a frame with nothing drawn still presents */
-        [s_enc endEncoding];
-        s_enc = nil;
-        if (s_litf && s_galb)
-            relight();
+        frame_begin();
+        if (s_litf) {
+            lit_present();                     /* the recorded frame through the lighting's passes */
+        } else {
+            enc();                             /* a frame with nothing drawn still presents */
+            [s_enc endEncoding];
+            s_enc = nil;
+        }
         if (ml) {
             int fw, fh;
             host_macos_layer_fit(&fw, &fh);

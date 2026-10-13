@@ -786,13 +786,17 @@ static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr
         v[i].s = tw != 0.0f ? g[i]->tmuvtx[0].sow / tw : 0.0f;
         v[i].t = tw != 0.0f ? g[i]->tmuvtx[0].tow / tw : 0.0f;
     }
-    if (!light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
-                           (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
-                           (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
-                           (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16, world))
-        return;
-    if (s_view != 0 || !plat_flag(BR_FLAG_LIGHTING))
+    int k = light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
+                              (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
+                              (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
+                              (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16, world);
+    if (!k || s_view != 0 || !plat_flag(BR_FLAG_LIGHTING))
         return;                         /* the mirror: recorded, drawn as the game drew it */
+    if (k == 2) {                       /* the backdrop: drawn behind the lit scene */
+        for (i = 0; i < 3; i++)
+            o[i].lit = 2.0f;
+        return;
+    }
     for (i = 0; i < 3; i++) {
         o[i].wx = world[i][0];
         o[i].wy = world[i][1];
