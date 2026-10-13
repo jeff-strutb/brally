@@ -53,6 +53,8 @@ SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user
       $P/light/light_bvh.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the track's ray-tracing world on the GPU (brr_metal_rt.h)
 [ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m"
+# the volumetric fog's passes (brr_metal_vol.h)
+[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_vol.m"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe

@@ -942,3 +942,77 @@ argument (unread there); `compile_test.m` also builds the table's two
 pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
+
+## Volumetric fog: froxels (2026-10-12)
+
+DESIGN.md 9, the froxel method (Wronski 2014, Hillaire 2015), in
+`ports/brally/platform/render/metal/brr_metal_vol.h` (the CPU reference and
+the kernels' source, appended to the renderer's after the sky's) and
+`brr_metal_vol.m` (its textures, pipelines and passes; one call from
+`lit_present` after the deferred lighting, before the blended 3D).
+
+- Grid 160 x 90 x 64 over the camera's view (the target's pixels through the
+  screen map, `brr_screen_matrix`, inverted for w = 1), slices exponential in
+  distance from 0.5 m to 300 m (slice 0 starts at the eye).
+- Per cell: extinction from the weather (`k_vol`: sunny haze 0.0002/m
+  (20 km), fog 0.026/m (150 m), rain 0.004/m, snow 0.0055/m, night mist
+  0.001/m; albedo 0.90..0.98), thinning by e over 40..300 m of height above
+  the ground (taken 2 m under the eye), times 1 +/- a value noise (amplitude
+  0.15..0.25, 24 m cells, drifting). In-scattering: the sun through
+  Henyey-Greenstein g 0.7 with one bilinear comparison in its cascade (no
+  PCSS in the air), the sky's light as an isotropic ambient (skyc / pi), and
+  up to 16 lamps of the cell's light cluster (`lamp()` x `lwin()` over d^2,
+  the same phase; unshadowed). Pre-exposed like the rest of the HDR.
+- Temporal: the sample's depth in its slice jittered by golden-ratio steps a
+  frame; the cell blended 0.9 with last frame's at the same world point
+  (last frame's screen map and eye).
+- Integration: front to back per column, Hillaire's energy-conserving step
+  (in-scattering integrated as it fades through the cell), into (light,
+  transmittance) at each slice's far side.
+- Apply: a full-screen pass blended (one, source alpha): colour x T + S at
+  the pixel's distance from the G-buffer's position; an empty pixel (the sky,
+  the backdrop) at 300 m.
+- Switch: `LU.vol.x` (new last field, C and MSL; `shadowcpu.h`'s mirror
+  too). On, the deferred pass drops the game's fog amount (N.w) and the
+  volume replaces it; off, the game's fog as before. On by default on Apple
+  GPU family 7 or Metal 3 GPUs (the tier gate), `BR_LIGHT_VOL=0|1` overrides.
+
+### The checks (`ports/brally/tools/lighttest/vol.sh`, in `run.sh`)
+
+| check | result |
+|---|---|
+| homogeneous medium, 64 slices to 300 m (fog, rain, haze): transmittance vs exp(-sigma_t d) | max rel error 3.2e-7 |
+| same, ambient in-scatter vs L albedo (1 - exp(-sigma_t d)) | max rel error 4.5e-4 |
+| same on the GPU (rain), every slice | 9.9e-7 / 2.5e-5 |
+| uniform fog, in-scatter to 300 m, energy-conserving vs naive Riemann at 8 / 16 / 64 slices | 1.7e-8 vs 0.53, 1.1e-7 vs 0.23, 4.7e-7 vs 0.052 |
+| height fog on a rising ray (fine reference, 200,000 steps), 8 / 16 / 64 slices | 9.0e-4 vs 0.34 (378x), 2.4e-4 vs 0.16 (684x), 1.5e-5 vs 0.038 (2566x) |
+| Henyey-Greenstein over the sphere, g 0, 0.3, 0.7, 0.9, -0.5 | 1.000000, 1.000000, 1.000000, 1.000001, 1.000000 |
+| vol_inject vs CPU, 921,600 cells (sun, sky, a lamp, height fog) | max abs 4.3e-7, max rel 5.4e-6 |
+| noise 0.25: extinction over the noiseless | 0.751..1.245 |
+| reprojection, a still eye: last frame's cell found at its own coordinates | max diff 1.7e-5 |
+| vol_integrate vs vol_step, 14,400 columns | max abs 6.2e-6, max rel 2.4e-5 |
+| vol_at at slices' far sides | exact |
+| offline compile macOS + iOS (`xcrun metal -c`), runtime pipelines (compile_test) | 0 errors, 0 warnings |
+
+### Cost and memory
+
+M4 Pro, measured (vol_test, the best of five): vol_inject 0.25 ms (one lamp
+in every cluster, the sun unshadowed: the cascade tap adds one comparison a
+cell), vol_integrate 0.18 ms. Not measured: the apply pass, one texel read
+and one trilinear 3D sample a pixel, estimated about 0.1 ms at 1080p. About
+0.5 ms a frame in all on this Mac; an A15-class phone, at roughly a fifth of
+its throughput, about 2 to 2.5 ms (an estimate: no iOS run). Memory: three
+RGBA16F 3D textures (two cells for the history, the integrated volume),
+7.0 MB each, 21.1 MB.
+
+### Open
+
+- The blended 3D (fsf) still takes the game's fog amount when the volume is
+  on (they are not yet given the volume: it needs the integrated texture and
+  the volume's uniforms bound in the forward pass, a lookup of vol_at at the
+  fragment's distance), so smoke and glass are fogged the old way.
+- Lamp shadows in the air (the atlas lookup per cell) are not taken; the
+  lighthouse and street lamps' shafts are lit but unshadowed.
+- The ground height is the eye's less 2 m, not the track's; the medium per
+  weather and the noise are first guesses for the project lead's review in
+  frame dumps. No game run was made: the look is unseen.

@@ -30,7 +30,7 @@
  * scr: world to the target's pixels (brr_shadow.h, brr_screen_matrix) */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -273,7 +273,7 @@ BRR_SHADOW_SRC \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE)), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
