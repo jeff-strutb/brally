@@ -243,6 +243,10 @@ static size_t s_vused;
 #define VB_SIZE (8u << 20)
 static int s_w, s_h;                /* the game's frame: Glide's coordinates */
 static int s_rw, s_rh;              /* the targets drawn into: the window's pixels, letterboxed */
+static int s_lw, s_lh, s_lup;       /* the lit 3D's internal size (target x brr_taa_scale), and through MetalFX's scaler */
+static int s_dw, s_dh;              /* what op_draw's scissors are in: the lit 3D's size while it draws, else the target's */
+static id<MTLTexture> s_ldep;       /* the lit 3D's depth when it is scaled (s_dep otherwise) */
+static long s_gpu_last_us;          /* the last whole frame's GPU time, us (the dynamic resolution's input) */
 
 #define TEX_MAX 4096
 static id<MTLTexture> s_tex[TEX_MAX];
@@ -605,15 +609,36 @@ static id<MTLTexture> lit_tex(MTLPixelFormat f, int w, int h)
 }
 
 /* the lit frame's targets at the target's size (remade when it changes) */
+static void lit_reset(void);
 static void lit_targets(void)
 {
-    int i, w, h;
+    int i, w, h, up, lw, lh;
+    float sc = brr_taa_scale(s_dev, s_rw, s_rh, (float)__atomic_load_n(&s_gpu_last_us, __ATOMIC_RELAXED) / 1000.0f, &up);
+    lw = (int)lroundf((float)s_rw * sc);
+    lh = (int)lroundf((float)s_rh * sc);
+    if (lw < 16 || lh < 16 || !up) {
+        lw = s_rw;
+        lh = s_rh;
+    }
+    if (s_galb && (lw != s_lw || lh != s_lh || up != s_lup))
+        lit_reset();                    /* the scale moved: the lit 3D's targets again (and TAA's history) */
     if (s_galb)
         return;
-    s_galb = lit_tex(MTLPixelFormatRGBA8Unorm, s_rw, s_rh);
-    s_gpos = lit_tex(MTLPixelFormatRGBA32Float, s_rw, s_rh);
-    s_gnrm = lit_tex(MTLPixelFormatRGBA16Float, s_rw, s_rh);
-    s_hdr = lit_tex(MTLPixelFormatRGBA16Float, s_rw, s_rh);
+    s_lw = lw;
+    s_lh = lh;
+    s_lup = up;
+    s_galb = lit_tex(MTLPixelFormatRGBA8Unorm, s_lw, s_lh);
+    s_gpos = lit_tex(MTLPixelFormatRGBA32Float, s_lw, s_lh);
+    s_gnrm = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
+    s_hdr = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
+    s_ldep = s_dep;
+    if (s_lw != s_rw || s_lh != s_rh) {   /* depth of its own, read by MetalFX's scaler */
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                                                     width:(NSUInteger)s_lw height:(NSUInteger)s_lh mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_ldep = [s_dev newTextureWithDescriptor:td];
+    }
     for (i = 0, w = s_rw / 2, h = s_rh / 2; i < 6 && w >= 4 && h >= 4; i++, w /= 2, h /= 2)
         s_bl[i] = lit_tex(MTLPixelFormatRGBA16Float, w, h);
     s_nbl = i;
@@ -721,10 +746,17 @@ static Op *op_new(int kind)
 /* the frame's map, scissor and buffers for one recorded draw */
 static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
 {
-    if (o->has_sc)
+    int dw = s_dw ? s_dw : s_rw, dh = s_dh ? s_dh : s_rh;
+    if (o->has_sc && dw == s_rw && dh == s_rh)
         [e setScissorRect:(MTLScissorRect){ (NSUInteger)o->sc[0], (NSUInteger)o->sc[1], (NSUInteger)o->sc[2], (NSUInteger)o->sc[3] }];
-    else
-        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+    else if (o->has_sc) {   /* the lit 3D at its internal size: the scissor scaled with it, outward to whole pixels */
+        int x0 = (int)floor((double)o->sc[0] * dw / s_rw), y0 = (int)floor((double)o->sc[1] * dh / s_rh);
+        int x1 = (int)ceil((double)(o->sc[0] + o->sc[2]) * dw / s_rw), y1 = (int)ceil((double)(o->sc[1] + o->sc[3]) * dh / s_rh);
+        x1 = x1 > dw ? dw : x1;
+        y1 = y1 > dh ? dh : y1;
+        [e setScissorRect:(MTLScissorRect){ (NSUInteger)x0, (NSUInteger)y0, (NSUInteger)(x1 > x0 ? x1 - x0 : 0), (NSUInteger)(y1 > y0 ? y1 - y0 : 0) }];
+    } else
+        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)dw, (NSUInteger)dh }];
     if (with_depth)
         [e setDepthStencilState:ds_for(o->dmode, o->dfn, o->dmask)];
     [e setVertexBuffer:s_xtj ? s_xtj : s_xt[s_vbi] offset:0 atIndex:2];
@@ -1298,7 +1330,7 @@ static void lit_present(void)
                 break;
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
-                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, u.scr);
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, u.scr);
         u.csoft[3] = CONTACT_LEN;
     }
     lit_lights(eye, have_cam ? cam.vp : NULL);
@@ -1311,8 +1343,8 @@ static void lit_present(void)
                 break;
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
-                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, taa_s);
-        s_xtj = brr_taa_begin(s_dev, s_xt[s_vbi], s_vbi, s_nxf[s_vbi], s_rw, s_rh, NULL);
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, taa_s);
+        s_xtj = brr_taa_begin(s_dev, s_xt[s_vbi], s_vbi, s_nxf[s_vbi], s_lw, s_lh, NULL);   /* jitter in the lit 3D's pixels */
     }
     sky = have_cam && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
@@ -1406,7 +1438,7 @@ static void lit_present(void)
             ku.off[0] = m[12]; ku.off[1] = m[13]; ku.off[2] = m[15];
             memcpy(ku.eye, eye, 12);
             ku.eye[3] = a.cam[0];
-            ku.tgt[0] = (float)s_rw; ku.tgt[1] = (float)s_rh;
+            ku.tgt[0] = (float)s_lw; ku.tgt[1] = (float)s_lh;
             ku.tgt[3] = (float)light_glide_flip();
             memcpy(ku.sun, sun, 12);
             ku.ktop[0] = k_sky[w].top;
@@ -1472,10 +1504,12 @@ static void lit_present(void)
             rp.colorAttachments[k].storeAction = MTLStoreActionStore;
         }
     }
-    rp.depthAttachment.texture = s_dep;
+    rp.depthAttachment.texture = s_ldep;
     rp.depthAttachment.loadAction = MTLLoadActionClear;
     rp.depthAttachment.clearDepth = 1.0;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
+    s_dw = s_lw;   /* the lit 3D draws at its internal size, through the post (op_draw's scissors) */
+    s_dh = s_lh;
     e = lit_encoder(rp, 1);   /* g-buffer */
     [e setRenderPipelineState:s_lpg];
     for (i = 0; i < s_nops; i++)
@@ -1647,7 +1681,7 @@ static void lit_present(void)
                 op_draw(e, &s_ops[i], 0);
             }
     }
-    [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_rw, (NSUInteger)s_rh }];
+    [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_lw, (NSUInteger)s_lh }];
     [e setRenderPipelineState:s_lpl];
     [e setFragmentBytes:&u length:sizeof u atIndex:0];
     [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:1];
@@ -1674,7 +1708,7 @@ static void lit_present(void)
                 break;
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
-                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_rw, (float)s_rh, vs);
+                          (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, vs);
         brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
     }
 
@@ -1685,7 +1719,7 @@ static void lit_present(void)
     rp.colorAttachments[0].texture = s_hdr;
     rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-    rp.depthAttachment.texture = s_dep;
+    rp.depthAttachment.texture = s_ldep;
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
     e = lit_encoder(rp, 5);   /* transparent */
@@ -1703,8 +1737,9 @@ static void lit_present(void)
     [e endEncoding];
 
     lit_split(6);
-    if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post */
-        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_dep, taa_s, cam.vp, eye);
+    s_dw = s_dh = 0;
+    if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post; scaled, MetalFX's upscale to the target's size */
+        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_ldep, taa_s, cam.vp, eye, s_rw, s_rh, s_lup);
         s_xtj = nil;
     }
 
@@ -1761,7 +1796,8 @@ static void lit_present(void)
     rp.colorAttachments[0].loadAction = MTLLoadActionLoad;
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     rp.depthAttachment.texture = s_dep;
-    rp.depthAttachment.loadAction = MTLLoadActionLoad;
+    rp.depthAttachment.loadAction = s_ldep != s_dep ? MTLLoadActionClear : MTLLoadActionLoad;   /* scaled: the 3D's depth is not at this size */
+    rp.depthAttachment.clearDepth = 1.0;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
     e = lit_encoder(rp, 9);   /* 2d */
     for (i = first3d; i < s_nops; i++) {
@@ -1793,7 +1829,7 @@ static void lit_present(void)
 static void lit_reset(void)
 {
     int i;
-    s_galb = s_gpos = s_gnrm = s_hdr = nil;
+    s_galb = s_gpos = s_gnrm = s_hdr = s_ldep = nil;
     brr_taa_reset();
     for (i = 0; i < 6; i++)
         s_bl[i] = nil;
@@ -2409,6 +2445,12 @@ void brr_present(void)
                     __atomic_add_fetch(&s_gpu_cb_us, (long)(ms * 1000.0), __ATOMIC_RELAXED);
                     __atomic_add_fetch(&s_gpu_cb_n, 1, __ATOMIC_RELAXED);
                 }
+            }];
+        if (s_litf && s_lup)   /* the lit frame's GPU time, start to end, for the dynamic resolution (brr_taa_scale) */
+            [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> c) {
+                double ms = (c.GPUEndTime - c.GPUStartTime) * 1000.0;
+                if (ms > 0 && ms < 1000)
+                    __atomic_store_n(&s_gpu_last_us, (long)(ms * 1000.0), __ATOMIC_RELAXED);
             }];
         [s_cmd commit];
         if (want_shot) {
