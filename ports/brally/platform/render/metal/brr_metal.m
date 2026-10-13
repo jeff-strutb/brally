@@ -477,8 +477,8 @@ static float s_atm_mie = -1.0f;
  * 16" rule puts a sunlit scene near 15; a headlamp-lit road near 7) and how
  * rough the ground is (wet: smooth) */
 /* At night the directional light is the full moon (light_night.h): sun is its
- * illuminance facing it at elevation elev (light_moon_normal(42) = 0.213 lux;
- * 0.143 on level ground), its colour the sun's spectrum reddened by the
+ * illuminance facing it at elevation elev (light_moon_normal(11) = 0.120 lux;
+ * 0.023 on level ground), its colour the sun's spectrum reddened by the
  * moon's albedo, about 4,100 K (linear sRGB, Kim et al.'s Planckian locus);
  * the sky starlight and airglow, about 0.001 lux, blue.  elev 0: the track's
  * sun direction as it is.  The meter's band (percentiles plo..phi) and its
@@ -491,7 +491,7 @@ static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], sky
     /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
     /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0, 1.0f, 0.6f },
     /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0, 0.5f, 0.3f },
-    /* night */ {  0.213f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
+    /* night */ {  0.120f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
 };
 /* the grade per weather (saturation, contrast about mid-grey): sunny a
  * modest lift for the high-key day PBR Neutral's highlight desaturation

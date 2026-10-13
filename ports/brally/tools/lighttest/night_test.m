@@ -25,8 +25,9 @@ int main(void)
         /* published: a full moon overhead about 0.25 lux at the ground (Krisciunas and Schaefer 1991, Kyba et al. 2017),
            0.1 to 0.3 lux high in the sky */
         CHECK(fabsf(e90 - 0.25f) / 0.25f < 0.10f, "moon overhead %.4f lux on the ground (published 0.25, within 10%%)", e90);
-        CHECK(e45 > 0.1f && e45 < 0.3f && el > 0.1f && el < 0.3f, "moon at 45 deg %.4f lux, at %.0f deg (Coastline) %.4f lux (published 0.1..0.3)",
-              e45, LIGHT_MOON_ELEV, el);
+        CHECK(e45 > 0.1f && e45 < 0.3f, "moon at 45 deg %.4f lux on the ground (published 0.1..0.3 for a moon high in the sky)", e45);
+        /* a low full moon (about 10 degrees, air mass about 5): published 0.02 to 0.05 lux on level ground */
+        CHECK(el > 0.02f && el < 0.05f, "moon at %.0f deg (Coastline, low) %.4f lux on the ground (published 0.02..0.05)", LIGHT_MOON_ELEV, el);
         CHECK(fabsf(k_weather[4].sun - light_moon_normal(LIGHT_MOON_ELEV)) / k_weather[4].sun < 0.01f,
               "the weather table's moon %.4f lux = light_moon_normal(%.0f) %.4f", k_weather[4].sun, LIGHT_MOON_ELEV, light_moon_normal(LIGHT_MOON_ELEV));
         CHECK(k_weather[4].sky > 0.0005f && k_weather[4].sky < 0.002f && k_weather[4].skyc[2] > k_weather[4].skyc[0],
