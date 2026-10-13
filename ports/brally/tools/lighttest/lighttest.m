@@ -1653,6 +1653,31 @@ static void test_night_frame(void)
         printf("    moonlit ground beside the pool: 1, 2, 3 sigma out %.0f, %.0f, %.0f/255; far %.0f\n", 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
         report(o[2][1] >= 0.75f * o[3][1], "no dark ring beside the pool at 3 sigma", "%.0f vs %.0f far away (within 25%%)", 255 * o[2][1], 255 * o[3][1]);
     }
+    {   /* the lighthouse beam (brr_metal_vol.h vol_beam, the C reference of the shader's march: 2,000,000 cd, full to
+           1.5 degrees, none past 2.5, the night haze k_vol[4]) seen side-on from 100 m, its crossing D from the lamp,
+           through the same chain next to the moonlit ground; the blur around a thin beam is the ground's */
+        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
+        float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma, ss = st * k_vol[4].albedo;
+        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_NIGHT_KEY, LIGHT_NIGHT_LOCAL_K, 0 }, Lb[3];
+        const float A[3] = { 0, 0, 0 }, ax[3] = { 1, 0, 0 }, dir[3] = { 0, 1, 0 };
+        int i;
+        for (i = 0; i < 3; i++) {
+            float org[3] = { Dd[i], -100.0f, 0.0f };
+            Lb[i] = 2.0e6f * ss * vol_beam(org, dir, A, ax, cosf(2.5f * 0.017453293f), cosf(1.5f * 0.017453293f), st, 0.7f, 3000.0f, 0.5f, 256);
+            in[i][0] = in[i][1] = in[i][2] = Lg + Lb[i], in[i][3] = Lg;   /* the beam over the ground behind it (vol_beam includes the path to the eye) */
+        }
+        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg;
+        {
+            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
+            kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
+            memcpy(o, [bo contents], sizeof o);
+        }
+        printf("    lighthouse beam side-on from 100 m: %.4f, %.4f, %.4f cd/m2 at 100, 300, 1000 m from the lamp -> %.0f, %.0f, %.0f/255 over the ground's %.0f\n",
+               Lb[0], Lb[1], Lb[2], 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
+        report(o[0][1] < 0.97f && o[0][1] - o[3][1] > 40.0f / 255, "the beam near the lighthouse: bright, not clipped", "%.0f/255 (ground %.0f)", 255 * o[0][1], 255 * o[3][1]);
+        report(o[1][1] - o[3][1] > 15.0f / 255, "the beam 300 m out still visible", "%.0f/255 (ground %.0f)", 255 * o[1][1], 255 * o[3][1]);
+        report(o[2][1] >= o[3][1] && o[2][1] < o[1][1], "the beam fades with distance", "%.0f < %.0f", 255 * o[2][1], 255 * o[1][1]);
+    }
     {   /* the moon in view: the start camera (the game's view x projection: forward (0.6225, 0.7826, 0), vertical half-angle
            atan(1 / 3.732) = 15 degrees), the moon opposite the sun's bearing (-1, -1.5) */
         float sb[2] = { -1.0f, -1.5f }, n = sqrtf(sb[0] * sb[0] + sb[1] * sb[1]), mb[2] = { -sb[0] / n, -sb[1] / n };
