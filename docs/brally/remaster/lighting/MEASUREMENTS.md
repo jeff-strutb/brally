@@ -262,3 +262,187 @@ renderer frame number: the green light is past frame 10,000, and frame
 20,000 is 1.16 s into the race.
 
 ![Frame 20,000, 1080p: the gantry beam's shadow from off screen](phase3-cascades.png)
+
+## Verification suite (2026-10-12)
+
+The lighting's maths checked by mathematics, without running the game:
+`ports/brally/tools/lighttest/run_all.sh` builds a standalone Metal program
+(`lighttest.m`) and prints PASS or FAIL with its numbers for every check
+(69 now, about 12 s on the M4 Pro). The program includes the renderer
+itself (`brr_metal.m`), so the shader source it compiles is the renderer's
+own string expression (`k_src` with `BRR_LIT_SRC` and `BRR_SKY_SRC`, as
+`brr_open` compiles it), the pipelines are the renderer's (`lit_init`), and
+the C it calls (`lit_exposure`, the weather and sky tables) is the
+renderer's. Its test kernels (`kernels.metal`) are appended to that source
+and call the shader functions as they are; full-screen passes (the sky
+tables, bloom, post) run through the renderer's own pipelines. Every result
+is checked against a closed form or a CPU double-precision reference
+(`ref.h`: the Khronos PBR Neutral reference ported to C, Earth's atmosphere
+with Hillaire 2020's published constants, IEC 61966-2-1 sRGB, UN ECE R112's
+photometric table). Every value read back from the GPU (9.15 million) is
+also scanned for NaN and infinity.
+
+### Results
+
+Before: the shaders at efc443b0. After: this commit. Thresholds are set by
+the precision of what is measured (Monte Carlo noise, half float storage).
+
+| check | before | after | threshold |
+|---|---|---|---|
+| white furnace, GGX + diffuse, 12 roughnesses x 6 view angles, 1M samples a cell | max 1.794 (roughness 0.045, mu 0.03); 1.352 at roughness 0.25, mu 0.1 | max 1.0007; every cell 0.9990 to 1.0007 | <= 1.001 |
+| GGX lobe energy vs double reference | 4.2e-3 (1.0042 at roughness 0.045) | 9.0e-6 | 2e-3 |
+| diffuse albedo = 1 - E_spec(v) | not so coupled | 1.0e-3 | 2e-3 |
+| reciprocity f(v,l) = f(l,v), 65,536 triples | 5.0e-6 | 6.7e-5 | 1e-4 |
+| Fresnel at normal incidence | 0.039999 | 0.040000 | 0.04 +- 1e-4 |
+| Fresnel vs Schlick, 0 to 89 degrees | 4.4e-5 | 6.4e-7 | 1e-3 |
+| zenith transmittance vs closed form (tau 0.06624, 0.14675, 0.27615) | 0.9360 0.8628 0.7563, 3.1e-3 off | 0.9360 0.8638 0.7588, 3.1e-4 off | 2e-3 |
+| transmittance table vs exact optical depth, 400 rays above the horizon | max dT 0.0051 | 0.0010 | 0.01 |
+| sun at the ground vs 128,000 lux x exact T, 5 elevations | 5.2e-3 | 2.1e-3 | 1e-2 |
+| zenith sky, sun overhead | 3,651 cd/m2 | 4,191 cd/m2 | 2,000 to 10,000 |
+| zenith sky vs CPU reference, sun 90 / 54 / 30 / 10 / 5 degrees | -14.8 / -3.9 / -3.5 / -2.7 / -2.2% | -2.2 / -1.9 / -1.7 / -0.9 / -0.4% | 5% |
+| sky light on the ground vs CPU reference | -2.8% at worst | -0.4% at worst | 5% |
+| multiple scattering table vs CPU reference (Hillaire 5.5, converged) | 6.2% of the table's peak; 12% of a value | 0.38% of the peak; 1.3% of a value | 5% of the peak |
+| f_ms (the series' ratio) | 0.332 max | 0.332 max | < 1 |
+| (sky + sun at the ground) / (top x mu_s) | 0.51 to 0.97 | 0.51 to 0.97 | <= 1 / (1 - 0.3) |
+| Rayleigh and Cornette-Shanks phases over the sphere | 1.000001, 0.999999 | same | 1e-3 |
+| sky view mapping round trip | 0.040 degrees | same | 0.05 |
+| sun disc integrated vs the sun's illuminance | 0.954 | 1.004 | 1% |
+| PBR Neutral vs the Khronos reference, 200,000 colours | 1.6e-7 | same | 1e-5 |
+| PBR Neutral: 0 to 0; monotonic (grey ramp; luminance of 64 hues x 2,000 scales) | yes | yes | |
+| post: an HDR texel past half float (the sun's disc: 1.66e9 cd/m2) | black (inf, then NaN in the tonemap) | 249 249 249 (60,000 shows 248) | not black |
+| exposure, 6 synthetic scenes (log-uniform, log-normal, sky and road, night, fog) | -0.002 to -0.014 EV | -0.001 to +0.001 EV | 0.05 EV |
+| exposure, a uniform scene, 41 luminances over a stop | 0.250 EV | 0.031 EV | 0.05 EV |
+| exposure clamps to the weather's range; an all-inf scene metered | not metered | 16.000; 16.000 | |
+| R112 B50L 0.57U 3.43L (max 350 cd) | 200 | 127 | |
+| R112 BR 1.0U 2.5R (max 1,750) | 285 | 238 | |
+| R112 75R 0.57D 1.15R (min 10,100) | 19,975 | 19,036 | |
+| R112 75L 0.57D 3.43L (max 10,600) | 16,706 | 1,163 | |
+| R112 50L 0.86D 3.43L (max 13,200) | 16,706 | 9,684 | |
+| R112 50R 0.86D 1.72R (min 10,100) | 19,978 | 19,978 | |
+| R112 50V 0.86D 0 (min 5,100) | 19,666 | 17,066 | |
+| R112 25L / 25R 1.72D 9L / 9R (min 1,700) | 9,577 / 13,135 | 4,802 / 13,166 | |
+| R112 zone III, above the cut-off (max 625) | 12,019 at 5.95R 1.5U | 240 | |
+| R112 zone IV (min 2,500) / zone I (max 2 x I(50R)) | 14,476 / 19,942 | 6,778 / 19,989 | |
+| cut-off line (R112's steepest log gradient), left of V-V | 0.305U | 0.565D | 0.57D +- 0.1 |
+| rear lamp: cd cos^1.5 | exact | exact | |
+| bloom: constant image out = in | exact | exact | 2e-3 |
+| bloom: delta impulse energy, float targets, away from the edges | 1.000000 | 1.000000 | 1e-4 |
+| bloom: delta impulse energy, the renderer's half float targets, 512 x 256 | 0.9944 | 0.9944 | 1% |
+| bloom down pass: NaN and inf input | finite | finite | |
+| delit: albedo independent of the baked light (x1 to x0.12) | 1.0e-6 | 1.1e-6 | 1e-5 |
+| delit: grey vertex colour gives 0.85 x lin(texture) | 0.7277 x (14.4% off) | 0.8500 x | 1e-3 |
+| delit within 0 to 0.9 | yes | yes | |
+| lin and srgb1 vs IEC 61966-2-1; round trip | 2.2e-7; 2.6e-7 | same | 1e-5; 1e-4 |
+| facen: no face gives straight up; planes give their normals | yes | yes | |
+| brdf, radiance and fog finite over 300,000 random and degenerate inputs | yes | yes | |
+
+The run also prints the white albedo by roughness and view cosine and the
+GGX lobe's own energy. Its loss, the multiple scattering a single-scattering
+lobe drops, is 0.4% at roughness 0.25, 30% at 0.7 and 69% at 1.0, at normal
+view.
+
+The sunny sky's physical numbers: the sun at the ground 111,563 lux overhead
+and 108,103 lux at Coastline's 54 degrees (128,000 lux at the top of the
+atmosphere times its transmittance); the sky's light on an up-facing
+surface 9,280 and 8,562 lux; the zenith sky 4,191 and 1,790 cd/m2. The
+1,790 cd/m2 at 54 degrees is what Earth's constants give (the CPU reference
+integrating them gets 1,824). One headlamp's pattern carries 946 lm.
+
+The bloom chain conserves energy exactly in float targets away from the
+frame's edges (1.000000 at 2048 x 1024). On a 512 x 256 frame its 8 x 4 level
+reaches the edges and clamping loses 0.39%; the renderer's half float
+targets lose another 0.17%. Neither is a defect.
+
+### Defects found and fixed
+
+Each was found by a failing check, its cause identified with a further
+measurement, and fixed once. Original rendering is untouched: `k_src` (the
+Original shaders) and every path outside the lit frame are unchanged. The
+new BRDF table is drawn once at start-up into its own texture; with the lit
+pipelines, all of `lit_init` takes about 21 ms on the M4 Pro.
+
+1. **The BRDF reflected more than arrives** (`brdf`). The diffuse was
+   weighted by 1 - F(h.v), which ignores what the specular lobe takes at
+   grazing views: white reflected 1.794 at roughness 0.045 and view cosine
+   0.03, and 1.352 at roughness 0.25 (the rain's wet road) and 0.1. The
+   diffuse is now coupled to the lobe through its directional albedo E, as
+   Kelemen and Szirmay-Kalos 2001 and Kulla and Conty 2017 couple them:
+   (1 - E(n.l))(1 - E(n.v)) / (pi (1 - E_avg)). White then reflects what
+   arrives, to the table's precision: every cell 0.9990 to 1.0007. E is a
+   64 x 64 table made at start-up from the shader's own specular function
+   (`brdf_lut`, sampling the visible normals, Heitz 2018), over the square
+   root of the cosine and from the roughness floor up; E_avg is integrated
+   from the table itself through the lookup `brdf` makes (`brdf_avg`). A
+   closed-form coupling (Shirley et al. 1997, 1 - F(n.v)) was tried first
+   and rejected on its own numbers: it lost half the light of rough surfaces
+   at grazing views (white 0.49 at roughness 0.7, cosine 0.1: the road 20 m
+   ahead).
+2. **The GGX denominator lost precision on smooth lobes** (`brdf`):
+   (n.h)^2 (a^2 - 1) + 1 cancels in float, and the lobe held 1.0042 of the
+   light at roughness 0.045. Now 1 - (n.h)^2 is computed as |n x h|^2:
+   1.0000, 9e-6 off the double reference everywhere.
+3. **The transmittance table's edges** (`trans`, `atm_t`): its texel centres
+   did not reach the unit range's ends, so the zenith seen from the ground
+   read as 11.5 degrees off it, and even steps of 2.5 km missed 16% of the
+   haze's 1.2 km layer: 3.1e-3 off the closed form. Now Bruneton's
+   unit-range mapping, with steps growing with the square of the distance:
+   3.1e-4, and the table within 0.0010 of exact everywhere above the
+   horizon.
+4. **The sky view undercounted the haze** (`atm_sv`): even 3.3 km steps
+   straight up made the zenith under a high sun 14.8% dark. Steps now grow
+   with the square of the distance, as Hillaire's implementation spaces
+   them: 2.2%.
+5. **The multiple-scattering table's directions** (`atm_ms`): 64 even
+   directions straddled the horizon's cosine, where the light jumps (the
+   sunlit ground below, the sky above), and missed the long paths just above
+   it: 6.2% of the table's peak off a converged reference at 30 km. A CPU
+   run of the shader's own sampling matched the GPU to four digits, so the
+   integration was right and the directions were the error. Now 256
+   directions split at the horizon, 32 cosines a side: 0.38%. The table is
+   made only when the weather's haze changes.
+6. **The sun's disc** (`skyrad`, `skyfs`, `pfs`): its soft rim kept 0.954 of
+   the sun's illuminance; now divided back (1.004). Its centre, 1.66e9
+   cd/m2, overflowed the half float HDR target to infinity, and the tonemap
+   made that NaN: a black sun. The sky's output is now kept within half
+   float's range, and the post pass clamps what it reads (an overflowed
+   texel shows 249, the brightest).
+7. **The exposure meter's bins** (`pfs`, `lit_exposure`): 64 bins of half a
+   stop put a uniform scene up to 0.25 EV off. Now 512 bins of a sixteenth
+   of a stop: 0.031 EV, and the six synthetic scenes within 0.001 EV.
+8. **The headlamp pattern against R112** (`lamp`): the cut-off sat on the
+   horizon, not 0.57 degrees below it where the regulation aims it
+   (paragraph 6.2.2.1), and the near side was as bright as the kerb side:
+   75L 16,706 cd (max 10,600), 50L 16,706 (max 13,200), zone III 12,019 (max
+   625), and the cut-off's line (the steepest log gradient, R112's own
+   definition) 0.305 degrees up. Now aimed 0.57 degrees down, the hot spot's
+   spread narrower on the near side, and the cut-off a blend in log
+   intensity: every test point and zone within the class B limits, the line
+   within 0.005 degrees of the regulation's.
+9. **De-lighting's neutral** (`delit`): the hue was linearised through the
+   sRGB curve at half and scaled back by 4.0, a gamma-2 reading of the
+   curve, so a grey vertex colour gave 0.7277 x the texture, not the 0.85
+   the code intends. Scaled back by 1 / lin(0.5) = 4.672: 0.8500.
+10. **brdf below the surface**: with the light behind the view (l = -v) and
+    the eye below the surface, h = normalize(0) gave NaN. `radiance` turns
+    the normal to the eye, so the game never met it, but `brdf` now returns
+    nothing for a light or eye below the surface.
+
+What the lit frame will show differently: albedo 17% higher before the
+exposure meter (which adapts to it); wet and smooth surfaces darker at
+grazing views (they no longer reflect more than arrives); headlamps dimmer
+on the near side and cut 0.57 degrees lower; the clear sky's zenith brighter
+under a high sun (up to 15%) and its light on the ground up to 2.7%
+brighter; the sun's disc white and 5% brighter. None of it has been looked
+at in a frame (the suite runs no game); the project lead reviews it in the
+next frame dumps.
+
+### Not covered here
+
+- The offline compiles (`xcrun -sdk macosx metal -c` and `xcrun -sdk
+  iphoneos metal -c` of the dumped source, in `run_all.sh`) need Xcode's
+  Metal Toolchain, which is not installed on this machine (`xcodebuild
+  -downloadComponent MetalToolchain`); the run reports them as SKIP. The
+  runtime compile (the renderer's own way, here on macOS) passes.
+- The white balance (inline in `lit_present`), the cascades' shadow
+  lookups (checked only for finite output), and the GPU time of the
+  changes.
