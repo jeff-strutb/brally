@@ -257,6 +257,11 @@ void *mux_tgr_host_macos_metal_layer(void) { return host_macos_metal_layer(); }
 void *mux_br_host_macos_metal_layer(void)  { return host_macos_metal_layer(); }
 void mux_tgr_host_macos_layer_fit(int *w, int *h) { host_macos_layer_fit(w, h); }
 void mux_br_host_macos_layer_fit(int *w, int *h)  { host_macos_layer_fit(w, h); }
+#elif defined(__APPLE__)
+/* headless (HOST=null) with Metal: no window, no layer; the renderers draw
+   offscreen at the game's size */
+void *host_macos_metal_layer(void) { return 0; }
+void host_macos_layer_fit(int *w, int *h) { *w = *h = 0; }
 #endif
 #ifdef _WIN32
 void *host_win32_instance(void);

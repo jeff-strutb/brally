@@ -48,6 +48,7 @@ static NSString *const k_test_src = @
 "using namespace metal;\n"
 BRR_LIGHTS_SRC
 BRDF_SRC
+"kernel void ksz(device uint *o [[buffer(0)]]) { o[0] = sizeof(LSet); o[1] = sizeof(LS); o[2] = sizeof(LCH); o[3] = sizeof(LSH); }\n"
 "static bool reach(LS l, float3 p) { float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n"
 "  return lamp(l, -ld) * lwin(l, -ld, dl) > 0.0; }\n"
 "kernel void kcl(const device LSet &s [[buffer(0)]], const device float4 *pts [[buffer(1)]], device uint *out [[buffer(2)]],\n"
@@ -541,6 +542,22 @@ int main(void)
         dd.depthCompareFunction = MTLCompareFunctionLessEqual;
         dd.depthWriteEnabled = YES;
         g_dsless = [g_dev newDepthStencilStateWithDescriptor:dd];
+        {   /* the light set's layout: the shader's against the C structs */
+            id<MTLBuffer> o = [g_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+            id<MTLCommandBuffer> cb = [g_q commandBuffer];
+            id<MTLComputeCommandEncoder> e = [cb computeCommandEncoder];
+            const uint32_t *z = (const uint32_t *)[o contents];
+            [e setComputePipelineState:kernel_named(@"ksz")];
+            [e setBuffer:o offset:0 atIndex:0];
+            [e dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+            [e endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+            printf("gpu layout: LSet %u bytes (C %zu), LS %u (%zu), LCH %u (%zu), LSH %u (%zu)\n", z[0], sizeof(LightSet), z[1],
+                   sizeof(LightSpot), z[2], sizeof(LightClusterHdr), z[3], sizeof(LightShadowRec));
+            CHECK(z[0] == sizeof(LightSet) && z[1] == sizeof(LightSpot) && z[2] == sizeof(LightClusterHdr) && z[3] == sizeof(LightShadowRec),
+                  "the light set's layout differs between the shader and C");
+        }
         test_clusters();
         test_shadow();
         grid();

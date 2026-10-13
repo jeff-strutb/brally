@@ -82,7 +82,9 @@ case $OS in
 esac
 LIBS=
 case "$HOST" in
-  null)    SRCS="$SRCS $H/null/host_null.c";;
+  null)    SRCS="$SRCS $H/null/host_null.c"
+           # headless Metal (frames drawn offscreen): the frameworks the renderer uses
+           [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
   ios)     ;;                                  # the app's Swift (ios/Sources)
   macos)   SRCS="$SRCS $H/macos/host_macos.m"
            LIBS="-framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -framework ImageIO -framework AVFoundation";;
