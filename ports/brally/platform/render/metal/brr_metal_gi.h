@@ -1,0 +1,74 @@
+/* brr_metal_gi.h: diffuse global illumination by irradiance probes over the
+ * track's BVH (DESIGN.md 8.2; Majercik et al. 2019, "Dynamic Diffuse Global
+ * Illumination with Ray-Traced Irradiance Fields").
+ *
+ * A volume of nx x ny x nz probes, spacing s metres, placed on the world grid
+ * (probe w at org + w s) and moved with the camera in whole probes; a probe's
+ * storage slot is its world index modulo the counts, so a move only resets
+ * the slots that came in.  Each frame:
+ *
+ *   gi_trace   every probe casts N rays (a spherical Fibonacci set turned by
+ *              a random rotation each frame) through the compute BVH; a hit
+ *              is shaded with its emission, the sun (shadowed by an any-hit
+ *              ray), and last frame's probes at the hit (every bounce after
+ *              the first), times its albedo over pi; a miss sees the sky
+ *   gi_blend   the rays folded into two octahedral atlases: irradiance (8 x 8
+ *              texels a probe, 1 texel border; lux) and the mean and mean
+ *              square of the distance to the nearest surface (16 x 16, 1
+ *              texel border; metres), hysteresis par.x
+ *
+ * gi_irr(p, n, v) is a surface's indirect irradiance from the 8 probes
+ * around it: trilinear, times the backface and Chebyshev visibility weights,
+ * from a point pushed off the surface along its normal and toward the eye.
+ *
+ * Compiled with brr_rt_library (the traversal needs IEEE maths) after
+ * BRR_GI_DEFS and BRR_LIGHTS_SRC (the lamps' photometry). */
+#ifndef BRR_METAL_GI_H
+#define BRR_METAL_GI_H
+
+#include "brr_metal_gi_src.h"
+
+#ifdef __OBJC__
+#import <Metal/Metal.h>
+#include "brr_metal_rt.h"
+
+/* GiU */
+typedef struct BrrGiU {
+    float org[4];            /* the world grid's origin, spacing (metres) */
+    int n[4];                /* probes x, y, z; rays a probe */
+    int base[4];             /* the volume's first probe, world grid index */
+    int pbase[4];            /* last frame's; w: 1 when there was one */
+    float sun[4], sunc[4];   /* toward the sun; its illuminance (lux) */
+    float sky[4], gnd[4];    /* radiance of a miss looking up / down (cd/m2) */
+    float par[4];            /* hysteresis, albedo without a record, emission scale (cd/m2), normal bias */
+    float rot0[4], rot1[4], rot2[4];   /* this frame's ray rotation, rows */
+    float lim[4];            /* ray length (metres), Chebyshev visibility on, lamps in the set, bounces past the first on */
+} BrrGiU;
+
+typedef struct BrrGi {
+    id<MTLComputePipelineState> trace, birr, bdst;
+    id<MTLTexture> irr[2], dst[2];   /* ping-pong: [cur] last written */
+    id<MTLBuffer> ray, leaf;
+    BrrGiU u;
+    int cur, nx, ny, nz, nr, ready;
+    unsigned gen;                    /* the world's track generation leaf was made for */
+    uint32_t frame;
+    size_t bytes;
+} BrrGi;
+
+/* pipelines and textures for an nx x ny x nz volume, nr rays a probe; 0 on failure */
+int  brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr);
+void brr_gi_release(BrrGi *g);
+/* centres the volume on eye in whole probes of spacing sp and sets this
+ * frame's rotation; sun (unit, toward it), sunc (lux), sky / gnd radiance */
+void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], const float sunc[3],
+                  const float sky[3], const float gnd[3]);
+/* one update (trace, both folds) encoded into cb over world w, the hits lit
+ * by the first nlamp lamps of lset (an LSet, brr_metal_lights.h) too */
+void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp);
+/* the textures the lighting samples (gi_irr): this frame's after encode */
+id<MTLTexture> brr_gi_irr(const BrrGi *g);
+id<MTLTexture> brr_gi_dst(const BrrGi *g);
+#endif
+
+#endif
