@@ -122,21 +122,21 @@ static double unproject(const LightVtx *v, float p[3])
     return fmax(e, fabs(cl[1] / cl[3] * s_cam.sy + s_cam.oy - v->y));
 }
 
-void light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const LightVtx *c,
-                       uint32_t texture, uint32_t state)
+int light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const LightVtx *c,
+                      uint32_t texture, uint32_t state, float world[3][3])
 {
     const LightVtx *v[3] = { a, b, c };
     LightTri *t;
     int i, k;
     if (!a->oow || !b->oow || !c->oow || !camera())
-        return;
+        return 0;
     if (a->oow == BACKDROP_OOW || b->oow == BACKDROP_OOW || c->oow == BACKDROP_OOW)
         view = 3;
     if (s_ntri == s_cap) {
         int n = s_cap ? s_cap * 2 : 16384;
         LightTri *p = realloc(s_tri, (size_t)n * sizeof *p);
         if (!p)
-            return;
+            return 0;
         s_tri = p;
         s_cap = n;
     }
@@ -166,6 +166,38 @@ void light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const Lig
     }
     s_st.tris[view & 3]++;
     s_fr[view & 3]++;
+    if (view == 3)
+        return 0;
+    memcpy(world, t->p, sizeof t->p);
+    return 1;
+}
+
+/* where the main camera is: the point its view x projection takes to
+ * x = y = w = 0 */
+int light_capture_eye(float eye[3])
+{
+    const float *m = s_cam_main.vp;
+    double a[3][3], b[3], det;
+    int i, j;
+    for (i = 0; i < 3; i++) {
+        int k = i == 2 ? 3 : i;
+        for (j = 0; j < 3; j++)
+            a[i][j] = m[j * 4 + k];
+        b[i] = -m[12 + k];
+    }
+    det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+        + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+    if (fabs(det) < 1e-30)
+        return 0;
+    for (i = 0; i < 3; i++) {
+        double c[3][3];
+        memcpy(c, a, sizeof c);
+        for (j = 0; j < 3; j++)
+            c[j][i] = b[j];
+        eye[i] = (float)((c[0][0] * (c[1][1] * c[2][2] - c[1][2] * c[2][1]) - c[0][1] * (c[1][0] * c[2][2] - c[1][2] * c[2][0])
+                          + c[0][2] * (c[1][0] * c[2][1] - c[1][1] * c[2][0])) / det);
+    }
+    return 1;
 }
 
 static void dump(const char *path)

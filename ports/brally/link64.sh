@@ -67,7 +67,9 @@ if [ "$RENDER" = vulkan ]; then
   fi
 fi
 case "$HOST" in
-  null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c";;
+  null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
+         # Metal without a window: frames drawn offscreen (shots, measurements)
+         [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
   windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
            LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
   lib)   SRCS="$SRCS $OSHOST";;                  # the app's own (ports/remastered)

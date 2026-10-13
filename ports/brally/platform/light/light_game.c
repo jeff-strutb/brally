@@ -20,3 +20,9 @@ void light_game_camera(LightCamera *c)
     c->sy = DAT_105ccfdc;
     c->oy = DAT_105cd9fc;
 }
+
+int light_game_weather(void)
+{
+    int w = *(int32_t *)&DAT_104b15e8;
+    return w >= 0 && w <= 4 ? w : 0;
+}

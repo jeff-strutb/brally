@@ -761,14 +761,16 @@ static void vert(brr_vertex *o, const GrVertex *v)
     o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
     o->s = v->tmuvtx[0].sow * w / su;
     o->t = v->tmuvtx[0].tow * w / sv;
+    o->wx = o->wy = o->wz = o->lit = 0.0f;
 }
 
 /* a display-list triangle of the camera's view or the mirror's, as drawn,
  * to the lighting's capture (platform/light): read, never changed */
-static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c)
+static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr_vertex *o)
 {
     const GrVertex *g[3] = { a, b, c };
     LightVtx v[3];
+    float world[3][3];
     int i;
     if ((s_view != 0 && s_view != 2) || !light_capture_on())
         return;
@@ -784,10 +786,19 @@ static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c)
         v[i].s = tw != 0.0f ? g[i]->tmuvtx[0].sow / tw : 0.0f;
         v[i].t = tw != 0.0f ? g[i]->tmuvtx[0].tow / tw : 0.0f;
     }
-    light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
-                      (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
-                      (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
-                      (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16);
+    if (!light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
+                           (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
+                           (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
+                           (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16, world))
+        return;
+    if (s_view != 0 || !plat_flag(BR_FLAG_LIGHTING))
+        return;                         /* the mirror: recorded, drawn as the game drew it */
+    for (i = 0; i < 3; i++) {
+        o[i].wx = world[i][0];
+        o[i].wy = world[i][1];
+        o[i].wz = world[i][2];
+        o[i].lit = 1.0f;
+    }
 }
 
 /* Glide's triangle setup drops a triangle with no area, and with culling on
@@ -820,7 +831,7 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     vert(&v[2], c);
     if (s_src_dirty && s_src_set)
         tex_resolve();
-    capture(a, b, c);
+    capture(a, b, c, v);
     route(v, 3);
     brr_draw(&s_st, v, 3);
 }
@@ -837,7 +848,6 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
     for (i = 1; i + 1 < n; i++) {
         if (culled(&vl[0], &vl[i], &vl[i + 1]))
             continue;
-        capture(&vl[0], &vl[i], &vl[i + 1]);
         if (k == 3 * 64) {
             if (!routed++)
                 route(v, k);
@@ -847,6 +857,7 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
         vert(&v[k++], &vl[0]);
         vert(&v[k++], &vl[i]);
         vert(&v[k++], &vl[i + 1]);
+        capture(&vl[0], &vl[i], &vl[i + 1], &v[k - 3]);
     }
     if (k) {
         if (!routed++)

@@ -71,3 +71,36 @@ The sound channels' records differ between two runs with the lighting OFF
 in exactly the same place (frame 6600, the same two globals), so that is
 existing run-to-run variation in the sound state, not the lighting.
 `lightcheck.sh` leaves those two out and says so.
+
+## Phase 1: first light (2026-10-12)
+
+The Metal backend relights the camera's 3D view (`brr_metal.m`): each 3D
+triangle writes a G-buffer beside the game's colour (albedo with the
+vertex colour's brightness, the game's baked light, taken out; world
+position; face normal), the frame's 3D triangles make a 2048^2 sun shadow
+map, and one lighting pass computes the sun (with 3x3 filtered shadows),
+the sky and the ground's light in lux, a GGX highlight, the camera's white
+balance, an exposure metered from the frame's mean log luminance (EV100,
+K = 12.5) and Khronos PBR Neutral. 2D, the mirror and the backdrop keep the
+game's pixels. A headless Metal build (`HOST=null RENDER=metal`) takes the
+shots without a window.
+
+![Frame 1,000, Original and the new lighting](phase1-first-light.png)
+
+*Frame 1,000 of `20_quickrace_drive`: Original (left), the new lighting
+(right). The sun is the default direction, 19 degrees up, behind the gantry:
+its shadow lies across the road.*
+
+![Debug views](phase1-debug-views.png)
+
+*`BR_LIGHT_VIEW` 1 albedo, 2 normals, 3 sun shadow, 4 the sun's angle on
+each surface.*
+
+| check | result |
+|---|---|
+| Original unchanged | frames 300, 1,000 and 3,000 byte-identical PNGs against the pre-lighting commit c8194344 (same Metal renderer, headless) |
+| game state | `lightcheck.sh` with the lit Metal build: identical over `20_quickrace_drive` (16 dumps) |
+
+Not yet: emissive lamps (the gantry's lights read as plain surfaces), the
+sky (the game's painted backdrop is kept), shadows from what is off screen,
+GPU timing.

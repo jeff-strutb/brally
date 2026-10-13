@@ -16,6 +16,8 @@ typedef struct LightCamera {
     float sx, ox, sy, oy;    /* clip to the game's pixels: x = cx / cw * sx + ox */
 } LightCamera;
 void light_game_camera(LightCamera *c);
+/* the race's weather: 0 sunny, 1 fog, 2 rain, 3 snow, 4 night (MEASUREMENTS.md) */
+int  light_game_weather(void);
 
 /* ---- the capture (light_capture.c) --------------------------------------------
  * glide.c hands over every display-list triangle of the camera's view (0) or
@@ -28,12 +30,17 @@ typedef struct LightVtx {
     float r, g, b, a;        /* 0..255 */
     float s, t;              /* texels (s/w, t/w already divided back by 1/w) */
 } LightVtx;
-void light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const LightVtx *c,
-                       uint32_t texture, uint32_t state);
+/* 1 when the triangle has a world position (the camera's view or the
+ * mirror's, not the backdrop): world[3][3] then holds its corners */
+int  light_capture_tri(int view, const LightVtx *a, const LightVtx *b, const LightVtx *c,
+                       uint32_t texture, uint32_t state, float world[3][3]);
 /* the frame is finished (grBufferSwap) */
 void light_capture_swap(void);
 /* 1 while the capture records (the flag, or BR_LIGHT_CAPTURE=1) */
 int  light_capture_on(void);
+/* the main camera's position this frame, from its view x projection; 0 when
+ * no 3D was drawn */
+int  light_capture_eye(float eye[3]);
 
 #ifdef __cplusplus
 }
