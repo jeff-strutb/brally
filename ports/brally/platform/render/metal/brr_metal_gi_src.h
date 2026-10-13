@@ -18,21 +18,11 @@
 
 #define BRR_GI_SAMPLE_SRC \
 BRR_GI_U_SRC \
-"constant float GI_PI = 3.14159265;\n" \
 "static float2 gi_snz(float2 v) { return float2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0); }\n" \
 /* the octahedral map: a direction to [-1, 1]^2 and back */ \
 "static float2 gi_oct(float3 d) {\n" \
 "  float2 p = d.xy / (abs(d.x) + abs(d.y) + abs(d.z));\n" \
 "  return d.z < 0.0 ? (1.0 - abs(p.yx)) * gi_snz(p) : p; }\n" \
-"static float3 gi_unoct(float2 e) {\n" \
-"  float3 v = float3(e, 1.0 - abs(e.x) - abs(e.y));\n" \
-"  if (v.z < 0.0) v.xy = (1.0 - abs(v.yx)) * gi_snz(v.xy);\n" \
-"  return normalize(v); }\n" \
-/* ray i of n: a spherical Fibonacci point turned by this frame's rotation */ \
-"static float3 gi_ray(constant GiU &u, int i) {\n" \
-"  float N = float(u.n.w), z = 1.0 - (2.0 * float(i) + 1.0) / N, r = sqrt(max(1.0 - z * z, 0.0));\n" \
-"  float ph = float(i) * 2.39996323; float3 d = float3(r * cos(ph), r * sin(ph), z);\n" \
-"  return float3(dot(u.rot0.xyz, d), dot(u.rot1.xyz, d), dot(u.rot2.xyz, d)); }\n" \
 "static int3 gi_mod(int3 a, int3 n) { return ((a % n) + n) % n; }\n" \
 /* a probe's grid index (0 .. n - 1 inside the volume) to its storage slot, \
    and its slot's tile in the atlases */ \
@@ -74,6 +64,16 @@ BRR_GI_U_SRC \
 /* the update's kernels (needs BRR_RT_SRC and BRR_LIGHTS_SRC before it) */
 #define BRR_GI_SRC \
 BRR_GI_SAMPLE_SRC \
+"constant float GI_PI = 3.14159265;\n" \
+"static float3 gi_unoct(float2 e) {\n" \
+"  float3 v = float3(e, 1.0 - abs(e.x) - abs(e.y));\n" \
+"  if (v.z < 0.0) v.xy = (1.0 - abs(v.yx)) * gi_snz(v.xy);\n" \
+"  return normalize(v); }\n" \
+/* ray i of n: a spherical Fibonacci point turned by this frame's rotation */ \
+"static float3 gi_ray(constant GiU &u, int i) {\n" \
+"  float N = float(u.n.w), z = 1.0 - (2.0 * float(i) + 1.0) / N, r = sqrt(max(1.0 - z * z, 0.0));\n" \
+"  float ph = float(i) * 2.39996323; float3 d = float3(r * cos(ph), r * sin(ph), z);\n" \
+"  return float3(dot(u.rot0.xyz, d), dot(u.rot1.xyz, d), dot(u.rot2.xyz, d)); }\n" \
 /* rgba8 surface record colours */ \
 "static float3 gi_rgb(uint c) { return float3(c & 255u, (c >> 8) & 255u, (c >> 16) & 255u) / 255.0; }\n" \
 /* the lamps' irradiance at a hit (lux), unshadowed: every lamp of the set \
