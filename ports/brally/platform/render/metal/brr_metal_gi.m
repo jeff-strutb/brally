@@ -12,7 +12,8 @@ void brr_gi_release(BrrGi *g)
 {
     g->trace = g->birr = g->bdst = nil;
     g->irr[0] = g->irr[1] = g->dst[0] = g->dst[1] = nil;
-    g->ray = g->leaf = nil;
+    g->grid = nil;
+    g->ray = g->leaf = g->gcnt = g->glst = nil;
     g->ready = 0;
 }
 
@@ -37,22 +38,28 @@ int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr)
     g->trace = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_trace"] error:&err];
     g->birr = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_blend_irr"] error:&err];
     g->bdst = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_blend_dst"] error:&err];
+    g->grid = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_grid"] error:&err];
+    g->gcnt = [dev newBufferWithLength:BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * 4 options:MTLResourceStorageModeShared];
+    g->glst = [dev newBufferWithLength:BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * 32 * 2 options:MTLResourceStorageModeShared];
     for (k = 0; k < 2; k++) {
         g->irr[k] = atlas(dev, nx * nz * (BRR_GI_IRR + 2), ny * (BRR_GI_IRR + 2), MTLPixelFormatRGBA32Float);
         g->dst[k] = atlas(dev, nx * nz * (BRR_GI_DST + 2), ny * (BRR_GI_DST + 2), MTLPixelFormatRG32Float);
     }
     g->ray = [dev newBufferWithLength:(size_t)nx * ny * nz * nr * 16 options:MTLResourceStorageModeShared];
-    if (!g->trace || !g->birr || !g->bdst || !g->irr[0] || !g->irr[1] || !g->dst[0] || !g->dst[1] || !g->ray) {
+    if (!g->trace || !g->birr || !g->bdst || !g->grid || !g->gcnt || !g->glst || !g->irr[0] || !g->irr[1] || !g->dst[0] || !g->dst[1] || !g->ray) {
         brr_gi_release(g);
         return 0;
     }
     g->nx = nx; g->ny = ny; g->nz = nz; g->nr = nr;
     g->bytes = 2 * ((size_t)nx * nz * (BRR_GI_IRR + 2) * ny * (BRR_GI_IRR + 2) * 16
                     + (size_t)nx * nz * (BRR_GI_DST + 2) * ny * (BRR_GI_DST + 2) * 8)
-             + (size_t)nx * ny * nz * nr * 16;
+             + (size_t)nx * ny * nz * nr * 16
+             + (size_t)BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * (4 + 32 * 2);
     g->u.n[0] = nx; g->u.n[1] = ny; g->u.n[2] = nz; g->u.n[3] = nr;
     g->u.par[0] = 0.97f; g->u.par[1] = 0.3f; g->u.par[2] = 0.0f; g->u.par[3] = 0.3f;
     g->u.lim[0] = 200.0f; g->u.lim[1] = 1.0f; g->u.lim[3] = 1.0f;
+    g->u.upd[0] = 4;
+    g->u.gdim[3] = BRR_GI_CELL;
     g->ready = 1;
     return 1;
 }
@@ -91,6 +98,7 @@ void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], co
         u->sun[k] = sun[k]; u->sunc[k] = sunc[k]; u->sky[k] = sky[k]; u->gnd[k] = gnd[k];
     }
     u->base[3] = (int)g->frame;
+    u->upd[1] = (int)(g->frame % (uint32_t)(u->upd[0] > 0 ? u->upd[0] : 1));
     rotation(u, g->frame++);
 }
 
@@ -109,6 +117,26 @@ static void leaf_map(BrrGi *g, id<MTLDevice> dev, const BrrRtWorld *w)
     g->gen = w->gen;
 }
 
+/* the light grid over the volume and the rays' reach: cubes of 16 m, larger
+ * when that would take more than BRR_GI_GRID an axis */
+static void grid_place(BrrGiU *u)
+{
+    float sp = u->org[3], R = u->lim[0], lo[3], ext = 0.0f, cs;
+    int k;
+    for (k = 0; k < 3; k++) {
+        lo[k] = u->org[k] + u->base[k] * sp - R;
+        ext = fmaxf(ext, (u->n[k] - 1) * sp + 2.0f * R);
+    }
+    cs = fmaxf(16.0f, ext / BRR_GI_GRID * 1.0001f);
+    for (k = 0; k < 3; k++) {
+        float e = (u->n[k] - 1) * sp + 2.0f * R;
+        int d = (int)ceilf(e / cs);
+        u->gorg[k] = lo[k];
+        u->gdim[k] = d < 1 ? 1 : d > BRR_GI_GRID ? BRR_GI_GRID : d;
+    }
+    u->gorg[3] = cs;
+}
+
 void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp)
 {
     id<MTLComputeCommandEncoder> e;
@@ -117,14 +145,26 @@ void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MT
         return;
     if (!g->leaf || g->gen != w->gen)
         leaf_map(g, cb.device, w);
-    g->u.lim[2] = (float)(lset ? nlamp : 0);
+    g->u.lim[2] = (float)(lset ? (nlamp < 128 ? nlamp : 128) : 0);
+    grid_place(&g->u);
     e = [cb computeCommandEncoder];
+    if (lset) {
+        [e setComputePipelineState:g->grid];
+        [e setBytes:&g->u length:sizeof g->u atIndex:0];
+        [e setBuffer:lset offset:0 atIndex:1];
+        [e setBuffer:g->gcnt offset:0 atIndex:2];
+        [e setBuffer:g->glst offset:0 atIndex:3];
+        [e dispatchThreads:MTLSizeMake((NSUInteger)(g->u.gdim[0] * g->u.gdim[1] * g->u.gdim[2]), 1, 1)
+            threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+    }
     [e setComputePipelineState:g->trace];
     [e setBytes:&g->u length:sizeof g->u atIndex:0];
     [e setBuffer:g->ray offset:0 atIndex:1];
     [e setBuffer:g->leaf offset:0 atIndex:2];
     [e setBuffer:lset offset:0 atIndex:3];
     brr_rt_bind(w, e, 4);
+    [e setBuffer:g->gcnt offset:0 atIndex:9];
+    [e setBuffer:g->glst offset:0 atIndex:10];
     [e setTexture:g->irr[prev] atIndex:0];
     [e setTexture:g->dst[prev] atIndex:1];
     [e dispatchThreads:MTLSizeMake((NSUInteger)g->nr, (NSUInteger)np, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];

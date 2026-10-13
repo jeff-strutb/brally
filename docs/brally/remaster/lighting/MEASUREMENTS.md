@@ -1343,3 +1343,41 @@ Measured (lighttest maths.sh test_carpaint, carpaint.sh):
 
 Left: glass and wheels as their own materials, a flake term, and a check of
 the classification's hit rate in a race (a run).
+
+## GI probes: a light grid and a quarter of the probes a frame (2026-10-13)
+
+In the game the probe update cost 5 ms by day and 9.3 ms at night (M4 Pro,
+1080p): every probe ray hit looped over every lamp of the set.  Now:
+
+- **Light grid** (gi_grid, a compute pass a frame): cubes of 16 m (larger
+  when that takes more than 32 an axis) over the probe volume and the rays'
+  200 m reach; a cube lists the lamps whose sphere of influence (LS.range,
+  where lwin reaches zero) overlaps it, at most 32, the most intense at its
+  centre first.  A hit reads its cube's list only.
+- **Amortised update**: a quarter of the probes (by slot) traced and folded
+  a frame, the others kept; hysteresis 0.97 a frame raised to the 4th power
+  for an updated probe, so the light settles in the same time; a probe new
+  to the volume is updated the frame it comes in.
+
+Measured (lighttest gi.sh; 16 x 8 x 16 probes, 64 rays, 131k triangle terrain
+in sunlight; the lamps 128 along 1 km, the set's most; mean of 30 frames,
+best in brackets):
+
+| update | before | after |
+|---|---|---|
+| no lamps | 2.58 ms (1.96) | 1.60 ms (1.18) |
+| 128 lamps | 2.36 ms (1.75) | 1.61 ms (1.46) |
+
+The harness's terrain is mostly sky for the upward rays, so the lamp loop
+was not what dominated it; the game's hits (walls, buildings, lamps close
+by) were.  The grid's cost there is the cube's list, at most 32 and usually
+a handful, against the set's 80 by day and its 128 at night.
+
+| check | result |
+|---|---|
+| furnace | 0.0002% |
+| point lamp first bounce, 64 texels against the closed form | max 0.040% (limit 0.1%) |
+| leak, Chebyshev on, from 0.3 m | 0.22% |
+| fold GPU vs CPU (the CPU fold skips the same probes) | 4.8e-7 lux of 6.3 |
+| grid: 3.8M lamp-cube pairs, 128 random lamps, ranges 3..40 m | 0 listed that miss, 0 left out that reach |
+| offline compiles macOS, iOS; link64.sh; maths.sh; shadow.sh | 0 errors, pass |
