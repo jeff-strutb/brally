@@ -19,7 +19,7 @@ echo "== build"
 clang -O2 -g -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off \
   -I"$P/include" -I"$P/host" -I"$P/render" -I"$P/common" -I"$P/light" -I"$P/render/metal" \
   -x objective-c -fobjc-arc "$HERE/lighttest.m" -o "$OUT/lighttest" \
-  -framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation || exit 2
+  -framework Metal -weak_framework MetalFX -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation || exit 2
 echo "built $OUT/lighttest"
 
 "$OUT/lighttest" "$HERE/kernels.metal" || fail=1

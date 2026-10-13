@@ -15,6 +15,7 @@
  * --dump writes the renderer's whole shader source (as brr_open compiles it)
  * for the offline compiles in run_all.sh. */
 #include "brr_metal.m"
+#include "brr_metal_taa.m"
 
 #include <float.h>
 #include <stdarg.h>
