@@ -24,22 +24,6 @@
 
 #define BRR_LIT_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc; };\n" \
-"struct LS { packed_float3 pos; float kind; packed_float3 axis; float cd; packed_float3 side; float range; float4 rgb; };\n" \
-/* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
-   low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
-   on the near side, stepping up 15 degrees on the kerb side, the hot spot a \
-   degree and a half below the horizon and right of centre, a wide spread \
-   below it), a rear lamp's broad lobe */ \
-"static float lamp(LS l, float3 d) {\n" \
-"  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
-"  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n" \
-"  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n" \
-"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958;\n" \
-"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / 10.0) * ((h - 1.5) / 10.0));\n" \
-"  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n" \
-"  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n" \
-"  return l.cd * spread * vert * mix(1.0, 0.012, smoothstep(cut - 0.35, cut + 0.35, v));\n" \
-"}\n" \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
@@ -84,17 +68,13 @@
 "  if (w > 0.0) vis = mix(vis, k < 3 ? casvis(u, sm, p, n, k + 1) : 1.0, w);\n" \
 "  return vis;\n" \
 "}\n" \
-/* the light leaving a surface toward the eye, cd/m2, before exposure */ \
-"static float3 radiance(constant LU &u, const device LS *ls, depth2d_array<float> sm, float3 p, float3 n, float3 alb, float rough, float glow) {\n" \
+/* the light leaving a surface toward the eye, cd/m2, before exposure; the \
+   lamps from the point's cluster (brr_metal_lights.h) */ \
+"static float3 radiance(constant LU &u, const device LSet &ls, depth2d_array<float> sm, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow) {\n" \
 "  float3 v = normalize(u.eye.xyz - p); if (dot(n, v) < 0) n = -n;\n" \
 "  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sunvis(u, sm, p, n);\n" \
 "  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
-"  for (int i = 0; i < int(u.eye.w); i++) {\n" \
-"    LS l = ls[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
-"    if (dot(n, ld) <= 0.0) continue;\n" \
-"    float E = lamp(l, -ld) / d2 * (1.0 - smoothstep(0.7 * l.range, l.range, dl));\n" \
-"    Lo += l.rgb.rgb * E * brdf(n, v, ld, alb, rough);\n" \
-"  }\n" \
+"  Lo += lamps(ls, atl, p, n, v, alb, rough);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
@@ -125,9 +105,9 @@
 "struct LO { float4 pos [[position]]; float2 uv; };\n" \
 "vertex LO lvs(uint i [[vertex_id]]) { float2 p = float2((i << 1) & 2, i & 2); LO o; o.pos = float4(p * 2.0 - 1.0, 0, 1); o.uv = float2(p.x, 1.0 - p.y); return o; }\n" \
 /* the deferred lighting */ \
-"fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LS *ls [[buffer(1)]],\n" \
+"fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]],\n" \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
-"                    depth2d_array<float> sm [[texture(3)]]) {\n" \
+"                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -137,18 +117,19 @@
 "  if (dbg == 2) return float4((N.xyz * 0.5 + 0.5) / max(u.misc.x, 1e-9), 1);\n" \
 "  if (dbg == 3) return float4(float3(sunvis(u, sm, P.xyz, N.xyz)) / max(u.misc.x, 1e-9), 1);\n" \
 "  if (dbg == 5) return float4(float3(glow) / max(u.misc.x, 1e-9), 1);\n" \
+"  if (dbg == 6) return float4(lc_heat(ls, P.xyz) / max(u.misc.x, 1e-9), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, radiance(u, ls, sm, P.xyz, N.xyz, a.rgb, u.misc.z, glow), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, radiance(u, ls, sm, atl, P.xyz, N.xyz, a.rgb, u.misc.z, glow), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LS *ls [[buffer(2)]],\n" \
-"                    depth2d_array<float> shm [[texture(3)]]) {\n" \
+"                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
+"                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = facen(in.wp);\n" \
 "  float3 c = u.addk > 0.0 ? lin(h.o.rgb) * u.addk * lu.wb.rgb\n" \
-"                          : radiance(lu, ls, shm, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g);\n" \
+"                          : radiance(lu, ls, shm, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g);\n" \
 "  return float4(fogged(lu, c, u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \

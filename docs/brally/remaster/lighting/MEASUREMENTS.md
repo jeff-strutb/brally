@@ -262,3 +262,126 @@ renderer frame number: the green light is past frame 10,000, and frame
 20,000 is 1.16 s into the race.
 
 ![Frame 20,000, 1080p: the gantry beam's shadow from off screen](phase3-cascades.png)
+
+## Many lights: clusters and the lamps' shadow atlas (2026-10-12)
+
+DESIGN.md 7.4's clustered culling and shadow atlas, for every lamp of the
+20-car night grid. Verified without running the game: the CPU code against
+brute force, the renderer's own shader code on the GPU in a standalone
+harness with synthetic scenes, the whole shader source compiled, and the
+game linked. `ports/brally/tools/lighttest/run.sh` runs all of it.
+
+**Clusters** (`platform/light/light_cluster.c`). The camera's view in 16 x 9
+screen tiles (equal steps of its clip x/w and y/w) and 24 depth slices: the
+first to 2 m, 22 exponential ones from 2 m to 600 m, the last open beyond.
+The outermost tiles and the first and last slices drop their outer plane,
+so any point in front of the camera has a cluster that holds it. A light's
+reach is a sphere of its range (a point; the reserved rect and tube kinds,
+whose range is to cover their emitter) or a sphere-capped cone of its outer
+angle (every other kind), and the extent of such a body along a plane's
+normal has a closed form (the cap's direction nearest the normal is at
+max(psi - theta, 0) from it), so a light stays in a cluster unless it lies
+wholly outside one of the cluster's six planes. Those planes separate by
+axis, so each light is tested against 16 + 9 + 24 tiles' planes and the
+clusters are the products (128-bit masks); a closed cluster then also drops
+a cone that misses its bounding sphere (a conservative cone and sphere test).
+Every test keeps a margin of 5 cm plus 1e-5 of the distances, for the
+rounding between the CPU and the shader. The build runs on the CPU (0.3 to
+0.45 ms for 128 lights on one M4 Pro core) and goes up with the lights and
+the shadow tiles in one buffer a frame (`LightSet`, 466 KiB, three in
+flight); the shader only finds a point's cluster (`lc_index`, its slice
+settled against the same boundary table) and walks its list (`lamps()` in
+`brr_metal_lights.h`, used by the deferred lighting and the forward pass
+alike).
+
+Light types: the low beam and the rear lamp as before, a point, and a spot
+(inner and outer cone); rect and tube are reserved kinds the culling
+already bounds. The low beam now has an outer cone of 70 degrees (a soft
+edge from 64): past it the R112 pattern is under 1% of its peak. The rear
+lamps keep their half space.
+
+**Lamp shadows.** A 4096^2 Depth32Float atlas on the Mac (64 MiB), 2048^2
+(16 MiB) on the iPhone. Each low beam or spot in view (cones up to 80
+degrees: no perspective tile holds a rear lamp's half space, and points wait
+for octahedral tiles) gets a square perspective tile around its cone, near
+plane 0.25 m (its own lens and bumper are nearer), far plane its range.
+Importance is candela x screen coverage (its tiles over all tiles) /
+distance^2 from the eye, x 1.25 for a lamp that held a tile last frame; the
+tile is 1024 texels for a quarter of the screen or more, then 512, 256,
+128; while the tiles exceed the atlas the least important is halved, the
+most important lamps keeping theirs. Tiles are aligned power-of-two blocks
+of 128-texel cells, last frame's places kept where they still fit, the rest
+placed largest first in Morton order (which always packs a set whose area
+fits; a fragmented atlas is packed afresh). A tile is drawn again only when
+its lamp, its place or the moving casters near it (this frame's captured
+triangles in the lamp's reach, hashed) changed, the most important first,
+within a budget of texels a frame (the whole atlas); a tile that misses the
+budget keeps last frame's depth and the transform it was drawn with, and
+one with no depth yet is unshadowed for the frame. Casters: the track's
+triangles binned at load into 16 m cells (each cell's extent tested against
+the lamp's frustum) and the frame's moving objects. Sampling: the receiver
+pushed along its normal one to three texels of the tile at its depth (three
+at grazing light, so the kernel's nearest row stays on the receiver's far
+side), compared nearer by one texel x (1 + tan theta), 3 x 3 bilinear
+comparisons kept inside the tile. A new GPU pass, "lamp shadows", follows
+the sun's cascades in `BR_LIGHT_GPU`; `BR_LIGHT_VIEW=6` shows the lights a
+pixel's cluster lists; `BR_LIGHT_STATS` prints the clusters and the plan.
+
+| check | result |
+|---|---|
+| cluster lists, CPU (300 random cameras, up to 128 random lights of all four kinds, 5.6 M points in view and in lights' reach) | 26.3 M (point, light) pairs reaching: none missing from the point's cluster |
+| false positives | 12.05 lights listed a point, 4.70 reaching it: 61% of listings do not reach the point; per cluster, 32% of listings reach none of 512 samples inside it |
+| cluster lists, GPU (`lc_index`, `lamp`, `lwin` as compiled for the renderer; 100 cameras, 6.6 M points) | 32.9 M pairs reaching on the GPU: none missing from the shader's walk of the cluster list |
+| GPU against CPU | cluster index equal at all but 1,269 points (a boundary, by rounding); reach equal but for 539,946 pairs where the CPU's light is under 1e-30 cd (the GPU flushes it to zero) and 965 at a range or cone edge (what the margin covers) |
+| a point in a lamp's cone (312,237 points, 2,000 random lamps) | inside its atlas tile and 0 <= z/w <= 1: all |
+| depth along 40,000 rays from the lamp | increases with distance at every step |
+| occluder (a 2 x 2 m board 10 m in front of a spot 1 m up, the ground to 55 m) | the shader's test in C and on the GPU: 108,550 ground points, 0 wrong (behind the board under 0.05, in the open over 0.95; the 3-texel penumbra and the board's foot left out); the first bias (1.5 texels along the normal) lost 5 to 10% to grazing acne at 25 to 55 m |
+| the drawn tile against a ray cast | 130,074 texels: mean relative depth error 1.6e-5, largest 4.1e-4 |
+| allocator | 80 lamps in the 4096^2 atlas: all placed (14 at 1024, 3 at 512, 63 at 128), none overlapping; 80 in 2048^2: all placed; 128 lamps all wanting 1024: all placed; 500 frames of 20 to 127 lamps coming and going: all placed, none overlapping |
+| cache | a still frame draws no tile; one lamp moved, one tile; a caster near one lamp, the tiles whose reach it is in; a 4 Mtexel budget: 22 tiles drawn, 58 kept |
+| track casters (200 lamps, 12,000 random triangles) | every triangle in a lamp's reach drawn into its tile; 136 a lamp |
+| clustered against every light, the grid at 1080p on the GPU | the same light to the bit at all 1.23 M lit pixels |
+| shader source | the renderer's whole source (as `brr_open` assembles it) compiled by this Mac's Metal compiler; G-buffer, lighting, forward, sun shadow and atlas pipelines built |
+| build | `HOST=null RENDER=metal ports/brally/link64.sh` links; `brr_metal.m`, `light_cluster.c`, `light_scene.c` compile for arm64 iOS |
+
+The offline compile (`xcrun -sdk macosx|iphoneos metal -c`) needs Xcode's
+Metal Toolchain component, which is not installed here; `run.sh compile`
+does it once it is.
+
+**The 20-car night grid**, synthetic (`scene.h`): two columns, 8 m between
+rows, each car's two low beams (20,000 cd, 150 m) and two tail lamps (5 cd,
+25 m), a chase camera 6 m behind and 2.2 m above the last car, 1920 x 1080.
+
+| | |
+|---|---|
+| cluster build, shadow plan (CPU) | 0.31 to 0.35 ms, 0.06 to 0.08 ms |
+| lights listed a ground pixel | 18.3 (longest list 48) instead of 80 |
+| lights reaching it | 14.5: 2.9 low beams (all shadowed), 11.5 tail lamps |
+| shadow tiles | 40 (the low beams), 16.4 Mtexels |
+| GPU, M4 Pro (20 cores), the lamps alone, median of 41, over five runs | clustered and shadowed 1.04 to 1.55 ms; every light, shadowed 2.20 to 3.20 ms; clustered unshadowed 0.92 to 1.57 ms; the atlas, 40 tiles of 242 casters, 0.14 to 0.43 ms |
+
+The spread between runs is the GPU's clock; clustered is 2.0 to 2.3 times
+faster than every light in each run, and the shadows cost little beside
+the light itself.
+
+Cost per pixel, counted from the shader: a listed light about 25 ALU
+operations (its record, the distance, the normal test); a reaching low beam
+about 165 (the pattern's two atan2 and three exp, the windows, the BRDF); a
+reaching tail lamp about 85; a shadow lookup about 75 and nine bilinear
+compares. The grid's mean ground pixel: 18.3 x 25 + 2.9 x 165 + 11.5 x 85
++ 2.9 x 75, about 2,140 operations and 26 compares, 2.6 G operations a
+frame at 1080p. The M4 Pro's 20 cores at about 4 T simple operations a
+second give 0.65 ms; the measured 1.0 to 1.5 ms is about half that rate.
+Scaled by GPU throughput (estimates until measured on the devices): an
+A17 Pro (6 cores, about 3.8 times less) about 4 to 6 ms at 1080p, and at
+T0's 1280 x 720 about 1.8 to 2.6 ms on an A17 Pro, more on A15/A16: over
+DESIGN.md 12's 1.6 ms for T0's direct light. The tail lamps are most of it
+(11.5 a pixel at 85 operations): a 5 cd lamp gives 0.008 lux at its 25 m
+range, against a night exposure whose mid grey is near 8 lux. A range from
+each lamp's intensity and the exposure (where it falls under 1% of mid
+grey: 8 m for a tail lamp, 31 m for a brake lamp) would cut that by about
+ten; it changes what the lamps light, so it is the project lead's call.
+
+Not done here (the game was not run for this work): the lit frames, the
+Original check and `lightcheck.sh` with this build; with the flag off none
+of this code runs (it is all inside `lit_present`).
