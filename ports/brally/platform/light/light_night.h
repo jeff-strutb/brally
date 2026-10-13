@@ -122,4 +122,48 @@ static inline int light_glow_on(const LightGlow *g, uint32_t tid)
     return tid < LIGHT_GLOW_TEX && g->f[tid] == GLOW_TRACK;
 }
 
+/* ---- which draws are lamplight -------------------------------------------------
+ * In the Original game the lit windows at night are blended decals drawn
+ * over the walls; the walls, rock and sand under them are opaque (Glide
+ * blend ONE, ZERO).  So a draw's glow mask, and the track's lights made from
+ * it (light_world_gather), come only from a blended draw: an opaque texture
+ * never glows, however warm and bright its texels (a sandy rock face). */
+static inline int light_draw_opaque(int src, int dst) { return src == 4 && dst == 0; }
+static inline int light_draw_may_glow(int src, int dst) { return !light_draw_opaque(src, dst); }
+
+/* ---- the lighthouse beam's polygons ------------------------------------------------
+ * The game draws each lighthouse's beam as a cone fanned from its instance's
+ * position (Coastline's 64 and 142: every one of the 10 triangles has a
+ * vertex within 0.47 m of it and one 77 m out).  A draw whose every
+ * triangle touches a beam instance's position (under 1 m) and reaches past
+ * 20 m from it is that beam: emitted light, not a lit surface. */
+#define LIGHT_BEAM_APEX  1.0f
+#define LIGHT_BEAM_REACH 20.0f
+/* the beam polygons' weight when the volumetric fog carries the beam (the
+ * lighthouse spot's in-scatter, brr_metal_vol.h) */
+#define LIGHT_BEAM_VOLW  0.25f
+static inline int light_beam_draw(const float *xyz, int ntri, const float pos[][3], int nb)
+{
+    int b, t, k;
+    if (ntri <= 0)
+        return 0;
+    for (b = 0; b < nb; b++) {
+        int all = 1;
+        for (t = 0; t < ntri && all; t++) {
+            float dmin = 1e30f, dmax = 0.0f;
+            for (k = 0; k < 3; k++) {
+                const float *p = &xyz[9 * t + 3 * k];
+                float dx = p[0] - pos[b][0], dy = p[1] - pos[b][1], dz = p[2] - pos[b][2];
+                float d = sqrtf(dx * dx + dy * dy + dz * dz);
+                dmin = fminf(dmin, d);
+                dmax = fmaxf(dmax, d);
+            }
+            all = dmin < LIGHT_BEAM_APEX && dmax > LIGHT_BEAM_REACH;
+        }
+        if (all)
+            return 1;
+    }
+    return 0;
+}
+
 #endif

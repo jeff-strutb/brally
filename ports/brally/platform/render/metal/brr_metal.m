@@ -69,7 +69,7 @@ static NSString *const k_src = @
 "  float atest_ref, vw, vh, xf;\n"
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
-"  float glow, addk;\n"
+"  float glow, addk, beam, beamw;\n"
 "};\n"
 "struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
@@ -217,6 +217,7 @@ typedef struct U {
     float konst[4], fog_color[4];
     float fog[64];
     float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
+    float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
 } U;
 
 /* ---- state --------------------------------------------------------------------------- */
@@ -657,6 +658,30 @@ static void lit_targets(void)
         s_shcache = [s_dev newTextureWithDescriptor:td];
         memset(s_shc, 0, sizeof s_shc);
     }
+}
+
+/* is this draw a lighthouse beam's cone (light_night.h light_beam_draw)?  The
+ * beam instances' positions are read once a frame (light_game_beams). */
+static int lit_beam(const brr_vertex *v, int n)
+{
+    static unsigned long fr = ~0UL;
+    static float bp[4][3], bx[4][3];
+    static int nb;
+    float xyz[9 * 64];
+    int t, k, nt = n / 3 > 64 ? 64 : n / 3;
+    if (fr != s_frame) {
+        fr = s_frame;
+        nb = light_game_beams(bp, bx, 4);
+    }
+    if (nb <= 0)
+        return 0;
+    for (t = 0; t < nt; t++)
+        for (k = 0; k < 3; k++) {
+            xyz[9 * t + 3 * k] = v[3 * t + k].wx;
+            xyz[9 * t + 3 * k + 1] = v[3 * t + k].wy;
+            xyz[9 * t + 3 * k + 2] = v[3 * t + k].wz;
+        }
+    return light_beam_draw(xyz, nt, (const float (*)[3])bp, nb);
 }
 
 /* a texture's lamplight, for the glow at night: its warm, bright, saturated
@@ -2137,8 +2162,11 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         for (i = 0; i < 64; i++)
             u.fog[i] = st->fog_table[i] / 255.0f;
         if (s_litf) {                   /* recorded; replayed in the lighting's passes (lit_present) */
-            int opaque = st->blend_rgb_src == 4 && st->blend_rgb_dst == 0;
+            int opaque = light_draw_opaque(st->blend_rgb_src, st->blend_rgb_dst);
             int kind = v[0].lit > 1.5f && v[0].lit < 2.5f ? K_BACK : v[0].lit > 0.5f ? (opaque ? K_OPQ : K_BLEND) : K_OTHER;
+            int beam = (kind == K_OPQ || kind == K_BLEND) && lit_beam(v, n);
+            if (beam)                   /* a lighthouse beam: emitted light, forward-drawn, never in the G-buffer or a caster */
+                kind = K_BLEND;
             Op *op = op_new(kind);
             if (!op)
                 return;
@@ -2153,7 +2181,10 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 op->has_sc = 1;
             }
             u.glow = 0.0f;
-            if (light_game_weather() == 4 && u.has_tex && (kind == K_OPQ || kind == K_BLEND) && n >= 3) {
+            /* lamplight only from the track's blended decals (light_night.h light_draw_may_glow): an
+               opaque rock or sand texture never glows nor makes lights, however warm its texels */
+            if (light_game_weather() == 4 && u.has_tex && kind == K_BLEND && !beam && n >= 3
+                && light_draw_may_glow(st->blend_rgb_src, st->blend_rgb_dst)) {
                 /* lamplight glows only in the track's own scene, never on a car (light_night.h) */
                 const float tri[9] = { v[0].wx, v[0].wy, v[0].wz, v[1].wx, v[1].wy, v[1].wz, v[2].wx, v[2].wy, v[2].wz };
                 light_glow_drawn(&s_glow, st->texture, light_capture_ontrack(tri));
@@ -2176,6 +2207,8 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 }
             }
             u.addk = kind == K_BLEND && st->blend_rgb_dst == 4 ? 100.0f : 0.0f;   /* dst ONE: light it adds */
+            u.beam = beam ? 100.0f : 0.0f;   /* the beam's own colour and alpha as light, whatever its blend */
+            u.beamw = LIGHT_BEAM_VOLW;
             op->u = u;
             op->src = st->blend_rgb_src;
             op->dst = st->blend_rgb_dst;

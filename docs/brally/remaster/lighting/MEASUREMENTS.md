@@ -1500,3 +1500,33 @@ the brightest fifth.
 
 Grade (brr_metal_lit.h grade, after PBR Neutral): sunny saturation 1.12,
 contrast 1.05 about mid-grey; other weathers none.
+
+## Night on Coastline: false lamplight on rock, the lighthouse beam (2026-10-13)
+
+False lights on the rock walls: the glow mask is decided by colour
+(lit_emask: alpha 128 up, r 180 up, g 128 up, r - b 60 up), and the draw
+gate let opaque track draws through (`kind == K_OPQ || kind == K_BLEND`),
+so a sandy or rock texture glowed and every triangle of it was handed to
+light_world_gather as a window.  A sandstone texel (205, 170, 125) passes
+the colour test: share 1.00.  In the Original game the lit windows are
+blended decals over the walls, so lamplight now comes only from blended
+track draws (light_night.h light_draw_may_glow; additive light sprites
+included): an opaque (ONE, ZERO) draw never glows nor makes lights.
+night.sh: opaque sandstone 0 emitters, 0 lights; the same texels as a
+blended decal 6 emitters, 3 lights, 3,770 lm against 3,770 lm.
+
+Stepped lighthouse beam: the beam's cone was forward-lit as a surface,
+radiance() on facen's flat facet normal, so each facet shaded differently.
+The beam draws are now found by construction (light_night.h
+light_beam_draw: every triangle has a vertex within 1 m of a beam
+instance's position and one past 20 m; Coastline's fixture: 20 of 20 beam
+triangles, 0 of 11,344 others) and drawn as emitted light: the game's own
+colour and alpha (its Gouraud gradient along the beam) at 100 cd/m2, no
+normal, no fog weight, never in the G-buffer or the shadow casters.  With
+the volumetric fog on, the beam polygons are drawn at 0.25
+(LIGHT_BEAM_VOLW) and the lighthouse spot's in-scatter carries the beam.
+night.sh: on a 10-facet cone the facets' values on each shared edge differ
+by 0.0000% (limit 1%); lit on facet normals they differed by up to 100%.
+maths.sh (73 pass, offline macOS and iOS compiles 0 warnings), vol.sh pass;
+link64.sh links.  Not seen in a run: the beam's blend mode as the game sets
+it (the classification does not depend on it).
