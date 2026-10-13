@@ -35,6 +35,7 @@
 #include "brr_metal_lights.h"
 #include "brr_metal_lit.h"
 #include "brr_metal_sky.h"
+#include "brr_skymask.h"
 #include "brr_metal_rt.h"
 #include "brr_shadow.h"
 #include "br_flags.h"
@@ -350,6 +351,7 @@ static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int co
  * (as the wasm lane draws) */
 static void lit_reset(void);
 static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h);
+static id<MTLTexture> lit_skymask(uint32_t tid);
 
 static void targets(int w, int h)
 {
@@ -414,6 +416,7 @@ static int s_litf;                  /* this frame is lit (the flag, read when it
 static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_hdr, s_shadow, s_shcache, s_bl[6];
 static int s_nbl;
 static id<MTLTexture> s_emask[TEX_MAX], s_black;
+static id<MTLTexture> s_skym[TEX_MAX];   /* a backdrop texture's painted sky (brr_skymask.h), made on its first use as one */
 static id<MTLTexture> s_brdfE;        /* the GGX lobe's albedo by (mu, roughness): the diffuse's coupling (brdf_lut) */
 static id<MTLRenderPipelineState> s_lpg, s_lpb, s_lpl, s_lpf[16][16], s_lbd, s_lbu, s_lbua, s_lpp, s_shpipe, s_shcopy;
 static id<MTLDepthStencilState> s_shds, s_nods, s_shcopyds;
@@ -436,19 +439,19 @@ static float s_ev = 1e9f;
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
                    float cdepth[4], csoft[4], scr[16]; } LU;   /* brr_metal_lit.h's LU, the same layout */
 typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
-typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4]; } KU;
+typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4]; } KU;
 
 /* the sky per weather (brr_metal_sky.h): the Mie density (haze, fog), the
  * light at the top of the atmosphere (the sun's 128,000 lux, or a full moon's
  * 0.32 at night), the part of the sun the clouds let through, and the
  * clouds' brightening of the sky */
-static const struct { float mie, top, through, skyk; } k_sky[5] = {
-    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f },
-    /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f },
-    /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f },
-    /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f },
-    /* night */ { 1.0f, 0.32f, 1.00f, 1.0f },
-};
+static const struct { float mie, top, through, skyk, cover, dens; } k_sky[5] = {
+    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f, 0.30f, 0.06f },
+    /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f, 0.95f, 0.10f },
+    /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f, 1.00f, 0.16f },
+    /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f, 0.85f, 0.10f },
+    /* night */ { 1.0f, 0.32f, 1.00f, 1.0f, 0.35f, 0.06f },
+};   /* cover: the cloud layer's fBm coverage; dens: its extinction per metre at full density (brr_metal_clouds.h) */
 static id<MTLTexture> s_atmT, s_atmM, s_atmS, s_atmI[3];
 static id<MTLRenderPipelineState> s_patmT, s_patmM, s_patmS, s_patmI, s_psky, s_pbk2;
 static float s_atm_mie = -1.0f;
@@ -634,6 +637,38 @@ static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
     free(m);
 }
 
+/* a backdrop texture's sky mask (brr_skymask.h): made once, the first time
+ * the texture is drawn as the backdrop, from its texels; s_black (all
+ * scenery, the painting kept) without one */
+static id<MTLTexture> lit_skymask(uint32_t tid)
+{
+    id<MTLTexture> t;
+    uint8_t *px, *m;
+    int *sky, w, h;
+    if (tid >= TEX_MAX || !(t = s_tex[tid]))
+        return s_black;
+    if (s_skym[tid])
+        return s_skym[tid];
+    w = (int)t.width;
+    h = (int)t.height;
+    px = malloc((size_t)w * h * 4);
+    m = malloc((size_t)w * h);
+    sky = malloc((size_t)w * sizeof(int));
+    if (px && m && sky) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
+                                                                                     width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+        [t getBytes:px bytesPerRow:(NSUInteger)w * 4 fromRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0];
+        brr_skymask(px, w, h, sky, m);
+        td.usage = MTLTextureUsageShaderRead;
+        s_skym[tid] = [s_dev newTextureWithDescriptor:td];
+        [s_skym[tid] replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h) mipmapLevel:0 withBytes:m bytesPerRow:(NSUInteger)w];
+    }
+    free(px);
+    free(m);
+    free(sky);
+    return s_skym[tid] ? s_skym[tid] : s_black;
+}
+
 static Op *op_new(int kind)
 {
     Op *o;
@@ -668,6 +703,8 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         NSArray *pair = s_frametex[(NSUInteger)o->texobj];
         [e setFragmentTexture:pair[0] atIndex:0];
         [e setFragmentTexture:pair[1] atIndex:1];
+        if (pair.count > 2)
+            [e setFragmentTexture:pair[2] atIndex:2];
         [e setFragmentSamplerState:samp_for(o->filt, o->cs, o->ct) atIndex:0];
     } else {
         [e setFragmentTexture:s_black atIndex:1];
@@ -1246,6 +1283,10 @@ static void lit_present(void)
             ku.ktop[1] = k_sky[w].through;
             ku.ktop[2] = k_sky[w].skyk;
             ku.ktop[3] = u.misc[3];            /* the debug view */
+            ku.cld[0] = k_sky[w].cover;
+            ku.cld[1] = k_sky[w].dens;
+            ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
+            ku.cld[3] = getenv("BR_LIGHT_NOCLOUDS") ? 0.0f : 1.0f;    /* the cloud layer's tier flag */
             if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
                 fprintf(stderr, "sky: xft %g %g %g %g vpt %g %g %g %g m0 %g %g %g m1 %g %g %g m2 %g %g %g off %g %g %g eye %g %g %g tgt %g %g sun %g %g %g irr %g %g %g\n",
                         ku.xft[0], ku.xft[1], ku.xft[2], ku.xft[3], ku.vpt[0], ku.vpt[1], ku.vpt[2], ku.vpt[3],
@@ -1705,6 +1746,7 @@ uint32_t brr_texture(uint32_t tid, const uint8_t *rgba, int w, int h)
         t = [s_dev newTextureWithDescriptor:td];
         [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:rgba bytesPerRow:(NSUInteger)w * 4];
         s_tex[tid] = t;
+        s_skym[tid] = nil;
         lit_emask(tid, rgba, w, h);
         return tid;
     }
@@ -1914,7 +1956,10 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                 id<MTLTexture> t = st->texture < TEX_MAX && s_tex[st->texture] ? s_tex[st->texture] : s_white;
                 id<MTLTexture> m = st->texture < TEX_MAX && s_emask[st->texture] ? s_emask[st->texture] : s_black;
                 op->texobj = (int)[s_frametex count];
-                [s_frametex addObject:@[ t, m ]];
+                if (kind == K_BACK)     /* a backdrop's painted sky, for the physical sky through it */
+                    [s_frametex addObject:@[ t, m, lit_skymask(st->texture) ]];
+                else
+                    [s_frametex addObject:@[ t, m ]];
             }
             op->filt = st->mag_filter || st->min_filter;
             op->cs = st->clamp_s;
