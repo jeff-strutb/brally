@@ -11,6 +11,7 @@
 #include "brr_metal_taa.m"
 #include "light_world.h"
 
+#define LT_HAVE_LIGHT_WORLD
 #include "game_stubs.h"
 
 static int g_fail;
