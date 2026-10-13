@@ -53,6 +53,11 @@ int main(int argc, char **argv)
         pipe_ok(dev, lib, @"svs", nil, NULL, 0, 1);
         pipe_ok(dev, lib, @"lcclr", nil, NULL, 0, 1);
         pipe_ok(dev, lib, @"lcvs", nil, NULL, 0, 1);
+        {   /* the BRDF's albedo table, made at start-up */
+            static const MTLPixelFormat rg = MTLPixelFormatRG16Float;
+            pipe_ok(dev, lib, @"lvs", @"brdf_lut", &rg, 1, 0);
+            pipe_ok(dev, lib, @"lvs", @"brdf_avg", &rg, 1, 0);
+        }
     }
     printf(g_fail ? "compile_test: %d FAILED\n" : "compile_test: all passed\n", g_fail);
     return g_fail != 0;

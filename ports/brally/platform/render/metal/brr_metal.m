@@ -414,6 +414,7 @@ static int s_litf;                  /* this frame is lit (the flag, read when it
 static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_hdr, s_shadow, s_shcache, s_bl[6];
 static int s_nbl;
 static id<MTLTexture> s_emask[TEX_MAX], s_black;
+static id<MTLTexture> s_brdfE;        /* the GGX lobe's albedo by (mu, roughness): the diffuse's coupling (brdf_lut) */
 static id<MTLRenderPipelineState> s_lpg, s_lpb, s_lpl, s_lpf[16][16], s_lbd, s_lbu, s_lbua, s_lpp, s_shpipe, s_shcopy;
 static id<MTLDepthStencilState> s_shds, s_nods, s_shcopyds;
 static float *s_tris;               /* this frame's opaque 3D in world space */
@@ -430,7 +431,7 @@ static BrrRtWorld s_rt;             /* the track for rays (brr_metal_rt_world) *
 static size_t s_ntris, s_captris;
 static id<MTLBuffer> s_hist[3];
 static float s_ev = 1e9f;
-#define LUM_BINS 64
+#define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
                    float cdepth[4], csoft[4], scr[16]; } LU;   /* brr_metal_lit.h's LU, the same layout */
@@ -532,6 +533,33 @@ static void lit_init(void)
     [s_black replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 withBytes:&zero bytesPerRow:1];
     s_lfbtex = [NSMutableArray new];
     s_frametex = [NSMutableArray new];
+    {   /* the specular lobe's albedo table, once (brr_metal_lit.h, brdf_lut then brdf_avg) */
+        static const MTLPixelFormat rg = MTLPixelFormatRG16Float;
+        id<MTLRenderPipelineState> p[2] = { lit_pipe(@"lvs", @"brdf_lut", &rg, 1, 0, -1, -1), lit_pipe(@"lvs", @"brdf_avg", &rg, 1, 0, -1, -1) };
+        id<MTLCommandBuffer> cb = [s_q commandBuffer];
+        id<MTLTexture> t[2];
+        int k;
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:rg width:64 height:64 mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        for (k = 0; k < 2; k++)
+            t[k] = [s_dev newTextureWithDescriptor:td];
+        for (k = 0; k < 2; k++) {
+            MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+            id<MTLRenderCommandEncoder> e;
+            rp.colorAttachments[0].texture = t[k];
+            rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+            rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+            e = [cb renderCommandEncoderWithDescriptor:rp];
+            [e setRenderPipelineState:p[k]];
+            if (k)
+                [e setFragmentTexture:t[0] atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+            [e endEncoding];
+        }
+        [cb commit];
+        s_brdfE = t[1];
+    }
 }
 
 static id<MTLRenderPipelineState> lit_forward(int src, int dst)
@@ -666,7 +694,8 @@ const BrrRtWorld *brr_metal_rt_world(void)
 }
 
 /* the exposure: the post pass bins the frame's luminance into a histogram
- * (one of three buffers, read back three frames later when its frame is
+ * (16 bins a stop, so a bin centre is within 1/32 EV of what it holds; one
+ * of three buffers, read back three frames later when its frame is
  * done); the mean log luminance of the band between its 80th and 98.3rd
  * percentiles (Unreal Engine's auto-exposure defaults: the darkest pixels and
  * the few brightest do not move it) sets the camera's EV100 as a light meter
@@ -689,7 +718,7 @@ static float lit_exposure(int w)
     for (i = 0; i < LUM_BINS; i++) {
         unsigned a0 = run, a1 = run + c[i], b0 = a0 > lo ? a0 : lo, b1 = a1 < hi ? a1 : hi;
         float in = b1 > b0 ? (float)(b1 - b0) : 0.0f;
-        mlog += in * ((i + 0.5f) / 2.0f - 10.0f);
+        mlog += in * ((i + 0.5f) / 16.0f - 10.0f);
         wsum += in;
         run = a1;
     }
@@ -1450,6 +1479,7 @@ static void lit_present(void)
     [e setFragmentTexture:s_gnrm atIndex:2];
     [e setFragmentTexture:s_shadow atIndex:3];
     [e setFragmentTexture:s_latl atIndex:4];
+    [e setFragmentTexture:s_brdfE atIndex:5];
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
@@ -1469,6 +1499,7 @@ static void lit_present(void)
             [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:2];
             [e setFragmentTexture:s_shadow atIndex:3];
             [e setFragmentTexture:s_latl atIndex:4];
+            [e setFragmentTexture:s_brdfE atIndex:5];
             op_draw(e, &s_ops[i], 1);
         }
     [e endEncoding];

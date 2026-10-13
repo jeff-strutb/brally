@@ -134,21 +134,58 @@ BRR_LU_SRC \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
-   brightness is the game's baked light, which the lighting replaces) */ \
+   brightness is the game's baked light, which the lighting replaces), 0.85 \
+   of it; the hue halved into the sRGB curve's range and linearised, then \
+   scaled back by 1 / lin(0.5) = 4.672 so a grey vertex colour is a hue of 1 \
+   (4.0, a gamma-2 reading of the curve, left grey at 0.856) */ \
 "static float3 delit(float3 tex, float3 vc) {\n" \
 "  float lv = dot(vc, float3(0.2126, 0.7152, 0.0722));\n" \
 "  float3 hue = lv > 0.02 ? clamp(vc / lv, 0.0, 2.0) : float3(1);\n" \
-"  return clamp(lin(tex) * lin(saturate(hue * 0.5)) * 4.0 * 0.85, 0.0, 0.9);\n" \
+"  return clamp(lin(tex) * lin(saturate(hue * 0.5)) * 4.672 * 0.85, 0.0, 0.9);\n" \
 "}\n" \
-/* GGX with Smith visibility (height-correlated approximation) and Schlick \
-   Fresnel; Lambert diffuse; energy split by Fresnel */ \
-"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough) {\n" \
-"  float3 h = normalize(l + v); float nl = max(dot(n, l), 0.0), nv = max(dot(n, v), 1e-3), nh = max(dot(n, h), 0.0);\n" \
+/* the specular lobe: GGX with Smith visibility (height-correlated \
+   approximation) and Schlick Fresnel (F0 0.04), without the n.l; the GGX \
+   denominator's 1 - (n.h)^2 as |n x h|^2, exact in float for a smooth lobe */ \
+"static float p5(float x) { float x2 = x * x; return x2 * x2 * x; }\n" \
+"static float ggxspec(float3 n, float3 v, float3 l, float rough) {\n" \
+"  float nl = clamp(dot(n, l), 0.0, 1.0), nv = clamp(dot(n, v), 1e-3, 1.0);\n" \
+"  float3 h = normalize(l + v); float nh = max(dot(n, h), 0.0);\n" \
 "  float a2 = max(rough * rough, 2e-3); a2 *= a2;\n" \
-"  float d = nh * nh * (a2 - 1.0) + 1.0, D = a2 / (3.14159 * d * d);\n" \
+"  float3 nxh = cross(n, h); float d = nh * nh * a2 + dot(nxh, nxh), D = a2 / (3.14159 * d * d);\n" \
 "  float Vs = 0.5 / max(nl * sqrt(nv * nv * (1.0 - a2) + a2) + nv * sqrt(nl * nl * (1.0 - a2) + a2), 1e-4);\n" \
-"  float F = 0.04 + 0.96 * pow(1.0 - max(dot(h, v), 0.0), 5.0);\n" \
-"  return (alb / 3.14159 * (1.0 - F) + D * Vs * F) * nl;\n" \
+"  return D * Vs * (0.04 + 0.96 * p5(1.0 - saturate(dot(h, v))));\n" \
+"}\n" \
+/* the lobe's directional albedo E(mu), sampling the normals visible from v \
+   (Heitz 2018), ns x ns stratified: pdf(l) = G1(v) D(h) / (4 n.v), so a \
+   sample weighs F G2 / G1, at most 1, even at grazing */ \
+"static float ggxalb(float mu, float rough, int ns) {\n" \
+"  float3 n = float3(0, 0, 1), v = float3(sqrt(max(1.0 - mu * mu, 0.0)), 0.0, mu);\n" \
+"  float a = max(rough * rough, 2e-3), a2 = a * a, e = 0.0;\n" \
+"  float g1 = 2.0 * mu / (mu + sqrt(a2 + (1.0 - a2) * mu * mu));\n" \
+"  float3 vh = normalize(float3(a * v.x, a * v.y, v.z)), t1 = float3(0, 1, 0), t2 = cross(vh, t1); float s = 0.5 * (1.0 + vh.z);\n" \
+"  for (int j = 0; j < ns; j++) for (int i = 0; i < ns; i++) {\n" \
+"    float r = sqrt((j + 0.5) / ns), ph = 6.28318 * (i + 0.5) / ns, p1 = r * cos(ph), p2 = r * sin(ph);\n" \
+"    p2 = (1.0 - s) * sqrt(max(1.0 - p1 * p1, 0.0)) + s * p2;\n" \
+"    float3 nh = p1 * t1 + p2 * t2 + sqrt(max(1.0 - p1 * p1 - p2 * p2, 0.0)) * vh;\n" \
+"    float3 h = normalize(float3(a * nh.x, a * nh.y, max(nh.z, 0.0))); float vhd = dot(v, h); float3 l = 2.0 * vhd * h - v;\n" \
+"    float dd = h.z * h.z * a2 + (h.x * h.x + h.y * h.y), D = a2 / (3.14159 * dd * dd);\n" \
+"    if (l.z > 0.0 && vhd > 0.0) e += ggxspec(n, v, l, rough) * l.z * 4.0 * mu / (g1 * D); }\n" \
+"  return e / (ns * ns); }\n" \
+/* GGX (above) and a Lambert diffuse coupled to it as Kelemen and \
+   Szirmay-Kalos 2001 and Kulla and Conty 2017 couple them: the diffuse gets \
+   the energy the lobe leaves on the way in and on the way out, (1 - E(n.l)) \
+   (1 - E(n.v)) / (pi (1 - E_avg)), so white reflects at most all that \
+   arrives at every angle and roughness (the weighting by 1 - F(h.v) it \
+   replaces reflected up to 1.79 of it at grazing views); nothing with the \
+   light or the eye below the surface (there l = -v made h = normalize(0); \
+   radiance turns n to the eye, so the eye never is) */ \
+"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE) {\n" \
+"  float nl = min(dot(n, l), 1.0); if (nl <= 0.0 || dot(n, v) < 0.0) return 0.0;\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 sz = float2(bE.get_width(), bE.get_height());\n" \
+"  float nv = clamp(dot(n, v), 1e-3, 1.0), ry = saturate((rough - 0.0447) / 0.9553);   /* the table from the roughness floor (a^2 = 2e-3) */\n" \
+"  float2 ev = bE.sample(s, (0.5 + float2(sqrt(nv), ry) * (sz - 1.0)) / sz).rg; float el = bE.sample(s, (0.5 + float2(sqrt(nl), ry) * (sz - 1.0)) / sz).r;\n" \
+"  float fd = (1.0 - ev.x) * (1.0 - el) / (3.14159 * max(1.0 - ev.y, 1e-3));\n" \
+"  return (alb * fd + ggxspec(n, v, l, rough)) * nl;\n" \
 "}\n" \
 BRR_SHADOW_SRC \
 /* a surface's normal turned toward the eye (the game's faces are seen from \
@@ -157,11 +194,12 @@ BRR_SHADOW_SRC \
 /* the light leaving a surface toward the eye, cd/m2, before exposure; n \
    toward the eye (toeye), sv how much of the sun reaches it; the lamps from \
    the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h) */ \
-"static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv) {\n" \
+"static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
+"                       texture2d<float> bE) {\n" \
 "  float3 v = normalize(u.eye.xyz - p);\n" \
-"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough) * sv;\n" \
+"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rough, bE) * sv;\n" \
 "  Lo += alb / 3.14159 * mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5);\n" \
-"  Lo += lamps(ls, atl, p, n, v, alb, rough);\n" \
+"  Lo += lamps(ls, atl, p, n, v, alb, rough, bE);\n" \
 "  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
@@ -196,10 +234,26 @@ BRR_SHADOW_SRC \
 "}\n" \
 "struct LO { float4 pos [[position]]; float2 uv; };\n" \
 "vertex LO lvs(uint i [[vertex_id]]) { float2 p = float2((i << 1) & 2, i & 2); LO o; o.pos = float4(p * 2.0 - 1.0, 0, 1); o.uv = float2(p.x, 1.0 - p.y); return o; }\n" \
+/* the table brdf couples the diffuse through, 64 x 64 over (mu, roughness), \
+   made once at start-up in two passes: r the lobe's albedo E(mu) (brdf_lut), \
+   g its cosine-weighted mean over the hemisphere E_avg, integrated from the \
+   table itself through the lookup brdf makes (brdf_avg), so the diffuse's \
+   normalisation is that of what it reads; texel (i, j) holds mu = (i / 63)^2 \
+   (fine at grazing, where E changes fastest) and roughness 0.0447 + 0.9553 \
+   j / 63 (from where the lobe stops being held at its smoothest) */ \
+"fragment float4 brdf_lut(LO in [[stage_in]]) {\n" \
+"  float2 n = round(in.pos.xy / in.uv), x = (in.pos.xy - 0.5) / (n - 1.0);\n" \
+"  return float4(ggxalb(max(x.x * x.x, 1e-3), 0.0447 + 0.9553 * x.y, 64), 0, 0, 1); }\n" \
+"fragment float4 brdf_avg(LO in [[stage_in]], texture2d<float> A [[texture(0)]]) {\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 sz = float2(A.get_width(), A.get_height());\n" \
+"  uint2 px = uint2(in.pos.xy); float yv = (px.y + 0.5) / sz.y, avg = 0.0;\n" \
+"  for (int k = 0; k < 1024; k++) { float m = (k + 0.5) / 1024.0; avg += A.sample(s, float2((0.5 + sqrt(m) * (sz.x - 1.0)) / sz.x, yv)).r * 2.0 * m / 1024.0; }\n" \
+"  return float4(A.read(px).r, avg, 0, 1); }\n" \
 /* the deferred lighting */ \
 "fragment float4 lfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]],\n" \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
-"                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
+"                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
+"                    texture2d<float> bE [[texture(5)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -219,19 +273,20 @@ BRR_SHADOW_SRC \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv)), N.w, fogc), 1);\n" \
+"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, u.misc.z, glow, sv, bE)), N.w, fogc), 1);\n" \
 "}\n" \
 /* the game's blended 3D, forward-lit; an additive draw is light it adds */ \
 "fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
-"                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]]) {\n" \
+"                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
+"                    texture2d<float> bE [[texture(5)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
 "  if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, delit(h.tex.rgb, h.it.rgb), lu.misc.z, g, sv, bE);\n" \
 "  }\n" \
 "  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
 "}\n" \
@@ -264,11 +319,11 @@ BRR_SHADOW_SRC \
 "                    texture2d<float> alb [[texture(2)]],\n" \
 "                    device atomic_uint *hist [[buffer(1)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
-"  uint2 px = uint2(in.pos.xy); float3 c = hdr.read(px).rgb;\n" \
+"  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
 "  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
-"  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(px).a >= 0.25)   /* the meter reads lit surfaces only */\n" \
-"    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed);\n" \
+"  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(px).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
+"    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))], 1u, memory_order_relaxed);\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n"

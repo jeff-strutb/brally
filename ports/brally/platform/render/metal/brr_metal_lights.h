@@ -16,21 +16,26 @@
 "struct LSH { float4x4 m; float4 rect; float4 prm; };\n" \
 "struct LSet { LCH h; LS l[128]; LSH s[128]; uint cl[3456]; uchar idx[442368]; };\n" \
 /* a lamp's intensity toward d (unit, from the lamp), candela: a headlamp's \
-   low beam (UN ECE R112's asymmetric pattern: a sharp cut-off at the horizon \
-   on the near side, stepping up 15 degrees on the kerb side, the hot spot a \
-   degree and a half below the horizon and right of centre, a wide spread \
-   below it), a rear lamp's broad lobe; a point's or a spot's candela (lwin \
-   shapes a spot) */ \
+   low beam (UN ECE R112's asymmetric pattern for right-hand traffic, aimed \
+   as its paragraph 6.2.2.1 aims it: the cut-off's horizontal part 0.57 \
+   degrees below the horizon on the near side, rising 15 degrees from the \
+   elbow on the kerb side; the hot spot below the cut-off and right of \
+   centre, the near side dimmer, a wide spread below it; the cut-off a \
+   blend in log intensity, so its line, R112's steepest log gradient, sits \
+   where it is placed; checked against R112's test points by \
+   ports/brally/tools/lighttest), a rear lamp's broad lobe; a point's or a \
+   spot's candela (lwin shapes a spot) */ \
 "static float lamp(LS l, float3 d) {\n" \
 "  if (l.kind > 1.5) return l.cd;\n" \
 "  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
 "  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n" \
 "  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n" \
-"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958;\n" \
-"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / 10.0) * ((h - 1.5) / 10.0));\n" \
+"  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958 + 0.57;\n" \
+"  float hw = h < 1.5 ? 5.0 : 10.0;\n" \
+"  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / hw) * ((h - 1.5) / hw));\n" \
 "  float vert = v < -1.5 ? exp(-((v + 1.5) / 4.5) * ((v + 1.5) / 4.5)) : 1.0;\n" \
 "  float cut = h > 0.0 ? min(h * 0.268, 2.0) : 0.0;\n" \
-"  return l.cd * spread * vert * mix(1.0, 0.012, smoothstep(cut - 0.35, cut + 0.35, v));\n" \
+"  return l.cd * spread * vert * pow(0.012, smoothstep(cut - 0.35, cut + 0.35, v));\n" \
 "}\n" \
 /* where a light reaches: none from its range on (a smooth window from 0.7 of \
    it, Karis 2013), none outside a cone's outer angle (a spot's from its inner \
@@ -85,9 +90,9 @@
 "}\n" \
 /* the lamps' light leaving a surface toward v (cd/m2 before exposure): only \
    the lights in the point's cluster, each shadowed from its tile; brdf is \
-   the lighting's (brr_metal_lit.h) */ \
-"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough);\n" \
-"static float3 lamps(const device LSet &s, depth2d<float> atl, float3 p, float3 n, float3 v, float3 alb, float rough) {\n" \
+   the lighting's (brr_metal_lit.h), bE its table */ \
+"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE);\n" \
+"static float3 lamps(const device LSet &s, depth2d<float> atl, float3 p, float3 n, float3 v, float3 alb, float rough, texture2d<float> bE) {\n" \
 "  uint e = s.cl[lc_index(s.h, p)], o = e >> 8, cnt = e & 255u; float3 Lo = float3(0);\n" \
 "  for (uint k = 0; k < cnt; k++) {\n" \
 "    uint i = s.idx[o + k]; LS l = s.l[i];\n" \
@@ -95,7 +100,7 @@
 "    if (dot(n, ld) <= 0.0) continue;\n" \
 "    float E = lamp(l, -ld) * lwin(l, -ld, dl) / d2;\n" \
 "    if (E <= 0.0) continue;\n" \
-"    Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, rough);\n" \
+"    Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, rough, bE);\n" \
 "  }\n" \
 "  return Lo;\n" \
 "}\n" \

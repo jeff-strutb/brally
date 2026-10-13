@@ -38,28 +38,44 @@
 "  float H = sqrt(RT * RT - RG * RG), rho = sqrt(max(r * r - RG * RG, 0.0));\n" \
 "  float d = max(sphere(r, mu, RT), 0.0), dmin = RT - r, dmax = rho + H;\n" \
 "  return float2((d - dmin) / max(dmax - dmin, 1e-6), rho / H); }\n" \
+/* the table's unit range on its texel centres, edge to edge (Bruneton 2017, \
+   GetTextureCoordFromUnitRange): the clamped half texel at each edge put \
+   the zenith seen from the ground at 11.5 degrees */ \
 "static float3 trans(texture2d<float> T, float r, float mu) {\n" \
-"  constexpr sampler s(filter::linear, address::clamp_to_edge); return T.sample(s, tuv(r, mu)).rgb; }\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 n = float2(T.get_width(), T.get_height());\n" \
+"  return T.sample(s, (0.5 + tuv(r, mu) * (n - 1.0)) / n).rgb; }\n" \
 "static float rayleigh(float c) { return 3.0 / (16.0 * 3.14159) * (1.0 + c * c); }\n" \
 "static float miep(float c) { float g = 0.8, k = 3.0 / (8.0 * 3.14159) * (1.0 - g * g) / (2.0 + g * g);\n" \
 "  return k * (1.0 + c * c) / pow(1.0 + g * g - 2.0 * g * c, 1.5); }\n" \
-/* the transmittance LUT */ \
+/* the transmittance LUT; the steps grow with the square of the distance, \
+   fine where the ray starts (even 2.5 km steps up from the ground missed 16% \
+   of the haze's 1.2 km layer) */ \
 "fragment float4 atm_t(LO in [[stage_in]], constant AU &a [[buffer(0)]]) {\n" \
-"  float H = sqrt(RT * RT - RG * RG), rho = H * in.uv.y, r = sqrt(rho * rho + RG * RG);\n" \
-"  float dmin = RT - r, dmax = rho + H, d = dmin + in.uv.x * (dmax - dmin);\n" \
+"  float2 n = round(in.pos.xy / in.uv), x = (in.pos.xy - 0.5) / (n - 1.0);   /* texel i: i / (n - 1) */\n" \
+"  float H = sqrt(RT * RT - RG * RG), rho = H * x.y, r = sqrt(rho * rho + RG * RG);\n" \
+"  float dmin = RT - r, dmax = rho + H, d = dmin + x.x * (dmax - dmin);\n" \
 "  float mu = d == 0.0 ? 1.0 : clamp((H * H - rho * rho - d * d) / (2.0 * r * d), -1.0, 1.0);\n" \
 "  float len = max(sphere(r, mu, RT), 0.0); float3 tau = 0.0; int N = 40;\n" \
-"  for (int i = 0; i < N; i++) { float t = (i + 0.5) / N * len; float h = sqrt(r * r + t * t + 2.0 * r * mu * t) - RG;\n" \
-"    tau += medium(h, a.atm.x).ext * (len / N); }\n" \
+"  for (int i = 0; i < N; i++) { float x0 = float(i) / N, x1 = float(i + 1) / N, t0 = len * x0 * x0, dt = len * x1 * x1 - t0, t = t0 + 0.5 * dt;\n" \
+"    float h = sqrt(r * r + t * t + 2.0 * r * mu * t) - RG;\n" \
+"    tau += medium(h, a.atm.x).ext * dt; }\n" \
 "  return float4(exp(-tau), 1); }\n" \
-/* the multiple-scattering LUT (Hillaire 5.5): from 64 directions, the \
-   second-order light and the fraction transferred, Psi = L2 / (1 - f_ms) */ \
+/* the multiple-scattering LUT (Hillaire 5.5): from 256 directions, the \
+   second-order light and the fraction transferred, Psi = L2 / (1 - f_ms); \
+   the directions split at the horizon's cosine, each half weighted by its \
+   share of the sphere (the light jumps there: the sunlit ground below, the \
+   sky above), 32 cosines a side by 4 azimuths (the long paths just above \
+   the horizon carry much of f_ms).  64 even directions were up to 6% of the \
+   table's peak and 17% of a value off a converged reference; these are \
+   within half a percent.  Made only when the weather's haze changes. */ \
 "fragment float4 atm_ms(LO in [[stage_in]], constant AU &a [[buffer(0)]], texture2d<float> T [[texture(0)]]) {\n" \
 "  float cs = in.uv.x * 2.0 - 1.0, h = mix(0.0, RT - RG, in.uv.y), r = RG + max(h, 0.01);\n" \
 "  float3 sun = float3(0.0, sqrt(max(1.0 - cs * cs, 0.0)), cs), L2 = 0.0, fms = 0.0;\n" \
-"  for (int k = 0; k < 64; k++) {\n" \
-"    float u1 = (k % 8 + 0.5) / 8.0, u2 = (k / 8 + 0.5) / 8.0, th = 2.0 * 3.14159 * u1, ph = acos(1.0 - 2.0 * u2);\n" \
-"    float3 d = float3(cos(th) * sin(ph), sin(th) * sin(ph), cos(ph));\n" \
+"  float mh = -sqrt(max(1.0 - (RG / r) * (RG / r), 0.0));\n" \
+"  for (int k = 0; k < 256; k++) {\n" \
+"    bool up = k < 128; float u1 = (k % 4 + 0.5) / 4.0, u2 = ((k / 4) % 32 + 0.5) / 32.0, th = 2.0 * 3.14159 * u1;\n" \
+"    float cz = up ? mix(mh, 1.0, u2) : mix(-1.0, mh, u2), sz = sqrt(max(1.0 - cz * cz, 0.0)), wk = (up ? 1.0 - mh : 1.0 + mh) / 256.0;\n" \
+"    float3 d = float3(cos(th) * sz, sin(th) * sz, cz);\n" \
 "    float mu = d.z, tg = ground(r, mu), len = tg > 0.0 ? tg : max(sphere(r, mu, RT), 0.0); int N = 20; float dt = len / N;\n" \
 "    float3 tr = 1.0, Ls = 0.0, f = 0.0;\n" \
 "    for (int i = 0; i < N; i++) { float t = (i + 0.5) * dt; float3 p = float3(0, 0, r) + d * t; float rr = length(p), hh = rr - RG;\n" \
@@ -69,20 +85,25 @@
 "      Ls += tr * (S - S * st) / max(m.ext, 1e-9); f += tr * (Sf - Sf * st) / max(m.ext, 1e-9); tr *= st; }\n" \
 "    if (tg > 0.0) { float3 pg = float3(0, 0, r) + d * tg; float3 ng = normalize(pg);\n" \
 "      Ls += tr * trans(T, RG, dot(ng, sun)) * max(dot(ng, sun), 0.0) * 0.3 / 3.14159; }\n" \
-"    L2 += Ls / 64.0; fms += f / 64.0; }   /* isotropic phase 1/(4 pi) over the sphere: the plain average */\n" \
+"    L2 += Ls * wk; fms += f * wk; }   /* isotropic phase 1/(4 pi) over the sphere: the average */\n" \
 "  return float4(L2 / max(1.0 - fms, 1e-3), 1); }\n" \
 "static float3 msamp(texture2d<float> M, float r, float cs) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); return M.sample(s, float2(cs * 0.5 + 0.5, (r - RG) / (RT - RG))).rgb; }\n" \
-/* the sky view LUT: latitude compressed toward the horizon, longitude in the world */ \
+/* the sky view LUT: latitude compressed toward the horizon, longitude in the world; \
+   the steps along each ray grow with the square of the distance (as Hillaire's \
+   own implementation spaces them), fine in the dense air next to the camera: \
+   even steps of 3.3 km straight up undercounted the haze's 1.2 km layer and \
+   the zenith under a high sun by 15% */ \
 "static float3 svdir(float2 uv) { float v = uv.y * 2.0 - 1.0, lat = sign(v) * v * v * 1.5708, lon = (uv.x * 2.0 - 1.0) * 3.14159;\n" \
 "  return float3(cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat)); }\n" \
 "static float2 svuv(float3 d) { float lat = asin(clamp(d.z, -1.0, 1.0)), lon = atan2(d.y, d.x);\n" \
 "  return float2(lon / 3.14159 * 0.5 + 0.5, 0.5 + 0.5 * sign(lat) * sqrt(abs(lat) / 1.5708)); }\n" \
 "fragment float4 atm_sv(LO in [[stage_in]], constant AU &a [[buffer(0)]], texture2d<float> T [[texture(0)]], texture2d<float> M [[texture(1)]]) {\n" \
 "  float3 d = svdir(in.uv), sun = a.sun.xyz; float r = RG + a.cam.x, mu = d.z;\n" \
-"  float tg = ground(r, mu), len = tg > 0.0 ? tg : max(sphere(r, mu, RT), 0.0); int N = 30; float dt = len / N;\n" \
+"  float tg = ground(r, mu), len = tg > 0.0 ? tg : max(sphere(r, mu, RT), 0.0); int N = 30;\n" \
 "  float c = dot(d, sun), pr = rayleigh(c), pm = miep(c); float3 tr = 1.0, L = 0.0;\n" \
-"  for (int i = 0; i < N; i++) { float t = (i + 0.5) * dt; float3 p = float3(0, 0, r) + d * t; float rr = length(p);\n" \
+"  for (int i = 0; i < N; i++) { float x0 = float(i) / N, x1 = float(i + 1) / N, t0 = len * x0 * x0, dt = len * x1 * x1 - t0, t = t0 + 0.5 * dt;\n" \
+"    float3 p = float3(0, 0, r) + d * t; float rr = length(p);\n" \
 "    Med m = medium(rr - RG, a.atm.x); float3 st = exp(-m.ext * dt); float csun = dot(p / rr, sun);\n" \
 "    float sh = ground(rr, csun) > 0.0 ? 0.0 : 1.0;\n" \
 "    float3 S = trans(T, rr, csun) * sh * (m.sr * pr + m.sm * pm) + msamp(M, rr, csun) * (m.sr + m.sm);\n" \
@@ -102,7 +123,10 @@
 "  return float4(E / 512.0 * 3.14159, 1); }\n" \
 /* the sky, per pixel: the camera's ray for the pixel (through the main 3D \
    view's screen map, the game's viewport and its view x projection), the \
-   sky view, and the sun's disc (0.2675 degrees, its illuminance over the disc) */ \
+   sky view, and the sun's disc (0.2675 degrees, its illuminance over the disc: \
+   the soft rim, a smoothstep over the outer tenth of its solid angle, keeps \
+   0.95 of it, divided back); kept within half float's range (the disc's \
+   centre is about 1.6e9 cd/m2) */ \
 "struct KU { float4 xft; float4 vpt; float4 m0; float4 m1; float4 m2; float4 off; float4 eye; float4 tgt; float4 sun; float4 ktop; };\n" \
 "static float3 camray(constant KU &k, float2 px) {\n" \
 "  float2 ndc = float2((px.x + 0.5) / k.tgt.x * 2.0 - 1.0, 1.0 - (px.y + 0.5) / k.tgt.y * 2.0);\n" \
@@ -114,7 +138,7 @@
 "static float3 skyrad(constant KU &k, texture2d<float> S, texture2d<float> T, float3 d) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float3 L = S.sample(s, svuv(d)).rgb * k.ktop.x;\n" \
 "  float cd = dot(d, k.sun.xyz), cr = cos(0.2675 * 3.14159 / 180.0);\n" \
-"  if (cd > cr && d.z > -0.01) L += trans(T, RG + k.eye.w, d.z) * k.ktop.x * k.ktop.y / (3.14159 * pow(0.2675 * 3.14159 / 180.0, 2.0)) * smoothstep(cr, mix(cr, 1.0, 0.1), cd);\n" \
+"  if (cd > cr && d.z > -0.01) L += trans(T, RG + k.eye.w, d.z) * k.ktop.x * k.ktop.y / (3.14159 * pow(0.2675 * 3.14159 / 180.0, 2.0)) * smoothstep(cr, mix(cr, 1.0, 0.1), cd) / 0.95;\n" \
 "  return L; }\n" \
 "fragment float4 skyfs(LO in [[stage_in]], constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]]) {\n" \
 "  float3 d = camray(k, in.pos.xy);\n" \

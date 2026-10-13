@@ -32,9 +32,11 @@ static int g_fail;
         }                                                                                \
     } while (0)
 
-/* the lighting's brdf (brr_metal_lit.h), which lamps() calls */
+/* a brdf of the lighting's signature (brr_metal_lit.h's takes its albedo table
+   bE), which lamps() calls: this test compares lamps() with every light through
+   the same function, so a plain GGX and Lambert stands in and bE goes unread */
 #define BRDF_SRC \
-"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough) {\n" \
+"static float3 brdf(float3 n, float3 v, float3 l, float3 alb, float rough, texture2d<float> bE) {\n" \
 "  float3 h = normalize(l + v); float nl = max(dot(n, l), 0.0), nv = max(dot(n, v), 1e-3), nh = max(dot(n, h), 0.0);\n" \
 "  float a2 = max(rough * rough, 2e-3); a2 *= a2;\n" \
 "  float d = nh * nh * (a2 - 1.0) + 1.0, D = a2 / (3.14159 * d * d);\n" \
@@ -67,7 +69,7 @@ BRDF_SRC
 "struct CU { float4 eye, fwd, right, up, tan; };\n"
 /* the ground under the camera's pixel, lit by the lamps: 0 clustered (the
    renderer's lamps()), 1 every light (unshadowed: a set with no tiles) */
-"kernel void klit(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], constant CU &cu [[buffer(1)]],\n"
+"kernel void klit(const device LSet &s [[buffer(0)]], depth2d<float> atl [[texture(0)]], texture2d<float> bE [[texture(1)]], constant CU &cu [[buffer(1)]],\n"
 "                 constant uint &mode [[buffer(2)]], device float4 *out [[buffer(3)]], uint2 g [[thread_position_in_grid]]) {\n"
 "  uint W = uint(cu.tan.z), H = uint(cu.tan.w); if (g.x >= W || g.y >= H) return;\n"
 "  float2 nd = float2((g.x + 0.5) / W * 2.0 - 1.0, 1.0 - (g.y + 0.5) / H * 2.0);\n"
@@ -75,14 +77,14 @@ BRDF_SRC
 "  if (d.z >= 0.0) { out[g.y * W + g.x] = float4(0); return; }\n"
 "  float3 p = cu.eye.xyz + d * (-cu.eye.z / d.z), n = float3(0, 0, 1), v = normalize(cu.eye.xyz - p), alb = float3(0.3);\n"
 "  float3 Lo = float3(0);\n"
-"  if (mode == 0) Lo = lamps(s, atl, p, n, v, alb, 0.6);\n"
+"  if (mode == 0) Lo = lamps(s, atl, p, n, v, alb, 0.6, bE);\n"
 "  else {\n"
 "    for (uint i = 0; i < uint(s.h.eye.w); i++) {\n"
 "      LS l = s.l[i]; float3 L = float3(l.pos) - p; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n"
 "      if (dot(n, ld) <= 0.0) continue;\n"
 "      float E = lamp(l, -ld) * lwin(l, -ld, dl) / d2;\n"
 "      if (E <= 0.0) continue;\n"
-"      Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, 0.6);\n"
+"      Lo += float3(l.rgb) * E * lampvis(s, atl, i, p, n, ld) * brdf(n, v, ld, alb, 0.6, bE);\n"
 "    }\n"
 "  }\n"
 "  out[g.y * W + g.x] = float4(Lo, 1);\n"
@@ -91,6 +93,7 @@ BRDF_SRC
 static id<MTLDevice> g_dev;
 static id<MTLCommandQueue> g_q;
 static id<MTLLibrary> g_lib;
+static id<MTLTexture> g_be;         /* the brdf's table argument (unread by the stand-in) */
 static id<MTLRenderPipelineState> g_pclr, g_pcas;
 static id<MTLDepthStencilState> g_dsall, g_dsless;
 
@@ -450,6 +453,7 @@ static void grid(void)
             [e setComputePipelineState:k];
             [e setBuffer:m < 2 ? sb : ub offset:0 atIndex:0];
             [e setTexture:atl atIndex:0];
+            [e setTexture:g_be atIndex:1];
             [e setBytes:&cu length:sizeof cu atIndex:1];
             [e setBytes:&mode length:4 atIndex:2];
             [e setBuffer:ob offset:0 atIndex:3];
@@ -474,6 +478,7 @@ static void grid(void)
             [e setComputePipelineState:k];
             [e setBuffer:sb offset:0 atIndex:0];
             [e setTexture:atl atIndex:0];
+            [e setTexture:g_be atIndex:1];
             [e setBytes:&cu length:sizeof cu atIndex:1];
             [e setBytes:&mode length:4 atIndex:2];
             [e setBuffer:ob offset:0 atIndex:3];
@@ -527,6 +532,8 @@ int main(void)
             return 1;
         }
         g_q = [g_dev newCommandQueue];
+        g_be = [g_dev newTextureWithDescriptor:[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRG16Float
+                                                                                              width:1 height:1 mipmapped:NO]];
         g_lib = [g_dev newLibraryWithSource:k_test_src options:nil error:&err];
         if (!g_lib) {
             printf("shader: %s\n", [[err description] UTF8String]);
