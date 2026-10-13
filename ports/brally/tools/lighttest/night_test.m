@@ -8,22 +8,10 @@
  *   4 the glow: a car's texture never glows
  *   5 the track's lights carry the windows' flux */
 #include "brr_metal.m"
+#include "brr_metal_taa.m"
 #include "light_world.h"
 
-int plat_flag(int flag) { (void)flag; return 0; }
-int host_window_visible(void) { return 0; }
-int light_capture_camera(LightCamera *c) { (void)c; return 0; }
-int light_capture_eye(float eye[3]) { (void)eye; return 0; }
-const LightTrack *light_game_track(void) { return NULL; }
-int light_game_weather(void) { return 0; }
-int light_glide_flip(void) { return 0; }
-int light_capture_ontrack(const float tri[9]) { (void)tri; return 0; }
-int light_scene_spots(LightSpot *out, int max) { (void)out; (void)max; return 0; }
-int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)
-{
-    (void)w, (void)dev, (void)q, (void)t;
-    return 0;
-}
+#include "game_stubs.h"
 
 static int g_fail;
 #define CHECK(ok, ...) do { int ok_ = (ok); printf("%s  ", ok_ ? "PASS" : "FAIL"); printf(__VA_ARGS__); printf("\n"); if (!ok_) g_fail = 1; } while (0)
