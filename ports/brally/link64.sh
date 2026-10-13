@@ -25,7 +25,7 @@ case "$OUT" in build/*) ;; *) echo "link64: OUT must be under build/ (got $OUT)"
 export OUT
 CC=${CC:-clang}
 P=ports/brally/platform
-PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common"
+PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common -I$P/light"
 case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
 mkdir -p $OUT/plat
 
@@ -41,9 +41,11 @@ ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
 # races run for another game's menus (host_race.h): core types too
 ports/brally/build64.sh ports/brally/platform/common/race_handoff.c | grep -v "^OK" >&2 || true
+# what the lighting reads of the game (platform/light): core types too
+ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
-      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c \
+      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c $P/light/light_capture.c \
       $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in

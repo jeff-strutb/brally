@@ -30,6 +30,12 @@ enum br_flag {
     /* the front end's music resumes when the window gets the focus back.
      * Off: the original, which paused it and resumed only in a race. */
     BR_FLAG_MENU_MUSIC_RESUME,
+    /* the modern lighting pipeline (platform/light, docs/brally/remaster/
+     * lighting/DESIGN.md): the 3D scene drawn physically lit from what the
+     * game's display lists describe, the HUD and menus laid over it as the
+     * game draws them. Off: the original's picture. Switched live; the
+     * game's simulation never sees it. */
+    BR_FLAG_LIGHTING,
     BR_FLAG_COUNT
 };
 

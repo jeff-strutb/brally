@@ -18,6 +18,7 @@
 #include "brr.h"
 #include "br_flags.h"
 #include "br_platview.h"
+#include "light.h"
 
 #define TMU_RAM   (4u << 20)
 
@@ -480,6 +481,7 @@ void grBufferSwap(int interval)
     frame_start();
     resolve();
     brr_present();
+    light_capture_swap();               /* after the present: a dump can take this frame's picture */
     brr_target(&s_rw, &s_rh);           /* the next frame's target */
     s_black = s_wide;
     s_wide = 0;
@@ -761,6 +763,33 @@ static void vert(brr_vertex *o, const GrVertex *v)
     o->t = v->tmuvtx[0].tow * w / sv;
 }
 
+/* a display-list triangle of the camera's view or the mirror's, as drawn,
+ * to the lighting's capture (platform/light): read, never changed */
+static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c)
+{
+    const GrVertex *g[3] = { a, b, c };
+    LightVtx v[3];
+    int i;
+    if ((s_view != 0 && s_view != 2) || !light_capture_on())
+        return;
+    for (i = 0; i < 3; i++) {
+        float tw = g[i]->tmuvtx[0].oow != 0.0f ? g[i]->tmuvtx[0].oow : g[i]->oow;
+        v[i].x = g[i]->x;
+        v[i].y = g[i]->y;
+        v[i].oow = g[i]->oow;
+        v[i].r = g[i]->r;
+        v[i].g = g[i]->g;
+        v[i].b = g[i]->b;
+        v[i].a = g[i]->a;
+        v[i].s = tw != 0.0f ? g[i]->tmuvtx[0].sow / tw : 0.0f;
+        v[i].t = tw != 0.0f ? g[i]->tmuvtx[0].tow / tw : 0.0f;
+    }
+    light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
+                      (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
+                      (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
+                      (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16);
+}
+
 /* Glide's triangle setup drops a triangle with no area, and with culling on
  * drops the one facing away: the sign of its area in the coordinates the
  * application passed (before the lower-left origin turns y over).  The
@@ -791,6 +820,7 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     vert(&v[2], c);
     if (s_src_dirty && s_src_set)
         tex_resolve();
+    capture(a, b, c);
     route(v, 3);
     brr_draw(&s_st, v, 3);
 }
@@ -807,6 +837,7 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
     for (i = 1; i + 1 < n; i++) {
         if (culled(&vl[0], &vl[i], &vl[i + 1]))
             continue;
+        capture(&vl[0], &vl[i], &vl[i + 1]);
         if (k == 3 * 64) {
             if (!routed++)
                 route(v, k);

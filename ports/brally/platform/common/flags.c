@@ -13,6 +13,7 @@ static const struct {
 } k_flags[BR_FLAG_COUNT] = {
     [BR_FLAG_ANY_ASPECT]        = { "ANY_ASPECT",        { 0, 1 } },
     [BR_FLAG_MENU_MUSIC_RESUME] = { "MENU_MUSIC_RESUME", { 0, 1 } },
+    [BR_FLAG_LIGHTING]          = { "LIGHTING",          { 0, 1 } },
 };
 
 static const char *const k_profiles[PROFILE_COUNT] = { "original", "remastered" };
