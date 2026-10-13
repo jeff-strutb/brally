@@ -1,9 +1,11 @@
 /* brr_metal_refl.m: the reflection pass (brr_metal_refl.h, DESIGN.md 8.4):
  * its compute pipeline, compiled with the BVH's traversal (brr_rt_library),
  * and its dispatch after the deferred lighting: the trace at half
- * resolution into a half-size target (reflk), then the composite (reflc)
- * reading the lit target and adding the upsampled reflections into a copy,
- * the copy blitted back. */
+ * resolution into a half-size target (reflk), its temporal accumulation
+ * into a half-size history (reflt, two targets taking turns), then the
+ * composite (reflc) reading the lit target and adding the history, filtered
+ * and upsampled, into a copy, the copy blitted back.  The copy stays as the
+ * last frame's lit target that reflk reads for the BVH's hits on screen. */
 #import <Metal/Metal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,8 +14,10 @@
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
 
-static id<MTLComputePipelineState> s_rpipe, s_cpipe;
-static id<MTLTexture> s_rdst, s_rhalf;
+static id<MTLComputePipelineState> s_rpipe, s_cpipe, s_tpipe;
+static id<MTLTexture> s_rdst, s_rhalf, s_rhist[2];
+static float s_pscr[16];
+static unsigned s_frame, s_valid;
 static id<MTLBuffer> s_rnull;
 static int s_rfail;
 
@@ -34,10 +38,12 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     if (!s_rpipe) {
         NSError *err = nil;
         id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_REFL_SRC, &err);
-        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil, fc = lib ? [lib newFunctionWithName:@"reflc"] : nil;
+        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil, fc = lib ? [lib newFunctionWithName:@"reflc"] : nil,
+                        ft = lib ? [lib newFunctionWithName:@"reflt"] : nil;
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
         s_cpipe = s_rpipe && fc ? [dev newComputePipelineStateWithFunction:fc error:&err] : nil;
-        if (!s_rpipe || !s_cpipe) {
+        s_tpipe = s_cpipe && ft ? [dev newComputePipelineStateWithFunction:ft error:&err] : nil;
+        if (!s_rpipe || !s_cpipe || !s_tpipe) {
             fprintf(stderr, "brr: reflections: %s\n", lib ? [[err description] UTF8String] : "off: no hardware ray tracing");
             s_rfail = 1;
             return;
@@ -55,8 +61,21 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         td.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
         td.storageMode = MTLStorageModePrivate;
         s_rhalf = [dev newTextureWithDescriptor:td];
+        s_rhist[0] = [dev newTextureWithDescriptor:td];
+        s_rhist[1] = [dev newTextureWithDescriptor:td];
+        s_valid = 0;   /* no history, no last frame at this size */
     }
-    e = [cb computeCommandEncoder];
+    {   /* the reprojection: the last frame's scr (LU.scr, 112 bytes from LU's end: scr, vol, gi, wet) */
+        struct { float pscr[16]; uint32_t frame; float valid, pad[2]; } rp;
+        memcpy(rp.pscr, s_pscr, sizeof rp.pscr);
+        rp.frame = s_frame;
+        rp.valid = s_valid ? 1.0f : 0.0f;
+        rp.pad[0] = rp.pad[1] = 0.0f;
+        e = [cb computeCommandEncoder];
+        [e setBytes:&rp length:sizeof rp atIndex:4];
+        if (lusz >= 112)
+            memcpy(s_pscr, (const uint8_t *)lu + lusz - 112, sizeof s_pscr);
+    }
     [e setComputePipelineState:s_rpipe];
     if (rt && rt->built) {
         [e setBuffer:rt->node offset:0 atIndex:0];
@@ -85,15 +104,29 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     [e setTexture:hdr atIndex:3];
     [e setTexture:s_rhalf atIndex:4];
     [e setTexture:sky atIndex:5];
+    [e setTexture:s_rdst atIndex:6];
     [e dispatchThreads:MTLSizeMake(s_rhalf.width, s_rhalf.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    /* the temporal accumulation: the last frame's history into this frame's */
+    {
+        id<MTLTexture> hs = s_rhist[s_frame & 1], ho = s_rhist[(s_frame & 1) ^ 1];
+        [e setComputePipelineState:s_tpipe];
+        [e setTexture:s_rhalf atIndex:3];
+        [e setTexture:hs atIndex:4];
+        [e setTexture:ho atIndex:5];
+        [e dispatchThreads:MTLSizeMake(s_rhalf.width, s_rhalf.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+        [e setTexture:hdr atIndex:3];
+        [e setTexture:sky atIndex:5];
+        [e setTexture:ho atIndex:7];
+    }
     /* the composite: the same encoder (LU at 3, the G-buffer and the lit target bound) */
     [e setComputePipelineState:s_cpipe];
     [e setTexture:s_rdst atIndex:4];
     [e setTexture:bE atIndex:6];
-    [e setTexture:s_rhalf atIndex:7];
     [e dispatchThreads:MTLSizeMake(hdr.width, hdr.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
     [e endEncoding];
     b = [cb blitCommandEncoder];
     [b copyFromTexture:s_rdst toTexture:hdr];
     [b endEncoding];
+    s_frame++;
+    s_valid = 1;
 }
