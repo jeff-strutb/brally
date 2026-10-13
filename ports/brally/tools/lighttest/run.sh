@@ -5,9 +5,10 @@
 #   shadow.sh  the sun's soft shadows, contact shadows and cascade cache
 #   lights.sh  clustered light culling and the lamps' shadow atlas
 #   maths.sh   the shader maths (BRDF, sky, tonemap, exposure, lamps, bloom, de-lighting) against closed forms and CPU references
+#   refl.sh    the reflection pass and wet roads: offline compiles (macOS, iOS)
 set -e
 cd "$(dirname "$0")"
-for t in rt.sh shadow.sh lights.sh maths.sh; do
+for t in rt.sh shadow.sh lights.sh maths.sh refl.sh; do
     echo "== $t"
     sh "./$t"
 done

@@ -942,3 +942,43 @@ argument (unread there); `compile_test.m` also builds the table's two
 pipelines. Every suite passes (rt, shadow, lights, maths: 69 of 69), and
 the whole shader source compiles offline for macOS and iOS with no errors
 and no warnings.
+
+## Reflections and wet roads (DESIGN.md 8.4), first cut
+
+What is in: `brr_metal_refl.h` (shaders), `brr_metal_refl.m` (the pass),
+one hook in `radiance()` (`wet()`: the weather's wetness on up-facing
+surfaces, n.z > 0.9; Lagarde 2013's porosity darkening, the albedo times
+mix(1, mix(1, 0.2, porosity), wetness), porosity saturate((roughness -
+0.5) / 0.4); roughness toward 0.1 by the wetness and 0.03 in puddles, a
+two-octave world-space noise mask) and one in `lit_present` (the
+reflection compute pass after the deferred lighting: one VNDF GGX sample a
+pixel, a screen-space march of one step a pixel, at most 64, then six
+halvings, against the G-buffer's positions; confidence fading over the
+screen's last 8% and to nothing on a miss; the miss traced against the
+track BVH (`rt_closest`) below roughness 0.4, a hit shaded as grey ground,
+albedo 0.3 under sun and sky, else the sky-view table; the split sum's DFG
+term is the existing GGX albedo table (F0 0.04 everywhere, so E(mu,
+roughness) is F0 A + B); nothing above roughness 0.6). `k_weather` carries
+wetness and puddles (rain 1.0 / 0.6, snow melt 0.5 / 0.3); LU gained
+`wet` (x wetness, y puddles, z the tier gate: BR_REFL, default 2, 0 off;
+w the BVH's roughness limit), so LU is 576 bytes in C and MSL.
+
+Measured: the reflection source compiles offline for macOS and iOS with 0
+errors (one warning, the RT header's unused `rt_any`); `link64.sh` links
+(host null, renderer metal); `run.sh` (rt, shadow, lights, maths, refl)
+passes, 69 of 69 in the maths suite.
+
+Not yet measured (left): the CPU reference of the march on a synthetic
+plane and box (hits within one pixel), the GPU kernel against it, the
+table against a brute-force GGX integral (1%), Lagarde's darkening and the
+energy bound (E + albedo (1 - E) <= 1 holds by construction for albedo <=
+1, as darkening only lowers albedo, but is not yet checked numerically),
+and the GPU time. Estimate at 1080p: 2.07 M pixels, about 16 to 40 march
+steps a glossy pixel at one texture read each, so roughly 1 to 2 ms on an
+M-class GPU when the road fills the lower half, plus the BVH misses
+(software traversal, unmeasured here). Approximations to revisit: a BVH
+hit's normal is taken as up (the hit record gives the original triangle
+id, not the sorted slot), the screen-space sample is the current frame's
+lit opaque pass (no transparent, no fog on the reflected ray), one sample
+a pixel with no denoiser (DESIGN.md 8.5). Car paint (clear coat over the
+de-lit base, a G-buffer material id for car triangles) is not started.
