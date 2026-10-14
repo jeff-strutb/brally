@@ -387,7 +387,9 @@ BRR_SHADOW_SRC \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
-"    float3 al = albedo(u, h.tex.rgb, h.it.rgb);\n" \
+/* a flat decal (lp2, brr_metal.m: a tire mark): its colour the game's own combine of texture and \
+   vertex colour, the paint it laid, where delit would divide the vertex colour out as baked light */ \
+"    float3 al = u.lp2 > 0.5 ? min(lin(h.o.rgb) * 0.85, 0.9) : albedo(u, h.tex.rgb, h.it.rgb);\n" \
 "    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0, u.lp1);\n" \
 "    ge = al / max(dot(al, float3(0.2126, 0.7152, 0.0722)), 0.02) * g * 100.0 * lu.wb.rgb;   /* a lit window's own light */\n" \
 "  }\n" \
@@ -395,8 +397,12 @@ BRR_SHADOW_SRC \
 "  float3 cp = emit ? emitcap(preexp(lu, c)) : preexp(lu, c) + emitcap(preexp(lu, ge));\n" \
 /* the volumetric fog on, the same as the opaque surfaces behind it take (brr_metal_vol.h), never the game's */ \
 "  FF r; r.d = h.d;\n" \
-"  if (lu.vol.x > 0.5) r.c = float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, cp, emit), h.o.a);\n" \
-"  else r.c = float4(fogged(lu, cp, emit ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
+/* a flat decal's alpha as the game meant it: coverage in display (gamma) space, where its renderer \
+   blended (half a black mark halves the road's display value); in linear light that is \
+   1 - (1 - a)^2.2, exact for a black decal (a tire mark: 0.5 -> 0.78) */ \
+"  float oa = u.lp2 > 0.5 ? 1.0 - pow(1.0 - saturate(h.o.a), 2.2) : h.o.a;\n" \
+"  if (lu.vol.x > 0.5) r.c = float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, cp, emit), oa);\n" \
+"  else r.c = float4(fogged(lu, cp, emit ? 0.0 : h.fog, u.fog_color.rgb), oa);\n" \
 "  return r;\n" \
 "}\n" \
 /* the cars' lamps seen: each lamp's lens (an ellipse LENS_HW x LENS_HH \

@@ -551,6 +551,7 @@ static uint8_t s_tmat[TEX_MAX];          /* a texture's material (light_texmat.h
 static float s_tmean[TEX_MAX];           /* its texels' mean linear luminance (opaque ones) */
 static float s_trgb[TEX_MAX][3];         /* their mean linear colour */
 static uint32_t s_thash[TEX_MAX];        /* the texture's texmat hash (diagnostics) */
+static uint8_t s_tflat[TEX_MAX];         /* 1: every texel the same colour (a decal's colour is its vertex colour) */
 static int s_tm_up, s_tm_hit;            /* uploads, and of them tagged (BR_LIGHT_STATS) */
 /* the mean albedo of each material, linear: what a surface of it reflects
  * (pavement solar reflectance: asphalt 0.05 new to 0.2 worn, concrete 0.25 to
@@ -646,6 +647,9 @@ static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
             s_trgb[tid][i] = cnt ? (float)(rgb[i] / cnt) : 0.0f;
     }
     s_tmean[tid] = cnt ? (float)(sum / cnt) : 0.0f;
+    s_tflat[tid] = 1;
+    for (i = 4; i < n && s_tflat[tid]; i += 4)
+        s_tflat[tid] = rgba[i] == rgba[0] && rgba[i + 1] == rgba[1] && rgba[i + 2] == rgba[2];
     s_tm_up++;
     s_tm_hit += s_tmat[tid] != 255;
     if (getenv("BR_LIGHT_TEXMATLOG"))
@@ -2962,6 +2966,10 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.has_tex = st->texture != 0;
         u.albk = u.has_tex ? lit_albk(st->texture) : 1.0f;
         u.lamp = u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_LAMP ? 1.0f : 0.0f;
+        /* a blended draw of one flat colour (a tire mark: a white texture, the mark's dark grey its
+           vertex colour): the vertex colour is the decal's paint, not the game's baked light, so the
+           lit shaders keep it (lp2) where delit would divide it out and leave the white */
+        u.lpad[1] = u.has_tex && st->texture < TEX_MAX && s_tflat[st->texture] && !light_draw_opaque(st->blend_rgb_src, st->blend_rgb_dst) ? 1.0f : 0.0f;
         {   /* sealed ground, where rain lies as a film and pools (brr_metal_refl.h wet) */
             int tm = u.has_tex && st->texture < TEX_MAX ? s_tmat[st->texture] : 255;
             u.lpad[0] = tm == LIGHT_MAT_ASPHALT || tm == LIGHT_MAT_CONCRETE || tm == LIGHT_MAT_METAL || tm == LIGHT_MAT_BLACKMETAL
