@@ -3735,6 +3735,18 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                             wt[3 * q + 2] = v[q].wz;
                         }
                         light_world_gather(trk->gen, wt, n / 3, BRR_LAMP_CDM2 * fminf(y * u.albk, 0.9f) / 0.85f, tc, eye);
+                        if (getenv("BR_LIGHT_WORLDLOG") && s_frame % 120 == 0)   /* diagnostic: what the lamps gathered are */
+                        {
+                            double ar = 0;
+                            for (q = 0; q < n / 3; q++) {
+                                const float *A = wt + 9 * q;
+                                float e1[3] = { A[3] - A[0], A[4] - A[1], A[5] - A[2] }, e2[3] = { A[6] - A[0], A[7] - A[1], A[8] - A[2] };
+                                float cx = e1[1] * e2[2] - e1[2] * e2[1], cy = e1[2] * e2[0] - e1[0] * e2[2], cz = e1[0] * e2[1] - e1[1] * e2[0];
+                                ar += 0.5 * sqrt(cx * cx + cy * cy + cz * cz);
+                            }
+                            fprintf(stderr, "lampgather: frame %lu hash %08X %d triangles, %.2f m2, at %.1f %.1f %.1f, texels' mean %.3f, albk %.2f, %.0f cd/m2\n",
+                                    s_frame, s_thash[st->texture], n / 3, ar, wt[0], wt[1], wt[2], y, u.albk, BRR_LAMP_CDM2 * fminf(y * u.albk, 0.9f) / 0.85f);
+                        }
                     }
                     free(wt);
                 }

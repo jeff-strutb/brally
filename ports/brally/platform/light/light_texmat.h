@@ -962,7 +962,7 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0x5F4A58A2u, LIGHT_MAT_EFFECT },
     { 0x5F54138Fu, LIGHT_MAT_EFFECT },
     { 0x5F83ED51u, LIGHT_MAT_SKY },
-    { 0x5FA8061Du, LIGHT_MAT_LAMP },
+    { 0x5FA8061Du, LIGHT_MAT_ICE },
     { 0x5FB6CDC5u, LIGHT_MAT_EFFECT },
     { 0x5FD402BEu, LIGHT_MAT_WOOD },
     { 0x5FF8073Eu, LIGHT_MAT_GRASS },
