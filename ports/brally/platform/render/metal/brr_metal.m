@@ -76,6 +76,7 @@ static NSString *const k_src = @
 "  float glow, addk, beam, beamw;\n"
 "  float albk; float tr, tg, tb;\n"
 "  float lamp, lp1, lp2, lp3;\n"
+"  float4 lens0, lens1, lensk;\n"
 "};\n"
 "struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; float3 nrm; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
@@ -232,6 +233,8 @@ typedef struct U {
     float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
     float albk, tint[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk), its chroma (lit_tint; 0: the texel's own) */
     float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L) */
+    float lens[2][4];    /* the lit shaders: a car texture's lamp lenses (carlamp.csv), s0 t0 s1 t1 */
+    float lensk[4];      /* their kinds plus one (1 tail, 2 reverse), 0 for none */
 } U;
 
 /* ---- state --------------------------------------------------------------------------- */
@@ -603,6 +606,16 @@ static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
         hs = (hs ^ ((uint32_t)rgba[i] | (uint32_t)rgba[i + 1] << 8 | (uint32_t)rgba[i + 2] << 16 | (uint32_t)rgba[i + 3] << 24)) * 16777619u;
     s_tmat[tid] = 255;
     s_thash[tid] = hs;
+    if (getenv("BR_LIGHT_TEXOUT")) {   /* diagnostic: each texture as a PAM (RGBA8) named by its hash */
+        char path[1024];
+        FILE *f;
+        snprintf(path, sizeof path, "%s/%08X.pam", getenv("BR_LIGHT_TEXOUT"), hs);
+        if ((f = fopen(path, "wb"))) {
+            fprintf(f, "P7\nWIDTH %d\nHEIGHT %d\nDEPTH 4\nMAXVAL 255\nTUPLTYPE RGB_ALPHA\nENDHDR\n", w, h);
+            fwrite(rgba, 1, n, f);
+            fclose(f);
+        }
+    }
     while (lo <= hi) {
         int m = (lo + hi) / 2;
         if (k_light_texmat[m].hash == hs) {
@@ -1047,6 +1060,7 @@ static void lit_sky(int env, int w, float az)
         o.sun_lux = LIGHT_MOON_LUX;
         o.horiz_lux = 0.05f;
         o.total_lux = 0.0f;
+        o.deglare = 1;   /* the photograph's lens glare about the moon (light_sky.h 1b) */
     }
     light_sky_free(&s_sky);
     s_env.ready = 0;
@@ -1423,6 +1437,24 @@ static void lit_lights(const float eye[3], const float *vp)
                     if (z <= l->pos[2] + 0.05f && z > l->pos[2] - 3.0f && z > gz)
                         gz = z;
                 }
+                {   /* the drawn cars' vertices against the lamp: the nearest, and how far the body reaches past it along its axis */
+                    const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+                    float best = 1e30f, reach = -1e30f;
+                    size_t o2;
+                    int t2;
+                    for (o2 = 0; o2 < s_nops; o2++)
+                        if (s_ops[o2].kind == K_OPQ)
+                            for (t2 = 0; t2 < s_ops[o2].n; t2++) {
+                                const brr_vertex *v = (const brr_vertex *)(vb + s_ops[o2].voff) + t2;
+                                float q[3] = { v->wx - l->pos[0], v->wy - l->pos[1], v->wz - l->pos[2] }, d2 = q[0] * q[0] + q[1] * q[1] + q[2] * q[2];
+                                if (v->lit < 2.5f || d2 > 9.0f)
+                                    continue;
+                                best = fminf(best, d2);
+                                reach = fmaxf(reach, q[0] * l->axis[0] + q[1] * l->axis[1] + q[2] * l->axis[2]);
+                            }
+                    fprintf(stderr, "  lamp %d: nearest drawn car vertex %.3f m, the body within 3 m reaches %.3f m past the lamp along its axis\n",
+                            k, sqrtf(best), reach);
+                }
                 fprintf(stderr, "  lamp %d kind %d pos %.2f %.2f %.2f (%.2f m over the track) axis %.3f %.3f %.3f side %.3f %.3f %.3f cd %.0f range %.0f cosout %.3f\n", k,
                         (int)l->kind, l->pos[0], l->pos[1], l->pos[2], gz > -1e8f ? l->pos[2] - gz : -1.0f, l->axis[0], l->axis[1], l->axis[2],
                         l->side[0], l->side[1], l->side[2], l->candela, l->range, l->cosout);
@@ -1718,6 +1750,44 @@ static void lit_normals(void)
     s_nbon = lit_normals_encode(s_cmd, &nc) && nc > 0;
 }
 
+/* BR_LIGHT_LENSPROBE (diagnostic): what the G-buffer holds at each lamp's
+   pixel (brr_metal_lit.h lnprobe), encoded into the frame's own work; each
+   call prints the previous probe's readings (done by then) */
+static void lit_lensprobe(const void *ln)
+{
+    static id<MTLComputePipelineState> p;
+    static id<MTLBuffer> ob;
+    static uint32_t pn;
+    static unsigned long pf;
+    id<MTLComputeCommandEncoder> ce;
+    uint32_t n = (uint32_t)s_nlamp < 64 ? (uint32_t)s_nlamp : 64, i;
+    NSError *err = nil;
+    if (!p && !(p = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"lnprobe"] error:&err]))
+        return;
+    if (!ob)
+        ob = [s_dev newBufferWithLength:64 * 48 options:MTLResourceStorageModeShared];
+    {
+        const float *o = [ob contents];
+        for (i = 0; i < pn; i++)
+            if (o[12 * i + 11] < 15.0f)
+                fprintf(stderr, "lensprobe: frame %lu lamp %u px %.1f %.1f mat %.0f | gbuf %.2f %.2f %.2f at %.2f m | lamp %.2f %.2f %.2f at %.2f m\n",
+                    pf, i, o[12 * i], o[12 * i + 1], o[12 * i + 2], o[12 * i + 4], o[12 * i + 5], o[12 * i + 6], o[12 * i + 7],
+                    o[12 * i + 8], o[12 * i + 9], o[12 * i + 10], o[12 * i + 11]);
+    }
+    pn = n;
+    pf = s_frame;
+    ce = [s_cmd computeCommandEncoder];
+    [ce setComputePipelineState:p];
+    [ce setBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+    [ce setBytes:ln length:sizeof(LNU) atIndex:1];
+    [ce setBuffer:ob offset:0 atIndex:2];
+    [ce setBytes:&n length:4 atIndex:3];
+    [ce setTexture:s_galb atIndex:0];
+    [ce setTexture:s_gpos atIndex:1];
+    [ce dispatchThreads:MTLSizeMake(n ? n : 1, 1, 1) threadsPerThreadgroup:MTLSizeMake(32, 1, 1)];
+    [ce endEncoding];
+}
+
 /* BR_LIGHT_CPU (diagnostic): the lit frame's CPU time by stage, ms a frame, every 120 lit frames */
 static double s_cpu_ms[8];
 static unsigned long s_cpu_n;
@@ -1730,10 +1800,12 @@ static void lit_present(void)
 {
     LU u;
     EU eu;
-    /* the sun's bearing, toward it, Z up: Coastline's, chosen 2026-10-12
-       (behind the start: DESIGN.md 7.3's manifest will carry it per track);
-       its elevation and light are the skymap's */
-    float eye[3] = { 0, 0, 0 }, sun[3] = { -1.0f, -1.5f, 2.5f }, len, ev = 0.0f;
+    LNU lnp;
+    int lnprobe = 0;
+    /* the sun's bearing, toward it, Z up: the game's own (light_game_sun, the
+       one it lights its cars by on every track); its elevation and light are
+       the skymap's */
+    float eye[3] = { 0, 0, 0 }, sun[3], len, ev = 0.0f;
     int w = light_game_weather(), k, i, first3d, have_cam, sky;
     LightCamera cam;
     BrrCascade cs[CASCADES];
@@ -1748,7 +1820,8 @@ static void lit_present(void)
     memset(s_gpu_frame_used, 0, sizeof s_gpu_frame_used);
     memset(&u, 0, sizeof u);
     memset(&eu, 0, sizeof eu);
-    {   /* BR_LIGHT_SUN=x,y,z: the sun's bearing (towards it; Z up), until the tracks' manifests carry it */
+    light_game_sun(sun);
+    {   /* BR_LIGHT_SUN=x,y,z: the sun's bearing (towards it; Z up), a diagnostic override */
         const char *e2 = getenv("BR_LIGHT_SUN");
         if (e2)
             sscanf(e2, "%f,%f,%f", &sun[0], &sun[1], &sun[2]);
@@ -1984,6 +2057,134 @@ static void lit_present(void)
                             s_ops[i].n, s_ops[i].src, s_ops[i].dst, v->wx, v->wy, v->wz, v->r, v->g, v->b, v->a);
             }
     }
+    if (getenv("BR_LIGHT_BAKEFIT")) {   /* diagnostic: the game's baked light against the faces' normals, a least-squares
+                                           Y = a + b . n over the world's upward faces; b's bearing the light's */
+        static double M[4][4], V[4], S2, S1, N;
+        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+        int t, r, c;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ && s_ops[i].tex < TEX_MAX && s_tmat[s_ops[i].tex] != LIGHT_MAT_LAMP
+                && s_tmat[s_ops[i].tex] != LIGHT_MAT_SKY && s_tmat[s_ops[i].tex] != LIGHT_MAT_EFFECT)
+                for (t = 0; t + 2 < s_ops[i].n; t += 3) {
+                    const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff) + t;
+                    double e1[3] = { v[1].wx - v[0].wx, v[1].wy - v[0].wy, v[1].wz - v[0].wz }, e2[3] = { v[2].wx - v[0].wx, v[2].wy - v[0].wy, v[2].wz - v[0].wz };
+                    double n[3] = { e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0] }, l, y, x[4];
+                    if (v[0].lit < 0.5f || v[0].lit > 1.5f)
+                        continue;
+                    l = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+                    if (!(l > 1e-6) || fabs(n[2] / l) < 0.2)
+                        continue;
+                    if (n[2] < 0)
+                        l = -l;
+                    y = 0.0;
+                    for (k = 0; k < 3; k++)
+                        y += (0.2126 * v[k].r + 0.7152 * v[k].g + 0.0722 * v[k].b) / (3.0 * 255.0);
+                    x[0] = 1.0; x[1] = n[0] / l; x[2] = n[1] / l; x[3] = n[2] / l;
+                    for (r = 0; r < 4; r++) {
+                        for (c = 0; c < 4; c++)
+                            M[r][c] += x[r] * x[c];
+                        V[r] += x[r] * y;
+                    }
+                    S1 += y; S2 += y * y; N += 1.0;
+                }
+        if (s_frame % 600 == 0 && N > 100) {   /* solve the normal equations (Gauss-Jordan on a copy) */
+            double A[4][5], ss = 0.0, mean = S1 / N;
+            for (r = 0; r < 4; r++) {
+                for (c = 0; c < 4; c++)
+                    A[r][c] = M[r][c];
+                A[r][4] = V[r];
+            }
+            for (c = 0; c < 4; c++) {
+                int p = c;
+                for (r = c + 1; r < 4; r++)
+                    if (fabs(A[r][c]) > fabs(A[p][c]))
+                        p = r;
+                for (r = 0; r < 5; r++) { double q = A[c][r]; A[c][r] = A[p][r]; A[p][r] = q; }
+                for (r = 0; r < 4; r++)
+                    if (r != c && fabs(A[c][c]) > 1e-12) {
+                        double f = A[r][c] / A[c][c];
+                        for (t = 0; t < 5; t++)
+                            A[r][t] -= f * A[c][t];
+                    }
+            }
+            {
+                double b[4];
+                for (r = 0; r < 4; r++)
+                    b[r] = fabs(A[r][r]) > 1e-12 ? A[r][4] / A[r][r] : 0.0;
+                /* residual sum of squares from the normal equations: sum y^2 - b . V */
+                ss = S2 - (b[0] * V[0] + b[1] * V[1] + b[2] * V[2] + b[3] * V[3]);
+                {
+                    float cl[3];
+                    light_game_sun(cl);
+                    fprintf(stderr, "bakefit: frame %lu track %d the game's sun %.4f %.4f %.4f\n", s_frame, light_game_track_id(), cl[0], cl[1], cl[2]);
+                }
+                fprintf(stderr, "bakefit: frame %lu track env %d faces %.0f: Y = %.3f + %.3f nx + %.3f ny + %.3f nz, bearing %.1f deg "
+                        "(toward the light, from +X toward +Y), horizontal/vertical %.2f, R2 %.3f\n", s_frame, light_game_sky_env(), N,
+                        b[0], b[1], b[2], b[3], atan2(b[2], b[1]) * 57.29578, sqrt(b[1] * b[1] + b[2] * b[2]) / fmax(fabs(b[3]), 1e-9),
+                        1.0 - ss / fmax(S2 - N * mean * mean, 1e-12));
+            }
+        }
+    }
+    if (getenv("BR_LIGHT_CARLAG") && s_frame % 30 == 0) {   /* diagnostic: each near car's drawn vertices (lit 3) against its state */
+        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+        LightCar cars[20];
+        float ce[3];
+        int nc = light_game_cars(cars, 20), c, t;
+        light_capture_eye(ce);
+        for (c = 0; c < nc; c++) {
+            double s[3] = { 0, 0, 0 }, n = 0, along = 0, across = 0, up = 0, sp;
+            float *p = cars[c].pos, dx = p[0] - ce[0], dy = p[1] - ce[1], dz = p[2] - ce[2];
+            if (dx * dx + dy * dy + dz * dz > 30.0f * 30.0f)
+                continue;
+            for (i = 0; i < s_nops; i++)
+                if (s_ops[i].kind == K_OPQ)
+                    for (t = 0; t < s_ops[i].n; t++) {
+                        const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff) + t;
+                        double q[3] = { v->wx - p[0], v->wy - p[1], v->wz - p[2] };
+                        if (v->lit < 2.5f || q[0] * q[0] + q[1] * q[1] + q[2] * q[2] > 36.0)
+                            continue;
+                        for (k = 0; k < 3; k++)
+                            s[k] += q[k];
+                        n += 1.0;
+                    }
+            if (n < 10)
+                continue;
+            for (k = 0; k < 3; k++)
+                s[k] /= n;
+            sp = sqrt(cars[c].fwd[0] * cars[c].fwd[0] + cars[c].fwd[1] * cars[c].fwd[1] + cars[c].fwd[2] * cars[c].fwd[2]);
+            along = (s[0] * cars[c].fwd[0] + s[1] * cars[c].fwd[1] + s[2] * cars[c].fwd[2]) / sp;
+            across = s[0] * cars[c].side[0] + s[1] * cars[c].side[1] + s[2] * cars[c].side[2];
+            up = s[0] * cars[c].up[0] + s[1] * cars[c].up[1] + s[2] * cars[c].up[2];
+            fprintf(stderr, "carlag: frame %lu car %d at %.1f m: drawn centroid %.3f along, %.3f across, %.3f up of its state (%.0f vertices), speed %.1f m/s\n",
+                    s_frame, c, sqrtf(dx * dx + dy * dy + dz * dz), along, across, up, n,
+                    sqrtf(cars[c].vel[0] * cars[c].vel[0] + cars[c].vel[1] * cars[c].vel[1] + cars[c].vel[2] * cars[c].vel[2]));
+        }
+    }
+    if (getenv("BR_LIGHT_CARTEX")) {   /* diagnostic: every texture drawn on a car (lit 3), once, with the s, t span it is drawn over */
+        static uint32_t seen[256];
+        static int nseen;
+        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+        int t, q;
+        for (i = 0; i < s_nops; i++) {
+            const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff);
+            uint32_t hs = s_ops[i].tex < TEX_MAX ? s_thash[s_ops[i].tex] : 0u;
+            if (s_ops[i].kind != K_OPQ || s_ops[i].n < 3 || v->lit < 2.5f || !hs)
+                continue;
+            for (q = 0; q < nseen && seen[q] != hs; q++)
+                ;
+            if (q < nseen || nseen == 256)
+                continue;
+            seen[nseen++] = hs;
+            {
+                float s0 = 1e9f, s1 = -1e9f, t0 = 1e9f, t1 = -1e9f;
+                for (t = 0; t < s_ops[i].n; t++) {
+                    float ss = v[t].oow != 0 ? v[t].s / v[t].oow : 0, tt = v[t].oow != 0 ? v[t].t / v[t].oow : 0;
+                    s0 = fminf(s0, ss); s1 = fmaxf(s1, ss); t0 = fminf(t0, tt); t1 = fmaxf(t1, tt);
+                }
+                fprintf(stderr, "cartex: frame %lu hash %08X s %.1f..%.1f t %.1f..%.1f\n", s_frame, hs, s0, s1, t0, t1);
+            }
+        }
+    }
     if (getenv("BR_LIGHT_PICK") && s_frame % 120 == 0) {   /* diagnostic: the 3D draws under a point, fractions of the frame */
         const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
         float fx = 0.5f, fy = 0.5f, mx = 1.0f, my = 1.0f, px, py;
@@ -2004,10 +2205,14 @@ static void lit_present(void)
                     float d1 = (v[2].x - v[1].x) * (py - v[1].y) - (v[2].y - v[1].y) * (px - v[1].x);
                     float d2 = (v[0].x - v[2].x) * (py - v[2].y) - (v[0].y - v[2].y) * (px - v[2].x);
                     if ((d0 >= 0 && d1 >= 0 && d2 >= 0) || (d0 <= 0 && d1 <= 0 && d2 <= 0)) {
-                        fprintf(stderr, "pick: frame %lu op %d %s hash %08X mat %s blend %d/%d lit %.0f rgba %.0f %.0f %.0f %.0f at %.1f %.1f %.1f\n",
+                        /* the point's texel, perspective-correct: s, t and 1 interpolated over oow */
+                        float sum = d0 + d1 + d2, b0 = sum != 0 ? d1 / sum : 0, b1 = sum != 0 ? d2 / sum : 0, b2 = sum != 0 ? d0 / sum : 0;
+                        float ow = b0 * v[0].oow + b1 * v[1].oow + b2 * v[2].oow;
+                        float ss = ow != 0 ? (b0 * v[0].s + b1 * v[1].s + b2 * v[2].s) / ow : 0, tt = ow != 0 ? (b0 * v[0].t + b1 * v[1].t + b2 * v[2].t) / ow : 0;
+                        fprintf(stderr, "pick: frame %lu op %d %s hash %08X mat %s blend %d/%d lit %.0f rgba %.0f %.0f %.0f %.0f at %.1f %.1f %.1f texel %.1f %.1f\n",
                                 s_frame, i, s_ops[i].kind == K_OPQ ? "opaque" : "blend", s_ops[i].tex < TEX_MAX ? s_thash[s_ops[i].tex] : 0u,
                                 s_ops[i].tex < TEX_MAX && s_tmat[s_ops[i].tex] != 255 ? k_light_mat_name[s_tmat[s_ops[i].tex]] : "-",
-                                s_ops[i].src, s_ops[i].dst, v->lit, v->r, v->g, v->b, v->a, v->wx, v->wy, v->wz);
+                                s_ops[i].src, s_ops[i].dst, v->lit, v->r, v->g, v->b, v->a, v->wx, v->wy, v->wz, ss, tt);
                         break;
                     }
                 }
@@ -2314,12 +2519,13 @@ static void lit_present(void)
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(), (const float *)[xb contents] + 4 * xf,
                           (float)s_lw, (float)s_lh, ln.S);
-        ln.tgt[0] = (float)s_lw; ln.tgt[1] = (float)s_lh; ln.tgt[2] = u.misc[0]; ln.tgt[3] = 0.0f;
+        ln.tgt[0] = (float)s_lw; ln.tgt[1] = (float)s_lh; ln.tgt[2] = u.misc[0];
+        ln.tgt[3] = getenv("BR_LIGHT_LENSDBG") ? (float)atoi(getenv("BR_LIGHT_LENSDBG")) : 0.0f;
         memcpy(ln.eye, eye, 12);
         ln.eye[3] = 0.0f;
         memcpy(ln.wb, u.wb, sizeof ln.wb);
         [e setRenderPipelineState:s_plens];
-        [e setDepthStencilState:ds_for(2, 3, 0)];   /* the game's w-buffer, less or equal, no write */
+        [e setDepthStencilState:ds_for(0, 0, 0)];   /* no depth test: the shader tests against the G-buffer's positions (lnfs) */
         [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_lw, (NSUInteger)s_lh }];
         [e setVertexBuffer:s_lset[s_vbi] offset:0 atIndex:0];
         [e setVertexBytes:&ln length:sizeof ln atIndex:1];
@@ -2328,8 +2534,13 @@ static void lit_present(void)
         [e setFragmentTexture:s_galb atIndex:0];
         [e setFragmentTexture:s_gpos atIndex:1];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)s_nlamp];
+        lnprobe = getenv("BR_LIGHT_LENSPROBE") && s_frame % 120 == 0;
+        if (lnprobe)
+            lnp = ln;
     }
     [e endEncoding];
+    if (lnprobe)
+        lit_lensprobe(&lnp);
 
     lit_split(6);
     s_nbon = 0;
@@ -2714,6 +2925,18 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.has_tex = st->texture != 0;
         u.albk = u.has_tex ? lit_albk(st->texture) : 1.0f;
         u.lamp = u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_LAMP ? 1.0f : 0.0f;
+        memset(u.lens, 0, sizeof u.lens);
+        memset(u.lensk, 0, sizeof u.lensk);
+        if (u.has_tex && st->texture < TEX_MAX) {   /* a car texture's lamp lenses (carlamp.csv) */
+            size_t q;
+            int nl = 0;
+            for (q = 0; q < sizeof k_light_carlamp / sizeof k_light_carlamp[0] && nl < 2; q++)
+                if (k_light_carlamp[q].hash == s_thash[st->texture]) {
+                    u.lens[nl][0] = k_light_carlamp[q].s0; u.lens[nl][1] = k_light_carlamp[q].t0;
+                    u.lens[nl][2] = k_light_carlamp[q].s1; u.lens[nl][3] = k_light_carlamp[q].t1;
+                    u.lensk[nl++] = (float)k_light_carlamp[q].kind + 1.0f;
+                }
+        }
         if (u.has_tex)
             lit_tint(st->texture, u.tint);
         else

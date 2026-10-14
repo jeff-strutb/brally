@@ -297,7 +297,11 @@ BRR_SHADOW_SRC \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  r.alb = float4(albedo(u, h.tex.rgb, h.it.rgb), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : u.lamp > 0.5 ? BRR_MAT_LAMP / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
+"  float mat = in.mat > 2.5 ? BRR_MAT_CAR : u.lamp > 0.5 ? BRR_MAT_LAMP : 128.0 + floor(saturate(g) * 127.0 + 0.5);\n" \
+/* a car's lamp lens, where its texture paints it (carlamp.csv): the lens pass lights exactly these texels */ \
+"  if (in.mat > 2.5 && u.lensk.x > 0.5 && all(in.st >= u.lens0.xy) && all(in.st < u.lens0.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.x - 1.0);\n" \
+"  if (in.mat > 2.5 && u.lensk.y > 0.5 && all(in.st >= u.lens1.xy) && all(in.st < u.lens1.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.y - 1.0);\n" \
+"  r.alb = float4(albedo(u, h.tex.rgb, h.it.rgb), mat / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
 "  r.pos = float4(in.wp, float(fc)); r.nrm = float4(shadenrm(lu, in.wp, in.nrm), h.fog);   /* toward the eye */\n" \
 "  return r;\n" \
@@ -403,6 +407,9 @@ BRR_SHADOW_SRC \
    lit target's pixels (brr_screen_matrix, jittered as the frame's draws), \
    k.tgt: its size and the exposure */ \
 "#define LENS_HW_HEAD 0.10\n#define LENS_HH_HEAD 0.06\n#define LENS_HW_REAR 0.09\n#define LENS_HH_REAR 0.05\n" \
+/* a rear lamp's lens is its texture's (carlamp.csv, BRR_MAT_LENS in the G-buffer): the pass covers \
+   LENS_SEARCH x the lens about where the lamp is placed and lights the lens texels there */ \
+"#define LENS_SEARCH 3.0\n" \
 "struct LNU { float4x4 S; float4 tgt; float4 eye; float4 wb; };\n" \
 "struct LNO { float4 pos [[position]]; float2 q; float oow [[center_no_perspective]]; float3 wp; uint li [[flat]]; };\n" \
 "vertex LNO lnvs(uint v [[vertex_id]], uint li [[instance_id]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]]) {\n" \
@@ -411,19 +418,46 @@ BRR_SHADOW_SRC \
 "  float2 c = float2((v == 1 || v == 2 || v == 4) ? 1.0 : -1.0, (v == 2 || v == 4 || v == 5) ? 1.0 : -1.0);\n" \
 "  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
 "  float hw = l.kind < 0.5 ? LENS_HW_HEAD : LENS_HW_REAR, hh = l.kind < 0.5 ? LENS_HH_HEAD : LENS_HH_REAR;\n" \
+"  if (l.kind > 0.5) { hw *= LENS_SEARCH; hh *= LENS_SEARCH; }   /* a rear lamp: the area its painted lens is looked for in */\n" \
+"  if ((uint(k.tgt.w) & 32u) != 0u) { hw *= 20.0; hh *= 20.0; }\n" \
 "  float3 wp = float3(l.pos) + sd * (c.x * hw) + up * (c.y * hh); float4 h = k.S * float4(wp, 1.0); o.wp = wp;\n" \
 "  if (!(h.w > 1e-3)) { o.pos = float4(0.0, 0.0, 0.0, 1.0); return o; }\n" \
 "  float2 px = h.xy / h.w, ndc = float2(px.x / k.tgt.x * 2.0 - 1.0, 1.0 - px.y / k.tgt.y * 2.0);\n" \
 "  o.pos = float4(ndc * h.w, 0.5 * h.w, h.w); o.q = c; o.oow = 1.0 / h.w; return o; }\n" \
 "struct LNF { float4 c [[color(0)]]; float d [[depth(any)]]; };\n" \
+/* BR_LIGHT_LENSPROBE (diagnostic): per lamp, its centre's pixel through the lens's screen \
+   matrix and what the G-buffer holds there: pixel x, y, the material byte, then the \
+   G-buffer's position and the lamp's, and their distances from the eye */ \
+"kernel void lnprobe(uint li [[thread_position_in_grid]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]],\n" \
+"                    device float4 *out [[buffer(2)]], constant uint &n [[buffer(3)]], texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n" \
+"  if (li >= n) return; LS l = ls.l[li]; float4 h = k.S * float4(float3(l.pos), 1.0);\n" \
+"  float2 px = h.w > 1e-3 ? h.xy / h.w : float2(-1.0); out[3 * li] = float4(px, -1.0, h.w);\n" \
+"  out[3 * li + 1] = h; out[3 * li + 2] = float4(float3(l.pos), distance(k.eye.xyz, float3(l.pos)));\n" \
+"  if (any(px < 0.0) || px.x >= k.tgt.x || px.y >= k.tgt.y) return;\n" \
+"  uint2 p = uint2(px); float3 g = pos.read(p).xyz;\n" \
+"  out[3 * li] = float4(px, alb.read(p).a * 255.0, h.w);\n" \
+"  out[3 * li + 1] = float4(g, distance(k.eye.xyz, g));\n" \
+"  out[3 * li + 2] = float4(float3(l.pos), distance(k.eye.xyz, float3(l.pos))); }\n" \
 "fragment LNF lnfs(LNO in [[stage_in]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]],\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n" \
-"  if (dot(in.q, in.q) > 1.0) discard_fragment();\n" \
+"  if (ls.l[in.li].kind < 0.5 && dot(in.q, in.q) > 1.0) discard_fragment();   /* a headlamp's lens: an ellipse */\n" \
 /* only on its car's body as drawn: car paint within 35 cm (a car the game \
    does not draw, the player's in the bumper and cockpit views, shows no lenses) */ \
-"  uint2 px = uint2(in.pos.xy); if (!carpaint(alb.read(px).a) || distance(pos.read(px).xyz, in.wp) > 0.35) discard_fragment();\n" \
+"  uint dbg = uint(k.tgt.w);   /* BR_LIGHT_LENSDBG (diagnostic): 1 no paint gate, 2 no distance gate, 4 no facing gate, 8 solid magenta, 16 no occlusion test, 32 quads 20 x */\n" \
+"  uint2 px = uint2(in.pos.xy); float3 gp = pos.read(px).xyz;\n" \
+"  if ((dbg & 64u) != 0u) { LNF m; float dl = distance(k.eye.xyz, in.wp), dg = distance(k.eye.xyz, gp);\n" \
+"    m.c = float4(dg < dl - 0.10 ? 4.0 : 0.0, carpaint(alb.read(px).a) ? 0.0 : 4.0, distance(gp, in.wp) > 0.35 ? 4.0 : 0.0, 1.0); m.d = 0.0; return m; }\n" \
+"  LS l0 = ls.l[in.li]; float ma = alb.read(px).a;\n" \
+/* a rear lamp lights its own lens's texels (the reversing lamp the white lens, the tail and stop \
+   lamp the red); a headlamp, with no lens tagged, the car's paint over its area */ \
+"  bool lensok = l0.kind > 0.5 ? lensmat(ma) == (l0.rgb.g > 0.5 ? 2 : 1) : carpaint(ma);\n" \
+"  if (((dbg & 1u) == 0u && !lensok) || ((dbg & 2u) == 0u && distance(gp, in.wp) > 0.5)) discard_fragment();\n" \
+/* a headlamp hidden by what the G-buffer holds nearer the eye than its lens (its own body 2 cm behind it does \
+   not hide it): the test by world distance, the lens's screen matrix's w not the game's w-buffer's */ \
+"  if ((dbg & 16u) == 0u && l0.kind < 0.5 && distance(k.eye.xyz, gp) < distance(k.eye.xyz, in.wp) - 0.10) discard_fragment();\n" \
 "  LS l = ls.l[in.li]; float3 dv = normalize(k.eye.xyz - float3(l.pos)); float ct = dot(float3(l.axis), dv);\n" \
-"  if (ct <= 0.0) discard_fragment();\n" \
+"  if ((dbg & 4u) == 0u && ct <= 0.0) discard_fragment();\n" \
+"  if ((dbg & 8u) != 0u) { LNF m; m.c = float4(4.0, 0.0, 4.0, 1.0); m.d = float(wfloat(in.oow)) / 65536.0; return m; }\n" \
 "  float A = 3.14159265 * (l.kind < 0.5 ? LENS_HW_HEAD * LENS_HH_HEAD : LENS_HW_REAR * LENS_HH_REAR);\n" \
 "  LNF o; o.c = float4(emitcap(float3(l.rgb) * (lamp(l, dv) / (A * max(ct, 0.1))) * k.wb.rgb * k.tgt.z), 1.0);\n" \
 "  o.d = float(wfloat(in.oow)) / 65536.0; return o; }\n" \

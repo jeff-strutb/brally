@@ -1,0 +1,8 @@
+# The cars' lamp lenses in their textures: where a lamp's own painted lens is,
+# so the G-buffer marks those texels and the lens pass lights exactly them.
+# hash (FNV-1a of the RGBA8 large level, as texmat.csv), kind (tail: the
+# rear lamp's red, lit as tail and stop lamp; reverse: the white reversing
+# lamp), the texture's size, then the lens's texels x0 y0 x1 y1 (inclusive).
+# Measured from the texture's own pixels (BR_LIGHT_TEXOUT dumps).
+99FF967C,tail,128x64,4,2,59,17
+99FF967C,reverse,128x64,4,21,19,28

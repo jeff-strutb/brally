@@ -65,17 +65,18 @@ int light_scene_lights(LightSpot *out, int *id, int max)
         for (j = 0; j < 4 && k < max; j++) {
             /* lamp j: 0 front left, 1 front right, 2 rear left, 3 rear right, in the
                model's frame (x forward, y its second row, z up) */
-            float hw = (c->hi[1] - c->lo[1]) * 0.5f * 0.72f, yc = (c->hi[1] + c->lo[1]) * 0.5f;
-            /* at the lens: on the body's outer face (its box's front or back, 2 cm out), so
-               nothing of its own car is in front of it (inside the box a 5 cd tail lamp lit
-               the car's own wheels and mudflaps 10 cm away at 500 lux) */
+            float hw = light_car_lamp_hw(c), yc = (c->hi[1] + c->lo[1]) * 0.5f;
+            /* at the lens: on the body's outer face (its box's front or back over both body
+               lists the game draws, light_game.c; 2 cm out), so nothing of its own car is in
+               front of it (inside the box a 5 cd tail lamp lit the car's own wheels and
+               mudflaps 10 cm away at 500 lux) */
             float lx = j < 2 ? c->hi[0] + 0.02f : c->lo[0] - 0.02f;
             float ly = yc + (j & 1 ? -hw : hw);
             /* a headlamp 0.65 m above the model's lowest point (its wheels' contact): UN ECE
                R48 6.2.4 mounts it 0.5 to 1.2 m up; 0.36 of the body's height put it at
                about 0.49 m, under the minimum, so the cut-off (0.57 degrees down) left a
                car ahead lit only along its bumper */
-            float lz = c->lo[2] + (j < 2 ? fminf(0.65f, (c->hi[2] - c->lo[2]) * 0.8f) : (c->hi[2] - c->lo[2]) * 0.48f);
+            float lz = light_car_lamp_z(c, j >= 2);
             LightSpot *o = &out[k];
             int a;
             float cd;

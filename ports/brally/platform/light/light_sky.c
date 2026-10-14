@@ -222,7 +222,7 @@ static int sky_make_owned(LightSky *s, float *rgb, int w, int h, const LightSkyO
     LightSkyOpt o = opt ? *opt : (LightSkyOpt){ 0 };
     size_t n = (size_t)w * (size_t)h;
     int x, y, c, i, bx = -1, by = -1;
-    float best = -1.0f, sc;
+    float best = -1.0f, sc, painted = 0.0f, pc[3] = { 0, 0, 0 };   /* the disc's paint-out: its reach about pc (radians) */
     memset(s, 0, sizeof *s);
     if (w < 16 || h < 8 || w != 2 * h) {
         free(rgb);
@@ -304,11 +304,90 @@ static int sky_make_owned(LightSky *s, float *rgb, int w, int h, const LightSkyO
                 s->sun_omega = om;
                 /* painted over with the sky around it, a texel past its reach */
                 reach += 1.5f * PI_F / (float)h;
+                painted = reach;
+                memcpy(pc, c0, sizeof pc);
                 FOR_NEAR(s, c0, reach, X, Y, D)
                     memcpy(s->rgb + ((size_t)Y * w + X) * 3, ring, sizeof ring);
                 END_NEAR
             }
         }
+    }
+
+    /* 1b. the lens's glare about the sun (light_sky.h) */
+    if (s->has_sun && o.deglare) {
+        enum { NB = 60 };   /* 20 rings of 0.25 degrees to 5, then 40 of 1 degree to 45 */
+        float *bin[NB + 1], prof[NB], bg, c0[3];
+        int nb[NB + 1], cap[NB + 1], b;
+        memcpy(c0, s->sun, sizeof c0);
+        for (b = 0; b <= NB; b++) {
+            bin[b] = NULL;
+            nb[b] = cap[b] = 0;
+        }
+#define GLARE_BIN(a) ((a) < 5.0f ? (int)((a) / 0.25f) : (a) < LIGHT_SKY_GLARE_OUT ? 20 + (int)((a) - 5.0f) : NB)
+        FOR_NEAR(s, c0, (LIGHT_SKY_GLARE_OUT + 10.0f) * DEG, X, Y, D)
+            {
+                float a = acosf(fminf(D[0] * c0[0] + D[1] * c0[1] + D[2] * c0[2], 1.0f)) / DEG;
+                if (D[2] <= 0.02f || D[0] * pc[0] + D[1] * pc[1] + D[2] * pc[2] > cosf(painted))   /* the painted disc is no sky */
+                    continue;
+                b = GLARE_BIN(a);
+                if (nb[b] == cap[b]) {
+                    float *q;
+                    cap[b] = cap[b] ? cap[b] * 2 : 1024;
+                    if (!(q = realloc(bin[b], (size_t)cap[b] * sizeof(float))))
+                        continue;
+                    bin[b] = q;
+                }
+                bin[b][nb[b]++] = lum(s->rgb + ((size_t)Y * w + X) * 3);
+            }
+        END_NEAR
+        for (b = 0; b <= NB; b++)
+            if (nb[b])
+                qsort(bin[b], (size_t)nb[b], sizeof(float), cmpf);
+        bg = nb[NB] ? bin[NB][nb[NB] / 2] : 0.0f;
+        for (b = 0; b < NB; b++)
+            prof[b] = nb[b] ? fmaxf(bin[b][nb[b] / 2] - bg, 0.0f) : -1.0f;   /* the glare: the ring's median over the background's */
+        if (getenv("LIGHT_SKY_GLARELOG"))   /* diagnostic: the measured glare, ring by ring */
+            for (b = 0; b < NB; b++)
+                fprintf(stderr, "glare ring %d (%.2f deg): %d texels, glare %.4f of a background %.4f\n", b,
+                        b < 20 ? 0.25f * ((float)b + 0.5f) : 5.0f + (float)(b - 20) + 0.5f, nb[b], prof[b], bg);
+        for (b = 0; b < NB; b++)   /* a ring with no sky (narrower than a texel, under the horizon): between its neighbours */
+            if (prof[b] < 0.0f) {
+                int lo = b - 1, hi = b + 1;
+                while (hi < NB && prof[hi] < 0.0f)
+                    hi++;
+                if (lo < 0 && hi >= NB)
+                    prof[b] = 0.0f;
+                else if (lo < 0)
+                    prof[b] = prof[hi];
+                else if (hi >= NB)
+                    prof[b] = prof[lo];
+                else
+                    prof[b] = prof[lo] + (prof[hi] - prof[lo]) * (float)(b - lo) / (float)(hi - lo);
+            }
+        if (bg > 0.0f)
+            FOR_NEAR(s, c0, LIGHT_SKY_GLARE_OUT * DEG, X, Y, D)
+                {   /* the glare at the ring centres, linear between them, taken off (it added to the sky:
+                       a star keeps its own light over its ring), never below a tenth of the texel */
+                    float a = acosf(fminf(D[0] * c0[0] + D[1] * c0[1] + D[2] * c0[2], 1.0f)) / DEG, t, k;
+                    float pos = a < 5.0f ? a / 0.25f - 0.5f : 20.0f + (a - 5.0f) - 0.5f;
+                    int b0 = (int)floorf(pos);
+                    if (b0 < 0) { b0 = 0; t = 0.0f; } else t = pos - (float)b0;
+                    float *q = s->rgb + ((size_t)Y * w + X) * 3, l = lum(q);
+                    if (D[0] * pc[0] + D[1] * pc[1] + D[2] * pc[2] > cosf(painted)) {   /* the painted disc: the background's sky */
+                        if (l > 0.0f)
+                            for (c = 0; c < 3; c++)
+                                q[c] *= bg / l;
+                        continue;
+                    }
+                    k = b0 + 1 < NB ? prof[b0] + (prof[b0 + 1] - prof[b0]) * t : prof[NB - 1] * (1.0f - t);
+                    if (l > 0.0f)
+                        for (c = 0; c < 3; c++)
+                            q[c] *= fmaxf(l - k, 0.1f * l) / l;
+                }
+            END_NEAR
+#undef GLARE_BIN
+        for (b = 0; b <= NB; b++)
+            free(bin[b]);
     }
 
     /* the copy the light is measured on: box-filtered to LIGHT_SKY_ANALYSIS

@@ -20,6 +20,14 @@
  *   3. replaces the lower hemisphere (the photographer's own ground) with a
  *      ground of albedo opt.ground_albedo lit by the sun and the sky, a
  *      degree of blend at the horizon: the track is the ground here;
+ *   1b. with opt.deglare, takes off the photograph's lens glare about the
+ *      sun: per ring about it (0.25 degrees wide to 5, then 1), the
+ *      ring's median sky less the background's (the sky 45 to 55 degrees
+ *      off), a smooth radial profile subtracted from the texels (glare adds
+ *      to what is behind it), so the sky's own structure (stars, cloud)
+ *      stays.  A night map's moon carries a
+ *      halo 165 x the sky at a degree, 9 x at 8, which drawn as sky lit the
+ *      night like a flashlight;
  *   4. turns the map about the vertical so its sun's bearing is opt.sun_az
  *      (the track's designed shadows), when given;
  *   5. projects the result on the first nine spherical harmonics and
@@ -46,6 +54,7 @@ extern "C" {
 #define LIGHT_SKY_SUN_RATIO  30.0f    /* a disc texel is over 30 x the ring's median */
 #define LIGHT_SKY_SUN_RADIUS 0.2665f  /* the sun's angular radius, degrees (drawn disc) */
 #define LIGHT_SKY_ANALYSIS 2048       /* texels across the copy the light is measured on */
+#define LIGHT_SKY_GLARE_OUT 45.0f     /* degrees: the glare's reach; the sky past it (to +10) its background */
 
 typedef struct LightSkyOpt {
     float sun_lux;           /* the sun's illuminance facing it, lux (0: 100,000) */
@@ -55,6 +64,9 @@ typedef struct LightSkyOpt {
     float ground_albedo;     /* the ground under the horizon (0: 0.2) */
     float sun_az;            /* the bearing to turn the sun to, radians from +X toward +Y */
     int has_sun_az;
+    int deglare;             /* take out the glare the camera's lens laid about the sun (a night
+                                map's moon): the sky's median, ring by ring about it, less the
+                                sky's own beyond LIGHT_SKY_GLARE_OUT */
 } LightSkyOpt;
 
 typedef struct LightSky {

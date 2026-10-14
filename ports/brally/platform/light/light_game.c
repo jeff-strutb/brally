@@ -12,6 +12,7 @@
 #include "slice3_41.h"     /* BrDriver, BrDriverCar */
 #include "br_cartypes.h"   /* BrRaceCtl */
 #include "br_trkhdr.h"   /* g_brTrkHdr */
+#include "br_vec.h"      /* g_BrVisLightDefault */
 #include "light.h"
 #include "light_world.h"
 
@@ -34,6 +35,29 @@ int light_game_sky_env(void)
     return env[g_Br0B380C & 15];   /* g_brCfgChosenTrack, 0x100B3014 */
 }
 
+/* the game's sun: the one direction it lights its cars by on every track
+   (br_drawcar.c g_BrDrawDir0, copied from g_BrVisLightDefault, which
+   BrFrameTintSetup sets to (15, 10, 20) normalised: toward the light, Z up,
+   48 degrees high at a bearing of 33.7 degrees).  The tracks' baked vertex
+   light agrees: a least-squares fit of Coastline's against its faces'
+   normals (BR_LIGHT_BAKEFIT) puts its light at a bearing of 27 degrees.
+   Before the game has set it (a night race's first frames), the constant. */
+void light_game_sun(float v[3])
+{
+    v[0] = g_BrVisLightDefault.x;
+    v[1] = g_BrVisLightDefault.y;
+    v[2] = g_BrVisLightDefault.z;
+    if (!(v[0] * v[0] + v[1] * v[1] + v[2] * v[2] > 0.5f)) {
+        float l = sqrtf(15.0f * 15.0f + 10.0f * 10.0f + 20.0f * 20.0f);
+        v[0] = 15.0f / l; v[1] = 10.0f / l; v[2] = 20.0f / l;
+    }
+}
+
+int light_game_track_id(void)
+{
+    return (int)g_Br0B380C;   /* g_brCfgChosenTrack */
+}
+
 int light_game_weather(void)
 {
     int w = *(int32_t *)&DAT_104b15e8;
@@ -41,10 +65,12 @@ int light_game_weather(void)
 }
 
 /* a car model's extent in its own frame (x forward, y the frame's second
- * row, z up; metres), from the vertices of its full-detail body list (model
- * record +0x8024): G_VTX (0x04) loads of 0x20-byte vertices whose first three
- * floats are the position x 255, followed into called lists (0x06) until
- * G_ENDDL (0xB8).  Measured once per model. */
+ * row, z up; metres), from the vertices of its full-detail body, both lists
+ * the game draws it with at full detail (model record +0x8024, +0x8028,
+ * +0x8030 and +0x8038, br_drawcar.c):
+ * G_VTX (0x04) loads of 0x20-byte vertices whose first three floats are the
+ * position x 255, followed into called lists (0x06) until G_ENDDL (0xB8).
+ * Measured once per model. */
 typedef struct { const void *model; float lo[3], hi[3]; int ok; } ModelBox;
 static ModelBox s_box[32];
 static int s_nbox;
@@ -92,7 +118,44 @@ static const ModelBox *model_box(const void *model)
     memset(&s_box[s_nbox], 0, sizeof s_box[s_nbox]);
     s_box[s_nbox].model = model;
     box_dl(*(const uint32_t *)((const char *)model + 0x8024), &s_box[s_nbox], 0);
+    box_dl(*(const uint32_t *)((const char *)model + 0x8028), &s_box[s_nbox], 0);
+    box_dl(*(const uint32_t *)((const char *)model + 0x8030), &s_box[s_nbox], 0);
+    box_dl(*(const uint32_t *)((const char *)model + 0x8038), &s_box[s_nbox], 0);
+    if (getenv("BR_LIGHT_LAMPLOG"))
+        fprintf(stderr, "car model %d: x %.3f..%.3f y %.3f..%.3f z %.3f..%.3f\n", s_nbox, s_box[s_nbox].lo[0], s_box[s_nbox].hi[0],
+                s_box[s_nbox].lo[1], s_box[s_nbox].hi[1], s_box[s_nbox].lo[2], s_box[s_nbox].hi[2]);
     return &s_box[s_nbox++];
+}
+
+/* the matrix the game drew a car with this frame (br_drawcar.c: its display
+   list's G_MTX names g_BrCarMtxSlot[car index], a float copy of scale(1/255)
+   x the car's frame, rows fwd, right, up, position).  The display list is
+   built before the physics' last tick of the frame, so at 50 m/s the state
+   has moved 0.9 to 1.9 m on from the car the frame shows; the lights follow
+   the car as drawn.  0 when the slot holds nothing plausible. */
+extern uint32_t g_BrCarMtxSlot[16];
+static int drawn_frame(const BrDriverCar *c, LightCar *o)
+{
+    const float *m;
+    int a;
+    uint32_t addr = c->f140 >= 0 && c->f140 < 16 ? g_BrCarMtxSlot[c->f140] : 0;
+    if (!addr || !(m = (const float *)br_ptr32(addr)))
+        return 0;
+    for (a = 0; a < 16; a++)
+        if (!isfinite(m[a]))
+            return 0;
+    {   /* within 10 m of its state and its axes unit (the slot may be a stale pool entry) */
+        float d0 = m[12] - c->pos.x, d1 = m[13] - c->pos.y, d2 = m[14] - c->pos.z, l = 255.0f * sqrtf(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
+        if (d0 * d0 + d1 * d1 + d2 * d2 > 100.0f || fabsf(l - 1.0f) > 0.05f)
+            return 0;
+    }
+    for (a = 0; a < 3; a++) {
+        o->fwd[a] = m[a] * 255.0f;
+        o->side[a] = m[4 + a] * 255.0f;
+        o->up[a] = m[8 + a] * 255.0f;
+        o->pos[a] = m[12 + a];
+    }
+    return 1;
 }
 
 int light_game_cars(LightCar *out, int max)
@@ -111,6 +174,8 @@ int light_game_cars(LightCar *out, int max)
         memcpy(o->side, &c->right, 12);
         memcpy(o->up, &c->up, 12);
         memcpy(o->pos, &c->pos, 12);
+        if (!getenv("BR_LIGHT_CARSTATE"))   /* diagnostic: the physics' state instead */
+            drawn_frame(c, o);
         memcpy(o->vel, &c->f1024, 12);
         o->drive = c->fE68;
         o->brake = c->f0E6C;

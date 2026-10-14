@@ -138,9 +138,93 @@ static void real(const char *path)
     light_sky_free(&s);
 }
 
+/* the lens's glare taken out (light_sky.h 1b): a sky of 1 with stars of 40
+   on one texel in 997, a halo of 10 / theta (degrees) from 0.3 to 45 degrees
+   off the sun, the sun's disc; after the load every ring's median sky is the
+   background's again, a star keeps its contrast over its ring, the disc's
+   light is as without the halo, and the sky past 45 degrees is untouched */
+static int cmpf(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; }
+static float ringmed(const LightSky *s, const float c0[3], float a0, float a1, float *starmed)
+{
+    float *v = malloc((size_t)s->w * s->h * sizeof(float)), *st = malloc((size_t)s->w * s->h * sizeof(float)), m;
+    size_t n = 0, ns = 0;
+    for (int y = 0; y < s->h / 2; y++)
+        for (int x = 0; x < s->w; x++) {
+            float d[3];
+            light_sky_dir(s, (float)x, (float)y, d);
+            float a = acosf(fminf(d[0] * c0[0] + d[1] * c0[1] + d[2] * c0[2], 1.0f)) * 180.0f / PI_F;
+            if (a < a0 || a >= a1 || d[2] <= 0.05f)
+                continue;
+            float l = lum(s->rgb + ((size_t)y * s->w + x) * 3);
+            if ((((size_t)y * 4096u + (size_t)x * 7u) % 997u) == 0)   /* the star texels (the map was 4096 wide) */
+                st[ns++] = l;
+            else
+                v[n++] = l;
+        }
+    qsort(v, n, sizeof(float), cmpf);
+    m = n ? v[n / 2] : 0.0f;
+    if (starmed) {
+        qsort(st, ns, sizeof(float), cmpf);
+        *starmed = ns ? st[ns / 2] : 0.0f;
+    }
+    free(v); free(st);
+    return m;
+}
+static void glare(void)
+{
+    int w = 2048, h = 1024, x, y, c, pass;
+    float sd[3], el = 30.0f * PI_F / 180.0f, az = 20.0f * PI_F / 180.0f, Lsun = 2e5f, lux[2] = { 0, 0 };
+    LightSky s;
+    char err[256];
+    sd[0] = cosf(el) * cosf(az); sd[1] = cosf(el) * sinf(az); sd[2] = sinf(el);
+    for (pass = 0; pass < 2; pass++) {   /* 0: no halo (the reference), 1: the halo and deglare */
+        float *m = malloc((size_t)w * h * 3 * sizeof(float));
+        LightSkyOpt o = { 0 };
+        for (y = 0; y < h; y++) {
+            float e2 = 0.5f * PI_F - PI_F * ((float)y + 0.5f) / (float)h;
+            for (x = 0; x < w; x++) {
+                float a = 2.0f * PI_F * ((float)x + 0.5f) / (float)w, d[3] = { cosf(e2) * cosf(a), cosf(e2) * sinf(a), sinf(e2) };
+                float th = acosf(fminf(d[0] * sd[0] + d[1] * sd[1] + d[2] * sd[2], 1.0f)) * 180.0f / PI_F;
+                float v = e2 > 0.0f ? 1.0f : 0.1f;
+                if (e2 > 0.0f && (((size_t)y * 4096u + (size_t)x * 7u) % 997u) == 0)
+                    v = 40.0f;
+                if (pass && e2 > 0.0f && th > 0.3f && th < 45.0f)
+                    v += 10.0f / th - 10.0f / 45.0f;
+                if (th < 0.6f)
+                    v = Lsun;
+                for (c = 0; c < 3; c++)
+                    m[((size_t)y * w + x) * 3 + c] = v;
+            }
+        }
+        o.sun_lux = 1.0f;   /* scaled to 1 lux: the sky is compared as the scale leaves it */
+        o.deglare = pass;
+        CHECK(!light_sky_make(&s, m, w, h, &o, err, sizeof err), "glare make: %s", err);
+        free(m);
+        lux[pass] = lum(s.sun_lux) / s.scale;   /* the disc's light in the file's units */
+        if (pass) {
+            float worst = 0.0f, sworst = 0.0f, bg = ringmed(&s, s.sun, 50.0f, 60.0f, NULL);
+            static const float r[][2] = { { 0.8f, 1.2f }, { 1.5f, 2.0f }, { 3.0f, 4.0f }, { 6.0f, 8.0f }, { 10.0f, 14.0f }, { 20.0f, 25.0f }, { 35.0f, 40.0f } };
+            for (int i = 0; i < 7; i++) {
+                float sm, md = ringmed(&s, s.sun, r[i][0], r[i][1], &sm);
+                worst = fmaxf(worst, fabsf(md / bg - 1.0f));
+                if (sm > 0.0f)
+                    sworst = fmaxf(sworst, fabsf((sm / md) / 40.0f - 1.0f));
+                printf("glare: ring %4.1f-%4.1f degrees: median %.4f of the background's (the halo was %.1f x), star / ring %.2f\n",
+                       r[i][0], r[i][1], md / bg, 1.0f + 10.0f / (0.5f * (r[i][0] + r[i][1])), md > 0.0f ? sm / md : 0.0f);
+            }
+            CHECK(worst < 0.03f, "glare: a ring's median sky %.1f%% off the background's after the deglare", worst * 100.0f);
+            CHECK(sworst < 0.08f, "glare: a star's contrast %.1f%% off", sworst * 100.0f);
+            CHECK(fabsf(lux[1] / lux[0] - 1.0f) < 0.05f, "glare: the disc's light %.4g with the halo, %.4g without", lux[1], lux[0]);
+            printf("glare: worst ring %.2f%%, star contrast %.2f%%, the disc's light with the halo / without %.4f\n", worst * 100.0f, sworst * 100.0f, lux[1] / lux[0]);
+        }
+        light_sky_free(&s);
+    }
+}
+
 int main(int argc, char **argv)
 {
     synthetic();
+    glare();
     if (argc > 1)
         real(argv[1]);
     printf(s_fail ? "sky_test: %d FAILED\n" : "sky_test: all passed\n", s_fail);

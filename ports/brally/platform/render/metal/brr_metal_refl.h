@@ -49,6 +49,7 @@
 #define BRR_WET_SRC \
 /* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
    and the reflections skip it); 64..80 a lamp (BRR_MAT_LAMP); 88..104 the 3D's car paint (BRR_MAT_CAR, \
+   112 and 116 a car's tail and reversing lens, BRR_MAT_LENS; \
    no glow; the capture's car flag, lit 3, glide.c); 128..255 the 3D's \
    other surfaces, 128 + 127 x their glow */ \
 "#define BRR_MAT_CAR 96.0\n" \
@@ -56,6 +57,9 @@
 /* 72: a lamp (texmat's lamp textures: start lights, their flares), which \
    emits BRR_LAMP_L cd/m2 at a full texel (LED signal heads: 5,000 to 15,000) */ \
 "#define BRR_MAT_LAMP 72.0\n" \
+/* 112, 116: a car's tail and reversing lamp lens as its texture paints it (carlamp.csv) */ \
+"#define BRR_MAT_LENS 112.0\n" \
+"static int lensmat(float a) { a = a * 255.0 - BRR_MAT_LENS; return a > -1.5 && a < 1.5 ? 1 : a > 2.5 && a < 5.5 ? 2 : 0; }\n" \
 "#define BRR_LAMP_L 10000.0\n" \
 "static bool lampmat(float a) { a *= 255.0; return a > 63.5 && a < 80.5; }\n" \
 /* car paint's two roughnesses: its clear coat's and the paint's under it \

@@ -22,6 +22,8 @@ int  light_game_weather(void);
  * track (mirrors share their base track's): 0 desert, 1 mountain, 2 coast,
  * 3 mine, 4 amazon, 5 race, 6 bonus */
 int  light_game_sky_env(void);
+void light_game_sun(float v[3]);   /* the game's sun, toward it, unit, Z up (its car light) */
+int  light_game_track_id(void);           /* the chosen track, as the game numbers it */
 /* a car as the race has it: its frame (rows of its body matrix), velocity,
  * the drive torque (negative: driving backwards) and brake torque (negative
  * while held) its physics applies, its control word (0x20000: reverse), and
@@ -33,6 +35,16 @@ typedef struct LightCar {
     float lo[3], hi[3];
     int has_box;
 } LightCar;
+/* where a car's lamps sit in its own frame: a headlamp 0.65 m over the
+   model's lowest point (UN ECE R48 6.2.4: 0.5 to 1.2 m), a rear lamp at 0.48
+   of its height (j 0 front, 1 rear); their half-span across, 0.72 of the
+   body's half-width */
+static inline float light_car_lamp_z(const LightCar *c, int rear)
+{
+    float h = c->hi[2] - c->lo[2];
+    return c->lo[2] + (rear ? h * 0.48f : (0.65f < h * 0.8f ? 0.65f : h * 0.8f));
+}
+static inline float light_car_lamp_hw(const LightCar *c) { return (c->hi[1] - c->lo[1]) * 0.5f * 0.72f; }
 int  light_game_cars(LightCar *out, int max);
 /* the track: every scene object's triangles in world space (as the
  * capture's), rebuilt when the race's object table changes (gen counts the
