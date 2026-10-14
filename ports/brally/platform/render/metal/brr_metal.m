@@ -40,6 +40,7 @@
 #include "light_sky.h"
 #include "light_smooth.h"
 #include "brr_metal_smooth.h"
+#include "brr_metal_cast.h"
 #include "brr_metal_env_api.h"
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
@@ -1138,6 +1139,10 @@ static float lit_ev(int w, float *ev)
 
 /* the frame's moving casters: its opaque 3D less what lies on the track
  * (light_capture_ontrack: the cascades' static cache holds that already) */
+/* the moving casters on the CPU: the frame's opaque 3D less what lies on the
+ * track (light_capture_ontrack), the reference brr_metal_cast.h's cast_pick
+ * is checked against (BR_LIGHT_CASTCHECK); the frame draws the GPU's */
+static int s_castcheck = -1;
 static void lit_dynamic(void)
 {
     size_t i;
@@ -1154,35 +1159,159 @@ static void lit_dynamic(void)
             memcpy(&s_dyn[3 * s_ndyn], &s_tris[3 * i], 9 * sizeof(float));
             s_ndyn += 3;
         }
-    {   /* each car's floor pan: the 1999 models are open shells, their glass blended (no caster), so the
-           sun shone through the cabin onto the road under the car, a patch that came and went as the car
-           pitched and the camera moved; a rectangle over the body's box at LIGHT_CAR_FLOOR up, in the
-           frame the car was drawn with (light_game_cars) */
-        LightCar cars[20];
-        int nc = light_game_cars(cars, 20), c, k, j;
-        if (s_capdyn < s_ndyn + (size_t)nc * 6) {
-            float *p = realloc(s_dyn, (s_ndyn + (size_t)nc * 6) * 3 * sizeof(float));
-            if (!p)
-                return;
-            s_dyn = p;
-            s_capdyn = s_ndyn + (size_t)nc * 6;
+}
+
+/* the cars, as boxes in the frame they were drawn with: their floor pans as
+ * casters (the 1999 models are open shells with blended glass, so the sun
+ * shone through the cabin onto the road under the car, a patch that came and
+ * went as the car pitched and the camera moved), and their boxes' corners
+ * and faces: the cascades' reach toward the sun and the lamps' shadow tiles'
+ * invalidation (light_shadow_plan hashes what moves near a lamp) */
+#define CAR_MAX 20
+static float s_cfloor[CAR_MAX * 6 * 3], s_cbox[CAR_MAX * 36 * 3], s_ccorner[CAR_MAX * 8 * 3];
+static int s_ncfloor, s_ncbox, s_nccorner;
+static void lit_carboxes(void)
+{
+    static const int tri[6] = { 0, 1, 2, 0, 2, 3 };
+    static const int face[6][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 } };
+    LightCar cars[CAR_MAX];
+    int nc = light_game_cars(cars, CAR_MAX), c, j, k, f;
+    s_ncfloor = s_ncbox = s_nccorner = 0;
+    for (c = 0; c < nc; c++) {
+        const LightCar *car = &cars[c];
+        float q[4][3], b[8][3];
+        if (!car->has_box)
+            continue;
+        for (j = 0; j < 4; j++) {
+            float x = j == 0 || j == 3 ? car->lo[0] : car->hi[0], y = j < 2 ? car->lo[1] : car->hi[1];
+            for (k = 0; k < 3; k++)
+                q[j][k] = car->pos[k] + car->fwd[k] * x + car->side[k] * y + car->up[k] * (car->lo[2] + LIGHT_CAR_FLOOR);
         }
-        for (c = 0; c < nc; c++) {
-            const LightCar *car = &cars[c];
-            float q[4][3], z;
-            static const int tri[6] = { 0, 1, 2, 0, 2, 3 };
-            if (!car->has_box)
-                continue;
-            z = car->lo[2] + LIGHT_CAR_FLOOR;
-            for (j = 0; j < 4; j++) {
-                float x = j == 0 || j == 3 ? car->lo[0] : car->hi[0], y = j < 2 ? car->lo[1] : car->hi[1];
-                for (k = 0; k < 3; k++)
-                    q[j][k] = car->pos[k] + car->fwd[k] * x + car->side[k] * y + car->up[k] * z;
-            }
+        for (j = 0; j < 6; j++)
+            memcpy(&s_cfloor[3 * s_ncfloor++], q[tri[j]], 3 * sizeof(float));
+        for (j = 0; j < 8; j++) {
+            float x = j & 1 ? car->hi[0] : car->lo[0], y = j & 2 ? car->hi[1] : car->lo[1], z = j & 4 ? car->hi[2] : car->lo[2];
+            for (k = 0; k < 3; k++)
+                b[j][k] = car->pos[k] + car->fwd[k] * x + car->side[k] * y + car->up[k] * z;
+            memcpy(&s_ccorner[3 * s_nccorner++], b[j], 3 * sizeof(float));
+        }
+        for (f = 0; f < 6; f++)
             for (j = 0; j < 6; j++)
-                memcpy(&s_dyn[3 * s_ndyn++], q[tri[j]], 3 * sizeof(float));
+                memcpy(&s_cbox[3 * s_ncbox++], b[face[f][tri[j]]], 3 * sizeof(float));
+    }
+}
+
+/* the moving casters on the GPU (brr_metal_cast.h cast_pick): the frame's
+ * opaque 3D tested against the track's hash, the movers appended to
+ * s_castdyn with their indirect draw's count (s_castargs) and each cascade's
+ * texel rectangle (s_castrect); the floors in s_castfloor */
+static id<MTLComputePipelineState> s_pcast;
+static id<MTLRenderPipelineState> s_shrest;
+static id<MTLBuffer> s_castops[3], s_castargs[3], s_castrect[3], s_castfloor[3], s_castdyn, s_thead, s_tnext, s_tidx;
+static size_t s_castcap;
+static unsigned s_thgen = 0xFFFFFFFFu;
+static int s_castok = -1;
+static int lit_cast_init(void)
+{
+    NSError *err = nil;
+    int k;
+    if (s_castok >= 0)
+        return s_castok;
+    s_castok = 0;
+    s_pcast = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cast_pick"] error:&err];
+    {
+        MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+        d.vertexFunction = [s_lib newFunctionWithName:@"rvs"];
+        d.fragmentFunction = [s_lib newFunctionWithName:@"scopy"];
+        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+        s_shrest = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+    }
+    if (!s_pcast || !s_shrest) {
+        fprintf(stderr, "brr: moving casters' kernels: %s\n", err ? [[err description] UTF8String] : "missing");
+        return 0;
+    }
+    for (k = 0; k < 3; k++) {
+        s_castops[k] = [s_dev newBufferWithLength:CAST_OPS_MAX * 8 options:MTLResourceStorageModeShared];
+        s_castargs[k] = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+        s_castrect[k] = [s_dev newBufferWithLength:CASCADES * 16 options:MTLResourceStorageModeShared];
+        s_castfloor[k] = [s_dev newBufferWithLength:sizeof s_cfloor options:MTLResourceStorageModeShared];
+        memset([s_castrect[k] contents], 0, CASCADES * 16);
+    }
+    s_castok = 1;
+    return 1;
+}
+static void lit_cast(id<MTLCommandBuffer> cb, const BrrCascade cs[CASCADES])
+{
+    struct { float cm[CASCADES][16]; uint32_t nops, ntri, cap; float size; } cu;
+    uint32_t *tab, nops = 0, ntri = 0, *args;
+    int32_t *rect;
+    size_t i;
+    int c;
+    id<MTLComputeCommandEncoder> ce;
+    if (!lit_cast_init())
+        return;
+    {   /* the track's hash, once a track (light_capture_trackhash); none: every triangle a mover */
+        const int *head, *next, *tri;
+        int n;
+        unsigned gen;
+        if (s_trkn && light_capture_trackhash(&head, &next, &tri, &n, &gen)) {
+            if (gen != s_thgen) {
+                s_thead = [s_dev newBufferWithBytes:head length:LIGHT_TC_HASH * sizeof(int) options:MTLResourceStorageModeShared];
+                s_tnext = [s_dev newBufferWithBytes:next length:(size_t)(n ? n : 1) * sizeof(int) options:MTLResourceStorageModeShared];
+                s_tidx = [s_dev newBufferWithBytes:tri length:(size_t)(n ? n : 1) * sizeof(int) options:MTLResourceStorageModeShared];
+                s_thgen = gen;
+            }
+        } else if (s_thgen != 0xFFFFFFFEu) {
+            int *h = malloc(LIGHT_TC_HASH * sizeof(int)), z = 0;
+            for (i = 0; h && i < LIGHT_TC_HASH; i++)
+                h[i] = -1;
+            if (h)
+                s_thead = [s_dev newBufferWithBytes:h length:LIGHT_TC_HASH * sizeof(int) options:MTLResourceStorageModeShared];
+            free(h);
+            s_tnext = s_tidx = [s_dev newBufferWithBytes:&z length:sizeof z options:MTLResourceStorageModeShared];
+            s_thgen = 0xFFFFFFFEu;
         }
     }
+    tab = (uint32_t *)[s_castops[s_vbi] contents];
+    for (i = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_OPQ && s_ops[i].n >= 3 && nops < CAST_OPS_MAX) {
+            tab[nops] = (uint32_t)s_ops[i].voff;
+            tab[CAST_OPS_MAX + nops] = ntri;
+            nops++;
+            ntri += (uint32_t)s_ops[i].n / 3;
+        }
+    args = (uint32_t *)[s_castargs[s_vbi] contents];
+    args[0] = 0; args[1] = 1; args[2] = 0; args[3] = 0;
+    rect = (int32_t *)[s_castrect[s_vbi] contents];
+    for (c = 0; c < CASCADES; c++) {
+        rect[4 * c] = rect[4 * c + 1] = 0x7FFFFFFF;
+        rect[4 * c + 2] = rect[4 * c + 3] = -0x7FFFFFFF;
+    }
+    memcpy([s_castfloor[s_vbi] contents], s_cfloor, (size_t)s_ncfloor * 3 * sizeof(float));
+    if (!ntri || !s_thead)
+        return;
+    if (!s_castdyn || s_castcap < (size_t)ntri * 3) {
+        s_castcap = (size_t)ntri * 3 + (size_t)ntri * 3 / 2 + 3072;
+        s_castdyn = [s_dev newBufferWithLength:s_castcap * 12 options:MTLResourceStorageModePrivate];
+    }
+    for (c = 0; c < CASCADES; c++)
+        memcpy(cu.cm[c], cs[c].m, sizeof cu.cm[c]);
+    cu.nops = nops; cu.ntri = ntri; cu.cap = (uint32_t)s_castcap; cu.size = (float)SHADOW_SIZE;
+    ce = [cb computeCommandEncoder];
+    [ce setComputePipelineState:s_pcast];
+    [ce setBytes:&cu length:sizeof cu atIndex:0];
+    [ce setBuffer:s_vb[s_vbi] offset:0 atIndex:1];
+    [ce setBuffer:s_castops[s_vbi] offset:0 atIndex:2];
+    [ce setBuffer:s_castops[s_vbi] offset:CAST_OPS_MAX * 4 atIndex:3];
+    [ce setBuffer:s_thead offset:0 atIndex:4];
+    [ce setBuffer:s_tnext offset:0 atIndex:5];
+    [ce setBuffer:s_tidx offset:0 atIndex:6];
+    [ce setBuffer:s_trkn ? s_trkbuf : s_castdyn offset:0 atIndex:7];
+    [ce setBuffer:s_castdyn offset:0 atIndex:8];
+    [ce setBuffer:s_castargs[s_vbi] offset:0 atIndex:9];
+    [ce setBuffer:s_castrect[s_vbi] offset:0 atIndex:10];
+    [ce dispatchThreads:MTLSizeMake(ntri, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+    [ce endEncoding];
 }
 
 /* the sun's shadow cascades (DESIGN.md 7.4; the fit in brr_shadow.h): the
@@ -1196,7 +1325,7 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
     simd_float4x4 a, ia;
     size_t i;
     int k, c;
-    if (!light_capture_camera(&cam) || (s_ntris < 3 && !s_trkn))
+    if (!light_capture_camera(&cam) || (!s_nops && !s_trkn))
         return 0;
     /* the view's corner rays and its forward axis, from the inverse of view x projection */
     memcpy(&a, cam.vp, sizeof a);                /* row vectors stored row-major: a x p is clip */
@@ -1223,8 +1352,8 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
         float p[3] = { c & 1 ? s_trkhi[0] : s_trklo[0], c & 2 ? s_trkhi[1] : s_trklo[1], c & 4 ? s_trkhi[2] : s_trklo[2] };
         lo = fminf(lo, p[0] * f[0] + p[1] * f[1] + p[2] * f[2]);
     }
-    for (i = 0; i < s_ndyn; i++) {
-        const float *p = &s_dyn[3 * i];
+    for (i = 0; i < (size_t)s_nccorner; i++) {   /* the cars' boxes (lit_carboxes): what moves */
+        const float *p = &s_ccorner[3 * i];
         lo = fminf(lo, p[0] * f[0] + p[1] * f[1] + p[2] * f[2]);
     }
     brr_cascade_fit(sun, eye, (const float (*)[3])ray, fwd, lo, SHADOW_SIZE, cs);
@@ -1435,7 +1564,7 @@ static void lit_lights(const float eye[3], const float *vp)
         light_shadow_track(t->tri, t->ntri, t->gen);
     else
         light_shadow_track(NULL, 0, 0);
-    light_shadow_plan(set, ids, &st, eye, s_dyn, (int)s_ndyn, LS_ATLAS, LS_BUDGET, &s_lplan);
+    light_shadow_plan(set, ids, &st, eye, s_cbox, s_ncbox, LS_ATLAS, LS_BUDGET, &s_lplan);   /* what moves: the cars' boxes */
     /* the track's casters of each tile drawn this frame */
     s_lcn = 0;
     for (k = 0; k < s_lplan.n; k++) {
@@ -1525,14 +1654,11 @@ static void lit_lamp_shadows(void)
     const LightSet *set = (const LightSet *)[s_lset[s_vbi] contents];
     MTLRenderPassDescriptor *rp;
     id<MTLRenderCommandEncoder> e;
-    id<MTLBuffer> dyn = nil;
     int k;
     for (k = 0; k < s_lplan.n && !s_lplan.t[k].render; k++)
         ;
     if (k == s_lplan.n)
         return;
-    if (s_ndyn)
-        dyn = [s_dev newBufferWithBytes:s_dyn length:s_ndyn * 3 * sizeof(float) options:MTLResourceStorageModeShared];
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.depthAttachment.texture = s_latl;
     rp.depthAttachment.loadAction = s_latl_new ? MTLLoadActionClear : MTLLoadActionLoad;
@@ -1558,9 +1684,13 @@ static void lit_lamp_shadows(void)
             [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:s_lctile[k][1] indexType:MTLIndexTypeUInt32
                          indexBuffer:s_lcib[s_vbi] indexBufferOffset:s_lctile[k][0] * 4];
         }
-        if (dyn) {
-            [e setVertexBuffer:dyn offset:0 atIndex:0];
-            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ndyn];
+        if (s_castok > 0 && s_castdyn) {   /* the moving casters (brr_metal_cast.h), the GPU's count */
+            [e setVertexBuffer:s_castdyn offset:0 atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_castargs[s_vbi] indirectBufferOffset:0];
+        }
+        if (s_castok > 0 && s_ncfloor) {
+            [e setVertexBuffer:s_castfloor[s_vbi] offset:0 atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_ncfloor];
         }
     }
     [e endEncoding];
@@ -1982,8 +2112,33 @@ static void lit_present(void)
     if (s_cpu_on < 0)
         s_cpu_on = getenv("BR_LIGHT_CPU") != NULL;
     CPU_T0(0);
-    lit_dynamic();
+    lit_carboxes();
     u.misc[1] = s_env.ready && !s_sky.has_sun ? 0.0f : (float)lit_cascades(sun, eye, &u, cs);   /* an overcast map: no sun, no shadow maps */
+    if (s_castcheck < 0)
+        s_castcheck = getenv("BR_LIGHT_CASTCHECK") != NULL;
+    if (s_castcheck && s_frame % 120 == 0 && u.misc[1] > 0.5f) {   /* diagnostic: the GPU's movers against the CPU's (light_capture_ontrack, brr_shc_rect) */
+        id<MTLCommandBuffer> cb = [s_q commandBuffer];
+        lit_cast(cb, cs);
+        [cb commit];
+        [cb waitUntilCompleted];
+        lit_dynamic();
+        {
+            const int32_t *r = (const int32_t *)[s_castrect[s_vbi] contents];
+            int c, rw[4], worst = 0;
+            for (c = 0; c < CASCADES; c++) {
+                int k;
+                brr_shc_rect(cs[c].m, s_dyn, s_ndyn, SHADOW_SIZE, rw);
+                if (rw[0] < rw[2])   /* the GPU's, clamped as brr_shc_rect clamps */
+                    for (k = 0; k < 4; k++) {
+                        int g = r[4 * c + k] < 0 ? 0 : r[4 * c + k] > SHADOW_SIZE ? SHADOW_SIZE : r[4 * c + k];
+                        worst = abs(g - rw[k]) > worst ? abs(g - rw[k]) : worst;
+                    }
+            }
+            fprintf(stderr, "castcheck: frame %lu movers GPU %u vertices, CPU %zu; cascade rectangles off by at most %d texels\n",
+                    s_frame, ((const uint32_t *)[s_castargs[s_vbi] contents])[0], s_ndyn, worst);
+        }
+    }
+    lit_cast(s_cmd, cs);   /* the moving casters, on the GPU */
     have_cam = light_capture_camera(&cam);
     if (have_cam) {
         /* world to the target's pixels (the contact shadows', the reflections'
@@ -2320,29 +2475,26 @@ static void lit_present(void)
             op_draw(e, &s_ops[i], 1);
     [e endEncoding];
 
-    /* the sun's shadow cascades (brr_shadow.h, brr_shc_plan): per cascade, the
-       track drawn again into the static cache only when the cascade's matrix
-       or the track changed; the live map restored from the cache where last
-       frame's moving casters were (all of it after a redraw), by blit; this
-       frame's moving casters composited over the cache in a scratch tile
-       just their size, and blitted in.  A cascade with no moving casters,
-       before or now, costs nothing.  The blits go in two encoders for all
-       the cascades (an encoder costs about as much as the texels it saves),
-       so a frame with movers in two cascades has four encoders, as many as
-       drawing the four maps afresh, and moves a small part of the memory */
-    if (u.misc[1] > 0.5f) {
-        id<MTLBuffer> b = s_ndyn ? [s_dev newBufferWithBytes:s_dyn length:s_ndyn * 3 * sizeof(float) options:MTLResourceStorageModeShared] : nil;
+    /* the sun's shadow cascades: per cascade, the track drawn again into the
+       static cache only when the cascade's matrix or the track changed (then
+       all of the live map restored from it, by blit); otherwise the live map
+       restored from the cache only over last frame's moving casters, a quad
+       the GPU places from their rectangle (brr_metal_cast.h rvs, the kernel's
+       atomics); this frame's movers (the GPU's list, an indirect draw) and the
+       cars' floors drawn over it.  No caster is looked at on the CPU */
+    if (u.misc[1] > 0.5f && lit_cast_init()) {
         unsigned gen = s_trkn ? s_trkgen : 0xFFFFFFFFu;
-        int c, dyn[CASCADES][4], rs[CASCADES][4], nrs = 0, ntile = 0;
-        id<MTLBlitCommandEncoder> be;
+        int c, redraw[CASCADES], nfull = 0, prev = (s_vbi + 2) % 3;
         s_shc_frames++;
         for (c = 0; c < CASCADES; c++) {
-            brr_shc_rect(cs[c].m, s_dyn, s_ndyn, SHADOW_SIZE, dyn[c]);
-            if (!b)
-                dyn[c][0] = dyn[c][2] = 0;
-            ntile += dyn[c][0] < dyn[c][2];
-            if (!brr_shc_plan(&s_shc[c], cs[c].m, gen, dyn[c], SHADOW_SIZE, rs[c]))
+            BrrShCache *sc = &s_shc[c];
+            redraw[c] = !sc->valid || sc->gen != gen || memcmp(sc->m, cs[c].m, sizeof sc->m) != 0;
+            if (!redraw[c])
                 continue;
+            memcpy(sc->m, cs[c].m, sizeof sc->m);
+            sc->gen = gen;
+            sc->valid = 1;
+            nfull++;
             s_shc_redraws[c]++;
             rp = [MTLRenderPassDescriptor renderPassDescriptor];
             rp.depthAttachment.texture = s_shcache;
@@ -2362,73 +2514,54 @@ static void lit_present(void)
             }
             [e endEncoding];
         }
-        for (c = 0; c < CASCADES; c++)
-            nrs += rs[c][0] < rs[c][2];
-        if (nrs) {
-            be = [s_cmd blitCommandEncoder];
+        if (nfull) {
+            id<MTLBlitCommandEncoder> be = [s_cmd blitCommandEncoder];
             for (c = 0; c < CASCADES; c++)
-                if (rs[c][0] < rs[c][2]) {
-                    s_shc_restored += (unsigned long)(rs[c][2] - rs[c][0]) * (unsigned long)(rs[c][3] - rs[c][1]);
-                    [be copyFromTexture:s_shcache sourceSlice:(NSUInteger)c sourceLevel:0
-                           sourceOrigin:MTLOriginMake((NSUInteger)rs[c][0], (NSUInteger)rs[c][1], 0)
-                             sourceSize:MTLSizeMake((NSUInteger)(rs[c][2] - rs[c][0]), (NSUInteger)(rs[c][3] - rs[c][1]), 1)
-                              toTexture:s_shadow destinationSlice:(NSUInteger)c destinationLevel:0
-                      destinationOrigin:MTLOriginMake((NSUInteger)rs[c][0], (NSUInteger)rs[c][1], 0)];
+                if (redraw[c]) {
+                    s_shc_restored += (unsigned long)SHADOW_SIZE * SHADOW_SIZE;
+                    [be copyFromTexture:s_shcache sourceSlice:(NSUInteger)c sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
+                             sourceSize:MTLSizeMake(SHADOW_SIZE, SHADOW_SIZE, 1) toTexture:s_shadow destinationSlice:(NSUInteger)c
+                       destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
                 }
             [be endEncoding];
         }
         for (c = 0; c < CASCADES; c++) {
-            int w = dyn[c][2] - dyn[c][0], h = dyn[c][3] - dyn[c][1], tb;
-            uint32_t k[4] = { (uint32_t)c, (uint32_t)dyn[c][0], (uint32_t)dyn[c][1], 0 };
-            float mc[16];
-            if (w <= 0)
-                continue;
-            tb = brr_shc_tile(w, h, SHADOW_SIZE);
-            if (!s_shtile[c] || (int)s_shtile[c].width < tb) {   /* grown as needed, never shrunk */
-                MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-                                                                                             width:(NSUInteger)tb height:(NSUInteger)tb mipmapped:NO];
-                td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-                td.storageMode = MTLStorageModePrivate;
-                s_shtile[c] = [s_dev newTextureWithDescriptor:td];
-            }
-            tb = (int)s_shtile[c].width;
-            brr_shc_crop(cs[c].m, SHADOW_SIZE, dyn[c][0], dyn[c][1], tb, mc);
-            s_shc_tiled += (unsigned long)w * (unsigned long)h;
             rp = [MTLRenderPassDescriptor renderPassDescriptor];
-            rp.depthAttachment.texture = s_shtile[c];
-            rp.depthAttachment.loadAction = MTLLoadActionDontCare;
+            rp.depthAttachment.texture = s_shadow;
+            rp.depthAttachment.slice = (NSUInteger)c;
+            rp.depthAttachment.loadAction = MTLLoadActionLoad;
             rp.depthAttachment.storeAction = MTLStoreActionStore;
             e = lit_encoder(rp, 2);   /* sun shadow */
-            [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)w, (NSUInteger)h }];
-            [e setRenderPipelineState:s_shcopy];
-            [e setDepthStencilState:s_shcopyds];
-            [e setFragmentTexture:s_shcache atIndex:0];
-            [e setFragmentBytes:k length:sizeof k atIndex:0];
-            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+            [e setCullMode:MTLCullModeNone];
+            if (!redraw[c]) {   /* last frame's movers' texels back to the cache's */
+                uint32_t k[4] = { (uint32_t)c, SHADOW_SIZE, 0, 0 };
+                [e setRenderPipelineState:s_shrest];
+                [e setDepthStencilState:s_shcopyds];
+                [e setVertexBuffer:s_castrect[prev] offset:0 atIndex:0];
+                [e setVertexBytes:k length:sizeof k atIndex:1];
+                [e setFragmentTexture:s_shcache atIndex:0];
+                uint32_t k0[4] = { (uint32_t)c, 0, 0, 0 };
+                [e setFragmentBytes:k0 length:sizeof k0 atIndex:0];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+            }
             [e setRenderPipelineState:s_shpipe];
             [e setDepthStencilState:s_shds];
-            [e setCullMode:MTLCullModeNone];
             [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
-            [e setVertexBytes:mc length:sizeof mc atIndex:1];
-            [e setVertexBuffer:b offset:0 atIndex:0];
-            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:s_ndyn];
+            [e setVertexBytes:cs[c].m length:sizeof cs[c].m atIndex:1];
+            if (s_castdyn) {
+                [e setVertexBuffer:s_castdyn offset:0 atIndex:0];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_castargs[s_vbi] indirectBufferOffset:0];
+            }
+            if (s_ncfloor) {
+                [e setVertexBuffer:s_castfloor[s_vbi] offset:0 atIndex:0];
+                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_ncfloor];
+            }
             [e endEncoding];
         }
-        if (ntile) {
-            be = [s_cmd blitCommandEncoder];
-            for (c = 0; c < CASCADES; c++)
-                if (dyn[c][0] < dyn[c][2])
-                    [be copyFromTexture:s_shtile[c] sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
-                             sourceSize:MTLSizeMake((NSUInteger)(dyn[c][2] - dyn[c][0]), (NSUInteger)(dyn[c][3] - dyn[c][1]), 1)
-                              toTexture:s_shadow destinationSlice:(NSUInteger)c destinationLevel:0
-                      destinationOrigin:MTLOriginMake((NSUInteger)dyn[c][0], (NSUInteger)dyn[c][1], 0)];
-            [be endEncoding];
-        }
         if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0) {
-            fprintf(stderr, "light: shadow cache over %lu frames: static redraws %lu %lu %lu %lu, texels a frame restored %.0f and composited %.0f,"
-                            " %zu of %zu triangles moving casters\n", s_shc_frames, s_shc_redraws[0], s_shc_redraws[1],
-                    s_shc_redraws[2], s_shc_redraws[3], (double)s_shc_restored / (double)s_shc_frames,
-                    (double)s_shc_tiled / (double)s_shc_frames, s_ndyn / 3, s_ntris / 3);
+            fprintf(stderr, "light: shadow cache over %lu frames: static redraws %lu %lu %lu %lu, texels a frame restored whole %.0f\n",
+                    s_shc_frames, s_shc_redraws[0], s_shc_redraws[1], s_shc_redraws[2], s_shc_redraws[3],
+                    (double)s_shc_restored / (double)s_shc_frames);
             memset(s_shc_redraws, 0, sizeof s_shc_redraws);
             s_shc_restored = s_shc_tiled = s_shc_frames = 0;
         }
@@ -2772,8 +2905,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
@@ -3154,7 +3287,7 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             op->ct = st->clamp_t;
             op->voff = off;
             op->n = n;
-            if (kind == K_OPQ) {        /* the shadow map's casters */
+            if (kind == K_OPQ && s_castcheck > 0) {   /* BR_LIGHT_CASTCHECK's CPU reference: the frame's opaque 3D */
                 if (s_ntris + (size_t)n > s_captris) {
                     size_t c = s_captris ? s_captris * 2 : 65536;
                     float *p;

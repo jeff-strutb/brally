@@ -208,8 +208,17 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 - **Smooth normals run on the GPU:** a GPU spatial hash in four dispatches.
   `BR_LIGHT_SMOOTHCHECK` compares them with light_smooth.c on the live frame:
   worst 0.04 degrees.
-- `BR_LIGHT_CPU` times what is left on the CPU: 1.2 ms a frame at night,
-  mostly command encoding.
+- **Moving casters run on the GPU** (brr_metal_cast.h): a kernel tests each
+  opaque triangle against a GPU copy of the track's hash, appends the movers
+  with their indirect draw's count, and widens each cascade's rectangle. The
+  live shadow map is restored from the static cache over last frame's
+  rectangle by a quad the GPU places. The CPU places only the cars' boxes
+  (the cascades' reach, the lamp tiles' invalidation, their floor pans).
+  `BR_LIGHT_CASTCHECK` compares with the CPU path: 180 of 182 frames exact,
+  two at float rounding (one triangle on the 5 cm track tolerance, one
+  rectangle edge by a texel).
+- `BR_LIGHT_CPU`: 0.65 ms a frame at night, the casters 0.01 (0.17 before),
+  the rest command encoding; GPU total unchanged (6.2 ms at 2560 x 1440).
 
 ## Fixed on the way
 

@@ -242,8 +242,8 @@ static void dump(const char *path)
  * triangle (within 0.05 units: clipping makes corners that are no track
  * vertex, but they lie on its surface); once a second, the share that do.
  * The cars and their effects are not track, so they are the expected rest. */
-#define TC_CELL 16.0f
-#define TC_HASH 65536
+#define TC_CELL LIGHT_TC_CELL
+#define TC_HASH LIGHT_TC_HASH
 static struct { unsigned gen; int *head, *next, *tri, n, cap; double on, all, car, miss[5]; unsigned mstate[256]; } s_tc;
 
 static unsigned tc_key(int x, int y, int z) { return ((unsigned)x * 73856093u ^ (unsigned)y * 19349663u ^ (unsigned)z * 83492791u) & (TC_HASH - 1); }
@@ -322,6 +322,21 @@ out:
  * are convex), so leaving it out changes no shadow by more than that.  The
  * candidates are those of the grid cell holding its centroid; a miss only
  * keeps it as a moving caster. */
+int light_capture_trackhash(const int **head, const int **next, const int **tri, int *n, unsigned *gen)
+{
+    const LightTrack *t = light_game_track();
+    if (!t || !t->ntri)
+        return 0;
+    if (t->gen != s_tc.gen || !s_tc.head)
+        tc_build(t);
+    *head = s_tc.head;
+    *next = s_tc.next;
+    *tri = s_tc.tri;
+    *n = s_tc.n;
+    *gen = s_tc.gen;
+    return 1;
+}
+
 int light_capture_ontrack(const float tri[9])
 {
     const LightTrack *t = light_game_track();

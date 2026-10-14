@@ -120,6 +120,13 @@ int  light_capture_eye(float eye[3]);
 int  light_capture_camera(LightCamera *c);
 /* 1 when a world triangle (3 corners x xyz) lies on one of the track's
  * triangles (light_game_track): the track's shadow already holds it */
+/* the track's grid hash (built once a track): cells LIGHT_TC_CELL units on a
+   side hashed into LIGHT_TC_HASH buckets, head[bucket] the first entry, an
+   entry's next and its track triangle (light_game_track's order); the GPU's
+   copy tests the moving casters (brr_metal_cast.h).  0 with no track */
+#define LIGHT_TC_CELL 16.0f
+#define LIGHT_TC_HASH 65536
+int light_capture_trackhash(const int **head, const int **next, const int **tri, int *n, unsigned *gen);
 int  light_capture_ontrack(const float tri[9]);
 /* 1 when world point p lies inside car c's model box (lo..hi in its own
  * frame: fwd, side, up about pos) grown by margin on every side */
