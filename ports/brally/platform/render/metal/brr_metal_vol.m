@@ -77,6 +77,20 @@ static int vol_init(id<MTLDevice> dev, id<MTLLibrary> lib)
     return 1;
 }
 
+static uint8_t s_vgiu[512];
+static size_t s_vgiu_n;
+static id<MTLBuffer> s_vgoff, s_vgoff0;
+static id<MTLTexture> s_vgirr, s_vgdst;
+void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLTexture> irr, id<MTLTexture> dst)
+{
+    s_vgiu_n = giu && n <= sizeof s_vgiu ? n : 0;
+    if (s_vgiu_n)
+        memcpy(s_vgiu, giu, n);
+    s_vgoff = off;
+    s_vgirr = irr;
+    s_vgdst = dst;
+}
+
 void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> cmd, const void *lu, size_t lusz,
                    id<MTLBuffer> lset, id<MTLTexture> shadow, id<MTLTexture> gpos, id<MTLTexture> hdr,
                    const float eye[3], const float scr[16], int w, double time)
@@ -125,6 +139,16 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
     [ce setTexture:shadow atIndex:0];
     [ce setTexture:s_vcell[prev] atIndex:1];
     [ce setTexture:s_vcell[s_vcur] atIndex:2];
+    {   /* the irradiance probes (brr_vol_gi): off with a zero volume */
+        static const uint8_t zero[512];
+        int on = s_vgiu_n > 0 && s_vgoff && s_vgirr && s_vgdst;
+        [ce setBytes:on ? s_vgiu : zero length:on ? (NSUInteger)s_vgiu_n : sizeof zero atIndex:3];
+        if (!s_vgoff0)
+            s_vgoff0 = [dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+        [ce setBuffer:on ? s_vgoff : s_vgoff0 offset:0 atIndex:4];
+        [ce setTexture:on ? s_vgirr : s_vcell[prev] atIndex:3];
+        [ce setTexture:on ? s_vgdst : s_vcell[prev] atIndex:4];
+    }
     [ce dispatchThreads:MTLSizeMake(VOL_NX, VOL_NY, VOL_NZ) threadsPerThreadgroup:MTLSizeMake(8, 8, 4)];
     [ce setComputePipelineState:s_vint];
     [ce setTexture:s_vcell[s_vcur] atIndex:0];

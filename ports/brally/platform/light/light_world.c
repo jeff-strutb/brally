@@ -12,6 +12,7 @@
  * they face; the brightest clusters are kept when there are more than the
  * set holds. */
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -155,8 +156,10 @@ int light_world_spots(LightSpot *out, int max, float t)
  * its world triangles, the share of its texture's texels that glow and their
  * mean colour).  Each triangle becomes an emitter once a track generation
  * (its centroid to 5 cm is its identity), facing the camera that saw it (a
- * lit window is seen from outside), its luminance the glow's 100 cd/m2 times
- * the share.  The set is clustered again when it has grown, at most every
+ * lit window is seen from outside), its luminance the renderer's: a lit
+ * window's 100 cd/m2 times the share of its texels that glow, a lamp
+ * texture's (texmat `lamp`: a tunnel's or a street's lamps) BRR_LAMP_L
+ * times its texels' mean.  The set is clustered again when it has grown, at most every
  * 60th call (light_world_refresh). */
 #define GATHER_MAX 16384
 static LightEmitter s_em[GATHER_MAX];
@@ -176,7 +179,7 @@ static int seen(uint64_t k)
     return 0;
 }
 
-void light_world_gather(unsigned gen, const float *tri, int n, float share, const float rgb[3], const float eye[3])
+void light_world_gather(unsigned gen, const float *tri, int n, float lum, const float rgb[3], const float eye[3])
 {
     int i, k;
     if (gen != s_egen) {
@@ -185,7 +188,7 @@ void light_world_gather(unsigned gen, const float *tri, int n, float share, cons
         memset(s_ekey, 0, sizeof s_ekey);
         s_dirty = 1;
     }
-    if (!(share > 0))
+    if (!(lum > 0))
         return;
     for (i = 0; i < n && s_ne < GATHER_MAX; i++) {
         const float *a = tri + 9 * i, *b = a + 3, *c = a + 6;
@@ -218,7 +221,7 @@ void light_world_gather(unsigned gen, const float *tri, int n, float share, cons
             o->rgb[k] = rgb[k];
         }
         o->area = 0.5f * l;
-        o->lum = 100.0f * share;
+        o->lum = lum;
         s_dirty = 1;
     }
 }
@@ -234,6 +237,13 @@ int light_world_refresh(void)
     n = light_world_cluster(s_em, s_ne, s, LIGHT_WORLD_MAX);
     light_world_set(s, n);
     s_dirty = 0;
+    if (getenv("BR_LIGHT_WORLDLOG")) {   /* diagnostic: the set as it is clustered again */
+        int i;
+        fprintf(stderr, "light world: %d emitters, %d lights, %.0f lm\n", s_ne, n, light_world_flux(s, n));
+        for (i = 0; i < n && i < 8; i++)
+            fprintf(stderr, "  light %d at %.1f %.1f %.1f, %.0f cd, range %.1f m\n", i, s[i].pos[0], s[i].pos[1], s[i].pos[2],
+                    s[i].candela, s[i].range);
+    }
     return n;
 }
 

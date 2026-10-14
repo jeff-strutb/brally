@@ -40,11 +40,12 @@
 #ifndef BRR_METAL_REFL_H
 #define BRR_METAL_REFL_H
 
-#define REFL_ROUGH_MAX 0.6f      /* above this only the sky's diffuse (probes later) */
+#define REFL_ROUGH_MAX 0.6f      /* above this nothing traced: the lighting takes the probes (brr_metal_lit.h BRR_GISPEC_R0) */
 #define REFL_TRACE_MAX 0.45f     /* above this the lobe is too wide to show what a march finds: the sky's specular only */
 #define REFL_STRIDE 2.0f         /* the march's step in full-resolution pixels (one half-resolution pixel) */
 #define REFL_STEPS 32            /* the march's steps at most; a longer ray strides further */
 #define REFL_RT_ROUGH 0.4f       /* below this a miss traces the BVH */
+#define BRR_LAMP_CDM2 10000.0f   /* a lamp texture's luminance at a full texel, cd/m2 (BRR_LAMP_L) */
 
 #define BRR_WET_SRC \
 /* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
@@ -60,7 +61,7 @@
 /* 112, 116, 120: a car's tail, reversing and headlamp lens as its texture paints it (carlamp.csv) */ \
 "#define BRR_MAT_LENS 112.0\n" \
 "static int lensmat(float a) { a = a * 255.0 - BRR_MAT_LENS; return a > -1.5 && a < 1.5 ? 1 : a > 2.5 && a < 5.5 ? 2 : a > 6.5 && a < 9.5 ? 3 : 0; }\n" \
-"#define BRR_LAMP_L 10000.0\n" \
+"#define BRR_LAMP_L " REFL_STR(BRR_LAMP_CDM2) "\n" \
 "static bool lampmat(float a) { a *= 255.0; return a > 63.5 && a < 80.5; }\n" \
 /* car paint's two roughnesses: its clear coat's and the paint's under it \
    (brr_metal_lit.h: brdf) */ \
@@ -183,7 +184,10 @@
    frame's lit target where the hit was on screen and is still what the \
    G-buffer shows there, else the triangle's albedo (talb_learn's, 0.3 until \
    a frame has shown it) under the sun (a shadow ray) and the sky's \
-   hemisphere about the triangle's normal.  The BVH's buffers 0..2, its \
+   hemisphere about the triangle's normal (inside the irradiance probes' \
+   volume their light in its place, as the deferred pass takes it, buffer \
+   12 and textures 8 and 9) and the lamps of the hit's cube of the probes' \
+   light grid (gi_lamps', buffers 14 to 16), each behind a shadow ray.  The BVH's buffers 0..2, its \
    surface records 9 and the track's triangle -> leaf slot 10 (the hit is \
    numbered in the track's order, its corners stored in leaf order) */ \
 "static float3 rf_rgb(uint c) { return float3(c & 255u, (c >> 8) & 255u, (c >> 16) & 255u) / 255.0; }\n" \
@@ -222,7 +226,10 @@
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
 "                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]],\n" \
-"                  device const RtPrim *prim [[buffer(9)]], device const uint *leaf [[buffer(10)]]) {\n" \
+"                  device const RtPrim *prim [[buffer(9)]], device const uint *leaf [[buffer(10)]],\n" \
+"                  constant GiU &gu [[buffer(12)]], texture2d<float> girr [[texture(8)]], texture2d<float> gdst [[texture(9)]],\n" \
+"                  device atomic_int *hck [[buffer(13)]], const device LSet &ls [[buffer(14)]],\n" \
+"                  device const uint *gcnt [[buffer(15)]], device const ushort *glst [[buffer(16)]], device const float4 *goff [[buffer(17)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
 "  float2 wh = float2(src.get_width(), src.get_height());\n" \
 "  uint2 fp = min(px * 2, uint2(wh) - 1);\n" \
@@ -246,11 +253,38 @@
 "    if (rp.valid > 0.5 && hc.w > 1e-6) { float2 sc = hc.xy / hc.w;\n" \
 "      if (all(sc >= 0.0) && all(sc < wh)) { float3 P = pos.read(uint2(sc)).xyz;\n" \
 "        if (!all(P == 0.0) && abs(rf_vd(u, P) - rf_vd(u, hp)) < 0.1 + 0.02 * rf_vd(u, hp)) { Lfb = prv.read(uint2(sc)).rgb; got = true; } } }\n" \
-"    if (!got) { uint b = leaf[hh.tri] * 9u; uint ac = prim[hh.tri].albedo; float3 ha = ac ? rf_rgb(ac) : float3(0.3);\n" \
+"    if (!got || rp.pad0 > 0.5) { uint b = leaf[hh.tri] * 9u; uint ac = prim[hh.tri].albedo; float3 ha = ac ? rf_rgb(ac) : float3(0.3);\n" \
 "      float3 a0 = float3(tri[b], tri[b + 1], tri[b + 2]), a1 = float3(tri[b + 3], tri[b + 4], tri[b + 5]), a2 = float3(tri[b + 6], tri[b + 7], tri[b + 8]);\n" \
 "      float3 tn = cross(a1 - a0, a2 - a0); tn = dot(tn, tn) > 1e-12 ? normalize(tn) : -r; if (dot(tn, r) > 0.0) tn = -tn;\n" \
 "      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
-"      Lfb = min(ha / 3.14159 * (u.sunc.rgb * max(nl, 0.0) * vis + u.skyc.rgb * (0.5 + 0.5 * tn.z)) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
+"      float3 Es = u.skyc.rgb * (0.5 + 0.5 * tn.z), Ei = Es; bool ing = false;\n" \
+"      if (gu.n.x > 0) { float3 g = (hp - gu.org.xyz) / gu.org.w - float3(gu.base.xyz);   /* inside the probes: their light (sky, bounce, lamps' bounce) */\n" \
+"        if (all(g >= 0.0) && all(g <= float3(gu.n.xyz - 1))) { Ei = gi_irr(gu, goff, girr, gdst, hp, tn, -r); ing = true; } }\n" \
+"      float3 El = 0.0;   /* the lamps of the probes' light grid cube holding the hit (gi_lamps'), each behind a shadow ray */\n" \
+"      if (gu.lim.z > 0.5) { int ce = gi_cell(gu, hp), nlm = int(gcnt[ce]);\n" \
+"        for (int q = 0; q < nlm; q++) { LS l = ls.l[glst[ce * 32 + q]]; float3 L = float3(l.pos) - hp; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
+"          float c = dot(tn, ld); if (c <= 0.0) continue; float3 le = float3(l.rgb) * (lamp(l, -ld) * lwin(l, -ld, dl) / d2 * c);\n" \
+"          if (any(le > 0.0) && !RT_ANY(hp + tn * 0.02, ld, 0.0, max(dl - 0.05, 0.0))) El += le; } }\n" \
+"      float3 Ed = u.sunc.rgb * max(nl, 0.0) * vis, Lm = min(ha / 3.14159 * (Ed + Ei + El) * u.wb.rgb * u.misc.x, float3(60000.0));\n" \
+"      if (!got) Lfb = Lm;\n" \
+"      else if (ing) {   /* BR_LIGHT_HITCHECK: the model against the frame's own pixel of that point, log2 of luminance x 1000 */\n" \
+"        float4 cc = u.scr * float4(hp, 1.0); float2 cs = cc.xy / max(cc.w, 1e-6);   /* this frame's pixel of the point, its own albedo: the lighting compared, not the texture */\n" \
+"        if (cc.w <= 1e-6 || any(cs < 0.0) || any(cs >= wh) || abs(rf_vd(u, pos.read(uint2(cs)).xyz) - rf_vd(u, hp)) > 0.1 + 0.02 * rf_vd(u, hp)) cs = float2(-1.0);\n" \
+"        float3 fa = cs.x >= 0.0 ? alb.read(uint2(cs)).rgb : float3(0);\n" \
+"        float3 Ls = fa / 3.14159 * (Ed + Es) * u.wb.rgb * u.misc.x, Lg = fa / 3.14159 * (Ed + Ei + El) * u.wb.rgb * u.misc.x; float3 k = float3(0.2126, 0.7152, 0.0722);\n" \
+"        float y = dot(Lfb, k), ym = dot(Lg, k), ys = dot(Ls, k);\n" \
+"        if (y > 1e-3 && ym > 1e-3 && ys > 1e-3) { float a = log2(ym / y), c = log2(ys / y);\n" \
+"          atomic_fetch_add_explicit(&hck[0], int(a * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[1], int(abs(a) * 1000.0), memory_order_relaxed);\n" \
+"          atomic_fetch_add_explicit(&hck[2], int(c * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[3], int(abs(c) * 1000.0), memory_order_relaxed);\n" \
+"          atomic_fetch_add_explicit(&hck[4], 1, memory_order_relaxed);\n" \
+"          if (all(Ed == 0.0)) { atomic_fetch_add_explicit(&hck[5], int(a * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[6], int(abs(a) * 1000.0), memory_order_relaxed);\n" \
+"            atomic_fetch_add_explicit(&hck[7], int(c * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[8], int(abs(c) * 1000.0), memory_order_relaxed);\n" \
+"            atomic_fetch_add_explicit(&hck[9], 1, memory_order_relaxed);\n" \
+"            float3 PN = nrm.read(uint2(cs)).xyz, PP = pos.read(uint2(cs)).xyz; if (dot(PN, u.eye.xyz - PP) < 0.0) PN = -PN;\n" \
+"            float ef = dot(gi_irr(gu, goff, girr, gdst, PP, PN, normalize(u.eye.xyz - PP)), k), eh = dot(Ei, k), en = dot(gi_irr(gu, goff, girr, gdst, hp, PN, -r), k);\n" \
+"            if (ef > 1e-3 && eh > 1e-3 && en > 1e-3) { atomic_fetch_add_explicit(&hck[10], int(log2(eh / ef) * 1000.0), memory_order_relaxed);\n" \
+"              atomic_fetch_add_explicit(&hck[11], int(log2(en / ef) * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[12], int(dot(PN, tn) * 1000.0), memory_order_relaxed);\n" \
+"              atomic_fetch_add_explicit(&hck[13], 1, memory_order_relaxed); } } } } }\n" \
 "  } else Lfb = rf_env(u, sky, r, 0.0);\n" \
 "  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0 + min(hd, 1e4)), px);\n" \
 "}\n" \

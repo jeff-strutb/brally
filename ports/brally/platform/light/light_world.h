@@ -22,8 +22,9 @@ void  light_world_lighthouse(LightSpot *o, const float pos[3], float t, float de
 void  light_world_set(const LightSpot *s, int n);
 void  light_world_set_lighthouse(const float *pos);  /* NULL: none */
 int   light_world_spots(LightSpot *out, int max, float t);
-/* the renderer's glowing track draws (n triangles, 9 floats each) */
-void  light_world_gather(unsigned gen, const float *tri, int n, float share, const float rgb[3], const float eye[3]);
+/* the renderer's glowing track draws (n triangles, 9 floats each), lum
+ * their luminance (cd/m2), rgb their colour */
+void  light_world_gather(unsigned gen, const float *tri, int n, float lum, const float rgb[3], const float eye[3]);
 int   light_world_refresh(void);   /* clusters what was gathered when it grew */
 int   light_world_emitters(void);
 void  light_world_beam(LightSpot *o, const float pos[3], const float xaxis[3]);

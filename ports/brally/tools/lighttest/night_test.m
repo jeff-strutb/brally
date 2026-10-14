@@ -100,7 +100,7 @@ int main(void)
             flux += M_PI * 100.0 * share * 1.2 * 1.5;
         }
         for (f = 0; f < 5; f++)
-            light_world_gather(7, tri, 2 * NW, share, rgb, eye);
+            light_world_gather(7, tri, 2 * NW, 100.0f * share, rgb, eye);
         for (f = 0; f < 61; f++)
             n = light_world_refresh();
         n = light_world_spots(s, LIGHT_WORLD_MAX, 0);
@@ -109,7 +109,7 @@ int main(void)
         CHECK(light_world_emitters() == 2 * NW && fabs(light_world_flux(s, n) - flux) / flux < 0.05 && face,
               "gather: %d triangles over 5 frames kept once (%d), %d lights, %.0f lm against %.0f lm, all on the eye's side",
               2 * NW, light_world_emitters(), n, light_world_flux(s, n), flux);
-        light_world_gather(8, tri, 0, share, rgb, eye);
+        light_world_gather(8, tri, 0, 100.0f * share, rgb, eye);
         CHECK(light_world_emitters() == 0, "gather: a new track generation starts empty");
     }
     {   /* 7 the lighthouses on Coastline's track (the OBJ fixture's instance records) */
@@ -167,13 +167,13 @@ int main(void)
         }
         memcpy(rgb, s_ecol[9], sizeof rgb);
         /* the renderer's gate (brr_metal.m brr_draw): gather only when light_draw_may_glow */
-        light_world_gather(20, tri, light_draw_may_glow(4, 0) ? 6 : 0, s_eshare[9], rgb, eye);
+        light_world_gather(20, tri, light_draw_may_glow(4, 0) ? 6 : 0, 100.0f * s_eshare[9], rgb, eye);
         for (q = 0; q < 61; q++)
             light_world_refresh();
         nl_opq = light_world_spots(s, LIGHT_WORLD_MAX, 0);
         CHECK(!light_draw_may_glow(4, 0) && light_world_emitters() == 0 && nl_opq == 0,
               "opaque sandstone (ONE, ZERO): may glow %d, %d emitters, %d lights", light_draw_may_glow(4, 0), light_world_emitters(), nl_opq);
-        light_world_gather(21, tri, light_draw_may_glow(1, 5) ? 6 : 0, s_eshare[9], rgb, eye);
+        light_world_gather(21, tri, light_draw_may_glow(1, 5) ? 6 : 0, 100.0f * s_eshare[9], rgb, eye);
         for (q = 0; q < 61; q++)
             light_world_refresh();
         n = nl_bl = light_world_spots(s, LIGHT_WORLD_MAX, 0);

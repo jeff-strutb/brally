@@ -13,7 +13,11 @@
 #include "brr_metal_lit.h"
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
+#include "brr_metal_gi_src.h"
+#include "brr_metal_lights.h"
 
+static int s_hitcheck = -1;
+static id<MTLBuffer> s_hcbuf, s_hcthis;   /* BR_LIGHT_HITCHECK's sums (a scratch buffer when off) */
 static id<MTLComputePipelineState> s_rpipe, s_cpipe, s_tpipe, s_lpipe, s_apipe;
 static id<MTLTexture> s_rdst, s_rhalf, s_rhist[2];
 static float s_pscr[16];
@@ -29,7 +33,8 @@ int brr_refl_tier(void)
 
 void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt,
                    id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
-                   id<MTLTexture> sky, id<MTLTexture> bE)
+                   id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz, id<MTLTexture> girr, id<MTLTexture> gdst,
+                   id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff)
 {
     id<MTLComputeCommandEncoder> e;
     id<MTLBlitCommandEncoder> b;
@@ -37,7 +42,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         return;
     if (!s_rpipe) {
         NSError *err = nil;
-        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_ENV_SRC BRR_REFL_SRC, &err);
+        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_ENV_SRC BRR_GI_DEFS BRR_LIGHTS_SRC BRR_GI_SRC BRR_REFL_SRC, &err);
         id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil, fc = lib ? [lib newFunctionWithName:@"reflc"] : nil,
                         ft = lib ? [lib newFunctionWithName:@"reflt"] : nil;
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
@@ -49,7 +54,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
             s_apipe = fr ? [dev newComputePipelineStateWithFunction:fr error:&err] : nil;
         }
         if (!s_rpipe || !s_cpipe || !s_tpipe) {
-            fprintf(stderr, "brr: reflections: %s\n", lib ? [[err description] UTF8String] : "off: no hardware ray tracing");
+            fprintf(stderr, "brr: reflections: %s\n", err ? [[err description] UTF8String] : "off: no hardware ray tracing");
             s_rfail = 1;
             return;
         }
@@ -76,6 +81,31 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         rp.frame = s_frame;
         rp.valid = s_valid ? 1.0f : 0.0f;
         rp.pad[0] = rp.pad[1] = 0.0f;
+        if (s_hitcheck < 0)
+            s_hitcheck = getenv("BR_LIGHT_HITCHECK") != NULL;
+        if (!s_hcbuf)
+            s_hcbuf = [dev newBufferWithLength:64 options:MTLResourceStorageModeShared];
+        if (s_hitcheck && s_frame % 120 == 60 && rt && rt->built) {   /* the hits' model against the frame where both see a point */
+            id<MTLBuffer> hb = [dev newBufferWithLength:64 options:MTLResourceStorageModeShared];
+            unsigned long fr = s_frame;
+            memset([hb contents], 0, 64);
+            s_hcthis = hb;
+            rp.pad[0] = 1.0f;
+            [cb addCompletedHandler:^(id<MTLCommandBuffer> c) {
+                const int32_t *v = (const int32_t *)[hb contents];
+                (void)c;
+                if (v[4])
+                    fprintf(stderr, "hitcheck: frame %lu, %d hits seen on screen: log2(model / frame) probes mean %+.3f |mean| %.3f, sky hemisphere mean %+.3f |mean| %.3f\n",
+                            fr, v[4], v[0] / 1000.0 / v[4], v[1] / 1000.0 / v[4], v[2] / 1000.0 / v[4], v[3] / 1000.0 / v[4]);
+                if (v[9])
+                    fprintf(stderr, "hitcheck: frame %lu, %d of them in shade: probes mean %+.3f |mean| %.3f, sky hemisphere mean %+.3f |mean| %.3f\n",
+                            fr, v[9], v[5] / 1000.0 / v[9], v[6] / 1000.0 / v[9], v[7] / 1000.0 / v[9], v[8] / 1000.0 / v[9]);
+                if (v[13])
+                    fprintf(stderr, "hitcheck: frame %lu, %d in shade: log2 probes at the hit / at the frame's pixel %+.3f, with the frame's normal %+.3f, normals' cosine %.3f\n",
+                            fr, v[13], v[10] / 1000.0 / v[13], v[11] / 1000.0 / v[13], v[12] / 1000.0 / v[13]);
+            }];
+        } else
+            s_hcthis = s_hcbuf;
         e = [cb computeCommandEncoder];
         [e setBytes:&rp length:sizeof rp atIndex:4];
         if (scroff + sizeof s_pscr <= lusz)
@@ -117,6 +147,17 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     [e setTexture:s_rhalf atIndex:4];
     [e setTexture:sky atIndex:5];
     [e setTexture:s_rdst atIndex:6];
+    {   /* the probes' light for the hits (gu.n.x 0: off) */
+        static const uint8_t zero[512];
+        [e setBuffer:s_hcthis offset:0 atIndex:13];
+        [e setBytes:giu && girr && gdst ? giu : zero length:giu && girr && gdst ? gisz : sizeof zero atIndex:12];
+        [e setTexture:girr ? girr : s_rdst atIndex:8];
+        [e setTexture:gdst ? gdst : s_rdst atIndex:9];
+        [e setBuffer:lset && gcnt && glst ? lset : s_rnull offset:0 atIndex:14];
+        [e setBuffer:lset && gcnt && glst ? gcnt : s_rnull offset:0 atIndex:15];
+        [e setBuffer:lset && gcnt && glst ? glst : s_rnull offset:0 atIndex:16];
+        [e setBuffer:goff ? goff : s_rnull offset:0 atIndex:17];
+    }
     [e dispatchThreads:MTLSizeMake(s_rhalf.width, s_rhalf.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
     /* the temporal accumulation: the last frame's history into this frame's */
     {

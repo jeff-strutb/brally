@@ -101,6 +101,49 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   - The weather's saturation measured again with it: the cars 1.15 sunny,
     0.95 rain against the art (1.16 and 0.96 before), so the factors stand.
 
+- **Probes in the solid:** the track's faces wind outward, so a probe
+  under the ground or inside a hill sees back faces. One whose rays meet back
+  faces past 25% moves through the nearest one, and one within 1 m of a front
+  face moves off it, at most 0.45 of the spacing (probe relocation, Majercik
+  et al. 2021). A probe still buried is left out of the lookups. The buried
+  probes had lit Coastline's tunnel with the sunlit hillside outside it (a
+  dark diamond on its wall, the sky's light inside). gi.sh `buried` checks
+  the classification and the CPU fold.
+- **Reflection hits** inside the probes' volume take their light (sky,
+  bounce) and the lamps of their light grid cube, each behind a shadow ray.
+  `BR_LIGHT_HITCHECK` compares the hit's model with the frame's own pixel
+  where both see a point (the frame's albedo there, so only the light is
+  compared): sunny mean +0.39 stops (+1.03 with the sky's hemisphere alone),
+  night +0.05.
+
+## Sky light where the sky is hidden
+
+- **Rough specular from the probes:** past roughness 0.6 (where the
+  reflections stop tracing) the sky's prefiltered cube gives way, by 0.8, to
+  the probes' irradiance about the mirror direction over pi (Unreal's Lumen
+  reuses its diffuse radiance cache for rough reflections the same way).
+  Coastline's tunnel walls had been lit by the open sky: on its left wall the
+  sky's specular alone was 0.0041 of the 0.0040 frame.
+- **Specular occlusion** of the lobes the reflections never trace (rougher
+  than 0.45, and car paint's base under its traced coat): the sky's cube times
+  the probes' irradiance about the mirror direction over the open sky's. A car
+  in the tunnel had been a pale mirror of the sky. Open-air frames unchanged.
+- **The air's sky light** inside the probes' volume is theirs, (E up + E
+  down) / 2 pi, not the sky's harmonics (a tunnel's air glowed white).
+- **The track's lamps are lights** in every weather (texmat `lamp`: a
+  tunnel's, a street's; light_world): each lamp triangle on the track an
+  emitter at the luminance the frame gives its surface (BRR_LAMP_L times its
+  texels' mean). Coastline's tunnel lamps cluster to about 5,300 cd each.
+  The start lights are not on the track (they move and switch) and stay
+  emitters only.
+- **Day exposure adapts in a tunnel:** the incident meter, until the frame
+  meters more than 1 EV darker than it predicts; then the excess, up to 8 EV,
+  at the night's rates (3 EV/s darker, 1 brighter). Open frames meter -0.5
+  to +0.6 EV from the incident meter in all four day weathers (the weathers'
+  compensation aside) and never adapt; Coastline's tunnel meters 5.5 to 7.9
+  under it. `BR_LIGHT_EVLOG` logs it, `BR_LIGHT_EVSNAP` adapts at once (a
+  headless run's virtual clock runs slower than the race's).
+
 ## Surfaces
 
 - **Ambient occlusion:** GTAO (render/metal/brr_metal_ao.h; Jimenez et al.

@@ -7,8 +7,13 @@
 /* the tier gate (LU.wet.z): BR_REFL, default 2 (screen space, the BVH, the sky); 0 off */
 int  brr_refl_tier(void);
 /* the reflections added into hdr (the lit target, pre-exposed); lu the frame's
- * LU, scroff the byte offset of its scr (world to the target's pixels) */
+ * LU, scroff the byte offset of its scr (world to the target's pixels); giu
+ * (gisz bytes), girr and gdst the irradiance probes (brr_metal_gi.h), giu
+ * NULL when they are off; lset the frame's lights and gcnt, glst the probes'
+ * light grid over them (nil: no lamps on the hits), goff the probes'
+ * relocation (brr_gi_off) */
 void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt,
                    id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
-                   id<MTLTexture> sky, id<MTLTexture> bE);
+                   id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz, id<MTLTexture> girr, id<MTLTexture> gdst,
+                   id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff);
 #endif

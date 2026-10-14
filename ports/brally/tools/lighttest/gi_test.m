@@ -60,6 +60,8 @@ static void quad(Mesh *m, const float o[3], const float e1[3], const float e2[3]
     for (int k = 0; k < 3; k++) { a[k] = o[k]; b[k] = o[k] + e1[k]; c[k] = o[k] + e1[k] + e2[k]; d[k] = o[k] + e2[k]; }
     tri(m, a, b, c, alb, emit); tri(m, a, c, d, alb, emit);
 }
+/* a closed box, its faces wound toward its inside (the track's faces wind
+ * toward the space they are seen from: gi_fold's probe classification) */
 static void box(Mesh *m, float h, uint32_t alb, uint32_t emit)
 {
     float H = 2 * h;
@@ -67,7 +69,7 @@ static void box(Mesh *m, float h, uint32_t alb, uint32_t emit)
         for (int sd = 0; sd < 2; sd++) {
             float o[3] = { -h, -h, -h }, e1[3] = { 0 }, e2[3] = { 0 };
             o[ax] = sd ? h : -h;
-            e1[(ax + 1) % 3] = H; e2[(ax + 2) % 3] = H;
+            e1[(ax + (sd ? 2 : 1)) % 3] = H; e2[(ax + (sd ? 1 : 2)) % 3] = H;
             quad(m, o, e1, e2, alb, emit);
         }
 }
@@ -117,6 +119,7 @@ static void eval(BrrGi *g, const float *q, int n, float *out)
     [e setBytes:&g->u length:sizeof g->u atIndex:0];
     [e setBuffer:qb offset:0 atIndex:1];
     [e setBuffer:ob offset:0 atIndex:2];
+    [e setBuffer:brr_gi_off(g) offset:0 atIndex:3];
     [e setTexture:brr_gi_irr(g) atIndex:0];
     [e setTexture:brr_gi_dst(g) atIndex:1];
     [e dispatchThreads:MTLSizeMake((NSUInteger)n, 1, 1) threadsPerThreadgroup:MTLSizeMake(32, 1, 1)];
@@ -160,6 +163,7 @@ static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float
         for (int x = 0; x < W; x++) {
             int tx = x / T, ty = y / T, lx = x % T, ly = y % T, ix, iy, s[3], pl, k;
             float dir[3], acc[3] = { 0, 0, 0 }, ws = 0.0f;
+            int nb = 0;
             const float *old = prev + ((size_t)y * W + x) * ch;
             float *o = next + ((size_t)y * W + x) * ch;
             s[0] = tx % u->n[0]; s[1] = ty; s[2] = tx / u->n[0];
@@ -171,7 +175,8 @@ static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float
                 float d[3], c;
                 rayd(u, i, d);
                 c = fmaxf(dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2], 0.0f);
-                if (dist) { float w = powf(c, 50.0f), t = fminf(r[3], u->lim[0]); acc[0] += w * t; acc[1] += w * t * t; ws += w; }
+                nb += r[3] < 0.0f;   /* a back face's hit (gi_trace) */
+                if (dist) { float w = powf(c, 50.0f), t = fminf(fabsf(r[3]), u->lim[0]); acc[0] += w * t; acc[1] += w * t * t; ws += w; }
                 else { for (k = 0; k < 3; k++) acc[k] += c * r[k]; ws += c; }
             }
             int wv[3], fresh = u->pbase[3] == 0, per = u->upd[0] > 1 ? u->upd[0] : 1;
@@ -179,7 +184,9 @@ static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float
                 wv[k] = u->base[k] + imod(s[k] - u->base[k], u->n[k]);
                 if (wv[k] < u->pbase[k] || wv[k] >= u->pbase[k] + u->n[k]) fresh = 1;
             }
-            if ((pl % per != u->upd[1] && !fresh) || ws <= 0.0f) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
+            if (pl % per != u->upd[1] && !fresh) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
+            if (nb > 0.25f * u->n[3]) { for (k = 0; k < ch; k++) o[k] = k == 3 ? 1.0f : 0.0f; continue; }   /* inside the solid: off */
+            if (ws <= 0.0f) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
             float h = fresh ? 0.0f : powf(u->par[0], (float)per);
             for (k = 0; k < (dist ? 2 : 3); k++) {
                 float nw = acc[k] / ws * (dist ? 1.0f : 3.14159265f);
@@ -233,6 +240,55 @@ static void furnace(void)
         free(prev); free(pd); free(gi); free(gd); free(ci); free(cd);
     }
     free(irr);
+    brr_gi_release(&g); brr_rt_release(&w);
+}
+
+/* probe classification: a solid box (its faces wound outward, as the
+ * track's hills and walls), 3 x 3 x 3 probes 2 m apart about it; the centre
+ * probe inside sees only back faces and is off (its distances 0), every
+ * other probe keeps its own; the fold on the CPU agrees */
+static void buried(void)
+{
+    Mesh m = { 0 };
+    BrrRtWorld w = { 0 };
+    BrrGi g;
+    float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 };
+    for (int ax = 0; ax < 3; ax++)
+        for (int sd = 0; sd < 2; sd++) {
+            float o[3] = { -1, -1, -1 }, e1[3] = { 0 }, e2[3] = { 0 };
+            o[ax] = sd ? 1 : -1;
+            e1[(ax + (sd ? 1 : 2)) % 3] = 2; e2[(ax + (sd ? 2 : 1)) % 3] = 2;
+            quad(&m, o, e1, e2, grey(128), grey(255));
+        }
+    world(&w, &m, 4);
+    brr_gi_init(&g, s_dev, 3, 3, 3, 64);
+    g.u.par[2] = 1.0f;
+    for (int f = 0; f < 4; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
+    float *pd = tex(brr_gi_dst(&g), 2);
+    BrrGiU u;
+    frame(&g, 2.0f, sun, zero);
+    u = g.u;
+    run(&g, &w, nil, 0);
+    float *ray = [g.ray contents], *gd = tex(brr_gi_dst(&g), 2);
+    int Wd = (int)brr_gi_dst(&g).width, Hd = (int)brr_gi_dst(&g).height, T = BRR_GI_DST + 2, off = 0, on = 0, cen = -1;
+    float *cd = malloc((size_t)Wd * Hd * 8), dd = 0.0f;
+    cpu_fold(&u, ray, pd, cd, Wd, Hd, BRR_GI_DST, 2, 1);
+    for (int i = 0; i < Wd * Hd * 2; i++) dd = fmaxf(dd, fabsf(cd[i] - gd[i]) / fmaxf(1.0f, fabsf(cd[i])));
+    for (int p = 0; p < 27; p++) {   /* each probe: off when its tile's distances are all 0 */
+        int s[3] = { p % 3, (p / 3) % 3, p / 9 }, tx = s[0] + 3 * s[2], ty = s[1], z = 1;
+        float pos[3];
+        for (int k = 0; k < 3; k++) pos[k] = u.org[k] + (u.base[k] + imod(s[k] - u.base[k], 3)) * u.org[3];
+        for (int y = 0; y < T; y++)
+            for (int x = 0; x < T; x++)
+                z &= gd[((size_t)(ty * T + y) * Wd + tx * T + x) * 2] == 0.0f;
+        if (fabsf(pos[0]) < 0.5f && fabsf(pos[1]) < 0.5f && fabsf(pos[2]) < 0.5f) cen = z;
+        else { off += z; on += !z; }
+    }
+    printf("buried     solid box: the probe inside %s; %d of %d outside it on; fold GPU vs CPU distance max rel diff %.3g\n",
+           cen == 1 ? "off" : cen == 0 ? "ON" : "not in the volume", on, on + off, dd);
+    check("buried probe off, the others on", cen == 1 && off == 0 && on == 26);
+    check("buried fold", dd < 1e-4f);
+    free(pd); free(gd); free(cd);
     brr_gi_release(&g); brr_rt_release(&w);
 }
 
@@ -356,9 +412,11 @@ static void leak(void)
     BrrRtWorld w = { 0 };
     float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 };
     /* the wall at x = 1 (between probe planes x = 0 and 2); the emitter below the lit side */
-    float wo[3] = { 1, -40, -40 }, we1[3] = { 0, 80, 0 }, we2[3] = { 0, 0, 80 };
-    float eo[3] = { -30, -30, -3 }, ee1[3] = { 0, 60, 0 }, ee2[3] = { 30.5f, 0, 0 };
+    float wo[3] = { 1.001f, -40, -40 }, we1[3] = { 0, 80, 0 }, we2[3] = { 0, 0, 80 };   /* the lit side's face (+x), 1 mm off the dark side's */
+    float eo[3] = { -30, -30, -3 }, ee1[3] = { 30.5f, 0, 0 }, ee2[3] = { 0, 60, 0 };   /* facing up, toward the probes */
+    float wo2[3] = { 1, 40, -40 }, we3[3] = { 0, -80, 0 };
     quad(&m, wo, we1, we2, grey(77), 0);
+    quad(&m, wo2, we3, we2, grey(77), 0);   /* the wall's other side (-x, at x = 1): probes stand on both */
     quad(&m, eo, ee1, ee2, grey(1), grey(255));
     world(&w, &m, 3);
     for (int ch = 1; ch >= 0; ch--) {
@@ -490,8 +548,9 @@ static void cost(void)
 
 static const char *k_eval =
 "kernel void gi_eval(constant GiU &u [[buffer(0)]], device const float4 *q [[buffer(1)]], device float4 *o [[buffer(2)]],\n"
+"                    device const float4 *off [[buffer(3)]],\n"
 "                    texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]], uint i [[thread_position_in_grid]]) {\n"
-"  float3 p = q[2 * i].xyz, n = q[2 * i + 1].xyz; o[i] = float4(gi_irr(u, irr, dst, p, n, n), 0); }\n";
+"  float3 p = q[2 * i].xyz, n = q[2 * i + 1].xyz; o[i] = float4(gi_irr(u, off, irr, dst, p, n, n), 0); }\n";
 
 int main(void)
 {
@@ -504,6 +563,7 @@ int main(void)
         s_eval = [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_eval"] error:&err];
         check("GiU is 16 float4", sizeof(BrrGiU) == 16 * 16);
         furnace();
+        buried();
         skycube();
         lampbox();
         leak();

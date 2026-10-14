@@ -534,6 +534,11 @@ static id<MTLRenderPipelineState> s_plens;  /* the cars' lamps' lenses (brr_meta
 static id<MTLComputePipelineState> s_pmeter;   /* the exposure's meter (brr_metal_lit.h meter) */
 static id<MTLBuffer> s_meter[3];               /* its reading, one a frame slot: mean log2 scene luminance */
 static float s_ev_night = 1e9f;                /* the night's adapted EV100 */
+static float s_ev_day = 1e9f;                  /* the day's (lit_ev's, adapted in a tunnel) */
+static double s_evd_t;
+#define LIGHT_DAY_ADAPT_D0 (-1.0f)             /* stops: how much darker than the incident meter a frame meters before the exposure follows it */
+#define LIGHT_DAY_ADAPT_MAX 8.0f               /* stops brighter at most (Coastline's tunnel, lit by its own lamps, meters 5.5 to 7.9 under the incident meter) */
+#define LIGHT_DAY_METER_MIN (-10.0f)           /* log2 cd/m2: a frame metering under this is black (a load), not a scene */
 static double s_ev_t;
 typedef struct LNU { float S[16], tgt[4], eye[4], wb[4]; } LNU;
 
@@ -562,7 +567,8 @@ static const struct { float rough, wet, pud, comp, sat, carsat; } k_weather[5] =
     /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f, 1.0f },
 };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
-static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
+static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];
+static float s_tcol[LIGHT_GLOW_TEX][3];   /* a texture's opaque texels' mean linear colour (a lamp's light) */   /* the share of a texture's texels that glow, their mean linear colour */
 static uint8_t s_tmat[TEX_MAX];          /* a texture's material (light_texmat.h), 255 untagged */
 static float s_tmean[TEX_MAX];           /* its texels' mean linear luminance (opaque ones) */
 static float s_trgb[TEX_MAX][3];         /* their mean linear colour */
@@ -899,9 +905,17 @@ static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
     s_emask[tid] = nil;
     if (!(m = (uint8_t *)malloc((size_t)w * (size_t)h)))
         return;
+    double tc[3] = { 0, 0, 0 };
+    int nt = 0;
     for (i = 0; i < w * h; i++) {
         const uint8_t *p = &rgba[4 * i];
         int r = p[0], g = p[1], b = p[2];
+        if (p[3] >= 128) {
+            nt++;
+            tc[0] += pow(r / 255.0, 2.2);
+            tc[1] += pow(g / 255.0, 2.2);
+            tc[2] += pow(b / 255.0, 2.2);
+        }
         m[i] = (uint8_t)(p[3] >= 128 && r >= 180 && g >= 128 && r - b >= 60 ? 255 : 0);
         any |= m[i];
         if (m[i]) {
@@ -913,8 +927,10 @@ static void lit_emask(uint32_t tid, const uint8_t *rgba, int w, int h)
     }
     if (tid < LIGHT_GLOW_TEX) {
         s_eshare[tid] = w * h > 0 ? (float)ng / (float)(w * h) : 0.0f;
-        for (i = 0; i < 3; i++)
+        for (i = 0; i < 3; i++) {
             s_ecol[tid][i] = ng ? (float)(col[i] / ng) : 1.0f;
+            s_tcol[tid][i] = nt ? (float)(tc[i] / nt) : 0.0f;
+        }
     }
     if (any) {
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR8Unorm
@@ -2089,19 +2105,56 @@ static void lit_gi(LU *u, const float eye[3])
         gnd[k] = u->gndc[k] / 3.14159265f;
     }
     brr_gi_frame(&s_gi, eye, 8.0f, u->sun, u->sunc, sky, gnd);
+    if (getenv("BR_LIGHT_GIPROBE") && s_frame % 60 == 0) {   /* diagnostic: what the probes near the eye see (CPU BVH) */
+        const LightTrack *t = light_game_track();
+        const BrrGiU *g = &s_gi.u;
+        int x, y, z, i;
+        for (z = 0; t && z < g->n[2]; z++)
+            for (y = 0; y < g->n[1]; y++)
+                for (x = 0; x < g->n[0]; x++) {
+                    float p[3], dd = 0;
+                    int back = 0, near = 0, hits = 0;
+                    p[0] = g->org[0] + (g->base[0] + x) * g->org[3];
+                    p[1] = g->org[1] + (g->base[1] + y) * g->org[3];
+                    p[2] = g->org[2] + (g->base[2] + z) * g->org[3];
+                    for (i = 0; i < 3; i++)
+                        dd += (p[i] - eye[i]) * (p[i] - eye[i]);
+                    if (dd > 144.0f)
+                        continue;
+                    for (i = 0; i < 64; i++) {
+                        float zz = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - zz * zz, 0.0f)), ph = i * 2.39996323f;
+                        float d[3] = { r * cosf(ph), r * sinf(ph), zz };
+                        LightHit h;
+                        if (light_bvh_closest(&w->bvh, p, d, 0.0f, 200.0f, &h, NULL)) {
+                            const float *a = t->tri + 9 * (size_t)h.tri;
+                            float e1[3] = { a[3] - a[0], a[4] - a[1], a[5] - a[2] }, e2[3] = { a[6] - a[0], a[7] - a[1], a[8] - a[2] };
+                            float nn[3] = { e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0] };
+                            hits++;
+                            back += nn[0] * d[0] + nn[1] * d[1] + nn[2] * d[2] > 0.0f;
+                            near += h.t < 0.25f * g->org[3];
+                        }
+                    }
+                    fprintf(stderr, "giprobe: frame %lu probe %d %d %d at %.1f %.1f %.1f, %.1f m from the eye: %d of 64 rays hit, %d back faces, %d within %.0f m\n",
+                            s_frame, x, y, z, p[0], p[1], p[2], sqrtf(dd), hits, back, near, 0.25f * g->org[3]);
+                }
+    }
     brr_gi_env(&s_gi, s_env.ready ? s_env.spec : nil, 2.0f);   /* a miss: the sky by direction, its GGX 0.5 lobe (64 a face) */
     brr_gi_encode(&s_gi, s_cmd, w, s_lset[s_vbi], s_nlamp);
     u->gi[0] = 1.0f;
 }
 /* the probes for the lighting's fragment stage: the volume at buffer idx,
  * irradiance and distance at textures 6 and 7 (placeholders when off) */
+static id<MTLBuffer> s_gioff0;   /* zero offsets, bound while the probes are off */
 static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
 {
+    if (!s_gioff0)
+        s_gioff0 = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
     static const BrrGiU zero;
     int on = s_gi.ready && s_gi.frame;
     [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
     [e setFragmentTexture:on ? brr_gi_irr(&s_gi) : s_brdfE atIndex:6];
     [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
+    [e setFragmentBuffer:on ? brr_gi_off(&s_gi) : s_gioff0 offset:0 atIndex:6];   /* the probes' relocation */
 }
 
 /* BR_LIGHT_GPU=2 (diagnostic): the frame's work committed in pieces at its
@@ -2411,6 +2464,28 @@ static void lit_present(void)
         for (k = 0; k < 3; k++)
             u.wb[k] = wb[k] > 0.0f && w != 4 ? y / wb[k] : 1.0f;   /* at night a daylight balance: the moonlit sky stays blue, the lamps white */
         u.misc[0] = lit_ev(w, &ev);
+        if (w != 4 && s_pmeter) {
+            /* by day, the incident meter, until the frame meters darker than it says by more than
+               LIGHT_DAY_ADAPT_D0 (a tunnel): then the excess, as a camera's or an eye's adaptation,
+               at the night's rates.  Measured on Coastline, the weathers' compensation aside, open
+               frames meter -0.5 to +0.6 EV from the incident meter, the tunnel -3.2 to -5.7 */
+            const float *mr = (const float *)[s_meter[s_vbi] contents];
+            float tgt = ev, d = mr[0] + 3.0f - (ev + k_weather[w].comp);
+            double now = plat_time_ms() / 1000.0, dt = s_evd_t > 0.0 ? now - s_evd_t : 0.0;
+            s_evd_t = now;
+            if (mr[0] > LIGHT_DAY_METER_MIN && d < LIGHT_DAY_ADAPT_D0)   /* a black frame (a load, a cut) meters nothing */
+                tgt = ev + fmaxf(d - LIGHT_DAY_ADAPT_D0, -LIGHT_DAY_ADAPT_MAX);
+            if (s_ev_day > 1e8f || dt > 0.5 || getenv("BR_LIGHT_EVSNAP"))   /* BR_LIGHT_EVSNAP (diagnostic): adapted at once */
+                s_ev_day = tgt;
+            else
+                s_ev_day += fmaxf(fminf(tgt - s_ev_day, (float)(3.0 * dt)), (float)(-1.0 * dt));
+            if (getenv("BR_LIGHT_EVLOG") && s_frame % 30 == 0)   /* diagnostic: the frame's meter against the incident one */
+                fprintf(stderr, "evlog: frame %lu incident EV100 %.2f reflected %.2f bright tenth %.2f, exposed at %.2f\n", s_frame, ev, mr[0] + 3.0f,
+                        mr[1] + 3.0f, s_ev_day);
+            ev = s_ev_day;
+            u.misc[0] = 1.0f / (1.2f * exp2f(ev));
+        } else
+            s_ev_day = 1e9f;
         if (w == 4 && s_pmeter) {
             /* night: a reflected-light meter (K 12.5: EV100 = log2(L 100 / 12.5)) on the
                GPU's reading three frames ago, never brighter than the floor, adapted at
@@ -2784,11 +2859,13 @@ static void lit_present(void)
             }
         }
     }
-    if (getenv("BR_LIGHT_PICK") && s_frame % 120 == 0) {   /* diagnostic: the 3D draws under a point, fractions of the frame */
+    if (getenv("BR_LIGHT_PICK")) {   /* diagnostic: the 3D draws under a point, fractions of the frame (fx,fy[,every n frames, 120]) */
         const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
         float fx = 0.5f, fy = 0.5f, mx = 1.0f, my = 1.0f, px, py;
-        int t;
-        sscanf(getenv("BR_LIGHT_PICK"), "%f,%f", &fx, &fy);
+        int t, every = 120;
+        sscanf(getenv("BR_LIGHT_PICK"), "%f,%f,%d", &fx, &fy, &every);
+        if (every < 1 || s_frame % (unsigned long)every)
+            goto nopick;
         for (i = 0; i < s_nops; i++)
             if (s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND)
                 for (t = 0; t < s_ops[i].n; t++) {
@@ -2816,6 +2893,7 @@ static void lit_present(void)
                     }
                 }
     }
+nopick:;
     /* the G-buffer: the camera's opaque 3D */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     {
@@ -3025,7 +3103,11 @@ static void lit_present(void)
     [e endEncoding];
     lit_split(3);
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
-        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE);
+        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? &s_gi.u : NULL, sizeof s_gi.u,
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_irr(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_dst(&s_gi) : nil,
+                      u.gi[0] > 0.5f ? s_lset[s_vbi] : nil, u.gi[0] > 0.5f ? s_gi.gcnt : nil, u.gi[0] > 0.5f ? s_gi.glst : nil,
+                      u.gi[0] > 0.5f ? brr_gi_off(&s_gi) : nil);
     if (u.wet[2] > 1.5f)
         lit_talb_check(u.eye);
 
@@ -3047,6 +3129,10 @@ static void lit_present(void)
             for (q = 0; q < nb; q++)
                 light_world_beam(&bs[q], bp[q], bx[q]);
             brr_vol_beams(bs, nb);
+        }
+        {
+            int gon = u.gi[0] > 0.5f && s_gi.ready && s_gi.frame;
+            brr_vol_gi(gon ? &s_gi.u : NULL, sizeof s_gi.u, gon ? brr_gi_off(&s_gi) : nil, gon ? brr_gi_irr(&s_gi) : nil, gon ? brr_gi_dst(&s_gi) : nil);
         }
         brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
     }
@@ -3186,7 +3272,7 @@ static void lit_present(void)
         [e endEncoding];
     }
 
-    if (s_pmeter && w == 4) {   /* the exposure's meter, read three frames on (lit_present) */
+    if (s_pmeter) {   /* the exposure's meter, read three frames on (lit_present) */
         id<MTLComputeCommandEncoder> ce = [s_cmd computeCommandEncoder];
         float mp[4] = { u.misc[0], 0, 0, 0 };
         [ce setComputePipelineState:s_pmeter];
@@ -3624,7 +3710,31 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
                             wt[3 * q + 1] = v[q].wy;
                             wt[3 * q + 2] = v[q].wz;
                         }
-                        light_world_gather(trk->gen, wt, n / 3, s_eshare[st->texture], s_ecol[st->texture], eye);
+                        light_world_gather(trk->gen, wt, n / 3, 100.0f * s_eshare[st->texture], s_ecol[st->texture], eye);
+                    }
+                    free(wt);
+                }
+            }
+            if (u.lamp > 0.5f && n >= 3 && st->texture < LIGHT_GLOW_TEX && !beam) {
+                /* the track's lamps (texmat `lamp`: a tunnel's, a street's), lit whatever the weather as the
+                   game draws them: real lights at the luminance the frame gives their surface
+                   (brr_metal_lit.h: albedo / 0.85 x BRR_LAMP_L), once a track generation.  Only on the
+                   track: the start lights move and switch (light_world gathers once) */
+                const float tri[9] = { v[0].wx, v[0].wy, v[0].wz, v[1].wx, v[1].wy, v[1].wz, v[2].wx, v[2].wy, v[2].wz };
+                const float *tc = s_tcol[st->texture];
+                float y = 0.2126f * tc[0] + 0.7152f * tc[1] + 0.0722f * tc[2];
+                if (y > 0 && light_capture_ontrack(tri)) {
+                    const LightTrack *trk = light_game_track();
+                    float eye[3] = { 0, 0, 0 }, *wt = malloc((size_t)(n / 3) * 9 * sizeof(float));
+                    int q;
+                    light_capture_eye(eye);
+                    if (trk && wt) {
+                        for (q = 0; q < n / 3 * 3; q++) {
+                            wt[3 * q] = v[q].wx;
+                            wt[3 * q + 1] = v[q].wy;
+                            wt[3 * q + 2] = v[q].wz;
+                        }
+                        light_world_gather(trk->gen, wt, n / 3, BRR_LAMP_CDM2 * fminf(y * u.albk, 0.9f) / 0.85f, tc, eye);
                     }
                     free(wt);
                 }

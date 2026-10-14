@@ -62,6 +62,8 @@ typedef struct BrrGi {
     id<MTLTexture> irr[2], dst[2];   /* ping-pong: [cur] last written */
     id<MTLComputePipelineState> grid;
     id<MTLBuffer> ray, leaf, gcnt, glst;   /* the light grid: a cube's count, its list */
+    id<MTLComputePipelineState> offreset, reloc;
+    id<MTLBuffer> off;               /* each slot's place moved out of the track's solid (gi_reloc), float4 */
     id<MTLTexture> env, nocube;      /* the sky's prefiltered cube (brr_gi_env), a black one bound without it */
     BrrGiU u;
     int cur, nx, ny, nz, nr, ready;
@@ -87,6 +89,7 @@ void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MT
 /* the textures the lighting samples (gi_irr): this frame's after encode */
 id<MTLTexture> brr_gi_irr(const BrrGi *g);
 id<MTLTexture> brr_gi_dst(const BrrGi *g);
+id<MTLBuffer>  brr_gi_off(const BrrGi *g);   /* gi_irr's off: the probes' relocation */
 #endif
 
 #endif

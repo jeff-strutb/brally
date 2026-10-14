@@ -293,9 +293,18 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
    the sun (vis its visibility), the sky's and the ground's light scattered isotropically: \
    the mean radiance over the sphere, the harmonics' constant term (sh[0] Y00 / pi, sh holding \
    irradiance, A0 = pi), the lamps of the point's cluster; white balanced as the surfaces' light is \
-   (brr_metal_lit.h radiance), else the air under a blue sky stays blue where the ground it hides is grey */ \
-"static float3 vol_inlight(constant LU &u, constant VU &v, const device LSet &ls, float3 p, float3 d, float vis) {\n" \
-"  float3 L = u.sunc.rgb * vis * vol_hg(v.nse.w, dot(u.sun.xyz, d)) + u.sh[0].rgb * (0.282095 / 3.14159265);\n" \
+   (brr_metal_lit.h radiance), else the air under a blue sky stays blue where the ground it hides is grey. \
+   amb, the sky's and ground's part: inside the irradiance probes' volume their light (vol_amb), \
+   which a tunnel's walls close off, else the sky's harmonics (the open sky everywhere: a tunnel's \
+   air glowed with it) */ \
+"static float3 vol_amb(constant LU &u, constant GiU &gu, device const float4 *goff, texture2d<float> girr, texture2d<float> gdst, float3 p) {\n" \
+"  if (u.gi.x > 0.5 && gu.n.x > 0) { float3 g = (p - gu.org.xyz) / gu.org.w - float3(gu.base.xyz);\n" \
+"    if (all(g >= 0.0) && all(g <= float3(gu.n.xyz - 1))) {   /* the mean radiance over the sphere: (E up + E down) / 2 pi (exact to l = 2 but for Y20) */\n" \
+"      float3 up = float3(0, 0, 1);\n" \
+"      return (gi_irr(gu, goff, girr, gdst, p, up, up) + gi_irr(gu, goff, girr, gdst, p, -up, -up)) / 6.2831853; } }\n" \
+"  return u.sh[0].rgb * (0.282095 / 3.14159265); }\n" \
+"static float3 vol_inlight(constant LU &u, constant VU &v, const device LSet &ls, float3 p, float3 d, float vis, float3 amb) {\n" \
+"  float3 L = u.sunc.rgb * vis * vol_hg(v.nse.w, dot(u.sun.xyz, d)) + amb;\n" \
 "  uint e = ls.cl[lc_index(ls.h, p)], o = e >> 8, cnt = min(e & 255u, 16u);\n" \
 "  for (uint k = 0; k < cnt; k++) {\n" \
 "    LS l = ls.l[ls.idx[o + k]];\n" \
@@ -307,14 +316,16 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
 /* a cell: (scattered light per metre, pre-exposed; extinction), blended with last frame's */ \
 "kernel void vol_inject(uint3 id [[thread_position_in_grid]], constant LU &u [[buffer(0)]], constant VU &v [[buffer(1)]],\n" \
 "                       const device LSet &ls [[buffer(2)]], depth2d_array<float> sm [[texture(0)]],\n" \
-"                       texture3d<float> prev [[texture(1)]], texture3d<float, access::write> out [[texture(2)]]) {\n" \
+"                       texture3d<float> prev [[texture(1)]], texture3d<float, access::write> out [[texture(2)]],\n" \
+"                       constant GiU &gu [[buffer(3)]], device const float4 *goff [[buffer(4)]],\n" \
+"                       texture2d<float> girr [[texture(3)]], texture2d<float> gdst [[texture(4)]]) {\n" \
 "  if (id.x >= uint(v.grid.x) || id.y >= uint(v.grid.y) || id.z >= uint(v.grid.z)) return;\n" \
 "  float2 px = (float2(id.xy) + 0.5) / v.grid.xy * v.tgt.xy;\n" \
 "  float3 d = vol_ray(v, u.eye.xyz, px);\n" \
 "  float t0 = id.z ? vol_dist(v, float(id.z)) : 0.0, t1 = vol_dist(v, float(id.z) + 1.0);\n" \
 "  float t = mix(t0, t1, v.tgt.z); float3 p = u.eye.xyz + d * t;\n" \
 "  float st = vol_sigma(v, p);\n" \
-"  float3 sc = st * v.med.y * vol_inlight(u, v, ls, p, d, vol_sun(u, sm, p)) * u.misc.x;\n" \
+"  float3 sc = st * v.med.y * vol_inlight(u, v, ls, p, d, vol_sun(u, sm, p), vol_amb(u, gu, goff, girr, gdst, p)) * u.misc.x;\n" \
 "  float4 c = float4(min(sc, float3(60000.0)), st);\n" \
 "  if (v.peye.w > 0.5) {\n" \
 "    float4 h = v.pscr * float4(p, 1.0);\n" \
@@ -389,6 +400,10 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
  * the caller from brr_vol_on), scr: world to the target's pixels, w the
  * weather */
 int brr_vol_on(id<MTLDevice> dev);
+/* the irradiance probes for the air's sky and ground light (brr_metal_gi.h:
+ * GiU bytes, the relocation, the atlases), giu NULL when they are off; held
+ * for the next brr_vol_frame */
+void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLTexture> irr, id<MTLTexture> dst);
 void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> cmd, const void *lu, size_t lusz,
                    id<MTLBuffer> lset, id<MTLTexture> shadow, id<MTLTexture> gpos, id<MTLTexture> hdr,
                    const float eye[3], const float scr[16], int w, double time);

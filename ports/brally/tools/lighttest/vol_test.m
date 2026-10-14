@@ -215,6 +215,19 @@ static double run(id<MTLCommandQueue> q, id<MTLComputePipelineState> p, __strong
         if (b[k]) [e setBuffer:b[k] offset:0 atIndex:(NSUInteger)k];
     for (k = 0; k < 3; k++)
         if (t[k]) [e setTexture:t[k] atIndex:(NSUInteger)k];
+    {   /* vol_inject's irradiance probes: none (a zero volume), the air's sky light the harmonics' */
+        static const uint8_t zero[512];
+        static id<MTLBuffer> z4;
+        static id<MTLTexture> z2;
+        if (!z4) {
+            z4 = [q.device newBufferWithLength:16 options:MTLResourceStorageModeShared];
+            z2 = [q.device newTextureWithDescriptor:[MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float width:1 height:1 mipmapped:NO]];
+        }
+        if (!b[3]) [e setBytes:zero length:sizeof zero atIndex:3];
+        [e setBuffer:z4 offset:0 atIndex:4];
+        [e setTexture:z2 atIndex:3];
+        [e setTexture:z2 atIndex:4];
+    }
     [e dispatchThreads:n threadsPerThreadgroup:g];
     [e endEncoding];
     [cb commit];

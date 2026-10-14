@@ -117,7 +117,7 @@ int light_scene_lights(LightSpot *out, int *id, int max)
             k++;
         }
     }
-    if (w == 4 && k < max) {   /* the track's own lights at night (light_world.c): ids from 1000 */
+    if (k < max) {   /* the track's own lights (light_world.c): ids from 1000; its lamps in any weather, its lit windows at night */
         float bp[4][3], bx[4][3];
         int m, q, nb;
         light_world_refresh();
@@ -126,7 +126,7 @@ int light_scene_lights(LightSpot *out, int *id, int max)
             if (id)
                 id[k + q] = 1000 + q;
         k += m;
-        nb = light_game_beams(bp, bx, 4);   /* the lighthouses, as the race turns them: ids from 2000 */
+        nb = w == 4 ? light_game_beams(bp, bx, 4) : 0;   /* the lighthouses, as the race turns them: ids from 2000 */
         for (q = 0; q < nb && k < max; q++, k++) {
             light_world_beam(&out[k], bp[q], bx[q]);
             if (id)
