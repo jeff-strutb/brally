@@ -445,6 +445,8 @@ static int s_nops, s_capops;
 static NSMutableArray *s_lfbtex, *s_frametex;
 static int s_litf;                  /* this frame is lit (the flag, read when it began) */
 static id<MTLTexture> s_galb, s_gpos, s_gnrm, s_hdr, s_shadow, s_shcache, s_bl[6];
+static id<MTLTexture> s_emit;   /* the emitters' light past the screen's cap, for the bloom (brr_metal_lit.h lfe) */
+static id<MTLRenderPipelineState> s_lfe, s_plense;
 static int s_nbl;
 static id<MTLTexture> s_emask[TEX_MAX], s_black;
 static id<MTLTexture> s_skym[TEX_MAX];   /* a backdrop texture's painted sky (brr_skymask.h), made on its first use as one */
@@ -712,6 +714,8 @@ static void lit_init(void)
     s_shcopy = lit_pipe(@"lvs", @"scopy", NULL, 0, 1, -1, -1);
     s_penv = lit_pipe(@"lvs", @"env_sky", &hf, 1, 0, -1, -1);
     s_plens = lit_pipe(@"lnvs", @"lnfs", &hf, 1, 1, 99, 99);   /* added */
+    s_plense = lit_pipe(@"lnvs", @"lnfs", &hf, 1, 0, 99, 99);  /* the lenses into the emission target */
+    s_lfe = lit_pipe(@"lvs", @"lfe", &hf, 1, 0, -1, -1);
     {
         NSError *err = nil;
         int k2;
@@ -824,6 +828,7 @@ static void lit_targets(void)
     s_gpos = lit_tex(MTLPixelFormatRGBA32Float, s_lw, s_lh);
     s_gnrm = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
     s_hdr = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
+    s_emit = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
     for (i = 0; i < 2; i++) {   /* the occlusion, half the lit size */
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR16Float
                                                                                      width:(NSUInteger)(s_lw + 1) / 2 height:(NSUInteger)(s_lh + 1) / 2 mipmapped:NO];
@@ -1851,8 +1856,8 @@ static void lit_present(void)
 {
     LU u;
     EU eu;
-    LNU lnp;
-    int lnprobe = 0;
+    LNU lnp, lensu;
+    int lnprobe = 0, lensdraw = 0;
     /* the sun's bearing, toward it, Z up: the game's own (light_game_sun, the
        one it lights its cars by on every track); its elevation and light are
        the skymap's */
@@ -2589,6 +2594,8 @@ static void lit_present(void)
         [e setFragmentTexture:s_galb atIndex:0];
         [e setFragmentTexture:s_gpos atIndex:1];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)s_nlamp];
+        lensu = ln;
+        lensdraw = 1;
         lnprobe = getenv("BR_LIGHT_LENSPROBE") && s_frame % 120 == 0;
         if (lnprobe)
             lnp = ln;
@@ -2596,6 +2603,31 @@ static void lit_present(void)
     [e endEncoding];
     if (lnprobe)
         lit_lensprobe(&lnp);
+    if (s_emit && s_lfe) {   /* the emitters' light past the screen's cap, for the bloom (a lamp's glow) */
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.colorAttachments[0].texture = s_emit;
+        rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+        rp.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_lfe];
+        [e setFragmentBytes:&u length:sizeof u atIndex:0];
+        [e setFragmentTexture:s_galb atIndex:0];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        if (s_plense && s_nlamp > 0 && have_cam && lensdraw) {
+            LNU le = lensu;
+            le.tgt[3] = (float)((int)le.tgt[3] | 128);
+            [e setRenderPipelineState:s_plense];
+            [e setVertexBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+            [e setVertexBytes:&le length:sizeof le atIndex:1];
+            [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+            [e setFragmentBytes:&le length:sizeof le atIndex:1];
+            [e setFragmentTexture:s_galb atIndex:0];
+            [e setFragmentTexture:s_gpos atIndex:1];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)s_nlamp];
+        }
+        [e endEncoding];
+    }
 
     lit_split(6);
     s_nbon = 0;
@@ -2615,6 +2647,11 @@ static void lit_present(void)
         e = lit_encoder(rp, 6);   /* bloom down */
         [e setRenderPipelineState:s_lbd];
         [e setFragmentTexture:k ? s_bl[k - 1] : hdr atIndex:0];
+        {
+            float emk = !k && s_emit ? 1.0f : 0.0f;
+            [e setFragmentTexture:s_emit ? s_emit : hdr atIndex:1];
+            [e setFragmentBytes:&emk length:sizeof emk atIndex:0];
+        }
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e endEncoding];
     }
@@ -2696,6 +2733,7 @@ static void lit_reset(void)
 {
     int i;
     s_galb = s_gpos = s_gnrm = s_hdr = s_ldep = nil;
+    s_emit = nil;
     s_ao[0] = s_ao[1] = nil;
     brr_taa_reset();
     for (i = 0; i < 6; i++)

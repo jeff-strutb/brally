@@ -137,6 +137,11 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 
   The moon is 0.5 lux facing it. The earlier pool target of 0.55 to 0.88 was
   wrong: at EV100 -2 it clipped the pool to flat white.
+- **Glow:** an emitter's light past the screen's cap goes to an emission
+  target (the G-buffer's lamps and lit windows, the cars' lenses), up to 128
+  x the display's white, which the first bloom level adds: a lamp keeps its
+  colour on screen and gets its glow about it. (At the cap alone lamps read
+  as flat colour; at 1000 x a signal head's bloom swamped it white.)
 - **Light-source surfaces** (start lights, lit windows, flares, lenses) show
   at most one stop over the display's white in their brightest channel, with
   their hue kept. This is Playground's rule that emissives sit "a few stops"

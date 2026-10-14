@@ -289,6 +289,9 @@ BRR_SHADOW_SRC \
    the night's exposure and every colour reaches the display white (PBR \
    Neutral desaturates what passes it).  The light it casts stays physical */ \
 "#define BRR_EMIT_MAX 2.0\n" \
+/* the light past the cap the bloom is given (brr_metal.m s_emit): four stops more, a lamp's glow about \
+   it; at 1000 a signal head's or a lit window's bloom swamped its own colour and drew a white ball */ \
+"#define BRR_GLOW_MAX 128.0\n" \
 "static float3 emitcap(float3 c) { float m = max(c.r, max(c.g, c.b)); return m > BRR_EMIT_MAX ? c * (BRR_EMIT_MAX / m) : c; }\n" \
 /* the G-buffer */ \
 "struct GB { float4 alb [[color(0)]]; float4 pos [[color(1)]]; float4 nrm [[color(2)]]; float d [[depth(any)]]; };\n" \
@@ -466,7 +469,9 @@ BRR_SHADOW_SRC \
 "  if ((dbg & 4u) == 0u && ct <= 0.0) discard_fragment();\n" \
 "  if ((dbg & 8u) != 0u) { LNF m; m.c = float4(4.0, 0.0, 4.0, 1.0); m.d = float(wfloat(in.oow)) / 65536.0; return m; }\n" \
 "  float A = 3.14159265 * (l.kind < 0.5 ? LENS_HW_HEAD * LENS_HH_HEAD : LENS_HW_REAR * LENS_HH_REAR);\n" \
-"  LNF o; o.c = float4(emitcap(float3(l.rgb) * (lamp(l, dv) / (A * max(ct, 0.1))) * k.wb.rgb * k.tgt.z), 1.0);\n" \
+"  float3 raw = float3(l.rgb) * (lamp(l, dv) / (A * max(ct, 0.1))) * k.wb.rgb * k.tgt.z;\n" \
+/* tgt.w bit 128: the emission target's draw, the light over the display's cap (the bloom's, brr_metal.m) */ \
+"  LNF o; o.c = float4((dbg & 128u) != 0u ? min(max(raw - emitcap(raw), 0.0), float3(BRR_GLOW_MAX)) : emitcap(raw), 1.0);\n" \
 "  o.d = float(wfloat(in.oow)) / 65536.0; return o; }\n" \
 /* the exposure's meter, on the GPU: the frame's scene luminance (the \
    pre-exposed HDR divided by its exposure, p.x) over a 64 x 36 grid, \
@@ -491,7 +496,16 @@ BRR_SHADOW_SRC \
 "    for (; b < 64u; b++) { c += atomic_load_explicit(&hb[b], memory_order_relaxed); if (c >= n90) break; }\n" \
 "    out[1] = (float(b) + 1.0) * 0.5 - 12.0; } }\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \
-"fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n" \
+/* the emission target: an emitter's light over the display's cap (emitcap), which the screen \
+   does not show (its colour kept) and the bloom does (a lamp's glow); the G-buffer's emitters \
+   here, as lfs makes them; the lenses' added by their pass */ \
+"fragment float4 lfe(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> alb [[texture(0)]]) {\n" \
+"  float4 a = alb.read(uint2(in.pos.xy)); if (a.a < 0.25) return float4(0);\n" \
+"  float glow = saturate((a.a * 255.0 - 128.0) / 127.0);\n" \
+"  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;\n" \
+"  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;\n" \
+"  float3 e = preexp(u, E * u.wb.rgb); return float4(min(max(e - emitcap(e), 0.0), float3(BRR_GLOW_MAX)), 1); }\n" \
+"fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]], texture2d<float> em [[texture(1)]], constant float &emk [[buffer(0)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 d = 1.0 / float2(t.get_width(), t.get_height()), uv = in.uv;\n" \
 "  float3 a = t.sample(s, uv + d * float2(-2, -2)).rgb, b = t.sample(s, uv + d * float2(0, -2)).rgb, c = t.sample(s, uv + d * float2(2, -2)).rgb;\n" \
 "  float3 e = t.sample(s, uv + d * float2(-2, 0)).rgb, f = t.sample(s, uv).rgb, g = t.sample(s, uv + d * float2(2, 0)).rgb;\n" \
@@ -499,6 +513,7 @@ BRR_SHADOW_SRC \
 "  float3 k = t.sample(s, uv + d * float2(-1, -1)).rgb, l = t.sample(s, uv + d * float2(1, -1)).rgb;\n" \
 "  float3 m = t.sample(s, uv + d * float2(-1, 1)).rgb, n = t.sample(s, uv + d * float2(1, 1)).rgb;\n" \
 "  float3 r = f * 0.125 + (a + c + hh + j) * 0.03125 + (b + e + g + i) * 0.0625 + (k + l + m + n) * 0.125;\n" \
+"  if (emk > 0.5) r += em.sample(s, uv).rgb;   /* the first level: the emitters' light past the screen's cap */\n" \
 "  r = select(r, float3(0), isnan(r) || isinf(r));\n" \
 "  float y = dot(r, float3(0.2126, 0.7152, 0.0722)); if (y > 1000.0) r *= 1000.0 / y;   /* the sun's and moon's discs (to 60000) are the glare pass's: in the bloom too they were a second veil, a white blob about the moon */\n" \
 "  return float4(r, 1);\n" \
