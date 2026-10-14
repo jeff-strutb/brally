@@ -361,9 +361,13 @@ Diagnostics:
   (fractions of its width and height): texture hash, material, blend.
 - `BR_LIGHT_NOBLENDTEX` takes texture hashes as well as indices.
 
+## Packaging
+
+- The Mac app carries the 8K maps in Resources/skies, the iPhone and iPad app
+  the 4K ones (ios/build.sh; all 35 of skies.txt checked in the Simulator
+  build, 716 MB).
+
 ## Open
 
 - Each track's sun bearing: only Coastline's designed bearing is known; the
   others keep the map's own.
-- iOS packaging of the skymaps (4K for memory). The Mac app carries the 8K
-  maps in Resources/skies.

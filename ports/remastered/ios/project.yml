@@ -38,7 +38,8 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/remastered/ios/Sources/Bridge.h"
         HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"
         LIBRARY_SEARCH_PATHS: "$(SRCROOT)"
-        OTHER_LDFLAGS: "-lgames -lz -lc++ -weak_framework MetalFX"
+        OTHER_LDFLAGS: "-lgames -lz -lc++"
+        "OTHER_LDFLAGS[sdk=iphoneos*]": "-lgames -lz -lc++ -weak_framework MetalFX"   # the Simulator's SDK has no MetalFX (brr_metal_taa.m builds without it)
         ENABLE_BITCODE: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: "$(SRCROOT)/Info.plist"
