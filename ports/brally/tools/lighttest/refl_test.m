@@ -244,8 +244,8 @@ static const char *k_kern =
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n"
 "  float4 r = rf_up(u, hr, pos, nrm, px, p, n, rf_rad(0.3)); o[k] = float4(r.x, p.z > 1e-3 ? 100.0 : 1.0, r.a, 1); }\n"
 "kernel void t_wet(uint i [[thread_position_in_grid]], constant LU &u [[buffer(0)]], device const float4 *in [[buffer(1)]], device float4 *o [[buffer(2)]]) {\n"
-"  float3 p = float3(in[i].xy, 0.0), n = float3(0, 0, 1), a = float3(in[i].z); float r = in[i].w;\n"
-"  wet(u, p, n, a, r); float2 w = wetness(u, p, n); o[i] = float4(a.x, r, w.x, w.y); }\n";
+"  float3 p = float3(in[i].xy, 0.0), n = float3(0, 0, 1), a = float3(in[i].z); float r = in[i].w, seal = float(i & 1u);\n"
+"  wet(u, p, n, a, r, seal); float2 w = wetness(u, p, n, seal); o[i] = float4(a.x, r, w.x, w.y); }\n";
 
 int main(int argc, char **argv)
 {
@@ -487,24 +487,36 @@ int main(int argc, char **argv)
                 [e endEncoding]; [cb commit]; [cb waitUntilCompleted];
                 memcpy(out, bo.contents, sizeof out);
                 for (i = 0; i < N; i++) {
-                    /* Lagarde 2013 in double, with the GPU's wetness and puddle */
-                    double w = out[i][2], pd = out[i][3], r0 = in[i][3], por = fmin(fmax((r0 - 0.5) / 0.4, 0.0), 1.0);
-                    double f = 1.0 + (0.2 - 1.0) * por, a = w > 0 ? in[i][2] * (1.0 + (f - 1.0) * w) : in[i][2];
-                    double r = w > 0 ? fmin(r0, (r0 + (0.1 - r0) * w) + (0.03 - (r0 + (0.1 - r0) * w)) * pd) : r0;
+                    /* the wet model in double (brr_metal_refl.h wet), with the GPU's wetness and puddle:
+                       odd texels sealed (film and puddles), even porous (darkened, no puddles) */
+                    double w = out[i][2], pd = out[i][3], r0 = in[i][3], a, r;
+                    int seal = i & 1;
+                    if (w <= 0)
+                        a = in[i][2], r = r0;
+                    else if (seal) {
+                        double rf = r0 + (0.35 - r0) * w;
+                        a = in[i][2] * (1.0 + (0.85 - 1.0) * w);
+                        r = fmin(r0, rf + (0.05 - rf) * pd);
+                    } else {
+                        a = in[i][2] * (1.0 + (0.55 - 1.0) * w);
+                        r = fmin(r0, r0 + (0.6 - r0) * w);
+                    }
                     am = fmax(am, fabs(out[i][0] - a)); rm = fmax(rm, fabs(out[i][1] - r));
                     if (fabs(wv - 1.0) < 1e-9 && fabs(w - 1.0) > 1e-6)
                         am = fmax(am, 1.0);   /* full wetness everywhere on the road */
+                    if (!seal && pd != 0.0)
+                        am = fmax(am, 1.0);   /* no puddles on porous ground */
                 }
             }
-            report(am < 1e-5 && rm < 1e-5, "wet: albedo and roughness = Lagarde's formula", "max |albedo error| %.2e, |roughness error| %.2e over 5 wetness levels", am, rm);
+            report(am < 1e-5 && rm < 1e-5, "wet: albedo and roughness = the sealed / porous model (Lagarde 2013)", "max |albedo error| %.2e, |roughness error| %.2e over 5 wetness levels", am, rm);
             /* the energy bound: E(mu, r') + a' (1 - E(mu, r')) <= 1 for white (albedo 0.9, delit's cap) */
             for (k = 0; k <= 10; k++) {
                 double w = k / 10.0;
                 int ir, im;
                 for (ir = 0; ir < 6; ir++)
                     for (im = 0; im < 5; im++) {
-                        double r0 = 0.1 + 0.18 * ir, mu = (im + 0.5) / 5.0, por = fmin(fmax((r0 - 0.5) / 0.4, 0.0), 1.0);
-                        double a = 0.9 * (1.0 + (0.2 + 0.8 * (1.0 - por) - 1.0) * w), r = fmin(r0, r0 + (0.1 - r0) * w);
+                        double r0 = 0.1 + 0.18 * ir, mu = (im + 0.5) / 5.0;   /* sealed: the lighter albedo, the smoother lobe */
+                        double a = 0.9 * (1.0 + (0.85 - 1.0) * w), r = fmin(r0, r0 + (0.35 - r0) * w);
                         double Ev = E_ref(r, mu), tot = Ev + a * (1.0 - Ev);
                         if (tot > en) en = tot, enr = r, enw = w;
                     }

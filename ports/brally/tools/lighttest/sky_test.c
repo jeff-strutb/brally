@@ -221,10 +221,60 @@ static void glare(void)
     }
 }
 
+/* the sky under the photographer's land rebuilt (light_sky.h 0): a sky whose
+   radiance rises with bearing (1 + 0.5 cos a) over a band of land (0.05) up
+   to 10 degrees, cleared from 11; the rebuilt band carries the sky's level,
+   the sky over 11 degrees is untouched, and the sky's light on level ground
+   is the land-free map's within 1% */
+static void horizon(void)
+{
+    int w = 1024, h = 512, x, y, c, pass;
+    float up[2] = { 0, 0 }, worst = 0.0f, above = 0.0f;
+    LightSky s;
+    char err[256];
+    for (pass = 0; pass < 2; pass++) {   /* 0: no land, 1: the land and its clearance */
+        float *m = malloc((size_t)w * h * 3 * sizeof(float));
+        LightSkyOpt o = { 0 };
+        for (y = 0; y < h; y++) {
+            float el = 90.0f - 180.0f * ((float)y + 0.5f) / (float)h;
+            for (x = 0; x < w; x++) {
+                float a = 2.0f * PI_F * ((float)x + 0.5f) / (float)w, v = el > 0.0f ? 1.0f + 0.5f * cosf(a) : 0.1f;
+                if (pass && el > 0.0f && el < 10.0f)
+                    v = 0.05f;
+                for (c = 0; c < 3; c++)
+                    m[((size_t)y * w + x) * 3 + c] = v;
+            }
+        }
+        o.horiz_lux = 3.14159265f;
+        o.horizon = pass ? 11.0f : 0.0f;
+        CHECK(!light_sky_make(&s, m, w, h, &o, err, sizeof err), "horizon make: %s", err);
+        free(m);
+        up[pass] = s.sky_up[1] / s.scale;
+        if (pass)
+            for (y = 0; y < h / 2; y++) {
+                float el = 90.0f - 180.0f * ((float)y + 0.5f) / (float)h;
+                for (x = 0; x < w; x++) {
+                    float a = 2.0f * PI_F * ((float)x + 0.5f) / (float)w, want = 1.0f + 0.5f * cosf(a), got = s.rgb[((size_t)y * w + x) * 3 + 1] / s.scale;
+                    if (el > 0.5f && el < 10.5f)
+                        worst = fmaxf(worst, fabsf(got - (1.0f + (want - 1.0f) * el / 11.0f)) / want);   /* the column's sky, toward the round mean at the horizon */
+                    else if (el > 11.5f)
+                        above = fmaxf(above, fabsf(got - want) / want);
+                }
+            }
+        light_sky_free(&s);
+    }
+    printf("horizon: rebuilt band against the column's sky blended to the round mean: worst %.2f%%; above the clearance %.2e; sky on level ground %.4f against %.4f without land\n",
+           worst * 100.0f, above, up[1], up[0]);
+    CHECK(worst < 0.02f, "horizon: the rebuilt band %.1f%% off", worst * 100.0f);
+    CHECK(above < 1e-5f, "horizon: the sky above the clearance changed (%.2e)", above);
+    CHECK(fabsf(up[1] / up[0] - 1.0f) < 0.01f, "horizon: the sky's light %.4f, %.4f without land", up[1], up[0]);
+}
+
 int main(int argc, char **argv)
 {
     synthetic();
     glare();
+    horizon();
     if (argc > 1)
         real(argv[1]);
     printf(s_fail ? "sky_test: %d FAILED\n" : "sky_test: all passed\n", s_fail);

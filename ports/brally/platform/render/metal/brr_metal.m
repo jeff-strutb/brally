@@ -232,7 +232,7 @@ typedef struct U {
     float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
     float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
     float albk, tint[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk), its chroma (lit_tint; 0: the texel's own) */
-    float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L) */
+    float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L); lpad[0] 1 for sealed ground */
     float lens[2][4];    /* the lit shaders: a car texture's lamp lenses (carlamp.csv), s0 t0 s1 t1 */
     float lensk[4];      /* their kinds plus one (1 tail, 2 reverse), 0 for none */
 } U;
@@ -532,12 +532,18 @@ typedef struct LNU { float S[16], tgt[4], eye[4], wb[4]; } LNU;
  * reflection (perceptual 0.9: at 0.6 to 0.7 the tail lamps laid two glossy
  * streaks on a dry road behind the car at night, seen from the chase camera
  * along the light grazing the road) */
-static const struct { float rough, wet, pud, comp; } k_weather[5] = {
-    /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
-    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
-    /* rain  */ { 0.25f, 1.0f, 0.6f, LIGHT_EV_COMP },
-    /* snow  */ { 0.55f, 0.5f, 0.3f, LIGHT_EV_COMP },
-    /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
+/* sat: the display's saturation (brr_metal_lit.h oksat), measured: the
+ * median of the game's own art's Oklab chroma over lightness against the lit
+ * frame's, over the ground and cars of three Coastline frames a weather
+ * (virtual clock, the same frames lit and unlit): sunny 0.97, rain 1.02 (the
+ * light keeps the art's colour), fog 1.91 and snow 1.98 (a white-balanced
+ * overcast and the air's neutral light leave half the 1999 art's colour) */
+static const struct { float rough, wet, pud, comp, sat; } k_weather[5] = {
+    /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f },
+    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.9f },
+    /* rain  */ { 0.90f, 1.0f, 0.25f, LIGHT_EV_COMP, 1.0f },   /* the dry roughness: the rain's is wet()'s, by material */
+    /* snow  */ { 0.90f, 0.5f, 0.15f, LIGHT_EV_COMP, 2.0f },
+    /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f },
 };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
@@ -572,10 +578,12 @@ static float lit_albk(uint32_t tid)
 }
 /* a natural surface's chroma (asphalt, concrete, sand, dirt, rock, grass,
  * foliage, snow, ice): one colour for the whole texture, its texels' mean
- * hue (luminance 1; asphalt and concrete grey), so its albedo is that times
+ * hue (luminance 1), so its albedo is that times
  * each texel's luminance.  The 1999 textures carry 15- and 16-bit dither and
  * the vertex colours a baked light's tint: both show as coloured noise and
- * cast once the scene is lit properly.  0: the texel's own colour */
+ * cast once the scene is lit properly.  Asphalt and concrete keep their
+ * texture's hue too (forced grey, Coastline's road lost the art's warm grey,
+ * 40% of a chase frame turned colourless).  0: the texel's own colour */
 static void lit_tint(uint32_t tid, float t[3])
 {
     int m = tid < TEX_MAX ? s_tmat[tid] : 255, k;
@@ -583,11 +591,7 @@ static void lit_tint(uint32_t tid, float t[3])
     t[0] = t[1] = t[2] = 0.0f;
     if (m == 255 || !(s_tmean[tid] > 0.002f))
         return;
-    if (m == LIGHT_MAT_ASPHALT || m == LIGHT_MAT_CONCRETE) {
-        t[0] = t[1] = t[2] = 1.0f;
-        return;
-    }
-    if (m != LIGHT_MAT_SAND && m != LIGHT_MAT_DIRT && m != LIGHT_MAT_ROCK && m != LIGHT_MAT_GRASS && m != LIGHT_MAT_FOLIAGE
+    if (m != LIGHT_MAT_ASPHALT && m != LIGHT_MAT_CONCRETE && m != LIGHT_MAT_SAND && m != LIGHT_MAT_DIRT && m != LIGHT_MAT_ROCK && m != LIGHT_MAT_GRASS && m != LIGHT_MAT_FOLIAGE
         && m != LIGHT_MAT_SNOW && m != LIGHT_MAT_ICE)
         return;
     y = 0.2126f * s_trgb[tid][0] + 0.7152f * s_trgb[tid][1] + 0.0722f * s_trgb[tid][2];
@@ -1039,16 +1043,19 @@ static void lit_sky(int env, int w, float az)
         FILE *f;
         snprintf(mp, sizeof mp, "%s/skies.txt", dir);
         if ((f = fopen(mp, "r"))) {
-            while (fgets(ln, sizeof ln, f))
-                if (ln[0] != '#' && sscanf(ln, "%31s %31s %159s", e2, c2, id) == 3 && env >= 0 && env < 7 && !strcmp(e2, k_skyenv[env])
+            while (fgets(ln, sizeof ln, f)) {
+                float hz = 0.0f;
+                if (ln[0] != '#' && sscanf(ln, "%31s %31s %159s %f", e2, c2, id, &hz) >= 3 && env >= 0 && env < 7 && !strcmp(e2, k_skyenv[env])
                     && !strcmp(c2, k_skycond[w])) {   /* the 8K map, else the 4K the iPhone app carries */
                     FILE *h;
+                    o.horizon = hz;   /* the land in the photograph over the horizon (skies.txt's fourth column) */
                     snprintf(path, sizeof path, "%s/ph8k/%s_8k.hdr", dir, id);
                     if ((h = fopen(path, "rb")))
                         fclose(h);
                     else
                         snprintf(path, sizeof path, "%s/ph4k/%s_4k.hdr", dir, id);
                 }
+            }
             fclose(f);
         }
         if (!path[0]) {
@@ -1934,6 +1941,7 @@ static void lit_present(void)
     }
     u.bg[0] = 0.9f;                         /* no skymap: the backdrop and fog shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
+    u.bg[2] = k_weather[w].sat;             /* the display's saturation (oksat) */
     {
         const char *e2 = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;
@@ -2954,6 +2962,11 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.has_tex = st->texture != 0;
         u.albk = u.has_tex ? lit_albk(st->texture) : 1.0f;
         u.lamp = u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_LAMP ? 1.0f : 0.0f;
+        {   /* sealed ground, where rain lies as a film and pools (brr_metal_refl.h wet) */
+            int tm = u.has_tex && st->texture < TEX_MAX ? s_tmat[st->texture] : 255;
+            u.lpad[0] = tm == LIGHT_MAT_ASPHALT || tm == LIGHT_MAT_CONCRETE || tm == LIGHT_MAT_METAL || tm == LIGHT_MAT_BLACKMETAL
+                        || tm == LIGHT_MAT_TUNNEL || tm == LIGHT_MAT_SIGN ? 1.0f : 0.0f;
+        }
         memset(u.lens, 0, sizeof u.lens);
         memset(u.lensk, 0, sizeof u.lensk);
         if (u.has_tex && st->texture < TEX_MAX) {   /* a car texture's lamp lenses (carlamp.csv) */

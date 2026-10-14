@@ -242,6 +242,44 @@ static int sky_make_owned(LightSky *s, float *rgb, int w, int h, const LightSkyO
         if (!(isfinite(rgb[i]) && rgb[i] > 0.0f))
             rgb[i] = 0.0f;
 
+    /* 0. the sky under the photographer's land (light_sky.h) */
+    if (o.horizon > 0.0f) {
+        int ytop = (int)floorf((90.0f - o.horizon) / 180.0f * (float)h), yband = (int)floorf((90.0f - o.horizon - 1.0f) / 180.0f * (float)h);
+        int yhor = h / 2, bw = w / 360 > 1 ? w / 360 : 1, x0;
+        float *col = calloc((size_t)w * 3, sizeof(float)), mean[3] = { 0, 0, 0 };
+        if (!col) {
+            free(rgb);
+            seterr(err, nerr, "skymap: out of memory");
+            return -1;
+        }
+        if (yband < 0)
+            yband = 0;
+        if (ytop <= yband)
+            ytop = yband + 1;
+        for (x = 0; x < w; x++) {   /* the band's sky in each column, over two degrees of bearing */
+            int n2 = 0;
+            for (x0 = x - bw; x0 <= x + bw; x0++)
+                for (y = yband; y < ytop; y++) {
+                    const float *p = rgb + ((size_t)y * w + (size_t)((x0 + w) % w)) * 3;
+                    for (c = 0; c < 3; c++)
+                        col[x * 3 + c] += p[c];
+                    n2++;
+                }
+            for (c = 0; c < 3; c++) {
+                col[x * 3 + c] /= (float)(n2 ? n2 : 1);
+                mean[c] += col[x * 3 + c] / (float)w;
+            }
+        }
+        for (y = ytop; y < yhor; y++) {
+            float el = 90.0f - 180.0f * ((float)y + 0.5f) / (float)h, t = el / o.horizon;
+            t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+            for (x = 0; x < w; x++)
+                for (c = 0; c < 3; c++)
+                    rgb[((size_t)y * w + x) * 3 + c] = mean[c] + (col[x * 3 + c] - mean[c]) * t;
+        }
+        free(col);
+    }
+
     /* 1. the sun: the brightest texel above the horizon, its disc over the sky around it */
     for (y = 0; y < h / 2; y++)
         for (x = 0; x < w; x++) {

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 R=${1:-8k}
 case $R in 8k|4k) ;; *) echo "fetch.sh: 8k or 4k" >&2; exit 2 ;; esac
 mkdir -p ph$R
-grep -v '^#' skies.txt | awk 'NF == 3 { print $3 }' | sort -u | while read id; do
+grep -v '^#' skies.txt | awk 'NF >= 3 { print $3 }' | sort -u | while read id; do
     [ -s "ph$R/${id}_$R.hdr" ] && continue
     echo "$id"
 done | {

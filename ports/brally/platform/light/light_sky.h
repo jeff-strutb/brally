@@ -6,6 +6,12 @@
  * A skymap is an equirectangular Radiance .hdr (row 0 the zenith, the
  * bottom row the nadir).  Loading it:
  *
+ *   0. with opt.horizon, rebuilds the sky under that elevation, where the
+ *      photographer's trees, buildings and hills stand: each column takes
+ *      the sky just over the line (a degree's band, averaged over two
+ *      degrees of bearing), blended toward that band's mean round the
+ *      whole horizon as it nears the horizon (an overcast's horizon
+ *      haze), so the track's own backdrop is the land a map shows;
  *   1. finds the sun: the disc of texels far above the sky around the
  *      brightest one, within LIGHT_SKY_SUN_SEARCH degrees of it.  Its light
  *      over the surrounding sky's, integrated over the texels' solid angles,
@@ -64,6 +70,8 @@ typedef struct LightSkyOpt {
     float ground_albedo;     /* the ground under the horizon (0: 0.2) */
     float sun_az;            /* the bearing to turn the sun to, radians from +X toward +Y */
     int has_sun_az;
+    float horizon;           /* degrees: the photographer's land reaches this high over the horizon;
+                                under it the sky is rebuilt (0: a puresky map, nothing to rebuild) */
     int deglare;             /* take out the glare the camera's lens laid about the sun (a night
                                 map's moon): the sky's median, ring by ring about it, less the
                                 sky's own beyond LIGHT_SKY_GLARE_OUT */

@@ -20,6 +20,17 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   - Conditions: clear, fog, storm (the game's rain), snow, night. Fog, storm
     and snow maps are overcast captures; night maps are real night skies,
     their moon or brightest source taken as the moon.
+  - A map that isn't a "puresky" one (land removed by Poly Haven) carries its
+    photographer's trees and buildings over the horizon. skies.txt's fourth
+    column is how high they reach (read on each map's horizon band); under
+    it the loader rebuilds the sky from the sky just above, fading to the
+    horizon's mean. Maps whose land stands over about 23 degrees (a bridge,
+    a pine forest) aren't used.
+  - Night maps lose the camera's lens glare about the moon (165 x the sky at
+    a degree, 9 x at 8): a ring-by-ring median profile subtracted, stars kept.
+- The sun's bearing is the game's own: BrFrameTintSetup's (15, 10, 20), the
+  light it lights its cars by on every track. A fit of Coastline's baked
+  vertex light against its faces' normals agrees (27 against 34 degrees).
 - The sun is found in the map. Its disc is integrated over solid angle to
   give the directional light's illuminance and colour, then painted out with
   the surrounding sky, so it is counted only once and casts shadows.
@@ -90,10 +101,17 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 - **Material albedo:**
   - Natural surfaces tagged in texmat.csv (asphalt, concrete, sand, dirt,
     rock, grass, foliage, snow, ice) take one chroma per texture times the
-    texel's luminance. Asphalt and concrete are neutral.
+    texel's luminance. Asphalt and concrete keep their texture's hue (forced
+    grey, the road lost the art's warm grey).
   - This removes the 1999 dither noise and the baked vertex tints.
   - The start-light panel is `blackmetal`, albedo 0.05.
 - **Dry ground** has roughness 0.9, so it shows no reflection.
+- **Wet ground** (Lagarde 2013): porous ground (soil, sand, grass, rock)
+  darkens to 0.55 of its albedo and glosses only to roughness 0.6; sealed
+  ground (asphalt, concrete, metal: G-buffer code 124) keeps a film,
+  darkening to 0.85, roughness 0.35, Forza Horizon 6's blurred wet sheen;
+  puddles (roughness 0.05) only in sealed ground's low spots. Before, every
+  upward face went to 0.1 and a third of it to mirror puddles.
 
 ## Exposure and image
 
@@ -127,13 +145,22 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   sources cast stays physical.
 - **White balance:** auto, to the light on level ground by day. At night it
   is daylight, so the moonlit sky stays blue and the lamps stay white.
-- **Post:** bloom, then Khronos PBR Neutral, then sRGB. There is no grade, no
-  local exposure, no Purkinje tint and no lens flare.
+- **Post:** bloom, then Khronos PBR Neutral, then the weather's saturation
+  (Oklab chroma times 1.0 sunny, rain and night, 1.9 fog, 2.0 snow, measured
+  as the game's own art's chroma over lightness against the lit frame's on
+  the same frames), then sRGB. No local exposure, Purkinje tint or lens
+  flare.
 
 ## Lights that are lights
 
 - **Car lamps:**
-  - The lamps sit on the body's outer face, so a car never lights itself.
+  - The lamps follow the matrix the game drew each car with this frame
+    (g_BrCarMtxSlot). The physics' state runs one or two ticks ahead: at
+    50 m/s the lights trailed 0.9 to 1.9 m behind the car shown.
+  - The lamps sit on the body's outer face (the box over all four
+    full-detail body lists), so a car never lights itself.
+  - Tail and reversing lenses light exactly where the car's texture paints
+    them (carlamp.csv, G-buffer codes 112 and 116).
   - Rear lamps follow UN ECE R7's distribution: a Gaussian 18 degrees across
     by 6 degrees up and down. Tail 5 cd, stop 80 cd, reverse 300 cd.
   - Each lamp's lens is drawn as an emitter with L = I(v) / (A cos). It uses
@@ -143,6 +170,10 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 - A lamp's lens shows only on its own car's body as drawn: car paint within
   35 cm. A car the game hides, such as the player's in the bumper view, shows
   no lenses.
+- **Car floors:** each car casts from a floor pan 0.2 m up. The 1999 cars
+  are open shells with blended glass, so the sun shone through the cabin
+  onto the road under them, a lit patch that came and went with the car's
+  pitch and the camera (the shadows "coming in and out" in real time).
 - **Removed fakes:**
   - The game's blob shadow under the cars (texmat `shadow`).
   - The white light pool the game lays on the road ahead of the cars at

@@ -62,7 +62,7 @@ rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*
 if [ -f ports/common/skies/skies.txt ]; then   # ports/common/skies/fetch.sh brings them
     mkdir -p "$APP/Contents/Resources/skies/ph8k"
     cp ports/common/skies/skies.txt "$APP/Contents/Resources/skies/"
-    grep -v '^#' ports/common/skies/skies.txt | awk 'NF == 3 { print $3 }' | sort -u | while read id; do
+    grep -v '^#' ports/common/skies/skies.txt | awk 'NF >= 3 { print $3 }' | sort -u | while read id; do
         if [ -f "ports/common/skies/ph8k/${id}_8k.hdr" ]; then
             cp "ports/common/skies/ph8k/${id}_8k.hdr" "$APP/Contents/Resources/skies/ph8k/"
         else

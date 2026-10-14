@@ -80,7 +80,7 @@ fi
 rm -rf $OUT/skies
 mkdir -p $OUT/skies/ph4k
 cp ports/common/skies/skies.txt $OUT/skies/
-grep -v '^#' ports/common/skies/skies.txt | awk 'NF == 3 { print $3 }' | sort -u | while read id; do
+grep -v '^#' ports/common/skies/skies.txt | awk 'NF >= 3 { print $3 }' | sort -u | while read id; do
     if [ -f "ports/common/skies/ph4k/${id}_4k.hdr" ]; then
         cp "ports/common/skies/ph4k/${id}_4k.hdr" $OUT/skies/ph4k/
     else

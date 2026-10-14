@@ -70,24 +70,30 @@
 /* value noise, smooth between the lattice's corners: 0..1 */ \
 "static float wet_n(float2 x) { float2 i = floor(x), f = x - i, w = f * f * (3.0 - 2.0 * f);\n" \
 "  return mix(mix(wet_h(i), wet_h(i + float2(1, 0)), w.x), mix(wet_h(i + float2(0, 1)), wet_h(i + float2(1, 1)), w.x), w.y); }\n" \
+/* 124: a sealed surface (asphalt, concrete, metal: texmat, BRR_MAT_SEALED), where rain lies as a \
+   film and pools; other ground is porous and soaks it up */ \
+"#define BRR_MAT_SEALED 124.0\n" \
+"static bool sealedmat(float a) { a = a * 255.0; return a > 121.5 && a < 126.5; }\n" \
 /* puddles: two octaves of noise over metres, the top part of the mask, \
    scaled by the weather's puddles */ \
 "static float puddle(constant LU &u, float3 p) {\n" \
 "  float m = 0.65 * wet_n(p.xy * 0.25) + 0.35 * wet_n(p.xy * 0.9 + 17.0);\n" \
 "  return smoothstep(0.58, 0.68, m) * u.wet.y; }\n" \
-/* a surface's wetness 0..1 and its puddle 0..1 (up-facing only) */ \
-"static float2 wetness(constant LU &u, float3 p, float3 n) {\n" \
+/* a surface's wetness 0..1 and its puddle 0..1 (up-facing only; puddles on sealed ground only) */ \
+"static float2 wetness(constant LU &u, float3 p, float3 n, float seal) {\n" \
 "  if (u.wet.x <= 0.0 || n.z <= 0.9) return 0.0;\n" \
-"  float k = saturate((n.z - 0.9) * 20.0), pd = puddle(u, p) * k;\n" \
+"  float k = saturate((n.z - 0.9) * 20.0), pd = seal > 0.5 ? puddle(u, p) * k : 0.0;\n" \
 "  return float2(max(u.wet.x * k, pd), pd); }\n" \
-/* Lagarde's porosity (rough surfaces are porous and darken; smooth ones \
-   barely), the albedo times mix(1, mix(1, 0.2, porosity), wetness); the \
-   roughness toward 0.1 by the wetness and 0.03 in a puddle, never rougher */ \
-"static void wet(constant LU &u, float3 p, float3 n, thread float3 &alb, thread float &rough) {\n" \
-"  float2 w = wetness(u, p, n); if (w.x <= 0.0) return;\n" \
-"  float por = saturate((rough - 0.5) / 0.4), f = mix(1.0, 0.2, por);\n" \
-"  alb *= mix(1.0, f, w.x);\n" \
-"  rough = min(rough, mix(mix(rough, 0.1, w.x), 0.03, w.y)); }\n"
+/* the rain on a surface (Lagarde 2013, the wet surfaces of Remember Me): porous ground (soil, \
+   sand, grass, rock) soaks it up, darkening (its albedo to WET_POROUS_DARK) with little gloss \
+   (roughness to WET_POROUS_ROUGH at most); sealed ground holds a film (darkening little, \
+   roughness to WET_FILM_ROUGH: wet asphalt's blurred sheen, Forza Horizon 6's rain, not a \
+   mirror) and, in its low spots, puddles (roughness WET_PUDDLE_ROUGH); never rougher */ \
+"#define WET_POROUS_DARK 0.55\n#define WET_POROUS_ROUGH 0.6\n#define WET_FILM_DARK 0.85\n#define WET_FILM_ROUGH 0.35\n#define WET_PUDDLE_ROUGH 0.05\n" \
+"static void wet(constant LU &u, float3 p, float3 n, thread float3 &alb, thread float &rough, float seal) {\n" \
+"  float2 w = wetness(u, p, n, seal); if (w.x <= 0.0) return;\n" \
+"  if (seal > 0.5) { alb *= mix(1.0, WET_FILM_DARK, w.x); rough = min(rough, mix(mix(rough, WET_FILM_ROUGH, w.x), WET_PUDDLE_ROUGH, w.y)); }\n" \
+"  else { alb *= mix(1.0, WET_POROUS_DARK, w.x); rough = min(rough, mix(rough, WET_POROUS_ROUGH, w.x)); } }\n"
 
 #define REFL_STR_(x) #x
 #define REFL_STR(x) REFL_STR_(x)
@@ -159,7 +165,7 @@
 "  float4 a = alb.read(px); if (a.a < 0.25 || u.wet.z < 0.5) return false;\n" \
 "  float4 N = nrm.read(px); p = pos.read(px).xyz; n = N.xyz; fog = u.vol.x > 0.5 ? 0.0 : N.w;\n" \
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n" \
-"  float3 al = a.rgb; bool car = carpaint(a.a); rough = car ? BRR_CAR_ROUGH : u.misc.z; wet(u, p, n, al, rough);\n" \
+"  float3 al = a.rgb; bool car = carpaint(a.a); rough = car ? BRR_CAR_ROUGH : u.misc.z; wet(u, p, n, al, rough, car || sealedmat(a.a) ? 1.0 : 0.0);\n" \
 "  if (car) rough = BRR_COAT_ROUGH;   /* car paint: the coat's mirror, its own roughness, weighted by its Fresnel (E) */\n" \
 "  return rough <= REFL_ROUGH_MAX; }\n" \
 /* the frame's reprojection (brr_metal_refl.m): the last frame's scr, the \

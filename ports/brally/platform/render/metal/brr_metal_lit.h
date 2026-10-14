@@ -258,8 +258,8 @@ BRR_SHADOW_SRC \
    (brr_metal_lights.h); its own emission.  A negative rough is car paint \
    (brdf) */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
-"                       texture2d<float> bE, float3 gi, float phi, texturecube<float> sp, float ao) {\n" \
-"  float3 v = normalize(u.eye.xyz - p); bool coat = rough < 0.0; rough = abs(rough); wet(u, p, n, alb, rough);\n" \
+"                       texture2d<float> bE, float3 gi, float phi, texturecube<float> sp, float ao, float seal) {\n" \
+"  float3 v = normalize(u.eye.xyz - p); bool coat = rough < 0.0; rough = abs(rough); wet(u, p, n, alb, rough, coat ? 1.0 : seal);\n" \
 "  float rb = coat ? -rough : rough, nv = clamp(dot(n, v), 1e-3, 1.0), tb = coat ? 1.0 - coatE(nv, bE) : 1.0;   /* car paint: the coat's layering (brdf) */\n" \
 "  float3 r = reflect(-v, n);\n" \
 "  float3 Ls = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
@@ -298,6 +298,7 @@ BRR_SHADOW_SRC \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float mat = in.mat > 2.5 ? BRR_MAT_CAR : u.lamp > 0.5 ? BRR_MAT_LAMP : 128.0 + floor(saturate(g) * 127.0 + 0.5);\n" \
+"  if (mat == 128.0 && u.lp1 > 0.5) mat = BRR_MAT_SEALED;   /* sealed ground, no glow (lp1: texmat, brr_metal.m) */\n" \
 /* a car's lamp lens, where its texture paints it (carlamp.csv): the lens pass lights exactly these texels */ \
 "  if (in.mat > 2.5 && u.lensk.x > 0.5 && all(in.st >= u.lens0.xy) && all(in.st < u.lens0.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.x - 1.0);\n" \
 "  if (in.mat > 2.5 && u.lensk.y > 0.5 && all(in.st >= u.lens1.xy) && all(in.st < u.lens1.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.y - 1.0);\n" \
@@ -359,7 +360,7 @@ BRR_SHADOW_SRC \
 "  float ao = u.env.w > 0.5 ? ao_at(aot, pos, px, P.xyz, n) : 1.0;   /* env.w: the occlusion ran */\n" \
 "  if (dbg == 15) return float4(float3(ao), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, 0.0, sv, bE, gi, j * 6.2831853, sp, ao);\n" \
+"  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, 0.0, sv, bE, gi, j * 6.2831853, sp, ao, sealedmat(a.a) ? 1.0 : 0.0);\n" \
 "  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* a lit window, about 100 cd/m2 */\n" \
 "  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;   /* a lamp's own light */\n" \
 "  return float4(fogged(u, preexp(u, L) + emitcap(preexp(u, E * u.wb.rgb)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
@@ -387,7 +388,7 @@ BRR_SHADOW_SRC \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
 "    float3 al = albedo(u, h.tex.rgb, h.it.rgb);\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0, u.lp1);\n" \
 "    ge = al / max(dot(al, float3(0.2126, 0.7152, 0.0722)), 0.02) * g * 100.0 * lu.wb.rgb;   /* a lit window's own light */\n" \
 "  }\n" \
 "  bool emit = u.addk > 0.0 || u.beam > 0.0 || u.lamp > 0.5;\n" \
@@ -513,11 +514,26 @@ BRR_ENV_PASS_SRC \
 "  float p = max(c.r, max(c.g, c.b)); if (p < start) return c;\n" \
 "  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n" \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
+/* the weather's saturation (k_weather, brr_metal.m): Oklab chroma (Ottosson 2020) times s, its \
+   lightness and hue kept, after the tonemap on display-linear colour, clipped to the display's gamut */ \
+"static float3 oksat(float3 c, float s) {\n" \
+"  if (abs(s - 1.0) < 1e-3) return c;\n" \
+"  float3 lms = float3(0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b, 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b,\n" \
+"                      0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b);\n" \
+"  lms = sign(lms) * pow(abs(lms), 1.0 / 3.0);\n" \
+"  float L = 0.2104542553 * lms.x + 0.7936177850 * lms.y - 0.0040720468 * lms.z;\n" \
+"  float a = (1.9779984951 * lms.x - 2.4285922050 * lms.y + 0.4505937099 * lms.z) * s;\n" \
+"  float b = (0.0259040371 * lms.x + 0.7827717662 * lms.y - 0.8086757660 * lms.z) * s;\n" \
+"  float3 q = float3(L + 0.3963377774 * a + 0.2158037573 * b, L - 0.1055613458 * a - 0.0638541728 * b, L - 0.0894841775 * a - 1.2914855480 * b);\n" \
+"  q = q * q * q;\n" \
+"  return saturate(float3(4.0767416621 * q.x - 3.3077115913 * q.y + 0.2309699292 * q.z, -1.2684380046 * q.x + 2.6097574011 * q.y - 0.3413193965 * q.z,\n" \
+"                         -0.0041960863 * q.x - 0.7034186147 * q.y + 1.7076147010 * q.z)); }\n" \
 "fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
+"  if (int(u.misc.w) == 0) c = oksat(c, u.bg.z);\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n" \
 /* the painted backdrop's scenery in front of the skymap: its colour as \
