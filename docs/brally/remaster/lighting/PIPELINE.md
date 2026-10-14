@@ -28,9 +28,11 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
     a pine forest) aren't used.
   - Night maps lose the camera's lens glare about the moon (165 x the sky at
     a degree, 9 x at 8): a ring-by-ring median profile subtracted, stars kept.
-- The sun's bearing is the game's own: BrFrameTintSetup's (15, 10, 20), the
-  light it lights its cars by on every track. A fit of Coastline's baked
-  vertex light against its faces' normals agrees (27 against 34 degrees).
+- The sun's (at night the moon's) bearing is each track's own: the direction
+  its art was lit from, its baked vertex light fitted against its faces'
+  normals (`BR_LIGHT_BAKEFIT`, light_game.c k_track_bearing; the table
+  below). The game lights its cars from one direction on every track
+  (BrFrameTintSetup's (15, 10, 20), 33.7 degrees).
 - The sun is found in the map. Its disc is integrated over solid angle to
   give the directional light's illuminance and colour, then painted out with
   the surrounding sky, so it is counted only once and casts shadows.
@@ -236,6 +238,24 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   colour) take the game's combined colour as albedo and its alpha as display
   space coverage, 1 - (1 - a)^2.2.
 
+- **Each track's sun and moon bearing** (toward the light, from +X toward
+  +Y). `BR_LIGHT_BAKEFIT` fits each track's baked vertex light
+  against its faces' normals (the menu index at bossrally.cfg byte 1344, the
+  unlock masks at 1376 and 1380 set to reach all twelve):
+
+  | env | tracks | baked bearing (degrees) | R2 |
+  |---|---|---|---|
+  | 0 | 0, 6 | 14, 58 | 0.48, 0.61 |
+  | 1 | 1, 7 | 26, 17 | 0.44, 0.51 |
+  | 2 (Coastline) | 2, 8 | 21, 18 | 0.35, 0.41 |
+  | 3 | 3, 9 | 78, 83 | 0.37, 0.34 |
+  | 4 | 4, 10 | 94, 125 | 0.34, 0.35 |
+  | 5 | 5, 11 | 19, 7 | 0.28, 0.25 |
+
+  Every track's sky is turned to its own (checked on all twelve by day and
+  three by night: the sun or moon found in the map at the track's bearing to
+  0.1 degree); a track change within an environment reloads it.
+
 ## Lights that are lights
 
 - **Car lamps:**
@@ -376,20 +396,3 @@ Diagnostics:
 
 ## Open
 
-- Each track's sun bearing, the project lead's choice. Every track now turns
-  its sky's sun to the game's car light (33.7 degrees toward the light, from
-  +X toward +Y). `BR_LIGHT_BAKEFIT` fits each track's baked vertex light
-  against its faces' normals (the menu index at bossrally.cfg byte 1344, the
-  unlock masks at 1376 and 1380 set to reach all twelve):
-
-  | env | tracks | baked bearing (degrees) | R2 |
-  |---|---|---|---|
-  | 0 | 0, 6 | 14, 58 | 0.48, 0.61 |
-  | 1 | 1, 7 | 26, 17 | 0.44, 0.51 |
-  | 2 (Coastline) | 2, 8 | 21, 18 | 0.35, 0.41 |
-  | 3 | 3, 9 | 78, 83 | 0.37, 0.34 |
-  | 4 | 4, 10 | 94, 125 | 0.34, 0.35 |
-  | 5 | 5, 11 | 19, 7 | 0.28, 0.25 |
-
-  Environments 3 and 4 were painted lit from 45 to 90 degrees round from the
-  car light; environment 0's two layouts disagree with each other.

@@ -1053,16 +1053,18 @@ const BrrRtWorld *brr_metal_rt_world(void)
  * env and the condition in BR_SKYDIR (default ports/common/skies in the tree,
  * else the app's Resources/skies), else that folder's sunny.hdr standing in */
 static int s_sky_env = -1;
+static float s_sky_az = -1e9f;
 static void lit_sky(int env, int w, float az)
 {
     const char *dir = getenv("BR_SKYDIR"), *one = getenv("BR_SKYMAP");
     char path[1024], err[512], res[1024];
     LightSkyOpt o;
     int moon = w == 4, ok;
-    if (w == s_sky_w && env == s_sky_env)
+    if (w == s_sky_w && env == s_sky_env && az == s_sky_az)
         return;
     s_sky_w = w;
     s_sky_env = env;
+    s_sky_az = az;   /* two tracks share an environment's sky, each its own bearing */
     if (!dir) {   /* the tree's, else the app's Resources/skies (package_app.sh) */
         FILE *f = fopen("ports/common/skies/skies.txt", "rb");
         if (f) {
@@ -1136,8 +1138,8 @@ static void lit_sky(int env, int w, float az)
     }
     free(s_sky.rgb);   /* the GPU holds the map now; the light's numbers stay */
     s_sky.rgb = NULL;
-    fprintf(stderr, "brr: skymap %s: sun %s at %.1f degrees, %.0f lux facing it, sky %.0f lux on level ground (sun/sky %.2f in the file)\n",
-            path, s_sky.has_sun ? "found" : "none", asinf(s_sky.sun[2]) * 57.29578f,
+    fprintf(stderr, "brr: skymap %s: sun %s at %.1f degrees, bearing %.1f (the track's %.1f), %.0f lux facing it, sky %.0f lux on level ground (sun/sky %.2f in the file)\n",
+            path, s_sky.has_sun ? "found" : "none", asinf(s_sky.sun[2]) * 57.29578f, atan2f(s_sky.sun[1], s_sky.sun[0]) * 57.29578f, az * 57.29578f,
             0.2126f * s_sky.sun_lux[0] + 0.7152f * s_sky.sun_lux[1] + 0.0722f * s_sky.sun_lux[2],
             0.2126f * s_sky.sky_up[0] + 0.7152f * s_sky.sky_up[1] + 0.0722f * s_sky.sky_up[2], s_sky.clip_ratio);
 }
@@ -2434,7 +2436,7 @@ static void lit_present(void)
         if (e2)
             sscanf(e2, "%f,%f,%f", &sun[0], &sun[1], &sun[2]);
     }
-    lit_sky(light_game_sky_env(), w, atan2f(sun[1], sun[0]));
+    lit_sky(light_game_sky_env(), w, getenv("BR_LIGHT_SUN") ? atan2f(sun[1], sun[0]) : light_game_sun_az());   /* the track's own bearing */
     if (s_env.ready && s_sky.has_sun)
         memcpy(sun, s_sky.sun, sizeof sun);
     light_capture_eye(eye);

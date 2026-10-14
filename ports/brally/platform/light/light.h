@@ -23,6 +23,7 @@ int  light_game_weather(void);
  * 3 mine, 4 amazon, 5 race, 6 bonus */
 int  light_game_sky_env(void);
 void light_game_sun(float v[3]);   /* the game's sun, toward it, unit, Z up (its car light) */
+float light_game_sun_az(void);           /* this track's sun and moon bearing, radians toward it from +X toward +Y */
 int  light_game_track_id(void);           /* the chosen track, as the game numbers it */
 /* a car as the race has it: its frame (rows of its body matrix), velocity,
  * the drive torque (negative: driving backwards) and brake torque (negative

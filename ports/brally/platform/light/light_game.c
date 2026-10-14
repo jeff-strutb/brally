@@ -53,6 +53,26 @@ void light_game_sun(float v[3])
     }
 }
 
+/* each track's sun (and, at night, moon) bearing, degrees toward it from +X
+ * toward +Y: the direction its own art was lit from, the track's baked vertex
+ * light fitted against its faces' normals (BR_LIGHT_BAKEFIT, every track,
+ * 2026-10-14; R2 0.25 to 0.61).  The game's one car light (15, 10, 20: 33.7
+ * degrees) lights every track alike */
+static const float k_track_bearing[12] = {
+    14.1f, 25.9f, 20.6f, 78.2f, 93.7f, 18.8f,    /* tracks 0 to 5 (environments 0 to 5) */
+    58.2f, 17.4f, 18.1f, 83.0f, 125.1f, 7.0f     /* tracks 6 to 11 (the same environments' second layouts) */
+};
+
+float light_game_sun_az(void)
+{
+    int t = light_game_track_id();
+    float v[3];
+    if (t >= 0 && t < 12)
+        return k_track_bearing[t] * 0.017453293f;
+    light_game_sun(v);
+    return atan2f(v[1], v[0]);
+}
+
 int light_game_track_id(void)
 {
     return (int)g_Br0B380C;   /* g_brCfgChosenTrack */
