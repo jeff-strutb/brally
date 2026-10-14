@@ -2241,7 +2241,25 @@ static void lit_present(void)
                     float ss = v[t].oow != 0 ? v[t].s / v[t].oow : 0, tt = v[t].oow != 0 ? v[t].t / v[t].oow : 0;
                     s0 = fminf(s0, ss); s1 = fmaxf(s1, ss); t0 = fminf(t0, tt); t1 = fmaxf(t1, tt);
                 }
-                fprintf(stderr, "cartex: frame %lu hash %08X s %.1f..%.1f t %.1f..%.1f\n", s_frame, hs, s0, s1, t0, t1);
+                {   /* where the texture sits on its car: the nearest car's frame, x forward, z up */
+                    LightCar cars[20];
+                    int nc = light_game_cars(cars, 20), cb = -1, q2;
+                    float best = 1e30f, x0 = 1e30f, x1 = -1e30f, z0 = 1e30f, z1 = -1e30f, y0 = 1e30f, y1 = -1e30f;
+                    for (q2 = 0; q2 < nc; q2++) {
+                        float d0 = v[0].wx - cars[q2].pos[0], d1 = v[0].wy - cars[q2].pos[1], d2 = v[0].wz - cars[q2].pos[2], dd = d0 * d0 + d1 * d1 + d2 * d2;
+                        if (dd < best) { best = dd; cb = q2; }
+                    }
+                    for (t = 0; cb >= 0 && t < s_ops[i].n; t++) {
+                        float d[3] = { v[t].wx - cars[cb].pos[0], v[t].wy - cars[cb].pos[1], v[t].wz - cars[cb].pos[2] };
+                        float fx = d[0] * cars[cb].fwd[0] + d[1] * cars[cb].fwd[1] + d[2] * cars[cb].fwd[2];
+                        float sy = d[0] * cars[cb].side[0] + d[1] * cars[cb].side[1] + d[2] * cars[cb].side[2];
+                        float uz = d[0] * cars[cb].up[0] + d[1] * cars[cb].up[1] + d[2] * cars[cb].up[2];
+                        x0 = fminf(x0, fx); x1 = fmaxf(x1, fx); y0 = fminf(y0, sy); y1 = fmaxf(y1, sy); z0 = fminf(z0, uz); z1 = fmaxf(z1, uz);
+                    }
+                    fprintf(stderr, "cartex: frame %lu hash %08X s %.1f..%.1f t %.1f..%.1f on car %d at x %.2f..%.2f y %.2f..%.2f z %.2f..%.2f (car box x %.2f..%.2f z %.2f..%.2f)\n",
+                            s_frame, hs, s0, s1, t0, t1, cb, x0, x1, y0, y1, z0, z1, cb >= 0 ? cars[cb].lo[0] : 0, cb >= 0 ? cars[cb].hi[0] : 0,
+                            cb >= 0 ? cars[cb].lo[2] : 0, cb >= 0 ? cars[cb].hi[2] : 0);
+                }
             }
         }
     }

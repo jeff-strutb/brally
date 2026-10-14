@@ -2,7 +2,9 @@
 # so the G-buffer marks those texels and the lens pass lights exactly them.
 # hash (FNV-1a of the RGBA8 large level, as texmat.csv), kind (tail: the
 # rear lamp's red, lit as tail and stop lamp; reverse: the white reversing
-# lamp), the texture's size, then the lens's texels x0 y0 x1 y1 (inclusive).
+# lamp; head: the headlamp's lens, confirmed on the car's front face 0.4 to
+# 0.6 m up by BR_LIGHT_CARTEX), the texture's size, then the lens's texels x0 y0 x1 y1 (inclusive).
 # Measured from the texture's own pixels (BR_LIGHT_TEXOUT dumps).
 99FF967C,tail,128x64,4,2,59,17
 99FF967C,reverse,128x64,4,21,19,28
+689C1500,head,128x64,43,7,69,32

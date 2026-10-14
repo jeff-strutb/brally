@@ -34,9 +34,9 @@ with open(out, 'w') as f:
     for h in sorted(rows):
         f.write('    { 0x%08Xu, LIGHT_MAT_%s },\n' % (h, rows[h].upper()))
     f.write('};\n')
-    f.write('/* the cars\' lamp lenses (carlamp.csv): kind 0 tail, 1 reverse; s0 t0 s1 t1 normalised */\n')
+    f.write('/* the cars\' lamp lenses (carlamp.csv): kind 0 tail, 1 reverse, 2 head; s0 t0 s1 t1 normalised */\n')
     f.write('static const struct { uint32_t hash; uint8_t kind; float s0, t0, s1, t1; } k_light_carlamp[%d] = {\n' % len(lamps))
     for h, kind, a, b, c, d in lamps:
-        f.write('    { 0x%08Xu, %d, %.6ff, %.6ff, %.6ff, %.6ff },\n' % (h, {'tail': 0, 'reverse': 1}[kind], a, b, c, d))
+        f.write('    { 0x%08Xu, %d, %.6ff, %.6ff, %.6ff, %.6ff },\n' % (h, {'tail': 0, 'reverse': 1, 'head': 2}[kind], a, b, c, d))
     f.write('};\n\n#endif\n')
 print('wrote', out, len(rows), 'textures,', len(mats), 'materials')

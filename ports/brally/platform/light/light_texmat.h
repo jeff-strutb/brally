@@ -2556,8 +2556,9 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0xFFD56F72u, LIGHT_MAT_EFFECT },
     { 0xFFF6844Du, LIGHT_MAT_BUILDING },
 };
-/* the cars' lamp lenses (carlamp.csv): kind 0 tail, 1 reverse; s0 t0 s1 t1 normalised */
-static const struct { uint32_t hash; uint8_t kind; float s0, t0, s1, t1; } k_light_carlamp[2] = {
+/* the cars' lamp lenses (carlamp.csv): kind 0 tail, 1 reverse, 2 head; s0 t0 s1 t1 normalised */
+static const struct { uint32_t hash; uint8_t kind; float s0, t0, s1, t1; } k_light_carlamp[3] = {
+    { 0x689C1500u, 2, 0.335938f, 0.109375f, 0.546875f, 0.515625f },
     { 0x99FF967Cu, 1, 0.031250f, 0.328125f, 0.156250f, 0.453125f },
     { 0x99FF967Cu, 0, 0.031250f, 0.031250f, 0.468750f, 0.281250f },
 };

@@ -57,9 +57,9 @@
 /* 72: a lamp (texmat's lamp textures: start lights, their flares), which \
    emits BRR_LAMP_L cd/m2 at a full texel (LED signal heads: 5,000 to 15,000) */ \
 "#define BRR_MAT_LAMP 72.0\n" \
-/* 112, 116: a car's tail and reversing lamp lens as its texture paints it (carlamp.csv) */ \
+/* 112, 116, 120: a car's tail, reversing and headlamp lens as its texture paints it (carlamp.csv) */ \
 "#define BRR_MAT_LENS 112.0\n" \
-"static int lensmat(float a) { a = a * 255.0 - BRR_MAT_LENS; return a > -1.5 && a < 1.5 ? 1 : a > 2.5 && a < 5.5 ? 2 : 0; }\n" \
+"static int lensmat(float a) { a = a * 255.0 - BRR_MAT_LENS; return a > -1.5 && a < 1.5 ? 1 : a > 2.5 && a < 5.5 ? 2 : a > 6.5 && a < 9.5 ? 3 : 0; }\n" \
 "#define BRR_LAMP_L 10000.0\n" \
 "static bool lampmat(float a) { a *= 255.0; return a > 63.5 && a < 80.5; }\n" \
 /* car paint's two roughnesses: its clear coat's and the paint's under it \
