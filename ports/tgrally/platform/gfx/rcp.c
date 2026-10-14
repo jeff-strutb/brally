@@ -1367,7 +1367,6 @@ static void rect_fill(uint32_t w0, uint32_t w1)
     float x1 = ((w0 >> 12) & 0xFFF) / 4.0f, y1 = (w0 & 0xFFF) / 4.0f;
     float x0 = ((w1 >> 12) & 0xFFF) / 4.0f, y0 = (w1 & 0xFFF) / 4.0f;
     int cyc = (s_omh >> 20) & 3;
-    float c[4];
     frame_open();
     if (s_log)
         fprintf(stderr, "fillrect cyc %d %.0f,%.0f-%.0f,%.0f fill %08X cimg %X zimg %X cc %06X %08X prim %.2f %.2f %.2f oml %08X\n",
@@ -1377,17 +1376,29 @@ static void rect_fill(uint32_t w0, uint32_t w1)
         return;
     }
     if (cyc == 3 && s_cimg != s_zimg) {
-        uint16_t p = (uint16_t)(s_fill >> 16);
-        c[0] = ((p >> 11) & 31) / 31.0f;
-        c[1] = ((p >> 6) & 31) / 31.0f;
-        c[2] = ((p >> 1) & 31) / 31.0f;
-        c[3] = (float)(p & 1);                        /* the alpha bit: full coverage, or none */
+        /* a 16-bit fill writes the colour's high half to even pixels and its low half
+         * to odd ones: the car-select stat bars set only the low half (green and black
+         * columns) */
+        uint16_t hl[2] = { (uint16_t)(s_fill >> 16), (uint16_t)s_fill };
+        float cc[2][4];
+        int k, x, xa = (int)x0, xb = (int)x1;
+        for (k = 0; k < 2; k++) {
+            cc[k][0] = ((hl[k] >> 11) & 31) / 31.0f;
+            cc[k][1] = ((hl[k] >> 6) & 31) / 31.0f;
+            cc[k][2] = ((hl[k] >> 1) & 31) / 31.0f;
+            cc[k][3] = (float)(hl[k] & 1);            /* the alpha bit: full coverage, or none */
+        }
         memset(&st, 0, sizeof st);
         st.scissor[0] = s_scissor[0];
         st.scissor[1] = s_scissor[1];
         st.scissor[2] = s_scissor[2];
         st.scissor[3] = s_scissor[3];
-        put_rect(&st, x0, y0, x1 + 1, y1 + 1, 0, 0, 0, 0, 1, c);
+        if (hl[0] == hl[1]) {
+            put_rect(&st, x0, y0, x1 + 1, y1 + 1, 0, 0, 0, 0, 1, cc[0]);
+            return;
+        }
+        for (x = xa; x <= xb; x++)
+            put_rect(&st, (float)x, y0, (float)(x + 1), y1 + 1, 0, 0, 0, 0, 1, cc[x & 1]);
         return;
     }
     state(&st, 0);                                    /* 1/2-cycle: the combiner's colour */
