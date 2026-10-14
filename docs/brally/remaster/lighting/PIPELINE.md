@@ -369,5 +369,20 @@ Diagnostics:
 
 ## Open
 
-- Each track's sun bearing: only Coastline's designed bearing is known; the
-  others keep the map's own.
+- Each track's sun bearing, the project lead's choice. Every track now turns
+  its sky's sun to the game's car light (33.7 degrees toward the light, from
+  +X toward +Y). `BR_LIGHT_BAKEFIT` fits each track's baked vertex light
+  against its faces' normals (the menu index at bossrally.cfg byte 1344, the
+  unlock masks at 1376 and 1380 set to reach all twelve):
+
+  | env | tracks | baked bearing (degrees) | R2 |
+  |---|---|---|---|
+  | 0 | 0, 6 | 14, 58 | 0.48, 0.61 |
+  | 1 | 1, 7 | 26, 17 | 0.44, 0.51 |
+  | 2 (Coastline) | 2, 8 | 21, 18 | 0.35, 0.41 |
+  | 3 | 3, 9 | 78, 83 | 0.37, 0.34 |
+  | 4 | 4, 10 | 94, 125 | 0.34, 0.35 |
+  | 5 | 5, 11 | 19, 7 | 0.28, 0.25 |
+
+  Environments 3 and 4 were painted lit from 45 to 90 degrees round from the
+  car light; environment 0's two layouts disagree with each other.
