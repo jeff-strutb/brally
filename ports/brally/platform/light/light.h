@@ -44,6 +44,9 @@ static inline float light_car_lamp_z(const LightCar *c, int rear)
     float h = c->hi[2] - c->lo[2];
     return c->lo[2] + (rear ? h * 0.48f : (0.65f < h * 0.8f ? 0.65f : h * 0.8f));
 }
+/* a car's floor pan, metres over its model's lowest point (its wheels' contact): a rally
+   car's ground clearance, 0.15 to 0.25 m */
+#define LIGHT_CAR_FLOOR 0.2f
 static inline float light_car_lamp_hw(const LightCar *c) { return (c->hi[1] - c->lo[1]) * 0.5f * 0.72f; }
 int  light_game_cars(LightCar *out, int max);
 /* the track: every scene object's triangles in world space (as the

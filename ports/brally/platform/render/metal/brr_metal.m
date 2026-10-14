@@ -1127,6 +1127,35 @@ static void lit_dynamic(void)
             memcpy(&s_dyn[3 * s_ndyn], &s_tris[3 * i], 9 * sizeof(float));
             s_ndyn += 3;
         }
+    {   /* each car's floor pan: the 1999 models are open shells, their glass blended (no caster), so the
+           sun shone through the cabin onto the road under the car, a patch that came and went as the car
+           pitched and the camera moved; a rectangle over the body's box at LIGHT_CAR_FLOOR up, in the
+           frame the car was drawn with (light_game_cars) */
+        LightCar cars[20];
+        int nc = light_game_cars(cars, 20), c, k, j;
+        if (s_capdyn < s_ndyn + (size_t)nc * 6) {
+            float *p = realloc(s_dyn, (s_ndyn + (size_t)nc * 6) * 3 * sizeof(float));
+            if (!p)
+                return;
+            s_dyn = p;
+            s_capdyn = s_ndyn + (size_t)nc * 6;
+        }
+        for (c = 0; c < nc; c++) {
+            const LightCar *car = &cars[c];
+            float q[4][3], z;
+            static const int tri[6] = { 0, 1, 2, 0, 2, 3 };
+            if (!car->has_box)
+                continue;
+            z = car->lo[2] + LIGHT_CAR_FLOOR;
+            for (j = 0; j < 4; j++) {
+                float x = j == 0 || j == 3 ? car->lo[0] : car->hi[0], y = j < 2 ? car->lo[1] : car->hi[1];
+                for (k = 0; k < 3; k++)
+                    q[j][k] = car->pos[k] + car->fwd[k] * x + car->side[k] * y + car->up[k] * z;
+            }
+            for (j = 0; j < 6; j++)
+                memcpy(&s_dyn[3 * s_ndyn++], q[tri[j]], 3 * sizeof(float));
+        }
+    }
 }
 
 /* the sun's shadow cascades (DESIGN.md 7.4; the fit in brr_shadow.h): the
