@@ -20,7 +20,7 @@ void light_world_gather(unsigned gen, const float *tri, int n, float lum, const 
 int brr_refl_tier(void) { return 0; }   /* reflections: off here (refl.sh tests them) */
 void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt, id<MTLTexture> alb, id<MTLTexture> pos,
                    id<MTLTexture> nrm, id<MTLTexture> hdr, id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz,
-                   id<MTLTexture> girr, id<MTLTexture> gdst, id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff) { }
+                   id<MTLBuffer> girr, id<MTLTexture> gdst, id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff) { }
 int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)   /* the track's rays: rt.sh's */
 {
     (void)w, (void)dev, (void)q, (void)t;
@@ -34,7 +34,7 @@ void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], co
 }
 void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod) { (void)g, (void)spec, (void)lod; }
 void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp) { (void)g, (void)cb, (void)w, (void)lset, (void)nlamp; }
-id<MTLTexture> brr_gi_irr(const BrrGi *g) { (void)g; return nil; }
+id<MTLBuffer> brr_gi_sh(const BrrGi *g) { (void)g; return nil; }
 id<MTLBuffer> brr_gi_off(const BrrGi *g) { (void)g; return nil; }
 id<MTLTexture> brr_gi_dst(const BrrGi *g) { (void)g; return nil; }
 

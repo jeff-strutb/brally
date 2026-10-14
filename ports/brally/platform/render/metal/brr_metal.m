@@ -2155,7 +2155,7 @@ static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
     static const BrrGiU zero;
     int on = s_gi.ready && s_gi.frame;
     [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
-    [e setFragmentTexture:on ? brr_gi_irr(&s_gi) : s_brdfE atIndex:6];
+    [e setFragmentBuffer:on ? brr_gi_sh(&s_gi) : s_gioff0 offset:0 atIndex:7];
     [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
     [e setFragmentBuffer:on ? brr_gi_off(&s_gi) : s_gioff0 offset:0 atIndex:6];   /* the probes' relocation */
 }
@@ -3108,7 +3108,7 @@ nopick:;
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
                       u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? &s_gi.u : NULL, sizeof s_gi.u,
-                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_irr(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_dst(&s_gi) : nil,
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_sh(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_dst(&s_gi) : nil,
                       u.gi[0] > 0.5f ? s_lset[s_vbi] : nil, u.gi[0] > 0.5f ? s_gi.gcnt : nil, u.gi[0] > 0.5f ? s_gi.glst : nil,
                       u.gi[0] > 0.5f ? brr_gi_off(&s_gi) : nil);
     if (u.wet[2] > 1.5f)
@@ -3135,7 +3135,7 @@ nopick:;
         }
         {
             int gon = u.gi[0] > 0.5f && s_gi.ready && s_gi.frame;
-            brr_vol_gi(gon ? &s_gi.u : NULL, sizeof s_gi.u, gon ? brr_gi_off(&s_gi) : nil, gon ? brr_gi_irr(&s_gi) : nil, gon ? brr_gi_dst(&s_gi) : nil);
+            brr_vol_gi(gon ? &s_gi.u : NULL, sizeof s_gi.u, gon ? brr_gi_off(&s_gi) : nil, gon ? brr_gi_sh(&s_gi) : nil, gon ? brr_gi_dst(&s_gi) : nil);
         }
         brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
     }

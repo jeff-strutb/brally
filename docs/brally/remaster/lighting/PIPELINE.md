@@ -82,10 +82,14 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   in their own direction (the prefiltered cube at GGX roughness 0.5), so the
   bounce light sees the sun's side and the horizon's glow. Before, a miss
   took one radiance looking up and one looking down.
-- The probes store irradiance as 8 x 8 octahedral texels, bilinearly
-  sampled. For a smooth field this is within 1.4% on the axes and up to 6%
-  at oblique normals (a CPU model reproduces it); gi.sh checks the cube path
-  against the analytic one through the same storage (0.03%).
+- The probes store irradiance as spherical harmonics to order 2 (Ramamoorthi
+  and Hanrahan 2001: 9 coefficients a probe, projected without bias from the
+  rays, convolved with the cosine). gi.sh measures, over 256 normals against
+  the closed form for a sky gradient, a worst error of 0.14% (the 8 x 8
+  octahedral texels they replaced: 5.66%, from their folds, and 2.3% at
+  16 x 16). The truncation on a lamp-lit box's first bounce is 3.0%; the
+  estimator is within 0.04% of that field's own projection. 14.5 MB where the
+  atlases took 20.5. The distances stay an octahedral atlas.
 
 - **The track's albedo, learned from the frames** (brr_metal_refl.h
   talb_learn, talb_resolve). Every triangle's surface record held no colour,
@@ -293,6 +297,9 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   under the lamp that meet its frustum and writes their triangles with the
   tile's indexed indirect draw. `BR_LIGHT_TILECHECK` compares with
   light_shadow_track_casters: 116 of 116 checks exact.
+- The deferred lighting at 2560 x 1440: 3.70 ms a frame this morning, 4.30
+  with the probes' specular and occlusion of the sky and the harmonics (the
+  two lookups share their 8 probes' weights).
 - `BR_LIGHT_CPU`: the casters 0.01 ms a frame (0.17 before). The lights
   stage, by part: lights 0.004, clusters 0.013, shadow plan 0.012, tiles'
   casters 0.004 (0.066 on the CPU in the same run). The rest is command
@@ -360,5 +367,3 @@ Diagnostics:
   others keep the map's own.
 - iOS packaging of the skymaps (4K for memory). The Mac app carries the 8K
   maps in Resources/skies.
-- The probes' octahedral storage error at oblique normals (above): SH per
-  probe would remove it.

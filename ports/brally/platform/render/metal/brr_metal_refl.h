@@ -227,7 +227,7 @@
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
 "                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]],\n" \
 "                  device const RtPrim *prim [[buffer(9)]], device const uint *leaf [[buffer(10)]],\n" \
-"                  constant GiU &gu [[buffer(12)]], texture2d<float> girr [[texture(8)]], texture2d<float> gdst [[texture(9)]],\n" \
+"                  constant GiU &gu [[buffer(12)]], device const float4 *gsh [[buffer(18)]], texture2d<float> gdst [[texture(9)]],\n" \
 "                  device atomic_int *hck [[buffer(13)]], const device LSet &ls [[buffer(14)]],\n" \
 "                  device const uint *gcnt [[buffer(15)]], device const ushort *glst [[buffer(16)]], device const float4 *goff [[buffer(17)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
@@ -259,7 +259,7 @@
 "      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
 "      float3 Es = u.skyc.rgb * (0.5 + 0.5 * tn.z), Ei = Es; bool ing = false;\n" \
 "      if (gu.n.x > 0) { float3 g = (hp - gu.org.xyz) / gu.org.w - float3(gu.base.xyz);   /* inside the probes: their light (sky, bounce, lamps' bounce) */\n" \
-"        if (all(g >= 0.0) && all(g <= float3(gu.n.xyz - 1))) { Ei = gi_irr(gu, goff, girr, gdst, hp, tn, -r); ing = true; } }\n" \
+"        if (all(g >= 0.0) && all(g <= float3(gu.n.xyz - 1))) { Ei = gi_irr(gu, goff, gsh, gdst, hp, tn, -r); ing = true; } }\n" \
 "      float3 El = 0.0;   /* the lamps of the probes' light grid cube holding the hit (gi_lamps'), each behind a shadow ray */\n" \
 "      if (gu.lim.z > 0.5) { int ce = gi_cell(gu, hp), nlm = int(gcnt[ce]);\n" \
 "        for (int q = 0; q < nlm; q++) { LS l = ls.l[glst[ce * 32 + q]]; float3 L = float3(l.pos) - hp; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
@@ -281,7 +281,7 @@
 "            atomic_fetch_add_explicit(&hck[7], int(c * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[8], int(abs(c) * 1000.0), memory_order_relaxed);\n" \
 "            atomic_fetch_add_explicit(&hck[9], 1, memory_order_relaxed);\n" \
 "            float3 PN = nrm.read(uint2(cs)).xyz, PP = pos.read(uint2(cs)).xyz; if (dot(PN, u.eye.xyz - PP) < 0.0) PN = -PN;\n" \
-"            float ef = dot(gi_irr(gu, goff, girr, gdst, PP, PN, normalize(u.eye.xyz - PP)), k), eh = dot(Ei, k), en = dot(gi_irr(gu, goff, girr, gdst, hp, PN, -r), k);\n" \
+"            float ef = dot(gi_irr(gu, goff, gsh, gdst, PP, PN, normalize(u.eye.xyz - PP)), k), eh = dot(Ei, k), en = dot(gi_irr(gu, goff, gsh, gdst, hp, PN, -r), k);\n" \
 "            if (ef > 1e-3 && eh > 1e-3 && en > 1e-3) { atomic_fetch_add_explicit(&hck[10], int(log2(eh / ef) * 1000.0), memory_order_relaxed);\n" \
 "              atomic_fetch_add_explicit(&hck[11], int(log2(en / ef) * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[12], int(dot(PN, tn) * 1000.0), memory_order_relaxed);\n" \
 "              atomic_fetch_add_explicit(&hck[13], 1, memory_order_relaxed); } } } } }\n" \

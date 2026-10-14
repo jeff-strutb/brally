@@ -354,7 +354,7 @@ BRR_SHADOW_SRC \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(2)]], device const float4 *goff [[buffer(6)]],\n" \
-"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]], texturecube<float> sp [[texture(9)]],\n" \
+"                    device const float4 *gsh [[buffer(7)]], texture2d<float> gdst [[texture(7)]], texturecube<float> sp [[texture(9)]],\n" \
 "                    texture2d<float> aot [[texture(10)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
@@ -374,13 +374,13 @@ BRR_SHADOW_SRC \
 "  if (dbg == 5) return float4(float3(glow), 1);\n" \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
-"  float3 gi = u.gi.x > 0.5 ? gi_irr(gu, goff, girr, gdst, P.xyz, n, normalize(u.eye.xyz - P.xyz)) : float3(0);\n" \
+"  float rin = carpaint(a.a) ? BRR_CAR_ROUGH : u.misc.z; float3 ve = normalize(u.eye.xyz - P.xyz), gi = 0.0, gis = 0.0;\n" \
+"  if (u.gi.x > 0.5) gi = carpaint(a.a) || rin > BRR_TRACED_MAX ? gi_irr2(gu, goff, gsh, gdst, P.xyz, n, ve, reflect(-ve, n), gis)   /* wet() only smooths */\n" \
+"                                                               : gi_irr(gu, goff, gsh, gdst, P.xyz, n, ve);\n" \
 "  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
 "  float ao = u.env.w > 0.5 ? ao_at(aot, pos, px, P.xyz, n) : 1.0;   /* env.w: the occlusion ran */\n" \
 "  if (dbg == 15) return float4(float3(ao), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  float rin = carpaint(a.a) ? BRR_CAR_ROUGH : u.misc.z; float3 ve = normalize(u.eye.xyz - P.xyz);\n" \
-"  float3 gis = u.gi.x > 0.5 && (carpaint(a.a) || rin > BRR_TRACED_MAX) ? gi_irr(gu, goff, girr, gdst, P.xyz, reflect(-ve, n), ve) : float3(0);   /* wet() only smooths */\n" \
 "  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, 0.0, sv, bE, gi, j * 6.2831853, sp, ao, sealedmat(a.a) ? 1.0 : 0.0, gis);\n" \
 "  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* a lit window, about 100 cd/m2 */\n" \
 "  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;   /* a lamp's own light */\n" \
@@ -395,7 +395,7 @@ BRR_SHADOW_SRC \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
 "                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(3)]], device const float4 *goff [[buffer(6)]],\n" \
-"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]],\n" \
+"                    device const float4 *gsh [[buffer(7)]], texture2d<float> gdst [[texture(7)]],\n" \
 "                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]], texturecube<float> sp [[texture(9)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
@@ -407,11 +407,11 @@ BRR_SHADOW_SRC \
 "  else if (u.lamp > 0.5) c = lin(h.o.rgb) * BRR_LAMP_L * lu.wb.rgb;   /* a lamp's flare: light */\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
-"    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, goff, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
+"    float3 ve = normalize(lu.eye.xyz - in.wp), gi = 0.0, gis = 0.0;\n" \
+"    if (lu.gi.x > 0.5) gi = lu.misc.z > BRR_TRACED_MAX ? gi_irr2(gu, goff, gsh, gdst, in.wp, n, ve, reflect(-ve, n), gis) : gi_irr(gu, goff, gsh, gdst, in.wp, n, ve);\n" \
 /* a flat decal (lp2, brr_metal.m: a tire mark): its colour the game's own combine of texture and \
    vertex colour, the paint it laid, where delit would divide the vertex colour out as baked light */ \
 "    float3 al = u.lp2 > 0.5 ? min(lin(h.o.rgb) * 0.85, 0.9) : albedo(u, h.tex.rgb, h.it.rgb);\n" \
-"    float3 ve = normalize(lu.eye.xyz - in.wp), gis = lu.gi.x > 0.5 && lu.misc.z > BRR_TRACED_MAX ? gi_irr(gu, goff, girr, gdst, in.wp, reflect(-ve, n), ve) : float3(0);\n" \
 "    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0, u.lp1, gis);\n" \
 "    ge = al / max(dot(al, float3(0.2126, 0.7152, 0.0722)), 0.02) * g * 100.0 * lu.wb.rgb;   /* a lit window's own light */\n" \
 "  }\n" \

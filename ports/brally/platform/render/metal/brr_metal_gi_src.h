@@ -39,15 +39,29 @@ BRR_GI_U_SRC \
 "static float2 gi_uv(int2 t, float3 d, int R, float2 sz) {\n" \
 "  float2 px = float2(t * (R + 2)) + 1.0 + (gi_oct(d) * 0.5 + 0.5) * float(R);\n" \
 "  return px / sz; }\n" \
+/* a probe's irradiance: spherical harmonics to order 2 (Ramamoorthi and \
+   Hanrahan 2001), 9 coefficients a slot (sh[9 slot + k], rgb), already \
+   convolved with the cosine (A0 pi, A1 2 pi / 3, A2 pi / 4): E(n) their \
+   sum against the basis.  Exact for light of order 2 or less (a sky's \
+   gradient: the octahedral 8 x 8 texels it replaced were off by up to 5.7% \
+   there), its truncation within 3.2% of a lamp-lit box's first bounce */ \
+"static void gi_y9(float3 d, thread float *y) {\n" \
+"  y[0] = 0.282095; y[1] = 0.488603 * d.y; y[2] = 0.488603 * d.z; y[3] = 0.488603 * d.x;\n" \
+"  y[4] = 1.092548 * d.x * d.y; y[5] = 1.092548 * d.y * d.z; y[6] = 0.315392 * (3.0 * d.z * d.z - 1.0);\n" \
+"  y[7] = 1.092548 * d.x * d.z; y[8] = 0.546274 * (d.x * d.x - d.y * d.y); }\n" \
+"static float3 gi_sh_eval(device const float4 *sh, int slot, float3 n) {\n" \
+"  float y[9]; gi_y9(n, y); float3 e = 0.0;\n" \
+"  for (int k = 0; k < 9; k++) e += sh[9 * slot + k].rgb * y[k];\n" \
+"  return max(e, 0.0); }\n" \
 /* the indirect irradiance at p (normal n, v toward the eye) from last \
    frame's probes; lim.y: Chebyshev visibility on */ \
-"static float3 gi_irr(constant GiU &u, device const float4 *off, texture2d<float> irr, texture2d<float> dst, float3 p, float3 n, float3 v) {\n" \
+"static float3 gi_irr(constant GiU &u, device const float4 *off, device const float4 *sh, texture2d<float> dst, float3 p, float3 n, float3 v) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  float sp = u.org.w; float3 ps = p + (n * 0.2 + v * 0.8) * (0.75 * sp) * u.par.w;\n" \
 "  float3 g = (ps - u.org.xyz) / sp - float3(u.base.xyz);\n" \
 "  float3 g0 = clamp(floor(g), float3(0), float3(u.n.xyz - 2));\n" \
 "  float3 al = clamp(g - g0, 0.0, 1.0);\n" \
-"  float2 isz = float2(irr.get_width(), irr.get_height()), dsz = float2(dst.get_width(), dst.get_height());\n" \
+"  float2 dsz = float2(dst.get_width(), dst.get_height());\n" \
 "  float3 sum = 0.0; float ws = 0.0;\n" \
 "  for (int i = 0; i < 8; i++) {\n" \
 "    int3 o = int3(i & 1, (i >> 1) & 1, i >> 2), gi = int3(g0) + o;\n" \
@@ -64,9 +78,38 @@ BRR_GI_U_SRC \
 "    }\n" \
 "    w = max(w, 1e-6);\n" \
 "    if (w < 0.2) w *= w * w / 0.04;\n" \
-"    sum += w * irr.sample(s, gi_uv(t, n, BRR_GI_IRR_S, isz)).rgb; ws += w;\n" \
+"    sum += w * gi_sh_eval(sh, gi_lin(u, gi_slot(u, gi)), n); ws += w;\n" \
 "  }\n" \
-"  return ws > 0.0 ? sum / ws : mix(u.gnd.rgb, u.sky.rgb, n.z * 0.5 + 0.5) * 3.14159265; }   /* every probe about it buried: a miss's light */\n"
+"  return ws > 0.0 ? sum / ws : mix(u.gnd.rgb, u.sky.rgb, n.z * 0.5 + 0.5) * 3.14159265; }   /* every probe about it buried: a miss's light */\n" \
+/* the same weights for a second direction r2 (the lighting's specular \
+   lookup, BRR_GISPEC_R0): its irradiance in e2 */ \
+"static float3 gi_irr2(constant GiU &u, device const float4 *off, device const float4 *sh, texture2d<float> dst, float3 p, float3 n, float3 v, float3 r2, thread float3 &e2) {\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
+"  float sp = u.org.w; float3 ps = p + (n * 0.2 + v * 0.8) * (0.75 * sp) * u.par.w;\n" \
+"  float3 g = (ps - u.org.xyz) / sp - float3(u.base.xyz);\n" \
+"  float3 g0 = clamp(floor(g), float3(0), float3(u.n.xyz - 2));\n" \
+"  float3 al = clamp(g - g0, 0.0, 1.0);\n" \
+"  float2 dsz = float2(dst.get_width(), dst.get_height());\n" \
+"  float3 sum = 0.0, sum2 = 0.0; float ws = 0.0;\n" \
+"  for (int i = 0; i < 8; i++) {\n" \
+"    int3 o = int3(i & 1, (i >> 1) & 1, i >> 2), gi = int3(g0) + o;\n" \
+"    float3 pp = gi_ppos(u, off, gi); int2 t = gi_tile(u, gi_slot(u, gi));\n" \
+"    float3 tri = mix(1.0 - al, al, float3(o)); float w = tri.x * tri.y * tri.z;\n" \
+"    float3 tp = normalize(pp - p); float bf = (dot(tp, n) + 1.0) * 0.5; w *= bf * bf + 0.2;\n" \
+"    if (u.lim.y > 0.5) {\n" \
+"      float3 r = ps - pp; float d = length(r);\n" \
+"      float2 m = dst.sample(s, gi_uv(t, d > 0.0 ? r / d : float3(0, 0, 1), BRR_GI_DST_S, dsz)).rg;\n" \
+"      if (m.x <= 0.0) continue;   /* a probe inside the track's solid (gi_fold): none of its light */\n" \
+"      float ch = 1.0;\n" \
+"      if (d > m.x) { float var = abs(m.y - m.x * m.x), dd = d - m.x; ch = var / (var + dd * dd); ch = max(ch * ch * ch, 0.0); }\n" \
+"      w *= ch;\n" \
+"    }\n" \
+"    w = max(w, 1e-6);\n" \
+"    if (w < 0.2) w *= w * w / 0.04;\n" \
+"    int sl = gi_lin(u, gi_slot(u, gi)); sum += w * gi_sh_eval(sh, sl, n); sum2 += w * gi_sh_eval(sh, sl, r2); ws += w;\n" \
+"  }\n" \
+"  e2 = ws > 0.0 ? sum2 / ws : mix(u.gnd.rgb, u.sky.rgb, r2.z * 0.5 + 0.5) * 3.14159265;\n" \
+"  return ws > 0.0 ? sum / ws : mix(u.gnd.rgb, u.sky.rgb, n.z * 0.5 + 0.5) * 3.14159265; }\n"
 
 /* the update's kernels (needs BRR_RT_SRC and BRR_LIGHTS_SRC before it) */
 #define BRR_GI_SRC \
@@ -141,7 +184,7 @@ BRR_GI_SAMPLE_SRC \
 "                     device const RtNode *node [[buffer(4)]], device const float *tri [[buffer(5)]],\n" \
 "                     device const uint *id [[buffer(6)]], device const RtPrim *prim [[buffer(7)]] RT_AS(8),\n" \
 "                     device const uint *cnt [[buffer(9)]], device const ushort *lst [[buffer(10)]], device const float4 *off [[buffer(11)]],\n" \
-"                     texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]], texturecube<float> env [[texture(2)]],\n" \
+"                     device const float4 *sh [[buffer(12)]], texture2d<float> dst [[texture(1)]], texturecube<float> env [[texture(2)]],\n" \
 "                     uint2 gid [[thread_position_in_grid]]) {\n" \
 "  int nr = u.n.w, np = u.n.x * u.n.y * u.n.z;\n" \
 "  if (int(gid.x) >= nr || int(gid.y) >= np) return;\n" \
@@ -165,7 +208,7 @@ BRR_GI_SAMPLE_SRC \
 "    if (nl > 0.0 && any(u.sunc.rgb > 0.0) && !RT_ANY(hp + n * 1e-3 * max(1.0, h.t), u.sun.xyz, 0.0, 1e30))\n" \
 "      E += u.sunc.rgb * nl;\n" \
 "    E += gi_lamps(u, ls, cnt, lst, hp, n);\n" \
-"    if (u.lim.w > 0.5) E += gi_irr(u, off, irr, dst, hp, n, -d);\n" \
+"    if (u.lim.w > 0.5) E += gi_irr(u, off, sh, dst, hp, n, -d);\n" \
 "    L = gi_rgb(pr.emit) * u.par.z + alb / GI_PI * E;\n" \
 "  }\n" \
 "  out[pl * nr + int(gid.x)] = float4(L, h.tri < 0 ? u.lim.x : back ? -h.t : h.t);   /* a back face's hit: its distance negated */\n" \
@@ -229,9 +272,24 @@ BRR_GI_SAMPLE_SRC \
 "  float h = gi_fresh(u, sl) ? 0.0 : pow(u.par.x, float(max(u.upd.x, 1)));\n" \
 "  next.write(float4(mix(nw, old.rgb, h), 1.0), gid);\n" \
 "}\n" \
-"kernel void gi_blend_irr(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]],\n" \
-"                         texture2d<float, access::read> prev [[texture(0)]], texture2d<float, access::write> next [[texture(1)]],\n" \
-"                         uint2 gid [[thread_position_in_grid]]) { gi_fold(u, ray, prev, next, gid, BRR_GI_IRR_S, false); }\n" \
+/* a probe's rays into its 9 coefficients: (4 pi / N) sum L Y (unbiased), \
+   times the cosine's A_l, blended as the atlas texels are; a probe inside \
+   the track's solid holds none */ \
+"kernel void gi_blend_sh(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]], device float4 *sh [[buffer(12)]],\n" \
+"                        uint pl [[thread_position_in_grid]]) {\n" \
+"  int nr = u.n.w; if (int(pl) >= u.n.x * u.n.y * u.n.z) return;\n" \
+"  int3 sl = int3(int(pl) % u.n.x, (int(pl) / u.n.x) % u.n.y, int(pl) / (u.n.x * u.n.y));\n" \
+"  if (!gi_due(u, sl)) return;\n" \
+"  float3 c[9]; float y[9]; int nb = 0;\n" \
+"  for (int k = 0; k < 9; k++) c[k] = 0.0;\n" \
+"  for (int i = 0; i < nr; i++) { float4 r = ray[int(pl) * nr + i]; nb += r.w < 0.0; gi_y9(gi_ray(u, i), y);\n" \
+"    for (int k = 0; k < 9; k++) c[k] += r.rgb * y[k]; }\n" \
+"  bool dead = float(nb) > GI_BACK * float(nr);\n" \
+"  float h = gi_fresh(u, sl) ? 0.0 : pow(u.par.x, float(max(u.upd.x, 1))), sc = 4.0 * GI_PI / float(nr);\n" \
+"  for (int k = 0; k < 9; k++) {\n" \
+"    float A = k == 0 ? GI_PI : k < 4 ? 2.0 * GI_PI / 3.0 : GI_PI / 4.0;\n" \
+"    float3 nw = dead ? float3(0) : c[k] * sc * A;\n" \
+"    sh[9 * int(pl) + k] = float4(dead ? nw : mix(nw, sh[9 * int(pl) + k].rgb, h), 0.0); } }\n" \
 "kernel void gi_blend_dst(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]],\n" \
 "                         texture2d<float, access::read> prev [[texture(0)]], texture2d<float, access::write> next [[texture(1)]],\n" \
 "                         uint2 gid [[thread_position_in_grid]]) { gi_fold(u, ray, prev, next, gid, BRR_GI_DST_S, true); }\n"

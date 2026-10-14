@@ -10,8 +10,9 @@
 
 void brr_gi_release(BrrGi *g)
 {
-    g->trace = g->birr = g->bdst = nil;
-    g->irr[0] = g->irr[1] = g->dst[0] = g->dst[1] = nil;
+    g->trace = g->bsh = g->bdst = nil;
+    g->sh = nil;
+    g->dst[0] = g->dst[1] = nil;
     g->grid = nil;
     g->ray = g->leaf = g->gcnt = g->glst = g->off = nil;
     g->offreset = g->reloc = nil;
@@ -37,7 +38,7 @@ int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr)
     if (!lib)
         return 0;
     g->trace = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_trace"] error:&err];
-    g->birr = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_blend_irr"] error:&err];
+    g->bsh = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_blend_sh"] error:&err];
     g->bdst = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_blend_dst"] error:&err];
     g->grid = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_grid"] error:&err];
     g->offreset = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_offreset"] error:&err];
@@ -45,11 +46,13 @@ int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr)
     g->gcnt = [dev newBufferWithLength:BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * 4 options:MTLResourceStorageModeShared];
     g->glst = [dev newBufferWithLength:BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * 32 * 2 options:MTLResourceStorageModeShared];
     for (k = 0; k < 2; k++) {
-        g->irr[k] = atlas(dev, nx * nz * (BRR_GI_IRR + 2), ny * (BRR_GI_IRR + 2), MTLPixelFormatRGBA32Float);
         g->dst[k] = atlas(dev, nx * nz * (BRR_GI_DST + 2), ny * (BRR_GI_DST + 2), MTLPixelFormatRG32Float);
     }
     g->ray = [dev newBufferWithLength:(size_t)nx * ny * nz * nr * 16 options:MTLResourceStorageModeShared];
     g->off = [dev newBufferWithLength:(size_t)nx * ny * nz * 16 options:MTLResourceStorageModeShared];
+    g->sh = [dev newBufferWithLength:(size_t)nx * ny * nz * 9 * 16 options:MTLResourceStorageModeShared];
+    if (g->sh)
+        memset([g->sh contents], 0, (size_t)nx * ny * nz * 9 * 16);
     if (g->off)
         memset([g->off contents], 0, (size_t)nx * ny * nz * 16);
     {   /* a black cube for the trace's sky slot when there is no skymap */
@@ -60,14 +63,14 @@ int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr)
         for (f = 0; f < 6 && g->nocube; f++)
             [g->nocube replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 slice:(NSUInteger)f withBytes:z4 bytesPerRow:8 bytesPerImage:8];
     }
-    if (!g->nocube || !g->trace || !g->birr || !g->bdst || !g->grid || !g->gcnt || !g->glst || !g->irr[0] || !g->irr[1] || !g->dst[0] || !g->dst[1] || !g->ray
+    if (!g->nocube || !g->trace || !g->bsh || !g->bdst || !g->grid || !g->gcnt || !g->glst || !g->sh || !g->dst[0] || !g->dst[1] || !g->ray
         || !g->off || !g->offreset || !g->reloc) {
         brr_gi_release(g);
         return 0;
     }
     g->nx = nx; g->ny = ny; g->nz = nz; g->nr = nr;
-    g->bytes = 2 * ((size_t)nx * nz * (BRR_GI_IRR + 2) * ny * (BRR_GI_IRR + 2) * 16
-                    + (size_t)nx * nz * (BRR_GI_DST + 2) * ny * (BRR_GI_DST + 2) * 8)
+    g->bytes = (size_t)nx * ny * nz * 9 * 16
+             + 2 * (size_t)nx * nz * (BRR_GI_DST + 2) * ny * (BRR_GI_DST + 2) * 8
              + (size_t)nx * ny * nz * nr * 16
              + (size_t)BRR_GI_GRID * BRR_GI_GRID * BRR_GI_GRID * (4 + 32 * 2);
     g->u.n[0] = nx; g->u.n[1] = ny; g->u.n[2] = nz; g->u.n[3] = nr;
@@ -191,16 +194,14 @@ void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MT
     brr_rt_bind(w, e, 4);
     [e setBuffer:g->gcnt offset:0 atIndex:9];
     [e setBuffer:g->glst offset:0 atIndex:10];
-    [e setTexture:g->irr[prev] atIndex:0];
+    [e setBuffer:g->sh offset:0 atIndex:12];
     [e setTexture:g->dst[prev] atIndex:1];
     [e setTexture:g->env ? g->env : g->nocube atIndex:2];
     [e dispatchThreads:MTLSizeMake((NSUInteger)g->nr, (NSUInteger)np, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
     [e setComputePipelineState:g->reloc];   /* where the next update traces from (gi_reloc) */
     [e dispatchThreads:MTLSizeMake((NSUInteger)np, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
-    [e setComputePipelineState:g->birr];
-    [e setTexture:g->irr[prev] atIndex:0];
-    [e setTexture:g->irr[next] atIndex:1];
-    [e dispatchThreads:MTLSizeMake(g->irr[next].width, g->irr[next].height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    [e setComputePipelineState:g->bsh];   /* the irradiance's coefficients, in place (the trace above read last frame's) */
+    [e dispatchThreads:MTLSizeMake((NSUInteger)np, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
     [e setComputePipelineState:g->bdst];
     [e setTexture:g->dst[prev] atIndex:0];
     [e setTexture:g->dst[next] atIndex:1];
@@ -210,6 +211,6 @@ void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MT
     g->cur = next;
 }
 
-id<MTLTexture> brr_gi_irr(const BrrGi *g) { return g->irr[g->cur]; }
+id<MTLBuffer> brr_gi_sh(const BrrGi *g) { return g->sh; }
 id<MTLTexture> brr_gi_dst(const BrrGi *g) { return g->dst[g->cur]; }
 id<MTLBuffer> brr_gi_off(const BrrGi *g) { return g->off; }

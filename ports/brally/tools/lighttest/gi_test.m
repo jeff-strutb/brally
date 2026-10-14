@@ -120,7 +120,7 @@ static void eval(BrrGi *g, const float *q, int n, float *out)
     [e setBuffer:qb offset:0 atIndex:1];
     [e setBuffer:ob offset:0 atIndex:2];
     [e setBuffer:brr_gi_off(g) offset:0 atIndex:3];
-    [e setTexture:brr_gi_irr(g) atIndex:0];
+    [e setBuffer:brr_gi_sh(g) offset:0 atIndex:4];
     [e setTexture:brr_gi_dst(g) atIndex:1];
     [e dispatchThreads:MTLSizeMake((NSUInteger)n, 1, 1) threadsPerThreadgroup:MTLSizeMake(32, 1, 1)];
     [e endEncoding];
@@ -155,6 +155,53 @@ static void rayd(const BrrGiU *u, int i, float d[3])
     d[2] = u->rot2[0] * s[0] + u->rot2[1] * s[1] + u->rot2[2] * s[2];
 }
 static int imod(int a, int n) { return ((a % n) + n) % n; }
+/* the irradiance's spherical harmonics on the CPU (brr_metal_gi_src.h gi_y9, gi_blend_sh) */
+static void y9(const float d[3], double y[9])
+{
+    y[0] = 0.282095; y[1] = 0.488603 * d[1]; y[2] = 0.488603 * d[2]; y[3] = 0.488603 * d[0];
+    y[4] = 1.092548 * d[0] * d[1]; y[5] = 1.092548 * d[1] * d[2]; y[6] = 0.315392 * (3.0 * d[2] * d[2] - 1.0);
+    y[7] = 1.092548 * d[0] * d[2]; y[8] = 0.546274 * (d[0] * d[0] - d[1] * d[1]);
+}
+static double sh_eval(const float *sh, int slot, const float n[3], int ch)
+{
+    double y[9], e = 0.0;
+    y9(n, y);
+    for (int k = 0; k < 9; k++) e += sh[(9 * slot + k) * 4 + ch] * y[k];
+    return e > 0.0 ? e : 0.0;
+}
+static void cpu_sh(const BrrGiU *u, const float *ray, const float *prev, float *next)
+{
+    int np = u->n[0] * u->n[1] * u->n[2], nr = u->n[3];
+    for (int pl = 0; pl < np; pl++) {
+        int s[3] = { pl % u->n[0], (pl / u->n[0]) % u->n[1], pl / (u->n[0] * u->n[1]) }, wv[3], fresh = u->pbase[3] == 0, nb = 0;
+        int per = u->upd[0] > 1 ? u->upd[0] : 1;
+        double c[9][3] = { { 0 } }, y[9];
+        for (int k = 0; k < 3; k++) {
+            wv[k] = u->base[k] + imod(s[k] - u->base[k], u->n[k]);
+            if (wv[k] < u->pbase[k] || wv[k] >= u->pbase[k] + u->n[k]) fresh = 1;
+        }
+        memcpy(next + 36 * pl, prev + 36 * pl, 36 * sizeof(float));
+        if (pl % per != u->upd[1] && !fresh) continue;
+        for (int i = 0; i < nr; i++) {
+            const float *r = ray + ((size_t)pl * nr + i) * 4;
+            float d[3];
+            rayd(u, i, d);
+            y9(d, y);
+            nb += r[3] < 0.0f;
+            for (int k = 0; k < 9; k++)
+                for (int q = 0; q < 3; q++) c[k][q] += r[q] * y[k];
+        }
+        double h = fresh ? 0.0 : pow(u->par[0], per), sc = 4.0 * M_PI / nr;
+        for (int k = 0; k < 9; k++) {
+            double A = k == 0 ? M_PI : k < 4 ? 2.0 * M_PI / 3.0 : M_PI / 4.0;
+            for (int q = 0; q < 3; q++) {
+                double nw = nb > 0.25 * nr ? 0.0 : c[k][q] * sc * A;
+                next[(9 * pl + k) * 4 + q] = (float)(nb > 0.25 * nr ? 0.0 : nw + (prev[(9 * pl + k) * 4 + q] - nw) * h);
+            }
+            next[(9 * pl + k) * 4 + 3] = 0.0f;
+        }
+    }
+}
 /* one atlas (R texels a side, ch channels) folded from rays over prev */
 static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float *next, int W, int H, int R, int ch, int dist)
 {
@@ -211,33 +258,38 @@ static void furnace(void)
     g.u.par[2] = 1.0f;                       /* the walls' radiance, cd/m2 */
     for (int f = 0; f < 800; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
     float a = 128.0f / 255.0f, want = 3.14159265f / (1.0f - a);
-    float *irr = tex(brr_gi_irr(&g), 4), err = 0.0f, lo = 1e30f, hi = 0.0f;
-    int W = (int)brr_gi_irr(&g).width, H = (int)brr_gi_irr(&g).height;
-    for (int i = 0; i < W * H; i++)
-        for (int k = 0; k < 3; k++) {
-            float e = fabsf(irr[i * 4 + k] / want - 1.0f);
-            err = fmaxf(err, e); lo = fminf(lo, irr[i * 4 + k]); hi = fmaxf(hi, irr[i * 4 + k]);
+    int np = 27, NB = np * 36;
+    float *irr = malloc((size_t)NB * 4), err = 0.0f, lo = 1e30f, hi = 0.0f;
+    memcpy(irr, [brr_gi_sh(&g) contents], (size_t)NB * 4);
+    for (int pl = 0; pl < np; pl++)   /* each probe's irradiance over 64 normals */
+        for (int i = 0; i < 64; i++) {
+            float z = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f, n[3] = { r * cosf(ph), r * sinf(ph), z };
+            for (int k = 0; k < 3; k++) {
+                float v = (float)sh_eval(irr, pl, n, k), e = fabsf(v / want - 1.0f);
+                err = fmaxf(err, e); lo = fminf(lo, v); hi = fmaxf(hi, v);
+            }
         }
     printf("furnace    a %.4f: E/(1-a) %.5f lux, probes %.5f .. %.5f, max rel err %.4f%%\n", a, want, lo, hi, err * 100.0f);
     check("furnace within 2%", err < 0.02f);
     /* the fold on the CPU from the same rays: one more frame */
     {
-        float *prev = tex(brr_gi_irr(&g), 4), *pd = tex(brr_gi_dst(&g), 2);
+        float *prev = malloc((size_t)NB * 4), *pd = tex(brr_gi_dst(&g), 2);
+        memcpy(prev, [brr_gi_sh(&g) contents], (size_t)NB * 4);
         BrrGiU u;
         frame(&g, 2.0f, sun, zero);
         u = g.u;
         run(&g, &w, nil, 0);
-        float *ray = [g.ray contents], *gi = tex(brr_gi_irr(&g), 4), *gd = tex(brr_gi_dst(&g), 2);
+        float *ray = [g.ray contents], *gi = [brr_gi_sh(&g) contents], *gd = tex(brr_gi_dst(&g), 2);
         int Wd = (int)brr_gi_dst(&g).width, Hd = (int)brr_gi_dst(&g).height;
-        float *ci = malloc((size_t)W * H * 16), *cd = malloc((size_t)Wd * Hd * 8), di = 0.0f, dd = 0.0f;
-        cpu_fold(&u, ray, prev, ci, W, H, BRR_GI_IRR, 4, 0);
+        float *ci = malloc((size_t)NB * 4), *cd = malloc((size_t)Wd * Hd * 8), di = 0.0f, dd = 0.0f;
+        cpu_sh(&u, ray, prev, ci);
         cpu_fold(&u, ray, pd, cd, Wd, Hd, BRR_GI_DST, 2, 1);
-        for (int i = 0; i < W * H * 4; i++) di = fmaxf(di, fabsf(ci[i] - gi[i]));
+        for (int i = 0; i < NB; i++) di = fmaxf(di, fabsf(ci[i] - gi[i]));
         for (int i = 0; i < Wd * Hd * 2; i++) dd = fmaxf(dd, fabsf(cd[i] - gd[i]) / fmaxf(1.0f, fabsf(cd[i])));
-        printf("fold       GPU vs CPU on the same rays: irradiance max abs diff %.3g lux (of %.3f), distance max rel diff %.3g\n", di, want, dd);
+        printf("fold       GPU vs CPU on the same rays: irradiance coefficients max abs diff %.3g lux (of %.3f), distance max rel diff %.3g\n", di, want, dd);
         check("fold irradiance", di < 1e-4f * want);
         check("fold distance", dd < 1e-4f);
-        free(prev); free(pd); free(gi); free(gd); free(ci); free(cd);
+        free(prev); free(pd); free(gd); free(ci); free(cd);
     }
     free(irr);
     brr_gi_release(&g); brr_rt_release(&w);
@@ -330,6 +382,25 @@ static void skycube(void)
         float ref[6][4], out[6][4], up[3] = { A + B, A + B, A + B }, dn[3] = { A - B, A - B, A - B }, eye[3] = { 0, 0, 0 }, dax = 0.0f;
         for (int f = 0; f < 800; f++) { brr_gi_frame(&g, eye, 2.0f, sun, zero, up, dn); run(&g, &w, nil, 0); }
         eval(&g, &q[0][0], 6, &ref[0][0]);
+        {   /* the storage's error over the sphere: 256 normals (a Fibonacci set) at a probe against the closed form */
+            enum { NS = 256 };
+            float qs[NS][8], os[NS][4], worst = 0.0f, wz = 0.0f;
+            for (int i = 0; i < NS; i++) {
+                float z = 1.0f - (2.0f * i + 1.0f) / NS, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f;
+                memset(qs[i], 0, sizeof qs[i]);
+                qs[i][4] = r * cosf(ph); qs[i][5] = r * sinf(ph); qs[i][6] = z;
+            }
+            eval(&g, &qs[0][0], NS, &os[0][0]);
+            for (int i = 0; i < NS; i++) {
+                float e = fabsf(os[i][0] / (3.14159265f * A + 2.0943951f * B * qs[i][6]) - 1.0f);
+                if (e > worst) { worst = e; wz = qs[i][6]; }
+            }
+            printf("storage    order-2 harmonics a probe: irradiance over 256 normals against the closed form, worst %.4f%% (at n.z %.2f)\n",
+                   worst * 100.0f, wz);
+            check("storage within 2% over the sphere", worst < 0.02f);
+        }
+        brr_gi_release(&g);   /* the cube's run on the same rays, frame for frame (the rotations follow the frame count) */
+        brr_gi_init(&g, s_dev, 3, 3, 3, 64);
         brr_gi_env(&g, cube, 2.0f);
         for (int f = 0; f < 800; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
         eval(&g, &q[0][0], 6, &out[0][0]);
@@ -387,22 +458,33 @@ static void lampbox(void)
     brr_gi_init(&g, s_dev, 3, 3, 3, 256);
     g.u.lim[3] = 0.0f;                       /* the first bounce alone */
     for (int f = 0; f < 200; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, ls, 1); }
-    float *irr = tex(brr_gi_irr(&g), 4), err = 0.0f;
-    int W = (int)brr_gi_irr(&g).width;
-    /* the centre probe: grid (1, 1, 1), world index 0, slot 0, tile 0 */
-    double a = 128.0 / 255.0, e0 = 0.0;
-    for (int iy = 0; iy < BRR_GI_IRR; iy++)
-        for (int ix = 0; ix < BRR_GI_IRR; ix++) {
-            float d[3];
-            unoct((ix + 0.5f) / BRR_GI_IRR * 2 - 1, (iy + 0.5f) / BRR_GI_IRR * 2 - 1, d);
-            double ref = lamp_ref(3.0, a, I, d), got = irr[((iy + 1) * W + ix + 1) * 4];
-            if (!ix && !iy) e0 = ref;
-            err = fmaxf(err, (float)fabs(got / ref - 1.0));
-        }
-    printf("lamp       point lamp %.0f cd at the centre of a 6 m box, a %.4f: first bounce %.4f lux (texel 0), 64 texels max rel err %.3f%%\n",
-           I, a, e0, err * 100.0f);
-    check("lamp first bounce within 0.1%", err < 0.001f);
-    free(irr);
+    const float *irr = [brr_gi_sh(&g) contents];
+    float err = 0.0f, tr = 0.0f;
+    /* the centre probe: grid (1, 1, 1), world index 0, slot 0.  Its reference: the walls' radiance at the
+       centre (a / pi I h / r^3, r = h / max |w_i|) projected to order 2 on a fine Fibonacci set and convolved
+       (the estimator's own expectation); its truncation against the exact first bounce (lamp_ref) apart */
+    double a = 128.0 / 255.0, e0 = 0.0, cs[9] = { 0 }, y[9];
+    const int NF = 200000;
+    for (int i = 0; i < NF; i++) {
+        float z = 1.0f - (2.0f * i + 1.0f) / NF, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f, d[3] = { r * cosf(ph), r * sinf(ph), z };
+        double m = fmax(fabs(d[0]), fmax(fabs(d[1]), fabs(d[2]))), dist = 3.0 / m, Lw = a / M_PI * I * 3.0 / (dist * dist * dist);
+        y9(d, y);
+        for (int k = 0; k < 9; k++) cs[k] += Lw * y[k] * 4.0 * M_PI / NF;
+    }
+    for (int i = 0; i < 64; i++) {
+        float z = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f, d[3] = { r * cosf(ph), r * sinf(ph), z };
+        double ref = 0.0, got = sh_eval(irr, 0, d, 0), ex = lamp_ref(3.0, a, I, d);
+        y9(d, y);
+        for (int k = 0; k < 9; k++) ref += cs[k] * (k == 0 ? M_PI : k < 4 ? 2.0 * M_PI / 3.0 : M_PI / 4.0) * y[k];
+        if (!i) e0 = ex;
+        err = fmaxf(err, (float)fabs(got / ref - 1.0));
+        tr = fmaxf(tr, (float)fabs(ref / ex - 1.0));
+    }
+    printf("lamp       point lamp %.0f cd at the centre of a 6 m box, a %.4f: first bounce %.4f lux (normal 0); over 64 normals the probe against "
+           "the field's order-2 projection max rel err %.3f%%, that projection's truncation against the exact bounce %.2f%%\n",
+           I, a, e0, err * 100.0f, tr * 100.0f);
+    check("lamp first bounce: the probe's coefficients within 0.2% of the field's", err < 0.002f);
+    check("lamp truncation of order 2 within 3.5%", tr < 0.035f);
     brr_gi_release(&g); brr_rt_release(&w);
 }
 
@@ -548,9 +630,9 @@ static void cost(void)
 
 static const char *k_eval =
 "kernel void gi_eval(constant GiU &u [[buffer(0)]], device const float4 *q [[buffer(1)]], device float4 *o [[buffer(2)]],\n"
-"                    device const float4 *off [[buffer(3)]],\n"
-"                    texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]], uint i [[thread_position_in_grid]]) {\n"
-"  float3 p = q[2 * i].xyz, n = q[2 * i + 1].xyz; o[i] = float4(gi_irr(u, off, irr, dst, p, n, n), 0); }\n";
+"                    device const float4 *off [[buffer(3)]], device const float4 *sh [[buffer(4)]],\n"
+"                    texture2d<float> dst [[texture(1)]], uint i [[thread_position_in_grid]]) {\n"
+"  float3 p = q[2 * i].xyz, n = q[2 * i + 1].xyz; o[i] = float4(gi_irr(u, off, sh, dst, p, n, n), 0); }\n";
 
 int main(void)
 {

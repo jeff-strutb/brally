@@ -225,7 +225,7 @@ static double run(id<MTLCommandQueue> q, id<MTLComputePipelineState> p, __strong
         }
         if (!b[3]) [e setBytes:zero length:sizeof zero atIndex:3];
         [e setBuffer:z4 offset:0 atIndex:4];
-        [e setTexture:z2 atIndex:3];
+        [e setBuffer:z4 offset:0 atIndex:5];
         [e setTexture:z2 atIndex:4];
     }
     [e dispatchThreads:n threadsPerThreadgroup:g];

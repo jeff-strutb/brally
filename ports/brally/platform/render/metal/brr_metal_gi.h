@@ -12,10 +12,11 @@
  *              is shaded with its emission, the sun (shadowed by an any-hit
  *              ray), and last frame's probes at the hit (every bounce after
  *              the first), times its albedo over pi; a miss sees the sky
- *   gi_blend   the rays folded into two octahedral atlases: irradiance (8 x 8
- *              texels a probe, 1 texel border; lux) and the mean and mean
- *              square of the distance to the nearest surface (16 x 16, 1
- *              texel border; metres), hysteresis par.x a frame
+ *   gi_blend   the rays folded into the probe's irradiance, spherical
+ *              harmonics to order 2 (9 coefficients, lux), and an octahedral
+ *              atlas of the mean and mean square of the distance to the
+ *              nearest surface (16 x 16 texels a probe, 1 texel border;
+ *              metres), hysteresis par.x a frame
  *
  * The update is spread over upd.x frames (4): a quarter of the probes, by
  * slot, traced and folded each frame, with the hysteresis raised to the 4th
@@ -58,8 +59,9 @@ typedef struct BrrGiU {
 } BrrGiU;
 
 typedef struct BrrGi {
-    id<MTLComputePipelineState> trace, birr, bdst;
-    id<MTLTexture> irr[2], dst[2];   /* ping-pong: [cur] last written */
+    id<MTLComputePipelineState> trace, bsh, bdst;
+    id<MTLBuffer> sh;                /* each slot's irradiance: 9 coefficients (gi_blend_sh), float4 */
+    id<MTLTexture> dst[2];           /* ping-pong: [cur] last written */
     id<MTLComputePipelineState> grid;
     id<MTLBuffer> ray, leaf, gcnt, glst;   /* the light grid: a cube's count, its list */
     id<MTLComputePipelineState> offreset, reloc;
@@ -86,8 +88,9 @@ void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], co
 /* one update (trace, both folds) encoded into cb over world w, the hits lit
  * by the first nlamp lamps of lset (an LSet, brr_metal_lights.h) too */
 void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp);
-/* the textures the lighting samples (gi_irr): this frame's after encode */
-id<MTLTexture> brr_gi_irr(const BrrGi *g);
+/* what the lighting reads (gi_irr): the irradiance coefficients, the
+ * distance atlas (this frame's after encode) */
+id<MTLBuffer>  brr_gi_sh(const BrrGi *g);
 id<MTLTexture> brr_gi_dst(const BrrGi *g);
 id<MTLBuffer>  brr_gi_off(const BrrGi *g);   /* gi_irr's off: the probes' relocation */
 #endif

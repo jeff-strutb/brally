@@ -80,8 +80,9 @@ static int vol_init(id<MTLDevice> dev, id<MTLLibrary> lib)
 static uint8_t s_vgiu[512];
 static size_t s_vgiu_n;
 static id<MTLBuffer> s_vgoff, s_vgoff0;
-static id<MTLTexture> s_vgirr, s_vgdst;
-void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLTexture> irr, id<MTLTexture> dst)
+static id<MTLBuffer> s_vgirr;
+static id<MTLTexture> s_vgdst;
+void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLBuffer> irr, id<MTLTexture> dst)
 {
     s_vgiu_n = giu && n <= sizeof s_vgiu ? n : 0;
     if (s_vgiu_n)
@@ -146,7 +147,7 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
         if (!s_vgoff0)
             s_vgoff0 = [dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
         [ce setBuffer:on ? s_vgoff : s_vgoff0 offset:0 atIndex:4];
-        [ce setTexture:on ? s_vgirr : s_vcell[prev] atIndex:3];
+        [ce setBuffer:on ? s_vgirr : s_vgoff0 offset:0 atIndex:5];
         [ce setTexture:on ? s_vgdst : s_vcell[prev] atIndex:4];
     }
     [ce dispatchThreads:MTLSizeMake(VOL_NX, VOL_NY, VOL_NZ) threadsPerThreadgroup:MTLSizeMake(8, 8, 4)];

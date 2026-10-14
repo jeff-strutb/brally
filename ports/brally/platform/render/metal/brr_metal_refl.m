@@ -33,7 +33,7 @@ int brr_refl_tier(void)
 
 void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt,
                    id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
-                   id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz, id<MTLTexture> girr, id<MTLTexture> gdst,
+                   id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz, id<MTLBuffer> girr, id<MTLTexture> gdst,
                    id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff)
 {
     id<MTLComputeCommandEncoder> e;
@@ -151,7 +151,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         static const uint8_t zero[512];
         [e setBuffer:s_hcthis offset:0 atIndex:13];
         [e setBytes:giu && girr && gdst ? giu : zero length:giu && girr && gdst ? gisz : sizeof zero atIndex:12];
-        [e setTexture:girr ? girr : s_rdst atIndex:8];
+        [e setBuffer:girr ? girr : s_rnull offset:0 atIndex:18];
         [e setTexture:gdst ? gdst : s_rdst atIndex:9];
         [e setBuffer:lset && gcnt && glst ? lset : s_rnull offset:0 atIndex:14];
         [e setBuffer:lset && gcnt && glst ? gcnt : s_rnull offset:0 atIndex:15];
