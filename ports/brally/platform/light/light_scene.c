@@ -20,6 +20,9 @@
  * full-detail body), as the lamps sit on a rally car; the lenses themselves
  * are the next refinement (DESIGN.md 2.4). */
 #include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "light.h"
@@ -40,14 +43,43 @@ int light_scene_spots(LightSpot *out, int max)
     return light_scene_lights(out, NULL, max);
 }
 
+/* headlamp levelling (UN ECE R48 6.2.6: a dipped beam's inclination held as
+ * the load and the road change): each car's beam elevation is its body's
+ * pitch low-passed, time constant LIGHT_LEVEL_TAU on the game's clock, so the
+ * suspension's bounce (1 to 2 Hz) leaves the beam where it was and a hill or
+ * a crest, which changes over seconds, still turns it; azimuth and roll stay
+ * the body's.  BR_LIGHT_LEVELLOG logs the player's raw and levelled aim */
+#define LIGHT_LEVEL_TAU 0.6f
+uint32_t plat_time_ms(void);   /* common/plat.h: the game's clock (BR_VCLOCK's under a script), ms */
+static float s_lev[MAX_CARS];
+static int s_lev_ok[MAX_CARS];
+static uint32_t s_lev_t;
+
+/* f (unit) turned about the horizontal to elevation el, radians */
+static void level_axis(const float f[3], float el, float o[3])
+{
+    float h = sqrtf(f[0] * f[0] + f[1] * f[1]), ce = cosf(el);
+    if (!(h > 1e-6f)) {
+        memcpy(o, f, 12);
+        return;
+    }
+    o[0] = f[0] / h * ce;
+    o[1] = f[1] / h * ce;
+    o[2] = sinf(el);
+}
+
 int light_scene_lights(LightSpot *out, int *id, int max)
 {
     LightCar cars[MAX_CARS];
     int n = light_game_cars(cars, MAX_CARS), w = light_game_weather(), i, k = 0, j;
     int heads = w == 1 || w == 2 || w == 4;
+    uint32_t now = plat_time_ms();
+    float dt = s_lev_t ? (float)(now - s_lev_t) / 1000.0f : 1e9f, ka;
+    s_lev_t = now;
+    ka = dt > 0.5f ? 1.0f : 1.0f - expf(-dt / LIGHT_LEVEL_TAU);   /* a gap (a load, a pause): taken at once */
     for (i = 0; i < n; i++) {
         const LightCar *c = &cars[i];
-        float f[3], s[3], u[3], fl, vf;
+        float f[3], s[3], u[3], fl, vf, fh[3];
         int braking, reversing;
         if (!c->has_box)
             continue;
@@ -58,6 +90,14 @@ int light_scene_lights(LightSpot *out, int *id, int max)
         s[0] = f[1] * u[2] - f[2] * u[1];      /* to the car's right: forward x up */
         s[1] = f[2] * u[0] - f[0] * u[2];
         s[2] = f[0] * u[1] - f[1] * u[0];
+        {
+            float el = asinf(fmaxf(-1.0f, fminf(1.0f, f[2])));
+            s_lev[i] = s_lev_ok[i] ? s_lev[i] + (el - s_lev[i]) * ka : el;
+            s_lev_ok[i] = 1;
+            level_axis(f, s_lev[i], fh);
+            if (i == 0 && getenv("BR_LIGHT_LEVELLOG"))
+                fprintf(stderr, "levellog: t %u raw %.4f levelled %.4f deg\n", now, el * 57.29578f, s_lev[i] * 57.29578f);
+        }
         fl = sqrtf(c->fwd[0] * c->fwd[0] + c->fwd[1] * c->fwd[1] + c->fwd[2] * c->fwd[2]);
         vf = (c->vel[0] * c->fwd[0] + c->vel[1] * c->fwd[1] + c->vel[2] * c->fwd[2]) / (fl > 0 ? fl : 1);
         braking = c->brake < 0.0f || (fabsf(vf) > 0.3f && c->drive * vf < 0.0f);
@@ -86,8 +126,13 @@ int light_scene_lights(LightSpot *out, int *id, int max)
                 o->pos[a] = c->pos[a] + c->fwd[a] * lx + c->side[a] * ly + c->up[a] * lz;
             if (j < 2) {
                 o->kind = LIGHT_HEAD;
-                memcpy(o->axis, f, 12);
-                memcpy(o->side, s, 12);
+                memcpy(o->axis, fh, 12);   /* levelled */
+                {   /* the side square to it */
+                    float d = s[0] * fh[0] + s[1] * fh[1] + s[2] * fh[2];
+                    for (a = 0; a < 3; a++)
+                        o->side[a] = s[a] - d * fh[a];
+                    norm(o->side);
+                }
                 o->candela = 20000.0f;
                 o->range = 150.0f;
                 o->cosout = 0.3420201f;    /* 70 degrees: past it the pattern is under 1% of its peak */

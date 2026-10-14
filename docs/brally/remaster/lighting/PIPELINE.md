@@ -250,6 +250,13 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
     by 6 degrees up and down. Tail 5 cd, stop 80 cd, reverse 300 cd.
   - Each lamp's lens is drawn as an emitter with L = I(v) / (A cos). It uses
     the same candela that light the scene.
+- **Headlamp levelling** (UN ECE R48's automatic levelling): each car's
+  beam elevation is its body's pitch low-passed (0.6 s, the game's clock),
+  azimuth and roll the body's. Over 53 s of the night race the bounce (3.7 Hz)
+  falls from 0.197 to 0.032 degrees (84%), the worst swing in half a second
+  from 3.84 to 0.78 degrees, against a cut-off 0.57 degrees down; the beam
+  follows the road's slope closer than the body did (worst 0.72 against 2.73
+  degrees). `BR_LIGHT_LEVELLOG` logs the player's raw and levelled aim.
 - **Start lights:** the `lamp` textures emit 10,000 cd/m2 at a full texel
   (LED signal heads run 5,000 to 15,000), in the G-buffer and in their flares.
 - A lamp's lens shows only on its own car's body as drawn: car paint within
