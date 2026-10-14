@@ -87,6 +87,20 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   at oblique normals (a CPU model reproduces it); gi.sh checks the cube path
   against the analytic one through the same storage (0.03%).
 
+- **The track's albedo, learned from the frames** (brr_metal_refl.h
+  talb_learn, talb_resolve). Every triangle's surface record held no colour,
+  so GI's bounces and the reflections' ray hits shaded everything as grey
+  0.3. Now one G-buffer pixel in 16 a frame (rotating) traces a ray from the
+  eye; where it meets a track triangle at that pixel's own depth, the
+  pixel's albedo is summed onto it. Each triangle's mean is blended into its
+  record, a quarter a frame. Car paint and glass now mirror the yellow
+  embankment beside them, where they mirrored grey.
+  - `BR_LIGHT_TALBCHECK` maps every pixel on the CPU's BVH and compares each
+    triangle's mean with the learned record: worst channel off by a median
+    0.9 and a p90 of 3.3 of 255, 116 checks.
+  - The weather's saturation measured again with it: the cars 1.15 sunny,
+    0.95 rain against the art (1.16 and 0.96 before), so the factors stand.
+
 ## Surfaces
 
 - **Ambient occlusion:** GTAO (render/metal/brr_metal_ao.h; Jimenez et al.
@@ -248,6 +262,12 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   the rasteriser's z was tested against the G-buffer's W-buffer depth, so
   flares, decals and windows passed or failed at random. This is the start
   lights' glow drawn behind the panel.
+
+- **Reflection hits read the wrong triangle's corners:** a hit is numbered
+  in the track's order, but the reflections read its corners from the BVH's
+  leaf order, so its normal (and its sun and sky shading) came from another
+  triangle. They now go through the leaf map (`BR_LIGHT_TALBCHECK` checks
+  it against the track's corners: 0 of 11,364 wrong).
 
 ## Checks
 

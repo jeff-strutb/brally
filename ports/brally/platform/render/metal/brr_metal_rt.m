@@ -6,6 +6,7 @@
 #import <Metal/Metal.h>
 #include <mach/mach_time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "brr_metal_rt.h"
 
@@ -20,7 +21,7 @@ static double ms_now(void)
 void brr_rt_release(BrrRtWorld *w)
 {
     light_bvh_free(&w->bvh);
-    w->node = w->tri = w->id = w->prim = nil;
+    w->node = w->tri = w->id = w->prim = w->leaf = w->acc = nil;
     w->as = nil;
     w->ntri = 0;
     w->built = 0;
@@ -95,7 +96,20 @@ int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const
     w->tri = [dev newBufferWithBytes:w->bvh.tri length:(size_t)w->bvh.ntri * 9 * sizeof(float) options:MTLResourceStorageModeShared];
     w->id = [dev newBufferWithBytes:w->bvh.id length:(size_t)w->bvh.ntri * sizeof(uint32_t) options:MTLResourceStorageModeShared];
     w->prim = [dev newBufferWithBytes:w->bvh.prim length:(size_t)w->bvh.ntri * sizeof(LightBvhPrim) options:MTLResourceStorageModeShared];
-    if (!w->node || !w->tri || !w->id || !w->prim) {
+    {
+        uint32_t *lm = malloc((size_t)w->bvh.ntri * sizeof *lm);
+        int j;
+        if (lm) {
+            for (j = 0; j < w->bvh.ntri; j++)
+                lm[w->bvh.id[j]] = (uint32_t)j;
+            w->leaf = [dev newBufferWithBytes:lm length:(size_t)w->bvh.ntri * sizeof *lm options:MTLResourceStorageModeShared];
+            free(lm);
+        }
+    }
+    w->acc = [dev newBufferWithLength:(size_t)w->bvh.ntri * 16 options:MTLResourceStorageModeShared];
+    if (w->acc)
+        memset([w->acc contents], 0, (size_t)w->bvh.ntri * 16);
+    if (!w->node || !w->tri || !w->id || !w->prim || !w->leaf || !w->acc) {
         brr_rt_release(w);
         return 0;
     }

@@ -1572,6 +1572,105 @@ static void lit_cluster_gpu(id<MTLCommandBuffer> cb, int slot, const ClGeom *g, 
 }
 
 static int s_cpu_on = -1;   /* BR_LIGHT_CPU */
+static int cmp_dbl(const void *a, const void *b)
+{
+    double x = *(const double *)a, y = *(const double *)b;
+    return x < y ? -1 : x > y;
+}
+
+/* BR_LIGHT_TALBCHECK (diagnostic): every 120 frames, the track's learned
+ * albedo (brr_metal_refl.h talb_learn) against this frame's G-buffer mapped
+ * on the CPU: every pixel of the scene's surfaces (material 124 and up) to
+ * the triangle light_bvh_closest finds from the eye at its depth, each
+ * triangle's mean; the learned record's distance from it (8-bit units) over
+ * the triangles with 32 pixels or more, and the leaf map against the
+ * track's own corners */
+static void lit_talb_check(const float eye[4])
+{
+    static int on = -1;
+    const BrrRtWorld *w = brr_metal_rt_world();
+    id<MTLBuffer> ba, bp, bq;
+    id<MTLBlitCommandEncoder> be;
+    NSUInteger W = s_galb.width, H = s_galb.height;
+    float e0 = eye[0], e1 = eye[1], e2 = eye[2];
+    unsigned long fr = s_frame;
+    if (on < 0)
+        on = getenv("BR_LIGHT_TALBCHECK") != NULL;
+    if (!on || !w || !w->built || s_frame % 120 != 60)
+        return;
+    ba = [s_dev newBufferWithLength:W * H * 4 options:MTLResourceStorageModeShared];
+    bp = [s_dev newBufferWithLength:W * H * 16 options:MTLResourceStorageModeShared];
+    bq = [s_dev newBufferWithLength:(NSUInteger)w->bvh.ntri * sizeof(LightBvhPrim) options:MTLResourceStorageModeShared];
+    be = [s_cmd blitCommandEncoder];
+    [be copyFromTexture:s_galb sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(W, H, 1)
+               toBuffer:ba destinationOffset:0 destinationBytesPerRow:W * 4 destinationBytesPerImage:W * H * 4];
+    [be copyFromTexture:s_gpos sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(W, H, 1)
+               toBuffer:bp destinationOffset:0 destinationBytesPerRow:W * 16 destinationBytesPerImage:W * H * 16];
+    [be copyFromBuffer:w->prim sourceOffset:0 toBuffer:bq destinationOffset:0 size:[bq length]];
+    [be endEncoding];
+    [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+        const uint8_t *a = (const uint8_t *)[ba contents];
+        const float *p = (const float *)[bp contents];
+        const LightBvhPrim *pr = (const LightBvhPrim *)[bq contents];
+        const LightTrack *t = light_game_track();
+        const uint32_t *lf = (const uint32_t *)[w->leaf contents];
+        int n = w->bvh.ntri, j, k, nt = 0, nl = 0, badleaf = 0;
+        double *sum = calloc((size_t)n * 4, sizeof(double)), *err = calloc((size_t)n, sizeof(double));
+        NSUInteger i;
+        float e[3] = { e0, e1, e2 };
+        (void)cb;
+        if (!sum || !err) {
+            free(sum);
+            free(err);
+            return;
+        }
+        for (j = 0; t && j < n && j < t->ntri; j++)
+            badleaf += memcmp(w->bvh.tri + 9 * (size_t)lf[j], t->tri + 9 * (size_t)j, 36) != 0;
+        for (i = 0; i < W * H; i++) {
+            const float *q = p + 4 * i;
+            float d[3], dist;
+            LightHit h;
+            if (a[4 * i + 3] < 124 || (q[0] == 0 && q[1] == 0 && q[2] == 0))
+                continue;
+            for (k = 0; k < 3; k++)
+                d[k] = q[k] - e[k];
+            dist = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+            if (dist < 0.1f)
+                continue;
+            for (k = 0; k < 3; k++)
+                d[k] /= dist;
+            if (!light_bvh_closest(&w->bvh, e, d, 0.0f, dist * 1.01f + 0.5f, &h, NULL) || fabsf(h.t - dist) > 0.02f + 0.002f * dist)
+                continue;
+            for (k = 0; k < 3; k++)
+                sum[4 * h.tri + k] += a[4 * i + k];
+            sum[4 * h.tri + 3] += 1;
+        }
+        for (j = 0; j < n; j++) {
+            double c = sum[4 * j + 3], m = 0;
+            if (c < 32)
+                continue;
+            nt++;
+            if (!pr[j].albedo)
+                continue;
+            nl++;
+            for (k = 0; k < 3; k++)
+                m = fmax(m, fabs(sum[4 * j + k] / c - (double)((pr[j].albedo >> (8 * k)) & 255u)));
+            err[nl - 1] = m;
+        }
+        {
+            double med = 0, p90 = 0;
+            if (nl) {
+                qsort(err, (size_t)nl, sizeof *err, cmp_dbl);
+                med = err[nl / 2];
+                p90 = err[nl * 9 / 10];
+            }
+            fprintf(stderr, "talbcheck: frame %lu, %d triangles on screen (32 px+), %d learned: worst channel off median %.1f p90 %.1f of 255; leaf map %d of %d wrong\n",
+                    fr, nt, nl, med, p90, badleaf, n);
+        }
+        free(sum);
+        free(err);
+    }];
+}
 
 /* the lamp tiles' track casters on the GPU (brr_metal_cast.h cast_tiles): the
  * track grid's copy (s_tgstart, s_tglist, s_tgbox, rebuilt with it), each
@@ -2927,6 +3026,8 @@ static void lit_present(void)
     lit_split(3);
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE);
+    if (u.wet[2] > 1.5f)
+        lit_talb_check(u.eye);
 
     lit_split(4);
     if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */

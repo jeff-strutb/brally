@@ -14,7 +14,7 @@
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
 
-static id<MTLComputePipelineState> s_rpipe, s_cpipe, s_tpipe;
+static id<MTLComputePipelineState> s_rpipe, s_cpipe, s_tpipe, s_lpipe, s_apipe;
 static id<MTLTexture> s_rdst, s_rhalf, s_rhist[2];
 static float s_pscr[16];
 static unsigned s_frame, s_valid;
@@ -43,6 +43,11 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
         s_cpipe = s_rpipe && fc ? [dev newComputePipelineStateWithFunction:fc error:&err] : nil;
         s_tpipe = s_cpipe && ft ? [dev newComputePipelineStateWithFunction:ft error:&err] : nil;
+        if (lib) {   /* the track's albedo from the frames (talb_learn, talb_resolve) */
+            id<MTLFunction> fl = [lib newFunctionWithName:@"talb_learn"], fr = [lib newFunctionWithName:@"talb_resolve"];
+            s_lpipe = fl ? [dev newComputePipelineStateWithFunction:fl error:&err] : nil;
+            s_apipe = fr ? [dev newComputePipelineStateWithFunction:fr error:&err] : nil;
+        }
         if (!s_rpipe || !s_cpipe || !s_tpipe) {
             fprintf(stderr, "brr: reflections: %s\n", lib ? [[err description] UTF8String] : "off: no hardware ray tracing");
             s_rfail = 1;
@@ -91,6 +96,22 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     [e setBytes:lu length:lusz atIndex:3];   /* LU.wet.w, the roughness below which misses trace: 0 with no world (brr_metal.m) */
     [e setTexture:alb atIndex:0];
     [e setTexture:pos atIndex:1];
+    if (rt && rt->built && rt->as && s_lpipe && s_apipe) {   /* the track's albedo learned from this frame, for the hits below and GI's */
+        uint32_t n = (uint32_t)rt->bvh.ntri;
+        [e setComputePipelineState:s_lpipe];
+        [e setBuffer:rt->acc offset:0 atIndex:11];
+        [e dispatchThreads:MTLSizeMake((alb.width + 3) / 4, (alb.height + 3) / 4, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+        [e setComputePipelineState:s_apipe];
+        [e setBytes:&n length:sizeof n atIndex:0];
+        [e setBuffer:rt->prim offset:0 atIndex:9];
+        [e dispatchThreads:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+        [e setBuffer:rt->node offset:0 atIndex:0];
+        [e setBuffer:rt->leaf offset:0 atIndex:10];
+        [e setComputePipelineState:s_rpipe];
+    } else {
+        [e setBuffer:rt && rt->built ? rt->prim : s_rnull offset:0 atIndex:9];
+        [e setBuffer:rt && rt->built ? rt->leaf : s_rnull offset:0 atIndex:10];
+    }
     [e setTexture:nrm atIndex:2];
     [e setTexture:hdr atIndex:3];
     [e setTexture:s_rhalf atIndex:4];

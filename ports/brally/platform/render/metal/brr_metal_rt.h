@@ -166,6 +166,8 @@
 typedef struct BrrRtWorld {
     LightBvh bvh;                        /* the CPU's copy (its traversals: light_bvh.h) */
     id<MTLBuffer> node, tri, id, prim;   /* the compute BVH: BRR_RT_SRC's buffers */
+    id<MTLBuffer> leaf;                  /* the track's triangle -> its leaf slot (tri's corners for a hit) */
+    id<MTLBuffer> acc;                   /* brr_metal_refl.h talb_learn's sums, 4 uints a triangle */
     id<MTLAccelerationStructure> as;     /* the hardware structure; nil where unsupported */
     int ntri;
     int hw;                  /* ray tracing in hardware (Apple 9 and supportsRaytracing,

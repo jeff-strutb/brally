@@ -181,13 +181,48 @@
    GGX sample a pixel, rotated each frame (the temporal pass averages them); \
    below REFL_MIRROR the mirror direction alone.  A hit of the BVH: the last \
    frame's lit target where the hit was on screen and is still what the \
-   G-buffer shows there, else albedo 0.3 under the sun (a shadow ray) and the \
-   sky's hemisphere about the triangle's normal.  The BVH's buffers 0..2 */ \
+   G-buffer shows there, else the triangle's albedo (talb_learn's, 0.3 until \
+   a frame has shown it) under the sun (a shadow ray) and the sky's \
+   hemisphere about the triangle's normal.  The BVH's buffers 0..2, its \
+   surface records 9 and the track's triangle -> leaf slot 10 (the hit is \
+   numbered in the track's order, its corners stored in leaf order) */ \
+"static float3 rf_rgb(uint c) { return float3(c & 255u, (c >> 8) & 255u, (c >> 16) & 255u) / 255.0; }\n" \
+/* each track triangle's albedo, learned from the frames (the GPU's): \
+   talb_learn, one pixel in 16 a frame (a 4 x 4 block's, rotating), the \
+   G-buffer's albedo (linear, the game's texture with its baked light \
+   divided out) of a surface of the scene (material 124 and up: no lamps, \
+   lenses or cars) summed onto the track triangle a ray from the eye meets \
+   at that pixel's own depth (its distance within 2 cm + 0.2%: the pixel is \
+   that triangle, not a car or a billboard in front of it); talb_resolve, \
+   one thread a triangle, the frame's mean blended into the record (a \
+   quarter a frame; the first sample taken whole), alpha 255 marking it \
+   learned, the sums cleared.  GI's bounces and the reflections' hits read \
+   it (RtPrim.albedo) */ \
+"kernel void talb_learn(uint2 q [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
+"                       device atomic_uint *acc [[buffer(11)]] RT_AS(8),\n" \
+"                       texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n" \
+"  uint k = (rp.frame * 7u) & 15u; uint2 px = q * 4u + uint2(k & 3u, k >> 2);\n" \
+"  if (px.x >= alb.get_width() || px.y >= alb.get_height()) return;\n" \
+"  float4 a = alb.read(px); if (a.a * 255.0 < 123.5) return;\n" \
+"  float3 p = pos.read(px).xyz; if (all(p == 0.0)) return;\n" \
+"  float3 d = p - u.eye.xyz; float dist = length(d); if (dist < 0.1) return; d /= dist;\n" \
+"  RtHit h = RT_CLOSEST(u.eye.xyz, d, 0.0, dist * 1.01 + 0.5);\n" \
+"  if (h.tri < 0 || abs(h.t - dist) > 0.02 + 0.002 * dist) return;\n" \
+"  uint3 c = uint3(saturate(a.rgb) * 1023.0 + 0.5); uint o = uint(h.tri) * 4u;\n" \
+"  atomic_fetch_add_explicit(&acc[o], c.x, memory_order_relaxed); atomic_fetch_add_explicit(&acc[o + 1u], c.y, memory_order_relaxed);\n" \
+"  atomic_fetch_add_explicit(&acc[o + 2u], c.z, memory_order_relaxed); atomic_fetch_add_explicit(&acc[o + 3u], 1u, memory_order_relaxed); }\n" \
+"kernel void talb_resolve(uint t [[thread_position_in_grid]], constant uint &n [[buffer(0)]], device uint4 *acc [[buffer(11)]],\n" \
+"                         device RtPrim *prim [[buffer(9)]]) {\n" \
+"  if (t >= n) return; uint4 s = acc[t]; if (s.w == 0u) return;\n" \
+"  float3 m = float3(s.xyz) / (1023.0 * float(s.w)); uint old = prim[t].albedo;\n" \
+"  if (old) m = mix(rf_rgb(old), m, 0.25);\n" \
+"  uint3 b = uint3(saturate(m) * 255.0 + 0.5); prim[t].albedo = b.x | b.y << 8 | b.z << 16 | 0xFF000000u; acc[t] = uint4(0); }\n" \
 "kernel void reflk(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
 "                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]] RT_AS(8),\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
-"                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]]) {\n" \
+"                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]],\n" \
+"                  device const RtPrim *prim [[buffer(9)]], device const uint *leaf [[buffer(10)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
 "  float2 wh = float2(src.get_width(), src.get_height());\n" \
 "  uint2 fp = min(px * 2, uint2(wh) - 1);\n" \
@@ -211,11 +246,11 @@
 "    if (rp.valid > 0.5 && hc.w > 1e-6) { float2 sc = hc.xy / hc.w;\n" \
 "      if (all(sc >= 0.0) && all(sc < wh)) { float3 P = pos.read(uint2(sc)).xyz;\n" \
 "        if (!all(P == 0.0) && abs(rf_vd(u, P) - rf_vd(u, hp)) < 0.1 + 0.02 * rf_vd(u, hp)) { Lfb = prv.read(uint2(sc)).rgb; got = true; } } }\n" \
-"    if (!got) { uint b = uint(hh.tri) * 9u;\n" \
+"    if (!got) { uint b = leaf[hh.tri] * 9u; uint ac = prim[hh.tri].albedo; float3 ha = ac ? rf_rgb(ac) : float3(0.3);\n" \
 "      float3 a0 = float3(tri[b], tri[b + 1], tri[b + 2]), a1 = float3(tri[b + 3], tri[b + 4], tri[b + 5]), a2 = float3(tri[b + 6], tri[b + 7], tri[b + 8]);\n" \
 "      float3 tn = cross(a1 - a0, a2 - a0); tn = dot(tn, tn) > 1e-12 ? normalize(tn) : -r; if (dot(tn, r) > 0.0) tn = -tn;\n" \
 "      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
-"      Lfb = min(0.3 / 3.14159 * (u.sunc.rgb * max(nl, 0.0) * vis + u.skyc.rgb * (0.5 + 0.5 * tn.z)) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
+"      Lfb = min(ha / 3.14159 * (u.sunc.rgb * max(nl, 0.0) * vis + u.skyc.rgb * (0.5 + 0.5 * tn.z)) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
 "  } else Lfb = rf_env(u, sky, r, 0.0);\n" \
 "  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0 + min(hd, 1e4)), px);\n" \
 "}\n" \
