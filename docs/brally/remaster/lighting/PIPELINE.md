@@ -146,10 +146,21 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 - **White balance:** auto, to the light on level ground by day. At night it
   is daylight, so the moonlit sky stays blue and the lamps stay white.
 - **Post:** bloom, then Khronos PBR Neutral, then the weather's saturation
-  (Oklab chroma times 1.0 sunny, rain and night, 1.9 fog, 2.0 snow, measured
-  as the game's own art's chroma over lightness against the lit frame's on
-  the same frames), then sRGB. No local exposure, Purkinje tint or lens
-  flare.
+  in Oklab (land and cars apart: the G-buffer's material), then sRGB. The
+  factors are measured: the game's own art's saturation against the lit
+  frame's on the same virtual-clock frames, weighted by the art's chroma,
+  two steps (sunny 1.37 and 2.56, fog 2.0 and 2.5, rain 0.63 and 2.0, snow
+  1.96 and 2.67). A car's clear coat mirrors the pale photographed sky and
+  lost twice the land's colour.
+- **The storm's exposure:** 2.4 stops under the day's (-0.9 EV against +1.5).
+  Forza Horizon 6's rain frames sit at a median display luminance of 0.03 to
+  0.08; the incident meter alone made a 6,000 lux storm as bright as a clear
+  day (0.26 to 0.44).
+- **The painted backdrop** gets no aerial perspective: its painting carries
+  the artist's own, and adding Koschmieder's on top greyed its sea.
+- **Flat decals** (a tire mark: a white texture, the mark in its vertex
+  colour) take the game's combined colour as albedo and its alpha as display
+  space coverage, 1 - (1 - a)^2.2.
 
 ## Lights that are lights
 

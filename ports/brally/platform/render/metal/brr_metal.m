@@ -469,6 +469,12 @@ static size_t s_ntris, s_captris;
  * PBR Neutral, whose toe takes up to 0.04 off; 0.23 before it is FH6's level:
  * log2(0.23 / 0.080) = 1.5 */
 #define LIGHT_EV_COMP 1.5f
+/* a thunderstorm is dark: Forza Horizon 6's rain frames (nine of its 500
+ * top-rated Steam screenshots) have a median display luminance of 0.012 to
+ * 0.17, typically 0.03 to 0.08; the incident meter brings a 6,000 lux storm to
+ * a clear day's display level (Coastline's rain at 0.26 to 0.44, the 1999
+ * game's own 0.085); 2.4 stops under the day's puts it at about 0.05 */
+#define LIGHT_EV_COMP_STORM (-0.9f)
 /* the exposure's floor: night stays night and the lamps carry it.  Measured
  * against Forza Horizon 6's night chase frames (Steam shots 101 and s26: the
  * low beams' pool 0.04 to 0.6 of the display with its texture kept, the
@@ -532,18 +538,23 @@ typedef struct LNU { float S[16], tgt[4], eye[4], wb[4]; } LNU;
  * reflection (perceptual 0.9: at 0.6 to 0.7 the tail lamps laid two glossy
  * streaks on a dry road behind the car at night, seen from the chase camera
  * along the light grazing the road) */
-/* sat: the display's saturation (brr_metal_lit.h oksat), measured: the
- * median of the game's own art's Oklab chroma over lightness against the lit
- * frame's, over the ground and cars of three Coastline frames a weather
- * (virtual clock, the same frames lit and unlit): sunny 0.97, rain 1.02 (the
- * light keeps the art's colour), fog 1.91 and snow 1.98 (a white-balanced
- * overcast and the air's neutral light leave half the 1999 art's colour) */
-static const struct { float rough, wet, pud, comp, sat; } k_weather[5] = {
-    /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f },
-    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.9f },
-    /* rain  */ { 0.90f, 1.0f, 0.25f, LIGHT_EV_COMP, 1.0f },   /* the dry roughness: the rain's is wet()'s, by material */
-    /* snow  */ { 0.90f, 0.5f, 0.15f, LIGHT_EV_COMP, 2.0f },
-    /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f },
+/* sat, carsat: the display's saturation (brr_metal_lit.h oksat) of the land
+ * and of the cars, measured: the game's own art's saturation (Oklab chroma
+ * over lightness) against the lit frame's, a log mean weighted by the art's
+ * chroma (the colours the art made count, not the grey road that fills the
+ * frame), the median of four Coastline frames a weather on the virtual clock
+ * (the same frames lit and unlit), the land and the cars apart, then once
+ * more on the corrected frames (the display's gamut clips the first step):
+ * sunny land 1.37, cars 2.56; fog 2.0 and 2.5 (held: the fog's own veil is
+ * real); rain (at the storm's exposure) 0.63, the cars held to 2.0 (past it
+ * their glass turns cyan from the sky it mirrors); snow 1.96 and 2.67.  A car's clear coat mirrors the pale photographed sky, a veil
+ * over its livery: the cars lost twice the land's colour */
+static const struct { float rough, wet, pud, comp, sat, carsat; } k_weather[5] = {
+    /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.37f, 2.56f },
+    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 2.00f, 2.50f },
+    /* rain  */ { 0.90f, 1.0f, 0.25f, LIGHT_EV_COMP_STORM, 0.63f, 2.00f },   /* the dry roughness: the rain's is wet()'s, by material */
+    /* snow  */ { 0.90f, 0.5f, 0.15f, LIGHT_EV_COMP, 1.96f, 2.67f },
+    /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f, 1.0f },
 };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
@@ -1946,6 +1957,7 @@ static void lit_present(void)
     u.bg[0] = 0.9f;                         /* no skymap: the backdrop and fog shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
     u.bg[2] = k_weather[w].sat;             /* the display's saturation (oksat) */
+    u.bg[3] = k_weather[w].carsat;          /* the cars' */
     {
         const char *e2 = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;
@@ -2051,7 +2063,9 @@ static void lit_present(void)
             eu.wb[k] = u.wb[k];
         }
         eu.misc[0] = u.misc[3];            /* the debug view */
-        eu.misc[1] = 1.0f - expf(-VOL_KOSCHMIEDER * LIGHT_BACKDROP_DIST / k_vol[w].vis);   /* the backdrop's aerial perspective (Koschmieder) */
+        eu.misc[1] = 0.0f;   /* the painted backdrop carries the artist's own aerial perspective; Koschmieder's on top
+                                (44% at 3 km in 20 km air) hazed it twice and greyed its sea (the volumetric fog
+                                still covers it in fog and rain) */
     }
     if (getenv("BR_LIGHT_BACKLOG") && s_frame == (unsigned long)atoi(getenv("BR_LIGHT_BACKLOG")))
         for (i = 0; i < s_nops; i++)
@@ -2636,6 +2650,7 @@ static void lit_present(void)
     [e setFragmentBytes:&u length:sizeof u atIndex:0];
     [e setFragmentTexture:hdr atIndex:0];
     [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
+    [e setFragmentTexture:s_galb atIndex:2];   /* the material, for the cars' saturation */
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 

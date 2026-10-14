@@ -534,12 +534,16 @@ BRR_ENV_PASS_SRC \
 "  q = q * q * q;\n" \
 "  return saturate(float3(4.0767416621 * q.x - 3.3077115913 * q.y + 0.2309699292 * q.z, -1.2684380046 * q.x + 2.6097574011 * q.y - 0.3413193965 * q.z,\n" \
 "                         -0.0041960863 * q.x - 0.7034186147 * q.y + 1.7076147010 * q.z)); }\n" \
-"fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]]) {\n" \
+"fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
+"                    texture2d<float> galb [[texture(2)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
-"  if (int(u.misc.w) == 0) c = oksat(c, u.bg.z);\n" \
+/* the weather's saturation, the cars' their own (bg.w: their clear coat mirrors the pale \
+   sky and lost more of the art's colour than the land; k_weather, brr_metal.m) */ \
+"  if (int(u.misc.w) == 0) { constexpr sampler sn(filter::nearest, address::clamp_to_edge); float ma = galb.sample(sn, in.uv).a;\n" \
+"    c = oksat(c, carpaint(ma) || lensmat(ma) > 0 ? u.bg.w : u.bg.z); }\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
 "}\n" \
 /* the painted backdrop's scenery in front of the skymap: its colour as \
