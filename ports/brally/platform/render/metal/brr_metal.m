@@ -555,14 +555,17 @@ typedef struct LNU { float S[16], tgt[4], eye[4], wb[4]; } LNU;
  * frame), the median of four Coastline frames a weather on the virtual clock
  * (the same frames lit and unlit), the land and the cars apart, then once
  * more on the corrected frames (the display's gamut clips the first step):
- * sunny land 1.37, cars 2.56; fog 2.0 and 2.5 (held: the fog's own veil is
- * real); rain (at the storm's exposure) 0.63, the cars held to 2.0 (past it
- * their glass turns cyan from the sky it mirrors); snow 1.96 and 2.67.  A car's clear coat mirrors the pale photographed sky, a veil
- * over its livery: the cars lost twice the land's colour */
+ * sunny land 1.37, cars 2.56; snow 1.96 and 2.67.  Measured again once the
+ * irradiance probes buried in the ground were left out of the lookups (they
+ * had darkened the light near the ground, most where the sky alone lights
+ * it): fog 1.74 and 2.5, rain (at the storm's exposure) 1.84 for the cars and
+ * 0.45 for the land; the residuals then land 0.94 to 1.03, cars 0.93 to 1.12.
+ * A car's clear coat mirrors the pale photographed sky, a veil over its
+ * livery: the cars lost twice the land's colour */
 static const struct { float rough, wet, pud, comp, sat, carsat; } k_weather[5] = {
     /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.37f, 2.56f },
-    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 2.00f, 2.50f },
-    /* rain  */ { 0.90f, 1.0f, 0.25f, LIGHT_EV_COMP_STORM, 0.63f, 2.00f },   /* the dry roughness: the rain's is wet()'s, by material */
+    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.74f, 2.50f },
+    /* rain  */ { 0.90f, 1.0f, 0.25f, LIGHT_EV_COMP_STORM, 0.45f, 1.84f },   /* the dry roughness: the rain's is wet()'s, by material */
     /* snow  */ { 0.90f, 0.5f, 0.15f, LIGHT_EV_COMP, 1.96f, 2.67f },
     /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP, 1.0f, 1.0f },
 };

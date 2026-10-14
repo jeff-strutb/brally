@@ -116,6 +116,11 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   compared): sunny mean +0.39 stops (+1.03 with the sky's hemisphere alone),
   night +0.05.
 
+  Leaving the buried probes out brightened the light near the ground
+  wherever the sky alone lights it, so the weather's saturation was measured
+  again: fog 1.74 (was 2.0), rain 0.45 and its cars 1.84 (were 0.63 and 2.0);
+  art against lit then land 0.94 to 1.03, cars 0.93 to 1.12 in all four.
+
 ## Sky light where the sky is hidden
 
 - **Rough specular from the probes:** past roughness 0.6 (where the
