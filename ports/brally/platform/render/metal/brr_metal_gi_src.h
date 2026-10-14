@@ -131,7 +131,7 @@ BRR_GI_SAMPLE_SRC \
 "                     device const RtNode *node [[buffer(4)]], device const float *tri [[buffer(5)]],\n" \
 "                     device const uint *id [[buffer(6)]], device const RtPrim *prim [[buffer(7)]] RT_AS(8),\n" \
 "                     device const uint *cnt [[buffer(9)]], device const ushort *lst [[buffer(10)]],\n" \
-"                     texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]],\n" \
+"                     texture2d<float> irr [[texture(0)]], texture2d<float> dst [[texture(1)]], texturecube<float> env [[texture(2)]],\n" \
 "                     uint2 gid [[thread_position_in_grid]]) {\n" \
 "  int nr = u.n.w, np = u.n.x * u.n.y * u.n.z;\n" \
 "  if (int(gid.x) >= nr || int(gid.y) >= np) return;\n" \
@@ -141,7 +141,8 @@ BRR_GI_SAMPLE_SRC \
 "  float3 o = gi_pos(u, g), d = gi_ray(u, int(gid.x));\n" \
 "  RtHit h = RT_CLOSEST(o, d, 0.0, u.lim.x);\n" \
 "  float3 L;\n" \
-"  if (h.tri < 0) L = mix(u.gnd.rgb, u.sky.rgb, d.z * 0.5 + 0.5);\n" \
+"  constexpr sampler es(filter::linear, mip_filter::linear);\n" \
+"  if (h.tri < 0) L = u.sky.w > 0.5 ? env.sample(es, d, level(u.gnd.w)).rgb : mix(u.gnd.rgb, u.sky.rgb, d.z * 0.5 + 0.5);\n" \
 "  else {\n" \
 "    device const packed_float3 *tv = (device const packed_float3 *)tri; uint j = leaf[h.tri];\n" \
 "    float3 p0 = float3(tv[3 * j]), p1 = float3(tv[3 * j + 1]), p2 = float3(tv[3 * j + 2]);\n" \

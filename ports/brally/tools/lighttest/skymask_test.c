@@ -1,8 +1,8 @@
 /* skymask_test.c: the backdrop's structural sky mask (brr_skymask.h) on
- * synthetic panoramas with a known skyline, and the cloud layer's maths
- * (brr_metal_clouds.h: Henyey-Greenstein phase, Beer's law) against closed
- * forms.  With file arguments (W H file.rgba ...) it also runs the detector
- * on real textures and writes each mask as a PGM next to an output prefix.
+ * synthetic panoramas with a known skyline, and the exposure meter
+ * (light_night.h light_meter_ev) on synthetic frames.  With file
+ * arguments (W H file.rgba ...) it also runs the detector on real textures
+ * and writes each mask as a PGM next to an output prefix.
  *
  *   skymask_test [outdir [w h file.rgba]...]
  * Exit status 0 when every check passes. */
@@ -90,22 +90,6 @@ static void pgm(const char *path, const uint8_t *m, int w, int h)
     fclose(f);
 }
 
-static double hg(double c, double g) { double q = 1 + g * g - 2 * g * c; return (1 - g * g) / (4 * M_PI * q * sqrt(q)); }
-/* brr_metal_clouds.h cms(), the same octaves: the sun's light scattered toward cos c per unit into the slab */
-static double cms(double ts, double c)
-{
-    double s = 0, a = 1, b = 1, g = 1, an = 0;
-    int n;
-    for (n = 0; n < 4; n++) { an += a; a *= 0.5; }
-    a = 1;
-    for (n = 0; n < 4; n++) {
-        s += a * exp(-b * ts) * (0.7 * hg(c, 0.6 * g) + 0.3 * hg(c, -0.3 * g));
-        a *= 0.5; b *= 0.5; g *= 0.5;
-    }
-    return s * 0.98 / an;
-}
-/* brr_metal_sky.h camb() */
-static double camb(double Lz, double Esun) { return 0.49 * (Lz + 0.3 * (Esun / M_PI + Lz)); }
 /* a synthetic frame for the meter: luminance per pixel (cd/m2) into the post pass's histogram, centre-weighted */
 static void meter_bin(uint32_t *h, int W, int H, double (*lum)(int, int, int, int))
 {
@@ -213,73 +197,6 @@ int main(int argc, char **argv)
         check(brr_skymask(px, W, H, sky, m) == 1.0f, "pure-sky texture, fraction sky", 1.0, 1.0);
     }
 
-    /* the cloud layer's phase: each Henyey-Greenstein lobe and the mix integrate to 1 */
-    {
-        double gs[] = { -0.3, 0.0, 0.6, 0.9 }, worst = 0;
-        int k, n = 200000;
-        for (k = 0; k < 5; k++) {
-            double sum = 0;
-            for (i = 0; i < n; i++) {   /* over cos theta, the azimuth's 2 pi */
-                double c = -1 + 2 * (i + 0.5) / n;
-                sum += 2 * M_PI * (k < 4 ? hg(c, gs[k]) : 0.7 * hg(c, 0.6) + 0.3 * hg(c, -0.3)) * 2.0 / n;
-            }
-            if (fabs(sum - 1) > worst)
-                worst = fabs(sum - 1);
-        }
-        check(worst < 1e-4, "HG phase integral over the sphere, worst |1 - I|", worst, 1e-4);
-    }
-    /* Beer's law through the slab: a marched transmittance of the slab's
-       constant density (as clouds() takes it) against exp(-sigma rho L) */
-    {
-        double worst = 0, sig = 0.06 * 1000, rho, mu;
-        for (rho = 0.05; rho <= 1.0; rho += 0.19)
-            for (mu = 0.05; mu <= 1.0; mu += 0.19) {
-                double L = fmin(0.6 / mu, 30.0), T = 1, dt = L / 4000;
-                for (i = 0; i < 4000; i++)
-                    T *= exp(-sig * rho * dt) ;
-                {
-                    double an = exp(-sig * rho * L), e = fabs(T - an) / fmax(an, 1e-300);
-                    if (e > worst)
-                        worst = e;
-                }
-                (void)a;
-            }
-        check(worst < 1e-9, "Beer transmittance, marched vs analytic, worst rel", worst, 1e-9);
-    }
-
-    /* the cloud's multiple scattering keeps energy: the scattered light over
-       the sphere (per unit into the slab) is at most the albedo 0.98, for any
-       self-shadow */
-    {
-        double worst = 0, ts;
-        int n = 20000;
-        for (ts = 0; ts <= 40; ts += 0.5) {
-            double sum = 0;
-            for (i = 0; i < n; i++) {
-                double c = -1 + 2 * (i + 0.5) / n;
-                sum += 2 * M_PI * cms(ts, c) * 2.0 / n;
-            }
-            if (sum > worst)
-                worst = sum;
-        }
-        check(worst <= 0.98 + 1e-6, "cloud multiple scattering albedo over the sphere, largest", worst, 0.98);
-    }
-    /* a sunlit thick cloud outshines the zenith sky.  Sun at 45 degrees,
-       through the atmosphere to 2 km 0.85 of the top's illuminance (0.80 to
-       the ground); the clear zenith sky 0.05 of it per sr (6,400 cd/m2 under
-       128,000 lux: the bright end of a clear sky).  The cloud seen at 90
-       degrees to the sun with its sunlit face toward the eye (self-shadow
-       optical depth 2), and its shadowed base (self-shadow 25: the sunny
-       slab's 0.03/m through 0.3 km / sin 45 at full density): per unit of
-       the top's light */
-    {
-        double Lz = 0.05, cmid = 0.85 * cms(2.0, 0.0) + camb(Lz, 0.80 * 0.7071);
-        double cbase = 0.85 * cms(25.0, 0.0) + camb(Lz, 0.80 * 0.7071);
-        double cold = 0.85 * exp(-0.25 * 25.0) * (0.7 * hg(0, 0.6) + 0.3 * hg(0, -0.3)) + 0.5 * Lz;
-        printf("INFO  cloud radiance / top illuminance: sunlit face %.4f, shadowed base %.4f (single scattering before: %.4f), zenith sky %.4f\n", cmid, cbase, cold, Lz);
-        check(cmid > Lz, "sunlit thick cloud over the zenith sky, ratio", cmid / Lz, 1.0);
-        check(cbase > Lz, "shadowed cloud base over the zenith sky, ratio", cbase / Lz, 1.0);
-    }
     /* the meter by day: a sunlit road (albedo 0.12 under 100,000 lux sun and
        20,000 sky: 4,600 cd/m2) lands at mid-grey 0.18 plus 0.5 to 1 stop
        pre-exposed (exposure 1 / (1.2 2^EV)) with sunny's band 5..95% and

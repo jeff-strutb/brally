@@ -30,13 +30,16 @@
    there), so no edge where it ends; the elbow and the step's top \
    rounded (smooth max and min, 0.15 degree), so the line has no corner; \
    checked against R112's test points by \
-   ports/brally/tools/lighttest), a rear lamp's broad lobe; a point's or a \
+   ports/brally/tools/lighttest), a rear lamp's lobe (R7: seen across a \
+   wide arc, little light up or down); a point's or a \
    spot's candela (lwin shapes a spot) */ \
 "static float lamp(LS l, float3 d) {\n" \
 "  if (l.kind > 1.5) return l.cd;\n" \
 "  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
 "  float al = dot(d, ax); if (al <= 0.0) return 0.0;\n" \
-"  if (l.kind > 0.5) return l.cd * pow(al, 1.5);\n" \
+"  if (l.kind > 0.5) {   /* a rear lamp (UN ECE R7 Annex 4: about 70% of the axis' at 10 degrees across, 20% at 10 degrees down, little past 20): a Gaussian of 18 by 6 degrees */\n" \
+"    float3 up2 = cross(sd, ax); float rh = atan2(dot(d, sd), al) * 57.2958, rv = atan2(dot(d, up2), al) * 57.2958;\n" \
+"    return l.cd * exp(-(rh * rh) / (2.0 * 18.0 * 18.0) - (rv * rv) / (2.0 * 6.0 * 6.0)); }\n" \
 "  float h = atan2(dot(d, sd), al) * 57.2958, v = atan2(dot(d, up), al) * 57.2958 + 0.57;\n" \
 "  float hw = h < 1.5 ? 5.0 : 10.0;\n" \
 "  float spread = 0.25 * exp(-(h / 32.0) * (h / 32.0)) + 0.75 * exp(-((h - 1.5) / hw) * ((h - 1.5) / hw));\n" \

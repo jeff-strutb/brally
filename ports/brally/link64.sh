@@ -50,9 +50,9 @@ ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK"
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
       $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \
-      $P/light/light_bvh.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
+      $P/light/light_bvh.c $P/light/light_sky.c $P/light/light_smooth.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the track's ray-tracing world on the GPU (brr_metal_rt.h)
-[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m $P/render/metal/brr_metal_gi.m $P/render/metal/brr_metal_taa.m $P/render/metal/brr_metal_refl.m"
+[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m $P/render/metal/brr_metal_gi.m $P/render/metal/brr_metal_taa.m $P/render/metal/brr_metal_refl.m $P/render/metal/brr_metal_env.m"
 # the volumetric fog's passes (brr_metal_vol.h)
 [ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_vol.m"
 # the OS layer under the host: Windows or POSIX

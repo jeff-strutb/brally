@@ -47,7 +47,8 @@ typedef struct BrrGiU {
     int base[4];             /* the volume's first probe, world grid index */
     int pbase[4];            /* last frame's; w: 1 when there was one */
     float sun[4], sunc[4];   /* toward the sun; its illuminance (lux) */
-    float sky[4], gnd[4];    /* radiance of a miss looking up / down (cd/m2) */
+    float sky[4], gnd[4];    /* radiance of a miss looking up / down (cd/m2); sky.w 1: a miss reads the sky's cube
+                                (brr_gi_env) at mip gnd.w instead */
     float par[4];            /* hysteresis, albedo without a record, emission scale (cd/m2), normal bias */
     float rot0[4], rot1[4], rot2[4];   /* this frame's ray rotation, rows */
     float lim[4];            /* ray length (metres), Chebyshev visibility on, lamps in the set, bounces past the first on */
@@ -61,6 +62,7 @@ typedef struct BrrGi {
     id<MTLTexture> irr[2], dst[2];   /* ping-pong: [cur] last written */
     id<MTLComputePipelineState> grid;
     id<MTLBuffer> ray, leaf, gcnt, glst;   /* the light grid: a cube's count, its list */
+    id<MTLTexture> env, nocube;      /* the sky's prefiltered cube (brr_gi_env), a black one bound without it */
     BrrGiU u;
     int cur, nx, ny, nz, nr, ready;
     unsigned gen;                    /* the world's track generation leaf was made for */
@@ -71,6 +73,10 @@ typedef struct BrrGi {
 /* pipelines and textures for an nx x ny x nz volume, nr rays a probe; 0 on failure */
 int  brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr);
 void brr_gi_release(BrrGi *g);
+/* the sky a miss sees: the skymap's prefiltered cube (cd/m2, world axes) at
+ * mip lod, so a probe's rays take the sky's light by direction (the sun's
+ * side, the horizon's glow); nil for the uniform sky / ground of brr_gi_frame */
+void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod);
 /* centres the volume on eye in whole probes of spacing sp and sets this
  * frame's rotation; sun (unit, toward it), sunc (lux), sky / gnd radiance */
 void brr_gi_frame(BrrGi *g, const float eye[3], float sp, const float sun[3], const float sunc[3],

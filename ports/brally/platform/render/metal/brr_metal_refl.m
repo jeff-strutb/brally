@@ -27,7 +27,7 @@ int brr_refl_tier(void)
     return e ? atoi(e) : 2;
 }
 
-void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, const BrrRtWorld *rt,
+void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt,
                    id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
                    id<MTLTexture> sky, id<MTLTexture> bE)
 {
@@ -37,7 +37,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         return;
     if (!s_rpipe) {
         NSError *err = nil;
-        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_REFL_SRC, &err);
+        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_WET_SRC BRR_ENV_SRC BRR_REFL_SRC, &err);
         id<MTLFunction> f = lib ? [lib newFunctionWithName:@"reflk"] : nil, fc = lib ? [lib newFunctionWithName:@"reflc"] : nil,
                         ft = lib ? [lib newFunctionWithName:@"reflt"] : nil;
         s_rpipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
@@ -65,7 +65,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         s_rhist[1] = [dev newTextureWithDescriptor:td];
         s_valid = 0;   /* no history, no last frame at this size */
     }
-    {   /* the reprojection: the last frame's scr (LU.scr, 112 bytes from LU's end: scr, vol, gi, wet) */
+    {   /* the reprojection: the last frame's scr (LU.scr at scroff) */
         struct { float pscr[16]; uint32_t frame; float valid, pad[2]; } rp;
         memcpy(rp.pscr, s_pscr, sizeof rp.pscr);
         rp.frame = s_frame;
@@ -73,8 +73,8 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
         rp.pad[0] = rp.pad[1] = 0.0f;
         e = [cb computeCommandEncoder];
         [e setBytes:&rp length:sizeof rp atIndex:4];
-        if (lusz >= 112)
-            memcpy(s_pscr, (const uint8_t *)lu + lusz - 112, sizeof s_pscr);
+        if (scroff + sizeof s_pscr <= lusz)
+            memcpy(s_pscr, (const uint8_t *)lu + scroff, sizeof s_pscr);
     }
     [e setComputePipelineState:s_rpipe];
     if (rt && rt->built) {
@@ -88,16 +88,7 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     }
     if (rt && rt->built && rt->as)   /* the misses traced in hardware (RT_AS(8)) */
         [e setAccelerationStructure:rt->as atBufferIndex:8];
-    {   /* no world yet: nothing traced (LU.wet, the last field: w the roughness below which misses trace) */
-        uint8_t ul[1024];
-        if (!(rt && rt->built && rt->as) && lusz <= sizeof ul) {
-            float zero = 0.0f;
-            memcpy(ul, lu, lusz);
-            memcpy(ul + lusz - sizeof(float), &zero, sizeof zero);
-            [e setBytes:ul length:lusz atIndex:3];
-        } else
-            [e setBytes:lu length:lusz atIndex:3];
-    }
+    [e setBytes:lu length:lusz atIndex:3];   /* LU.wet.w, the roughness below which misses trace: 0 with no world (brr_metal.m) */
     [e setTexture:alb atIndex:0];
     [e setTexture:pos atIndex:1];
     [e setTexture:nrm atIndex:2];

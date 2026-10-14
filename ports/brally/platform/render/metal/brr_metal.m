@@ -37,7 +37,10 @@
 #include "light_night.h"
 #include "light_texmat.h"
 #include "light_world.h"
-#include "brr_metal_sky.h"
+#include "light_sky.h"
+#include "light_smooth.h"
+#include "brr_metal_smooth.h"
+#include "brr_metal_env_api.h"
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
 #include "brr_metal_rt.h"
@@ -71,20 +74,27 @@ static NSString *const k_src = @
 "  float4 konst, fog_color;\n"
 "  float fog[64];\n"
 "  float glow, addk, beam, beamw;\n"
-"  float albk, upad0, upad1, upad2;\n"
+"  float albk; float tr, tg, tb;\n"
+"  float lamp, lp1, lp2, lp3;\n"
 "};\n"
-"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; };\n"
+"struct O { float4 pos [[position]]; float4 col [[center_no_perspective]]; float2 st; float oow [[center_no_perspective]]; float z [[center_no_perspective]]; float3 wp; float mat [[flat]]; float3 nrm; };\n"
 /* the screen map (glide.c): the game's pixels to the target through entry
    u.xf of this frame's table */
-"vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
-"            const device float4 *xt [[buffer(2)]]) {\n"
+"static O vsbody(uint i, const device V *v, constant U &u, const device float4 *xt) {\n"
 "  O o; V a = v[i]; float4 T = xt[int(u.xf)];\n"
 "  float w = a.oow > 0 ? 1.0 / a.oow : 1.0;\n"
 "  float2 ndc = float2(a.pos.x * T.x + T.y, a.pos.y * T.z + T.w);\n"
 "  o.pos = float4(ndc * w, clamp(a.z, 0.0, 1.0) * w, w);\n"
-"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z; o.wp = a.wld.xyz; o.mat = a.wld.w;\n"
+"  o.col = clamp(a.col / 255.0, 0.0, 1.0); o.st = a.st; o.oow = a.oow; o.z = a.z; o.wp = a.wld.xyz; o.mat = a.wld.w; o.nrm = 0.0;\n"
 "  return o;\n"
 "}\n"
+"vertex O vs(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
+"            const device float4 *xt [[buffer(2)]]) { return vsbody(i, v, u, xt); }\n"
+/* the lit passes' vertex stage: the same, and each vertex's smooth normal
+   (light_smooth.h, made a frame by lit_normals) from buffer 3 */
+"vertex O vsn(uint i [[vertex_id]], const device V *v [[buffer(0)]], constant U &u [[buffer(1)]],\n"
+"             const device float4 *xt [[buffer(2)]], const device float4 *nb [[buffer(3)]]) {\n"
+"  O o = vsbody(i, v, u, xt); o.nrm = nb[i].xyz; return o; }\n"
 "static float comb(int fn, float f, float l, float la, float ot, int inv) {\n"
 "  float r;\n"
 "  switch (fn) {\n"
@@ -220,7 +230,8 @@ typedef struct U {
     float fog[64];
     float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
     float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
-    float albk, upad[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk) */
+    float albk, tint[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk), its chroma (lit_tint; 0: the texel's own) */
+    float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L) */
 } U;
 
 /* ---- state --------------------------------------------------------------------------- */
@@ -420,6 +431,7 @@ typedef struct Op {
     int filt, cs, ct;
     int tw, th;                     /* the texture's size */
     long voff;
+    long noff;                      /* its vertices' smooth normals in s_nbuf (lit_normals); -1 none */
     int n;
     int lfb, sharp;                 /* K_LFB: its texture in s_lfbtex, sharp-bilinear */
     int colour, depthbuf;           /* K_CLEAR */
@@ -448,71 +460,88 @@ static int s_trkn;
 static float s_trklo[3], s_trkhi[3];
 static BrrRtWorld s_rt;             /* the track for rays (brr_metal_rt_world) */
 static size_t s_ntris, s_captris;
-static id<MTLBuffer> s_hist[3];
-static float s_ev = 1e9f;
-static double s_ev_t;               /* when the EV last took a reading (seconds) */
-static float s_amb_Y;               /* the ambient light on level ground, lux (the sky's readback): the night's exposure */
-/* the night's key: BR_LIGHT_NIGHTKEY overrides it (diagnostic) */
-static float lit_night_key(void)
-{
-    const char *e = getenv("BR_LIGHT_NIGHTKEY");
-    return e && atof(e) > 0 ? (float)atof(e) : LIGHT_NIGHT_KEY;
-}
-#define LUM_BINS 512             /* the meter's histogram: 16 bins a stop over log2 cd/m2 -10..22 */
+/* stops over the incident meter (lit_ev), measured: Forza Horizon 6 shows
+ * sunlit asphalt at display luminance 0.18 to 0.19 (Steam top-rated frames,
+ * 13 x 13 medians); a 0.12 asphalt under the incident meter is 0.080 before
+ * PBR Neutral, whose toe takes up to 0.04 off; 0.23 before it is FH6's level:
+ * log2(0.23 / 0.080) = 1.5 */
+#define LIGHT_EV_COMP 1.5f
+/* the exposure's floor: night stays night and the lamps carry it.  Measured
+ * against Forza Horizon 6's night chase frames (Steam shots 101 and s26: the
+ * low beams' pool 0.04 to 0.6 of the display with its texture kept, the
+ * unlit road 0.007 to 0.011): at EV100 -2 Coastline's pool clipped to a flat
+ * white over the 5 to 10 m its beams light hardest; at -0.5 its hottest
+ * metres sit at the display's shoulder */
+#define LIGHT_EV_MIN -0.5f
+/* the night meter's compensation (stops darker): measured, so the chase
+ * camera's ordinary night frame meters to the floor (see PIPELINE.md) */
+#define LIGHT_NIGHT_COMP 0.0f
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], lexp[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
-typedef struct AU { float sun[4], cam[4], atm[4]; } AU;
-typedef struct KU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], ktop[4], cld[4], moon[4], camb[4]; } KU;
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
+/* the sky's pass (brr_metal_env.h EU): the camera's ray per pixel, the sun's disc, the white balance */
+typedef struct EU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], sunl[4], wb[4], misc[4]; } EU;
 
-/* the sky per weather (brr_metal_sky.h): the Mie density (haze, fog), the
- * light at the top of the atmosphere (the sun's 128,000 lux, or a full moon's
- * 0.32 at night), the part of the sun the clouds let through, and the
- * clouds' brightening of the sky */
-static const struct { float mie, top, through, skyk, cover, dens; } k_sky[5] = {
-    /* sunny */ { 1.0f, 128000.0f, 1.00f, 1.0f, 0.25f, 0.03f },
-    /* fog   */ { 30.0f, 128000.0f, 0.15f, 1.0f, 0.95f, 0.10f },
-    /* rain  */ { 12.0f, 128000.0f, 0.05f, 0.6f, 1.00f, 0.16f },
-    /* snow  */ { 8.0f, 128000.0f, 0.25f, 1.0f, 0.85f, 0.10f },
-    /* night */ { 1.0f, 0.32f, 1.00f, 1.0f, 0.35f, 0.06f },
-};   /* cover: the cloud layer's fBm coverage; dens: its extinction per metre at full density (brr_metal_clouds.h) */
-static id<MTLTexture> s_atmT, s_atmM, s_atmS, s_atmI[3];
-static id<MTLRenderPipelineState> s_patmT, s_patmM, s_patmS, s_patmI, s_psky, s_pbk2;
-static id<MTLTexture> s_cn, s_cdt;              /* the clouds' shape and detail noises (brr_metal_clouds.h), made once */
-static id<MTLComputePipelineState> s_pclt;      /* the clouds' transmittance toward the light (the glare's) */
-static id<MTLBuffer> s_cltb[3];
-static float s_atm_mie = -1.0f;
+/* the sky per weather: a captured HDR map (light_sky.h), the sky drawn and
+ * every light from it but the scene's own.  BR_SKYDIR holds them
+ * (default ports/common/skies in the tree, else the app's Resources/skies;
+ * Radiance .hdr): sunny, fog, rain, snow,
+ * night; BR_SKYMAP=file uses one map for every weather.  A weather without
+ * its map takes sunny.hdr in its place (said once), and at night that map
+ * as moonlight: its sun scaled to a full moon's illuminance.
+ *
+ * The backdrop's aerial perspective at LIGHT_BACKDROP_DIST takes the
+ * weather's visibility from the volume's medium (brr_metal_vol.h k_vol;
+ * Koschmieder: 1 - exp(-3.912 d / V)) */
+static const char *const k_skycond[5] = { "clear", "fog", "storm", "snow", "night" };
+static const char *const k_skyenv[7] = { "desert", "mountain", "coast", "mine", "amazon", "race", "bonus" };
+/* each condition's light (light_sky.h LightSkyOpt): clear by its sun (a clear
+ * day's 100,000 lux facing it); fog, storm and snow by the sun's and sky's
+ * light on level ground together (dense fog 5,000 to 15,000 lux, a heavy
+ * overcast in rain 2,000 to 10,000, a bright snow overcast 15,000 to 25,000);
+ * night by its moon (LIGHT_MOON_LUX), else its sky */
+static const float k_skytotal[5] = { 0.0f, 10000.0f, 6000.0f, 18000.0f, 0.0f };
+#define LIGHT_BACKDROP_DIST 3000.0f    /* m: the painted backdrop's hills, a few kilometres off */
+/* the moon facing it (lux): a real full moon is 0.25 to 0.3; at 0.5 the
+ * moonlit hills read 0.015 under LIGHT_EV_MIN (FH6's unlit ground 0.007 to
+ * 0.015; 1.1 put them at 0.074) */
+#define LIGHT_MOON_LUX 0.5f
+static LightSky s_sky;
+static BrrEnv s_env;
+static int s_sky_w = -1;
+static float s_sky_hor[3];          /* the sky's mean radiance a few degrees over the horizon (cd/m2) */
+static id<MTLTexture> s_blackcube;  /* bound where there is no skymap */
+static id<MTLRenderPipelineState> s_penv, s_pbk2;
+static id<MTLTexture> s_ao[2];              /* the occlusion at half resolution, raw and filtered (brr_metal_ao.h) */
+static id<MTLComputePipelineState> s_pao, s_paof;
+static id<MTLBuffer> s_nbuf[3];             /* each vertex's smooth normal (float4), beside the vertex buffer of the same slot */
+static int s_nbon;                          /* bound by op_draw while the lit passes draw */
+static id<MTLRenderPipelineState> s_plens;  /* the cars' lamps' lenses (brr_metal_lit.h lnvs, lnfs) */
+static id<MTLComputePipelineState> s_pmeter;   /* the exposure's meter (brr_metal_lit.h meter) */
+static id<MTLBuffer> s_meter[3];               /* its reading, one a frame slot: mean log2 scene luminance */
+static float s_ev_night = 1e9f;                /* the night's adapted EV100 */
+static double s_ev_t;
+typedef struct LNU { float S[16], tgt[4], eye[4], wb[4]; } LNU;
 
-/* the light per weather, in physical units: the sun's (or moon's)
- * illuminance and colour, the sky's and the ground's light on a surface
- * facing them, lux; the camera's EV100 range the meter keeps to (the "sunny
- * 16" rule puts a sunlit scene near 15; a headlamp-lit road near 7) and how
- * rough the ground is (wet: smooth) */
-/* At night the directional light is the full moon (light_night.h): sun is its
- * illuminance facing it at elevation elev (light_moon_normal(11) = 0.120 lux;
- * 0.023 on level ground), its colour the sun's spectrum reddened by the
- * moon's albedo, about 4,100 K (linear sRGB, Kim et al.'s Planckian locus);
- * the sky starlight and airglow, about 0.001 lux, blue.  elev 0: the track's
- * sun direction as it is.  The meter's band (percentiles plo..phi) and its
- * compensation comp (stops brighter): at night the band is the scene's
- * middle (30th to 75th percentile), so the moonlit hills and road set the
- * exposure, not the headlamp pool and the lamps above it, and a stop under
- * the meter's mid-grey, so night reads as night (MEASUREMENTS.md). */
-static const struct { float sun, sky, gnd, evlo, evhi, rough; float sunc[3], skyc[3], gndc[3]; float elev, plo, phi, comp; float wet, pud; } k_weather[5] = {   /* wet, pud: brr_metal_refl.h */
-    /* sunny */ { 100000, 20000, 6000, 12.0f, 16.0f, 0.70f, { 1.00f, 0.95f, 0.88f }, { 0.55f, 0.72f, 1.00f }, { 0.75f, 0.72f, 0.62f }, 0, 0.05f, 0.95f, 1.5f, 0.0f, 0.0f },
-    /* fog   */ {  12000, 16000, 6000, 10.5f, 15.0f, 0.55f, { 1.00f, 0.97f, 0.92f }, { 0.85f, 0.88f, 0.92f }, { 0.70f, 0.70f, 0.68f }, 0, 0.80f, 0.983f, 0, 0.0f, 0.0f },
-    /* rain  */ {   6000, 11000, 3500,  9.5f, 14.5f, 0.25f, { 0.95f, 0.97f, 1.00f }, { 0.70f, 0.76f, 0.85f }, { 0.55f, 0.56f, 0.56f }, 0, 0.80f, 0.983f, 0, 1.0f, 0.6f },
-    /* snow  */ {  25000, 22000, 16000, 11.5f, 15.5f, 0.55f, { 1.00f, 0.98f, 0.95f }, { 0.80f, 0.86f, 1.00f }, { 0.95f, 0.97f, 1.00f }, 0, 0.80f, 0.983f, 0, 0.5f, 0.3f },
-    /* night */ {  0.120f, 0.001f, 0.02f, -6.0f, 4.0f, 0.60f, { 1.00f, 0.669f, 0.402f }, { 0.45f, 0.60f, 1.00f }, { 0.40f, 0.40f, 0.40f }, LIGHT_MOON_ELEV, 0.30f, 0.75f, -1.0f, 0.0f, 0.0f },
+/* per weather: the ground's roughness (wet: smoother), its wetness and
+ * puddles (brr_metal_refl.h), and the exposure's compensation, stops over
+ * the incident meter's (lit_ev).  Dry ground is rough enough to show no
+ * reflection (perceptual 0.9: at 0.6 to 0.7 the tail lamps laid two glossy
+ * streaks on a dry road behind the car at night, seen from the chase camera
+ * along the light grazing the road) */
+static const struct { float rough, wet, pud, comp; } k_weather[5] = {
+    /* sunny */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
+    /* fog   */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
+    /* rain  */ { 0.25f, 1.0f, 0.6f, LIGHT_EV_COMP },
+    /* snow  */ { 0.55f, 0.5f, 0.3f, LIGHT_EV_COMP },
+    /* night */ { 0.90f, 0.0f, 0.0f, LIGHT_EV_COMP },
 };
-/* the grade per weather (saturation, contrast about mid-grey): sunny a
- * modest lift for the high-key day PBR Neutral's highlight desaturation
- * greys; the rest none */
-static const float k_grade[5][2] = { { 1.12f, 1.05f }, { 1, 1 }, { 1, 1 }, { 1, 1 }, { 1, 1 } };
 static LightGlow s_glow;   /* which textures the track's scene draws (light_night.h) */
 static float s_eshare[LIGHT_GLOW_TEX], s_ecol[LIGHT_GLOW_TEX][3];   /* the share of a texture's texels that glow, their mean linear colour */
 static uint8_t s_tmat[TEX_MAX];          /* a texture's material (light_texmat.h), 255 untagged */
 static float s_tmean[TEX_MAX];           /* its texels' mean linear luminance (opaque ones) */
+static float s_trgb[TEX_MAX][3];         /* their mean linear colour */
+static uint32_t s_thash[TEX_MAX];        /* the texture's texmat hash (diagnostics) */
 static int s_tm_up, s_tm_hit;            /* uploads, and of them tagged (BR_LIGHT_STATS) */
 /* the mean albedo of each material, linear: what a surface of it reflects
  * (pavement solar reflectance: asphalt 0.05 new to 0.2 worn, concrete 0.25 to
@@ -521,6 +550,7 @@ static int s_tm_up, s_tm_hit;            /* uploads, and of them tagged (BR_LIGH
  * Lagarde and de Rousiers 2014, DONTNOD's chart); 0 keeps the game's
  * painted level (signs, effects, lamps, water, vehicles, the untagged) */
 static const float k_mat_albedo[LIGHT_MAT_COUNT] = {
+    [LIGHT_MAT_BLACKMETAL] = 0.05f,   /* black-painted steel (the start lights' panel): matte black paint */
     [LIGHT_MAT_ASPHALT] = 0.12f, [LIGHT_MAT_CONCRETE] = 0.35f, [LIGHT_MAT_SAND] = 0.35f, [LIGHT_MAT_DIRT] = 0.20f,
     [LIGHT_MAT_ROCK] = 0.25f, [LIGHT_MAT_GRASS] = 0.21f, [LIGHT_MAT_FOLIAGE] = 0.15f, [LIGHT_MAT_BUILDING] = 0.60f,
     [LIGHT_MAT_WOOD] = 0.25f, [LIGHT_MAT_SNOW] = 0.80f, [LIGHT_MAT_ICE] = 0.50f, [LIGHT_MAT_TUNNEL] = 0.30f,
@@ -537,6 +567,30 @@ static float lit_albk(uint32_t tid)
     a /= 0.85f * s_tmean[tid];
     return a < 0.05f ? 0.05f : a > 2.0f ? 2.0f : a;
 }
+/* a natural surface's chroma (asphalt, concrete, sand, dirt, rock, grass,
+ * foliage, snow, ice): one colour for the whole texture, its texels' mean
+ * hue (luminance 1; asphalt and concrete grey), so its albedo is that times
+ * each texel's luminance.  The 1999 textures carry 15- and 16-bit dither and
+ * the vertex colours a baked light's tint: both show as coloured noise and
+ * cast once the scene is lit properly.  0: the texel's own colour */
+static void lit_tint(uint32_t tid, float t[3])
+{
+    int m = tid < TEX_MAX ? s_tmat[tid] : 255, k;
+    float y;
+    t[0] = t[1] = t[2] = 0.0f;
+    if (m == 255 || !(s_tmean[tid] > 0.002f))
+        return;
+    if (m == LIGHT_MAT_ASPHALT || m == LIGHT_MAT_CONCRETE) {
+        t[0] = t[1] = t[2] = 1.0f;
+        return;
+    }
+    if (m != LIGHT_MAT_SAND && m != LIGHT_MAT_DIRT && m != LIGHT_MAT_ROCK && m != LIGHT_MAT_GRASS && m != LIGHT_MAT_FOLIAGE
+        && m != LIGHT_MAT_SNOW && m != LIGHT_MAT_ICE)
+        return;
+    y = 0.2126f * s_trgb[tid][0] + 0.7152f * s_trgb[tid][1] + 0.0722f * s_trgb[tid][2];
+    for (k = 0; k < 3; k++)
+        t[k] = y > 0.0f ? s_trgb[tid][k] / y : 1.0f;
+}
 /* a texture's material: the FNV-1a hash of its RGBA8 texels (per 32-bit texel), as texmat.csv keys them */
 static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
 {
@@ -548,6 +602,7 @@ static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
     for (i = 0; i < n; i += 4)   /* per texel, its RGBA8 as one little-endian word */
         hs = (hs ^ ((uint32_t)rgba[i] | (uint32_t)rgba[i + 1] << 8 | (uint32_t)rgba[i + 2] << 16 | (uint32_t)rgba[i + 3] << 24)) * 16777619u;
     s_tmat[tid] = 255;
+    s_thash[tid] = hs;
     while (lo <= hi) {
         int m = (lo + hi) / 2;
         if (k_light_texmat[m].hash == hs) {
@@ -559,11 +614,20 @@ static void lit_texmat(uint32_t tid, const uint8_t *rgba, int w, int h)
         else
             hi = m - 1;
     }
-    for (i = 0; i < n; i += 4)
-        if (rgba[i + 3] >= 128) {
-            sum += 0.2126 * pow(rgba[i] / 255.0, 2.2) + 0.7152 * pow(rgba[i + 1] / 255.0, 2.2) + 0.0722 * pow(rgba[i + 2] / 255.0, 2.2);
-            cnt++;
-        }
+    {
+        double rgb[3] = { 0, 0, 0 };
+        for (i = 0; i < n; i += 4)
+            if (rgba[i + 3] >= 128) {
+                double r = pow(rgba[i] / 255.0, 2.2), g = pow(rgba[i + 1] / 255.0, 2.2), b = pow(rgba[i + 2] / 255.0, 2.2);
+                sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                rgb[0] += r;
+                rgb[1] += g;
+                rgb[2] += b;
+                cnt++;
+            }
+        for (i = 0; i < 3; i++)
+            s_trgb[tid][i] = cnt ? (float)(rgb[i] / cnt) : 0.0f;
+    }
     s_tmean[tid] = cnt ? (float)(sum / cnt) : 0.0f;
     s_tm_up++;
     s_tm_hit += s_tmat[tid] != 255;
@@ -605,7 +669,7 @@ static void lit_init(void)
     MTLDepthStencilDescriptor *dd = [MTLDepthStencilDescriptor new];
     MTLTextureDescriptor *td;
     static const uint8_t zero = 0;
-    s_lpg = lit_pipe(@"vs", @"fsgb", gb, 3, 1, -1, -1);
+    s_lpg = lit_pipe(@"vsn", @"fsgb", gb, 3, 1, -1, -1);
     s_lpb = lit_pipe(@"vs", @"fsbk", &hf, 1, 0, -1, -1);
     s_lpl = lit_pipe(@"lvs", @"lfs", &hf, 1, 0, -1, -1);
     s_lbd = lit_pipe(@"lvs", @"bdn", &hf, 1, 0, -1, -1);
@@ -614,49 +678,32 @@ static void lit_init(void)
     s_lpp = lit_pipe(@"lvs", @"pfs", &cf, 1, 0, -1, -1);
     s_shpipe = lit_pipe(@"svs", nil, NULL, 0, 1, -1, -1);
     s_shcopy = lit_pipe(@"lvs", @"scopy", NULL, 0, 1, -1, -1);
+    s_penv = lit_pipe(@"lvs", @"env_sky", &hf, 1, 0, -1, -1);
+    s_plens = lit_pipe(@"lnvs", @"lnfs", &hf, 1, 1, 99, 99);   /* added */
     {
-        static const MTLPixelFormat f32 = MTLPixelFormatRGBA32Float;
-        s_patmT = lit_pipe(@"lvs", @"atm_t", &hf, 1, 0, -1, -1);
-        s_patmM = lit_pipe(@"lvs", @"atm_ms", &hf, 1, 0, -1, -1);
-        s_patmS = lit_pipe(@"lvs", @"atm_sv", &hf, 1, 0, -1, -1);
-        s_patmI = lit_pipe(@"lvs", @"atm_irr", &f32, 1, 0, -1, -1);
-        s_psky = lit_pipe(@"lvs", @"skyfs", &hf, 1, 0, -1, -1);
-        s_pbk2 = lit_pipe(@"vs", @"fsbk2", &hf, 1, 0, 1, 5);     /* source alpha, one minus source alpha */
-    }
-    {   /* the clouds' noises, once (brr_metal_clouds.h cloud_noise): 128^3 shape, 32^3 detail */
         NSError *err = nil;
-        id<MTLComputePipelineState> pn = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cloud_noise"] error:&err];
         int k2;
-        s_pclt = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cloud_light_t"] error:&err];
-        for (k2 = 0; k2 < 3; k2++)
-            s_cltb[k2] = [s_dev newBufferWithLength:32 options:MTLResourceStorageModeShared];
-        if (pn) {
-            id<MTLCommandBuffer> cb = [s_q commandBuffer];
-            id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
-            for (k2 = 0; k2 < 2; k2++) {
-                int n = k2 ? 32 : 128, det = k2;
-                MTLTextureDescriptor *t3 = [MTLTextureDescriptor new];
-                id<MTLTexture> t;
-                t3.textureType = MTLTextureType3D;
-                t3.pixelFormat = MTLPixelFormatRGBA16Unorm;   /* 16 bits: the shape is stretched 4 x, then the coverage's remap; 8 bits drew contours */
-                t3.width = t3.height = t3.depth = (NSUInteger)n;
-                t3.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-                t3.storageMode = MTLStorageModePrivate;
-                t = [s_dev newTextureWithDescriptor:t3];
-                [ce setComputePipelineState:pn];
-                [ce setTexture:t atIndex:0];
-                [ce setBytes:&det length:4 atIndex:0];
-                [ce dispatchThreads:MTLSizeMake((NSUInteger)n, (NSUInteger)n, (NSUInteger)n) threadsPerThreadgroup:MTLSizeMake(4, 4, 4)];
-                if (k2)
-                    s_cdt = t;
-                else
-                    s_cn = t;
-            }
-            [ce endEncoding];
-            [cb commit];
-            [cb waitUntilCompleted];
-        } else
-            fprintf(stderr, "brr: cloud noise: %s\n", err ? [[err localizedDescription] UTF8String] : "no kernel");
+        s_pmeter = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"meter"] error:&err];
+        for (k2 = 0; k2 < 3; k2++) {
+            float none[4] = { -1e9f, -1e9f, 0, 0 };
+            s_meter[k2] = [s_dev newBufferWithBytes:none length:16 options:MTLResourceStorageModeShared];
+        }
+    }
+    {   /* the occlusion's kernels (brr_metal_ao.h) */
+        NSError *err = nil;
+        s_pao = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"gtao"] error:&err];
+        s_paof = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"gtaof"] error:&err];
+        if (!s_pao || !s_paof)
+            fprintf(stderr, "brr: occlusion kernels: %s\n", err ? [[err description] UTF8String] : "missing");
+    }
+    s_pbk2 = lit_pipe(@"vs", @"fsbk2", &hf, 1, 0, 1, 5);     /* source alpha, one minus source alpha */
+    {   /* a black cube, bound where there is no skymap */
+        static const uint16_t z4[4] = { 0, 0, 0, 0 };
+        int f;
+        td = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float size:1 mipmapped:NO];
+        s_blackcube = [s_dev newTextureWithDescriptor:td];
+        for (f = 0; f < 6; f++)
+            [s_blackcube replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 slice:(NSUInteger)f withBytes:z4 bytesPerRow:8 bytesPerImage:8];
     }
     dd.depthCompareFunction = MTLCompareFunctionLessEqual;
     dd.depthWriteEnabled = YES;
@@ -709,7 +756,7 @@ static id<MTLRenderPipelineState> lit_forward(int src, int dst)
     src &= 15;
     dst &= 15;
     if (!s_lpf[src][dst])
-        s_lpf[src][dst] = lit_pipe(@"vs", @"fsf", &hf, 1, 1, src, dst);
+        s_lpf[src][dst] = lit_pipe(@"vsn", @"fsf", &hf, 1, 1, src, dst);
     return s_lpf[src][dst];
 }
 
@@ -745,6 +792,13 @@ static void lit_targets(void)
     s_gpos = lit_tex(MTLPixelFormatRGBA32Float, s_lw, s_lh);
     s_gnrm = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
     s_hdr = lit_tex(MTLPixelFormatRGBA16Float, s_lw, s_lh);
+    for (i = 0; i < 2; i++) {   /* the occlusion, half the lit size */
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR16Float
+                                                                                     width:(NSUInteger)(s_lw + 1) / 2 height:(NSUInteger)(s_lh + 1) / 2 mipmapped:NO];
+        td.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+        td.storageMode = MTLStorageModePrivate;
+        s_ao[i] = [s_dev newTextureWithDescriptor:td];
+    }
     s_ldep = s_dep;
     if (s_lw != s_rw || s_lh != s_rh) {   /* depth of its own, read by MetalFX's scaler */
         MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
@@ -899,6 +953,8 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
         [e setDepthStencilState:ds_for(o->dmode, o->dfn, o->dmask)];
     [e setVertexBuffer:s_xtj ? s_xtj : s_xt[s_vbi] offset:0 atIndex:2];
     [e setVertexBuffer:s_vb[s_vbi] offset:(NSUInteger)o->voff atIndex:0];
+    if (s_nbon)
+        [e setVertexBuffer:s_nbuf[s_vbi] offset:(NSUInteger)(o->noff >= 0 ? o->noff : 0) atIndex:3];
     [e setVertexBytes:&o->u length:sizeof o->u atIndex:1];
     [e setFragmentBytes:&o->u length:sizeof o->u atIndex:0];
     if (o->u.has_tex) {
@@ -932,47 +988,111 @@ const BrrRtWorld *brr_metal_rt_world(void)
     return &s_rt;
 }
 
-/* the exposure: the post pass bins the frame's luminance into a histogram
- * (16 bins a stop, so a bin centre is within 1/32 EV of what it holds; one
- * of three buffers, read back three frames later when its frame is
- * done), each sample weighted toward the frame's centre (1 at the edge, 4 at
- * the centre: light_meter_weight); the mean log luminance of the weather's
- * percentile band (by day 5th to 95th: a centre-weighted average, the
- * outliers trimmed; the old 80th to 98.3rd band metered on the brightest
- * fifth and darkened the rest) less its compensation sets the camera's EV100 as a light meter
- * does (sensor calibration K = 12.5), adapting over about a second (Lagarde
- * and de Rousiers 2014; light_night.h light_adapt_ev: 1 s brighter, 3 s darker,
- * a snap on the first reading and on a change of 3 stops) */
-static float lit_exposure(int w)
+/* the skymap for track environment env and weather w, loaded when either
+ * changes (light_sky.c, then brr_metal_env.m's cube and specular); its sun
+ * turned to the track's bearing az.  The map: BR_SKYMAP, else skies.txt's for
+ * env and the condition in BR_SKYDIR (default ports/common/skies in the tree,
+ * else the app's Resources/skies), else that folder's sunny.hdr standing in */
+static int s_sky_env = -1;
+static void lit_sky(int env, int w, float az)
 {
-    uint32_t *c;
-    unsigned ns = 0;
-    float target;
-    double now;
-    int i;
-    if (!s_hist[0])
-        for (i = 0; i < 3; i++)
-            s_hist[i] = [s_dev newBufferWithLength:LUM_BINS * 4 options:MTLResourceStorageModeShared];
-    c = (uint32_t *)[s_hist[s_vbi] contents];
-    for (i = 0; i < LUM_BINS; i++)
-        ns += c[i];
-    target = light_meter_ev(c, LUM_BINS, k_weather[w].plo, k_weather[w].phi, k_weather[w].evlo, k_weather[w].evhi, k_weather[w].comp);
-    if (w == 4 && s_amb_Y > 0.0f) {   /* night: the eye adapts to the moon and the moonlit sky, not the lamps */
-        target = fminf(fmaxf(light_night_ev(s_amb_Y, lit_night_key()), k_weather[w].evlo), k_weather[w].evhi);
-        ns = ns ? ns : 1;
+    const char *dir = getenv("BR_SKYDIR"), *one = getenv("BR_SKYMAP");
+    char path[1024], err[512], res[1024];
+    LightSkyOpt o;
+    int moon = w == 4, ok;
+    if (w == s_sky_w && env == s_sky_env)
+        return;
+    s_sky_w = w;
+    s_sky_env = env;
+    if (!dir) {   /* the tree's, else the app's Resources/skies (package_app.sh) */
+        FILE *f = fopen("ports/common/skies/skies.txt", "rb");
+        if (f) {
+            fclose(f);
+            dir = "ports/common/skies";
+        } else {
+            snprintf(res, sizeof res, "%s/skies", host_resource_dir());
+            dir = res;
+        }
     }
-    memset(c, 0, LUM_BINS * 4);
-    now = CACurrentMediaTime();
-    /* a histogram with no samples (its frame not yet drawn, or no lit
-       surface in it) holds the EV: it used to set it to the range's middle
-       and then pull toward it, a night race starting stops too dark */
-    s_ev = light_adapt_ev(s_ev, target, s_ev_t > 0 ? (float)(now - s_ev_t) : 0.0f, ns > 0);
-    s_ev_t = now;
-    if (s_ev > 1e8f)
-        return 1.0f / (1.2f * exp2f(target));
-    if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
-        fprintf(stderr, "light: frame %lu weather %d, %u meter samples, target EV %.2f, EV %.2f, ambient %.4g lux\n", s_frame, w, ns, target, s_ev, s_amb_Y);
-    return 1.0f / (1.2f * exp2f(s_ev));
+    memset(&o, 0, sizeof o);
+    o.sun_az = az;
+    o.has_sun_az = 1;
+    o.total_lux = k_skytotal[w];
+    path[0] = 0;
+    if (one)
+        snprintf(path, sizeof path, "%s", one);
+    else {   /* skies.txt: env condition hdri */
+        char mp[1100], ln[256], e2[32], c2[32], id[160];
+        FILE *f;
+        snprintf(mp, sizeof mp, "%s/skies.txt", dir);
+        if ((f = fopen(mp, "r"))) {
+            while (fgets(ln, sizeof ln, f))
+                if (ln[0] != '#' && sscanf(ln, "%31s %31s %159s", e2, c2, id) == 3 && env >= 0 && env < 7 && !strcmp(e2, k_skyenv[env])
+                    && !strcmp(c2, k_skycond[w])) {   /* the 8K map, else the 4K the iPhone app carries */
+                    FILE *h;
+                    snprintf(path, sizeof path, "%s/ph8k/%s_8k.hdr", dir, id);
+                    if ((h = fopen(path, "rb")))
+                        fclose(h);
+                    else
+                        snprintf(path, sizeof path, "%s/ph4k/%s_4k.hdr", dir, id);
+                }
+            fclose(f);
+        }
+        if (!path[0]) {
+            fprintf(stderr, "brr: no %s %s skymap in %s: sunny.hdr stands in\n", env >= 0 && env < 7 ? k_skyenv[env] : "?", k_skycond[w], mp);
+            snprintf(path, sizeof path, "%s/sunny.hdr", dir);
+        }
+    }
+    if (moon) {   /* the moon, else a moonless sky's starlight and airglow */
+        o.sun_lux = LIGHT_MOON_LUX;
+        o.horiz_lux = 0.05f;
+        o.total_lux = 0.0f;
+    }
+    light_sky_free(&s_sky);
+    s_env.ready = 0;
+    ok = !light_sky_load(&s_sky, path, &o, err, sizeof err) && !brr_env_build(&s_env, s_dev, s_lib, s_q, &s_sky);
+    if (!ok) {
+        fprintf(stderr, "brr: skymap %s: %s\n", path, err[0] ? err : "the GPU's environment failed");
+        light_sky_free(&s_sky);
+        s_env.ready = 0;
+        return;
+    }
+    {   /* the sky a few degrees over the horizon: the backdrop's haze, the game's fog */
+        int x, y, c, n = 0;
+        memset(s_sky_hor, 0, sizeof s_sky_hor);
+        for (y = 0; y < s_sky.h / 2; y++) {
+            float el = 90.0f - 180.0f * ((float)y + 0.5f) / (float)s_sky.h;
+            if (el < 1.0f || el > 6.0f)
+                continue;
+            for (x = 0; x < s_sky.w; x++, n++)
+                for (c = 0; c < 3; c++)
+                    s_sky_hor[c] += s_sky.rgb[((size_t)y * s_sky.w + x) * 3 + c];
+        }
+        for (c = 0; c < 3; c++)
+            s_sky_hor[c] /= (float)(n ? n : 1);
+    }
+    free(s_sky.rgb);   /* the GPU holds the map now; the light's numbers stay */
+    s_sky.rgb = NULL;
+    fprintf(stderr, "brr: skymap %s: sun %s at %.1f degrees, %.0f lux facing it, sky %.0f lux on level ground (sun/sky %.2f in the file)\n",
+            path, s_sky.has_sun ? "found" : "none", asinf(s_sky.sun[2]) * 57.29578f,
+            0.2126f * s_sky.sun_lux[0] + 0.7152f * s_sky.sun_lux[1] + 0.0722f * s_sky.sun_lux[2],
+            0.2126f * s_sky.sky_up[0] + 0.7152f * s_sky.sky_up[1] + 0.0722f * s_sky.sky_up[2], s_sky.clip_ratio);
+}
+
+/* the camera's exposure, as an incident meter sets it (ISO 2720, C = 250):
+ * EV100 = log2(E / 2.5), E the light on level ground (the sun's and the
+ * sky's, lux), so a grey card of 18% reads the same under any sky, plus the
+ * weather's compensation; the exposure 1 / (1.2 2^EV100) (Lagarde and de
+ * Rousiers 2014) */
+static float lit_ev(int w, float *ev)
+{
+    float E = 0.2126f * s_sky.sky_up[0] + 0.7152f * s_sky.sky_up[1] + 0.0722f * s_sky.sky_up[2];
+    if (s_sky.has_sun && s_sky.sun[2] > 0.0f)
+        E += (0.2126f * s_sky.sun_lux[0] + 0.7152f * s_sky.sun_lux[1] + 0.0722f * s_sky.sun_lux[2]) * s_sky.sun[2];
+    *ev = log2f(fmaxf(E, 1e-6f) / 2.5f) - k_weather[w].comp;   /* compensation: stops brighter, a lower EV */
+    if (*ev < LIGHT_EV_MIN)   /* the eye's adaptation stops short at night (Gran Turismo 7's two-stage, never complete) */
+        *ev = LIGHT_EV_MIN;
+    return 1.0f / (1.2f * exp2f(*ev));
 }
 
 /* the frame's moving casters: its opaque 3D less what lies on the track
@@ -1284,8 +1404,29 @@ static void lit_lights(const float eye[3], const float *vp)
             const LightSpot *l = &set->l[k];
             float dx = l->pos[0] - eye[0], dy = l->pos[1] - eye[1], dz = l->pos[2] - eye[2];
             if (dx * dx + dy * dy + dz * dz < 400.0f)
-                fprintf(stderr, "  lamp %d kind %d pos %.2f %.2f %.2f axis %.3f %.3f %.3f cd %.0f range %.0f cosout %.3f\n", k, (int)l->kind,
-                        l->pos[0], l->pos[1], l->pos[2], l->axis[0], l->axis[1], l->axis[2], l->candela, l->range, l->cosout);
+            {
+                /* the track's surface under the lamp: the highest triangle under it within 3 m down */
+                const LightTrack *trk = light_game_track();
+                float gz = -1e9f;
+                int t;
+                for (t = 0; trk && t < trk->ntri; t++) {
+                    const float *q = trk->tri + 9 * t;
+                    float d0x = q[3] - q[0], d0y = q[4] - q[1], d1x = q[6] - q[0], d1y = q[7] - q[1], px = l->pos[0] - q[0], py = l->pos[1] - q[1];
+                    float den = d0x * d1y - d1x * d0y, a1, a2, z;
+                    if (fabsf(den) < 1e-9f)
+                        continue;
+                    a1 = (px * d1y - d1x * py) / den;
+                    a2 = (d0x * py - px * d0y) / den;
+                    if (a1 < 0.0f || a2 < 0.0f || a1 + a2 > 1.0f)
+                        continue;
+                    z = q[2] + a1 * (q[5] - q[2]) + a2 * (q[8] - q[2]);
+                    if (z <= l->pos[2] + 0.05f && z > l->pos[2] - 3.0f && z > gz)
+                        gz = z;
+                }
+                fprintf(stderr, "  lamp %d kind %d pos %.2f %.2f %.2f (%.2f m over the track) axis %.3f %.3f %.3f side %.3f %.3f %.3f cd %.0f range %.0f cosout %.3f\n", k,
+                        (int)l->kind, l->pos[0], l->pos[1], l->pos[2], gz > -1e8f ? l->pos[2] - gz : -1.0f, l->axis[0], l->axis[1], l->axis[2],
+                        l->side[0], l->side[1], l->side[2], l->candela, l->range, l->cosout);
+            }
         }
     }
 }
@@ -1363,6 +1504,7 @@ static void lit_gi(LU *u, const float eye[3])
         gnd[k] = u->gndc[k] / 3.14159265f;
     }
     brr_gi_frame(&s_gi, eye, 8.0f, u->sun, u->sunc, sky, gnd);
+    brr_gi_env(&s_gi, s_env.ready ? s_env.spec : nil, 2.0f);   /* a miss: the sky by direction, its GGX 0.5 lobe (64 a face) */
     brr_gi_encode(&s_gi, s_cmd, w, s_lset[s_vbi], s_nlamp);
     u->gi[0] = 1.0f;
 }
@@ -1404,16 +1546,196 @@ static void lit_split(int k)
     s_cmd = [s_q commandBuffer];
 }
 
+/* the reference: the same normals on the CPU (light_smooth.c), in the ops'
+ * order, for BR_LIGHT_SMOOTHCHECK */
+static void lit_normals_cpu(float **out, size_t *nout)
+{
+    static float *pos, *nrm;
+    static size_t cap;
+    size_t nc = 0, k;
+    int i, j;
+    const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+    *out = NULL;
+    *nout = 0;
+    for (i = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND)
+            nc += (size_t)s_ops[i].n;
+    if (!nc)
+        return;
+    if (nc > cap) {
+        float *p2 = realloc(pos, nc * 3 * sizeof(float)), *n2;
+        if (p2)
+            pos = p2;
+        n2 = realloc(nrm, nc * 3 * sizeof(float));
+        if (n2)
+            nrm = n2;
+        if (!p2 || !n2)
+            return;
+        cap = nc;
+    }
+    for (i = 0, k = 0; i < s_nops; i++)
+        if (s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND)
+            for (j = 0; j < s_ops[i].n; j++, k++) {
+                const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff) + j;
+                pos[3 * k] = v->wx;
+                pos[3 * k + 1] = v->wy;
+                pos[3 * k + 2] = v->wz;
+            }
+    if (light_smooth_normals(pos, (int)(nc / 3 * 3), cosf(LIGHT_SMOOTH_CREASE * 0.017453293f), nrm))
+        return;
+    *out = nrm;
+    *nout = nc / 3 * 3;
+}
+
+/* each lit draw's smooth normals on the GPU (brr_metal_smooth.h): the
+ * camera's opaque and blended 3D welded together across draws, into this
+ * slot's normal buffer, each op's run at its noff; encoded into the frame's
+ * command buffer ahead of the G-buffer.  The CPU writes only the ops' table */
+static id<MTLComputePipelineState> s_psm[4];
+static id<MTLBuffer> s_smops[3], s_smpc, s_smfn, s_smcell, s_smlist, s_smcnt, s_smstart, s_smfill;
+static size_t s_smcap;
+static int lit_normals_encode(id<MTLCommandBuffer> cb, size_t *ncout)
+{
+    static int ok = -1;
+    size_t nc = 0;
+    int i, nops = 0;
+    uint32_t *tab;
+    if (ok < 0) {
+        static const char *const fnn[4] = { "sm_face", "sm_scan", "sm_scatter", "sm_normal" };
+        NSError *err = nil;
+        ok = 1;
+        for (i = 0; i < 4; i++)
+            if (!(s_psm[i] = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@(fnn[i])] error:&err]))
+                ok = 0;
+        if (!ok)
+            fprintf(stderr, "brr: smooth normals' kernels: %s\n", err ? [[err description] UTF8String] : "missing");
+        else {
+            s_smcnt = [s_dev newBufferWithLength:SM_CELLS * 4 options:MTLResourceStorageModePrivate];
+            s_smstart = [s_dev newBufferWithLength:SM_CELLS * 4 options:MTLResourceStorageModePrivate];
+            s_smfill = [s_dev newBufferWithLength:SM_CELLS * 4 options:MTLResourceStorageModePrivate];
+            for (i = 0; i < 3; i++)
+                s_smops[i] = [s_dev newBufferWithLength:SM_OPS_MAX * 8 options:MTLResourceStorageModeShared];
+        }
+    }
+    *ncout = 0;
+    if (!ok)
+        return 0;
+    tab = (uint32_t *)[s_smops[s_vbi] contents];
+    for (i = 0; i < s_nops; i++) {
+        s_ops[i].noff = -1;
+        if ((s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND) && nops < SM_OPS_MAX && s_ops[i].n >= 3) {
+            s_ops[i].noff = (long)(nc * 16);
+            tab[nops] = (uint32_t)s_ops[i].voff;               /* voff, then base */
+            tab[SM_OPS_MAX + nops] = (uint32_t)nc;
+            nops++;
+            nc += (size_t)s_ops[i].n / 3 * 3;
+        }
+    }
+    if (!nc)
+        return 0;
+    if (nc > s_smcap) {
+        size_t cap = nc + nc / 2 + 1024;
+        s_smpc = [s_dev newBufferWithLength:cap * 16 options:MTLResourceStorageModePrivate];
+        s_smfn = [s_dev newBufferWithLength:cap / 3 * 16 + 16 options:MTLResourceStorageModePrivate];
+        s_smcell = [s_dev newBufferWithLength:cap * 4 options:MTLResourceStorageModePrivate];
+        s_smlist = [s_dev newBufferWithLength:cap * 4 options:MTLResourceStorageModePrivate];
+        s_smcap = cap;
+    }
+    if (!s_nbuf[s_vbi] || s_nbuf[s_vbi].length < nc * 16)
+        s_nbuf[s_vbi] = [s_dev newBufferWithLength:(nc + nc / 2 + 1024) * 16 options:MTLResourceStorageModeShared];
+    {
+        struct { uint32_t nops, ncorner; float coscrease; uint32_t pad; } su = { (uint32_t)nops, (uint32_t)nc, cosf(LIGHT_SMOOTH_CREASE * 0.017453293f), 0 };
+        id<MTLBlitCommandEncoder> be = [cb blitCommandEncoder];
+        id<MTLComputeCommandEncoder> ce;
+        MTLSize g = MTLSizeMake(nc, 1, 1), t = MTLSizeMake(64, 1, 1);
+        [be fillBuffer:s_smcnt range:NSMakeRange(0, SM_CELLS * 4) value:0];
+        [be fillBuffer:s_smfill range:NSMakeRange(0, SM_CELLS * 4) value:0];
+        [be endEncoding];
+        ce = [cb computeCommandEncoder];
+        [ce setComputePipelineState:s_psm[0]];
+        [ce setBytes:&su length:sizeof su atIndex:0];
+        [ce setBuffer:s_vb[s_vbi] offset:0 atIndex:1];
+        [ce setBuffer:s_smops[s_vbi] offset:0 atIndex:2];
+        [ce setBuffer:s_smops[s_vbi] offset:SM_OPS_MAX * 4 atIndex:3];
+        [ce setBuffer:s_smpc offset:0 atIndex:4];
+        [ce setBuffer:s_smfn offset:0 atIndex:5];
+        [ce setBuffer:s_smcnt offset:0 atIndex:6];
+        [ce setBuffer:s_smcell offset:0 atIndex:7];
+        [ce dispatchThreads:g threadsPerThreadgroup:t];
+        [ce setComputePipelineState:s_psm[1]];
+        [ce setBuffer:s_smcnt offset:0 atIndex:0];
+        [ce setBuffer:s_smstart offset:0 atIndex:1];
+        [ce dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1024, 1, 1)];
+        [ce setComputePipelineState:s_psm[2]];
+        [ce setBytes:&su length:sizeof su atIndex:0];
+        [ce setBuffer:s_smcell offset:0 atIndex:1];
+        [ce setBuffer:s_smstart offset:0 atIndex:2];
+        [ce setBuffer:s_smfill offset:0 atIndex:3];
+        [ce setBuffer:s_smlist offset:0 atIndex:4];
+        [ce dispatchThreads:g threadsPerThreadgroup:t];
+        [ce setComputePipelineState:s_psm[3]];
+        [ce setBytes:&su length:sizeof su atIndex:0];
+        [ce setBuffer:s_smpc offset:0 atIndex:1];
+        [ce setBuffer:s_smfn offset:0 atIndex:2];
+        [ce setBuffer:s_smstart offset:0 atIndex:3];
+        [ce setBuffer:s_smcnt offset:0 atIndex:4];
+        [ce setBuffer:s_smlist offset:0 atIndex:5];
+        [ce setBuffer:s_nbuf[s_vbi] offset:0 atIndex:6];
+        [ce dispatchThreads:g threadsPerThreadgroup:t];
+        [ce endEncoding];
+    }
+    *ncout = nc;
+    return 1;
+}
+
+static void lit_normals(void)
+{
+    size_t nc = 0;
+    if (getenv("BR_LIGHT_SMOOTHCHECK") && s_frame % 120 == 0) {   /* diagnostic: the GPU's normals against light_smooth.c's */
+        id<MTLCommandBuffer> cb = [s_q commandBuffer];
+        float *ref;
+        size_t nr, k;
+        double worst = 0.0;
+        if (lit_normals_encode(cb, &nc)) {
+            [cb commit];
+            [cb waitUntilCompleted];
+            lit_normals_cpu(&ref, &nr);
+            if (ref && nr == nc) {
+                const float *g = (const float *)[s_nbuf[s_vbi] contents];
+                for (k = 0; k < nc; k++) {
+                    double d = g[4 * k] * ref[3 * k] + g[4 * k + 1] * ref[3 * k + 1] + g[4 * k + 2] * ref[3 * k + 2];
+                    double l = ref[3 * k] * ref[3 * k] + ref[3 * k + 1] * ref[3 * k + 1] + ref[3 * k + 2] * ref[3 * k + 2];
+                    if (l > 0.5)
+                        worst = fmax(worst, acos(fmin(fmax(d, -1.0), 1.0)) * 57.29578);
+                }
+                fprintf(stderr, "smooth check: frame %lu, %zu corners, GPU against CPU worst %.4f degrees\n", s_frame, nc, worst);
+            } else
+                fprintf(stderr, "smooth check: frame %lu, corner counts differ (GPU %zu, CPU %zu)\n", s_frame, nc, nr);
+        }
+        s_nbon = nc > 0;
+        return;
+    }
+    s_nbon = lit_normals_encode(s_cmd, &nc) && nc > 0;
+}
+
+/* BR_LIGHT_CPU (diagnostic): the lit frame's CPU time by stage, ms a frame, every 120 lit frames */
+static double s_cpu_ms[8];
+static unsigned long s_cpu_n;
+static const char *const k_cpu_name[8] = { "casters+cascades", "lights", "normals", "lamp shadows", "gi", "encode rest", "whole", "" };
+#define CPU_T0(k) double cpu_t##k = s_cpu_on ? CACurrentMediaTime() : 0.0
+#define CPU_T1(k) do { if (s_cpu_on) s_cpu_ms[k] += (CACurrentMediaTime() - cpu_t##k) * 1000.0; } while (0)
+static int s_cpu_on = -1;
+
 static void lit_present(void)
 {
     LU u;
-    /* the sun (or moon) direction, toward it, Z up: Coastline's, chosen
-       2026-10-12 (high, behind the start: DESIGN.md 7.3's manifest will carry it per track) */
-    float eye[3] = { 0, 0, 0 }, sun[3] = { -1.0f, -1.5f, 2.5f }, len;
+    EU eu;
+    /* the sun's bearing, toward it, Z up: Coastline's, chosen 2026-10-12
+       (behind the start: DESIGN.md 7.3's manifest will carry it per track);
+       its elevation and light are the skymap's */
+    float eye[3] = { 0, 0, 0 }, sun[3] = { -1.0f, -1.5f, 2.5f }, len, ev = 0.0f;
     int w = light_game_weather(), k, i, first3d, have_cam, sky;
     LightCamera cam;
-    KU ku;
-    BrrGlare gl = { { 0 }, { 0 }, { 0 } };
     BrrCascade cs[CASCADES];
     id<MTLRenderCommandEncoder> e;
     MTLRenderPassDescriptor *rp;
@@ -1425,49 +1747,91 @@ static void lit_present(void)
     lit_gpu_read();
     memset(s_gpu_frame_used, 0, sizeof s_gpu_frame_used);
     memset(&u, 0, sizeof u);
-    {   /* BR_LIGHT_SUN=x,y,z: the sun's direction (towards it; Z up), until the tracks' manifests carry it */
+    memset(&eu, 0, sizeof eu);
+    {   /* BR_LIGHT_SUN=x,y,z: the sun's bearing (towards it; Z up), until the tracks' manifests carry it */
         const char *e2 = getenv("BR_LIGHT_SUN");
         if (e2)
             sscanf(e2, "%f,%f,%f", &sun[0], &sun[1], &sun[2]);
     }
+    lit_sky(light_game_sky_env(), w, atan2f(sun[1], sun[0]));
+    if (s_env.ready && s_sky.has_sun)
+        memcpy(sun, s_sky.sun, sizeof sun);
     light_capture_eye(eye);
-    if (k_weather[w].elev > 0) {   /* the moon: full, so opposite the sun's bearing, at its own elevation */
-        float hz = sqrtf(sun[0] * sun[0] + sun[1] * sun[1]), el = k_weather[w].elev * 0.017453293f;
-        if (hz > 0) {
-            sun[0] = -sun[0] / hz * cosf(el);
-            sun[1] = -sun[1] / hz * cosf(el);
-        }
-        sun[2] = sinf(el);
-    }
     len = sqrtf(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
     for (k = 0; k < 3; k++) {
         sun[k] /= len;
         u.eye[k] = eye[k];
         u.sun[k] = sun[k];
-        u.sunc[k] = k_weather[w].sunc[k] * k_weather[w].sun;
-        u.skyc[k] = k_weather[w].skyc[k] * k_weather[w].sky;
-        u.gndc[k] = k_weather[w].gndc[k] * k_weather[w].gnd;
     }
-    {   /* white balance: to the sun and sky together, or at night to the headlamps */
-        static const float halogen[3] = { 1.00f, 0.83f, 0.62f };
+    if (s_env.ready) {
+        /* the light: the skymap's sun, its sky on level ground and from below,
+           its irradiance harmonics and specular, the horizon's sky as the air's */
         float wb[3], y;
-        for (k = 0; k < 3; k++)
-            wb[k] = w == 4 ? halogen[k] : k_weather[w].sunc[k] * k_weather[w].sun * 0.5f + k_weather[w].skyc[k] * k_weather[w].sky;
+        for (k = 0; k < 3; k++) {
+            u.sunc[k] = s_sky.has_sun ? s_sky.sun_lux[k] : 0.0f;
+            u.skyc[k] = s_sky.sky_up[k];
+            u.gndc[k] = s_sky.ground[k] * 3.14159265f;
+            u.fogc[k] = s_sky_hor[k];
+            /* white balance: to the light on level ground, as a camera's auto white balance */
+            wb[k] = s_sky.sky_up[k] + u.sunc[k] * fmaxf(sun[2], 0.0f);
+        }
+        u.fogc[3] = 1.0f;
+        for (i = 0; i < 9; i++)
+            for (k = 0; k < 3; k++)
+                u.sh[i][k] = s_sky.sh[i][k];
+        u.env[0] = (float)(ENV_SPEC_MIPS - 1);
+        u.env[1] = s_env.rot;
+        u.env[2] = 1.0f;
         y = 0.2126f * wb[0] + 0.7152f * wb[1] + 0.0722f * wb[2];
         for (k = 0; k < 3; k++)
-            u.wb[k] = y / wb[k];
+            u.wb[k] = wb[k] > 0.0f && w != 4 ? y / wb[k] : 1.0f;   /* at night a daylight balance: the moonlit sky stays blue, the lamps white */
+        u.misc[0] = lit_ev(w, &ev);
+        if (w == 4 && s_pmeter) {
+            /* night: a reflected-light meter (K 12.5: EV100 = log2(L 100 / 12.5)) on the
+               GPU's reading three frames ago, never brighter than the floor, adapted at
+               3 EV a second toward darker and 1 toward brighter (Unreal's defaults); the
+               start lights or a lamp filling the view darken the frame, as an eye or a
+               camera does, instead of burning out */
+            const float *mr = (const float *)[s_meter[s_vbi] contents];
+            float lg = mr[0], tgt;
+            double now = CACurrentMediaTime(), dt = s_ev_t > 0.0 ? now - s_ev_t : 0.0;
+            s_ev_t = now;
+            /* and the brightest tenth of the frame at most 2.5 stops over mid-grey (at the
+               display's white): a camera's highlight-weighted metering, so a pool filling
+               the bumper camera's lower half keeps its texture */
+            tgt = lg > -1e8f ? fmaxf(fmaxf(lg + 3.0f + LIGHT_NIGHT_COMP, mr[1] + 3.0f - 2.5f), LIGHT_EV_MIN) : LIGHT_EV_MIN;
+            if (s_ev_night > 1e8f || dt > 0.5)
+                s_ev_night = tgt;
+            else
+                s_ev_night += fmaxf(fminf(tgt - s_ev_night, (float)(3.0 * dt)), (float)(-1.0 * dt));
+            ev = s_ev_night;
+            u.misc[0] = 1.0f / (1.2f * exp2f(ev));
+        } else
+            s_ev_night = 1e9f;
+    } else {   /* no skymap: a grey day, so the game still shows */
+        for (k = 0; k < 3; k++) {
+            u.sunc[k] = 60000.0f;
+            u.skyc[k] = 20000.0f;
+            u.gndc[k] = 6000.0f;
+            u.wb[k] = 1.0f;
+        }
+        u.sh[0][0] = u.sh[0][1] = u.sh[0][2] = 20000.0f / 0.282095f * 0.5f;
+        u.sh[2][0] = u.sh[2][1] = u.sh[2][2] = 20000.0f / 0.488603f * 0.5f;
+        ev = log2f((60000.0f * fmaxf(sun[2], 0.0f) + 20000.0f) / 2.5f);
+        u.misc[0] = 1.0f / (1.2f * exp2f(ev));
     }
-    u.misc[0] = lit_exposure(w);
-    if (w == 4) {   /* night: the lamps' pools compressed (light_local_exposure) */
-        u.lexp[0] = getenv("BR_LIGHT_NOLOCAL") ? 0.0f : LIGHT_LOCAL_CONTRAST;   /* BR_LIGHT_NOLOCAL: diagnostic */
-        u.lexp[1] = LIGHT_LOCAL_LEVEL;
-    }
+    if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
+        fprintf(stderr, "light: frame %lu weather %d, EV100 %.2f, sun %.0f lux at %.1f degrees, sky %.0f lux\n", s_frame, w, ev,
+                0.2126f * u.sunc[0] + 0.7152f * u.sunc[1] + 0.0722f * u.sunc[2], asinf(sun[2]) * 57.29578f,
+                0.2126f * u.skyc[0] + 0.7152f * u.skyc[1] + 0.0722f * u.skyc[2]);
     u.misc[2] = k_weather[w].rough;
-    u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier(); u.wet[3] = REFL_RT_ROUGH;
-    u.bg[0] = 0.9f;                         /* the backdrop and fog: shown as the game drew them (pre-exposed) */
+    u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier();
+    {   /* the misses trace the track's BVH below this roughness, once it is built */
+        const BrrRtWorld *rw = brr_metal_rt_world();
+        u.wet[3] = rw && rw->built && rw->as ? REFL_RT_ROUGH : 0.0f;
+    }
+    u.bg[0] = 0.9f;                         /* no skymap: the backdrop and fog shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
-    u.bg[2] = k_grade[w][0];                /* the grade after the tonemap: saturation, contrast (brr_metal_lit.h) */
-    u.bg[3] = k_grade[w][1];
     {
         const char *e2 = getenv("BR_LIGHT_VIEW");
         u.misc[3] = e2 ? (float)atoi(e2) : 0.0f;
@@ -1484,13 +1848,16 @@ static void lit_present(void)
             s_trkn = 0;
         }
     }
+    if (s_cpu_on < 0)
+        s_cpu_on = getenv("BR_LIGHT_CPU") != NULL;
+    CPU_T0(0);
     lit_dynamic();
-    u.misc[1] = (float)lit_cascades(sun, eye, &u, cs);
+    u.misc[1] = s_env.ready && !s_sky.has_sun ? 0.0f : (float)lit_cascades(sun, eye, &u, cs);   /* an overcast map: no sun, no shadow maps */
     have_cam = light_capture_camera(&cam);
-    if (have_cam && u.misc[1] > 0.5f && !getenv("BR_LIGHT_NOCONTACT")) {
-        /* the contact shadows' map from world to the target's pixels: the
-           main 3D view's screen map entry (its first opaque draw's), the game's
-           viewport and its view x projection */
+    if (have_cam) {
+        /* world to the target's pixels (the contact shadows', the reflections'
+           reprojection): the main 3D view's screen map entry (its first opaque
+           draw's), the game's viewport and its view x projection */
         int xf = 0;
         for (i = 0; i < s_nops; i++)
             if (s_ops[i].kind == K_OPQ) {
@@ -1499,9 +1866,15 @@ static void lit_present(void)
             }
         brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(),
                           (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, u.scr);
-        u.csoft[3] = CONTACT_LEN;
+        if (u.misc[1] > 0.5f && !getenv("BR_LIGHT_NOCONTACT"))
+            u.csoft[3] = CONTACT_LEN;
     }
-    lit_lights(eye, have_cam ? cam.vp : NULL);
+    CPU_T1(0);
+    {
+        CPU_T0(1);
+        lit_lights(eye, have_cam ? cam.vp : NULL);
+        CPU_T1(1);
+    }
     u.vol[0] = have_cam && brr_vol_on(s_dev) ? 1.0f : 0.0f;   /* the volumetric fog in place of the game's */
     if (have_cam) {   /* TAA (brr_metal_taa.m): this frame's unjittered world-to-pixel matrix, and the jittered screen map */
         int xf = 0;
@@ -1514,133 +1887,57 @@ static void lit_present(void)
                           (const float *)[s_xt[s_vbi] contents] + 4 * xf, (float)s_lw, (float)s_lh, taa_s);
         s_xtj = brr_taa_begin(s_dev, s_xt[s_vbi], s_vbi, s_nxf[s_vbi], s_lw, s_lh, NULL);   /* jitter in the lit 3D's pixels */
     }
-    sky = have_cam && !getenv("BR_LIGHT_NOSKY");
+    sky = have_cam && s_env.ready && !getenv("BR_LIGHT_NOSKY");
     if (sky) {
-        /* the atmosphere's tables: transmittance and multiple scattering when the
-           weather's haze changes, the sky view and its light every frame */
-        AU a;
-        float *ir;
-        memset(&a, 0, sizeof a);
-        memcpy(a.sun, sun, 12);
-        a.cam[0] = fmaxf(eye[2], 0.0f) / 1000.0f + 0.002f;
-        a.atm[0] = k_sky[w].mie;
-        if (!s_atmT) {
-            MTLTextureDescriptor *td;
-            s_atmT = lit_tex(MTLPixelFormatRGBA16Float, 256, 64);
-            s_atmM = lit_tex(MTLPixelFormatRGBA16Float, 32, 32);
-            s_atmS = lit_tex(MTLPixelFormatRGBA16Float, 192, 108);
-            for (k = 0; k < 3; k++) {
-                td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float width:3 height:1 mipmapped:NO];
-                td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-                td.storageMode = MTLStorageModeShared;
-                s_atmI[k] = [s_dev newTextureWithDescriptor:td];
+        /* the sky's camera rays: the main 3D view's screen map, the game's
+           viewport, the inverse of its view x projection's x, y and w columns */
+        const float *m = cam.vp;
+        double aa[3][3], det, inv[3][3];
+        int r2, c2, xf = 0;
+        float om;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
             }
+        memcpy(eu.xft, (const float *)[s_xt[s_vbi] contents] + 4 * xf, 16);
+        eu.vpt[0] = cam.sx; eu.vpt[1] = cam.ox; eu.vpt[2] = cam.sy; eu.vpt[3] = cam.oy;
+        for (r2 = 0; r2 < 3; r2++)
+            for (c2 = 0; c2 < 3; c2++)
+                aa[r2][c2] = m[c2 * 4 + (r2 == 2 ? 3 : r2)];
+        det = aa[0][0] * (aa[1][1] * aa[2][2] - aa[1][2] * aa[2][1]) - aa[0][1] * (aa[1][0] * aa[2][2] - aa[1][2] * aa[2][0])
+            + aa[0][2] * (aa[1][0] * aa[2][1] - aa[1][1] * aa[2][0]);
+        if (fabs(det) < 1e-30)
+            det = 1e-30;
+        inv[0][0] = (aa[1][1] * aa[2][2] - aa[1][2] * aa[2][1]) / det;
+        inv[0][1] = (aa[0][2] * aa[2][1] - aa[0][1] * aa[2][2]) / det;
+        inv[0][2] = (aa[0][1] * aa[1][2] - aa[0][2] * aa[1][1]) / det;
+        inv[1][0] = (aa[1][2] * aa[2][0] - aa[1][0] * aa[2][2]) / det;
+        inv[1][1] = (aa[0][0] * aa[2][2] - aa[0][2] * aa[2][0]) / det;
+        inv[1][2] = (aa[0][2] * aa[1][0] - aa[0][0] * aa[1][2]) / det;
+        inv[2][0] = (aa[1][0] * aa[2][1] - aa[1][1] * aa[2][0]) / det;
+        inv[2][1] = (aa[0][1] * aa[2][0] - aa[0][0] * aa[2][1]) / det;
+        inv[2][2] = (aa[0][0] * aa[1][1] - aa[0][1] * aa[1][0]) / det;
+        for (c2 = 0; c2 < 3; c2++) {
+            eu.m0[c2] = (float)inv[0][c2];
+            eu.m1[c2] = (float)inv[1][c2];
+            eu.m2[c2] = (float)inv[2][c2];
         }
-        {   /* last use of this slot (three frames ago, done): the sky's light, the sun's
-               transmittance at the camera, the horizon's light */
-            float px[12];
-            [s_atmI[s_vbi] getBytes:px bytesPerRow:48 fromRegion:MTLRegionMake2D(0, 0, 3, 1) mipmapLevel:0];
-            ir = px;
-            if (px[0] > 0.0f || px[4] > 0.0f) {
-                for (k = 0; k < 3; k++) {
-                    u.sunc[k] = k_sky[w].top * k_sky[w].through * ir[4 + k];
-                    u.skyc[k] = k_sky[w].top * k_sky[w].skyk * ir[k];
-                    u.fogc[k] = k_sky[w].top * k_sky[w].skyk * ir[8 + k];
-                }
-                for (k = 0; k < 3; k++)          /* the ground's light back up: albedo 0.2 of what falls on it */
-                    u.gndc[k] = 0.2f * (u.sunc[k] * fmaxf(sun[2], 0.0f) + u.skyc[k]);
-                /* the ambient light on level ground, for the night's exposure (next frame's) */
-                s_amb_Y = (0.2126f * u.sunc[0] + 0.7152f * u.sunc[1] + 0.0722f * u.sunc[2]) * fmaxf(sun[2], 0.0f)
-                        + 0.2126f * u.skyc[0] + 0.7152f * u.skyc[1] + 0.0722f * u.skyc[2];
-                u.fogc[3] = 1.0f;
-            }
+        eu.off[0] = m[12]; eu.off[1] = m[13]; eu.off[2] = m[15];
+        memcpy(eu.eye, eye, 12);
+        eu.tgt[0] = (float)s_lw; eu.tgt[1] = (float)s_lh;
+        eu.tgt[2] = u.misc[0];             /* the exposure: the sky is written pre-exposed */
+        eu.tgt[3] = (float)light_glide_flip();
+        /* the sun's disc, LIGHT_SKY_SUN_RADIUS: its illuminance over its solid angle */
+        memcpy(eu.sun, sun, 12);
+        eu.sun[3] = cosf(LIGHT_SKY_SUN_RADIUS * 0.017453293f);
+        om = 2.0f * 3.14159265f * (1.0f - eu.sun[3]);
+        for (k = 0; k < 3; k++) {
+            eu.sunl[k] = s_sky.has_sun ? s_sky.sun_lux[k] / om : 0.0f;
+            eu.wb[k] = u.wb[k];
         }
-        {
-            id<MTLTexture> tg[4] = { s_atmT, s_atmM, s_atmS, s_atmI[s_vbi] };
-            id<MTLRenderPipelineState> pp[4] = { s_patmT, s_patmM, s_patmS, s_patmI };
-            for (k = s_atm_mie == a.atm[0] ? 2 : 0; k < 4; k++) {
-                rp = [MTLRenderPassDescriptor renderPassDescriptor];
-                rp.colorAttachments[0].texture = tg[k];
-                rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
-                rp.colorAttachments[0].storeAction = MTLStoreActionStore;
-                e = lit_encoder(rp, 0);   /* sky tables */
-                [e setRenderPipelineState:pp[k]];
-                [e setFragmentBytes:&a length:sizeof a atIndex:0];
-                [e setFragmentTexture:k == 3 ? s_atmS : s_atmT atIndex:0];
-                [e setFragmentTexture:k == 3 ? s_atmT : s_atmM atIndex:1];
-                [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
-                [e endEncoding];
-            }
-            s_atm_mie = a.atm[0];
-        }
-        {   /* the sky's camera rays: the main 3D view's screen map, the game's viewport, the
-               inverse of its view x projection's x, y and w columns */
-            const float *m = cam.vp;
-            double aa[3][3], det, inv[3][3];
-            int r2, c2, xf = 0;
-            for (i = 0; i < s_nops; i++)
-                if (s_ops[i].kind == K_OPQ) {
-                    xf = (int)s_ops[i].u.xf;
-                    break;
-                }
-            memcpy(ku.xft, (const float *)[s_xt[s_vbi] contents] + 4 * xf, 16);
-            ku.vpt[0] = cam.sx; ku.vpt[1] = cam.ox; ku.vpt[2] = cam.sy; ku.vpt[3] = cam.oy;
-            for (r2 = 0; r2 < 3; r2++)
-                for (c2 = 0; c2 < 3; c2++)
-                    aa[r2][c2] = m[c2 * 4 + (r2 == 2 ? 3 : r2)];
-            det = aa[0][0] * (aa[1][1] * aa[2][2] - aa[1][2] * aa[2][1]) - aa[0][1] * (aa[1][0] * aa[2][2] - aa[1][2] * aa[2][0])
-                + aa[0][2] * (aa[1][0] * aa[2][1] - aa[1][1] * aa[2][0]);
-            if (fabs(det) < 1e-30)
-                det = 1e-30;
-            inv[0][0] = (aa[1][1] * aa[2][2] - aa[1][2] * aa[2][1]) / det;
-            inv[0][1] = (aa[0][2] * aa[2][1] - aa[0][1] * aa[2][2]) / det;
-            inv[0][2] = (aa[0][1] * aa[1][2] - aa[0][2] * aa[1][1]) / det;
-            inv[1][0] = (aa[1][2] * aa[2][0] - aa[1][0] * aa[2][2]) / det;
-            inv[1][1] = (aa[0][0] * aa[2][2] - aa[0][2] * aa[2][0]) / det;
-            inv[1][2] = (aa[0][2] * aa[1][0] - aa[0][0] * aa[1][2]) / det;
-            inv[2][0] = (aa[1][0] * aa[2][1] - aa[1][1] * aa[2][0]) / det;
-            inv[2][1] = (aa[0][1] * aa[2][0] - aa[0][0] * aa[2][1]) / det;
-            inv[2][2] = (aa[0][0] * aa[1][1] - aa[0][1] * aa[1][0]) / det;
-            for (c2 = 0; c2 < 3; c2++) {
-                ku.m0[c2] = (float)inv[0][c2];
-                ku.m1[c2] = (float)inv[1][c2];
-                ku.m2[c2] = (float)inv[2][c2];
-            }
-            ku.off[0] = m[12]; ku.off[1] = m[13]; ku.off[2] = m[15];
-            memcpy(ku.eye, eye, 12);
-            ku.eye[3] = a.cam[0];
-            ku.tgt[0] = (float)s_lw; ku.tgt[1] = (float)s_lh;
-            ku.tgt[3] = (float)light_glide_flip();
-            memcpy(ku.sun, sun, 12);
-            ku.ktop[0] = k_sky[w].top;
-            ku.ktop[1] = k_sky[w].through;
-            ku.ktop[2] = k_sky[w].skyk;
-            ku.ktop[3] = u.misc[3];            /* the debug view */
-            for (k = 0; k < 3; k++)   /* the clouds' ambient: the isotropic mean of the sky's and the ground's radiance, per unit of top light */
-                ku.camb[k] = 0.49f * (u.skyc[k] + u.gndc[k]) / (3.14159265f * fmaxf(k_sky[w].top, 1e-6f));
-            ku.cld[0] = k_sky[w].cover;
-            ku.cld[1] = getenv("BR_LIGHT_CLOUDDENS") ? (float)atof(getenv("BR_LIGHT_CLOUDDENS")) : k_sky[w].dens;   /* BR_LIGHT_CLOUDDENS: diagnostic */
-            ku.cld[2] = (float)fmod((double)s_frame / 60.0, 3600.0);   /* the drift's clock, seconds */
-            ku.cld[3] = getenv("BR_LIGHT_NOCLOUDS") ? 0.0f : 1.0f;    /* the cloud layer's tier flag */
-            ku.moon[0] = w == 4 ? light_moon_normal(k_weather[w].elev) : 0.0f;   /* at night the light's direction is the moon's: its disc (lux at the ground, facing it) */
-            ku.moon[1] = w == 4 ? light_moon_I0(1.0f) : 0.0f;                  /* the disc's centre luminance a lux */
-            ku.moon[2] = w == 4 ? 1.0f : 0.0f;                                  /* the stars */
-            ku.moon[3] = 0.0f;
-            if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
-                fprintf(stderr, "sky: xft %g %g %g %g vpt %g %g %g %g m0 %g %g %g m1 %g %g %g m2 %g %g %g off %g %g %g eye %g %g %g tgt %g %g sun %g %g %g irr %g %g %g\n",
-                        ku.xft[0], ku.xft[1], ku.xft[2], ku.xft[3], ku.vpt[0], ku.vpt[1], ku.vpt[2], ku.vpt[3],
-                        ku.m0[0], ku.m0[1], ku.m0[2], ku.m1[0], ku.m1[1], ku.m1[2], ku.m2[0], ku.m2[1], ku.m2[2],
-                        ku.off[0], ku.off[1], ku.off[2], ku.eye[0], ku.eye[1], ku.eye[2], ku.tgt[0], ku.tgt[1],
-                        ku.sun[0], ku.sun[1], ku.sun[2], u.skyc[0], u.skyc[1], u.skyc[2]);
-            ku.tgt[2] = u.misc[0];             /* the exposure: the sky is written pre-exposed */
-            if (!getenv("BR_LIGHT_NOGLARE")) {   /* the glare: the disc's illuminance as the sky draws it (the sun's after the air and the weather; the moon's lux) */
-                float il[3];
-                for (k = 0; k < 3; k++)
-                    il[k] = w == 4 ? ku.moon[0] * (k == 0 ? 1.0f : k == 1 ? 0.96f : 0.90f) : u.sunc[k];
-                gl = brr_glare_setup((const float (*)[4])(const void *)&ku, sun, il, ku.ktop[2], ku.tgt[2]);
-                gl.g[2] = w == 4 ? 1.0f : 0.0f;   /* the moon: a glow only (brr_metal_glare.h) */
-            }
-        }
+        eu.misc[0] = u.misc[3];            /* the debug view */
+        eu.misc[1] = 1.0f - expf(-VOL_KOSCHMIEDER * LIGHT_BACKDROP_DIST / k_vol[w].vis);   /* the backdrop's aerial perspective (Koschmieder) */
     }
     if (getenv("BR_LIGHT_BACKLOG") && s_frame == (unsigned long)atoi(getenv("BR_LIGHT_BACKLOG")))
         for (i = 0; i < s_nops; i++)
@@ -1667,16 +1964,54 @@ static void lit_present(void)
                         s_ops[i].sc[2], s_ops[i].sc[3]);
             }
 
-    if (u.fogc[3] > 0.5f && w != 4) {  /* daylight white balance: to the sun's own light, as a camera's
-                                          daylight setting: the sky stays blue, shade a little blue */
-        float wb[3], y;
-        for (k = 0; k < 3; k++)
-            wb[k] = u.sunc[k] > 0.0f ? u.sunc[k] : u.skyc[k];
-        y = 0.2126f * wb[0] + 0.7152f * wb[1] + 0.0722f * wb[2];
-        for (k = 0; k < 3; k++)
-            u.wb[k] = wb[k] > 0.0f ? y / wb[k] : 1.0f;
+    {
+        CPU_T0(2);
+        lit_normals();
+        CPU_T1(2);
     }
-
+    if (getenv("BR_LIGHT_BLENDLOG") && s_frame % 120 == 0) {   /* diagnostic: the blended draws on the cars */
+        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_BLEND) {
+                const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff);
+                if (s_ops[i].u.glow > 0.0f || s_ops[i].u.addk > 0.0f || s_ops[i].u.lamp > 0.0f)
+                    fprintf(stderr, "emitter: frame %lu hash %08X tex %u mat %s glow %.0f add %.0f lamp %.0f n %d at %.1f %.1f %.1f\n", s_frame, s_ops[i].tex < TEX_MAX ? s_thash[s_ops[i].tex] : 0u, s_ops[i].tex,
+                            s_ops[i].tex < TEX_MAX && s_tmat[s_ops[i].tex] != 255 ? k_light_mat_name[s_tmat[s_ops[i].tex]] : "-",
+                            s_ops[i].u.glow, s_ops[i].u.addk, s_ops[i].u.lamp, s_ops[i].n, v->wx, v->wy, v->wz);
+                if (v->lit > 2.5f)
+                    fprintf(stderr, "blend on car: frame %lu op %d tex %u mat %s n %d blend %d/%d at %.2f %.2f %.2f rgba %.0f %.0f %.0f %.0f\n",
+                            s_frame, i, s_ops[i].tex, s_ops[i].tex < TEX_MAX && s_tmat[s_ops[i].tex] != 255 ? k_light_mat_name[s_tmat[s_ops[i].tex]] : "-",
+                            s_ops[i].n, s_ops[i].src, s_ops[i].dst, v->wx, v->wy, v->wz, v->r, v->g, v->b, v->a);
+            }
+    }
+    if (getenv("BR_LIGHT_PICK") && s_frame % 120 == 0) {   /* diagnostic: the 3D draws under a point, fractions of the frame */
+        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
+        float fx = 0.5f, fy = 0.5f, mx = 1.0f, my = 1.0f, px, py;
+        int t;
+        sscanf(getenv("BR_LIGHT_PICK"), "%f,%f", &fx, &fy);
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND)
+                for (t = 0; t < s_ops[i].n; t++) {
+                    const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff) + t;
+                    mx = fmaxf(mx, v->x); my = fmaxf(my, v->y);
+                }
+        px = fx * mx; py = fy * my;
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ || s_ops[i].kind == K_BLEND)
+                for (t = 0; t + 2 < s_ops[i].n; t += 3) {
+                    const brr_vertex *v = (const brr_vertex *)(vb + s_ops[i].voff) + t;
+                    float d0 = (v[1].x - v[0].x) * (py - v[0].y) - (v[1].y - v[0].y) * (px - v[0].x);
+                    float d1 = (v[2].x - v[1].x) * (py - v[1].y) - (v[2].y - v[1].y) * (px - v[1].x);
+                    float d2 = (v[0].x - v[2].x) * (py - v[2].y) - (v[0].y - v[2].y) * (px - v[2].x);
+                    if ((d0 >= 0 && d1 >= 0 && d2 >= 0) || (d0 <= 0 && d1 <= 0 && d2 <= 0)) {
+                        fprintf(stderr, "pick: frame %lu op %d %s hash %08X mat %s blend %d/%d lit %.0f rgba %.0f %.0f %.0f %.0f at %.1f %.1f %.1f\n",
+                                s_frame, i, s_ops[i].kind == K_OPQ ? "opaque" : "blend", s_ops[i].tex < TEX_MAX ? s_thash[s_ops[i].tex] : 0u,
+                                s_ops[i].tex < TEX_MAX && s_tmat[s_ops[i].tex] != 255 ? k_light_mat_name[s_tmat[s_ops[i].tex]] : "-",
+                                s_ops[i].src, s_ops[i].dst, v->lit, v->r, v->g, v->b, v->a, v->wx, v->wy, v->wz);
+                        break;
+                    }
+                }
+    }
     /* the G-buffer: the camera's opaque 3D */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     {
@@ -1696,6 +2031,7 @@ static void lit_present(void)
     s_dh = s_lh;
     e = lit_encoder(rp, 1);   /* g-buffer */
     [e setRenderPipelineState:s_lpg];
+    [e setFragmentBytes:&u length:sizeof u atIndex:2];   /* the eye, for the normals' side */
     for (i = 0; i < s_nops; i++)
         if (s_ops[i].kind == K_OPQ)
             op_draw(e, &s_ops[i], 1);
@@ -1816,7 +2152,11 @@ static void lit_present(void)
     }
 
     lit_split(0);
-    lit_lamp_shadows();
+    {
+        CPU_T0(3);
+        lit_lamp_shadows();
+        CPU_T1(3);
+    }
 
     /* what the game drew before its 3D (its clears and background fills) is
        the background: behind the scene, not over it */
@@ -1841,36 +2181,41 @@ static void lit_present(void)
         }
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     lit_split(1);
-    lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
+    {
+        CPU_T0(4);
+        lit_gi(&u, eye);                    /* the irradiance probes' update (brr_metal_gi.h) */
+        CPU_T1(4);
+    }
     lit_split(2);
-    {   /* the clouds' transmittance toward the sun or moon, for the post pass's glare */
-        float one = 1.0f;
-        memcpy([s_cltb[s_vbi] contents], &one, 4);
-        if (sky && s_pclt && s_cn) {
-            id<MTLComputeCommandEncoder> ce = [s_cmd computeCommandEncoder];
-            [ce setComputePipelineState:s_pclt];
-            [ce setBytes:&ku length:sizeof ku atIndex:0];
-            [ce setBuffer:s_cltb[s_vbi] offset:0 atIndex:1];
-            [ce setTexture:s_cn atIndex:0];
-            [ce setTexture:s_cdt atIndex:1];
-            [ce dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-            [ce endEncoding];
-        }
+    if (sky && s_pao && s_paof && !getenv("BR_LIGHT_NOAO")) {   /* the occlusion (brr_metal_ao.h); BR_LIGHT_NOAO: diagnostic */
+        id<MTLComputeCommandEncoder> ce = [s_cmd computeCommandEncoder];
+        float fr[4] = { (float)(s_frame % 64) * 5.588238f, (float)(s_frame % 64) * 3.141593f, 0, 0 };   /* the noise's turn a frame */
+        MTLSize g = MTLSizeMake(s_ao[0].width, s_ao[0].height, 1), t = MTLSizeMake(8, 8, 1);
+        [ce setComputePipelineState:s_pao];
+        [ce setBytes:&eu length:sizeof eu atIndex:0];
+        [ce setBytes:fr length:sizeof fr atIndex:1];
+        [ce setTexture:s_gpos atIndex:0];
+        [ce setTexture:s_gnrm atIndex:1];
+        [ce setTexture:s_ao[0] atIndex:2];
+        [ce dispatchThreads:g threadsPerThreadgroup:t];
+        [ce setComputePipelineState:s_paof];
+        [ce setTexture:s_ao[0] atIndex:2];
+        [ce setTexture:s_ao[1] atIndex:3];
+        [ce dispatchThreads:g threadsPerThreadgroup:t];
+        [ce endEncoding];
+        u.env[3] = 1.0f;
     }
     e = lit_encoder(rp, 4);   /* lighting */
-    if (sky) {                          /* the sky, then the backdrop's scenery in front of it */
-        [e setRenderPipelineState:s_psky];
-        [e setFragmentBytes:&ku length:sizeof ku atIndex:0];
-        [e setFragmentTexture:s_atmS atIndex:0];
-        [e setFragmentTexture:s_atmT atIndex:1];
-        [e setFragmentTexture:s_cn atIndex:2];
-        [e setFragmentTexture:s_cdt atIndex:3];
+    if (sky) {                          /* the skymap, then the backdrop's scenery in front of it */
+        [e setRenderPipelineState:s_penv];
+        [e setFragmentBytes:&eu length:sizeof eu atIndex:0];
+        [e setFragmentTexture:s_env.cube atIndex:0];
         [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
         [e setRenderPipelineState:s_pbk2];
         for (i = 0; i < s_nops; i++)
             if (s_ops[i].kind == K_BACK) {
                 [e setFragmentBytes:&u length:sizeof u atIndex:1];
-                [e setFragmentBytes:&ku length:sizeof ku atIndex:2];
+                [e setFragmentBytes:&eu length:sizeof eu atIndex:2];
                 op_draw(e, &s_ops[i], 0);
             }
     } else {
@@ -1891,12 +2236,14 @@ static void lit_present(void)
     [e setFragmentTexture:s_shadow atIndex:3];
     [e setFragmentTexture:s_latl atIndex:4];
     [e setFragmentTexture:s_brdfE atIndex:5];
+    [e setFragmentTexture:s_env.ready ? s_env.spec : s_blackcube atIndex:9];
+    [e setFragmentTexture:u.env[3] > 0.5f ? s_ao[1] : s_black atIndex:10];
     lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
     lit_split(3);
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
-        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, sky ? s_atmS : nil, s_brdfE);
+        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE);
 
     lit_split(4);
     if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
@@ -1931,8 +2278,20 @@ static void lit_present(void)
     rp.depthAttachment.loadAction = MTLLoadActionLoad;
     rp.depthAttachment.storeAction = MTLStoreActionStore;
     e = lit_encoder(rp, 5);   /* transparent */
-    for (i = 0; i < s_nops; i++)
+    for (i = 0; i < s_nops && !getenv("BR_LIGHT_NOBLEND"); i++)   /* BR_LIGHT_NOBLEND: diagnostic, the blended 3D left out */
         if (s_ops[i].kind == K_BLEND) {
+            {   /* BR_LIGHT_NOBLENDTEX=a,b,...: diagnostic, those textures' blended draws left out (by index or hash) */
+                const char *nt = getenv("BR_LIGHT_NOBLENDTEX");
+                char key[16], keyh[16];
+                snprintf(key, sizeof key, ",%u,", s_ops[i].tex);
+                snprintf(keyh, sizeof keyh, ",%08X,", s_ops[i].tex < TEX_MAX ? s_thash[s_ops[i].tex] : 0u);
+                if (nt) {
+                    char buf[256];
+                    snprintf(buf, sizeof buf, ",%s,", nt);
+                    if (strstr(buf, key) || strstr(buf, keyh))
+                        continue;
+                }
+            }
             [e setRenderPipelineState:lit_forward(s_ops[i].src, s_ops[i].dst)];
             [e setFragmentBytes:&u length:sizeof u atIndex:1];
             [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:2];
@@ -1941,11 +2300,39 @@ static void lit_present(void)
             [e setFragmentTexture:s_brdfE atIndex:5];
             lit_gi_bind(e, 3);
             brr_vol_bind(e, 4, 8);      /* the volumetric fog, when u.vol is on */
+            [e setFragmentTexture:s_env.ready ? s_env.spec : s_blackcube atIndex:9];
             op_draw(e, &s_ops[i], 1);
         }
+    if (s_plens && s_nlamp > 0 && have_cam) {   /* the cars' lamps' lenses, as bright as the light they throw */
+        LNU ln;
+        int xf = 0;
+        id<MTLBuffer> xb = s_xtj ? s_xtj : s_xt[s_vbi];
+        for (i = 0; i < s_nops; i++)
+            if (s_ops[i].kind == K_OPQ) {
+                xf = (int)s_ops[i].u.xf;
+                break;
+            }
+        brr_screen_matrix(cam.vp, cam.sx, cam.ox, cam.sy, cam.oy, (float)light_glide_flip(), (const float *)[xb contents] + 4 * xf,
+                          (float)s_lw, (float)s_lh, ln.S);
+        ln.tgt[0] = (float)s_lw; ln.tgt[1] = (float)s_lh; ln.tgt[2] = u.misc[0]; ln.tgt[3] = 0.0f;
+        memcpy(ln.eye, eye, 12);
+        ln.eye[3] = 0.0f;
+        memcpy(ln.wb, u.wb, sizeof ln.wb);
+        [e setRenderPipelineState:s_plens];
+        [e setDepthStencilState:ds_for(2, 3, 0)];   /* the game's w-buffer, less or equal, no write */
+        [e setScissorRect:(MTLScissorRect){ 0, 0, (NSUInteger)s_lw, (NSUInteger)s_lh }];
+        [e setVertexBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+        [e setVertexBytes:&ln length:sizeof ln atIndex:1];
+        [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+        [e setFragmentBytes:&ln length:sizeof ln atIndex:1];
+        [e setFragmentTexture:s_galb atIndex:0];
+        [e setFragmentTexture:s_gpos atIndex:1];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6 instanceCount:(NSUInteger)s_nlamp];
+    }
     [e endEncoding];
 
     lit_split(6);
+    s_nbon = 0;
     s_dw = s_dh = 0;
     if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post; scaled, MetalFX's upscale to the target's size */
         hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_ldep, taa_s, cam.vp, eye, s_rw, s_rh, s_lup);
@@ -1977,6 +2364,16 @@ static void lit_present(void)
         [e endEncoding];
     }
 
+    if (s_pmeter && w == 4) {   /* the exposure's meter, read three frames on (lit_present) */
+        id<MTLComputeCommandEncoder> ce = [s_cmd computeCommandEncoder];
+        float mp[4] = { u.misc[0], 0, 0, 0 };
+        [ce setComputePipelineState:s_pmeter];
+        [ce setTexture:hdr atIndex:0];
+        [ce setBytes:mp length:sizeof mp atIndex:0];
+        [ce setBuffer:s_meter[s_vbi] offset:0 atIndex:1];
+        [ce dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(256, 1, 1)];
+        [ce endEncoding];
+    }
     /* post, into the game's colour target */
     rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = s_col;
@@ -1984,22 +2381,9 @@ static void lit_present(void)
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     e = lit_encoder(rp, 8);   /* post */
     [e setRenderPipelineState:s_lpp];
-    {
-        LU pu = u;
-        pu.misc[0] = u.misc[0];
-        pu.bg[1] = u.bg[1];
-        /* the local exposure's blur, bloom level m, holds levels m..s_nbl-1 summed (each up pass adds
-           the level under it): its mean is that over s_nbl - m */
-        pu.lexp[2] = s_nbl ? 1.0f / (float)(s_nbl - (s_nbl > 3 ? 2 : s_nbl - 1)) : 1.0f;
-        [e setFragmentBytes:&pu length:sizeof pu atIndex:0];
-    }
+    [e setFragmentBytes:&u length:sizeof u atIndex:0];
     [e setFragmentTexture:hdr atIndex:0];
     [e setFragmentTexture:s_nbl ? s_bl[0] : hdr atIndex:1];
-    [e setFragmentTexture:s_galb atIndex:2];
-    [e setFragmentTexture:s_nbl ? s_bl[s_nbl > 3 ? 2 : s_nbl - 1] : hdr atIndex:3];   /* the local exposure's blur: a mid level of the bloom chain */
-    [e setFragmentBuffer:s_hist[s_vbi] offset:0 atIndex:1];
-    [e setFragmentBytes:&gl length:sizeof gl atIndex:2];   /* the sun's glare (brr_metal_glare.h) */
-    [e setFragmentBuffer:s_cltb[s_vbi] offset:0 atIndex:3];   /* the clouds' transmittance toward it */
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
 
@@ -2045,6 +2429,7 @@ static void lit_reset(void)
 {
     int i;
     s_galb = s_gpos = s_gnrm = s_hdr = s_ldep = nil;
+    s_ao[0] = s_ao[1] = nil;
     brr_taa_reset();
     for (i = 0; i < 6; i++)
         s_bl[i] = nil;
@@ -2065,7 +2450,7 @@ int brr_open(int width, int height)
             return 0;
         s_q = [s_dev newCommandQueue];
         s_lib = [s_dev newLibraryWithSource:[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_SKY_SRC] stringByAppendingString:@BRR_VOL_SRC]
+                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
@@ -2328,6 +2713,11 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
         u.tc_rgb_invert = st->tc_rgb_invert; u.tc_alpha_invert = st->tc_alpha_invert;
         u.has_tex = st->texture != 0;
         u.albk = u.has_tex ? lit_albk(st->texture) : 1.0f;
+        u.lamp = u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_LAMP ? 1.0f : 0.0f;
+        if (u.has_tex)
+            lit_tint(st->texture, u.tint);
+        else
+            u.tint[0] = u.tint[1] = u.tint[2] = 0.0f;
         u.atest_fn = st->atest_fn;
         u.atest_ref = st->atest_ref;
         u.fog_mode = st->fog_mode & 0xFF;
@@ -2351,6 +2741,10 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             if (beam)                   /* a lighthouse beam's polygons: never drawn in the lit frame; the beam is
                                            the light the air scatters from the lighthouse's spot (brr_metal_vol.h vol_beam) */
                 return;
+            if (kind == K_BLEND && u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_SHADOW)
+                return;                 /* the game's painted light and shade: the blob shadow under a car, the white
+                                           pool it lays ahead of the headlamps at night (texmat E2B6CDC5); the lit
+                                           frame's own shadows and lamps are the real thing */
             Op *op = op_new(kind);
             if (!op)
                 return;
@@ -2611,7 +3005,24 @@ void brr_present(void)
         int want_shot = (long)(s_frame + 1) == s_shot_frame;
         frame_begin();
         if (s_litf) {
-            lit_present();                     /* the recorded frame through the lighting's passes */
+            {
+                double t0 = CACurrentMediaTime();
+                lit_present();                     /* the recorded frame through the lighting's passes */
+                if (s_cpu_on > 0) {
+                    int k;
+                    s_cpu_ms[6] += (CACurrentMediaTime() - t0) * 1000.0;
+                    if (++s_cpu_n % 120 == 0) {
+                        fprintf(stderr, "light cpu (ms a frame, %lu frames):", s_cpu_n);
+                        for (k = 0; k < 7; k++) {
+                            if (k == 5)
+                                continue;
+                            fprintf(stderr, " %s %.2f", k_cpu_name[k], s_cpu_ms[k] / 120.0);
+                        }
+                        fprintf(stderr, "\n");
+                        memset(s_cpu_ms, 0, sizeof s_cpu_ms);
+                    }
+                }
+            }
         } else {
             enc();                             /* a frame with nothing drawn still presents */
             [s_enc endEncoding];

@@ -6,6 +6,7 @@
 #
 #   Contents/MacOS/remastered            the two games and the host
 #   Contents/Resources/disc              Boss Rally's data track, less the installer and the video
+#   Contents/Resources/skies             the lighting's skymaps: skies.txt and its 8K HDRIs (ports/common/skies)
 #   Contents/Resources/AppIcon.icns      from icon.png
 #
 # Saves go to ~/Library/Application Support/Top Gear Rally Remastered (Boss
@@ -56,6 +57,21 @@ rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*
     --exclude 'BRD3D.dll' --exclude 'SETUP.INI' --exclude 'setup.*' --exclude 'Setup.BMP' \
     --exclude 'Autorun.inf' --exclude '*.url' --exclude 'layout.bin' \
     $DISC/ "$APP/Contents/Resources/disc/"
+
+# ---- the skymaps (the Remastered lighting's skies, ports/common/skies) ---------------
+if [ -f ports/common/skies/skies.txt ]; then   # ports/common/skies/fetch.sh brings them
+    mkdir -p "$APP/Contents/Resources/skies/ph8k"
+    cp ports/common/skies/skies.txt "$APP/Contents/Resources/skies/"
+    grep -v '^#' ports/common/skies/skies.txt | awk 'NF == 3 { print $3 }' | sort -u | while read id; do
+        if [ -f "ports/common/skies/ph8k/${id}_8k.hdr" ]; then
+            cp "ports/common/skies/ph8k/${id}_8k.hdr" "$APP/Contents/Resources/skies/ph8k/"
+        else
+            echo "package_app: sky $id missing (ports/common/skies/fetch.sh)" >&2
+        fi
+    done
+else
+    echo "package_app: no ports/common/skies/skies.txt: the Remastered lighting falls back to a grey day" >&2
+fi
 
 # ---- the icon ------------------------------------------------------------------------
 IS=$OUT/AppIcon.iconset

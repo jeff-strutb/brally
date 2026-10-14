@@ -222,7 +222,10 @@ static void metalfx_upscale(id<MTLDevice> dev)
     float S[16], vp[16], e[3] = { 0, 0, 5 }, t[3] = { 50, 0, 0 }, xft[4] = { 2.0f / 640.0f, -1.0f, -2.0f / 480.0f, 1.0f };
     int k, up = 0;
     float d = brr_taa_scale(dev, tw, th, 0.0f, &up);
-    check(fabsf(d - 0.67f) < 1e-6f && up, "default scale on a 3024x1964 target (over 2.5 MP)", "%.2f, through MetalFX %.0f", d, up);
+    {   /* the lit 3D's budget, 1920 x 1080 of pixels (brr_metal_taa.m BRR_LIT_BUDGET) */
+        float want = sqrtf(1920.0f * 1080.0f / (3024.0f * 1964.0f));
+        check(fabsf(d - want) < 1e-4f && up, "default scale on a 3024x1964 target: the 1920 x 1080 budget", "%.4f (want the budget's), through MetalFX %.0f", d, up);
+    }
     d = brr_taa_scale(dev, 1920, 1080, 0.0f, &up);
     check(d == 1.0f && !up, "scale on a 1920x1080 target (2.1 MP)", "%.2f, through MetalFX %.0f", d, up);
     camvp(e, t, 1.0f, (float)tw / th, vp);

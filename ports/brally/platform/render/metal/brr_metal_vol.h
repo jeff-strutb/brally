@@ -31,7 +31,11 @@
 #define VOL_HISTORY 0.9f        /* the share of last frame's cell kept */
 
 /* the medium per weather (the order of brr_metal.m's k_sky and k_weather):
- * extinction at the ground, 1/m (Koschmieder: visibility = 3.912 / sigma);
+ * the meteorological visibility, m, which the backdrop's aerial perspective
+ * (brr_metal.m) takes too, so the near air and the far hills agree; the
+ * extinction at the ground follows from it (Koschmieder: 3.912 / V).  Sunny
+ * a light haze; fog thick (the WMO's 200 to 500 m); rain moderate (several
+ * km); snow light to moderate (over 1 km); the clear night's air.  Then the
  * single-scattering albedo; the height over which it thins by e, metres;
  * the noise's amplitude; the Henyey-Greenstein asymmetry (the day's hazes
  * forward-scattering aerosol; the clear night's air near molecular, so
@@ -40,12 +44,13 @@
  * 0.0002/m and 0 adds 0.4 and leaves the far horizon 1.8 stops over the
  * moonlit ground, the lighthouse beam 2 stops over it at 300 m: maths.sh
  * section 10) */
-static const struct { float sigma, albedo, height, noise, g; } k_vol[5] = {
-    /* sunny: a light haze, 20 km  */ { 0.0002f, 0.90f, 300.0f, 0.15f, 0.7f },
-    /* fog:   150 m                */ { 0.0260f, 0.98f,  40.0f, 0.25f, 0.7f },
-    /* rain:  1 km                 */ { 0.0040f, 0.95f, 120.0f, 0.20f, 0.7f },
-    /* snow:  700 m                */ { 0.0055f, 0.97f, 150.0f, 0.20f, 0.7f },
-    /* night: clear air, 20 km     */ { 0.0002f, 0.95f,  60.0f, 0.20f, 0.0f },
+#define VOL_KOSCHMIEDER 3.912f
+static const struct { float vis, albedo, height, noise, g; } k_vol[5] = {
+    /* sunny */ { 20000.0f, 0.90f, 300.0f, 0.15f, 0.7f },
+    /* fog   */ {   250.0f, 0.98f,  40.0f, 0.25f, 0.7f },
+    /* rain  */ {  4000.0f, 0.95f, 120.0f, 0.20f, 0.7f },
+    /* snow  */ {  1500.0f, 0.97f, 150.0f, 0.20f, 0.7f },
+    /* night */ { 20000.0f, 0.95f,  60.0f, 0.20f, 0.0f },
 };
 #define VOL_G 0.7f              /* Henyey-Greenstein asymmetry of the day's hazes (k_vol's g) */
 #define VOL_BEAMS 2             /* the lighthouse beams the full-screen pass scatters (Coastline's two) */
@@ -285,10 +290,12 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
 "  if (any(st <= 0.0) || any(st >= 1.0) || c.z >= 1.0) return 1.0;\n" \
 "  return sm.sample_compare(cs, st, uint(k), c.z - u.cbias[k]); }\n" \
 /* the light a point scatters toward the eye per unit of extinction, before the albedo: \
-   the sun (vis its visibility), the sky's light (skyc: the illuminance on a face toward it, \
-   as radiance over the sky's half: skyc / pi, scattered isotropically), the lamps of the point's cluster */ \
+   the sun (vis its visibility), the sky's and the ground's light scattered isotropically: \
+   the mean radiance over the sphere, the harmonics' constant term (sh[0] Y00 / pi, sh holding \
+   irradiance, A0 = pi), the lamps of the point's cluster; white balanced as the surfaces' light is \
+   (brr_metal_lit.h radiance), else the air under a blue sky stays blue where the ground it hides is grey */ \
 "static float3 vol_inlight(constant LU &u, constant VU &v, const device LSet &ls, float3 p, float3 d, float vis) {\n" \
-"  float3 L = u.sunc.rgb * vis * vol_hg(v.nse.w, dot(u.sun.xyz, d)) + u.skyc.rgb * (1.0 / 3.14159265);\n" \
+"  float3 L = u.sunc.rgb * vis * vol_hg(v.nse.w, dot(u.sun.xyz, d)) + u.sh[0].rgb * (0.282095 / 3.14159265);\n" \
 "  uint e = ls.cl[lc_index(ls.h, p)], o = e >> 8, cnt = min(e & 255u, 16u);\n" \
 "  for (uint k = 0; k < cnt; k++) {\n" \
 "    LS l = ls.l[ls.idx[o + k]];\n" \
@@ -296,7 +303,7 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
 "    float E = lamp(l, -ld) * lwin(l, -ld, dl) / d2;\n" \
 "    if (E > 0.0) L += float3(l.rgb) * E * vol_hg(v.nse.w, dot(ld, d));\n" \
 "  }\n" \
-"  return L; }\n" \
+"  return L * u.wb.rgb; }\n" \
 /* a cell: (scattered light per metre, pre-exposed; extinction), blended with last frame's */ \
 "kernel void vol_inject(uint3 id [[thread_position_in_grid]], constant LU &u [[buffer(0)]], constant VU &v [[buffer(1)]],\n" \
 "                       const device LSet &ls [[buffer(2)]], depth2d_array<float> sm [[texture(0)]],\n" \

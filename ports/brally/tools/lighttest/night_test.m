@@ -3,8 +3,6 @@
  * weather table; the night's maths is light_night.h, the track's lights
  * light_world.c.
  *   1 the moon's illuminance against the published full moon
- *   2 the Purkinje weight: 0 photopic, 1 scotopic, monotonic
- *   3 the meter: a moonlit scene (albedo 0.2, 0.25 lux) to the night's grey
  *   4 the glow: a car's texture never glows
  *   5 the track's lights carry the windows' flux */
 #include "brr_metal.m"
@@ -28,45 +26,6 @@ int main(void)
         CHECK(e45 > 0.1f && e45 < 0.3f, "moon at 45 deg %.4f lux on the ground (published 0.1..0.3 for a moon high in the sky)", e45);
         /* a low full moon (about 10 degrees, air mass about 5): published 0.02 to 0.05 lux on level ground */
         CHECK(el > 0.02f && el < 0.05f, "moon at %.0f deg (Coastline, low) %.4f lux on the ground (published 0.02..0.05)", LIGHT_MOON_ELEV, el);
-        CHECK(fabsf(k_weather[4].sun - light_moon_normal(LIGHT_MOON_ELEV)) / k_weather[4].sun < 0.01f,
-              "the weather table's moon %.4f lux = light_moon_normal(%.0f) %.4f", k_weather[4].sun, LIGHT_MOON_ELEV, light_moon_normal(LIGHT_MOON_ELEV));
-        CHECK(k_weather[4].sky > 0.0005f && k_weather[4].sky < 0.002f && k_weather[4].skyc[2] > k_weather[4].skyc[0],
-              "night sky %.4f lux, blue (starlight and airglow ~0.001)", k_weather[4].sky);
-    }
-    {   /* 2 the Purkinje weight */
-        float prev = 2.0f;
-        int mono = 1;
-        for (i = 0; i <= 200; i++) {
-            float L = powf(10.0f, -5.0f + i * 0.04f), wv = light_purkinje_w(L);
-            if (wv > prev + 1e-7f)
-                mono = 0;
-            prev = wv;
-        }
-        CHECK(light_purkinje_w(3.0f) == 0.0f && light_purkinje_w(100.0f) == 0.0f && light_purkinje_w(30000.0f) == 0.0f,
-              "Purkinje weight photopic (3, 100, 30000 cd/m2): %g %g %g", light_purkinje_w(3.0f), light_purkinje_w(100.0f), light_purkinje_w(30000.0f));
-        CHECK(light_purkinje_w(0.001f) == 1.0f && light_purkinje_w(1e-5f) == 1.0f,
-              "Purkinje weight scotopic (0.001, 1e-5 cd/m2): %g %g", light_purkinje_w(0.001f), light_purkinje_w(1e-5f));
-        CHECK(mono, "Purkinje weight monotonic over 1e-5..1e3 cd/m2; at 0.01 %.3f, 0.1 %.3f, 1 %.3f",
-              light_purkinje_w(0.01f), light_purkinje_w(0.1f), light_purkinje_w(1.0f));
-    }
-    {   /* 3 the meter: albedo 0.2 under 0.25 lux, L = 0.2 x 0.25 / pi; most of the frame, and a headlamp pool
-           (1,000 times brighter) on 15% of it */
-        uint32_t h[LUM_BINS];
-        float L = 0.2f * 0.25f / (float)M_PI, Lp = L * 1000.0f, ev, ex, out, grey, comp = k_weather[4].comp;
-        memset(h, 0, sizeof h);
-        h[(int)((log2f(L) + 10.0f) * 16.0f)] = 8500;
-        h[(int)((log2f(Lp) + 10.0f) * 16.0f)] = 1500;
-        ev = light_meter_ev(h, LUM_BINS, k_weather[4].plo, k_weather[4].phi, k_weather[4].evlo, k_weather[4].evhi, comp);
-        ex = 1.0f / (1.2f * exp2f(ev));
-        out = L * ex;
-        grey = 1.0f / (1.2f * 8.0f);   /* what the meter makes of what it metered with no compensation: L x 1/(1.2 L 100/12.5) */
-        CHECK(fabsf(log2f(out / grey) - comp) < 0.1f,
-              "moonlit scene L %.4f cd/m2 meters to EV %.2f; exposed %.4f = mid-grey %.4f x 2^%.2f (compensation %.1f, within 0.1 EV)",
-              L, ev, out, grey, log2f(out / grey), comp);
-        CHECK(ev > k_weather[4].evlo && ev < k_weather[4].evhi, "night EV range %.1f..%.1f holds it", k_weather[4].evlo, k_weather[4].evhi);
-        ev = light_meter_ev(h, LUM_BINS, 0.80f, 0.983f, -2.5f, 7.5f, 0);
-        printf("INFO  the old meter (80..98.3%%, EV -2.5..7.5): EV %.2f, the moonlit ground %.1f stops under mid-grey\n",
-               ev, log2f(grey / (L / (1.2f * exp2f(ev)))));
     }
     {   /* 4 the glow: a car's texture never glows, whatever order it is drawn in */
         static LightGlow g;
@@ -302,32 +261,6 @@ int main(void)
             }
         }
     }
-    {   /* 8 the shader's Purkinje weight on the GPU against the C copy */
-        id<MTLDevice> dev = MTLCreateSystemDefaultDevice();
-        NSError *err = nil;
-        NSString *src = [@"#include <metal_stdlib>\nusing namespace metal;\n" stringByAppendingString:[@BRR_NIGHT_SRC stringByAppendingString:
-            @"kernel void pw(device float *o [[buffer(0)]], uint i [[thread_position_in_grid]]) { o[i] = purkinje_w(pow(10.0, -5.0 + float(i) * 0.04)); }\n"]];
-        id<MTLLibrary> lib = dev ? [dev newLibraryWithSource:src options:nil error:&err] : nil;
-        if (!lib) {
-            CHECK(0, "Purkinje on the GPU: %s", dev ? [[err description] UTF8String] : "no device");
-        } else {
-            id<MTLComputePipelineState> ps = [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"pw"] error:&err];
-            id<MTLBuffer> b = [dev newBufferWithLength:201 * 4 options:MTLResourceStorageModeShared];
-            id<MTLCommandQueue> q = [dev newCommandQueue];
-            id<MTLCommandBuffer> cb = [q commandBuffer];
-            id<MTLComputeCommandEncoder> ce = [cb computeCommandEncoder];
-            float worst = 0;
-            [ce setComputePipelineState:ps];
-            [ce setBuffer:b offset:0 atIndex:0];
-            [ce dispatchThreads:MTLSizeMake(201, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
-            [ce endEncoding];
-            [cb commit];
-            [cb waitUntilCompleted];
-            for (i = 0; i < 201; i++)
-                worst = fmaxf(worst, fabsf(((float *)[b contents])[i] - light_purkinje_w(powf(10.0f, -5.0f + i * 0.04f))));
-            CHECK(worst < 1e-4f, "Purkinje weight: the shader's on the GPU against the C copy, 201 luminances 1e-5..1e3: worst %.2e", worst);
-        }
-    }
     {   /* 6 the eye's adaptation: a cold start, then the time constants */
         float ev = 1e9f, tgt = -2.3f, e1, e2;
         ev = light_adapt_ev(ev, -1.0f, 1.0f / 60, 0);
@@ -379,14 +312,6 @@ int main(void)
             CHECK(Eg < 0.001 && Eg > 1e-5, "stars: %.0f above the horizon, %.2e lux on the ground (%.2e above the air; starlight is about 2e-4, < 0.001)",
                   ncell * LIGHT_STAR_P, Eg, Ef);
         }
-    }
-    {   /* 8 the Purkinje tint: Forza Horizon 6's night blue (NIGHT.md: its moonlit ground, road and sky at blue/red
-           2.4 / 0.45 = 5.3 in display-linear, hue 213 to 217); applied after the tonemap, a moonlit road at the rods' share
-           w carries (1 - w) + w b / y of each channel of its grey */
-        float b[3] = { LIGHT_PURK_BLUE_R, LIGHT_PURK_BLUE_G, LIGHT_PURK_BLUE_B }, y = 0.2126f * b[0] + 0.7152f * b[1] + 0.0722f * b[2];
-        float L = 0.2f * 0.25f / (float)M_PI, w = light_purkinje_w(L), r = (1 - w) + w * b[0] / y, bl = (1 - w) + w * b[2] / y;
-        CHECK(bl / r > 3.0f && bl / r < 6.0f, "moonlit road (%.4f cd/m2, rods' share %.2f): blue/red %.2f (FH6's moonlit 3 to 6)", L, w, bl / r);
-        CHECK(strstr(BRR_NIGHT_SRC, "0.45, 1.00, 2.40") != NULL, "the post shader's tint is light_night.h's");
     }
     printf(g_fail ? "night: FAIL\n" : "night: all pass\n");
     return g_fail;

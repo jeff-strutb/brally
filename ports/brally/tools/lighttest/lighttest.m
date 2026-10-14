@@ -5,7 +5,7 @@
  * It includes the renderer itself (brr_metal.m): the shader source it
  * compiles is the renderer's own string expression, the pipelines are the
  * renderer's own (lit_init), and the C it calls (lit_exposure, the weather
- * and sky tables) is the renderer's own code.  The test kernels
+ * table) is the renderer's own code.  The test kernels
  * (kernels.metal) are appended to that source and call its functions.  Every
  * result is checked against a closed form or a CPU double-precision
  * reference (ref.h), and printed PASS or FAIL with its numbers.
@@ -493,446 +493,6 @@ static void test_brdf(void)
 }
 
 /* =========================================================================================
- * 2. Sky and atmosphere
- * ========================================================================================= */
-static id<MTLTexture> g_aT, g_aM, g_aS, g_aI;
-
-/* the atmosphere's tables for a sun and camera, the renderer's passes in its order */
-static void sky_tables(const AU *a, int all)
-{
-    id<MTLTexture> tg[4] = { g_aT, g_aM, g_aS, g_aI };
-    id<MTLRenderPipelineState> pp[4] = { s_patmT, s_patmM, s_patmS, s_patmI };
-    int k;
-    for (k = all ? 0 : 2; k < 4; k++)
-        fullscreen(pp[k], tg[k], MTLLoadActionDontCare, ^(id<MTLRenderCommandEncoder> e) {
-            [e setFragmentBytes:a length:sizeof *a atIndex:0];
-            [e setFragmentTexture:k == 3 ? g_aS : g_aT atIndex:0];
-            [e setFragmentTexture:k == 3 ? g_aT : g_aM atIndex:1];
-        });
-}
-
-/* CPU transmittance table, Bruneton's parameterisation with the nodes on
- * the unit range's ends, Simpson's rule per node */
-#define CT_NMU 512
-#define CT_NR 128
-static double g_ct[CT_NR][CT_NMU][3];
-static void ct_build(double mie)
-{
-    double H = sqrt(A_RT * A_RT - A_RG * A_RG);
-    int i, j;
-    for (j = 0; j < CT_NR; j++)
-        for (i = 0; i < CT_NMU; i++) {
-            double rho = H * j / (CT_NR - 1.0), r = sqrt(rho * rho + A_RG * A_RG);
-            double dmin = A_RT - r, dmax = rho + H, d = dmin + (dmax - dmin) * i / (CT_NMU - 1.0);
-            double mu = d == 0.0 ? 1.0 : fmin(fmax((H * H - rho * rho - d * d) / (2.0 * r * d), -1.0), 1.0), tau[3];
-            int k;
-            a_tau(r, mu, mie, tau, 500);
-            for (k = 0; k < 3; k++)
-                g_ct[j][i][k] = exp(-tau[k]);
-        }
-}
-static void ct_get(double r, double mu, double T[3])
-{
-    double H = sqrt(A_RT * A_RT - A_RG * A_RG), rho = sqrt(fmax(r * r - A_RG * A_RG, 0.0));
-    double d = fmax(a_sphere(r, mu, A_RT), 0.0), dmin = A_RT - r, dmax = rho + H;
-    double x = fmin(fmax((d - dmin) / fmax(dmax - dmin, 1e-9), 0.0), 1.0) * (CT_NMU - 1), y = fmin(rho / H, 1.0) * (CT_NR - 1);
-    int i = (int)fmin(x, CT_NMU - 2), j = (int)fmin(y, CT_NR - 2), k;
-    double fx = x - i, fy = y - j;
-    for (k = 0; k < 3; k++)
-        T[k] = (g_ct[j][i][k] * (1 - fx) + g_ct[j][i + 1][k] * fx) * (1 - fy) + (g_ct[j + 1][i][k] * (1 - fx) + g_ct[j + 1][i + 1][k] * fx) * fy;
-}
-
-/* CPU multiple-scattering table (Hillaire 5.5) at the renderer's texel centres */
-#define CM_N 32
-static double g_cm[CM_N][CM_N][3], g_fms_max;
-/* one node: NA azimuths x NZ cosines on each side of the horizon, NS steps a ray */
-static void cm_node(double h, double cs, double mie, int NA, int NZ, int NS, double psi[3], double fms[3])
-{
-    {
-        {
-            double r = A_RG + fmax(h, 0.01);
-            double sun[3] = { 0.0, sqrt(fmax(1.0 - cs * cs, 0.0)), cs }, L2[3] = { 0, 0, 0 }, fm[3] = { 0, 0, 0 };
-            /* the sphere split at the horizon's cosine, each side stratified on its own:
-               the radiance jumps there (the sunlit ground below, the sky above) */
-            double mh = -sqrt(fmax(1.0 - (A_RG / r) * (A_RG / r), 0.0));
-            int a, z, s, k;
-            for (z = 0; z < 2 * NZ; z++)
-                for (a = 0; a < NA; a++) {
-                    double up = z < NZ, u = ((z % NZ) + 0.5) / NZ, wgt = (up ? 1.0 - mh : 1.0 + mh) * 0.5 / (NZ * NA);
-                    double mu = up ? mh + (1.0 - mh) * u : -1.0 + (1.0 + mh) * u, th = 2.0 * R_PI * (a + 0.5) / NA, sz = sqrt(1.0 - mu * mu);
-                    double d[3] = { cos(th) * sz, sin(th) * sz, mu };
-                    double tg = a_ground(r, mu), len = tg > 0.0 ? tg : fmax(a_sphere(r, mu, A_RT), 0.0), dt = len / NS;
-                    double tau[3] = { 0, 0, 0 }, Ls[3] = { 0, 0, 0 }, f[3] = { 0, 0, 0 };
-                    for (s = 0; s < NS; s++) {
-                        double t = (s + 0.5) * dt, p[3] = { d[0] * t, d[1] * t, r + d[2] * t }, rr = sqrt(dot3(p, p));
-                        double ext[3], sr[3], sm, cz = dot3(p, sun) / rr, Ts[3], tm[3];
-                        a_medium(rr - A_RG, mie, ext, sr, &sm);
-                        ct_get(rr, cz, Ts);
-                        for (k = 0; k < 3; k++) {
-                            double sc = sr[k] + sm;
-                            tm[k] = exp(-(tau[k] + ext[k] * dt * 0.5));
-                            Ls[k] += tm[k] * (a_ground(rr, cz) > 0.0 ? 0.0 : Ts[k]) * sc / (4.0 * R_PI) * dt;
-                            f[k] += tm[k] * sc * dt;
-                            tau[k] += ext[k] * dt;
-                        }
-                    }
-                    if (tg > 0.0) {
-                        double pg[3] = { d[0] * tg, d[1] * tg, r + d[2] * tg }, lg = sqrt(dot3(pg, pg)), ng[3], Tg[3], c;
-                        for (k = 0; k < 3; k++)
-                            ng[k] = pg[k] / lg;
-                        c = dot3(ng, sun);
-                        ct_get(A_RG, c, Tg);
-                        for (k = 0; k < 3; k++)
-                            Ls[k] += exp(-tau[k]) * Tg[k] * fmax(c, 0.0) * A_ALB / R_PI;
-                    }
-                    for (k = 0; k < 3; k++)
-                        L2[k] += Ls[k] * wgt, fm[k] += f[k] * wgt;
-                }
-            for (k = 0; k < 3; k++) {
-                psi[k] = L2[k] / (1.0 - fm[k]);
-                fms[k] = fm[k];
-            }
-        }
-    }
-}
-static void cm_build(double mie)
-{
-    int i, j, k;
-    g_fms_max = 0;
-    for (j = 0; j < CM_N; j++)
-        for (i = 0; i < CM_N; i++) {
-            double f[3];
-            cm_node((j + 0.5) / CM_N * (A_RT - A_RG), (i + 0.5) / CM_N * 2.0 - 1.0, mie, 32, 32, 160, g_cm[j][i], f);
-            for (k = 0; k < 3; k++)
-                g_fms_max = WMAX(g_fms_max, f[k]);
-        }
-}
-static void cm_get(double r, double cs, double out[3])
-{
-    double x = fmin(fmax((cs * 0.5 + 0.5) * CM_N - 0.5, 0.0), CM_N - 1.0), y = fmin(fmax((r - A_RG) / (A_RT - A_RG) * CM_N - 0.5, 0.0), CM_N - 1.0);
-    int i = (int)fmin(x, CM_N - 2), j = (int)fmin(y, CM_N - 2), k;
-    double fx = x - i, fy = y - j;
-    for (k = 0; k < 3; k++)
-        out[k] = (g_cm[j][i][k] * (1 - fx) + g_cm[j][i + 1][k] * fx) * (1 - fy) + (g_cm[j + 1][i][k] * (1 - fx) + g_cm[j + 1][i + 1][k] * fx) * fy;
-}
-
-/* CPU sky radiance per unit sun illuminance at the top, from r0 (km) along d */
-static void sky_ref(double r0, const double d[3], const double sun[3], double mie, double L[3])
-{
-    enum { NS = 1500 };
-    double tg = a_ground(r0, d[2]), len = tg > 0.0 ? tg : fmax(a_sphere(r0, d[2], A_RT), 0.0), dt = len / NS;
-    double c = dot3(d, sun), pr = a_rayleigh(c), pm = a_mie(c), tau[3] = { 0, 0, 0 };
-    int s, k;
-    L[0] = L[1] = L[2] = 0;
-    for (s = 0; s < NS; s++) {
-        double t = (s + 0.5) * dt, p[3] = { d[0] * t, d[1] * t, r0 + d[2] * t }, rr = sqrt(dot3(p, p));
-        double ext[3], sr[3], sm, cz = dot3(p, sun) / rr, Ts[3], Ms[3], sh = a_ground(rr, cz) > 0.0 ? 0.0 : 1.0;
-        a_medium(rr - A_RG, mie, ext, sr, &sm);
-        ct_get(rr, cz, Ts);
-        cm_get(rr, cz, Ms);
-        for (k = 0; k < 3; k++) {
-            double tm = exp(-(tau[k] + ext[k] * dt * 0.5));
-            L[k] += tm * (Ts[k] * sh * (sr[k] * pr + sm * pm) + Ms[k] * (sr[k] + sm)) * dt;
-            tau[k] += ext[k] * dt;
-        }
-    }
-}
-
-static void trans_gpu(const float (*q)[2], float (*out)[4], int n)
-{
-    id<MTLBuffer> bq = B(q, (size_t)n * 8), bo = B(NULL, (size_t)n * 16);
-    kern(@"t_trans", (NSUInteger)n, ^(id<MTLComputeCommandEncoder> e) {
-        [e setTexture:g_aT atIndex:0];
-        [e setBuffer:bq offset:0 atIndex:0];
-        [e setBuffer:bo offset:0 atIndex:1];
-    });
-    memcpy(out, bo.contents, (size_t)n * 16);
-    nf_scan((const float *)bo.contents, ((size_t)n * 16) / 4);
-}
-static void skyview_gpu(const float (*d)[4], float (*out)[4], int n)
-{
-    id<MTLBuffer> bq = B(d, (size_t)n * 16), bo = B(NULL, (size_t)n * 16);
-    kern(@"t_skyview", (NSUInteger)n, ^(id<MTLComputeCommandEncoder> e) {
-        [e setTexture:g_aS atIndex:0];
-        [e setBuffer:bq offset:0 atIndex:0];
-        [e setBuffer:bo offset:0 atIndex:1];
-    });
-    memcpy(out, bo.contents, (size_t)n * 16);
-    nf_scan((const float *)bo.contents, ((size_t)n * 16) / 4);
-}
-
-static double g_sun_peak;      /* the sun disc's radiance at its centre, cd/m2 (sunny, Coastline's sun) */
-
-static void test_sky(void)
-{
-    static const double elev[] = { 90.0, 54.21, 30.0, 10.0, 5.0 };
-    enum { NE = sizeof elev / sizeof elev[0] };
-    const double cam = 0.002, top = 128000.0;
-    AU a;
-    double tz[3], worstT = 0, worstTmu = 0, worstTh = 0;
-    int i, k, e;
-    section("2. Sky and atmosphere (Hillaire 2020 tables, sunny: Mie x1)");
-    g_aT = T2(MTLPixelFormatRGBA16Float, 256, 64);
-    g_aM = T2(MTLPixelFormatRGBA16Float, 32, 32);
-    g_aS = T2(MTLPixelFormatRGBA16Float, 192, 108);
-    g_aI = T2(MTLPixelFormatRGBA32Float, 3, 1);
-    memset(&a, 0, sizeof a);
-    a.sun[2] = 1;
-    a.cam[0] = (float)cam;
-    a.atm[0] = 1;
-    sky_tables(&a, 1);
-    ct_build(1.0);
-    cm_build(1.0);
-
-    {   /* zenith transmittance against the closed form */
-        float q[2][2] = { { (float)A_RG, 1.0f }, { (float)(A_RG + cam), 1.0f } }, o[2][4];
-        double worst = 0;
-        a_tau_zenith(1.0, tz);
-        trans_gpu(q, o, 2);
-        for (k = 0; k < 3; k++)
-            worst = WMAX(worst, fabs(o[0][k] / exp(-tz[k]) - 1.0));
-        report(worst < 2e-3, "zenith transmittance vs closed form", "GPU %.4f %.4f %.4f, analytic %.4f %.4f %.4f (tau %.5f %.5f %.5f), max rel err %.2e",
-               o[0][0], o[0][1], o[0][2], exp(-tz[0]), exp(-tz[1]), exp(-tz[2]), tz[0], tz[1], tz[2], worst);
-    }
-    {   /* the table over heights and angles above the horizon, against exact optical depth */
-        static const double hs[] = { 0.002, 0.1, 1.0, 5.0, 20.0 };
-        enum { NH = 5, NMU = 80 };
-        float q[NH * NMU][2], o[NH * NMU][4];
-        double ex[NH * NMU][3], hz[NH];
-        int n = 0, j;
-        for (j = 0; j < NH; j++) {
-            double r = A_RG + hs[j], muh = -sqrt(fmax(1.0 - (A_RG / r) * (A_RG / r), 0.0));
-            hz[j] = muh;
-            for (i = 0; i < NMU; i++) {
-                double x = (i + 1.0) / NMU, mu = muh + 0.002 + (1.0 - muh - 0.002) * x * x, tau[3];
-                q[n][0] = (float)r, q[n][1] = (float)mu;
-                a_tau(r, mu, 1.0, tau, 4000);
-                for (k = 0; k < 3; k++)
-                    ex[n][k] = exp(-tau[k]);
-                n++;
-            }
-        }
-        trans_gpu(q, o, n);
-        for (i = 0; i < n; i++)
-            for (k = 0; k < 3; k++)
-                if (fabs(o[i][k] - ex[i][k]) > worstT)
-                    worstT = fabs(o[i][k] - ex[i][k]), worstTmu = q[i][1], worstTh = q[i][0] - A_RG;
-        report(worstT < 0.01, "transmittance table vs exact, above horizon", "max |dT| %.4f (at h %.3f km, mu %.4f), %d points, 5 heights",
-               worstT, worstTh, worstTmu, n);
-    }
-    {   /* the sun's illuminance at the ground, from the irradiance pass's second texel */
-        double worst = 0;
-        printf("  sun elevation | sun at the ground, lux: GPU   exact  | zenith sky cd/m2: GPU   CPU ref | sky on the ground, lux: GPU   CPU ref | (E_sky + E_sun) / (E_top mu_s) R G B\n");
-        for (e = 0; e < NE; e++) {
-            double el = elev[e] * R_PI / 180.0, sun[3] = { cos(el), 0.0, sin(el) }, tau[3], Te[3], Eg, Ee, zen[3], zr[3];
-            double Esky_ref[3] = { 0, 0, 0 };
-            float px[12], dz[1][4] = { { 0, 0, 1, 0 } }, oz[1][4];
-            for (k = 0; k < 3; k++)
-                a.sun[k] = (float)sun[k];
-            sky_tables(&a, 0);
-            [g_aI getBytes:px bytesPerRow:48 fromRegion:MTLRegionMake2D(0, 0, 3, 1) mipmapLevel:0];
-            a_tau(A_RG + cam, sun[2], 1.0, tau, 4000);
-            for (k = 0; k < 3; k++)
-                Te[k] = exp(-tau[k]);
-            Eg = top * (0.2126 * px[4] + 0.7152 * px[5] + 0.0722 * px[6]);
-            Ee = top * lum(Te);
-            worst = WMAX(worst, fabs(Eg / Ee - 1.0));
-            skyview_gpu(dz, oz, 1);
-            {
-                double z[3] = { 0, 0, 1 };
-                sky_ref(A_RG + cam, z, sun, 1.0, zr);
-            }
-            for (k = 0; k < 3; k++)
-                zen[k] = oz[0][k];
-            {   /* the sky's light on an up-facing surface, CPU: cosine-weighted hemisphere */
-                int u, v2;
-                for (u = 0; u < 16; u++)
-                    for (v2 = 0; v2 < 32; v2++) {
-                        double ph = acos(sqrt(1.0 - (u + 0.5) / 16.0)), th = (v2 + 0.5) / 32.0 * 2.0 * R_PI, L[3];
-                        double d[3] = { cos(th) * sin(ph), sin(th) * sin(ph), cos(ph) };
-                        sky_ref(A_RG + cam, d, sun, 1.0, L);
-                        for (k = 0; k < 3; k++)
-                            Esky_ref[k] += L[k] * R_PI / 512.0;
-                    }
-            }
-            printf("  %8.2f      |        %8.0f %8.0f   |        %7.0f %7.0f   |       %7.0f %7.0f         |  %.3f %.3f %.3f\n",
-                   elev[e], Eg, Ee, top * lum(zen), top * lum(zr), top * (0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]),
-                   top * lum(Esky_ref), (px[0] + px[4] * sun[2]) / sun[2], (px[1] + px[5] * sun[2]) / sun[2], (px[2] + px[6] * sun[2]) / sun[2]);
-            if (e == 0) {
-                double Lz = top * lum(zen);
-                report(Lz >= 2000 && Lz <= 10000, "zenith sky luminance, sun overhead", "%.0f cd/m2 (clear sky, high sun: 2,000 to 10,000)", Lz);
-            }
-            {
-                double re = fabs(lum(zen) / lum(zr) - 1.0), rs = fabs((0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]) / lum(Esky_ref) - 1.0);
-                char nm[64];
-                snprintf(nm, sizeof nm, "sky vs CPU reference, sun %.0f deg", elev[e]);
-                report(re < 0.05 && rs < 0.05, nm, "zenith luminance %+.2f%%, sky irradiance %+.2f%%", 100.0 * (lum(zen) / lum(zr) - 1.0),
-                       100.0 * ((0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]) / lum(Esky_ref) - 1.0));
-                (void)re, (void)rs;
-            }
-            {
-                double bound = 1.0 / (1.0 - A_ALB), worstb = 0;
-                char nm[64];
-                for (k = 0; k < 3; k++)
-                    worstb = WMAX(worstb, (px[k] + px[4 + k] * sun[2]) / sun[2]);
-                snprintf(nm, sizeof nm, "energy: light at ground <= 1/(1-albedo), %.0f deg", elev[e]);
-                report(worstb <= bound, nm, "max over R G B %.3f (bound %.3f)", worstb, bound);
-            }
-        }
-        report(worst < 0.01, "sun illuminance at the ground vs exact", "max relative error %.2e over %d elevations (E_top 128,000 lux x T)", worst, NE);
-    }
-    {   /* the multiple-scattering table against the CPU reference (Hillaire 5.5 with 1,024 directions, 160 steps) */
-        double *m = read16(g_aM), worst = 0, mx[3] = { 0, 0, 0 }, rel = 0;
-        int wi = 0, wj = 0, j;
-        for (j = 0; j < CM_N; j++)
-            for (i = 0; i < CM_N; i++)
-                for (k = 0; k < 3; k++)
-                    mx[k] = WMAX(mx[k], g_cm[j][i][k]);
-        for (j = 0; j < 10; j++)          /* up to 31 km: where the light of the sky comes from */
-            for (i = 0; i < CM_N; i++)
-                for (k = 0; k < 3; k++) {
-                    double ref = g_cm[j][i][k], g = m[(j * CM_N + i) * 4 + k];
-                    if (fabs(g - ref) / mx[k] > worst)
-                        worst = fabs(g - ref) / mx[k], wi = i, wj = j;
-                    if ((i + 0.5) / CM_N * 2.0 - 1.0 > 0.1)
-                        rel = WMAX(rel, fabs(g / ref - 1.0));
-                }
-        if (getenv("LIGHTTEST_MSDIAG")) {
-            static const int cf[5][3] = { { 4, 32, 20 }, { 8, 4, 20 }, { 4, 64, 20 }, { 32, 32, 160 }, { 64, 64, 320 } };   /* the renderer's, the first version's, finer */
-            static const int nd[2][2] = { { 9, 31 }, { 3, 20 } };
-            int q, c2;
-            for (q = 0; q < 2; q++) {
-                double hh = (nd[q][0] + 0.5) / CM_N * 100.0, cc = (nd[q][1] + 0.5) / CM_N * 2.0 - 1.0;
-                printf("  ms node h %.1f cs %.3f GPU %.4e %.4e %.4e\n", hh, cc, m[(nd[q][0] * CM_N + nd[q][1]) * 4], m[(nd[q][0] * CM_N + nd[q][1]) * 4 + 1],
-                       m[(nd[q][0] * CM_N + nd[q][1]) * 4 + 2]);
-                for (c2 = 0; c2 < 5; c2++) {
-                    double ps[3], fz[3];
-                    cm_node(hh, cc, 1.0, cf[c2][0], cf[c2][1], cf[c2][2], ps, fz);
-                    printf("    CPU %2d az x %2d cos a side x %3d steps: %.4e %.4e %.4e  f_ms %.4f %.4f %.4f\n", cf[c2][0], cf[c2][1], cf[c2][2],
-                           ps[0], ps[1], ps[2], fz[0], fz[1], fz[2]);
-                }
-            }
-        }
-        if (getenv("LIGHTTEST_MSDIAG"))
-            for (j = 0; j < 10; j += 3)
-                for (i = 0; i < CM_N; i += 2)
-                    printf("  ms h %5.1f cs %+.3f GPU %.4e %.4e %.4e CPU %.4e %.4e %.4e\n", (j + 0.5) / CM_N * 100.0, (i + 0.5) / CM_N * 2.0 - 1.0,
-                           m[(j * CM_N + i) * 4], m[(j * CM_N + i) * 4 + 1], m[(j * CM_N + i) * 4 + 2], g_cm[j][i][0], g_cm[j][i][1], g_cm[j][i][2]);
-        report(worst < 0.05 && g_fms_max < 1.0, "multiple scattering table vs CPU reference",
-               "max |GPU - CPU| %.2f%% of the table's peak (cos sun %.3f, h %.1f km); %.1f%% relative with the sun up; f_ms max %.4f < 1",
-               100.0 * worst, (wi + 0.5) / CM_N * 2.0 - 1.0, (wj + 0.5) / CM_N * 100.0, 100.0 * rel, g_fms_max);
-        free(m);
-    }
-    {   /* the phase functions integrate to one */
-        enum { N = 200001 };
-        float *c = malloc(N * 4);
-        id<MTLBuffer> bc, bo;
-        const float *o;
-        double sr = 0, sm = 0;
-        for (i = 0; i < N; i++)
-            c[i] = (float)(-1.0 + 2.0 * i / (N - 1.0));
-        bc = B(c, N * 4);
-        bo = B(NULL, N * 8);
-        kern(@"t_phase", N, ^(id<MTLComputeCommandEncoder> en) {
-            [en setBuffer:bc offset:0 atIndex:0];
-            [en setBuffer:bo offset:0 atIndex:1];
-        });
-        o = bo.contents;
-        nf_scan(o, (size_t)N * 2);
-        for (i = 0; i < N; i++) {
-            double w = (i == 0 || i == N - 1 ? 0.5 : 1.0) * 2.0 / (N - 1.0) * 2.0 * R_PI;
-            sr += o[2 * i] * w;
-            sm += o[2 * i + 1] * w;
-        }
-        report(fabs(sr - 1.0) < 1e-4 && fabs(sm - 1.0) < 1e-3, "phase functions normalised", "Rayleigh %.6f, Cornette-Shanks g 0.8 %.6f (over the sphere)", sr, sm);
-        free(c);
-    }
-    {   /* the sky view's direction mapping round trip */
-        enum { N = 4096 };
-        float d[N][4];
-        id<MTLBuffer> bd, bo;
-        const float *o;
-        double worst = 0;
-        for (i = 0; i < N; i++) {
-            double v[3];
-            udir(v);
-            d[i][0] = (float)v[0], d[i][1] = (float)v[1], d[i][2] = (float)v[2], d[i][3] = 0;
-        }
-        bd = B(d, sizeof d);
-        bo = B(NULL, N * 32);
-        kern(@"t_svuv", N, ^(id<MTLComputeCommandEncoder> en) {
-            [en setBuffer:bd offset:0 atIndex:0];
-            [en setBuffer:bo offset:0 atIndex:1];
-        });
-        o = bo.contents;
-        nf_scan(o, (size_t)N * 8);
-        for (i = 0; i < N; i++) {
-            double c = (o[8 * i] * d[i][0] + o[8 * i + 1] * d[i][1] + o[8 * i + 2] * d[i][2]);
-            worst = WMAX(worst, acos(fmin(c, 1.0)) * 180.0 / R_PI);
-        }
-        report(worst < 0.05, "sky view mapping round trip", "max angle %.4f degrees over %d directions", worst, N);
-    }
-    {   /* the sun's disc: its radiance integrated over the disc against the sun's illuminance there */
-        double el = atan2(2.5, sqrt(1.0 + 2.25)), sun[3] = { -1.0, -1.5, 2.5 }, ln = sqrt(dot3(sun, sun)), ex[3], ey[3], E = 0, Ttr;
-        enum { NR = 600, NP = 64 };
-        const double rmax = 0.30 * R_PI / 180.0;
-        float (*d)[4] = malloc(sizeof(float) * 4 * NR * NP);
-        id<MTLBuffer> bd, bo;
-        const float *o;
-        KU ku;
-        float q[1][2], ot[1][4];
-        (void)el;
-        for (k = 0; k < 3; k++)
-            sun[k] /= ln;
-        for (k = 0; k < 3; k++)
-            a.sun[k] = (float)sun[k];
-        sky_tables(&a, 0);
-        ex[0] = -sun[1], ex[1] = sun[0], ex[2] = 0;
-        ln = sqrt(dot3(ex, ex));
-        for (k = 0; k < 3; k++)
-            ex[k] /= ln;
-        ey[0] = sun[1] * ex[2] - sun[2] * ex[1], ey[1] = sun[2] * ex[0] - sun[0] * ex[2], ey[2] = sun[0] * ex[1] - sun[1] * ex[0];
-        for (i = 0; i < NR; i++)
-            for (k = 0; k < NP; k++) {
-                double rr = (i + 0.5) / NR * rmax, ph = (k + 0.5) / NP * 2.0 * R_PI, v[3];
-                int c;
-                for (c = 0; c < 3; c++)
-                    v[c] = sun[c] * cos(rr) + (ex[c] * cos(ph) + ey[c] * sin(ph)) * sin(rr);
-                d[i * NP + k][0] = (float)v[0], d[i * NP + k][1] = (float)v[1], d[i * NP + k][2] = (float)v[2], d[i * NP + k][3] = 0;
-            }
-        memset(&ku, 0, sizeof ku);
-        for (k = 0; k < 3; k++)
-            ku.sun[k] = (float)sun[k];
-        ku.eye[3] = (float)cam;
-        ku.ktop[0] = (float)top, ku.ktop[1] = 1.0f, ku.ktop[2] = 1.0f;
-        bd = B(d, sizeof(float) * 4 * NR * NP);
-        bo = B(NULL, sizeof(float) * 8 * NR * NP);
-        kern(@"t_skyrad", NR * NP, ^(id<MTLComputeCommandEncoder> en) {
-            [en setBytes:&ku length:sizeof ku atIndex:0];
-            [en setTexture:g_aS atIndex:0];
-            [en setTexture:g_aT atIndex:1];
-            [en setBuffer:bd offset:0 atIndex:1];
-            [en setBuffer:bo offset:0 atIndex:2];
-        });
-        o = bo.contents;
-        nf_scan(o, (size_t)NR * NP * 8);
-        for (i = 0; i < NR; i++)
-            for (k = 0; k < NP; k++) {
-                double rr = (i + 0.5) / NR * rmax, dw = sin(rr) * (rmax / NR) * (2.0 * R_PI / NP);
-                const float *p = &o[(i * NP + k) * 8 + 4];
-                E += (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) * dw;
-            }
-        g_sun_peak = 0.2126 * o[4] + 0.7152 * o[5] + 0.0722 * o[6];
-        q[0][0] = (float)(A_RG + cam), q[0][1] = (float)sun[2];
-        trans_gpu(q, ot, 1);
-        Ttr = top * (0.2126 * ot[0][0] + 0.7152 * ot[0][1] + 0.0722 * ot[0][2]);
-        report(fabs(E / Ttr - 1.0) < 0.01, "sun disc carries the sun's illuminance", "disc integral %.0f lux, sun %.0f lux: ratio %.4f", E, Ttr, E / Ttr);
-        printf("  the disc's centre: %.3g cd/m2 (half float's largest is 65,504)\n", g_sun_peak);
-        free(d);
-    }
-}
-
-/* =========================================================================================
  * 3. Tonemap
  * ========================================================================================= */
 static void neutral_gpu(const float (*c)[4], float (*o)[4], int n)
@@ -947,31 +507,16 @@ static void neutral_gpu(const float (*c)[4], float (*o)[4], int n)
 }
 
 /* the post pass (pfs) over a small HDR image: its output pixels, BGRA */
-static void post_run(id<MTLTexture> hdr, id<MTLTexture> bl, id<MTLTexture> alb, const LU *u, id<MTLBuffer> hist, uint8_t *out)
+static void post_run(id<MTLTexture> hdr, id<MTLTexture> bl, const LU *u, uint8_t *out)
 {
     id<MTLTexture> t = T2(MTLPixelFormatBGRA8Unorm, (int)hdr.width, (int)hdr.height);
     fullscreen(s_lpp, t, MTLLoadActionDontCare, ^(id<MTLRenderCommandEncoder> e) {
         [e setFragmentBytes:u length:sizeof *u atIndex:0];
         [e setFragmentTexture:hdr atIndex:0];
         [e setFragmentTexture:bl atIndex:1];
-        [e setFragmentTexture:alb atIndex:2];
-        [e setFragmentBuffer:hist offset:0 atIndex:1];
-        {
-            BrrGlare gl = { { 0 }, { 0 }, { 0 } };   /* no glare: the post alone */
-            [e setFragmentBytes:&gl length:sizeof gl atIndex:2];
-        }
     });
     if (out)
         [t getBytes:out bytesPerRow:t.width * 4 fromRegion:MTLRegionMake2D(0, 0, t.width, t.height) mipmapLevel:0];
-}
-static id<MTLTexture> alb_lit(int w, int h)
-{
-    id<MTLTexture> t = T2(MTLPixelFormatRGBA8Unorm, w, h);
-    uint8_t *p = malloc((size_t)w * h * 4);
-    memset(p, 255, (size_t)w * h * 4);
-    [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:p bytesPerRow:(NSUInteger)w * 4];
-    free(p);
-    return t;
 }
 
 static void test_tonemap(void)
@@ -1028,13 +573,12 @@ static void test_tonemap(void)
     report(mono, "PBR Neutral monotonic, grey ramp", "%d steps 1e-4..1e3, top %.6f", NG, o[NG - 1][0]);
     report(monol, "PBR Neutral monotonic, scaled colours", "luminance non-decreasing along 64 random hues x 2,000 scales");
     {   /* the post pass with an HDR texel past half float's range (the sun's disc) */
-        id<MTLTexture> hdr = T2(MTLPixelFormatRGBA16Float, 4, 4), bl = T2(MTLPixelFormatRGBA16Float, 4, 4), alb = alb_lit(4, 4);
+        id<MTLTexture> hdr = T2(MTLPixelFormatRGBA16Float, 4, 4), bl = T2(MTLPixelFormatRGBA16Float, 4, 4);
         double px[64], z[64];
         uint8_t out[64];
         LU u;
-        id<MTLBuffer> hist = B(NULL, LUM_BINS * 4);
         for (i = 0; i < 16; i++) {
-            double v = i == 5 ? INFINITY : i == 6 ? 70000.0 : g_sun_peak > 0 ? fmin(g_sun_peak, 60000.0) : 60000.0;
+            double v = i == 5 ? INFINITY : i == 6 ? 70000.0 : 60000.0;
             px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = v, px[i * 4 + 3] = 1;
             z[i * 4] = z[i * 4 + 1] = z[i * 4 + 2] = z[i * 4 + 3] = 0;
         }
@@ -1043,128 +587,13 @@ static void test_tonemap(void)
         memset(&u, 0, sizeof u);
         u.misc[0] = 1.0f / (1.2f * exp2f(15.0f));
         u.bg[1] = 1.0f;
-        post_run(hdr, bl, alb, &u, hist, out);
+        post_run(hdr, bl, &u, out);
         report(out[5 * 4] >= out[0] && out[5 * 4] > 0 && out[5 * 4] == out[5 * 4 + 1] && out[5 * 4] == out[5 * 4 + 2],
                "post: an overflowed HDR texel shows bright",
                "texel stored as %s: output BGRA %d %d %d (a finite 60,000 shows %d %d %d)", isinf(h2d(d2h(70000.0))) ? "inf" : "finite",
                out[5 * 4], out[5 * 4 + 1], out[5 * 4 + 2], out[0], out[1], out[2]);
     }
     free(c), free(o);
-}
-
-/* =========================================================================================
- * 4. Exposure
- * ========================================================================================= */
-/* one synthetic scene through the post pass and lit_exposure: the metered
- * EV100 against the band's exact mean log luminance */
-static double expose_one(const double *Y, int w, int h, int weather, double *want)
-{
-    id<MTLTexture> hdr = T2(MTLPixelFormatRGBA16Float, w, h), alb = alb_lit(w, h);
-    double *px = malloc(sizeof(double) * 4 * w * h), *s = malloc(sizeof(double) * w * h), ev, m = 0;
-    int i, x, y, ns = 0, lo, hi;
-    LU u;
-    float ex;
-    for (i = 0; i < w * h; i++) {
-        px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = Y[i];
-        px[i * 4 + 3] = 1;
-    }
-    write16(hdr, px);
-    for (y = 0; y < h; y += 4)            /* the pixels the meter reads: every 4th in x and y */
-        for (x = 0; x < w; x += 4) {
-            double v = h2d(d2h(Y[y * w + x]));
-            double yl = 0.2126 * v + 0.7152 * v + 0.0722 * v;
-            if (yl > 0)
-                s[ns++] = yl;
-        }
-    for (i = 1; i < ns; i++) {            /* sort */
-        double t = s[i];
-        int j = i - 1;
-        while (j >= 0 && s[j] > t)
-            s[j + 1] = s[j], j--;
-        s[j + 1] = t;
-    }
-    lo = (int)(ns * k_weather[weather].plo), hi = (int)(ns * k_weather[weather].phi);   /* the weather's band and compensation */
-    for (i = lo; i < hi; i++)
-        m += log2(s[i]);
-    m /= (hi - lo);
-    *want = fmin(fmax(m + log2(100.0 / 12.5) - k_weather[weather].comp, k_weather[weather].evlo), k_weather[weather].evhi);
-    memset(&u, 0, sizeof u);
-    u.misc[0] = 1.0f;
-    u.bg[1] = 1.0f;                       /* the bloom texture is the image itself: mix(c, c, 0.04) = c */
-    memset([s_hist[0] contents], 0, LUM_BINS * 4);
-    s_vbi = 0;
-    post_run(hdr, hdr, alb, &u, s_hist[0], NULL);
-    s_ev = 1e9f;                          /* no adaptation: the target itself */
-    ex = lit_exposure(weather);
-    ev = -log2(1.2 * ex);
-    free(px), free(s);
-    return ev;
-}
-
-static void test_exposure(void)
-{
-    enum { W = 512, H = 512 };
-    double *Y = malloc(sizeof(double) * W * H), want, got, worst = 0, dworst = 0;
-    int i, d;
-    section("4. Exposure (histogram 80 to 98.3 percentile, EV100 with K 12.5)");
-    if (!s_hist[0])
-        for (i = 0; i < 3; i++)
-            s_hist[i] = [s_dev newBufferWithLength:LUM_BINS * 4 options:MTLResourceStorageModeShared];
-    {
-        struct { const char *name; int weather; int kind; double a, b, c, d; } sc[] = {
-            { "log-uniform 2^4..2^13 cd/m2, sunny", 0, 0, 4, 13, 0, 0 },
-            { "log-normal mu 2^9, sigma 1.5 stops, sunny", 0, 1, 9, 1.5, 0, 0 },
-            { "sky 60% (2^12) and road 40% (2^8), sunny", 0, 2, 12, 0.3, 8, 1.0 },
-            { "log-normal mu 2^-2, sigma 2 stops, night", 4, 1, -2, 2, 0, 0 },
-            { "log-uniform 2^-6..2^3, night", 4, 0, -6, 3, 0, 0 },
-            { "log-normal mu 2^8, sigma 1 stop, fog", 1, 1, 8, 1, 0, 0 },
-        };
-        for (d = 0; d < (int)(sizeof sc / sizeof sc[0]); d++) {
-            for (i = 0; i < W * H; i++) {
-                double l2;
-                switch (sc[d].kind) {
-                case 0: l2 = sc[d].a + (sc[d].b - sc[d].a) * urand(); break;
-                case 1: l2 = sc[d].a + sc[d].b * nrand(); break;
-                default: l2 = urand() < 0.6 ? sc[d].a + sc[d].b * nrand() : sc[d].c + sc[d].d * nrand(); break;
-                }
-                Y[i] = exp2(l2);
-            }
-            got = expose_one(Y, W, H, sc[d].weather, &want);
-            worst = WMAX(worst, fabs(got - want));
-            report(fabs(got - want) < 0.05, sc[d].name, "EV100 metered %.3f, exact %.3f, error %+.3f", got, want, got - want);
-        }
-    }
-    {   /* a uniform scene: every pixel one luminance, swept over a stop */
-        double wl = 0;
-        for (d = 0; d <= 40; d++) {
-            double l2 = 9.0 + d / 40.0;
-            for (i = 0; i < W * H; i++)
-                Y[i] = exp2(l2);
-            got = expose_one(Y, W, H, 0, &want);
-            if (fabs(got - want) > dworst)
-                dworst = fabs(got - want), wl = l2;
-        }
-        report(dworst < 0.05, "uniform scene, 41 luminances over a stop", "max error %.3f EV (at log2 Y %.3f): the bins' width is %.3f EV",
-               dworst, wl, 32.0 / LUM_BINS);
-    }
-    {   /* the meter keeps to the weather's range */
-        for (i = 0; i < W * H; i++)
-            Y[i] = exp2(15.0);
-        got = expose_one(Y, W, H, 0, &want);
-        report(fabs(got - 16.0) < 1e-4, "clamp to the weather's EV range", "a 2^15 cd/m2 scene, sunny: EV %.3f (range 12..16)", got);
-        for (i = 0; i < W * H; i++)
-            Y[i] = INFINITY;
-        got = expose_one(Y, W, H, 0, &want);
-        report(fabs(got - 16.0) < 1e-4, "an overflowed (inf) scene is metered", "every texel past half float, sunny: EV %.3f (range 12..16)", got);
-    }
-    {   /* the EV100 formula: a scene metered at average L shows it at 12.5/(100 x 1.2) */
-        for (i = 0; i < W * H; i++)
-            Y[i] = 2000.0;
-        got = expose_one(Y, W, H, 0, &want);
-        printf("  a uniform 2,000 cd/m2 scene: EV100 %.3f (log2(2000 x 100 / 12.5) = %.3f), shown at %.4f before the tonemap\n", got,
-               log2(2000.0 * 8.0), 2000.0 / (1.2 * exp2(got)));
-    }
-    free(Y);
 }
 
 /* =========================================================================================
@@ -1373,8 +802,11 @@ static void test_lamp(void)
         });
         memcpy(ro, bo.contents, sizeof ro);
         nf_scan((const float *)bo.contents, (sizeof ro) / 4);
-        report(fabsf(ro[0] - 80.0f) < 1e-3f && fabs(ro[1] - 80.0 * pow(0.5, 1.5)) < 1e-3 && ro[2] == 0.0f, "rear lamp lobe",
-               "on axis %.3f cd, 60 degrees %.3f (80 x 0.5^1.5 = %.3f), behind %.1f", ro[0], ro[1], 80.0 * pow(0.5, 1.5), ro[2]);
+        {   /* R7's lobe (brr_metal_lights.h lamp): a Gaussian of 18 degrees across by 6 up and down */
+            double e60 = 80.0 * exp(-60.0 * 60.0 / (2.0 * 18.0 * 18.0));
+            report(fabsf(ro[0] - 80.0f) < 1e-3f && fabs(ro[1] - e60) < 1e-3 * fmax(e60, 1.0) && ro[2] == 0.0f, "rear lamp lobe",
+                   "on axis %.3f cd, 60 degrees across %.4f (80 exp(-60^2 / (2 18^2)) = %.4f), behind %.1f", ro[0], ro[1], e60, ro[2]);
+        }
     }
     free(hv), free(o);
 }
@@ -1595,231 +1027,6 @@ static void test_delit(void)
 /* =========================================================================================
  * 8. Closed forms and robustness
  * ========================================================================================= */
-/* the night as the player sees it: a physical moonlit scene and a headlamp
- * pool through the real exposure (light_night_ev), local exposure, Purkinje
- * shift and tonemap (t_post runs pfs's chain on the GPU), against what must
- * be readable; and the moon in the camera's view */
-#define NIGHT_BLM_N 4.0f   /* the post pass's blur, bloom level 2 of 6, holds 4 levels summed (brr_metal.m pu.lexp[2]) */
-static float night_post1(float x, float Y, float Yl)   /* one grey pixel through t_post: display-linear luminance 0..1 */
-{
-    float in[4] = { Y, Y, Y, Yl * NIGHT_BLM_N }, o[4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
-    id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
-    kern(@"t_post", 1, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
-    memcpy(o, [bo contents], sizeof o);
-    {
-        float c[3];
-        int k;
-        for (k = 0; k < 3; k++)
-            c[k] = o[k] <= 0.04045f ? o[k] / 12.92f : powf((o[k] + 0.055f) / 1.055f, 2.4f);
-        return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];   /* display-linear */
-    }
-}
-static float night_dlin(const float o[4])   /* a t_post output (sRGB) as display-linear luminance */
-{
-    float c[3];
-    int k;
-    for (k = 0; k < 3; k++)
-        c[k] = o[k] <= 0.04045f ? o[k] / 12.92f : powf((o[k] + 0.055f) / 1.055f, 2.4f);
-    return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];
-}
-static float night_hg(float g, float c) { return (1 - g * g) / (4 * (float)M_PI * powf(1 + g * g - 2 * g * c, 1.5f)); }
-static void test_night_frame(void)
-{
-    const float el = LIGHT_MOON_ELEV, En = light_moon_normal(el), Eh = En * sinf(el * 0.017453293f);
-    const float skyfrac[2] = { 0.10f, 0.25f };   /* the moonlit sky's light on level ground, a fraction of the moon's normal illuminance (clear sky) */
-    int sk;
-    section("10. Night as seen (exposure, local exposure, Purkinje, tonemap on the GPU)");
-    for (sk = 0; sk < 2; sk++) {
-        float Yamb = Eh + skyfrac[sk] * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Epool = 20.0f;   /* lux on the road 10 m ahead under two low beams */
-        /* rows: moonlit level ground at Coastline's de-lit albedo (road and walls 0.6 to 0.8: 0.7) and a dark 18%, a wall facing
-           the moon 0.18, the pool at albedo 0.1 and 0.3 */
-        float L[5] = { 0.7f * Yamb / (float)M_PI, 0.18f * Yamb / (float)M_PI, 0.18f * (En + skyfrac[sk] * En * 0.5f) / (float)M_PI,
-                       0.1f * Epool / (float)M_PI, 0.3f * Epool / (float)M_PI };
-        float Yl[5] = { L[0], L[0], L[2], 0.2f * Epool / (float)M_PI, 0.2f * Epool / (float)M_PI };
-        float in[5][4], o[5][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
-        int i;
-        for (i = 0; i < 5; i++)
-            in[i][0] = in[i][1] = in[i][2] = L[i], in[i][3] = Yl[i] * NIGHT_BLM_N;
-        {
-            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
-            kern(@"t_post", 5, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
-            memcpy(o, [bo contents], sizeof o);
-        }
-        {
-            float g18 = 255 * (0.2126f * o[0][0] + 0.7152f * o[0][1] + 0.0722f * o[0][2]), g5 = 255 * (0.2126f * o[1][0] + 0.7152f * o[1][1] + 0.0722f * o[1][2]);
-            float wall = 255 * (0.2126f * o[2][0] + 0.7152f * o[2][1] + 0.0722f * o[2][2]);
-            float p1 = 255 * (0.2126f * o[3][0] + 0.7152f * o[3][1] + 0.0722f * o[3][2]), p3 = 255 * (0.2126f * o[4][0] + 0.7152f * o[4][1] + 0.0722f * o[4][2]);
-            printf("    sky %.0f%% of the moon: moon %.3f lux normal, %.3f on the ground, ambient %.3f lux, EV100 %.2f;"
-                   " 0.7 ground %.0f/255, 18%% ground %.0f, wall facing the moon %.0f, headlamp pool 10%%/30%% %.0f/%.0f\n",
-                   100 * skyfrac[sk], En, Eh, Yamb, ev, g18, g5, wall, p1, p3);
-            float yg = night_dlin(o[0]), yp1 = night_dlin(o[3]), yp3 = night_dlin(o[4]);
-            (void)g5, (void)wall;
-            report(yg >= 0.004f && yg <= 0.03f, "moonlit ground at Forza Horizon 6's night level", "display Y %.4f (0.004..0.03; FH6 0.008..0.03)", yg);
-            report(yp1 >= 0.3f && yp1 <= 0.9f && yp3 > yp1 + 0.03f && p3 < 254.0f, "headlamp pool at FH6's level, its texture kept",
-                   "display Y 10%% %.2f, 30%% %.2f (FH6 pools 0.55..0.88)", yp1, yp3);
-            report(yp1 > 16.0f * yg, "the pool 4 stops and more over the moonlit ground", "%.2f vs %.4f (FH6: 20 to 60 x)", yp1, yg);
-        }
-    }
-    {   /* across the pool's edge: the local mean is a blur (the bloom chain's mid level: about 2% of the frame's width,
-           taken as a Gaussian of that sigma); the moonlit ground 3 sigma from the edge must stay within 25% of its level far away */
-        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Lg = 0.18f * Yamb / (float)M_PI, Lp = 0.2f * 20.0f / (float)M_PI, sig = 1.0f;
-        float d[3] = { 1.0f, 2.0f, 3.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
-        int i;
-        for (i = 0; i < 3; i++) {   /* the ground at d sigma outside a straight edge: the blur's share of the pool */
-            float f = 0.5f * erfcf(d[i] / (sig * 1.41421356f));
-            in[i][0] = in[i][1] = in[i][2] = Lg, in[i][3] = (Lg + f * (Lp - Lg)) * NIGHT_BLM_N;
-        }
-        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg * NIGHT_BLM_N;
-        {
-            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
-            kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
-            memcpy(o, [bo contents], sizeof o);
-        }
-        printf("    moonlit ground beside the pool: 1, 2, 3 sigma out %.0f, %.0f, %.0f/255; far %.0f\n", 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
-        report(night_dlin(o[2]) >= 0.75f * night_dlin(o[3]), "no dark ring beside the pool at 3 sigma", "display Y %.4f vs %.4f far away (within 25%%)", night_dlin(o[2]), night_dlin(o[3]));
-    }
-    {   /* the lighthouse beam (brr_metal_vol.h vol_beam, the C reference of the shader's march: 2,000,000 cd, full to
-           1.5 degrees, none past 2.5, the night haze k_vol[4]) seen side-on from 100 m, its crossing D from the lamp,
-           through the same chain next to the moonlit ground; the blur around a thin beam is the ground's */
-        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma, ss = st * k_vol[4].albedo;
-        float Dd[3] = { 100.0f, 300.0f, 1000.0f }, in[4][4], o[4][4], pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N }, Lb[3];
-        const float A[3] = { 0, 0, 0 }, ax[3] = { 1, 0, 0 }, dir[3] = { 0, 1, 0 };
-        int i;
-        for (i = 0; i < 3; i++) {
-            float org[3] = { Dd[i], -100.0f, 0.0f };
-            Lb[i] = 2.0e6f * ss * vol_beam(org, dir, A, ax, cosf(2.5f * 0.017453293f), cosf(1.5f * 0.017453293f), st, k_vol[4].g, 3000.0f, 0.5f, 256);
-            in[i][0] = in[i][1] = in[i][2] = Lg + Lb[i], in[i][3] = Lg * NIGHT_BLM_N;   /* the beam over the ground behind it (vol_beam includes the path to the eye) */
-        }
-        in[3][0] = in[3][1] = in[3][2] = Lg, in[3][3] = Lg * NIGHT_BLM_N;
-        {
-            id<MTLBuffer> bi = B(in, sizeof in), bo = B(NULL, sizeof o), bp = B(pr, sizeof pr);
-            kern(@"t_post", 4, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
-            memcpy(o, [bo contents], sizeof o);
-        }
-        printf("    lighthouse beam side-on from 100 m: %.4f, %.4f, %.4f cd/m2 at 100, 300, 1000 m from the lamp -> %.0f, %.0f, %.0f/255 over the ground's %.0f\n",
-               Lb[0], Lb[1], Lb[2], 255 * o[0][1], 255 * o[1][1], 255 * o[2][1], 255 * o[3][1]);
-        report(o[0][1] < 0.97f && night_dlin(o[0]) > 0.05f, "the beam near the lighthouse: bright, not clipped", "display Y %.3f (ground %.4f)", night_dlin(o[0]), night_dlin(o[3]));
-        report(night_dlin(o[1]) > 2.0f * night_dlin(o[3]), "the beam 300 m out still visible", "display Y %.3f (ground %.4f)", night_dlin(o[1]), night_dlin(o[3]));
-        report(o[2][1] >= o[3][1] && o[2][1] < o[1][1], "the beam fades with distance", "%.0f < %.0f", 255 * o[2][1], 255 * o[1][1]);
-    }
-    {   /* the local exposure over the whole range (the GPU's locexp through the chain): added light never darkens a
-           pixel (a flare's ghost over the haze), and regions 1, 2, 3 stops over the moonlit ground keep their steps */
-        enum { NP = 400, NB = 9 };
-        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Lg = 0.18f * Yamb / (float)M_PI, (*in)[4] = malloc(16 * NP * NB), (*o)[4] = malloc(16 * NP * NB), pr[4] = { x, LIGHT_LOCAL_LEVEL, LIGHT_LOCAL_CONTRAST, 1.0f / NIGHT_BLM_N };
-        float reg[5], worst = 0;
-        int i, b, bad = 0;
-        for (b = 0; b < NB; b++)
-            for (i = 0; i < NP; i++) {
-                float Y = Lg * exp2f(-4.0f + 16.0f * i / (NP - 1)), Yl = Lg * exp2f(-2.0f + 12.0f * b / (NB - 1));
-                in[b * NP + i][0] = in[b * NP + i][1] = in[b * NP + i][2] = Y, in[b * NP + i][3] = Yl * NIGHT_BLM_N;
-            }
-        {
-            id<MTLBuffer> bi = B(in, 16 * NP * NB), bo = B(NULL, 16 * NP * NB), bp = B(pr, sizeof pr);
-            kern(@"t_post", NP * NB, ^(id<MTLComputeCommandEncoder> e) { [e setBuffer:bi offset:0 atIndex:0]; [e setBuffer:bp offset:0 atIndex:1]; [e setBuffer:bo offset:0 atIndex:2]; });
-            memcpy(o, [bo contents], 16 * NP * NB);
-        }
-        for (b = 0; b < NB; b++)
-            for (i = 1; i < NP; i++) {
-                float a = 0.2126f * o[b * NP + i - 1][0] + 0.7152f * o[b * NP + i - 1][1] + 0.0722f * o[b * NP + i - 1][2];
-                float c = 0.2126f * o[b * NP + i][0] + 0.7152f * o[b * NP + i][1] + 0.0722f * o[b * NP + i][2];
-                if (c < a - 1e-6f)
-                    bad++, worst = fmaxf(worst, a - c);
-            }
-        report(bad == 0, "local exposure: more light never darker", "%d decreasing steps of %d (pixel 2^-4..2^12 x ground, blur 2^-2..2^10), worst %.4f", bad, NB * (NP - 1), worst);
-        for (i = 0; i < 5; i++)
-            reg[i] = night_post1(x, Lg * exp2f((float)i), Lg * exp2f((float)i));
-        printf("    regions 0..4 stops over the moonlit 18%% ground, display Y: %.4f %.4f %.4f %.4f %.4f\n", reg[0], reg[1], reg[2], reg[3], reg[4]);
-        report(reg[1] > 1.4f * reg[0] && reg[2] > 1.4f * reg[1] && reg[3] > 1.4f * reg[2], "brighter regions keep their gradation",
-               "ratios %.2f, %.2f, %.2f (1.4 and up)", reg[1] / reg[0], reg[2] / reg[1], reg[3] / reg[2]);
-        free(in), free(o);
-    }
-    {   /* the night air toward the moon (k_vol[4]: its extinction, albedo and phase; the camera 5 degrees off the moon,
-           the medium's full density along a level ray): its light over an object 300 m away and over the far horizon
-           (3 km), through the chain, against the moonlit ground; it must read as night air, not a wall */
-        float Yamb = Eh + 0.10f * En, ev = light_night_ev(Yamb, LIGHT_NIGHT_KEY), x = 1.0f / (1.2f * exp2f(ev));
-        float Lg = 0.18f * Yamb / (float)M_PI, st = k_vol[4].sigma;
-        float Lin = k_vol[4].albedo * (En * night_hg(k_vol[4].g, cosf(5.0f * 0.017453293f)) + 0.10f * En / (float)M_PI);
-        float t3 = expf(-st * 300.0f), t30 = expf(-st * 3000.0f);
-        float L300 = Lg * t3 + (1 - t3) * Lin, L3k = Lg * t30 + (1 - t30) * Lin;
-        float g = night_post1(x, Lg, Lg), a = night_post1(x, L300, L300), h = night_post1(x, L3k, L3k);
-        printf("    night air toward the moon: object at 300 m +%.2f stops (display Y %.4f), far horizon +%.2f stops (%.4f), ground %.4f\n",
-               log2f(L300 / Lg), a, log2f(L3k / Lg), h, g);
-        report(log2f(L300 / Lg) < 0.75f, "an object 300 m away keeps its level", "+%.2f stops of air light (under 0.75)", log2f(L300 / Lg));
-        report(h < 0.057f && h > g, "the far horizon a lit haze, not a wall", "display Y %.4f (ground %.4f; FH6's sky at most 0.057)", h, g);
-    }
-    {   /* the moon in view: the start camera (the game's view x projection: forward (0.6225, 0.7826, 0), vertical half-angle
-           atan(1 / 3.732) = 15 degrees), the moon opposite the sun's bearing (-1, -1.5) */
-        float sb[2] = { -1.0f, -1.5f }, n = sqrtf(sb[0] * sb[0] + sb[1] * sb[1]), mb[2] = { -sb[0] / n, -sb[1] / n };
-        float az = acosf(mb[0] * 0.6225f + mb[1] * 0.7826f) * 57.29578f, vhalf = atanf(1.0f / 3.732f) * 57.29578f;
-        report(LIGHT_MOON_ELEV + 0.26f < vhalf - 1.0f && az < 20.0f, "the moon in the start camera's view",
-               "%.1f degrees up (view to %.1f), %.1f degrees off the view's heading", LIGHT_MOON_ELEV, vhalf, az);
-    }
-}
-
-/* the volumetric clouds' transmittance toward the light (brr_metal_clouds.h cloud_light_t, the glare's), on the
-   renderer's own noise (cloud_noise): in (0, 1], falling as the extinction rises, 1 with the tier off or the light
-   under the horizon */
-static void test_cloud_light(void)
-{
-    id<MTLTexture> tn[2];
-    float T[5];
-    int k;
-    for (k = 0; k < 2; k++) {
-        MTLTextureDescriptor *t3 = [MTLTextureDescriptor new];
-        int n = k ? 32 : 128, det = k;
-        t3.textureType = MTLTextureType3D;
-        t3.pixelFormat = MTLPixelFormatRGBA16Unorm;   /* 16 bits: the shape is stretched 4 x, then the coverage's remap; 8 bits drew contours */
-        t3.width = t3.height = t3.depth = (NSUInteger)n;
-        t3.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-        t3.storageMode = MTLStorageModeShared;
-        id<MTLTexture> t = [s_dev newTextureWithDescriptor:t3];
-        tn[k] = t;
-        kern3(@"cloud_noise", MTLSizeMake((NSUInteger)n, (NSUInteger)n, (NSUInteger)n), ^(id<MTLComputeCommandEncoder> e) {
-            [e setTexture:t atIndex:0];
-            [e setBytes:&det length:4 atIndex:0];
-        });
-        {   /* the noise's channels' means: made, not empty */
-            size_t nn = (size_t)n * n * n;
-            uint16_t *px = malloc(nn * 8);
-            double m[4] = { 0, 0, 0, 0 };
-            size_t q;
-            [t getBytes:px bytesPerRow:(NSUInteger)n * 8 bytesPerImage:(NSUInteger)n * n * 8 fromRegion:MTLRegionMake3D(0, 0, 0, (NSUInteger)n, (NSUInteger)n, (NSUInteger)n) mipmapLevel:0 slice:0];
-            for (q = 0; q < nn * 4; q++)
-                m[q & 3] += px[q] / 65535.0;
-            printf("    noise %d^3 channel means %.3f %.3f %.3f %.3f\n", n, m[0] / nn, m[1] / nn, m[2] / nn, m[3] / nn);
-            free(px);
-        }
-    }
-    id<MTLTexture> tshape = tn[0], tdet = tn[1];
-    for (k = 0; k < 5; k++) {
-        KU ku;
-        static const float dens[5] = { 0.005f, 0.03f, 0.12f, 0.03f, 0.03f };
-        id<MTLBuffer> bo = B(NULL, 32);
-        memset(&ku, 0, sizeof ku);
-        ku.sun[0] = 0.3f, ku.sun[1] = 0.4f, ku.sun[2] = k == 4 ? -0.2f : 0.866f;
-        ku.eye[3] = 0.002f;
-        ku.cld[0] = 1.0f, ku.cld[1] = dens[k]   /* full coverage: the ray is sure to meet cloud */, ku.cld[2] = 0, ku.cld[3] = k == 3 ? 0.0f : 1.0f;
-        kern(@"cloud_light_t", 1, ^(id<MTLComputeCommandEncoder> e) {
-            [e setBytes:&ku length:sizeof ku atIndex:0];
-            [e setBuffer:bo offset:0 atIndex:1];
-            [e setTexture:tshape atIndex:0];
-            [e setTexture:tdet atIndex:1];
-        });
-        T[k] = ((const float *)[bo contents])[0];
-        { const float *r = (const float *)[bo contents]; printf("    case %d: T %.4f, optical depth %.3f over %.2f..%.2f km\n", k, r[0], r[1], r[2], r[3]); }
-    }
-    section("11. Volumetric clouds (the renderer's noise and cloud_light_t on the GPU)");
-    printf("    transmittance toward the light at extinction 0.005, 0.03, 0.12 /m: %.4f %.4f %.4f; tier off %.4f; light under the horizon %.4f\n",
-           T[0], T[1], T[2], T[3], T[4]);
-    report(T[0] > 0 && T[0] <= 1 && T[1] <= T[0] && T[2] <= T[1] && T[2] < T[0], "the clouds' transmittance toward the light",
-           "in (0, 1], falling with the extinction: %.4f >= %.4f >= %.4f", T[0], T[1], T[2]);
-    report(T[3] == 1.0f && T[4] == 1.0f, "no clouds: tier off, light under the horizon", "%.4f, %.4f", T[3], T[4]);
-}
-
 static void test_misc(void)
 {
     section("8. sRGB, normals, finite output");
@@ -1926,6 +1133,7 @@ static void test_misc(void)
         float *o = malloc(N * 16);
         id<MTLTexture> sm, atl;
         id<MTLBuffer> bl, bi, bo;
+        id<MTLTexture> sp;
         int i, k, bad = 0;
         {
             MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:16 height:16 mipmapped:NO];
@@ -2021,6 +1229,18 @@ static void test_misc(void)
         }
         bl = B(set, sizeof *set);
         bi = B(in, (size_t)N * sizeof *in);
+        {   /* the sky's specular cube: a small grey one, every mip a uniform 1,000 cd/m2 */
+            MTLTextureDescriptor *cd = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float size:4 mipmapped:YES];
+            float px[16 * 4];
+            int f, m, j;
+            for (j = 0; j < 16 * 4; j++)
+                px[j] = (j & 3) == 3 ? 1.0f : 1000.0f;
+            sp = [s_dev newTextureWithDescriptor:cd];
+            for (m = 0; m < (int)sp.mipmapLevelCount; m++)
+                for (f = 0; f < 6; f++)
+                    [sp replaceRegion:MTLRegionMake2D(0, 0, 4 >> m, 4 >> m) mipmapLevel:(NSUInteger)m slice:(NSUInteger)f withBytes:px
+                          bytesPerRow:(NSUInteger)(4 >> m) * 16 bytesPerImage:0];
+        }
         bo = B(NULL, (size_t)N * 16);
         kern(@"t_radiance", N, ^(id<MTLComputeCommandEncoder> e) {
             [e setBytes:&u length:sizeof u atIndex:0];
@@ -2030,6 +1250,7 @@ static void test_misc(void)
             [e setBuffer:bo offset:0 atIndex:3];
             [e setTexture:s_brdfE atIndex:1];
             [e setTexture:atl atIndex:2];
+            [e setTexture:sp atIndex:3];
         });
         memcpy(o, bo.contents, (size_t)N * 16);
         nf_scan((const float *)bo.contents, ((size_t)N * 16) / 4);
@@ -2068,7 +1289,7 @@ int main(int argc, char **argv)
             return 2;
         }
         /* the renderer's shader source, the same expression brr_open compiles */
-        src = [[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC] stringByAppendingString:@BRR_SKY_SRC];
+        src = [[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC] stringByAppendingString:@BRR_VOL_SRC];
         if (argc >= 4 && !strcmp(argv[2], "--dump")) {
             [src writeToFile:[NSString stringWithUTF8String:argv[3]] atomically:YES encoding:NSUTF8StringEncoding error:&err];
             return 0;
@@ -2102,21 +1323,17 @@ int main(int argc, char **argv)
             [cb waitUntilCompleted];
             printf("lit_init, its pipelines and the BRDF table: %.1f ms\n", (CACurrentMediaTime() - t0) * 1000.0);
         }
-        if (!s_lpp || !s_lbd || !s_lbua || !s_patmT || !s_patmM || !s_patmS || !s_patmI) {
+        if (!s_lpp || !s_lbd || !s_lbua) {
             fprintf(stderr, "lighttest: a lit pipeline failed\n");
             return 1;
         }
         test_brdf();
         test_carpaint();
-        test_sky();
         test_tonemap();
-        test_exposure();
         test_lamp();
         test_bloom();
         test_delit();
         test_misc();
-        test_night_frame();
-        test_cloud_light();
         printf("\n");
         report(g_nonfin == 0, "every kernel output finite", "%zu non-finite of %zu values read back", g_nonfin, g_scanned);
         printf("\n%d passed, %d failed\n", g_pass, g_fail);

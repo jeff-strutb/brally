@@ -26,7 +26,8 @@
 
 #include "brr_metal_gi_src.h"
 
-#include "brr_metal_glare.h"
+#include "brr_metal_env.h"
+#include "brr_metal_ao.h"
 
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
  * cascades: their matrices, where each ends in view depth, metres per texel,
@@ -35,10 +36,12 @@
  * widest radius in texels, the contact shadow's march in metres (0: off);
  * scr: world to the target's pixels (brr_shadow.h, brr_screen_matrix); gi.x:
  * the irradiance probes on (brr_metal_gi.h), which then replace the sky's
- * ambient term */
+ * ambient term; env: x the specular cube's last mip (brr_metal_env.h), y its
+ * bearing's turn, z 1 with a skymap; sh: the skymap's irradiance harmonics
+ * (light_sky.c), lux */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; float4 lexp; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; float4 env; float4 sh[9]; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -137,7 +140,6 @@
 "fragment SCD scopy(float4 pos [[position]], depth2d_array<float> c [[texture(0)]], constant uint4 &k [[buffer(0)]]) {\n" \
 "  SCD o; o.d = c.read(uint2(pos.xy) + k.yz, k.x); return o; }\n"
 
-#include "brr_metal_night.h"
 #include "brr_metal_vol.h"
 
 #define BRR_LIT_SRC \
@@ -146,6 +148,8 @@ BRR_WET_SRC \
 BRR_GI_DEFS \
 BRR_GI_SAMPLE_SRC \
 BRR_VOL_AT_SRC \
+BRR_ENV_SRC \
+BRR_AO_SRC \
 "static float3 lin(float3 c) { return select(pow((c + 0.055) / 1.055, 2.4), c / 12.92, c <= 0.04045); }\n" \
 "static float srgb1(float x) { return x <= 0.0031308 ? 12.92 * x : 1.055 * pow(x, 1.0 / 2.4) - 0.055; }\n" \
 /* the albedo: the game's texture times its vertex colour's hue (the colour's \
@@ -158,6 +162,12 @@ BRR_VOL_AT_SRC \
 "  float3 hue = lv > 0.02 ? clamp(vc / lv, 0.0, 2.0) : float3(1);\n" \
 "  return clamp(lin(tex) * lin(saturate(hue * 0.5)) * 4.672 * 0.85, 0.0, 0.9);\n" \
 "}\n" \
+/* the draw's albedo: a natural surface's (u.tr > 0, lit_tint) its texture's \
+   one chroma times the texel's luminance, 0.85 of it, as delit's grey; \
+   else delit; then the material's scale */ \
+"static float3 albedo(constant U &u, float3 tex, float3 vc) {\n" \
+"  float3 a = u.tr > 0.0 ? float3(u.tr, u.tg, u.tb) * dot(lin(tex), float3(0.2126, 0.7152, 0.0722)) * 0.85 : delit(tex, vc);\n" \
+"  return min(a * u.albk, 0.9); }\n" \
 /* the specular lobe: GGX with Smith visibility (height-correlated \
    approximation) and Schlick Fresnel (F0 0.04), without the n.l; the GGX \
    denominator's 1 - (n.h)^2 as |n x h|^2, exact in float for a smooth lobe */ \
@@ -221,28 +231,46 @@ BRR_VOL_AT_SRC \
 BRR_SHADOW_SRC \
 /* a surface's normal turned toward the eye (the game's faces are seen from \
    either side) */ \
+/* a face's normal from the world position's screen derivatives; straight up \
+   for a sliver too thin to have one (normalize(0) would be NaN) */ \
+"static float3 facen(float3 wp) { float3 c = cross(dfdx(wp), dfdy(wp)); float l = length(c); return l > 1e-12 ? c / l : float3(0, 0, 1); }\n" \
 "static float3 toeye(constant LU &u, float3 p, float3 n) { return dot(n, u.eye.xyz - p) < 0.0 ? -n : n; }\n" \
+/* the shading normal: the vertices' smooth one (vsn, light_smooth.h) on \
+   the side of the face that is toward the eye, else the face's own */ \
+"static float3 shadenrm(constant LU &u, float3 wp, float3 sn) {\n" \
+"  float3 f = toeye(u, wp, facen(wp)); float l = length(sn);\n" \
+"  if (!(l > 0.5)) return f;\n" \
+"  sn /= l; return dot(sn, f) < 0.0 ? -sn : sn; }\n" \
+/* the lobe's directional albedo E(n.v, roughness) (brdf_lut): the split \
+   sum's second sum for F0 0.04 */ \
+"static float envE(float nv, float rough, texture2d<float> bE) {\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 sz = float2(bE.get_width(), bE.get_height());\n" \
+"  return bE.sample(s, (0.5 + float2(sqrt(clamp(nv, 1e-3, 1.0)), saturate((rough - 0.0447) / 0.9553)) * (sz - 1.0)) / sz).r; }\n" \
 /* the light leaving a surface toward the eye, cd/m2, before exposure; n \
-   toward the eye (toeye), sv how much of the sun reaches it; the lamps from \
-   the point's cluster, shadowed from their atlas tiles (brr_metal_lights.h); \
-   gi the probes' indirect irradiance (gi_irr, lux) where u.gi.x is on: the \
-   diffuse's albedo / pi of it (nothing metallic) in place of the sky's term; \
-   a negative rough is car paint (brdf), the coat's own mirror of the \
-   surroundings the reflection pass's (brr_metal_refl.h) */ \
+   toward the eye (toeye), sv how much of the sun reaches it, ao how much of \
+   the sky (1: open).  The sun through the BRDF; the sky's diffuse, its \
+   irradiance harmonics (or the probes' gi where u.gi.x is on), through the \
+   coupled diffuse, which under even light keeps 1 - E(n.v) of it (brdf0's \
+   (1 - E(l)) / (1 - E_avg) averages to 1 over the hemisphere); the sky's \
+   specular, the prefiltered cube along the mirror direction times E (the \
+   split sum, Karis 2013), for car paint the coat's over the paint's; the \
+   lamps from the point's cluster, shadowed from their atlas tiles \
+   (brr_metal_lights.h); its own emission.  A negative rough is car paint \
+   (brdf) */ \
 "static float3 radiance(constant LU &u, const device LSet &ls, depth2d<float> atl, float3 p, float3 n, float3 alb, float rough, float glow, float sv,\n" \
-"                       texture2d<float> bE, float3 gi, float phi) {\n" \
+"                       texture2d<float> bE, float3 gi, float phi, texturecube<float> sp, float ao) {\n" \
 "  float3 v = normalize(u.eye.xyz - p); bool coat = rough < 0.0; rough = abs(rough); wet(u, p, n, alb, rough);\n" \
-"  float rb = coat ? -rough : rough, tb = coat ? 1.0 - coatE(dot(n, v), bE) : 1.0;   /* car paint: the coat's layering (brdf) */\n" \
-"  float3 Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
-"  Lo += alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
-"  Lo += lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
-"  Lo += alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
-/* BR_LIGHT_VIEW 9..12 (diagnostic): one term alone, the moon or sun, the ambient, the lamps, the glow */ \
+"  float rb = coat ? -rough : rough, nv = clamp(dot(n, v), 1e-3, 1.0), tb = coat ? 1.0 - coatE(nv, bE) : 1.0;   /* car paint: the coat's layering (brdf) */\n" \
+"  float3 r = reflect(-v, n);\n" \
+"  float3 Ls = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
+"  float3 La = alb / 3.14159 * tb * (1.0 - envE(nv, rough, bE)) * (u.gi.x > 0.5 ? gi : env_irr(u, n)) * ao_multi(ao, alb);\n" \
+"  float3 Le = u.env.z > 0.5 ? (env_spec(u, sp, r, rough) * envE(nv, rough, bE) * tb\n" \
+"                               + (coat ? env_spec(u, sp, r, BRR_COAT_ROUGH) * coatE(nv, bE) : float3(0))) * ao_spec(ao, nv, rough) : float3(0);\n" \
+"  float3 Ll = lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
+"  float3 Lg = alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* about 100 cd/m2: a lit window */\n" \
+/* BR_LIGHT_VIEW 9..12, 14 (diagnostic): one term alone, the sun or moon, the sky's diffuse, the lamps, the glow, the sky's specular */ \
 "  int dv = int(u.misc.w);\n" \
-"  if (dv == 9) Lo = u.sunc.rgb * brdf(n, v, u.sun.xyz, alb, rb, bE) * sv;\n" \
-"  if (dv == 10) Lo = alb / 3.14159 * tb * (u.gi.x > 0.5 ? gi : mix(u.gndc.rgb, u.skyc.rgb, n.z * 0.5 + 0.5));\n" \
-"  if (dv == 11) Lo = lamps(ls, atl, p, n, v, alb, rb, bE, phi);\n" \
-"  if (dv == 12) Lo = alb / max(dot(alb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;\n" \
+"  float3 Lo = dv == 9 ? Ls : dv == 10 ? La : dv == 11 ? Ll : dv == 12 ? Lg : dv == 14 ? Le : Ls + La + Le + Ll + Lg;\n" \
 "  return Lo * u.wb.rgb;\n" \
 "}\n" \
 /* the game's fog amount, toward the air's own light at the horizon (the sky \
@@ -253,19 +281,25 @@ BRR_SHADOW_SRC \
    sunlit glints and skies past their 65504 (which overflowed to infinity and \
    NaN); held finite below it for the sun's own disc */ \
 "static float3 preexp(constant LU &u, float3 c) { return min(c * u.misc.x, float3(60000.0)); }\n" \
-/* a face's normal from the world position's screen derivatives; straight up \
-   for a sliver too thin to have one (normalize(0) would be NaN) */ \
-"static float3 facen(float3 wp) { float3 c = cross(dfdx(wp), dfdy(wp)); float l = length(c); return l > 1e-12 ? c / l : float3(0, 0, 1); }\n" \
+/* a light source's own surface as the frame shows it: at most BRR_EMIT_MAX \
+   (a stop over the display's white, where PBR Neutral still keeps a red \
+   red) in its brightest channel, its hue \
+   kept.  Playground's rule for Forza's emissives, a few stops over the \
+   scene's light: at physical luminance a lamp's face is thousands of times \
+   the night's exposure and every colour reaches the display white (PBR \
+   Neutral desaturates what passes it).  The light it casts stays physical */ \
+"#define BRR_EMIT_MAX 2.0\n" \
+"static float3 emitcap(float3 c) { float m = max(c.r, max(c.g, c.b)); return m > BRR_EMIT_MAX ? c * (BRR_EMIT_MAX / m) : c; }\n" \
 /* the G-buffer */ \
 "struct GB { float4 alb [[color(0)]]; float4 pos [[color(1)]]; float4 nrm [[color(2)]]; float d [[depth(any)]]; };\n" \
 "fragment GB fsgb(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                 texture2d<float> em [[texture(1)]]) {\n" \
+"                 texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(2)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  r.alb = float4(min(delit(h.tex.rgb, h.it.rgb) * u.albk, 0.9), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
+"  r.alb = float4(albedo(u, h.tex.rgb, h.it.rgb), in.mat > 2.5 ? BRR_MAT_CAR / 255.0 : u.lamp > 0.5 ? BRR_MAT_LAMP / 255.0 : (128.0 + floor(saturate(g) * 127.0 + 0.5)) / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
-"  r.pos = float4(in.wp, float(fc)); r.nrm = float4(facen(in.wp), h.fog);\n" \
+"  r.pos = float4(in.wp, float(fc)); r.nrm = float4(shadenrm(lu, in.wp, in.nrm), h.fog);   /* toward the eye */\n" \
 "  return r;\n" \
 "}\n" \
 /* the painted backdrop, in HDR at the exposure that shows it as the game drew it */ \
@@ -296,14 +330,15 @@ BRR_SHADOW_SRC \
 "                    texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(2)]],\n" \
-"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]]) {\n" \
+"                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]], texturecube<float> sp [[texture(9)]],\n" \
+"                    texture2d<float> aot [[texture(10)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
 "  float glow = saturate((a.a * 255.0 - 128.0) / 127.0);\n" \
 "  int dbg = int(u.misc.w);\n" \
 "  float j = ign(in.pos.xy);\n" \
-"  float3 n = toeye(u, P.xyz, N.xyz);\n" \
+"  float3 n = N.xyz;   /* toward the eye already (fsgb) */\n" \
 /* the sun's visibility: none to look up on a face turned from it (the BRDF \
    is zero there), and no contact march where the cascades already shadow \
    it fully */ \
@@ -317,32 +352,103 @@ BRR_SHADOW_SRC \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
 "  float3 gi = u.gi.x > 0.5 ? gi_irr(gu, girr, gdst, P.xyz, n, normalize(u.eye.xyz - P.xyz)) : float3(0);\n" \
 "  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
+"  float ao = u.env.w > 0.5 ? ao_at(aot, pos, px, P.xyz, n) : 1.0;   /* env.w: the occlusion ran */\n" \
+"  if (dbg == 15) return float4(float3(ao), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  return float4(fogged(u, preexp(u, radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, glow, sv, bE, gi, j * 6.2831853)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
+"  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, 0.0, sv, bE, gi, j * 6.2831853, sp, ao);\n" \
+"  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* a lit window, about 100 cd/m2 */\n" \
+"  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;   /* a lamp's own light */\n" \
+"  return float4(fogged(u, preexp(u, L) + emitcap(preexp(u, E * u.wb.rgb)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
 "}\n" \
-/* the game's blended 3D, forward-lit; an additive draw is light it adds; vu, iv: the volumetric fog's (brr_vol_bind) */ \
-"fragment float4 fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
+/* the game's blended 3D, forward-lit; an additive draw is light it adds; vu, iv: the volumetric fog's \
+   (brr_vol_bind).  Its depth is the game's own (shade's h.d), as the \
+   G-buffer's opaque 3D wrote it: the rasteriser's z is another encoding, \
+   and tested against the G-buffer's it passed and failed at random */ \
+"struct FF { float4 c [[color(0)]]; float d [[depth(any)]]; };\n" \
+"fragment FF fsf(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
 "                    texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(1)]], const device LSet &ls [[buffer(2)]],\n" \
 "                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(3)]],\n" \
 "                    texture2d<float> girr [[texture(6)]], texture2d<float> gdst [[texture(7)]],\n" \
-"                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]]) {\n" \
+"                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]], texturecube<float> sp [[texture(9)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  float3 n = toeye(lu, in.wp, facen(in.wp)), c;\n" \
+"  float3 n = shadenrm(lu, in.wp, in.nrm), c, ge = 0.0;\n" \
 /* a lighthouse beam: its own colour as light, the game's gradient along it, \
    no face normal; under the volumetric fog the spot's in-scatter carries it */ \
 "  if (u.beam > 0.0) c = lin(h.o.rgb) * u.beam * lu.wb.rgb * (lu.vol.x > 0.5 ? u.beamw : 1.0);\n" \
 "  else if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
+"  else if (u.lamp > 0.5) c = lin(h.o.rgb) * BRR_LAMP_L * lu.wb.rgb;   /* a lamp's flare: light */\n" \
 "  else {\n" \
 "    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
 "    float3 gi = lu.gi.x > 0.5 ? gi_irr(gu, girr, gdst, in.wp, n, normalize(lu.eye.xyz - in.wp)) : float3(0);\n" \
-"    c = radiance(lu, ls, atl, in.wp, n, min(delit(h.tex.rgb, h.it.rgb) * u.albk, 0.9), lu.misc.z, g, sv, bE, gi, ign(in.pos.xy) * 6.2831853);\n" \
+"    float3 al = albedo(u, h.tex.rgb, h.it.rgb);\n" \
+"    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0);\n" \
+"    ge = al / max(dot(al, float3(0.2126, 0.7152, 0.0722)), 0.02) * g * 100.0 * lu.wb.rgb;   /* a lit window's own light */\n" \
 "  }\n" \
+"  bool emit = u.addk > 0.0 || u.beam > 0.0 || u.lamp > 0.5;\n" \
+"  float3 cp = emit ? emitcap(preexp(lu, c)) : preexp(lu, c) + emitcap(preexp(lu, ge));\n" \
 /* the volumetric fog on, the same as the opaque surfaces behind it take (brr_metal_vol.h), never the game's */ \
-"  if (lu.vol.x > 0.5) return float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, preexp(lu, c), u.addk > 0.0 || u.beam > 0.0), h.o.a);\n" \
-"  return float4(fogged(lu, preexp(lu, c), u.addk > 0.0 || u.beam > 0.0 ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
+"  FF r; r.d = h.d;\n" \
+"  if (lu.vol.x > 0.5) r.c = float4(vol_fwd(vu, iv, in.pos.xy, in.wp, lu.eye.xyz, cp, emit), h.o.a);\n" \
+"  else r.c = float4(fogged(lu, cp, emit ? 0.0 : h.fog, u.fog_color.rgb), h.o.a);\n" \
+"  return r;\n" \
 "}\n" \
+/* the cars' lamps seen: each lamp's lens (an ellipse LENS_HW x LENS_HH \
+   about its position, facing along its axis) shows the light it sends \
+   toward the eye over its area, L = I(v) / (A cos), I the same pattern and \
+   candela that light the scene (lamp, light_scene.c): a brake lamp as \
+   bright as the light it throws.  Additive, depth-tested with the game's \
+   own encoding (wfloat of 1/w), after the blended 3D.  k.S: world to the \
+   lit target's pixels (brr_screen_matrix, jittered as the frame's draws), \
+   k.tgt: its size and the exposure */ \
+"#define LENS_HW_HEAD 0.10\n#define LENS_HH_HEAD 0.06\n#define LENS_HW_REAR 0.09\n#define LENS_HH_REAR 0.05\n" \
+"struct LNU { float4x4 S; float4 tgt; float4 eye; float4 wb; };\n" \
+"struct LNO { float4 pos [[position]]; float2 q; float oow [[center_no_perspective]]; float3 wp; uint li [[flat]]; };\n" \
+"vertex LNO lnvs(uint v [[vertex_id]], uint li [[instance_id]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]]) {\n" \
+"  LNO o; LS l = ls.l[li]; o.li = li; o.q = 0.0; o.oow = 0.0;\n" \
+"  if (l.kind > 1.5) { o.pos = float4(0.0, 0.0, 0.0, 1.0); return o; }   /* not a car's lamp: no area */\n" \
+"  float2 c = float2((v == 1 || v == 2 || v == 4) ? 1.0 : -1.0, (v == 2 || v == 4 || v == 5) ? 1.0 : -1.0);\n" \
+"  float3 ax = float3(l.axis), sd = float3(l.side), up = cross(sd, ax);\n" \
+"  float hw = l.kind < 0.5 ? LENS_HW_HEAD : LENS_HW_REAR, hh = l.kind < 0.5 ? LENS_HH_HEAD : LENS_HH_REAR;\n" \
+"  float3 wp = float3(l.pos) + sd * (c.x * hw) + up * (c.y * hh); float4 h = k.S * float4(wp, 1.0); o.wp = wp;\n" \
+"  if (!(h.w > 1e-3)) { o.pos = float4(0.0, 0.0, 0.0, 1.0); return o; }\n" \
+"  float2 px = h.xy / h.w, ndc = float2(px.x / k.tgt.x * 2.0 - 1.0, 1.0 - px.y / k.tgt.y * 2.0);\n" \
+"  o.pos = float4(ndc * h.w, 0.5 * h.w, h.w); o.q = c; o.oow = 1.0 / h.w; return o; }\n" \
+"struct LNF { float4 c [[color(0)]]; float d [[depth(any)]]; };\n" \
+"fragment LNF lnfs(LNO in [[stage_in]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]],\n" \
+"                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n" \
+"  if (dot(in.q, in.q) > 1.0) discard_fragment();\n" \
+/* only on its car's body as drawn: car paint within 35 cm (a car the game \
+   does not draw, the player's in the bumper and cockpit views, shows no lenses) */ \
+"  uint2 px = uint2(in.pos.xy); if (!carpaint(alb.read(px).a) || distance(pos.read(px).xyz, in.wp) > 0.35) discard_fragment();\n" \
+"  LS l = ls.l[in.li]; float3 dv = normalize(k.eye.xyz - float3(l.pos)); float ct = dot(float3(l.axis), dv);\n" \
+"  if (ct <= 0.0) discard_fragment();\n" \
+"  float A = 3.14159265 * (l.kind < 0.5 ? LENS_HW_HEAD * LENS_HH_HEAD : LENS_HW_REAR * LENS_HH_REAR);\n" \
+"  LNF o; o.c = float4(emitcap(float3(l.rgb) * (lamp(l, dv) / (A * max(ct, 0.1))) * k.wb.rgb * k.tgt.z), 1.0);\n" \
+"  o.d = float(wfloat(in.oow)) / 65536.0; return o; }\n" \
+/* the exposure's meter, on the GPU: the frame's scene luminance (the \
+   pre-exposed HDR divided by its exposure, p.x) over a 64 x 36 grid, \
+   centre-weighted (1 at the edges, 4 in the middle), its mean log2 into \
+   out[0] (a reflected-light meter's reading, as Unreal's average meter \
+   takes it), and the log2 under which 90% of the grid lies into out[1] \
+   (a histogram of 64 bins, half a stop each, from 2^-12); one threadgroup of 256 */ \
+"kernel void meter(uint t [[thread_index_in_threadgroup]], texture2d<float> hdr [[texture(0)]], constant float4 &p [[buffer(0)]],\n" \
+"                  device float *out [[buffer(1)]]) {\n" \
+"  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
+"  threadgroup float sa[256], sw[256]; threadgroup atomic_uint hb[64]; float a = 0.0, w = 0.0;\n" \
+"  if (t < 64u) atomic_store_explicit(&hb[t], 0u, memory_order_relaxed); threadgroup_barrier(mem_flags::mem_threadgroup);\n" \
+"  for (uint i = t; i < 64u * 36u; i += 256u) {\n" \
+"    float2 uv = (float2(i % 64u, i / 64u) + 0.5) / float2(64.0, 36.0), q = (uv - 0.5) * 2.0;\n" \
+"    float L = dot(hdr.sample(s, uv).rgb, float3(0.2126, 0.7152, 0.0722)) / max(p.x, 1e-12);\n" \
+"    float k = 1.0 + 3.0 * saturate(1.0 - dot(q, q)); a += k * log2(max(L, 1e-5)); w += k;\n" \
+"    atomic_fetch_add_explicit(&hb[uint(clamp((log2(max(L, 1e-5)) + 12.0) * 2.0, 0.0, 63.0))], 1u, memory_order_relaxed); }\n" \
+"  sa[t] = a; sw[t] = w; threadgroup_barrier(mem_flags::mem_threadgroup);\n" \
+"  for (uint st = 128u; st > 0u; st >>= 1) { if (t < st) { sa[t] += sa[t + st]; sw[t] += sw[t + st]; } threadgroup_barrier(mem_flags::mem_threadgroup); }\n" \
+"  if (t == 0u) { out[0] = sa[0] / max(sw[0], 1e-6);\n" \
+"    uint c = 0u, n90 = uint(0.9 * 64.0 * 36.0), b = 0u;\n" \
+"    for (; b < 64u; b++) { c += atomic_load_explicit(&hb[b], memory_order_relaxed); if (c >= n90) break; }\n" \
+"    out[1] = (float(b) + 1.0) * 0.5 - 12.0; } }\n" \
 /* bloom: a 13-tap downsample and a 3x3 tent upsample (Jimenez 2014) */ \
 "fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 d = 1.0 / float2(t.get_width(), t.get_height()), uv = in.uv;\n" \
@@ -363,49 +469,41 @@ BRR_SHADOW_SRC \
 "  r += t.sample(s, uv + d * float2(-1, -1)).rgb + t.sample(s, uv + d * float2(1, -1)).rgb + t.sample(s, uv + d * float2(-1, 1)).rgb + t.sample(s, uv + d * float2(1, 1)).rgb;\n" \
 "  return float4(r / 16.0, 1);\n" \
 "}\n" \
-/* post: bloom, exposure, the meter's histogram, the Purkinje shift (brr_metal_night.h), Khronos PBR Neutral, sRGB */ \
-BRR_NIGHT_SRC \
-BRR_GLARE_SRC \
-/* the meter's centre weighting (light_night.h light_meter_weight): 1 at the \
-   frame's edge, 4 at its centre, 1 + 3 (1 - r^2) within the ellipse r < 1 */ \
-"static uint mweight(float2 uv) { float2 q = (uv - 0.5) * 2.0; return 1u + uint(3.0 * saturate(1.0 - dot(q, q)) + 0.5); }\n" \
-/* the grade for a high-key day (the weather's bg.z saturation, bg.w contrast \
-   about the mid-grey 0.18, both 1 for none), on the tonemapped colour */ \
-"static float3 grade(float3 c, float sat, float con) {\n" \
-"  float y = dot(c, float3(0.2126, 0.7152, 0.0722)); c = max(mix(float3(y), c, sat), 0.0);\n" \
-"  return 0.18 * pow(max(c, 1e-6) / 0.18, con); }\n" \
+/* post: bloom, Khronos PBR Neutral, sRGB (the exposure is the lit targets', pre-exposed) */ \
+BRR_ENV_PASS_SRC \
+/* Khronos PBR Neutral (2024): linear under 0.76, the highlights compressed \
+   to 1 and desaturated toward white as they go, hue kept */ \
 "static float3 neutral(float3 c) {\n" \
 "  const float start = 0.8 - 0.04, desat = 0.15;\n" \
 "  float x = min(c.r, min(c.g, c.b)); float off = x < 0.08 ? x - 6.25 * x * x : 0.04; c -= off;\n" \
 "  float p = max(c.r, max(c.g, c.b)); if (p < start) return c;\n" \
 "  float d = 1.0 - start, np = 1.0 - d * d / (p + d - start); c *= np / p;\n" \
 "  float g = 1.0 - 1.0 / (desat * (p - np) + 1.0); return mix(c, float3(np), g); }\n" \
-/* local exposure (light_night.h's light_local_exposure, the same numbers):
-   a region over the knee, by its blurred luminance, keeps c of its stops
-   over it; lexp: x c, y the knee (pre-exposed), z the blur's scale (the
-   bloom level holds the levels under it summed) */ \
-"static float locexp(float Ypix, float Yloc, float key, float c) {\n" \
-"  float Y = min(Yloc, Ypix * 2.8284271), kn = key;   /* LIGHT_LOCAL_EDGE 1.5 stops; key: LIGHT_LOCAL_LEVEL */\n" \
-"  if (!(Y > kn) || !(c > 0.0) || !(c < 1.0)) return 1.0;\n" \
-"  return exp2((c - 1.0) * log2(Y / kn)); }\n" \
-"fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]],\n" \
-"                    texture2d<float> alb [[texture(2)]], texture2d<float> blm [[texture(3)]],\n" \
-"                    device atomic_uint *hist [[buffer(1)]], constant GLU &gl [[buffer(2)]], const device float *clt [[buffer(3)]]) {\n" \
+"fragment float4 pfs(LO in [[stage_in]], constant LU &u [[buffer(0)]], texture2d<float> hdr [[texture(0)]], texture2d<float> bl [[texture(1)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge);\n" \
 "  uint2 px = uint2(in.pos.xy); float3 c = min(hdr.read(px).rgb, 65504.0);   /* past half float's range (the sun's disc): its largest */\n" \
 "  if (int(u.misc.w) == 0) c = mix(c, bl.sample(s, in.uv).rgb * u.bg.y, 0.04);   /* the levels summed: their mean */\n" \
-"  c += glare(gl, in.uv, alb, clt[0]);   /* the sun's (moon's) glare and flare (brr_metal_glare.h), metered with the frame */\n" \
-"  float Y = dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12);   /* the meter reads cd/m2: the exposure divided back out */\n" \
-"  uint2 apx = uint2(float2(px) * float2(alb.get_width(), alb.get_height()) / float2(hdr.get_width(), hdr.get_height()));   /* the G-buffer at the lit 3D's size */\n" \
-"  if (((px.x | px.y) & 3) == 0 && Y > 0.0 && alb.read(apx).a >= 0.25)   /* the meter reads lit surfaces only; 16 bins a stop */\n" \
-"    atomic_fetch_add_explicit(&hist[uint(clamp((log2(max(Y, 1e-6)) + 10.0) * 16.0, 0.0, 511.0))],\n" \
-"                              mweight(float2(px) / float2(hdr.get_width(), hdr.get_height())), memory_order_relaxed);   /* centre-weighted */\n" \
-"  if (u.lexp.x > 0.0 && alb.read(apx).a >= 0.25) c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), dot(blm.sample(s, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)) * u.lexp.z, u.lexp.y, u.lexp.x);   /* after the meter; surfaces only: the moon's bloom in the blur made a dark disc of the sky about it */\n" \
-"  float pw = u.lexp.y > 0.0 ? purkinje_w(dot(c, float3(0.2126, 0.7152, 0.0722)) / max(u.misc.x, 1e-12)) : 0.0;   /* night only (lexp.y: the night's local exposure is set) */\n" \
 "  c = neutral(c);   /* pre-exposed already */\n" \
-"  c = purkinje(c, pw);   /* the eye at night: the rods' blue, display-referred */\n" \
-"  if (u.bg.z > 0.0) c = saturate(grade(c, u.bg.z, u.bg.w));\n" \
 "  return float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 1);\n" \
-"}\n"
+"}\n" \
+/* the painted backdrop's scenery in front of the skymap: its colour as \
+   albedo (0.85 of it, linear, as delit), facing the eye across the \
+   horizontal, lit by the sky's harmonics and the sun, unshadowed, faded \
+   toward the horizon's sky by k.misc.y (the air between: aerial \
+   perspective at the backdrop's few kilometres).  Its painted sky (the \
+   mask, brr_skymask.h: 255 sky, 0 scenery, 128 a flat panel, sky above the \
+   horizon and scenery under it) leaves the skymap behind it */ \
+"fragment float4 fsbk2(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
+"                      constant LU &lu [[buffer(1)]], constant EU &k [[buffer(2)]], texture2d<float> skym [[texture(2)]]) {\n" \
+"  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
+"  constexpr sampler ms(filter::linear, s_address::repeat, t_address::clamp_to_edge);\n" \
+"  float ty = 0.25 / float(skym.get_height());\n" \
+"  float m = 0.5 * (skym.sample(ms, in.st - float2(0, ty)).r + skym.sample(ms, in.st + float2(0, ty)).r);\n" \
+"  float3 d = env_camray(k, in.pos.xy);\n" \
+"  float skyish = abs(m - 0.502) < 0.1 ? smoothstep(-0.004, 0.004, d.z) : smoothstep(0.25, 0.75, m);\n" \
+"  float3 f = -normalize(float3(d.xy, 0.0) + float3(0, 0, 1e-6));\n" \
+"  float3 alb = lin(h.o.rgb) * 0.85, E = env_irr(lu, f) + lu.sunc.rgb * max(dot(f, lu.sun.xyz), 0.0);\n" \
+"  float3 L = mix(alb / 3.14159 * E, lu.fogc.rgb, k.misc.y);\n" \
+"  return float4(preexp(lu, L * lu.wb.rgb), 1.0 - skyish); }\n"
 
 #endif

@@ -250,6 +250,7 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
  * GPU time (gpu_ms <= 0: none yet).
  * *up: 1 when the frame goes through MetalFX's scaler (at any scale, so a
  * move to 1.0 keeps the same look) */
+#define BRR_LIT_BUDGET (1920.0 * 1080.0)   /* the lit 3D's pixels at most (MetalFX's "performance" input at 4K) */
 float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
 {
     static int env = -1, sup = -1;
@@ -272,11 +273,26 @@ float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
         *up = fixed < 1.0f || brr_taa_mode() == 2;
         return fixed;
     }
-    if ((double)tw * (double)th <= 2.5e6)
+    if ((double)tw * (double)th <= BRR_LIT_BUDGET)
         return 1.0f;
     *up = 1;
-    if (d.scale <= 0.0f) {
-        d.scale = 0.67f;
+    static int ltw, lth;
+    if (d.scale <= 0.0f || tw != ltw || th != lth) {   /* again when the target's size changes */
+        ltw = tw;
+        lth = th;
+        /* the lit 3D at a fixed budget of pixels, whatever the window: 2560 x
+           1920 at 0.67 drew in 12 ms on an M4 Pro, a 5K screen at 0.67 three
+           times that; MetalFX brings the budget up to the target (at most
+           its device's scale, 3 on Apple silicon) */
+        float mn = 0.5f;
+#ifdef BRR_HAVE_METALFX
+        if (@available(macOS 14.0, iOS 17.0, *)) {
+            float mx = [MTLFXTemporalScalerDescriptor supportedInputContentMaxScaleForDevice:dev];
+            if (mx > 1.0f)
+                mn = 1.0f / mx;
+        }
+#endif
+        d.scale = fmaxf(mn, sqrtf((float)(BRR_LIT_BUDGET / ((double)tw * (double)th))));
         d.ms = 16.6f;
     }
     {   /* the controller only with BR_LIGHT_DYNRES=1: a change of scale rebuilds

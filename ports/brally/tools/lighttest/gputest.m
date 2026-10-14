@@ -746,8 +746,7 @@ static void gpu_restore(void)
  * the functions the lit frame makes pipelines of looked up */
 static void whole_source(const char *path)
 {
-    static NSString *const fns[] = { @"vs", @"fs", @"fsgb", @"fsbk", @"lvs", @"lfs", @"fsf", @"bdn", @"bup", @"pfs", @"svs", @"scopy",
-                                     @"atm_t", @"atm_ms", @"atm_sv", @"atm_irr", @"skyfs", @"fsbk2" };
+    static NSString *const fns[] = { @"vs", @"fs", @"fsgb", @"fsbk", @"lvs", @"lfs", @"fsf", @"bdn", @"bup", @"pfs", @"svs", @"scopy", @"fsbk2" };
     NSError *err = nil;
     NSString *src = [NSString stringWithContentsOfFile:[NSString stringWithUTF8String:path] encoding:NSUTF8StringEncoding error:&err];
     id<MTLLibrary> lib;

@@ -18,6 +18,10 @@ typedef struct LightCamera {
 void light_game_camera(LightCamera *c);
 /* the race's weather: 0 sunny, 1 fog, 2 rain, 3 snow, 4 night (MEASUREMENTS.md) */
 int  light_game_weather(void);
+/* the track's sky environment, as the game picks its sky texture by the chosen
+ * track (mirrors share their base track's): 0 desert, 1 mountain, 2 coast,
+ * 3 mine, 4 amazon, 5 race, 6 bonus */
+int  light_game_sky_env(void);
 /* a car as the race has it: its frame (rows of its body matrix), velocity,
  * the drive torque (negative: driving backwards) and brake torque (negative
  * while held) its physics applies, its control word (0x20000: reverse), and

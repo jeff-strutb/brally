@@ -236,6 +236,62 @@ static void furnace(void)
     brr_gi_release(&g); brr_rt_release(&w);
 }
 
+/* the sky by direction: open air (one far triangle so the world builds), a
+ * cube of radiance a + b z (Metal's face axes; world z up is face +Z), a
+ * probe's irradiance against the closed form pi a + (2 pi / 3) b n.z */
+static void skycube(void)
+{
+    Mesh m = { 0 };
+    BrrRtWorld w = { 0 };
+    BrrGi g;
+    const int N = 64;
+    const float A = 1000.0f, B = 500.0f;
+    float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 }, err = 0.0f;
+    float ta[3] = { 900, 900, -900 }, tb[3] = { 901, 900, -900 }, tc[3] = { 900, 901, -900 };
+    tri(&m, ta, tb, tc, grey(128), 0);
+    world(&w, &m, 1);
+    brr_gi_init(&g, s_dev, 3, 3, 3, 64);
+    MTLTextureDescriptor *td = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float size:N mipmapped:NO];
+    id<MTLTexture> cube = [s_dev newTextureWithDescriptor:td];
+    float *px = malloc((size_t)N * N * 16);
+    for (int f = 0; f < 6; f++) {
+        for (int y = 0; y < N; y++)
+            for (int x = 0; x < N; x++) {
+                float u = 2.0f * (x + 0.5f) / N - 1.0f, v = 2.0f * (y + 0.5f) / N - 1.0f;
+                float d[6][3] = { { 1, -v, -u }, { -1, -v, u }, { u, 1, v }, { u, -1, -v }, { u, -v, 1 }, { -u, -v, -1 } };
+                float l = sqrtf(d[f][0] * d[f][0] + d[f][1] * d[f][1] + d[f][2] * d[f][2]), L = A + B * d[f][2] / l;
+                float *q = px + ((size_t)y * N + x) * 4;
+                q[0] = q[1] = q[2] = L; q[3] = 1.0f;
+            }
+        [cube replaceRegion:MTLRegionMake2D(0, 0, N, N) mipmapLevel:0 slice:(NSUInteger)f withBytes:px bytesPerRow:N * 16 bytesPerImage:(NSUInteger)N * N * 16];
+    }
+    free(px);
+    {   /* the same field twice: from the uniform sky / ground blend (A + B z exactly), then from the cube;
+           the probes' 8 x 8 octahedral texels hold either the same way (their bilinear lookup is off the
+           closed form by up to 6% at oblique normals: the representation, which a CPU model reproduces) */
+        float q[6][8] = { { 0, 0, 0, 0, 0, 0, 1, 0 }, { 0, 0, 0, 0, 0, 0, -1, 0 }, { 0, 0, 0, 0, 1, 0, 0, 0 },
+                          { 0, 0, 0, 0, 0, -1, 0, 0 }, { 0, 0, 0, 0, 0.6f, 0, 0.8f, 0 }, { 0, 0, 0, 0, 0, 0.8f, -0.6f, 0 } };
+        float ref[6][4], out[6][4], up[3] = { A + B, A + B, A + B }, dn[3] = { A - B, A - B, A - B }, eye[3] = { 0, 0, 0 }, dax = 0.0f;
+        for (int f = 0; f < 800; f++) { brr_gi_frame(&g, eye, 2.0f, sun, zero, up, dn); run(&g, &w, nil, 0); }
+        eval(&g, &q[0][0], 6, &ref[0][0]);
+        brr_gi_env(&g, cube, 2.0f);
+        for (int f = 0; f < 800; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
+        eval(&g, &q[0][0], 6, &out[0][0]);
+        for (int i = 0; i < 6; i++) {
+            float want = 3.14159265f * A + 2.0943951f * B * q[i][6];
+            err = fmaxf(err, fabsf(out[i][0] / ref[i][0] - 1.0f));
+            if (i < 4)
+                dax = fmaxf(dax, fabsf(out[i][0] / want - 1.0f));
+        }
+        printf("sky cube   radiance %g + %g z: up %.1f (closed form %.1f), down %.1f (%.1f); cube against the blend max rel diff %.3f%%, "
+               "axes against the closed form %.2f%%\n", A, B, out[0][0], 3.14159265f * A + 2.0943951f * B, out[1][0],
+               3.14159265f * A - 2.0943951f * B, err * 100.0f, dax * 100.0f);
+        check("a miss sees the sky cube by direction: the cube as the analytic field, within 0.2%", err < 0.002f);
+        check("sky cube: the axes within 1.5% of the closed form", dax < 0.015f);
+    }
+    brr_gi_release(&g); brr_rt_release(&w);
+}
+
 /* a lamp's first bounce: E(dir) at the box's centre, the lamp there too:
  * the walls' radiance a I cos / (pi r^2) times cos(dir, w) over their solid
  * angle, cos / r^2 dA, by the midpoint rule */
@@ -448,6 +504,7 @@ int main(void)
         s_eval = [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_eval"] error:&err];
         check("GiU is 16 float4", sizeof(BrrGiU) == 16 * 16);
         furnace();
+        skycube();
         lampbox();
         leak();
         gridtest();

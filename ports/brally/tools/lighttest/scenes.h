@@ -77,8 +77,8 @@ static void cam_make(Cam *c, const float eye[3], const float tgt[3], float fovy,
     c->vp[15] = -(eye[0] * c->vp[3] + eye[1] * c->vp[7] + eye[2] * c->vp[11]);
 }
 
-/* the sky's camray (brr_metal_sky.h) and its inverse matrix (brr_metal.m's
- * sky block), transcribed: the ray through target pixel (px, py) */
+/* the camera ray of the former sky shader (camray) and its inverse matrix,
+ * transcribed: the ray through target pixel (px, py) */
 static void cam_ray(const Cam *c, float px, float py, float d[3])
 {
     double aa[3][3], det, inv[3][3], cc[3], p[3];

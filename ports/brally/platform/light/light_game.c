@@ -28,6 +28,12 @@ void light_game_camera(LightCamera *c)
     c->oy = DAT_105cd9fc;
 }
 
+int light_game_sky_env(void)
+{
+    static const int env[16] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 6, 6, 0 };
+    return env[g_Br0B380C & 15];   /* g_brCfgChosenTrack, 0x100B3014 */
+}
+
 int light_game_weather(void)
 {
     int w = *(int32_t *)&DAT_104b15e8;

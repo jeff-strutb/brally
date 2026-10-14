@@ -66,7 +66,10 @@ int light_scene_lights(LightSpot *out, int *id, int max)
             /* lamp j: 0 front left, 1 front right, 2 rear left, 3 rear right, in the
                model's frame (x forward, y its second row, z up) */
             float hw = (c->hi[1] - c->lo[1]) * 0.5f * 0.72f, yc = (c->hi[1] + c->lo[1]) * 0.5f;
-            float lx = j < 2 ? c->hi[0] - 0.08f : c->lo[0] + 0.05f;
+            /* at the lens: on the body's outer face (its box's front or back, 2 cm out), so
+               nothing of its own car is in front of it (inside the box a 5 cd tail lamp lit
+               the car's own wheels and mudflaps 10 cm away at 500 lux) */
+            float lx = j < 2 ? c->hi[0] + 0.02f : c->lo[0] - 0.02f;
             float ly = yc + (j & 1 ? -hw : hw);
             /* a headlamp 0.65 m above the model's lowest point (its wheels' contact): UN ECE
                R48 6.2.4 mounts it 0.5 to 1.2 m up; 0.36 of the body's height put it at

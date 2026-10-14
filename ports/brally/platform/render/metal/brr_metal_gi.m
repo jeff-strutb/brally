@@ -46,7 +46,15 @@ int brr_gi_init(BrrGi *g, id<MTLDevice> dev, int nx, int ny, int nz, int nr)
         g->dst[k] = atlas(dev, nx * nz * (BRR_GI_DST + 2), ny * (BRR_GI_DST + 2), MTLPixelFormatRG32Float);
     }
     g->ray = [dev newBufferWithLength:(size_t)nx * ny * nz * nr * 16 options:MTLResourceStorageModeShared];
-    if (!g->trace || !g->birr || !g->bdst || !g->grid || !g->gcnt || !g->glst || !g->irr[0] || !g->irr[1] || !g->dst[0] || !g->dst[1] || !g->ray) {
+    {   /* a black cube for the trace's sky slot when there is no skymap */
+        MTLTextureDescriptor *td = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float size:1 mipmapped:NO];
+        static const uint16_t z4[4];
+        int f;
+        g->nocube = [dev newTextureWithDescriptor:td];
+        for (f = 0; f < 6 && g->nocube; f++)
+            [g->nocube replaceRegion:MTLRegionMake2D(0, 0, 1, 1) mipmapLevel:0 slice:(NSUInteger)f withBytes:z4 bytesPerRow:8 bytesPerImage:8];
+    }
+    if (!g->nocube || !g->trace || !g->birr || !g->bdst || !g->grid || !g->gcnt || !g->glst || !g->irr[0] || !g->irr[1] || !g->dst[0] || !g->dst[1] || !g->ray) {
         brr_gi_release(g);
         return 0;
     }
@@ -137,6 +145,13 @@ static void grid_place(BrrGiU *u)
     u->gorg[3] = cs;
 }
 
+void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod)
+{
+    g->env = spec;
+    g->u.sky[3] = spec ? 1.0f : 0.0f;
+    g->u.gnd[3] = lod;
+}
+
 void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MTLBuffer> lset, int nlamp)
 {
     id<MTLComputeCommandEncoder> e;
@@ -167,6 +182,7 @@ void brr_gi_encode(BrrGi *g, id<MTLCommandBuffer> cb, const BrrRtWorld *w, id<MT
     [e setBuffer:g->glst offset:0 atIndex:10];
     [e setTexture:g->irr[prev] atIndex:0];
     [e setTexture:g->dst[prev] atIndex:1];
+    [e setTexture:g->env ? g->env : g->nocube atIndex:2];
     [e dispatchThreads:MTLSizeMake((NSUInteger)g->nr, (NSUInteger)np, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
     [e setComputePipelineState:g->birr];
     [e setTexture:g->irr[prev] atIndex:0];

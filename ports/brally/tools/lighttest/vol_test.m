@@ -47,7 +47,7 @@ static int g_fail;
 
 /* brr_metal.m's LU, the same layout as the shaders' */
 typedef struct LU { float sunvp[4][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4]; } LU;
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4]; } LU;
 
 static void homogeneous(void)
 {
@@ -155,14 +155,14 @@ static void cpu_cell(const LU *u, const BrrVU *v, const LightSpot *lt, int x, in
     for (k = 0; k < 3; k++) p[k] = E[k] + d[k] * t;
     st = v->med[0] * vol_height(p[2], v->med[3], v->med[2]);
     c = u->sun[0] * d[0] + u->sun[1] * d[1] + u->sun[2] * d[2];
-    for (k = 0; k < 3; k++) L[k] = u->sunc[k] * vol_hg(v->nse[3], c) + u->skyc[k] / 3.14159265f;
+    for (k = 0; k < 3; k++) L[k] = u->sunc[k] * vol_hg(v->nse[3], c) + u->sh[0][k] * (0.282095f / 3.14159265f);   /* the sphere's mean radiance */
     if (lt) {   /* a point light: candela over the distance squared, in its range window */
         float q[3] = { lt->pos[0] - p[0], lt->pos[1] - p[1], lt->pos[2] - p[2] }, d2 = fmaxf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2], 0.01f), dl = sqrtf(d2);
         float wn = dl < lt->range ? 1.0f - (dl <= 0.7f * lt->range ? 0.0f : ({ float a = (dl - 0.7f * lt->range) / (0.3f * lt->range); a * a * (3 - 2 * a); })) : 0.0f;
         float cl = (q[0] * d[0] + q[1] * d[1] + q[2] * d[2]) / dl;
         for (k = 0; k < 3; k++) L[k] += lt->rgb[k] * lt->candela * wn / d2 * vol_hg(v->nse[3], cl);
     }
-    for (k = 0; k < 3; k++) out[k] = fminf(st * v->med[1] * L[k] * u->misc[0], 60000.0f);
+    for (k = 0; k < 3; k++) out[k] = fminf(st * v->med[1] * L[k] * u->wb[k] * u->misc[0], 60000.0f);
     out[3] = st;
 }
 
@@ -278,15 +278,16 @@ static void gpu(const char *path)
     memcpy(u.eye, E, sizeof E);
     u.sun[0] = 0.3f; u.sun[1] = 0.8f; u.sun[2] = 0.52f;
     { float l = sqrtf(u.sun[0] * u.sun[0] + u.sun[1] * u.sun[1] + u.sun[2] * u.sun[2]); for (k = 0; k < 3; k++) u.sun[k] /= l; }
-    for (k = 0; k < 3; k++) { u.sunc[k] = 12000.0f * (1.0f - 0.05f * k); u.skyc[k] = 16000.0f * (0.85f + 0.03f * k); }
+    for (k = 0; k < 3; k++) { u.sunc[k] = 12000.0f * (1.0f - 0.05f * k); u.skyc[k] = 16000.0f * (0.85f + 0.03f * k); u.sh[0][k] = 9000.0f * (0.85f + 0.03f * k); }
     u.misc[0] = 1.0f / 3000.0f;           /* an exposure: pre-exposed values near 1 */
+    u.wb[0] = 1.10f; u.wb[1] = 0.98f; u.wb[2] = 0.85f;   /* a white balance */
     u.misc[1] = 0.0f;                     /* no cascades: the sun unshadowed */
     memset(&v, 0, sizeof v);
     screen_map(scr);
     vol_inverse(scr, &v);
     v.grid[0] = VOL_NX; v.grid[1] = VOL_NY; v.grid[2] = VOL_NZ; v.grid[3] = VOL_FAR;
     v.tgt[0] = TW; v.tgt[1] = TH; v.tgt[2] = 0.37f; v.tgt[3] = VOL_NEAR;
-    v.med[0] = k_vol[1].sigma; v.med[1] = k_vol[1].albedo; v.med[2] = k_vol[1].height; v.med[3] = E[2] - 2.0f;
+    v.med[0] = VOL_KOSCHMIEDER / k_vol[1].vis; v.med[1] = k_vol[1].albedo; v.med[2] = k_vol[1].height; v.med[3] = E[2] - 2.0f;
     v.nse[3] = VOL_G;
     b[2] = lsb;
 
@@ -464,29 +465,29 @@ static void gpu(const char *path)
         CHECK(dop < 1e-3 && dtr < 1e-3 && dsame < 1e-3 && dadd < 1e-3, "opaque/blended %g %g %g %g", dop, dtr, dsame, dadd);
         memset(v.peye, 0, sizeof v.peye);
     }
-    {   /* the homogeneous closed form through the GPU: sun and lamp off, the sky an ambient of L = skyc / pi, no height falloff */
+    {   /* the homogeneous closed form through the GPU: sun and lamp off, the sphere an ambient of mean radiance L (sh[0] = L pi / Y00), no height falloff */
         LightSet *l2 = ls;
         double mt = 0, ms = 0;
         id<MTLTexture> t[3] = { shadow, prev, cell };
         id<MTLTexture> t2[3] = { cell, integ, nil };
-        float L = 2000.0f, sg = k_vol[2].sigma, alb = k_vol[2].albedo;
+        float L = 2000.0f, sg = VOL_KOSCHMIEDER / k_vol[2].vis, alb = k_vol[2].albedo;
         memset(l2->cl, 0, sizeof l2->cl);
         memset(u.sunc, 0, sizeof u.sunc);
-        for (k = 0; k < 3; k++) u.skyc[k] = L * 3.14159265f;
+        for (k = 0; k < 3; k++) u.sh[0][k] = L * 3.14159265f / 0.282095f;
         u.misc[0] = 1.0f / 1000.0f;
         v.med[0] = sg; v.med[1] = alb; v.med[2] = 1e9f;
         run(q, pinj, b, t, MTLSizeMake(VOL_NX, VOL_NY, VOL_NZ), MTLSizeMake(8, 8, 4), &u, &v);
         run(q, pint, b, t2, MTLSizeMake(VOL_NX, VOL_NY, 1), MTLSizeMake(16, 8, 1), NULL, &v);
         rd3(integ, got);
         for (z = 0; z < VOL_NZ; z++) {
-            float et = expf(-sg * vol_t1(z)), es = L * u.misc[0] * alb * (1.0f - et);
+            float et = expf(-sg * vol_t1(z)), es = L * u.wb[0] * u.misc[0] * alb * (1.0f - et);   /* channel 0 */
             for (y = 0; y < VOL_NY; y += 7)
                 for (x = 0; x < VOL_NX; x += 9) {
                     mt = fmax(mt, fabs(got[IX(x, y, z) + 3] - et) / et);
                     ms = fmax(ms, fabs(got[IX(x, y, z)] - es) / es);
                 }
         }
-        printf("gpu: homogeneous (rain, 1 km): transmittance max rel error %.2e, ambient in-scatter max rel error %.2e\n", mt, ms);
+        printf("gpu: homogeneous (rain): transmittance max rel error %.2e, ambient in-scatter max rel error %.2e\n", mt, ms);
         CHECK(mt < 0.005 && ms < 0.005, "gpu homogeneous %g %g", mt, ms);
     }
     printf("gpu: %s: vol_inject %.3f ms, vol_integrate %.3f ms at %dx%dx%d (one lamp in every cluster, the sun unshadowed)\n",
@@ -531,7 +532,7 @@ static void beam(void)
     static const float cs[8][4] = {   /* s, sideways offset, alpha, eye back */
         { 30, 0.0f, 90, 100 }, { 100, 1.0f, 60, 150 }, { 200, -3.0f, 120, 80 }, { 300, 0.0f, 30, 200 },
         { 600, 8.0f, 150, 300 }, { 1000, 0.0f, 45, 100 }, { 1500, -20.0f, 75, 400 }, { 50, 0.5f, 20, 60 } };
-    const float st = k_vol[4].sigma, cout = 0.99904822f, cin = 0.99965732f;
+    const float st = (VOL_KOSCHMIEDER / k_vol[4].vis), cout = 0.99904822f, cin = 0.99965732f;
     float a[3], o[3], d[3], worst = 0, worst_turn = 0;
     int c, k;
     beam_axis(17.0f, a);
@@ -640,9 +641,9 @@ static void beam_gpu(const char *path)
         beam_ray(k_bA, a, 30.0f + 180.0f * c, (float)(c % 3) - 1.0f, 25.0f + 18.0f * c, 120.0f, o, d);
         memcpy(in[c], o, 12); in[c][3] = 0.99965732f;
         memcpy(in[c] + 4, d, 12); in[c][7] = VOL_G;
-        memcpy(in[c] + 8, k_bA, 12); in[c][11] = k_vol[4].sigma;
+        memcpy(in[c] + 8, k_bA, 12); in[c][11] = (VOL_KOSCHMIEDER / k_vol[4].vis);
         memcpy(in[c] + 12, a, 12); in[c][15] = 0.99904822f;
-        want[c] = vol_beam(o, d, k_bA, a, 0.99904822f, 0.99965732f, k_vol[4].sigma, VOL_G, 3000.0f, 0.5f, VOL_BEAM_STEPS);
+        want[c] = vol_beam(o, d, k_bA, a, 0.99904822f, 0.99965732f, (VOL_KOSCHMIEDER / k_vol[4].vis), VOL_G, 3000.0f, 0.5f, VOL_BEAM_STEPS);
     }
     {
         id<MTLCommandQueue> q = [dev newCommandQueue];

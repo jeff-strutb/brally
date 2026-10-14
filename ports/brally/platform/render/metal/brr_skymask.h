@@ -12,7 +12,8 @@
  * starts the scenery.  A column with no such edge is all sky.  The skyline
  * is then median filtered across 5 columns (a lone tree or a cloud's crisp
  * rim does not notch it).  The mask is 255 above the skyline, 0 at and below
- * it; the shader samples it bilinearly for an anti-aliased silhouette. */
+ * it, 128 all over a flat panel (sky or sea: the view's elevation decides);
+ * the shader samples it bilinearly for an anti-aliased silhouette. */
 #ifndef BRR_SKYMASK_H
 #define BRR_SKYMASK_H
 
@@ -37,7 +38,7 @@ static float brr_skymask_half(const uint8_t *rgba, int w, int h, int *sky, uint8
 {
     float *f = (float *)malloc((size_t)w * (size_t)h * 3 * sizeof(float));
     int *raw = (int *)malloc((size_t)w * sizeof(int));
-    int x, y, c, i, nsky = 0;
+    int x, y, c, i, nsky = 0, panel = 0;
     if (!f || !raw) {
         free(f);
         free(raw);
@@ -105,7 +106,9 @@ static float brr_skymask_half(const uint8_t *rgba, int w, int h, int *sky, uint8
         }
         raw[x] = s;
     }
-    {   /* no edge anywhere and no gradient down it: a flat panel, the sea under the horizon */
+    {   /* no edge anywhere and no gradient down it: a flat panel, painted sky
+           over the horizon (the zenith's fill) or the sea under it; the mask
+           says 128 and the shader decides by the view's elevation */
         float lo = 1e9f, hi = -1e9f;
         int edge = 0;
         for (x = 0; x < w; x++)
@@ -118,9 +121,11 @@ static float brr_skymask_half(const uint8_t *rgba, int w, int h, int *sky, uint8
             lo = r < lo ? r : lo;
             hi = r > hi ? r : hi;
         }
-        if (!edge && hi - lo < BRR_SKY_FLAT)
+        if (!edge && hi - lo < BRR_SKY_FLAT) {
+            panel = 1;
             for (x = 0; x < w; x++)
                 raw[x] = 0;
+        }
     }
     for (x = 0; x < w; x++) {      /* the median across BRR_SKY_MED columns, clamped at the ends */
         int v[BRR_SKY_MED], n = 0, a, b;
@@ -140,7 +145,7 @@ static float brr_skymask_half(const uint8_t *rgba, int w, int h, int *sky, uint8
     if (m)
         for (y = 0; y < h; y++)
             for (x = 0; x < w; x++)
-                m[(size_t)y * w + x] = (uint8_t)(y < sky[x] ? 255 : 0);
+                m[(size_t)y * w + x] = (uint8_t)(panel ? 128 : y < sky[x] ? 255 : 0);
     free(f);
     free(raw);
     return (float)nsky / ((float)w * (float)h);

@@ -22,17 +22,18 @@
  *                 depth and normal aware (bilateral) filter as it is added
  *                 to the lit target (reflc).  Rougher than REFL_TRACE_MAX
  *                 (to REFL_ROUGH_MAX), or with no valid sample on its own
- *                 surface, a pixel gets the sky's specular alone, untraced.  What the march does not
+ *                 surface, a pixel keeps the sky's specular the lighting gave it.  What the march does not
  *                 find comes from the track's BVH (rt_closest) below
  *                 roughness wet.w, a hit shaded as grey ground (albedo 0.3
- *                 under the sun and sky, unshadowed), else from the sky-view
- *                 table.  The split-sum (Karis 2013): the reflected light
- *                 times the lobe's directional albedo E(n.v, roughness), the
- *                 same table the diffuse coupling reads (brdf_lut; F0 is
- *                 0.04 everywhere, so E is the DFG term's F0 A + B).  The
- *                 deferred pass lights with the sun, the sky's diffuse and
- *                 the lamps: it has no sky specular, so this is the
- *                 environment's specular, added once.
+ *                 under the sun and sky, unshadowed), else from the
+ *                 skymap's specular cube (brr_metal_env.h).  The split-sum
+ *                 (Karis 2013): the reflected light times the lobe's
+ *                 directional albedo E(n.v, roughness), the same table the
+ *                 diffuse coupling reads (brdf_lut; F0 is 0.04 everywhere,
+ *                 so E is the DFG term's F0 A + B).  The deferred pass lit
+ *                 every surface with the sky's prefiltered specular already:
+ *                 where the trace found something, the composite puts what
+ *                 it found in that term's place.
  *
  * LU.wet: x the weather's wetness, y its puddles, z the tier gate (0 off,
  * 1 screen space and sky, 2 also the BVH), w the BVH's roughness limit. */
@@ -47,11 +48,16 @@
 
 #define BRR_WET_SRC \
 /* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
-   and the reflections skip it); 64..127 the 3D's car paint (BRR_MAT_CAR, \
+   and the reflections skip it); 64..80 a lamp (BRR_MAT_LAMP); 88..104 the 3D's car paint (BRR_MAT_CAR, \
    no glow; the capture's car flag, lit 3, glide.c); 128..255 the 3D's \
    other surfaces, 128 + 127 x their glow */ \
 "#define BRR_MAT_CAR 96.0\n" \
-"static bool carpaint(float a) { a *= 255.0; return a > 63.5 && a < 127.5; }\n" \
+"static bool carpaint(float a) { a *= 255.0; return a > 87.5 && a < 104.5; }\n" \
+/* 72: a lamp (texmat's lamp textures: start lights, their flares), which \
+   emits BRR_LAMP_L cd/m2 at a full texel (LED signal heads: 5,000 to 15,000) */ \
+"#define BRR_MAT_LAMP 72.0\n" \
+"#define BRR_LAMP_L 10000.0\n" \
+"static bool lampmat(float a) { a *= 255.0; return a > 63.5 && a < 80.5; }\n" \
 /* car paint's two roughnesses: its clear coat's and the paint's under it \
    (brr_metal_lit.h: brdf) */ \
 "#define BRR_COAT_ROUGH 0.05\n" \
@@ -138,11 +144,10 @@
 "  return hl.x * t + hl.y * b + hl.z * n; }\n" \
 "static float2 rf_svuv(float3 d) { float lat = asin(clamp(d.z, -1.0, 1.0)), lon = atan2(d.y, d.x);\n" \
 "  return float2(lon / 3.14159 * 0.5 + 0.5, 0.5 + 0.5 * sign(lat) * sqrt(abs(lat) / 1.5708)); }\n" \
-/* the sky's specular along r (below the horizon the sky it mirrors), \
-   white-balanced and pre-exposed */ \
-"static float3 rf_env(constant LU &u, texture2d<float> sky, float3 r) {\n" \
-"  constexpr sampler ls(filter::linear, address::clamp_to_edge);\n" \
-"  return min(sky.sample(ls, rf_svuv(r.z < 0.0 ? float3(r.xy, -r.z) : r)).rgb * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
+/* the sky's specular along r at roughness rough (the skymap's cube, \
+   brr_metal_env.h), white-balanced and pre-exposed */ \
+"static float3 rf_env(constant LU &u, texturecube<float> sky, float3 r, float rough) {\n" \
+"  return min(env_spec(u, sky, r, rough) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
 /* a pixel's surface for the reflections: position, normal toward the eye, \
    roughness after the wet and the car's coat; false where nothing reflects */ \
 "static bool rf_surf(constant LU &u, texture2d<float> alb, texture2d<float> pos, texture2d<float> nrm, uint2 px,\n" \
@@ -172,7 +177,7 @@
 "                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]] RT_AS(8),\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
-"                  texture2d<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]]) {\n" \
+"                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
 "  float2 wh = float2(src.get_width(), src.get_height());\n" \
 "  uint2 fp = min(px * 2, uint2(wh) - 1);\n" \
@@ -201,7 +206,7 @@
 "      float3 tn = cross(a1 - a0, a2 - a0); tn = dot(tn, tn) > 1e-12 ? normalize(tn) : -r; if (dot(tn, r) > 0.0) tn = -tn;\n" \
 "      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
 "      Lfb = min(0.3 / 3.14159 * (u.sunc.rgb * max(nl, 0.0) * vis + u.skyc.rgb * (0.5 + 0.5 * tn.z)) * u.wb.rgb * u.misc.x, float3(60000.0)); }\n" \
-"  } else Lfb = rf_env(u, sky, r);\n" \
+"  } else Lfb = rf_env(u, sky, r, 0.0);\n" \
 "  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0 + min(hd, 1e4)), px);\n" \
 "}\n" \
 /* the temporal accumulation, at half resolution: cur reflk's target, hs the \
@@ -265,23 +270,25 @@
    REFL_MIRROR, growing to 4 at REFL_TRACE_MAX */ \
 "static float rf_rad(float rough) { return rough < REFL_MIRROR ? 0.0 : 1.0 + 3.0 * saturate((rough - REFL_MIRROR) / (REFL_TRACE_MAX - REFL_MIRROR)); }\n" \
 /* the composite: src the lit target as the deferred pass left it \
-   (pre-exposed), dst the same plus the reflection; hr reflk's target; sky \
-   the sky-view table (cd/m2), bE the lobe's albedo table.  The split-sum: \
-   the reflected light times E(n.v, roughness) */ \
+   (pre-exposed, the sky's prefiltered specular in it), dst the same with \
+   the traced reflection in that specular's place where the trace found \
+   something; hr reflk's target; sky the specular cube; bE the lobe's \
+   albedo table.  The split-sum: the reflected light times E(n.v, roughness) */ \
 "kernel void reflc(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]],\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> dst [[texture(4)]],\n" \
-"                  texture2d<float> sky [[texture(5)]], texture2d<float> bE [[texture(6)]], texture2d<float> hr [[texture(7)]]) {\n" \
+"                  texturecube<float> sky [[texture(5)]], texture2d<float> bE [[texture(6)]], texture2d<float> hr [[texture(7)]]) {\n" \
 "  if (px.x >= dst.get_width() || px.y >= dst.get_height()) return;\n" \
 "  float4 c = src.read(px); float3 p, n; float rough, fog;\n" \
 "  if (!rf_surf(u, alb, pos, nrm, px, p, n, rough, fog)) { dst.write(c, px); return; }\n" \
 "  float3 v = normalize(u.eye.xyz - p); float nv = clamp(dot(n, v), 1e-3, 1.0);\n" \
 "  float4 h = rough <= REFL_TRACE_MAX ? rf_up(u, hr, pos, nrm, px, p, n, rf_rad(rough)) : float4(0.0);\n" \
-"  float3 L = h.a > 0.0 ? h.rgb : rf_env(u, sky, reflect(-v, n));\n" \
+"  if (!(h.a > 0.0)) { dst.write(c, px); return; }\n" \
+"  float3 L = h.rgb - rf_env(u, sky, reflect(-v, n), rough);\n" \
 "  constexpr sampler ls(filter::linear, address::clamp_to_edge);\n" \
 "  float2 sz = float2(bE.get_width(), bE.get_height()), tc = (0.5 + float2(sqrt(nv), saturate((rough - 0.0447) / 0.9553)) * (sz - 1.0)) / sz;\n" \
 "  float E = bE.sample(ls, tc).r;\n" \
-"  dst.write(float4(min(c.rgb + L * E * (1.0 - fog), float3(60000.0)), c.a), px);\n" \
+"  dst.write(float4(clamp(c.rgb + L * E * (1.0 - fog), float3(0.0), float3(60000.0)), c.a), px);\n" \
 "}\n"
 
 #endif

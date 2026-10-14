@@ -1,9 +1,9 @@
 // kernels.metal: the verification suite's test kernels.  lighttest.m appends
-// this file to the renderer's own shader source (k_src, BRR_LIT_SRC and
-// BRR_SKY_SRC, exactly as brr_open compiles them) and compiles the whole as
-// one library, so every kernel below calls the renderer's functions as they
-// are: brdf, lamp, lin, srgb1, delit, neutral, rayleigh, miep, trans, svuv,
-// svdir, skyrad, radiance, fogged.  Nothing here re-implements them.
+// this file to the renderer's own shader source (k_src, BRR_LIGHTS_SRC,
+// BRR_LIT_SRC and BRR_VOL_SRC, exactly as brr_open compiles them) and
+// compiles the whole as one library, so every kernel below calls the
+// renderer's functions as they are: brdf, lamp, lin, srgb1, delit, neutral,
+// radiance, fogged.  Nothing here re-implements them.
 
 struct TBrdf { float4 n; float4 v; float4 l; float4 p; };   // p.x albedo, p.y roughness
 kernel void t_brdf(const device TBrdf *in [[buffer(0)]], device float4 *out [[buffer(1)]], texture2d<float> bE [[texture(0)]],
@@ -76,51 +76,18 @@ kernel void t_delit(const device float4 *in [[buffer(0)]], device float4 *o [[bu
   o[i] = float4(delit(in[2 * i].rgb, in[2 * i + 1].rgb), 0.0);
 }
 
-kernel void t_phase(const device float *c [[buffer(0)]], device float2 *o [[buffer(1)]], uint i [[thread_position_in_grid]]) {
-  o[i] = float2(rayleigh(c[i]), miep(c[i]));
-}
-
-// a direction -> its sky view coordinates -> the direction back; .w: the u, v
-kernel void t_svuv(const device float4 *d [[buffer(0)]], device float4 *o [[buffer(1)]], uint i [[thread_position_in_grid]]) {
-  float2 uv = svuv(d[i].xyz); o[2 * i] = float4(svdir(uv), 0.0); o[2 * i + 1] = float4(uv, 0.0, 0.0);
-}
-
-// the transmittance as the renderer reads it: (r, mu) through the table
-kernel void t_trans(texture2d<float> T [[texture(0)]], const device float2 *q [[buffer(0)]], device float4 *o [[buffer(1)]], uint i [[thread_position_in_grid]]) {
-  o[i] = float4(trans(T, q[i].x, q[i].y), 0.0);
-}
-
-// the sky view table as the renderer reads it, for a direction
-kernel void t_skyview(texture2d<float> S [[texture(0)]], const device float4 *d [[buffer(0)]], device float4 *o [[buffer(1)]], uint i [[thread_position_in_grid]]) {
-  constexpr sampler s(filter::linear, address::clamp_to_edge);
-  o[i] = float4(S.sample(s, svuv(d[i].xyz)).rgb, 0.0);
-}
-
-// the multiple-scattering table as the sky view reads it: (r, cos sun zenith)
-kernel void t_msamp(texture2d<float> M [[texture(0)]], const device float2 *q [[buffer(0)]], device float4 *o [[buffer(1)]], uint i [[thread_position_in_grid]]) {
-  o[i] = float4(msamp(M, q[i].x, q[i].y), 0.0);
-}
-
-// the sky with the sun's disc (skyrad), and the disc alone (skyrad minus the sky view)
-kernel void t_skyrad(constant KU &k [[buffer(0)]], texture2d<float> S [[texture(0)]], texture2d<float> T [[texture(1)]],
-                     const device float4 *d [[buffer(1)]], device float4 *o [[buffer(2)]], uint i [[thread_position_in_grid]]) {
-  constexpr sampler s(filter::linear, address::clamp_to_edge);
-  float3 L = skyrad(k, S, T, d[i].xyz);
-  o[2 * i] = float4(L, 0.0);
-  o[2 * i + 1] = float4(L - S.sample(s, svuv(d[i].xyz)).rgb * k.ktop.x, 0.0);
-}
-
 // the light leaving a surface as the deferred pass computes it: the normal to
 // the eye, the sun's soft-shadowed visibility, radiance (sun, sky, the
-// cluster's lamps through their atlas), pre-exposure and the fog over it
+// cluster's lamps through their atlas, the sky's specular cube sp, no
+// occlusion), pre-exposure and the fog over it
 struct TRad { float4 p; float4 n; float4 alb; float4 fog; };   // alb.w roughness, fog.x amount, fog.y glow
 kernel void t_radiance(constant LU &u [[buffer(0)]], const device LSet &ls [[buffer(1)]], depth2d_array<float> sm [[texture(0)]],
                        const device TRad *in [[buffer(2)]], device float4 *o [[buffer(3)]], texture2d<float> bE [[texture(1)]],
-                       depth2d<float> atl [[texture(2)]], uint i [[thread_position_in_grid]]) {
+                       depth2d<float> atl [[texture(2)]], texturecube<float> sp [[texture(3)]], uint i [[thread_position_in_grid]]) {
   TRad t = in[i];
   float3 n = toeye(u, t.p.xyz, t.n.xyz);
   float sv = dot(n, u.sun.xyz) > 0.0 ? sunvis(u, sm, t.p.xyz, n, float(i % 64) * 0.098) : 0.0;
-  float3 c = radiance(u, ls, atl, t.p.xyz, n, t.alb.rgb, t.alb.w, t.fog.y, sv, bE, float3(0), float(i % 64) * 0.098);
+  float3 c = radiance(u, ls, atl, t.p.xyz, n, t.alb.rgb, t.alb.w, t.fog.y, sv, bE, float3(0), float(i % 64) * 0.098, sp, 1.0);
   o[i] = float4(fogged(u, preexp(u, c), t.fog.x, t.alb.rgb), 0.0);
 }
 
@@ -134,16 +101,4 @@ kernel void t_half(const device float4 *x [[buffer(0)]], device half4 *o [[buffe
 fragment float4 t_facen(LO in [[stage_in]], constant int &mode [[buffer(0)]]) {
   float3 wp = mode == 0 ? float3(1.0, 2.0, 3.0) : mode == 1 ? float3(in.pos.x, in.pos.y, 0.0) : float3(in.pos.x * 0.5, 7.0, in.pos.y * 3.0);
   return float4(facen(wp), 1.0);
-}
-
-// the post's colour chain on one pixel, as pfs runs it: in.rgb the scene's
-// luminance (cd/m2), in.w the local mean around it (cd/m2); p.x the exposure,
-// p.y the local exposure's key, p.z its strength; out: sRGB
-kernel void t_post(const device float4 *in [[buffer(0)]], constant float4 &p [[buffer(1)]], device float4 *o [[buffer(2)]], uint i [[thread_position_in_grid]]) {
-  float3 c = in[i].rgb * p.x;
-  c *= locexp(dot(c, float3(0.2126, 0.7152, 0.0722)), in[i].w * p.x * p.w, p.y, p.z);   /* w: the bloom level's sum; p.w its scale, as pfs */
-  float pw = purkinje_w(dot(c, float3(0.2126, 0.7152, 0.0722)) / max(p.x, 1e-12));   /* as pfs */
-  c = neutral(c);
-  c = purkinje(c, pw);
-  o[i] = float4(srgb1(c.r), srgb1(c.g), srgb1(c.b), 0.0);
 }

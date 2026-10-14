@@ -55,11 +55,14 @@ static float lamp_c(const LightSpot *l, const float d[3])
     al = dot3(d, l->axis);
     if (al <= 0.0f)
         return 0.0f;
-    if (l->kind > 0.5f)
-        return l->candela * powf(al, 1.5f);
     up[0] = l->side[1] * l->axis[2] - l->side[2] * l->axis[1];      /* cross(side, axis) */
     up[1] = l->side[2] * l->axis[0] - l->side[0] * l->axis[2];
     up[2] = l->side[0] * l->axis[1] - l->side[1] * l->axis[0];
+    if (l->kind > 0.5f) {   /* a rear lamp (R7 Annex 4): a Gaussian of 18 degrees across by 6 up and down */
+        h = atan2f(dot3(d, l->side), al) * 57.2958f;
+        v = atan2f(dot3(d, up), al) * 57.2958f;
+        return l->candela * expf(-(h * h) / (2.0f * 18.0f * 18.0f) - (v * v) / (2.0f * 6.0f * 6.0f));
+    }
     h = atan2f(dot3(d, l->side), al) * 57.2958f;
     v = atan2f(dot3(d, up), al) * 57.2958f;
     spread = 0.25f * expf(-(h / 32.0f) * (h / 32.0f)) + 0.75f * expf(-((h - 1.5f) / 10.0f) * ((h - 1.5f) / 10.0f));

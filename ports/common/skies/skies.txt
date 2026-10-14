@@ -1,0 +1,38 @@
+# The Remastered lighting's skies: one Poly Haven HDRI (CC0, polyhaven.com) per
+# track environment and condition, 8K Radiance .hdr in ph8k/ (fetch.sh).
+# env condition hdri
+desert   clear  pizzo_pernice_puresky
+desert   fog    kloofendal_28d_misty_puresky
+desert   storm  overcast_soil_puresky
+desert   snow   nqweba_dawn
+desert   night  rogland_clear_night
+mountain clear  kloppenheim_05_puresky
+mountain fog    kloofendal_misty_morning_puresky
+mountain storm  kloofendal_overcast_puresky
+mountain snow   snow_field_puresky
+mountain night  qwantani_night_puresky
+coast    clear  kloofendal_48d_partly_cloudy_puresky
+coast    fog    beach_parking
+coast    storm  farmland_overcast
+coast    snow   snow_field_2_puresky
+coast    night  kloppenheim_02_puresky
+mine     clear  qwantani_noon_puresky
+mine     fog    misty_farm_road
+mine     storm  overcast_soil_2
+mine     snow   rogland_overcast
+mine     night  qwantani_moon_noon_puresky
+amazon   clear  sunflowers_puresky
+amazon   fog    kloppenheim_01_puresky
+amazon   storm  mud_road_puresky
+amazon   snow   hausdorf_meadow
+amazon   night  kloppenheim_07_puresky
+race     clear  farm_field_puresky
+race     fog    dalkey_view
+race     storm  suburban_football_field
+race     snow   suburban_soccer_park
+race     night  moonlit_golf
+bonus    clear  rustig_koppie_puresky
+bonus    fog    abandoned_slipway
+bonus    storm  farm_road
+bonus    snow   gray_pier
+bonus    night  qwantani_moonrise_puresky

@@ -1,6 +1,6 @@
 #!/bin/sh
-# night.sh: the night's checks (night_test.m): the moon, the Purkinje
-# weight, the night meter, the glow's gating, the track's lights.  No game run.
+# night.sh: the night's checks (night_test.m): the moon, the glow's
+# gating, the track's lights.  No game run.
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../../.." && pwd)
