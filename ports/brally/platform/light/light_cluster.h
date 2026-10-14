@@ -86,6 +86,16 @@ float light_influence(const LightSpot *l, const float p[3]);
  * w > 0 in front) and its eye, over s->l[0..n): fills s->h (but atl), s->cl
  * and s->idx */
 void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye[3], LightClusterStats *st);
+/* the clusters' geometry alone (the camera's; light_cluster_build's first
+ * part): the header, the planes (normal, offset) and the tile corners' rays,
+ * which brr_metal_cluster.h's kernels take to build the lists on the GPU */
+typedef struct LightClusterGeom {
+    float px[LC_TX + 1][4], py[LC_TY + 1][4], pz[LC_TZ + 1][4];
+    float ray[LC_TY + 1][LC_TX + 1][4];
+    float org[4];
+    float zb[LC_TZ + 4];
+} LightClusterGeom;
+void light_cluster_geom(LightSet *s, int n, const float vp[16], const float eye[3], LightClusterGeom *g);
 /* the cluster a world point falls in, exactly as the shaders find it */
 int  light_cluster_of(const LightSet *s, const float p[3]);
 
@@ -102,6 +112,19 @@ int  light_shadow_matrix(const LightSpot *l, LightShadowRec *r);
 /* the track's triangles that can cast into the lamp's tile (its frustum): their
  * vertex numbers (3 per triangle, into the track's array), at most max; the count */
 int  light_shadow_track_casters(const LightShadowRec *r, const LightSpot *l, uint32_t *out, int max);
+/* the grid itself, for the GPU's copy (brr_metal_cast.h cast_tiles): cells of
+ * LS_TRACK_CELL metres from lo, nx by ny; cell c's triangles list[start[c]] to
+ * list[start[c + 1]], their extent box[6 c] (lo xyz, hi xyz); build counts the
+ * rebuilds.  0 when there is no grid */
+#define LS_TRACK_CELL 16.0f
+typedef struct LightTrackGrid {
+    unsigned build;
+    int ntri, nx, ny;
+    float lo[2];
+    const int *start, *list;
+    const float *box;
+} LightTrackGrid;
+int  light_shadow_track_grid(LightTrackGrid *g);
 
 typedef struct LightShadowTile {
     int light;                   /* in the set */

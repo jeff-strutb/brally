@@ -126,6 +126,9 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
     so a pool filling the bumper view keeps its texture).
   - It adapts at 3 EV/s toward darker and 1 EV/s toward brighter, never
     brighter than a floor of EV100 -0.5.
+  - It adapts on the game's clock (`BR_VCLOCK`'s under a script). On the
+    wall clock, a scripted run's night frames came out up to 6% apart from
+    run to run.
 - **Night targets, measured from FH6's night chase frames** (101 and s26):
 
   | element | FH6 | Coastline |
@@ -217,8 +220,21 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   `BR_LIGHT_CASTCHECK` compares with the CPU path: 180 of 182 frames exact,
   two at float rounding (one triangle on the 5 cm track tolerance, one
   rectangle edge by a texel).
-- `BR_LIGHT_CPU`: 0.65 ms a frame at night, the casters 0.01 (0.17 before),
-  the rest command encoding; GPU total unchanged (6.2 ms at 2560 x 1440).
+- **Lamp clusters are built on the GPU** (brr_metal_cluster.h): one thread
+  a light marks the columns, rows and slices it meets, then one thread a
+  cluster ands the three masks and tests each light against the cluster's
+  sphere. The CPU gives the camera's planes alone (light_cluster_geom).
+  `BR_LIGHT_CLUSTERCHECK` compares with light_cluster_build: 119 of 119
+  checks exact.
+- **Lamp tiles' track casters are picked on the GPU** (brr_metal_cast.h
+  cast_tiles): one threadgroup a shadow tile takes the track grid's cells
+  under the lamp that meet its frustum and writes their triangles with the
+  tile's indexed indirect draw. `BR_LIGHT_TILECHECK` compares with
+  light_shadow_track_casters: 116 of 116 checks exact.
+- `BR_LIGHT_CPU`: the casters 0.01 ms a frame (0.17 before). The lights
+  stage, by part: lights 0.004, clusters 0.013, shadow plan 0.012, tiles'
+  casters 0.004 (0.066 on the CPU in the same run). The rest is command
+  encoding. GPU total unchanged (6.2 ms at 2560 x 1440).
 
 ## Fixed on the way
 

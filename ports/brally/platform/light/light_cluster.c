@@ -193,21 +193,14 @@ static float zbound(int k)          /* slice k's near boundary, k = 1..LC_TZ - 1
     return LC_NEAR * powf(LC_FAR / LC_NEAR, (float)(k - 1) / (float)(LC_TZ - 2));
 }
 
-void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye[3], LightClusterStats *st)
+/* the clusters' geometry, the camera's alone (no light): fills s->h (but
+ * atl and the light count) and g: the column, row and slice planes and the
+ * rays through the tiles' corners (brr_metal_cluster.h's uniforms) */
+void light_cluster_geom(LightSet *s, int n, const float vp[16], const float eye[3], LightClusterGeom *g)
 {
     float row[4][4];             /* the clip transform's rows: clip_r = row[r] . [p 1] */
-    float gl, zb[LC_TZ + 1];
-    Plane px[LC_TX + 1], py[LC_TY + 1], pz[LC_TZ + 1];
-    uint64_t bx[LC_TX][2], by[LC_TY][2], bz[LC_TZ][2];
-    static float ray[LC_TY + 1][LC_TX + 1][3];
-    float org[3];
-    int i, k, x, y, z;
-    uint32_t off = 0;
-    LightClusterStats dummy;
-    if (!st)
-        st = &dummy;
-    memset(st, 0, sizeof *st);
-    st->lights = n = n < 0 ? 0 : n > LC_LIGHTS ? LC_LIGHTS : n;
+    float gl;
+    int i, k, x, y;
     for (i = 0; i < 4; i++)
         for (k = 0; k < 4; k++)
             row[i][k] = vp[k * 4 + i];
@@ -223,20 +216,75 @@ void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye
     s->h.zk[2] = log2f(LC_NEAR);
     s->h.zk[3] = 0;
     memset(s->h.zb, 0, sizeof s->h.zb);
+    memset(g, 0, sizeof *g);
     for (k = 1; k < LC_TZ; k++)
-        s->h.zb[k] = zb[k] = zbound(k);
+        s->h.zb[k] = g->zb[k] = zbound(k);
     s->h.zb[LC_TZ] = 1e30f;
     /* the planes */
-    for (k = 0; k <= LC_TX; k++)
-        px[k] = clip_plane(row[0], row[3], -1.0 + 2.0 * k / LC_TX);
-    for (k = 0; k <= LC_TY; k++)
-        py[k] = clip_plane(row[1], row[3], -1.0 + 2.0 * k / LC_TY);
+    for (k = 0; k <= LC_TX; k++) {
+        Plane p = clip_plane(row[0], row[3], -1.0 + 2.0 * k / LC_TX);
+        memcpy(g->px[k], p.n, 12); g->px[k][3] = p.d;
+    }
+    for (k = 0; k <= LC_TY; k++) {
+        Plane p = clip_plane(row[1], row[3], -1.0 + 2.0 * k / LC_TY);
+        memcpy(g->py[k], p.n, 12); g->py[k][3] = p.d;
+    }
     for (k = 1; k < LC_TZ; k++) {            /* view depth w / |grad w| minus the boundary */
         int a;
         for (a = 0; a < 3; a++)
-            pz[k].n[a] = row[3][a] / gl;
-        pz[k].d = row[3][3] / gl - zb[k];
+            g->pz[k][a] = row[3][a] / gl;
+        g->pz[k][3] = row[3][3] / gl - g->zb[k];
     }
+    /* the corners of the closed clusters: the eye plus view depth times the ray
+       through each tile corner (scaled to unit view depth) */
+    {
+        double m[3][3], r[3], p0[3], p1[3];
+        for (y = 0; y <= LC_TY; y++)
+            for (x = 0; x <= LC_TX; x++) {
+                double X = -1.0 + 2.0 * x / LC_TX, Y = -1.0 + 2.0 * y / LC_TY;
+                int a;
+                for (a = 0; a < 3; a++) {
+                    m[0][a] = (double)row[0][a] - X * row[3][a];
+                    m[1][a] = (double)row[1][a] - Y * row[3][a];
+                    m[2][a] = row[3][a];
+                }
+                r[0] = -((double)row[0][3] - X * row[3][3]);
+                r[1] = -((double)row[1][3] - Y * row[3][3]);
+                r[2] = -(double)row[3][3];
+                solve3(m, r, p0);                   /* w = 0: the eye */
+                r[2] = gl - (double)row[3][3];      /* view depth 1 */
+                solve3(m, r, p1);
+                for (a = 0; a < 3; a++)
+                    g->ray[y][x][a] = (float)(p1[a] - p0[a]);
+                if (!x && !y)
+                    for (a = 0; a < 3; a++)
+                        g->org[a] = (float)p0[a];
+            }
+    }
+}
+
+void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye[3], LightClusterStats *st)
+{
+    static LightClusterGeom g;
+    float zb[LC_TZ + 1];
+    Plane px[LC_TX + 1], py[LC_TY + 1], pz[LC_TZ + 1];
+    uint64_t bx[LC_TX][2], by[LC_TY][2], bz[LC_TZ][2];
+    float org[3];
+    int i, k, x, y, z;
+    uint32_t off = 0;
+    LightClusterStats dummy;
+    if (!st)
+        st = &dummy;
+    memset(st, 0, sizeof *st);
+    st->lights = n = n < 0 ? 0 : n > LC_LIGHTS ? LC_LIGHTS : n;
+    light_cluster_geom(s, n, vp, eye, &g);
+    for (k = 0; k <= LC_TZ; k++)
+        zb[k] = g.zb[k];
+    for (k = 0; k <= LC_TX; k++) { memcpy(px[k].n, g.px[k], 12); px[k].d = g.px[k][3]; }
+    for (k = 0; k <= LC_TY; k++) { memcpy(py[k].n, g.py[k], 12); py[k].d = g.py[k][3]; }
+    for (k = 1; k < LC_TZ; k++) { memcpy(pz[k].n, g.pz[k], 12); pz[k].d = g.pz[k][3]; }
+    memcpy(org, g.org, sizeof org);
+#define ray g.ray
     /* each light against the columns, rows and slices */
     memset(bx, 0, sizeof bx);
     memset(by, 0, sizeof by);
@@ -263,32 +311,6 @@ void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye
             if ((k == 0 || mx[k] >= -b.m) && (k == LC_TZ - 1 || mn[k + 1] <= b.m))
                 bz[k][i >> 6] |= bit, cz++;
         st->cov[i] = cz ? (float)(cx * cy) / (float)(LC_TX * LC_TY) : 0.0f;
-    }
-    /* the corners of the closed clusters: the eye plus view depth times the ray
-       through each tile corner (scaled to unit view depth) */
-    {
-        double m[3][3], r[3], p0[3], p1[3];
-        for (y = 0; y <= LC_TY; y++)
-            for (x = 0; x <= LC_TX; x++) {
-                double X = -1.0 + 2.0 * x / LC_TX, Y = -1.0 + 2.0 * y / LC_TY;
-                int a;
-                for (a = 0; a < 3; a++) {
-                    m[0][a] = (double)row[0][a] - X * row[3][a];
-                    m[1][a] = (double)row[1][a] - Y * row[3][a];
-                    m[2][a] = row[3][a];
-                }
-                r[0] = -((double)row[0][3] - X * row[3][3]);
-                r[1] = -((double)row[1][3] - Y * row[3][3]);
-                r[2] = -(double)row[3][3];
-                solve3(m, r, p0);                   /* w = 0: the eye */
-                r[2] = gl - (double)row[3][3];      /* view depth 1 */
-                solve3(m, r, p1);
-                for (a = 0; a < 3; a++)
-                    ray[y][x][a] = (float)(p1[a] - p0[a]);
-                if (!x && !y)
-                    for (a = 0; a < 3; a++)
-                        org[a] = (float)p0[a];
-            }
     }
     /* the lists */
     for (z = 0; z < LC_TZ; z++)
@@ -339,6 +361,7 @@ void light_cluster_build(LightSet *s, int n, const float vp[16], const float eye
     st->entries = off;
     for (i = 0; i < n; i++)
         st->visible += st->cov[i] > 0.0f;
+#undef ray
 }
 
 int light_cluster_of(const LightSet *s, const float p[3])
@@ -372,7 +395,7 @@ int light_cluster_of(const LightSet *s, const float p[3])
 }
 
 /* ---- shadows ------------------------------------------------------------------------ */
-#define TG_CELL 16.0f                /* metres: the track grid's cells */
+#define TG_CELL LS_TRACK_CELL        /* metres: the track grid's cells */
 
 static struct {
     unsigned gen;
@@ -383,6 +406,7 @@ static struct {
     int *list;
     float *box;                      /* each cell's triangles' extent: lo xyz, hi xyz */
 } s_tg;
+static unsigned s_tgbuild;           /* the grid's rebuilds (its GPU copy follows it) */
 
 void light_shadow_track(const float *tri, int ntri, unsigned gen)
 {
@@ -458,6 +482,23 @@ void light_shadow_track(const float *tri, int ntri, unsigned gen)
     s_tg.ntri = ntri;
     s_tg.gen = gen;
     s_tg.have = 1;
+    s_tgbuild++;
+}
+
+int light_shadow_track_grid(LightTrackGrid *g)
+{
+    if (!s_tg.have)
+        return 0;
+    g->build = s_tgbuild;
+    g->ntri = s_tg.ntri;
+    g->nx = s_tg.nx;
+    g->ny = s_tg.ny;
+    g->lo[0] = s_tg.lo[0];
+    g->lo[1] = s_tg.lo[1];
+    g->start = s_tg.start;
+    g->list = s_tg.list;
+    g->box = s_tg.box;
+    return 1;
 }
 
 int light_shadow_matrix(const LightSpot *l, LightShadowRec *r)

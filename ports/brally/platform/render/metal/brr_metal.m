@@ -41,6 +41,7 @@
 #include "light_smooth.h"
 #include "brr_metal_smooth.h"
 #include "brr_metal_cast.h"
+#include "brr_metal_cluster.h"
 #include "brr_metal_env_api.h"
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
@@ -60,6 +61,7 @@ void host_macos_layer_fit(int *w, int *h);   /* host_macos.m: drawable = the vie
 __attribute__((weak)) CAMetalLayer *host_macos_metal_layer(void) { return nil; }
 __attribute__((weak)) void host_macos_layer_fit(int *w, int *h) { *w = *h = 0; }
 #include "host.h"
+uint32_t plat_time_ms(void);   /* common/plat.h (its Win32 types clash with Objective-C's): the game's clock, ms */
 
 /* ---- the shader -------------------------------------------------------------------- */
 static NSString *const k_src = @
@@ -1518,6 +1520,156 @@ static LightShadowPlan s_lplan;
 
 /* the frame's lights, their clusters for the camera vp (NULL: no 3D this
  * frame, no lights) and the shadow plan, into this frame's light set */
+/* the lights' clusters on the GPU (brr_metal_cluster.h): the CPU gives the
+ * camera's planes and rays (light_cluster_geom); cl_axes and cl_list build
+ * the lists in the frame's LightSet.  The lamps' shadow budget takes each
+ * lamp's coverage from the GPU three frames late (the slot being refilled
+ * holds a finished frame's), matched by the lamp's identity */
+typedef struct { LightClusterGeom g; float eye[4]; } ClGeom;
+static id<MTLComputePipelineState> s_pclax, s_pcll;
+static id<MTLBuffer> s_clmask[3], s_clcov[3];
+static int s_clids[3][LC_LIGHTS], s_clnid[3], s_clok = -1, s_clcheck = -1;
+static int lit_cluster_init(void)
+{
+    NSError *err = nil;
+    int k;
+    if (s_clok >= 0)
+        return s_clok;
+    s_clok = 0;
+    s_pclax = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cl_axes"] error:&err];
+    s_pcll = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cl_list"] error:&err];
+    if (!s_pclax || !s_pcll) {
+        fprintf(stderr, "brr: light cluster kernels: %s\n", err ? [[err description] UTF8String] : "missing");
+        return 0;
+    }
+    for (k = 0; k < 3; k++) {
+        s_clmask[k] = [s_dev newBufferWithLength:(LC_TX + LC_TY + LC_TZ) * 16 options:MTLResourceStorageModeShared];
+        s_clcov[k] = [s_dev newBufferWithLength:LC_LIGHTS * sizeof(float) options:MTLResourceStorageModeShared];
+        memset([s_clcov[k] contents], 0, LC_LIGHTS * sizeof(float));
+    }
+    s_clok = 1;
+    return 1;
+}
+static void lit_cluster_gpu(id<MTLCommandBuffer> cb, int slot, const ClGeom *g, uint32_t n)
+{
+    id<MTLComputeCommandEncoder> ce;
+    memset([s_clmask[slot] contents], 0, (LC_TX + LC_TY + LC_TZ) * 16);
+    ce = [cb computeCommandEncoder];
+    [ce setComputePipelineState:s_pclax];
+    [ce setBuffer:s_lset[slot] offset:0 atIndex:0];
+    [ce setBytes:g length:sizeof *g atIndex:1];
+    [ce setBytes:&n length:sizeof n atIndex:2];
+    [ce setBuffer:s_clmask[slot] offset:0 atIndex:3];
+    [ce setBuffer:s_clcov[slot] offset:0 atIndex:4];
+    if (n)
+        [ce dispatchThreads:MTLSizeMake(n, 1, 1) threadsPerThreadgroup:MTLSizeMake(32, 1, 1)];
+    [ce setComputePipelineState:s_pcll];
+    [ce setBuffer:s_lset[slot] offset:0 atIndex:0];
+    [ce setBytes:g length:sizeof *g atIndex:1];
+    [ce setBuffer:s_clmask[slot] offset:0 atIndex:3];
+    [ce dispatchThreads:MTLSizeMake(LC_N, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+    [ce endEncoding];
+}
+
+static int s_cpu_on = -1;   /* BR_LIGHT_CPU */
+
+/* the lamp tiles' track casters on the GPU (brr_metal_cast.h cast_tiles): the
+ * track grid's copy (s_tgstart, s_tglist, s_tgbox, rebuilt with it), each
+ * drawn tile's light (s_lctl), the runs taken (s_lcused), each tile's indexed
+ * indirect draw (s_lcargs) into s_lcib; light_shadow_track_casters the
+ * reference (BR_LIGHT_TILECHECK) and the fallback */
+static id<MTLComputePipelineState> s_pctile;
+static id<MTLBuffer> s_tgstart, s_tglist, s_tgbox, s_lctl[3], s_lcused[3], s_lcargs[3];
+static size_t s_lcibcap[3];
+static unsigned s_tgbuilt = 0xFFFFFFFFu;
+static int s_tileok = -1, s_tilecheck = -1, s_lcgpu;
+static CastGrid s_cgrid;
+static int cmp_u32(const void *a, const void *b)
+{
+    uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
+    return x < y ? -1 : x > y;
+}
+static int lit_tile_init(void)
+{
+    NSError *err = nil;
+    int k;
+    if (s_tileok >= 0)
+        return s_tileok;
+    s_tileok = 0;
+    s_pctile = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cast_tiles"] error:&err];
+    if (!s_pctile) {
+        fprintf(stderr, "brr: lamp tiles' casters kernel: %s\n", err ? [[err description] UTF8String] : "missing");
+        return 0;
+    }
+    for (k = 0; k < 3; k++) {
+        s_lctl[k] = [s_dev newBufferWithLength:LC_LIGHTS * 4 options:MTLResourceStorageModeShared];
+        s_lcused[k] = [s_dev newBufferWithLength:4 options:MTLResourceStorageModeShared];
+        s_lcargs[k] = [s_dev newBufferWithLength:LC_LIGHTS * 20 options:MTLResourceStorageModeShared];
+    }
+    s_tileok = 1;
+    return 1;
+}
+/* the grid's copy, when it was rebuilt; 0 when there is none */
+static int lit_tile_grid(void)
+{
+    LightTrackGrid g;
+    size_t nc;
+    if (!light_shadow_track_grid(&g))
+        return 0;
+    if (g.build == s_tgbuilt)
+        return 1;
+    nc = (size_t)g.nx * (size_t)g.ny;
+    s_tgstart = [s_dev newBufferWithBytes:g.start length:(nc + 1) * sizeof(int) options:MTLResourceStorageModeShared];
+    s_tglist = [s_dev newBufferWithBytes:g.list length:(size_t)g.ntri * sizeof(int) options:MTLResourceStorageModeShared];
+    s_tgbox = [s_dev newBufferWithBytes:g.box length:nc * 6 * sizeof(float) options:MTLResourceStorageModeShared];
+    memset(&s_cgrid, 0, sizeof s_cgrid);
+    s_cgrid.lo[0] = g.lo[0];
+    s_cgrid.lo[1] = g.lo[1];
+    s_cgrid.nx = g.nx;
+    s_cgrid.ny = g.ny;
+    s_tgbuilt = g.build;
+    return 1;
+}
+/* the dispatch: plan tile k's light in tl[k] (~0u when it is not drawn); the
+ * index buffer held to every drawn tile taking the whole track at most */
+static void lit_tile_gpu(id<MTLCommandBuffer> cb, int slot, int ntri)
+{
+    id<MTLComputeCommandEncoder> ce;
+    uint32_t *tl = (uint32_t *)[s_lctl[slot] contents];
+    size_t need;
+    int k, nr = 0;
+    for (k = 0; k < s_lplan.n; k++) {
+        tl[k] = s_lplan.t[k].render ? (uint32_t)s_lplan.t[k].light : ~0u;
+        nr += s_lplan.t[k].render != 0;
+    }
+    memset([s_lcargs[slot] contents], 0, LC_LIGHTS * 20);
+    *(uint32_t *)[s_lcused[slot] contents] = 0;
+    if (!nr)
+        return;
+    need = (size_t)ntri * 3 * (size_t)nr;
+    if (need > s_lcibcap[slot]) {
+        size_t c = s_lcibcap[slot] ? s_lcibcap[slot] : 65536;
+        while (c < need)
+            c *= 2;
+        s_lcib[slot] = [s_dev newBufferWithLength:c * 4 options:MTLResourceStorageModePrivate];
+        s_lcibcap[slot] = c;
+    }
+    s_cgrid.cap = (uint32_t)s_lcibcap[slot];
+    ce = [cb computeCommandEncoder];
+    [ce setComputePipelineState:s_pctile];
+    [ce setBuffer:s_lset[slot] offset:0 atIndex:0];
+    [ce setBytes:&s_cgrid length:sizeof s_cgrid atIndex:1];
+    [ce setBuffer:s_lctl[slot] offset:0 atIndex:2];
+    [ce setBuffer:s_tgstart offset:0 atIndex:3];
+    [ce setBuffer:s_tglist offset:0 atIndex:4];
+    [ce setBuffer:s_tgbox offset:0 atIndex:5];
+    [ce setBuffer:s_lcused[slot] offset:0 atIndex:6];
+    [ce setBuffer:s_lcargs[slot] offset:0 atIndex:7];
+    [ce setBuffer:s_lcib[slot] offset:0 atIndex:8];
+    [ce dispatchThreadgroups:MTLSizeMake((NSUInteger)s_lplan.n, 1, 1) threadsPerThreadgroup:MTLSizeMake(CAST_TILE_THREADS, 1, 1)];
+    [ce endEncoding];
+}
+
 static void lit_lights(const float eye[3], const float *vp)
 {
     static const float ident[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
@@ -1554,20 +1706,121 @@ static void lit_lights(const float eye[3], const float *vp)
         dd.depthCompareFunction = MTLCompareFunctionLessEqual;
         s_lcds_less = [s_dev newDepthStencilStateWithDescriptor:dd];
     }
+    double lt0 = s_cpu_on > 0 ? CACurrentMediaTime() : 0.0, lt1 = 0, lt2 = 0, lt3 = 0;
     set = (LightSet *)[s_lset[s_vbi] contents];
     if (vp)
         n = light_scene_lights(set->l, ids, LC_LIGHTS);
+    if (s_cpu_on > 0)
+        lt1 = CACurrentMediaTime();
     s_nlamp = n;
-    light_cluster_build(set, n, vp ? vp : ident, eye, &st);
+    if (s_clcheck < 0)
+        s_clcheck = getenv("BR_LIGHT_CLUSTERCHECK") != NULL;
+    if (lit_cluster_init()) {
+        static ClGeom g;
+        const float *cov = (const float *)[s_clcov[s_vbi] contents];
+        int i, j;
+        light_cluster_geom(set, n, vp ? vp : ident, eye, &g.g);
+        memcpy(g.eye, eye, 12);
+        memset(&st, 0, sizeof st);
+        st.lights = n;
+        for (i = 0; i < n; i++)   /* the coverage the GPU found for this lamp three frames ago */
+            for (j = 0; j < s_clnid[s_vbi]; j++)
+                if (s_clids[s_vbi][j] == ids[i]) {
+                    st.cov[i] = cov[j];
+                    st.visible += cov[j] > 0.0f;
+                    break;
+                }
+        memcpy(s_clids[s_vbi], ids, (size_t)n * sizeof ids[0]);
+        s_clnid[s_vbi] = n;
+        if (s_clcheck && s_frame % 120 == 0) {   /* diagnostic: the GPU's lists against light_cluster_build's */
+            static LightSet ref;
+            LightClusterStats rst;
+            id<MTLCommandBuffer> cb = [s_q commandBuffer];
+            int c, bad = 0, entries = 0;
+            memcpy(&ref, set, sizeof ref);
+            light_cluster_build(&ref, n, vp ? vp : ident, eye, &rst);
+            lit_cluster_gpu(cb, s_vbi, &g, (uint32_t)n);
+            [cb commit];
+            [cb waitUntilCompleted];
+            for (c = 0; c < LC_N; c++) {
+                uint32_t a = set->cl[c], b = ref.cl[c];
+                entries += (int)(b & 255u);
+                if ((a & 255u) != (b & 255u) || memcmp(&set->idx[a >> 8], &ref.idx[b >> 8], a & 255u))
+                    bad++;
+            }
+            fprintf(stderr, "clustercheck: frame %lu, %d lights, %d entries: %d of %d clusters' lists differ\n", s_frame, n, entries, bad, LC_N);
+        }
+        lit_cluster_gpu(s_cmd, s_vbi, &g, (uint32_t)n);
+    } else
+        light_cluster_build(set, n, vp ? vp : ident, eye, &st);
     t = light_game_track();
     if (t)
         light_shadow_track(t->tri, t->ntri, t->gen);
     else
         light_shadow_track(NULL, 0, 0);
+    if (s_cpu_on > 0)
+        lt2 = CACurrentMediaTime();
     light_shadow_plan(set, ids, &st, eye, s_cbox, s_ncbox, LS_ATLAS, LS_BUDGET, &s_lplan);   /* what moves: the cars' boxes */
-    /* the track's casters of each tile drawn this frame */
+    if (s_cpu_on > 0)
+        lt3 = CACurrentMediaTime();
+    /* the track's casters of each tile drawn this frame: on the GPU, or here */
     s_lcn = 0;
-    for (k = 0; k < s_lplan.n; k++) {
+    s_lcgpu = 0;
+    if (s_tilecheck < 0)
+        s_tilecheck = getenv("BR_LIGHT_TILECHECK") != NULL;
+    if (t && s_trkn && lit_tile_init() && lit_tile_grid()) {
+        s_lcgpu = 1;
+        if (s_tilecheck && s_frame % 120 == 0 && s_lplan.n) {   /* diagnostic: the GPU's lists against light_shadow_track_casters' */
+            static uint32_t *ref, *got;
+            static size_t refcap;
+            id<MTLCommandBuffer> cb = [s_q commandBuffer];
+            id<MTLBuffer> rb;
+            const uint32_t *args;
+            size_t used;
+            int bad = 0, drawn = 0, tri = 0;
+            lit_tile_gpu(cb, s_vbi, t->ntri);
+            used = s_lcibcap[s_vbi];
+            rb = [s_dev newBufferWithLength:(used ? used : 1) * 4 options:MTLResourceStorageModeShared];
+            {
+                id<MTLBlitCommandEncoder> be = [cb blitCommandEncoder];
+                if (used)
+                    [be copyFromBuffer:s_lcib[s_vbi] sourceOffset:0 toBuffer:rb destinationOffset:0 size:used * 4];
+                [be endEncoding];
+            }
+            [cb commit];
+            [cb waitUntilCompleted];
+            args = (const uint32_t *)[s_lcargs[s_vbi] contents];
+            if (refcap < (size_t)t->ntri * 3) {
+                refcap = (size_t)t->ntri * 3;
+                ref = realloc(ref, refcap * 4);
+                got = realloc(got, refcap * 4);
+            }
+            for (k = 0; k < s_lplan.n; k++) {
+                const LightShadowTile *tl = &s_lplan.t[k];
+                int nref, ng, i;
+                if (!tl->render)
+                    continue;
+                drawn++;
+                nref = light_shadow_track_casters(&set->s[tl->light], &set->l[tl->light], ref, (int)refcap);
+                ng = (int)args[5 * k];
+                tri += nref / 3;
+                if (ng != nref) {
+                    bad++;
+                    continue;
+                }
+                memcpy(got, (const uint32_t *)[rb contents] + args[5 * k + 2], (size_t)ng * 4);
+                qsort(ref, (size_t)nref, 4, cmp_u32);
+                qsort(got, (size_t)ng, 4, cmp_u32);
+                for (i = 0; i < ng && ref[i] == got[i]; i++)
+                    ;
+                bad += i < ng;
+            }
+            fprintf(stderr, "tilecheck: frame %lu, %d tiles drawn, %d track casters: %d tiles' lists differ (GPU used %u of %zu)\n",
+                    s_frame, drawn, tri, bad, *(const uint32_t *)[s_lcused[s_vbi] contents], s_lcibcap[s_vbi]);
+        }
+        lit_tile_gpu(s_cmd, s_vbi, t->ntri);
+    }
+    for (k = 0; k < s_lplan.n && !s_lcgpu; k++) {
         const LightShadowTile *tl = &s_lplan.t[k];
         size_t need = s_lcn + (size_t)(t ? t->ntri : 0) * 3;
         s_lctile[k][0] = s_lcn;
@@ -1588,10 +1841,21 @@ static void lit_lights(const float eye[3], const float *vp)
                                                             (int)(s_lccap - s_lcn));
         s_lcn += s_lctile[k][1];
     }
-    if (s_lcn && (!s_lcib[s_vbi] || [s_lcib[s_vbi] length] < s_lcn * 4))
+    if (s_lcn && (!s_lcib[s_vbi] || [s_lcib[s_vbi] length] < s_lcn * 4 || [s_lcib[s_vbi] storageMode] != MTLStorageModeShared)) {
         s_lcib[s_vbi] = [s_dev newBufferWithLength:s_lccap * 4 options:MTLResourceStorageModeShared];
+        s_lcibcap[s_vbi] = 0;   /* the GPU path's buffer replaced */
+    }
     if (s_lcn)
         memcpy([s_lcib[s_vbi] contents], s_lcidx, s_lcn * 4);
+    if (s_cpu_on > 0) {   /* BR_LIGHT_CPU: the lights' stage by part */
+        static double acc[4];
+        static unsigned long nacc;
+        double lt4 = CACurrentMediaTime();
+        acc[0] += lt1 - lt0; acc[1] += lt2 - lt1; acc[2] += lt3 - lt2; acc[3] += lt4 - lt3;
+        if (++nacc % 120 == 0)
+            fprintf(stderr, "light cpu lights: scene %.3f clusters %.3f plan %.3f track casters %.3f ms a frame\n",
+                    acc[0] * 1e3 / nacc, acc[1] * 1e3 / nacc, acc[2] * 1e3 / nacc, acc[3] * 1e3 / nacc);
+    }
     if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
         fprintf(stderr, "lights: frame %lu, %d lights (%d seen), %ld cluster entries (longest list %d); lamp shadows %d tiles: "
                 "%d drawn (%ld texels, %zu track triangles), %d cached, %d stale, %d unshadowed%s\n",
@@ -1679,7 +1943,11 @@ static void lit_lamp_shadows(void)
         [e setRenderPipelineState:s_lccas];
         [e setDepthStencilState:s_lcds_less];
         [e setVertexBytes:set->s[t->light].m length:sizeof set->s[t->light].m atIndex:1];
-        if (s_lctile[k][1]) {
+        if (s_lcgpu) {   /* the GPU's list (cast_tiles) */
+            [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
+            [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexType:MTLIndexTypeUInt32 indexBuffer:s_lcib[s_vbi] indexBufferOffset:0
+                      indirectBuffer:s_lcargs[s_vbi] indirectBufferOffset:(NSUInteger)k * 20];
+        } else if (s_lctile[k][1]) {
             [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
             [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:s_lctile[k][1] indexType:MTLIndexTypeUInt32
                          indexBuffer:s_lcib[s_vbi] indexBufferOffset:s_lctile[k][0] * 4];
@@ -1980,7 +2248,6 @@ static unsigned long s_cpu_n;
 static const char *const k_cpu_name[8] = { "casters+cascades", "lights", "normals", "lamp shadows", "gi", "encode rest", "whole", "" };
 #define CPU_T0(k) double cpu_t##k = s_cpu_on ? CACurrentMediaTime() : 0.0
 #define CPU_T1(k) do { if (s_cpu_on) s_cpu_ms[k] += (CACurrentMediaTime() - cpu_t##k) * 1000.0; } while (0)
-static int s_cpu_on = -1;
 
 static void lit_present(void)
 {
@@ -2053,7 +2320,7 @@ static void lit_present(void)
                camera does, instead of burning out */
             const float *mr = (const float *)[s_meter[s_vbi] contents];
             float lg = mr[0], tgt;
-            double now = CACurrentMediaTime(), dt = s_ev_t > 0.0 ? now - s_ev_t : 0.0;
+            double now = plat_time_ms() / 1000.0, dt = s_ev_t > 0.0 ? now - s_ev_t : 0.0;   /* the game's clock (BR_VCLOCK's under a script) */
             s_ev_t = now;
             /* and the brightest tenth of the frame at most 2.5 stops over mid-grey (at the
                display's white): a camera's highlight-weighted metering, so a pool filling
@@ -2905,8 +3172,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC] stringByAppendingString:@BRR_CLUSTER_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
