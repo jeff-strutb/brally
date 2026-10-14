@@ -319,11 +319,20 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   sphere. The CPU gives the camera's planes alone (light_cluster_geom).
   `BR_LIGHT_CLUSTERCHECK` compares with light_cluster_build: 119 of 119
   checks exact.
-- **Lamp tiles' track casters are picked on the GPU** (brr_metal_cast.h
-  cast_tiles): one threadgroup a shadow tile takes the track grid's cells
-  under the lamp that meet its frustum and writes their triangles with the
-  tile's indexed indirect draw. `BR_LIGHT_TILECHECK` compares with
-  light_shadow_track_casters: 116 of 116 checks exact.
+- **Lamp shadows are planned and drawn on the GPU** (brr_metal_plan.h): the
+  plan (each lamp's importance from this frame's cluster coverage, tile
+  sizes halved or dropped to fit the atlas, last frame's places kept, Morton
+  packing, the cache against the cars' boxes) runs in one threadgroup, its
+  cache kept on the GPU; the drawn tiles' track casters are one list of
+  (tile, triangle); the pass is one render over the atlas, each triangle
+  placed in its tile and clipped to it by the vertex stage, every draw's
+  count the GPU's. `BR_LIGHT_PLANCHECK` steps light_shadow_plan on the same
+  inputs every frame: night, rain and sun, 14,160 frames each, no tile
+  differing, transforms within 7.8e-5, the track casters' lists equal in all
+  116 checks a run; the frames against the CPU path within 4 of 255 on
+  0.002% of pixels. CPU: the plan 0.009 to 0.004 ms a frame (its encoding),
+  the tiles' casters 0.047 to none; the pass 0.06 ms more on the GPU.
+  `BR_LIGHT_PLANCPU` forces the CPU's plan.
 - The deferred lighting at 2560 x 1440: 3.70 ms a frame this morning, 4.30
   with the probes' specular and occlusion of the sky and the harmonics (the
   two lookups share their 8 probes' weights).

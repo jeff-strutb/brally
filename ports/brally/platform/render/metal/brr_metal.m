@@ -42,6 +42,7 @@
 #include "brr_metal_smooth.h"
 #include "brr_metal_cast.h"
 #include "brr_metal_cluster.h"
+#include "brr_metal_plan.h"
 #include "brr_metal_env_api.h"
 #include "brr_skymask.h"
 #include "brr_metal_vol.h"
@@ -1693,40 +1694,62 @@ static void lit_talb_check(const float eye[4])
     }];
 }
 
-/* the lamp tiles' track casters on the GPU (brr_metal_cast.h cast_tiles): the
- * track grid's copy (s_tgstart, s_tglist, s_tgbox, rebuilt with it), each
- * drawn tile's light (s_lctl), the runs taken (s_lcused), each tile's indexed
- * indirect draw (s_lcargs) into s_lcib; light_shadow_track_casters the
- * reference (BR_LIGHT_TILECHECK) and the fallback */
-static id<MTLComputePipelineState> s_pctile;
-static id<MTLBuffer> s_tgstart, s_tglist, s_tgbox, s_lctl[3], s_lcused[3], s_lcargs[3];
-static size_t s_lcibcap[3];
+/* the lamps' shadow tiles on the GPU (brr_metal_plan.h): the plan
+ * (plan_lights), its cache (s_plsc, a light identity's entry, kept on the
+ * GPU), each frame's tiles and indirect draws (s_plout), the track grid's copy
+ * (s_tgstart, s_tglist, s_tgbox, rebuilt with it) and the drawn tiles' track
+ * casters (plan_tracks into s_plent, s_plused).  light_shadow_plan and
+ * light_shadow_track_casters are the reference (BR_LIGHT_PLANCHECK) and the
+ * fallback */
+static id<MTLComputePipelineState> s_pplan, s_pptrk, s_pptrka;
+static id<MTLRenderPipelineState> s_plclr, s_pltrk, s_plinst;
+static id<MTLBuffer> s_tgstart, s_tglist, s_tgbox, s_plsc, s_plsh, s_plout[3], s_plids[3], s_pldyn[3], s_plent, s_plused[3], s_plzero;
+static size_t s_plentcap;
 static unsigned s_tgbuilt = 0xFFFFFFFFu;
-static int s_tileok = -1, s_tilecheck = -1, s_lcgpu;
+static int s_plok = -1, s_plgpu, s_plany, s_plcheck = -1;
 static CastGrid s_cgrid;
 static int cmp_u32(const void *a, const void *b)
 {
     uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
     return x < y ? -1 : x > y;
 }
-static int lit_tile_init(void)
+static int lit_plan_init(void)
 {
     NSError *err = nil;
+    MTLRenderPipelineDescriptor *pd;
     int k;
-    if (s_tileok >= 0)
-        return s_tileok;
-    s_tileok = 0;
-    s_pctile = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"cast_tiles"] error:&err];
-    if (!s_pctile) {
-        fprintf(stderr, "brr: lamp tiles' casters kernel: %s\n", err ? [[err description] UTF8String] : "missing");
+    if (s_plok >= 0)
+        return s_plok;
+    s_plok = 0;
+    s_pplan = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"plan_lights"] error:&err];
+    s_pptrk = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"plan_tracks"] error:&err];
+    s_pptrka = [s_dev newComputePipelineStateWithFunction:[s_lib newFunctionWithName:@"plan_tracks_args"] error:&err];
+    pd = [MTLRenderPipelineDescriptor new];
+    pd.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    pd.vertexFunction = [s_lib newFunctionWithName:@"lc_clr"];
+    s_plclr = [s_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+    pd.vertexFunction = [s_lib newFunctionWithName:@"lc_trk"];
+    s_pltrk = [s_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+    pd.vertexFunction = [s_lib newFunctionWithName:@"lc_inst"];
+    s_plinst = [s_dev newRenderPipelineStateWithDescriptor:pd error:&err];
+    if (!s_pplan || !s_pptrk || !s_pptrka || !s_plclr || !s_pltrk || !s_plinst) {
+        fprintf(stderr, "brr: the lamp shadows' plan on the GPU: %s; the CPU's\n", err ? [[err description] UTF8String] : "missing");
         return 0;
     }
+    s_plsc = [s_dev newBufferWithLength:LC_IDS * PLAN_SC_STRIDE options:MTLResourceStorageModeShared];
+    s_plsh = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+    memset([s_plsc contents], 0, LC_IDS * PLAN_SC_STRIDE);
+    memset([s_plsh contents], 0, 16);
+    s_plzero = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+    memset([s_plzero contents], 0, 16);
     for (k = 0; k < 3; k++) {
-        s_lctl[k] = [s_dev newBufferWithLength:LC_LIGHTS * 4 options:MTLResourceStorageModeShared];
-        s_lcused[k] = [s_dev newBufferWithLength:4 options:MTLResourceStorageModeShared];
-        s_lcargs[k] = [s_dev newBufferWithLength:LC_LIGHTS * 20 options:MTLResourceStorageModeShared];
+        s_plused[k] = [s_dev newBufferWithLength:4 options:MTLResourceStorageModeShared];
+        s_plout[k] = [s_dev newBufferWithLength:sizeof(PlanOut) options:MTLResourceStorageModeShared];
+        s_plids[k] = [s_dev newBufferWithLength:LC_LIGHTS * 4 options:MTLResourceStorageModeShared];
+        s_pldyn[k] = [s_dev newBufferWithLength:sizeof s_cbox options:MTLResourceStorageModeShared];
+        memset([s_plout[k] contents], 0, sizeof(PlanOut));
     }
-    s_tileok = 1;
+    s_plok = 1;
     return 1;
 }
 /* the grid's copy, when it was rebuilt; 0 when there is none */
@@ -1750,46 +1773,162 @@ static int lit_tile_grid(void)
     s_tgbuilt = g.build;
     return 1;
 }
-/* the dispatch: plan tile k's light in tl[k] (~0u when it is not drawn); the
- * index buffer held to every drawn tile taking the whole track at most */
-static void lit_tile_gpu(id<MTLCommandBuffer> cb, int slot, int ntri)
+/* the plan and the drawn tiles' track casters, encoded after the clusters
+ * (cl_axes' coverage of this frame): n lights in set, ids their identities,
+ * t the track (NULL: none) */
+static PlanOut s_plstat;   /* the counts a frame slot last held (BR_LIGHT_STATS) */
+static void lit_plan_check(int slot, const LightSet *set, const int *ids, int n, const float eye[3], id<MTLBuffer> entcopy);
+static void lit_plan_gpu(LightSet *set, const int *ids, int n, const float eye[3], const LightTrack *t)
 {
     id<MTLComputeCommandEncoder> ce;
-    uint32_t *tl = (uint32_t *)[s_lctl[slot] contents];
-    size_t need;
-    int k, nr = 0;
-    for (k = 0; k < s_lplan.n; k++) {
-        tl[k] = s_lplan.t[k].render ? (uint32_t)s_lplan.t[k].light : ~0u;
-        nr += s_lplan.t[k].render != 0;
+    PlanU pu;
+    int k, trk = t && s_trkn && lit_tile_grid();
+    id<MTLBuffer> entcopy = nil;
+    memcpy(&s_plstat, [s_plout[s_vbi] contents], sizeof s_plstat);
+    memset(&pu, 0, sizeof pu);
+    memcpy(pu.eye, eye, 12);
+    pu.n = n;
+    pu.atlas = LS_ATLAS;
+    pu.noshadow = getenv("BR_LIGHT_NOLAMPSHADOW") != NULL;   /* diagnostic: every lamp unshadowed */
+    pu.ndyn = s_ncbox;
+    pu.budget = (uint32_t)LS_BUDGET;
+    pu.nfloor = s_castok > 0 ? (uint32_t)s_ncfloor : 0u;
+    pu.dyncap = (uint32_t)(s_castok > 0 ? s_castcap : 0);
+    memcpy([s_plids[s_vbi] contents], ids, (size_t)n * sizeof ids[0]);
+    memcpy([s_pldyn[s_vbi] contents], s_cbox, (size_t)s_ncbox * 3 * sizeof(float));
+    s_plany = 0;   /* a lamp the plan can give a tile (light_shadow_matrix's spots), else no pass at all */
+    for (k = 0; k < n && !s_plany; k++) {
+        const LightSpot *l = &set->l[k];
+        s_plany = !((l->kind > 1.5f && l->kind < 2.5f) || l->kind > 3.5f) && l->cosout >= 0.17364818f && l->range > LS_NEARP * 2.0f;
     }
-    memset([s_lcargs[slot] contents], 0, LC_LIGHTS * 20);
-    *(uint32_t *)[s_lcused[slot] contents] = 0;
-    if (!nr)
-        return;
-    need = (size_t)ntri * 3 * (size_t)nr;
-    if (need > s_lcibcap[slot]) {
-        size_t c = s_lcibcap[slot] ? s_lcibcap[slot] : 65536;
-        while (c < need)
-            c *= 2;
-        s_lcib[slot] = [s_dev newBufferWithLength:c * 4 options:MTLResourceStorageModePrivate];
-        s_lcibcap[slot] = c;
+    if (trk && (size_t)t->ntri * LC_LIGHTS > s_plentcap) {   /* room for every slot drawn taking the whole track */
+        s_plentcap = (size_t)t->ntri * LC_LIGHTS;
+        s_plent = [s_dev newBufferWithLength:s_plentcap * 4 options:MTLResourceStorageModePrivate];
     }
-    s_cgrid.cap = (uint32_t)s_lcibcap[slot];
-    ce = [cb computeCommandEncoder];
-    [ce setComputePipelineState:s_pctile];
-    [ce setBuffer:s_lset[slot] offset:0 atIndex:0];
-    [ce setBytes:&s_cgrid length:sizeof s_cgrid atIndex:1];
-    [ce setBuffer:s_lctl[slot] offset:0 atIndex:2];
-    [ce setBuffer:s_tgstart offset:0 atIndex:3];
-    [ce setBuffer:s_tglist offset:0 atIndex:4];
-    [ce setBuffer:s_tgbox offset:0 atIndex:5];
-    [ce setBuffer:s_lcused[slot] offset:0 atIndex:6];
-    [ce setBuffer:s_lcargs[slot] offset:0 atIndex:7];
-    [ce setBuffer:s_lcib[slot] offset:0 atIndex:8];
-    [ce dispatchThreadgroups:MTLSizeMake((NSUInteger)s_lplan.n, 1, 1) threadsPerThreadgroup:MTLSizeMake(CAST_TILE_THREADS, 1, 1)];
+    *(uint32_t *)[s_plused[s_vbi] contents] = 0;
+    ce = [s_cmd computeCommandEncoder];
+    [ce setComputePipelineState:s_pplan];
+    [ce setBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+    [ce setBytes:&pu length:sizeof pu atIndex:1];
+    [ce setBuffer:s_clcov[s_vbi] offset:0 atIndex:2];
+    [ce setBuffer:s_plids[s_vbi] offset:0 atIndex:3];
+    [ce setBuffer:s_pldyn[s_vbi] offset:0 atIndex:4];
+    [ce setBuffer:s_plsh offset:0 atIndex:5];
+    [ce setBuffer:s_plsc offset:0 atIndex:6];
+    [ce setBuffer:s_plout[s_vbi] offset:0 atIndex:7];
+    [ce setBuffer:s_castok > 0 ? s_castargs[s_vbi] : s_plzero offset:0 atIndex:8];
+    [ce dispatchThreadgroups:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(128, 1, 1)];
+    if (trk && s_plent) {
+        s_cgrid.cap = (uint32_t)s_plentcap;
+        [ce setComputePipelineState:s_pptrk];
+        [ce setBuffer:s_lset[s_vbi] offset:0 atIndex:0];
+        [ce setBytes:&s_cgrid length:sizeof s_cgrid atIndex:1];
+        [ce setBuffer:s_plout[s_vbi] offset:0 atIndex:2];
+        [ce setBuffer:s_tgstart offset:0 atIndex:3];
+        [ce setBuffer:s_tglist offset:0 atIndex:4];
+        [ce setBuffer:s_tgbox offset:0 atIndex:5];
+        [ce setBuffer:s_plused[s_vbi] offset:0 atIndex:6];
+        [ce setBuffer:s_plent offset:0 atIndex:8];
+        [ce dispatchThreadgroups:MTLSizeMake(LC_LIGHTS, 1, 1) threadsPerThreadgroup:MTLSizeMake(CAST_TILE_THREADS, 1, 1)];
+        [ce setComputePipelineState:s_pptrka];
+        [ce dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+    }
     [ce endEncoding];
+    if (s_plcheck < 0)
+        s_plcheck = getenv("BR_LIGHT_PLANCHECK") != NULL;
+    if (s_plcheck) {
+        if (trk && s_plent && s_frame % 120 == 60) {   /* the drawn tiles' track casters too, this frame */
+            id<MTLBlitCommandEncoder> be = [s_cmd blitCommandEncoder];
+            entcopy = [s_dev newBufferWithLength:s_plentcap * 4 options:MTLResourceStorageModeShared];
+            [be copyFromBuffer:s_plent sourceOffset:0 toBuffer:entcopy destinationOffset:0 size:s_plentcap * 4];
+            [be endEncoding];
+        }
+        lit_plan_check(s_vbi, set, ids, n, eye, entcopy);
+    }
 }
 
+/* BR_LIGHT_PLANCHECK (diagnostic): light_shadow_plan stepped every frame on
+ * the GPU plan's own inputs (the lights, their identities, the eye, the cars'
+ * boxes, cl_axes' coverage), after the frame; its tiles against the GPU's
+ * (light, place, size, drawn), their transforms, and every 120 frames the
+ * drawn tiles' track casters against light_shadow_track_casters */
+static void lit_plan_check(int slot, const LightSet *set, const int *ids, int n, const float eye[3], id<MTLBuffer> entcopy)
+{
+    LightSpot *l = malloc((size_t)n * sizeof *l + 1);
+    int *idc = malloc((size_t)n * sizeof *idc + 1), nd = s_ncbox, ntri = light_game_track() ? light_game_track()->ntri : 0;
+    float *dyn = malloc((size_t)nd * 12 + 1), e0 = eye[0], e1 = eye[1], e2 = eye[2];
+    unsigned long fr = s_frame;
+    id<MTLBuffer> cov = s_clcov[slot], out = s_plout[slot], lset = s_lset[slot], used = s_plused[slot];
+    memcpy(l, set->l, (size_t)n * sizeof *l);
+    memcpy(idc, ids, (size_t)n * sizeof *idc);
+    memcpy(dyn, s_cbox, (size_t)nd * 12);
+    [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> cb) {
+        static LightSet *ref;
+        static unsigned long frames, bad;
+        static double worst;
+        static LightShadowPlan pl;
+        LightClusterStats st;
+        const PlanOut *g = (const PlanOut *)[out contents];
+        const LightSet *gs = (const LightSet *)[lset contents];
+        float ey[3] = { e0, e1, e2 };
+        int k, j, diff = 0;
+        (void)cb;
+        if (!ref && !(ref = calloc(1, sizeof *ref)))
+            return;
+        memset(&st, 0, sizeof st);
+        memcpy(st.cov, [cov contents], (size_t)n * sizeof(float));
+        ref->h.eye[3] = (float)n;
+        memcpy(ref->l, l, (size_t)n * sizeof *l);
+        light_shadow_plan(ref, idc, &st, ey, dyn, nd, LS_ATLAS, LS_BUDGET, &pl);
+        diff = pl.n != g->n || pl.rendered != g->rendered || pl.cached != g->cached || pl.stale != g->stale || pl.dropped != g->dropped;
+        for (k = 0; k < pl.n && k < g->n; k++) {
+            const LightShadowTile *c = &pl.t[k];
+            int li = c->light;
+            diff |= c->light != g->t[k][0] || c->x != g->t[k][1] || c->y != g->t[k][2] || c->size != g->t[k][3] || c->render != g->t[k][4];
+            for (j = 0; j < 16; j++)
+                worst = fmax(worst, fabs(ref->s[li].m[j] - gs->s[li].m[j]) / fmax(1.0, fabs(ref->s[li].m[j])));
+            for (j = 0; j < 4; j++)
+                diff |= ref->s[li].rect[j] != gs->s[li].rect[j];
+        }
+        frames++;
+        bad += diff;
+        if (diff && bad <= 5)
+            fprintf(stderr, "plancheck: frame %lu differs: CPU %d tiles (%d drawn %d cached %d stale %d dropped), GPU %d (%d %d %d %d)\n", fr,
+                    pl.n, pl.rendered, pl.cached, pl.stale, pl.dropped, g->n, g->rendered, g->cached, g->stale, g->dropped);
+        if (frames % 120 == 0)
+            fprintf(stderr, "plancheck: %lu frames, %lu with a tile differing; transforms worst %.2e relative; this frame %d tiles, %d drawn\n",
+                    frames, bad, worst, g->n, g->rendered);
+        if (entcopy) {   /* the track's casters of each drawn tile */
+            const uint32_t *e = (const uint32_t *)[entcopy contents];
+            uint32_t ne = *(const uint32_t *)[used contents], *ref3 = malloc((size_t)ntri * 3 * 4 + 4), *a = malloc((size_t)ntri * 4 + 4),
+                     *b = malloc((size_t)ntri * 4 + 4);
+            int tb = 0, drawn = 0, tri = 0;
+            for (k = 0; k < g->n && ref3; k++) {
+                int na = 0, nb = 0, i;
+                if (!g->t[k][4])
+                    continue;
+                drawn++;
+                nb = light_shadow_track_casters(&gs->s[g->t[k][0]], &l[g->t[k][0]], ref3, ntri * 3) / 3;
+                for (i = 0; i < nb; i++)
+                    b[i] = ref3[3 * i] / 3;
+                for (i = 0; i < (int)ne; i++)
+                    if ((int)(e[i] >> 24) == k)
+                        a[na++] = e[i] & 0xFFFFFFu;
+                tri += nb;
+                qsort(a, (size_t)na, 4, cmp_u32);
+                qsort(b, (size_t)nb, 4, cmp_u32);
+                tb += na != nb || memcmp(a, b, (size_t)na * 4) != 0;
+            }
+            fprintf(stderr, "plancheck: frame %lu, %d tiles drawn, %d track casters: %d tiles' lists differ\n", fr, drawn, tri, tb);
+            free(ref3);
+            free(a);
+            free(b);
+        }
+        free(l);
+        free(idc);
+        free(dyn);
+    }];
+}
 static void lit_lights(const float eye[3], const float *vp)
 {
     static const float ident[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
@@ -1880,67 +2019,16 @@ static void lit_lights(const float eye[3], const float *vp)
         light_shadow_track(NULL, 0, 0);
     if (s_cpu_on > 0)
         lt2 = CACurrentMediaTime();
-    light_shadow_plan(set, ids, &st, eye, s_cbox, s_ncbox, LS_ATLAS, LS_BUDGET, &s_lplan);   /* what moves: the cars' boxes */
+    s_lcn = 0;
+    s_plgpu = s_clok > 0 && !getenv("BR_LIGHT_PLANCPU") && lit_plan_init();   /* BR_LIGHT_PLANCPU (diagnostic): the CPU's plan */
+    if (s_plgpu)   /* the plan and the tiles' casters on the GPU (brr_metal_plan.h) */
+        lit_plan_gpu(set, ids, n, eye, t);
+    else   /* the CPU's: what moves, the cars' boxes */
+        light_shadow_plan(set, ids, &st, eye, s_cbox, s_ncbox, LS_ATLAS, LS_BUDGET, &s_lplan);
     if (s_cpu_on > 0)
         lt3 = CACurrentMediaTime();
-    /* the track's casters of each tile drawn this frame: on the GPU, or here */
-    s_lcn = 0;
-    s_lcgpu = 0;
-    if (s_tilecheck < 0)
-        s_tilecheck = getenv("BR_LIGHT_TILECHECK") != NULL;
-    if (t && s_trkn && lit_tile_init() && lit_tile_grid()) {
-        s_lcgpu = 1;
-        if (s_tilecheck && s_frame % 120 == 0 && s_lplan.n) {   /* diagnostic: the GPU's lists against light_shadow_track_casters' */
-            static uint32_t *ref, *got;
-            static size_t refcap;
-            id<MTLCommandBuffer> cb = [s_q commandBuffer];
-            id<MTLBuffer> rb;
-            const uint32_t *args;
-            size_t used;
-            int bad = 0, drawn = 0, tri = 0;
-            lit_tile_gpu(cb, s_vbi, t->ntri);
-            used = s_lcibcap[s_vbi];
-            rb = [s_dev newBufferWithLength:(used ? used : 1) * 4 options:MTLResourceStorageModeShared];
-            {
-                id<MTLBlitCommandEncoder> be = [cb blitCommandEncoder];
-                if (used)
-                    [be copyFromBuffer:s_lcib[s_vbi] sourceOffset:0 toBuffer:rb destinationOffset:0 size:used * 4];
-                [be endEncoding];
-            }
-            [cb commit];
-            [cb waitUntilCompleted];
-            args = (const uint32_t *)[s_lcargs[s_vbi] contents];
-            if (refcap < (size_t)t->ntri * 3) {
-                refcap = (size_t)t->ntri * 3;
-                ref = realloc(ref, refcap * 4);
-                got = realloc(got, refcap * 4);
-            }
-            for (k = 0; k < s_lplan.n; k++) {
-                const LightShadowTile *tl = &s_lplan.t[k];
-                int nref, ng, i;
-                if (!tl->render)
-                    continue;
-                drawn++;
-                nref = light_shadow_track_casters(&set->s[tl->light], &set->l[tl->light], ref, (int)refcap);
-                ng = (int)args[5 * k];
-                tri += nref / 3;
-                if (ng != nref) {
-                    bad++;
-                    continue;
-                }
-                memcpy(got, (const uint32_t *)[rb contents] + args[5 * k + 2], (size_t)ng * 4);
-                qsort(ref, (size_t)nref, 4, cmp_u32);
-                qsort(got, (size_t)ng, 4, cmp_u32);
-                for (i = 0; i < ng && ref[i] == got[i]; i++)
-                    ;
-                bad += i < ng;
-            }
-            fprintf(stderr, "tilecheck: frame %lu, %d tiles drawn, %d track casters: %d tiles' lists differ (GPU used %u of %zu)\n",
-                    s_frame, drawn, tri, bad, *(const uint32_t *)[s_lcused[s_vbi] contents], s_lcibcap[s_vbi]);
-        }
-        lit_tile_gpu(s_cmd, s_vbi, t->ntri);
-    }
-    for (k = 0; k < s_lplan.n && !s_lcgpu; k++) {
+    /* the track's casters of each tile drawn this frame, on the CPU (no GPU plan) */
+    for (k = 0; k < s_lplan.n && !s_plgpu; k++) {
         const LightShadowTile *tl = &s_lplan.t[k];
         size_t need = s_lcn + (size_t)(t ? t->ntri : 0) * 3;
         s_lctile[k][0] = s_lcn;
@@ -1961,10 +2049,8 @@ static void lit_lights(const float eye[3], const float *vp)
                                                             (int)(s_lccap - s_lcn));
         s_lcn += s_lctile[k][1];
     }
-    if (s_lcn && (!s_lcib[s_vbi] || [s_lcib[s_vbi] length] < s_lcn * 4 || [s_lcib[s_vbi] storageMode] != MTLStorageModeShared)) {
+    if (s_lcn && (!s_lcib[s_vbi] || [s_lcib[s_vbi] length] < s_lcn * 4))
         s_lcib[s_vbi] = [s_dev newBufferWithLength:s_lccap * 4 options:MTLResourceStorageModeShared];
-        s_lcibcap[s_vbi] = 0;   /* the GPU path's buffer replaced */
-    }
     if (s_lcn)
         memcpy([s_lcib[s_vbi] contents], s_lcidx, s_lcn * 4);
     if (s_cpu_on > 0) {   /* BR_LIGHT_CPU: the lights' stage by part */
@@ -1979,8 +2065,9 @@ static void lit_lights(const float eye[3], const float *vp)
     if (getenv("BR_LIGHT_STATS") && s_frame % 600 == 0)
         fprintf(stderr, "lights: frame %lu, %d lights (%d seen), %ld cluster entries (longest list %d); lamp shadows %d tiles: "
                 "%d drawn (%ld texels, %zu track triangles), %d cached, %d stale, %d unshadowed%s\n",
-                s_frame, st.lights, st.visible, st.entries, st.maxlist, s_lplan.n, s_lplan.rendered, s_lplan.texels, s_lcn / 3,
-                s_lplan.cached, s_lplan.stale, s_lplan.dropped, s_lplan.repacked ? ", repacked" : "");
+                s_frame, st.lights, st.visible, st.entries, st.maxlist, s_plgpu ? s_plstat.n : s_lplan.n, s_plgpu ? s_plstat.rendered : s_lplan.rendered,
+                s_plgpu ? (long)s_plstat.texels : s_lplan.texels, s_lcn / 3, s_plgpu ? s_plstat.cached : s_lplan.cached, s_plgpu ? s_plstat.stale : s_lplan.stale,
+                s_plgpu ? s_plstat.dropped : s_lplan.dropped, (s_plgpu ? s_plstat.repacked : s_lplan.repacked) ? ", repacked" : "");
     if (getenv("BR_LIGHT_LAMPLOG") && s_frame % 120 == 0) {   /* diagnostic: the lamps nearest the eye */
         fprintf(stderr, "lamps: frame %lu eye %.2f %.2f %.2f\n", s_frame, eye[0], eye[1], eye[2]);
         for (k = 0; k < n; k++) {
@@ -2039,6 +2126,47 @@ static void lit_lamp_shadows(void)
     MTLRenderPassDescriptor *rp;
     id<MTLRenderCommandEncoder> e;
     int k;
+    if (s_plgpu) {   /* the GPU's plan: one pass over the atlas, every draw's count the GPU's (brr_metal_plan.h) */
+        float S = (float)LS_ATLAS;
+        if (!s_plany)
+            return;
+        rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        rp.depthAttachment.texture = s_latl;
+        rp.depthAttachment.loadAction = s_latl_new ? MTLLoadActionClear : MTLLoadActionLoad;
+        rp.depthAttachment.clearDepth = 1.0;
+        rp.depthAttachment.storeAction = MTLStoreActionStore;
+        s_latl_new = 0;
+        e = lit_encoder(rp, 3);   /* lamp shadows */
+        [e setCullMode:MTLCullModeNone];
+        [e setViewport:(MTLViewport){ 0, 0, LS_ATLAS, LS_ATLAS, 0.0, 1.0 }];
+        [e setRenderPipelineState:s_plclr];   /* the drawn tiles cleared to the far plane */
+        [e setDepthStencilState:s_lcds_all];
+        [e setVertexBuffer:s_plout[s_vbi] offset:0 atIndex:0];
+        [e setVertexBytes:&S length:sizeof S atIndex:1];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_plout[s_vbi] indirectBufferOffset:offsetof(PlanOut, aclr)];
+        [e setDepthStencilState:s_lcds_less];
+        if (s_plent) {   /* the track's casters */
+            [e setRenderPipelineState:s_pltrk];
+            [e setVertexBuffer:s_plent offset:0 atIndex:0];
+            [e setVertexBuffer:s_trkbuf offset:0 atIndex:1];
+            [e setVertexBuffer:s_plout[s_vbi] offset:0 atIndex:2];
+            [e setVertexBuffer:s_lset[s_vbi] offset:0 atIndex:3];
+            [e setVertexBytes:&S length:sizeof S atIndex:4];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_plout[s_vbi] indirectBufferOffset:offsetof(PlanOut, atrk)];
+        }
+        if (s_castok > 0 && s_castdyn) {   /* the moving casters, then the cars' floors, over every drawn tile */
+            [e setRenderPipelineState:s_plinst];
+            [e setVertexBuffer:s_plout[s_vbi] offset:0 atIndex:1];
+            [e setVertexBuffer:s_lset[s_vbi] offset:0 atIndex:2];
+            [e setVertexBytes:&S length:sizeof S atIndex:3];
+            [e setVertexBuffer:s_castdyn offset:0 atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_plout[s_vbi] indirectBufferOffset:offsetof(PlanOut, adyn)];
+            [e setVertexBuffer:s_castfloor[s_vbi] offset:0 atIndex:0];
+            [e drawPrimitives:MTLPrimitiveTypeTriangle indirectBuffer:s_plout[s_vbi] indirectBufferOffset:offsetof(PlanOut, afloor)];
+        }
+        [e endEncoding];
+        return;
+    }
     for (k = 0; k < s_lplan.n && !s_lplan.t[k].render; k++)
         ;
     if (k == s_lplan.n)
@@ -2063,11 +2191,7 @@ static void lit_lamp_shadows(void)
         [e setRenderPipelineState:s_lccas];
         [e setDepthStencilState:s_lcds_less];
         [e setVertexBytes:set->s[t->light].m length:sizeof set->s[t->light].m atIndex:1];
-        if (s_lcgpu) {   /* the GPU's list (cast_tiles) */
-            [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
-            [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexType:MTLIndexTypeUInt32 indexBuffer:s_lcib[s_vbi] indexBufferOffset:0
-                      indirectBuffer:s_lcargs[s_vbi] indirectBufferOffset:(NSUInteger)k * 20];
-        } else if (s_lctile[k][1]) {
+        if (s_lctile[k][1]) {
             [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
             [e drawIndexedPrimitives:MTLPrimitiveTypeTriangle indexCount:s_lctile[k][1] indexType:MTLIndexTypeUInt32
                          indexBuffer:s_lcib[s_vbi] indexBufferOffset:s_lctile[k][0] * 4];
@@ -3364,8 +3488,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC] stringByAppendingString:@BRR_CLUSTER_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC] stringByAppendingString:@BRR_CLUSTER_SRC] stringByAppendingString:@BRR_PLAN_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);

@@ -17,17 +17,11 @@
  *              the cache only where last frame's movers were, the vertex
  *              stage reading where on the GPU; drawn with scopy
  *
- *   cast_tiles one threadgroup a lamp's shadow tile drawn this frame (tile[k],
- *              its light, ~0u for none): the track grid's cells under the
- *              lamp's square that hold triangles and meet its frustum
- *              (light_cluster.c light_shadow_track_casters, its reference),
- *              counted, a run of the index buffer taken (used, an atomic),
- *              then their triangles' vertex numbers written there; the
- *              tile's indexed indirect draw in args[5 k] (count, 1, first)
+ *   cast_out   a track grid cell's box against a lamp tile's frustum (the
+ *              lamp tiles' casters: brr_metal_plan.h plan_tracks)
  *
- * The CPU reference is light_capture_ontrack, brr_shc_rect and
- * light_shadow_track_casters (BR_LIGHT_CASTCHECK compares them on the live
- * frame). */
+ * The CPU reference is light_capture_ontrack and brr_shc_rect
+ * (BR_LIGHT_CASTCHECK compares them on the live frame). */
 #ifndef BRR_METAL_CAST_H
 #define BRR_METAL_CAST_H
 
@@ -37,7 +31,7 @@
 #define CAST_OPS_MAX 4096
 #define CAST_TILE_THREADS 256
 
-/* cast_tiles' constants */
+/* the lamp tiles' casters' constants (brr_metal_plan.h plan_tracks) */
 typedef struct { float lo[2]; int nx, ny; uint32_t cap, pad[3]; } CastGrid;
 
 #define BRR_CAST_STR_(x) #x
@@ -102,36 +96,7 @@ typedef struct { float lo[2]; int nx, ny; uint32_t cap, pad[3]; } CastGrid;
 "static bool cast_out(thread const float4 *pl, const device float *b) {\n" \
 "  for (int j = 0; j < 6; j++) { float3 q = float3(pl[j].x >= 0.0 ? b[3] : b[0], pl[j].y >= 0.0 ? b[4] : b[1], pl[j].z >= 0.0 ? b[5] : b[2]);\n" \
 "    if (dot(pl[j].xyz, q) + pl[j].w < -0.01) return true; }\n" \
-"  return false; }\n" \
-"kernel void cast_tiles(uint k [[threadgroup_position_in_grid]], uint i [[thread_index_in_threadgroup]], uint nt [[threads_per_threadgroup]],\n" \
-"                       const device LSet &ls [[buffer(0)]], constant CTG &g [[buffer(1)]], const device uint *tile [[buffer(2)]],\n" \
-"                       const device int *start [[buffer(3)]], const device int *list [[buffer(4)]], const device float *box [[buffer(5)]],\n" \
-"                       device atomic_uint *used [[buffer(6)]], device uint *args [[buffer(7)]], device uint *idx [[buffer(8)]]) {\n" \
-"  threadgroup atomic_uint cnt; threadgroup uint base, ok;\n" \
-"  uint li = tile[k]; float4 pl[6]; int x0 = 0, y0 = 0, w = 0, nc = 0;\n" \
-"  if (i == 0u) atomic_store_explicit(&cnt, 0u, memory_order_relaxed);\n" \
-"  if (li != ~0u) {\n" \
-"    float4x4 m = ls.s[li].m; float4 rx = float4(m[0].x, m[1].x, m[2].x, m[3].x), ry = float4(m[0].y, m[1].y, m[2].y, m[3].y);\n" \
-"    float4 rz = float4(m[0].z, m[1].z, m[2].z, m[3].z), rw = float4(m[0].w, m[1].w, m[2].w, m[3].w);\n" \
-"    pl[0] = rw - rx; pl[1] = rw + rx; pl[2] = rw - ry; pl[3] = rw + ry; pl[4] = rz; pl[5] = rw - rz;\n" \
-"    for (int j = 0; j < 6; j++) { float l = length(pl[j].xyz); if (l > 0.0) pl[j] /= l; }\n" \
-"    float3 p = float3(ls.l[li].pos); float r = ls.l[li].range;\n" \
-"    x0 = max(int(floor((p.x - r - g.lo.x) / CAST_TCELL)) - 1, 0); int x1 = min(int(floor((p.x + r - g.lo.x) / CAST_TCELL)) + 1, g.nx - 1);\n" \
-"    y0 = max(int(floor((p.y - r - g.lo.y) / CAST_TCELL)) - 1, 0); int y1 = min(int(floor((p.y + r - g.lo.y) / CAST_TCELL)) + 1, g.ny - 1);\n" \
-"    w = x1 - x0 + 1; nc = x1 >= x0 && y1 >= y0 ? w * (y1 - y0 + 1) : 0; }\n" \
-"  threadgroup_barrier(mem_flags::mem_threadgroup);\n" \
-"  for (int q = int(i); q < nc; q += int(nt)) { int c = (y0 + q / w) * g.nx + x0 + q % w;\n" \
-"    if (start[c] != start[c + 1] && !cast_out(pl, box + 6 * c)) atomic_fetch_add_explicit(&cnt, uint(start[c + 1] - start[c]), memory_order_relaxed); }\n" \
-"  threadgroup_barrier(mem_flags::mem_threadgroup);\n" \
-"  if (i == 0u) { uint n3 = 3u * atomic_load_explicit(&cnt, memory_order_relaxed), b = n3 ? atomic_fetch_add_explicit(used, n3, memory_order_relaxed) : 0u;\n" \
-"    if (b + n3 > g.cap) n3 = 0u;\n" \
-"    args[5u * k] = n3; args[5u * k + 1u] = 1u; args[5u * k + 2u] = b; args[5u * k + 3u] = 0u; args[5u * k + 4u] = 0u;\n" \
-"    base = b; ok = n3 != 0u; atomic_store_explicit(&cnt, 0u, memory_order_relaxed); }\n" \
-"  threadgroup_barrier(mem_flags::mem_threadgroup);\n" \
-"  if (ok == 0u) return;\n" \
-"  for (int q = int(i); q < nc; q += int(nt)) { int c = (y0 + q / w) * g.nx + x0 + q % w;\n" \
-"    if (start[c] == start[c + 1] || cast_out(pl, box + 6 * c)) continue;\n" \
-"    uint o = base + 3u * atomic_fetch_add_explicit(&cnt, uint(start[c + 1] - start[c]), memory_order_relaxed);\n" \
-"    for (int e = start[c]; e < start[c + 1]; e++, o += 3u) { uint t = 3u * uint(list[e]); idx[o] = t; idx[o + 1u] = t + 1u; idx[o + 2u] = t + 2u; } } }\n"
+"  return false; }\n"
+
 
 #endif
