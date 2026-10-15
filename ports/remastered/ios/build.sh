@@ -95,6 +95,20 @@ grep -v '^#' ports/common/skies/skies.txt | awk 'NF >= 3 { print $3 }' | sort -u
     fi
 done
 
+# ---- the Remastered textures' sets, 1024 (ports/common/surfaces: fetch.py, bake.py) --
+rm -rf $OUT/surfaces
+mkdir -p $OUT/surfaces/baked1k
+cp ports/common/surfaces/surfaces.txt $OUT/surfaces/
+grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
+    for m in a b; do
+        if [ -f "ports/common/surfaces/baked1k/${id}_$m.png" ]; then
+            cp "ports/common/surfaces/baked1k/${id}_$m.png" $OUT/surfaces/baked1k/
+        else
+            echo "ios/build.sh: surface set $id missing (ports/common/surfaces/fetch.py, bake.py)" >&2
+        fi
+    done
+done
+
 # ---- the games, the multiplexer and the process ------------------------------------
 OUT=$OUT HOST=ios RENDER=metal CC=ports/remastered/ios/cc.sh GFLAG=-g0 DLL=$DISC/BRGlide.dll \
     ports/remastered/link.sh

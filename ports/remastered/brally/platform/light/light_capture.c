@@ -66,7 +66,7 @@ int light_capture_on(void)
         const char *e = getenv("BR_LIGHT_CAPTURE");
         env = e && atoi(e) != 0;
     }
-    return env || plat_flag(BR_FLAG_LIGHTING);
+    return env || plat_flag(BR_FLAG_LIGHTING) || plat_flag(BR_FLAG_TEXTURES);   /* (the textures need the world too) */
 }
 
 /* the camera: re-read for every triangle (an 80-byte copy), the solve's

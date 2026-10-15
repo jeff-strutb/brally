@@ -23,6 +23,12 @@ enum br_flag {
      * game draws them. Off: the original's picture. Switched live; the
      * game's simulation never sees it. */
     BR_FLAG_LIGHTING,
+    /* the Remastered textures (platform/light/light_surf.h): under the
+     * lighting, each natural surface (road, dirt, grass, rock, sand, snow,
+     * ice, concrete, wood, metal, building) drawn in a photographed material
+     * at its real size, laid over the world, with the original texture's
+     * colour layout kept under it. Off: the original's textures, lit. */
+    BR_FLAG_TEXTURES,
     BR_FLAG_COUNT
 };
 

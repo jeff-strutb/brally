@@ -1,0 +1,24 @@
+--- a/platform/render/vulkan/shaders/glide.frag
++++ b/platform/render/vulkan/shaders/glide.frag
+@@ -9,7 +9,9 @@
+ layout(location = 1) in vec2 v_st;
+ layout(location = 2) noperspective in float v_oow;
+ layout(location = 3) noperspective in float v_z;
++layout(location = 4) in vec3 v_wp;
+ layout(location = 0) out vec4 o_col;
++#include "surf.glsl"
+ 
+ float comb(int fn, float f, float l, float la, float ot, int inv) {
+     float r;
+@@ -101,6 +103,11 @@
+     vec4 tex = vec4(0.0);
+     if (u.has_tex != 0) {
+         vec4 tx = texture(sampler2D(t_tex, t_smp), v_st);
++        if (u.sflags.x > 0.5) {   // the Remastered textures (surf.glsl): the surfaces' texel, the face's normal from the world's derivatives
++            vec3 fn = normalize(cross(dFdx(v_wp), dFdy(v_wp)));
++            fn = fn.z < 0.0 ? -fn : fn;
++            tx.rgb = surfshade(v_st, v_wp, fn, tx.rgb, v_col.rgb);
++        }
+         tex.r = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.r, tx.a, 0.0, tx.a), tx.r, tx.a, 0.0, u.tc_rgb_invert);
+         tex.g = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.g, tx.a, 0.0, tx.a), tx.g, tx.a, 0.0, u.tc_rgb_invert);
+         tex.b = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.b, tx.a, 0.0, tx.a), tx.b, tx.a, 0.0, u.tc_rgb_invert);

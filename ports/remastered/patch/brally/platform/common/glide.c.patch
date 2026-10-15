@@ -134,7 +134,7 @@
 + * spans its clip window, else its own size, kept at the distance from the
 + * edge (or the centre) it sat nearest. */
 +static void place(double lo, double hi, double r0, double r1, double k, double u, double *a, double *b)
- {
++{
 +    double rw = r1 - r0;
 +    if (hi - lo >= 0.9 * rw) { *a = k; *b = 0; return; }
 +    *a = u;
@@ -145,7 +145,7 @@
 +
 +/* a 2D draw with this box: its entry, placed at the swap */
 +static int xf_2d(float x0, float y0, float x1, float y1)
-+{
+ {
 +    xel *e;
 +    float r[4];
 +    if (!s_wide)
@@ -249,14 +249,14 @@
 +    s_st.xf = which;
      if (x1 <= x0 || y1 <= y0) {
          s_st.sx0 = s_st.sy0 = s_st.sx1 = s_st.sy1 = 0;
-         return;
-     }
++        return;
++    }
 +    if (s_wide && x0 == 0 && y0 == 0 && x1 == s_w && y1 == s_h) {
 +        s_st.sx0 = s_st.sy0 = 0;
 +        s_st.sx1 = s_rw;
 +        s_st.sy1 = s_rh;
-+        return;
-+    }
+         return;
+     }
 +    /* 2D elements move within their window as it is stretched */
 +    m = map_of(which >= XF_FIRST || which == XF_STRETCH ? XF_STRETCH : which);
      px0 = lround(m.ax * x0 + m.bx); px1 = lround(m.ax * x1 + m.bx);
@@ -388,7 +388,7 @@
      plat_pump(0);
  }
  
-@@ -489,6 +784,68 @@
+@@ -489,8 +784,83 @@
      o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
      o->s = v->tmuvtx[0].sow * w / su;
      o->t = v->tmuvtx[0].tow * w / sv;
@@ -408,8 +408,8 @@
 +        fprintf(stderr, "draw: frame %ld view %d k %d n %d tex %u blend %d/%d depth %d/%d/%d atest %d fog %d cull %d oow %g xy %.1f %.1f rgba %.0f %.0f %.0f %.0f\n",
 +                s_dl_swap, s_view, s_dl_k, n, s_st.texture, s_st.blend_rgb_src, s_st.blend_rgb_dst, s_st.depth_mode, s_st.depth_fn,
 +                s_st.depth_mask, s_st.atest_fn, s_st.fog_mode, s_st.cull, a->oow, a->x, a->y, a->r, a->g, a->b, a->a);
-+}
-+
+ }
+ 
 +/* a display-list triangle of the camera's view or the mirror's, as drawn,
 + * to the lighting's capture (platform/light): read, never changed */
 +static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr_vertex *o)
@@ -438,8 +438,21 @@
 +                              (uint32_t)(s_st.atest_fn & 15) << 8 | (uint32_t)(s_st.depth_mask & 1) << 12 |
 +                              (uint32_t)(s_st.depth_mode & 7) << 13 | (uint32_t)(s_st.fog_mode & 3) << 16, world);
 +    s_dl_k = k;
-+    if (!k || s_view != 0 || !plat_flag(BR_FLAG_LIGHTING))
++    if (!k || s_view != 0)
 +        return;                         /* the mirror: recorded, drawn as the game drew it */
++    if (!plat_flag(BR_FLAG_LIGHTING)) {
++        /* the game's own lighting with the Remastered textures (light_surf.h): the camera's
++           world triangles carry their world positions, lit 4 (drawn as the game draws them) */
++        if (k != 1 || !plat_flag(BR_FLAG_TEXTURES))
++            return;
++        for (i = 0; i < 3; i++) {
++            o[i].wx = world[i][0];
++            o[i].wy = world[i][1];
++            o[i].wz = world[i][2];
++            o[i].lit = 4.0f;
++        }
++        return;
++    }
 +    if (k == 2) {                       /* the backdrop: drawn behind the lit scene */
 +        for (i = 0; i < 3; i++)
 +            o[i].lit = 2.0f;
@@ -454,10 +467,12 @@
 +            o[i].lit = lit;
 +        }
 +    }
- }
- 
++}
++
  /* Glide's triangle setup drops a triangle with no area, and with culling on
-@@ -512,21 +869,25 @@
+  * drops the one facing away: the sign of its area in the coordinates the
+  * application passed (before the lower-left origin turns y over).  The
+@@ -512,21 +882,25 @@
      gllog_vtx(a);
      gllog_vtx(b);
      gllog_vtx(c);
@@ -486,7 +501,7 @@
      gllog("grDrawPolygonVertexList %d", n);
      for (i = 0; i < n && i < 16; i++)
          gllog_vtx(&vl[i]);
-@@ -536,18 +897,23 @@
+@@ -536,18 +910,23 @@
          if (culled(&vl[0], &vl[i], &vl[i + 1]))
              continue;
          if (k == 3 * 64) {
@@ -512,7 +527,7 @@
  }
  
  FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
-@@ -557,11 +923,10 @@
+@@ -557,11 +936,10 @@
      gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
      if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
          int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];

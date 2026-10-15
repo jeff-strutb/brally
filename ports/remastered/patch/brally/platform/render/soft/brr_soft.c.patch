@@ -1,0 +1,125 @@
+--- a/platform/render/soft/brr_soft.c
++++ b/platform/render/soft/brr_soft.c
+@@ -15,10 +15,12 @@
+ 
+ #include "brr.h"
+ #include "host.h"
++#include "light_surf.h"
++#include "br_flags.h"
+ 
+ typedef struct { float r, g, b, a; } rgba;
+ 
+-typedef struct stex { int w, h; uint8_t *px; } stex;
++typedef struct stex { int w, h; uint8_t *px; int surf; } stex;   /* surf: its Remastered textures' entry (light_surf.h), -1 none */
+ 
+ static int s_w, s_h;
+ static uint32_t *s_col;          /* 0xAARRGGBB, being drawn */
+@@ -173,6 +175,7 @@
+         memcpy(t->px, px, (size_t)w * (size_t)h * 4);
+     t->w = w;
+     t->h = h;
++    t->surf = light_surf_entry_rgba(px, w, h);
+     return id;
+ }
+ 
+@@ -395,6 +398,36 @@
+     return (float)(w < 0xFFFF ? w + 1 : w) / 65536.0f;
+ }
+ 
++/* the Remastered textures (BR_FLAG_TEXTURES; light_surf.h): the draw's constants and entry, and the
++ * triangle being drawn in the world (its vertices, normal), set by brr_draw and tri */
++static struct {
++    int on, entry;
++    LightSurfU u;
++    const brr_vertex *v[3];
++    float n[3];
++} s_surf;
++
++/* the world point at pixel centre (px, py) of the triangle s_surf.v (perspective-correct, as s and t) */
++static void surf_world(float px, float py, float area_inv, float p[3])
++{
++    const brr_vertex *a = s_surf.v[0], *b = s_surf.v[1], *c = s_surf.v[2];
++    float w0 = ((c->x - b->x) * (py - b->y) - (c->y - b->y) * (px - b->x)) * area_inv;
++    float w1 = ((a->x - c->x) * (py - c->y) - (a->y - c->y) * (px - c->x)) * area_inv;
++    float w2 = ((b->x - a->x) * (py - a->y) - (b->y - a->y) * (px - a->x)) * area_inv;
++    float oow = a->oow * w0 + b->oow * w1 + c->oow * w2;
++    if (oow == 0) {
++        p[0] = a->wx * w0 + b->wx * w1 + c->wx * w2;
++        p[1] = a->wy * w0 + b->wy * w1 + c->wy * w2;
++        p[2] = a->wz * w0 + b->wz * w1 + c->wz * w2;
++        return;
++    }
++    p[0] = (a->wx * a->oow * w0 + b->wx * b->oow * w1 + c->wx * c->oow * w2) / oow;
++    p[1] = (a->wy * a->oow * w0 + b->wy * b->oow * w1 + c->wy * c->oow * w2) / oow;
++    p[2] = (a->wz * a->oow * w0 + b->wz * b->oow * w1 + c->wz * c->oow * w2) / oow;
++}
++
++static float s_surf_inv;   /* the triangle's 1 / area, for surf_world */
++
+ static void shade(const brr_state *st, int px, float z, float oow, rgba it, float s, float t)
+ {
+     rgba tex = { 0, 0, 0, 0 }, cc_l, cc_o, out, dst;
+@@ -408,6 +441,22 @@
+         return;
+     if (st->texture) {
+         rgba tx = sample(st, s, t);
++        if (s_surf.on) {   /* the surfaces' texel (light_surf_shade, the shaders' reference) */
++            float p[3], p1[3], p2[3], d0[3], d1[3], stc[2] = { s, t }, ref[3] = { tx.r, tx.g, tx.b }, vc[3] = { it.r, it.g, it.b }, out[3], dn[3];
++            float x = (float)(px % s_w) + 0.5f, y = (float)(px / s_w) + 0.5f;
++            int k;
++            surf_world(x, y, s_surf_inv, p);
++            surf_world(x + 1.0f, y, s_surf_inv, p1);
++            surf_world(x, y + 1.0f, s_surf_inv, p2);
++            for (k = 0; k < 3; k++) {
++                d0[k] = p1[k] - p[k];
++                d1[k] = p2[k] - p[k];
++            }
++            light_surf_shade(&s_surf.u, s_surf.entry, stc, p, s_surf.n, d0, d1, ref, vc, out, dn);
++            tx.r = out[0];
++            tx.g = out[1];
++            tx.b = out[2];
++        }
+         /* TMU0: local is the texel, nothing upstream */
+         tex.r = combine(st->tc_rgb_fn, factor(st->tc_rgb_factor, tx.r, tx.a, 0, tx.a), tx.r, tx.a, 0, st->tc_rgb_invert);
+         tex.g = combine(st->tc_rgb_fn, factor(st->tc_rgb_factor, tx.g, tx.a, 0, tx.a), tx.g, tx.a, 0, st->tc_rgb_invert);
+@@ -470,6 +519,23 @@
+         area = -area;
+     }
+     inv = 1.0f / area;
++    if (s_surf.on) {   /* the triangle in the world, for the surfaces: its corners as drawn, its face's normal (up) */
++        float e1[3] = { b->wx - a->wx, b->wy - a->wy, b->wz - a->wz }, e2[3] = { c->wx - a->wx, c->wy - a->wy, c->wz - a->wz }, l;
++        s_surf.v[0] = a;
++        s_surf.v[1] = b;
++        s_surf.v[2] = c;
++        s_surf_inv = inv;
++        s_surf.n[0] = e1[1] * e2[2] - e1[2] * e2[1];
++        s_surf.n[1] = e1[2] * e2[0] - e1[0] * e2[2];
++        s_surf.n[2] = e1[0] * e2[1] - e1[1] * e2[0];
++        l = sqrtf(s_surf.n[0] * s_surf.n[0] + s_surf.n[1] * s_surf.n[1] + s_surf.n[2] * s_surf.n[2]);
++        l = l > 0 ? (s_surf.n[2] < 0 ? -1.0f : 1.0f) / l : 0.0f;
++        s_surf.n[0] *= l;
++        s_surf.n[1] *= l;
++        s_surf.n[2] *= l;
++        if (l == 0.0f)
++            s_surf.n[2] = 1.0f;
++    }
+     clip_rect(st, &cx0, &cy0, &cx1, &cy1);
+     x0 = (int)floorf(fminf(a->x, fminf(b->x, c->x)));
+     x1 = (int)ceilf(fmaxf(a->x, fmaxf(b->x, c->x)));
+@@ -564,6 +630,16 @@
+                         v[i].x, v[i].y, v[i].z, v[i].oow, v[i].r, v[i].g, v[i].b, v[i].a,
+                         v[i + 1].x, v[i + 1].y, v[i + 2].x, v[i + 2].y);
+     }
++    s_surf.on = 0;   /* the Remastered textures: a draw of the camera's 3D (its world from glide.c's capture) with a surface map */
++    if (plat_flag(BR_FLAG_TEXTURES) && st->texture && st->texture <= s_ntex && n >= 3 && v[0].lit > 0.5f && v[0].lit != 2.0f
++        && s_tex[st->texture - 1].surf >= 0) {
++        light_surf_sets_load(2048);
++        if (light_surf_sets_ready()) {
++            s_surf.entry = s_tex[st->texture - 1].surf;
++            light_surf_uniforms(s_surf.entry, 1.0f, 0, &s_surf.u);
++            s_surf.on = 1;
++        }
++    }
+     for (i = 0; i + 2 < n; i += 3)
+         tri(st, &v[i], &v[i + 1], &v[i + 2]);
+     s_tris += (unsigned long)n / 3;

@@ -1,0 +1,10 @@
+--- a/platform/render/vulkan/shaders/glide_u.glsl
++++ b/platform/render/vulkan/shaders/glide_u.glsl
+@@ -8,4 +8,7 @@
+     float atest_ref, vw, vh, xf;   // xf: the entry of the map table below
+     vec4 konst, fog_color;
+     vec4 fog[16];                 // the 64-entry fog table, four to a vec4
++    // the Remastered textures (light_surf.h LightSurfU, surf.glsl): sflags.x 1 where the
++    // draw's texture has a surface map
++    vec4 sa[8]; vec4 sb[8]; vec4 sc[8]; vec4 sv[8]; vec4 sk[8]; vec4 sflags;
+ } u;

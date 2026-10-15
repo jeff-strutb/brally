@@ -30,7 +30,7 @@
 /* the app's (ports/remastered/platform/options.h) */
 int  rm_option(int which);
 void rm_option_set(int which, int value);
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 uint32_t plat_time_ms(void);
 
@@ -48,6 +48,7 @@ static const struct {
     { "Widescreen", RM_OPT_WIDESCREEN, { "On", "Off" }, { 1, 0 } },
     { "Music", RM_OPT_MUSIC, { "PC", "N64" }, { RM_MUSIC_PC, RM_MUSIC_N64 } },
     { "Lighting", RM_OPT_LIGHTING, { "Original", "Remaster" }, { 0, 1 } },
+    { "Textures", RM_OPT_TEXTURES, { "Original", "Remaster" }, { 0, 1 } },
     { "Show FPS", RM_OPT_FPS, { "On", "Off" }, { 1, 0 } },
 };
 #define NOPT ((int)(sizeof k_rows / sizeof k_rows[0]))

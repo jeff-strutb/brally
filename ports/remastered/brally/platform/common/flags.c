@@ -8,6 +8,7 @@
 static const char *const k_names[BR_FLAG_COUNT] = {   /* BR_FLAG_<name>=0|1 sets it at start */
     [BR_FLAG_ANY_ASPECT] = "ANY_ASPECT",
     [BR_FLAG_LIGHTING]   = "LIGHTING",
+    [BR_FLAG_TEXTURES]   = "TEXTURES",
 };
 
 static int s_loaded;

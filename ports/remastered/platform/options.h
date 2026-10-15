@@ -10,6 +10,7 @@ enum {
     RM_OPT_MUSIC,                   /* RM_MUSIC_*: which soundtrack plays */
     RM_OPT_LIGHTING,                /* 1: the Remastered lighting (0: the original's picture) */
     RM_OPT_FPS,                     /* 1: the frame rate shown at the bottom centre */
+    RM_OPT_TEXTURES,                /* 1: the Remastered textures, under the Remastered lighting (0: the game's own) */
     RM_OPT_COUNT
 };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };

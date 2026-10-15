@@ -7,6 +7,7 @@
 #   Contents/MacOS/remastered            the two games and the host
 #   Contents/Resources/disc              Boss Rally's data track, less the installer and the video
 #   Contents/Resources/skies             the lighting's skymaps: skies.txt and its 8K HDRIs (ports/common/skies)
+#   Contents/Resources/surfaces          the Remastered textures' photographed sets, 2048 (ports/common/surfaces)
 #   Contents/Resources/music/cd          Boss Rally's CD audio, the PC's music (music.sh)
 #   Contents/Resources/AppIcon.icns      from icon.png
 #
@@ -76,6 +77,19 @@ if [ -f ports/common/skies/skies.txt ]; then   # ports/common/skies/fetch.sh bri
 else
     echo "package_app: no ports/common/skies/skies.txt: the Remastered lighting falls back to a grey day" >&2
 fi
+
+# ---- the Remastered textures' sets (ports/common/surfaces: fetch.py, then bake.py) ---
+mkdir -p "$APP/Contents/Resources/surfaces/baked"
+cp ports/common/surfaces/surfaces.txt "$APP/Contents/Resources/surfaces/"
+grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
+    for m in a b; do
+        if [ -f "ports/common/surfaces/baked/${id}_$m.png" ]; then
+            cp "ports/common/surfaces/baked/${id}_$m.png" "$APP/Contents/Resources/surfaces/baked/"
+        else
+            echo "package_app: surface set $id missing (ports/common/surfaces/fetch.py, bake.py): Textures off" >&2
+        fi
+    done
+done
 
 # ---- the icon ------------------------------------------------------------------------
 IS=$OUT/AppIcon.iconset

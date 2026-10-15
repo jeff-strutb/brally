@@ -10,7 +10,7 @@ Remastered adds laid over them (`tree.sh`).
 | piece | what |
 |---|---|
 | `tree.sh` | the two ports as Remastered builds them: each port, Remastered's own files over it (`brally/`, `tgrally/`, at the paths they take in the port), its changes to the port's files applied (`patch/brally`, `patch/tgrally`, one unified diff a file, no fuzz). `make ROOT` builds a tree, `save ROOT` turns an edited tree back into files and patches, `check ROOT` says whether it would. A patch that stops applying stops the build: the port moved under it |
-| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the lighting (`platform/light`, the Metal renderer's lit passes), the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), the pause menu's Remaster Options and frame rate (`pause_options.c`), the music hooks (`audio.c`) |
+| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the lighting (`platform/light`, the Metal renderer's lit passes), the textures (`light_surf.c`, `brr_metal_surf.*`, the sets in `ports/common/surfaces`), the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), the pause menu's Remaster Options and frame rate (`pause_options.c`), the music hooks (`audio.c`) |
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
 | `ports/tgrally/link.sh`, `HOST=lib` | Top Gear Rally as `libtgrally.a`, its `main()` as `tgr_main` |
@@ -21,7 +21,7 @@ Remastered adds laid over them (`tree.sh`).
 | `link.sh` | makes the tree (`OUT/tree`), builds both libraries in it, makes each one object (its thunks inside, only its entry points global: the two games share some hundred function names), links the executable |
 | `package_app.sh` | `Top Gear Rally Remastered.app` (macOS) |
 | `music.sh` | Boss Rally's CD audio as FLAC, the PC's music, into the app (`package_app.sh`, `ios/build.sh`) |
-| `tools/` | the lighting's tests (`lighttest/`, run against `build/remastered/tree`), `lightcheck.sh`, `texmat_h.py`; `mixcheck.sh`, the music's routing in `mux.c` checked against computed values |
+| `tools/` | the lighting's tests (`lighttest/`, run against `build/remastered/tree`; `surfparity.sh` the textures' surface maps against `texregion.py`), `lightcheck.sh`, `texmat_h.py`; `mixcheck.sh`, the music's routing in `mux.c` checked against computed values |
 | `ios/` | the iPhone app: `build.sh`, the xcodegen project, and in `Sources` the Swift host under the multiplexer (the Metal layer, events, Core Audio, the save folder) and the touch controls |
 | `icon.png` | the app's icon (the `.icns` on macOS, `icon.ico` beside the exe on Windows) |
 
@@ -42,6 +42,7 @@ folder; `RM_OPT_<NAME>=N` sets one for a check):
 | Widescreen | On: a race fills the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
 | Music | PC: Boss Rally's CD; N64: Top Gear Rally's pieces | N64 |
 | Lighting | Original: the game's picture; Remaster: the lighting (`BR_FLAG_LIGHTING`) | Remaster |
+| Textures | Original: the game's textures, lit; Remaster: each natural and built surface in a photographed material at its real size (`BR_FLAG_TEXTURES`; under Remaster lighting, Metal: docs/brally/remaster/textures/DESIGN.md) | Remaster |
 | Show FPS | the frames a second at the bottom centre, in either game | Off |
 
 The window opens at 16:9 with Widescreen on and takes any shape the player

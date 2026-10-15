@@ -1,0 +1,21 @@
+--- a/platform/render/vulkan/shaders/glide.vert
++++ b/platform/render/vulkan/shaders/glide.vert
+@@ -10,10 +10,12 @@
+ layout(location = 2) in float a_oow;
+ layout(location = 3) in vec4 a_col;
+ layout(location = 4) in vec2 a_st;
++layout(location = 5) in vec4 a_wld;   // the vertex in the game's world (the Remastered textures)
+ layout(location = 0) noperspective out vec4 v_col;
+ layout(location = 1) out vec2 v_st;
+ layout(location = 2) noperspective out float v_oow;
+ layout(location = 3) noperspective out float v_z;
++layout(location = 4) out vec3 v_wp;
+ // the screen map (glide.c): the game's pixels to the target, this frame's
+ // table; its y is up, Vulkan's down
+ layout(std430, set = 3, binding = 0) readonly buffer XT { vec4 xt[]; };
+@@ -26,4 +28,5 @@
+     v_st = a_st;
+     v_oow = a_oow;
+     v_z = a_z;
++    v_wp = a_wld.xyz;
+ }

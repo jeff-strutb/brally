@@ -25,6 +25,8 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
             map = @{ @"remastered": @"remastered", @"icon": @"AppIcon.icns", @"ios-app": @"ios/app",
                      @"ios-sign": @"ios_sign.sh" };
         NSString *rel = map[@(name)];
+        if (!rel && !strncmp(name, "surfaces/", 9))   /* the Remastered textures' sets */
+            rel = @(name);
         NSString *src = rel ? [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:
                                   [@"payload" stringByAppendingPathComponent:rel]] : nil;
         if (!src || ![NSFileManager.defaultManager fileExistsAtPath:src]) {

@@ -1,13 +1,14 @@
 --- a/platform/render/brr.h
 +++ b/platform/render/brr.h
-@@ -24,6 +24,11 @@
+@@ -24,6 +24,12 @@
      float oow;           /* 1/w, for perspective-correct texturing and fog */
      float r, g, b, a;    /* 0..255, as Glide gives them */
      float s, t;          /* texel coordinates already divided by w (sow, tow) */
-+    /* the Remastered lighting (BR_FLAG_LIGHTING, platform/light): where the
-+     * vertex is in the game's world, for a triangle of the camera's 3D view;
-+     * lit 0 for everything else (2D, the mirror, the backdrop), which the
-+     * lighting leaves as the game drew it */
++    /* the Remastered lighting and textures (BR_FLAG_LIGHTING, BR_FLAG_TEXTURES,
++     * platform/light): where the vertex is in the game's world, for a triangle
++     * of the camera's 3D view: lit 1 (3 on a car, 2 the backdrop) lit by the
++     * lighting, 4 drawn as the game draws it with the textures; 0 for
++     * everything else (2D, the mirror), left as the game drew it */
 +    float wx, wy, wz, lit;
  } brr_vertex;
  

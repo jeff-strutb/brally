@@ -1,7 +1,7 @@
 /* options.c: the Remaster Options (options.h).  Kept as text in the app's save
  * folder, "remaster.cfg", one "name value" a line; a missing file or line is
- * the default (widescreen on, the N64's music, the Remastered lighting, no
- * frame rate shown).  Each game reads the frame rate's switch itself
+ * the default (widescreen on, the N64's music, the Remastered lighting and
+ * textures, no frame rate shown).  Each game reads the frame rate's switch itself
  * (rm_option, from its own drawing). */
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +18,7 @@ static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_MUSIC]      = { "music", RM_MUSIC_N64 },
     [RM_OPT_LIGHTING]   = { "lighting", 1 },
     [RM_OPT_FPS]        = { "fps", 0 },
+    [RM_OPT_TEXTURES]   = { "textures", 1 },
 };
 
 static volatile int s_val[RM_OPT_COUNT];
@@ -36,6 +37,9 @@ static void apply(int which)
         break;
     case RM_OPT_LIGHTING:
         br_flag_set(BR_FLAG_LIGHTING, v);
+        break;
+    case RM_OPT_TEXTURES:
+        br_flag_set(BR_FLAG_TEXTURES, v);
         break;
     }
 }

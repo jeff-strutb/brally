@@ -28,6 +28,7 @@
 
 #include "brr_metal_env.h"
 #include "brr_metal_ao.h"
+#include "brr_metal_surf.h"
 #include "brr_vsm.h"
 
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
@@ -335,7 +336,9 @@ BRR_VSM_SRC \
 /* the G-buffer */ \
 "struct GB { float4 alb [[color(0)]]; float4 pos [[color(1)]]; float4 nrm [[color(2)]]; float d [[depth(any)]]; };\n" \
 "fragment GB fsgb(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                 texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(2)]]) {\n" \
+"                 texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(2)]], constant SurfU &su [[buffer(3)]],\n" \
+"                 texture2d<float> smap [[texture(11)]], texture2d<float> svar [[texture(12)]],\n" \
+"                 texture2d_array<float> sseta [[texture(13)]], texture2d_array<float> ssetb [[texture(14)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
@@ -344,9 +347,16 @@ BRR_VSM_SRC \
 /* a car's lamp lens, where its texture paints it (carlamp.csv): the lens pass lights exactly these texels */ \
 "  if (in.mat > 2.5 && u.lensk.x > 0.5 && all(in.st >= u.lens0.xy) && all(in.st < u.lens0.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.x - 1.0);\n" \
 "  if (in.mat > 2.5 && u.lensk.y > 0.5 && all(in.st >= u.lens1.xy) && all(in.st < u.lens1.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.y - 1.0);\n" \
-"  r.alb = float4(albedo(u, h.tex.rgb, h.it.rgb), mat / 255.0);\n" \
+"  float3 alb = albedo(u, h.tex.rgb, h.it.rgb), nn = shadenrm(lu, in.wp, in.nrm);\n" \
+/* the Remastered textures (brr_metal_surf.h): a draw whose texture has a surface map */ \
+"  if (su.flags.w == 2.0 && su.flags.x < 0.5) alb = float3(0);   /* BR_SURF_VIEW=2: no surface, black */\n" \
+"  if (su.flags.x > 0.5) {\n" \
+"    SurfO so = surfshade(su, smap, svar, sseta, ssetb, in.st, in.wp, nn, alb, h.it.rgb);\n" \
+"    alb = so.alb; float3 n2 = normalize(nn + so.dn); nn = dot(n2, nn) > 0.2 ? n2 : nn;\n" \
+"  }\n" \
+"  r.alb = float4(alb, mat / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
-"  r.pos = float4(in.wp, float(fc)); r.nrm = float4(shadenrm(lu, in.wp, in.nrm), h.fog);   /* toward the eye */\n" \
+"  r.pos = float4(in.wp, float(fc)); r.nrm = float4(nn, h.fog);   /* toward the eye */\n" \
 "  return r;\n" \
 "}\n" \
 /* the painted backdrop, in HDR at the exposure that shows it as the game drew it */ \
