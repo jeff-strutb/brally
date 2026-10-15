@@ -7,16 +7,17 @@
 #define BRR_METAL_GI_SRC_H
 
 #define BRR_GI_IRR 8        /* irradiance texels a probe side (interior) */
-#define BRR_GI_DST 16       /* distance texels a probe side (interior) */
+#define BRR_GI_DST 8        /* distance texels a probe side (interior) */
+#define BRR_GI_KEEP 0.75f   /* a bake pass's most share of the passes before it */
 #define BRR_GI_CELL 32      /* lamps a light grid cube lists at most (the source's 32) */
 #define BRR_GI_GRID 32      /* light grid cubes an axis at most */
 /* the sizes as the shader source spells them */
-#define BRR_GI_DEFS "#define BRR_GI_IRR_S 8\n#define BRR_GI_DST_S 16\n"
+#define BRR_GI_DEFS "#define BRR_GI_IRR_S 8\n#define BRR_GI_DST_S 8\n"
 
 /* the probe volume's constants (BrrGiU below: the same layout) */
 #define BRR_GI_U_SRC \
 "struct GiU { float4 org; int4 n; int4 base; int4 pbase; float4 sun; float4 sunc; float4 sky; float4 gnd;\n" \
-"             float4 par; float4 rot0; float4 rot1; float4 rot2; float4 lim; float4 gorg; int4 gdim; int4 upd; };\n"
+"             float4 par; float4 rot0; float4 rot1; float4 rot2; float4 lim; float4 gorg; int4 gdim; int4 upd; int4 bk; int4 bx; };\n"
 
 #define BRR_GI_SAMPLE_SRC \
 BRR_GI_U_SRC \
@@ -25,16 +26,19 @@ BRR_GI_U_SRC \
 "static float2 gi_oct(float3 d) {\n" \
 "  float2 p = d.xy / (abs(d.x) + abs(d.y) + abs(d.z));\n" \
 "  return d.z < 0.0 ? (1.0 - abs(p.yx)) * gi_snz(p) : p; }\n" \
-"static int3 gi_mod(int3 a, int3 n) { return ((a % n) + n) % n; }\n" \
-/* a probe's grid index (0 .. n - 1 inside the volume) to its storage slot, \
-   and its slot's tile in the atlases */ \
-"static int3 gi_slot(constant GiU &u, int3 g) { return gi_mod(u.base.xyz + g, u.n.xyz); }\n" \
-"static int2 gi_tile(constant GiU &u, int3 s) { return int2(s.x + u.n.x * s.z, s.y); }\n" \
+/* the probes are baked over the whole track (brr_gi_bake), sparse: a grid of \
+   n.xyz points spacing org.w from org.xyz, a probe only where a surface \
+   needs one.  off holds, one after the other: each probe's place moved out \
+   of the track's solid (gi_reloc), float4 a probe (bx.x of them); from float4 \
+   bx.x the grid's points' probes (uint, ~0u none); from float4 bx.y each \
+   probe's grid point (int4).  A probe's tile in the atlas: bk.y tiles a row */ \
+"static int gi_find(constant GiU &u, device const float4 *off, int3 g) {\n" \
+"  if (any(g < 0) || any(g >= u.n.xyz)) return -1;\n" \
+"  uint s = ((device const uint *)(off + u.bx.x))[g.x + u.n.x * (g.y + u.n.y * g.z)];\n" \
+"  return s == 0xFFFFFFFFu ? -1 : int(s); }\n" \
+"static int3 gi_sgrid(constant GiU &u, device const float4 *off, int s) { return ((device const int4 *)(off + u.bx.y))[s].xyz; }\n" \
+"static int2 gi_tile(constant GiU &u, int s) { return int2(s % u.bk.y, s / u.bk.y); }\n" \
 "static float3 gi_pos(constant GiU &u, int3 g) { return u.org.xyz + float3(u.base.xyz + g) * u.org.w; }\n" \
-/* a slot's linear index; a probe's place moved out of the track's solid \
-   (gi_reloc: off, by slot) */ \
-"static int gi_lin(constant GiU &u, int3 s) { return s.x + u.n.x * (s.y + u.n.y * s.z); }\n" \
-"static float3 gi_ppos(constant GiU &u, device const float4 *off, int3 g) { return gi_pos(u, g) + off[gi_lin(u, gi_slot(u, g))].xyz; }\n" \
 /* the atlas coordinate of direction d in tile t (texels of side R plus border) */ \
 "static float2 gi_uv(int2 t, float3 d, int R, float2 sz) {\n" \
 "  float2 px = float2(t * (R + 2)) + 1.0 + (gi_oct(d) * 0.5 + 0.5) * float(R);\n" \
@@ -65,7 +69,8 @@ BRR_GI_U_SRC \
 "  float3 sum = 0.0; float ws = 0.0;\n" \
 "  for (int i = 0; i < 8; i++) {\n" \
 "    int3 o = int3(i & 1, (i >> 1) & 1, i >> 2), gi = int3(g0) + o;\n" \
-"    float3 pp = gi_ppos(u, off, gi); int2 t = gi_tile(u, gi_slot(u, gi));\n" \
+"    int sl = gi_find(u, off, gi); if (sl < 0) continue;   /* no probe there: no surface near it */\n" \
+"    float3 pp = gi_pos(u, gi) + off[sl].xyz; int2 t = gi_tile(u, sl);\n" \
 "    float3 tri = mix(1.0 - al, al, float3(o)); float w = tri.x * tri.y * tri.z;\n" \
 "    float3 tp = normalize(pp - p); float bf = (dot(tp, n) + 1.0) * 0.5; w *= bf * bf + 0.2;\n" \
 "    if (u.lim.y > 0.5) {\n" \
@@ -78,7 +83,7 @@ BRR_GI_U_SRC \
 "    }\n" \
 "    w = max(w, 1e-6);\n" \
 "    if (w < 0.2) w *= w * w / 0.04;\n" \
-"    sum += w * gi_sh_eval(sh, gi_lin(u, gi_slot(u, gi)), n); ws += w;\n" \
+"    sum += w * gi_sh_eval(sh, sl, n); ws += w;\n" \
 "  }\n" \
 "  return ws > 0.0 ? sum / ws : mix(u.gnd.rgb, u.sky.rgb, n.z * 0.5 + 0.5) * 3.14159265; }   /* every probe about it buried: a miss's light */\n" \
 /* the same weights for a second direction r2 (the lighting's specular \
@@ -93,7 +98,8 @@ BRR_GI_U_SRC \
 "  float3 sum = 0.0, sum2 = 0.0; float ws = 0.0;\n" \
 "  for (int i = 0; i < 8; i++) {\n" \
 "    int3 o = int3(i & 1, (i >> 1) & 1, i >> 2), gi = int3(g0) + o;\n" \
-"    float3 pp = gi_ppos(u, off, gi); int2 t = gi_tile(u, gi_slot(u, gi));\n" \
+"    int sl = gi_find(u, off, gi); if (sl < 0) continue;   /* no probe there: no surface near it */\n" \
+"    float3 pp = gi_pos(u, gi) + off[sl].xyz; int2 t = gi_tile(u, sl);\n" \
 "    float3 tri = mix(1.0 - al, al, float3(o)); float w = tri.x * tri.y * tri.z;\n" \
 "    float3 tp = normalize(pp - p); float bf = (dot(tp, n) + 1.0) * 0.5; w *= bf * bf + 0.2;\n" \
 "    if (u.lim.y > 0.5) {\n" \
@@ -106,7 +112,7 @@ BRR_GI_U_SRC \
 "    }\n" \
 "    w = max(w, 1e-6);\n" \
 "    if (w < 0.2) w *= w * w / 0.04;\n" \
-"    int sl = gi_lin(u, gi_slot(u, gi)); sum += w * gi_sh_eval(sh, sl, n); sum2 += w * gi_sh_eval(sh, sl, r2); ws += w;\n" \
+"    sum += w * gi_sh_eval(sh, sl, n); sum2 += w * gi_sh_eval(sh, sl, r2); ws += w;\n" \
 "  }\n" \
 "  e2 = ws > 0.0 ? sum2 / ws : mix(u.gnd.rgb, u.sky.rgb, r2.z * 0.5 + 0.5) * 3.14159265;\n" \
 "  return ws > 0.0 ? sum / ws : mix(u.gnd.rgb, u.sky.rgb, n.z * 0.5 + 0.5) * 3.14159265; }\n"
@@ -147,7 +153,8 @@ BRR_GI_SAMPLE_SRC \
 "  float3 lo = u.gorg.xyz + float3(c) * u.gorg.w, hi = lo + u.gorg.w, mid = (lo + hi) * 0.5;\n" \
 "  float sc[32]; ushort id[32]; int k = 0, cap = min(u.gdim.w, 32), nl = int(u.lim.z);\n" \
 "  for (int i = 0; i < nl; i++) {\n" \
-"    LS l = ls.l[i]; float3 q = float3(l.pos), e = q - clamp(q, lo, hi);\n" \
+"    LS l = ls.l[i]; if ((u.bx.w & 1) != 0 && l.kind < 1.5) continue;   /* a bake: the track's own lamps, not the cars' */\n" \
+"    float3 q = float3(l.pos), e = q - clamp(q, lo, hi);\n" \
 "    if (!(dot(e, e) < l.range * l.range)) continue;\n" \
 "    float3 m = q - mid; float s = l.cd * max(max(l.rgb[0], l.rgb[1]), l.rgb[2]) / max(dot(m, m), 1.0);\n" \
 "    if (k == cap && s <= sc[cap - 1]) continue;\n" \
@@ -168,16 +175,11 @@ BRR_GI_SAMPLE_SRC \
 "    E += float3(l.rgb) * (lamp(l, -ld) * lwin(l, -ld, dl) / d2 * c);\n" \
 "  }\n" \
 "  return E; }\n" \
-/* the update is spread over upd.x frames: a slot is traced and folded in \
-   the frame its linear index modulo upd.x is upd.y, or when it is new to \
-   the volume (it holds another place's light); the others keep theirs */ \
-"static bool gi_fresh(constant GiU &u, int3 sl) {\n" \
-"  int3 w = u.base.xyz + gi_mod(sl - u.base.xyz, u.n.xyz);\n" \
-"  return u.pbase.w == 0 || any(w < u.pbase.xyz) || any(w >= u.pbase.xyz + u.n.xyz); }\n" \
-"static bool gi_due(constant GiU &u, int3 sl) {\n" \
-"  int pl = sl.x + u.n.x * (sl.y + u.n.y * sl.z);\n" \
-"  return pl % max(u.upd.x, 1) == u.upd.y || gi_fresh(u, sl); }\n" \
-/* the rays: x the ray, y the probe's slot (linear); out: radiance (cd/m2, \
+/* a bake pass works on a batch of probes, bk.z from bk.w of them: a thread's \
+   probe, -1 past the batch; bx.z the pass (0: the probes start from their \
+   rays alone and their grid places) */ \
+"static int gi_bat(constant GiU &u, uint i) { return int(i) < u.bk.w ? u.bk.z + int(i) : -1; }\n" \
+/* the rays: x the ray, y the probe in the batch; out: radiance (cd/m2, \
    not pre-exposed), distance.  leaf: the track's triangle -> its leaf slot */ \
 "kernel void gi_trace(constant GiU &u [[buffer(0)]], device float4 *out [[buffer(1)]], device const uint *leaf [[buffer(2)]],\n" \
 "                     const device LSet &ls [[buffer(3)]],\n" \
@@ -186,12 +188,9 @@ BRR_GI_SAMPLE_SRC \
 "                     device const uint *cnt [[buffer(9)]], device const ushort *lst [[buffer(10)]], device const float4 *off [[buffer(11)]],\n" \
 "                     device const float4 *sh [[buffer(12)]], texture2d<float> dst [[texture(1)]], texturecube<float> env [[texture(2)]],\n" \
 "                     uint2 gid [[thread_position_in_grid]]) {\n" \
-"  int nr = u.n.w, np = u.n.x * u.n.y * u.n.z;\n" \
-"  if (int(gid.x) >= nr || int(gid.y) >= np) return;\n" \
-"  int pl = int(gid.y); int3 sl = int3(pl % u.n.x, (pl / u.n.x) % u.n.y, pl / (u.n.x * u.n.y));\n" \
-"  if (!gi_due(u, sl)) return;\n" \
-"  int3 g = gi_mod(sl - u.base.xyz, u.n.xyz);\n" \
-"  float3 o = gi_pos(u, g) + off[pl].xyz, d = gi_ray(u, int(gid.x));\n" \
+"  int nr = u.n.w, pl = gi_bat(u, gid.y);\n" \
+"  if (int(gid.x) >= nr || pl < 0) return;\n" \
+"  float3 o = gi_pos(u, gi_sgrid(u, off, pl)) + off[pl].xyz, d = gi_ray(u, int(gid.x));\n" \
 "  RtHit h = RT_CLOSEST(o, d, 0.0, u.lim.x);\n" \
 "  float3 L; bool back = false;\n" \
 "  constexpr sampler es(filter::linear, mip_filter::linear);\n" \
@@ -211,27 +210,23 @@ BRR_GI_SAMPLE_SRC \
 "    if (u.lim.w > 0.5) E += gi_irr(u, off, sh, dst, hp, n, -d);\n" \
 "    L = gi_rgb(pr.emit) * u.par.z + alb / GI_PI * E;\n" \
 "  }\n" \
-"  out[pl * nr + int(gid.x)] = float4(L, h.tri < 0 ? u.lim.x : back ? -h.t : h.t);   /* a back face's hit: its distance negated */\n" \
+"  out[int(gid.y) * nr + int(gid.x)] = float4(L, h.tri < 0 ? u.lim.x : back ? -h.t : h.t);   /* a back face's hit: its distance negated */\n" \
 "}\n" \
 /* probe relocation (Majercik et al. 2021; RTXGI's DDGIProbeRelocation): \
-   a slot new to the volume starts at its grid place (gi_offreset, before \
+   a probe starts at its grid place (gi_offreset, the first pass, before \
    the trace); after it, a probe whose rays meet back faces past GI_BACK \
    moves through the nearest one to GI_MINFRONT / 2 beyond it, one nearer \
    than GI_MINFRONT to a front face moves off it, never past 0.45 of the \
    spacing on an axis; the next update traces from there, the lookups \
-   weigh it there (gi_ppos) */ \
+   weigh it there (off) */ \
 "constant float GI_MINFRONT = 1.0;\n" \
-"kernel void gi_offreset(constant GiU &u [[buffer(0)]], device float4 *off [[buffer(11)]], uint pl [[thread_position_in_grid]]) {\n" \
-"  if (int(pl) >= u.n.x * u.n.y * u.n.z) return;\n" \
-"  int3 sl = int3(int(pl) % u.n.x, (int(pl) / u.n.x) % u.n.y, int(pl) / (u.n.x * u.n.y));\n" \
-"  if (gi_fresh(u, sl)) off[pl] = float4(0); }\n" \
+"kernel void gi_offreset(constant GiU &u [[buffer(0)]], device float4 *off [[buffer(11)]], uint i [[thread_position_in_grid]]) {\n" \
+"  int pl = gi_bat(u, i); if (pl >= 0 && u.bx.z == 0) off[pl] = float4(0); }\n" \
 "kernel void gi_reloc(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]], device float4 *off [[buffer(11)]],\n" \
-"                     uint pl [[thread_position_in_grid]]) {\n" \
-"  int nr = u.n.w; if (int(pl) >= u.n.x * u.n.y * u.n.z) return;\n" \
-"  int3 sl = int3(int(pl) % u.n.x, (int(pl) / u.n.x) % u.n.y, int(pl) / (u.n.x * u.n.y));\n" \
-"  if (!gi_due(u, sl)) return;\n" \
+"                     uint bi [[thread_position_in_grid]]) {\n" \
+"  int nr = u.n.w, pl = gi_bat(u, bi); if (pl < 0) return;\n" \
 "  float bt = 1e30, ft = 1e30; float3 bd = 0.0, fd = 0.0; int nb = 0;\n" \
-"  for (int i = 0; i < nr; i++) { float t = ray[int(pl) * nr + i].w; float3 d = gi_ray(u, i);\n" \
+"  for (int i = 0; i < nr; i++) { float t = ray[int(bi) * nr + i].w; float3 d = gi_ray(u, i);\n" \
 "    if (t < 0.0) { nb++; if (-t < bt) { bt = -t; bd = d; } }\n" \
 "    else if (t < u.lim.x && t < ft) { ft = t; fd = d; } }\n" \
 "  float3 cur = off[pl].xyz, nw = cur;\n" \
@@ -246,20 +241,18 @@ BRR_GI_SAMPLE_SRC \
 "  else if (y == 0 || y == E) { x = E - x; y = y == 0 ? 1 : R; }\n" \
 "  else if (x == 0 || x == E) { y = E - y; x = x == 0 ? 1 : R; }\n" \
 "  return int2(x - 1, y - 1); }\n" \
-/* one atlas texel: the probe's rays folded in, the cosine (irradiance) or \
-   its 50th power (distance) the weight; a slot new to the volume starts \
-   from its rays alone */ \
+/* one atlas texel of the batch's rows (gid.y from the batch's first row): \
+   the probe's rays folded in, the cosine (irradiance) or its 50th power \
+   (distance) the weight; the first pass starts from its rays alone */ \
 "static void gi_fold(constant GiU &u, device const float4 *ray, texture2d<float, access::read> prev,\n" \
 "                    texture2d<float, access::write> next, uint2 gid, int R, bool dist) {\n" \
-"  int T = R + 2; int2 tile = int2(gid) / T, l = int2(gid) % T;\n" \
-"  if (tile.x >= u.n.x * u.n.z || tile.y >= u.n.y) return;\n" \
-"  int3 sl = int3(tile.x % u.n.x, tile.y, tile.x / u.n.x);\n" \
-"  int pl = sl.x + u.n.x * (sl.y + u.n.y * sl.z), nr = u.n.w;\n" \
-"  if (!gi_due(u, sl)) { next.write(prev.read(gid), gid); return; }\n" \
+"  int T = R + 2; gid.y += uint(u.bk.z / u.bk.y * T); int2 tile = int2(gid) / T, l = int2(gid) % T;\n" \
+"  int pl = tile.x + u.bk.y * tile.y, bi = pl - u.bk.z, nr = u.n.w;\n" \
+"  if (tile.x >= u.bk.y || bi < 0 || bi >= u.bk.w) return;\n" \
 "  int2 in = gi_inner(l, R); float3 dir = gi_unoct((float2(in) + 0.5) / float(R) * 2.0 - 1.0);\n" \
 "  float3 s = 0.0; float ws = 0.0; int nb = 0;\n" \
 "  for (int i = 0; i < nr; i++) {\n" \
-"    float4 r = ray[pl * nr + i]; float c = max(dot(dir, gi_ray(u, i)), 0.0); nb += r.w < 0.0;\n" \
+"    float4 r = ray[bi * nr + i]; float c = max(dot(dir, gi_ray(u, i)), 0.0); nb += r.w < 0.0;\n" \
 "    if (dist) { float w = pow(c, 50.0), t = min(abs(r.w), u.lim.x); s += w * float3(t, t * t, 0); ws += w; }\n" \
 "    else { s += c * r.rgb; ws += c; }\n" \
 "  }\n" \
@@ -267,29 +260,26 @@ BRR_GI_SAMPLE_SRC \
 "  if (float(nb) > GI_BACK * float(nr)) { next.write(float4(0.0, 0.0, 0.0, 1.0), gid); return; }   /* inside the track's solid: off */\n" \
 "  if (ws <= 0.0) { next.write(old, gid); return; }\n" \
 "  float3 nw = dist ? s / ws : s / ws * GI_PI;\n" \
-/* par.x is a frame's hysteresis: a slot updated every upd.x frames \
-   keeps par.x to that power, so its light settles in the same time */ \
-"  float h = gi_fresh(u, sl) ? 0.0 : pow(u.par.x, float(max(u.upd.x, 1)));\n" \
+/* par.x is the pass's share of the old: k / (k + 1) at pass k, every pass's rays weighed alike */ \
+"  float h = u.bx.z == 0 ? 0.0 : u.par.x;\n" \
 "  next.write(float4(mix(nw, old.rgb, h), 1.0), gid);\n" \
 "}\n" \
 /* a probe's rays into its 9 coefficients: (4 pi / N) sum L Y (unbiased), \
    times the cosine's A_l, blended as the atlas texels are; a probe inside \
    the track's solid holds none */ \
 "kernel void gi_blend_sh(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]], device float4 *sh [[buffer(12)]],\n" \
-"                        uint pl [[thread_position_in_grid]]) {\n" \
-"  int nr = u.n.w; if (int(pl) >= u.n.x * u.n.y * u.n.z) return;\n" \
-"  int3 sl = int3(int(pl) % u.n.x, (int(pl) / u.n.x) % u.n.y, int(pl) / (u.n.x * u.n.y));\n" \
-"  if (!gi_due(u, sl)) return;\n" \
+"                        uint bi [[thread_position_in_grid]]) {\n" \
+"  int nr = u.n.w, pl = gi_bat(u, bi); if (pl < 0) return;\n" \
 "  float3 c[9]; float y[9]; int nb = 0;\n" \
 "  for (int k = 0; k < 9; k++) c[k] = 0.0;\n" \
-"  for (int i = 0; i < nr; i++) { float4 r = ray[int(pl) * nr + i]; nb += r.w < 0.0; gi_y9(gi_ray(u, i), y);\n" \
+"  for (int i = 0; i < nr; i++) { float4 r = ray[int(bi) * nr + i]; nb += r.w < 0.0; gi_y9(gi_ray(u, i), y);\n" \
 "    for (int k = 0; k < 9; k++) c[k] += r.rgb * y[k]; }\n" \
 "  bool dead = float(nb) > GI_BACK * float(nr);\n" \
-"  float h = gi_fresh(u, sl) ? 0.0 : pow(u.par.x, float(max(u.upd.x, 1))), sc = 4.0 * GI_PI / float(nr);\n" \
+"  float h = u.bx.z == 0 ? 0.0 : u.par.x, sc = 4.0 * GI_PI / float(nr);\n" \
 "  for (int k = 0; k < 9; k++) {\n" \
 "    float A = k == 0 ? GI_PI : k < 4 ? 2.0 * GI_PI / 3.0 : GI_PI / 4.0;\n" \
 "    float3 nw = dead ? float3(0) : c[k] * sc * A;\n" \
-"    sh[9 * int(pl) + k] = float4(dead ? nw : mix(nw, sh[9 * int(pl) + k].rgb, h), 0.0); } }\n" \
+"    sh[9 * pl + k] = float4(dead ? nw : mix(nw, sh[9 * pl + k].rgb, h), 0.0); } }\n" \
 "kernel void gi_blend_dst(constant GiU &u [[buffer(0)]], device const float4 *ray [[buffer(1)]],\n" \
 "                         texture2d<float, access::read> prev [[texture(0)]], texture2d<float, access::write> next [[texture(1)]],\n" \
 "                         uint2 gid [[thread_position_in_grid]]) { gi_fold(u, ray, prev, next, gid, BRR_GI_DST_S, true); }\n"

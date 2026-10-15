@@ -2286,23 +2286,31 @@ static void lit_lamp_shadows(void)
     [e endEncoding];
 }
 
-/* diffuse GI (DESIGN.md 8.2; brr_metal_gi.h), on unless BR_LIGHT_GI=0 (the
- * project lead's choice, 2026-10-13, pending the tier decision): a 16 x 8 x 16 volume of probes 8 m apart
- * around the eye, 64 rays a probe a frame, its hits lit by the directional
- * light (sun or moon), the sky and the frame's lamps; u->gi.x on when it ran */
+/* the irradiance probes (brr_metal_gi.h): baked over the whole track, probes
+ * 8 m apart where its surfaces are, 64 rays a probe in each of 12 passes, lit
+ * by the directional light (sun or moon) and the sky; baked again only when
+ * the track, the light or the sky's map changes, never while it holds (the
+ * track's own lamps light the scene directly, not through the probes: they
+ * are gathered as the game draws them, and a bake each time one came in
+ * would stall the race).  Each frame only the light grid the reflections'
+ * hits read.  u->gi.x on when baked */
 static BrrGi s_gi;
 static void lit_gi(LU *u, const float eye[3])
 {
     static int on = -1;
+    static float key[16];
+    static unsigned kgen = ~0u;
+    static const void *kenv;
     const BrrRtWorld *w;
-    float sky[3], gnd[3];
-    int k;
+    float sky[3], gnd[3], now[16];
+    int k, same;
+    (void)eye;
     u->gi[0] = 0.0f;
     if (on < 0)
         on = !getenv("BR_LIGHT_GI") || atoi(getenv("BR_LIGHT_GI")) > 0;
-    if (!on || !(w = brr_metal_rt_world()))
+    if (!on || !(w = brr_metal_rt_world()) || !w->built)
         return;
-    if (!s_gi.ready && !brr_gi_init(&s_gi, s_dev, 16, 8, 16, 64)) {
+    if (!s_gi.ready && !brr_gi_init(&s_gi, s_dev, 64)) {
         fprintf(stderr, "brr: irradiance probes: no pipelines, off\n");
         on = 0;
         return;
@@ -2310,43 +2318,27 @@ static void lit_gi(LU *u, const float eye[3])
     for (k = 0; k < 3; k++) {
         sky[k] = u->skyc[k] / 3.14159265f;      /* a miss's radiance: the sky's irradiance over pi */
         gnd[k] = u->gndc[k] / 3.14159265f;
+        now[k] = u->sun[k];
+        now[3 + k] = u->sunc[k];
+        now[6 + k] = sky[k];
+        now[9 + k] = gnd[k];
     }
-    brr_gi_frame(&s_gi, eye, 8.0f, u->sun, u->sunc, sky, gnd);
-    if (getenv("BR_LIGHT_GIPROBE") && s_frame % 60 == 0) {   /* diagnostic: what the probes near the eye see (CPU BVH) */
-        const LightTrack *t = light_game_track();
-        const BrrGiU *g = &s_gi.u;
-        int x, y, z, i;
-        for (z = 0; t && z < g->n[2]; z++)
-            for (y = 0; y < g->n[1]; y++)
-                for (x = 0; x < g->n[0]; x++) {
-                    float p[3], dd = 0;
-                    int back = 0, near = 0, hits = 0;
-                    p[0] = g->org[0] + (g->base[0] + x) * g->org[3];
-                    p[1] = g->org[1] + (g->base[1] + y) * g->org[3];
-                    p[2] = g->org[2] + (g->base[2] + z) * g->org[3];
-                    for (i = 0; i < 3; i++)
-                        dd += (p[i] - eye[i]) * (p[i] - eye[i]);
-                    if (dd > 144.0f)
-                        continue;
-                    for (i = 0; i < 64; i++) {
-                        float zz = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - zz * zz, 0.0f)), ph = i * 2.39996323f;
-                        float d[3] = { r * cosf(ph), r * sinf(ph), zz };
-                        LightHit h;
-                        if (light_bvh_closest(&w->bvh, p, d, 0.0f, 200.0f, &h, NULL)) {
-                            const float *a = t->tri + 9 * (size_t)h.tri;
-                            float e1[3] = { a[3] - a[0], a[4] - a[1], a[5] - a[2] }, e2[3] = { a[6] - a[0], a[7] - a[1], a[8] - a[2] };
-                            float nn[3] = { e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0] };
-                            hits++;
-                            back += nn[0] * d[0] + nn[1] * d[1] + nn[2] * d[2] > 0.0f;
-                            near += h.t < 0.25f * g->org[3];
-                        }
-                    }
-                    fprintf(stderr, "giprobe: frame %lu probe %d %d %d at %.1f %.1f %.1f, %.1f m from the eye: %d of 64 rays hit, %d back faces, %d within %.0f m\n",
-                            s_frame, x, y, z, p[0], p[1], p[2], sqrtf(dd), hits, back, near, 0.25f * g->org[3]);
-                }
+    for (same = kgen == w->gen && kenv == (__bridge const void *)(s_env.ready ? s_env.spec : nil), k = 0; k < 12 && same; k++)
+        same = fabsf(now[k] - key[k]) <= 0.01f * fmaxf(fabsf(key[k]), 1e-3f) + (k < 3 ? 1e-4f : 0.0f);
+    if (!same) {
+        brr_gi_env(&s_gi, s_env.ready ? s_env.spec : nil, 2.0f);   /* a miss: the sky by direction, its GGX 0.5 lobe (64 a face) */
+        if (brr_gi_bake(&s_gi, s_q, w, 8.0f, 12, u->sun, u->sunc, sky, gnd, nil, 0))
+            fprintf(stderr, "brr: irradiance probes baked: %d probes over %d x %d x %d points 8 m apart, %.0f MB, %.0f ms\n",
+                    s_gi.np, s_gi.u.n[0], s_gi.u.n[1], s_gi.u.n[2], s_gi.bytes / 1048576.0, s_gi.ms);
+        else
+            fprintf(stderr, "brr: irradiance probes: the bake failed\n");
+        memcpy(key, now, sizeof key);
+        kgen = w->gen;
+        kenv = (__bridge const void *)(s_env.ready ? s_env.spec : nil);
     }
-    brr_gi_env(&s_gi, s_env.ready ? s_env.spec : nil, 2.0f);   /* a miss: the sky by direction, its GGX 0.5 lobe (64 a face) */
-    brr_gi_encode(&s_gi, s_cmd, w, s_lset[s_vbi], s_nlamp);
+    if (!s_gi.baked)
+        return;
+    brr_gi_grid(&s_gi, s_cmd, s_lset[s_vbi], s_nlamp);
     u->gi[0] = 1.0f;
 }
 /* the probes for the lighting's fragment stage: the volume at buffer idx,
@@ -2357,7 +2349,7 @@ static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
     if (!s_gioff0)
         s_gioff0 = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
     static const BrrGiU zero;
-    int on = s_gi.ready && s_gi.frame;
+    int on = s_gi.ready && s_gi.baked;
     [e setFragmentBytes:on ? &s_gi.u : &zero length:sizeof zero atIndex:(NSUInteger)idx];
     [e setFragmentBuffer:on ? brr_gi_sh(&s_gi) : s_gioff0 offset:0 atIndex:7];
     [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
@@ -3387,8 +3379,8 @@ nopick:;
     }
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
-                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? &s_gi.u : NULL, sizeof s_gi.u,
-                      u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_sh(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? brr_gi_dst(&s_gi) : nil,
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? &s_gi.u : NULL, sizeof s_gi.u,
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? brr_gi_sh(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? brr_gi_dst(&s_gi) : nil,
                       u.gi[0] > 0.5f ? s_lset[s_vbi] : nil, u.gi[0] > 0.5f ? s_gi.gcnt : nil, u.gi[0] > 0.5f ? s_gi.glst : nil,
                       u.gi[0] > 0.5f ? brr_gi_off(&s_gi) : nil);
     if (u.wet[2] > 1.5f)
@@ -3414,7 +3406,7 @@ nopick:;
             brr_vol_beams(bs, nb);
         }
         {
-            int gon = u.gi[0] > 0.5f && s_gi.ready && s_gi.frame;
+            int gon = u.gi[0] > 0.5f && s_gi.ready && s_gi.baked;
             brr_vol_gi(gon ? &s_gi.u : NULL, sizeof s_gi.u, gon ? brr_gi_off(&s_gi) : nil, gon ? brr_gi_sh(&s_gi) : nil, gon ? brr_gi_dst(&s_gi) : nil);
         }
         brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, vsm ? (const void *)brr_vsm_u() : (const void *)&s_vsmoff, sizeof(VsmU), vsm ? brr_vsm_tmap() : nil,

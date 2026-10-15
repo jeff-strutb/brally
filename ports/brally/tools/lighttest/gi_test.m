@@ -17,12 +17,12 @@
  *             on the CPU (a lamp whose sphere misses the cube never listed,
  *             one that reaches it always, while the cube holds fewer than
  *             BRR_GI_CELL), and lit hits against every lamp of the set
- *   fold      the GPU's fold of one frame's rays against this file's CPU fold
- *             of the same rays
- *   cost      a 16 x 8 x 16 volume, 64 rays a probe, over a 131k triangle
- *             terrain in sunlight, without lamps and with 128 along 1 km:
- *             the GPU's time for one update (a quarter of the probes), and
- *             memory
+ *   fold      the GPU's fold of a bake's last pass's rays against this
+ *             file's CPU fold of the same rays
+ *   buried    a probe inside a solid box off, every one outside it on
+ *   cost      a bake over a 131k triangle terrain 512 m square in sunlight,
+ *             without lamps and with 128 along 1 km: its probes, its time and
+ *             its memory
  *
  * Usage: gi_test   (gi.sh) */
 #import <Foundation/Foundation.h>
@@ -88,25 +88,43 @@ static int world(BrrRtWorld *w, Mesh *m, unsigned gen)
 }
 
 /* ---- running ---------------------------------------------------------------- */
-static double run(BrrGi *g, const BrrRtWorld *w, id<MTLBuffer> ls, int nl)
+static double bake(BrrGi *g, const BrrRtWorld *w, float sp, int passes, const float sun[3], const float sunc[3],
+                   const float sky[3], const float gnd[3], id<MTLBuffer> ls, int nl)
 {
-    id<MTLCommandBuffer> cb = [s_q commandBuffer];
-    brr_gi_encode(g, cb, w, ls, nl);
-    [cb commit];
-    [cb waitUntilCompleted];
-    if (cb.status != MTLCommandBufferStatusCompleted) { printf("FAIL command buffer: %s\n", [[cb.error description] UTF8String]); exit(1); }
-    return (cb.GPUEndTime - cb.GPUStartTime) * 1e3;
+    if (!brr_gi_bake(g, s_q, w, sp, passes, sun, sunc, sky, gnd, ls, nl)) { printf("FAIL the bake\n"); exit(1); }
+    return g->ms;
 }
-static float *tex(id<MTLTexture> t, int ch)
+/* the distance atlas (half floats, 2 a texel) as floats */
+static float *tex(id<MTLTexture> t)
 {
-    float *p = malloc(t.width * t.height * ch * sizeof(float));
-    [t getBytes:p bytesPerRow:t.width * ch * sizeof(float) fromRegion:MTLRegionMake2D(0, 0, t.width, t.height) mipmapLevel:0];
+    size_t n = t.width * t.height * 2;
+    __fp16 *h = malloc(n * 2);
+    float *p = malloc(n * sizeof(float));
+    [t getBytes:h bytesPerRow:t.width * 4 fromRegion:MTLRegionMake2D(0, 0, t.width, t.height) mipmapLevel:0];
+    for (size_t i = 0; i < n; i++) p[i] = (float)h[i];
+    free(h);
     return p;
 }
-static void frame(BrrGi *g, float sp, const float sun[3], const float sunc[3])
+/* the probe at grid point gp (its number, -1 none), a probe's grid point and place */
+static int probe_at(const BrrGi *g, const int gp[3])
 {
-    float eye[3] = { 0, 0, 0 }, z[3] = { 0, 0, 0 };
-    brr_gi_frame(g, eye, sp, sun, sunc, z, z);
+    const BrrGiU *u = &g->u;
+    const uint32_t *t = (const uint32_t *)((const char *)[g->off contents] + (size_t)u->bx[0] * 16);
+    for (int k = 0; k < 3; k++) if (gp[k] < 0 || gp[k] >= u->n[k]) return -1;
+    uint32_t v = t[gp[0] + u->n[0] * (gp[1] + u->n[1] * gp[2])];
+    return v == 0xFFFFFFFFu ? -1 : (int)v;
+}
+static void probe_pos(const BrrGi *g, int s, float p[3])
+{
+    const int32_t *t = (const int32_t *)((const char *)[g->off contents] + (size_t)g->u.bx[1] * 16);
+    for (int k = 0; k < 3; k++) p[k] = g->u.org[k] + t[4 * s + k] * g->u.org[3];
+}
+/* the probe at the grid point nearest a world point */
+static int probe_near(const BrrGi *g, const float p[3])
+{
+    int gp[3];
+    for (int k = 0; k < 3; k++) gp[k] = (int)lroundf((p[k] - g->u.org[k]) / g->u.org[3]);
+    return probe_at(g, gp);
 }
 /* gi_irr at q (p, n pairs) */
 static void eval(BrrGi *g, const float *q, int n, float *out)
@@ -154,7 +172,6 @@ static void rayd(const BrrGiU *u, int i, float d[3])
     d[1] = u->rot1[0] * s[0] + u->rot1[1] * s[1] + u->rot1[2] * s[2];
     d[2] = u->rot2[0] * s[0] + u->rot2[1] * s[1] + u->rot2[2] * s[2];
 }
-static int imod(int a, int n) { return ((a % n) + n) % n; }
 /* the irradiance's spherical harmonics on the CPU (brr_metal_gi_src.h gi_y9, gi_blend_sh) */
 static void y9(const float d[3], double y[9])
 {
@@ -169,21 +186,17 @@ static double sh_eval(const float *sh, int slot, const float n[3], int ch)
     for (int k = 0; k < 9; k++) e += sh[(9 * slot + k) * 4 + ch] * y[k];
     return e > 0.0 ? e : 0.0;
 }
+/* the last pass's batch (bk.z from bk.w probes) on the CPU: its probes'
+ * coefficients folded over prev; the others kept */
 static void cpu_sh(const BrrGiU *u, const float *ray, const float *prev, float *next)
 {
-    int np = u->n[0] * u->n[1] * u->n[2], nr = u->n[3];
-    for (int pl = 0; pl < np; pl++) {
-        int s[3] = { pl % u->n[0], (pl / u->n[0]) % u->n[1], pl / (u->n[0] * u->n[1]) }, wv[3], fresh = u->pbase[3] == 0, nb = 0;
-        int per = u->upd[0] > 1 ? u->upd[0] : 1;
+    int np = u->bk[0], nr = u->n[3];
+    memcpy(next, prev, (size_t)np * 36 * sizeof(float));
+    for (int pl = u->bk[2]; pl < u->bk[2] + u->bk[3]; pl++) {
+        int bi = pl - u->bk[2], nb = 0;
         double c[9][3] = { { 0 } }, y[9];
-        for (int k = 0; k < 3; k++) {
-            wv[k] = u->base[k] + imod(s[k] - u->base[k], u->n[k]);
-            if (wv[k] < u->pbase[k] || wv[k] >= u->pbase[k] + u->n[k]) fresh = 1;
-        }
-        memcpy(next + 36 * pl, prev + 36 * pl, 36 * sizeof(float));
-        if (pl % per != u->upd[1] && !fresh) continue;
         for (int i = 0; i < nr; i++) {
-            const float *r = ray + ((size_t)pl * nr + i) * 4;
+            const float *r = ray + ((size_t)bi * nr + i) * 4;
             float d[3];
             rayd(u, i, d);
             y9(d, y);
@@ -191,7 +204,7 @@ static void cpu_sh(const BrrGiU *u, const float *ray, const float *prev, float *
             for (int k = 0; k < 9; k++)
                 for (int q = 0; q < 3; q++) c[k][q] += r[q] * y[k];
         }
-        double h = fresh ? 0.0 : pow(u->par[0], per), sc = 4.0 * M_PI / nr;
+        double h = u->bx[2] == 0 ? 0.0 : u->par[0], sc = 4.0 * M_PI / nr;
         for (int k = 0; k < 9; k++) {
             double A = k == 0 ? M_PI : k < 4 ? 2.0 * M_PI / 3.0 : M_PI / 4.0;
             for (int q = 0; q < 3; q++) {
@@ -202,49 +215,77 @@ static void cpu_sh(const BrrGiU *u, const float *ray, const float *prev, float *
         }
     }
 }
-/* one atlas (R texels a side, ch channels) folded from rays over prev */
-static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float *next, int W, int H, int R, int ch, int dist)
+/* the distance atlas (R texels a side, 2 channels) folded from the batch's
+ * rays over prev; a texel of a tile outside the batch -1 (the GPU leaves it) */
+static void cpu_fold(const BrrGiU *u, const float *ray, const float *prev, float *next, int W, int H, int R)
 {
     int T = R + 2;
     for (int y = 0; y < H; y++)
         for (int x = 0; x < W; x++) {
-            int tx = x / T, ty = y / T, lx = x % T, ly = y % T, ix, iy, s[3], pl, k;
-            float dir[3], acc[3] = { 0, 0, 0 }, ws = 0.0f;
-            int nb = 0;
-            const float *old = prev + ((size_t)y * W + x) * ch;
-            float *o = next + ((size_t)y * W + x) * ch;
-            s[0] = tx % u->n[0]; s[1] = ty; s[2] = tx / u->n[0];
-            pl = s[0] + u->n[0] * (s[1] + u->n[1] * s[2]);
+            int tx = x / T, ty = y / T, lx = x % T, ly = y % T, ix, iy, pl = tx + u->bk[1] * ty, bi = pl - u->bk[2], k, nb = 0;
+            float dir[3], acc[2] = { 0, 0 }, ws = 0.0f;
+            const float *old = prev + ((size_t)y * W + x) * 2;
+            float *o = next + ((size_t)y * W + x) * 2;
+            if (tx >= u->bk[1] || bi < 0 || bi >= u->bk[3]) { o[0] = o[1] = -1.0f; continue; }
             inner(lx, ly, R, &ix, &iy);
             unoct((ix + 0.5f) / R * 2.0f - 1.0f, (iy + 0.5f) / R * 2.0f - 1.0f, dir);
             for (int i = 0; i < u->n[3]; i++) {
-                const float *r = ray + ((size_t)pl * u->n[3] + i) * 4;
-                float d[3], c;
+                const float *r = ray + ((size_t)bi * u->n[3] + i) * 4;
+                float d[3], c, w, t;
                 rayd(u, i, d);
                 c = fmaxf(dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2], 0.0f);
                 nb += r[3] < 0.0f;   /* a back face's hit (gi_trace) */
-                if (dist) { float w = powf(c, 50.0f), t = fminf(fabsf(r[3]), u->lim[0]); acc[0] += w * t; acc[1] += w * t * t; ws += w; }
-                else { for (k = 0; k < 3; k++) acc[k] += c * r[k]; ws += c; }
+                w = powf(c, 50.0f); t = fminf(fabsf(r[3]), u->lim[0]);
+                acc[0] += w * t; acc[1] += w * t * t; ws += w;
             }
-            int wv[3], fresh = u->pbase[3] == 0, per = u->upd[0] > 1 ? u->upd[0] : 1;
-            for (k = 0; k < 3; k++) {
-                wv[k] = u->base[k] + imod(s[k] - u->base[k], u->n[k]);
-                if (wv[k] < u->pbase[k] || wv[k] >= u->pbase[k] + u->n[k]) fresh = 1;
-            }
-            if (pl % per != u->upd[1] && !fresh) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
-            if (nb > 0.25f * u->n[3]) { for (k = 0; k < ch; k++) o[k] = k == 3 ? 1.0f : 0.0f; continue; }   /* inside the solid: off */
-            if (ws <= 0.0f) { for (k = 0; k < ch; k++) o[k] = old[k]; continue; }
-            float h = fresh ? 0.0f : powf(u->par[0], (float)per);
-            for (k = 0; k < (dist ? 2 : 3); k++) {
-                float nw = acc[k] / ws * (dist ? 1.0f : 3.14159265f);
+            if (nb > 0.25f * u->n[3]) { o[0] = o[1] = 0.0f; continue; }   /* inside the solid: off */
+            if (ws <= 0.0f) { o[0] = old[0]; o[1] = old[1]; continue; }
+            float h = u->bx[2] == 0 ? 0.0f : u->par[0];
+            for (k = 0; k < 2; k++) {
+                float nw = acc[k] / ws;
                 o[k] = nw + (old[k] - nw) * h;
             }
-            if (!dist) o[3] = 1.0f;
         }
+}
+/* the CPU fold against the GPU's inside the batch: the max relative difference (the atlas is
+ * half floats, 11 bits: the GPU rounds the old value read and the new one written, so up to 2 of
+ * its units in the last place, 2^-10 each from 1 to 2) */
+static float fold_diff(const float *cd, const float *gd, int n)
+{
+    float dd = 0.0f;
+    for (int i = 0; i < n; i++)
+        if (cd[i] >= 0.0f)
+            dd = fmaxf(dd, fabsf(cd[i] - gd[i]) / fmaxf(1.0f, fabsf(cd[i])));
+    return dd;
 }
 
 /* ---- the tests ---------------------------------------------------------------- */
 static void check(const char *what, int ok) { if (!ok) { printf("FAIL %s\n", what); s_fail = 1; } }
+
+/* a bake of passes, then the same bake one pass longer with its last pass's rays kept: the
+   GPU's fold of that pass against the CPU's from the shorter bake's state (the bake is
+   deterministic: the rotations follow the pass); returns the irradiance and distance diffs */
+static void foldcheck(BrrGi *g, const BrrRtWorld *w, float sp, int passes, const float sun[3], const float sunc[3],
+                      const float sky[3], const float gnd[3], id<MTLBuffer> ls, int nl, float *di, float *dd)
+{
+    bake(g, w, sp, passes, sun, sunc, sky, gnd, ls, nl);
+    int np = g->np, NB = np * 36;
+    float *prev = malloc((size_t)NB * 4), *pd = tex(brr_gi_dst(g));
+    memcpy(prev, [brr_gi_sh(g) contents], (size_t)NB * 4);
+    g->keepray = 1;
+    bake(g, w, sp, passes + 1, sun, sunc, sky, gnd, ls, nl);
+    g->keepray = 0;
+    BrrGiU u = g->u;
+    float *ray = [g->ray contents], *gi = [brr_gi_sh(g) contents], *gd = tex(brr_gi_dst(g));
+    int Wd = (int)brr_gi_dst(g).width, Hd = (int)brr_gi_dst(g).height;
+    float *ci = malloc((size_t)NB * 4), *cd = malloc((size_t)Wd * Hd * 8);
+    cpu_sh(&u, ray, prev, ci);
+    cpu_fold(&u, ray, pd, cd, Wd, Hd, BRR_GI_DST);
+    *di = 0.0f;
+    for (int i = 0; i < NB; i++) *di = fmaxf(*di, fabsf(ci[i] - gi[i]));
+    *dd = fold_diff(cd, gd, Wd * Hd * 2);
+    free(prev); free(pd); free(gd); free(ci); free(cd);
+}
 
 static void furnace(void)
 {
@@ -254,14 +295,19 @@ static void furnace(void)
     float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 };
     box(&m, 3.0f, grey(128), grey(255));
     world(&w, &m, 1);
-    brr_gi_init(&g, s_dev, 3, 3, 3, 64);
+    brr_gi_init(&g, s_dev, 64);
     g.u.par[2] = 1.0f;                       /* the walls' radiance, cd/m2 */
-    for (int f = 0; f < 800; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
+    g.keep = 0.97f;
+    bake(&g, &w, 2.0f, 300, sun, zero, zero, zero, nil, 0);
     float a = 128.0f / 255.0f, want = 3.14159265f / (1.0f - a);
-    int np = 27, NB = np * 36;
-    float *irr = malloc((size_t)NB * 4), err = 0.0f, lo = 1e30f, hi = 0.0f;
-    memcpy(irr, [brr_gi_sh(&g) contents], (size_t)NB * 4);
-    for (int pl = 0; pl < np; pl++)   /* each probe's irradiance over 64 normals */
+    const float *irr = [brr_gi_sh(&g) contents];
+    float err = 0.0f, lo = 1e30f, hi = 0.0f;
+    int nin = 0;
+    for (int pl = 0; pl < g.np; pl++) {   /* each probe inside the box: its irradiance over 64 normals */
+        float p[3];
+        probe_pos(&g, pl, p);
+        if (fabsf(p[0]) >= 3.0f || fabsf(p[1]) >= 3.0f || fabsf(p[2]) >= 3.0f) continue;
+        nin++;
         for (int i = 0; i < 64; i++) {
             float z = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f, n[3] = { r * cosf(ph), r * sinf(ph), z };
             for (int k = 0; k < 3; k++) {
@@ -269,42 +315,29 @@ static void furnace(void)
                 err = fmaxf(err, e); lo = fminf(lo, v); hi = fmaxf(hi, v);
             }
         }
-    printf("furnace    a %.4f: E/(1-a) %.5f lux, probes %.5f .. %.5f, max rel err %.4f%%\n", a, want, lo, hi, err * 100.0f);
-    check("furnace within 2%", err < 0.02f);
-    /* the fold on the CPU from the same rays: one more frame */
-    {
-        float *prev = malloc((size_t)NB * 4), *pd = tex(brr_gi_dst(&g), 2);
-        memcpy(prev, [brr_gi_sh(&g) contents], (size_t)NB * 4);
-        BrrGiU u;
-        frame(&g, 2.0f, sun, zero);
-        u = g.u;
-        run(&g, &w, nil, 0);
-        float *ray = [g.ray contents], *gi = [brr_gi_sh(&g) contents], *gd = tex(brr_gi_dst(&g), 2);
-        int Wd = (int)brr_gi_dst(&g).width, Hd = (int)brr_gi_dst(&g).height;
-        float *ci = malloc((size_t)NB * 4), *cd = malloc((size_t)Wd * Hd * 8), di = 0.0f, dd = 0.0f;
-        cpu_sh(&u, ray, prev, ci);
-        cpu_fold(&u, ray, pd, cd, Wd, Hd, BRR_GI_DST, 2, 1);
-        for (int i = 0; i < NB; i++) di = fmaxf(di, fabsf(ci[i] - gi[i]));
-        for (int i = 0; i < Wd * Hd * 2; i++) dd = fmaxf(dd, fabsf(cd[i] - gd[i]) / fmaxf(1.0f, fabsf(cd[i])));
-        printf("fold       GPU vs CPU on the same rays: irradiance coefficients max abs diff %.3g lux (of %.3f), distance max rel diff %.3g\n", di, want, dd);
-        check("fold irradiance", di < 1e-4f * want);
-        check("fold distance", dd < 1e-4f);
-        free(prev); free(pd); free(gd); free(ci); free(cd);
     }
-    free(irr);
+    printf("furnace    a %.4f: E/(1-a) %.5f lux, %d probes inside (of %d), %.5f .. %.5f, max rel err %.4f%%\n", a, want, nin, g.np, lo, hi, err * 100.0f);
+    check("furnace: 27 probes inside, within 2%", nin == 27 && err < 0.02f);
+    {
+        float di, dd;
+        foldcheck(&g, &w, 2.0f, 6, sun, zero, zero, zero, nil, 0, &di, &dd);
+        printf("fold       GPU vs CPU on the same rays: irradiance coefficients max abs diff %.3g lux (of %.3f), distance max rel diff %.3g (half floats)\n", di, want, dd);
+        check("fold irradiance", di < 1e-4f * want);
+        check("fold distance", dd < 2e-3f);
+    }
     brr_gi_release(&g); brr_rt_release(&w);
 }
 
-/* probe classification: a solid box (its faces wound outward, as the
- * track's hills and walls), 3 x 3 x 3 probes 2 m apart about it; the centre
- * probe inside sees only back faces and is off (its distances 0), every
- * other probe keeps its own; the fold on the CPU agrees */
+/* probe classification: a solid box 2 m across (its faces wound outward, as
+ * the track's hills and walls), probes 2 m apart about it; the probe at its
+ * centre sees only back faces and is off (its distances 0), every other
+ * probe keeps its own; the fold on the CPU agrees */
 static void buried(void)
 {
     Mesh m = { 0 };
     BrrRtWorld w = { 0 };
     BrrGi g;
-    float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 };
+    float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 }, di, dd;
     for (int ax = 0; ax < 3; ax++)
         for (int sd = 0; sd < 2; sd++) {
             float o[3] = { -1, -1, -1 }, e1[3] = { 0 }, e2[3] = { 0 };
@@ -313,23 +346,15 @@ static void buried(void)
             quad(&m, o, e1, e2, grey(128), grey(255));
         }
     world(&w, &m, 4);
-    brr_gi_init(&g, s_dev, 3, 3, 3, 64);
+    brr_gi_init(&g, s_dev, 64);
     g.u.par[2] = 1.0f;
-    for (int f = 0; f < 4; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
-    float *pd = tex(brr_gi_dst(&g), 2);
-    BrrGiU u;
-    frame(&g, 2.0f, sun, zero);
-    u = g.u;
-    run(&g, &w, nil, 0);
-    float *ray = [g.ray contents], *gd = tex(brr_gi_dst(&g), 2);
-    int Wd = (int)brr_gi_dst(&g).width, Hd = (int)brr_gi_dst(&g).height, T = BRR_GI_DST + 2, off = 0, on = 0, cen = -1;
-    float *cd = malloc((size_t)Wd * Hd * 8), dd = 0.0f;
-    cpu_fold(&u, ray, pd, cd, Wd, Hd, BRR_GI_DST, 2, 1);
-    for (int i = 0; i < Wd * Hd * 2; i++) dd = fmaxf(dd, fabsf(cd[i] - gd[i]) / fmaxf(1.0f, fabsf(cd[i])));
-    for (int p = 0; p < 27; p++) {   /* each probe: off when its tile's distances are all 0 */
-        int s[3] = { p % 3, (p / 3) % 3, p / 9 }, tx = s[0] + 3 * s[2], ty = s[1], z = 1;
+    foldcheck(&g, &w, 2.0f, 4, sun, zero, zero, zero, nil, 0, &di, &dd);
+    float *gd = tex(brr_gi_dst(&g));
+    int Wd = (int)brr_gi_dst(&g).width, T = BRR_GI_DST + 2, off = 0, on = 0, cen = -1;
+    for (int p = 0; p < g.np; p++) {   /* each probe: off when its tile's distances are all 0 */
+        int tx = p % g.u.bk[1], ty = p / g.u.bk[1], z = 1;
         float pos[3];
-        for (int k = 0; k < 3; k++) pos[k] = u.org[k] + (u.base[k] + imod(s[k] - u.base[k], 3)) * u.org[3];
+        probe_pos(&g, p, pos);
         for (int y = 0; y < T; y++)
             for (int x = 0; x < T; x++)
                 z &= gd[((size_t)(ty * T + y) * Wd + tx * T + x) * 2] == 0.0f;
@@ -337,16 +362,17 @@ static void buried(void)
         else { off += z; on += !z; }
     }
     printf("buried     solid box: the probe inside %s; %d of %d outside it on; fold GPU vs CPU distance max rel diff %.3g\n",
-           cen == 1 ? "off" : cen == 0 ? "ON" : "not in the volume", on, on + off, dd);
-    check("buried probe off, the others on", cen == 1 && off == 0 && on == 26);
-    check("buried fold", dd < 1e-4f);
-    free(pd); free(gd); free(cd);
+           cen == 1 ? "off" : cen == 0 ? "ON" : "not placed", on, on + off, dd);
+    check("buried probe off, the others on", cen == 1 && off == 0 && on > 0);
+    check("buried fold", dd < 2e-3f);
+    free(gd);
     brr_gi_release(&g); brr_rt_release(&w);
 }
 
-/* the sky by direction: open air (one far triangle so the world builds), a
- * cube of radiance a + b z (Metal's face axes; world z up is face +Z), a
- * probe's irradiance against the closed form pi a + (2 pi / 3) b n.z */
+/* the sky by direction: open air (a 1 cm triangle so the world builds and
+ * the probes are placed about it), a cube of radiance a + b z (Metal's face
+ * axes; world z up is face +Z), irradiance in the cell beside the triangle
+ * against the closed form pi a + (2 pi / 3) b n.z */
 static void skycube(void)
 {
     Mesh m = { 0 };
@@ -355,10 +381,9 @@ static void skycube(void)
     const int N = 64;
     const float A = 1000.0f, B = 500.0f;
     float sun[3] = { 0, 0, 1 }, zero[3] = { 0, 0, 0 }, err = 0.0f;
-    float ta[3] = { 900, 900, -900 }, tb[3] = { 901, 900, -900 }, tc[3] = { 900, 901, -900 };
+    float ta[3] = { 900, 900, -900 }, tb[3] = { 900.01f, 900, -900 }, tc[3] = { 900, 900.01f, -900 }, P[3] = { 901, 901, -899 };
     tri(&m, ta, tb, tc, grey(128), 0);
     world(&w, &m, 1);
-    brr_gi_init(&g, s_dev, 3, 3, 3, 64);
     MTLTextureDescriptor *td = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA32Float size:N mipmapped:NO];
     id<MTLTexture> cube = [s_dev newTextureWithDescriptor:td];
     float *px = malloc((size_t)N * N * 16);
@@ -374,20 +399,22 @@ static void skycube(void)
         [cube replaceRegion:MTLRegionMake2D(0, 0, N, N) mipmapLevel:0 slice:(NSUInteger)f withBytes:px bytesPerRow:N * 16 bytesPerImage:(NSUInteger)N * N * 16];
     }
     free(px);
-    {   /* the same field twice: from the uniform sky / ground blend (A + B z exactly), then from the cube;
-           the probes' 8 x 8 octahedral texels hold either the same way (their bilinear lookup is off the
-           closed form by up to 6% at oblique normals: the representation, which a CPU model reproduces) */
+    {   /* the same field twice: from the uniform sky / ground blend (A + B z exactly), then from the cube */
         float q[6][8] = { { 0, 0, 0, 0, 0, 0, 1, 0 }, { 0, 0, 0, 0, 0, 0, -1, 0 }, { 0, 0, 0, 0, 1, 0, 0, 0 },
                           { 0, 0, 0, 0, 0, -1, 0, 0 }, { 0, 0, 0, 0, 0.6f, 0, 0.8f, 0 }, { 0, 0, 0, 0, 0, 0.8f, -0.6f, 0 } };
-        float ref[6][4], out[6][4], up[3] = { A + B, A + B, A + B }, dn[3] = { A - B, A - B, A - B }, eye[3] = { 0, 0, 0 }, dax = 0.0f;
-        for (int f = 0; f < 800; f++) { brr_gi_frame(&g, eye, 2.0f, sun, zero, up, dn); run(&g, &w, nil, 0); }
+        float ref[6][4], out[6][4], up[3] = { A + B, A + B, A + B }, dn[3] = { A - B, A - B, A - B }, dax = 0.0f;
+        for (int i = 0; i < 6; i++) memcpy(q[i], P, 12);
+        brr_gi_init(&g, s_dev, 64);
+        g.keep = 0.99f;
+        bake(&g, &w, 2.0f, 400, sun, zero, up, dn, nil, 0);
         eval(&g, &q[0][0], 6, &ref[0][0]);
-        {   /* the storage's error over the sphere: 256 normals (a Fibonacci set) at a probe against the closed form */
+        {   /* the storage's error over the sphere: 256 normals (a Fibonacci set) against the closed form */
             enum { NS = 256 };
             float qs[NS][8], os[NS][4], worst = 0.0f, wz = 0.0f;
             for (int i = 0; i < NS; i++) {
                 float z = 1.0f - (2.0f * i + 1.0f) / NS, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f;
                 memset(qs[i], 0, sizeof qs[i]);
+                memcpy(qs[i], P, 12);
                 qs[i][4] = r * cosf(ph); qs[i][5] = r * sinf(ph); qs[i][6] = z;
             }
             eval(&g, &qs[0][0], NS, &os[0][0]);
@@ -399,10 +426,11 @@ static void skycube(void)
                    worst * 100.0f, wz);
             check("storage within 2% over the sphere", worst < 0.02f);
         }
-        brr_gi_release(&g);   /* the cube's run on the same rays, frame for frame (the rotations follow the frame count) */
-        brr_gi_init(&g, s_dev, 3, 3, 3, 64);
+        brr_gi_release(&g);   /* the cube's bake on the same rays, pass for pass (the rotations follow the pass) */
+        brr_gi_init(&g, s_dev, 64);
+        g.keep = 0.99f;
         brr_gi_env(&g, cube, 2.0f);
-        for (int f = 0; f < 800; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
+        bake(&g, &w, 2.0f, 400, sun, zero, zero, zero, nil, 0);
         eval(&g, &q[0][0], 6, &out[0][0]);
         for (int i = 0; i < 6; i++) {
             float want = 3.14159265f * A + 2.0943951f * B * q[i][6];
@@ -455,12 +483,15 @@ static void lampbox(void)
     /* pos, kind 2 (a point), axis, cd, side, range, rgb, cosout */
     float rec[16] = { 0, 0, 0, 2.0f, 0, 0, 1, I, 1, 0, 0, 100.0f, 1, 1, 1, 0 };
     memcpy(L, rec, sizeof rec);
-    brr_gi_init(&g, s_dev, 3, 3, 3, 256);
+    brr_gi_init(&g, s_dev, 256);
     g.u.lim[3] = 0.0f;                       /* the first bounce alone */
-    for (int f = 0; f < 200; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, ls, 1); }
+    g.keep = 0.97f;
+    bake(&g, &w, 2.0f, 200, sun, zero, zero, zero, ls, 1);
     const float *irr = [brr_gi_sh(&g) contents];
+    const float c0[3] = { 0, 0, 0 };
+    int cs0 = probe_near(&g, c0);
     float err = 0.0f, tr = 0.0f;
-    /* the centre probe: grid (1, 1, 1), world index 0, slot 0.  Its reference: the walls' radiance at the
+    /* the centre probe (cs0).  Its reference: the walls' radiance at the
        centre (a / pi I h / r^3, r = h / max |w_i|) projected to order 2 on a fine Fibonacci set and convolved
        (the estimator's own expectation); its truncation against the exact first bounce (lamp_ref) apart */
     double a = 128.0 / 255.0, e0 = 0.0, cs[9] = { 0 }, y[9];
@@ -473,7 +504,7 @@ static void lampbox(void)
     }
     for (int i = 0; i < 64; i++) {
         float z = 1.0f - (2.0f * i + 1.0f) / 64.0f, r = sqrtf(fmaxf(1.0f - z * z, 0.0f)), ph = i * 2.39996323f, d[3] = { r * cosf(ph), r * sinf(ph), z };
-        double ref = 0.0, got = sh_eval(irr, 0, d, 0), ex = lamp_ref(3.0, a, I, d);
+        double ref = 0.0, got = cs0 >= 0 ? sh_eval(irr, cs0, d, 0) : 0.0, ex = lamp_ref(3.0, a, I, d);
         y9(d, y);
         for (int k = 0; k < 9; k++) ref += cs[k] * (k == 0 ? M_PI : k < 4 ? 2.0 * M_PI / 3.0 : M_PI / 4.0) * y[k];
         if (!i) e0 = ex;
@@ -503,9 +534,10 @@ static void leak(void)
     world(&w, &m, 3);
     for (int ch = 1; ch >= 0; ch--) {
         BrrGi g;
-        brr_gi_init(&g, s_dev, 8, 4, 8, 64);
+        brr_gi_init(&g, s_dev, 64);
         g.u.par[2] = 1.0f; g.u.lim[1] = (float)ch;
-        for (int f = 0; f < 300; f++) { frame(&g, 2.0f, sun, zero); run(&g, &w, nil, 0); }
+        g.keep = 0.97f;
+        bake(&g, &w, 2.0f, 300, sun, zero, zero, zero, nil, 0);
         /* receivers facing down (toward the emitter's plane), d metres either side of the wall */
         float ds[4] = { 0.1f, 0.3f, 0.6f, 0.9f }, q[16 * 4], o[16 * 4], worst = 0.0f;
         int n = 0;
@@ -548,9 +580,8 @@ static void gridtest(void)
     }
     box(&m, 3.0f, grey(128), 0);
     world(&w, &m, 5);
-    brr_gi_init(&g, s_dev, 16, 8, 16, 64);
-    frame(&g, 8.0f, sun, zero);
-    run(&g, &w, ls, 128);
+    brr_gi_init(&g, s_dev, 64);
+    bake(&g, &w, 8.0f, 1, sun, zero, zero, zero, ls, 128);
     const BrrGiU *u = &g.u;
     const uint32_t *cnt = [g.gcnt contents];
     const uint16_t *lst = [g.glst contents];
@@ -612,17 +643,12 @@ static void cost(void)
         }
     }
     for (int lit = 0; lit < 2; lit++) {
-        brr_gi_init(&g, s_dev, 16, 8, 16, 64);
-        double best = 1e30, sum = 0.0;
-        int nt = 0;
-        for (int f = 0; f < 40; f++) {
-            float eye[3] = { f * 0.5f, 0, 4 };
-            brr_gi_frame(&g, eye, 8.0f, sun, sunc, sky, gnd);
-            double ms = run(&g, &w, lit ? ls : nil, lit ? 128 : 0);
-            if (f >= 10) { best = fmin(best, ms); sum += ms; nt++; }
-        }
-        printf("cost       %d probes x %d rays over %d triangles, %d lamps: %.3f ms a frame (best %.3f), GPU memory %.2f MB (atlases x2 + rays), BVH %.2f MB\n",
-               16 * 8 * 16, 64, m.n, lit ? 128 : 0, sum / nt, best, g.bytes / 1048576.0, w.bvh_bytes / 1048576.0);
+        double best = 1e30;
+        brr_gi_init(&g, s_dev, 64);
+        for (int f = 0; f < 3; f++)
+            best = fmin(best, bake(&g, &w, 8.0f, 12, sun, sunc, sky, gnd, lit ? ls : nil, lit ? 128 : 0));
+        printf("cost       a bake: %d probes x 64 rays x 12 passes over %d triangles, %d lamps: %.1f ms (best of 3, CPU placement included), "
+               "memory %.2f MB, BVH %.2f MB\n", g.np, m.n, lit ? 128 : 0, best, g.bytes / 1048576.0, w.bvh_bytes / 1048576.0);
         brr_gi_release(&g);
     }
     brr_rt_release(&w);
@@ -643,7 +669,7 @@ int main(void)
         id<MTLLibrary> lib = brr_rt_library(s_dev, [NSString stringWithFormat:@"%s%s%s%s", BRR_GI_DEFS, BRR_LIGHTS_SRC, BRR_GI_SRC, k_eval], &err);
         if (!lib) { printf("FAIL compile: %s\n", [[err description] UTF8String]); return 1; }
         s_eval = [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"gi_eval"] error:&err];
-        check("GiU is 16 float4", sizeof(BrrGiU) == 16 * 16);
+        check("GiU is 18 float4", sizeof(BrrGiU) == 18 * 16);
         furnace();
         buried();
         skycube();

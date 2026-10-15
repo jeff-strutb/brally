@@ -87,7 +87,7 @@ kernel void t_radiance(constant LU &u [[buffer(0)]], const device LSet &ls [[buf
   TRad t = in[i];
   float3 n = toeye(u, t.p.xyz, t.n.xyz);
   float sv = dot(n, u.sun.xyz) > 0.0 ? sunvis(u, sm, t.p.xyz, n, float(i % 64) * 0.098) : 0.0;
-  float3 c = radiance(u, ls, atl, t.p.xyz, n, t.alb.rgb, t.alb.w, t.fog.y, sv, bE, float3(0), float(i % 64) * 0.098, sp, 1.0, 0.0);
+  float3 c = radiance(u, ls, atl, t.p.xyz, n, t.alb.rgb, t.alb.w, t.fog.y, sv, bE, float3(0), float(i % 64) * 0.098, sp, 1.0, 0.0, float3(0));   /* gis: read only with the probes on (gi.x) */
   o[i] = float4(fogged(u, preexp(u, c), t.fog.x, t.alb.rgb), 0.0);
 }
 

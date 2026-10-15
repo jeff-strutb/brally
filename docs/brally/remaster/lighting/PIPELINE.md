@@ -80,6 +80,25 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
 
 ## Global illumination
 
+- **Baked when a track loads (2026-10-14), not traced while racing.** The
+  probes had been a 16 x 8 x 16 volume 8 m apart moved with the camera, a
+  quarter traced each frame: past 64 m the lookups fell to its edge probes,
+  and every 8 m driven a row of new probes switched on at its far edge, so
+  the sky's occlusion under walls and banks swept in ahead of the car, worst
+  in snow where nearly all the light is the sky's (in a 60-frame snow burst
+  the frame-to-frame darkening's 95th percentile 35,600 pixels, 12,400
+  baked). Now brr_gi_bake places a probe 8 m apart wherever a track surface
+  needs one, over the whole track (Coastline: 104,425 probes over 267 x 271
+  x 12 points, 61 MB), and traces 64 rays a probe in 12 passes, each a bounce
+  more (the first pass direct light only: with no probes to read yet, its
+  hits had taken the open sky's light and lit the tunnel 10 to 40 times
+  over). 280 to 430 ms on an M4 Pro, again only when the track, the sun, the
+  sky or its map changes. The distance atlas is 8 x 8 half floats a probe.
+  Left out of the bake: the track's lamps (gathered as the game draws them,
+  each would have meant another bake) and the cars' lamps; both still light
+  everything directly. The bounce's colour is the track's albedo as known at
+  the bake (talb_learn learns it during the race: the sunny embankment's
+  bounce a little less warm, within 4 to 9 levels of 255 on the mean frame).
 - The irradiance probes' rays that miss the track take the skymap's radiance
   in their own direction (the prefiltered cube at GGX roughness 0.5), so the
   bounce light sees the sun's side and the horizon's glow. Before, a miss
