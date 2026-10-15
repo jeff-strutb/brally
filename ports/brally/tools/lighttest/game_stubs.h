@@ -17,10 +17,11 @@ void light_world_gather(unsigned gen, const float *tri, int n, float lum, const 
     (void)gen, (void)tri, (void)n, (void)lum, (void)rgb, (void)eye;
 }
 #endif
+const char *host_save_dir(void) { return "build/lighttest"; }   /* the track albedo's cache (no track here: never written) */
 int brr_refl_tier(void) { return 0; }   /* reflections: off here (refl.sh tests them) */
-void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, const BrrRtWorld *rt, id<MTLTexture> alb, id<MTLTexture> pos,
+void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, size_t scroff, id<MTLTexture> rcube, id<MTLTexture> alb, id<MTLTexture> pos,
                    id<MTLTexture> nrm, id<MTLTexture> hdr, id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz,
-                   id<MTLBuffer> girr, id<MTLTexture> gdst, id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff) { }
+                   id<MTLBuffer> girr, id<MTLTexture> gdst, id<MTLBuffer> goff) { }
 int brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t)   /* the track's rays: rt.sh's */
 {
     (void)w, (void)dev, (void)q, (void)t;
@@ -34,7 +35,6 @@ int brr_gi_bake(BrrGi *g, id<MTLCommandQueue> q, const BrrRtWorld *w, float sp, 
     (void)g, (void)q, (void)w, (void)sp, (void)passes, (void)sun, (void)sunc, (void)sky, (void)gnd, (void)lset, (void)nlamp;
     return 0;
 }
-void brr_gi_grid(BrrGi *g, id<MTLCommandBuffer> cb, id<MTLBuffer> lset, int nlamp) { (void)g, (void)cb, (void)lset, (void)nlamp; }
 void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod) { (void)g, (void)spec, (void)lod; }
 id<MTLBuffer> brr_gi_sh(const BrrGi *g) { (void)g; return nil; }
 id<MTLBuffer> brr_gi_off(const BrrGi *g) { (void)g; return nil; }

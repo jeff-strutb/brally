@@ -1,23 +1,17 @@
 /* brr_metal_rt.h: rays against the whole track for the Remastered lighting
- * (DESIGN.md 8.1): GI probe updates, reflections, lamp shadows.
- *
- * Two representations of the same triangles (light_game_track), built once a
- * track generation (brr_metal_rt.m):
- *
- *   compute BVH  light_bvh.c's tree, traversed in shader code by rt_closest
- *                and rt_any (BRR_RT_SRC); every GPU
- *   hardware     a primitive acceleration structure, traced by Metal's
- *                intersector (rt_hw_closest, rt_hw_any; BRR_RT_HW_SRC) where
- *                the device supports ray tracing
- *
- * Both report the triangle by its number in the track (the surface records'
- * index) and the barycentric weights of its second and third corners.
- *
- * The compute traversal is light_bvh.c's operation for operation, with the
- * multiply-adds written as fma on both sides, so that a library compiled
- * without fast math (brr_rt_library) agrees with the CPU bit for bit.  Fast
- * math is not allowed: the slabs need IEEE infinities for rays parallel to
- * an axis. */
+ * (DESIGN.md 8.1), for the irradiance probes' bake when a track loads
+ * (brr_metal_gi.h) and the diagnostics; nothing traces while the race runs.
+ * light_bvh.c's tree, built once a track generation (brr_metal_rt.m) and
+ * traversed in shader code by rt_closest and rt_any (BRR_RT_SRC), on every
+ * GPU.  A hit reports the triangle by its number in the track (the surface
+ * records' index) and the barycentric weights of its second and third
+ * corners.  The compute traversal is light_bvh.c's operation for operation,
+ * with the multiply-adds written as fma on both sides, so that a library
+ * compiled without fast math (brr_rt_library) agrees with the CPU bit for
+ * bit.  Fast math is not allowed: the slabs need IEEE infinities for rays
+ * parallel to an axis.  The hardware intersector and its acceleration
+ * structure are gone (2026-10-14: no ray tracing while racing, every device
+ * alike). */
 #ifndef BRR_METAL_RT_H
 #define BRR_METAL_RT_H
 
@@ -123,39 +117,12 @@
 "  return rt_trace(node, tri, id, o, d, tmin, tmax, true).tri >= 0;\n" \
 "}\n"
 
-/* the hardware intersector over the primitive acceleration structure (only
- * on a device that supports ray tracing: brr_rt_library adds it there).
- * Opaque, two-sided, triangles only. */
-#define BRR_RT_HW_SRC \
-"#include <metal_raytracing>\n" \
-"static RtHit rt_hw_trace(raytracing::primitive_acceleration_structure as, float3 o, float3 d, float tmin, float tmax, bool any) {\n" \
-"  raytracing::ray r(o, d, tmin, tmax);\n" \
-"  raytracing::intersector<raytracing::triangle_data> isx;\n" \
-"  isx.assume_geometry_type(raytracing::geometry_type::triangle);\n" \
-"  isx.force_opacity(raytracing::forced_opacity::opaque);\n" \
-"  isx.accept_any_intersection(any);\n" \
-"  auto x = isx.intersect(r, as);\n" \
-"  RtHit h; h.t = tmax; h.u = 0.0; h.v = 0.0; h.tri = -1;\n" \
-"  if (x.type == raytracing::intersection_type::triangle) {\n" \
-"    h.t = x.distance; h.u = x.triangle_barycentric_coord.x; h.v = x.triangle_barycentric_coord.y; h.tri = int(x.primitive_id);\n" \
-"  }\n" \
-"  return h;\n" \
-"}\n" \
-"static RtHit rt_hw_closest(raytracing::primitive_acceleration_structure as, float3 o, float3 d, float tmin, float tmax) {\n" \
-"  return rt_hw_trace(as, o, d, tmin, tmax, false);\n" \
-"}\n" \
-"static bool rt_hw_any(raytracing::primitive_acceleration_structure as, float3 o, float3 d, float tmin, float tmax) {\n" \
-"  return rt_hw_trace(as, o, d, tmin, tmax, true).tri >= 0;\n" \
-"}\n"
-
-/* the trace the effects call: Metal's intersector over the acceleration
- * structure, bound at a kernel's RT_AS buffer.  Hardware ray tracing only (the
- * project lead's rule): on a GPU without it the effects that trace are off,
- * never traced in shader code (the compute BVH above is the tests' reference) */
+/* the trace the kernels call: the compute BVH, its buffers named node, tri
+ * and id in the kernel (brr_rt_bind's base .. base + 2) */
 #define BRR_RT_SEL_SRC \
-"#define RT_AS(n) , raytracing::primitive_acceleration_structure rt_as [[buffer(n)]]\n" \
-"#define RT_CLOSEST(o, d, t0, t1) rt_hw_closest(rt_as, o, d, t0, t1)\n" \
-"#define RT_ANY(o, d, t0, t1) rt_hw_any(rt_as, o, d, t0, t1)\n"
+"#define RT_AS(n)\n" \
+"#define RT_CLOSEST(o, d, t0, t1) rt_closest(node, tri, id, o, d, t0, t1)\n" \
+"#define RT_ANY(o, d, t0, t1) rt_any(node, tri, id, o, d, t0, t1)\n"
 
 #ifdef __OBJC__
 #import <Metal/Metal.h>
@@ -167,32 +134,23 @@ typedef struct BrrRtWorld {
     LightBvh bvh;                        /* the CPU's copy (its traversals: light_bvh.h) */
     id<MTLBuffer> node, tri, id, prim;   /* the compute BVH: BRR_RT_SRC's buffers */
     id<MTLBuffer> leaf;                  /* the track's triangle -> its leaf slot (tri's corners for a hit) */
-    id<MTLBuffer> acc;                   /* brr_metal_refl.h talb_learn's sums, 4 uints a triangle */
-    id<MTLAccelerationStructure> as;     /* the hardware structure; nil where unsupported */
+    id<MTLBuffer> acc;                   /* the track's albedo learned from the frames: its sums, 4 uints a triangle (brr_metal.m) */
     int ntri;
-    int hw;                  /* ray tracing in hardware (Apple 9 and supportsRaytracing,
-                                DESIGN.md 3.1); the structure is built wherever
-                                supportsRaytracing, which earlier GPUs run in shader code */
     unsigned gen;            /* the track generation it was built from */
     int built;
-    double bvh_ms, as_ms;    /* CPU build; structure build and compaction, waited for */
-    size_t bvh_bytes, as_bytes;
+    double bvh_ms;           /* the CPU's build */
+    size_t bvh_bytes;
 } BrrRtWorld;
 
 /* (re)builds w when the track's generation differs from the one it holds;
- * 1 when w holds a world afterwards.  Waits for the structure's build (a
- * track load, once). */
+ * 1 when w holds a world afterwards */
 int  brr_rt_update(BrrRtWorld *w, id<MTLDevice> dev, id<MTLCommandQueue> q, const LightTrack *t);
 void brr_rt_release(BrrRtWorld *w);
-/* binds the compute BVH's four buffers at base .. base + 3 and makes the
- * structure resident; the structure itself goes where the kernel takes it
- * (setAccelerationStructure:atBufferIndex:) */
+/* binds the compute BVH's four buffers at base .. base + 3 */
 void brr_rt_bind(const BrrRtWorld *w, id<MTLComputeCommandEncoder> e, int base);
-/* a library of BRR_RT_SRC (and BRR_RT_HW_SRC where the device supports ray
- * tracing; BRR_RT_HW defined to 1 then) followed by src, compiled without
- * fast math */
-id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err);   /* nil without hardware ray tracing */
-int brr_rt_hardware(id<MTLDevice> dev);   /* 1 where the GPU traces rays in hardware */
+/* a library of BRR_RT_SRC and BRR_RT_SEL_SRC followed by src, compiled
+ * without fast math */
+id<MTLLibrary> brr_rt_library(id<MTLDevice> dev, NSString *src, NSError **err);
 /* the renderer's world for the current track (brr_metal.m), built on first
  * use; NULL without a track */
 const BrrRtWorld *brr_metal_rt_world(void);

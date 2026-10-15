@@ -52,6 +52,9 @@
 #include "brr_metal_gi.h"
 #include "brr_shadow.h"
 #include "brr_metal_taa_api.h"
+#include "brr_metal_talb.h"
+#include "brr_metal_rcube.h"
+#include <sys/stat.h>
 #include "br_flags.h"
 #include "light.h"
 #include "light_cluster.h"
@@ -1034,7 +1037,7 @@ static void op_draw(id<MTLRenderCommandEncoder> e, const Op *o, int with_depth)
 
 /* the track's ray-tracing world (DESIGN.md 8.1; brr_metal_rt.m): built the
  * first time a pass asks for it on a track, again when the track changes.
- * Nothing traces rays yet; GI and reflections will. */
+ * The irradiance probes' bake (brr_metal_gi.h) traces it; nothing else does. */
 const BrrRtWorld *brr_metal_rt_world(void)
 {
     const LightTrack *t = light_game_track();
@@ -1043,10 +1046,8 @@ const BrrRtWorld *brr_metal_rt_world(void)
     if (!s_dev || !brr_rt_update(&s_rt, s_dev, s_q, t))
         return NULL;
     if (!was || gen != s_rt.gen)
-        fprintf(stderr, "brr: ray tracing world: %d triangles, BVH %d nodes %.1f ms %zu KB, %s %.1f ms %zu KB\n",
-                s_rt.ntri, s_rt.bvh.nnode, s_rt.bvh_ms, s_rt.bvh_bytes >> 10,
-                s_rt.as ? (s_rt.hw ? "hardware structure" : "structure (shader-traced)") : "no structure",
-                s_rt.as_ms, s_rt.as_bytes >> 10);
+        fprintf(stderr, "brr: the track's BVH (the probes' bake): %d triangles, %d nodes %.1f ms %zu KB\n",
+                s_rt.ntri, s_rt.bvh.nnode, s_rt.bvh_ms, s_rt.bvh_bytes >> 10);
     return &s_rt;
 }
 
@@ -1678,6 +1679,145 @@ static int cmp_dbl(const void *a, const void *b)
     return x < y ? -1 : x > y;
 }
 
+/* the track's albedo learned from the frames by rasterisation
+ * (brr_metal_talb.h), into the world's surface records (RtPrim.albedo) the
+ * probes' bake shades its hits with; kept on disk a track and weather
+ * (host_save_dir()/lighting/talb-<hash>.bin: the track's corners' FNV-1a
+ * and the weather), loaded before a bake, written every 10 s while it
+ * learns, so the next load's bake has the colours this one learned */
+const char *host_save_dir(void);
+static id<MTLRenderPipelineState> s_tbp;
+static id<MTLComputePipelineState> s_tbl, s_tbr;
+static id<MTLDepthStencilState> s_tbds;
+static id<MTLTexture> s_tbid, s_tbdep;
+static int s_tbfail;
+static void talb_path(const BrrRtWorld *w, char *out, size_t n)
+{
+    uint32_t h = 2166136261u;
+    const uint8_t *b = (const uint8_t *)w->bvh.tri;
+    size_t i, nb = (size_t)w->bvh.ntri * 9 * sizeof(float);   /* leaf order: the same for the same track */
+    const char *dir = host_save_dir();
+    for (i = 0; i < nb; i++)
+        h = (h ^ b[i]) * 16777619u;
+    snprintf(out, n, "%s/lighting/talb-%08X-w%d.bin", dir ? dir : ".", h, light_game_weather());
+}
+static void talb_load(const BrrRtWorld *w)
+{
+    char path[1024];
+    FILE *f;
+    int32_t n = 0;
+    talb_path(w, path, sizeof path);
+    if (!(f = fopen(path, "rb")))
+        return;
+    if (fread(&n, 4, 1, f) == 1 && n == w->bvh.ntri) {
+        uint32_t *a = malloc((size_t)n * 4);
+        LightBvhPrim *p = (LightBvhPrim *)[w->prim contents];
+        int i;
+        if (a && fread(a, 4, (size_t)n, f) == (size_t)n)
+            for (i = 0; i < n; i++)
+                p[i].albedo = a[i];
+        free(a);
+    }
+    fclose(f);
+}
+static void talb_save(const BrrRtWorld *w)
+{
+    char path[1024], dir[1024];
+    FILE *f;
+    int32_t n = w->bvh.ntri, i;
+    const LightBvhPrim *p = (const LightBvhPrim *)[w->prim contents];
+    talb_path(w, path, sizeof path);
+    snprintf(dir, sizeof dir, "%s/lighting", host_save_dir() ? host_save_dir() : ".");
+    mkdir(dir, 0755);
+    if (!(f = fopen(path, "wb")))
+        return;
+    fwrite(&n, 4, 1, f);
+    for (i = 0; i < n; i++)
+        fwrite(&p[i].albedo, 4, 1, f);
+    fclose(f);
+}
+static void lit_talb_learn(const LU *u)
+{
+    const BrrRtWorld *w = brr_metal_rt_world();
+    BrrTalbU a;
+    MTLRenderPassDescriptor *rp;
+    id<MTLRenderCommandEncoder> re;
+    id<MTLComputeCommandEncoder> ce;
+    static unsigned long saved;
+    if (s_tbfail || !w || !w->built || !s_trkn || s_trkn != w->bvh.ntri * 3)
+        return;
+    if (!s_tbp) {
+        NSError *err = nil;
+        id<MTLLibrary> lib = [s_dev newLibraryWithSource:@BRR_TALB_SRC options:nil error:&err];
+        MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+        MTLDepthStencilDescriptor *dd = [MTLDepthStencilDescriptor new];
+        d.vertexFunction = [lib newFunctionWithName:@"talb_vs"];
+        d.fragmentFunction = [lib newFunctionWithName:@"talb_fs"];
+        d.colorAttachments[0].pixelFormat = MTLPixelFormatR32Uint;
+        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+        s_tbp = lib ? [s_dev newRenderPipelineStateWithDescriptor:d error:&err] : nil;
+        s_tbl = lib ? [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"talb_learn"] error:&err] : nil;
+        s_tbr = lib ? [s_dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"talb_resolve"] error:&err] : nil;
+        dd.depthCompareFunction = MTLCompareFunctionLess;
+        dd.depthWriteEnabled = YES;
+        s_tbds = [s_dev newDepthStencilStateWithDescriptor:dd];
+        if (!s_tbp || !s_tbl || !s_tbr) {
+            fprintf(stderr, "brr: the track's albedo: %s\n", err ? [[err description] UTF8String] : "no pipeline");
+            s_tbfail = 1;
+            return;
+        }
+    }
+    if (!s_tbid || s_tbid.width != s_gpos.width || s_tbid.height != s_gpos.height) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatR32Uint width:s_gpos.width
+                                                                                     height:s_gpos.height mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_tbid = [s_dev newTextureWithDescriptor:td];
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:s_gpos.width height:s_gpos.height mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget;
+        td.storageMode = MTLStorageModePrivate;
+        s_tbdep = [s_dev newTextureWithDescriptor:td];
+    }
+    memcpy(a.S, u->scr, sizeof a.S);
+    a.tg[0] = (float)s_gpos.width; a.tg[1] = (float)s_gpos.height; a.tg[2] = BRR_TALB_NEAR; a.tg[3] = BRR_TALB_FAR;
+    memcpy(a.eye, u->eye, sizeof a.eye);
+    a.k[0] = (uint32_t)s_frame; a.k[1] = (uint32_t)w->bvh.ntri; a.k[2] = a.k[3] = 0;
+    rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = s_tbid;
+    rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+    rp.colorAttachments[0].clearColor = MTLClearColorMake(4294967295.0, 0, 0, 0);
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+    rp.depthAttachment.texture = s_tbdep;
+    rp.depthAttachment.loadAction = MTLLoadActionClear;
+    rp.depthAttachment.clearDepth = 1.0;
+    rp.depthAttachment.storeAction = MTLStoreActionDontCare;
+    re = [s_cmd renderCommandEncoderWithDescriptor:rp];
+    [re setRenderPipelineState:s_tbp];
+    [re setDepthStencilState:s_tbds];
+    [re setCullMode:MTLCullModeNone];
+    [re setVertexBuffer:s_trkbuf offset:0 atIndex:0];
+    [re setVertexBytes:&a length:sizeof a atIndex:1];
+    [re drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_trkn];
+    [re endEncoding];
+    ce = [s_cmd computeCommandEncoder];
+    [ce setComputePipelineState:s_tbl];
+    [ce setBuffer:s_trkbuf offset:0 atIndex:0];
+    [ce setBytes:&a length:sizeof a atIndex:1];
+    [ce setBuffer:w->acc offset:0 atIndex:2];
+    [ce setTexture:s_galb atIndex:0];
+    [ce setTexture:s_gpos atIndex:1];
+    [ce setTexture:s_tbid atIndex:2];
+    [ce dispatchThreads:MTLSizeMake((s_gpos.width + 3) / 4, (s_gpos.height + 3) / 4, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    [ce setComputePipelineState:s_tbr];
+    [ce setBuffer:w->prim offset:0 atIndex:3];
+    [ce dispatchThreads:MTLSizeMake((NSUInteger)w->bvh.ntri, 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
+    [ce endEncoding];
+    if (s_frame - saved >= 600) {   /* last frame's records (the GPU writes this frame's after) */
+        saved = s_frame;
+        talb_save(w);
+    }
+}
+
 /* BR_LIGHT_TALBCHECK (diagnostic): every 120 frames, the track's learned
  * albedo (brr_metal_refl.h talb_learn) against this frame's G-buffer mapped
  * on the CPU: every pixel of the scene's surfaces (material 124 and up) to
@@ -2292,8 +2432,8 @@ static void lit_lamp_shadows(void)
  * the track, the light or the sky's map changes, never while it holds (the
  * track's own lamps light the scene directly, not through the probes: they
  * are gathered as the game draws them, and a bake each time one came in
- * would stall the race).  Each frame only the light grid the reflections'
- * hits read.  u->gi.x on when baked */
+ * would stall the race).  Nothing of it runs while the race does.  u->gi.x
+ * on when baked */
 static BrrGi s_gi;
 static void lit_gi(LU *u, const float eye[3])
 {
@@ -2327,6 +2467,7 @@ static void lit_gi(LU *u, const float eye[3])
         same = fabsf(now[k] - key[k]) <= 0.01f * fmaxf(fabsf(key[k]), 1e-3f) + (k < 3 ? 1e-4f : 0.0f);
     if (!same) {
         brr_gi_env(&s_gi, s_env.ready ? s_env.spec : nil, 2.0f);   /* a miss: the sky by direction, its GGX 0.5 lobe (64 a face) */
+        talb_load(w);   /* the colours an earlier race on this track learned (lit_talb_learn) */
         if (brr_gi_bake(&s_gi, s_q, w, 8.0f, 12, u->sun, u->sunc, sky, gnd, nil, 0))
             fprintf(stderr, "brr: irradiance probes baked: %d probes over %d x %d x %d points 8 m apart, %.0f MB, %.0f ms\n",
                     s_gi.np, s_gi.u.n[0], s_gi.u.n[1], s_gi.u.n[2], s_gi.bytes / 1048576.0, s_gi.ms);
@@ -2338,7 +2479,6 @@ static void lit_gi(LU *u, const float eye[3])
     }
     if (!s_gi.baked)
         return;
-    brr_gi_grid(&s_gi, s_cmd, s_lset[s_vbi], s_nlamp);
     u->gi[0] = 1.0f;
 }
 /* the probes for the lighting's fragment stage: the volume at buffer idx,
@@ -2354,6 +2494,88 @@ static void lit_gi_bind(id<MTLRenderCommandEncoder> e, int idx)
     [e setFragmentBuffer:on ? brr_gi_sh(&s_gi) : s_gioff0 offset:0 atIndex:7];
     [e setFragmentTexture:on ? brr_gi_dst(&s_gi) : s_brdfE atIndex:7];
     [e setFragmentBuffer:on ? brr_gi_off(&s_gi) : s_gioff0 offset:0 atIndex:6];   /* the probes' relocation */
+}
+
+/* the reflections' local cube (brr_metal_rcube.h): the track drawn around the
+ * eye, every face every frame; nil before the track and its pipelines */
+static id<MTLRenderPipelineState> s_rcp, s_rcsky;
+static id<MTLDepthStencilState> s_rcds, s_rcdsky;
+static id<MTLTexture> s_rc, s_rcd;
+static int s_rcfail;
+static id<MTLTexture> lit_rcube(const LU *u, int vsm)
+{
+    static const MTLPixelFormat hf = MTLPixelFormatRGBA16Float;
+    const BrrRtWorld *w = brr_metal_rt_world();
+    BrrRcubeU c;
+    int f, gon = s_gi.ready && s_gi.baked;
+    if (s_rcfail || !s_trkn || !w || !w->built || !s_env.ready)
+        return nil;
+    if (!s_rcp) {
+        MTLDepthStencilDescriptor *dd = [MTLDepthStencilDescriptor new];
+        MTLTextureDescriptor *td = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:hf size:BRR_RCUBE_N mipmapped:NO];
+        s_rcp = lit_pipe(@"rc_vs", @"rc_fs", &hf, 1, 1, -1, -1);
+        s_rcsky = lit_pipe(@"rc_skyvs", @"rc_skyfs", &hf, 1, 1, -1, -1);
+        dd.depthCompareFunction = MTLCompareFunctionLess;
+        dd.depthWriteEnabled = YES;
+        s_rcds = [s_dev newDepthStencilStateWithDescriptor:dd];
+        dd = [MTLDepthStencilDescriptor new];
+        dd.depthCompareFunction = MTLCompareFunctionAlways;
+        dd.depthWriteEnabled = NO;
+        s_rcdsky = [s_dev newDepthStencilStateWithDescriptor:dd];
+        td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        s_rc = [s_dev newTextureWithDescriptor:td];
+        td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:BRR_RCUBE_N height:BRR_RCUBE_N mipmapped:NO];
+        td.usage = MTLTextureUsageRenderTarget;
+        td.storageMode = MTLStorageModePrivate;
+        s_rcd = [s_dev newTextureWithDescriptor:td];
+        if (!s_rcp || !s_rcsky || !s_rc || !s_rcd) {
+            s_rcfail = 1;
+            return nil;
+        }
+    }
+    if (!s_gioff0)
+        s_gioff0 = [s_dev newBufferWithLength:16 options:MTLResourceStorageModeShared];
+    memcpy(c.eye, u->eye, sizeof c.eye);
+    c.nf[0] = BRR_RCUBE_NEAR; c.nf[1] = BRR_RCUBE_FAR; c.nf[2] = 0.3f; c.nf[3] = (float)BRR_RCUBE_N;
+    c.k[1] = gon ? 1u : 0u; c.k[2] = c.k[3] = 0;
+    for (f = 0; f < 6; f++) {
+        MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+        id<MTLRenderCommandEncoder> e;
+        static const BrrGiU zero;
+        c.k[0] = (uint32_t)f;
+        rp.colorAttachments[0].texture = s_rc;
+        rp.colorAttachments[0].slice = (NSUInteger)f;
+        rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+        rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+        rp.depthAttachment.texture = s_rcd;
+        rp.depthAttachment.loadAction = MTLLoadActionClear;
+        rp.depthAttachment.clearDepth = 1.0;
+        rp.depthAttachment.storeAction = MTLStoreActionDontCare;
+        e = [s_cmd renderCommandEncoderWithDescriptor:rp];
+        [e setRenderPipelineState:s_rcsky];
+        [e setDepthStencilState:s_rcdsky];
+        [e setFragmentBytes:&c length:sizeof c atIndex:1];
+        [e setFragmentBytes:u length:sizeof *u atIndex:2];
+        [e setFragmentTexture:s_env.spec atIndex:2];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        [e setRenderPipelineState:s_rcp];
+        [e setDepthStencilState:s_rcds];
+        [e setCullMode:MTLCullModeNone];
+        [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
+        [e setVertexBytes:&c length:sizeof c atIndex:1];
+        [e setFragmentBuffer:s_trkbuf offset:0 atIndex:0];
+        [e setFragmentBuffer:w->prim offset:0 atIndex:3];
+        [e setFragmentBytes:vsm ? (const void *)brr_vsm_u() : (const void *)&s_vsmoff length:sizeof(VsmU) atIndex:4];
+        [e setFragmentBytes:gon ? &s_gi.u : &zero length:sizeof zero atIndex:5];
+        [e setFragmentBuffer:gon ? brr_gi_off(&s_gi) : s_gioff0 offset:0 atIndex:6];
+        [e setFragmentBuffer:gon ? brr_gi_sh(&s_gi) : s_gioff0 offset:0 atIndex:7];
+        [e setFragmentTexture:gon ? brr_gi_dst(&s_gi) : s_brdfE atIndex:0];
+        [e setFragmentTexture:vsm && brr_vsm_tmap() ? brr_vsm_tmap() : s_ldep atIndex:1];
+        [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_trkn];
+        [e endEncoding];
+    }
+    return s_rc;
 }
 
 /* BR_LIGHT_GPU=2 (diagnostic): the frame's work committed in pieces at its
@@ -2766,10 +2988,7 @@ static void lit_present(void)
                 0.2126f * u.skyc[0] + 0.7152f * u.skyc[1] + 0.0722f * u.skyc[2]);
     u.misc[2] = k_weather[w].rough;
     u.wet[0] = k_weather[w].wet; u.wet[1] = k_weather[w].pud; u.wet[2] = (float)brr_refl_tier();
-    {   /* the misses trace the track's BVH below this roughness, once it is built */
-        const BrrRtWorld *rw = brr_metal_rt_world();
-        u.wet[3] = rw && rw->built && rw->as ? REFL_RT_ROUGH : 0.0f;
-    }
+    u.wet[3] = 0.0f;                        /* unused (was the roughness below which reflections' misses traced) */
     u.bg[0] = 0.9f;                         /* no skymap: the backdrop and fog shown as the game drew them (pre-exposed) */
     u.bg[1] = s_nbl ? 1.0f / (float)s_nbl : 0.0f;
     u.bg[2] = k_weather[w].sat;             /* the display's saturation (oksat) */
@@ -3158,6 +3377,8 @@ nopick:;
         if (s_ops[i].kind == K_OPQ)
             op_draw(e, &s_ops[i], 1);
     [e endEncoding];
+    if (have_cam)
+        lit_talb_learn(&u);   /* the track's albedo from this frame (brr_metal_talb.h) */
 
     /* the sun's shadow cascades: per cascade, the track drawn again into the
        static cache only when the cascade's matrix or the track changed (then
@@ -3377,14 +3598,12 @@ nopick:;
         if (sck && u.misc[1] > 0.5f)
             brr_suncheck_pass(s_dev, s_cmd, &u, sizeof u, brr_metal_rt_world(), s_gpos, s_gnrm, s_hdr, s_frame);
     }
-    if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
-        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
+    if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m), past the screen the local cube */
+        brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), lit_rcube(&u, vsm), s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
                       u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? &s_gi.u : NULL, sizeof s_gi.u,
                       u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? brr_gi_sh(&s_gi) : nil, u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? brr_gi_dst(&s_gi) : nil,
-                      u.gi[0] > 0.5f ? s_lset[s_vbi] : nil, u.gi[0] > 0.5f ? s_gi.gcnt : nil, u.gi[0] > 0.5f ? s_gi.glst : nil,
-                      u.gi[0] > 0.5f ? brr_gi_off(&s_gi) : nil);
-    if (u.wet[2] > 1.5f)
-        lit_talb_check(u.eye);
+                      u.gi[0] > 0.5f && s_gi.ready && s_gi.baked ? brr_gi_off(&s_gi) : nil);
+    lit_talb_check(u.eye);
 
     lit_split(4);
     if (u.vol[0] > 0.5f) {   /* the volumetric fog over the lit opaque 3D, the sky and the backdrop */
@@ -3638,8 +3857,8 @@ int brr_open(int width, int height)
         if (!s_dev)
             return 0;
         s_q = [s_dev newCommandQueue];
-        s_lib = [s_dev newLibraryWithSource:[[[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
-                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC] stringByAppendingString:@BRR_CLUSTER_SRC] stringByAppendingString:@BRR_PLAN_SRC]
+        s_lib = [s_dev newLibraryWithSource:[[[[[[[[k_src stringByAppendingString:@BRR_LIGHTS_SRC] stringByAppendingString:@BRR_LIT_SRC]
+                                                stringByAppendingString:@BRR_VOL_SRC] stringByAppendingString:@BRR_SMOOTH_SRC] stringByAppendingString:@BRR_CAST_SRC] stringByAppendingString:@BRR_CLUSTER_SRC] stringByAppendingString:@BRR_PLAN_SRC] stringByAppendingString:@BRR_RCUBE_SRC]
                                     options:nil error:&err];
         if (!s_lib) {
             fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);

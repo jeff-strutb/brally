@@ -2,8 +2,11 @@
 
 This supersedes the sky, clouds, glare, exposure, night and sun shadow
 sections of DESIGN.md and platform/light/NIGHT.md. The capture seam,
-G-buffer replay, BRDF, lamp clusters and shadows, ray tracing, reflections,
-volumetric fog and TAA/MetalFX described there are unchanged.
+G-buffer replay, BRDF, lamp clusters and shadows, volumetric fog and
+TAA/MetalFX described there are unchanged. Its ray tracing (DESIGN.md 3.1,
+8.1) and the reflections' traced misses (8.4) are not: since 2026-10-14
+nothing traces rays while the race runs, on any device (see "No ray
+tracing" below).
 
 The reference is Forza Horizon 6. Since FH3, Playground has photographed its
 skies as HDR timelapse domes. A captured dome is both the sky you see and the
@@ -112,12 +115,16 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   estimator is within 0.04% of that field's own projection. 14.5 MB where the
   atlases took 20.5. The distances stay an octahedral atlas.
 
-- **The track's albedo, learned from the frames** (brr_metal_refl.h
-  talb_learn, talb_resolve). Every triangle's surface record held no colour,
-  so GI's bounces and the reflections' ray hits shaded everything as grey
-  0.3. Now one G-buffer pixel in 16 a frame (rotating) traces a ray from the
-  eye; where it meets a track triangle at that pixel's own depth, the
-  pixel's albedo is summed onto it. Each triangle's mean is blended into its
+- **The track's albedo, learned from the frames** (brr_metal_talb.h).
+  Every triangle's surface record held no colour, so GI's bounces and the
+  reflections shaded everything as grey 0.3. Now the track's triangles are
+  drawn from the frame's camera into an ID target, and one G-buffer pixel in
+  16 a frame (rotating) whose point lies on its ID's triangle (2 cm + 0.2%)
+  sums its albedo onto it (until 2026-10-14 a ray from the eye found the
+  triangle; the rasterised mapping agrees with it to within 0.2 of 255 on
+  the median in 110 checks a weather). Kept on disk a track and weather
+  (the save folder's lighting/talb-*.bin), so the next load's probe bake
+  has the colours. Each triangle's mean is blended into its
   record, a quarter a frame. Car paint and glass now mirror the yellow
   embankment beside them, where they mirrored grey.
   - `BR_LIGHT_TALBCHECK` maps every pixel on the CPU's BVH and compares each
@@ -134,17 +141,44 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   probes had lit Coastline's tunnel with the sunlit hillside outside it (a
   dark diamond on its wall, the sky's light inside). gi.sh `buried` checks
   the classification and the CPU fold.
-- **Reflection hits** inside the probes' volume take their light (sky,
-  bounce) and the lamps of their light grid cube, each behind a shadow ray.
-  `BR_LIGHT_HITCHECK` compares the hit's model with the frame's own pixel
-  where both see a point (the frame's albedo there, so only the light is
-  compared): sunny mean +0.39 stops (+1.03 with the sky's hemisphere alone),
-  night +0.05.
+- **Reflection hits** (until 2026-10-14, when the reflections stopped
+  tracing) inside the probes' volume took their light (sky, bounce) and the
+  lamps of their light grid cube, each behind a shadow ray: sunny mean +0.39
+  stops against the frame's own pixel, night +0.05.
 
   Leaving the buried probes out brightened the light near the ground
   wherever the sky alone lights it, so the weather's saturation was measured
   again: fog 1.74 (was 2.0), rain 0.45 and its cars 1.84 (were 0.63 and 2.0);
   art against lit then land 0.94 to 1.03, cars 0.93 to 1.12 in all four.
+
+## No ray tracing (2026-10-14)
+
+The project lead's rule: nothing traces rays while the race runs, on any
+device (most iPhones have no hardware ray tracing; the techniques without it
+look as good). The track's BVH remains only for the probes' bake when a
+track loads (in shader code, every GPU) and the diagnostics
+(`BR_LIGHT_SUNCHECK`, `BR_LIGHT_TALBCHECK`); the hardware acceleration
+structure and intersector are gone. Before, the BVH world, and with it GI and
+every reflection (the screen-space march included), was built only on GPUs
+with hardware ray tracing (M3, A17 Pro and later).
+
+- **Reflections** march the screen as before; what leaves the screen reads a
+  local cube (brr_metal_rcube.h): the track drawn around the eye every frame,
+  6 faces of 512, lit as the traced hits were (the learned albedo, the sun
+  through the whole track's shadow map, the baked probes), the sky behind
+  it, each texel's distance from the eye in alpha. The ray is looked up
+  through those distances (24 steps from 0.2 to 300 m, the crossing refined
+  by its secant: Szirmay-Kalos et al. 2005, distance impostors), so the bank
+  beside a wet road is found where the reflected ray meets it rather than
+  where the eye's direction would (the cube centred 1 m and more above the
+  road). On the rain's start grid, road pixels against the traced build: 0.08%
+  off by more than 16 of 255 (9.6% without the distance lookup); sunny and
+  night frames within 0.11% throughout. Forza Horizon's cars reflect a
+  dynamic cube the same way. `BR_LIGHT_VIEW=16` shows the reflected light
+  alone, `17` the cube toward each pixel's point (the frame again, cars aside,
+  where its faces are right).
+- **The track's albedo** is learned by rasterisation (above).
+- **GI** is baked when the track loads (above).
 
 ## Sky light where the sky is hidden
 

@@ -200,18 +200,6 @@ static void grid_encode(BrrGi *g, id<MTLComputeCommandEncoder> e, const BrrGiU *
     [e dispatchThreads:MTLSizeMake((NSUInteger)(u->gdim[0] * u->gdim[1] * u->gdim[2]), 1, 1) threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
 }
 
-void brr_gi_grid(BrrGi *g, id<MTLCommandBuffer> cb, id<MTLBuffer> lset, int nlamp)
-{
-    id<MTLComputeCommandEncoder> e;
-    if (!g->baked || !lset)
-        return;
-    g->u.lim[2] = (float)(nlamp < 128 ? nlamp : 128);
-    g->u.bx[3] = 0;
-    e = [cb computeCommandEncoder];
-    grid_encode(g, e, &g->u, lset);
-    [e endEncoding];
-}
-
 void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod)
 {
     g->env = spec;

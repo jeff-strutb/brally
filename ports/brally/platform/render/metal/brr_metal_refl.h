@@ -6,7 +6,7 @@
  *                 drop 3b", the porosity model) and smooths it, and a
  *                 world-space noise mask lays puddles, smoother still.
  *                 radiance() calls wet() first, so every light sees it.
- *   BRR_REFL_SRC  the reflection pass (needs LU, BRR_WET_SRC and BRR_RT_SRC):
+ *   BRR_REFL_SRC  the reflection pass (needs LU, BRR_WET_SRC, BRR_ENV_SRC and the probes' lookup, BRR_GI_SAMPLE_SRC):
  *                 a compute kernel over the lit target, after the deferred
  *                 lighting.  One GGX sample a pixel (the normals visible
  *                 from the eye, Heitz 2018); the ray marched in screen space
@@ -23,10 +23,13 @@
  *                 to the lit target (reflc).  Rougher than REFL_TRACE_MAX
  *                 (to REFL_ROUGH_MAX), or with no valid sample on its own
  *                 surface, a pixel keeps the sky's specular the lighting gave it.  What the march does not
- *                 find comes from the track's BVH (rt_closest) below
- *                 roughness wet.w, a hit shaded as grey ground (albedo 0.3
- *                 under the sun and sky, unshadowed), else from the
- *                 skymap's specular cube (brr_metal_env.h).  The split-sum
+ *                 find comes from the local cube: the track drawn around the
+ *                 eye each frame, lit, over the sky (brr_metal_rcube.h;
+ *                 Forza Horizon's dynamic cube; no rays: 2026-10-14, the
+ *                 track's BVH traced here before), or before the track has
+ *                 one, the skymap's specular cube (brr_metal_env.h) times
+ *                 the baked probes' irradiance about the ray over the open
+ *                 sky's, per channel, at most 1.  The split-sum
  *                 (Karis 2013): the reflected light times the lobe's
  *                 directional albedo E(n.v, roughness), the same table the
  *                 diffuse coupling reads (brdf_lut; F0 is 0.04 everywhere,
@@ -36,7 +39,7 @@
  *                 it found in that term's place.
  *
  * LU.wet: x the weather's wetness, y its puddles, z the tier gate (0 off,
- * 1 screen space and sky, 2 also the BVH), w the BVH's roughness limit. */
+ * else on), w unused. */
 #ifndef BRR_METAL_REFL_H
 #define BRR_METAL_REFL_H
 
@@ -44,7 +47,6 @@
 #define REFL_TRACE_MAX 0.45f     /* above this the lobe is too wide to show what a march finds: the sky's specular only */
 #define REFL_STRIDE 2.0f         /* the march's step in full-resolution pixels (one half-resolution pixel) */
 #define REFL_STEPS 32            /* the march's steps at most; a longer ray strides further */
-#define REFL_RT_ROUGH 0.4f       /* below this a miss traces the BVH */
 #define BRR_LAMP_CDM2 10000.0f   /* a lamp texture's luminance at a full texel, cd/m2 (BRR_LAMP_L) */
 
 #define BRR_WET_SRC \
@@ -180,61 +182,40 @@
 "struct RP { float4x4 pscr; uint frame; float valid; float pad0; float pad1; };\n" \
 "#define REFL_MIRROR 0.1\n" \
 "#define REFL_HIST 16.0\n" \
+/* the local cube looked up along a ray from p (brr_metal_rcube.h: the cube \
+   about eye e, each texel's distance from e in alpha): 24 steps from 0.2 \
+   to 300 m spaced by a constant ratio; the first that lies behind what the \
+   cube holds in its direction, after one in front, is refined by the secant \
+   of the two (Szirmay-Kalos et al. 2005, distance impostors) and that point's \
+   texel taken; none behind, the cube in the ray's direction (the sky's, or \
+   what is farther than 300 m) */ \
+"static float3 rc_trace(texturecube<float> cube, float3 e, float3 p, float3 r) {\n" \
+"  constexpr sampler cs(filter::linear);\n" \
+"  float tp = 0.0, gp = -1.0;\n" \
+"  for (int i = 0; i < 24; i++) {\n" \
+"    float t = 0.2 * pow(1500.0, float(i) / 23.0); float3 q = p + r * t, dq = q - e; float lq = length(dq);\n" \
+"    float g = cube.sample(cs, dq / lq).a - lq;\n" \
+"    if (g <= 0.0 && gp > 0.0) { float tt = tp + (t - tp) * gp / (gp - g); return cube.sample(cs, normalize(p + r * tt - e)).rgb; }\n" \
+"    tp = t; gp = g; }\n" \
+"  return cube.sample(cs, r).rgb; }\n" \
 /* the half-resolution trace: px a pixel of the half-size target hr, the \
    full-resolution pixel 2 px its sample; rgb the reflected light (before \
    the lobe's albedo), a 0 where not traced (nothing reflects, or too rough \
    to trace), else 1 + the ray's length to what it found (1e4 the sky).  One \
    GGX sample a pixel, rotated each frame (the temporal pass averages them); \
-   below REFL_MIRROR the mirror direction alone.  A hit of the BVH: the last \
-   frame's lit target where the hit was on screen and is still what the \
-   G-buffer shows there, else the triangle's albedo (talb_learn's, 0.3 until \
-   a frame has shown it) under the sun (a shadow ray) and the sky's \
-   hemisphere about the triangle's normal (inside the irradiance probes' \
-   volume their light in its place, as the deferred pass takes it, buffer \
-   12 and textures 8 and 9) and the lamps of the hit's cube of the probes' \
-   light grid (gi_lamps', buffers 14 to 16), each behind a shadow ray.  The BVH's buffers 0..2, its \
-   surface records 9 and the track's triangle -> leaf slot 10 (the hit is \
-   numbered in the track's order, its corners stored in leaf order) */ \
-"static float3 rf_rgb(uint c) { return float3(c & 255u, (c >> 8) & 255u, (c >> 16) & 255u) / 255.0; }\n" \
-/* each track triangle's albedo, learned from the frames (the GPU's): \
-   talb_learn, one pixel in 16 a frame (a 4 x 4 block's, rotating), the \
-   G-buffer's albedo (linear, the game's texture with its baked light \
-   divided out) of a surface of the scene (material 124 and up: no lamps, \
-   lenses or cars) summed onto the track triangle a ray from the eye meets \
-   at that pixel's own depth (its distance within 2 cm + 0.2%: the pixel is \
-   that triangle, not a car or a billboard in front of it); talb_resolve, \
-   one thread a triangle, the frame's mean blended into the record (a \
-   quarter a frame; the first sample taken whole), alpha 255 marking it \
-   learned, the sums cleared.  GI's bounces and the reflections' hits read \
-   it (RtPrim.albedo) */ \
-"kernel void talb_learn(uint2 q [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
-"                       device atomic_uint *acc [[buffer(11)]] RT_AS(8),\n" \
-"                       texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]]) {\n" \
-"  uint k = (rp.frame * 7u) & 15u; uint2 px = q * 4u + uint2(k & 3u, k >> 2);\n" \
-"  if (px.x >= alb.get_width() || px.y >= alb.get_height()) return;\n" \
-"  float4 a = alb.read(px); if (a.a * 255.0 < 123.5) return;\n" \
-"  float3 p = pos.read(px).xyz; if (all(p == 0.0)) return;\n" \
-"  float3 d = p - u.eye.xyz; float dist = length(d); if (dist < 0.1) return; d /= dist;\n" \
-"  RtHit h = RT_CLOSEST(u.eye.xyz, d, 0.0, dist * 1.01 + 0.5);\n" \
-"  if (h.tri < 0 || abs(h.t - dist) > 0.02 + 0.002 * dist) return;\n" \
-"  uint3 c = uint3(saturate(a.rgb) * 1023.0 + 0.5); uint o = uint(h.tri) * 4u;\n" \
-"  atomic_fetch_add_explicit(&acc[o], c.x, memory_order_relaxed); atomic_fetch_add_explicit(&acc[o + 1u], c.y, memory_order_relaxed);\n" \
-"  atomic_fetch_add_explicit(&acc[o + 2u], c.z, memory_order_relaxed); atomic_fetch_add_explicit(&acc[o + 3u], 1u, memory_order_relaxed); }\n" \
-"kernel void talb_resolve(uint t [[thread_position_in_grid]], constant uint &n [[buffer(0)]], device uint4 *acc [[buffer(11)]],\n" \
-"                         device RtPrim *prim [[buffer(9)]]) {\n" \
-"  if (t >= n) return; uint4 s = acc[t]; if (s.w == 0u) return;\n" \
-"  float3 m = float3(s.xyz) / (1023.0 * float(s.w)); uint old = prim[t].albedo;\n" \
-"  if (old) m = mix(rf_rgb(old), m, 0.25);\n" \
-"  uint3 b = uint3(saturate(m) * 255.0 + 0.5); prim[t].albedo = b.x | b.y << 8 | b.z << 16 | 0xFF000000u; acc[t] = uint4(0); }\n" \
+   below REFL_MIRROR the mirror direction alone.  What the march misses: the \
+   local cube (texture 10, brr_metal_rcube.h: the track drawn around the eye \
+   this frame, rp.pad1 1); without it the \
+   sky's cube in the ray's direction times the probes' irradiance about it \
+   (gi_irr2, from this pixel's probes, buffers 12, 17, 18 and texture 9) over \
+   the open sky's (env_irr), per channel, clamped to 1: a wall or a bank on \
+   that side darkens and tints it */ \
 "kernel void reflk(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]], constant RP &rp [[buffer(4)]],\n" \
-"                  device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]] RT_AS(8),\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> hr [[texture(4)]],\n" \
-"                  texturecube<float> sky [[texture(5)]], texture2d<float> prv [[texture(6)]],\n" \
-"                  device const RtPrim *prim [[buffer(9)]], device const uint *leaf [[buffer(10)]],\n" \
+"                  texturecube<float> sky [[texture(5)]],\n" \
 "                  constant GiU &gu [[buffer(12)]], device const float4 *gsh [[buffer(18)]], texture2d<float> gdst [[texture(9)]],\n" \
-"                  device atomic_int *hck [[buffer(13)]], const device LSet &ls [[buffer(14)]],\n" \
-"                  device const uint *gcnt [[buffer(15)]], device const ushort *glst [[buffer(16)]], device const float4 *goff [[buffer(17)]]) {\n" \
+"                  device const float4 *goff [[buffer(17)]], texturecube<float> rcube [[texture(10)]]) {\n" \
 "  if (px.x >= hr.get_width() || px.y >= hr.get_height()) return;\n" \
 "  float2 wh = float2(src.get_width(), src.get_height());\n" \
 "  uint2 fp = min(px * 2, uint2(wh) - 1);\n" \
@@ -249,48 +230,10 @@
 "  float jm = rough < REFL_MIRROR ? 0.5 : j;\n" \
 "  float4 s = ssr(u, pos, p, r, 80.0, jm);\n" \
 "  float3 Lss = s.z > 0.0 ? src.read(uint2(s.xy)).rgb : float3(0), Lfb; float hd = s.z > 0.0 ? s.w : 1e4;\n" \
-"  RtHit hh; hh.tri = -1;\n" \
-"  if (s.z < 1.0 && u.wet.z > 1.5 && rough < u.wet.w) hh = RT_CLOSEST(p + n * 0.02, r, 0.0, 300.0);\n" \
-"  if (hh.tri >= 0) {\n" \
-"    float3 hp = p + n * 0.02 + r * hh.t; bool got = false;\n" \
-"    if (s.z <= 0.0) hd = hh.t;\n" \
-"    float4 hc = rp.pscr * float4(hp, 1.0);\n" \
-"    if (rp.valid > 0.5 && hc.w > 1e-6) { float2 sc = hc.xy / hc.w;\n" \
-"      if (all(sc >= 0.0) && all(sc < wh)) { float3 P = pos.read(uint2(sc)).xyz;\n" \
-"        if (!all(P == 0.0) && abs(rf_vd(u, P) - rf_vd(u, hp)) < 0.1 + 0.02 * rf_vd(u, hp)) { Lfb = prv.read(uint2(sc)).rgb; got = true; } } }\n" \
-"    if (!got || rp.pad0 > 0.5) { uint b = leaf[hh.tri] * 9u; uint ac = prim[hh.tri].albedo; float3 ha = ac ? rf_rgb(ac) : float3(0.3);\n" \
-"      float3 a0 = float3(tri[b], tri[b + 1], tri[b + 2]), a1 = float3(tri[b + 3], tri[b + 4], tri[b + 5]), a2 = float3(tri[b + 6], tri[b + 7], tri[b + 8]);\n" \
-"      float3 tn = cross(a1 - a0, a2 - a0); tn = dot(tn, tn) > 1e-12 ? normalize(tn) : -r; if (dot(tn, r) > 0.0) tn = -tn;\n" \
-"      float nl = dot(tn, u.sun.xyz), vis = nl > 0.0 && !RT_ANY(hp + tn * 0.02, u.sun.xyz, 0.0, 1000.0) ? 1.0 : 0.0;\n" \
-"      float3 Es = u.skyc.rgb * (0.5 + 0.5 * tn.z), Ei = Es; bool ing = false;\n" \
-"      if (gu.n.x > 0) { float3 g = (hp - gu.org.xyz) / gu.org.w - float3(gu.base.xyz);   /* inside the probes: their light (sky, bounce, lamps' bounce) */\n" \
-"        if (all(g >= 0.0) && all(g <= float3(gu.n.xyz - 1))) { Ei = gi_irr(gu, goff, gsh, gdst, hp, tn, -r); ing = true; } }\n" \
-"      float3 El = 0.0;   /* the lamps of the probes' light grid cube holding the hit (gi_lamps'), each behind a shadow ray */\n" \
-"      if (gu.lim.z > 0.5) { int ce = gi_cell(gu, hp), nlm = int(gcnt[ce]);\n" \
-"        for (int q = 0; q < nlm; q++) { LS l = ls.l[glst[ce * 32 + q]]; float3 L = float3(l.pos) - hp; float d2 = max(dot(L, L), 0.01), dl = sqrt(d2); float3 ld = L / dl;\n" \
-"          float c = dot(tn, ld); if (c <= 0.0) continue; float3 le = float3(l.rgb) * (lamp(l, -ld) * lwin(l, -ld, dl) / d2 * c);\n" \
-"          if (any(le > 0.0) && !RT_ANY(hp + tn * 0.02, ld, 0.0, max(dl - 0.05, 0.0))) El += le; } }\n" \
-"      float3 Ed = u.sunc.rgb * max(nl, 0.0) * vis, Lm = min(ha / 3.14159 * (Ed + Ei + El) * u.wb.rgb * u.misc.x, float3(60000.0));\n" \
-"      if (!got) Lfb = Lm;\n" \
-"      else if (ing) {   /* BR_LIGHT_HITCHECK: the model against the frame's own pixel of that point, log2 of luminance x 1000 */\n" \
-"        float4 cc = u.scr * float4(hp, 1.0); float2 cs = cc.xy / max(cc.w, 1e-6);   /* this frame's pixel of the point, its own albedo: the lighting compared, not the texture */\n" \
-"        if (cc.w <= 1e-6 || any(cs < 0.0) || any(cs >= wh) || abs(rf_vd(u, pos.read(uint2(cs)).xyz) - rf_vd(u, hp)) > 0.1 + 0.02 * rf_vd(u, hp)) cs = float2(-1.0);\n" \
-"        float3 fa = cs.x >= 0.0 ? alb.read(uint2(cs)).rgb : float3(0);\n" \
-"        float3 Ls = fa / 3.14159 * (Ed + Es) * u.wb.rgb * u.misc.x, Lg = fa / 3.14159 * (Ed + Ei + El) * u.wb.rgb * u.misc.x; float3 k = float3(0.2126, 0.7152, 0.0722);\n" \
-"        float y = dot(Lfb, k), ym = dot(Lg, k), ys = dot(Ls, k);\n" \
-"        if (y > 1e-3 && ym > 1e-3 && ys > 1e-3) { float a = log2(ym / y), c = log2(ys / y);\n" \
-"          atomic_fetch_add_explicit(&hck[0], int(a * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[1], int(abs(a) * 1000.0), memory_order_relaxed);\n" \
-"          atomic_fetch_add_explicit(&hck[2], int(c * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[3], int(abs(c) * 1000.0), memory_order_relaxed);\n" \
-"          atomic_fetch_add_explicit(&hck[4], 1, memory_order_relaxed);\n" \
-"          if (all(Ed == 0.0)) { atomic_fetch_add_explicit(&hck[5], int(a * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[6], int(abs(a) * 1000.0), memory_order_relaxed);\n" \
-"            atomic_fetch_add_explicit(&hck[7], int(c * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[8], int(abs(c) * 1000.0), memory_order_relaxed);\n" \
-"            atomic_fetch_add_explicit(&hck[9], 1, memory_order_relaxed);\n" \
-"            float3 PN = nrm.read(uint2(cs)).xyz, PP = pos.read(uint2(cs)).xyz; if (dot(PN, u.eye.xyz - PP) < 0.0) PN = -PN;\n" \
-"            float ef = dot(gi_irr(gu, goff, gsh, gdst, PP, PN, normalize(u.eye.xyz - PP)), k), eh = dot(Ei, k), en = dot(gi_irr(gu, goff, gsh, gdst, hp, PN, -r), k);\n" \
-"            if (ef > 1e-3 && eh > 1e-3 && en > 1e-3) { atomic_fetch_add_explicit(&hck[10], int(log2(eh / ef) * 1000.0), memory_order_relaxed);\n" \
-"              atomic_fetch_add_explicit(&hck[11], int(log2(en / ef) * 1000.0), memory_order_relaxed); atomic_fetch_add_explicit(&hck[12], int(dot(PN, tn) * 1000.0), memory_order_relaxed);\n" \
-"              atomic_fetch_add_explicit(&hck[13], 1, memory_order_relaxed); } } } } }\n" \
-"  } else Lfb = rf_env(u, sky, r, 0.0);\n" \
+"  constexpr sampler cs(filter::linear);\n" \
+"  if (rp.pad1 > 0.5) Lfb = rc_trace(rcube, u.eye.xyz, p + n * 0.02, r);   /* the local cube (brr_metal_rcube.h) */\n" \
+"  else { Lfb = rf_env(u, sky, r, 0.0);\n" \
+"    if (gu.n.x > 0) { float3 e2; gi_irr2(gu, goff, gsh, gdst, p, n, v, r, e2); Lfb *= clamp(e2 / max(env_irr(u, r), float3(1e-6)), 0.0, 1.0); } }\n" \
 "  hr.write(float4(min(mix(Lfb, Lss, s.z), float3(60000.0)), 1.0 + min(hd, 1e4)), px);\n" \
 "}\n" \
 /* the temporal accumulation, at half resolution: cur reflk's target, hs the \
@@ -361,12 +304,16 @@
 "kernel void reflc(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]],\n" \
 "                  texture2d<float> alb [[texture(0)]], texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]],\n" \
 "                  texture2d<float> src [[texture(3)]], texture2d<float, access::write> dst [[texture(4)]],\n" \
-"                  texturecube<float> sky [[texture(5)]], texture2d<float> bE [[texture(6)]], texture2d<float> hr [[texture(7)]]) {\n" \
+"                  texturecube<float> sky [[texture(5)]], texture2d<float> bE [[texture(6)]], texture2d<float> hr [[texture(7)]],\n" \
+"                  texturecube<float> rcube [[texture(10)]]) {\n" \
 "  if (px.x >= dst.get_width() || px.y >= dst.get_height()) return;\n" \
 "  float4 c = src.read(px); float3 p, n; float rough, fog;\n" \
+"  if (int(u.misc.w) == 17) { float3 P = pos.read(px).xyz; constexpr sampler cs(filter::linear);   /* BR_LIGHT_VIEW=17: the local cube toward each pixel's point */\n" \
+"    dst.write(float4(all(P == 0.0) ? c.rgb : rcube.sample(cs, normalize(P - u.eye.xyz)).rgb, c.a), px); return; }\n" \
 "  if (!rf_surf(u, alb, pos, nrm, px, p, n, rough, fog)) { dst.write(c, px); return; }\n" \
 "  float3 v = normalize(u.eye.xyz - p); float nv = clamp(dot(n, v), 1e-3, 1.0);\n" \
 "  float4 h = rough <= REFL_TRACE_MAX ? rf_up(u, hr, pos, nrm, px, p, n, rf_rad(rough)) : float4(0.0);\n" \
+"  if (int(u.misc.w) == 16) { dst.write(float4(h.a > 0.0 ? h.rgb : float3(0.0), c.a), px); return; }   /* BR_LIGHT_VIEW=16: the reflected light alone */\n" \
 "  if (!(h.a > 0.0)) { dst.write(c, px); return; }\n" \
 "  float3 L = h.rgb - rf_env(u, sky, reflect(-v, n), rough);\n" \
 "  constexpr sampler ls(filter::linear, address::clamp_to_edge);\n" \
@@ -388,7 +335,8 @@
  * 1e-4 of its depth (less hits its own surface at a distance).  The frame
  * shows the map's visibility in grey, missing red, extra cyan. */
 #define BRR_SUNCHECK_SRC \
-"kernel void svck(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]] RT_AS(8),\n" \
+"kernel void svck(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]],\n" \
+"                 device const RtNode *node [[buffer(0)]], device const float *tri [[buffer(1)]], device const uint *id [[buffer(2)]],\n" \
 "                 texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]], texture2d<float> src [[texture(3)]],\n" \
 "                 texture2d<float, access::write> dst [[texture(4)]], device atomic_uint *cnt [[buffer(13)]]) {\n" \
 "  if (px.x >= dst.get_width() || px.y >= dst.get_height()) return;\n" \

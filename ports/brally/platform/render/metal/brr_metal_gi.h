@@ -30,8 +30,8 @@
  *
  * The hits' lamps come from a light grid (gi_grid): cubes of 16 m or more
  * over the track, each listing the lamps whose range overlaps it, at most
- * BRR_GI_CELL, the most intense first; the bake lists only the track's own
- * lamps (the cars' move), the reflections' grid each frame all of them.
+ * BRR_GI_CELL, the most intense first; only the track's own lamps (the
+ * cars' move).
  *
  * gi_irr(p, n, v) is a surface's indirect irradiance from the 8 probes
  * around it: trilinear, times the backface and Chebyshev visibility weights,
@@ -99,9 +99,6 @@ void brr_gi_env(BrrGi *g, id<MTLTexture> spec, float lod);
  * 1 when baked (g->baked, g->ms) */
 int  brr_gi_bake(BrrGi *g, id<MTLCommandQueue> q, const BrrRtWorld *w, float sp, int passes, const float sun[3], const float sunc[3],
                  const float sky[3], const float gnd[3], id<MTLBuffer> lset, int nlamp);
-/* the light grid over the probes for the frame's lamps (every one), into cb:
- * what the reflections' hits are lit by */
-void brr_gi_grid(BrrGi *g, id<MTLCommandBuffer> cb, id<MTLBuffer> lset, int nlamp);
 /* what the lighting reads (gi_irr): the irradiance coefficients, the
  * distance atlas */
 id<MTLBuffer>  brr_gi_sh(const BrrGi *g);

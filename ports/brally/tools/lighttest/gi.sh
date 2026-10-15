@@ -17,7 +17,7 @@ cat > $OUT/gi_src.c <<'EOF'
 #include "brr_metal_rt.h"
 #include "brr_metal_lights.h"
 #include "brr_metal_gi.h"
-int main(void) { printf("#include <metal_stdlib>\nusing namespace metal;\n#define BRR_RT_HW 1\n%s%s%s%s%s%s", BRR_RT_SRC, BRR_RT_HW_SRC, BRR_RT_SEL_SRC, BRR_GI_DEFS, BRR_LIGHTS_SRC, BRR_GI_SRC); return 0; }
+int main(void) { printf("#include <metal_stdlib>\nusing namespace metal;\n%s%s%s%s%s", BRR_RT_SRC, BRR_RT_SEL_SRC, BRR_GI_DEFS, BRR_LIGHTS_SRC, BRR_GI_SRC); return 0; }
 EOF
 clang -I$L -I$M $OUT/gi_src.c -o $OUT/gi_src
 $OUT/gi_src > $OUT/gi.metal
