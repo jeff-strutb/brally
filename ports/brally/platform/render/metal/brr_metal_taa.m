@@ -140,9 +140,10 @@ id<MTLBuffer> brr_taa_begin(id<MTLDevice> dev, id<MTLBuffer> xt, int slot, int n
 }
 
 id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MTLTexture> hdr, id<MTLTexture> gpos,
-                               id<MTLTexture> depth, const float S[16], const float vp[16], const float eye[3],
-                               int ow, int oh, int fx)
+                               id<MTLTexture> galb, id<MTLTexture> depth, const float S[16], const float vp[16], const float eye[3],
+                               const BrrTaaCars *cars, int ow, int oh, int fx)
 {
+    static const BrrTaaCars none;
     TU u;
     float F[16], cen[2] = { 0, 0 }, ctr[3];
     int w = (int)hdr.width, h = (int)hdr.height, k, reset;
@@ -198,7 +199,9 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
             e = [cb renderCommandEncoderWithDescriptor:rp];
             [e setRenderPipelineState:s_tmot];
             [e setFragmentBytes:&u length:sizeof u atIndex:0];
+            [e setFragmentBytes:cars ? cars : &none length:sizeof none atIndex:1];
             [e setFragmentTexture:gpos atIndex:0];
+            [e setFragmentTexture:galb ? galb : gpos atIndex:1];
             [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
             [e endEncoding];
             fx.colorTexture = hdr;
@@ -234,6 +237,8 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
     [e setFragmentTexture:s_th[s_tptr ^ 1] atIndex:1];
     [e setFragmentTexture:s_td[s_tptr ^ 1] atIndex:2];
     [e setFragmentTexture:gpos atIndex:3];
+    [e setFragmentTexture:galb ? galb : gpos atIndex:4];
+    [e setFragmentBytes:cars ? cars : &none length:sizeof none atIndex:1];
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
     {
@@ -243,20 +248,22 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
     }
 }
 
-/* the lit 3D's internal scale for a target tw x th: 1 without MetalFX (or
- * with TAA off); BR_LIGHT_SCALE fixes it (0.5 to 1); otherwise, on a target
- * over 2.5 MP, 0.67, or with BR_LIGHT_DYNRES=1 from 0.67 the dynamic
- * resolution controller's (16.6 ms, 0.5 to 1) fed with the last whole frame's
- * GPU time (gpu_ms <= 0: none yet).
- * *up: 1 when the frame goes through MetalFX's scaler (at any scale, so a
- * move to 1.0 keeps the same look) */
-#define BRR_LIT_BUDGET (1920.0 * 1080.0)   /* the lit 3D's pixels at most (MetalFX's "performance" input at 4K) */
+/* the lit 3D's internal scale for a target tw x th: 1, the window's own
+ * pixels, whatever its size (no upscaling by default); BR_LIGHT_SCALE asks
+ * for a smaller frame (0.5 to 1) through MetalFX's scaler where the device
+ * has one, BR_LIGHT_DYNRES=1 then moving it by the dynamic resolution
+ * controller (16.6 ms, 0.5 to 1) fed with the last whole frame's GPU time
+ * (gpu_ms <= 0: none yet).
+ * *up: 1 when the frame goes through MetalFX's scaler (BR_LIGHT_SCALE, or
+ * BR_LIGHT_TAA=2 at 1) */
 float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
 {
-    static int env = -1, sup = -1;
+    static int env = -1, sup = -1, dyn = -1;
     static float fixed;
     static BrrDynRes d;
     const char *e;
+    (void)tw;
+    (void)th;
     *up = 0;
     if (!brr_taa_mode())
         return 1.0f;
@@ -266,44 +273,23 @@ float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
         e = getenv("BR_LIGHT_SCALE");
         env = e != NULL;
         fixed = e ? fminf(1.0f, fmaxf(0.5f, (float)atof(e))) : 1.0f;
+        dyn = getenv("BR_LIGHT_DYNRES") && atoi(getenv("BR_LIGHT_DYNRES")) > 0;
     }
     if (!sup)
         return 1.0f;
-    if (env) {
-        *up = fixed < 1.0f || brr_taa_mode() == 2;
-        return fixed;
-    }
-    if ((double)tw * (double)th <= BRR_LIT_BUDGET)
+    if (!env) {
+        *up = brr_taa_mode() == 2;
         return 1.0f;
-    *up = 1;
-    static int ltw, lth;
-    if (d.scale <= 0.0f || tw != ltw || th != lth) {   /* again when the target's size changes */
-        ltw = tw;
-        lth = th;
-        /* the lit 3D at a fixed budget of pixels, whatever the window: 2560 x
-           1920 at 0.67 drew in 12 ms on an M4 Pro, a 5K screen at 0.67 three
-           times that; MetalFX brings the budget up to the target (at most
-           its device's scale, 3 on Apple silicon) */
-        float mn = 0.5f;
-#ifdef BRR_HAVE_METALFX
-        if (@available(macOS 14.0, iOS 17.0, *)) {
-            float mx = [MTLFXTemporalScalerDescriptor supportedInputContentMaxScaleForDevice:dev];
-            if (mx > 1.0f)
-                mn = 1.0f / mx;
-        }
-#endif
-        d.scale = fmaxf(mn, sqrtf((float)(BRR_LIT_BUDGET / ((double)tw * (double)th))));
+    }
+    *up = fixed < 1.0f || brr_taa_mode() == 2;
+    if (!dyn)
+        return fixed;
+    if (d.scale <= 0.0f) {
+        d.scale = fixed;
         d.ms = 16.6f;
     }
-    {   /* the controller only with BR_LIGHT_DYNRES=1: a change of scale rebuilds
-           the targets and drops the TAA history (a visible hitch) until it
-           moves MetalFX's input content size inside full-size targets instead */
-        static int dyn = -1;
-        if (dyn < 0)
-            dyn = getenv("BR_LIGHT_DYNRES") && atoi(getenv("BR_LIGHT_DYNRES")) > 0;
-        if (dyn && gpu_ms > 0.0f)
-            brr_taa_dynres(&d, gpu_ms, 16.6f, 0.5f);
-    }
+    if (gpu_ms > 0.0f)
+        brr_taa_dynres(&d, gpu_ms, 16.6f, 0.5f);
     return d.scale;
 }
 

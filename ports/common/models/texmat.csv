@@ -894,6 +894,7 @@
 5BE13449,concrete,64x64 ff11
 5C1CD8F5,sky,64x64 ff11
 5C28A588,lamp,64x64 ff12
+5C2FCAE5,rubber,16x16 car tyre sidewall (snow)
 5C525C81,sky,64x64 ff11
 5C6BF738,effect,64x64 ff12
 5C6CD545,unknown,4x1 ff11
@@ -1248,6 +1249,7 @@
 7EF27849,rock,32x32 ff11
 7EFFC8A1,foliage,64x128 ff11
 7F0CF74C,rock,32x32 ff11
+7F35DD11,rubber,16x16 car tyre sidewall (night rain sunny fog)
 7F72A98F,water,64x64 ff12
 7F89DB89,sign,64x32 ff11
 7FA0F3CD,tunnel,64x64 ff11
@@ -1387,6 +1389,7 @@
 8DA072C9,metal,32x128 ff11
 8DB6CDC5,effect,64x64 ff2
 8DC9D4AE,effect,64x64 ff4
+8DCD0381,rubber,16x2 car tyre tread
 8DFDA43A,rock,32x32 ff11
 8E00E643,sky,64x32 ff11
 8E3035BD,sand,32x32 ff11

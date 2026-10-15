@@ -237,7 +237,7 @@ typedef struct U {
     float glow, addk;    /* the lit shaders: lamplight glows (night); an additive draw's light, cd/m2 */
     float beam, beamw;   /* a lighthouse beam's emitted light, cd/m2; its weight with the volumetric fog on */
     float albk, tint[3]; /* the lit shaders: the albedo's scale to its material's (lit_albk), its chroma (lit_tint; 0: the texel's own) */
-    float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L); lpad[0] 1 for sealed ground */
+    float lamp, lpad[3]; /* the lit shaders: 1 for a lamp's texture (texmat), which emits (BRR_LAMP_L); lpad[0] 1 for sealed ground, [2] a tyre */
     float lens[2][4];    /* the lit shaders: a car texture's lamp lenses (carlamp.csv), s0 t0 s1 t1 */
     float lensk[4];      /* their kinds plus one (1 tail, 2 reverse), 0 for none */
 } U;
@@ -591,6 +591,7 @@ static const float k_mat_albedo[LIGHT_MAT_COUNT] = {
     [LIGHT_MAT_ASPHALT] = 0.12f, [LIGHT_MAT_CONCRETE] = 0.35f, [LIGHT_MAT_SAND] = 0.35f, [LIGHT_MAT_DIRT] = 0.20f,
     [LIGHT_MAT_ROCK] = 0.25f, [LIGHT_MAT_GRASS] = 0.21f, [LIGHT_MAT_FOLIAGE] = 0.15f, [LIGHT_MAT_BUILDING] = 0.60f,
     [LIGHT_MAT_WOOD] = 0.25f, [LIGHT_MAT_SNOW] = 0.80f, [LIGHT_MAT_ICE] = 0.50f, [LIGHT_MAT_TUNNEL] = 0.30f,
+    [LIGHT_MAT_RUBBER] = 0.04f,       /* a tyre: carbon-black rubber */
 };
 /* the scale that brings a texture's de-lit mean (0.85 x its texels' linear
  * mean, brr_metal_lit.h delit) to its material's albedo; its texture kept.
@@ -2562,6 +2563,47 @@ static void lit_normals(void)
     s_nbon = lit_normals_encode(s_cmd, &nc) && nc > 0;
 }
 
+/* the cars' drawn frames now and at the last resolve, for the TAA's per-car
+ * motion (brr_metal_taa.h brr_taa_carprev): a car with no frame last time,
+ * or one that moved over 10 m (a reset onto the road), has no history */
+static void taa_cars(BrrTaaCars *o)
+{
+    static float prev[BRR_TAA_CARS][4][3];
+    static int have[BRR_TAA_CARS];
+    static unsigned long at;
+    LightCar cars[BRR_TAA_CARS];
+    int n = light_game_cars(cars, BRR_TAA_CARS), i, a, k;
+    int fresh = at + 1 == s_frame;     /* the last resolve was the frame before this one */
+    memset(o, 0, sizeof *o);
+    for (i = 0; i < n; i++) {
+        const LightCar *c = &cars[i];
+        const float *ax[3] = { c->fwd, c->side, c->up };
+        float (*r)[4] = o->c[o->n];
+        float d0 = c->pos[0] - prev[i][3][0], d1 = c->pos[1] - prev[i][3][1], d2 = c->pos[2] - prev[i][3][2];
+        int ok = fresh && have[i] && d0 * d0 + d1 * d1 + d2 * d2 < 100.0f;
+        for (a = 0; a < 3; a++) {
+            for (k = 0; k < 3; k++) {
+                r[a][k] = ax[a][k];
+                r[a + 3][k] = ok ? prev[i][a][k] : ax[a][k];
+            }
+            r[a][3] = c->pos[a];
+            r[a + 3][3] = ok ? prev[i][3][a] : c->pos[a];
+            r[6][a] = c->lo[a];
+            r[7][a] = c->hi[a];
+        }
+        r[6][3] = ok ? 1.0f : 0.0f;
+        for (a = 0; a < 3; a++)
+            memcpy(prev[i][a], ax[a], 12);
+        memcpy(prev[i][3], c->pos, 12);
+        have[i] = c->has_box;
+        if (c->has_box)
+            o->n++;
+    }
+    for (; i < BRR_TAA_CARS; i++)
+        have[i] = 0;
+    at = s_frame;
+}
+
 /* BR_LIGHT_LENSPROBE (diagnostic): what the G-buffer holds at each lamp's
    pixel (brr_metal_lit.h lnprobe), encoded into the frame's own work; each
    call prints the previous probe's readings (done by then) */
@@ -3481,7 +3523,9 @@ nopick:;
     s_nbon = 0;
     s_dw = s_dh = 0;
     if (s_xtj) {   /* TAA: the resolved HDR goes on to bloom and post; scaled, MetalFX's upscale to the target's size */
-        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_ldep, taa_s, cam.vp, eye, s_rw, s_rh, s_lup);
+        BrrTaaCars tc;
+        taa_cars(&tc);
+        hdr = brr_taa_resolve(s_dev, s_cmd, s_hdr, s_gpos, s_galb, s_ldep, taa_s, cam.vp, eye, &tc, s_rw, s_rh, s_lup);
         s_xtj = nil;
     }
 
@@ -3876,6 +3920,8 @@ void brr_draw(const brr_state *st, const brr_vertex *v, int n)
             u.lpad[0] = tm == LIGHT_MAT_ASPHALT || tm == LIGHT_MAT_CONCRETE || tm == LIGHT_MAT_METAL || tm == LIGHT_MAT_BLACKMETAL
                         || tm == LIGHT_MAT_TUNNEL || tm == LIGHT_MAT_SIGN ? 1.0f : 0.0f;
         }
+        /* a tyre's texture: on a car, rubber rather than car paint (BRR_MAT_RUBBER) */
+        u.lpad[2] = u.has_tex && st->texture < TEX_MAX && s_tmat[st->texture] == LIGHT_MAT_RUBBER ? 1.0f : 0.0f;
         memset(u.lens, 0, sizeof u.lens);
         memset(u.lensk, 0, sizeof u.lensk);
         if (u.has_tex && st->texture < TEX_MAX) {   /* a car texture's lamp lenses (carlamp.csv) */

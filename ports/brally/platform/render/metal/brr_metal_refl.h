@@ -50,7 +50,7 @@
 #define BRR_WET_SRC \
 /* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
    and the reflections skip it); 64..80 a lamp (BRR_MAT_LAMP); 88..104 the 3D's car paint (BRR_MAT_CAR, \
-   112 and 116 a car's tail and reversing lens, BRR_MAT_LENS; \
+   112 and 116 a car's tail and reversing lens, BRR_MAT_LENS; 84 a car's tyre, BRR_MAT_RUBBER; \
    no glow; the capture's car flag, lit 3, glide.c); 128..255 the 3D's \
    other surfaces, 128 + 127 x their glow */ \
 "#define BRR_MAT_CAR 96.0\n" \
@@ -63,6 +63,11 @@
 "static int lensmat(float a) { a = a * 255.0 - BRR_MAT_LENS; return a > -1.5 && a < 1.5 ? 1 : a > 2.5 && a < 5.5 ? 2 : a > 6.5 && a < 9.5 ? 3 : 0; }\n" \
 "#define BRR_LAMP_L " REFL_STR(BRR_LAMP_CDM2) "\n" \
 "static bool lampmat(float a) { a *= 255.0; return a > 63.5 && a < 80.5; }\n" \
+/* 84: a car's tyre (texmat's rubber, on a car: BRR_MAT_RUBBER), matte rubber, no clear coat \
+   (its roughness BRR_RUBBER_ROUGH: a tyre's sidewall and tread, Lagarde's chart) */ \
+"#define BRR_MAT_RUBBER 84.0\n" \
+"#define BRR_RUBBER_ROUGH 0.7\n" \
+"static bool rubbermat(float a) { a *= 255.0; return a > 82.5 && a < 85.5; }\n" \
 /* car paint's two roughnesses: its clear coat's and the paint's under it \
    (brr_metal_lit.h: brdf) */ \
 "#define BRR_COAT_ROUGH 0.05\n" \
@@ -166,7 +171,7 @@
 "  float4 a = alb.read(px); if (a.a < 0.25 || u.wet.z < 0.5) return false;\n" \
 "  float4 N = nrm.read(px); p = pos.read(px).xyz; n = N.xyz; fog = u.vol.x > 0.5 ? 0.0 : N.w;\n" \
 "  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n" \
-"  float3 al = a.rgb; bool car = carpaint(a.a); rough = car ? BRR_CAR_ROUGH : u.misc.z; wet(u, p, n, al, rough, car || sealedmat(a.a) ? 1.0 : 0.0);\n" \
+"  float3 al = a.rgb; bool car = carpaint(a.a); rough = car ? BRR_CAR_ROUGH : rubbermat(a.a) ? BRR_RUBBER_ROUGH : u.misc.z; wet(u, p, n, al, rough, car || sealedmat(a.a) ? 1.0 : 0.0);\n" \
 "  if (car) rough = BRR_COAT_ROUGH;   /* car paint: the coat's mirror, its own roughness, weighted by its Fresnel (E) */\n" \
 "  return rough <= REFL_ROUGH_MAX; }\n" \
 /* the frame's reprojection (brr_metal_refl.m): the last frame's scr, the \

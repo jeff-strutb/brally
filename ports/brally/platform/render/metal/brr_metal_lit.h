@@ -328,6 +328,10 @@ BRR_VSM_SRC \
    it; at 1000 a signal head's or a lit window's bloom swamped its own colour and drew a white ball */ \
 "#define BRR_GLOW_MAX 128.0\n" \
 "static float3 emitcap(float3 c) { float m = max(c.r, max(c.g, c.b)); return m > BRR_EMIT_MAX ? c * (BRR_EMIT_MAX / m) : c; }\n" \
+/* the light past the cap, for the bloom, at most BRR_GLOW_MAX in its brightest channel with its hue \
+   kept (each channel clamped alone, a stop lamp's red reached the cap while its green kept rising: \
+   its bloom came out yellow-white) */ \
+"static float3 glowcap(float3 c) { float3 e = max(c - emitcap(c), 0.0); float m = max(e.r, max(e.g, e.b)); return m > BRR_GLOW_MAX ? e * (BRR_GLOW_MAX / m) : e; }\n" \
 /* the G-buffer */ \
 "struct GB { float4 alb [[color(0)]]; float4 pos [[color(1)]]; float4 nrm [[color(2)]]; float d [[depth(any)]]; };\n" \
 "fragment GB fsgb(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
@@ -335,7 +339,7 @@ BRR_VSM_SRC \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
-"  float mat = in.mat > 2.5 ? BRR_MAT_CAR : u.lamp > 0.5 ? BRR_MAT_LAMP : 128.0 + floor(saturate(g) * 127.0 + 0.5);\n" \
+"  float mat = in.mat > 2.5 ? (u.lp3 > 0.5 ? BRR_MAT_RUBBER : BRR_MAT_CAR) : u.lamp > 0.5 ? BRR_MAT_LAMP : 128.0 + floor(saturate(g) * 127.0 + 0.5);   /* lp3: a tyre's texture (texmat rubber) */\n" \
 "  if (mat == 128.0 && u.lp1 > 0.5) mat = BRR_MAT_SEALED;   /* sealed ground, no glow (lp1: texmat, brr_metal.m) */\n" \
 /* a car's lamp lens, where its texture paints it (carlamp.csv): the lens pass lights exactly these texels */ \
 "  if (in.mat > 2.5 && u.lensk.x > 0.5 && all(in.st >= u.lens0.xy) && all(in.st < u.lens0.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.x - 1.0);\n" \
@@ -396,14 +400,14 @@ BRR_VSM_SRC \
 "  if (dbg == 5) return float4(float3(glow), 1);\n" \
 "  if (dbg == 6) return float4(float3(contact(u, pos, P.xyz, n, j)), 1);\n" \
 "  if (dbg == 7) return float4(lc_heat(ls, P.xyz), 1);\n" \
-"  float rin = carpaint(a.a) ? BRR_CAR_ROUGH : u.misc.z; float3 ve = normalize(u.eye.xyz - P.xyz), gi = 0.0, gis = 0.0;\n" \
+"  float rin = carpaint(a.a) ? BRR_CAR_ROUGH : rubbermat(a.a) ? BRR_RUBBER_ROUGH : u.misc.z; float3 ve = normalize(u.eye.xyz - P.xyz), gi = 0.0, gis = 0.0;\n" \
 "  if (u.gi.x > 0.5) gi = carpaint(a.a) || rin > BRR_TRACED_MAX ? gi_irr2(gu, goff, gsh, gdst, P.xyz, n, ve, reflect(-ve, n), gis)   /* wet() only smooths */\n" \
 "                                                               : gi_irr(gu, goff, gsh, gdst, P.xyz, n, ve);\n" \
 "  if (dbg == 8) return float4(preexp(u, a.rgb / 3.14159 * gi), 1);\n" \
 "  float ao = u.env.w > 0.5 ? ao_at(aot, pos, px, P.xyz, n) : 1.0;   /* env.w: the occlusion ran */\n" \
 "  if (dbg == 15) return float4(float3(ao), 1);\n" \
 "  uint fc = uint(P.w); float3 fogc = float3((fc >> 16) & 255, (fc >> 8) & 255, fc & 255) / 255.0;\n" \
-"  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : u.misc.z, 0.0, sv, bE, gi, j * 6.2831853, sp, ao, sealedmat(a.a) ? 1.0 : 0.0, gis);\n" \
+"  float3 L = radiance(u, ls, atl, P.xyz, n, a.rgb, carpaint(a.a) ? -BRR_CAR_ROUGH : rin, 0.0, sv, bE, gi, j * 6.2831853, sp, ao, sealedmat(a.a) ? 1.0 : 0.0, gis);\n" \
 "  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;   /* a lit window, about 100 cd/m2 */\n" \
 "  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;   /* a lamp's own light */\n" \
 "  return float4(fogged(u, preexp(u, L) + emitcap(preexp(u, E * u.wb.rgb)), u.vol.x > 0.5 ? 0.0 : N.w, fogc), 1);\n" \
@@ -464,6 +468,13 @@ BRR_VSM_SRC \
 /* a rear lamp's lens is its texture's (carlamp.csv, BRR_MAT_LENS in the G-buffer): the pass covers \
    LENS_SEARCH x the lens about where the lamp is placed and lights the lens texels there */ \
 "#define LENS_SEARCH 3.0\n" \
+/* a lit lens's face at least LENS_FLOOR x the square root of its candela over a tail lamp's 5, \
+   in the exposed frame (1: the display's white): Playground's rule for Forza's emissives, a lamp's \
+   face over the scene's light whatever the exposure.  By day a 5 cd tail lamp's own luminance \
+   (350 cd/m2 over its lens) sat under an overcast road's and read as unlit; the floor puts it at \
+   the display's red, a stop lamp (80 cd) four times over into the bloom.  At night the lamps' own \
+   luminance is far over it; the light they cast is unchanged */ \
+"#define LENS_FLOOR 0.6\n" \
 "struct LNU { float4x4 S; float4 tgt; float4 eye; float4 wb; };\n" \
 "struct LNO { float4 pos [[position]]; float2 q; float oow [[center_no_perspective]]; float3 wp; uint li [[flat]]; };\n" \
 "vertex LNO lnvs(uint v [[vertex_id]], uint li [[instance_id]], const device LSet &ls [[buffer(0)]], constant LNU &k [[buffer(1)]]) {\n" \
@@ -509,9 +520,10 @@ BRR_VSM_SRC \
 "  if ((dbg & 4u) == 0u && ct <= 0.0) discard_fragment();\n" \
 "  if ((dbg & 8u) != 0u) { LNF m; m.c = float4(4.0, 0.0, 4.0, 1.0); m.d = float(wfloat(in.oow)) / 65536.0; return m; }\n" \
 "  float A = 3.14159265 * (l.kind < 0.5 ? LENS_HW_HEAD * LENS_HH_HEAD : LENS_HW_REAR * LENS_HH_REAR);\n" \
-"  float3 raw = float3(l.rgb) * (lamp(l, dv) / (A * max(ct, 0.1))) * k.wb.rgb * k.tgt.z;\n" \
+"  float I = lamp(l, dv), Lf = LENS_FLOOR * sqrt(max(I, 0.0) / 5.0);\n" \
+"  float3 raw = float3(l.rgb) * max(I / (A * max(ct, 0.1)) * k.tgt.z, Lf) * k.wb.rgb;\n" \
 /* tgt.w bit 128: the emission target's draw, the light over the display's cap (the bloom's, brr_metal.m) */ \
-"  LNF o; o.c = float4((dbg & 128u) != 0u ? min(max(raw - emitcap(raw), 0.0), float3(BRR_GLOW_MAX)) : emitcap(raw), 1.0);\n" \
+"  LNF o; o.c = float4((dbg & 128u) != 0u ? glowcap(raw) : emitcap(raw), 1.0);\n" \
 "  o.d = float(wfloat(in.oow)) / 65536.0; return o; }\n" \
 /* the exposure's meter, on the GPU: the frame's scene luminance (the \
    pre-exposed HDR divided by its exposure, p.x) over a 64 x 36 grid, \
@@ -544,7 +556,7 @@ BRR_VSM_SRC \
 "  float glow = saturate((a.a * 255.0 - 128.0) / 127.0);\n" \
 "  float3 E = a.rgb / max(dot(a.rgb, float3(0.2126, 0.7152, 0.0722)), 0.02) * glow * 100.0;\n" \
 "  if (lampmat(a.a)) E += a.rgb / 0.85 * BRR_LAMP_L;\n" \
-"  float3 e = preexp(u, E * u.wb.rgb); return float4(min(max(e - emitcap(e), 0.0), float3(BRR_GLOW_MAX)), 1); }\n" \
+"  float3 e = preexp(u, E * u.wb.rgb); return float4(glowcap(e), 1); }\n" \
 "fragment float4 bdn(LO in [[stage_in]], texture2d<float> t [[texture(0)]], texture2d<float> em [[texture(1)]], constant float &emk [[buffer(0)]]) {\n" \
 "  constexpr sampler s(filter::linear, address::clamp_to_edge); float2 d = 1.0 / float2(t.get_width(), t.get_height()), uv = in.uv;\n" \
 "  float3 a = t.sample(s, uv + d * float2(-2, -2)).rgb, b = t.sample(s, uv + d * float2(0, -2)).rgb, c = t.sample(s, uv + d * float2(2, -2)).rgb;\n" \

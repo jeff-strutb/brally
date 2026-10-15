@@ -19,6 +19,7 @@ enum {
     LIGHT_MAT_LAMP,
     LIGHT_MAT_METAL,
     LIGHT_MAT_ROCK,
+    LIGHT_MAT_RUBBER,
     LIGHT_MAT_SAND,
     LIGHT_MAT_SHADOW,
     LIGHT_MAT_SIGN,
@@ -32,8 +33,8 @@ enum {
     LIGHT_MAT_WOOD,
     LIGHT_MAT_COUNT
 };
-static const char *const k_light_mat_name[LIGHT_MAT_COUNT] = { "asphalt", "blackmetal", "building", "concrete", "dirt", "effect", "foliage", "grass", "ice", "lamp", "metal", "rock", "sand", "shadow", "sign", "sky", "snow", "tunnel", "unknown", "vehicle", "water", "window", "wood" };
-static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
+static const char *const k_light_mat_name[LIGHT_MAT_COUNT] = { "asphalt", "blackmetal", "building", "concrete", "dirt", "effect", "foliage", "grass", "ice", "lamp", "metal", "rock", "rubber", "sand", "shadow", "sign", "sky", "snow", "tunnel", "unknown", "vehicle", "water", "window", "wood" };
+static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2524] = {
     { 0x00167F5Fu, LIGHT_MAT_ROCK },
     { 0x0073B79Eu, LIGHT_MAT_ROCK },
     { 0x0083FFD4u, LIGHT_MAT_WATER },
@@ -927,6 +928,7 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0x5BE13449u, LIGHT_MAT_CONCRETE },
     { 0x5C1CD8F5u, LIGHT_MAT_SKY },
     { 0x5C28A588u, LIGHT_MAT_LAMP },
+    { 0x5C2FCAE5u, LIGHT_MAT_RUBBER },
     { 0x5C525C81u, LIGHT_MAT_SKY },
     { 0x5C6BF738u, LIGHT_MAT_EFFECT },
     { 0x5C6CD545u, LIGHT_MAT_UNKNOWN },
@@ -1281,6 +1283,7 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0x7EF27849u, LIGHT_MAT_ROCK },
     { 0x7EFFC8A1u, LIGHT_MAT_FOLIAGE },
     { 0x7F0CF74Cu, LIGHT_MAT_ROCK },
+    { 0x7F35DD11u, LIGHT_MAT_RUBBER },
     { 0x7F72A98Fu, LIGHT_MAT_WATER },
     { 0x7F89DB89u, LIGHT_MAT_SIGN },
     { 0x7FA0F3CDu, LIGHT_MAT_TUNNEL },
@@ -1420,6 +1423,7 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0x8DA072C9u, LIGHT_MAT_METAL },
     { 0x8DB6CDC5u, LIGHT_MAT_EFFECT },
     { 0x8DC9D4AEu, LIGHT_MAT_EFFECT },
+    { 0x8DCD0381u, LIGHT_MAT_RUBBER },
     { 0x8DFDA43Au, LIGHT_MAT_ROCK },
     { 0x8E00E643u, LIGHT_MAT_SKY },
     { 0x8E3035BDu, LIGHT_MAT_SAND },
@@ -2557,10 +2561,17 @@ static const struct { uint32_t hash; uint8_t mat; } k_light_texmat[2521] = {
     { 0xFFF6844Du, LIGHT_MAT_BUILDING },
 };
 /* the cars' lamp lenses (carlamp.csv): kind 0 tail, 1 reverse, 2 head; s0 t0 s1 t1 normalised */
-static const struct { uint32_t hash; uint8_t kind; float s0, t0, s1, t1; } k_light_carlamp[3] = {
+static const struct { uint32_t hash; uint8_t kind; float s0, t0, s1, t1; } k_light_carlamp[10] = {
+    { 0x264251B3u, 1, 0.031250f, 0.328125f, 0.156250f, 0.453125f },
+    { 0x264251B3u, 0, 0.031250f, 0.031250f, 0.468750f, 0.281250f },
     { 0x689C1500u, 2, 0.335938f, 0.109375f, 0.546875f, 0.515625f },
     { 0x99FF967Cu, 1, 0.031250f, 0.328125f, 0.156250f, 0.453125f },
     { 0x99FF967Cu, 0, 0.031250f, 0.031250f, 0.468750f, 0.281250f },
+    { 0xAF2EB201u, 1, 0.031250f, 0.328125f, 0.156250f, 0.453125f },
+    { 0xAF2EB201u, 0, 0.031250f, 0.031250f, 0.468750f, 0.281250f },
+    { 0xC76C7500u, 2, 0.335938f, 0.109375f, 0.546875f, 0.515625f },
+    { 0xDCE64A82u, 1, 0.031250f, 0.328125f, 0.156250f, 0.453125f },
+    { 0xDCE64A82u, 0, 0.031250f, 0.031250f, 0.468750f, 0.281250f },
 };
 
 #endif

@@ -5,10 +5,16 @@
  *               through a jittered copy of the frame's screen map table (an
  *               ndc offset added to xft.y and xft.w moves the clip-space
  *               output by offset x w); the 2D replay is not jittered
- *   motion      static world only: a pixel's world position (the G-buffer's)
- *               through last frame's world-to-pixel matrix (brr_screen_matrix,
+ *   motion      a pixel's world position (the G-buffer's) through last
+ *               frame's world-to-pixel matrix (brr_screen_matrix,
  *               unjittered); the sky through the same matrix at infinity.  A
- *               car's own motion is not in it: cars come out as camera motion
+ *               car's pixel (its material: paint, lens, tyre) is first
+ *               carried back by its own car's rigid motion, the point's place
+ *               in the car's frame now put in its frame last frame
+ *               (brr_taa_carprev; Unreal's and Frostbite's per-object
+ *               velocity).  Without it the car came out as camera motion: its
+ *               history was the road behind it, the disocclusion test threw
+ *               it away every frame and the car was never anti-aliased
  *   resolve     after the lighting, before bloom and post, in pre-exposed HDR:
  *               history by Catmull-Rom (16 texel reads), clipped to the
  *               current 3x3 neighbourhood's variance box in YCoCg (Salvi
@@ -133,6 +139,37 @@ static void brr_taa_ray(const float Fi[16], float x, float y, float d[3])
         d[r] = b[r] / b[3] - a[r] / a[3];
 }
 
+/* a car's point p (world, this frame) where it was last frame: in car i's
+ * box (its frame now, grown by TAA_CAR_MARGIN) its place there put in its
+ * last frame.  c: brr_metal_taa_api.h BrrTaaCars' rows, 8 float4 a car.
+ * Returns 1 moved, 0 in no car's box (left as static world), -1 in a car
+ * with no last frame (no history) */
+#define TAA_CAR_MARGIN 0.3f
+#ifndef BRR_TAA_CARS
+#define BRR_TAA_CARS 20         /* the cars the resolve moves (brr_metal_taa_api.h BrrTaaCars) */
+#endif
+static int brr_taa_carprev(const float (*c)[8][4], int n, const float p[3], float o[3])
+{
+    int i, a;
+    for (i = 0; i < n; i++) {
+        const float (*r)[4] = c[i];
+        float d[3] = { p[0] - r[0][3], p[1] - r[1][3], p[2] - r[2][3] }, l[3];
+        int in = 1;
+        for (a = 0; a < 3; a++) {
+            l[a] = d[0] * r[a][0] + d[1] * r[a][1] + d[2] * r[a][2];
+            in &= l[a] >= r[6][a] - TAA_CAR_MARGIN && l[a] <= r[7][a] + TAA_CAR_MARGIN;
+        }
+        if (!in)
+            continue;
+        if (r[6][3] < 0.5f)
+            return -1;
+        for (a = 0; a < 3; a++)
+            o[a] = r[a + 3][3] + r[3][a] * l[0] + r[4][a] * l[1] + r[5][a] * l[2];
+        return 1;
+    }
+    return 0;
+}
+
 /* ---- the resolve's colour maths (the shader's, line for line) ---- */
 static void brr_ycocg(const float c[3], float o[3])
 {
@@ -203,6 +240,8 @@ static float brr_taa_dynres(BrrDynRes *d, float gpu_ms, float target_ms, float l
 }
 
 /* ---- the shaders (a library of their own, brr_metal_taa.m) ---- */
+#define BRR_TAA_STR_(x) #x
+#define BRR_TAA_STR(x) BRR_TAA_STR_(x)
 #define BRR_TAA_SRC \
 "#include <metal_stdlib>\n" \
 "using namespace metal;\n" \
@@ -222,25 +261,40 @@ static float brr_taa_dynres(BrrDynRes *d, float gpu_ms, float target_ms, float l
 "    float w = cr(float(i) - f.x) * cr(float(j) - f.y); s += w * texl(t, int2(b) + int2(i, j)); ws += w; }\n" \
 "  return s / ws; }\n" \
 "static float4 mulS(constant float4 *S, float4 p) { return S[0] * p.x + S[1] * p.y + S[2] * p.z + S[3] * p.w; }\n" \
+"struct TC { int4 n; float4 c[" BRR_TAA_STR(BRR_TAA_CARS) " * 8]; };\n" \
+"/* a car's material (brr_metal_refl.h: tyre 84, paint 88..104, lens 112..120) */\n" \
+"static bool carmat(float a) { a *= 255.0; return (a > 82.5 && a < 104.5) || (a > 110.5 && a < 121.5); }\n" \
+"/* brr_taa_carprev, line for line: 1 moved, 0 in no car, -1 a car with no last frame */\n" \
+"static int carprev(constant TC &tc, float3 p, thread float3 &o) {\n" \
+"  for (int i = 0; i < tc.n.x; i++) { int b = 8 * i; float3 d = p - float3(tc.c[b].w, tc.c[b + 1].w, tc.c[b + 2].w);\n" \
+"    float3 l = float3(dot(d, tc.c[b].xyz), dot(d, tc.c[b + 1].xyz), dot(d, tc.c[b + 2].xyz));\n" \
+"    if (any(l < tc.c[b + 6].xyz - " BRR_TAA_STR(TAA_CAR_MARGIN) ") || any(l > tc.c[b + 7].xyz + " BRR_TAA_STR(TAA_CAR_MARGIN) ")) continue;\n" \
+"    if (tc.c[b + 6].w < 0.5) return -1;\n" \
+"    o = float3(tc.c[b + 3].w, tc.c[b + 4].w, tc.c[b + 5].w) + tc.c[b + 3].xyz * l.x + tc.c[b + 4].xyz * l.y + tc.c[b + 5].xyz * l.z; return 1; }\n" \
+"  return 0; }\n" \
 "/* where this pixel was last frame (pixels), and its view distance now; .w 0: off the history */\n" \
-"static float4 prevpos(constant TU &u, texture2d<float> gpos, uint2 px) {\n" \
+"static float4 prevpos(constant TU &u, constant TC &tc, texture2d<float> gpos, texture2d<float> galb, uint2 px) {\n" \
 "  float3 P = gpos.read(px).xyz; float4 h; float dist;\n" \
 "  if (all(P == 0.0)) {\n" \
 "    float2 q = float2(px) + 0.5 - u.jit.xy;\n" \
 "    float4 a = mulS(u.Fi, float4(q, 0.25, 1)), b = mulS(u.Fi, float4(q, 0.75, 1));\n" \
 "    h = mulS(u.S, float4(b.xyz / b.w - a.xyz / a.w, 0)); dist = 65504.0;\n" \
-"  } else { h = mulS(u.S, float4(P, 1)); dist = distance(P, u.eye.xyz); }\n" \
+"  } else {\n" \
+"    dist = distance(P, u.eye.xyz); float3 Q = P;\n" \
+"    if (tc.n.x > 0 && carmat(galb.read(px).a) && carprev(tc, P, Q) < 0) return float4(0, 0, dist, 0);\n" \
+"    h = mulS(u.S, float4(Q, 1)); }\n" \
 "  if (h.w <= 1e-6) return float4(0, 0, dist, 0);\n" \
 "  return float4(h.xy / h.w, dist, 1); }\n" \
 "struct TO { float4 c [[color(0)]]; float d [[color(1)]]; };\n" \
 "fragment TO taa_resolve(TV in [[stage_in]], constant TU &u [[buffer(0)]], texture2d<float> cur [[texture(0)]],\n" \
-"                        texture2d<float> hist [[texture(1)]], texture2d<float> hdist [[texture(2)]], texture2d<float> gpos [[texture(3)]]) {\n" \
+"                        texture2d<float> hist [[texture(1)]], texture2d<float> hdist [[texture(2)]], texture2d<float> gpos [[texture(3)]],\n" \
+"                        texture2d<float> galb [[texture(4)]], constant TC &tc [[buffer(1)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); int2 ip = int2(px); TO o;\n" \
 "  float3 c = min(cur.read(px).rgb, 65504.0), m1 = 0, m2 = 0, lo = 1e30, hi = -1e30;\n" \
 "  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {\n" \
 "    float3 y = ycocg(min(texl(cur, ip + int2(i, j)).rgb, 65504.0)); m1 += y; m2 += y * y; lo = min(lo, y); hi = max(hi, y); }\n" \
 "  m1 /= 9.0; m2 /= 9.0; float3 sd = sqrt(max(m2 - m1 * m1, 0.0));\n" \
-"  float4 pp = prevpos(u, gpos, px); o.d = pp.z;\n" \
+"  float4 pp = prevpos(u, tc, gpos, galb, px); o.d = pp.z;\n" \
 "  float2 tsz = float2(hist.get_width(), hist.get_height());\n" \
 "  if (u.k.y > 0.5 || pp.w < 0.5 || any(pp.xy < 0.0) || any(pp.xy >= tsz)) { o.c = float4(c, 1); return o; }\n" \
 "  float hd = hdist.read(uint2(pp.xy)).r;\n" \
@@ -254,8 +308,9 @@ static float brr_taa_dynres(BrrDynRes *d, float gpu_ms, float target_ms, float l
 "  float wc = a, wh = 1.0 - a; if (u.k.z > 0.5) { wc /= 1.0 + luma(c); wh /= 1.0 + luma(h); }\n" \
 "  o.c = float4((c * wc + h * wh) / (wc + wh), min(n + 1.0, 255.0)); return o; }\n" \
 "/* MetalFX's motion: this pixel's offset to where it was, in pixels of the input */\n" \
-"fragment float2 taa_motion(TV in [[stage_in]], constant TU &u [[buffer(0)]], texture2d<float> gpos [[texture(0)]]) {\n" \
-"  uint2 px = uint2(in.pos.xy); float4 pp = prevpos(u, gpos, px);\n" \
+"fragment float2 taa_motion(TV in [[stage_in]], constant TU &u [[buffer(0)]], texture2d<float> gpos [[texture(0)]],\n" \
+"                          texture2d<float> galb [[texture(1)]], constant TC &tc [[buffer(1)]]) {\n" \
+"  uint2 px = uint2(in.pos.xy); float4 pp = prevpos(u, tc, gpos, galb, px);\n" \
 "  return pp.w > 0.5 ? pp.xy - (float2(px) + 0.5 - u.jit.xy) : float2(0); }\n"
 
 #endif

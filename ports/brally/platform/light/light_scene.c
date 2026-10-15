@@ -30,6 +30,7 @@
 #include <time.h>
 
 #define MAX_CARS 20
+#define LIGHT_REVERSE_V 0.5f   /* backwards faster than this (the game's units, about m/s) on the reverse: reversing lamps */
 
 static void norm(float v[3])
 {
@@ -100,8 +101,16 @@ int light_scene_lights(LightSpot *out, int *id, int max)
         }
         fl = sqrtf(c->fwd[0] * c->fwd[0] + c->fwd[1] * c->fwd[1] + c->fwd[2] * c->fwd[2]);
         vf = (c->vel[0] * c->fwd[0] + c->vel[1] * c->fwd[1] + c->vel[2] * c->fwd[2]) / (fl > 0 ? fl : 1);
-        braking = c->brake < 0.0f || (fabsf(vf) > 0.3f && c->drive * vf < 0.0f);
-        reversing = (c->ctl & 0x20000u) && c->drive < 0.0f && vf <= 0.3f;
+        /* the game's brake is its reverse (control word 0x20000, negative drive torque): held
+           while rolling forward, or at a stop, it is the stop lamps; only rolling backwards on
+           it lights the reversing lamps (at "vf <= 0.3" they flashed white every time the car
+           braked to a stop) */
+        reversing = (c->ctl & 0x20000u) && c->drive < 0.0f && vf < -LIGHT_REVERSE_V;
+        braking = !reversing && (c->brake < 0.0f || (fabsf(vf) > 0.3f && c->drive * vf < 0.0f)
+                                 || ((c->ctl & 0x20000u) && c->drive < 0.0f));
+        if (i == 0 && getenv("BR_LIGHT_LAMPLOG"))
+            fprintf(stderr, "lamplog: t %u w %d vf %.3f drive %.1f brake %.1f ctl %08x braking %d reversing %d\n",
+                    now, w, vf, c->drive, c->brake, c->ctl, braking, reversing);
         for (j = 0; j < 4 && k < max; j++) {
             /* lamp j: 0 front left, 1 front right, 2 rear left, 3 rear right, in the
                model's frame (x forward, y its second row, z up) */

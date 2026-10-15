@@ -222,10 +222,7 @@ static void metalfx_upscale(id<MTLDevice> dev)
     float S[16], vp[16], e[3] = { 0, 0, 5 }, t[3] = { 50, 0, 0 }, xft[4] = { 2.0f / 640.0f, -1.0f, -2.0f / 480.0f, 1.0f };
     int k, up = 0;
     float d = brr_taa_scale(dev, tw, th, 0.0f, &up);
-    {   /* the lit 3D's budget, 1920 x 1080 of pixels (brr_metal_taa.m BRR_LIT_BUDGET) */
-        float want = sqrtf(1920.0f * 1080.0f / (3024.0f * 1964.0f));
-        check(fabsf(d - want) < 1e-4f && up, "default scale on a 3024x1964 target: the 1920 x 1080 budget", "%.4f (want the budget's), through MetalFX %.0f", d, up);
-    }
+    check(d == 1.0f && !up, "default scale on a 3024x1964 target: its own pixels, no upscaling", "%.4f, through MetalFX %.0f", d, up);
     d = brr_taa_scale(dev, 1920, 1080, 0.0f, &up);
     check(d == 1.0f && !up, "scale on a 1920x1080 target (2.1 MP)", "%.2f, through MetalFX %.0f", d, up);
     camvp(e, t, 1.0f, (float)tw / th, vp);
@@ -258,7 +255,7 @@ static void metalfx_upscale(id<MTLDevice> dev)
             rp.depthAttachment.storeAction = MTLStoreActionStore;
             [[cb renderCommandEncoderWithDescriptor:rp] endEncoding];
             brr_taa_begin(dev, xt, 0, 1, lw, lh, NULL);
-            out = brr_taa_resolve(dev, cb, hdr, gpos, dep, S, vp, e, tw, th, 1);
+            out = brr_taa_resolve(dev, cb, hdr, gpos, nil, dep, S, vp, e, NULL, tw, th, 1);
             [cb commit];
             [cb waitUntilCompleted];
             if (cb.status != MTLCommandBufferStatusCompleted)
@@ -390,6 +387,37 @@ int main(void)
             }
             check(ok && errs < 0.05, "sky directions through last frame's camera (at infinity vs 1e7 out: 1e5 has 0.06 px of parallax between the cameras)", "max error %.4f px (limit %.2f)", errs, 0.05);
         }
+        {   /* a car's pixel carried back by its own rigid motion (brr_taa_carprev): a car turned 7 degrees
+               and moved 1.4 m between the frames; a point on its body found where that body point was,
+               one off its box left as static world, a car with no last frame giving no history */
+            float c[2][8][4], th0 = 0.3f, th1 = 0.3f + 0.12217305f, P0[3] = { 100, 50, 2 }, P1[3] = { 101.2f, 50.7f, 2.05f };
+            float lp[3] = { 1.3f, -0.6f, 0.4f }, w1[3], w0[3], o[3], err = 0.0f, far[3] = { 0, 0, 0 };
+            int a, r1, r2, r3;
+            memset(c, 0, sizeof c);
+            for (a = 0; a < 2; a++) {   /* car 0 moving, car 1 parked at the origin with no last frame */
+                float t = a ? 0.0f : th1, *p = a ? far : P1;
+                c[a][0][0] = cosf(t); c[a][0][1] = sinf(t); c[a][1][0] = -sinf(t); c[a][1][1] = cosf(t); c[a][2][2] = 1;
+                c[a][0][3] = p[0]; c[a][1][3] = p[1]; c[a][2][3] = p[2];
+                c[a][3][0] = cosf(th0); c[a][3][1] = sinf(th0); c[a][4][0] = -sinf(th0); c[a][4][1] = cosf(th0); c[a][5][2] = 1;
+                c[a][3][3] = P0[0]; c[a][4][3] = P0[1]; c[a][5][3] = P0[2];
+                c[a][6][0] = -2.1f; c[a][6][1] = -0.9f; c[a][6][2] = 0.0f; c[a][6][3] = a ? 0.0f : 1.0f;
+                c[a][7][0] = 2.1f; c[a][7][1] = 0.9f; c[a][7][2] = 1.3f;
+            }
+            for (a = 0; a < 3; a++) {
+                w1[a] = P1[a] + c[0][0][a] * lp[0] + c[0][1][a] * lp[1] + c[0][2][a] * lp[2];
+                w0[a] = P0[a] + c[0][3][a] * lp[0] + c[0][4][a] * lp[1] + c[0][5][a] * lp[2];
+            }
+            r1 = brr_taa_carprev((const float (*)[8][4])c, 2, w1, o);
+            for (a = 0; a < 3; a++)
+                err = fmaxf(err, fabsf(o[a] - w0[a]));
+            check(r1 == 1 && err < 1e-4f, "a car's point carried back by its own motion lands on its body point last frame", "max error %.2g m (limit %.0g)", err, 1e-4);
+            {
+                float off[3] = { w1[0] + 30.0f, w1[1], w1[2] }, park[3] = { 0.5f, 0.2f, 0.6f };
+                r2 = brr_taa_carprev((const float (*)[8][4])c, 2, off, o);
+                r3 = brr_taa_carprev((const float (*)[8][4])c, 2, park, o);
+                check(r2 == 0 && r3 == -1, "off every car's box: static world (0); in a car with no last frame: no history (-1)", "%.0f, %.0f", r2, r3);
+            }
+        }
         /* (3) variance clipping */
         {
             float lo[3] = { 0.2f, -0.05f, -0.05f }, hi[3] = { 0.6f, 0.05f, 0.05f }, ghost[3] = { 2.0f, 0.3f, 0.0f }, good[3] = { 0.4f, 0.01f, -0.02f }, o[3];
@@ -474,3 +502,4 @@ int main(void)
         return fails != 0;
     }
 }
+
