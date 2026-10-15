@@ -85,7 +85,7 @@ void host_window_close(void);
 /* 1 while any of the window can be seen (not minimised, hidden or covered) */
 int  host_window_visible(void);
 /* 1: the window keeps the game's shape as it is resized (the original's
- * 4:3); 0: any shape (BR_FLAG_ANY_ASPECT) */
+ * 4:3); 0: any shape */
 void host_window_lock_aspect(int lock);
 /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
 int  host_poll_event(host_event *ev, uint32_t wait_ms);

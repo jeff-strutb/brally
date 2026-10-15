@@ -42,10 +42,9 @@ MAXGAP = 0x1000
 # buffers the original uses well past their declared type: the frame's two
 # display lists, 96000 bytes each from +0x200 (BrFrameBeginDl, BrFrameEnd)
 EXTENT = {0x106B80A8: 0x200 + 2 * 96000}
-# tables the core extends past the original's (the key table's port-only
-# Toggle Remaster entry): their own storage, so the extra entry does not
-# land on the original's next globals
-OWN = {'g_aKeyEnt0AAAD0', 'g_brBindAAAD4'}
+# tables the core extends past the original's: their own storage, so an
+# extra entry does not land on the original's next globals
+OWN = set()
 BLOCK = re.compile(r'^BR_BLOCK\((?P<first>[0-9A-F]{8}), (?P<head>0x[0-9A-F]+), (?P<len>0x[0-9A-F]+)\);', re.M)
 BLOCK_AT = re.compile(r'^BR_BLOCK_AT\((?P<base>[0-9A-F]{8}), (?P<name>\w+), (?P<off>0x[0-9A-F]+)\);\s*/\*\s*0x(?P<va>[0-9A-Fa-f]{8})', re.M)
 

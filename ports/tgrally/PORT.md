@@ -119,60 +119,15 @@ Saves are a Controller Pak in port 1, kept in
 | L, R | shoulders (right trigger is R too) | Q, W or E |
 | START | menu | Escape or P |
 | D-pad | d-pad | |
-| (Original / Remastered) | View | Tab |
 
-Two profiles, as the Boss Rally port has (`platform/include/tgr_view.h`):
-**Remastered** (the default) and **Original**, switched in play with Tab or the
-controller's View button (the one button the N64 pad has no use for);
-`TGR_PROFILE=original` starts in the other, `TGR_FLAG_<NAME>=0|1` overrides one
-flag. Remastered lets the window take any shape: a race then fills it at the
-window's own resolution, each view's lens widened to the window's shape (Hor+
-when wider than 4:3, Vert+ when taller) and its culling wedge with it
-(`drawing/frameloop.c`, only for the race's views, `racing/racetick.c`); the
-rear-view mirror keeps its shape at the top centre, and the HUD keeps its
-shape at the edges it sat by, each gauge or line of text moved as one
-(`gfx/rcp.c`, the Boss Rally port's placement). Menus, the car select and the
-paint shop stay 4:3, centred. Original keeps the window and the picture at
-the N64's 4:3. View > Enter Full Screen (Ctrl-Cmd-F). In the background the
-game is paused: the N64's clock stops. Without a window, `TGR_WINDOW=WxH`
-stands in for one (screenshots).
+The picture is the N64's 4:3, the window held at that shape. View > Enter
+Full Screen (Ctrl-Cmd-F). In the background the game is paused: the N64's
+clock stops.
 
-**iPhone.** The iPhone app is Top Gear Rally Remastered's (`ports/remastered/ios`,
-`ports/remastered/README.md`): this game and Boss Rally's engine under one
-Swift host, with touch controls. It replaced `ports/tgrally/ios` on 2026-10-12.
-The menus name their tap targets as they draw (port lines in `src/`, `platform/os/touch.c`);
-`TGR_TOUCHLOG=1` logs each tap and what it met.
-
-**Boss Rally's races** (`TGR_FLAG_BR_RACES`, Remastered; only where the
-host carries Boss Rally: Top Gear Rally Remastered, `ports/remastered`). The menus are Top Gear Rally's; each race the
-player starts is run by Boss Rally's engine, whose tracks are the N64 track
-images (`host_race.h`). At `BrRaceTick`'s first call `src/racing/handoff.c`
-hands over the race the menus chose (the courses numbered alike, mirrors at
-+5 here and +6 there; the car, the weather, the tires, the suspension and
-the transmission alike in both; Boss Rally has no handling choice), and
-waits; `ports/brally/platform/common/race_handoff.c` starts it from Boss
-Rally's menus the way its attract demo does, the countdown at once, and
-leaves the replay. The outcome comes back as the race's own end leaves it
-(place, total, each lap, the best lap, the lap and course records) and
-through `BrRaceResultSave`/`BrRaceResultRestore` to the results screen, so
-a championship round's points, place, the season and its unlocks follow as
-from the N64's race. Not handed over: two players (Boss Rally races one
-locally), the demos, the season-end ceremony. Not carried back: the instant
-replay and a Time Attack ghost (each an input recording for its own
-engine's physics). Boss Rally boots at the first race and waits at its
-menus between races; while it races it has the screen, the sound, the
-events, the pad and the touch (its pause menu reads the keyboard: on the
-iPhone a swipe is an arrow key, a tap Return, two fingers Escape), its "quit game" ends only the
-race. The music is this game's: the track's own (`BrMusicLoadTrack`), its
-mixer playing on while the game thread waits on a message queue for the
-race (the other engine runs on a host thread); the host mixes it with Boss
-Rally's effects (`ports/remastered/platform/mux.c`, those taken from 44.1 kHz
-to this game's 48 kHz). Boss Rally's CD music is not in the app.
-Checks: `BR_HANDOFF_TEST=mode,track,mirrored,weather,laps,car[;...]` runs
-Boss Rally's races alone (headless: `build/brally/null-null/brally64`, the
-autopilot driving; in the app it starts in front), `BR_HANDOFF_AUTOPILOT=1`
-lets the autopilot drive the races Top Gear Rally hands over, and
-`TGR_HANDOFF_FAKE=place,total,best` stands in for the other engine here.
+**Top Gear Rally Remastered** (`ports/remastered`, its `README.md`) builds
+this port with its own files and changes over it (`ports/remastered/tree.sh`):
+a race that fills a window of any shape, Boss Rally's engine running the
+races, the iPhone's touch controls. None of that is here.
 
 Time is the console's: 60 retraces a second against the wall clock, the
 N64's count advancing exactly a retrace's worth (781,250) each, and audio

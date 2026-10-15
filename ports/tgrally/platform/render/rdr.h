@@ -10,9 +10,7 @@
  * rules), and screen rectangles.
  *
  * Coordinates are the N64's framebuffer pixels (fb_w x fb_h, the colour
- * image's size); a renderer scales them to its output, keeping that shape
- * (fb_w x fb_h is 4:3, or the window's shape when a race fills the window:
- * gfx/rcp.c). */
+ * image's size); a renderer scales them to its output, keeping that shape. */
 #ifndef TGR_RDR_H
 #define TGR_RDR_H
 #include <stdint.h>

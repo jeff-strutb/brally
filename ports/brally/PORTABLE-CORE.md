@@ -2,10 +2,11 @@
 
 Status: done as planned (2026-10-03). The core builds and plays on macOS
 (Metal or Vulkan) and builds for Windows (Vulkan), and matches the macOS
-32-bit lane (`ports/brally-wasm/wasm/`) tick for tick under `BR_VCLOCK`. That lane
-stays the home of the Remastered lighting, car, skies and music until they
-move over. The README's "Native port" section describes the result; this
-file is the design it was built to.
+32-bit lane (`ports/brally-wasm/wasm/`) tick for tick under `BR_VCLOCK`. The
+README's "Native port" section describes the result; this file is the design
+it was built to. The Remastered lighting, the widescreen race and the races
+run for Top Gear Rally's menus live in `ports/remastered` (its `tree.sh`
+lays them over this port), not here.
 
 ## Goal
 
@@ -99,8 +100,7 @@ Each OS's platform layer implements it.
    through one accessor.
 5. **Link and platform layer.** Move `ports/brally-wasm/wasm/host` and `native`
    from guest memory to real pointers behind `win32.h` and the Glide API.
-   Metal first. The renderer interface stays neutral between graphics APIs,
-   and Remastered shaders have one source translated per API.
+   Metal first. The renderer interface stays neutral between graphics APIs.
 6. **Lockstep.** Run the core and the 32-bit lane under `BR_VCLOCK` from the
    same inputs and compare game state every tick. The 32-bit lane retires
    when every script and attract sequence matches.

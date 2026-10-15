@@ -29,6 +29,9 @@ targets:
       - path: skies
         type: folder
         buildPhase: resources
+      - path: music
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.strutb.tgrally
@@ -36,7 +39,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/../../../ports/remastered/ios/Sources/Bridge.h"
-        HEADER_SEARCH_PATHS: "$(SRCROOT)/../../../ports/brally/platform/host $(SRCROOT)/../../../ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/tree/ports/brally/platform/host $(SRCROOT)/tree/ports/tgrally/platform/include $(SRCROOT)/../../../ports/remastered/platform"   # the ports as Remastered builds them (link.sh, tree.sh)
         LIBRARY_SEARCH_PATHS: "$(SRCROOT)"
         OTHER_LDFLAGS: "-lgames -lz -lc++"
         "OTHER_LDFLAGS[sdk=iphoneos*]": "-lgames -lz -lc++ -weak_framework MetalFX"   # the Simulator's SDK has no MetalFX (brr_metal_taa.m builds without it)

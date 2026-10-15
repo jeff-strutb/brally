@@ -8,7 +8,6 @@
 #include <strings.h>
 
 #include "plat.h"
-#include "br_flags.h"
 
 /* ---- classes and windows ------------------------------------------------------- */
 typedef struct pclass { char name[64]; WNDPROC proc; } pclass;
@@ -78,7 +77,7 @@ HWND WINAPI CreateWindowExA(DWORD ex, LPCSTR cls, LPCSTR title, DWORD style, int
     if (!s_main) {
         s_main = w;
         host_window_open(cx > 0 ? cx : 640, cy > 0 ? cy : 480, title);
-        host_window_lock_aspect(!plat_flag(BR_FLAG_ANY_ASPECT));
+        host_window_lock_aspect(1);
     }
     memset(&cs, 0, sizeof cs);
     cs.lpCreateParams = param;

@@ -1,0 +1,27 @@
+--- a/src/core/controls/br_inputpoll.c
++++ b/src/core/controls/br_inputpoll.c
+@@ -92,6 +92,7 @@
+  */
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "pause_options.h"   /* Remastered: the paused presses kept */
+ #include "br_coretypes.h"   /* br_globals: its objects */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include "slice1_10.h"   /* br_globals: its objects */
+@@ -354,6 +355,8 @@
+         } else {
+             (*(int32_t *)&DAT_10226a50) = 1;
+             (*(int32_t *)&g_BrX18ABAD0) = 0x4000;
++            if (g_BrX06909B4 != 0)
++                rm_pause_note(0x4000);   /* Remastered (pause_options.h) */
+             return 0x4000;
+         }
+     }
+@@ -544,6 +547,7 @@
+         if (BrInputJustPressed(1))  flags |= 2;
+         if (BrInputJustPressed(2))  flags |= 4;
+         (*(int32_t *)&g_BrX18ABAD0) = flags;
++        rm_pause_note(flags);     /* Remastered: kept until the race step reads them (pause_options.h) */
+         return flags;
+     }
+ 

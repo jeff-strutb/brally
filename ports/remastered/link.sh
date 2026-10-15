@@ -2,7 +2,9 @@
 # Link Top Gear Rally Remastered: Top Gear Rally's menus with Boss Rally's
 # engine running the races, one executable over one host (README.md).
 #   the games:  Top Gear Rally (ports/tgrally/link.sh) and Boss Rally
-#               (ports/brally/link64.sh), each built as a library (HOST=lib) and
+#               (ports/brally/link64.sh) as Remastered changes them (tree.sh:
+#               the two ports, its own files over them, its patches applied,
+#               in OUT/tree), each built there as a library (HOST=lib) and
 #               linked into one object with its own thunks to the host
 #               (platform/thunks.c) and only its entry points global: the two
 #               share some hundred function names
@@ -27,7 +29,8 @@ OUT=${OUT:-build/remastered/$HOST-$RENDER}
 case "$OUT" in build/*) ;; *) echo "link: OUT must be under build/ (got $OUT)" >&2; exit 2;; esac
 CC=${CC:-clang}
 R=ports/remastered/platform
-H=ports/brally/platform/host
+T=$OUT/tree                           # the two ports as Remastered builds them (tree.sh)
+H=$T/ports/brally/platform/host
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OS=windows;;
   *apple*|*darwin*)  OS=macos;;
@@ -41,10 +44,13 @@ case "$HOST" in
   *) echo "link: unknown HOST $HOST" >&2; exit 2;;
 esac
 mkdir -p $OUT/plat
+case "$CC" in /*|*/*) CC=$(cd "$(dirname "$CC")" && pwd)/$(basename "$CC");; esac   # (the ports' scripts run in the tree)
 
 # ---- the two games, as libraries ----------------------------------------------------
-OUT=$OUT/tgrally HOST=lib RENDER=$RENDER CC=$CC ports/tgrally/link.sh
-OUT=$OUT/brally HOST=lib RENDER=$RENDER CC=$CC ports/brally/link64.sh
+ports/remastered/tree.sh make $T
+LIB=build/lib                         # under the tree
+OUT=$LIB/tgrally HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
+OUT=$LIB/brally HOST=lib RENDER=$RENDER CC=$CC $T/ports/brally/link64.sh
 
 # ---- each as one object: its thunks in, only its entry points global ----------------
 XFLAGS=
@@ -69,12 +75,15 @@ lump() {   # lump NAME LIB ENGINE SYMBOLS...
     rm -rf $d
 }
 # (and what a touch host asks of each: ios/Sources/Bridge.h)
-lump tgrally $OUT/tgrally/libtgrally.a tgr tgr_main tgr_race_engine tgr_flag \
-    tgr_view_driving tgr_touch_tap tgr_touch_swipe tgr_touch_press tgr_audio_lowpass tgr_race_speed
-lump brally $OUT/brally/libbrally.a br br_main br_race_serve br_race_run br_race_driving br_race_key
+# (and the Remaster Options': options.c, mux.c)
+lump tgrally $T/$LIB/tgrally/libtgrally.a tgr tgr_main tgr_race_engine tgr_flag tgr_flag_set \
+    tgr_view_driving tgr_touch_tap tgr_touch_swipe tgr_touch_press tgr_audio_lowpass tgr_race_speed \
+    tgr_music_mute
+lump brally $T/$LIB/brally/libbrally.a br br_main br_race_serve br_race_run br_race_driving br_race_key \
+    br_race_tap br_race_click br_flag_set br_music_gain br_effects_quiet br_music_volume
 
 # ---- the host and the process -----------------------------------------------------------
-SRCS="$R/mux.c $R/main.c"
+SRCS="$R/mux.c $R/main.c $R/options.c"
 case $OS in
   windows) SRCS="$SRCS $H/win32/host_win32.c"; EXE=.exe; LDXX=${LDCXX:-x86_64-w64-mingw32-g++}
            OSLIBS="-static -lws2_32";;
@@ -97,7 +106,7 @@ if [ "$RENDER" = vulkan ]; then
     # vulkan-1.dll through an import library made from the functions both
     # renderers call (no Vulkan SDK needed to build)
     { echo "LIBRARY vulkan-1.dll"; echo "EXPORTS"
-      cat ports/tgrally/platform/render/vulkan/rdr_vulkan.c ports/brally/platform/render/vulkan/brr_vulkan.c |
+      cat $T/ports/tgrally/platform/render/vulkan/rdr_vulkan.c $T/ports/brally/platform/render/vulkan/brr_vulkan.c |
         grep -o 'vk[A-Z][A-Za-z0-9]*(' | tr -d '(' | sort -u; } > $OUT/vulkan-1.def
     x86_64-w64-mingw32-dlltool -d $OUT/vulkan-1.def -l $OUT/libvulkan-1.a
     VKLIBS="-L$OUT -lvulkan-1"
@@ -112,6 +121,8 @@ for s in $SRCS; do
   case "$s" in *.m) X="-x objective-c -fobjc-arc";; *) X=;; esac
   [ "$HOST" = ios ] && [ "$s" = $R/main.c ] && X=-Dmain=rm_main     # UIKit owns main()
   # the host and the multiplexer see the real system headers, not either game's
+  # (the options see each game's switches: tgr_view.h, br_flags.h)
+  [ "$s" = $R/options.c ] && X="-I$T/ports/tgrally/platform/include -I$T/ports/brally/platform/include"
   $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall $X -I$H -I$R $XFLAGS -c "$s" -o "$o"
   OBJS="$OBJS $o"
 done

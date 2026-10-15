@@ -7,6 +7,7 @@
 #   Contents/MacOS/remastered            the two games and the host
 #   Contents/Resources/disc              Boss Rally's data track, less the installer and the video
 #   Contents/Resources/skies             the lighting's skymaps: skies.txt and its 8K HDRIs (ports/common/skies)
+#   Contents/Resources/music/cd          Boss Rally's CD audio, the PC's music (music.sh)
 #   Contents/Resources/AppIcon.icns      from icon.png
 #
 # Saves go to ~/Library/Application Support/Top Gear Rally Remastered (Boss
@@ -14,8 +15,8 @@
 #
 # Usage: ports/remastered/package_app.sh [--rom FILE] [--bin FILE] [--no-build]
 #   --rom FILE  Top Gear Rally's ROM (default: $TGR_ROM, else reference/tgrally/Top Gear Rally (USA).z64)
-#   --bin FILE  Boss Rally's disc image, when its data track is not already extracted
-#               (default reference/brally/BossRally.BIN)
+#   --bin FILE  Boss Rally's disc image, when its data track or its CD audio is not
+#               already extracted (default reference/brally/BossRally.BIN; the .cue beside it)
 set -e
 cd "$(dirname "$0")/../.."
 BUILD=1
@@ -57,6 +58,9 @@ rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*
     --exclude 'BRD3D.dll' --exclude 'SETUP.INI' --exclude 'setup.*' --exclude 'Setup.BMP' \
     --exclude 'Autorun.inf' --exclude '*.url' --exclude 'layout.bin' \
     $DISC/ "$APP/Contents/Resources/disc/"
+
+# ---- the PC's music: Boss Rally's CD audio (host_music_dir: Resources/music/cd) ------
+BIN=$BIN ports/remastered/music.sh "$APP/Contents/Resources/music/cd"
 
 # ---- the skymaps (the Remastered lighting's skies, ports/common/skies) ---------------
 if [ -f ports/common/skies/skies.txt ]; then   # ports/common/skies/fetch.sh brings them

@@ -75,6 +75,13 @@ rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*
     $DISC/ $OUT/disc/
 fi
 
+# ---- the PC's music: Boss Rally's CD audio, FLAC (Sources/Host.swift host_music_dir) --
+if [ -n "$PAYLOAD" ]; then
+    rm -rf $OUT/music && mkdir -p $OUT/music/cd         # the builder fills it
+else
+    BIN=$BIN ports/remastered/music.sh $OUT/music/cd
+fi
+
 # ---- the lighting's skies: skies.txt and its 4K maps (ports/common/skies/fetch.sh 4k) --
 # 8K maps (2.9 GB) are the Mac's; a phone takes the 4K ones, a 1024 cube a face
 rm -rf $OUT/skies

@@ -52,18 +52,16 @@ func hostGameDir() -> UnsafePointer<CChar>? { UnsafePointer(discDir) }
 @_cdecl("host_resource_dir")
 func hostResourceDir() -> UnsafePointer<CChar>? { UnsafePointer(resourceDir) }
 
-/// The CD's audio tracks are not in the app (the music under a race is Top Gear Rally's).
+/// Boss Rally's CD audio tracks, in the app (the PC's music of the Remaster
+/// Options); none when the build had no disc's audio to give it. Decoded by
+/// Streams.m (host_stream_*).
+private let musicDir: UnsafeMutablePointer<CChar>? = {
+    let p = (Bundle.main.resourcePath ?? ".") + "/music/cd"
+    return FileManager.default.fileExists(atPath: p + "/track02.flac") ? strdup(p) : nil
+}()
+
 @_cdecl("host_music_dir")
-func hostMusicDir() -> UnsafePointer<CChar>? { nil }
-
-@_cdecl("host_stream_open")
-func hostStreamOpen(_ path: UnsafePointer<CChar>?, _ rate: Int32) -> OpaquePointer? { nil }
-
-@_cdecl("host_stream_read")
-func hostStreamRead(_ s: OpaquePointer?, _ lr: UnsafeMutablePointer<Float>?, _ frames: Int32) -> Int32 { 0 }
-
-@_cdecl("host_stream_close")
-func hostStreamClose(_ s: OpaquePointer?) {}
+func hostMusicDir() -> UnsafePointer<CChar>? { musicDir.map { UnsafePointer($0) } }
 
 @_cdecl("host_shutdown")
 func hostShutdown() { hostAudioClose() }

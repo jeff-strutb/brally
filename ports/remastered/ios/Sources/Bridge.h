@@ -21,3 +21,5 @@ float tgr_race_speed(void);
 /* Boss Rally, running a race (platform/common/race_handoff.c) */
 int  br_race_driving(void);
 void br_race_key(int key);              /* BR_KEY_*: its pause menu */
+/* a tap at nx, ny (0..1 across the game's screen): a pause menu row, else Return */
+void br_race_tap(float nx, float ny);

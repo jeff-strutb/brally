@@ -3,8 +3,7 @@
 # the user's BRGlide.dll (tools/brally/datalift.py, generated under build/), and
 # the platform layer for one host.
 #   env: HOST   null (default, headless) | macos | windows | lib (a static library,
-#               libbrally.a, for an app that brings its own host: ports/remastered,
-#               desktop and iPhone; main() is br_main)
+#               libbrally.a, for an app that brings its own host; main() is br_main)
 #        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
 #               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
 #               on macOS it runs on MoltenVK)
@@ -25,7 +24,7 @@ case "$OUT" in build/*) ;; *) echo "link64: OUT must be under build/ (got $OUT)"
 export OUT
 CC=${CC:-clang}
 P=ports/brally/platform
-PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common -I$P/light"
+PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common"
 case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
 mkdir -p $OUT/plat
 
@@ -43,18 +42,10 @@ python3 ports/brally/tools/datalift.py ${DLL:+--dll "$DLL"} $([ "${IMAGE:-embed}
 ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 # the script commands that read the game (core types, so core flags)
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
-# races run for another game's menus (host_race.h): core types too
-ports/brally/build64.sh ports/brally/platform/common/race_handoff.c | grep -v "^OK" >&2 || true
-# what the lighting reads of the game (platform/light): core types too
-ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
-      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/flags.c $P/common/glide.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \
-      $P/light/light_bvh.c $P/light/light_sky.c $P/light/light_smooth.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
-# the track's ray-tracing world on the GPU (brr_metal_rt.h)
-[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m $P/render/metal/brr_metal_gi.m $P/render/metal/brr_metal_taa.m $P/render/metal/brr_metal_refl.m $P/render/metal/brr_metal_env.m $P/render/metal/brr_metal_vsm.m"
-# the volumetric fog's passes (brr_metal_vol.h)
-[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_vol.m"
+      $P/common/win_mm.c $P/common/win_rsrc.c $P/common/dx.c $P/common/dsound.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/glide.c $P/common/data_image.c \
+      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
@@ -77,12 +68,12 @@ fi
 case "$HOST" in
   null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
          # Metal without a window: frames drawn offscreen (shots, measurements)
-         [ "$RENDER" = metal ] && LIBS="-framework Metal -weak_framework MetalFX -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
+         [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
   windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
            LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
-  lib)   SRCS="$SRCS $OSHOST";;                  # the app's own (ports/remastered)
+  lib)   SRCS="$SRCS $OSHOST";;                  # the app's own
   macos) SRCS="$SRCS $OSHOST $P/host/macos/host_macos.m"
-         LIBS="-framework Cocoa -framework Metal -weak_framework MetalFX -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
+         LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
 esac
 OBJS=""
 for s in $SRCS; do

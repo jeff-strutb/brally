@@ -1,0 +1,51 @@
+--- a/platform/common/audio.c
++++ b/platform/common/audio.c
+@@ -30,11 +30,23 @@
+ static int s_out;                                /* -1 failed, 0 not tried, 1 running */
+ static void cd_mix(float *lr, int n);
+ 
++/* Top Gear Rally Remastered (ports/remastered/platform/mux.c): the CD at a
++ * gain of its own, moved to over half a second (0 while the N64's music
++ * plays), and only the CD heard while the game waits behind Top Gear Rally's
++ * menus (its music theirs when the PC's is chosen) */
++static volatile float s_rm_want = 1.0f;
++static float s_rm_gain = 1.0f;
++static volatile int s_rm_quiet;
++void  br_music_gain(float g) { s_rm_want = g < 0 ? 0 : g; }
++void  br_effects_quiet(int on) { s_rm_quiet = on; }
++float br_music_volume(void);
++
+ static void mix(float *lr, int n, void *user)
+ {
+     (void)user;
+     memset(lr, 0, (size_t)n * 2 * sizeof *lr);
+-    plat_dsound_mix(lr, n);
++    if (!s_rm_quiet)
++        plat_dsound_mix(lr, n);
+     cd_mix(lr, n);
+     {   /* BR_LOG: once a second, what is sounding and how loud */
+         static int acc;
+@@ -183,9 +195,13 @@
+         return;
+     cdlock();
+     if (s_track && !s_paused) {
++        const float step = 1.0f / (0.5f * OUT_RATE), want = s_rm_want;
+         for (i = 0; i < n && s_rd != s_wr; i++) {
+-            lr[2 * i] += s_ring[2 * s_rd] * s_vol;
+-            lr[2 * i + 1] += s_ring[2 * s_rd + 1] * s_vol;
++            float k;
++            s_rm_gain += s_rm_gain < want ? fminf(step, want - s_rm_gain) : -fminf(step, s_rm_gain - want);
++            k = s_vol * s_rm_gain;
++            lr[2 * i] += s_ring[2 * s_rd] * k;
++            lr[2 * i + 1] += s_ring[2 * s_rd + 1] * k;
+             s_rd = (s_rd + 1) % RING;
+         }
+         if (s_rd == s_wr && s_feeding_done) {
+@@ -272,6 +288,7 @@
+ }
+ 
+ int plat_cd_current(void) { return s_track; }
++float br_music_volume(void) { return s_vol; }     /* the game's music volume, 0..1 (Remastered) */
+ int plat_cd_playing(void) { return s_track != 0 && !s_paused; }
+ 
+ /* from the message pump: a play that has ended tells its backend */

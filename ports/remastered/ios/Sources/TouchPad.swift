@@ -19,11 +19,13 @@
 // Elsewhere (menus, the pause menu) a tap or a swipe goes to the game's
 // targets (platform/os/touch.c): tap an item, a row, an arrow or a button
 // prompt; swipe to move, the content following the finger. Boss Rally's
-// pause menu reads the keyboard: a swipe is an arrow key (the same way
-// round), a tap Return.
+// pause menu: a tap on a row chooses it, a choice on the Remaster Options
+// page sets it (br_race_tap); a swipe is an arrow key (the same way round).
 //
-// Anywhere, a tap with two fingers is START (pause), and a tap with three
-// steps the sound's low-pass filter (AudioFilter), its setting shown a moment.
+// While a race is driven, the pause button at the top centre (two bars)
+// pauses it. Anywhere, a tap with two fingers is START (pause), and a tap
+// with three steps the sound's low-pass filter (AudioFilter), its setting
+// shown a moment.
 
 import UIKit
 
@@ -99,6 +101,7 @@ final class TouchSurface: UIView {
     private let wheel = WheelView(frame: CGRect(x: 0, y: 0, width: TouchPad.wheelSize, height: TouchPad.wheelSize))
     private let pedal = PedalView(frame: CGRect(x: 0, y: 0, width: 84, height: 128))
     private let note = UILabel()
+    private let pause = PauseButton(frame: CGRect(x: 0, y: 0, width: 56, height: 44))
     private var link: CADisplayLink?
 
     /// The game in front at the last screen refresh: when the other comes
@@ -120,6 +123,9 @@ final class TouchSurface: UIView {
         note.layer.masksToBounds = true
         note.alpha = 0
         addSubview(note)
+        pause.isHidden = true
+        pause.addTarget(self, action: #selector(pausePressed), for: .touchUpInside)
+        addSubview(pause)
         link = CADisplayLink(target: self, selector: #selector(tick))
         link?.add(to: .main, forMode: .common)
     }
@@ -130,6 +136,17 @@ final class TouchSurface: UIView {
         super.layoutSubviews()
         let zone = bounds.width * TouchPad.brakeZone
         pedal.center = CGPoint(x: (zone * 0.5).rounded(), y: (bounds.height * 0.62).rounded())
+        let top = max(safeAreaInsets.top, 6)
+        pause.center = CGPoint(x: (gameFrame.width > 0 ? gameFrame.midX : bounds.midX).rounded(), y: (top + 24).rounded())
+    }
+
+    /// The pause button: the race's own pause, as Escape is on a keyboard.
+    @objc private func pausePressed() {
+        if Front.bossRally {
+            br_race_key(Int32(BR_KEY_ESCAPE))
+        } else {
+            tgr_touch_press(0x1000)                                     // START
+        }
     }
 
     /// The pedal is shown while a race is driven; a hand-over starts afresh.
@@ -140,6 +157,7 @@ final class TouchSurface: UIView {
         }
         let driving = TouchSurface.driving
         if pedal.isHidden == driving { pedal.isHidden = !driving }
+        if pause.isHidden == driving { pause.isHidden = !driving; setNeedsLayout() }
     }
 
     private var hasWheel: Bool { fingers.values.contains { $0.role == .wheel } }
@@ -264,12 +282,13 @@ final class TouchSurface: UIView {
     }
 
     private func tap(at p: CGPoint) {
+        guard gameFrame.width > 0, gameFrame.height > 0 else { return }
+        let nx = Float((p.x - gameFrame.minX) / gameFrame.width), ny = Float((p.y - gameFrame.minY) / gameFrame.height)
         if Front.bossRally {
-            br_race_key(Int32(BR_KEY_ENTER))
+            br_race_tap(nx, ny)
             return
         }
-        guard gameFrame.width > 0, gameFrame.height > 0 else { return }
-        tgr_touch_tap(Float((p.x - gameFrame.minX) / gameFrame.width), Float((p.y - gameFrame.minY) / gameFrame.height))
+        tgr_touch_tap(nx, ny)
     }
 
     func reset() {
@@ -384,4 +403,29 @@ final class PedalView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+}
+
+/// The pause button at the top centre while a race is driven: two bars.
+final class PauseButton: UIControl {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        let bars = CAShapeLayer()
+        let p = UIBezierPath()
+        for x in [21.0, 35.0] as [CGFloat] {
+            p.append(UIBezierPath(roundedRect: CGRect(x: x - 4, y: 10, width: 8, height: 24), cornerRadius: 2))
+        }
+        bars.path = p.cgPath
+        bars.fillColor = UIColor.white.cgColor
+        bars.shadowColor = UIColor.black.cgColor
+        bars.shadowOpacity = 0.6
+        bars.shadowRadius = 3
+        bars.shadowOffset = .zero
+        layer.addSublayer(bars)
+        alpha = 0.75
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var isHighlighted: Bool { didSet { alpha = isHighlighted ? 1 : 0.75 } }
 }

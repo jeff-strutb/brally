@@ -24,11 +24,6 @@ typedef struct brr_vertex {
     float oow;           /* 1/w, for perspective-correct texturing and fog */
     float r, g, b, a;    /* 0..255, as Glide gives them */
     float s, t;          /* texel coordinates already divided by w (sow, tow) */
-    /* the Remastered lighting (BR_FLAG_LIGHTING, platform/light): where the
-     * vertex is in the game's world, for a triangle of the camera's 3D view;
-     * lit 0 for everything else (2D, the mirror, the backdrop), which the
-     * lighting leaves as the game drew it */
-    float wx, wy, wz, lit;
 } brr_vertex;
 
 typedef struct brr_state {

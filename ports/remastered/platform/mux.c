@@ -18,12 +18,17 @@
  *             client area, shown while it is in front (a Vulkan swapchain
  *             owns the window it presents to)
  *   sound     one output at the first game's rate (Top Gear Rally's), each
- *             game's mixer added in, the other rate's resampled; Boss
- *             Rally's only while it is in front.  The music under a race is
- *             still Top Gear Rally's (src/racing/handoff.c), so Boss Rally
- *             is given no CD music
+ *             game's mixer added in, the other rate's resampled, a limiter
+ *             over the sum.  The music is the Remaster Options' (options.c,
+ *             mux_music): the N64's is Top Gear Rally's (src/racing/
+ *             handoff.c plays its course's piece under a race), the PC's
+ *             Boss Rally's CD (its front end's track under Top Gear Rally's
+ *             menus, a race's own pick under a race).  Boss Rally is heard
+ *             while it is in front, and its CD alone behind the menus when
+ *             the PC's music is chosen
  *   folders   the app's saves (main.c names the app), Boss Rally's in a
  *             folder of its own inside them */
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,9 +39,17 @@
 
 #include "host.h"
 #include "mux.h"
+#include "options.h"
 
 int tgr_flag(int flag);                 /* the Top Gear Rally object's (os/view.c) */
 #define TGR_FLAG_ANY_ASPECT 0           /* tgr_view.h */
+
+/* the two objects' music (link.sh exports them) */
+void  tgr_music_mute(int on);           /* platform/audio/mixer.c */
+void  br_music_gain(float g);           /* platform/common/audio.c */
+void  br_effects_quiet(int on);
+float br_music_volume(void);
+static void music_targets(int snap);
 
 static host_mutex *s_m;
 static host_cond *s_c;
@@ -99,6 +112,7 @@ void mux_front(int g)
                 qpush(was, &k);
             }
         s_front = g;
+        music_targets(1);               /* the other game's music at once, not faded */
     }
     host_cond_broadcast(s_c);
     host_mutex_unlock(s_m);
@@ -108,9 +122,9 @@ int mux_front_game(void) { return s_front; }
 
 /* ---- the window ----------------------------------------------------------------- */
 static int s_open;                      /* Top Gear Rally opened the real window */
+static int s_win_w = 1, s_win_h = 1;    /* the size it was opened at: the mouse's units */
 static volatile int s_visible;          /* the real window can be seen (read on its thread) */
-static int s_want_lock[MUX_COUNT] = { -1, -1 };
-static int s_lock = -1;                 /* what the real window was last told */
+static int s_freed;                     /* its shape left to the player */
 
 #ifdef _WIN32
 /* Boss Rally's child window: the size of the client area, shown while Boss
@@ -166,13 +180,15 @@ static void child_keep(void)
 }
 #endif
 
-/* on the window's thread, each time its loop polls: the front game's shape */
+/* on the window's thread, each time its loop polls.  The window is any shape
+ * the player makes it: either game's picture is fitted inside it (the races
+ * filling it with Widescreen on), so neither game's wish to lock its shape
+ * is passed on */
 static void window_keep(void)
 {
-    int want = s_want_lock[s_front];
-    if (want >= 0 && want != s_lock) {
-        host_window_lock_aspect(want);
-        s_lock = want;
+    if (s_open && !s_freed) {
+        host_window_lock_aspect(0);
+        s_freed = 1;
     }
     s_visible = host_window_visible();
 #ifdef _WIN32
@@ -180,21 +196,30 @@ static void window_keep(void)
 #endif
 }
 
+void rm_br_start(void);                 /* main.c */
+
 int mux_tgr_host_window_open(int width, int height, const char *title)
 {
     int r;
-    /* the Remastered profile's window is 16:9 (its race fills it; the menus
-       keep the N64's 4:3 inside) */
+    /* 16:9 with Widescreen on (a race fills it; the menus keep the N64's 4:3
+       inside), else the games' 4:3 */
     if (tgr_flag(TGR_FLAG_ANY_ASPECT))
         width = (height * 16 + 4) / 9;
     (void)title;                        /* the app's (main.c) */
     r = host_window_open(width, height, NULL);
     s_open = r;
+    s_win_w = width > 0 ? width : 1;
+    s_win_h = height > 0 ? height : 1;
     s_visible = host_window_visible();
 #ifdef _WIN32
     if (r)
         child_open();
 #endif
+    /* Boss Rally started behind the menus (the PC's music there is its front
+       end's), now that the window is the app's: its own opening of one finds
+       it there (headless, it starts at the first race) */
+    if (r)
+        rm_br_start();
     return r;
 }
 
@@ -210,8 +235,8 @@ void mux_br_host_window_close(void) {}
 int mux_tgr_host_window_visible(void) { return s_front == MUX_TGR && s_visible; }
 int mux_br_host_window_visible(void)  { return s_front == MUX_BR && s_visible; }
 
-void mux_tgr_host_window_lock_aspect(int lock) { s_want_lock[MUX_TGR] = lock != 0; }
-void mux_br_host_window_lock_aspect(int lock)  { s_want_lock[MUX_BR] = lock != 0; }
+void mux_tgr_host_window_lock_aspect(int lock) { (void)lock; }
+void mux_br_host_window_lock_aspect(int lock)  { (void)lock; }
 
 void *mux_tgr_host_window_handle(void) { return host_window_handle(); }
 void *mux_br_host_window_handle(void)
@@ -273,8 +298,16 @@ void *mux_br_host_win32_window(void)    { return mux_br_host_window_handle(); }
 #endif
 
 /* ---- events ----------------------------------------------------------------------- */
+void br_race_click(float nx, float ny);  /* race_handoff.c: Boss Rally's pause menu */
+
 static void route(const host_event *e)
 {
+    static int down;
+    if (e->type == HOST_EV_MOUSE) {     /* a click on Boss Rally's pause menu chooses */
+        if (e->buttons & 1 && !down && s_front == MUX_BR)
+            br_race_click((float)e->x / s_win_w, (float)e->y / s_win_h);
+        down = e->buttons & 1;
+    }
     host_mutex_lock(s_m);
     switch (e->type) {
     case HOST_EV_FOCUS:                 /* both pause in the background */
@@ -384,20 +417,93 @@ static void add_game(int g, float *lr, int n)
     }
 }
 
+/* ---- the music ---------------------------------------------------------------------- */
+/* The N64's music up to the PC's: Top Gear Rally mixes its music at its music
+ * table's top step (48 of 255, its effects 255) far under its effects.  Its
+ * five race pieces, as this mixer gets them under a race, measured -31.2,
+ * -32.8, -33.0, -29.8 and -28.3 LUFS integrated (EBU R128, 600 s each, peaks
+ * -17.2 dBFS at most); Boss Rally's eleven race tracks (CD 3..13) -15.52 LUFS
+ * by their energy's mean, the N64's -30.64: 15.12 dB, x5.70.  Top Gear Rally's
+ * whole output takes it, its menus' effects with its music, so the N64's own
+ * balance holds; its loudest piece then peaks at -2.1 dBFS. */
+#define N64_GAIN 5.70f
+#define FADE_S 0.5f                     /* a change of music crossfades over this */
+
+static volatile int s_music = RM_MUSIC_N64;
+static volatile float s_tgr_want = N64_GAIN;
+static float s_tgr_gain = N64_GAIN;     /* Top Gear Rally's output, moving to s_tgr_want */
+static float s_tgr_to = -1, s_tgr_step; /* where it is moving, and by how much a frame: there in FADE_S */
+
+/* who sounds the music now: Top Gear Rally's mixer and gain, Boss Rally's
+ * CD; snap: at once (a change of game in front), else crossfaded */
+static void music_targets(int snap)
+{
+    int race = s_front == MUX_BR, n64 = s_music == RM_MUSIC_N64;
+    /* the menus' N64 music, or nothing; under a race Top Gear Rally plays its
+       piece and the gain decides */
+    tgr_music_mute(!race && !n64);
+    br_music_gain(n64 ? 0.0f : 1.0f);
+    br_effects_quiet(!race);
+    s_tgr_want = race ? (n64 ? N64_GAIN : 0.0f) : N64_GAIN;
+    if (snap)
+        s_tgr_gain = s_tgr_want * (race ? br_music_volume() : 1.0f);
+}
+
+void mux_music(int which)
+{
+    s_music = which;
+    music_targets(0);
+}
+
+/* the sum's peaks held under full scale: unchanged to 0.9, then a smooth
+ * knee to 1 */
+static float limit(float x)
+{
+    float a = fabsf(x);
+    if (a <= 0.9f)
+        return x;
+    a = 0.9f + 0.1f * tanhf((a - 0.9f) / 0.1f);
+    return x < 0 ? -a : a;
+}
+
 static void mix(float *lr, int frames, void *user)
 {
+    float *out = lr;
+    int all = frames, i;
     (void)user;
     memset(lr, 0, sizeof(float) * 2 * (size_t)frames);
     while (frames > 0) {
         int n = frames < CHUNK ? frames : CHUNK, g;
         for (g = 0; g < MUX_COUNT; g++) {
-            if (!s_a[g].fn || (g == MUX_BR && s_front != MUX_BR))
-                continue;               /* Boss Rally is silent between races */
+            if (!s_a[g].fn)
+                continue;
+            if (g == MUX_BR && s_front != MUX_BR && s_music != RM_MUSIC_PC)
+                continue;               /* Boss Rally is silent between races, but for its CD */
+            if (g == MUX_TGR) {         /* Top Gear Rally at its gain */
+                static float tmp[2 * CHUNK];
+                /* under a race the N64's music follows Boss Rally's music volume, as its CD does */
+                float want = s_tgr_want * (s_front == MUX_BR ? br_music_volume() : 1.0f), step;
+                if (want != s_tgr_to) {
+                    s_tgr_to = want;
+                    s_tgr_step = fabsf(want - s_tgr_gain) / (FADE_S * (float)s_rate);
+                }
+                step = s_tgr_step;
+                memset(tmp, 0, sizeof(float) * 2 * (size_t)n);
+                add_game(g, tmp, n);
+                for (i = 0; i < n; i++) {
+                    s_tgr_gain += s_tgr_gain < want ? fminf(step, want - s_tgr_gain) : -fminf(step, s_tgr_gain - want);
+                    lr[2 * i] += tmp[2 * i] * s_tgr_gain;
+                    lr[2 * i + 1] += tmp[2 * i + 1] * s_tgr_gain;
+                }
+                continue;
+            }
             add_game(g, lr, n);
         }
         lr += 2 * n;
         frames -= n;
     }
+    for (i = 0; i < 2 * all; i++)
+        out[i] = limit(out[i]);
 }
 
 static int audio_open(int g, int rate, host_audio_fn fn, void *user)
@@ -443,10 +549,13 @@ static char s_br_save[1024];
 void mux_tgr_host_set_app_name(const char *dir, const char *title) { (void)dir; (void)title; }
 void mux_br_host_set_app_name(const char *dir, const char *title)  { (void)dir; (void)title; }
 
+/* the real host up: the kept Remaster Options applied */
 void mux_tgr_host_init(int argc, char **argv)
 {
     init_once();
     host_init(argc, argv);
+    rm_options_load();
+    music_targets(1);
 }
 
 /* the real host is up (Top Gear Rally started it): Boss Rally's saves */
@@ -471,4 +580,4 @@ const char *mux_br_host_cd_dir(void)    { return host_cd_dir(); }
 const char *mux_tgr_host_resource_dir(void) { return host_resource_dir(); }
 const char *mux_br_host_resource_dir(void)  { return host_resource_dir(); }
 const char *mux_tgr_host_music_dir(void) { return host_music_dir(); }
-const char *mux_br_host_music_dir(void)  { return NULL; }
+const char *mux_br_host_music_dir(void)  { return host_music_dir(); }   /* the PC's music */

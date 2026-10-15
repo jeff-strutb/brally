@@ -8,4 +8,7 @@ enum { MUX_TGR, MUX_BR, MUX_COUNT };
 void mux_front(int game);
 int  mux_front_game(void);
 
+/* the music the Remaster Options chose (options.h RM_MUSIC_*): crossfaded to */
+void mux_music(int which);
+
 #endif

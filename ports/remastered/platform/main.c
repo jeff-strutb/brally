@@ -1,9 +1,9 @@
 /* main.c: Top Gear Rally Remastered, the process.  Top Gear Rally runs from
  * launch on this thread (its window loop, os/main.c) and owns the menus;
- * with its Remastered profile's TGR_FLAG_BR_RACES on, each race the player
- * starts is handed to Boss Rally's engine (host_race.h), which boots on a
- * thread of its own at the first one and waits at its menus between races
- * (race_handoff.c).  The game that runs the race is put in front for it
+ * each race the player starts is handed to Boss Rally's engine
+ * (host_race.h), which boots on a thread of its own once the window is open
+ * (mux.c: its front end's music is the menus' when the PC's is chosen)
+ * and waits at its menus between races (race_handoff.c).  The game that runs the race is put in front for it
  * (mux.c).  On the iPhone this runs as rm_main on a thread of the app's
  * (ios/Sources/App.swift). */
 #include <stdio.h>
@@ -44,7 +44,7 @@ static void *br_thread(void *p)
 }
 
 /* Boss Rally's process, told first that races will be asked of it */
-static void br_start(void)
+void rm_br_start(void)
 {
     static int started;
     if (started)
@@ -75,7 +75,7 @@ static int race_engine(const HostRace *race, HostRaceResult *res)
         fprintf(stderr, "remastered: race mode %d track %d mirrored %d weather %d laps %d car %d handling %d auto %d tires %d susp %d piece %d\n",
                 race->mode, race->track, race->mirrored, race->weather, race->laps, race->car, race->handling,
                 race->automatic, race->tires, race->suspension, race->piece);
-    br_start();
+    rm_br_start();
     mux_front(MUX_BR);
     r = br_race_run(race, res);
     mux_front(MUX_TGR);

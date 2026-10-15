@@ -170,8 +170,7 @@
  * and Glide is __stdcall: no `add esp` follows the call in any original.
  * Declared cdecl it costs an `add esp,0xc` after every draw. */
 /* grDrawTriangle: prototype in br_funcs.h */
-#include "br_dlview.h"
-#define BrDlDrawTri BR_DL_TRI   /* grDrawTriangle, its view first (br_dlview.h) */
+#define BrDlDrawTri grDrawTriangle
 
 /* DWORD-PUN stores. The original writes each value ONCE to the temp and
  * then copies it to both TMUs with integer movs (`fstp dword [esp+0x10];

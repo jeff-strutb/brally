@@ -434,22 +434,12 @@ renderer draws at the window's own resolution, one pixel per window pixel,
 as the original drew at the resolution the player chose, and LFB images are
 scaled with sharp bilinear.
 
-**Original and Remastered.** Every place where the port can either behave as
-the 1999 game did or improve on it is one flag, and two profiles set them
-all (`platform/include/br_flags.h`):
-
-| Flag | Original | Remastered |
-|---|---|---|
-| `ANY_ASPECT` | the game's 4:3 picture, letterboxed or pillarboxed | any window shape: the race fills it, its camera widened (Hor+ in a wide window, Vert+ in a tall one), the mirror and HUD kept at their own shape at their edges |
-| `MENU_MUSIC_RESUME` | music paused by a focus change stays paused in the menus | it resumes |
-
-Tab switches between the two in play. It is the game's own 29th control,
-**REMASTER** on the Game Key Configuration page, so it can be rebound like
-any other; its binding is saved after the original's settings in
-`BossRally.cfg`, which the original game still reads. `BR_PROFILE=original`
-starts in Original, and `BR_FLAG_<NAME>=0|1` overrides one flag. The 32-bit
-lane's Remastered lighting, car, skies and music
-([docs/brally/remaster/REMASTER.md](docs/brally/remaster/REMASTER.md)) have not moved over yet.
+**The game as it shipped.** The port draws the game's 4:3 picture,
+letterboxed or pillarboxed in a window of another shape, the window held at
+that shape, and behaves as the 1999 game did. What improves on it (the race
+filling a window of any shape, the Remastered lighting) is Top Gear Rally
+Remastered's, laid over this port by `ports/remastered/tree.sh`
+([ports/remastered/README.md](ports/remastered/README.md)).
 
 **Multiplayer** is DirectPlay over UDP: a host advertises on the LAN by
 multicast and relays the session; any copy on the network can join from the

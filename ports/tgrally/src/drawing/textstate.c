@@ -417,7 +417,6 @@ void BrTextPrintAt(char *str, float x, float y, float unused)
  * alignment: left as given, right-aligned so it ends at x, or centred on x. */
 /* @implements 0x8022F5DC tgr BrTextPrint */
 void tgr_trace(const char *kind, const char *fmt, ...);
-#include "tgr_touch.h"
 void BrTextPrint(char *s, int x, int y)
 {
   tgr_trace("text", "%s", s);           /* port: for tools/lockstep comparisons */
@@ -433,9 +432,6 @@ void BrTextPrint(char *s, int x, int y)
     break;
   }
   D_803519D0[1] = y;
-  if (tgr_touch_wants(s)) {             /* port: a tap target (tgr_touch.h) */
-    tgr_touch_text(s, D_803519D0[0], y, BrTextWidth((unsigned char *)s, D_803519D8), D_803519D8);
-  }
   BrTextEmitString(s);
 }
 

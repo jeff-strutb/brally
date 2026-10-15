@@ -1,0 +1,77 @@
+--- a/src/core/racing/BrRaceStep_10019A70.cpp
++++ b/src/core/racing/BrRaceStep_10019A70.cpp
+@@ -26,6 +26,7 @@
+ #include "slice3_42.h"   /* br_globals: its objects */
+ #include "br_racestep.h"   /* g_aBrRaceLightScript, g_aBrRaceBeepT */
+ #include "br_bits.h"   /* BrBitLatch, the control block's first word */
++#include "pause_options.h"   /* Remastered: the pause menu's Remaster Options */
+ #include <stdint.h>
+ #include <string.h>
+ #pragma intrinsic(memcpy)   /* original inlines the copies as rep movsd, not a call */
+@@ -985,6 +986,8 @@
+     (*(int *)&g_brRaceBeginLimitOn) = 0;
+     DAT_105ccb68[14] = 0;
+     GhostBody:  /* 0x1001bc37 */
++        if ((*(int *)&g_BrX06909B4) != 0)   /* Remastered: every press since the last read (pause_options.h) */
++            (*(int *)&g_BrX18ABAD0) = rm_pause_take();
+         if ((*(int *)&g_BrX06909B4) == 2) {                      /* 0x1001bc44 */
+             int f = (*(int *)&g_BrX18ABAD0);
+             if (f & 0x8000) {
+@@ -1017,6 +1020,10 @@
+         }
+         /* 0x1001bd72: g_5CCB5C != 2 main path */
+         if ((*(int *)&g_BrX06909B4) == 0) goto Lc024;
++        if (rm_pause_active()) {      /* Remastered: its page, not the menu's rows */
++            rm_pause_step((*(int *)&g_BrX18ABAD0));
++            goto Lc002;
++        }
+         if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001bd7a per-driver replay */
+             int i = 0;
+             do {                                  /* loop top 0x1001bd94 */
+@@ -1030,7 +1037,7 @@
+                 if (!skip) {
+                     if (DAT_105bc8dc != 0 || ((uint8_t)pCtl->ctl & 0x10) == 0)   /* 0x1001bdbf */
+                         BrBitLatchTake((BrBitLatch *)pCtl, 0xc010);       /* 0x1001bdca */
+-                    if ((unsigned)DAT_105bc8dc <= 5) {                          /* 0x1001bddc */
++                    if ((unsigned)DAT_105bc8dc <= 6) {   /* Remastered: a seventh row, 4 */                          /* 0x1001bddc */
+                         switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
+                         case 0:  /* 0x1001bdec */
+                             if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) BrNetLockSetIfZero221314();
+@@ -1043,7 +1050,10 @@
+                             DAT_105ccb68[12] = 0; DAT_105ccb68[9] = 0; DAT_105ccb68[11] = 0;
+                             BrRaceDriverReset(); (*(int *)&g_brRaceTick) = 0; BrSndBankFree(); BrClearFlag_AB504();
+                             break;
+-                        case 4:  /* 0x1001be73 */
++                        case RM_PAUSE_ROW:   /* Remastered: Remaster Options */
++                            rm_pause_open();
++                            break;
++                        case 5:  /* 0x1001be73 (the original's 4) */
+                             BrFadeSetTarget(0, 0.2f);
+                             BrFadeSetTargetA(0, 0.2f);
+                             BrFadeSetTargetB(0, 0.2f);
+@@ -1052,7 +1062,7 @@
+                                                  BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
+                             if (g_brRaceRules.mode == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
+                             break;
+-                        case 5:  /* 0x1001bedf */
++                        case 6:  /* 0x1001bedf (the original's 5) */
+                             loc10 = 2; (*(int *)&g_BrX06909B4) = 2; DAT_105bc8dc = 1;
+                             break;
+                         case 2: case 3: default: break;   /* 0x1001befc */
+@@ -1068,12 +1078,12 @@
+                 }
+                 f = (*(int *)&g_BrX18ABAD0);
+                 if (f & 0x1000) {
+-                    DAT_105bc8dc = (DAT_105bc8dc + 5) % 6;
+-                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 5) % 6;
++                    DAT_105bc8dc = (DAT_105bc8dc + 6) % 7;   /* Remastered: seven rows */
++                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 6) % 7;
+                 }
+                 if (f & 0x2000) {
+-                    DAT_105bc8dc = (DAT_105bc8dc + 1) % 6;
+-                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % 6;
++                    DAT_105bc8dc = (DAT_105bc8dc + 1) % 7;
++                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % 7;
+                 }
+                 if (f & 1) {
+                     if (DAT_105bc8dc == 2)      BrUiSelADec();
