@@ -3138,8 +3138,7 @@ nopick:;
         if (on < 0)
             on = !getenv("BR_LIGHT_VSM") || atoi(getenv("BR_LIGHT_VSM")) != 0;
         if (on && u.misc[1] > 0.5f) {
-            BrrVsmFrame vf;
-            memset(&vf, 0, sizeof vf);
+            BrrVsmFrame vf = { { 0 } };
             memcpy(vf.sun, u.sun, sizeof vf.sun);
             memcpy(vf.eye, u.eye, sizeof vf.eye);
             vf.pixang = s_pixang;
