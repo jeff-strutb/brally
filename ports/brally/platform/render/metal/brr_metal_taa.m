@@ -6,6 +6,7 @@
  * TAA where MetalFX is absent (before macOS 13 / iOS 16, or a device it
  * does not support). */
 #import <Metal/Metal.h>
+#include <TargetConditionals.h>
 #if __has_include(<MetalFX/MetalFX.h>)
 #import <MetalFX/MetalFX.h>
 #define BRR_HAVE_METALFX 1
@@ -248,14 +249,22 @@ id<MTLTexture> brr_taa_resolve(id<MTLDevice> dev, id<MTLCommandBuffer> cb, id<MT
     }
 }
 
-/* the lit 3D's internal scale for a target tw x th: 1, the window's own
- * pixels, whatever its size (no upscaling by default); BR_LIGHT_SCALE asks
+/* the lit 3D's internal scale for a target tw x th: on a Mac 1, the window's
+ * own pixels, whatever its size (no upscaling); on an iPhone or iPad 0.5,
+ * half the pixels each way brought up to the screen by MetalFX's temporal
+ * scaler, as mobile games render (1 on a device without the scaler).
+ * BR_LIGHT_SCALE asks
  * for a smaller frame (0.5 to 1) through MetalFX's scaler where the device
  * has one, BR_LIGHT_DYNRES=1 then moving it by the dynamic resolution
  * controller (16.6 ms, 0.5 to 1) fed with the last whole frame's GPU time
  * (gpu_ms <= 0: none yet).
  * *up: 1 when the frame goes through MetalFX's scaler (BR_LIGHT_SCALE, or
  * BR_LIGHT_TAA=2 at 1) */
+#if TARGET_OS_IPHONE
+#define BRR_TAA_DEFAULT_SCALE 0.5f
+#else
+#define BRR_TAA_DEFAULT_SCALE 1.0f
+#endif
 float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
 {
     static int env = -1, sup = -1, dyn = -1;
@@ -271,8 +280,8 @@ float brr_taa_scale(id<MTLDevice> dev, int tw, int th, float gpu_ms, int *up)
         sup = brr_taa_metalfx_supported(dev);
     if (env < 0) {
         e = getenv("BR_LIGHT_SCALE");
-        env = e != NULL;
-        fixed = e ? fminf(1.0f, fmaxf(0.5f, (float)atof(e))) : 1.0f;
+        env = e != NULL || BRR_TAA_DEFAULT_SCALE < 1.0f;
+        fixed = e ? fminf(1.0f, fmaxf(0.5f, (float)atof(e))) : BRR_TAA_DEFAULT_SCALE;
         dyn = getenv("BR_LIGHT_DYNRES") && atoi(getenv("BR_LIGHT_DYNRES")) > 0;
     }
     if (!sup)

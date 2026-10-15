@@ -481,9 +481,11 @@ rain, snow, spray and dust are lit with the same light lists.
   them (26 and later; checked at run time, never assumed: there are reports
   of the denoised upscaler failing on an iPhone 15 Pro). The port's own TAA
   where MetalFX is absent (and on Vulkan).
-  *Superseded 2026-10-14 by the project lead's decision: no upscaling by
-  default. The lit 3D renders at the window's own pixels with the port's TAA;
-  BR_LIGHT_SCALE (and BR_LIGHT_TAA=2) opt in to MetalFX. The per-object
+  *Superseded 2026-10-14 by the project lead's decisions: on a Mac no
+  upscaling, the lit 3D at the window's own pixels with the port's TAA; on an
+  iPhone or iPad the lit 3D at 0.5 each way, brought up by MetalFX's temporal
+  scaler (native where the device has no scaler). BR_LIGHT_SCALE overrides
+  either. The per-object
   motion is each car's rigid motion between frames (brr_metal_taa.h
   brr_taa_carprev): without it a car's history was thrown away every frame
   and the car was never anti-aliased.*
