@@ -370,4 +370,36 @@
 "  dst.write(float4(clamp(c.rgb + L * E * (1.0 - fog), float3(0.0), float3(60000.0)), c.a), px);\n" \
 "}\n"
 
+
+/* BR_LIGHT_SUNCHECK (diagnostic, with BR_LIGHT_VIEW=3): each sun-facing pixel's
+ * sun ray traced through the track (the static casters' own triangles) against
+ * the sun's visibility the deferred pass wrote (src.r: the shadow map's, or
+ * the cascades' with BR_LIGHT_VSM=0); by view depth band (cnt[8 b], bands
+ * ending 10, 25, 55, 110, 200, 300 m and beyond): pixels, traced in shadow,
+ * shadowed by the trace but lit by the map (missing), lit by the trace but
+ * shadowed by the map (extra: the cars' shadows, which the trace does not
+ * hold, and acne), and the missing by how far along the ray the trace hit
+ * (within 5 cm, 25 cm, 2 m, farther).  The ray leaves the surface by 2 cm and
+ * 1e-4 of its depth (less hits its own surface at a distance).  The frame
+ * shows the map's visibility in grey, missing red, extra cyan. */
+#define BRR_SUNCHECK_SRC \
+"kernel void svck(uint2 px [[thread_position_in_grid]], constant LU &u [[buffer(3)]] RT_AS(8),\n" \
+"                 texture2d<float> pos [[texture(1)]], texture2d<float> nrm [[texture(2)]], texture2d<float> src [[texture(3)]],\n" \
+"                 texture2d<float, access::write> dst [[texture(4)]], device atomic_uint *cnt [[buffer(13)]]) {\n" \
+"  if (px.x >= dst.get_width() || px.y >= dst.get_height()) return;\n" \
+"  float4 c = src.read(px); float3 p = pos.read(px).xyz, n = nrm.read(px).xyz;\n" \
+"  if (all(p == 0.0)) { dst.write(c, px); return; }\n" \
+"  if (dot(n, u.eye.xyz - p) < 0.0) n = -n;\n" \
+"  if (dot(n, u.sun.xyz) <= 0.05) { dst.write(c, px); return; }\n" \
+"  float d = dot(p - u.eye.xyz, u.cfwd.xyz); uint b = d < 10.0 ? 0u : d < 25.0 ? 1u : d < 55.0 ? 2u : d < 110.0 ? 3u : d < 200.0 ? 4u : d < 300.0 ? 5u : 6u;\n" \
+"  RtHit h = RT_CLOSEST(p + n * (0.02 + 1e-4 * d), u.sun.xyz, 0.0, 4000.0); bool sh = h.tri >= 0; float sv = c.r;\n" \
+"  device atomic_uint *q = cnt + 8u * b;\n" \
+"  atomic_fetch_add_explicit(&q[0], 1u, memory_order_relaxed);\n" \
+"  if (sh) atomic_fetch_add_explicit(&q[1], 1u, memory_order_relaxed);\n" \
+"  if (!sh && sv < 0.25) { atomic_fetch_add_explicit(&q[3], 1u, memory_order_relaxed); dst.write(float4(0, 1, 1, 1), px); return; }\n" \
+"  if (!(sh && sv > 0.75)) { dst.write(c, px); return; }\n" \
+"  atomic_fetch_add_explicit(&q[2], 1u, memory_order_relaxed);\n" \
+"  atomic_fetch_add_explicit(&q[h.t < 0.05 ? 4u : h.t < 0.25 ? 5u : h.t < 2.0 ? 6u : 7u], 1u, memory_order_relaxed);\n" \
+"  dst.write(float4(1, 0, 0, 1), px); }\n"
+
 #endif

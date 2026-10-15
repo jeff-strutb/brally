@@ -4,7 +4,8 @@
  *   cast_pick  one thread a triangle of the frame's opaque 3D (op k's n
  *              vertices at byte voff[k], triangles from base[k], a prefix
  *              searched per thread, as brr_metal_smooth.h): a triangle that
- *              lies on the track (every corner within CAST_ON of one track
+ *              lies on the track (every corner within CAST_ON0 + CAST_OND x its
+ *              distance from the eye (light.h LIGHT_ON_TOL0) of one track
  *              triangle of the grid cell holding its centroid, the track's
  *              hash of light_capture_trackhash) is the static cache's
  *              already; the rest, the moving casters, are appended to dyn
@@ -39,8 +40,8 @@ typedef struct { float lo[2]; int nx, ny; uint32_t cap, pad[3]; } CastGrid;
 #define BRR_CAST_SRC \
 "#define CAST_CELL " BRR_CAST_STR(LIGHT_TC_CELL) "\n" \
 "#define CAST_HASH " BRR_CAST_STR(LIGHT_TC_HASH) "u\n" \
-"#define CAST_ON 0.05\n" \
-"struct CU { float4x4 cm[4]; uint nops; uint ntri; uint cap; float size; };\n" \
+"#define CAST_ON0 " BRR_CAST_STR(LIGHT_ON_TOL0) "\n#define CAST_OND " BRR_CAST_STR(LIGHT_ON_TOLD) "\n" \
+"struct CU { float4x4 cm[4]; uint nops; uint ntri; uint cap; float size; float4 eye; };\n" \
 "static uint cast_op(const device uint *base, uint nops, uint t) {\n" \
 "  uint lo = 0u, hi = nops - 1u;\n" \
 "  while (lo < hi) { uint m = (lo + hi + 1u) >> 1; if (base[m] <= t) lo = m; else hi = m - 1u; }\n" \
@@ -69,10 +70,10 @@ typedef struct { float lo[2]; int nx, ny; uint32_t cap, pad[3]; } CastGrid;
 "  if (t >= u.ntri) return;\n" \
 "  uint k = cast_op(base, u.nops, t), f0 = voff[k] / 4u + (t - base[k]) * 3u * 14u;\n" \
 "  float3 p[3]; for (uint i = 0u; i < 3u; i++) p[i] = float3(vb[f0 + i * 14u + 10u], vb[f0 + i * 14u + 11u], vb[f0 + i * 14u + 12u]);\n" \
-"  float3 m = (p[0] + p[1] + p[2]) / 3.0;\n" \
+"  float3 m = (p[0] + p[1] + p[2]) / 3.0, tol = CAST_ON0 + CAST_OND * float3(distance(p[0], u.eye.xyz), distance(p[1], u.eye.xyz), distance(p[2], u.eye.xyz));\n" \
 "  for (int e = head[cast_key(int3(floor(m / CAST_CELL)))]; e >= 0; e = next[e]) {\n" \
 "    int j = tidx[e]; float3 a = float3(trk[3 * j]), b = float3(trk[3 * j + 1]), c = float3(trk[3 * j + 2]);\n" \
-"    if (cast_dist(p[0], a, b, c) < CAST_ON && cast_dist(p[1], a, b, c) < CAST_ON && cast_dist(p[2], a, b, c) < CAST_ON) return; }\n" \
+"    if (cast_dist(p[0], a, b, c) < tol.x && cast_dist(p[1], a, b, c) < tol.y && cast_dist(p[2], a, b, c) < tol.z) return; }\n" \
 "  uint o = atomic_fetch_add_explicit(&args[0], 3u, memory_order_relaxed);\n" \
 "  if (o + 3u > u.cap) return;\n" \
 "  for (uint i = 0u; i < 3u; i++) dyn[o + i] = packed_float3(p[i]);\n" \

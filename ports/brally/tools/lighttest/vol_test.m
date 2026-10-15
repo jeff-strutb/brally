@@ -33,6 +33,7 @@
 #include "light.h"
 #include "light_cluster.h"
 #include "brr_metal_vol.h"
+#include "brr_vsm.h"
 
 static int g_fail;
 #define CHECK(c, ...)                                         \
@@ -47,7 +48,7 @@ static int g_fail;
 
 /* brr_metal.m's LU, the same layout as the shaders' */
 typedef struct LU { float sunvp[4][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4]; } LU;
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4], sbias[4]; } LU;
 
 static void homogeneous(void)
 {
@@ -227,6 +228,7 @@ static double run(id<MTLCommandQueue> q, id<MTLComputePipelineState> p, __strong
         [e setBuffer:z4 offset:0 atIndex:4];
         [e setBuffer:z4 offset:0 atIndex:5];
         [e setTexture:z2 atIndex:4];
+        [e setBytes:zero length:sizeof(VsmU) atIndex:6];   /* the shadow map off (brr_vsm.h): the cascades' sun */
     }
     [e dispatchThreads:n threadsPerThreadgroup:g];
     [e endEncoding];

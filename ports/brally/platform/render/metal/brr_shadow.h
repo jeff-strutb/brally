@@ -18,6 +18,9 @@
 #define PCSS_SEARCH_MAX 16.0f   /* texels: the blocker search's widest radius */
 #define PCSS_FILTER_MAX 16.0f   /* texels: the penumbra filter's widest radius */
 #define CONTACT_LEN 0.5f        /* metres: the screen-space contact shadow's march toward the sun */
+#define SHADOW_NOFS 0.3f        /* texels: the receiver's offset along its normal (brr_metal_lit.h casvis) */
+#define SHADOW_NOFS_SIN 1.0f    /* texels: more of it times the sine of its angle from the sun */
+#define SHADOW_ZBIAS 0.5f       /* texels of depth: the comparison's bias for the map's rounding */
 
 /* a cascade: its matrix (world to light clip, column-major: x, y in -1..1,
  * depth 0..1 from the casters' reach toward the sun), the view depth it ends

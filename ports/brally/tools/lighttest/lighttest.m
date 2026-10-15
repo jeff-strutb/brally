@@ -1179,6 +1179,7 @@ static void test_misc(void)
             u.cdepth[k] = 100.0f;
         }
         u.csoft[0] = 0.00467f, u.csoft[1] = 16.0f, u.csoft[2] = 16.0f, u.csoft[3] = 0.0f;   /* the sun's radius; no contact march (needs a G-buffer) */
+        u.sbias[0] = SHADOW_NOFS, u.sbias[1] = SHADOW_NOFS_SIN, u.sbias[2] = SHADOW_ZBIAS;   /* the bias (brr_shadow.h) */
         u.cfwd[0] = 1;
         u.eye[0] = 0, u.eye[1] = 0, u.eye[2] = 2, u.eye[3] = NL;
         u.sun[0] = 0.3f, u.sun[1] = 0.2f, u.sun[2] = 0.93f;

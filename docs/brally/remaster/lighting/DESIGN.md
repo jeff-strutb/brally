@@ -140,7 +140,7 @@ At startup, from Metal alone:
 |---|---|---|---|
 | internal resolution | 50-67% of the output, MetalFX temporal upscale | 67-77% | 77-100% |
 | direct lights | clustered; 8 shadowed lights by importance, the rest unshadowed | clustered + stochastic sampling (ReSTIR DI) with ray-query shadows for every light | as T1, more samples per pixel |
-| sun shadows | 3 cascades, static cached, cars overlaid, contact shadows | 2 cascades near + ray-traced far, contact shadows | ray-traced, cascades only as a fallback |
+| sun shadows | virtual shadow map, contact shadows (PIPELINE.md, superseding this row) | as T0 | as T0 |
 | world representation | BVH of simplified track and car proxies, traced in compute | BVH of the real geometry, hardware ray queries | as T1 |
 | GI cache | DDGI, 3 cascades, 1/8 of probes updated a frame | DDGI, 3 cascades, 1/4 a frame, + ReSTIR GI final gather (optional) | DDGI, 1/2 a frame, ReSTIR GI |
 | reflections | screen space, then BVH (quarter res), then probes/sky | screen space, then hardware rays (half res), then probes | full-res hardware rays where rough < 0.3 |
@@ -361,10 +361,11 @@ and writes the file back.
   turned per pixel), and a screen-space contact march toward the sun for
   fine detail (the classic single-layer march with a thickness; Bend
   Studio's 2023 wavefront method is the faster form of it, for later).
-  Built and measured: MEASUREMENTS.md, "Soft sun shadows". Virtual shadow maps (UE5) were considered: a
-  track is a narrow ribbon seen from low and far, and three cascades cover it
-  for a fraction of the page-management cost. T1 traces the far shadow by ray
-  query; T2 traces the sun everywhere.
+  Built and measured: MEASUREMENTS.md, "Soft sun shadows". Superseded
+  2026-10-14 by a virtual shadow map on every tier (PIPELINE.md, "Sun
+  shadows"): the cascades lost most far shadows to their bias and texel
+  size, and a traced far shadow would have left the GPUs without ray
+  tracing hardware (A16 and earlier, M1, M2) with the pop.
 
 **Stress case**: 20 cars at night, 40 headlights and 40 rear lamps on, plus
 the track's lamps, holds each tier's budget.

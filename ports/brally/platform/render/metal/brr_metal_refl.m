@@ -183,3 +183,68 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
     s_frame++;
     s_valid = 1;
 }
+
+void brr_suncheck_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, const BrrRtWorld *rt,
+                       id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr, unsigned long frame)
+{
+    static id<MTLComputePipelineState> pipe;
+    static id<MTLTexture> dst;
+    static uint64_t tot[56];
+    static int fail;
+    id<MTLComputeCommandEncoder> e;
+    id<MTLBlitCommandEncoder> b;
+    id<MTLBuffer> cnt;
+    if (fail || !rt || !rt->built || !rt->as || !hdr)
+        return;
+    if (!pipe) {
+        NSError *err = nil;
+        id<MTLLibrary> lib = brr_rt_library(dev, @BRR_LU_SRC BRR_SUNCHECK_SRC, &err);
+        id<MTLFunction> f = lib ? [lib newFunctionWithName:@"svck"] : nil;
+        pipe = f ? [dev newComputePipelineStateWithFunction:f error:&err] : nil;
+        if (!pipe) {
+            fprintf(stderr, "suncheck: %s\n", err ? [[err description] UTF8String] : "no pipeline");
+            fail = 1;
+            return;
+        }
+    }
+    if (!dst || dst.width != hdr.width || dst.height != hdr.height) {
+        MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:hdr.pixelFormat width:hdr.width
+                                                                                     height:hdr.height mipmapped:NO];
+        td.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
+        td.storageMode = MTLStorageModePrivate;
+        dst = [dev newTextureWithDescriptor:td];
+    }
+    cnt = [dev newBufferWithLength:56 * sizeof(uint32_t) options:MTLResourceStorageModeShared];
+    memset([cnt contents], 0, 56 * sizeof(uint32_t));
+    e = [cb computeCommandEncoder];
+    [e setComputePipelineState:pipe];
+    [e setBytes:lu length:lusz atIndex:3];
+    [e setAccelerationStructure:rt->as atBufferIndex:8];
+    [e setTexture:pos atIndex:1];
+    [e setTexture:nrm atIndex:2];
+    [e setTexture:hdr atIndex:3];
+    [e setTexture:dst atIndex:4];
+    [e setBuffer:cnt offset:0 atIndex:13];
+    [e dispatchThreads:MTLSizeMake(hdr.width, hdr.height, 1) threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
+    [e endEncoding];
+    b = [cb blitCommandEncoder];
+    [b copyFromTexture:dst toTexture:hdr];
+    [b endEncoding];
+    [cb addCompletedHandler:^(id<MTLCommandBuffer> c) {
+        static const char *band[7] = { "0-10", "10-25", "25-55", "55-110", "110-200", "200-300", "300+" };
+        const uint32_t *v = (const uint32_t *)[cnt contents];
+        int k;
+        (void)c;
+        for (k = 0; k < 56; k++)
+            tot[k] += v[k];
+        if (frame % 30 == 0)
+            for (k = 0; k < 7; k++) {
+                const uint64_t *t = &tot[8 * k];
+                if (!t[1])
+                    continue;
+                fprintf(stderr, "suncheck: so far [%s m] %llu px, traced shadow %llu, missing %.1f%% (hit within 5 cm %llu, 25 cm %llu, 2 m %llu, farther %llu), extra %.1f%%\n",
+                        band[k], (unsigned long long)t[0], (unsigned long long)t[1], 100.0 * (double)t[2] / (double)t[1],
+                        (unsigned long long)t[4], (unsigned long long)t[5], (unsigned long long)t[6], (unsigned long long)t[7], 100.0 * (double)t[3] / (double)t[0]);
+            }
+    }];
+}

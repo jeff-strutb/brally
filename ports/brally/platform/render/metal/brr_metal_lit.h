@@ -28,6 +28,7 @@
 
 #include "brr_metal_env.h"
 #include "brr_metal_ao.h"
+#include "brr_vsm.h"
 
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
  * cascades: their matrices, where each ends in view depth, metres per texel,
@@ -38,10 +39,12 @@
  * the irradiance probes on (brr_metal_gi.h), which then replace the sky's
  * ambient term; env: x the specular cube's last mip (brr_metal_env.h), y its
  * bearing's turn, z 1 with a skymap; sh: the skymap's irradiance harmonics
- * (light_sky.c), lux */
+ * (light_sky.c), lux; sbias: the sun's shadow bias in texels (casvis): x the
+ * receiver's offset along its normal, y more of it times the sine of its
+ * angle from the sun, z the comparison's depth bias */
 #define BRR_LU_SRC \
 "struct LU { float4x4 sunvp[4]; float4 csplit; float4 cfwd; float4 ctexel; float4 cbias; float4 eye; float4 sun; float4 sunc; float4 skyc; float4 gndc; float4 misc; float4 wb; float4 bg; float4 fogc;\n" \
-"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; float4 env; float4 sh[9]; };\n"
+"            float4 cdepth; float4 csoft; float4x4 scr; float4 vol; float4 gi; float4 wet; float4 env; float4 sh[9]; float4 sbias; };\n"
 
 /* the sun's shadows (DESIGN.md 7.4), needing only LU (and so compiled alone
  * by ports/brally/tools/lighttest against synthetic maps) */
@@ -66,23 +69,38 @@
  * distance, D x tan(sun's radius), and the filtered comparisons over a disc \
  * that wide: for a straight edge that is the share of the sun's disc in \
  * view, the physical penumbra.  Widths clamped to sane texel counts; the \
- * bilinear comparison adds its one texel. */ \
+ * bilinear comparison adds its one texel.  The bias, in texels (sbias): \
+ * the receiver moved along its normal by x + y sin(angle from the sun) \
+ * (normal offset, Holbert 2011: a move of a texels gives a / cos of depth \
+ * margin, and a bilinear comparison's neighbours lie within tan of a \
+ * texel, so a >= sin suffices), each sample compared against the \
+ * receiver's own plane at that sample (receiver plane depth bias, Isidoro \
+ * 2006: no depth margin grows with the kernel), and z more texels of \
+ * depth for the map's rounding.  Nothing on the casters' side: a bias \
+ * there, or one scaled by the angle's tangent, hides every caster less \
+ * than several texels above its receiver. */ \
 "static float casvis(constant LU &u, depth2d_array<float> sm, float3 p, float3 n, int k, float2 rot) {\n" \
 "  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
 "  constexpr sampler ps(filter::nearest, address::clamp_to_edge);\n" \
-"  float nl = clamp(dot(n, u.sun.xyz), 0.05, 1.0), tn = min(sqrt(1.0 - nl * nl) / nl, 8.0);\n" \
-"  float4 c = u.sunvp[k] * float4(p + n * u.ctexel[k] * (1.0 + 2.0 * (1.0 - nl)), 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
+"  float4x4 m = u.sunvp[k]; float nl = clamp(dot(n, u.sun.xyz), 0.0, 1.0), sl = sqrt(1.0 - nl * nl);\n" \
+"  float4 c = m * float4(p + n * u.ctexel[k] * (u.sbias.x + u.sbias.y * sl), 1.0); float2 st = float2(c.x * 0.5 + 0.5, 0.5 - c.y * 0.5);\n" \
 "  if (any(st <= 0.0) || any(st >= 1.0) || c.z >= 1.0) return 1.0;\n" \
-"  float tx = 1.0 / float(sm.get_width()), zr = c.z - u.cbias[k] * (1.0 + tn);\n" \
+/* the receiver's plane in the map: depth per unit of st, from its normal \
+   in the light's axes (rows of m: right, up and toward the light's far \
+   side, scaled to clip units), its slope clamped to a tangent of 8 */ \
+"  float3 rx = float3(m[0][0], m[1][0], m[2][0]), ry = float3(m[0][1], m[1][1], m[2][1]), rz = float3(m[0][2], m[1][2], m[2][2]);\n" \
+"  float sx = length(rx), sz = length(rz), nz = max(-dot(n, rz) / sz, 0.125);\n" \
+"  float2 dz = float2(dot(n, rx) / sx, -dot(n, ry) / sx) / nz * (2.0 / sx) * sz;\n" \
+"  float tx = 1.0 / float(sm.get_width()), zr = c.z - u.cbias[k] * u.sbias.z;\n" \
 "  float tpd = u.cdepth[k] * u.csoft.x / u.ctexel[k];   /* penumbra radius in texels per unit of depth from blocker to receiver */\n" \
 "  float rs = clamp(c.z * tpd, 1.0, u.csoft.y), zb = 0.0, nb = 0.0;\n" \
 "  for (int i = 0; i < 16; i++) {\n" \
-"    float4 g = sm.gather(ps, st + vogel(i, 16, rot) * (rs * tx), uint(k)), b = select(float4(0.0), float4(1.0), g < zr);\n" \
+"    float2 o = vogel(i, 16, rot) * (rs * tx); float4 g = sm.gather(ps, st + o, uint(k)), b = select(float4(0.0), float4(1.0), g < zr + dot(dz, o));\n" \
 "    zb += dot(g, b); nb += dot(b, float4(1.0));\n" \
 "  }\n" \
 "  if (nb == 0.0) return 1.0;\n" \
 "  float wr = min((c.z - zb / nb) * tpd, u.csoft.z), vis = 0.0;\n" \
-"  for (int i = 0; i < 24; i++) vis += sm.sample_compare(cs, st + vogel(i, 24, rot) * (wr * tx), uint(k), zr);\n" \
+"  for (int i = 0; i < 24; i++) { float2 o = vogel(i, 24, rot) * (wr * tx); vis += sm.sample_compare(cs, st + o, uint(k), zr + dot(dz, o)); }\n" \
 "  return vis / 24.0;\n" \
 "}\n" \
 /* the cascade by view depth, the next one blended in over the last tenth of \
@@ -229,6 +247,7 @@ BRR_AO_SRC \
 "  return brdf0(n, v, l, alb, -rough, bE) * (1.0 - coatE(dot(n, v), bE)) + ggxspec(n, v, l, BRR_COAT_ROUGH) * nl;\n" \
 "}\n" \
 BRR_SHADOW_SRC \
+BRR_VSM_SRC \
 /* a surface's normal turned toward the eye (the game's faces are seen from \
    either side) */ \
 /* a face's normal from the world position's screen derivatives; straight up \
@@ -355,7 +374,9 @@ BRR_SHADOW_SRC \
 "                    depth2d_array<float> sm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(2)]], device const float4 *goff [[buffer(6)]],\n" \
 "                    device const float4 *gsh [[buffer(7)]], texture2d<float> gdst [[texture(7)]], texturecube<float> sp [[texture(9)]],\n" \
-"                    texture2d<float> aot [[texture(10)]]) {\n" \
+"                    texture2d<float> aot [[texture(10)]], constant VSU &vsu [[buffer(3)]], const device uint *vent [[buffer(4)]],\n" \
+"                    const device uint *vdyn [[buffer(5)]], texture2d<float> vpool [[texture(11)]], depth2d<float> vdp [[texture(12)]],\n" \
+"                    depth2d<float> vtm [[texture(13)]]) {\n" \
 "  uint2 px = uint2(in.pos.xy); float4 a = alb.read(px);\n" \
 "  if (a.a < 0.25) discard_fragment();\n" \
 "  float4 P = pos.read(px), N = nrm.read(px);\n" \
@@ -366,7 +387,8 @@ BRR_SHADOW_SRC \
 /* the sun's visibility: none to look up on a face turned from it (the BRDF \
    is zero there), and no contact march where the cascades already shadow \
    it fully */ \
-"  float sv = dot(n, u.sun.xyz) > 0.0 ? sunvis(u, sm, P.xyz, n, j * 6.2831853) : 0.0;\n" \
+"  float sv = dot(n, u.sun.xyz) <= 0.0 ? 0.0 : vsu.on.x > 0.5 ? vsmvis(vsu, u.sbias, u.csoft, vent, vdyn, vpool, vdp, vtm, P.xyz, n,\n" \
+"             fract(j + 0.618034 * float(vsu.cnt.x & 1023u)), float2(cos(j * 6.2831853), sin(j * 6.2831853))) : sunvis(u, sm, P.xyz, n, j * 6.2831853);\n" \
 "  if (sv > 0.0) sv = min(sv, contact(u, pos, P.xyz, n, j));\n" \
 "  if (dbg == 1) return float4(a.rgb, 1);\n" \
 "  if (dbg == 2) return float4((N.xyz * 0.5 + 0.5), 1);\n" \
@@ -396,7 +418,9 @@ BRR_SHADOW_SRC \
 "                    depth2d_array<float> shm [[texture(3)]], depth2d<float> atl [[texture(4)]],\n" \
 "                    texture2d<float> bE [[texture(5)]], constant GiU &gu [[buffer(3)]], device const float4 *goff [[buffer(6)]],\n" \
 "                    device const float4 *gsh [[buffer(7)]], texture2d<float> gdst [[texture(7)]],\n" \
-"                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]], texturecube<float> sp [[texture(9)]]) {\n" \
+"                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]], texturecube<float> sp [[texture(9)]],\n" \
+"                    constant VSU &vsu [[buffer(5)]], const device uint *vent [[buffer(8)]], const device uint *vdyn [[buffer(9)]],\n" \
+"                    texture2d<float> vpool [[texture(11)]], depth2d<float> vdp [[texture(12)]], depth2d<float> vtm [[texture(13)]]) {\n" \
 "  SH h = shade(in, u, t, sm); if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = shadenrm(lu, in.wp, in.nrm), c, ge = 0.0;\n" \
@@ -406,7 +430,8 @@ BRR_SHADOW_SRC \
 "  else if (u.addk > 0.0) c = lin(h.o.rgb) * u.addk * lu.wb.rgb;\n" \
 "  else if (u.lamp > 0.5) c = lin(h.o.rgb) * BRR_LAMP_L * lu.wb.rgb;   /* a lamp's flare: light */\n" \
 "  else {\n" \
-"    float sv = dot(n, lu.sun.xyz) > 0.0 ? sunvis(lu, shm, in.wp, n, ign(in.pos.xy) * 6.2831853) : 0.0;\n" \
+"    float jf = ign(in.pos.xy), sv = dot(n, lu.sun.xyz) <= 0.0 ? 0.0 : vsu.on.x > 0.5 ? vsmvis(vsu, lu.sbias, lu.csoft, vent, vdyn, vpool, vdp, vtm, in.wp, n,\n" \
+"               fract(jf + 0.618034 * float(vsu.cnt.x & 1023u)), float2(cos(jf * 6.2831853), sin(jf * 6.2831853))) : sunvis(lu, shm, in.wp, n, jf * 6.2831853);\n" \
 "    float3 ve = normalize(lu.eye.xyz - in.wp), gi = 0.0, gis = 0.0;\n" \
 "    if (lu.gi.x > 0.5) gi = lu.misc.z > BRR_TRACED_MAX ? gi_irr2(gu, goff, gsh, gdst, in.wp, n, ve, reflect(-ve, n), gis) : gi_irr(gu, goff, gsh, gdst, in.wp, n, ve);\n" \
 /* a flat decal (lp2, brr_metal.m: a tire mark): its colour the game's own combine of texture and \

@@ -280,8 +280,9 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
 "  float n = v.nse.x > 0.0 ? 1.0 + v.nse.x * (2.0 * vol_noise(p * v.nse.y + float3(0.3, 0.1, 0.0) * v.nse.z) - 1.0) : 1.0;\n" \
 "  return v.med.x * h * n; }\n" \
 /* the sun's visibility at a point in the air: one bilinear comparison in its cascade */ \
-"static float vol_sun(constant LU &u, depth2d_array<float> sm, float3 p) {\n" \
+"static float vol_sun(constant LU &u, depth2d_array<float> sm, float3 p, constant VSU &vs, depth2d<float> tm) {\n" \
 "  if (u.misc.y < 0.5) return 1.0;\n" \
+"  if (vs.on.x > 0.5) return vs_tmapvis(vs, float4(0.0, 1.0, u.sbias.z, 0.0), tm, p, -vs.f.xyz, 0.0);   /* the shadow map's track map (brr_vsm.h) */\n" \
 "  constexpr sampler cs(filter::linear, address::clamp_to_edge, compare_func::less_equal);\n" \
 "  float d = dot(p - u.eye.xyz, u.cfwd.xyz); int k = 0;\n" \
 "  while (k < 3 && d > u.csplit[k]) k++;\n" \
@@ -318,14 +319,15 @@ static inline float vol_beam(const float o[3], const float d[3], const float A[3
 "                       const device LSet &ls [[buffer(2)]], depth2d_array<float> sm [[texture(0)]],\n" \
 "                       texture3d<float> prev [[texture(1)]], texture3d<float, access::write> out [[texture(2)]],\n" \
 "                       constant GiU &gu [[buffer(3)]], device const float4 *goff [[buffer(4)]],\n" \
-"                       device const float4 *gsh [[buffer(5)]], texture2d<float> gdst [[texture(4)]]) {\n" \
+"                       device const float4 *gsh [[buffer(5)]], texture2d<float> gdst [[texture(4)]],\n" \
+"                       constant VSU &vs [[buffer(6)]], depth2d<float> tm [[texture(5)]]) {\n" \
 "  if (id.x >= uint(v.grid.x) || id.y >= uint(v.grid.y) || id.z >= uint(v.grid.z)) return;\n" \
 "  float2 px = (float2(id.xy) + 0.5) / v.grid.xy * v.tgt.xy;\n" \
 "  float3 d = vol_ray(v, u.eye.xyz, px);\n" \
 "  float t0 = id.z ? vol_dist(v, float(id.z)) : 0.0, t1 = vol_dist(v, float(id.z) + 1.0);\n" \
 "  float t = mix(t0, t1, v.tgt.z); float3 p = u.eye.xyz + d * t;\n" \
 "  float st = vol_sigma(v, p);\n" \
-"  float3 sc = st * v.med.y * vol_inlight(u, v, ls, p, d, vol_sun(u, sm, p), vol_amb(u, gu, goff, gsh, gdst, p)) * u.misc.x;\n" \
+"  float3 sc = st * v.med.y * vol_inlight(u, v, ls, p, d, vol_sun(u, sm, p, vs, tm), vol_amb(u, gu, goff, gsh, gdst, p)) * u.misc.x;\n" \
 "  float4 c = float4(min(sc, float3(60000.0)), st);\n" \
 "  if (v.peye.w > 0.5) {\n" \
 "    float4 h = v.pscr * float4(p, 1.0);\n" \
@@ -405,8 +407,8 @@ int brr_vol_on(id<MTLDevice> dev);
  * for the next brr_vol_frame */
 void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLBuffer> sh, id<MTLTexture> dst);
 void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> cmd, const void *lu, size_t lusz,
-                   id<MTLBuffer> lset, id<MTLTexture> shadow, id<MTLTexture> gpos, id<MTLTexture> hdr,
-                   const float eye[3], const float scr[16], int w, double time);
+                   id<MTLBuffer> lset, id<MTLTexture> shadow, const void *vsu, size_t vsusz, id<MTLTexture> tmap,
+                   id<MTLTexture> gpos, id<MTLTexture> hdr, const float eye[3], const float scr[16], int w, double time);
 /* this frame's lighthouse beams (light_world.c light_world_beam: their lamp,
  * axis, candela, inner and outer cosines, colour), at most VOL_BEAMS, for
  * the next brr_vol_frame's full-screen pass; n 0 for none */

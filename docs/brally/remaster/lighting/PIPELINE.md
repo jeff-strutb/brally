@@ -1,8 +1,8 @@
 # Remastered lighting: the pipeline as built (2026-10-13)
 
-This supersedes the sky, clouds, glare, exposure and night sections of
-DESIGN.md and platform/light/NIGHT.md. The capture seam, G-buffer replay,
-BRDF, sun cascades, lamp clusters and shadows, ray tracing, reflections,
+This supersedes the sky, clouds, glare, exposure, night and sun shadow
+sections of DESIGN.md and platform/light/NIGHT.md. The capture seam,
+G-buffer replay, BRDF, lamp clusters and shadows, ray tracing, reflections,
 volumetric fog and TAA/MetalFX described there are unchanged.
 
 The reference is Forza Horizon 6. Since FH3, Playground has photographed its
@@ -293,6 +293,62 @@ Wood, "Shoot for the Sky"). The renderer is built the same way.
   - The lighthouse beam polygons (removed earlier).
 - **Mis-tag fixed:** the windmill's sails (texmat AAC3ACFA) were tagged `lamp`
   and glowed; they are now `wood`.
+
+## Sun shadows: a virtual shadow map (2026-10-14)
+
+The sun's (and the moon's) shadow is a virtual shadow map in the manner of
+Unreal Engine 5's (brr_vsm.h, brr_metal_vsm.m). It replaces the four
+cascades, which `BR_LIGHT_VSM=0` still selects for comparison.
+
+- **Why:** shadows came in as the car closed on them. `BR_LIGHT_SUNCHECK`
+  traces every sun-facing pixel's ray to the sun through the track (the
+  static casters' own triangles, so the trace is the truth) and counts the
+  real shadow the map loses, by distance. The cascades lost 10% of it at
+  55 to 110 m, 37 to 40% from 110 to 300 m and all of it past 300 m. Two
+  causes: their bias (up to 12 texels of depth at a grazing sun, 1 to 1.7 m
+  in the far cascade, against casters 0.3 m above their receivers: kerbs,
+  walls, a hill's grazing shadow), and 22 cm texels from 110 m on.
+- **Bias:** the receiver moved along its normal by 0.3 + sin(angle from the
+  sun) texels (normal offset, Holbert 2011: a move of a texels gives a / cos
+  of depth margin, and a bilinear comparison's neighbours lie within tan of
+  a texel), each filter sample compared against the receiver's own plane
+  (receiver plane depth bias, Isidoro 2006), half a texel more for
+  rounding, nothing on the casters. On the cascades alone this halved the
+  far loss with no more acne.
+- **The map:** 8 levels in the sun's axes, texels from 1 cm to 1.28 m, each
+  64 x 64 pages of 128 texels about the camera, a page's table slot its
+  number modulo 64. A point takes the finest level whose texel is at most
+  half its pixel's footprint and whose window holds it, dithered over half
+  a level at each change. Pages are marked from the G-buffer, given a slot
+  of a fixed pool (3969 on the Mac, 1953 on iOS; R32Float with a texel of
+  gutter), drawn at most 120 a frame into a scratch depth atlas (the static
+  track, from a light-space grid) and copied in. The sun is fixed for a
+  track, so a page stays until it leaves its window or goes unneeded for 120
+  frames. The moving casters get dynamic pages each frame, compared at the
+  nearer depth. A page not drawn yet falls back a level, then to a track map
+  drawn once (2048 square over the track), which is also the fog's sun.
+- **Measured,** the same 150-frame sunny run, real shadow lost (cascades
+  with the new bias, then the map): 55 to 110 m 3.1% to 0.1%, 110 to 200 m
+  18.9% to 1.3%, 200 to 300 m 18.4% to 3.0%, past 300 m 100% to 1.9%; false
+  shadow unchanged at 0.1%. Tracks 0 and 4 the same way (past 300 m 100% to
+  7.0% and 1.1%). Night, rain, snow and fog render as before.
+- **Cost:** the map's passes 0.36 ms a frame at 1280 x 720 on an M4 Pro
+  (marking 0.17, the rest 0.02 to 0.05 each; `BR_LIGHT_VSMTIME`), against
+  about 0.38 for the cascades' drawing; the lighting within run-to-run
+  noise of the cascades' (the filter's taps follow the penumbra's width, a
+  lookup's samples reuse the centre's page). At most 94 pages drawn in a
+  frame; about 710 resident on track 2. `BR_LIGHT_VSMLOG` logs the counts.
+- **Moving casters fixed on the way:** the ground's far triangles failed the
+  5 cm "on the track" test (a drawn corner is rebuilt from its pixel and
+  1/w, its error at most 0.022% of its distance from the eye) and ground at
+  z = 0 sat on a hash cell's face, so 20 to 30 triangles up to 50 m across
+  were redrawn every frame as movers (into the cascades' live map, the lamp
+  tiles' invalidation, the map's dynamic pages: 250 a frame). The tolerance
+  is now 5 cm + 0.05% of the distance and the hash's boxes are padded by
+  1 m; the movers are the cars alone (4 dynamic pages a frame), the GPU's
+  list still equal to the CPU's in all 94 checks. The cascades also left a
+  trail of the car's shadow tips on the road; the map's dynamic pages are
+  cleared each frame.
 
 ## Cost
 

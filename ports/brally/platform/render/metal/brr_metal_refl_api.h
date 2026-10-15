@@ -16,4 +16,9 @@ void brr_refl_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, s
                    id<MTLTexture> alb, id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr,
                    id<MTLTexture> sky, id<MTLTexture> bE, const void *giu, size_t gisz, id<MTLBuffer> girr, id<MTLTexture> gdst,
                    id<MTLBuffer> lset, id<MTLBuffer> gcnt, id<MTLBuffer> glst, id<MTLBuffer> goff);
+/* BR_LIGHT_SUNCHECK (diagnostic): the sun's visibility in hdr (the deferred
+ * pass's BR_LIGHT_VIEW=3) against rays traced through the track
+ * (brr_metal_refl.h svck), the frame marked and the counts logged */
+void brr_suncheck_pass(id<MTLDevice> dev, id<MTLCommandBuffer> cb, const void *lu, size_t lusz, const BrrRtWorld *rt,
+                       id<MTLTexture> pos, id<MTLTexture> nrm, id<MTLTexture> hdr, unsigned long frame);
 #endif

@@ -120,7 +120,14 @@ int  light_capture_eye(float eye[3]);
 /* the main camera this frame (its view x projection and viewport); 0 when no 3D was drawn */
 int  light_capture_camera(LightCamera *c);
 /* 1 when a world triangle (3 corners x xyz) lies on one of the track's
- * triangles (light_game_track): the track's shadow already holds it */
+ * triangles (light_game_track): the track's shadow already holds it.  Each
+ * corner within LIGHT_ON_TOL0 + LIGHT_ON_TOLD x its distance from the eye:
+ * a drawn corner is rebuilt from its pixel and 1/w, so its error grows with
+ * that distance (measured: at most 0.00022 of it, 160 to 1000 m away); the
+ * ground's far triangles failed a fixed 5 cm and were redrawn every frame as
+ * moving casters */
+#define LIGHT_ON_TOL0 0.05f
+#define LIGHT_ON_TOLD 0.0005f
 /* the track's grid hash (built once a track): cells LIGHT_TC_CELL units on a
    side hashed into LIGHT_TC_HASH buckets, head[bucket] the first entry, an
    entry's next and its track triangle (light_game_track's order); the GPU's

@@ -328,6 +328,7 @@ static void gpu_cost(void)
     u.csoft[1] = PCSS_SEARCH_MAX;
     u.csoft[2] = PCSS_FILTER_MAX;
     u.csoft[3] = CONTACT_LEN;
+    u.sbias[0] = SHADOW_NOFS; u.sbias[1] = SHADOW_NOFS_SIN; u.sbias[2] = SHADOW_ZBIAS;
     u.sun[2] = 1.0f;
     u.misc[1] = 1.0f;
     memcpy(u.eye, eye, 12);

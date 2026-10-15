@@ -93,7 +93,7 @@ void brr_vol_gi(const void *giu, size_t n, id<MTLBuffer> off, id<MTLBuffer> irr,
 }
 
 void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> cmd, const void *lu, size_t lusz,
-                   id<MTLBuffer> lset, id<MTLTexture> shadow, id<MTLTexture> gpos, id<MTLTexture> hdr,
+                   id<MTLBuffer> lset, id<MTLTexture> shadow, const void *vsu, size_t vsusz, id<MTLTexture> tmap, id<MTLTexture> gpos, id<MTLTexture> hdr,
                    const float eye[3], const float scr[16], int w, double time)
 {
     BrrVU *v = &s_vu;
@@ -138,6 +138,9 @@ void brr_vol_frame(id<MTLDevice> dev, id<MTLLibrary> lib, id<MTLCommandBuffer> c
     [ce setBytes:v length:sizeof *v atIndex:1];
     [ce setBuffer:lset offset:0 atIndex:2];
     [ce setTexture:shadow atIndex:0];
+    [ce setBytes:vsu length:vsusz atIndex:6];   /* the shadow map (brr_vsm.h): its track map for the sun when on */
+    if (tmap)
+        [ce setTexture:tmap atIndex:5];
     [ce setTexture:s_vcell[prev] atIndex:1];
     [ce setTexture:s_vcell[s_vcur] atIndex:2];
     {   /* the irradiance probes (brr_vol_gi): off with a zero volume */

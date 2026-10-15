@@ -244,6 +244,7 @@ static void dump(const char *path)
  * The cars and their effects are not track, so they are the expected rest. */
 #define TC_CELL LIGHT_TC_CELL
 #define TC_HASH LIGHT_TC_HASH
+#define TC_PAD 1.0f   /* metres: more than any corner's tolerance (light.h LIGHT_ON_TOL0: 0.55 m at 1 km) */
 static struct { unsigned gen; int *head, *next, *tri, n, cap; double on, all, car, miss[5]; unsigned mstate[256]; } s_tc;
 
 static unsigned tc_key(int x, int y, int z) { return ((unsigned)x * 73856093u ^ (unsigned)y * 19349663u ^ (unsigned)z * 83492791u) & (TC_HASH - 1); }
@@ -260,9 +261,9 @@ static void tc_build(const LightTrack *t)
     for (i = 0; i < t->ntri; i++) {
         const float *p = &t->tri[9 * i];
         int lo[3], hi[3], a, x, y, z;
-        for (a = 0; a < 3; a++) {
-            lo[a] = (int)floorf(fminf(fminf(p[a], p[3 + a]), p[6 + a]) / TC_CELL);
-            hi[a] = (int)floorf(fmaxf(fmaxf(p[a], p[3 + a]), p[6 + a]) / TC_CELL);
+        for (a = 0; a < 3; a++) {   /* the box grown by TC_PAD: a drawn triangle's centroid lies within its tolerance of the surface, maybe across a cell's face */
+            lo[a] = (int)floorf((fminf(fminf(p[a], p[3 + a]), p[6 + a]) - TC_PAD) / TC_CELL);
+            hi[a] = (int)floorf((fmaxf(fmaxf(p[a], p[3 + a]), p[6 + a]) + TC_PAD) / TC_CELL);
             if (hi[a] - lo[a] > 32)
                 hi[a] = lo[a] + 32;
         }
@@ -346,11 +347,17 @@ int light_capture_ontrack(const float tri[9])
         return 0;
     if (t->gen != s_tc.gen || !s_tc.head)
         tc_build(t);
+    float eye[3] = { 0, 0, 0 }, tol[3];
     for (k = 0; k < 3; k++)
         m[k] = (tri[k] + tri[3 + k] + tri[6 + k]) / 3.0f;
+    light_capture_eye(eye);
+    for (k = 0; k < 3; k++) {
+        const float *p = &tri[3 * k];
+        tol[k] = LIGHT_ON_TOL0 + LIGHT_ON_TOLD * sqrtf((p[0] - eye[0]) * (p[0] - eye[0]) + (p[1] - eye[1]) * (p[1] - eye[1]) + (p[2] - eye[2]) * (p[2] - eye[2]));
+    }
     for (e = s_tc.head[tc_key((int)floorf(m[0] / TC_CELL), (int)floorf(m[1] / TC_CELL), (int)floorf(m[2] / TC_CELL))]; e >= 0; e = s_tc.next[e]) {
         const float *q = &t->tri[9 * s_tc.tri[e]];
-        if (tc_dist(tri, q, q + 3, q + 6) < 0.05f && tc_dist(tri + 3, q, q + 3, q + 6) < 0.05f && tc_dist(tri + 6, q, q + 3, q + 6) < 0.05f)
+        if (tc_dist(tri, q, q + 3, q + 6) < tol[0] && tc_dist(tri + 3, q, q + 3, q + 6) < tol[1] && tc_dist(tri + 6, q, q + 3, q + 6) < tol[2])
             return 1;
     }
     return 0;

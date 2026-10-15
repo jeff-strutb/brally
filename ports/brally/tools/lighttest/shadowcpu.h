@@ -11,7 +11,7 @@
 
 /* brr_metal.m's LU, the same layout (brr_metal_lit.h's MSL struct) */
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4]; } LU;
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4], sbias[4]; } LU;
 
 typedef struct DepthMap { const float *d; int size; } DepthMap;   /* one layer, size x size, rows from the top */
 
@@ -68,9 +68,16 @@ static float cpu_casvis(const LU *u, const DepthMap *m, const float p[3], const 
 {
     float rot[2] = { cosf(phi), sinf(phi) };
     const float *M = u->sunvp[k];
-    float nl = cpu_clamp(n[0] * u->sun[0] + n[1] * u->sun[1] + n[2] * u->sun[2], 0.05f, 1.0f), tn = fminf(sqrtf(1.0f - nl * nl) / nl, 8.0f);
-    float off = u->ctexel[k] * (1.0f + 2.0f * (1.0f - nl)), q[3], c[3], st[2], tx, zr, tpd, rs, zb = 0, nb = 0, wr, vis = 0;
+    float nl = cpu_clamp(n[0] * u->sun[0] + n[1] * u->sun[1] + n[2] * u->sun[2], 0.0f, 1.0f), sl = sqrtf(1.0f - nl * nl);
+    float off = u->ctexel[k] * (u->sbias[0] + u->sbias[1] * sl), q[3], c[3], st[2], tx, zr, tpd, rs, zb = 0, nb = 0, wr, vis = 0, dz[2];
     int i, j;
+    {   /* the receiver's plane: depth per unit of st (casvis) */
+        float rx[3] = { M[0], M[4], M[8] }, ry[3] = { M[1], M[5], M[9] }, rz[3] = { M[2], M[6], M[10] };
+        float sx = sqrtf(rx[0] * rx[0] + rx[1] * rx[1] + rx[2] * rx[2]), sz = sqrtf(rz[0] * rz[0] + rz[1] * rz[1] + rz[2] * rz[2]);
+        float nz = fmaxf(-(n[0] * rz[0] + n[1] * rz[1] + n[2] * rz[2]) / sz, 0.125f);
+        dz[0] = (n[0] * rx[0] + n[1] * rx[1] + n[2] * rx[2]) / sx / nz * (2.0f / sx) * sz;
+        dz[1] = -(n[0] * ry[0] + n[1] * ry[1] + n[2] * ry[2]) / sx / nz * (2.0f / sx) * sz;
+    }
     for (i = 0; i < 3; i++)
         q[i] = p[i] + n[i] * off;
     for (i = 0; i < 3; i++)
@@ -80,7 +87,7 @@ static float cpu_casvis(const LU *u, const DepthMap *m, const float p[3], const 
     if (st[0] <= 0 || st[1] <= 0 || st[0] >= 1 || st[1] >= 1 || c[2] >= 1)
         return 1.0f;
     tx = 1.0f / (float)m->size;
-    zr = c[2] - u->cbias[k] * (1.0f + tn);
+    zr = c[2] - u->cbias[k] * u->sbias[2];
     tpd = u->cdepth[k] * u->csoft[0] / u->ctexel[k];
     rs = cpu_clamp(c[2] * tpd, 1.0f, u->csoft[1]);
     for (i = 0; i < 16; i++) {
@@ -88,7 +95,7 @@ static float cpu_casvis(const LU *u, const DepthMap *m, const float p[3], const 
         cpu_vogel(i, 16, rot, o);
         cpu_gather(m, st[0] + o[0] * (rs * tx), st[1] + o[1] * (rs * tx), g);
         for (j = 0; j < 4; j++)
-            if (g[j] < zr) {
+            if (g[j] < zr + dz[0] * o[0] * (rs * tx) + dz[1] * o[1] * (rs * tx)) {
                 zb += g[j];
                 nb += 1.0f;
             }
@@ -99,7 +106,7 @@ static float cpu_casvis(const LU *u, const DepthMap *m, const float p[3], const 
     for (i = 0; i < 24; i++) {
         float o[2];
         cpu_vogel(i, 24, rot, o);
-        vis += cpu_cmp(m, st[0] + o[0] * (wr * tx), st[1] + o[1] * (wr * tx), zr);
+        vis += cpu_cmp(m, st[0] + o[0] * (wr * tx), st[1] + o[1] * (wr * tx), zr + dz[0] * o[0] * (wr * tx) + dz[1] * o[1] * (wr * tx));
     }
     return vis / 24.0f;
 }

@@ -48,6 +48,7 @@
 #include "brr_metal_vol.h"
 #include "brr_metal_rt.h"
 #include "brr_metal_refl_api.h"
+#include "brr_metal_vsm_api.h"
 #include "brr_metal_gi.h"
 #include "brr_shadow.h"
 #include "brr_metal_taa_api.h"
@@ -493,7 +494,7 @@ static size_t s_ntris, s_captris;
 #define LIGHT_NIGHT_COMP 0.0f
 
 typedef struct LU { float sunvp[CASCADES][16]; float csplit[4], cfwd[4], ctexel[4], cbias[4]; float eye[4], sun[4], sunc[4], skyc[4], gndc[4], misc[4], wb[4], bg[4], fogc[4];
-                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
+                   float cdepth[4], csoft[4], scr[16], vol[4], gi[4], wet[4], env[4], sh[9][4], sbias[4]; } LU;   /* brr_metal_lit.h's LU, the same layout; vol.x: 1 when the volumetric fog replaces the game's (brr_metal_vol.h); gi: the irradiance probes' switch (brr_metal_gi.h) */
 /* the sky's pass (brr_metal_env.h EU): the camera's ray per pixel, the sun's disc, the white balance */
 typedef struct EU { float xft[4], vpt[4], m0[4], m1[4], m2[4], off[4], eye[4], tgt[4], sun[4], sunl[4], wb[4], misc[4]; } EU;
 
@@ -1266,7 +1267,7 @@ static int lit_cast_init(void)
 }
 static void lit_cast(id<MTLCommandBuffer> cb, const BrrCascade cs[CASCADES])
 {
-    struct { float cm[CASCADES][16]; uint32_t nops, ntri, cap; float size; } cu;
+    struct { float cm[CASCADES][16]; uint32_t nops, ntri, cap; float size; float eye[4]; } cu;
     uint32_t *tab, nops = 0, ntri = 0, *args;
     int32_t *rect;
     size_t i;
@@ -1321,6 +1322,8 @@ static void lit_cast(id<MTLCommandBuffer> cb, const BrrCascade cs[CASCADES])
     for (c = 0; c < CASCADES; c++)
         memcpy(cu.cm[c], cs[c].m, sizeof cu.cm[c]);
     cu.nops = nops; cu.ntri = ntri; cu.cap = (uint32_t)s_castcap; cu.size = (float)SHADOW_SIZE;
+    memset(cu.eye, 0, sizeof cu.eye);
+    light_capture_eye(cu.eye);   /* the corners' tolerance grows with their distance from it (light.h LIGHT_ON_TOL0) */
     ce = [cb computeCommandEncoder];
     [ce setComputePipelineState:s_pcast];
     [ce setBytes:&cu length:sizeof cu atIndex:0];
@@ -1338,10 +1341,71 @@ static void lit_cast(id<MTLCommandBuffer> cb, const BrrCascade cs[CASCADES])
     [ce endEncoding];
 }
 
+/* BR_LIGHT_TRACKEXT (diagnostic): once a track, its triangles' corners seen
+ * along the sun (the cascades' light axes): the whole rectangle, the one
+ * holding the 1st to 99th percentile on each axis, and the area of the 4 m
+ * cells any triangle touches; what one fixed shadow map over the track would
+ * have to cover */
+static void lit_track_extent(const float sun[3])
+{
+    static unsigned done = 0xFFFFFFFFu;
+    const LightTrack *t = light_game_track();
+    float f[3] = { -sun[0], -sun[1], -sun[2] }, up[3] = { 0, 0, 1 }, r[3], v[3], len, *xs, *ys;
+    float lo[2] = { 1e30f, 1e30f }, hi[2] = { -1e30f, -1e30f };
+    int n, i, k, nx, ny, occ = 0;
+    uint8_t *cell;
+    if (!t || !t->ntri || t->gen == done || !getenv("BR_LIGHT_TRACKEXT"))
+        return;
+    done = t->gen;
+    r[0] = f[1] * up[2] - f[2] * up[1]; r[1] = f[2] * up[0] - f[0] * up[2]; r[2] = f[0] * up[1] - f[1] * up[0];
+    len = sqrtf(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+    if (len < 1e-4f) { r[0] = 1; r[1] = 0; r[2] = 0; len = 1; }
+    for (k = 0; k < 3; k++) r[k] /= len;
+    v[0] = r[1] * f[2] - r[2] * f[1]; v[1] = r[2] * f[0] - r[0] * f[2]; v[2] = r[0] * f[1] - r[1] * f[0];
+    n = t->ntri * 3;
+    xs = malloc((size_t)n * sizeof *xs);
+    ys = malloc((size_t)n * sizeof *ys);
+    if (!xs || !ys) { free(xs); free(ys); return; }
+    for (i = 0; i < n; i++) {
+        const float *p = &t->tri[3 * i];
+        xs[i] = p[0] * r[0] + p[1] * r[1] + p[2] * r[2];
+        ys[i] = p[0] * v[0] + p[1] * v[1] + p[2] * v[2];
+        lo[0] = fminf(lo[0], xs[i]); hi[0] = fmaxf(hi[0], xs[i]);
+        lo[1] = fminf(lo[1], ys[i]); hi[1] = fmaxf(hi[1], ys[i]);
+    }
+    nx = (int)((hi[0] - lo[0]) / 4.0f) + 1;
+    ny = (int)((hi[1] - lo[1]) / 4.0f) + 1;
+    cell = calloc((size_t)nx * (size_t)ny, 1);
+    for (i = 0; cell && i < t->ntri; i++) {   /* each triangle's bounding cells */
+        float a0 = fminf(xs[3 * i], fminf(xs[3 * i + 1], xs[3 * i + 2])), a1 = fmaxf(xs[3 * i], fmaxf(xs[3 * i + 1], xs[3 * i + 2]));
+        float b0 = fminf(ys[3 * i], fminf(ys[3 * i + 1], ys[3 * i + 2])), b1 = fmaxf(ys[3 * i], fmaxf(ys[3 * i + 1], ys[3 * i + 2]));
+        int x, y;
+        for (y = (int)((b0 - lo[1]) / 4.0f); y <= (int)((b1 - lo[1]) / 4.0f); y++)
+            for (x = (int)((a0 - lo[0]) / 4.0f); x <= (int)((a1 - lo[0]) / 4.0f); x++)
+                if (!cell[(size_t)y * nx + x]) { cell[(size_t)y * nx + x] = 1; occ++; }
+    }
+    {
+        float p1[2], p99[2];
+        qsort_b(xs, (size_t)n, sizeof *xs, ^int(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; });
+        qsort_b(ys, (size_t)n, sizeof *ys, ^int(const void *a, const void *b) { float x = *(const float *)a, y = *(const float *)b; return x < y ? -1 : x > y; });
+        p1[0] = xs[n / 100]; p99[0] = xs[n - 1 - n / 100];
+        p1[1] = ys[n / 100]; p99[1] = ys[n - 1 - n / 100];
+        fprintf(stderr, "trackext: track %d, %d triangles, sun %.3f %.3f %.3f: along the sun %.0f x %.0f m, 1st-99th percentile %.0f x %.0f m, "
+                "4 m cells touched %d (%.0f m2, %.1f%% of the rectangle)\n",
+                light_game_track_id(), t->ntri, sun[0], sun[1], sun[2], hi[0] - lo[0], hi[1] - lo[1], p99[0] - p1[0], p99[1] - p1[1],
+                occ, occ * 16.0, 100.0 * occ / ((double)nx * ny));
+    }
+    free(cell);
+    free(xs);
+    free(ys);
+}
+
 /* the sun's shadow cascades (DESIGN.md 7.4; the fit in brr_shadow.h): the
  * camera's view out to SHADOW_FAR in four, each window reaching back toward
  * the sun to the farthest caster (the whole track and this frame's moving
  * objects).  Fills the lighting's constants and the cascades. */
+static float s_pixang;   /* radians a lit pixel (lit_cascades), the shadow map's level choice */
+static VsmU s_vsmoff;    /* the shadow map's constants when it is off (on.x 0) */
 static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascade cs[CASCADES])
 {
     LightCamera cam;
@@ -1351,6 +1415,7 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
     int k, c;
     if (!light_capture_camera(&cam) || (!s_nops && !s_trkn))
         return 0;
+    lit_track_extent(sun);
     /* the view's corner rays and its forward axis, from the inverse of view x projection */
     memcpy(&a, cam.vp, sizeof a);                /* row vectors stored row-major: a x p is clip */
     ia = simd_inverse(a);
@@ -1364,6 +1429,10 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
             return 0;
         for (k = 0; k < 3; k++)
             (c == 4 ? fwd : ray[c])[k] = d[k] / len;
+    }
+    {   /* radians a lit pixel, vertically: the angle between the view's lower and upper left rays over the rows */
+        float cd = ray[0][0] * ray[2][0] + ray[0][1] * ray[2][1] + ray[0][2] * ray[2][2];
+        s_pixang = acosf(cd < -1.0f ? -1.0f : cd > 1.0f ? 1.0f : cd) / (float)(s_lh > 0 ? s_lh : 1);
     }
     if (fwd[0] * ray[0][0] + fwd[1] * ray[0][1] + fwd[2] * ray[0][2] < 0)   /* the rays point away from the eye */
         for (k = 0; k < 3; k++) {
@@ -1393,6 +1462,14 @@ static int lit_cascades(const float sun[3], const float eye[3], LU *u, BrrCascad
     u->csoft[0] = tanf(SUN_HALF_DEG * 3.14159265f / 180.0f);
     u->csoft[1] = PCSS_SEARCH_MAX;
     u->csoft[2] = PCSS_FILTER_MAX;
+    u->sbias[0] = SHADOW_NOFS;
+    u->sbias[1] = SHADOW_NOFS_SIN;
+    u->sbias[2] = SHADOW_ZBIAS;
+    {   /* BR_LIGHT_SHBIAS=x,y,z (diagnostic): the bias's three terms */
+        const char *e = getenv("BR_LIGHT_SHBIAS");
+        if (e)
+            sscanf(e, "%f,%f,%f", &u->sbias[0], &u->sbias[1], &u->sbias[2]);
+    }
     return 1;
 }
 
@@ -1406,9 +1483,9 @@ static id<MTLCounterSampleBuffer> s_gpuctr[3];
 static int s_gpu_on = -1;
 static double s_gpu_ms[GPU_PASSES], s_gpu_span, s_gpu_t0;
 static long s_gpu_cb_us, s_gpu_cb_n;   /* the frames' whole GPU time (command buffer start to end) */
-#define GPU_SPLITS 9
+#define GPU_SPLITS 10
 static const char *const k_split_names[GPU_SPLITS] = { "tables+gbuffer+sun", "lamp shadows", "gi update", "lighting", "reflections",
-                                                      "fog", "transparent", "taa", "bloom+post+2d" };
+                                                      "fog", "transparent", "taa", "bloom+post+2d", "shadow map" };
 static long s_split_us[GPU_SPLITS], s_split_n[GPU_SPLITS];
 static unsigned s_gpu_frames;
 static MTLTimestamp s_cpu0, s_gpu0;
@@ -3055,7 +3132,35 @@ nopick:;
        the GPU places from their rectangle (brr_metal_cast.h rvs, the kernel's
        atomics); this frame's movers (the GPU's list, an indirect draw) and the
        cars' floors drawn over it.  No caster is looked at on the CPU */
-    if (u.misc[1] > 0.5f && lit_cast_init()) {
+    int vsm = 0;
+    {   /* the sun's virtual shadow map (brr_metal_vsm.m; BR_LIGHT_VSM=0: the cascades below instead) */
+        static int on = -1;
+        if (on < 0)
+            on = !getenv("BR_LIGHT_VSM") || atoi(getenv("BR_LIGHT_VSM")) != 0;
+        if (on && u.misc[1] > 0.5f) {
+            BrrVsmFrame vf;
+            memset(&vf, 0, sizeof vf);
+            memcpy(vf.sun, u.sun, sizeof vf.sun);
+            memcpy(vf.eye, u.eye, sizeof vf.eye);
+            vf.pixang = s_pixang;
+            memcpy(vf.sbias, u.sbias, sizeof vf.sbias);
+            vf.trk = s_trkn ? light_game_track() : NULL;
+            vf.trkbuf = s_trkn ? s_trkbuf : nil;
+            vf.gpos = s_gpos;
+            vf.gnrm = s_gnrm;
+            if (s_castok > 0 && s_castdyn) {
+                vf.movers = s_castdyn;
+                vf.moverargs = s_castargs[s_vbi];
+                vf.movercap = (uint32_t)s_castcap;
+                vf.floors = s_castfloor[s_vbi];
+                vf.nfloor = (uint32_t)s_ncfloor;
+            }
+            lit_split(0);   /* BR_LIGHT_GPU=2: the shadow map's passes their own piece */
+            vsm = brr_vsm_frame(s_dev, s_lib, s_cmd, &vf);
+            lit_split(9);
+        }
+    }
+    if (!vsm && u.misc[1] > 0.5f && lit_cast_init()) {
         unsigned gen = s_trkn ? s_trkgen : 0xFFFFFFFFu;
         int c, redraw[CASCADES], nfull = 0, prev = (s_vbi + 2) % 3;
         s_shc_frames++;
@@ -3080,7 +3185,7 @@ nopick:;
                 [e setRenderPipelineState:s_shpipe];
                 [e setDepthStencilState:s_shds];
                 [e setCullMode:MTLCullModeNone];
-                [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
+                [e setDepthBias:0.0f slopeScale:0.0f clamp:0.0f];   /* the receiver carries the bias (brr_metal_lit.h casvis) */
                 [e setVertexBytes:cs[c].m length:sizeof cs[c].m atIndex:1];
                 [e setVertexBuffer:s_trkbuf offset:0 atIndex:0];
                 [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)s_trkn];
@@ -3119,7 +3224,7 @@ nopick:;
             }
             [e setRenderPipelineState:s_shpipe];
             [e setDepthStencilState:s_shds];
-            [e setDepthBias:1.0f slopeScale:2.0f clamp:0.01f];
+            [e setDepthBias:0.0f slopeScale:0.0f clamp:0.0f];   /* the receiver carries the bias (brr_metal_lit.h casvis) */
             [e setVertexBytes:cs[c].m length:sizeof cs[c].m atIndex:1];
             if (s_castdyn) {
                 [e setVertexBuffer:s_castdyn offset:0 atIndex:0];
@@ -3227,10 +3332,18 @@ nopick:;
     [e setFragmentTexture:s_brdfE atIndex:5];
     [e setFragmentTexture:s_env.ready ? s_env.spec : s_blackcube atIndex:9];
     [e setFragmentTexture:u.env[3] > 0.5f ? s_ao[1] : s_black atIndex:10];
+    brr_vsm_bind(e, 3, 4, 5, 11, 12, 13);
     lit_gi_bind(e, 2);
     [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     [e endEncoding];
     lit_split(3);
+    {   /* BR_LIGHT_SUNCHECK (diagnostic, with BR_LIGHT_VIEW=3): the sun's shadow against traced sun rays */
+        static int sck = -1;
+        if (sck < 0)
+            sck = getenv("BR_LIGHT_SUNCHECK") != NULL;
+        if (sck && u.misc[1] > 0.5f)
+            brr_suncheck_pass(s_dev, s_cmd, &u, sizeof u, brr_metal_rt_world(), s_gpos, s_gnrm, s_hdr, s_frame);
+    }
     if (u.wet[2] > 0.5f)   /* reflections (brr_metal_refl.m) */
         brr_refl_pass(s_dev, s_cmd, &u, sizeof u, offsetof(LU, scr), u.wet[2] > 1.5f ? brr_metal_rt_world() : NULL, s_galb, s_gpos, s_gnrm, s_hdr, s_env.ready ? s_env.spec : nil, s_brdfE,
                       u.gi[0] > 0.5f && s_gi.ready && s_gi.frame ? &s_gi.u : NULL, sizeof s_gi.u,
@@ -3263,7 +3376,8 @@ nopick:;
             int gon = u.gi[0] > 0.5f && s_gi.ready && s_gi.frame;
             brr_vol_gi(gon ? &s_gi.u : NULL, sizeof s_gi.u, gon ? brr_gi_off(&s_gi) : nil, gon ? brr_gi_sh(&s_gi) : nil, gon ? brr_gi_dst(&s_gi) : nil);
         }
-        brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
+        brr_vol_frame(s_dev, s_lib, s_cmd, &u, sizeof u, s_lset[s_vbi], s_shadow, vsm ? (const void *)brr_vsm_u() : (const void *)&s_vsmoff, sizeof(VsmU), vsm ? brr_vsm_tmap() : nil,
+                      s_gpos, s_hdr, eye, vs, w, (double)s_frame / 60.0);
     }
 
     /* the blended 3D, forward-lit, in the game's order */
@@ -3297,6 +3411,7 @@ nopick:;
             [e setFragmentTexture:s_shadow atIndex:3];
             [e setFragmentTexture:s_latl atIndex:4];
             [e setFragmentTexture:s_brdfE atIndex:5];
+            brr_vsm_bind(e, 5, 8, 9, 11, 12, 13);
             lit_gi_bind(e, 3);
             brr_vol_bind(e, 4, 8);      /* the volumetric fog, when u.vol is on */
             [e setFragmentTexture:s_env.ready ? s_env.spec : s_blackcube atIndex:9];
@@ -4170,7 +4285,7 @@ void brr_present(void)
             }
         }
         if (s_gpu_on > 0 && s_litf && getenv("BR_LIGHT_GPU") && atoi(getenv("BR_LIGHT_GPU")) == 2)
-            lit_split_add(s_cmd, GPU_SPLITS - 1);
+            lit_split_add(s_cmd, 8);   /* bloom+post+2d */
         if (s_gpu_on > 0)   /* the whole frame's GPU time, every pass (BR_LIGHT_GPU) */
             [s_cmd addCompletedHandler:^(id<MTLCommandBuffer> c) {
                 double ms = (c.GPUEndTime - c.GPUStartTime) * 1000.0;
