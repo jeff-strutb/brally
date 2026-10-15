@@ -75,3 +75,13 @@
                  }
                  if (f & 1) {
                      if (DAT_105bc8dc == 2)      BrUiSelADec();
+@@ -1261,7 +1271,8 @@
+                     }
+                 } else {                          /* 0x1001c4a5 */
+                     BrWrap_10067980();
+-                    BrCdPause();
++                    /* Remastered: the CD plays on under the pause menu, as the N64's music
++                       does, so a change of music there is heard (the original paused it) */
+                     BrSndBankMute();
+                     BrSndTableClear();
+                 }
