@@ -121,7 +121,7 @@ APP="$OUT/derived/Build/Products/Release-$SDK/Top Gear Rally Remastered.app"
 echo "built $APP"
 [ $INSTALL = 1 ] || exit 0
 if [ -z "$DEVICE" ]; then
-    DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && /iPhone/ && /available/ { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) { print $i; exit } }')
+    DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/physical/ && /iPhone/ && (/available/ || /connected/) { for (i = 1; i <= NF; i++) if ($i ~ /^[0-9A-F]{8}-[0-9A-F]{16}$/) { print $i; exit } }')
 fi
 [ -n "$DEVICE" ] || { echo "ios/build.sh: no paired iPhone found" >&2; exit 1; }
 xcrun devicectl device install app --device "$DEVICE" "$APP"
