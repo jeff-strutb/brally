@@ -6,7 +6,7 @@
  *      and over it only what is plainly something else (a road's paint, grass
  *      on rock or a beach's crest, water and its foam, snow's rock).  A
  *      layout (a building's wall, a sign, wood, metal) is its colours'
- *      fewest clusters (k-means, at most 8, mean error under 0.035), each a
+ *      fewest clusters (k-means, at most 8, mean error under 0.02), each a
  *      surface by its colour: its art kept, region by region
  *   2. the 15/16-bit dither's lone texels given to their neighbours (a 3x3
  *      vote, wrapping); a texel-wide line (a road's paint, foam, any layout
@@ -58,6 +58,7 @@ const light_surf_set k_light_surf_set[] = {
     { "grass_path_3", 1.00f },          /* 23 */
     { "seaside_rock", 2.00f },          /* 24 */
     { "tiger_rock", 2.55f },            /* 25 */
+    { "forest_leaves_03", 2.30f },      /* 26 */
 };
 const int k_light_surf_nset = (int)(sizeof k_light_surf_set / sizeof k_light_surf_set[0]);
 
@@ -78,11 +79,11 @@ const light_surf_info k_light_surf[LIGHT_SURF_COUNT] = {
     [LIGHT_SURF_DIRT_RED] = { "dirt_red", { 2, 18, -1 }, { 1.0f, 0.92f, 1.0f }, 35, 1.0f, 1.0f, 0.5f, 0.9f, 1.10f, 0.45f, 1.16f, 0.62f },
     [LIGHT_SURF_SAND] = { "sand", { 4, 20, -1 }, { 1.0f, 1.04f, 1.0f }, 40, 1.0f, 0.8f, 0.6f, 0.9f, 1.0f, 1.0f, 1.0f, 1.0f },
     [LIGHT_SURF_SAND_WET] = { "sand_wet", { 4, -1, -1 }, B1, 0, 0.8f, 0.5f, 0.6f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f },
-    [LIGHT_SURF_FOAM] = { "foam", { 4, -1, -1 }, B1, 0, 0.3f, 0.3f, 0.6f, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f },
+    [LIGHT_SURF_FOAM] = { "foam", N3, B1, 0, 0.3f, 0.3f, 0.6f, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f },
     [LIGHT_SURF_WATER] = { "water", N3, B1, 0, 0.0f, 0.0f, 1.0f, 0.1f, 1.0f, 1.0f, 1.0f, 1.0f },
-    [LIGHT_SURF_GRASS] = { "grass", { 5, 21, 22 }, { 1.0f, 0.93f, 1.08f }, 25, 1.0f, 1.0f, 0.6f, 0.95f, 0.60f, 1.50f, 0.90f, 1.22f },
-    [LIGHT_SURF_GRASS_DRY] = { "grass_dry", { 6, 23, -1 }, { 1.0f, 1.05f, 1.0f }, 25, 1.0f, 1.0f, 0.6f, 0.95f, 0.60f, 1.50f, 0.90f, 1.22f },
-    [LIGHT_SURF_MOSS] = { "moss", { 21, -1, -1 }, B1, 0, 1.0f, 0.8f, 0.6f, 0.95f, 0.60f, 1.50f, 0.90f, 1.22f },
+    [LIGHT_SURF_GRASS] = { "grass", { 5, 21, 22 }, { 1.0f, 0.93f, 1.08f }, 25, 1.0f, 1.0f, 0.6f, 0.95f, 0.80f, 1.08f, 0.80f, 1.08f },
+    [LIGHT_SURF_GRASS_DRY] = { "grass_dry", { 6, 23, -1 }, { 1.0f, 1.05f, 1.0f }, 25, 1.0f, 1.0f, 0.6f, 0.95f, 0.80f, 1.08f, 0.80f, 1.08f },
+    [LIGHT_SURF_MOSS] = { "moss", { 21, -1, -1 }, B1, 0, 1.0f, 0.8f, 0.6f, 0.95f, 0.80f, 1.08f, 0.80f, 1.08f },
     [LIGHT_SURF_ROCK_GREY] = { "rock_grey", { 7, 24, -1 }, { 1.0f, 1.05f, 1.0f }, 30, 0.75f, 1.0f, 0.7f, 0.85f, 1.08f, 0.55f, 1.16f, 0.65f },   /* rock_face_04 coarser than FH6's rock: 0.75 */
     [LIGHT_SURF_ROCK_BROWN] = { "rock_brown", { 8, 25, -1 }, { 1.0f, 0.95f, 1.0f }, 30, 1.0f, 1.0f, 0.7f, 0.85f, 1.08f, 0.55f, 1.16f, 0.65f },
     [LIGHT_SURF_ROCK_RED] = { "rock_red", { 9, -1, -1 }, B1, 0, 1.0f, 1.0f, 0.7f, 0.85f, 0.83f, 0.45f, 1.05f, 0.45f },
@@ -96,7 +97,7 @@ const light_surf_info k_light_surf[LIGHT_SURF_COUNT] = {
     [LIGHT_SURF_SNOW] = { "snow", { 10, -1, -1 }, B1, 0, 0.85f, 0.8f, 0.5f, 0.75f, 1.00f, 0.40f, 1.00f, 0.40f },   /* FH6's snow: smoother than the scan */
     [LIGHT_SURF_ICE] = { "ice", { 10, -1, -1 }, B1, 0, 0.3f, 0.4f, 0.5f, 0.15f, 1.0f, 1.0f, 1.0f, 1.0f },
     [LIGHT_SURF_ROOF] = { "roof", { 11, -1, -1 }, B1, 0, 0.6f, 0.6f, 1.0f, 0.85f, 1.0f, 1.0f, 1.0f, 1.0f },
-    [LIGHT_SURF_LEAVES] = { "leaves", N3, B1, 0, 0.0f, 0.0f, 1.0f, 0.9f, 1.0f, 1.0f, 1.0f, 1.0f },
+    [LIGHT_SURF_LEAVES] = { "leaves", { 26, -1, -1 }, B1, 0, 0.6f, 0.0f, 1.0f, 0.9f, 1.0f, 1.0f, 1.0f, 1.0f },
     [LIGHT_SURF_PAINT_SIGN] = { "paint_sign", N3, B1, 0, 0.0f, 0.0f, 1.0f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f },   /* flat printed colour */
 };
 
@@ -161,6 +162,8 @@ static int base_surface(int mat, const double *rgb, const uint8_t *a, int n)
     case LIGHT_MAT_SAND: return LIGHT_SURF_SAND;
     case LIGHT_MAT_SNOW: return LIGHT_SURF_SNOW;
     case LIGHT_MAT_ICE: return LIGHT_SURF_ICE;
+    case LIGHT_MAT_WATER: return LIGHT_SURF_WATER;
+    case LIGHT_MAT_FOLIAGE: return LIGHT_SURF_LEAVES;   /* one surface: the art's light and dark kept as its variation */
     default: return LIGHT_SURF_CONCRETE;   /* concrete, tunnel */
     }
 }
@@ -201,6 +204,11 @@ static void classify(int mat, const double *rgb, const uint8_t *a, int n, int *l
             break;
         case LIGHT_MAT_ICE:
             if (v > 0.85 && s < 0.1) o = LIGHT_SURF_SNOW;
+            break;
+        case LIGHT_MAT_WATER:
+            if (v > 0.8 && s < 0.2) o = LIGHT_SURF_FOAM;
+            break;
+        case LIGHT_MAT_FOLIAGE:   /* one surface: the leaves */
             break;
         default:   /* concrete, tunnel: their lamp strips the game's own */
             if (warm && s > 0.5 && v > 0.5) o = LIGHT_SURF_NONE;
@@ -327,7 +335,7 @@ static void cluster_labels(int mat, const double *rgb, const uint8_t *a, int n, 
         kmeans(x, m, kk, c, l);
         for (i = 0; i < m; i++)
             err += sqrt(d2(x + 3 * i, c + 3 * l[i]));
-        if (err / m < 0.035)
+        if (err / m < 0.02)   /* (a window's glass, a door: their own clusters) */
             break;
     }
     for (i = 0; i < n; i++) {
@@ -465,11 +473,11 @@ static void clip(double *f, int n, double lo, double hi)
         f[i] = f[i] < lo ? lo : f[i] > hi ? hi : f[i];
 }
 
-static int is_layout(int mat) { return mat == LIGHT_MAT_BUILDING || mat == LIGHT_MAT_SIGN || mat == LIGHT_MAT_WOOD || mat == LIGHT_MAT_METAL; }
+static int is_layout(int mat) { return mat == LIGHT_MAT_BUILDING || mat == LIGHT_MAT_WOOD || mat == LIGHT_MAT_METAL; }   /* (signs: the game's own) */
 static int is_natural(int mat)
 {
     return mat == LIGHT_MAT_ASPHALT || mat == LIGHT_MAT_DIRT || mat == LIGHT_MAT_ROCK || mat == LIGHT_MAT_GRASS || mat == LIGHT_MAT_SAND
-        || mat == LIGHT_MAT_SNOW || mat == LIGHT_MAT_ICE || mat == LIGHT_MAT_CONCRETE || mat == LIGHT_MAT_TUNNEL;
+        || mat == LIGHT_MAT_SNOW || mat == LIGHT_MAT_ICE || mat == LIGHT_MAT_CONCRETE || mat == LIGHT_MAT_TUNNEL || mat == LIGHT_MAT_WATER || mat == LIGHT_MAT_FOLIAGE;
 }
 
 /* a label's name as texregion.py spells it, for its tie order */

@@ -10,6 +10,7 @@
 #include "light_surf.h"
 #include "light_texmat.h"
 #include "host.h"
+#include "plat.h"
 
 /* ---- the maps -------------------------------------------------------------------------- */
 #define ENTRIES 4096
@@ -17,7 +18,7 @@
 typedef struct {
     uint32_t hash;
     int made;                       /* 1: a map; 0: the game's own look */
-    int layout;
+    int layout, foliage;
     light_surf_map map;
 } Entry;
 
@@ -35,7 +36,8 @@ int light_surf_entry(uint32_t hash, int mat, const uint8_t *rgba, int w, int h)
     i = s_ne;
     s_e[i].hash = hash;
     s_e[i].made = light_surf_build(mat, rgba, w, h, &s_e[i].map);
-    s_e[i].layout = mat == LIGHT_MAT_BUILDING || mat == LIGHT_MAT_SIGN || mat == LIGHT_MAT_WOOD || mat == LIGHT_MAT_METAL;
+    s_e[i].layout = mat == LIGHT_MAT_BUILDING || mat == LIGHT_MAT_WOOD || mat == LIGHT_MAT_METAL;
+    s_e[i].foliage = mat == LIGHT_MAT_FOLIAGE;
     s_ne++;
     return s_e[i].made ? i : -1;
 }
@@ -86,6 +88,9 @@ void light_surf_uniforms(int entry, float albk, int lit, LightSurfU *u)
     u->flags[1] = (float)e->layout;
     u->flags[2] = lit ? 0.0f : 1.0f;
     u->flags[3] = (float)light_surf_view();
+    u->misc[0] = e->foliage ? 1.0f : 0.0f;
+    u->misc[1] = (float)(plat_time_ms() % 3600000u) / 1000.0f;   /* (an hour's wrap keeps it exact in a float) */
+    u->misc[2] = e->foliage ? 3.0f : 0.0f;
     for (r = 0; r < e->map.n; r++) {
         int s = e->map.surf[r], nv;
         const light_surf_info *in = &k_light_surf[s];
@@ -125,10 +130,11 @@ void light_surf_uniforms(int entry, float albk, int lit, LightSurfU *u)
         for (k = 0; k < 3; k++)
             c[k] = c[k] < 0.0f ? 0.0f : c[k] > (lit ? 0.9f : 1.0f) ? (lit ? 0.9f : 1.0f) : c[k];
         u->sa[r][0] = in->set[0] >= 0 ? (float)in->set[0]
-                      : (s == LIGHT_SURF_PAINT_SIGN ? -2.0f : -1.0f);   /* a sign's print: flat; water, leaves, glass: the game's */
+                      : s == LIGHT_SURF_WATER ? -3.0f   /* water: its colour, moving ripples */
+                      : s == LIGHT_SURF_PAINT_SIGN || s == LIGHT_SURF_FOAM ? -2.0f : -1.0f;   /* a sign's print, foam: flat; glass: the game's */
         u->sa[r][1] = in->set[0] >= 0 ? 1.0f / k_light_surf_set[in->set[0]].metres : 0.0f;
         u->sa[r][2] = in->detail;
-        u->sa[r][3] = in->normal;
+        u->sa[r][3] = s == LIGHT_SURF_WATER ? 1.0f : in->normal;
         nv = in->set[0] < 0 ? 0 : in->set[1] < 0 ? 1 : in->set[2] < 0 ? 2 : 3;
         for (k = 0; k < 3; k++)
             c[k] *= in->vbright[0];

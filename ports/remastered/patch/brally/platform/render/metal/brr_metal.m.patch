@@ -1,6 +1,6 @@
 --- a/platform/render/metal/brr_metal.m
 +++ b/platform/render/metal/brr_metal.m
-@@ -16,327 +16,3870 @@
+@@ -16,327 +16,3883 @@
   *               the Voodoo
   *
   * The shader source is compiled at start-up, so the build needs no Metal
@@ -349,7 +349,7 @@
 +/* the Remastered textures under the game's own lighting (brr_metal_surf.h): the texel the
 +   combiners read, from the surfaces; the face's normal from the world position's derivatives */
 +"    if (su.flags.x > 0.5) { float3 fn = normalize(cross(dfdx(in.wp), dfdy(in.wp))); fn = fn.z < 0.0 ? -fn : fn;\n"
-+"      tx.rgb = surfshade(su, smap, svar, sseta, ssetb, in.st, in.wp, fn, tx.rgb, in.col.rgb).alb; }\n"
++"      SurfO so = surfshade(su, smap, svar, sseta, ssetb, in.st, in.wp, fn, tx.rgb, in.col.rgb); tx.rgb = so.alb; if (so.a >= 0.0) tx.a = so.a; }\n"
 +"    tex.r = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.r, tx.a, 0, tx.a), tx.r, tx.a, 0, u.tc_rgb_invert);\n"
 +"    tex.g = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.g, tx.a, 0, tx.a), tx.g, tx.a, 0, u.tc_rgb_invert);\n"
 +"    tex.b = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.b, tx.a, 0, tx.a), tx.b, tx.a, 0, u.tc_rgb_invert);\n"
@@ -3501,26 +3501,6 @@
      }
 -    return s_pipes[src][dst];
 -}
--
--static MTLCompareFunction cmpfn(int fn)
--{
--    static const MTLCompareFunction k[8] = {
--        MTLCompareFunctionNever, MTLCompareFunctionLess, MTLCompareFunctionEqual, MTLCompareFunctionLessEqual,
--        MTLCompareFunctionGreater, MTLCompareFunctionNotEqual, MTLCompareFunctionGreaterEqual, MTLCompareFunctionAlways,
--    };
--    return k[fn & 7];
--}
--
--static id<MTLDepthStencilState> ds_for(int on, int fn, int write)
--{
--    on = on != 0;
--    write = write != 0;
--    fn &= 7;
--    if (!s_ds[on][fn][write]) {
--        MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
--        d.depthCompareFunction = on ? cmpfn(fn) : MTLCompareFunctionAlways;
--        d.depthWriteEnabled = on && write;
--        s_ds[on][fn][write] = [s_dev newDepthStencilStateWithDescriptor:d];
 +    if (getenv("BR_LIGHT_CARTEX")) {   /* diagnostic: every texture drawn on a car (lit 3), once, with the s, t span it is drawn over */
 +        static uint32_t seen[256];
 +        static int nseen;
@@ -3563,21 +3543,7 @@
 +                }
 +            }
 +        }
-     }
--    return s_ds[on][fn][write];
--}
--
--static id<MTLSamplerState> samp_for(int filter, int cs, int ct)
--{
--    filter = filter != 0;
--    cs = cs != 0;
--    ct = ct != 0;
--    if (!s_samp[filter][cs][ct]) {
--        MTLSamplerDescriptor *d = [MTLSamplerDescriptor new];
--        d.minFilter = d.magFilter = filter ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
--        d.sAddressMode = cs ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
--        d.tAddressMode = ct ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
--        s_samp[filter][cs][ct] = [s_dev newSamplerStateWithDescriptor:d];
++    }
 +    if (getenv("BR_LIGHT_PICK")) {   /* diagnostic: the 3D draws under a point, fractions of the frame (fx,fy[,every n frames, 120]) */
 +        const uint8_t *vb = (const uint8_t *)[s_vb[s_vbi] contents];
 +        float fx = 0.5f, fy = 0.5f, mx = 1.0f, my = 1.0f, px, py;
@@ -3611,9 +3577,7 @@
 +                        break;
 +                    }
 +                }
-     }
--    return s_samp[filter][cs][ct];
--}
++    }
 +nopick:;
 +    /* the G-buffer: the camera's opaque 3D */
 +    rp = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -3664,23 +3628,25 @@
 +    if (have_cam)
 +        lit_talb_learn(&u);   /* the track's albedo from this frame (brr_metal_talb.h) */
  
--static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int colour, int depth)
+-static MTLCompareFunction cmpfn(int fn)
 -{
--    MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
--    NSError *err = nil;
--    id<MTLRenderPipelineState> p;
--    d.vertexFunction = [s_lib newFunctionWithName:vs];
--    d.fragmentFunction = [s_lib newFunctionWithName:fs];
--    d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
--    if (!colour)
--        d.colorAttachments[0].writeMask = MTLColorWriteMaskNone;
--    if (depth)
--        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
--    p = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
--    if (!p)
--        fprintf(stderr, "brr: metal pipeline %s: %s\n", [fs UTF8String], [[err description] UTF8String]);
--    return p;
+-    static const MTLCompareFunction k[8] = {
+-        MTLCompareFunctionNever, MTLCompareFunctionLess, MTLCompareFunctionEqual, MTLCompareFunctionLessEqual,
+-        MTLCompareFunctionGreater, MTLCompareFunctionNotEqual, MTLCompareFunctionGreaterEqual, MTLCompareFunctionAlways,
+-    };
+-    return k[fn & 7];
 -}
+-
+-static id<MTLDepthStencilState> ds_for(int on, int fn, int write)
+-{
+-    on = on != 0;
+-    write = write != 0;
+-    fn &= 7;
+-    if (!s_ds[on][fn][write]) {
+-        MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
+-        d.depthCompareFunction = on ? cmpfn(fn) : MTLCompareFunctionAlways;
+-        d.depthWriteEnabled = on && write;
+-        s_ds[on][fn][write] = [s_dev newDepthStencilStateWithDescriptor:d];
 +    /* the sun's shadow cascades: per cascade, the track drawn again into the
 +       static cache only when the cascade's matrix or the track changed (then
 +       all of the live map restored from it, by blit); otherwise the live map
@@ -3714,7 +3680,9 @@
 +            vsm = brr_vsm_frame(s_dev, s_lib, s_cmd, &vf);
 +            lit_split(9);
 +        }
-+    }
+     }
+-    return s_ds[on][fn][write];
+-}
 +    if (!vsm && u.misc[1] > 0.5f && lit_cast_init()) {
 +        unsigned gen = s_trkn ? s_trkgen : 0xFFFFFFFFu;
 +        int c, redraw[CASCADES], nfull = 0, prev = (s_vbi + 2) % 3;
@@ -3799,20 +3767,73 @@
 +            s_shc_restored = s_shc_tiled = s_shc_frames = 0;
 +        }
 +    }
-+
+ 
+-static id<MTLSamplerState> samp_for(int filter, int cs, int ct)
+-{
+-    filter = filter != 0;
+-    cs = cs != 0;
+-    ct = ct != 0;
+-    if (!s_samp[filter][cs][ct]) {
+-        MTLSamplerDescriptor *d = [MTLSamplerDescriptor new];
+-        d.minFilter = d.magFilter = filter ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
+-        d.sAddressMode = cs ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
+-        d.tAddressMode = ct ? MTLSamplerAddressModeClampToEdge : MTLSamplerAddressModeRepeat;
+-        s_samp[filter][cs][ct] = [s_dev newSamplerStateWithDescriptor:d];
 +    lit_split(0);
 +    {
 +        CPU_T0(3);
 +        lit_lamp_shadows();
 +        CPU_T1(3);
-+    }
-+
+     }
+-    return s_samp[filter][cs][ct];
+-}
+ 
+-static id<MTLRenderPipelineState> simple_pipe(NSString *vs, NSString *fs, int colour, int depth)
+-{
+-    MTLRenderPipelineDescriptor *d = [MTLRenderPipelineDescriptor new];
+-    NSError *err = nil;
+-    id<MTLRenderPipelineState> p;
+-    d.vertexFunction = [s_lib newFunctionWithName:vs];
+-    d.fragmentFunction = [s_lib newFunctionWithName:fs];
+-    d.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+-    if (!colour)
+-        d.colorAttachments[0].writeMask = MTLColorWriteMaskNone;
+-    if (depth)
+-        d.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+-    p = [s_dev newRenderPipelineStateWithDescriptor:d error:&err];
+-    if (!p)
+-        fprintf(stderr, "brr: metal pipeline %s: %s\n", [fs UTF8String], [[err description] UTF8String]);
+-    return p;
+-}
 +    /* what the game drew before its 3D (its clears and background fills) is
 +       the background: behind the scene, not over it */
 +    for (first3d = 0; first3d < s_nops; first3d++)
 +        if (s_ops[first3d].kind == K_OPQ || s_ops[first3d].kind == K_BLEND || s_ops[first3d].kind == K_BACK)
 +            break;
-+
+ 
+-/* the colour and depth targets at w x h pixels.  The game draws in the
+- * resolution it opened (its Glide coordinates); the targets take the
+- * window's size, so geometry, text and textures are rasterised and filtered
+- * at the window's resolution rather than drawn at that size and enlarged
+- * (as the wasm lane draws) */
+-static void targets(int w, int h)
+-{
+-    MTLTextureDescriptor *td;
+-    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
+-                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+-    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+-    td.storageMode = MTLStorageModeShared;
+-    s_col = [s_dev newTextureWithDescriptor:td];
+-    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+-                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
+-    td.usage = MTLTextureUsageRenderTarget;
+-    td.storageMode = MTLStorageModePrivate;
+-    s_dep = [s_dev newTextureWithDescriptor:td];
+-    s_rw = w;
+-    s_rh = h;
+-    s_fresh = 1;
+-    free(s_shot_rgba);
+-    s_shot_rgba = NULL;
 +    /* the lighting, in HDR: the background and backdrop, then every G-buffer pixel */
 +    xtj = s_xtj;
 +    s_xtj = nil;
@@ -3960,6 +3981,19 @@
 +            }
 +            [e setRenderPipelineState:lit_forward(s_ops[i].src, s_ops[i].dst)];
 +            [e setFragmentBytes:&u length:sizeof u atIndex:1];
++            {   /* the Remastered textures (brr_metal_surf.h): a blended draw whose texture has a surface map */
++                LightSurfU su;
++                uint32_t tx = s_ops[i].tex;
++                int se = plat_flag(BR_FLAG_TEXTURES) && s_ops[i].u.has_tex && tx < TEX_MAX && s_tex[tx] ? s_tsurf[tx] : -1;
++                if (se >= 0 && brr_surf_ready(se))
++                    light_surf_uniforms(se, s_ops[i].u.albk, 1, &su);
++                else {
++                    memset(&su, 0, sizeof su);
++                    se = -1;
++                }
++                brr_surf_bind_at(e, se, 14);
++                [e setFragmentBytes:&su length:sizeof su atIndex:10];
++            }
 +            [e setFragmentBuffer:s_lset[s_vbi] offset:0 atIndex:2];
 +            [e setFragmentTexture:s_shadow atIndex:3];
 +            [e setFragmentTexture:s_latl atIndex:4];
@@ -4030,30 +4064,7 @@
 +        }
 +        [e endEncoding];
 +    }
- 
--/* the colour and depth targets at w x h pixels.  The game draws in the
-- * resolution it opened (its Glide coordinates); the targets take the
-- * window's size, so geometry, text and textures are rasterised and filtered
-- * at the window's resolution rather than drawn at that size and enlarged
-- * (as the wasm lane draws) */
--static void targets(int w, int h)
--{
--    MTLTextureDescriptor *td;
--    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatBGRA8Unorm
--                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
--    td.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
--    td.storageMode = MTLStorageModeShared;
--    s_col = [s_dev newTextureWithDescriptor:td];
--    td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
--                                                            width:(NSUInteger)w height:(NSUInteger)h mipmapped:NO];
--    td.usage = MTLTextureUsageRenderTarget;
--    td.storageMode = MTLStorageModePrivate;
--    s_dep = [s_dev newTextureWithDescriptor:td];
--    s_rw = w;
--    s_rh = h;
--    s_fresh = 1;
--    free(s_shot_rgba);
--    s_shot_rgba = NULL;
++
 +    lit_split(6);
 +    s_nbon = 0;
 +    s_dw = s_dh = 0;
@@ -4180,7 +4191,7 @@
  int brr_open(int width, int height)
  {
      @autoreleasepool {
-@@ -350,7 +3893,9 @@
+@@ -350,7 +3906,9 @@
          if (!s_dev)
              return 0;
          s_q = [s_dev newCommandQueue];
@@ -4191,7 +4202,7 @@
          if (!s_lib) {
              fprintf(stderr, "brr: metal shader: %s\n", [[err description] UTF8String]);
              return 0;
-@@ -383,6 +3928,7 @@
+@@ -383,6 +3941,7 @@
          s_lfbsharp = simple_pipe(@"bvs", @"sfs", 1, 1);
          s_blit = simple_pipe(@"bvs", @"bfs", 1, 0);
          s_sharp = simple_pipe(@"bvs", @"sfs", 1, 0);
@@ -4199,7 +4210,7 @@
          for (i = 0; i < 2; i++) {
              MTLDepthStencilDescriptor *d = [MTLDepthStencilDescriptor new];
              d.depthCompareFunction = MTLCompareFunctionAlways;
-@@ -445,6 +3991,10 @@
+@@ -445,6 +4004,10 @@
          t = [s_dev newTextureWithDescriptor:td];
          [t replaceRegion:MTLRegionMake2D(0, 0, w, h) mipmapLevel:0 withBytes:rgba bytesPerRow:(NSUInteger)w * 4];
          s_tex[tid] = t;
@@ -4210,7 +4221,7 @@
          return tid;
      }
  }
-@@ -458,7 +4008,8 @@
+@@ -458,7 +4021,8 @@
      }
  }
  
@@ -4220,7 +4231,7 @@
  static void frame_begin(void)
  {
      if (!s_cmd) {
-@@ -470,6 +4021,11 @@
+@@ -470,6 +4034,11 @@
          }
          s_vbi = (s_vbi + 1) % 3;
          s_vused = 0;
@@ -4232,7 +4243,7 @@
      }
  }
  
-@@ -538,6 +4094,17 @@
+@@ -538,6 +4107,17 @@
          if ((off = vb_take(sizeof q)) < 0)
              return;
          memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
@@ -4250,7 +4261,7 @@
          e = enc();
          [e setRenderPipelineState:s_clear[colour ? 1 : 0]];
          [e setDepthStencilState:s_clear_ds[depthbuf ? 1 : 0]];
-@@ -574,6 +4141,10 @@
+@@ -574,6 +4154,10 @@
                  o[i].col[3] = v[i].a;
                  o[i].st[0] = v[i].s;
                  o[i].st[1] = v[i].t;
@@ -4261,7 +4272,7 @@
              }
          }
          memset(&u, 0, sizeof u);
-@@ -585,6 +4156,35 @@
+@@ -585,6 +4169,35 @@
          u.tc_alpha_fn = st->tc_alpha_fn; u.tc_alpha_factor = st->tc_alpha_factor;
          u.tc_rgb_invert = st->tc_rgb_invert; u.tc_alpha_invert = st->tc_alpha_invert;
          u.has_tex = st->texture != 0;
@@ -4297,7 +4308,7 @@
          u.atest_fn = st->atest_fn;
          u.atest_ref = st->atest_ref;
          u.fog_mode = st->fog_mode & 0xFF;
-@@ -601,6 +4201,138 @@
+@@ -601,6 +4214,138 @@
          u.fog_color[2] = (st->fog_color & 0xFF) / 255.0f;
          for (i = 0; i < 64; i++)
              u.fog[i] = st->fog_table[i] / 255.0f;
@@ -4436,7 +4447,7 @@
          e = enc();
          [e setRenderPipelineState:pipe_for(st->blend_rgb_src, st->blend_rgb_dst)];
          [e setDepthStencilState:ds_for(st->depth_mode, st->depth_fn, st->depth_mask)];
-@@ -614,6 +4346,22 @@
+@@ -614,6 +4359,22 @@
              id<MTLTexture> t = st->texture < TEX_MAX && s_tex[st->texture] ? s_tex[st->texture] : s_white;
              [e setFragmentTexture:t atIndex:0];
              [e setFragmentSamplerState:samp_for(st->mag_filter || st->min_filter, st->clamp_s, st->clamp_t) atIndex:0];
@@ -4459,7 +4470,7 @@
          }
          [e drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:(NSUInteger)n];
      }
-@@ -667,6 +4415,16 @@
+@@ -667,6 +4428,16 @@
          if ((off = vb_take(sizeof q)) < 0)
              return;
          memcpy((char *)[s_vb[s_vbi] contents] + off, q, sizeof q);
@@ -4476,7 +4487,7 @@
          e = enc();
          [e setRenderPipelineState:d[2] - d[0] == w && d[3] - d[1] == h ? s_lfbpipe : s_lfbsharp];
          [e setDepthStencilState:s_clear_ds[0]];
-@@ -765,9 +4523,30 @@
+@@ -765,9 +4536,30 @@
          id<CAMetalDrawable> dr;
          int want_shot = (long)(s_frame + 1) == s_shot_frame;
          frame_begin();
@@ -4510,7 +4521,7 @@
          if (ml) {
              int fw, fh;
              host_macos_layer_fit(&fw, &fh);
-@@ -813,6 +4592,22 @@
+@@ -813,6 +4605,22 @@
                  [s_cmd presentDrawable:dr];
              }
          }

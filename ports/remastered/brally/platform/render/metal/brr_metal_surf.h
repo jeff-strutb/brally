@@ -33,7 +33,7 @@
 #define BRR_METAL_SURF_H
 
 #define BRR_SURF_SRC \
-"struct SurfU { float4 sa[8]; float4 sb[8]; float4 sc[8]; float4 sv[8]; float4 sk[8]; float4 flags; };\n" \
+"struct SurfU { float4 sa[8]; float4 sb[8]; float4 sc[8]; float4 sv[8]; float4 sk[8]; float4 flags; float4 misc; };\n" \
 "constexpr sampler s_surfp(filter::nearest, address::repeat);\n" \
 "constexpr sampler s_surfl(filter::linear, address::repeat);\n" \
 "constexpr sampler s_surfa(filter::linear, mip_filter::linear, address::repeat, max_anisotropy(16));\n" \
@@ -94,10 +94,22 @@
 /* a region's surface: its variants share the ground in patches of 1 / sv.w metres from a noise \
    field of their own (the surface's seed); where two meet, the one whose height stands higher \
    takes it (a band of 0.1 of the field, moved by the heights' difference times 0.35) */ \
+/* water's moving ripples: four deep-water waves (wavelengths 0.9 to 4.3 m, each at the speed its \
+   length gives, w = sqrt(g k)), their slope at p and time tm */ \
+"static float2 surfripple(float2 p, float tm) {\n" \
+"  float2 sl = float2(0); float a[4] = { 0.3, 1.9, 3.4, 5.0 }, lw[4] = { 0.9, 1.6, 2.7, 4.3 }, am[4] = { 0.012, 0.02, 0.03, 0.045 };\n" \
+"  for (int i = 0; i < 4; i++) { float2 d = float2(cos(a[i]), sin(a[i])); float k = 6.2831853 / lw[i], w = sqrt(9.81 * k);\n" \
+"    sl += am[i] * k * d * cos(k * dot(d, p) - w * tm); }\n" \
+"  return sl;\n" \
+"}\n" \
 "static SurfR surfset(texture2d_array<float> ta, texture2d_array<float> tb, float4 sa, float4 sv, float4 sk, float4 sc,\n" \
-"                     float3 p, float3 n, float3 dp0, float3 dp1) {\n" \
+"                     float3 p, float3 n, float3 dp0, float3 dp1, float4 misc, float2 st, float2 ds0, float2 ds1) {\n" \
 "  SurfR o; o.alb = float3(1); o.h = 0.5; o.dn = float3(0);\n" \
+"  if (sa.x == -3.0) { if (abs(n.z) > 0.6) o.dn = float3(-surfripple(p.xy, misc.y), 0.0) * sa.w; return o; }   /* water, flat: its ripples */\n" \
 "  if (sa.x < 0.0) return o;\n" \
+"  if (misc.z > 0.0) {   /* in the texture's own space (a foliage card) */\n" \
+"    SurfS s = hexsample(ta, tb, uint(sa.x + 0.5), st * misc.z, ds0 * misc.z, ds1 * misc.z, sc.x);\n" \
+"    o.alb = 1.0 + (s.alb - 1.0) * sa.z; o.h = s.h; return o; }\n" \
 "  int nv = int(sv.z + 0.5);\n" \
 "  if (nv < 2) return surfone(ta, tb, uint(sa.x + 0.5), sa.y, sa, sc, p, n, dp0, dp1);\n" \
 "  uint sl[3] = { uint(sa.x + 0.5), uint(max(sv.x, 0.0) + 0.5), uint(max(sv.y, 0.0) + 0.5) };\n" \
@@ -116,26 +128,29 @@
 /* the draw's colour and relief where its texture has a surface map: ref the game's texel (for a \
    region of none: the lighting's albedo of it, or the texel itself), vc the vertex colour; dn the \
    relief (world).  flags.z 0: albedo, linear; 1: the texel, sRGB */ \
-"struct SurfO { float3 alb; float3 dn; };\n" \
+"struct SurfO { float3 alb; float3 dn; float a; };   /* a: a cutout's alpha (foliage), else -1 */\n" \
 "static SurfO surfshade(constant SurfU &su, texture2d<float> mp, texture2d<float> vr, texture2d_array<float> ta, texture2d_array<float> tb,\n" \
 "                       float2 st, float3 p, float3 n, float3 ref, float3 vc) {\n" \
 "  float4 P = mp.sample(s_surfp, st), L = mp.sample(s_surfl, st); float2 V = vr.sample(s_surfl, st).rg + 0.5;\n" \
 "  int lo = int(P.r * 255.0 + 0.5), hi = int(P.g * 255.0 + 0.5); float t = L.b;\n" \
-"  float3 dp0 = dfdx(p), dp1 = dfdy(p); float ft = fwidth(t);   /* where every pixel of the quad runs */\n" \
+"  float3 dp0 = dfdx(p), dp1 = dfdy(p); float ft = fwidth(t), fa = fwidth(L.a);   /* where every pixel of the quad runs */\n" \
+"  float2 ds0 = dfdx(st), ds1 = dfdy(st);\n" \
 "  bool texel = su.flags.z > 0.5;\n" \
 "  float3 orig = texel ? float3(surflin(ref.r), surflin(ref.g), surflin(ref.b)) : ref, hue = float3(1);\n" \
 "  if (su.flags.y > 0.5 && !texel) { float lv = dot(vc, float3(0.2126, 0.7152, 0.0722)); float3 hh = lv > 0.02 ? clamp(vc / lv, 0.0, 2.0) : float3(1);\n" \
 "    hh = saturate(hh * 0.5); hue = float3(surflin(hh.r), surflin(hh.g), surflin(hh.b)) * 4.672; }\n" \
-"  SurfR a = surfset(ta, tb, su.sa[lo], su.sv[lo], su.sk[lo], su.sc[lo], p, n, dp0, dp1);\n" \
-"  float3 ca = su.sa[lo].x == -1.0 ? orig : su.sb[lo].rgb * (1.0 + (V.x - 1.0) * su.sb[lo].w) * a.alb * hue;\n" \
+"  SurfR a = surfset(ta, tb, su.sa[lo], su.sv[lo], su.sk[lo], su.sc[lo], p, n, dp0, dp1, su.misc, st, ds0, ds1);\n" \
+"  bool lay = su.flags.y > 0.5;   /* a layout (a wall): its own texels' colour, every window and door as painted; the material's grain over it */\n" \
+"  float3 ca = su.sa[lo].x == -1.0 ? orig : lay ? orig * a.alb : su.sb[lo].rgb * (1.0 + (V.x - 1.0) * su.sb[lo].w) * a.alb * hue;\n" \
 "  SurfO o; o.alb = ca; o.dn = a.dn;\n" \
+"  o.a = su.misc.x > 0.5 ? smoothstep(0.5 - max(fa * 0.75, 0.02), 0.5 + max(fa * 0.75, 0.02), L.a) : -1.0;   /* a crisp silhouette */\n" \
 "  if (hi != lo) {\n" \
 "    float soft = max(su.sc[lo].y, su.sc[hi].y), hk = max(su.sc[lo].z, su.sc[hi].z);\n" \
 "    float fw = max(ft * 0.75, max(soft, 1e-3));\n" \
 "    if (t > 0.5 - fw - hk) {   /* near a border (a height can move it by hk) */\n" \
-"      SurfR b = surfset(ta, tb, su.sa[hi], su.sv[hi], su.sk[hi], su.sc[hi], p, n, dp0, dp1);\n" \
+"      SurfR b = surfset(ta, tb, su.sa[hi], su.sv[hi], su.sk[hi], su.sc[hi], p, n, dp0, dp1, su.misc, st, ds0, ds1);\n" \
 "      float wb = smoothstep(0.5 - fw, 0.5 + fw, t + (b.h - a.h) * hk);\n" \
-"      float3 cb = su.sa[hi].x == -1.0 ? orig : su.sb[hi].rgb * (1.0 + (V.y - 1.0) * su.sb[hi].w) * b.alb * hue;\n" \
+"      float3 cb = su.sa[hi].x == -1.0 ? orig : lay ? orig * b.alb : su.sb[hi].rgb * (1.0 + (V.y - 1.0) * su.sb[hi].w) * b.alb * hue;\n" \
 "      o.alb = mix(ca, cb, wb); o.dn = mix(a.dn, b.dn, wb);\n" \
 "    }\n" \
 "  }\n" \

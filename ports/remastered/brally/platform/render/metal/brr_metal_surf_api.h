@@ -19,5 +19,7 @@ int  brr_surf_ready(int entry);
 /* the entry's map, variation and the sets at fragment textures 11..14; entry -1 binds
  * stand-ins (every texture the shaders name bound) */
 void brr_surf_bind(id<MTLRenderCommandEncoder> e, int entry);
+/* the same at fragment textures at..at+3 (the lighting's blended pass: 14) */
+void brr_surf_bind_at(id<MTLRenderCommandEncoder> e, int entry, int at);
 
 #endif

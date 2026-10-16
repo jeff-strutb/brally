@@ -28,3 +28,4 @@ grass_path_2          1.00  grass variant: worn to gravel
 grass_path_3          1.00  dry grass variant: worn
 seaside_rock          2.00  grey rock variant
 tiger_rock            2.55  brown rock variant (granite)
+forest_leaves_03      2.30  leaves: foliage cards (in the card's own space)

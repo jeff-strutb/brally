@@ -89,13 +89,17 @@ void light_surf_free(light_surf_map *m);
 /* a draw's constants, one block of float4s (Metal's buffer, Vulkan's std140 uniform, the
  * software renderer's argument) */
 typedef struct LightSurfU {
-    float sa[8][4];     /* per region: its first variant's slice (-1 the game's texel, -2 the region's flat colour), 1 / its metres, detail, relief */
+    float sa[8][4];     /* per region: its first variant's slice (-1 the game's texel, -2 the region's flat colour,
+                           -3 water: its colour and moving ripples), 1 / its metres, detail, relief */
     float sb[8][4];     /* the region's colour (linear) and how much of its own light and dark shows */
     float sc[8][4];     /* turn the set at random (1) or only move it (0), its border's softness, its height's weight at a border, the surface */
     float sv[8][4];     /* its second and third variants' slices (-1 none), how many variants, 1 / their patches' size in metres */
     float sk[8][4];     /* 1 / the second and third variants' metres, their brightness against the first's */
     float flags[4];     /* x 1: a map; y 1: a layout (the vertex colour's hue applies, lit); z 0: albedo for
                            the Remastered lighting, 1: the texel for the game's own; w a diagnostic view */
+    float misc[4];      /* x 1: a cutout (foliage: the map's coverage is the alpha, crisp); y the game's clock,
+                           seconds (water); z > 0: the detail in the texture's own space, that many tiles across
+                           (foliage cards turn to the camera: world space would swim); w 0 */
 } LightSurfU;
 
 /* a texture as the game uploads it: its entry (its map made now, kept by hash for the run),
@@ -130,10 +134,12 @@ int  light_surf_entry_rgba(const uint8_t *rgba, int w, int h);
 
 /* ---- the reference shading (light_surf_shade.c) -------------------------------------- */
 /* a texel of an entry's texture at map coordinates st, world point p, shaded normal n (unit),
- * dp0 and dp1 p's change across a pixel in x and y, ref the game's texel (sRGB 0..1, for a
- * region of none), vc the vertex colour (0..1): rgb as u.flags.z asks (linear albedo, or the
- * texel, sRGB).  The shaders do exactly this, in their own language */
+ * dp0 and dp1 p's change across a pixel in x and y (ds0, ds1 st's), ref the game's texel (sRGB
+ * 0..1, for a region of none), vc the vertex colour (0..1): rgb as u.flags.z asks (linear
+ * albedo, or the texel, sRGB), dn the relief, *alpha a cutout's alpha (-1: the game's).  The
+ * shaders do exactly this, in their own language */
 void light_surf_shade(const LightSurfU *u, int entry, const float st[2], const float p[3], const float n[3],
-                      const float dp0[3], const float dp1[3], const float ref[3], const float vc[3], float out[3], float dn[3]);
+                      const float dp0[3], const float dp1[3], const float ds0[2], const float ds1[2],
+                      const float ref[3], const float vc[3], float out[3], float dn[3], float *alpha);
 
 #endif

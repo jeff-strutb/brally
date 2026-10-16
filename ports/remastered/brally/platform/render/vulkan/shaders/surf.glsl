@@ -71,9 +71,19 @@ SurfR surfone(int slice, float k, vec4 sa, vec4 sc, vec3 p, vec3 n, vec3 dp0, ve
     o.alb = 1.0 + (alb / tw - 1.0) * sa.z; o.h = h / tw; o.dn = dn / tw * sa.w;
     return o;
 }
-SurfR surfset(vec4 sa, vec4 sv, vec4 sk, vec4 sc, vec3 p, vec3 n, vec3 dp0, vec3 dp1) {
+vec2 surfripple(vec2 p, float tm) {
+    vec2 sl = vec2(0.0); float a[4] = float[4](0.3, 1.9, 3.4, 5.0), lw[4] = float[4](0.9, 1.6, 2.7, 4.3), am[4] = float[4](0.012, 0.02, 0.03, 0.045);
+    for (int i = 0; i < 4; i++) { vec2 d = vec2(cos(a[i]), sin(a[i])); float k = 6.2831853 / lw[i], w = sqrt(9.81 * k);
+        sl += am[i] * k * d * cos(k * dot(d, p) - w * tm); }
+    return sl;
+}
+SurfR surfset(vec4 sa, vec4 sv, vec4 sk, vec4 sc, vec3 p, vec3 n, vec3 dp0, vec3 dp1, vec2 st, vec2 ds0, vec2 ds1) {
     SurfR o; o.alb = vec3(1.0); o.h = 0.5; o.dn = vec3(0.0);
+    if (sa.x == -3.0) { if (abs(n.z) > 0.6) o.dn = vec3(-surfripple(p.xy, u.smisc.y), 0.0) * sa.w; return o; }
     if (sa.x < 0.0) return o;
+    if (u.smisc.z > 0.0) {
+        SurfS s = hexsample(int(sa.x + 0.5), st * u.smisc.z, ds0 * u.smisc.z, ds1 * u.smisc.z, sc.x);
+        o.alb = 1.0 + (s.alb - 1.0) * sa.z; o.h = s.h; return o; }
     int nv = int(sv.z + 0.5);
     if (nv < 2) return surfone(int(sa.x + 0.5), sa.y, sa, sc, p, n, dp0, dp1);
     int sl[3] = int[3](int(sa.x + 0.5), int(max(sv.x, 0.0) + 0.5), int(max(sv.y, 0.0) + 0.5));
@@ -90,22 +100,24 @@ SurfR surfset(vec4 sa, vec4 sv, vec4 sk, vec4 sc, vec3 p, vec3 n, vec3 dp0, vec3
 float surflin(float c) { return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); }
 float surfsrgb(float c) { c = clamp(c, 0.0, 1.0); return c <= 0.0031308 ? 12.92 * c : 1.055 * pow(c, 1.0 / 2.4) - 0.055; }
 // the texel (sRGB) where the draw's texture has a surface map (u.sflags.x; z is 1: the game's own lighting)
-vec3 surfshade(vec2 st, vec3 p, vec3 n, vec3 ref, vec3 vc) {
+vec4 surfshade(vec2 st, vec3 p, vec3 n, vec3 ref, vec3 vc) {
     vec4 P = texture(sampler2D(s_map, s_surfp), st), L = texture(sampler2D(s_map, s_surfl), st);
     vec2 V = texture(sampler2D(s_var, s_surfl), st).rg + 0.5;
     int lo = int(P.r * 255.0 + 0.5), hi = int(P.g * 255.0 + 0.5); float t = L.b;
-    vec3 dp0 = dFdx(p), dp1 = dFdy(p); float ft = fwidth(t);
+    vec3 dp0 = dFdx(p), dp1 = dFdy(p); float ft = fwidth(t), fa = fwidth(L.a);
+    vec2 ds0 = dFdx(st), ds1 = dFdy(st);
     vec3 orig = vec3(surflin(ref.r), surflin(ref.g), surflin(ref.b));
-    SurfR a = surfset(u.sa[lo], u.sv[lo], u.sk[lo], u.sc[lo], p, n, dp0, dp1);
-    vec3 ca = u.sa[lo].x == -1.0 ? orig : u.sb[lo].rgb * (1.0 + (V.x - 1.0) * u.sb[lo].w) * a.alb;
+    SurfR a = surfset(u.sa[lo], u.sv[lo], u.sk[lo], u.sc[lo], p, n, dp0, dp1, st, ds0, ds1);
+    bool lay = u.sflags.y > 0.5;   // a layout (a wall): its own texels' colour, the material's grain over it
+    vec3 ca = u.sa[lo].x == -1.0 ? orig : lay ? orig * a.alb : u.sb[lo].rgb * (1.0 + (V.x - 1.0) * u.sb[lo].w) * a.alb;
     vec3 alb = ca, dn = a.dn;
     if (hi != lo) {
         float soft = max(u.sc[lo].y, u.sc[hi].y), hk = max(u.sc[lo].z, u.sc[hi].z);
         float fw = max(ft * 0.75, max(soft, 1e-3));
         if (t > 0.5 - fw - hk) {
-            SurfR b = surfset(u.sa[hi], u.sv[hi], u.sk[hi], u.sc[hi], p, n, dp0, dp1);
+            SurfR b = surfset(u.sa[hi], u.sv[hi], u.sk[hi], u.sc[hi], p, n, dp0, dp1, st, ds0, ds1);
             float wb = smoothstep(0.5 - fw, 0.5 + fw, t + (b.h - a.h) * hk);
-            vec3 cb = u.sa[hi].x == -1.0 ? orig : u.sb[hi].rgb * (1.0 + (V.y - 1.0) * u.sb[hi].w) * b.alb;
+            vec3 cb = u.sa[hi].x == -1.0 ? orig : lay ? orig * b.alb : u.sb[hi].rgb * (1.0 + (V.y - 1.0) * u.sb[hi].w) * b.alb;
             alb = mix(ca, cb, wb); dn = mix(a.dn, b.dn, wb);
         }
     }
@@ -115,5 +127,6 @@ vec3 surfshade(vec2 st, vec3 p, vec3 n, vec3 ref, vec3 vc) {
         alb = 0.5 * clamp(abs(fract(hh + vec3(0.0, 0.6667, 0.3333)) * 6.0 - 3.0) - 1.0, 0.0, 1.0); }
     float sh = clamp(1.0 + 0.8 * dot(dn, vec3(0.42, 0.33, 0.84)), 0.6, 1.4);
     vec3 c = u.sflags.w > 0.5 ? alb : alb * sh;
-    return vec3(surfsrgb(c.r), surfsrgb(c.g), surfsrgb(c.b));
+    float al = u.smisc.x > 0.5 ? smoothstep(0.5 - max(fa * 0.75, 0.02), 0.5 + max(fa * 0.75, 0.02), L.a) : -1.0;
+    return vec4(surfsrgb(c.r), surfsrgb(c.g), surfsrgb(c.b), al);
 }

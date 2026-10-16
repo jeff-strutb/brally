@@ -3,9 +3,14 @@
 Top Gear Rally Remastered's Boss Rally races with every natural and built
 surface in a photographed material at its real size, to the standard of Forza
 Horizon 6. A Remaster Options row (Textures: Original or Remaster) switches it
-live, under either lighting, on every renderer (Metal on the Mac and the
-iPhone, Vulkan and software on Windows, Vulkan on Linux and the Mac); the game
-never sees it.
+live, under either lighting, on the GPU renderers (Metal on the Mac and the
+iPhone, Vulkan on Windows, Linux and the Mac); the game never sees it. The
+software renderer (Windows without a Vulkan driver) keeps the game's own
+textures: the shading is a GPU's work, too slow on a CPU to play (measured:
+the full form held a 320 x 240 frame for seconds).
+
+World textures only: ground, roads, rock, buildings, foliage and water.
+Signs, effects (smoke, dust, sparks), sky, lamps and cars keep the game's own.
 
 ## 1. What the game gives us
 
@@ -84,8 +89,10 @@ game's data ships):
    (rock: red sandstone, brown or grey; dirt: red, brown or gravel), and over it
    only what is plainly something else: road paint (relative to the texture's
    own median brightness and saturation), grass on rock or sand, water and foam.
-   A layout (buildings, signs, wood, metal) is its colours' fewest k-means
-   clusters (at most 8, mean error under 0.035), each a surface by its colour.
+   Foliage is one surface (leaves), its light and dark kept as its variation;
+   water is one (water) with its foam. A layout (buildings, wood, metal) is
+   its colours' fewest k-means clusters (at most 8, mean error under 0.02: at
+   0.035 a window's glass merged into the wall), each a surface by its colour.
 2. The 15/16-bit dither's lone texels voted out (3 x 3, wrapping); a texel-wide
    painted line or foam line kept where it runs on.
 3. Each region's field upsampled 4x (Catmull-Rom, wrapping, a slight blur),
@@ -166,6 +173,22 @@ whenever the textures are on.
   derivatives; the relief as a light from above and to one side (the
   direction the 1999 art paints), shading 1 + 0.8 n.l clamped to 0.6..1.4
 
+**Walls keep their art.** A layout's region keeps its own texels' colour
+(every window, door and trim as painted) and takes its material's grain and
+relief over it: the first form, the clusters' flat colours, lost small details
+like a window's glass.
+
+**Foliage.** Leaves (forest_leaves_03, 2.3 m, detail at 0.6: the scan is
+high in contrast) in the card's own texture space, three tiles across (cards
+turn to face the camera: world space would swim), and the map's coverage as a
+crisp alpha (the 4x upsample of the card's own) in both lightings, the
+lighting's blended pass included. At a distance the leaves' detail averages
+out and the card reads as its art: these are flat cards.
+
+**Water.** Its colour graded as the rest, and on flat water four deep-water
+waves (wavelengths 0.9 to 4.3 m, each at the speed its length gives,
+w = sqrt(g k), on the game's clock) as its relief; falls keep their art.
+
 **Drawing.** A draw whose texture's map is ready:
 
 - the region pair at the texel (nearest) and where it sits (bilinear)
@@ -205,7 +228,7 @@ rock 0.16). Under the Remastered lighting, from seven tracks:
 |---|---:|---:|
 | asphalt | 1.00 | 1.00 (Forza's 3.4x more is a hue the art does not share, 143 against 59: more would bring back its mauve) |
 | dirt, gravel | 1.10 | 0.45 |
-| grass | 0.60 | 1.50 (the most either way: 1.52 measured) |
+| grass | 0.80 | 1.08 (the seven tracks' mean asked 0.60 and 1.50, pulled by the coast's sage dune grass: on Mountain's meadow that turned the grass neon, chroma over lightness 0.84 to 0.93 against Forza's 0.73; the meadow's own ungraded 1.19 and 0.675 against 0.92 and 0.73 give these) |
 | brown and grey rock | 1.08 | 0.55 |
 | red rock, red dirt | 0.83, 1.10 | 0.45 (a floor: Forza's rock is grey granite, and red sandstone stays red) |
 | snow | 1.00 (compared at the upper quartile: snowy frames' medians are snow) | 0.40 |

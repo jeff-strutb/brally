@@ -124,11 +124,13 @@ int brr_surf_ready(int entry)
     return s_up == 2 && entry_made(entry);
 }
 
-void brr_surf_bind(id<MTLRenderCommandEncoder> e, int entry)
+void brr_surf_bind_at(id<MTLRenderCommandEncoder> e, int entry, int at)
 {
     int ok = entry >= 0 && brr_surf_ready(entry);
-    [e setFragmentTexture:ok ? s_map[entry] : s_dummy atIndex:11];
-    [e setFragmentTexture:ok ? s_var[entry] : s_dummy atIndex:12];
-    [e setFragmentTexture:s_up == 2 ? s_seta : s_dummya atIndex:13];
-    [e setFragmentTexture:s_up == 2 ? s_setb : s_dummyb atIndex:14];
+    [e setFragmentTexture:ok ? s_map[entry] : s_dummy atIndex:(NSUInteger)at];
+    [e setFragmentTexture:ok ? s_var[entry] : s_dummy atIndex:(NSUInteger)at + 1];
+    [e setFragmentTexture:s_up == 2 ? s_seta : s_dummya atIndex:(NSUInteger)at + 2];
+    [e setFragmentTexture:s_up == 2 ? s_setb : s_dummyb atIndex:(NSUInteger)at + 3];
 }
+
+void brr_surf_bind(id<MTLRenderCommandEncoder> e, int entry) { brr_surf_bind_at(e, entry, 11); }

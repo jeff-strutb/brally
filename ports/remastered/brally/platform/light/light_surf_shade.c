@@ -197,9 +197,22 @@ static SurfR surfone(int set, float k, const float sa[4], const float sc[4], con
     return o;
 }
 
-/* a region's surface: its variants' patches (light_surf.h) */
+/* water's moving ripples (the shaders' surfripple): four deep-water waves, their slope at p, time tm */
+static void ripple(float px, float py, float tm, float sl[2])
+{
+    static const float a[4] = { 0.3f, 1.9f, 3.4f, 5.0f }, lw[4] = { 0.9f, 1.6f, 2.7f, 4.3f }, am[4] = { 0.012f, 0.02f, 0.03f, 0.045f };
+    int i;
+    sl[0] = sl[1] = 0.0f;
+    for (i = 0; i < 4; i++) {
+        float dx = cosf(a[i]), dy = sinf(a[i]), k = 6.2831853f / lw[i], w = sqrtf(9.81f * k), c = cosf(k * (dx * px + dy * py) - w * tm);
+        sl[0] += am[i] * k * dx * c;
+        sl[1] += am[i] * k * dy * c;
+    }
+}
+
+/* a region's surface: its variants' patches (light_surf.h); water's ripples; a card's detail in its own space */
 static SurfR surfset(const float sa[4], const float sv[4], const float sk[4], const float sc[4], const float p[3], const float n[3],
-                     const float dp0[3], const float dp1[3])
+                     const float dp0[3], const float dp1[3], const float misc[4], const float st[2], const float ds0[2], const float ds1[2])
 {
     SurfR o, A, B;
     int nv, sl[3], i, j;
@@ -207,8 +220,25 @@ static SurfR surfset(const float sa[4], const float sv[4], const float sk[4], co
     o.alb[0] = o.alb[1] = o.alb[2] = 1.0f;
     o.h = 0.5f;
     o.dn[0] = o.dn[1] = o.dn[2] = 0.0f;
+    if (sa[0] == -3.0f) {   /* water, flat: its ripples */
+        if (fabsf(n[2]) > 0.6f) {
+            float sl[2];
+            ripple(p[0], p[1], misc[1], sl);
+            o.dn[0] = -sl[0] * sa[3];
+            o.dn[1] = -sl[1] * sa[3];
+        }
+        return o;
+    }
     if (sa[0] < 0.0f)
         return o;
+    if (misc[2] > 0.0f) {   /* in the texture's own space (a foliage card) */
+        float gx[2] = { ds0[0] * misc[2], ds0[1] * misc[2] }, gy[2] = { ds1[0] * misc[2], ds1[1] * misc[2] };
+        SurfS s = hexsample((int)(sa[0] + 0.5f), st[0] * misc[2], st[1] * misc[2], gx, gy, sc[0]);
+        for (i = 0; i < 3; i++)
+            o.alb[i] = 1.0f + (s.alb[i] - 1.0f) * sa[2];
+        o.h = s.h;
+        return o;
+    }
     nv = (int)(sv[2] + 0.5f);
     if (nv < 2)
         return surfone((int)(sa[0] + 0.5f), sa[1], sa, sc, p, n, dp0, dp1);
@@ -257,12 +287,14 @@ static void mapread(const light_surf_map *m, float s, float t, float near[4], fl
 }
 
 void light_surf_shade(const LightSurfU *u, int entry, const float st[2], const float p[3], const float n[3],
-                      const float dp0[3], const float dp1[3], const float ref[3], const float vc[3], float out[3], float dn[3])
+                      const float dp0[3], const float dp1[3], const float ds0[2], const float ds1[2],
+                      const float ref[3], const float vc[3], float out[3], float dn[3], float *alpha)
 {
     const light_surf_map *m = light_surf_entry_map(entry);
     float P[4], L[4], V[2], t, hue[3] = { 1, 1, 1 }, ca[3], cb[3], orig[3];
     int lo, hi, k, texel = u->flags[2] > 0.5f;
     SurfR a;
+    *alpha = -1.0f;
     if (!m || !light_surf_sets_ready()) {
         memcpy(out, ref, sizeof(float) * 3);
         dn[0] = dn[1] = dn[2] = 0;
@@ -281,19 +313,23 @@ void light_surf_shade(const LightSurfU *u, int entry, const float st[2], const f
         for (k = 0; k < 3; k++)
             hue[k] = lin1(clampf((lv > 0.02f ? clampf(vc[k] / lv, 0.0f, 2.0f) : 1.0f) * 0.5f, 0.0f, 1.0f)) * 4.672f;
     }
-    a = surfset(u->sa[lo], u->sv[lo], u->sk[lo], u->sc[lo], p, n, dp0, dp1);
+    a = surfset(u->sa[lo], u->sv[lo], u->sk[lo], u->sc[lo], p, n, dp0, dp1, u->misc, st, ds0, ds1);
+    if (u->misc[0] > 0.5f)   /* a crisp silhouette (the shaders widen the edge by 0.75 of a pixel's change; here 0.02) */
+        *alpha = smooth(0.48f, 0.52f, L[3]);
     for (k = 0; k < 3; k++)
-        ca[k] = u->sa[lo][0] == -1.0f ? orig[k] : u->sb[lo][k] * (1.0f + (V[0] - 1.0f) * u->sb[lo][3]) * a.alb[k] * hue[k];
+        ca[k] = u->sa[lo][0] == -1.0f ? orig[k] : u->flags[1] > 0.5f ? orig[k] * a.alb[k]   /* a layout: its own texels, the grain over them */
+                : u->sb[lo][k] * (1.0f + (V[0] - 1.0f) * u->sb[lo][3]) * a.alb[k] * hue[k];
     memcpy(out, ca, sizeof ca);
     memcpy(dn, a.dn, sizeof a.dn);
     if (hi != lo) {
         float soft = fmaxf(u->sc[lo][1], u->sc[hi][1]), hk = fmaxf(u->sc[lo][2], u->sc[hi][2]);
         float fw = fmaxf(0.0f, fmaxf(soft, 1e-3f));   /* (the shaders add 0.75 of t's screen derivative; one pixel here is the map's) */
         if (t > 0.5f - fw - hk) {
-            SurfR b = surfset(u->sa[hi], u->sv[hi], u->sk[hi], u->sc[hi], p, n, dp0, dp1);
+            SurfR b = surfset(u->sa[hi], u->sv[hi], u->sk[hi], u->sc[hi], p, n, dp0, dp1, u->misc, st, ds0, ds1);
             float wb = smooth(0.5f - fw, 0.5f + fw, t + (b.h - a.h) * hk);
             for (k = 0; k < 3; k++) {
-                cb[k] = u->sa[hi][0] == -1.0f ? orig[k] : u->sb[hi][k] * (1.0f + (V[1] - 1.0f) * u->sb[hi][3]) * b.alb[k] * hue[k];
+                cb[k] = u->sa[hi][0] == -1.0f ? orig[k] : u->flags[1] > 0.5f ? orig[k] * b.alb[k]
+                        : u->sb[hi][k] * (1.0f + (V[1] - 1.0f) * u->sb[hi][3]) * b.alb[k] * hue[k];
                 out[k] = ca[k] * (1 - wb) + cb[k] * wb;
                 dn[k] = a.dn[k] * (1 - wb) + b.dn[k] * wb;
             }

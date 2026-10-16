@@ -42,7 +42,7 @@ folder; `RM_OPT_<NAME>=N` sets one for a check):
 | Widescreen | On: a race fills the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
 | Music | PC: Boss Rally's CD; N64: Top Gear Rally's pieces | N64 |
 | Lighting | Original: the game's picture; Remaster: the lighting (`BR_FLAG_LIGHTING`) | Remaster |
-| Textures | Original: the game's textures, lit; Remaster: each natural and built surface in a photographed material at its real size (`BR_FLAG_TEXTURES`; under Remaster lighting, Metal: docs/brally/remaster/textures/DESIGN.md) | Remaster |
+| Textures | Original: the game's own; Remaster: the world's surfaces (ground, roads, rock, buildings, foliage, water) in photographed materials at their real size, under either lighting, on Metal and Vulkan (`BR_FLAG_TEXTURES`; docs/brally/remaster/textures/DESIGN.md) | Remaster |
 | Show FPS | the frames a second at the bottom centre, in either game | Off |
 
 The window opens at 16:9 with Widescreen on and takes any shape the player

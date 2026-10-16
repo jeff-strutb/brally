@@ -6,5 +6,5 @@
      vec4 fog[16];                 // the 64-entry fog table, four to a vec4
 +    // the Remastered textures (light_surf.h LightSurfU, surf.glsl): sflags.x 1 where the
 +    // draw's texture has a surface map
-+    vec4 sa[8]; vec4 sb[8]; vec4 sc[8]; vec4 sv[8]; vec4 sk[8]; vec4 sflags;
++    vec4 sa[8]; vec4 sb[8]; vec4 sc[8]; vec4 sv[8]; vec4 sk[8]; vec4 sflags; vec4 smisc;
  } u;

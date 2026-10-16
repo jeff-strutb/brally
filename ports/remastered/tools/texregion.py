@@ -33,7 +33,7 @@ VIS = {'none': (255, 0, 255), 'asphalt': (60, 60, 64), 'paint_white': (250, 250,
        'snow': (240, 245, 255), 'ice': (170, 210, 235), 'roof': (180, 80, 60), 'leaves': (30, 110, 30), 'paint_sign': (255, 255, 255)}
 
 # texmat classes drawn in surfaces; the rest keep the game's texture
-NATURAL = {'asphalt', 'dirt', 'rock', 'grass', 'sand', 'snow', 'ice', 'concrete', 'tunnel'}
+NATURAL = {'asphalt', 'dirt', 'rock', 'grass', 'sand', 'snow', 'ice', 'concrete', 'tunnel', 'water', 'foliage'}
 
 
 def hsv(rgb):
@@ -58,7 +58,7 @@ def base_surface(cls, rgb, a):
         return 'rock_red' if (h < 40 and s > 0.38) else 'rock_brown' if s > 0.2 else 'rock_grey'
     if cls == 'dirt':
         return 'dirt_red' if (h < 26 and s > 0.42) else 'gravel' if s < 0.13 else 'dirt'
-    return {'asphalt': 'asphalt', 'grass': 'grass', 'sand': 'sand', 'snow': 'snow', 'ice': 'ice', 'concrete': 'concrete',
+    return {'foliage': 'leaves', 'water': 'water', 'asphalt': 'asphalt', 'grass': 'grass', 'sand': 'sand', 'snow': 'snow', 'ice': 'ice', 'concrete': 'concrete',
             'tunnel': 'concrete', 'building': 'plaster', 'wood': 'wood', 'metal': 'metal'}[cls]
 
 
@@ -92,6 +92,8 @@ def classify(cls, rgb, a):
         out[blue & (s > 0.25)] = 'ice'
         out[(v < 0.45) & ~blue] = 'gravel'                    # a road's ruts, bare ground
         out[(v < 0.45) & warm & (s > 0.2)] = 'rock_brown'    # rock through the snow
+    elif cls == 'water':
+        out[(v > 0.8) & (s < 0.2)] = 'foam'
     elif cls == 'ice':
         out[(v > 0.85) & (s < 0.1)] = 'snow'
     elif cls in ('concrete', 'tunnel'):
@@ -196,9 +198,9 @@ def cluster_surface(cls, c):
     return 'plaster'
 
 
-def cluster_labels(cls, rgb, a, kmax=8, err=0.035):
+def cluster_labels(cls, rgb, a, kmax=8, err=0.02):
     """a layout texture's texels by colour cluster: the fewest clusters (up to kmax) whose mean
-    distance from their centre is under err; names 'c<i>:<surface>'"""
+    distance from their centre is under err (0.02: a window's glass, a door, keep their own); names 'c<i>:<surface>'"""
     x = rgb[a]
     for k in range(1, kmax + 1):
         lab, c = kmeans(x, min(k, len(np.unique(x, axis=0))))
@@ -209,7 +211,7 @@ def cluster_labels(cls, rgb, a, kmax=8, err=0.035):
     return names[full]
 
 
-LAYOUT = {'building', 'sign', 'wood', 'metal'}
+LAYOUT = {'building', 'wood', 'metal'}   # (signs: the game's own)
 
 
 def region_map(cls, rgba, up=4):
