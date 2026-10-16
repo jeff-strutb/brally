@@ -15,7 +15,9 @@
 #   env: HOST    null (default, headless: Linux has no window host yet) | macos | windows |
 #                ios (libgames.a for the iPhone app, ios/build.sh: CC=ports/remastered/ios/cc.sh;
 #                main() is rm_main, run on a thread of the app's)
-#        RENDER  null (default) | soft | metal (HOST=macos) | vulkan
+#        RENDER  null (default) | metal (HOST=macos) | vulkan | gl (OpenGL 3.3: Windows'
+#                fallback for a PC without Vulkan; offscreen on macOS, for checks) |
+#                soft (deprecated: the CPU reference the renderers are checked against)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
 #                "Top Gear Rally Remastered.exe"
 #        OUT     build directory (default build/remastered/HOST-RENDER)
@@ -114,6 +116,9 @@ if [ "$RENDER" = vulkan ]; then
     VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
     VKLIBS="-L$VK/lib -lvulkan"
   fi
+fi
+if [ "$RENDER" = gl ]; then   # (each game's renderer finds its functions at run time: gl_ctx.c)
+  if [ $OS = windows ]; then VKLIBS="-lopengl32 -lgdi32"; else VKLIBS="-framework OpenGL"; fi
 fi
 OBJS=
 for s in $SRCS; do

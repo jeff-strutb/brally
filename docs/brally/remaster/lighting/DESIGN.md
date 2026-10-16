@@ -42,8 +42,8 @@ Decisions already taken by the project lead (2026-10-12):
 ### 2.1 The renderer today
 
 The game draws through Glide 2 (`platform/common/glide.c`) onto a neutral
-backend interface (`platform/render/brr.h`) with Metal, Vulkan, software and
-null implementations. Glide's model is screen-space triangles: by the time a
+backend interface (`platform/render/brr.h`) with Metal, Vulkan, OpenGL 3.3,
+software (deprecated: the CPU reference) and null implementations. Glide's model is screen-space triangles: by the time a
 triangle reaches the backend it is in pixels with 1/w, a vertex colour, one
 texture and the colour and alpha combiner state. The Metal backend
 (`brr_metal.m`) is one render pass per frame into an 8-bit BGRA colour target
@@ -113,8 +113,8 @@ strike and a camera cut need new scripts.
 
 ### 2.6 Build targets and hardware here
 
-macOS (Metal, universal), iOS and iPadOS (Metal), Windows (Vulkan, software),
-headless. This Mac: M4 Pro, macOS 27, Metal 4 (T2). The project lead's
+macOS (Metal, universal), iOS and iPadOS (Metal), Windows (Vulkan, OpenGL 3.3
+where there is no Vulkan driver), headless. This Mac: M4 Pro, macOS 27, Metal 4 (T2). The project lead's
 iPhone 15 Pro Max: A17 Pro (T1). No T0 device: see the decisions above.
 
 ## 3. Tiers

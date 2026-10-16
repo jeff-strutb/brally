@@ -16,7 +16,8 @@
  *             the front game's to lock, applied on the window's thread).
  *             On Windows Boss Rally draws into a child window over the
  *             client area, shown while it is in front (a Vulkan swapchain
- *             owns the window it presents to)
+ *             owns the window it presents to, an OpenGL context the pixel
+ *             format it draws with)
  *   sound     one output at the first game's rate (Top Gear Rally's), each
  *             game's mixer added in, the other rate's resampled, a limiter
  *             over the sum.  The music is the Remaster Options' (options.c,
@@ -128,8 +129,7 @@ static int s_freed;                     /* its shape left to the player */
 
 #ifdef _WIN32
 /* Boss Rally's child window: the size of the client area, shown while Boss
- * Rally is in front and has asked for it (a GPU renderer draws into it; the
- * software one presents through the real window) */
+ * Rally is in front and has asked for it (its renderer draws into it) */
 static HWND s_child;
 static volatile int s_child_used;
 static int s_child_shown = -1;
@@ -151,6 +151,7 @@ static void child_open(void)
     if (s_child || !parent)
         return;
     memset(&wc, 0, sizeof wc);
+    wc.style = CS_OWNDC;              /* one DC for the window's life (an OpenGL context keeps it) */
     wc.lpfnWndProc = child_proc;
     wc.hInstance = GetModuleHandleA(NULL);
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);

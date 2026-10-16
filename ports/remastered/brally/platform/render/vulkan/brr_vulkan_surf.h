@@ -188,9 +188,9 @@ static void surf_upload_sets(void)
         VkDeviceMemory sm;
         void *map;
         VkBufferImageCopy *cp = calloc((size_t)nset * levels, sizeof *cp);
-        for (l = 0; l < levels; l++) {
+        for (l = 0; l < levels; l++) {   /* each copy starts on four bytes (below): its size rounded so */
             int m = size >> l;
-            total += (size_t)m * m * ch * nset;
+            total += (((size_t)m * m * ch + 3) & ~(size_t)3) * nset;
         }
         if (!surf_image(k ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8G8B8A8_UNORM, size, size, nset, levels, 1,
                         k ? &s_setb : &s_seta, k ? &s_setb_mem : &s_seta_mem, k ? &s_setb_view : &s_seta_view)

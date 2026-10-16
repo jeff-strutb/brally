@@ -1,4 +1,6 @@
-/* brr_soft.c: the reference renderer backend, in portable C.
+/* brr_soft.c: the reference renderer backend, in portable C. Deprecated as
+ * a way to play: OpenGL 3.3 (render/gl) is the fallback where there is no
+ * Vulkan; this stays as the reference the GPU backends are checked against.
  *
  * It rasterises what glide.c hands it the way a Voodoo Graphics board would:
  * Glide's colour, alpha and texture combiners, alpha test, alpha blending,

@@ -3,11 +3,13 @@
 Top Gear Rally Remastered's Boss Rally races with every natural and built
 surface in a photographed material at its real size, to the standard of Forza
 Horizon 6. A Remaster Options row (Textures: Original or Remaster) switches it
-live, under either lighting, on the GPU renderers (Metal on the Mac and the
-iPhone, Vulkan on Windows, Linux and the Mac); the game never sees it. The
-software renderer (Windows without a Vulkan driver) keeps the game's own
-textures: the shading is a GPU's work, too slow on a CPU to play (measured:
-the full form held a 320 x 240 frame for seconds).
+live, under either lighting, on every renderer that ships (Metal on the Mac
+and the iPhone, Vulkan on Windows, Linux and the Mac, OpenGL 3.3 on a PC
+without a Vulkan driver); the game never sees it. The software renderer is
+deprecated (OpenGL replaced it as the fallback) and keeps the game's own
+textures: it is the CPU reference the GPU renderers are checked against, and
+the shading is too slow there to play (measured: the full form held a
+320 x 240 frame for seconds).
 
 World textures only: ground, roads, rock, buildings, foliage and water.
 Signs, effects (smoke, dust, sparks), sky, lamps and cars keep the game's own.
@@ -160,8 +162,8 @@ on the desktops (baked/, 624 MB), 1024 on the iPhone (baked1k/, 156 MB).
 **One shading, every renderer.** The maps, the constants, the sets' texels
 and their mip chains are portable C (`light_surf_draw.c`); the shading is
 written once in C (`light_surf_shade.c`, the software renderer's own) and
-line for line in Metal (`brr_metal_surf.h`) and Vulkan's GLSL
-(`shaders/surf.glsl`). The noise is an integer hash, so the variants' patches
+line for line in Metal (`brr_metal_surf.h`), Vulkan's GLSL
+(`shaders/surf.glsl`) and OpenGL's GLSL 3.30 (`render/gl/brr_gl_surf.h`). The noise is an integer hash, so the variants' patches
 fall in the same places on every GPU. The world positions come from the
 lighting's capture of the camera's triangles (glide.c), which now runs
 whenever the textures are on.

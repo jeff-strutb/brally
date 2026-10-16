@@ -1,0 +1,155 @@
+--- a/platform/render/gl/brr_gl.c
++++ b/platform/render/gl/brr_gl.c
+@@ -20,7 +20,10 @@
+  * GL's framebuffer has its origin at the bottom: the target's rows run up,
+  * scissors and LFB writes are turned over to match, and shots turned back.
+  * The context is gl_ctx.c's: on Windows the host's window, offscreen under
+- * BR_VCLOCK or without one. */
++ * BR_VCLOCK or without one.
++ *
++ * Top Gear Rally Remastered adds its textures (BR_FLAG_TEXTURES): brr_gl_surf.h,
++ * the Vulkan renderer's in GLSL 3.30. */
+ #include <math.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -30,6 +33,8 @@
+ #include "brr_png.h"
+ #include "host.h"
+ #include "gl_api.h"
++#include "light_surf.h"
++#include "br_flags.h"
+ 
+ /* the shader's uniform block, std140 (the Vulkan renderer's U, glide_u.glsl) */
+ typedef struct U {
+@@ -40,9 +45,10 @@
+     float atest_ref, vw, vh, xf;
+     float konst[4], fog_color[4];
+     float fog[64];
++    LightSurfU s;        /* the Remastered textures (brr_gl_surf.h) */
+ } U;
+ 
+-typedef struct V { float pos[2]; float z, oow; float col[4]; float st[2]; } V;
++typedef struct V { float pos[2]; float z, oow; float col[4]; float st[2]; float wld[4]; } V;   /* wld: the world (the textures) */
+ 
+ #define TEX_MAX   4096
+ #define RING      (8u << 20)
+@@ -65,6 +71,8 @@
+ static char     s_shot_path[1024];
+ static uint8_t *s_read;
+ 
++#include "brr_gl_surf.h"
++
+ /* ---- the shaders (render/vulkan/shaders, in GLSL 3.30) --------------------------------- */
+ #define U_GLSL \
+ "layout(std140) uniform U {\n" \
+@@ -75,6 +83,7 @@
+ "    float atest_ref, vw, vh, xf;\n" \
+ "    vec4 konst, fog_color;\n" \
+ "    vec4 fog[16];\n" \
++"    vec4 sa[8]; vec4 sb[8]; vec4 sc[8]; vec4 sv[8]; vec4 sk[8]; vec4 sflags; vec4 smisc;\n" \
+ "} u;\n"
+ 
+ static const char *const k_vs =
+@@ -85,10 +94,12 @@
+ "layout(location = 2) in float a_oow;\n"
+ "layout(location = 3) in vec4 a_col;\n"
+ "layout(location = 4) in vec2 a_st;\n"
++"layout(location = 5) in vec4 a_wld;\n"
+ "noperspective out vec4 v_col;\n"
+ "out vec2 v_st;\n"
+ "noperspective out float v_oow;\n"
+ "noperspective out float v_z;\n"
++"out vec3 v_wp;\n"
+ /* the screen map (glide.c): the game's pixels to the target through entry u.xf of this frame's table */
+ "uniform samplerBuffer u_xt;\n"
+ "void main() {\n"
+@@ -100,6 +111,7 @@
+ "    v_st = a_st;\n"
+ "    v_oow = a_oow;\n"
+ "    v_z = a_z;\n"
++"    v_wp = a_wld.xyz;\n"
+ "}\n";
+ 
+ static const char *const k_fs =
+@@ -110,7 +122,9 @@
+ "in vec2 v_st;\n"
+ "noperspective in float v_oow;\n"
+ "noperspective in float v_z;\n"
++"in vec3 v_wp;\n"
+ "layout(location = 0) out vec4 o_col;\n"
++SURF_GLSL
+ "float comb(int fn, float f, float l, float la, float ot, int inv) {\n"
+ "    float r;\n"
+ "    if (fn == 0x0) r = 0.0; else if (fn == 0x1) r = l; else if (fn == 0x2) r = la; else if (fn == 0x3) r = f * ot;\n"
+@@ -157,6 +171,13 @@
+ "    vec4 tex = vec4(0.0);\n"
+ "    if (u.has_tex != 0) {\n"
+ "        vec4 tx = texture(t_tex, v_st);\n"
++"        if (u.sflags.x > 0.5) {\n"   /* the Remastered textures: the surfaces' texel, the face's normal from the world's derivatives */
++"            vec3 fn = normalize(cross(dFdx(v_wp), dFdy(v_wp)));\n"
++"            fn = fn.z < 0.0 ? -fn : fn;\n"
++"            vec4 so = surfshade(v_st, v_wp, fn, tx.rgb, v_col.rgb);\n"
++"            tx.rgb = so.rgb;\n"
++"            if (so.a >= 0.0) tx.a = so.a;\n"
++"        }\n"
+ "        tex.r = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.r, tx.a, 0.0, tx.a), tx.r, tx.a, 0.0, u.tc_rgb_invert);\n"
+ "        tex.g = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.g, tx.a, 0.0, tx.a), tx.g, tx.a, 0.0, u.tc_rgb_invert);\n"
+ "        tex.b = comb(u.tc_rgb_fn, fac(u.tc_rgb_factor, tx.b, tx.a, 0.0, tx.a), tx.b, tx.a, 0.0, u.tc_rgb_invert);\n"
+@@ -315,6 +336,7 @@
+     glUseProgram(s_prog);
+     glUniform1i(s_loc_tex, 0);
+     glUniform1i(s_loc_xt, 1);
++    surf_init(s_prog);                               /* the Remastered textures' units and samplers */
+     glUseProgram(s_sharp);
+     glUniform1i(s_loc_sharp, 0);
+     glGenVertexArrays(1, &s_vao);
+@@ -327,7 +349,8 @@
+     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(V), (const void *)12);
+     glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(V), (const void *)16);
+     glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(V), (const void *)32);
+-    for (f = 0; f < 5; f++)
++    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(V), (const void *)40);
++    for (f = 0; f < 6; f++)
+         glEnableVertexAttribArray((GLuint)f);
+     glGenBuffers(1, &s_ubo);
+     glBindBuffer(GL_UNIFORM_BUFFER, s_ubo);
+@@ -400,6 +423,7 @@
+     glBindTexture(GL_TEXTURE_2D, s_tex[tid]);
+     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
++    s_tsurf[tid] = light_surf_entry_rgba(rgba, w, h);   /* its surface map for the Remastered textures (light_surf.h) */
+     return tid;
+ }
+ 
+@@ -536,6 +560,10 @@
+         o[i].col[3] = v[i].a;
+         o[i].st[0] = v[i].s;
+         o[i].st[1] = v[i].t;
++        o[i].wld[0] = v[i].wx;
++        o[i].wld[1] = v[i].wy;
++        o[i].wld[2] = v[i].wz;
++        o[i].wld[3] = v[i].lit;
+     }
+     target_bind();
+     if (!scissor(st->sx0, st->sy0, st->sx1, st->sy1)) {
+@@ -544,6 +572,20 @@
+     }
+     ring_write(GL_ARRAY_BUFFER, s_vbo, vo, (long)n * (long)sizeof(V), o);
+     free(o);
++    {   /* the Remastered textures (BR_FLAG_TEXTURES; brr_gl_surf.h): a draw of the camera's 3D (its
++           world from the capture, glide.c) whose texture has a surface map reads the surfaces' texel */
++        int se = -1;
++        if (plat_flag(BR_FLAG_TEXTURES)) {
++            surf_frame();
++            if (u.has_tex && v[0].lit > 0.5f && v[0].lit != 2.0f && st->texture < TEX_MAX && s_tex[st->texture])
++                se = s_tsurf[st->texture];
++        }
++        if (se >= 0 && surf_entry(se))
++            light_surf_uniforms(se, 1.0f, 0, &u.s);
++        else
++            se = -1;
++        surf_bind(se);
++    }
+     ring_write(GL_UNIFORM_BUFFER, s_ubo, uo, (long)sizeof u, &u);
+     glBindBufferRange(GL_UNIFORM_BUFFER, 0, s_ubo, uo, sizeof u);
+     glUseProgram(s_prog);

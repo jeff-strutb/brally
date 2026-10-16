@@ -44,7 +44,7 @@ builder/release.sh               # tag vVERSION at HEAD (already pushed) and pub
 The payload is `ports/remastered` built without the games' data (`ports/brally`
 with `IMAGE=runtime`, `ports/tgrally` with `ROMDATA=file`): on macOS drawn with
 Metal, universal, with the iPhone app beside it (unsigned, `ios/build.sh
---payload`); on Windows drawn with Vulkan, with a software-rendered build beside
+--payload`); on Windows drawn with Vulkan, with an OpenGL 3.3 build beside
 it for a PC without a Vulkan driver (the builder picks). Building needs Xcode's
 clang, the iOS SDK and xcodegen, mingw-w64 for Windows, and the dumps under
 `reference/` that the ports already build from (`check_payload.py` reads them

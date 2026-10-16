@@ -4,9 +4,11 @@
 # the platform layer for one host.
 #   env: HOST   null (default, headless) | macos | windows | lib (a static library,
 #               libbrally.a, for an app that brings its own host; main() is br_main)
-#        RENDER null (default) | soft | metal (metal needs HOST=macos) | vulkan
-#               (Vulkan headers and loader: VULKAN_SDK, else Homebrew's;
-#               on macOS it runs on MoltenVK)
+#        RENDER null (default) | metal (metal needs HOST=macos) | vulkan (Vulkan headers
+#               and loader: VULKAN_SDK, else Homebrew's; on macOS it runs on MoltenVK) |
+#               gl (OpenGL 3.3 core: the fallback on a PC without Vulkan; on macOS
+#               offscreen only, for checks) | soft (deprecated: the CPU reference
+#               the renderers are checked against)
 #        DLL    the user's BRGlide.dll (default reference/brally/orig/BRGlide.dll)
 #        IMAGE  embed (default) | runtime: the lifted data's bytes are read at
 #               start-up from the CD root's BRGlide.dll instead of compiled in
@@ -65,6 +67,11 @@ if [ "$RENDER" = vulkan ]; then
     VKLIBS="-L$OUT -lvulkan-1"
   fi
 fi
+if [ "$RENDER" = gl ]; then
+  # the context (WGL, CGL), built with the system's headers as the OS layer is
+  SRCS="$SRCS $P/render/gl/gl_ctx.c"
+  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; else GLLIBS="-framework OpenGL"; fi
+fi
 case "$HOST" in
   null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
          # Metal without a window: frames drawn offscreen (shots, measurements)
@@ -80,7 +87,7 @@ for s in $SRCS; do
   o=$OUT/plat/$(basename "$s").o
   case "$s" in *.m) X="-x objective-c -fobjc-arc";; *) X="";; esac
   [ "$HOST" = lib ] && [ "$s" = $P/common/main.c ] && X=-Dmain=br_main   # the app owns main()
-  if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ]; then
+  if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ] || [ "$s" = "$P/render/gl/gl_ctx.c" ]; then
     # the OS layer sees the real system headers, not the game's Win32 surface
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$P/host -c "$s" -o "$o"
   else
@@ -100,5 +107,5 @@ if [ "$HOST" = lib ]; then
   echo "archived $OUT/libbrally.a (host $HOST, renderer $RENDER)"
   exit 0
 fi
-$LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $OSLIBS
+$LDCXX ${LDFLAGS64} -o $OUT/brally64$EXE $OUT/obj/*.o $OBJS $LIBS $VKLIBS $GLLIBS $OSLIBS
 echo "linked $OUT/brally64$EXE (host $HOST, renderer $RENDER)"

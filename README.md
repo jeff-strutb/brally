@@ -388,7 +388,7 @@ sound, controllers and network multiplayer.
 | OS | window and input | renderer | status |
 |---|---|---|---|
 | macOS (arm64) | Cocoa, GameController | Metal (or Vulkan on MoltenVK) | plays; `Boss Rally 64.app` |
-| Windows (x64) | Win32, XInput | Vulkan | builds (cross-compiled); a `.exe` |
+| Windows (x64) | Win32, XInput | Vulkan, or OpenGL 3.3 without a Vulkan driver | builds (cross-compiled); a `.exe` |
 | any (headless) | scripted input | software reference rasteriser, or none | the test suites |
 
 **How the core is made.** `ports/brally/src` and `ports/brally/include` are a
@@ -424,7 +424,7 @@ Windows, by API, not by OS:
 | Directory | What it is |
 |---|---|
 | `common/` | Win32 (windows, messages, files, threads, timers), DirectInput, DirectSound (mixed natively), MCI and EAR CD audio, DirectPlay over UDP, Glide 2, the C runtime with the game's DOS paths |
-| `render/` | one renderer interface, neutral between graphics APIs: Metal, Vulkan, a software reference rasteriser, and a null one |
+| `render/` | one renderer interface, neutral between graphics APIs: Metal, Vulkan, OpenGL 3.3 (the fallback), a software reference rasteriser (deprecated: checks only), and a null one |
 | `host/` | per OS: the window, keys, mouse, pads, audio out, files (`macos`, `windows`, `win32`, `posix`, `null`) |
 | `src/brally/include/` | the Win32, DirectX and Glide surface the core compiles against, in fixed-width types |
 
@@ -460,7 +460,11 @@ ports/brally/package_app.sh
 # vulkan-loader, glslang): build/brally/windows-vulkan/brally64.exe
 OUT=build/brally/windows-vulkan HOST=windows RENDER=vulkan CC=ports/brally/tools/wincc.sh ports/brally/link64.sh
 
-# headless, the software reference renderer: build/brally/null-soft/brally64
+# Windows x64, OpenGL 3.3 (a PC without a Vulkan driver): build/brally/windows-gl/brally64.exe
+OUT=build/brally/windows-gl HOST=windows RENDER=gl CC=ports/brally/tools/wincc.sh ports/brally/link64.sh
+
+# headless, the software reference renderer (deprecated: the renderers' checks only):
+# build/brally/null-soft/brally64
 RENDER=soft ports/brally/link64.sh
 ```
 

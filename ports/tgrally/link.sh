@@ -4,8 +4,10 @@
 # host (shared with the Boss Rally port: ports/brally/platform/host).
 #   env: HOST    null (default, headless) | macos | windows | lib (a static library,
 #                libtgrally.a, for an app that brings its own host; main() is tgr_main)
-#        RENDER  null (default) | soft | metal (needs HOST=macos) | vulkan (Windows; on
-#                macOS through MoltenVK: VULKAN_SDK, else Homebrew's)
+#        RENDER  null (default) | soft (deprecated: the CPU reference the renderers
+#                are checked against) | metal (needs HOST=macos) | vulkan (Windows; on
+#                macOS through MoltenVK: VULKAN_SDK, else Homebrew's) | gl (OpenGL 3.3, the
+#                fallback for a PC without Vulkan; offscreen on macOS, for checks)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
 #                tgrally.exe: host/win32 replaces host/posix
 #        OUT     build directory (default build/tgrally/null-null/HOST-RENDER)
@@ -64,6 +66,7 @@ case "$RENDER" in
   soft)  SRCS="$SRCS $P/render/soft/rdr_soft.c";;
   metal) SRCS="$SRCS $P/render/metal/rdr_metal.m";;
   vulkan) SRCS="$SRCS $P/render/vulkan/rdr_vulkan.c";;
+  gl)    SRCS="$SRCS $P/render/gl/rdr_gl.c ports/brally/platform/render/gl/gl_ctx.c";;   # Boss Rally's context
   *) echo "link: unknown RENDER $RENDER" >&2; exit 2;;
 esac
 VKLIBS=
@@ -81,6 +84,10 @@ if [ "$RENDER" = vulkan ]; then
     VKLIBS="-L$VK/lib -lvulkan"
   fi
 fi
+GLLIBS=
+if [ "$RENDER" = gl ]; then
+  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; else GLLIBS="-framework OpenGL"; fi
+fi
 LIBS="$ZLIB"
 case "$HOST" in
   null)  SRCS="$SRCS $H/null/host_null.c";;
@@ -96,7 +103,7 @@ for s in $SRCS; do
   o=$OUT/plat/$(echo "$s" | sed 's#/#__#g').o
   case "$s" in */render/metal/*) XF=-fobjc-arc;; *) XF=;; esac   # the Metal renderer is ARC
   [ "$HOST" = lib ] && [ "$s" = $P/os/main.c ] && XF=-Dmain=tgr_main   # the app owns main()
-  if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ]; then
+  if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ] || [ "$s" = ports/brally/platform/render/gl/gl_ctx.c ]; then
     # the OS layer sees the real system headers, not the game's
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H -c "$s" -o "$o"
   else
@@ -118,5 +125,5 @@ if [ "$HOST" = lib ]; then
   echo "archived $OUT/libtgrally.a (host $HOST, renderer $RENDER)"
   exit 0
 fi
-$LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $VKLIBS $OSLIBS
+$LD ${LDFLAGS_TGR} -o $OUT/tgrally$EXE $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS $LIBS $VKLIBS $GLLIBS $OSLIBS
 echo "linked $OUT/tgrally$EXE (host $HOST, renderer $RENDER)"

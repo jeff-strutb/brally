@@ -54,8 +54,8 @@ static void to8(const wchar_t *w, char *out, int n) { WideCharToMultiByte(CP_UTF
 static void to16(const char *s, wchar_t *out, int n) { MultiByteToWideChar(CP_UTF8, 0, s, -1, out, n); }
 
 /* 1 when this PC has a Vulkan device the games can draw with: then the
- * games' Vulkan builds go in, else their software-rendered ones (a build
- * linked to vulkan-1.dll does not start without it) */
+ * games' Vulkan builds go in, else their OpenGL ones (a build linked to
+ * vulkan-1.dll does not start without it) */
 typedef void *(__stdcall *vk_gipa)(void *, const char *);
 typedef int (__stdcall *vk_create)(const void *, const void *, void **);
 typedef int (__stdcall *vk_enum)(void *, uint32_t *, void *);
@@ -96,7 +96,7 @@ static int vulkan_usable(void)
 }
 
 /* the pieces in the games folder: the game (its Vulkan build, or the
- * software-rendered one on a PC without Vulkan) and its icon */
+ * OpenGL one on a PC without Vulkan) and its icon */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen)
 {
     wchar_t src[MAX_PATH], *s;
@@ -104,7 +104,7 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
     if ((s = wcsrchr(src, L'\\')) != NULL)
         *s = 0;
     if (!strcmp(name, "remastered"))
-        swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\remastered%ls.exe", vulkan_usable() ? L"" : L"-soft");
+        swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\remastered%ls.exe", vulkan_usable() ? L"" : L"-gl");
     else if (!strcmp(name, "icon"))
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\icon.ico");
     else if (!strncmp(name, "surfaces/", 9)) {   /* the Remastered textures' sets: games\surfaces\... */

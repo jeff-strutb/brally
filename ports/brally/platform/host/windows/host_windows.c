@@ -321,12 +321,13 @@ int host_window_open(int width, int height, const char *title)
 {
     WNDCLASSA wc;
     RECT r;
-    DWORD style = WS_OVERLAPPEDWINDOW;
+    DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;   /* (as an OpenGL window must be) */
     if (s_win)
         return 1;
     s_w = width;
     s_h = height;
     memset(&wc, 0, sizeof wc);
+    wc.style = CS_OWNDC;              /* one DC for the window's life (an OpenGL context keeps it) */
     wc.lpfnWndProc = wnd_proc;
     wc.hInstance = GetModuleHandleA(NULL);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);

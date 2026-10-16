@@ -1,4 +1,5 @@
-/* rdr_soft.c: the renderer interface (render/rdr.h) in software, on any
+/* rdr_soft.c (deprecated as a way to play: OpenGL 3.3, render/gl, is the
+ * fallback where there is no Vulkan): the renderer interface (render/rdr.h) in software, on any
  * platform: a colour and depth buffer at the N64's framebuffer size, the
  * colour combiner evaluated per pixel, perspective-correct texturing with
  * the tiles' wrap rules, and the blender's GPU-shaped modes.  Headless runs

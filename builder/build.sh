@@ -55,9 +55,9 @@ cp builder/src/mac/ios_sign.sh $B/payload-macos/ios_sign.sh
 
 # ---- the payload: Windows ---------------------------------------------------------------------
 # drawn with Vulkan (the GPU, as Metal on the Mac) and, for a PC without a
-# Vulkan driver, in software; the builder picks
-for R in vulkan soft; do
-    S=; [ $R = soft ] && S=-soft
+# Vulkan driver, with OpenGL 3.3; the builder picks
+for R in vulkan gl; do
+    S=; [ $R = gl ] && S=-gl
     CC=$WINCC OUT=$B/remastered-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/remastered/link.sh | grep -E "FAIL|linked"
     x86_64-w64-mingw32-strip -o $B/payload-windows/remastered$S.exe $B/remastered-windows-$R/remastered.exe
 done
