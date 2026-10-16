@@ -1,9 +1,9 @@
 /* main.c: the release builder's Windows front end (Win32, common controls 6).
- * It builds Top Gear Rally Remastered for Windows.
+ * It builds Boss Rally, Top Gear Rally or Top Gear Rally Remastered for Windows.
  *
- *   1 the folder to build into
- *   2 the player's own dumps of the two games (the Top Gear Rally ROM, the Boss
- *     Rally BIN and cue), checked by MD5
+ *   1 which game
+ *   2 the player's own dumps the game needs (the Top Gear Rally ROM, the Boss
+ *     Rally BIN and cue), checked by MD5, and the folder to build into
  *   3 the build (core/build.c), with progress
  *   4 the result: the game's folder, or what went wrong
  *
@@ -11,7 +11,7 @@
  * beside it.
  *
  * Arguments fill in the choices for a scripted run, and --build starts it:
- *   --dest DIR  --bin FILE  --cue FILE  --rom FILE  --build */
+ *   --game br|tgr|remastered  --dest DIR  --bin FILE  --cue FILE  --rom FILE  --build */
 #define WIN32_LEAN_AND_MEAN
 #define COBJMACROS
 #include <windows.h>
@@ -23,23 +23,20 @@
 #include <string.h>
 #include "rb.h"
 
-#define RB_WIDE_(s) L##s
-#define RB_WIDE(s) RB_WIDE_(s)
-#define RB_PRODUCT_W RB_WIDE(RB_PRODUCT)
 
 #define WM_RB_PROGRESS (WM_APP + 1)
 #define WM_RB_CHECKED  (WM_APP + 2)
 #define WM_RB_DONE     (WM_APP + 3)
 
 enum { ID_DEST = 100, ID_NEXT, ID_BACK, ID_BUILD, ID_CANCEL, ID_SHOW, ID_PLAY, ID_DONE,
-       ID_PICK_BIN, ID_PICK_CUE, ID_PICK_ROM };
+       ID_PICK_BIN, ID_PICK_CUE, ID_PICK_ROM, ID_GAME };     /* ID_GAME + each game */
 enum { K_BIN, K_CUE, K_ROM, K_N };
 
 static HWND s_wnd, s_bar, s_status, s_build;
 static HWND s_rowtext[K_N];
 static HFONT s_font, s_bold, s_title, s_mono;
 static HWND s_ctl[64];
-static int s_nctl, s_page;
+static int s_nctl, s_page, s_game = RB_REMASTERED;
 static wchar_t s_dest[MAX_PATH];
 static wchar_t s_file[K_N][MAX_PATH];
 static int s_ok[K_N], s_checking;
@@ -95,16 +92,16 @@ static int vulkan_usable(void)
     return known;
 }
 
-/* the pieces in the games folder: the game (its Vulkan build, or the
- * OpenGL one on a PC without Vulkan) and its icon */
+/* the pieces in the games folder: each game (its Vulkan build, or the
+ * OpenGL one on a PC without Vulkan) and Remastered's icon */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen)
 {
     wchar_t src[MAX_PATH], *s;
     GetModuleFileNameW(NULL, src, MAX_PATH);
     if ((s = wcsrchr(src, L'\\')) != NULL)
         *s = 0;
-    if (!strcmp(name, "remastered"))
-        swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\remastered%ls.exe", vulkan_usable() ? L"" : L"-gl");
+    if (!strcmp(name, "remastered") || !strcmp(name, "brally64") || !strcmp(name, "tgrally"))
+        swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs%ls.exe", name, vulkan_usable() ? L"" : L"-gl");
     else if (!strcmp(name, "icon"))
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\icon.ico");
     else if (!strncmp(name, "surfaces/", 9)) {   /* the Remastered textures' sets: games\surfaces\... */
@@ -155,23 +152,34 @@ static HWND button(const wchar_t *s, int x, int y, int w, int id, int def)
 }
 
 /* ---- pages --------------------------------------------------------------------------------- */
-static void page_choose(void)
+static void page_game(void)
 {
+    static const wchar_t *const what[] = {
+        L"The 1998 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
+        L"The 1997 Nintendo 64 game, from your cartridge ROM.",
+        L"Top Gear Rally's menus with Boss Rally's engine running the races, from both.",
+    };
+    int g;
     s_page = 1;
     clear_page();
-    text(L"Build " RB_PRODUCT_W, 24, 20, 540, 32, s_title);
-    text(L"Rally Builder makes a native Windows build of Top Gear Rally Remastered (Top Gear Rally's menus, with "
-         L"Boss Rally's engine running the races) from your own copies of the two games. Choose where to put it.",
-         24, 60, 540, 60, s_font);
-    text(L"Build into:", 24, 136, 200, 22, s_bold);
-    add(L"STATIC", s_dest, SS_LEFT | SS_NOPREFIX | SS_PATHELLIPSIS | SS_SUNKEN, 24, 162, 430, 26, 0, s_mono);
-    button(L"Choose...", 464, 161, 100, ID_DEST, 0);
+    text(L"Rally Builder", 24, 20, 540, 32, s_title);
+    text(L"Rally Builder makes a native Windows build of a game from your own copy of it. Choose the game.",
+         24, 60, 540, 40, s_font);
+    for (g = RB_BOSS_RALLY; g <= RB_REMASTERED; g++) {
+        wchar_t name[64];
+        HWND r;
+        to16(rb_game_name(g), name, 64);
+        r = add(L"BUTTON", name, WS_TABSTOP | BS_AUTORADIOBUTTON | (g == RB_BOSS_RALLY ? WS_GROUP : 0),
+                24, 112 + g * 72, 540, 24, ID_GAME + g, s_bold);
+        SendMessageW(r, BM_SETCHECK, g == s_game ? BST_CHECKED : BST_UNCHECKED, 0);
+        text(what[g], 44, 138 + g * 72, 520, 36, s_font);
+    }
     button(L"Continue", 464, 472, 100, ID_NEXT, 1);
 }
 
 static void update_build(void)
 {
-    int ok = s_ok[K_BIN] && s_ok[K_CUE] && s_ok[K_ROM];
+    int ok = (!rb_needs_disc(s_game) || (s_ok[K_BIN] && s_ok[K_CUE])) && (!rb_needs_rom(s_game) || s_ok[K_ROM]);
     if (s_build)
         EnableWindow(s_build, ok && !s_checking);
 }
@@ -182,31 +190,48 @@ static void row(int k, const wchar_t *title, const char *md5, int y, int id)
     swprintf(e, 128, L"Expected MD5  %hs", md5);
     text(title, 24, y, 300, 22, s_bold);
     button(L"Choose...", 464, y - 3, 100, id, 0);
-    text(e, 24, y + 24, 540, 18, s_mono);
-    s_rowtext[k] = text(s_file[k][0] ? L"" : L"No file chosen", 24, y + 44, 540, 54, s_mono);
+    text(e, 24, y + 22, 540, 18, s_mono);
+    s_rowtext[k] = text(s_file[k][0] ? L"" : L"No file chosen", 24, y + 40, 540, 50, s_mono);
 }
 
 static void start_check(int k, const wchar_t *path);
 
 static void page_dumps(void)
 {
+    int y = 120, k;
     s_page = 2;
     clear_page();
-    text(L"Your copies of the games", 24, 20, 540, 32, s_title);
-    text(L"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-         L"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
-         L"image finds the other beside it.", 24, 58, 540, 56, s_font);
-    row(K_ROM, L"Top Gear Rally: cartridge ROM", RB_TGR_ROM_MD5, 122, ID_PICK_ROM);
-    row(K_BIN, L"Boss Rally: disc image (.bin)", RB_BR_BIN_MD5, 236, ID_PICK_BIN);
-    row(K_CUE, L"Boss Rally: cue sheet (.cue)", RB_BR_CUE_MD5, 350, ID_PICK_CUE);
+    if (s_game == RB_REMASTERED) {
+        text(L"Your copies of the games", 24, 20, 540, 32, s_title);
+        text(L"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
+             L"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
+             L"image finds the other beside it.", 24, 58, 540, 56, s_font);
+    } else if (s_game == RB_BOSS_RALLY) {
+        text(L"Your copy of the game", 24, 20, 540, 32, s_title);
+        text(L"The game's data is copyrighted, so the builder cannot include it. Provide a BIN/CUE image of the retail "
+             L"Boss Rally CD. Choosing either file of the image finds the other beside it.", 24, 58, 540, 56, s_font);
+    } else {
+        text(L"Your copy of the game", 24, 20, 540, 32, s_title);
+        text(L"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
+             L"cartridge (.z64, .v64 or .n64).", 24, 58, 540, 56, s_font);
+    }
+    if (rb_needs_rom(s_game)) {
+        row(K_ROM, L"Top Gear Rally: cartridge ROM", RB_TGR_ROM_MD5, y, ID_PICK_ROM);
+        y += 96;
+    }
+    if (rb_needs_disc(s_game)) {
+        row(K_BIN, L"Boss Rally: disc image (.bin)", RB_BR_BIN_MD5, y, ID_PICK_BIN);
+        row(K_CUE, L"Boss Rally: cue sheet (.cue)", RB_BR_CUE_MD5, y + 96, ID_PICK_CUE);
+        y += 192;
+    }
+    text(L"Build into:", 24, y + 4, 100, 22, s_bold);
+    add(L"STATIC", s_dest, SS_LEFT | SS_NOPREFIX | SS_PATHELLIPSIS | SS_SUNKEN, 124, y, 330, 26, 0, s_mono);
+    button(L"Choose...", 464, y - 1, 100, ID_DEST, 0);
     button(L"Back", 352, 472, 100, ID_BACK, 0);
     s_build = button(L"Build", 464, 472, 100, ID_BUILD, 1);
-    {
-        int k;
-        for (k = 0; k < K_N; k++)
-            if (s_file[k][0] && s_rowtext[k])
-                start_check(k, s_file[k]);
-    }
+    for (k = 0; k < K_N; k++)
+        if (s_file[k][0] && s_rowtext[k])
+            start_check(k, s_file[k]);
     update_build();
 }
 
@@ -214,7 +239,12 @@ static void page_build(void)
 {
     s_page = 3;
     clear_page();
-    text(L"Building " RB_PRODUCT_W, 24, 20, 540, 32, s_title);
+    {
+        wchar_t t[128], name[64];
+        to16(rb_game_name(s_game), name, 64);
+        swprintf(t, 128, L"Building %ls", name);
+        text(t, 24, 20, 540, 32, s_title);
+    }
     s_bar = add(PROGRESS_CLASSW, L"", 0, 24, 80, 540, 22, 0, s_font);
     SendMessageW(s_bar, PBM_SETRANGE32, 0, 1000);
     s_status = text(L"Starting", 24, 112, 540, 44, s_font);
@@ -227,8 +257,11 @@ static void page_result(void)
     s_page = 4;
     clear_page();
     if (s_result) {
-        text(RB_PRODUCT_W L" is ready", 24, 20, 540, 32, s_title);
-        text(L"The build is complete. It carries everything it needs, so your ROM and disc image are no longer "
+        wchar_t name[64], title[128];
+        to16(rb_game_name(s_game), name, 64);
+        swprintf(title, 128, L"%ls is ready", name);
+        text(title, 24, 20, 540, 32, s_title);
+        text(L"The build is complete. It carries everything it needs, so your copies of the games are no longer "
              L"required to play.", 24, 60, 540, 40, s_font);
         to16(s_out, t, 2048);
         add(L"STATIC", t, SS_LEFT | SS_NOPREFIX | SS_PATHELLIPSIS, 24, 110, 540, 22, 0, s_mono);
@@ -374,6 +407,7 @@ static DWORD WINAPI build_thread(LPVOID p)
     to8(s_file[K_BIN], bin, sizeof bin);
     to8(s_file[K_CUE], cue, sizeof cue);
     to8(s_file[K_ROM], rom, sizeof rom);
+    job.game = s_game;
     job.target = RB_WINDOWS;
     job.dest_dir = dest;
     job.bin = bin;
@@ -394,6 +428,7 @@ static void build(void)
     int ours = 0;
     HANDLE h;
     to8(s_dest, dest, sizeof dest);
+    job.game = s_game;
     job.target = RB_WINDOWS;
     job.dest_dir = dest;
     if (rb_output_exists(&job, &ours)) {
@@ -435,10 +470,13 @@ static LRESULT CALLBACK proc(HWND w, UINT m, WPARAM wp, LPARAM lp)
         switch (LOWORD(wp)) {
         case ID_DEST:
             if (pick(1, s_dest, NULL, NULL))
-                page_choose();
+                page_dumps();
+            break;
+        case ID_GAME + RB_BOSS_RALLY: case ID_GAME + RB_TOP_GEAR_RALLY: case ID_GAME + RB_REMASTERED:
+            s_game = LOWORD(wp) - ID_GAME;
             break;
         case ID_NEXT: page_dumps(); break;
-        case ID_BACK: if (s_page == 4) page_dumps(); else page_choose(); break;
+        case ID_BACK: if (s_page == 4) page_dumps(); else page_game(); break;
         case ID_PICK_BIN: case ID_PICK_CUE: {
             wchar_t p[MAX_PATH];
             int k = LOWORD(wp) == ID_PICK_BIN ? K_BIN : K_CUE;
@@ -465,7 +503,9 @@ static LRESULT CALLBACK proc(HWND w, UINT m, WPARAM wp, LPARAM lp)
             if (LOWORD(wp) == ID_SHOW) {
                 ShellExecuteW(w, L"open", o, NULL, NULL, SW_SHOWNORMAL);
             } else {
-                swprintf(exe, 2200, L"%ls\\" RB_PRODUCT_W L".exe", o);
+                wchar_t name[64];
+                to16(rb_game_name(s_game), name, 64);
+                swprintf(exe, 2200, L"%ls\\%ls.exe", o, name);
                 ShellExecuteW(w, L"open", exe, NULL, o, SW_SHOWNORMAL);
             }
             break;
@@ -548,7 +588,9 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmd, int show)
         for (i = 1; argv && i < argc; i++) {
             const wchar_t *k = argv[i], *v = i + 1 < argc ? argv[i + 1] : L"";
             if (!wcscmp(k, L"--build")) { go = 1; continue; }
-            if (!wcscmp(k, L"--dest")) wcsncpy(s_dest, v, MAX_PATH - 1);
+            if (!wcscmp(k, L"--game"))
+                s_game = !wcscmp(v, L"br") ? RB_BOSS_RALLY : !wcscmp(v, L"tgr") ? RB_TOP_GEAR_RALLY : RB_REMASTERED;
+            else if (!wcscmp(k, L"--dest")) wcsncpy(s_dest, v, MAX_PATH - 1);
             else if (!wcscmp(k, L"--bin")) { wcsncpy(s_file[K_BIN], v, MAX_PATH - 1); s_ok[K_BIN] = 1; }
             else if (!wcscmp(k, L"--cue")) { wcsncpy(s_file[K_CUE], v, MAX_PATH - 1); s_ok[K_CUE] = 1; }
             else if (!wcscmp(k, L"--rom")) { wcsncpy(s_file[K_ROM], v, MAX_PATH - 1); s_ok[K_ROM] = 1; }
@@ -556,7 +598,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmd, int show)
             i++;
         }
         LocalFree(argv);
-        page_choose();
+        page_game();
         ShowWindow(s_wnd, show);
         if (go)
             build();                   /* a scripted run: the dumps were checked by whoever named them */

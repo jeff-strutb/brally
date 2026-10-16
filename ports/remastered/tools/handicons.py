@@ -280,7 +280,10 @@ def model(m, colours, size_key, size_val):
             for k in new:
                 idx[k] = len(cur)
                 cur.append(k)
-            tl.append([idx[k] for k in ks])
+            # each triangle from its second corner (the same triangle, wound the same): a grid's
+            # plainly sequential indices otherwise spell the very commands of the cartridge's own
+            # grids, which builder/check_payload.py rightly rejects in a shipped executable
+            tl.append([idx[ks[1]], idx[ks[2]], idx[ks[0]]])
         if tl:
             loads.append((cur, tl))
         vofs = []

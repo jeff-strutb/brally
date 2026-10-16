@@ -1,18 +1,21 @@
 /* rb.h: the release builder's core, shared by the macOS and Windows front ends.
  *
- * The builder turns the player's own copies of the two games into a native
- * build of Top Gear Rally Remastered (ports/remastered: Top Gear Rally's menus,
- * Boss Rally's engine running the races). The code ships inside the builder,
- * built with none of the originals' data in it; the data comes from the dumps
- * the player provides, checked by MD5:
+ * The builder turns the player's own copies of the games into a native build
+ * of one of three: Boss Rally (ports/brally), Top Gear Rally (ports/tgrally),
+ * or Top Gear Rally Remastered (ports/remastered: Top Gear Rally's menus, Boss
+ * Rally's engine running the races). The code ships inside the builder, built
+ * with none of the originals' data in it; the data comes from the dumps the
+ * player provides, checked by MD5:
  *
  *   Top Gear Rally  the N64 cartridge ROM (USA): its data region, from ROM
  *                   0x70AB0 to the end, as romdata.bin
  *   Boss Rally      the BIN/CUE of the retail PC CD: the data track's files
- *                   (BRGlide.dll's data is read from there at start-up)
+ *                   (BRGlide.dll's data is read from there at start-up) and
+ *                   its twelve audio tracks, encoded as FLAC
  *
- * The result needs neither dump once built. It is for the system the builder
- * runs on (Windows: Windows; macOS: the Mac, or the iPhone as an .ipa).
+ * Remastered reads both. The result needs no dump once built. It is for the
+ * system the builder runs on (Windows: Windows; macOS: the Mac, or for
+ * Remastered the iPhone and iPad as an .ipa).
  *
  * Paths are UTF-8 everywhere. Every long call reports progress through an
  * rb_progress and stops early (with an error) when *cancel becomes nonzero.
@@ -27,6 +30,8 @@
 extern "C" {
 #endif
 
+/* which game */
+enum { RB_BOSS_RALLY, RB_TOP_GEAR_RALLY, RB_REMASTERED };
 /* what the build is for */
 enum { RB_MACOS, RB_IOS, RB_WINDOWS };
 
@@ -38,10 +43,14 @@ typedef void (*rb_progress)(void *ctx, double fraction, const char *status);
 #define RB_TGR_ROM_MD5 "6f7030284b6bc84a49e07da864526b52"   /* Top Gear Rally (USA), .z64 order */
 
 #define RB_PRODUCT "Top Gear Rally Remastered"
+const char *rb_game_name(int game);           /* "Boss Rally" / "Top Gear Rally" / RB_PRODUCT */
 const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" */
-/* what the build is called in the destination folder: "Top Gear Rally
- * Remastered.app" (Mac), ".ipa" (iPhone), the folder (Windows) */
-const char *rb_output_name(int target);
+/* the dumps a game is built from */
+#define rb_needs_disc(game) ((game) != RB_TOP_GEAR_RALLY)
+#define rb_needs_rom(game)  ((game) != RB_BOSS_RALLY)
+/* what the build is called in the destination folder: "Boss Rally.app" (Mac),
+ * "Top Gear Rally Remastered.ipa" (iPhone), the folder "Boss Rally" (Windows) */
+const char *rb_output_name(int game, int target);
 
 /* ---- checking what the player provides ---------------------------------------- */
 typedef struct rb_check {
@@ -63,7 +72,8 @@ int rb_cue_bin_path(const char *cue, char *out, size_t n);
 
 /* ---- building ---------------------------------------------------------------------- */
 typedef struct rb_job {
-    int         target;       /* RB_MACOS / RB_IOS / RB_WINDOWS */
+    int         game;         /* RB_BOSS_RALLY / RB_TOP_GEAR_RALLY / RB_REMASTERED */
+    int         target;       /* RB_MACOS / RB_IOS (Remastered only) / RB_WINDOWS */
     const char *bin, *cue;    /* Boss Rally */
     const char *rom;          /* Top Gear Rally */
     const char *dest_dir;     /* the folder the build goes into */
@@ -85,8 +95,9 @@ int rb_ios_signing(char *desc, size_t n);
 
 /* ---- supplied by each front end -------------------------------------------------- */
 /* where a piece shipped inside the builder is (a file, or the iPhone app's
- * folder): "remastered" (the game for this system), "icon" (its icon:
- * AppIcon.icns or icon.ico), "ios-app", "ios-sign"; 1 on success */
+ * folder): "brally64", "tgrally", "remastered" (each game for this system),
+ * "icon" (Remastered's icon: AppIcon.icns or icon.ico), "ios-app", "ios-sign";
+ * 1 on success */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen);
 
 /* ---- utilities the core shares (util.c, md5.c) ---------------------------------- */

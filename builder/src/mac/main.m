@@ -1,15 +1,16 @@
 /* main.m: the release builder's macOS front end (AppKit).
  *
- *   1 what to build for (the Mac, or the iPhone: signed with the player's own
- *     Xcode signing when this Mac has it, else an unsigned .ipa), and the
- *     folder to build into
- *   2 the player's own dumps of the two games (the Top Gear Rally ROM, the Boss
- *     Rally BIN and cue), checked by MD5
- *   3 the build (core/build.c), with progress
- *   4 the result: the app or .ipa, or what went wrong
+ *   1 which game: Boss Rally, Top Gear Rally, or Top Gear Rally Remastered
+ *   2 (Remastered) what to build for: the Mac, or the iPhone and iPad (signed
+ *     with the player's own Xcode signing when this Mac has it, else an
+ *     unsigned .ipa); the other two build for the Mac
+ *   3 the player's own dumps the game needs (the Top Gear Rally ROM, the Boss
+ *     Rally BIN and cue), checked by MD5, and the folder to build into
+ *   4 the build (core/build.c), with progress
+ *   5 the result: the app or .ipa, or what went wrong
  *
  * Arguments fill in the choices for a scripted run:
- *   --target mac|ios  --dest DIR  --bin FILE  --cue FILE  --rom FILE
+ *   --game br|tgr|remastered  --target mac|ios  --dest DIR  --bin FILE  --cue FILE  --rom FILE
  * RB_SNAPSHOT=DIR writes each page the window shows to DIR as a PNG.
  */
 #import <Cocoa/Cocoa.h>
@@ -22,8 +23,8 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
     @autoreleasepool {
         static NSDictionary<NSString *, NSString *> *map;
         if (!map)
-            map = @{ @"remastered": @"remastered", @"icon": @"AppIcon.icns", @"ios-app": @"ios/app",
-                     @"ios-sign": @"ios_sign.sh" };
+            map = @{ @"brally64": @"brally64", @"tgrally": @"tgrally", @"remastered": @"remastered",
+                     @"icon": @"AppIcon.icns", @"ios-app": @"ios/app", @"ios-sign": @"ios_sign.sh" };
         NSString *rel = map[@(name)];
         if (!rel && !strncmp(name, "surfaces/", 9))   /* the Remastered textures' sets */
             rel = @(name);
@@ -41,7 +42,7 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
 @interface Builder : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (strong) NSWindow *window;
 @property (strong) NSView *page;
-@property int target;
+@property int game, target;
 @property (copy) NSString *signing;          /* the iPhone build's signing, nil: unsigned */
 @property BOOL destChosen;                    /* else the target's own: Applications, or the Desktop for an .ipa */
 @property (copy) NSString *dest, *bin, *cue, *rom;
@@ -113,13 +114,16 @@ static void progress_cb(void *ctx, double f, const char *s)
     [bar addItem:item];
     NSApp.mainMenu = bar;
 
+    self.game = RB_REMASTERED;
     self.dest = [NSSearchPathForDirectoriesInDomains(NSApplicationDirectory, NSUserDomainMask, YES) firstObject];
     {
         NSArray<NSString *> *a = NSProcessInfo.processInfo.arguments;
         NSUInteger i;
         for (i = 1; i + 1 < a.count; i++) {
             NSString *k = a[i], *v = a[i + 1];
-            if ([k isEqualToString:@"--target"]) self.target = [v isEqualToString:@"ios"] ? RB_IOS : RB_MACOS;
+            if ([k isEqualToString:@"--game"])
+                self.game = [v isEqualToString:@"br"] ? RB_BOSS_RALLY : [v isEqualToString:@"tgr"] ? RB_TOP_GEAR_RALLY : RB_REMASTERED;
+            else if ([k isEqualToString:@"--target"]) self.target = [v isEqualToString:@"ios"] ? RB_IOS : RB_MACOS;
             else if ([k isEqualToString:@"--dest"]) { self.dest = v; self.destChosen = YES; }
             else if ([k isEqualToString:@"--bin"]) self.bin = v;
             else if ([k isEqualToString:@"--cue"]) self.cue = v;
@@ -140,7 +144,7 @@ static void progress_cb(void *ctx, double f, const char *s)
     self.window.title = @"Rally Builder";
     self.window.delegate = self;
     [self.window center];
-    [self showChoose];
+    [self showGame];
     [self.window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
 }
@@ -198,7 +202,46 @@ static void progress_cb(void *ctx, double f, const char *s)
     return b;
 }
 
-/* ---- 1: what to build for, and the folder -------------------------------------------------- */
+/* ---- 1: which game ------------------------------------------------------------------------------ */
+- (void)showGame
+{
+    static const char *const what[] = {
+        "The 1998 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
+        "The 1997 Nintendo 64 game, from your cartridge ROM.",
+        "Top Gear Rally's menus with Boss Rally's engine running the races, from both. "
+        "For the Mac, or for the iPhone and iPad.",
+    };
+    NSMutableArray<NSView *> *v = [NSMutableArray arrayWithArray:@[
+        label(@"Rally Builder", 20, YES),
+        label(@"Rally Builder makes a native build of a game from your own copy of it. Choose the game.", 13, NO),
+    ]];
+    for (int g = RB_BOSS_RALLY; g <= RB_REMASTERED; g++) {
+        NSButton *r = [NSButton radioButtonWithTitle:@(rb_game_name(g)) target:self action:@selector(pickGame:)];
+        NSTextField *t = label(@(what[g]), 12, NO);
+        r.tag = g;
+        r.state = g == self.game ? NSControlStateValueOn : NSControlStateValueOff;
+        t.textColor = NSColor.secondaryLabelColor;
+        [t.widthAnchor constraintEqualToConstant:520].active = YES;
+        [v addObject:vstack(@[ r, t ], 2)];
+    }
+    NSButton *next = [self button:@"Continue" action:@selector(fromGame:)];
+    next.keyEquivalent = @"\r";
+    [self setPage:vstack(v, 14) buttons:@[ next ]];
+}
+
+- (void)pickGame:(NSButton *)b { self.game = (int)b.tag; }
+
+- (void)fromGame:(id)s
+{
+    if (self.game == RB_REMASTERED) {
+        [self showChoose];
+        return;
+    }
+    [self pickTargetValue:RB_MACOS];
+    [self toDumps:nil];
+}
+
+/* ---- 2: what to build for (Remastered) ---------------------------------------------------------- */
 - (void)showChoose
 {
     NSButton *mac = [NSButton radioButtonWithTitle:@"Mac" target:self action:@selector(pickTarget:)];
@@ -215,33 +258,30 @@ static void progress_cb(void *ctx, double f, const char *s)
                      @"unsigned .ipa: you sign and install it yourself (for example with AltStore or Sideloadly).", 12, NO);
         sign.textColor = NSColor.systemRedColor;
     }
-    self.destLabel = mono(self.dest);
-    self.destLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-    [self.destLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
-    NSButton *choose = [self button:@"Choose..." action:@selector(chooseDest:)];
+    NSButton *back = [self button:@"Back" action:@selector(backToGame:)];
     NSButton *next = [self button:@"Continue" action:@selector(toDumps:)];
     next.keyEquivalent = @"\r";
     [sign.widthAnchor constraintEqualToConstant:520].active = YES;
     [self setPage:vstack(@[
         label(@"Build " RB_PRODUCT, 20, YES),
-        label(@"Rally Builder makes a native build of Top Gear Rally Remastered (Top Gear Rally's menus, with Boss Rally's engine "
-              @"running the races) from your own copies of the two games. Choose what to build for, and where to put it.", 13, NO),
+        label(@"Top Gear Rally Remastered is Top Gear Rally's menus, with Boss Rally's engine running the races. "
+              @"Choose what to build it for.", 13, NO),
         label(@"Build for:", 13, YES),
         mac, ios, sign,
-        label(@"Build into:", 13, YES),
-        hstack(@[ self.destLabel, choose ]),
-    ], 12) buttons:@[ next ]];
+    ], 12) buttons:@[ back, next ]];
 }
 
-- (void)pickTarget:(NSButton *)b
+- (void)backToGame:(id)s { [self showGame]; }
+
+- (void)pickTargetValue:(int)t
 {
-    self.target = (int)b.tag;
-    if (!self.destChosen) {
-        self.dest = [NSSearchPathForDirectoriesInDomains(self.target == RB_IOS ? NSDesktopDirectory : NSApplicationDirectory,
+    self.target = t;
+    if (!self.destChosen)
+        self.dest = [NSSearchPathForDirectoriesInDomains(t == RB_IOS ? NSDesktopDirectory : NSApplicationDirectory,
                                                          NSUserDomainMask, YES) firstObject];
-        self.destLabel.stringValue = self.dest;
-    }
 }
+
+- (void)pickTarget:(NSButton *)b { [self pickTargetValue:(int)b.tag]; }
 
 - (void)chooseDest:(id)s
 {
@@ -275,30 +315,54 @@ static void progress_cb(void *ctx, double f, const char *s)
 
 - (void)toDumps:(id)s
 {
+    NSMutableArray<NSView *> *v = [NSMutableArray new];
+    NSString *intro;
+    int g = self.game;
     self.rows = [NSMutableDictionary new];
-    NSButton *back = [self button:@"Back" action:@selector(backToChoose:)];
+    if (g == RB_BOSS_RALLY)
+        intro = @"The game's data is copyrighted, so the builder cannot include it. Provide a BIN/CUE image of the retail "
+                @"Boss Rally CD. Choosing either file of the image finds the other beside it.";
+    else if (g == RB_TOP_GEAR_RALLY)
+        intro = @"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
+                @"cartridge (.z64, .v64 or .n64).";
+    else
+        intro = @"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
+                @"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
+                @"image finds the other beside it.";
+    [v addObject:label(rb_needs_disc(g) && rb_needs_rom(g) ? @"Your copies of the games" : @"Your copy of the game", 20, YES)];
+    [v addObject:label(intro, 13, NO)];
+    if (rb_needs_rom(g))
+        [v addObject:[self row:@"rom" title:@"Top Gear Rally: cartridge ROM" expect:RB_TGR_ROM_MD5]];
+    if (rb_needs_disc(g)) {
+        [v addObject:[self row:@"bin" title:@"Boss Rally: disc image (.bin)" expect:RB_BR_BIN_MD5]];
+        [v addObject:[self row:@"cue" title:@"Boss Rally: cue sheet (.cue)" expect:RB_BR_CUE_MD5]];
+    }
+    self.destLabel = mono(self.dest);
+    self.destLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    [self.destLabel setContentCompressionResistancePriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+    [v addObject:vstack(@[ label(@"Build into:", 13, YES),
+                           hstack(@[ self.destLabel, [self button:@"Choose..." action:@selector(chooseDest:)] ]) ], 4)];
+    NSButton *back = [self button:@"Back" action:@selector(backFromDumps:)];
     self.buildButton = [self button:@"Build" action:@selector(build:)];
     self.buildButton.keyEquivalent = @"\r";
-    [self setPage:vstack(@[
-        label(@"Your copies of the games", 20, YES),
-        label(@"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-              @"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
-              @"image finds the other beside it.", 13, NO),
-        [self row:@"rom" title:@"Top Gear Rally: cartridge ROM" expect:RB_TGR_ROM_MD5],
-        [self row:@"bin" title:@"Boss Rally: disc image (.bin)" expect:RB_BR_BIN_MD5],
-        [self row:@"cue" title:@"Boss Rally: cue sheet (.cue)" expect:RB_BR_CUE_MD5],
-    ], 14) buttons:@[ back, self.buildButton ]];
-    if (self.rom) [self check:@"rom" path:self.rom];
-    if (self.bin) [self check:@"bin" path:self.bin];
-    if (self.cue) [self check:@"cue" path:self.cue];
+    [self setPage:vstack(v, 14) buttons:@[ back, self.buildButton ]];
+    if (self.rom && rb_needs_rom(g)) [self check:@"rom" path:self.rom];
+    if (self.bin && rb_needs_disc(g)) [self check:@"bin" path:self.bin];
+    if (self.cue && rb_needs_disc(g)) [self check:@"cue" path:self.cue];
     [self updateBuildButton];
 }
 
-- (void)backToChoose:(id)s { [self showChoose]; }
+- (void)backFromDumps:(id)s
+{
+    if (self.game == RB_REMASTERED)
+        [self showChoose];
+    else
+        [self showGame];
+}
 
 - (void)updateBuildButton
 {
-    BOOL ok = self.binOK && self.cueOK && self.romOK;
+    BOOL ok = (!rb_needs_disc(self.game) || (self.binOK && self.cueOK)) && (!rb_needs_rom(self.game) || self.romOK);
     self.buildButton.enabled = ok && atomic_load(&g_checks) == 0;
 }
 
@@ -383,6 +447,7 @@ static void progress_cb(void *ctx, double f, const char *s)
 {
     rb_job job = { 0 };
     int ours = 0;
+    job.game = self.game;
     job.target = self.target;
     job.dest_dir = self.dest.fileSystemRepresentation;
     if (rb_output_exists(&job, &ours)) {
@@ -390,12 +455,12 @@ static void progress_cb(void *ctx, double f, const char *s)
         rb_output_path(&job, out, sizeof out);
         NSAlert *a = [NSAlert new];
         if (!ours) {
-            a.messageText = [NSString stringWithFormat:@"%s already exists", rb_output_name(self.target)];
+            a.messageText = [NSString stringWithFormat:@"%s already exists", rb_output_name(self.game, self.target)];
             a.informativeText = [NSString stringWithFormat:@"%s was not made by Rally Builder, so it will not be replaced. Move it away or choose another folder.", out];
             [a beginSheetModalForWindow:self.window completionHandler:nil];
             return;
         }
-        a.messageText = [NSString stringWithFormat:@"Replace %s?", rb_output_name(self.target)];
+        a.messageText = [NSString stringWithFormat:@"Replace %s?", rb_output_name(self.game, self.target)];
         a.informativeText = [NSString stringWithFormat:@"An earlier build is at %s. Your saved games are kept; they live in your Library (on the iPhone, with the app's data), not in the build.", out];
         [a addButtonWithTitle:@"Replace"];
         [a addButtonWithTitle:@"Cancel"];
@@ -417,14 +482,16 @@ static void progress_cb(void *ctx, double f, const char *s)
     self.bar.maxValue = 100;
     [self.bar.widthAnchor constraintEqualToConstant:540].active = YES;
     self.status = label(@"Starting", 13, NO);
-    [self setPage:vstack(@[ label([NSString stringWithFormat:@"Building for the %s", rb_target_name(self.target)], 20, YES),
+    [self setPage:vstack(@[ label([NSString stringWithFormat:@"Building %s for the %s", rb_game_name(self.game),
+                                                                rb_target_name(self.target)], 20, YES),
                             self.bar, self.status ], 14) buttons:@[ cancel ]];
     g_cancel = 0;
-    int target = self.target;
+    int game = self.game, target = self.target;
     NSString *dest = self.dest, *bin = self.bin, *cue = self.cue, *rom = self.rom;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         rb_job job = { 0 };
         char err[1024] = "", out[2048];
+        job.game = game;
         job.target = target;
         job.dest_dir = dest.fileSystemRepresentation;
         job.bin = bin.fileSystemRepresentation;
@@ -466,9 +533,9 @@ static void progress_cb(void *ctx, double f, const char *s)
             how = @"";
             buttons = @[ done, show, play ];
         }
-        [self setPage:vstack(@[ label(@RB_PRODUCT " is ready", 20, YES),
-                                label([NSString stringWithFormat:@"The build is complete. It carries everything it needs, so your ROM and disc "
-                                                                 @"image are no longer required to play. %@", how], 13, NO),
+        [self setPage:vstack(@[ label([NSString stringWithFormat:@"%s is ready", rb_game_name(self.game)], 20, YES),
+                                label([NSString stringWithFormat:@"The build is complete. It carries everything it needs, so your "
+                                                                 @"copies of the games are no longer required to play. %@", how], 13, NO),
                                 mono(out) ], 14) buttons:buttons];
     } else {
         NSButton *back = [self button:@"Back" action:@selector(toDumps:)];

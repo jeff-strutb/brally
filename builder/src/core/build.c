@@ -1,16 +1,23 @@
 /* build.c: checking the player's dumps and assembling the build.
  *
  * Mac: an app bundle
- *   Top Gear Rally Remastered.app/Contents/MacOS/remastered     the games
- *                                /Contents/Resources/disc/        Boss Rally's data track
- *                                /Contents/Resources/romdata.bin  the cartridge's data
- *                                /Contents/Resources/AppIcon.icns
+ *   Boss Rally.app/Contents/MacOS/brally64            the game
+ *                 /Contents/Resources/disc/           the CD's data track
+ *                 /Contents/Resources/music/cd/       its audio tracks 2..13 as FLAC
+ *                 /Contents/Resources/BossRally.icns  the disc's icon
+ *   Top Gear Rally.app/Contents/MacOS/tgrally
+ *                     /Contents/Resources/romdata.bin the cartridge's data
+ *   Top Gear Rally Remastered.app/Contents/MacOS/remastered     the two games
+ *                                /Contents/Resources/disc/, music/cd/, romdata.bin, AppIcon.icns
  *                                /Contents/Resources/surfaces/    the Remastered textures' sets
- * iPhone: Top Gear Rally Remastered.ipa, the app (Payload/...app) with disc/
- *   and romdata.bin inside, signed with the player's Xcode signing when this
- *   Mac has it (rb_ios_signing), else unsigned for the player to sign
- * Windows: a folder
- *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, surfaces\, disc\, romdata.bin
+ * iPhone (Remastered): Top Gear Rally Remastered.ipa, the app (Payload/...app)
+ *   with disc/, music/cd/ and romdata.bin inside, signed with the player's
+ *   Xcode signing when this Mac has it (rb_ios_signing), else unsigned for the
+ *   player to sign
+ * Windows: a folder named for the game
+ *   Boss Rally\Boss Rally.exe, icon.ico (the disc's), disc\, music\cd\
+ *   Top Gear Rally\Top Gear Rally.exe, romdata.bin
+ *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, surfaces\, disc\, music\cd\, romdata.bin
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -36,14 +43,22 @@ extern char **environ;
 #define TGR_ROM_SIZE 0x800000u
 #define IOS_APP RB_PRODUCT ".app"
 
+const char *rb_game_name(int g) { return g == RB_BOSS_RALLY ? "Boss Rally" : g == RB_TOP_GEAR_RALLY ? "Top Gear Rally" : RB_PRODUCT; }
+
 const char *rb_target_name(int t) { return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : "Windows"; }
 
-const char *rb_output_name(int t)
+const char *rb_output_name(int g, int t)
 {
-    return t == RB_MACOS ? RB_PRODUCT ".app" : t == RB_IOS ? RB_PRODUCT ".ipa" : RB_PRODUCT;
+    static const char *const mac[] = { "Boss Rally.app", "Top Gear Rally.app", RB_PRODUCT ".app" };
+    if (t == RB_IOS)
+        return RB_PRODUCT ".ipa";
+    return t == RB_MACOS ? mac[g] : rb_game_name(g);
 }
 
-void rb_output_path(const rb_job *job, char *out, size_t n) { rb_join(out, n, job->dest_dir, rb_output_name(job->target)); }
+void rb_output_path(const rb_job *job, char *out, size_t n) { rb_join(out, n, job->dest_dir, rb_output_name(job->game, job->target)); }
+
+/* each game's executable in the payload */
+static const char *game_payload(int g) { return g == RB_BOSS_RALLY ? "brally64" : g == RB_TOP_GEAR_RALLY ? "tgrally" : "remastered"; }
 
 /* ---- checks --------------------------------------------------------------------------- */
 static int md5_file(const char *path, char hex[33], rb_progress cb, void *ctx, volatile int *cancel)
@@ -294,6 +309,7 @@ typedef struct ctx {
     char root[2048];           /* the staged build */
     char app[2048];            /* the app inside it (Mac, iPhone) */
     char res[2048];            /* where the data goes */
+    int  icon;                 /* Boss Rally: the disc's icon is in the build */
 } ctx;
 
 static void say(ctx *c, double f, const char *s)
@@ -302,27 +318,34 @@ static void say(ctx *c, double f, const char *s)
         c->cb(c->cctx, f, s);
 }
 
+/* the Mac app's Info.plist: each game its own name, identifier and icon */
 static int mac_plist(ctx *c)
 {
-    char path[2048], buf[4096], contents[2048];
+    static const char *const id[] = { "com.strutb.bossrally64", "com.strutb.tgrally", "com.strutb.tgrally-remastered" };
+    static const char *const min[] = { "11.0", "12.0", "12.0" };
+    int g = c->job->game;
+    const char *icon = g == RB_REMASTERED ? "AppIcon" : g == RB_BOSS_RALLY && c->icon ? "BossRally" : NULL;
+    char path[2048], buf[4096], ic[256] = "", contents[2048];
+    if (icon)
+        snprintf(ic, sizeof ic, "    <key>CFBundleIconFile</key><string>%s</string>\n", icon);
     snprintf(buf, sizeof buf,
              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
              "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
              "<plist version=\"1.0\">\n<dict>\n"
-             "    <key>CFBundleName</key><string>" RB_PRODUCT "</string>\n"
-             "    <key>CFBundleDisplayName</key><string>" RB_PRODUCT "</string>\n"
-             "    <key>CFBundleIdentifier</key><string>com.strutb.tgrally-remastered</string>\n"
-             "    <key>CFBundleExecutable</key><string>remastered</string>\n"
-             "    <key>CFBundleIconFile</key><string>AppIcon</string>\n"
+             "    <key>CFBundleName</key><string>%s</string>\n"
+             "    <key>CFBundleDisplayName</key><string>%s</string>\n"
+             "    <key>CFBundleIdentifier</key><string>%s</string>\n"
+             "    <key>CFBundleExecutable</key><string>%s</string>\n"
+             "%s"
              "    <key>CFBundlePackageType</key><string>APPL</string>\n"
              "    <key>CFBundleShortVersionString</key><string>%s</string>\n"
              "    <key>CFBundleVersion</key><string>%s</string>\n"
              "    <key>LSApplicationCategoryType</key><string>public.app-category.racing-games</string>\n"
-             "    <key>LSMinimumSystemVersion</key><string>12.0</string>\n"
+             "    <key>LSMinimumSystemVersion</key><string>%s</string>\n"
              "    <key>NSHighResolutionCapable</key><true/>\n"
              "    <key>GCSupportsControllerUserInteraction</key><true/>\n"
              "</dict>\n</plist>\n",
-             RB_VERSION, RB_VERSION);
+             rb_game_name(g), rb_game_name(g), id[g], game_payload(g), ic, RB_VERSION, RB_VERSION, min[g]);
     rb_join(contents, sizeof contents, c->root, "Contents");
     rb_join(path, sizeof path, contents, "Info.plist");
     if (!rb_write_file(path, buf, strlen(buf))) {
@@ -394,8 +417,8 @@ static int surfaces(ctx *c)
 static int stage(ctx *c)
 {
     char tmpname[512], path[2048], dir[2048];
-    int t = c->job->target;
-    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(t));
+    int t = c->job->target, g = c->job->game;
+    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(g, t));
     rb_join(c->root, sizeof c->root, c->job->dest_dir, tmpname);
     if (rb_exists(c->root) && !rb_rmtree(c->root)) {        /* a build that stopped partway */
         rb_err(c->err, c->errlen, "cannot clear %s", c->root);
@@ -407,12 +430,14 @@ static int stage(ctx *c)
         rb_join(dir, sizeof dir, c->root, "Contents/MacOS");
         if (!rb_mkdirs(dir) || !rb_mkdirs(c->res))
             goto nodir;
-        rb_join(path, sizeof path, dir, "remastered");
-        if (!payload(c, "remastered", path, 0))
+        rb_join(path, sizeof path, dir, game_payload(g));
+        if (!payload(c, game_payload(g), path, 0))
             return 0;
         rb_set_exec(path);
+        if (g != RB_REMASTERED)
+            return 1;
         rb_join(path, sizeof path, c->res, "AppIcon.icns");
-        return payload(c, "icon", path, 0) && surfaces(c) && mac_plist(c);
+        return payload(c, "icon", path, 0) && surfaces(c);
     }
     if (t == RB_IOS) {
         rb_join(dir, sizeof dir, c->root, "Payload");
@@ -426,9 +451,15 @@ static int stage(ctx *c)
     snprintf(c->res, sizeof c->res, "%s", c->root);
     if (!rb_mkdirs(c->root))
         goto nodir;
-    rb_join(path, sizeof path, c->root, RB_PRODUCT ".exe");
-    if (!payload(c, "remastered", path, 0))
+    {
+        char exe[512];
+        snprintf(exe, sizeof exe, "%s.exe", rb_game_name(g));
+        rb_join(path, sizeof path, c->root, exe);
+    }
+    if (!payload(c, game_payload(g), path, 0))
         return 0;
+    if (g != RB_REMASTERED)
+        return 1;
     rb_join(path, sizeof path, c->root, "icon.ico");     /* the window's icon (host/windows) */
     return payload(c, "icon", path, 0) && surfaces(c);   /* (host_resource_dir: beside the exe) */
 nodir:
@@ -441,6 +472,8 @@ static int finish(ctx *c)
 {
     char out[2048], mk[2048], staged[2048];
     int ours = 0, t = c->job->target;
+    if (t == RB_MACOS && !mac_plist(c))
+        return 0;
     marker_path(t, c->root, mk, sizeof mk);
     if (!rb_write_file(mk, RB_VERSION "\n", strlen(RB_VERSION "\n"))) {
         rb_err(c->err, c->errlen, "cannot write in %s", c->root);
@@ -492,17 +525,14 @@ static int finish(ctx *c)
     return 1;
 }
 
-/* the two games' data, from the dumps */
-static int data(ctx *c)
+/* Top Gear Rally's data, from the ROM */
+static int rom_data(ctx *c, double lo, double hi)
 {
-    char disc[2048], path[2048], hex[33], md5[33];
-    rb_cue cue;
+    char path[2048], md5[33];
     size_t n;
     int order;
     uint8_t *r;
-    if (!rb_cue_parse(c->job->cue, &cue, rb_file_size(c->job->bin), c->err, c->errlen))
-        return 0;
-    say(c, 0.02, "Reading the ROM");
+    say(c, lo, "Reading the ROM");
     if (!(r = load_rom(c->job->rom, &n, md5, &order))) {
         rb_err(c->err, c->errlen, "cannot read the ROM");
         return 0;
@@ -512,7 +542,7 @@ static int data(ctx *c)
         rb_err(c->err, c->errlen, "the ROM is not 8 MB");
         return 0;
     }
-    say(c, 0.05, "Writing Top Gear Rally's data");
+    say(c, (lo + hi) / 2, "Writing Top Gear Rally's data");
     rb_join(path, sizeof path, c->res, "romdata.bin");
     if (!rb_write_file(path, r + TGR_DATA, n - TGR_DATA)) {
         free(r);
@@ -520,18 +550,86 @@ static int data(ctx *c)
         return 0;
     }
     free(r);
+    return 1;
+}
+
+/* Boss Rally's data, from the disc: the data track's files, the audio tracks as FLAC (the
+ * soundtrack: Boss Rally's music, and the PC's music of the Remaster Options), and its icon */
+static int disc_data(ctx *c, double lo, double hi)
+{
+    char disc[2048], music[2048], path[2048], hex[33];
+    rb_cue cue;
+    FILE *bin;
+    uint64_t audio = 0, done = 0;
+    double mid = lo + 0.12 * (hi - lo);
+    int i;
+    if (!rb_cue_parse(c->job->cue, &cue, rb_file_size(c->job->bin), c->err, c->errlen))
+        return 0;
     rb_join(disc, sizeof disc, c->res, "disc");
-    if (!rb_extract_data_track(c->job->bin, disc, c->cb, c->cctx, 0.1, 0.9, c->cancel, c->err, c->errlen))
+    if (!rb_extract_data_track(c->job->bin, disc, c->cb, c->cctx, lo, mid, c->cancel, c->err, c->errlen))
         return 0;
     rb_join(path, sizeof path, disc, "BRGlide.dll");
     if (!md5_file(path, hex, NULL, NULL, NULL) || strcmp(hex, BRGLIDE_MD5)) {
         rb_err(c->err, c->errlen, "the disc's BRGlide.dll is not the retail one");
         return 0;
     }
-    rb_join(path, sizeof path, disc, "Boss.ico");            /* the disc's icon: the app has its own */
+    /* the soundtrack */
+    rb_join(path, sizeof path, c->res, "music");
+    rb_join(music, sizeof music, path, "cd");
+    if (!rb_mkdirs(music) || !(bin = rb_fopen(c->job->bin, "rb"))) {
+        rb_err(c->err, c->errlen, "cannot make %s", music);
+        return 0;
+    }
+    for (i = 0; i < cue.ntracks; i++)
+        audio += cue.t[i].audio ? cue.t[i].count : 0;
+    for (i = 0; i < cue.ntracks; i++) {
+        char name[32], status[64];
+        double a = mid + (hi - mid) * (double)done / (double)(audio ? audio : 1);
+        double b = mid + (hi - mid) * (double)(done + cue.t[i].count) / (double)(audio ? audio : 1);
+        if (!cue.t[i].audio)
+            continue;
+        snprintf(name, sizeof name, "track%02d.flac", cue.t[i].number);
+        snprintf(status, sizeof status, "Encoding the soundtrack: track %d", cue.t[i].number);
+        say(c, a, status);
+        rb_join(path, sizeof path, music, name);
+        if (!rb_seek(bin, (uint64_t)cue.t[i].start * 2352) ||
+            !rb_flac_encode(bin, (uint64_t)cue.t[i].count * 588, path, c->cb, c->cctx, a, b, c->cancel, c->err, c->errlen)) {
+            fclose(bin);
+            return 0;
+        }
+        done += cue.t[i].count;
+    }
+    fclose(bin);
+    /* the disc's icon: Boss Rally's app (Mac) or window (Windows, from icon.ico beside the game);
+     * Remastered has its own */
+    rb_join(path, sizeof path, disc, "Boss.ico");
+    if (c->job->game == RB_BOSS_RALLY && rb_file_size(path)) {
+        char icon[2048];
+        if (c->job->target == RB_MACOS) {
+            rb_join(icon, sizeof icon, c->res, "BossRally.icns");
+            if (!rb_ico_to_icns(path, icon, c->err, c->errlen))
+                return 0;
+        } else {
+            rb_join(icon, sizeof icon, c->root, "icon.ico");
+            if (!rb_copy_file(path, icon)) {
+                rb_err(c->err, c->errlen, "cannot write %s", icon);
+                return 0;
+            }
+        }
+        c->icon = 1;
+    }
     if (rb_exists(path))
         remove(path);
     return 1;
+}
+
+/* the game's data, from the dumps */
+static int data(ctx *c)
+{
+    int g = c->job->game;
+    if (rb_needs_rom(g) && !rom_data(c, 0.02, g == RB_TOP_GEAR_RALLY ? 0.9 : 0.06))
+        return 0;
+    return !rb_needs_disc(g) || disc_data(c, g == RB_REMASTERED ? 0.06 : 0.02, 0.94);
 }
 
 int rb_build(const rb_job *job, rb_progress cb, void *cctx, volatile int *cancel, char *err, size_t errlen)

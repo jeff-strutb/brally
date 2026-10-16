@@ -36,6 +36,16 @@ int rb_cue_parse(const char *path, rb_cue *cue, uint64_t bin_size, char *err, si
 int rb_extract_data_track(const char *bin, const char *dir, rb_progress cb, void *ctx, double lo, double hi,
                           volatile int *cancel, char *err, size_t errlen);
 
+/* ---- FLAC (flac.c) ------------------------------------------------------------------- */
+/* frames of 16-bit stereo PCM at 44.1 kHz read from f (little-endian, as the
+ * disc's audio sectors hold them) encoded to path */
+int rb_flac_encode(FILE *f, uint64_t frames, const char *path, rb_progress cb, void *ctx, double lo, double hi,
+                   volatile int *cancel, char *err, size_t errlen);
+
+/* ---- icons (icon.c) ------------------------------------------------------------------ */
+/* an .ico's largest image as an .icns (PNG entries, nearest-neighbour scaled) */
+int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen);
+
 void rb_err(char *err, size_t errlen, const char *fmt, ...);
 
 #endif
