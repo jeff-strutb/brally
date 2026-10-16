@@ -101,8 +101,8 @@ mkdir -p $OUT/surfaces/baked1k
 cp ports/common/surfaces/surfaces.txt $OUT/surfaces/
 grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
     for m in a b; do
-        if [ -f "ports/common/surfaces/baked1k/${id}_$m.png" ]; then
-            cp "ports/common/surfaces/baked1k/${id}_$m.png" $OUT/surfaces/baked1k/
+        if [ -f "ports/common/surfaces/baked1k/${id}_$m.raw" ]; then
+            cp "ports/common/surfaces/baked1k/${id}_$m.raw" $OUT/surfaces/baked1k/
         else
             echo "ios/build.sh: surface set $id missing (ports/common/surfaces/fetch.py, bake.py)" >&2
         fi

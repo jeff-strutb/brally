@@ -83,8 +83,8 @@ mkdir -p "$APP/Contents/Resources/surfaces/baked"
 cp ports/common/surfaces/surfaces.txt "$APP/Contents/Resources/surfaces/"
 grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
     for m in a b; do
-        if [ -f "ports/common/surfaces/baked/${id}_$m.png" ]; then
-            cp "ports/common/surfaces/baked/${id}_$m.png" "$APP/Contents/Resources/surfaces/baked/"
+        if [ -f "ports/common/surfaces/baked/${id}_$m.raw" ]; then
+            cp "ports/common/surfaces/baked/${id}_$m.raw" "$APP/Contents/Resources/surfaces/baked/"
         else
             echo "package_app: surface set $id missing (ports/common/surfaces/fetch.py, bake.py): Textures off" >&2
         fi
