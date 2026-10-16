@@ -1,0 +1,18 @@
+--- a/src/core/drawing/br_gbi.c
++++ b/src/core/drawing/br_gbi.c
+@@ -309,6 +309,7 @@
+  * data. Only two pokes are recognised: setting how many lights are active,
+  * and rewriting the colour or the direction bytes of one particular light.
+  * Everything else is skipped. */
++void br_dl_marker(unsigned w1);   /* Remastered: race_pads.c */
+ /* @implements 0x100239C0 glide BrGbiMoveWord */
+ BrGfxWords *BrGbiMoveWord(BrGfxWords *pCmd)
+ {
+@@ -322,6 +323,7 @@
+         DAT_105ccfd0 = (int)((pCmd->w1 >> 5) & 0xFu);
+         return pCmd + 1;
+     case 8:
++        br_dl_marker(pCmd->w1);              /* Remastered: its markers (race_pads.h) */
+         return pCmd + 1;
+     case 0xA:
+         off = (w0 >> 8) & 0xFFFFu;

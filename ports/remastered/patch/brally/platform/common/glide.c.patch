@@ -10,7 +10,7 @@
  
  #define TMU_RAM   (4u << 20)
  
-@@ -143,27 +146,104 @@
+@@ -143,27 +146,144 @@
  }
  
  /* ---- the screen map ---------------------------------------------------------------- */
@@ -49,15 +49,55 @@
 -static xmap map_box(void)
 +/* a race frame on a target of another shape than the game's is widened;
 + * on one of the same shape the maps are the box and nothing changes */
-+void plat_glide_wide(void)
++extern int g_brMode0AA8B4;           /* the race's views: 2 in split screen */
++
++/* split screen side by side: a target wider than the game's 4:3 (the views then left and
++   right, each filling its half; br_framebegin.c); on a taller one the game's layout, one
++   above the other, keeps the game's 4:3 */
++int plat_split_side(void)
  {
 -    double u = fmin((double)s_rw / s_w, (double)s_rh / s_h);
 -    return (xmap){ u, (s_rw - s_w * u) * 0.5, u, (s_rh - s_h * u) * 0.5 };
-+    s_wide = plat_flag(BR_FLAG_ANY_ASPECT) && (long)s_rw * s_h != (long)s_rh * s_w;
++    return plat_flag(BR_FLAG_ANY_ASPECT) && (long)s_rw * s_h > (long)s_rh * s_w * 101 / 100;
  }
+ 
++/* a view's HUD in split screen side by side (br_framedrive.c): drawn as a one-view race's,
++   for the whole screen, its 2D mapped into the view's rectangle: scaled to the view's width,
++   what sat in the top half kept at the view's top, the rest at its bottom */
++static struct { int on; float x, y, w, h; } s_hud;
++
++void plat_hud_view(int on, int x, int y, int w, int h)
++{
++    s_hud.on = on;
++    s_hud.x = (float)x;
++    s_hud.y = (float)y;
++    s_hud.w = (float)w;
++    s_hud.h = (float)h;
++}
++
++static void hud_map(brr_vertex *v, int n)
++{
++    float k = s_hud.w / (float)s_w, y0 = 1e9f, y1 = -1e9f, dy;
++    int i;
++    for (i = 0; i < n; i++) {
++        y0 = fminf(y0, v[i].y);
++        y1 = fmaxf(y1, v[i].y);
++    }
++    dy = (y0 + y1) * 0.5f < s_h * 0.5f ? s_hud.y : s_hud.y + s_hud.h - s_h * k;
++    for (i = 0; i < n; i++) {
++        v[i].x = s_hud.x + v[i].x * k;
++        v[i].y = dy + v[i].y * k;
++    }
++}
++
++void plat_glide_wide(void)
++{
++    s_wide = plat_flag(BR_FLAG_ANY_ASPECT) && (long)s_rw * s_h != (long)s_rh * s_w &&
++             (g_brMode0AA8B4 < 2 || plat_split_side());
++}
 +void plat_glide_view(int view) { s_view = view; }
 +int light_glide_flip(void) { return s_lower_left ? s_h : 0; }
- 
++
 +static xmap map_of(int which);
 +
  void plat_pointer_to_game(int *x, int *y)
@@ -68,8 +108,8 @@
      double tx = (double)*x * s_rw / s_w, ty = (double)*y * s_rh / s_h;
      *x = (int)floor((tx - m.bx) / m.ax);
      *y = (int)floor((ty - m.by) / m.ay);
- }
- 
++}
++
 +void plat_view_scale(float *kx, float *ky)
 +{
 +    double a = (double)s_rw / s_rh, g = (double)s_w / s_h;
@@ -109,8 +149,8 @@
 +        r[0] = 0; r[1] = 0;
 +        r[2] = (float)s_w; r[3] = (float)s_h;
 +    }
-+}
-+
+ }
+ 
 +static xmap map_of(int which)
 +{
 +    double s = (double)s_rw / s_w, t = (double)s_rh / s_h, u = fmin(s, t);
@@ -124,7 +164,7 @@
  static void map_ndc(xmap m, float *T)
  {
      T[0] = (float)(2.0 * m.ax / s_rw);
-@@ -172,18 +252,133 @@
+@@ -172,18 +292,133 @@
      T[3] = (float)(1.0 - 2.0 * m.by / s_rh);
  }
  
@@ -145,7 +185,7 @@
 +
 +/* a 2D draw with this box: its entry, placed at the swap */
 +static int xf_2d(float x0, float y0, float x1, float y1)
- {
++{
 +    xel *e;
 +    float r[4];
 +    if (!s_wide)
@@ -239,7 +279,7 @@
 +
 +/* the clip window as a scissor in target pixels, for a draw through `which` */
 +static void scissor(int which)
-+{
+ {
      int x0 = s_st.clip_x0 < 0 ? 0 : s_st.clip_x0, y0 = s_st.clip_y0 < 0 ? 0 : s_st.clip_y0;
      int x1 = s_st.clip_x1 > s_w ? s_w : s_st.clip_x1, y1 = s_st.clip_y1 > s_h ? s_h : s_st.clip_y1;
      long px0, py0, px1, py1;
@@ -249,20 +289,20 @@
 +    s_st.xf = which;
      if (x1 <= x0 || y1 <= y0) {
          s_st.sx0 = s_st.sy0 = s_st.sx1 = s_st.sy1 = 0;
-+        return;
-+    }
+         return;
+     }
 +    if (s_wide && x0 == 0 && y0 == 0 && x1 == s_w && y1 == s_h) {
 +        s_st.sx0 = s_st.sy0 = 0;
 +        s_st.sx1 = s_rw;
 +        s_st.sy1 = s_rh;
-         return;
-     }
++        return;
++    }
 +    /* 2D elements move within their window as it is stretched */
 +    m = map_of(which >= XF_FIRST || which == XF_STRETCH ? XF_STRETCH : which);
      px0 = lround(m.ax * x0 + m.bx); px1 = lround(m.ax * x1 + m.bx);
      py0 = lround(m.ay * y0 + m.by); py1 = lround(m.ay * y1 + m.by);
      if (px0 < 0) px0 = 0;
-@@ -196,11 +391,104 @@
+@@ -196,11 +431,108 @@
      s_st.sx1 = (int32_t)px1; s_st.sy1 = (int32_t)py1;
  }
  
@@ -289,6 +329,9 @@
 +    int view = s_view, which, i;
 +    s_view = 1;
 +    frame_start();
++    if (s_hud.on && view == 1)
++        hud_map((brr_vertex *)v, n);
++    /* (the draw's own vertices: drawn as mapped) */
 +    if (!s_wide) {
 +        which = view == 1 ? XF_BOX2D : XF_BOX3D;
 +    } else if (view == 0) {
@@ -357,7 +400,8 @@
 +        s_st.depth_mask = 1;
 +        s_st.fog_mode = 0;
 +        s_st.clip_x0 = 0; s_st.clip_y0 = 0; s_st.clip_x1 = s_w; s_st.clip_y1 = s_h;
-+        s_view = 1;
++        /* (split screen: a view's own clear goes where that view goes, stretched with it) */
++        s_view = g_brMode0AA8B4 > 1 ? 0 : 1;
 +        route(q, 6);
 +        brr_draw(&s_st, q, 6);
 +        s_st = save;
@@ -368,7 +412,7 @@
      brr_clear(c, depth / 65536.0f, 1, s_st.depth_mode != 0, &s_st);
  }
  
-@@ -211,10 +499,17 @@
+@@ -211,10 +543,17 @@
      (void)interval;
      gllog("grBufferSwap");
      plat_text_swap();
@@ -388,7 +432,7 @@
      plat_pump(0);
  }
  
-@@ -489,8 +784,83 @@
+@@ -489,6 +828,81 @@
      o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
      o->s = v->tmuvtx[0].sow * w / su;
      o->t = v->tmuvtx[0].tow * w / sv;
@@ -408,8 +452,8 @@
 +        fprintf(stderr, "draw: frame %ld view %d k %d n %d tex %u blend %d/%d depth %d/%d/%d atest %d fog %d cull %d oow %g xy %.1f %.1f rgba %.0f %.0f %.0f %.0f\n",
 +                s_dl_swap, s_view, s_dl_k, n, s_st.texture, s_st.blend_rgb_src, s_st.blend_rgb_dst, s_st.depth_mode, s_st.depth_fn,
 +                s_st.depth_mask, s_st.atest_fn, s_st.fog_mode, s_st.cull, a->oow, a->x, a->y, a->r, a->g, a->b, a->a);
- }
- 
++}
++
 +/* a display-list triangle of the camera's view or the mirror's, as drawn,
 + * to the lighting's capture (platform/light): read, never changed */
 +static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr_vertex *o)
@@ -467,12 +511,10 @@
 +            o[i].lit = lit;
 +        }
 +    }
-+}
-+
+ }
+ 
  /* Glide's triangle setup drops a triangle with no area, and with culling on
-  * drops the one facing away: the sign of its area in the coordinates the
-  * application passed (before the lower-left origin turns y over).  The
-@@ -512,21 +882,25 @@
+@@ -512,21 +926,25 @@
      gllog_vtx(a);
      gllog_vtx(b);
      gllog_vtx(c);
@@ -501,7 +543,7 @@
      gllog("grDrawPolygonVertexList %d", n);
      for (i = 0; i < n && i < 16; i++)
          gllog_vtx(&vl[i]);
-@@ -536,18 +910,23 @@
+@@ -536,18 +954,23 @@
          if (culled(&vl[0], &vl[i], &vl[i + 1]))
              continue;
          if (k == 3 * 64) {
@@ -527,7 +569,7 @@
  }
  
  FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
-@@ -557,11 +936,10 @@
+@@ -557,11 +980,10 @@
      gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
      if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
          int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];

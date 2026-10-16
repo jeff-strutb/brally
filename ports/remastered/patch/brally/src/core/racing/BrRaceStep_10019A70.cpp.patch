@@ -1,6 +1,14 @@
 --- a/src/core/racing/BrRaceStep_10019A70.cpp
 +++ b/src/core/racing/BrRaceStep_10019A70.cpp
-@@ -26,6 +26,7 @@
+@@ -14,6 +14,7 @@
+  * option 2 and 0x10059E50/0x10059E30 for option 3; the leader search clears
+  * every record of every entrant; the sound-offer loop reads each view's car
+  * (0x1001b968 steps ebx by 0x58). */
++#include "race_pads.h"   /* Remastered */
+ #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
+ #include "br_mat.h"   /* br_globals: its objects */
+ #include "br_race.h"   /* br_globals: its objects */
+@@ -26,6 +27,7 @@
  #include "slice3_42.h"   /* br_globals: its objects */
  #include "br_racestep.h"   /* g_aBrRaceLightScript, g_aBrRaceBeepT */
  #include "br_bits.h"   /* BrBitLatch, the control block's first word */
@@ -8,7 +16,43 @@
  #include <stdint.h>
  #include <string.h>
  #pragma intrinsic(memcpy)   /* original inlines the copies as rep movsd, not a call */
-@@ -985,6 +986,8 @@
+@@ -113,7 +115,7 @@
+         case 1:     /* 0x10019bf1 */
+             (*(int *)&g_brRaceNDriver) = 2; (*(int *)&g_BrCarCount) = 2;
+             BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
+-            BrEntitySetIndex(&g_aBrRaceCar[1], g_226e7c);
++            BrEntitySetIndex(&g_aBrRaceCar[1], br_race_car2(g_226e7c));   /* Remastered: the second player's */
+             g_aBrRaceCar[1].i29B4 = 0;
+             goto Lcf3;
+         case 6:     /* 0x10019c2a */
+@@ -249,6 +251,8 @@
+         default: Ldefault:      /* 0x1001a1ee (== case 3) */
+         case 3:
+             BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
++            if ((*(int *)&g_brRaceNEntrant) > 1)                  /* Remastered: the second player's car */
++                BrEntitySetIndex(&g_aBrRaceCar[1], br_race_car2(g_226e7c));
+             DAT_105ccb68[9] = 0;
+             (*(int *)&g_brRaceNDriver) = (*(int *)&g_brRaceNEntrant);
+             (*(int *)&g_BrCarCount) = (*(int *)&g_brRaceNEntrant);
+@@ -372,6 +376,9 @@
+                     pc->pCtl->b25 = 2;
+                 i++;
+             } while (i < (*(int *)&g_brRaceNEntrant));
++            if ((*(int *)&g_brRaceNEntrant) > 1)                   /* Remastered: the second player's own set-up */
++                br_race_setup2(&g_aBrRaceCar[1].fE98, &g_aBrRaceCar[1].fE9C, &g_aBrRaceCar[1].fE90,
++                               &g_aBrRaceCar[1].fE94);
+         }
+         {
+             int ecx = (*(int *)&g_brRaceNEntrant);                 /* 0x1001a4f1 */
+@@ -977,6 +984,7 @@
+         }
+         /* 0x1001bbcd: the first view's record, then the particle state */
+         memcpy(&ps->tailA, &g_aBrView[0], 0x16 * 4);   /* rep movsd 0x16 */
++        br_split_save(loc18);                          /* Remastered: the second view (race_pads.h) */
+         BrPfxSaveState((short *)&ps->tailC);
+     }
+     if ((*(int *)&g_brRaceBeginLimitOn) == 0) goto Lc583;                /* 0x1001bc04 -> replay-advance */
+@@ -985,6 +993,8 @@
      (*(int *)&g_brRaceBeginLimitOn) = 0;
      DAT_105ccb68[14] = 0;
      GhostBody:  /* 0x1001bc37 */
@@ -17,7 +61,7 @@
          if ((*(int *)&g_BrX06909B4) == 2) {                      /* 0x1001bc44 */
              int f = (*(int *)&g_BrX18ABAD0);
              if (f & 0x8000) {
-@@ -1017,6 +1020,10 @@
+@@ -1017,6 +1027,10 @@
          }
          /* 0x1001bd72: g_5CCB5C != 2 main path */
          if ((*(int *)&g_BrX06909B4) == 0) goto Lc024;
@@ -28,7 +72,7 @@
          if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001bd7a per-driver replay */
              int i = 0;
              do {                                  /* loop top 0x1001bd94 */
-@@ -1030,7 +1037,7 @@
+@@ -1030,7 +1044,7 @@
                  if (!skip) {
                      if (DAT_105bc8dc != 0 || ((uint8_t)pCtl->ctl & 0x10) == 0)   /* 0x1001bdbf */
                          BrBitLatchTake((BrBitLatch *)pCtl, 0xc010);       /* 0x1001bdca */
@@ -37,7 +81,7 @@
                          switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
                          case 0:  /* 0x1001bdec */
                              if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) BrNetLockSetIfZero221314();
-@@ -1043,7 +1050,10 @@
+@@ -1043,7 +1057,10 @@
                              DAT_105ccb68[12] = 0; DAT_105ccb68[9] = 0; DAT_105ccb68[11] = 0;
                              BrRaceDriverReset(); (*(int *)&g_brRaceTick) = 0; BrSndBankFree(); BrClearFlag_AB504();
                              break;
@@ -49,7 +93,7 @@
                              BrFadeSetTarget(0, 0.2f);
                              BrFadeSetTargetA(0, 0.2f);
                              BrFadeSetTargetB(0, 0.2f);
-@@ -1052,7 +1062,7 @@
+@@ -1052,7 +1069,7 @@
                                                   BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
                              if (g_brRaceRules.mode == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
                              break;
@@ -58,7 +102,7 @@
                              loc10 = 2; (*(int *)&g_BrX06909B4) = 2; DAT_105bc8dc = 1;
                              break;
                          case 2: case 3: default: break;   /* 0x1001befc */
-@@ -1068,12 +1078,12 @@
+@@ -1068,12 +1085,12 @@
                  }
                  f = (*(int *)&g_BrX18ABAD0);
                  if (f & 0x1000) {
@@ -75,7 +119,7 @@
                  }
                  if (f & 1) {
                      if (DAT_105bc8dc == 2)      BrUiSelADec();
-@@ -1261,7 +1271,8 @@
+@@ -1261,7 +1278,8 @@
                      }
                  } else {                          /* 0x1001c4a5 */
                      BrWrap_10067980();

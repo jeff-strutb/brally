@@ -1,0 +1,123 @@
+--- a/platform/host/macos/host_macos.m
++++ b/platform/host/macos/host_macos.m
+@@ -611,50 +611,78 @@
+  * GameController.framework; the current one, else the first with a full
+  * gamepad profile. One plugged in while the game runs is picked up at the
+  * next read. */
++static GCController *pad_first(void)
++{
++    GCController *c = GCController.current;
++    if (!c || !c.extendedGamepad)
++        for (GCController *k in GCController.controllers)
++            if (k.extendedGamepad) {
++                c = k;
++                break;
++            }
++    return c && c.extendedGamepad ? c : nil;
++}
++
++static int pad_fill(GCController *c, host_pad *o)
++{
++    GCExtendedGamepad *g;
++    unsigned b = 0;
++    int u, r, d, l;
++    memset(o, 0, sizeof *o);
++    o->pov = -1;
++    if (!c || !(g = c.extendedGamepad))
++        return 0;
++    o->x = g.leftThumbstick.xAxis.value;
++    o->y = -g.leftThumbstick.yAxis.value;
++    o->z = g.rightTrigger.value - g.leftTrigger.value;
++    o->rx = g.rightThumbstick.xAxis.value;
++    o->ry = -g.rightThumbstick.yAxis.value;
++    if (g.buttonA.pressed) b |= 1u << 0;
++    if (g.buttonB.pressed) b |= 1u << 1;
++    if (g.buttonX.pressed) b |= 1u << 2;
++    if (g.buttonY.pressed) b |= 1u << 3;
++    if (g.leftShoulder.pressed) b |= 1u << 4;
++    if (g.rightShoulder.pressed) b |= 1u << 5;
++    if (g.buttonOptions.pressed) b |= 1u << 6;
++    if (g.buttonMenu.pressed) b |= 1u << 7;
++    if (g.leftThumbstickButton.pressed) b |= 1u << 8;
++    if (g.rightThumbstickButton.pressed) b |= 1u << 9;
++    if (g.leftTrigger.value > 0.5f) b |= 1u << 10;
++    if (g.rightTrigger.value > 0.5f) b |= 1u << 11;
++    u = g.dpad.up.pressed;
++    r = g.dpad.right.pressed;
++    d = g.dpad.down.pressed;
++    l = g.dpad.left.pressed;
++    b |= (unsigned)u << 12 | (unsigned)r << 13 | (unsigned)d << 14 | (unsigned)l << 15;
++    o->buttons = b;
++    if (u || r || d || l) {
++        static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
++        o->pov = ang[r - l + 1][u - d + 1];
++    }
++    return 1;
++}
++
+ int host_pad_read(host_pad *o)
+ {
+     @autoreleasepool {
+-        GCController *c = GCController.current;
+-        GCExtendedGamepad *g;
+-        unsigned b = 0;
+-        int u, r, d, l;
+-        memset(o, 0, sizeof *o);
+-        o->pov = -1;
+-        if (!c || !c.extendedGamepad)
+-            for (GCController *k in GCController.controllers)
+-                if (k.extendedGamepad) {
+-                    c = k;
+-                    break;
+-                }
+-        if (!c || !(g = c.extendedGamepad))
+-            return 0;
+-        o->x = g.leftThumbstick.xAxis.value;
+-        o->y = -g.leftThumbstick.yAxis.value;
+-        o->z = g.rightTrigger.value - g.leftTrigger.value;
+-        o->rx = g.rightThumbstick.xAxis.value;
+-        o->ry = -g.rightThumbstick.yAxis.value;
+-        if (g.buttonA.pressed) b |= 1u << 0;
+-        if (g.buttonB.pressed) b |= 1u << 1;
+-        if (g.buttonX.pressed) b |= 1u << 2;
+-        if (g.buttonY.pressed) b |= 1u << 3;
+-        if (g.leftShoulder.pressed) b |= 1u << 4;
+-        if (g.rightShoulder.pressed) b |= 1u << 5;
+-        if (g.buttonOptions.pressed) b |= 1u << 6;
+-        if (g.buttonMenu.pressed) b |= 1u << 7;
+-        if (g.leftThumbstickButton.pressed) b |= 1u << 8;
+-        if (g.rightThumbstickButton.pressed) b |= 1u << 9;
+-        if (g.leftTrigger.value > 0.5f) b |= 1u << 10;
+-        if (g.rightTrigger.value > 0.5f) b |= 1u << 11;
+-        u = g.dpad.up.pressed;
+-        r = g.dpad.right.pressed;
+-        d = g.dpad.down.pressed;
+-        l = g.dpad.left.pressed;
+-        b |= (unsigned)u << 12 | (unsigned)r << 13 | (unsigned)d << 14 | (unsigned)l << 15;
+-        o->buttons = b;
+-        if (u || r || d || l) {
+-            static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
+-            o->pov = ang[r - l + 1][u - d + 1];
+-        }
+-        return 1;
++        return pad_fill(pad_first(), o);
+     }
+ }
++
++/* the i-th: the first as above, then the others with a full gamepad profile in
++ * the order macOS lists them */
++int host_pad_read_n(int i, host_pad *o)
++{
++    @autoreleasepool {
++        GCController *first = pad_first(), *c = nil;
++        int n = 0;
++        if (i == 0)
++            return pad_fill(first, o);
++        for (GCController *k in GCController.controllers)
++            if (k.extendedGamepad && k != first && ++n == i) {
++                c = k;
++                break;
++            }
++        return pad_fill(c, o);
++    }
++}

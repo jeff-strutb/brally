@@ -1,0 +1,28 @@
+--- a/src/core/drawing/br_framebegin.c
++++ b/src/core/drawing/br_framebegin.c
+@@ -27,6 +27,7 @@
+ #include <stdint.h>
+ 
+ #include "slice2_18.h"
++int plat_split_side(void);   /* Remastered: glide.c, split screen side by side */
+ 
+ /* 0x10032873 */
+ /* WHAT IT DOES: starts a frame at normal resolution: it resets the drawing-
+@@ -124,6 +125,17 @@
+     param_1[0].rect[3] = BrGbiRectG_A7518;
+     break;
+   case 2:
++    if (plat_split_side()) {                 /* Remastered: a wide window, side by side */
++      param_1[0].rect[0] = 8;
++      param_1[0].rect[1] = 8;
++      param_1[0].rect[2] = (g_scrW4 - 24) / 2;
++      param_1[0].rect[3] = (*(int *)&g_brRaceCueBase) - 16;
++      param_1[1].rect[0] = 16 + (g_scrW4 - 24) / 2;
++      param_1[1].rect[1] = 8;
++      param_1[1].rect[2] = (g_scrW4 - 24) / 2;
++      param_1[1].rect[3] = (*(int *)&g_brRaceCueBase) - 16;
++      break;
++    }
+     param_1[1].rect[0] = 8;
+     param_1[1].rect[1] = ((*(int *)&g_brRaceCueBase) >> 1) + 1;
+     param_1[1].rect[2] = g_scrW4 + -0x60;

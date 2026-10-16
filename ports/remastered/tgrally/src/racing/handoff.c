@@ -29,9 +29,10 @@
  * own (racetick.c's end: the next season's save prompt, the options, the
  * intro, or the main menu when the player skipped the demo).
  *
- * Not handed over: two players (Boss Rally races one locally: where the
- * races are handed over the 1P/2P screen offers one, tgr_race_handoff_on),
- * and the replay. */
+ * Two players race as this game races them, split screen (Boss Rally's
+ * engine, two people on one screen: race_handoff.c), each in their own car
+ * and with their own controls (ports/remastered/platform/controls.h); both
+ * outcomes come back.  Not handed over: the replay. */
 #include "tgr/common.h"
 #include "tgr/car.h"
 #include "tgr/season.h"
@@ -83,7 +84,7 @@ static host_race_fn s_engine;
 /* the race, run on a host thread: its end is a message to the waiting game thread */
 static struct {
   HostRace race;
-  HostRaceResult res;
+  HostRaceResult res[2];              /* (host_race.h: the second player's beside the first's) */
   int ok;
 } s_job;
 static OSMesgQueue s_done;
@@ -92,7 +93,7 @@ static OSMesg s_done_buf[1];
 static void *race_thread(void *arg)
 {
   (void)arg;
-  s_job.ok = s_engine(&s_job.race, &s_job.res);
+  s_job.ok = s_engine(&s_job.race, s_job.res);
   tgr_os_lock();
   tgr_post_mesg_at(tgr_count(), &s_done, 0);
   tgr_os_unlock();
@@ -109,7 +110,7 @@ static int fake_engine(const HostRace *r, HostRaceResult *res)
   float total = 0, best = 0;
   sscanf(getenv("TGR_HANDOFF_FAKE"), "%d,%f,%f,%d", &place, &total, &best, &secs);
   host_sleep_ms((unsigned int)secs * 1000u);
-  memset(res, 0, sizeof *res);
+  memset(res, 0, sizeof *res * (r->players == 2 ? 2 : 1));
   res->outcome = r->mode == HOST_RACE_PRACTICE ? HOST_RACE_LEFT : HOST_RACE_FINISHED;
   res->place = place;
   res->laps = r->laps;
@@ -119,8 +120,13 @@ static int fake_engine(const HostRace *r, HostRaceResult *res)
   for (i = 0; i < r->laps && i < 12; i++) {
     res->lap[i] = i == r->laps - 1 ? best : (total - best) / (r->laps - 1);
   }
-  osSyncPrintf("handoff: mode %d track %d mirrored %d weather %d laps %d car %d auto %d tires %d susp %d\n",
-               r->mode, r->track, r->mirrored, r->weather, r->laps, r->car, r->automatic, r->tires, r->suspension);
+  if (r->players == 2) {
+    res[1] = res[0];
+    res[1].place = place == 0 ? 1 : 0;
+  }
+  osSyncPrintf("handoff: mode %d track %d mirrored %d weather %d laps %d car %d auto %d tires %d susp %d players %d car2 %d\n",
+               r->mode, r->track, r->mirrored, r->weather, r->laps, r->car, r->automatic, r->tires, r->suspension,
+               r->players, r->car2);
   return 1;
 }
 
@@ -135,15 +141,15 @@ int BrRaceHandoff(void)
   BrSeason *season = TGR_PTR(BrSeason *, car->season);
   HostRace r;
   HostRaceResult res;
-  int i, n;
+  int i, n, p;
 
-  if (s_engine == 0 && getenv("TGR_HANDOFF_FAKE")) {
+  if (getenv("TGR_HANDOFF_FAKE")) {     /* (a check: the stand-in, even where an engine is there) */
     s_engine = fake_engine;
   }
   if (s_engine == 0 || !tgr_flag(TGR_FLAG_BR_RACES) || D_802707C8 != 0 || D_80270788 != 0) {
     return 0;
   }
-  if (D_8026FF18 > 5 || (D_8026FF18 <= 3 && (D_8026FF08 != 1 || D_8028B940 < 0 || D_8028B940 >= 10))) {
+  if (D_8026FF18 > 5 || (D_8026FF18 <= 3 && (D_8026FF08 < 1 || D_8026FF08 > 2 || D_8028B940 < 0 || D_8028B940 >= 10))) {
     return 0;
   }
   memset(&r, 0, sizeof r);
@@ -161,6 +167,15 @@ int BrRaceHandoff(void)
   r.automatic = season->xd8;
   r.tires = season->xdc;
   r.suspension = season->xe0;
+  r.players = D_8026FF18 <= 3 ? D_8026FF08 : 1;
+  r.car2 = -1;
+  if (r.players == 2) {                /* the second player's car and set-up */
+    BrSeason *s2 = TGR_PTR(BrSeason *, D_8031B760[1].season);
+    r.car2 = D_8031B760[1].kind;
+    r.automatic2 = s2->xd8;
+    r.tires2 = s2->xdc;
+    r.suspension2 = s2->xe0;
+  }
   if (D_8026FF18 != 4) {
     BrMusicLoadTrack();                /* (as the race's set-up: not for the demos) */
   }
@@ -173,7 +188,7 @@ int BrRaceHandoff(void)
   if (!s_job.ok) {
     return 0;
   }
-  res = s_job.res;
+  res = s_job.res[0];
 
   if (D_8026FF18 >= 4) {
     /* what follows a demo or the ceremony (racetick.c, at the race's end) */
@@ -206,21 +221,26 @@ int BrRaceHandoff(void)
   D_802707A8 = 0;
   D_80270790 = 0;
   if (res.outcome == HOST_RACE_FINISHED && D_8026FF18 <= 2) {
-    /* the car record as the finish line leaves it, and the records */
-    n = res.laps < 5 ? res.laps : 5;
-    for (i = 0; i < 5; i++) {
-      car->lapTimes[i] = i < n ? res.lap[i] : 0.0f;
-    }
-    car->laps = res.laps;
-    car->lapTime = res.total;
-    car->xf98 = res.best;
-    car->xf9c = res.best_lap;
-    car->xfac = res.place;
-    if (res.best > 0.0f && (season->x8c[D_8028B940] == 0.0f || res.best < season->x8c[D_8028B940])) {
-      season->x8c[D_8028B940] = res.best;
-    }
-    if (D_8028B304 == 3 && (season->xe8[D_8028B940] == 0.0f || res.total < season->xe8[D_8028B940])) {
-      season->xe8[D_8028B940] = res.total;
+    /* each player's car record as the finish line leaves it, and the records */
+    for (p = 0; p < r.players; p++) {
+      HostRaceResult *o = &s_job.res[p];
+      BrCar *c = &D_8031B760[p];
+      BrSeason *sn = TGR_PTR(BrSeason *, c->season);
+      n = o->laps < 5 ? o->laps : 5;
+      for (i = 0; i < 5; i++) {
+        c->lapTimes[i] = i < n ? o->lap[i] : 0.0f;
+      }
+      c->laps = o->laps;
+      c->lapTime = o->total;
+      c->xf98 = o->best;
+      c->xf9c = o->best_lap;
+      c->xfac = o->place;
+      if (o->best > 0.0f && (sn->x8c[D_8028B940] == 0.0f || o->best < sn->x8c[D_8028B940])) {
+        sn->x8c[D_8028B940] = o->best;
+      }
+      if (D_8028B304 == 3 && o->laps >= 3 && (sn->xe8[D_8028B940] == 0.0f || o->total < sn->xe8[D_8028B940])) {
+        sn->xe8[D_8028B940] = o->total;
+      }
     }
     BrRaceResultSave();
     BrScreenFlush2Layout1();

@@ -352,11 +352,14 @@ static int payload(ctx *c, const char *name, const char *to, int tree)
 }
 
 /* the Remastered textures' photographed sets (ports/common/surfaces, baked): surfaces.txt and each
- * set's two files, beside the game (the iPhone app carries its own) */
+ * set's two files, beside the game (the iPhone app carries its own).  The textures are shelved: a
+ * builder made without them (builder/build.sh, RM_SHELVED_ASSETS unset) has none to copy */
 static int surfaces(ctx *c)
 {
-    char src[2048], to[2048], dir[2048], name[512], line[512];
+    char src[2048], to[2048], dir[2048], name[512], line[512], quiet[256];
     FILE *f;
+    if (!rb_host_payload("surfaces/surfaces.txt", src, sizeof src, quiet, sizeof quiet))
+        return 1;
     rb_join(dir, sizeof dir, c->res, "surfaces/baked");
     if (!rb_mkdirs(dir)) {
         rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->res);

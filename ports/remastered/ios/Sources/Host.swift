@@ -15,6 +15,7 @@ import AVFoundation
 import AudioToolbox
 import QuartzCore
 import UIKit
+import GameController
 
 // ---- process -------------------------------------------------------------------
 
@@ -167,6 +168,36 @@ func hostPadRead(_ p: UnsafeMutablePointer<host_pad>) -> Int32 {
     o.x = s.x
     o.y = s.y
     o.buttons = s.buttons
+    p.pointee = o
+    return 1
+}
+
+// the i-th pad: 0 the touch controls (above), then each game controller with a full
+// gamepad profile, in the order iOS lists them (the second player's: controls.h)
+@_cdecl("host_pad_read_n")
+func hostPadReadN(_ i: Int32, _ p: UnsafeMutablePointer<host_pad>) -> Int32 {
+    if i == 0 { return hostPadRead(p) }
+    var o = host_pad()
+    o.pov = -1
+    let pads = GCController.controllers().compactMap { $0.extendedGamepad }
+    guard Int(i) - 1 < pads.count else { p.pointee = o; return 0 }
+    let g = pads[Int(i) - 1]
+    o.x = g.leftThumbstick.xAxis.value
+    o.y = -g.leftThumbstick.yAxis.value
+    o.z = g.rightTrigger.value - g.leftTrigger.value
+    o.rx = g.rightThumbstick.xAxis.value
+    o.ry = -g.rightThumbstick.yAxis.value
+    var b: UInt32 = 0
+    let bits: [(Bool, UInt32)] = [
+        (g.buttonA.isPressed, 0), (g.buttonB.isPressed, 1), (g.buttonX.isPressed, 2), (g.buttonY.isPressed, 3),
+        (g.leftShoulder.isPressed, 4), (g.rightShoulder.isPressed, 5), (g.buttonOptions?.isPressed ?? false, 6),
+        (g.buttonMenu.isPressed, 7), (g.leftThumbstickButton?.isPressed ?? false, 8),
+        (g.rightThumbstickButton?.isPressed ?? false, 9), (g.leftTrigger.value > 0.5, 10),
+        (g.rightTrigger.value > 0.5, 11), (g.dpad.up.isPressed, 12), (g.dpad.right.isPressed, 13),
+        (g.dpad.down.isPressed, 14), (g.dpad.left.isPressed, 15),
+    ]
+    for (on, bit) in bits where on { b |= 1 << bit }
+    o.buttons = b
     p.pointee = o
     return 1
 }

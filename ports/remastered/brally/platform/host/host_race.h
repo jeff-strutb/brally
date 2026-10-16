@@ -35,6 +35,9 @@ typedef struct HostRace {
     int tires;                      /* 0..2: slippy, normal, grippy */
     int suspension;                 /* 0..2: softer, normal, harder */
     int piece;                      /* HOST_RACE_ATTRACT: which recording */
+    int players;                    /* people racing, split screen when 2 (0 counts as 1) */
+    int car2;                       /* the second player's car, and its set-up (as above) */
+    int automatic2, tires2, suspension2;
 } HostRace;
 
 enum {
@@ -51,6 +54,8 @@ typedef struct HostRaceResult {
     int best_lap;                   /* which lap, 0 first */
     float lap[12];                  /* each lap's time */
 } HostRaceResult;
+/* (two players: the engine's entry fills res[0], the first player's, and res[1], the
+   second's: the caller passes two) */
 
 /* a key for the race engine's own menus (its pause menu) */
 enum { BR_KEY_UP, BR_KEY_DOWN, BR_KEY_LEFT, BR_KEY_RIGHT, BR_KEY_ENTER, BR_KEY_ESCAPE };

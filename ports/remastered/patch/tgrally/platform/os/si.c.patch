@@ -1,14 +1,68 @@
 --- a/platform/os/si.c
 +++ b/platform/os/si.c
-@@ -10,6 +10,7 @@
+@@ -10,7 +10,36 @@
  #include <string.h>
  #include "host.h"
  #include "plat.h"
 +#include "tgr_touch.h"
++#ifdef __APPLE__
++#include <TargetConditionals.h>
++#endif
  
++/* Top Gear Rally Remastered: the second player's port, from the app's controls
++ * (ports/remastered/platform/controls.h): the keys held and the host's second pad */
++void rm_player_menu(int player, const unsigned char *dik, const host_pad *pad, unsigned short *buttons,
++                    int *sx, int *sy);
++static unsigned char s_dik[256];        /* scan codes held (tgr_input_scan) */
++
++const unsigned char *tgr_input_dik(void) { return s_dik; }
++
++void tgr_input_scan(int scan, int down)
++{
++    if (scan > 0 && scan < 256)
++        s_dik[scan] = down != 0;
++}
++
++/* a second player can play: a keyboard (any desktop), or a second pad */
++static int two_players(void)
++{
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++    host_pad p;
++    return host_pad_read_n(1, &p);
++#else
++    return 1;
++#endif
++}
++
  enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
         B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
-@@ -198,6 +199,7 @@
+        B_CL = 0x0002, B_CR = 0x0001 };
+@@ -129,6 +158,7 @@
+ /* everything released (the window lost the keyboard: its key-ups go elsewhere) */
+ void tgr_input_release(void)
+ {
++    memset(s_dik, 0, sizeof s_dik);
+     s_keys = 0;
+     s_kx = s_ky = 0;
+ }
+@@ -157,6 +187,16 @@
+ void tgr_input_frame(uint32_t frame)
+ {
+     int p, i;
++    if (s_scripted && getenv("RM_SCANS")) {       /* checks: RM_SCANS=F:S,... a key held at frame F for 4 */
++        const char *e = getenv("RM_SCANS");
++        int f, sc;
++        while (e && sscanf(e, "%d:%x", &f, &sc) == 2) {
++            if ((int)frame == f || (int)frame == f + 4)
++                tgr_input_scan(sc, (int)frame == f);
++            e = strchr(e, ',');
++            e = e ? e + 1 : NULL;
++        }
++    }
+     if (s_scripted) {
+         for (p = 0; p < 2; p++) {
+             s_now[p].b = 0;
+@@ -198,9 +238,20 @@
              if (hp.buttons & (1 << 14)) b |= B_DD;
              if (hp.buttons & (1 << 15)) b |= B_DL;
          }
@@ -16,3 +70,16 @@
          s_now[0].b = b;
          s_now[0].x = (int8_t)x;
          s_now[0].y = (int8_t)y;
++    }
++    {                                             /* the second player (Remastered) */
++        host_pad hp;
++        unsigned short b2;
++        int x2, y2, has = host_pad_read_n(1, &hp);
++        s_pads = two_players() ? 2 : 1;
++        rm_player_menu(1, s_dik, has ? &hp : NULL, &b2, &x2, &y2);
++        s_now[1].b = b2;
++        s_now[1].x = (int8_t)x2;
++        s_now[1].y = (int8_t)y2;
+     }
+ }
+ 

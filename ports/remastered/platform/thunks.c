@@ -43,6 +43,7 @@ FWD(host_stream *, host_stream_open, (const char *path, int rate), (path, rate))
 FWD(int, host_stream_read, (host_stream *s, float *lr, int frames), (s, lr, frames))
 FWDV(host_stream_close, (host_stream *s), (s))
 FWD(int, host_pad_read, (host_pad *p), (p))
+FWD(int, host_pad_read_n, (int i, host_pad *p), (i, p))
 
 #if defined(__APPLE__) && defined(MUX_METAL_LAYER)
 /* the window's CAMetalLayer (host/macos, the iPhone app), for the Metal renderers */

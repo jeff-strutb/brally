@@ -1,8 +1,12 @@
 /* options.c: the Remaster Options (options.h).  Kept as text in the app's save
  * folder, "remaster.cfg", one "name value" a line; a missing file or line is
- * the default (widescreen on, the N64's music, the Remastered lighting and
- * textures, no frame rate shown).  Each game reads the frame rate's switch itself
- * (rm_option, from its own drawing). */
+ * the default (widescreen on, the N64's music, no frame rate shown).  Each game
+ * reads the frame rate's switch itself (rm_option, from its own drawing).
+ *
+ * The lighting and the textures are shelved: their code is kept (and built),
+ * but no menu offers them and they are always off, whatever remaster.cfg says;
+ * RM_OPT_LIGHTING=1 / RM_OPT_TEXTURES=1 still turn them on for their own
+ * checks (their sets and skies are packaged only with RM_SHELVED_ASSETS=1). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,13 +20,16 @@
 static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_WIDESCREEN] = { "widescreen", 1 },
     [RM_OPT_MUSIC]      = { "music", RM_MUSIC_N64 },
-    [RM_OPT_LIGHTING]   = { "lighting", 1 },
+    [RM_OPT_LIGHTING]   = { "lighting", 0 },          /* shelved */
     [RM_OPT_FPS]        = { "fps", 0 },
-    [RM_OPT_TEXTURES]   = { "textures", 1 },
+    [RM_OPT_TEXTURES]   = { "textures", 0 },          /* shelved */
 };
 
 static volatile int s_val[RM_OPT_COUNT];
 static int s_loaded;
+
+/* the shelved ones: off, never kept, never chosen (only the environment's check turns one on) */
+static int shelved(int which) { return which == RM_OPT_LIGHTING || which == RM_OPT_TEXTURES; }
 
 static void apply(int which)
 {
@@ -58,7 +65,8 @@ static void save(void)
     if (!(f = fopen(p, "w")))
         return;
     for (i = 0; i < RM_OPT_COUNT; i++)
-        fprintf(f, "%s %d\n", k_opt[i].name, s_val[i]);
+        if (!shelved(i))
+            fprintf(f, "%s %d\n", k_opt[i].name, s_val[i]);
     fclose(f);
 }
 
@@ -77,7 +85,7 @@ void rm_options_load(void)
             if (sscanf(line, "%63s %d", name, &v) != 2)
                 continue;
             for (i = 0; i < RM_OPT_COUNT; i++)
-                if (!strcmp(name, k_opt[i].name))
+                if (!shelved(i) && !strcmp(name, k_opt[i].name))
                     s_val[i] = i == RM_OPT_MUSIC ? (v == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : v != 0;
         }
         fclose(f);
@@ -111,7 +119,7 @@ void rm_option_set(int which, int value)
 {
     if (!s_loaded)
         rm_options_load();
-    if (which < 0 || which >= RM_OPT_COUNT)
+    if (which < 0 || which >= RM_OPT_COUNT || shelved(which))
         return;
     value = which == RM_OPT_MUSIC ? (value == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : value != 0;
     if (s_val[which] == value)

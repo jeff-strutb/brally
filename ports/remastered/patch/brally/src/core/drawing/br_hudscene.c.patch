@@ -1,0 +1,14 @@
+--- a/src/core/drawing/br_hudscene.c
++++ b/src/core/drawing/br_hudscene.c
+@@ -864,8 +864,9 @@
+         goto yes;
+     if (g_brTrkHdr.aDl50 == 0)
+         goto yes;
+-    if ((*(int *)&g_brRaceNEntrant) != 2)
+-        return 0;
++    /* (Remastered: two players see the sky too; the original filled their
++     * views flat, the clear-weather fill black) */
++    return 0;
+ yes:
+     return 1;
+ }

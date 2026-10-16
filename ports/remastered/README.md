@@ -10,9 +10,11 @@ Remastered adds laid over them (`tree.sh`).
 | piece | what |
 |---|---|
 | `tree.sh` | the two ports as Remastered builds them: each port, Remastered's own files over it (`brally/`, `tgrally/`, at the paths they take in the port), its changes to the port's files applied (`patch/brally`, `patch/tgrally`, one unified diff a file, no fuzz). `make ROOT` builds a tree, `save ROOT` turns an edited tree back into files and patches, `check ROOT` says whether it would. A patch that stops applying stops the build: the port moved under it |
-| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the lighting (`platform/light`, the Metal renderer's lit passes), the textures (`light_surf.c`, `brr_metal_surf.*`, the sets in `ports/common/surfaces`), the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), the pause menu's Remaster Options and frame rate (`pause_options.c`), the music hooks (`audio.c`) |
+| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), the music hooks (`audio.c`); shelved, built but off: the lighting (`platform/light`, the Metal renderer's lit passes) and the textures (`light_surf.c`, `brr_metal_surf.*`, the sets in `ports/common/surfaces`) |
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
+| `platform/controls.c` | the two players' controls: kept in the save folder (`controls.cfg`), read by both games |
+| `tools/menuicon.py`, `tools/menuicons.sh` | the options screen's monitor and console icons, from `ports/common/assets` (`crt.blend`; the console from `n64-3534035`, "Nintendo 64" by Oliver_Budd_ID, thingiverse.com/thing:3534035, CC BY, fitted to `n64.blend`'s proportions) into `tgrally/platform/os/rm_icons.c` |
 | `ports/tgrally/link.sh`, `HOST=lib` | Top Gear Rally as `libtgrally.a`, its `main()` as `tgr_main` |
 | `ports/brally/link64.sh`, `HOST=lib` | Boss Rally as `libbrally.a`, its `main()` as `br_main` |
 | `platform/thunks.c` | each game's calls to the host for the window, input, sound and folders, sent on to `mux_tgr_*` or `mux_br_*` |
@@ -28,8 +30,13 @@ Remastered adds laid over them (`tree.sh`).
 Each race is handed to Boss Rally (`host_race.h`,
 `tgrally/src/racing/handoff.c`, `brally/platform/common/race_handoff.c`).
 
-**Remaster Options.** Boss Rally's pause menu has a Remaster Options row
-before its quits. It opens a page of that name in the menu's own style: one
+**Remaster Options.** Top Gear Rally's options screen has them as rows of its
+carousel after Units, each with its own turning icon (Widescreen the PC's
+monitor, 4:3 when off and 16:9 when on; Music the monitor for the PC's
+soundtrack or the console for the N64's; Show FPS Time Attack's stopwatch):
+up or down (a swipe on the iPhone) or A takes the other choice
+(`tgrally/src/menus/rmoptions.c`). Boss Rally's pause menu has a Remaster
+Options row before its quits. It opens a page of that name in the menu's own style: one
 row an option, its two choices side by side, the one in force in the row's
 colour and the other faded, then Back. Up and down move, left and right
 choose at once; Return takes the other choice, and Back or Escape returns to
@@ -39,11 +46,48 @@ folder; `RM_OPT_<NAME>=N` sets one for a check):
 
 | option | choices | default |
 |---|---|---|
-| Widescreen | On: a race fills the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
+| Widescreen | On: a race and the menus fill the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
 | Music | PC: Boss Rally's CD; N64: Top Gear Rally's pieces | N64 |
-| Lighting | Original: the game's picture; Remaster: the lighting (`BR_FLAG_LIGHTING`) | Remaster |
-| Textures | Original: the game's own; Remaster: the world's surfaces (ground, roads, rock, buildings, foliage, water) in photographed materials at their real size, under either lighting, on Metal and Vulkan (`BR_FLAG_TEXTURES`; docs/brally/remaster/textures/DESIGN.md) | Remaster |
 | Show FPS | the frames a second at the bottom centre, in either game | Off |
+
+The menus at Widescreen keep their 4:3 layout at its size in the middle of
+the window; a picture across the whole screen (a menu's background) is scaled
+up to cover the window, and the title's 3D backdrop, which already reaches past
+the 4:3 edges, simply shows more (`tgrally/platform/gfx/rcp.c`, `place_menu`).
+
+**Shelved: the lighting and the textures.** Their code stays and is built, but
+they are always off and no menu offers them (`platform/options.c`; the
+`lighting` and `textures` lines of `remaster.cfg` are ignored); the packaging
+leaves their skies and texture sets out. `RM_OPT_LIGHTING=1` and
+`RM_OPT_TEXTURES=1` (`BR_FLAG_LIGHTING=1`, `BR_FLAG_TEXTURES=1` for Boss Rally
+alone) still turn them on for their checks, and `RM_SHELVED_ASSETS=1` packages
+their assets (`package_app.sh`, `ios/build.sh`, `builder/build.sh`).
+
+**Two players.** The 1P/2P screen offers two players (on a desktop always: a
+keyboard is there; on the iPhone with a game controller), and the race goes to
+Boss Rally's engine split screen. In a 4:3 window the two views sit one above
+the other with the HUD beside them, as the N64 lays them out; with Widescreen
+on they sit side by side, each filling its half, each with its own HUD
+(`br_framebegin.c`, `br_framedrive.c`, `glide.c`: the HUD's draws for a view are
+marked in the display list, `race_pads.c`, and placed in that view). Both views
+draw the sky, where the original filled them flat (black under a clear sky).
+`race_pads.c` keeps the second view's record beside each frame's snapshot,
+which held one; Boss Rally's own PC game never raced two people on one screen.
+Each player drives their own car with their own transmission, tyres and
+suspension, chosen on Top Gear Rally's set-up screens. Both outcomes come back
+to the results.
+
+**Controls.** The options screen's controller row opens Controls: a Player row
+(up, down or A: whose controls), a row an action (Accelerate, Brake, Reverse,
+Steer Left, Steer Right, Gear Up, Gear Down, Change View) showing its key and
+its pad button (A, then the next key or button pressed sets it; Escape leaves
+it), and Reset (`tgrally/src/menus/rmcontrols.c`, `platform/controls.c`). The
+first player drives with the keyboard and the first pad (on the iPhone, the
+touch controls), the second with the keyboard and the second pad; the left
+stick always steers. Defaults: player 1 Boss Rally's keys (arrows, right Ctrl
+brakes, A and Z gears, Delete the view), player 2 I accelerates, K reverses,
+J and L steer, O brakes, U and M gears, Y the view; on a pad A accelerates,
+B brakes, X reverses, RB and LB change gear, Y the view.
 
 The window opens at 16:9 with Widescreen on and takes any shape the player
 gives it; the games' wishes to lock its shape are not passed on. Nothing
@@ -89,9 +133,10 @@ ports/remastered/ios/build.sh [--sim] [--install [--device ID]]
 Check of the whole round trip, headless: Top Gear Rally's script starts a
 Championship round, Boss Rally's autopilot drives it, and `RM_LOG=1` prints each
 race handed over and the outcome that came back. (Most of the N64 scripts do not
-reach the race they name here: with the races handed over the 1P/2P screen
-offers one player, so their timed presses land elsewhere, often in Practice,
-which never finishes.)
+reach the race they name here: the app's menus run to other timings, so their
+timed presses land elsewhere, often in Practice, which never finishes.)
+`RM_SCANS=F:S,...` holds key S (a scan code, hex) for four frames at frame F of a
+scripted run (the Controls screen's checks).
 
 ```sh
 RM_LOG=1 BR_HANDOFF_AUTOPILOT=1 build/remastered/null-null/remastered --headless \
@@ -110,7 +155,7 @@ Simulator build; `--install` puts it on the first paired iPhone). It replaced
 It runs on the iPhone and the iPad. Landscape only; the games draw into the
 whole screen, clear of the iPhone's sensor housing at the sides, whatever its
 shape (Remastered: a race fills it, its camera widened or heightened to the
-shape, menus keep 4:3 inside it). Touch drives the game
+shape, menus fill it around their 4:3). Touch drives the game
 in front (`mux_front_game`), and the fingers on the glass are let go when the
 other comes in front:
 

@@ -82,32 +82,38 @@ else
     BIN=$BIN ports/remastered/music.sh $OUT/music/cd
 fi
 
-# ---- the lighting's skies: skies.txt and its 4K maps (ports/common/skies/fetch.sh 4k) --
-# 8K maps (2.9 GB) are the Mac's; a phone takes the 4K ones, a 1024 cube a face
-rm -rf $OUT/skies
-mkdir -p $OUT/skies/ph4k
-cp ports/common/skies/skies.txt $OUT/skies/
-grep -v '^#' ports/common/skies/skies.txt | awk 'NF >= 3 { print $3 }' | sort -u | while read id; do
-    if [ -f "ports/common/skies/ph4k/${id}_4k.hdr" ]; then
-        cp "ports/common/skies/ph4k/${id}_4k.hdr" $OUT/skies/ph4k/
-    else
-        echo "ios/build.sh: sky $id missing (ports/common/skies/fetch.sh 4k)" >&2
-    fi
-done
-
-# ---- the Remastered textures' sets, 1024 (ports/common/surfaces: fetch.py, bake.py) --
-rm -rf $OUT/surfaces
-mkdir -p $OUT/surfaces/baked1k
-cp ports/common/surfaces/surfaces.txt $OUT/surfaces/
-grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
-    for m in a b; do
-        if [ -f "ports/common/surfaces/baked1k/${id}_$m.raw" ]; then
-            cp "ports/common/surfaces/baked1k/${id}_$m.raw" $OUT/surfaces/baked1k/
+# ---- the shelved lighting's skies and textures' sets: only with RM_SHELVED_ASSETS=1 ----
+rm -rf $OUT/skies $OUT/surfaces
+mkdir -p $OUT/skies $OUT/surfaces                  # (the project's folders: empty when shelved)
+if [ "${RM_SHELVED_ASSETS:-0}" = 1 ]; then
+    # ---- the lighting's skies: skies.txt and its 4K maps (ports/common/skies/fetch.sh 4k) --
+    # 8K maps (2.9 GB) are the Mac's; a phone takes the 4K ones, a 1024 cube a face
+    rm -rf $OUT/skies
+    mkdir -p $OUT/skies/ph4k
+    cp ports/common/skies/skies.txt $OUT/skies/
+    grep -v '^#' ports/common/skies/skies.txt | awk 'NF >= 3 { print $3 }' | sort -u | while read id; do
+        if [ -f "ports/common/skies/ph4k/${id}_4k.hdr" ]; then
+            cp "ports/common/skies/ph4k/${id}_4k.hdr" $OUT/skies/ph4k/
         else
-            echo "ios/build.sh: surface set $id missing (ports/common/surfaces/fetch.py, bake.py)" >&2
+            echo "ios/build.sh: sky $id missing (ports/common/skies/fetch.sh 4k)" >&2
         fi
     done
-done
+
+    # ---- the Remastered textures' sets, 1024 (ports/common/surfaces: fetch.py, bake.py) --
+    rm -rf $OUT/surfaces
+    mkdir -p $OUT/surfaces/baked1k
+    cp ports/common/surfaces/surfaces.txt $OUT/surfaces/
+    grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
+        for m in a b; do
+            if [ -f "ports/common/surfaces/baked1k/${id}_$m.raw" ]; then
+                cp "ports/common/surfaces/baked1k/${id}_$m.raw" $OUT/surfaces/baked1k/
+            else
+                echo "ios/build.sh: surface set $id missing (ports/common/surfaces/fetch.py, bake.py)" >&2
+            fi
+        done
+    done
+
+fi
 
 # ---- the games, the multiplexer and the process ------------------------------------
 OUT=$OUT HOST=ios RENDER=metal CC=ports/remastered/ios/cc.sh GFLAG=-g0 DLL=$DISC/BRGlide.dll \

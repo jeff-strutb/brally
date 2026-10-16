@@ -19,7 +19,7 @@
  case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
  mkdir -p $OUT/plat
  
-@@ -44,10 +45,24 @@
+@@ -44,10 +45,26 @@
  ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
  # the script commands that read the game (core types, so core flags)
  ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
@@ -27,6 +27,8 @@
 +ports/brally/build64.sh ports/brally/platform/common/race_handoff.c | grep -v "^OK" >&2 || true
 +# the pause menu's Remaster Options: core types too
 +ports/brally/build64.sh ports/brally/platform/common/pause_options.c | grep -v "^OK" >&2 || true
++# the players' cars from the app's controls (race_pads.c): core types too
++ports/brally/build64.sh ports/brally/platform/common/race_pads.c | grep -v "^OK" >&2 || true
 +# what the lighting reads of the game (platform/light): core types too
 +ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK" >&2 || true
  
@@ -42,11 +44,11 @@
 +# the Remastered textures' sets and surface maps (brr_metal_surf.h)
 +[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_surf.m"
 +# Boss Rally alone (its checks, shots): the Remaster Options from the environment
-+[ "$HOST" != lib ] && SRCS="$SRCS $P/common/options_solo.c"
++[ "$HOST" != lib ] && SRCS="$SRCS $P/common/options_solo.c ports/remastered/platform/controls.c"
  # the OS layer under the host: Windows or POSIX
  case "$($CC -dumpmachine 2>/dev/null)" in
    *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
-@@ -75,12 +90,13 @@
+@@ -75,12 +92,13 @@
  case "$HOST" in
    null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
           # Metal without a window: frames drawn offscreen (shots, measurements)

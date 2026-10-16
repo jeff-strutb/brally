@@ -3,7 +3,8 @@
  * Each place where Top Gear Rally Remastered draws Boss Rally's races in a way
  * the original could not is one switch here, on until the app's Remaster
  * Options set it (ports/remastered/platform/options.c, through br_flag_set);
- * BR_FLAG_<NAME>=0|1 sets one at start (checks), e.g. BR_FLAG_LIGHTING=0. */
+ * BR_FLAG_<NAME>=0|1 sets one at start (checks), e.g. BR_FLAG_ANY_ASPECT=0.
+ * The lighting and the textures are shelved: off unless their switch is set. */
 #ifndef BR_FLAGS_H
 #define BR_FLAGS_H
 

@@ -11,6 +11,10 @@ static const char *const k_names[BR_FLAG_COUNT] = {   /* BR_FLAG_<name>=0|1 sets
     [BR_FLAG_TEXTURES]   = "TEXTURES",
 };
 
+/* on until the app sets them; the lighting and the textures are shelved, off
+   unless BR_FLAG_LIGHTING=1 / BR_FLAG_TEXTURES=1 (their checks) */
+static const unsigned char k_def[BR_FLAG_COUNT] = { [BR_FLAG_ANY_ASPECT] = 1 };
+
 static int s_loaded;
 static volatile unsigned char s_value[BR_FLAG_COUNT];
 
@@ -22,7 +26,7 @@ static void load(void)
         const char *e;
         snprintf(name, sizeof name, "BR_FLAG_%s", k_names[i]);
         e = getenv(name);
-        s_value[i] = e ? atoi(e) != 0 : 1;
+        s_value[i] = e ? atoi(e) != 0 : k_def[i];
         PLOG("flags: %s %s\n", k_names[i], s_value[i] ? "on" : "off");
     }
     s_loaded = 1;

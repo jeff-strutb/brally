@@ -41,6 +41,7 @@
 #include "host.h"
 #include "mux.h"
 #include "options.h"
+#include "controls.h"
 
 int tgr_flag(int flag);                 /* the Top Gear Rally object's (os/view.c) */
 #define TGR_FLAG_ANY_ASPECT 0           /* tgr_view.h */
@@ -374,6 +375,18 @@ static int pad_read(int g, host_pad *p)
 int mux_tgr_host_pad_read(host_pad *p) { return pad_read(MUX_TGR, p); }
 int mux_br_host_pad_read(host_pad *p)  { return pad_read(MUX_BR, p); }
 
+/* the second player's pad (controls.h): the host's i-th, likewise the front game's */
+static int pad_read_n(int g, int i, host_pad *p)
+{
+    if (s_front == g)
+        return i == 0 ? host_pad_read(p) : host_pad_read_n(i, p);
+    memset(p, 0, sizeof *p);
+    p->pov = -1;
+    return 0;
+}
+int mux_tgr_host_pad_read_n(int i, host_pad *p) { return pad_read_n(MUX_TGR, i, p); }
+int mux_br_host_pad_read_n(int i, host_pad *p)  { return pad_read_n(MUX_BR, i, p); }
+
 /* ---- sound: one output, both mixers ----------------------------------------------- */
 #define CHUNK 1024                      /* frames mixed at a time */
 static struct {
@@ -556,6 +569,7 @@ void mux_tgr_host_init(int argc, char **argv)
     init_once();
     host_init(argc, argv);
     rm_options_load();
+    rm_controls_load();
     music_targets(1);
 }
 

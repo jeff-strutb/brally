@@ -25,15 +25,15 @@
      hud_state();
      rdr_vi(tgr_vi_ctrl());
      rdr_frame_end();
-@@ -444,6 +451,8 @@
- static uint32_t s_cache_clock;
+@@ -445,6 +452,8 @@
  static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
  static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
-+
-+static void tex_free(int tex);
  
++static void tex_free(int tex);
++
  static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
  {
+     int i;
 @@ -509,7 +518,7 @@
          fwrite(rgba, 4, (size_t)w * h, s_wdump);
      }
@@ -43,11 +43,10 @@
      s_cache[slot].tex = rdr_texture(rgba, w, h);
      if (s_texdump) {
          static int n;
-@@ -697,11 +706,377 @@
-     st->scissor[2] = s_scissor[2];
+@@ -698,10 +707,416 @@
      st->scissor[3] = s_scissor[3];
  }
-+
+ 
 +/* ---- a window of any shape (tgr_view.h) ---------------------------------------------------- *
 + * With TGR_FLAG_ANY_ASPECT on and a window of another shape than the N64's 4:3, a frame is
 + * recorded and drawn at its end, when what it was is known.  A race frame (one that loaded a
@@ -58,8 +57,9 @@
 + * stretched only along an axis it spans its scissor on, else held at the distance from the
 + * edge (or the centre) it sat nearest.  2D draws are grouped into the elements they make up
 + * (touching boxes, words on one line), so a gauge or a line of text moves as one: the Boss
-+ * Rally port's placement (ports/brally/platform/common/glide.c).  Any other frame is drawn
-+ * as it was, and the renderer keeps it 4:3 in the window. */
++ * Rally port's placement (ports/brally/platform/common/glide.c).  Any other frame (the menus,
++ * the results, the car select) fills the window too: its 4:3 at its size in the centre, a
++ * picture across the whole screen scaled up to cover the window (place_menu). */
 +enum { K_2D, K_RACE, K_MIRROR };
 +typedef struct { double ax, bx, ay, by; } XMap;     /* target = a * game + b (b times w) */
 +typedef struct {
@@ -72,7 +72,7 @@
 +static int s_rec;               /* this frame is recorded */
 +static int s_race;              /* ... and a race view was drawn in it, its lens kx by ky */
 +static float s_kx = 1, s_ky = 1;
- 
++
 +/* the frame's tap targets are on the screen, in its shape (tgr_touch.h) */
 +static void touch_shown(void) { tgr_touch_shown((float)s_fb_w, (float)s_fb_h, s_rec && s_race, s_kx, s_ky); }
 +static float s_mirror_clip[4];
@@ -321,9 +321,39 @@
 +    }
 +}
 +
++/* every record's map, for any other frame (the menus, the results, the car select): the
++ * window filled around the game's 4:3, which keeps its size at the centre.  A 2D picture
++ * across the whole screen (the menus' backgrounds) is scaled up to cover the window, its
++ * shape kept (what it loses above and below is the outer part of a picture that fades
++ * away); a fill across it (a fade, a bar) is stretched along with it; 3D stays where it
++ * was (the title's backdrop already reaches past the 4:3 edges: the wider scissor shows
++ * it), as does every other piece of 2D, centred. */
++static void place_menu(XMap *map)
++{
++    double w = s_fb_w, h = s_fb_h, k = fmax(s_kx, s_ky);
++    XMap centred = { 1, (s_kx - 1) * w * 0.5, 1, (s_ky - 1) * h * 0.5 };
++    XMap cover = { k, (s_kx - k) * w * 0.5, k, (s_ky - k) * h * 0.5 };
++    int i;
++    for (i = 0; i < s_nrec; i++) {
++        const Rec *a = &s_recs[i];
++        int across = a->type != 2 && a->box[2] - a->box[0] >= 0.9f * s_fb_w;
++        int down = a->box[3] - a->box[1] >= 0.9f * s_fb_h;
++        int textured = a->type == 0 ? s_rst[a->st].tile[0].tex != 0 : a->fill == 0;
++        if (a->type == 0 && !(across && down && !textured))
++            map[i] = centred;                         /* 3D: what lies past the 4:3 edges shows */
++        else if (!across)
++            map[i] = centred;
++        else if (textured)
++            map[i] = cover;
++        else
++            map[i] = (XMap){ s_kx, 0, down ? s_ky : 1, down ? 0 : centred.by };
++    }
++}
++
 +/* the scissor in the window's image: a whole-screen one stays whole, the mirror's goes
-+ * with the mirror, any other is stretched with the views (2D moves within it) */
-+static void map_scissor(RdrState *st, const Rec *r)
++ * with the mirror, any other is stretched with the views (2D moves within it); in any
++ * other frame than a race's (menu), moved with the centred picture */
++static void map_scissor(RdrState *st, const Rec *r, int menu)
 +{
 +    float *sc = st->scissor;
 +    double vw = s_fb_w * s_kx, vh = s_fb_h * s_ky;
@@ -334,7 +364,9 @@
 +        sc[3] = (float)vh;
 +        return;
 +    }
-+    if (r->kind == K_MIRROR || (s_mirror_ok && !memcmp(r->clip, s_mirror_clip, sizeof r->clip)))
++    if (menu)
++        m = (XMap){ 1, (vw - s_fb_w) * 0.5, 1, (vh - s_fb_h) * 0.5 };
++    else if (r->kind == K_MIRROR || (s_mirror_ok && !memcmp(r->clip, s_mirror_clip, sizeof r->clip)))
 +        m = (XMap){ 1, (vw - s_fb_w) * 0.5, 1, 0 };
 +    sc[0] = (float)(m.ax * sc[0] + m.bx);
 +    sc[2] = (float)(m.ax * sc[2] + m.bx);
@@ -349,22 +381,29 @@
 +    static int mapcap;
 +    static RdrVtx *tv;
 +    static int tvcap;
-+    int i, k, race = s_race;
++    int i, k, race = s_race, menu = 0;
 +    if (!s_rec) {
 +        s_race = 0;
 +        s_kx = s_ky = 1;
 +        return;
 +    }
 +    s_rec = 0;                                        /* from here, draws and frees are direct */
++    if (s_nrec > mapcap) {
++        mapcap = s_nrec * 2;
++        map = realloc(map, (size_t)mapcap * sizeof *map);
++    }
 +    if (race) {
-+        if (s_nrec > mapcap) {
-+            mapcap = s_nrec * 2;
-+            map = realloc(map, (size_t)mapcap * sizeof *map);
-+        }
 +        place_frame(map);
 +        rdr_frame_begin(s_fb_w * s_kx, s_fb_h * s_ky);
 +    } else {
-+        rdr_frame_begin((float)s_fb_w, (float)s_fb_h);
++        tgr_view_scale(&s_kx, &s_ky);                 /* any other frame: the window filled too */
++        menu = s_kx > 1.0f || s_ky > 1.0f;
++        if (menu) {
++            place_menu(map);
++            rdr_frame_begin(s_fb_w * s_kx, s_fb_h * s_ky);
++        } else {
++            rdr_frame_begin((float)s_fb_w, (float)s_fb_h);
++        }
 +    }
 +    for (i = 0; i < s_nrec; i++) {
 +        const Rec *r = &s_recs[i];
@@ -374,14 +413,14 @@
 +            continue;
 +        }
 +        st = s_rst[r->st];
-+        if (!race) {
++        if (!race && !menu) {
 +            if (r->type == 0)
 +                rdr_triangles(&st, s_rv + r->v0, r->n);
 +            else
 +                rdr_rect(&st, r->x0, r->y0, r->x1, r->y1, r->s, r->t, r->dsdx, r->dtdy, r->fill, r->rgba);
 +            continue;
 +        }
-+        map_scissor(&st, r);
++        map_scissor(&st, r, menu);
 +        if (r->type == 0) {
 +            const XMap *m = &map[i];
 +            if (r->n > tvcap) {
@@ -422,7 +461,7 @@
          s_frame_open = 1;
      }
  }
-@@ -942,9 +1317,9 @@
+@@ -942,9 +1357,9 @@
              fan[m++] = poly[k + 1];
          }
          if (m)
@@ -434,7 +473,7 @@
  }
  
  /* ---- the display list ----------------------------------------------------------------- */
-@@ -983,7 +1358,7 @@
+@@ -983,7 +1398,7 @@
          if (!st.tile[0].tex)
              fill_tile(&st.tile[0], tile);
      }
@@ -443,7 +482,7 @@
  }
  
  static void rect_fill(uint32_t w0, uint32_t w1)
-@@ -997,7 +1372,7 @@
+@@ -997,7 +1412,7 @@
          fprintf(stderr, "fillrect cyc %d %.0f,%.0f-%.0f,%.0f fill %08X cimg %X zimg %X cc %06X %08X prim %.2f %.2f %.2f oml %08X\n",
                  cyc, x0, y0, x1, y1, s_fill, s_cimg, s_zimg, s_cc0, s_cc1, s_prim[0], s_prim[1], s_prim[2], s_oml);
      if (cyc == 3 && s_cimg == s_zimg) {               /* the depth buffer filled: a depth clear */
@@ -452,7 +491,7 @@
          return;
      }
      if (cyc == 3 && s_cimg != s_zimg) {
-@@ -1019,16 +1394,16 @@
+@@ -1019,16 +1434,16 @@
          st.scissor[2] = s_scissor[2];
          st.scissor[3] = s_scissor[3];
          if (hl[0] == hl[1]) {
@@ -472,7 +511,7 @@
  }
  
  static void run(uint32_t dl)
-@@ -1046,10 +1421,13 @@
+@@ -1046,10 +1461,13 @@
              int p = (w0 >> 16) & 0xFF;
              m4_load(&m, seg_addr(w1));
              if (p & 1) {                              /* projection */
@@ -488,7 +527,7 @@
              } else {
                  if ((p & 4) && s_mvn < 9) {
                      s_mv[s_mvn + 1] = s_mv[s_mvn];
-@@ -1287,6 +1665,7 @@
+@@ -1287,6 +1705,7 @@
      }
      s_mvn = 0;                                        /* each task starts the matrix stack at the
                                                           task's dram_stack base */

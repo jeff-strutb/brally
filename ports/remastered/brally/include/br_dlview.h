@@ -14,12 +14,13 @@
 #include "br_mat.h"        /* DAT_105ccd00, the projection the list loaded */
 #include "br_platview.h"
 
+extern int g_brMode0AA8B4;          /* the views: the mirror is a one-view race's (Remastered: split screen) */
 static inline int br_dl_view(void)
 {
     const float *m = (const float *)&DAT_105ccd00;
     if (m[3] == 0.0f && m[7] == 0.0f && m[11] == 0.0f)
         return 1;
-    return fabsf(DAT_105ccfdc) < 48.0f ? 2 : 0;
+    return g_brMode0AA8B4 < 2 && fabsf(DAT_105ccfdc) < 48.0f ? 2 : 0;
 }
 
 /* a display-list triangle: its view, then Glide */

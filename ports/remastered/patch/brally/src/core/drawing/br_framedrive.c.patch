@@ -1,6 +1,14 @@
 --- a/src/core/drawing/br_framedrive.c
 +++ b/src/core/drawing/br_framedrive.c
-@@ -108,6 +108,9 @@
+@@ -103,11 +103,17 @@
+ 
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "race_pads.h"   /* Remastered */
++int  plat_split_side(void);                  /* Remastered: glide.c */
++static int s_rmHudView;
+ #include "br_coretypes.h"   /* br_globals: its objects */
+ #include "br_race.h"   /* br_globals: its objects */
  #include "slice1_05.h"   /* br_globals: its objects */
  #include <stdio.h>
  #include "slice3_41.h"
@@ -10,15 +18,17 @@
  /* initialised in the original source (restored: the 64-bit core keeps them
   * private to this file; no Glide relocation places them elsewhere) */
  static const float kF728C = 0.6499999761581421f;
-@@ -294,6 +297,7 @@
+@@ -293,7 +299,8 @@
+     (void)off;
      pCars  = g_aBrSnap[iSlot].car;
      pHdr   = (uint8_t *)g_aBrSnap[iSlot].drv;
-     aViews = (BrHudView *)&g_aBrSnap[iSlot].tailA.a[0];
+-    aViews = (BrHudView *)&g_aBrSnap[iSlot].tailA.a[0];
++    aViews = (BrHudView *)br_split_views(iSlot, &g_aBrSnap[iSlot].tailA.a[0]);   /* Remastered (race_pads.h) */
 +    plat_glide_wide();   /* port: a race frame fills the window (br_platview.h) */
      BrRecHdrLatch_10010F80((uint8_t *)&g_aBrSnap[iSlot].tailC.a[0]);
      BrFadeTick();
      BrFrameBeginRec(aViews);
-@@ -330,16 +334,20 @@
+@@ -330,16 +337,20 @@
          FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
                       DAT_106ed590, DAT_106b7ac4, DAT_106e728c, DAT_106ec780);
          BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
@@ -43,7 +53,30 @@
          }
          BrFrameFogEmit();
          BrFrameTintSetup();
-@@ -567,6 +575,8 @@
+@@ -486,6 +497,11 @@
+             BrDlBorderEmit(xMir, yMir, wMir, hMir);
+         }
+ 
++        s_rmHudView = g_brMode0AA8B4 > 1 && plat_split_side();   /* Remastered: this view's HUD, a one-view race's in its half */
++        if (s_rmHudView) {
++            br_hud_view_mark(i, pV->x, pV->y, pV->w, pV->h);
++            g_brMode0AA8B4 = 1;
++        }
+         BrFpsReadout();
+ 
+         /* The split-screen captions, by game mode. */
+@@ -539,6 +555,10 @@
+         }
+         BrNop_1002C509();
+         BrHudDrawViewCentreText(aViews);
++        if (s_rmHudView) {                        /* Remastered */
++            br_hud_view_mark(-1, 0, 0, 0, 0);
++            g_brMode0AA8B4 = 2;
++        }
+     }
+ 
+     BrNop_1002AB8F();
+@@ -567,6 +587,8 @@
          else
              psz = BrStrGet(0xFA);
          BrTextDraw(psz, x, y);
@@ -52,7 +85,7 @@
      } else if ((*(int *)&g_BrX06909B4) != 0) {
          x = (aViews->w >> 1) + aViews->x;
          BrPodNop();
-@@ -598,26 +608,31 @@
+@@ -598,26 +620,31 @@
                  DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
          BrTextDraw(DAT_10396f28, x, y);
          y += 0x14;

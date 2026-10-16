@@ -1,0 +1,35 @@
+--- a/platform/common/script_game.c
++++ b/platform/common/script_game.c
+@@ -150,10 +150,14 @@
+     plat_script_autopilot_keys(none);
+ }
+ 
+-void plat_script_autopilot(void)
++/* the autopilot's keys for a driver's car (Remastered: a second player's too, race_pads.c) */
++void plat_script_autopilot_want(int driver, int *want)
+ {
+-    BrDriverCar *car = g_aBrRaceDriver[0].pCar;
+-    int want[4] = { 1, 0, 0, 0 };
++    static int stuck[2], reverse[2];
++    int s_ap_stuck = stuck[driver & 1], s_ap_reverse = reverse[driver & 1];
++    BrDriverCar *car = g_aBrRaceDriver[driver].pCar;
++    want[0] = 1;
++    want[1] = want[2] = want[3] = 0;
+     if (car && car->pNode.p) {
+         const BrAiPathNode *n = car->pNode.p, *nxt;
+         int k = (int)car->iPt.v, cnt, i, guard;
+@@ -206,6 +210,14 @@
+             want[AP_RIGHT] = l;
+         }
+     }
++    stuck[driver & 1] = s_ap_stuck;
++    reverse[driver & 1] = s_ap_reverse;
++}
++
++void plat_script_autopilot(void)
++{
++    int want[4];
++    plat_script_autopilot_want(0, want);
+     plat_script_autopilot_keys(want);
+ }
+ 

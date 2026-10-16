@@ -47,8 +47,6 @@ static const struct {
 } k_rows[] = {
     { "Widescreen", RM_OPT_WIDESCREEN, { "On", "Off" }, { 1, 0 } },
     { "Music", RM_OPT_MUSIC, { "PC", "N64" }, { RM_MUSIC_PC, RM_MUSIC_N64 } },
-    { "Lighting", RM_OPT_LIGHTING, { "Original", "Remaster" }, { 0, 1 } },
-    { "Textures", RM_OPT_TEXTURES, { "Original", "Remaster" }, { 0, 1 } },
     { "Show FPS", RM_OPT_FPS, { "On", "Off" }, { 1, 0 } },
 };
 #define NOPT ((int)(sizeof k_rows / sizeof k_rows[0]))

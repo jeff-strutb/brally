@@ -9,3 +9,13 @@
  void host_window_lock_aspect(int lock);
  /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
  int  host_poll_event(host_event *ev, uint32_t wait_ms);
+@@ -132,6 +132,9 @@
+     int      pov;
+ } host_pad;
+ int host_pad_read(host_pad *p);
++/* the i-th game controller (0: the first, as host_pad_read), for a second player;
++ * 0 when there is none */
++int host_pad_read_n(int i, host_pad *p);
+ 
+ /* ---- network: IPv4 UDP ---------------------------------------------------------- */
+ typedef struct host_addr {

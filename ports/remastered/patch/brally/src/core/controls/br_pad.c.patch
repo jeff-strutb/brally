@@ -1,0 +1,31 @@
+--- a/src/core/controls/br_pad.c
++++ b/src/core/controls/br_pad.c
+@@ -10,6 +10,7 @@
+ #include "slice1_05.h"   /* br_globals: its objects */
+ #include "br_cartypes.h"   /* BrRaceCtl, the canonical record */
+ #include "slice2_19.h"
++#include "race_pads.h"       /* Remastered */
+ 
+ /* 0x10019A70 is the (unclaimed, 11 KB) race step.  The original passes its
+  * address as an IMMEDIATE, so the matching build needs a function symbol,
+@@ -196,9 +197,9 @@
+ {
+   int i;
+   BrPadFrameBegin();
+-  for (i = 0; i < 1; i++) {
+-    BrPadTranslate((BrPad *)((char *)&(*(char *)&g_aBrEnts) + i*0x15c));
+-    BrBitEdgeSplit((BrBitPair *)((char *)&(*(char *)&g_aBrEnts) + i*0x15c));
++  for (i = 0; i < br_race_humans(); i++) {   /* Remastered: each player's (race_pads.h) */
++    BrPadTranslate((BrPad *)&g_aBrEnts[i]);
++    BrBitEdgeSplit((BrBitPair *)&g_aBrEnts[i]);
+   }
+ }
+ 
+@@ -227,6 +228,7 @@
+   BrPadFrameInit();
+   BrStubTrue();
+   BrPadPackButtons(&(*(int *)&g_aBrEntRecs));
++  br_race_pads();                 /* Remastered: the players' own controls (race_pads.h) */
+   (*(unsigned short *)&DAT_100b51e4[948]) = 1;
+   DAT_106ec778 = 0;
+   return;

@@ -1,0 +1,160 @@
+/* rmoptions.c (port): the Remaster Options on Top Gear Rally's own options
+ * screen, rows of the carousel beside the volumes and the units, as Top Gear
+ * Rally Remastered has it.
+ *
+ * After Units come Widescreen, Music and Show FPS (the options the race's pause
+ * menu offers too: ports/remastered/platform/options.c), then the game's own
+ * controller, save, load and credits rows.  Each is a row like Units: up or down
+ * (a swipe on the iPhone: tgr_touch_value_row) or A takes its other choice, at
+ * once, both games told.  Their icons, turning on the ring as the others do:
+ *
+ *   Widescreen  the PC's monitor, 4:3 when off and drawn 16:9 when on
+ *   Music       the PC's monitor for the PC's soundtrack, the console for the N64's
+ *   Show FPS    Time Attack's stopwatch (the main menu's, from the cartridge)
+ *
+ * The monitor and the console are made from models in ports/common/assets
+ * (ports/remastered/tools/menuicons.sh: platform/os/rm_icons.c, the game's own
+ * icon format).  They are placed once in the arena's upper half, which the
+ * game never uses (it runs in the N64's 4 MB, no Expansion Pak): copied, the
+ * wide monitor's vertices stretched across, and rebased as BrModelLoad rebases
+ * a model from the cartridge.
+ *
+ * options.c (port) asks for the screen's items (rm_options_items), passes its
+ * rows through rm_options_row (ours handled here, the game's given back the
+ * numbers its switch knows) and shows the help line on ours too. */
+#include "tgr/common.h"
+#include "tgr/menu.h"
+#include "tgr/model.h"
+
+/* -- declarations -- */
+void BrModelRebase(BrModel *m);
+extern MenuItem *D_80272360[];          /* the main menu's rows: [2] is Time Attack */
+int  rm_option(int which);              /* the app's (ports/remastered/platform/options.h) */
+void rm_option_set(int which, int value);
+extern const unsigned char rm_icon_crt[], rm_icon_n64[];
+extern const unsigned int rm_icon_crt_len, rm_icon_n64_len;
+/* -- end declarations -- */
+
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS };
+enum { RM_MUSIC_PC, RM_MUSIC_N64 };
+
+#define RM_FIRST 3                      /* our rows: after BGM, SFX and Units */
+#define RM_ROWS 3
+#define RM_ICONS 0x80600000u            /* the arena's upper half (no Expansion Pak in the game) */
+
+static const int k_opt[RM_ROWS] = { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS };
+static MenuItem s_row[RM_ROWS];
+static char s_label[RM_ROWS][32];
+static MenuItem *s_items[16];
+static unsigned int s_crt, s_wide, s_n64;   /* the icons, placed */
+
+/* a model copied to `at` (stretched across by kx: its vertices' x) and rebased;
+ * answers where the next may go */
+static unsigned int place(unsigned int at, const unsigned char *src, unsigned int n, float kx)
+{
+  BrModel *m = TGR_PTR(BrModel *, at);
+  unsigned int i, k;
+
+  memcpy(m, src, n);
+  if (kx != 1.0f) {
+    for (i = 0; i < BE32(m->nDl); i++) {
+      unsigned char *g = (unsigned char *)m + BE32(m->dls[i].dl);
+      for (;; g += 8) {
+        unsigned int w0 = tgr_be32(*(unsigned int *)g);
+        if (w0 >> 24 == 0xB8) {
+          break;
+        }
+        if (w0 >> 24 == 0x04) {
+          unsigned char *v = (unsigned char *)m + tgr_be32(*(unsigned int *)(g + 4));
+          for (k = 0; k < ((w0 >> 10) & 0x3F); k++, v += 16) {
+            short x = (short)(v[0] << 8 | v[1]);
+            x = (short)(x * kx);
+            v[0] = (unsigned char)((unsigned short)x >> 8);
+            v[1] = (unsigned char)x;
+          }
+        }
+      }
+    }
+  }
+  BrModelRebase(m);
+  return (at + n + 15) & ~15u;
+}
+
+static void icons(void)
+{
+  unsigned int at = RM_ICONS;
+
+  if (s_crt != 0) {
+    return;
+  }
+  s_crt = at;
+  at = place(at, rm_icon_crt, rm_icon_crt_len, 1.0f);
+  s_wide = at;
+  at = place(at, rm_icon_crt, rm_icon_crt_len, 16.0f / 12.0f);
+  s_n64 = at;
+  at = place(at, rm_icon_n64, rm_icon_n64_len, 1.0f);
+}
+
+/* the screen's rows: the game's three, ours, the game's others (NULL-terminated) */
+MenuItem **rm_options_items(MenuItem **game)
+{
+  int i, n = 0, k;
+
+  icons();
+  for (i = 0; game[i] != 0 && i < RM_FIRST; i++) {
+    s_items[n++] = game[i];
+  }
+  for (k = 0; k < RM_ROWS; k++) {
+    s_row[k].flags = 0x03;              /* as Units: up, down and A all take the other choice */
+    s_items[n++] = &s_row[k];
+  }
+  for (; game[i] != 0 && n < 15; i++) {
+    s_items[n++] = game[i];
+  }
+  s_items[n] = 0;
+  /* the stopwatch: the cartridge's, loaded with the screen as the game's own icons are */
+  s_row[2].iconRomStart = D_80272360[2]->iconRomStart;
+  s_row[2].iconRomEnd = D_80272360[2]->iconRomEnd;
+  return s_items;
+}
+
+/* each frame: our rows' labels and icons, from the options in force */
+void rm_options_frame(void)
+{
+  int wide = rm_option(RM_OPT_WIDESCREEN) != 0;
+  int pc = rm_option(RM_OPT_MUSIC) == RM_MUSIC_PC;
+
+  sprintf(s_label[0], "Widescreen: %s", wide ? "On" : "Off");
+  sprintf(s_label[1], "Music: %s", pc ? "PC" : "N64");
+  sprintf(s_label[2], "Show FPS: %s", rm_option(RM_OPT_FPS) ? "On" : "Off");
+  s_row[0].label = tgr_addr32(s_label[0]);
+  s_row[1].label = tgr_addr32(s_label[1]);
+  s_row[2].label = tgr_addr32(s_label[2]);
+  s_row[0].icon = wide ? s_wide : s_crt;
+  s_row[1].icon = pc ? s_crt : s_n64;
+}
+
+/* 1 for one of our rows */
+int rm_options_ours(int row)
+{
+  return row >= RM_FIRST && row < RM_FIRST + RM_ROWS;
+}
+
+/* the menu's answer on `row`: ours taken here (-1 back: nothing for the
+ * game's switch); else the row's number in the game's own screen */
+int rm_options_row(int result, int row)
+{
+  if (rm_options_ours(row)) {
+    if (result == 1 || result == 3 || result == 4) {
+      int o = k_opt[row - RM_FIRST];
+      if (o == RM_OPT_MUSIC) {
+        rm_option_set(o, rm_option(o) == RM_MUSIC_PC ? RM_MUSIC_N64 : RM_MUSIC_PC);
+      } else {
+        rm_option_set(o, !rm_option(o));
+      }
+      rm_options_frame();
+    }
+    return -1;
+  }
+  return row < RM_FIRST ? row : row - RM_ROWS;
+}

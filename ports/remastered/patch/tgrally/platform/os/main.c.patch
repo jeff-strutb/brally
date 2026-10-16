@@ -1,0 +1,18 @@
+--- a/platform/os/main.c
++++ b/platform/os/main.c
+@@ -16,6 +16,7 @@
+ void tgr_script_load(const char *path);
+ void tgr_input_key(int vk, int down);
+ void tgr_input_release(void);
++void tgr_input_scan(int scan, int down);   /* Remastered: the second player's keys (si.c) */
+ extern volatile int tgr_paused;
+ 
+ void tgr_log(const char *fmt, ...)
+@@ -92,6 +93,7 @@
+                 if (ev.type == HOST_EV_KEY) {
+                     tgr_os_lock();
+                     tgr_input_key(ev.vk, ev.down);
++                    tgr_input_scan(ev.scan, ev.down);
+                     tgr_os_unlock();
+                 }
+             }

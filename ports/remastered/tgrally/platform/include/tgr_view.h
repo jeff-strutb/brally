@@ -9,7 +9,8 @@
  * frame fills the window: each view's lens is widened to the window's shape
  * (Hor+ when wider, Vert+ when taller) and its culling wedge with it, the
  * rear-view mirror keeps its shape, and the HUD keeps its own shape at the
- * edges it sat by (gfx/rcp.c).  Menus stay 4:3, centred. */
+ * edges it sat by (gfx/rcp.c).  Any other frame (the menus) fills it too: the game's
+ * 4:3 at its size in the centre, its background scaled up to cover the window. */
 #ifndef TGR_VIEW_H
 #define TGR_VIEW_H
 

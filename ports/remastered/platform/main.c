@@ -72,9 +72,9 @@ static int race_engine(const HostRace *race, HostRaceResult *res)
 {
     int r;
     if (getenv("RM_LOG"))
-        fprintf(stderr, "remastered: race mode %d track %d mirrored %d weather %d laps %d car %d handling %d auto %d tires %d susp %d piece %d\n",
+        fprintf(stderr, "remastered: race mode %d track %d mirrored %d weather %d laps %d car %d handling %d auto %d tires %d susp %d piece %d players %d car2 %d\n",
                 race->mode, race->track, race->mirrored, race->weather, race->laps, race->car, race->handling,
-                race->automatic, race->tires, race->suspension, race->piece);
+                race->automatic, race->tires, race->suspension, race->piece, race->players, race->car2);
     rm_br_start();
     mux_front(MUX_BR);
     r = br_race_run(race, res);
@@ -87,6 +87,8 @@ static int race_engine(const HostRace *race, HostRaceResult *res)
                 res->total, res->best, res->best_lap + 1);
         for (i = 0; i < res->laps && i < 12; i++)
             fprintf(stderr, " %.2f", res->lap[i]);
+        if (race->players == 2)
+            fprintf(stderr, "; player 2: place %d, laps %d, total %.2f", res[1].place + 1, res[1].laps, res[1].total);
         fprintf(stderr, "\n");
     }
     return r;

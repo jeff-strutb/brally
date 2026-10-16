@@ -85,7 +85,7 @@ lump brally $T/$LIB/brally/libbrally.a br br_main br_race_serve br_race_run br_r
     br_race_tap br_race_click br_flag_set br_music_gain br_effects_quiet br_music_volume
 
 # ---- the host and the process -----------------------------------------------------------
-SRCS="$R/mux.c $R/main.c $R/options.c"
+SRCS="$R/mux.c $R/main.c $R/options.c $R/controls.c"
 case $OS in
   windows) SRCS="$SRCS $H/win32/host_win32.c"; EXE=.exe; LDXX=${LDCXX:-x86_64-w64-mingw32-g++}
            OSLIBS="-static -lws2_32";;

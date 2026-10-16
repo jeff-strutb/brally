@@ -1,0 +1,14 @@
+--- a/platform/host/null/host_null.c
++++ b/platform/host/null/host_null.c
+@@ -98,6 +98,11 @@
+     p->pov = -1;
+     return 0;
+ }
++int host_pad_read_n(int i, host_pad *p)
++{
++    (void)i;
++    return host_pad_read(p);
++}
+ host_stream *host_stream_open(const char *path, int rate)
+ {
+     (void)path;

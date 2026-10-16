@@ -1,0 +1,27 @@
+--- a/platform/host/windows/host_windows.c
++++ b/platform/host/windows/host_windows.c
+@@ -686,7 +686,8 @@
+ }
+ 
+ /* ---- game controllers: XInput -------------------------------------------------- */
+-int host_pad_read(host_pad *o)
++/* the n-th connected XInput pad (0: the first) */
++int host_pad_read_n(int n, host_pad *o)
+ {
+     XINPUT_STATE st;
+     const XINPUT_GAMEPAD *g;
+@@ -696,7 +697,7 @@
+     memset(o, 0, sizeof *o);
+     o->pov = -1;
+     for (i = 0; i < XUSER_MAX_COUNT; i++)
+-        if (XInputGetState(i, &st) == ERROR_SUCCESS)
++        if (XInputGetState(i, &st) == ERROR_SUCCESS && n-- == 0)
+             break;
+     if (i == XUSER_MAX_COUNT)
+         return 0;
+@@ -734,3 +735,5 @@
+     }
+     return 1;
+ }
++
++int host_pad_read(host_pad *o) { return host_pad_read_n(0, o); }

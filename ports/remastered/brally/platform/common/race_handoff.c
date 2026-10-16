@@ -50,6 +50,7 @@
 #include "slice2_25.h"       /* g_brPAA29B8 */
 #include "../host/host_race.h"
 #include "pause_options.h"
+#include "race_pads.h"
 
 typedef struct host_mutex host_mutex;   /* host.h (not includable beside the core's Win32 surface) */
 typedef struct host_cond host_cond;
@@ -70,7 +71,7 @@ static host_cond *s_c;
 static int s_serving;               /* a caller asked for races: wait for them at the menus */
 static int s_pending, s_done;
 static HostRace s_req;
-static HostRaceResult s_res;
+static HostRaceResult s_res, s_res2;   /* the first player's, the second's */
 static int s_phase = IDLE, s_got, s_test;
 static int s_skip;                   /* the demo or ceremony was skipped */
 static int s_frames;                 /* frames the race step ran (a check's report) */
@@ -101,6 +102,8 @@ int br_race_run(const HostRace *race, HostRaceResult *res)
     while (!s_done)
         host_cond_wait(s_c, s_m, 0xFFFFFFFFu);
     *res = s_res;
+    if (race->players == 2)
+        res[1] = s_res2;              /* (host_race.h: the second player's beside it) */
     s_done = 0;
     host_mutex_unlock(s_m);
     return 1;
@@ -131,8 +134,12 @@ static int test_request(void)
     r.automatic = 1;
     r.tires = 1;
     r.suspension = 1;
-    if (sscanf(e, "%d,%d,%d,%d,%d,%d,%d", &r.mode, &r.track, &r.mirrored, &r.weather, &r.laps, &r.car,
-               &r.piece) < 6)
+    r.car2 = -1;
+    r.automatic2 = r.automatic;
+    r.tires2 = r.tires;
+    r.suspension2 = r.suspension;
+    if (sscanf(e, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &r.mode, &r.track, &r.mirrored, &r.weather, &r.laps, &r.car,
+               &r.piece, &r.players, &r.car2, &r.automatic2, &r.tires2, &r.suspension2) < 6)
         return 0;
     s_test = 1;
     s_test_next = strchr(e, ';') ? strchr(e, ';') + 1 : "";
@@ -160,6 +167,7 @@ static void configure(const HostRace *r)
     g_7b32c = r->tires;
     g_7b328 = r->suspension;
     g_CBE8 = r->laps > 0 ? r->laps : 3;
+    g_brRaceNEntrant = r->players == 2 && r->mode <= HOST_RACE_PRACTICE ? 2 : 1;
     if (getenv("BR_HANDOFF_BINDINGS")) {          /* each profile's first actions' bindings */
         int pr, a;
         for (pr = 0; pr < 4; pr++) {
@@ -195,22 +203,33 @@ static void controls(void)
     }
 }
 
-static void result(void)
+static void result_of(int k, HostRaceResult *r)
 {
-    BrDriverCar *car = g_aBrRaceDriver[0].pCar;
+    BrDriverCar *car = g_aBrRaceDriver[k].pCar;
     int i, n;
-    memset(&s_res, 0, sizeof s_res);
-    s_res.outcome = HOST_RACE_FINISHED;
+    memset(r, 0, sizeof *r);
+    r->outcome = HOST_RACE_FINISHED;
     if (!car)
         return;
-    s_res.place = car->fFF8;
-    s_res.laps = car->lap;
-    s_res.total = car->tFinal;
-    s_res.best = car->tBest;
-    s_res.best_lap = car->lapBest;
+    r->place = car->fFF8;
+    r->laps = car->lap;
+    r->total = car->tFinal;
+    r->best = car->tBest;
+    r->best_lap = car->lapBest;
     n = car->lap < 12 ? car->lap : 12;
     for (i = 0; i < n; i++)
-        s_res.lap[i] = car->aLapTime[i];
+        r->lap[i] = car->aLapTime[i];
+}
+
+/* the players' outcomes (the second's when two raced: the second driver, the
+   second human car) */
+static void result(void)
+{
+    result_of(0, &s_res);
+    if (g_brRaceNEntrant > 1)
+        result_of(1, &s_res2);
+    else
+        memset(&s_res2, 0, sizeof s_res2);
 }
 
 static int s_raced_track, s_raced_weather, s_raced_mode;
@@ -225,6 +244,8 @@ static void finish(void)
                 s_res.total, s_res.best, s_res.best_lap + 1);
         for (i = 0; i < s_res.laps && i < 12; i++)
             fprintf(stderr, " %.2f", s_res.lap[i]);
+        if (s_req.players == 2)
+            fprintf(stderr, "; player 2: place %d, laps %d, total %.2f", s_res2.place + 1, s_res2.laps, s_res2.total);
         fprintf(stderr, "\n");
         if (!*s_test_next)
             exit(0);
@@ -340,6 +361,25 @@ static void check_taps(void)
     }
 }
 
+/* the second player's car, for the race step's set-up (race_pads.h) */
+int br_race_car2(int car)
+{
+    return s_phase == RACE && s_req.players == 2 && s_req.car2 >= 0 && s_req.car2 < 16 ? s_req.car2 : car;
+}
+
+void br_race_setup2(int *handling, int *automatic, int *tires, int *suspension)
+{
+    if (s_phase != RACE || s_req.players != 2)
+        return;
+    *handling = s_req.handling;
+    *automatic = s_req.automatic2;
+    *tires = s_req.tires2;
+    *suspension = s_req.suspension2;
+    if (getenv("RM_LOG"))
+        fprintf(stderr, "handoff: player 2 set-up: handling %d automatic %d tires %d suspension %d\n", *handling,
+                *automatic, *tires, *suspension);
+}
+
 /* BrAppFrame's entry */
 void plat_race_frame(void)
 {
@@ -391,6 +431,8 @@ void plat_race_frame(void)
         s_raced_track = g_Br0B380C;
         s_raced_weather = DAT_104b15e8;
         s_raced_mode = g_brRaceRules.mode;
+        g_brRaceNEntrant = s_req.players == 2 && s_req.mode <= HOST_RACE_PRACTICE ? 2 : 1;   /* split screen */
+        br_race_pads_on(!PLAYBACK);  /* the players drive with the app's controls (race_pads.c) */
         g_brRaceTick = 1;            /* no waiting for the start key */
         s_phase = RACE;
         return;
@@ -456,6 +498,9 @@ void plat_race_frame(void)
             if (!s_got && s_underway && DAT_105ccb68[8] == 0 && g_brRaceLights >= 5) {
                 result();
                 s_got = 1;
+                /* the replay that follows is one view, the first player's: its set-up must
+                   not look for the second car's equipment (the PC game never replayed two) */
+                g_brRaceNEntrant = 1;
                 if (AUTOPILOT)
                     plat_script_autopilot_off();
             }
@@ -469,8 +514,10 @@ void plat_race_frame(void)
         } else if (!s_got) {         /* left from the pause menu */
             memset(&s_res, 0, sizeof s_res);
             s_res.outcome = HOST_RACE_LEFT;
+            s_res2 = s_res;
         }
         s_phase = BACK;
+        br_race_pads_on(0);
         return;
     case BACK:
         if (state != 4 || g_brPAA29B8 == 0)
