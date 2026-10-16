@@ -12,9 +12,9 @@
  *   Music       the PC's monitor for the PC's soundtrack, the console for the N64's
  *   Show FPS    Time Attack's stopwatch (the main menu's, from the cartridge)
  *
- * The monitor and the console are built by hand after models in
- * ports/common/assets (ports/remastered/tools/handicons.py: platform/os/rm_icons.c,
- * the game's own icon format).  They are placed once in the arena's upper half, which the
+ * The monitor and the console are built by hand
+ * (ports/remastered/tools/handicons.py: platform/os/rm_icons.c, the game's own
+ * icon format).  They are placed once in the arena's upper half, which the
  * game never uses (it runs in the N64's 4 MB, no Expansion Pak): copied, the
  * wide monitor's vertices stretched across, and rebased as BrModelLoad rebases
  * a model from the cartridge.

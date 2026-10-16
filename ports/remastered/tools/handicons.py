@@ -1,9 +1,7 @@
 """handicons.py: the Remaster Options' monitor and console icons, built by hand: each a few
 hundred triangles of simple shapes in flat colours, as the game's own icons are (100 to 800
-triangles), measured off orthographic renders and probes of the source models in
-ports/common/assets (crt.blend; n64.blend, the console's proportions and colours, after "Nintendo
-64" by Oliver_Budd_ID, thingiverse.com/thing:3534035, CC BY).  Units are the sources' own: z up,
-the front toward -y.
+triangles), their sizes, heights and colours measured off orthographic renders and probes of a
+monitor and a console model.  Units are those models' own: z up, the front toward -y.
 
     python3 ports/remastered/tools/handicons.py [OUT.c]
 
@@ -362,9 +360,8 @@ def main():
         print(f'handicons: {name} {ntri} triangles, {len(b)} bytes')
         icons.append((name, b))
     with open(out, 'w') as f:
-        f.write("/* rm_icons.c: the Remaster Options' menu icons, built by ports/remastered/tools/handicons.py\n")
-        f.write(" * (measured off ports/common/assets: crt.blend; n64.blend, after Nintendo 64 by Oliver_Budd_ID,\n")
-        f.write(" * CC BY): each the game's own icon model format (tgr/model.h), big-endian, every address an\n")
+        f.write("/* rm_icons.c: the Remaster Options' menu icons, built by ports/remastered/tools/handicons.py:\n")
+        f.write(" * each in the game's own icon model format (tgr/model.h), big-endian, every address an\n")
         f.write(" * offset from its start (rmoptions.c places and rebases them).  Generated: do not edit. */\n")
         for name, b in icons:
             f.write(f'const unsigned int rm_icon_{name}_len = {len(b)};\n')

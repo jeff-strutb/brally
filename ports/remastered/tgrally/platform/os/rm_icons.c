@@ -1,6 +1,5 @@
-/* rm_icons.c: the Remaster Options' menu icons, built by ports/remastered/tools/handicons.py
- * (measured off ports/common/assets: crt.blend; n64.blend, after Nintendo 64 by Oliver_Budd_ID,
- * CC BY): each the game's own icon model format (tgr/model.h), big-endian, every address an
+/* rm_icons.c: the Remaster Options' menu icons, built by ports/remastered/tools/handicons.py:
+ * each in the game's own icon model format (tgr/model.h), big-endian, every address an
  * offset from its start (rmoptions.c places and rebases them).  Generated: do not edit. */
 const unsigned int rm_icon_crt_len = 8976;
 const unsigned char rm_icon_crt[8976] = {

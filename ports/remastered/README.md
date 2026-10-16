@@ -14,7 +14,7 @@ Remastered adds laid over them (`tree.sh`).
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
 | `platform/controls.c` | the two players' controls: kept in the save folder (`controls.cfg`), read by both games |
-| `tools/handicons.py` | the options screen's monitor and console icons, built by hand in a few hundred triangles of flat colour as the game's own icons are, measured off renders and probes of `ports/common/assets` (`crt.blend`; `n64.blend`, after "Nintendo 64" by Oliver_Budd_ID, thingiverse.com/thing:3534035, CC BY), into `tgrally/platform/os/rm_icons.c` |
+| `tools/handicons.py` | the options screen's monitor and console icons, built by hand in a few hundred triangles of flat colour as the game's own icons are, their sizes, heights and colours measured off renders of a monitor and a console model, into `tgrally/platform/os/rm_icons.c` |
 | `ports/tgrally/link.sh`, `HOST=lib` | Top Gear Rally as `libtgrally.a`, its `main()` as `tgr_main` |
 | `ports/brally/link64.sh`, `HOST=lib` | Boss Rally as `libbrally.a`, its `main()` as `br_main` |
 | `platform/thunks.c` | each game's calls to the host for the window, input, sound and folders, sent on to `mux_tgr_*` or `mux_br_*` |
