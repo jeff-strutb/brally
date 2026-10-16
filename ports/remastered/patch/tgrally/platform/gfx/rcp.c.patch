@@ -25,7 +25,31 @@
      hud_state();
      rdr_vi(tgr_vi_ctrl());
      rdr_frame_end();
-@@ -445,6 +452,8 @@
+@@ -307,6 +314,7 @@
+ static float s_prim[4], s_env[4], s_fogc[4], s_blendc[4], s_prim_lod;
+ static int s_scissor[4];
+ static uint8_t s_tmem[4096];
++static int s_tmem_dirty = 1;           /* (Remastered) written since its hash was taken */
+ static struct {
+     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
+     int uls, ult, lrs, lrt;           /* 10.2 */
+@@ -327,6 +335,7 @@
+ static void tmem_put64(int addr, const uint8_t *src, int odd)
+ {
+     int k;
++    s_tmem_dirty = 1;
+     for (k = 0; k < 8; k++)
+         s_tmem[((addr * 8) + (k ^ (odd ? 4 : 0))) & 0xFFF] = src[k];
+ }
+@@ -367,6 +376,7 @@
+ {
+     int n = (lrs >> 2) + 1, i;
+     int t = s_tile[tile].tmem;               /* 0x100.. (the upper half) in 64-bit words */
++    s_tmem_dirty = 1;
+     for (i = 0; i < n; i++) {                /* each entry quadrupled: 64 bits an entry */
+         uint16_t c = rd16((s_timg & 0x7FFFFF) + i * 2);
+         int k;
+@@ -445,6 +455,8 @@
  static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
  static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
  
@@ -34,7 +58,25 @@
  static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
  {
      int i;
-@@ -509,7 +518,7 @@
+@@ -482,7 +494,16 @@
+     tile_dims(t, &w, &h);
+     key = fnv((const uint8_t *)&s_tile[t], sizeof s_tile[t], key);
+     key = fnv((const uint8_t *)&s_omh, 4, key);
+-    key = fnv(s_tmem, sizeof s_tmem, key);
++    /* (Remastered: TMEM hashed once a load, not once a primitive: a model of
++     * thousands of one-colour triangles hashed 4 KB for each) */
++    {
++        static uint64_t tmem_hash;
++        if (s_tmem_dirty) {
++            tmem_hash = fnv(s_tmem, sizeof s_tmem, 14695981039346656037ull);
++            s_tmem_dirty = 0;
++        }
++        key = fnv((const uint8_t *)&tmem_hash, sizeof tmem_hash, key);
++    }
+     for (i = 0; i < TEXCACHE; i++) {
+         if (s_cache[i].tex && s_cache[i].key == key) {
+             s_cache[i].used = ++s_cache_clock;
+@@ -509,7 +530,7 @@
          fwrite(rgba, 4, (size_t)w * h, s_wdump);
      }
      if (s_cache[slot].tex)
@@ -43,10 +85,12 @@
      s_cache[slot].tex = rdr_texture(rgba, w, h);
      if (s_texdump) {
          static int n;
-@@ -698,10 +707,416 @@
+@@ -696,12 +717,418 @@
+     st->scissor[1] = s_scissor[1];
+     st->scissor[2] = s_scissor[2];
      st->scissor[3] = s_scissor[3];
- }
- 
++}
++
 +/* ---- a window of any shape (tgr_view.h) ---------------------------------------------------- *
 + * With TGR_FLAG_ANY_ASPECT on and a window of another shape than the N64's 4:3, a frame is
 + * recorded and drawn at its end, when what it was is known.  A race frame (one that loaded a
@@ -167,8 +211,8 @@
 +        memcpy(s_mirror_clip, r->clip, sizeof s_mirror_clip);
 +        s_mirror_ok = 1;
 +    }
-+}
-+
+ }
+ 
 +static void put_rect(const RdrState *st, float x0, float y0, float x1, float y1, float s, float t, float dsdx,
 +                     float dtdy, int fill, const float rgba[4])
 +{
@@ -461,7 +505,7 @@
          s_frame_open = 1;
      }
  }
-@@ -942,9 +1357,9 @@
+@@ -942,9 +1369,9 @@
              fan[m++] = poly[k + 1];
          }
          if (m)
@@ -473,7 +517,7 @@
  }
  
  /* ---- the display list ----------------------------------------------------------------- */
-@@ -983,7 +1398,7 @@
+@@ -983,7 +1410,7 @@
          if (!st.tile[0].tex)
              fill_tile(&st.tile[0], tile);
      }
@@ -482,7 +526,7 @@
  }
  
  static void rect_fill(uint32_t w0, uint32_t w1)
-@@ -997,7 +1412,7 @@
+@@ -997,7 +1424,7 @@
          fprintf(stderr, "fillrect cyc %d %.0f,%.0f-%.0f,%.0f fill %08X cimg %X zimg %X cc %06X %08X prim %.2f %.2f %.2f oml %08X\n",
                  cyc, x0, y0, x1, y1, s_fill, s_cimg, s_zimg, s_cc0, s_cc1, s_prim[0], s_prim[1], s_prim[2], s_oml);
      if (cyc == 3 && s_cimg == s_zimg) {               /* the depth buffer filled: a depth clear */
@@ -491,7 +535,7 @@
          return;
      }
      if (cyc == 3 && s_cimg != s_zimg) {
-@@ -1019,16 +1434,16 @@
+@@ -1019,16 +1446,16 @@
          st.scissor[2] = s_scissor[2];
          st.scissor[3] = s_scissor[3];
          if (hl[0] == hl[1]) {
@@ -511,7 +555,7 @@
  }
  
  static void run(uint32_t dl)
-@@ -1046,10 +1461,13 @@
+@@ -1046,10 +1473,13 @@
              int p = (w0 >> 16) & 0xFF;
              m4_load(&m, seg_addr(w1));
              if (p & 1) {                              /* projection */
@@ -527,7 +571,7 @@
              } else {
                  if ((p & 4) && s_mvn < 9) {
                      s_mv[s_mvn + 1] = s_mv[s_mvn];
-@@ -1287,6 +1705,7 @@
+@@ -1287,6 +1717,7 @@
      }
      s_mvn = 0;                                        /* each task starts the matrix stack at the
                                                           task's dram_stack base */

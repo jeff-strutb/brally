@@ -14,7 +14,7 @@ Remastered adds laid over them (`tree.sh`).
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
 | `platform/controls.c` | the two players' controls: kept in the save folder (`controls.cfg`), read by both games |
-| `tools/menuicon.py`, `tools/menuicons.sh` | the options screen's monitor and console icons, from `ports/common/assets` (`crt.blend`; the console from `n64-3534035`, "Nintendo 64" by Oliver_Budd_ID, thingiverse.com/thing:3534035, CC BY, fitted to `n64.blend`'s proportions) into `tgrally/platform/os/rm_icons.c` |
+| `tools/handicons.py` | the options screen's monitor and console icons, built by hand in a few hundred triangles of flat colour as the game's own icons are, measured off renders and probes of `ports/common/assets` (`crt.blend`; `n64.blend`, after "Nintendo 64" by Oliver_Budd_ID, thingiverse.com/thing:3534035, CC BY), into `tgrally/platform/os/rm_icons.c` |
 | `ports/tgrally/link.sh`, `HOST=lib` | Top Gear Rally as `libtgrally.a`, its `main()` as `tgr_main` |
 | `ports/brally/link64.sh`, `HOST=lib` | Boss Rally as `libbrally.a`, its `main()` as `br_main` |
 | `platform/thunks.c` | each game's calls to the host for the window, input, sound and folders, sent on to `mux_tgr_*` or `mux_br_*` |
@@ -54,6 +54,9 @@ The menus at Widescreen keep their 4:3 layout at its size in the middle of
 the window; a picture across the whole screen (a menu's background) is scaled
 up to cover the window, and the title's 3D backdrop, which already reaches past
 the 4:3 edges, simply shows more (`tgrally/platform/gfx/rcp.c`, `place_menu`).
+The renderer hashes the texture memory once a load rather than once a
+primitive (`rcp.c`, `tile_texture`): the icons are thousands of one-colour
+triangles, and the console's 8000 hashed 4 KB each, some 30 ms a frame.
 
 **Shelved: the lighting and the textures.** Their code stays and is built, but
 they are always off and no menu offers them (`platform/options.c`; the
