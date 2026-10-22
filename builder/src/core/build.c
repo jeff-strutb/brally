@@ -322,7 +322,7 @@ static void say(ctx *c, double f, const char *s)
 static int mac_plist(ctx *c)
 {
     static const char *const id[] = { "com.strutb.bossrally64", "com.strutb.tgrally", "com.strutb.tgrally-remastered" };
-    static const char *const min[] = { "11.0", "12.0", "12.0" };
+    static const char *const min = "12.0";      /* every game and the builder: macOS 12 (builder/build.sh) */
     int g = c->job->game;
     const char *icon = g == RB_REMASTERED ? "AppIcon" : g == RB_BOSS_RALLY && c->icon ? "BossRally" : NULL;
     char path[2048], buf[4096], ic[256] = "", contents[2048];
@@ -345,7 +345,7 @@ static int mac_plist(ctx *c)
              "    <key>NSHighResolutionCapable</key><true/>\n"
              "    <key>GCSupportsControllerUserInteraction</key><true/>\n"
              "</dict>\n</plist>\n",
-             rb_game_name(g), rb_game_name(g), id[g], game_payload(g), ic, RB_VERSION, RB_VERSION, min[g]);
+             rb_game_name(g), rb_game_name(g), id[g], game_payload(g), ic, RB_VERSION, RB_VERSION, min);
     rb_join(contents, sizeof contents, c->root, "Contents");
     rb_join(path, sizeof path, contents, "Info.plist");
     if (!rb_write_file(path, buf, strlen(buf))) {
