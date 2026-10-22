@@ -1316,7 +1316,25 @@ int brr_open(int width, int height)
     VkSemaphoreCreateInfo si = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
     void *m = NULL;
     const char *e;
+    int k;
 
+    if (s_dev) {
+        /* Glide opened again (the game back in front after it lost focus, a
+         * new resolution): the device, the window's surface and its swapchain
+         * stay for the window's life; a second instance on the same window
+         * would be refused or draw nowhere.  The game's frame takes the new
+         * size, as do the targets without a window. */
+        vkDeviceWaitIdle(s_dev);
+        s_w = width;
+        s_h = height;
+        for (k = 0; k < BRR_XF_MAX; k++) {
+            s_xt_map[4 * k + 0] = 2.0f / s_w;  s_xt_map[4 * k + 1] = -1;
+            s_xt_map[4 * k + 2] = -2.0f / s_h; s_xt_map[4 * k + 3] = 1;
+        }
+        if (!s_surface && (width != s_rw || height != s_rh))
+            targets_resize(width, height);
+        return 1;
+    }
     s_w = s_rw = width;
     s_h = s_rh = height;
     s_offscreen = getenv("BR_VCLOCK") != NULL;
