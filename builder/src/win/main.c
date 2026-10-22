@@ -155,7 +155,7 @@ static HWND button(const wchar_t *s, int x, int y, int w, int id, int def)
 static void page_game(void)
 {
     static const wchar_t *const what[] = {
-        L"The 1998 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
+        L"The 1999 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
         L"The 1997 Nintendo 64 game, from your cartridge ROM.",
         L"Top Gear Rally's menus with Boss Rally's engine running the races, from both.",
     };
@@ -265,6 +265,13 @@ static void page_result(void)
              L"required to play.", 24, 60, 540, 40, s_font);
         to16(s_out, t, 2048);
         add(L"STATIC", t, SS_LEFT | SS_NOPREFIX | SS_PATHELLIPSIS, 24, 110, 540, 22, 0, s_mono);
+        /* what the game has beyond the original's own screens (ports/: PORT.md, README.md) */
+        text(s_game == RB_BOSS_RALLY ? L"Alt+Enter switches to full screen and back."
+             : s_game == RB_REMASTERED ? L"Alt+Enter switches to full screen and back. The options screen's controller row "
+                                         L"sets each player's keys and pad buttons; Quit is on the main menu."
+                                       : L"Alt+Enter switches to full screen and back. Options, Keys and Pad sets the keys and "
+                                         L"pad buttons; Escape on the main menu, or the pause menu's Exit Game, quits.",
+             24, 150, 540, 60, s_font);
         button(L"Done", 240, 472, 100, ID_DONE, 0);
         button(L"Open Folder", 352, 472, 100, ID_SHOW, 0);
         button(L"Play", 464, 472, 100, ID_PLAY, 1);

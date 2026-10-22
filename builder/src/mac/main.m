@@ -206,7 +206,7 @@ static void progress_cb(void *ctx, double f, const char *s)
 - (void)showGame
 {
     static const char *const what[] = {
-        "The 1998 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
+        "The 1999 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
         "The 1997 Nintendo 64 game, from your cartridge ROM.",
         "Top Gear Rally's menus with Boss Rally's engine running the races, from both. "
         "For the Mac, or for the iPhone and iPad.",
@@ -530,7 +530,12 @@ static void progress_cb(void *ctx, double f, const char *s)
             NSButton *play = [self button:@"Open the Game" action:@selector(play:)];
             play.identifier = out;
             play.keyEquivalent = @"\r";
-            how = @"";
+            /* what the game has beyond the original's own screens (ports/: PORT.md, README.md) */
+            how = self.game == RB_BOSS_RALLY ? @"View, Enter Full Screen (Control-Command-F) fills the screen."
+                : self.game == RB_REMASTERED ? @"View, Enter Full Screen (Control-Command-F) fills the screen. The options screen's "
+                                               @"controller row sets each player's keys and pad buttons; Quit is on the main menu."
+                                             : @"View, Enter Full Screen (Control-Command-F) fills the screen. Options, Keys and Pad "
+                                               @"sets the keys and pad buttons; Escape on the main menu, or the pause menu's Exit Game, quits.";
             buttons = @[ done, show, play ];
         }
         [self setPage:vstack(@[ label([NSString stringWithFormat:@"%s is ready", rb_game_name(self.game)], 20, YES),
