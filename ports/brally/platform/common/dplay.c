@@ -114,7 +114,13 @@ static uint16_t net_port(void)
     return e && atoi(e) > 0 ? (uint16_t)atoi(e) : NET_PORT;
 }
 
-static void lock(void)   { plat_vclock_import(); host_mutex_lock(s_lock); }
+static void lock(void)
+{
+    plat_vclock_import();
+    if (!s_lock)                     /* (before the network is up: the game's own thread) */
+        s_lock = host_mutex_new();
+    host_mutex_lock(s_lock);
+}
 static void unlock(void) { host_mutex_unlock(s_lock); }
 
 /* ---- packets ----------------------------------------------------------------------- */
@@ -660,7 +666,10 @@ static HRESULT dp_enum_connections(void *self, const GUID *app, void *cb, void *
     static char names[4][256];
     int i;
     (void)self; (void)app; (void)flags;
-    net_up();
+    /* the transports are listed without the network: the game lists them at
+       start-up, and a socket opened then would have Windows' firewall ask
+       before the first menu (and take the window's focus); it comes up when
+       one is chosen (dp_initialize_connection) */
     for (i = 0; i < 4; i++) {
         unsigned char conn[36];
         DWORD sz = 16;

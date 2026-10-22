@@ -296,6 +296,28 @@ int brr_open(int width, int height)
     const char *e;
     int f, cs, ct;
     static const uint8_t white[4] = { 255, 255, 255, 255 };
+    if (s_open) {
+        /* Glide opened again (the game back in front after it lost focus, a
+         * new resolution): the context stays for the window's life (its pixel
+         * format can be set once).  The game's frame takes the new size, as
+         * does the target offscreen. */
+        static float t[BRR_XF_MAX][4];
+        int k;
+        s_w = width;
+        s_h = height;
+        for (k = 0; k < BRR_XF_MAX; k++) {
+            t[k][0] = 2.0f / (float)s_w; t[k][1] = -1.0f;
+            t[k][2] = -2.0f / (float)s_h; t[k][3] = 1.0f;
+        }
+        glBindBuffer(GL_TEXTURE_BUFFER, s_xtbuf);
+        glBufferData(GL_TEXTURE_BUFFER, sizeof t, t, GL_DYNAMIC_DRAW);
+        if (s_offscreen && (width != s_rw || height != s_rh)) {
+            s_rw = width;
+            s_rh = height;
+            return targets();
+        }
+        return 1;
+    }
     s_w = s_rw = width;
     s_h = s_rh = height;
     s_offscreen = getenv("BR_VCLOCK") != NULL;
