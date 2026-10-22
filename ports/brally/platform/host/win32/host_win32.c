@@ -145,6 +145,11 @@ int host_mkdir(const char *path)
     return CreateDirectoryA(path, NULL) || GetLastError() == ERROR_ALREADY_EXISTS;
 }
 
+int host_rename(const char *from, const char *to)
+{
+    return MoveFileExA(from, to, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+}
+
 /* ---- network ---------------------------------------------------------------- */
 struct host_sock { SOCKET s; };
 
