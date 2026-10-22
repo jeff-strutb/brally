@@ -28,7 +28,29 @@ uint64_t host_ticks_ns(void)
            (uint64_t)(c.QuadPart % f.QuadPart) * 1000000000u / (uint64_t)f.QuadPart;
 }
 
-void host_sleep_ms(uint32_t ms) { Sleep(ms); }
+/* Sleep keeps to the system's timer, 15.6 ms a tick unless some process
+ * asks for finer: a game waiting out the next retrace a millisecond at a
+ * time would wake up to 14 ms late.  A high-resolution waitable timer
+ * (Windows 10 1803 on) keeps to the request; each thread has its own. */
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
+void host_sleep_ms(uint32_t ms)
+{
+    static __thread HANDLE t;
+    static __thread int tried;
+    LARGE_INTEGER due;
+    if (!tried) {
+        tried = 1;
+        t = CreateWaitableTimerExW(NULL, NULL, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+    }
+    due.QuadPart = -(LONGLONG)ms * 10000;            /* relative, in 100 ns */
+    if (t && ms && SetWaitableTimer(t, &due, 0, NULL, NULL, FALSE)) {
+        WaitForSingleObject(t, INFINITE);
+        return;
+    }
+    Sleep(ms);
+}
 
 /* ---- threads -------------------------------------------------------------- */
 struct host_mutex { CRITICAL_SECTION cs; };          /* recursive by nature */
