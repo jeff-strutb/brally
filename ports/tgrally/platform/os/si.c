@@ -141,6 +141,7 @@ static int s_cap = -1;                  /* the input awaiting a key or button (k
 static int s_cap_hold;                  /* after a wait: no input until everything is let go */
 static unsigned s_cap_padwas;           /* the pad's buttons when the wait began */
 static unsigned s_pad_now;              /* the pad's buttons at the last retrace */
+static int exit_menu_up(void);
 
 static void keys_path(char *out, size_t n) { snprintf(out, n, "%s/keys.cfg", host_save_dir()); }
 
@@ -230,6 +231,10 @@ void tgr_input_key(int vk, int down)
         return;
     if (!s_keys_loaded)
         keys_load();
+    if (vk == 0x1B && down && s_cap < 0 && tgr_exit_shown() && exit_menu_up()) {
+        tgr_exit_game();                    /* Escape on the main menu: Exit Game (not START) */
+        return;
+    }
     s_vk[vk] = (uint8_t)(down != 0);
     if (s_cap >= 0 && down) {               /* the awaited key (Escape: as it was) */
         if (vk != 0x1B)
@@ -352,6 +357,25 @@ void tgr_keys_capture(int in)
 }
 
 int tgr_keys_capturing(void) { return s_cap; }
+
+/* ---- Exit Game: the pause menu's last row, Escape on the main menu (as Boss
+ * Rally's own Quit Game and Escape at its main menu) ---- */
+volatile int tgr_quit;                  /* the host's loop (main.c) ends the run */
+static uint32_t s_exit_menu_at;         /* the retrace the main menu last drew */
+static int s_exit_menu_seen;
+
+int tgr_exit_shown(void) { return !s_scripted; }
+
+void tgr_exit_game(void) { tgr_quit = 1; }
+
+void tgr_exit_menu_frame(void)
+{
+    s_exit_menu_at = tgr_frame();
+    s_exit_menu_seen = 1;
+}
+
+/* the main menu on the screen (it draws every other retrace) */
+static int exit_menu_up(void) { return s_exit_menu_seen && tgr_frame() - s_exit_menu_at <= 4; }
 
 /* a modern stick (a circle, -1..1) as the N64's: past a small dead zone, the
  * travel rescaled to the full range and reaching the N64 stick's octagonal

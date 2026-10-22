@@ -24,7 +24,7 @@
  void BrMainMenu(void);
  void BrMusicVolumeUp(void);
  void BrMusicVolumeDown(void);
-@@ -373,6 +376,9 @@
+@@ -375,6 +378,9 @@
    int kb8;
    int kbc;
  
@@ -34,7 +34,7 @@
    if (D_802707C8 == 0) {
      D_8028A884 = 1;
      osViBlack(1);
-@@ -1038,6 +1044,7 @@
+@@ -1040,6 +1046,7 @@
    }
  
    /* each view */
@@ -42,7 +42,7 @@
    for (j = 0; j < D_8028AB0C; j++) {
      BrPerfMark(0, 0, 0, 0, 0xFF);
      D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-@@ -1217,6 +1224,7 @@
+@@ -1219,6 +1226,7 @@
      }
      BrViewOutline(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h);
    }
@@ -50,7 +50,7 @@
    BrStub80217C8C();
    BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
  
-@@ -1305,16 +1313,21 @@
+@@ -1310,16 +1318,21 @@
        BrTextPrint("%ryPAUSED", x, D_8028AAB4 * 5 / 16);
        y = D_8028AAB4 * 5 / 11;
        BrTextSetFont(20);
@@ -71,4 +71,4 @@
 +      tgr_touch_row(4, D_8026FF14);   /* port: a tap target (tgr_touch.h) */
        BrTextPrint(D_8026FF14 == 4 ? "%y1Exit to Main Menu" : "%ryExit to Main Menu", x, y);
        y += 20;
-     }
+       if (tgr_exit_shown()) {           /* port: Exit Game, as Boss Rally's Quit Game */
