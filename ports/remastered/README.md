@@ -120,7 +120,10 @@ touch controls), the second with the keyboard and the second pad; the left
 stick always steers. Defaults: player 1 Boss Rally's keys (arrows, right Ctrl
 brakes, A and Z gears, Delete the view), player 2 I accelerates, K reverses,
 J and L steer, O brakes, U and M gears, Y the view; on a pad A accelerates,
-B brakes, X reverses, RB and LB change gear, Y the view.
+B brakes, X reverses, RB and LB change gear, Y the view. In a race Change View
+steps through the views from the one on the screen: the car's own (where a race
+starts), the chase view, then (one player on the screen) the bonnet, and round
+again (`race_pads.c`).
 
 The window opens at 16:9 with Widescreen on and takes any shape the player
 gives it; the games' wishes to lock its shape are not passed on. Nothing
