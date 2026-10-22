@@ -20,7 +20,8 @@ readable C that rebuilds it exactly.
 
 **Play it:** download **Rally Builder** for macOS or Windows from
 [Releases](https://github.com/jeff-strutb/brally/releases/latest). It builds a
-native copy of either game from your own BIN/CUE or ROM, checked by MD5; no game
+native copy of any of the three games (Boss Rally, Top Gear Rally or Top Gear
+Rally Remastered, below) from your own BIN/CUE or ROM, checked by MD5; no game
 data ships with it ([builder/](builder/README.md)).
 
 **Maintainer:** Jeffrey Wilbur, Strut B, LLC\
@@ -422,10 +423,16 @@ run natively on modern computers, with no emulator:
 |---|---|---|
 | **Boss Rally** | The 1999 PC game, as it shipped. 4:3 picture, the original music and menus. | macOS, Windows |
 | **Top Gear Rally** | The 1997 N64 game, as it shipped. | macOS, Windows |
-| **Top Gear Rally Remastered** | The best of both: Top Gear Rally's menus, with Boss Rally's engine driving the races. Adds widescreen, a choice of PC or N64 music, an FPS counter, and two-player split screen. | macOS, Windows, iPhone and iPad |
+| **Top Gear Rally Remastered** | The best of both: Top Gear Rally's menus, with Boss Rally's engine driving the races. Adds widescreen, a choice of PC or N64 music, an FPS counter, a choice of either game's menus, two-player split screen and each player's controls. | macOS, Windows, iPhone and iPad |
 
-The first two are faithful ports: they play just like the originals.
-Remastered is where the improvements live.
+The first two are faithful ports: they play just like the originals. They add
+only what a computer needs: full screen (Control-Command-F on a Mac, Alt+Enter
+on Windows) and, in Top Gear Rally, Options > Keys and Pad for the keyboard and
+gamepad, and Exit Game. Remastered is where the improvements live.
+
+They run on macOS 12 or later (Apple silicon and Intel), Windows 10 or later
+(64-bit, with a Vulkan driver or OpenGL 3.3), and, for Remastered, iOS 16 or
+later.
 
 ### Building a game with Rally Builder
 

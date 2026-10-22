@@ -26,6 +26,24 @@ initialised data is read from there at start-up) and its audio tracks as FLAC
 in `music/cd` (Boss Rally's soundtrack, and Remastered's PC music). Linux is not
 built yet (no Linux window host in the ports).
 
+Version 0.89. The builder and every game it builds run on macOS 12 or later
+(Apple silicon and Intel) and Windows 10 or later (64-bit, with a Vulkan
+driver or OpenGL 3.3); Remastered's iPhone and iPad app on iOS 16 or later.
+
+## The games it builds
+
+Each is a native port of a decompilation (`ports/README.md`): the game's own
+code compiled for the machine, with a platform layer under it. Saves and
+settings live in the player's user folder (Application Support on macOS and
+iOS, `%APPDATA%` on Windows), so a rebuild never touches them. Full screen:
+View > Enter Full Screen (Control-Command-F) on a Mac, Alt+Enter on Windows.
+
+| game | source | what it is |
+|---|---|---|
+| Boss Rally | `ports/brally`, from `src/brally` (every function certified to behave as the retail game's, 77.6% of its bytes byte-exact) | the PC game as it shipped: its menus, keys, CD soundtrack and Quit Game; drawn with Metal on a Mac, Vulkan or OpenGL 3.3 on Windows |
+| Top Gear Rally | `ports/tgrally`, from `src/tgrally` (byte-exact, every function) | the cartridge at its own 30 frames a second, drawn as the N64's RDP drew it; saves on a Controller Pak kept as a file. Beyond the cartridge: Options > Keys and Pad (the keys and gamepad buttons for each of the N64 pad's), Exit Game on the pause menu and Escape on the main menu (`ports/tgrally/PORT.md`) |
+| Top Gear Rally Remastered | `ports/remastered`, both ports in one app | Top Gear Rally's menus and seasons with every race run by Boss Rally's engine; Remaster Options (Widescreen, Music, Show FPS, Menus: Top Gear Rally's or Boss Rally's); two players split screen; each player's keys and gamepad buttons on the controller screen; Change View through the car's view, the chase view and the bonnet; Quit on the main menu; touch on the iPhone and iPad (`ports/remastered/README.md`) |
+
 ## Layout
 
 | path | what |
@@ -35,7 +53,7 @@ built yet (no Linux window host in the ports).
 | `src/win/` | the Win32 front end, its manifest and version resources |
 | `build.sh` | builds both builders into `build/builder/dist/`: the macOS app, and a Windows zip of the exe with the three games' executables and icon beside it in `games\` |
 | `release.sh` | builds and publishes them as a GitHub release |
-| `version.py` | the release version: the average of the two decompilations' M2 progress, two decimals, rounded down |
+| `version.py` | the release version: the average of the two decompilations' M2 progress, two decimals, rounded down, or its `RELEASE` while that is ahead (0.89: M2 is at 0.88) |
 | `check_payload.py` | proves the shipped game executables carry none of the games' data |
 
 ## Building
