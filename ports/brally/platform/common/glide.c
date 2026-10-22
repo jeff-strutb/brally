@@ -330,11 +330,63 @@ FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return 
 
 static uint8_t s_tmem[TMU_RAM];
 
-/* a decoded texture: the bytes [start, end) read as fmt at w x h */
-typedef struct ptex { FxU32 start, end; GrTextureFormat_t fmt; int w, h; uint32_t id; } ptex;
+/* a decoded texture: the bytes [start, end) read as fmt at w x h, the
+ * renderer's texture kept for them (s_kept[k]) */
+typedef struct ptex { FxU32 start, end; GrTextureFormat_t fmt; int w, h; uint32_t id; int k; } ptex;
 #define PTEX_MAX 2048
 static ptex s_tex[PTEX_MAX];
 static int s_ntex;
+
+/* the renderer's textures, by the bytes they were decoded from: the same
+ * bytes back at any address take the texture already made.  The font is one
+ * texture downloaded again for every character drawn (br_font.c) and an
+ * animated texture cycles through a few frames, so without this each would
+ * be a new texture for the renderer every frame (and, with Vulkan, a wait
+ * for the GPU).  The least recently used goes when they are all taken. */
+typedef struct pkept { uint64_t key; GrTextureFormat_t fmt; int w, h; uint32_t id, used; } pkept;
+#define PKEPT_MAX 1536
+static pkept s_kept[PKEPT_MAX];
+static uint32_t s_kept_clock;
+
+static uint64_t bytes_key(const uint8_t *p, FxU32 n)
+{
+    uint64_t h = 14695981039346656037ull;          /* FNV-1a, 64 bits */
+    FxU32 i;
+    for (i = 0; i < n; i++)
+        h = (h ^ p[i]) * 1099511628211ull;
+    return h;
+}
+
+/* the slot kept for these bytes, or -1 */
+static int kept_find(uint64_t key, GrTextureFormat_t fmt, int w, int h)
+{
+    int k;
+    for (k = 0; k < PKEPT_MAX; k++)
+        if (s_kept[k].id && s_kept[k].key == key && s_kept[k].fmt == fmt && s_kept[k].w == w && s_kept[k].h == h)
+            return k;
+    return -1;
+}
+
+/* a slot for a new texture: an empty one, else the least recently used,
+ * freed with every decoded texture that named it */
+static int kept_slot(void)
+{
+    int k, old = 0, i;
+    for (k = 0; k < PKEPT_MAX; k++) {
+        if (!s_kept[k].id)
+            return k;
+        if (s_kept_clock - s_kept[k].used > s_kept_clock - s_kept[old].used)   /* (by age: the clock wraps) */
+            old = k;
+    }
+    for (i = 0; i < s_ntex; i++)
+        if (s_tex[i].k == old) {
+            s_tex[i] = s_tex[--s_ntex];
+            i--;
+        }
+    brr_texture_free(s_kept[old].id);
+    memset(&s_kept[old], 0, sizeof s_kept[old]);
+    return old;
+}
 
 static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
 {
@@ -413,12 +465,12 @@ void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *
     }
     memcpy(s_tmem + start, info->data, n);
     end = start + n;
-    /* anything decoded from the bytes just overwritten is stale */
+    /* anything decoded from the bytes just overwritten is stale here (the
+       renderer's texture stays kept for its bytes) */
     for (i = 0; i < s_ntex; i++)
         if (s_tex[i].id && s_tex[i].start < end && start < s_tex[i].end) {
             if (s_tex[i].id == s_st.texture)
                 s_src_dirty = 1;
-            brr_texture_free(s_tex[i].id);
             s_tex[i] = s_tex[--s_ntex];
             i--;
         }
@@ -443,9 +495,10 @@ void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
 
 static void tex_resolve(void)
 {
-    int i, w, h;
+    int i, k, w, h;
     FxU32 n, start = s_src_start;
     uint8_t *rgba;
+    uint64_t key;
     const GrTexInfo *info = &s_src_info;
     s_src_dirty = 0;
     s_st.texture = 0;
@@ -455,28 +508,41 @@ static void tex_resolve(void)
     for (i = 0; i < s_ntex; i++)
         if (s_tex[i].start == start && s_tex[i].fmt == info->format && s_tex[i].w == w && s_tex[i].h == h) {
             s_st.texture = s_tex[i].id;
+            s_kept[s_tex[i].k].used = ++s_kept_clock;
             return;
         }
     n = (FxU32)(w * h * texel_bytes(info->format));
     if (start + n > TMU_RAM)
         return;
-    rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
-    if (!rgba)
-        return;
-    decode(info->format, s_tmem + start, rgba, w * h);     /* the largest level */
-    if (s_ntex == PTEX_MAX) {
-        brr_texture_free(s_tex[0].id);
-        s_tex[0] = s_tex[--s_ntex];
+    key = bytes_key(s_tmem + start, n);                     /* the largest level, as decoded */
+    k = kept_find(key, info->format, w, h);
+    if (k < 0) {
+        rgba = (uint8_t *)malloc((size_t)w * (size_t)h * 4);
+        if (!rgba)
+            return;
+        decode(info->format, s_tmem + start, rgba, w * h);
+        k = kept_slot();
+        s_kept[k].id = brr_texture(0, rgba, w, h);
+        free(rgba);
+        if (!s_kept[k].id)
+            return;
+        s_kept[k].key = key;
+        s_kept[k].fmt = info->format;
+        s_kept[k].w = w;
+        s_kept[k].h = h;
     }
+    s_kept[k].used = ++s_kept_clock;
+    if (s_ntex == PTEX_MAX)
+        s_tex[0] = s_tex[--s_ntex];
     s_tex[s_ntex].start = start;
     s_tex[s_ntex].end = start + mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
     s_tex[s_ntex].fmt = info->format;
     s_tex[s_ntex].w = w;
     s_tex[s_ntex].h = h;
-    s_tex[s_ntex].id = brr_texture(0, rgba, w, h);
+    s_tex[s_ntex].id = s_kept[k].id;
+    s_tex[s_ntex].k = k;
     s_st.texture = s_tex[s_ntex].id;
     s_ntex++;
-    free(rgba);
 }
 
 /* ---- drawing ------------------------------------------------------------------------------ */
