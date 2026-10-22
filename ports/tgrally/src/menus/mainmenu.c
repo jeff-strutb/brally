@@ -40,6 +40,14 @@ extern unsigned char D_802724F4;
 extern int D_80316380;
 #define D_000EBC00 0xEBC00        /* a ROM offset */
 extern char D_802AC400[];
+extern int D_8028AAB0;                  /* the screen's width */
+void BrTextSetFont(int size);
+void BrTextHighlightOff(void);
+void BrTextAlignRight(void);
+void BrTextAlignCentre(void);
+void BrTextPrint(char *s, int x, int y);
+int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
+void tgr_exit_menu_frame(void);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Begin a one-player Championship: set the race type, go to
@@ -151,5 +159,13 @@ void BrMainMenu(void)
     BrModeSet(BrIntroScreen);
     D_80272384 = 0;
     break;
+  }
+  if (tgr_exit_shown()) {               /* port: Escape here is Exit Game (si.c), said at the top right */
+    tgr_exit_menu_frame();
+    BrTextSetFont(10);
+    BrTextHighlightOff();
+    BrTextAlignRight();
+    BrTextPrint("%wwEsc: Exit Game", D_8028AAB0 - 8, 12);
+    BrTextAlignCentre();
   }
 }

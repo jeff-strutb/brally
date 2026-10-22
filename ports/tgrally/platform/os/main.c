@@ -11,6 +11,7 @@
 #include "../render/rdr.h"
 
 TgrConfig g_tgr;
+extern volatile int tgr_quit;       /* Exit Game (si.c) */
 
 void BrBoot(void);                  /* src/startup/boot.c */
 void tgr_script_load(const char *path);
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
     if (g_tgr.headless) {
         tgr_os_wait();
     } else {
-        while (!tgr_os_finished()) {
+        while (!tgr_os_finished() && !tgr_quit) {
             host_event ev;
             if (host_poll_event(&ev, 10)) {
                 if (ev.type == HOST_EV_CLOSE)
