@@ -20,8 +20,9 @@
 #               downloaded or tracked, but the image is right there, so there
 #               is no reason to make a human copy files by hand.
 #
-#   reference/brally/orig/       Game binaries pulled out of the Boss Rally BIN/CUE.  The match
-#               target is BRD3D.dll; BRGlide.dll is the renderer reference.
+#   reference/brally/orig/       Game binaries pulled out of the Boss Rally BIN/CUE.  The
+#               reference for all matching is BRGlide.dll (rule 0); BRD3D.dll
+#               is staged beside it for reference only.
 #               Do not copy these by hand.
 #
 #   N64 music   XM modules rendered out of the Top Gear Rally ROM, if one is
@@ -342,14 +343,20 @@ fi
 echo ""
 
 # ---- Original function bytes ---------------------------------------------
-if [ ! -f reference/brally/orig/BRD3D.dll ]; then
-    echo "[fail] reference/brally/orig/BRD3D.dll is missing -- cannot extract function bytes"
+# from BRGlide.dll, the reference (rule 0; tools/brally/refcheck.py): a corpus
+# keyed to anything else is set aside and extracted again
+if [ ! -f reference/brally/orig/BRGlide.dll ]; then
+    echo "[fail] reference/brally/orig/BRGlide.dll is missing -- cannot extract function bytes"
     exit 1
+fi
+if [ -n "$(ls build/brally/win32/match/orig/ 2>/dev/null)" ] && ! python3 tools/brally/refcheck.py --quiet; then
+    echo "[stale] build/brally/win32/match/orig is not keyed to BRGlide.dll; extracting it again"
+    rm -rf build/brally/win32/match/orig
 fi
 if [ ! -d build/brally/win32/match/orig ] || [ -z "$(ls build/brally/win32/match/orig/ 2>/dev/null)" ]; then
     echo "[extract] original function bytes from the shipped game binary..."
     mkdir -p build/brally/win32/match/orig
-    python3 tools/brally/extract_funcs.py reference/brally/orig/BRD3D.dll config/brally/functions.csv build/brally/win32/match/orig/
+    python3 tools/brally/extract_funcs.py reference/brally/orig/BRGlide.dll config/brally/functions_glide.csv build/brally/win32/match/orig/
     echo "[ok] original function bytes extracted ($(ls build/brally/win32/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"
 else
     echo "[ok] original function bytes extracted ($(ls build/brally/win32/match/orig/*.bin 2>/dev/null | wc -l | tr -d ' ') functions)"

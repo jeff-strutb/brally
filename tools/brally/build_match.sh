@@ -39,7 +39,7 @@ mkdir -p build/brally/win32/match/obj build/brally/win32/match/verified
 
 # Extract original function bytes if not already done
 if [ ! -d build/brally/win32/match/orig ] || [ -z "$(ls build/brally/win32/match/orig/ 2>/dev/null)" ]; then
-    python3 tools/brally/extract_funcs.py reference/brally/orig/BRD3D.dll config/brally/functions.csv build/brally/win32/match/orig/
+    python3 tools/brally/extract_funcs.py reference/brally/orig/BRGlide.dll config/brally/functions_glide.csv build/brally/win32/match/orig/   # rule 0: BRGlide
 fi
 
 match_file() {

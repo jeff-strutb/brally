@@ -7,8 +7,11 @@ Given a DLL and the functions CSV, extracts each function's raw bytes from the
 against.
 
 Usage:
-    python3 tools/brally/extract_funcs.py reference/brally/orig/BRD3D.dll config/brally/functions.csv build/brally/win32/match/orig/
-    python3 tools/brally/extract_funcs.py reference/brally/orig/BRGlide.dll config/brally/functions_glide.csv build/brally/win32/match/orig_glide/
+    python3 tools/brally/extract_funcs.py reference/brally/orig/BRGlide.dll config/brally/functions_glide.csv build/brally/win32/match/orig/
+
+build/brally/win32/match/orig is the corpus every matching tool scores against,
+and it must come from BRGlide.dll (rule 0: tools/brally/refcheck.py fails
+otherwise).  BRD3D.dll statically links Microsoft's CRT and is reference only.
 
 Each function is written as:
     <outdir>/0x<VA>.bin    -- raw bytes
