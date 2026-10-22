@@ -114,7 +114,7 @@ Saves are a Controller Pak in port 1, kept in
 |---|---|---|
 | stick | left stick (to the N64's octagonal gate: 80 at the cardinal points, 70 on each axis at the diagonals) | arrows |
 | A, B | A, B | X or Return, Z |
-| C buttons | right stick; X is C-left, Y is C-up | I J K L |
+| C buttons | right stick; X is C-left, Y is C-up, the right stick pressed C-down (the chase view), the left stick pressed C-right | I J K L |
 | Z | left trigger | Space |
 | L, R | shoulders (right trigger is R too) | Q, W or E |
 | START | menu | Escape or P |

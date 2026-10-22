@@ -188,6 +188,8 @@ void tgr_input_frame(uint32_t frame)
             if (hp.buttons & 2) b |= B_B;
             if (hp.buttons & 4) b |= B_CL;
             if (hp.buttons & 8) b |= B_CU;
+            if (hp.buttons & (1 << 9)) b |= B_CD;     /* the right stick pressed: C-down, the chase view */
+            if (hp.buttons & (1 << 8)) b |= B_CR;     /* the left: C-right (its place on controller type B) */
             if (hp.buttons & 16) b |= B_L;
             if (hp.buttons & 32) b |= B_R;
             if (hp.buttons & 128) b |= B_START;
