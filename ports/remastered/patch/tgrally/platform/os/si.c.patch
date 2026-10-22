@@ -1,14 +1,14 @@
 --- a/platform/os/si.c
 +++ b/platform/os/si.c
-@@ -10,7 +10,36 @@
- #include <string.h>
+@@ -11,6 +11,35 @@
  #include "host.h"
  #include "plat.h"
+ #include "tgr_keys.h"
 +#include "tgr_touch.h"
 +#ifdef __APPLE__
 +#include <TargetConditionals.h>
 +#endif
- 
++
 +/* Top Gear Rally Remastered: the second player's port, from the app's controls
 + * (ports/remastered/platform/controls.h): the keys held and the host's second pad */
 +void rm_player_menu(int player, const unsigned char *dik, const host_pad *pad, unsigned short *buttons,
@@ -33,19 +33,18 @@
 +    return 1;
 +#endif
 +}
-+
+ 
  enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
         B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
-        B_CL = 0x0002, B_CR = 0x0001 };
-@@ -129,6 +158,7 @@
+@@ -243,6 +272,7 @@
  /* everything released (the window lost the keyboard: its key-ups go elsewhere) */
  void tgr_input_release(void)
  {
 +    memset(s_dik, 0, sizeof s_dik);
+     memset(s_vk, 0, sizeof s_vk);
      s_keys = 0;
      s_kx = s_ky = 0;
- }
-@@ -157,6 +187,16 @@
+@@ -377,6 +407,16 @@
  void tgr_input_frame(uint32_t frame)
  {
      int p, i;
@@ -62,15 +61,15 @@
      if (s_scripted) {
          for (p = 0; p < 2; p++) {
              s_now[p].b = 0;
-@@ -198,9 +238,20 @@
-             if (hp.buttons & (1 << 14)) b |= B_DD;
-             if (hp.buttons & (1 << 15)) b |= B_DL;
+@@ -435,10 +475,21 @@
+             b = 0;                                    /* the game sees nothing pressed */
+             x = y = 0;
          }
 +        tgr_touch_input(&b, &x, &y);              /* a touch's presses (tgr_touch.h) */
          s_now[0].b = b;
          s_now[0].x = (int8_t)x;
          s_now[0].y = (int8_t)y;
-+    }
+     }
 +    {                                             /* the second player (Remastered) */
 +        host_pad hp;
 +        unsigned short b2;
@@ -80,6 +79,7 @@
 +        s_now[1].b = b2;
 +        s_now[1].x = (int8_t)x2;
 +        s_now[1].y = (int8_t)y2;
-     }
++    }
  }
  
+ /* ---- libultra ---------------------------------------------------------------- */
