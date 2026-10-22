@@ -16,6 +16,7 @@
  *   music     Media Foundation's source reader (FLAC is built in from
  *             Windows 10 on), resampled to the mixer's rate
  *   pads      XInput's first controller
+ *   Alt+Enter full screen: the window without its frame over its monitor
  *
  * Directories (environment, else the defaults):
  *   BR_CDROOT    the CD's files     (default reference/brally/data\disc, then disc\ beside the exe)
@@ -239,6 +240,35 @@ static void key_event(WPARAM vk, LPARAM lp, int down)
 /* ---- the window ----------------------------------------------------------------- */
 static int s_w = 640, s_h = 480;
 
+/* Alt+Enter: the window without its frame over the whole of its monitor, and
+ * back to where it was (the macOS host's View > Enter Full Screen).  The
+ * renderers follow the window's size, so the game is not told. */
+static int s_full;
+static LONG_PTR s_full_style;
+static WINDOWPLACEMENT s_full_place;
+
+static void fullscreen_toggle(void)
+{
+    if (!s_full) {
+        MONITORINFO mi;
+        mi.cbSize = sizeof mi;
+        s_full_place.length = sizeof s_full_place;
+        if (!GetWindowPlacement(s_win, &s_full_place) ||
+            !GetMonitorInfoA(MonitorFromWindow(s_win, MONITOR_DEFAULTTONEAREST), &mi))
+            return;
+        s_full_style = GetWindowLongPtrA(s_win, GWL_STYLE);
+        SetWindowLongPtrA(s_win, GWL_STYLE, (s_full_style & ~(LONG_PTR)WS_OVERLAPPEDWINDOW) | WS_POPUP);
+        SetWindowPos(s_win, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left,
+                     mi.rcMonitor.bottom - mi.rcMonitor.top, SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        s_full = 1;
+    } else {
+        SetWindowLongPtrA(s_win, GWL_STYLE, s_full_style);
+        SetWindowPlacement(s_win, &s_full_place);
+        SetWindowPos(s_win, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        s_full = 0;
+    }
+}
+
 static void client_point(LPARAM lp, int *x, int *y)
 {
     RECT r;
@@ -254,6 +284,11 @@ static LRESULT CALLBACK wnd_proc(HWND h, UINT m, WPARAM wp, LPARAM lp)
     switch (m) {
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
+        if (m == WM_SYSKEYDOWN && wp == VK_RETURN) {   /* Alt+Enter: full screen (the game never sees the Enter) */
+            if (!(lp & (1 << 30)))                      /* (not held down: auto-repeat) */
+                fullscreen_toggle();
+            return 0;
+        }
         key_event(wp, lp, 1);
         if (m == WM_SYSKEYDOWN && wp != VK_F4)
             return 0;                 /* Alt alone must not open the window menu */
