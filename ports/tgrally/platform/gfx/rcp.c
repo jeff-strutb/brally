@@ -307,6 +307,7 @@ static uint32_t s_cc0, s_cc1;
 static float s_prim[4], s_env[4], s_fogc[4], s_blendc[4], s_prim_lod;
 static int s_scissor[4];
 static uint8_t s_tmem[4096];
+static int s_tmem_dirty = 1;           /* written since its hash was taken (tile_texture) */
 static struct {
     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
     int uls, ult, lrs, lrt;           /* 10.2 */
@@ -327,6 +328,7 @@ static void rgba32f(uint32_t c, float out[4])
 static void tmem_put64(int addr, const uint8_t *src, int odd)
 {
     int k;
+    s_tmem_dirty = 1;
     for (k = 0; k < 8; k++)
         s_tmem[((addr * 8) + (k ^ (odd ? 4 : 0))) & 0xFFF] = src[k];
 }
@@ -367,6 +369,7 @@ static void load_tlut(int tile, int lrs)
 {
     int n = (lrs >> 2) + 1, i;
     int t = s_tile[tile].tmem;               /* 0x100.. (the upper half) in 64-bit words */
+    s_tmem_dirty = 1;
     for (i = 0; i < n; i++) {                /* each entry quadrupled: 64 bits an entry */
         uint16_t c = rd16((s_timg & 0x7FFFFF) + i * 2);
         int k;
@@ -482,7 +485,16 @@ static int tile_texture(int t, int *pw, int *ph)
     tile_dims(t, &w, &h);
     key = fnv((const uint8_t *)&s_tile[t], sizeof s_tile[t], key);
     key = fnv((const uint8_t *)&s_omh, 4, key);
-    key = fnv(s_tmem, sizeof s_tmem, key);
+    /* TMEM hashed once a load, not once a primitive: a model of thousands of
+     * one-colour triangles hashed 4 KB for each */
+    {
+        static uint64_t tmem_hash;
+        if (s_tmem_dirty) {
+            tmem_hash = fnv(s_tmem, sizeof s_tmem, 14695981039346656037ull);
+            s_tmem_dirty = 0;
+        }
+        key = fnv((const uint8_t *)&tmem_hash, sizeof tmem_hash, key);
+    }
     for (i = 0; i < TEXCACHE; i++) {
         if (s_cache[i].tex && s_cache[i].key == key) {
             s_cache[i].used = ++s_cache_clock;
