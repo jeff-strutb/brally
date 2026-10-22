@@ -121,7 +121,7 @@ Saves are a Controller Pak in port 1, kept in
 | D-pad | d-pad | |
 
 The picture is the N64's 4:3, the window held at that shape. View > Enter
-Full Screen (Ctrl-Cmd-F). In the background the game is paused: the N64's
+Full Screen (Ctrl-Cmd-F); on Windows, Alt+Enter. In the background the game is paused: the N64's
 clock stops.
 
 **Top Gear Rally Remastered** (`ports/remastered`, its `README.md`) builds
