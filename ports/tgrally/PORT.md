@@ -127,6 +127,11 @@ stick's four ways (`src/menus/keysmenu.c`, `platform/os/si.c`; kept in
 The controller row still opens the game's own screen, whose five layouts say
 what each of the pad's buttons does. A scripted run has no such row.
 
+Exit Game, as Boss Rally has it: the pause menu's last row, after Exit to
+Main Menu, and Escape on the main menu, which says so at its top right
+(elsewhere Escape is START). The cartridge has neither; a scripted run
+neither.
+
 The picture is the N64's 4:3, the window held at that shape. View > Enter
 Full Screen (Ctrl-Cmd-F); on Windows, Alt+Enter. In the background the game is paused: the N64's
 clock stops.

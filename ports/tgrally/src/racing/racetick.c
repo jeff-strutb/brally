@@ -305,6 +305,8 @@ void BrParticleDraw(void);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
 void BrPadStickToButtons(int);
 void BrTriCacheReset(void);
+int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
+void tgr_exit_game(void);
 /* -- end declarations -- */
 
 #define PAD(i) TGR_PTR(BrPadRec *, D_8031B760[i].pad)
@@ -1255,19 +1257,22 @@ draw:
           D_8027078C = 0;
           D_802707CC = 1;
           break;
+        case 5:
+          tgr_exit_game();              /* port: Exit Game */
+          break;
         }
       }
       if (PAD(i)->pressed & 8) {
         BrPadConsume(PAD(i), 5);
         PAD(i)->pressed &= ~5;
         BrPadConsume(PAD(i), 8);
-        D_8026FF14 = (D_8026FF14 + 4) % 5;
+        D_8026FF14 = (D_8026FF14 + (tgr_exit_shown() ? 5 : 4)) % (tgr_exit_shown() ? 6 : 5);   /* port: Exit Game's row */
       }
       if (PAD(i)->pressed & 2) {
         BrPadConsume(PAD(i), 5);
         PAD(i)->pressed &= ~5;
         BrPadConsume(PAD(i), 2);
-        D_8026FF14 = (D_8026FF14 + 1) % 5;
+        D_8026FF14 = (D_8026FF14 + 1) % (tgr_exit_shown() ? 6 : 5);   /* port: Exit Game's row */
       }
       if (PAD(i)->pressed & 4) {
         if (D_8026FF14 != 0) {
@@ -1317,6 +1322,10 @@ draw:
       y += 20;
       BrTextPrint(D_8026FF14 == 4 ? "%y1Exit to Main Menu" : "%ryExit to Main Menu", x, y);
       y += 20;
+      if (tgr_exit_shown()) {           /* port: Exit Game, as Boss Rally's Quit Game */
+        BrTextPrint(D_8026FF14 == 5 ? "%y1Exit Game" : "%ryExit Game", x, y);
+        y += 20;
+      }
     }
   } else {
     if (D_8026FF18 == 4 || D_8026FF18 == 5) {

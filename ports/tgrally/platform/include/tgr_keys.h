@@ -1,5 +1,6 @@
 /* tgr_keys.h: the keys and game pad buttons that are the N64 pad's (si.c),
- * as the options screen's Keys and Pad sets them (src/menus/keysmenu.c).
+ * as the options screen's Keys and Pad sets them (src/menus/keysmenu.c), and
+ * Exit Game.
  * An input is one of the pad's buttons (A, B, Z, Start, L, R, the C buttons,
  * the d-pad) or one of its stick's four ways. */
 #ifndef TGR_KEYS_H
@@ -18,5 +19,11 @@ void tgr_keys_reset(void);              /* the defaults, kept */
  * nothing pressed */
 void tgr_keys_capture(int in);
 int  tgr_keys_capturing(void);          /* the input waited for, -1 none */
+
+/* Exit Game: the run ends (the host's loop sees tgr_quit), from the pause
+ * menu's last row or Escape on the main menu.  Neither in a scripted run. */
+int  tgr_exit_shown(void);
+void tgr_exit_game(void);
+void tgr_exit_menu_frame(void);         /* the main menu drew: Escape there is Exit Game */
 
 #endif
