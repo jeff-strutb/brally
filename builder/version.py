@@ -4,6 +4,11 @@ M2 progress (byte-exact bytes over the hand-written target), as a fraction
 with two decimals, rounded down. M2 at 77.6% for one game and 100% for the
 other is release 0.88; both complete is 1.00.
 
+RELEASE, when set, is the version instead, for a release of the builder and
+the ports while M2 has not moved (0.89: the Windows fixes, Keys and Pad and
+Exit Game in Top Gear Rally, Quit and the views in Remastered, M2 still at
+0.88). It gives way to M2 once M2 passes it.
+
 The counts come from the same tools that draw the README's bars
 (tools/brally/tiers.py and tools/tgrally/n64tiers.py, through
 tools/brally/progressbar.py), rebuilt fresh, never from the README.
@@ -18,6 +23,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
 import progressbar  # noqa: E402
 
+RELEASE = '0.89'
+
 
 def main():
     t3_fns, t3_b, t4_fns, t4_b, target, target_b = progressbar.tier_counts()[:6]
@@ -26,6 +33,8 @@ def main():
     avg = (br + tgr) / 2
     hundredths = int(avg * 100 + 1e-9)
     version = '%d.%02d' % (hundredths // 100, hundredths % 100)
+    if RELEASE and float(RELEASE) > float(version):
+        version = RELEASE
     if '--detail' in sys.argv:
         print('Boss Rally M2      %.2f%%  (%d / %d B)' % (100 * br, t4_b, target_b))
         print('Top Gear Rally M2  %.2f%%  (%d / %d B)' % (100 * tgr, n4b, ntb))
