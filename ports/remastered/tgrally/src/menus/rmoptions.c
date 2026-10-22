@@ -103,6 +103,13 @@ static void icons(void)
   at = place(at, rm_icon_n64, rm_icon_n64_len, 1.0f);
 }
 
+/* the console's icon, placed (the main menu's Quit: rmmainmenu.c) */
+unsigned int rm_options_icon_console(void)
+{
+  icons();
+  return s_n64;
+}
+
 /* the screen's rows: the game's three, ours, the game's others (NULL-terminated) */
 MenuItem **rm_options_items(MenuItem **game)
 {

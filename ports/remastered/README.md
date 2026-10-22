@@ -110,6 +110,11 @@ Each player drives their own car with their own transmission, tyres and
 suspension, chosen on Top Gear Rally's set-up screens. Both outcomes come back
 to the results.
 
+**Quit.** On a desktop Top Gear Rally's main menu has Quit after Options, the
+console its icon (`tgrally/src/menus/rmmainmenu.c`): the app closes as its
+window's close does (`rm_quit`), as Boss Rally's menus' Quit does. The
+cartridge has none, and neither has the iPhone.
+
 **Controls.** The options screen's controller row opens Controls: a Player row
 (up, down or A: whose controls), a row an action (Accelerate, Brake, Reverse,
 Steer Left, Steer Right, Gear Up, Gear Down, Change View) showing its key and
