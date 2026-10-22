@@ -1,6 +1,6 @@
 --- a/src/menus/options.c
 +++ b/src/menus/options.c
-@@ -40,6 +40,11 @@
+@@ -42,6 +42,11 @@
  extern char D_803163B0[24];
  extern char D_803163C8[24];
  extern MenuItem D_802723DC[];
@@ -12,7 +12,7 @@
  /* -- end declarations -- */
  
  /* WHAT IT DOES: Turn the music up one notch on the options screen (to at
-@@ -104,7 +109,7 @@
+@@ -106,7 +111,7 @@
  /* @implements 0x8021196C tgr BrOptionsDrawHelp */
  void BrOptionsDrawHelp(int row)
  {
@@ -21,30 +21,30 @@
      BrTextSetFont(10);
      BrTextHighlightOff();
      BrTextAlignCentre();
-@@ -143,7 +148,7 @@
+@@ -145,7 +150,7 @@
    if (D_802724E0 <= 0) {
      D_80271FA4 = -1;
      D_80271FA0 = -1;
--    BrFrontMenuEnter(D_80272468, &D_803163A8);
+-    BrFrontMenuEnter(tgr_keys_items(D_80272468), &D_803163A8);   /* port: with Keys and Pad */
 +    BrFrontMenuEnter(rm_options_items(D_80272468), &D_803163A8);   /* port: with ours */
      BrPaintShopMemInit();
      D_80271FC8 = BrOptionsDrawHelp;
      D_80271FB0 = &D_8027205C;
-@@ -165,7 +170,12 @@
+@@ -167,10 +172,11 @@
    } else {
      D_802723DC[2].label = tgr_addr32("Units: kph");
    }
--  switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
 +  rm_options_frame();                   /* port: our rows' labels and icons */
-+  {
+   {
+-  int res = BrMenu("OPTIONS", D_803163A8, tgr_keys_items(D_80272468), &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20);
 +  int res = BrMenu("OPTIONS", D_803163A8, rm_options_items(D_80272468), &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20);
-+  int keep = D_803163AC;               /* port: the game's switch sees its own row numbers */
+   int keep = D_803163AC;               /* port: the game's switch sees its own row numbers */
+-  D_803163AC = tgr_keys_row(res, keep);
 +  D_803163AC = rm_options_row(res, keep);
-+  switch (D_803163AC < 0 ? 0 : res) {
+   switch (D_803163AC < 0 ? 0 : res) {
    case 4:
      switch (D_803163AC) {
-     case 0:
-@@ -201,7 +211,7 @@
+@@ -207,7 +213,7 @@
        D_802724E0 = -1;
        D_80271FA0 = D_80271FA8;
        D_80271FA4 = 1 << D_80271FA0;
@@ -53,11 +53,3 @@
        break;
      case 4:
        D_803163A4 = 1;
-@@ -220,5 +230,7 @@
-     D_802724E0 = 0;
-     break;
-   }
-+  D_803163AC = keep;
-+  }
- }
- 
