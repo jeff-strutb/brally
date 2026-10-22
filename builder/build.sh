@@ -34,7 +34,7 @@ export IMAGE ROMDATA
 
 # ---- the payload: the Mac ----------------------------------------------------------------------
 for A in arm64 x86_64; do
-    MACOSX_DEPLOYMENT_TARGET=11.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/brally-macos-$A \
+    MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/brally-macos-$A \
         HOST=macos RENDER=metal GFLAG=-g0 ports/brally/link64.sh | grep -E "FAIL|linked"
     MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDFLAGS_TGR="-arch $A" OUT=$B/tgrally-macos-$A \
         HOST=macos RENDER=metal GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
@@ -100,7 +100,7 @@ $PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally 
 APP="$B/mac/Rally Builder.app"
 rm -rf "$B/mac"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/payload"
-clang -arch arm64 -arch x86_64 -mmacosx-version-min=11.0 -O2 -Wall -fobjc-arc -DRB_VERSION="\"$VERSION\"" \
+clang -arch arm64 -arch x86_64 -mmacosx-version-min=12.0 -O2 -Wall -fobjc-arc -DRB_VERSION="\"$VERSION\"" \
     -Ibuilder/src/core builder/src/core/*.c builder/src/mac/main.m -framework Cocoa \
     -o "$APP/Contents/MacOS/RallyBuilder"
 sed "s/@VERSION@/$VERSION/g" builder/src/mac/Info.plist > "$APP/Contents/Info.plist"

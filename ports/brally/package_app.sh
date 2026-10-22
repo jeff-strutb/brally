@@ -102,7 +102,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>CFBundleVersion</key><string>$VERSION</string>
     $ICON_KEY
     <key>LSApplicationCategoryType</key><string>public.app-category.racing-games</string>
-    <key>LSMinimumSystemVersion</key><string>11.0</string>
+    <key>LSMinimumSystemVersion</key><string>12.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>GCSupportsControllerUserInteraction</key><true/>
 </dict>
