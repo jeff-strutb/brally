@@ -35,6 +35,8 @@ extern int D_80271FB8;
 extern int D_80271FBC;
 extern int D_80271FC0;
 extern BrRomImage D_8027205C;
+MenuItem **tgr_keys_items(MenuItem **game);   /* port: Keys and Pad after the controller row (keysmenu.c) */
+int tgr_keys_row(int result, int row);
 extern MenuItem *D_80272468[];
 extern int D_803163A8;
 extern char D_803163B0[24];
@@ -143,7 +145,7 @@ void BrOptionsScreen(void)
   if (D_802724E0 <= 0) {
     D_80271FA4 = -1;
     D_80271FA0 = -1;
-    BrFrontMenuEnter(D_80272468, &D_803163A8);
+    BrFrontMenuEnter(tgr_keys_items(D_80272468), &D_803163A8);   /* port: with Keys and Pad */
     BrPaintShopMemInit();
     D_80271FC8 = BrOptionsDrawHelp;
     D_80271FB0 = &D_8027205C;
@@ -165,7 +167,11 @@ void BrOptionsScreen(void)
   } else {
     D_802723DC[2].label = tgr_addr32("Units: kph");
   }
-  switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
+  {
+  int res = BrMenu("OPTIONS", D_803163A8, tgr_keys_items(D_80272468), &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20);
+  int keep = D_803163AC;               /* port: the game's switch sees its own row numbers */
+  D_803163AC = tgr_keys_row(res, keep);
+  switch (D_803163AC < 0 ? 0 : res) {
   case 4:
     switch (D_803163AC) {
     case 0:
@@ -219,6 +225,8 @@ void BrOptionsScreen(void)
     BrModeSet(BrMainMenu);
     D_802724E0 = 0;
     break;
+  }
+  D_803163AC = keep;
   }
 }
 

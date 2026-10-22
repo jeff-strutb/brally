@@ -10,6 +10,7 @@
 #include <string.h>
 #include "host.h"
 #include "plat.h"
+#include "tgr_keys.h"
 
 enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
        B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
@@ -97,41 +98,260 @@ void tgr_script_load(const char *path)
     s_pads = s_nev[1] ? 2 : 1;
 }
 
-/* the host's keyboard and pad: the N64 pad's buttons and stick */
-static uint16_t s_keys;
+/* ---- the keys and pad buttons for the N64 pad (the options screen's Keys and
+ * Pad: src/menus/keysmenu.c) ----------------------------------------------------
+ * Each of the pad's buttons and its stick's four ways has up to two keys
+ * (Win32 virtual keys, as the host's key events carry them; 0 none) and up to
+ * two game pad buttons (host_pad's numbering, 0..15; -1 none).  The left stick
+ * is always the stick and the right the C buttons.  Kept as text in the save
+ * folder, "keys.cfg": "<input> key K1 K2" and "<input> pad B1 B2" a line; a
+ * missing file or line is the default. */
+enum { K_STICK_U = 14, K_STICK_D, K_STICK_L, K_STICK_R };
+static const struct {
+    const char *name, *tag;
+    uint16_t b;
+    uint8_t key[2];
+    int8_t pad[2];
+} k_in[TGR_KEYS_COUNT] = {
+    { "A", "a", B_A, { 'X', 0x0D }, { 0, -1 } },                 /* X or Return; pad A */
+    { "B", "b", B_B, { 'Z', 0 }, { 1, -1 } },
+    { "Z", "z", B_Z, { ' ', 0 }, { 10, -1 } },                    /* left trigger */
+    { "Start", "start", B_START, { 0x1B, 'P' }, { 7, -1 } },      /* Escape or P; the menu button */
+    { "L", "l", B_L, { 'Q', 0 }, { 4, -1 } },
+    { "R", "r", B_R, { 'W', 'E' }, { 5, 11 } },                   /* right shoulder or trigger */
+    { "C Up", "cu", B_CU, { 'I', 0 }, { 3, -1 } },                /* Y */
+    { "C Down", "cd", B_CD, { 'K', 0 }, { 9, -1 } },              /* the right stick pressed: the chase view */
+    { "C Left", "cl", B_CL, { 'J', 0 }, { 2, -1 } },              /* X */
+    { "C Right", "cr", B_CR, { 'L', 0 }, { 8, -1 } },             /* the left stick pressed */
+    { "D Pad Up", "du", B_DU, { 0, 0 }, { 12, -1 } },
+    { "D Pad Down", "dd", B_DD, { 0, 0 }, { 14, -1 } },
+    { "D Pad Left", "dl", B_DL, { 0, 0 }, { 15, -1 } },
+    { "D Pad Right", "dr", B_DR, { 0, 0 }, { 13, -1 } },
+    { "Stick Up", "su", 0, { 0x26, 0 }, { -1, -1 } },             /* the arrows */
+    { "Stick Down", "sd", 0, { 0x28, 0 }, { -1, -1 } },
+    { "Stick Left", "sl", 0, { 0x25, 0 }, { -1, -1 } },
+    { "Stick Right", "sr", 0, { 0x27, 0 }, { -1, -1 } },
+};
+static int s_key[TGR_KEYS_COUNT][2], s_padb[TGR_KEYS_COUNT][2];
+static int s_keys_loaded;
+static uint8_t s_vk[256];               /* the virtual keys held */
+static uint16_t s_keys;                 /* what they hold of the pad */
 static int s_kx, s_ky;
+static int s_cap = -1;                  /* the input awaiting a key or button (keysmenu.c), -1 none */
+static int s_cap_hold;                  /* after a wait: no input until everything is let go */
+static unsigned s_cap_padwas;           /* the pad's buttons when the wait began */
+static unsigned s_pad_now;              /* the pad's buttons at the last retrace */
+
+static void keys_path(char *out, size_t n) { snprintf(out, n, "%s/keys.cfg", host_save_dir()); }
+
+static void keys_defaults(int in)
+{
+    s_key[in][0] = k_in[in].key[0];
+    s_key[in][1] = k_in[in].key[1];
+    s_padb[in][0] = k_in[in].pad[0];
+    s_padb[in][1] = k_in[in].pad[1];
+}
+
+static void keys_save(void)
+{
+    char p[1100];
+    FILE *f;
+    int in;
+    if (!host_save_dir())
+        return;
+    keys_path(p, sizeof p);
+    if (!(f = fopen(p, "w")))
+        return;
+    for (in = 0; in < TGR_KEYS_COUNT; in++) {
+        fprintf(f, "%s key %d %d\n", k_in[in].tag, s_key[in][0], s_key[in][1]);
+        fprintf(f, "%s pad %d %d\n", k_in[in].tag, s_padb[in][0], s_padb[in][1]);
+    }
+    fclose(f);
+}
+
+static void keys_load(void)
+{
+    char p[1100], line[128], tag[32], kind[8];
+    FILE *f;
+    int in, v1, v2;
+    s_keys_loaded = 1;
+    for (in = 0; in < TGR_KEYS_COUNT; in++)
+        keys_defaults(in);
+    if (!host_save_dir())
+        return;
+    keys_path(p, sizeof p);
+    if (!(f = fopen(p, "r")))
+        return;
+    while (fgets(line, sizeof line, f))
+        if (sscanf(line, "%31s %7s %d %d", tag, kind, &v1, &v2) == 4)
+            for (in = 0; in < TGR_KEYS_COUNT; in++)
+                if (!strcmp(tag, k_in[in].tag)) {
+                    if (!strcmp(kind, "key") && v1 >= 0 && v1 < 256 && v2 >= 0 && v2 < 256) {
+                        s_key[in][0] = v1;
+                        s_key[in][1] = v2;
+                    } else if (!strcmp(kind, "pad") && v1 >= -1 && v1 < 16 && v2 >= -1 && v2 < 16) {
+                        s_padb[in][0] = v1;
+                        s_padb[in][1] = v2;
+                    }
+                }
+    fclose(f);
+}
+
+/* the pad's buttons and stick from the keys held */
+static void keys_apply(void)
+{
+    int in, k, held[TGR_KEYS_COUNT];
+    s_keys = 0;
+    for (in = 0; in < TGR_KEYS_COUNT; in++) {
+        held[in] = 0;
+        for (k = 0; k < 2; k++)
+            if (s_key[in][k] && s_vk[s_key[in][k]])
+                held[in] = 1;
+        if (held[in])
+            s_keys |= k_in[in].b;
+    }
+    s_ky = held[K_STICK_U] ? 80 : held[K_STICK_D] ? -80 : 0;
+    s_kx = held[K_STICK_L] ? -80 : held[K_STICK_R] ? 80 : 0;
+}
+
+/* nothing held of the keyboard or the pad: a wait's last press let go */
+static int all_up(void)
+{
+    int i;
+    for (i = 0; i < 256; i++)
+        if (s_vk[i])
+            return 0;
+    return s_pad_now == 0;
+}
 
 void tgr_input_key(int vk, int down)
 {
-    uint16_t b = 0;
-    switch (vk) {
-    case 'X': case 0x0D: b = B_A; break;            /* X or Return */
-    case 'Z': b = B_B; break;
-    case ' ': b = B_Z; break;
-    case 0x1B: case 'P': b = B_START; break;        /* Escape or P */
-    case 'Q': b = B_L; break;
-    case 'W': case 'E': b = B_R; break;
-    case 'I': b = B_CU; break;
-    case 'K': b = B_CD; break;
-    case 'J': b = B_CL; break;
-    case 'L': b = B_CR; break;
-    case 0x26: s_ky = down ? 80 : (s_ky > 0 ? 0 : s_ky); return;     /* arrows: the stick */
-    case 0x28: s_ky = down ? -80 : (s_ky < 0 ? 0 : s_ky); return;
-    case 0x25: s_kx = down ? -80 : (s_kx < 0 ? 0 : s_kx); return;
-    case 0x27: s_kx = down ? 80 : (s_kx > 0 ? 0 : s_kx); return;
+    if (vk <= 0 || vk > 255)
+        return;
+    if (!s_keys_loaded)
+        keys_load();
+    s_vk[vk] = (uint8_t)(down != 0);
+    if (s_cap >= 0 && down) {               /* the awaited key (Escape: as it was) */
+        if (vk != 0x1B)
+            tgr_keys_bind(s_cap, 0, vk);
+        s_cap = -1;
+        s_cap_hold = 1;
     }
-    if (down)
-        s_keys |= b;
-    else
-        s_keys &= (uint16_t)~b;
+    keys_apply();
 }
 
 /* everything released (the window lost the keyboard: its key-ups go elsewhere) */
 void tgr_input_release(void)
 {
+    memset(s_vk, 0, sizeof s_vk);
     s_keys = 0;
     s_kx = s_ky = 0;
 }
+
+/* ---- for the Keys and Pad screen (src/menus/keysmenu.c) ---- */
+int tgr_keys_shown(void) { return !s_scripted; }
+
+const char *tgr_keys_name(int in) { return in >= 0 && in < TGR_KEYS_COUNT ? k_in[in].name : ""; }
+
+/* a key's name, as the screen shows it */
+static void key_name(int vk, char *buf, size_t n)
+{
+    static const struct { uint8_t vk; const char *name; } k_names[] = {
+        { 0x08, "BACKSPACE" }, { 0x09, "TAB" }, { 0x0D, "RETURN" }, { 0x10, "SHIFT" }, { 0x11, "CTRL" },
+        { 0x12, "ALT" }, { 0x14, "CAPS LOCK" }, { 0x1B, "ESCAPE" }, { 0x20, "SPACE" }, { 0x21, "PAGE UP" },
+        { 0x22, "PAGE DOWN" }, { 0x23, "END" }, { 0x24, "HOME" }, { 0x25, "LEFT ARROW" }, { 0x26, "UP ARROW" },
+        { 0x27, "RIGHT ARROW" }, { 0x28, "DOWN ARROW" }, { 0x2D, "INSERT" }, { 0x2E, "DELETE" },
+        { 0x6A, "NUM *" }, { 0x6B, "NUM +" }, { 0x6D, "NUM -" }, { 0x6E, "NUM ." }, { 0x6F, "NUM /" },
+        { 0xBA, ";" }, { 0xBB, "=" }, { 0xBC, "," }, { 0xBD, "-" }, { 0xBE, "." }, { 0xBF, "/" }, { 0xC0, "`" },
+        { 0xDB, "[" }, { 0xDC, "\\" }, { 0xDD, "]" }, { 0xDE, "'" },
+    };
+    unsigned i;
+    if ((vk >= '0' && vk <= '9') || (vk >= 'A' && vk <= 'Z')) {
+        snprintf(buf, n, "%c", vk);
+        return;
+    }
+    if (vk >= 0x60 && vk <= 0x69) {
+        snprintf(buf, n, "NUM %d", vk - 0x60);
+        return;
+    }
+    if (vk >= 0x70 && vk <= 0x87) {
+        snprintf(buf, n, "F%d", vk - 0x6F);
+        return;
+    }
+    snprintf(buf, n, "KEY %d", vk);
+    for (i = 0; i < sizeof k_names / sizeof k_names[0]; i++)
+        if (k_names[i].vk == vk)
+            snprintf(buf, n, "%s", k_names[i].name);
+}
+
+/* an input's keys ("X, RETURN") and pad buttons ("PAD A"); "none" for none */
+void tgr_keys_labels(int in, char *keys, int nk, char *pad, int np)
+{
+    static const char *const k_pads[16] = {
+        "PAD A", "PAD B", "PAD X", "PAD Y", "PAD LB", "PAD RB", "PAD VIEW", "PAD MENU", "PAD L3", "PAD R3",
+        "PAD LT", "PAD RT", "PAD UP", "PAD RIGHT", "PAD DOWN", "PAD LEFT",
+    };
+    char a[24], b[24];
+    if (!s_keys_loaded)
+        keys_load();
+    if (in < 0 || in >= TGR_KEYS_COUNT)
+        return;
+    a[0] = b[0] = 0;
+    if (s_key[in][0])
+        key_name(s_key[in][0], a, sizeof a);
+    if (s_key[in][1])
+        key_name(s_key[in][1], b, sizeof b);
+    snprintf(keys, (size_t)nk, "%s%s%s", a[0] ? a : b[0] ? "" : "none", a[0] && b[0] ? ", " : "", b);
+    snprintf(pad, (size_t)np, "%s%s%s", s_padb[in][0] >= 0 ? k_pads[s_padb[in][0]] : s_padb[in][1] >= 0 ? "" : "none",
+             s_padb[in][0] >= 0 && s_padb[in][1] >= 0 ? ", " : "", s_padb[in][1] >= 0 ? k_pads[s_padb[in][1]] : "");
+}
+
+/* an input takes this key (kind 0) or pad button (1), alone; whatever other
+   input had it lets it go */
+void tgr_keys_bind(int in, int kind, int code)
+{
+    int o, k;
+    if (!s_keys_loaded)
+        keys_load();
+    if (in < 0 || in >= TGR_KEYS_COUNT)
+        return;
+    for (o = 0; o < TGR_KEYS_COUNT; o++)
+        for (k = 0; k < 2; k++)
+            if (kind == 0 && s_key[o][k] == code)
+                s_key[o][k] = 0;
+            else if (kind == 1 && s_padb[o][k] == code)
+                s_padb[o][k] = -1;
+    if (kind == 0) {
+        s_key[in][0] = code;
+        s_key[in][1] = 0;
+    } else {
+        s_padb[in][0] = code;
+        s_padb[in][1] = -1;
+    }
+    keys_save();
+    keys_apply();
+}
+
+void tgr_keys_reset(void)
+{
+    int in;
+    for (in = 0; in < TGR_KEYS_COUNT; in++)
+        keys_defaults(in);
+    s_keys_loaded = 1;
+    keys_save();
+    keys_apply();
+}
+
+/* wait for the next key or pad button for an input (-1: stop waiting); while
+   waiting, and until what ended it is let go, the game sees nothing pressed */
+void tgr_keys_capture(int in)
+{
+    s_cap = in;
+    s_cap_padwas = s_pad_now;
+    s_cap_hold = 1;
+}
+
+int tgr_keys_capturing(void) { return s_cap; }
 
 /* a modern stick (a circle, -1..1) as the N64's: past a small dead zone, the
  * travel rescaled to the full range and reaching the N64 stick's octagonal
@@ -173,8 +393,12 @@ void tgr_input_frame(uint32_t frame)
         host_pad hp;
         int x = s_kx, y = s_ky;
         uint16_t b = s_keys;
+        if (!s_keys_loaded)
+            keys_load();
+        s_pad_now = 0;
         if (host_pad_read(&hp)) {
-            int px, py;
+            int px, py, in, k;
+            s_pad_now = hp.buttons & 0xFFFF;
             n64_stick(hp.x, -hp.y, &px, &py);
             if (px || py) {
                 x = px;
@@ -184,21 +408,32 @@ void tgr_input_frame(uint32_t frame)
             if (hp.rx < -0.5f) b |= B_CL;
             if (hp.ry > 0.5f) b |= B_CD;
             if (hp.ry < -0.5f) b |= B_CU;
-            if (hp.buttons & 1) b |= B_A;
-            if (hp.buttons & 2) b |= B_B;
-            if (hp.buttons & 4) b |= B_CL;
-            if (hp.buttons & 8) b |= B_CU;
-            if (hp.buttons & (1 << 9)) b |= B_CD;     /* the right stick pressed: C-down, the chase view */
-            if (hp.buttons & (1 << 8)) b |= B_CR;     /* the left: C-right (its place on controller type B) */
-            if (hp.buttons & 16) b |= B_L;
-            if (hp.buttons & 32) b |= B_R;
-            if (hp.buttons & 128) b |= B_START;
-            if (hp.buttons & (1 << 10)) b |= B_Z;
-            if (hp.buttons & (1 << 11)) b |= B_R;
-            if (hp.buttons & (1 << 12)) b |= B_DU;
-            if (hp.buttons & (1 << 13)) b |= B_DR;
-            if (hp.buttons & (1 << 14)) b |= B_DD;
-            if (hp.buttons & (1 << 15)) b |= B_DL;
+            for (in = 0; in < TGR_KEYS_COUNT; in++)   /* the buttons, as Keys and Pad has them */
+                for (k = 0; k < 2; k++)
+                    if (s_padb[in][k] >= 0 && (hp.buttons >> s_padb[in][k]) & 1) {
+                        b |= k_in[in].b;
+                        if (in == K_STICK_U) y = 80;
+                        if (in == K_STICK_D) y = -80;
+                        if (in == K_STICK_L) x = -80;
+                        if (in == K_STICK_R) x = 80;
+                    }
+        }
+        if (s_cap >= 0) {                             /* a button awaited (keysmenu.c) */
+            unsigned fresh = s_pad_now & ~s_cap_padwas;
+            int i;
+            for (i = 0; i < 16; i++)
+                if ((fresh >> i) & 1) {
+                    tgr_keys_bind(s_cap, 1, i);
+                    s_cap = -1;
+                    break;
+                }
+            s_cap_padwas &= s_pad_now;               /* (a button let go may be pressed again) */
+        }
+        if (s_cap_hold && s_cap < 0 && all_up())
+            s_cap_hold = 0;
+        if (s_cap >= 0 || s_cap_hold) {               /* waiting, or what ended it still held: */
+            b = 0;                                    /* the game sees nothing pressed */
+            x = y = 0;
         }
         s_now[0].b = b;
         s_now[0].x = (int8_t)x;

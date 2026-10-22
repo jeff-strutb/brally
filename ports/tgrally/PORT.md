@@ -120,6 +120,13 @@ Saves are a Controller Pak in port 1, kept in
 | START | menu | Escape or P |
 | D-pad | d-pad | |
 
+Those are the defaults. Options > Keys and Pad, a row after the controller
+row, sets the keys and pad buttons for each of the N64 pad's buttons and its
+stick's four ways (`src/menus/keysmenu.c`, `platform/os/si.c`; kept in
+`keys.cfg` in the save folder); the sticks stay the stick and the C buttons.
+The controller row still opens the game's own screen, whose five layouts say
+what each of the pad's buttons does. A scripted run has no such row.
+
 The picture is the N64's 4:3, the window held at that shape. View > Enter
 Full Screen (Ctrl-Cmd-F); on Windows, Alt+Enter. In the background the game is paused: the N64's
 clock stops.
