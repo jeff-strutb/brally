@@ -303,6 +303,64 @@ static void tex_destroy(vtex *t)
     memset(t, 0, sizeof *t);
 }
 
+static void frame_wait(void);
+
+/* ---- the frame's texture uploads ---------------------------------------------------------- */
+/* A texture's upload is recorded into a command buffer of its own and
+ * submitted with the frame, ahead of the frame's drawing (rdr_frame_end): one
+ * submission a frame, where a submission and a wait for the whole queue a
+ * texture held the game's thread for every texture it met.  The staging
+ * buffers are freed once the frame that carried them has finished. */
+typedef struct upstage { VkBuffer b; VkDeviceMemory m; } upstage;
+static VkCommandBuffer  s_upcmd;
+static int              s_up_rec;                 /* s_upcmd is recording */
+static upstage         *s_upst;                   /* [0, s_nupfly) submitted, then this frame's */
+static int              s_nupst, s_capupst, s_nupfly;
+
+static VkCommandBuffer up_begin(void)
+{
+    VkCommandBufferAllocateInfo ai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    if (s_up_rec)
+        return s_upcmd;
+    if (!s_upcmd) {
+        ai.commandPool = s_pool;
+        ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        ai.commandBufferCount = 1;
+        vkAllocateCommandBuffers(s_dev, &ai, &s_upcmd);
+    }
+    frame_wait();                                   /* (the last frame's submission had it) */
+    vkResetCommandBuffer(s_upcmd, 0);
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(s_upcmd, &bi);
+    s_up_rec = 1;
+    return s_upcmd;
+}
+
+static void up_keep(VkBuffer b, VkDeviceMemory m)
+{
+    if (s_nupst == s_capupst) {
+        s_capupst = s_capupst ? s_capupst * 2 : 64;
+        s_upst = (upstage *)realloc(s_upst, sizeof *s_upst * (size_t)s_capupst);
+    }
+    s_upst[s_nupst].b = b;
+    s_upst[s_nupst].m = m;
+    s_nupst++;
+}
+
+/* the submitted staging buffers, once their frame has finished */
+static void up_reap(void)
+{
+    int i;
+    for (i = 0; i < s_nupfly; i++) {
+        vkDestroyBuffer(s_dev, s_upst[i].b, NULL);
+        vkFreeMemory(s_dev, s_upst[i].m, NULL);
+    }
+    memmove(s_upst, s_upst + s_nupfly, sizeof *s_upst * (size_t)(s_nupst - s_nupfly));
+    s_nupst -= s_nupfly;
+    s_nupfly = 0;
+}
+
 static int tex_make(vtex *t, const uint8_t *rgba, int w, int h)
 {
     VkBuffer sb;
@@ -320,7 +378,7 @@ static int tex_make(vtex *t, const uint8_t *rgba, int w, int h)
         return 0;
     }
     memcpy(map, rgba, n);
-    c = once_begin();
+    c = up_begin();
     barrier(c, t->image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     memset(&cp, 0, sizeof cp);
@@ -333,9 +391,7 @@ static int tex_make(vtex *t, const uint8_t *rgba, int w, int h)
     barrier(c, t->image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    once_end(c);
-    vkDestroyBuffer(s_dev, sb, NULL);
-    vkFreeMemory(s_dev, sm, NULL);
+    up_keep(sb, sm);
     t->view = make_view(t->image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
     t->w = w;
     t->h = h;
@@ -1121,6 +1177,7 @@ void rdr_frame_begin(float fb_w, float fb_h)
     s_fb_h = fb_h;
     frame_wait();
     reap();
+    up_reap();
     s_ubo.used = s_vtx.used = 0;
     vkResetDescriptorPool(s_dev, s_pool_frame, 0);
     s_set_last = VK_NULL_HANDLE;
@@ -1326,6 +1383,8 @@ void rdr_frame_end(void)
     VkPipelineStageFlags wait_st = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     uint32_t img = 0, ww, wh;
     int show = 0;
+    VkCommandBuffer cmds[2];
+    uint32_t ncmd = 0;
     if (!s_recording)
         return;
     if (s_in_pass) {
@@ -1390,8 +1449,15 @@ void rdr_frame_end(void)
     }
     vkEndCommandBuffer(s_cmd);
     s_recording = 0;
-    si.commandBufferCount = 1;
-    si.pCommandBuffers = &s_cmd;
+    if (s_up_rec) {                                   /* the textures made for it, first */
+        vkEndCommandBuffer(s_upcmd);
+        s_up_rec = 0;
+        s_nupfly = s_nupst;
+        cmds[ncmd++] = s_upcmd;
+    }
+    cmds[ncmd++] = s_cmd;
+    si.commandBufferCount = ncmd;
+    si.pCommandBuffers = cmds;
     if (show) {
         si.waitSemaphoreCount = 1;
         si.pWaitSemaphores = &s_sem_acquire;
