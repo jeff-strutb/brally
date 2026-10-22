@@ -144,6 +144,7 @@ const char *host_save_dir(void) { return "."; }
 const char *host_game_dir(void) { return "."; }
 const char *host_cd_dir(void) { return "."; }
 int  host_mkdir(const char *path) { (void)path; return 0; }
+int  host_rename(const char *from, const char *to) { (void)from; (void)to; return 0; }
 void host_window_pixels(int *w, int *h) { *w = 320; *h = 240; }
 void host_present(const uint32_t *argb, int w, int h) { (void)argb; (void)w; (void)h; }
 void host_message_box(const char *text, const char *caption) { (void)caption; ps1_fatal(text); }

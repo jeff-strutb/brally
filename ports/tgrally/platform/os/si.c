@@ -320,16 +320,26 @@ static void pak_save(void)
         fwrite(s_notes[i].data, 1, (size_t)s_notes[i].size, f);
     }
     if (fclose(f) == 0)
-        rename(tmp, s_pak_path);
+        host_rename(tmp, s_pak_path);
 }
 
-static void pak_load(void)
+static void pak_clear(void)
+{
+    int i;
+    for (i = 0; i < PAK_NOTES; i++) {
+        free(s_notes[i].data);
+        memset(&s_notes[i], 0, sizeof s_notes[i]);
+    }
+}
+
+/* the notes from a pak file: 1 when it was read whole */
+static int pak_load(const char *path)
 {
     char magic[8];
-    FILE *f = fopen(s_pak_path, "rb");
-    uint32_t n, i;
+    FILE *f = fopen(path, "rb");
+    uint32_t n = 0, i = 0;
     if (!f)
-        return;
+        return 0;
     if (fread(magic, 1, 8, f) == 8 && !memcmp(magic, "TGRPAK1\n", 8)) {
         n = get32(f);
         for (i = 0; i < n && i < PAK_NOTES; i++) {
@@ -349,8 +359,11 @@ static void pak_load(void)
             free(s_notes[i].data);
             memset(&s_notes[i], 0, sizeof s_notes[i]);
         }
+    } else {
+        n = 1;                                        /* not a pak */
     }
     fclose(f);
+    return i == n;
 }
 
 /* in play (no script) a Controller Pak is plugged into port 1, kept in
@@ -358,13 +371,14 @@ static void pak_load(void)
 void tgr_pak_init(void)
 {
     const char *dir;
+    char tmp[1100];
     if (s_scripted) {
         /* TGR_PAK_FILE: the scripted run's pak kept in that file (a test of the
            saves themselves; the script still plugs and unplugs it) */
         const char *e = getenv("TGR_PAK_FILE");
         if (e) {
             snprintf(s_pak_path, sizeof s_pak_path, "%s", e);
-            pak_load();
+            pak_load(s_pak_path);
         }
         return;
     }
@@ -374,7 +388,16 @@ void tgr_pak_init(void)
     host_mkdir(dir);
     snprintf(s_pak_path, sizeof s_pak_path, "%s/controller-pak-1.bin", dir);
     s_pak = 1;
-    pak_load();
+    /* a whole .tmp left beside the pak is its newest state, written but not
+       moved over it: a run stopped between the two, or a Windows build whose
+       rename would not replace the pak (every save after the first) */
+    snprintf(tmp, sizeof tmp, "%s.tmp", s_pak_path);
+    if (pak_load(tmp)) {
+        host_rename(tmp, s_pak_path);
+        return;
+    }
+    pak_clear();
+    pak_load(s_pak_path);
 }
 
 static int note_find(uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)

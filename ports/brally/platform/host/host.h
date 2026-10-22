@@ -56,6 +56,9 @@ host_dir   *host_dir_open(const char *path);
 const char *host_dir_next(host_dir *d, int *is_dir, uint64_t *size);
 void        host_dir_close(host_dir *d);
 int         host_mkdir(const char *path);
+/* from takes to's name, replacing a file there (as POSIX rename does; the
+ * Windows C runtime's rename will not): nonzero when done */
+int         host_rename(const char *from, const char *to);
 /* where the game's files are: the install (C:\BOSSRALLY), the CD (D:\)
  * and the player's saves and settings */
 const char *host_game_dir(void);

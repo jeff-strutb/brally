@@ -160,6 +160,7 @@ void host_dir_close(host_dir *h)
 }
 
 int host_mkdir(const char *path) { return mkdir(path, 0755) == 0 || errno == EEXIST; }
+int host_rename(const char *from, const char *to) { return rename(from, to) == 0; }
 
 /* ---- network ---------------------------------------------------------------- */
 struct host_sock { int fd; };
