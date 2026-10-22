@@ -1,18 +1,42 @@
 --- a/src/menus/mainmenu.c
 +++ b/src/menus/mainmenu.c
-@@ -18,6 +18,7 @@
+@@ -18,6 +18,9 @@
  void BrCarSelect(void);
  void BrLoadSaveScreen(void);
  void BrIntroScreen(void);
 +void tgr_menus_boot_leave(void);        /* port: Top Gear Rally Remastered (src/racing/handoff.c) */
++MenuItem **rm_mainmenu_items(MenuItem **game);   /* port: Quit after the game's rows (rmmainmenu.c) */
++void rm_mainmenu_row(int row);
  void BrOptionsScreen(void);
  extern int D_8026FF08;
  extern int D_8026FF18;
-@@ -108,6 +109,7 @@
+@@ -83,7 +86,7 @@
+     D_80271FA4 = -1;
+     D_80271FA0 = -1;
+     D_8026FF08 = 2;
+-    BrFrontMenuEnter(D_80272360, &D_80316380);
++    BrFrontMenuEnter(rm_mainmenu_items(D_80272360), &D_80316380);   /* port: with Quit */
+     if (D_802A49C0 < 8) {
+       BrMusicStop();
+       BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
+@@ -108,8 +111,9 @@
        D_80316384 = 0;
      }
      D_80272384 = 1;
 +    tgr_menus_boot_leave();             /* port: at launch, to the other game's menus kept */
    }
-   switch (BrMenu("TOP GEAR RALLY", D_80316380, D_80272360, &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
+-  switch (BrMenu("TOP GEAR RALLY", D_80316380, D_80272360, &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
++  switch (BrMenu("TOP GEAR RALLY", D_80316380, rm_mainmenu_items(D_80272360), &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
    case 1:
+     D_80272070 = 0;
+     switch (D_80316384) {
+@@ -143,6 +147,9 @@
+     case 6:
+       BrModeSet(BrOptionsScreen);
+       break;
++    default:
++      rm_mainmenu_row(D_80316384);      /* port: Quit */
++      break;
+     }
+     D_80272384 = -1;
+     break;
