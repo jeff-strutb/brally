@@ -25,30 +25,6 @@
      hud_state();
      rdr_vi(tgr_vi_ctrl());
      rdr_frame_end();
-@@ -307,6 +314,7 @@
- static float s_prim[4], s_env[4], s_fogc[4], s_blendc[4], s_prim_lod;
- static int s_scissor[4];
- static uint8_t s_tmem[4096];
-+static int s_tmem_dirty = 1;           /* (Remastered) written since its hash was taken */
- static struct {
-     int fmt, siz, line, tmem, pal, cmt, maskt, shiftt, cms, masks, shifts;
-     int uls, ult, lrs, lrt;           /* 10.2 */
-@@ -327,6 +335,7 @@
- static void tmem_put64(int addr, const uint8_t *src, int odd)
- {
-     int k;
-+    s_tmem_dirty = 1;
-     for (k = 0; k < 8; k++)
-         s_tmem[((addr * 8) + (k ^ (odd ? 4 : 0))) & 0xFFF] = src[k];
- }
-@@ -367,6 +376,7 @@
- {
-     int n = (lrs >> 2) + 1, i;
-     int t = s_tile[tile].tmem;               /* 0x100.. (the upper half) in 64-bit words */
-+    s_tmem_dirty = 1;
-     for (i = 0; i < n; i++) {                /* each entry quadrupled: 64 bits an entry */
-         uint16_t c = rd16((s_timg & 0x7FFFFF) + i * 2);
-         int k;
 @@ -445,6 +455,8 @@
  static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
  static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
@@ -58,24 +34,6 @@
  static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
  {
      int i;
-@@ -482,7 +494,16 @@
-     tile_dims(t, &w, &h);
-     key = fnv((const uint8_t *)&s_tile[t], sizeof s_tile[t], key);
-     key = fnv((const uint8_t *)&s_omh, 4, key);
--    key = fnv(s_tmem, sizeof s_tmem, key);
-+    /* (Remastered: TMEM hashed once a load, not once a primitive: a model of
-+     * thousands of one-colour triangles hashed 4 KB for each) */
-+    {
-+        static uint64_t tmem_hash;
-+        if (s_tmem_dirty) {
-+            tmem_hash = fnv(s_tmem, sizeof s_tmem, 14695981039346656037ull);
-+            s_tmem_dirty = 0;
-+        }
-+        key = fnv((const uint8_t *)&tmem_hash, sizeof tmem_hash, key);
-+    }
-     for (i = 0; i < TEXCACHE; i++) {
-         if (s_cache[i].tex && s_cache[i].key == key) {
-             s_cache[i].used = ++s_cache_clock;
 @@ -509,7 +530,7 @@
          fwrite(rgba, 4, (size_t)w * h, s_wdump);
      }
