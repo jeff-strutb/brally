@@ -6,6 +6,7 @@
 #   build.sh FILE...   compile those TUs only and print their errors
 set -e
 cd "$(dirname "$0")/../.."
+. ports/tgrally-ps1/pin.sh               # the native port at tag tgrally-n64-layout
 OUT=${OUT:-build/tgrally/ps1}
 JOBS=${JOBS:-14}
 TC=build/toolchains/ps1/bin/mipsel-none-elf

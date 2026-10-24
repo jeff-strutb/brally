@@ -11,7 +11,18 @@ checked against.
 ## What it is made from
 
 Everything comes from the game, through the native port (`ports/tgrally`)
-running a recorded race:
+running a recorded race. The recordings are taken with the native port as
+it stood at the tag `tgrally-n64-layout`: the port of today keeps the game's
+memory and drawing natively and no longer has these switches. Build that
+one beside the tree once:
+
+```
+git worktree add build/tgrally/n64-layout tgrally-n64-layout
+(cd build/tgrally/n64-layout && HOST=null RENDER=soft ports/tgrally/link.sh)
+```
+
+and run `build/tgrally/n64-layout/build/tgrally/null-soft/tgrally` where the
+commands below say `build/tgrally/null-soft/tgrally`:
 
 | Recording | Port switch | What it holds |
 |---|---|---|

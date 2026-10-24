@@ -1,9 +1,9 @@
 --- a/platform/os/thread.c
 +++ b/platform/os/thread.c
-@@ -352,7 +352,39 @@
+@@ -378,7 +378,39 @@
  
- int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return send(mq, msg, flag, 0); }
- int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return send(mq, msg, flag, 1); }
+ int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return tgr_check ? chk_mq_send(mq, msg, flag) : send(mq, msg, flag, 0); }
+ int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return tgr_check ? chk_mq_jam(mq, msg, flag) : send(mq, msg, flag, 1); }
 +
 +int tgr_tween_present(void);            /* Top Gear Rally Remastered: gfx/rcp.c */
 +int tgr_tween_render_thread(void);
@@ -39,8 +39,8 @@
 +
  int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
  {
-     host_mutex_lock(G);
-@@ -363,6 +395,11 @@
+     if (tgr_check)
+@@ -391,6 +423,11 @@
          }
          while (s_finished)          /* the run is over: the game's threads stop here */
              host_cond_wait(s_changed, G, 0xFFFFFFFFu);

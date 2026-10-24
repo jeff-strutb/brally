@@ -1,6 +1,9 @@
 # Top Gear Rally on the PlayStation
 
-The N64 game on Sony's console: the native port's core (`ports/tgrally/src`,
+The N64 game on Sony's console: the native port's core as it stood at the
+tag `tgrally-n64-layout` (pin.sh: build.sh and link.sh run in a copy of the
+repository with that ports/tgrally; the port has since moved its memory and
+drawing to native ones) (`ports/tgrally/src`,
 the decomp with the port's address and byte-order conversions) compiled for
 the R3000A, over a platform layer for the PlayStation. The target is the
 whole game on a retail console (2 MB of RAM, 1 MB of VRAM, 512 KB of sound

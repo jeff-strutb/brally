@@ -7,6 +7,7 @@
 #        game's memory does not yet fit the retail console's 2)
 set -e
 cd "$(dirname "$0")/../.."
+. ports/tgrally-ps1/pin.sh               # the native port at tag tgrally-n64-layout
 OUT=${OUT:-build/tgrally/ps1}
 RAM=${RAM:-8}
 export OUT
