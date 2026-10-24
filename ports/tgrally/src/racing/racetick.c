@@ -56,9 +56,9 @@ typedef struct BrTrackTimes {   /* a BrTrack (tgr/menu.h) */
 extern BrTrackTimes *D_80271D1C[];  /* per track (the same records as D_80270854) */
 
 typedef struct BrTip {          /* a demo caption (0x20 bytes) */
-  TgrAddr title;  /* char * */
+  char *title;
   float secs;
-  TgrAddr lines[6];  /* char * */
+  char *lines[6];
 } BrTip;
 extern BrTip D_8026FFB4[];
 
@@ -1386,15 +1386,15 @@ draw:
         }
       }
       y0 = 132 - i * 40 / 4;
-      if (TGR_PTR(char *, D_8026FFB4[D_80315E6C].title)[0] == 0) {
+      if (((char *)(D_8026FFB4[D_80315E6C].title))[0] == 0) {
         y0 -= 5;
       }
       while (--i >= 0) {
         BrTextSetFont(20);
-        BrTextPrint(TGR_PTR(char *, D_8026FFB4[D_80315E6C].lines[i]), 160, i * 40 / 2 + y0);
+        BrTextPrint(((char *)(D_8026FFB4[D_80315E6C].lines[i])), 160, i * 40 / 2 + y0);
       }
       BrTextSetFont(15);
-      BrTextPrint(TGR_PTR(char *, D_8026FFB4[D_80315E6C].title), 160, y0 - 20);
+      BrTextPrint(((char *)(D_8026FFB4[D_80315E6C].title)), 160, y0 - 20);
     }
     D_80315E68 += D_8028AAD8;
     if (D_8026FFB4[D_80315E6C].secs < D_80315E68) {

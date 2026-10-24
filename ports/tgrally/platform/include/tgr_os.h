@@ -219,7 +219,7 @@ uint32_t tgr_audio_want(void);                /* bytes to mix now: what keeps th
 void     tgr_audio_submit(const void *ring, uint32_t size, uint32_t pos, uint32_t n);  /* n bytes from pos, round the ring */
 
 void     tgr_print(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-TgrAddr  tgr_faulted_thread(void);
+void    *tgr_faulted_thread(void);
 
 /* the libm member the game links (gu's sinf/cosf are core C) */
 int16_t  sins(uint16_t angle);

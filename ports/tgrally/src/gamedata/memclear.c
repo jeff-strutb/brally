@@ -5,7 +5,7 @@
 /* -- declarations -- */
 extern int D_80225F5C;
 extern int D_80225F60;
-typedef struct BrClearEnt { TgrAddr ptr; int size; } BrClearEnt;   /* ptr: char * */
+typedef struct BrClearEnt { char *ptr; int size; } BrClearEnt;
 extern BrClearEnt D_8028B834[];
 /* -- end declarations -- */
 
@@ -20,7 +20,7 @@ void BrClearList(void)
   char *end;
 
   for (i = 0; D_8028B834[i].ptr != 0; i++) {
-    p = TGR_PTR(char *, D_8028B834[i].ptr);
+    p = ((char *)(D_8028B834[i].ptr));
     end = p + D_8028B834[i].size;
     for (; p < end; p++) {
       *p = 0;

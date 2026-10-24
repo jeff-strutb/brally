@@ -7,8 +7,8 @@
 
 typedef struct BrUnpack {       /* a streamed unpack in flight (BrStreamInit starts one) */
     unsigned int pos;           /* 0x00  ROM position of the next chunk */
-    TgrAddr dst;         /* unsigned char * -- 0x04  0 until the first call */
-    TgrAddr buf;         /* unsigned char * -- 0x08  2 x 16000-byte chunk buffer */
+    unsigned char *dst;         /* 0x04  0 until the first call */
+    unsigned char *buf;         /* 0x08  2 x 16000-byte chunk buffer */
     unsigned int half;          /* 0x0C  which half the next chunk goes to */
     unsigned int total;         /* 0x10  packed length */
     unsigned int size;          /* 0x14  unpacked length */

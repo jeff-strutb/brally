@@ -30,8 +30,8 @@ typedef struct BrModState {
   unsigned short x2;                   /* 0x02  ticks left in the row */
   unsigned short x4;                   /* 0x04  rows left in the pattern */
   char pad06[2];
-  TgrAddr order;         /* unsigned char * -- 0x08  the order list */
-  TgrAddr row;           /* unsigned char * -- 0x0C  the next packed row */
+  unsigned char *order;  /* 0x08  the order list */
+  unsigned char *row;    /* 0x0C  the next packed row */
   unsigned char x10;            /* 0x10  order position */
   unsigned char len;            /* 0x11  orders in the song */
   unsigned char restart;        /* 0x12 */
@@ -126,7 +126,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   unsigned char *start;
 
   start = buf;
-  D_80378FA0.order = tgr_addr32(buf);
+  D_80378FA0.order = (buf);
   D_80378FA0.len = xm[0x40];
   src = xm + 0x50;
   D_80378FA0.x0 = xm[0x4c];
@@ -443,12 +443,12 @@ void BrModTick(void)
       if (++D_80378FA0.x10 == D_80378FA0.len) {
         D_80378FA0.x10 = D_80378FA0.restart;
       }
-      pat = D_803789D0[TGR_PTR(unsigned char *, D_80378FA0.order)[D_80378FA0.x10]];
-      D_80378FA0.row = tgr_addr32(pat + 9);
+      pat = D_803789D0[((unsigned char *)(D_80378FA0.order))[D_80378FA0.x10]];
+      D_80378FA0.row = (pat + 9);
       D_80378FA0.x4 = pat[5];
     }
     D_80378FA0.x4--;
-    D_80378FA0.row = tgr_addr32(BrModRowRead(TGR_PTR(unsigned char *, D_80378FA0.row)));
+    D_80378FA0.row = (BrModRowRead(((unsigned char *)(D_80378FA0.row))));
   }
   for (i = 0; i < D_802A49C0; i++) {
     smp = D_80378DD0[i].smp;

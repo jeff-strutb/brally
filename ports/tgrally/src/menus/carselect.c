@@ -55,7 +55,7 @@ int BrCarSelectable(int n)
 /* -- declarations: BrCarViewDraw -- */
 #include "tgr/car.h"
 typedef struct BrModel BrModel;
-typedef struct BrStream { char pad00[0x28]; } BrStream;
+#include "tgr/load.h"
 extern BrCar *D_8028AAF0;               /* the car being drawn */
 extern BrCarCam *D_8028AAF4;            /* the camera being drawn from */
 extern float D_8028AAC0;                /* the lens scale */
@@ -239,7 +239,6 @@ void BrTimeFormat(char *psz, float t)
 #include "tgr/pad.h"
 #include "tgr/menu.h"
 #include "tgr/season.h"
-typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];  /* each car's model buffer */
 extern BrStream D_8031B370[4];  /* the two players' model streams, two apiece */
@@ -318,7 +317,6 @@ void BrMenuLoadItems(MenuItem **items, int *count);
 void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
 void *BrIfaceMemAlloc(int size);
 int BrRomReadSize(int rom);
-unsigned int BrRomUnpack(void *, unsigned int, void *);
 void BrDecalMemInit(void);
 void BrClockTick(void);
 void BrFadeStep(void);

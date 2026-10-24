@@ -452,7 +452,7 @@ int32_t tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue 
     return 0;
 }
 
-TgrAddr tgr_faulted_thread(void) { return 0; }
+void *tgr_faulted_thread(void) { return NULL; }
 
 /* ---- the run ------------------------------------------------------------------- */
 static void (*s_boot)(void);

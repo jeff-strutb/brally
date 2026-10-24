@@ -442,7 +442,7 @@ def main():
         arena.append((name, a))
         if reg == 'arena':
             continue
-        owner = max(rows, key=lambda r: (r['complete'], r['n64'] or 0, '*' in r['spelling'], -len(r['tu'])))
+        owner = max(rows, key=lambda r: (r['complete'], r['n64'] or 0, r['nat'] or 0, '*' in r['spelling'], -len(r['tu'])))
         ext = extent(a)
         if owner['err']:
             report.append('%s: cannot lay out %s: %s' % (name, owner['spelling'], owner['err']))
@@ -477,22 +477,22 @@ def main():
             pts = [tindex(x) for x in owner['pt']]
             if not owner['complete']:
                 pts = pts * cnt
+        # every view must put a field it shares with the owner at the
+        # owner's native offset (a shorter view of a prefix is fine)
+        want = dict((o0, o1) for (o0, _k0, _z0), (o1, _k1, _z1) in zip(nl0, nl1))
+        for r in rows:
+            if r is owner or not r['l0'] or not r['l1'] or len(r['l0']) != len(r['l1']):
+                continue
+            bad = [o0 for (o0, _k0, _z0), (o1, _k1, _z1) in zip(r['l0'], r['l1'])
+                   if o0 in want and want[o0] != o1]
+            if bad:
+                report.append('%s: %s (%s) puts +0x%X natively where %s does not: one definition is needed' % (
+                    name, r['spelling'], os.path.basename(r['tu']), bad[0], owner['spelling']))
         if differs:
             try:
                 relaid[name] = (nn, runs(nl0, nl1, pts))
             except Unlayable as e:
                 report.append('%s: cannot map %s to its native layout: %s' % (name, owner['spelling'], e))
-            # every view must put a field it shares with the owner at the
-            # owner's native offset (a shorter view of a prefix is fine)
-            want = dict((o0, o1) for (o0, _k0, _z0), (o1, _k1, _z1) in zip(nl0, nl1))
-            for r in rows:
-                if r is owner or not r['l0'] or not r['l1'] or len(r['l0']) != len(r['l1']):
-                    continue
-                bad = [o0 for (o0, _k0, _z0), (o1, _k1, _z1) in zip(r['l0'], r['l1'])
-                       if o0 in want and want[o0] != o1]
-                if bad:
-                    report.append('%s: %s (%s) puts +0x%X natively where %s does not: one definition is needed' % (
-                        name, r['spelling'], os.path.basename(r['tu']), bad[0], owner['spelling']))
             continue
         units = [(o, 4 if k == 'p' else z) for o, k, z in lv if (4 if k == 'p' else z) > 1]
         # what other declarations know of bytes the owner leaves as padding

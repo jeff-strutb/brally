@@ -59,7 +59,7 @@ void BrCarModelStream(BrStream *s, int slot, int car, int bufIdx)
 /* @implements 0x80220534 tgr BrEntIsFree */
 int BrEntIsFree(void *p)
 {
-  return *(int *)((char *)p + 0x18) == 0;
+  return ((BrStream *)p)->u.left == 0;  /* port: by name (the ROM reads the stream's word at 0x18) */
 }
 
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint

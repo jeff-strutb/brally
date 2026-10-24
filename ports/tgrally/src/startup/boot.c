@@ -86,7 +86,7 @@ extern char *D_8028A88C;                 /* the fatal error's message */
 extern TgrMsgQueue D_8031A390;           /* the retrace queue */
 extern TgrMsgQueue D_8031B1B0;           /* the fault queue */
 void BrMainThread(void *arg);
-typedef struct BrArgs { int argc; TgrAddr argv; } BrArgs;   /* argv: char ** */
+typedef struct BrArgs { int argc; char **argv; } BrArgs;
 extern char *D_80316450[];           /* argv */
 extern BrArgs *D_8026FF00;
 extern char **D_8026FF04;
@@ -645,7 +645,7 @@ void BrFatal(char *msg)
 /* @implements 0x8021E21C tgr BrFaultThread */
 void BrFaultThread(void *arg)
 {
-  extern TgrAddr D_8031B1CC;     /* 0x8031B1CC: the faulted thread */
+  extern void *D_8031B1CC;       /* 0x8031B1CC: the faulted thread */
   extern int D_8031B1D0;
   TgrMsg msg;
 
@@ -697,13 +697,13 @@ void BrIdleThread(void *arg)
       p++;
     }
   }
-  D_8026FF04 = TGR_PTR(char **, D_8028B2EC.argv);
+  D_8026FF04 = ((char **)(D_8028B2EC.argv));
   D_8026FF00 = &D_8028B2EC;
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
   tgr_video_reset();                    /* port: the low-resolution mode, MPAL or NTSC alike */
   tgr_mq_init(&D_8031B1B0, D_8031B1C8, 1);
-  tgr_thread_new(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
+  tgr_thread_new(&D_8031AC00, 5, BrFaultThread, ((char **)(D_8028B2EC.argv)), D_8031ADB0 + 0x80, 50);
   tgr_thread_start(&D_8031AC00);
   for (i = 0, s = D_80316CD0; i < 0x400; i++, s++) {
     *s = 0x5015A1DBFED15C00ULL;

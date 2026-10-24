@@ -8,10 +8,9 @@ typedef struct BrRaceCue {      /* one scrolling text line, 0x10 bytes; the tabl
   int start;                    /* 0x00  its y on screen */
   int len;                      /* 0x04  its font size */
   int x8;                       /* 0x08  the gap after it */
-  TgrAddr next;                   /* char * -- 0x0C  its text */
+  char *next;                     /* 0x0C  its text */
 } BrRaceCue;
 extern BrRaceCue D_80270194[95];       /* 94 lines and the end */
-extern TgrAddr D_802701A0;          /* (char *) the first line's text: 0 when the table is empty */
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[];
 void BrTextSetColours(int a, int b, int c, int d, int e, int f);
@@ -34,7 +33,7 @@ void BrRaceCueLayout(void)
   int n;
 
   t = 240;
-  if (D_802701A0 != 0) {
+  if (D_80270194[0].next != 0) {
     p = D_80270194;
     do {
       n = p->len;
@@ -54,7 +53,7 @@ void BrRaceCueRewind(void)
 {
   BrRaceCue *p;
 
-  if (D_802701A0 == 0) {
+  if (D_80270194[0].next == 0) {
     return;
   }
   p = D_80270194;
@@ -75,12 +74,12 @@ void BrRaceCueDraw(void)
   BrTextHighlightOff();
   BrTextAlignCentre();
   BrScissorSet(D_8031B2C8[0].x, D_8031B2C8[0].y, D_8031B2C8[0].w, D_8031B2C8[0].h);
-  if (D_802701A0 != 0) {
+  if (D_80270194[0].next != 0) {
     p = D_80270194;
     do {
       if (p->start >= -0x4f && p->start < 0x118) {
         BrTextSetFont(p->len);
-        BrTextPrint(TGR_PTR(char *, p->next), 0xa0, p->start);
+        BrTextPrint(((char *)(p->next)), 0xa0, p->start);
       }
       p++;
     } while (p->next != 0);

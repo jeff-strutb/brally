@@ -14,7 +14,7 @@ void BrFrontSetMenuFlag(int param_1);
 void BrChampionshipStart(void);
 void BrTimeAttackStart(void);
 int BrCpakCheck(int param_1,char param_2);
-typedef struct BrStream { char pad00[0x28]; } BrStream;
+#include "tgr/load.h"
 int BrEntLoadModel(BrStream *s);
 void BrTextHighlightOff(void);
 void BrTextAlignCentre(void);

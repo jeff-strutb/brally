@@ -7,7 +7,7 @@
 
 /* -- declarations -- */
 typedef struct BrVarEnt {       /* one registered variable */
-  TgrAddr ptr;                    /* char * -- 0 ends the list */
+  char *ptr;                      /* 0 ends the list */
   int size;
 } BrVarEnt;
 void BrFatal(char *msg);
@@ -34,7 +34,7 @@ void BrVarListSave(BrVarEnt *e, char *dst, int avail)
 
   start = dst;
   for (i = 0; e[i].ptr != 0; i++) {
-    memcpy(dst, TGR_PTR(char *, e[i].ptr), e[i].size);
+    memcpy(dst, ((char *)(e[i].ptr)), e[i].size);
     dst += e[i].size;
   }
   if (avail < dst - start) {
@@ -50,7 +50,7 @@ void BrVarListLoad(BrVarEnt *e, char *src)
   int i;
 
   for (i = 0; e[i].ptr != 0; i++) {
-    memcpy(TGR_PTR(char *, e[i].ptr), src, e[i].size);
+    memcpy(((char *)(e[i].ptr)), src, e[i].size);
     src += e[i].size;
   }
 }
