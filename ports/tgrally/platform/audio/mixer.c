@@ -1,9 +1,10 @@
 /* mixer.c: the game's software mixer (src/tgrally/audio/mixer.s, hand-written
  * MIPS III) in C, instruction for instruction in what it computes.
  *
- * A voice's position is a 32.32 accumulator whose high word is the address
- * of its current 8-bit sample (an original address); natively the voice
- * keeps the two words as libultra-era code wrote them, high word first.
+ * A voice's position is its current 8-bit sample and a 32-bit fraction past
+ * it (tgr/mix.h): the original's 32.32 accumulator, whose high word was the
+ * sample's address.  Adding a rate adds its low word to the fraction and its
+ * high word, with the carry, to the sample pointer.
  * The output ring (16 KB of 16-bit stereo) is kept big-endian, as the N64's
  * RAM held it and the audio interface read it; BrMixSfx adds into it as the
  * original did, four samples at a time in one 64-bit register. */
@@ -13,21 +14,27 @@
 #include <string.h>
 #include "plat.h"
 #include "tgr_core.h"
+#include "tgr/mix.h"
 
-typedef struct {            /* a mixer voice in game memory (0x18 bytes) */
-    uint32_t pos;           /* 0x00  sample address: the accumulator's high word */
-    uint32_t frac;          /* 0x04  its low word */
-    uint64_t rate;          /* 0x08 */
-    int32_t  vol;           /* 0x10 */
-    int32_t  baseVol;       /* 0x14 */
-} Voice;
+typedef struct {            /* a voice's position while mixing */
+    const signed char *p;
+    uint32_t f;
+} Acc;
 
-static inline uint64_t acc_of(const Voice *v) { return (uint64_t)v->pos << 32 | v->frac; }
-static inline void acc_set(Voice *v, uint64_t a) { v->pos = (uint32_t)(a >> 32); v->frac = (uint32_t)a; }
-static inline int32_t smp(uint64_t a) { return (int8_t)*TGR_PTR(uint8_t *, (uint32_t)(a >> 32)); }
+static inline Acc acc_of(const BrMixVoice *v) { Acc a; a.p = v->pos; a.f = v->frac; return a; }
+static inline void acc_set(BrMixVoice *v, Acc a) { v->pos = (signed char *)a.p; v->frac = a.f; }
+static inline void acc_add(Acc *a, uint64_t rate)
+{
+    uint64_t f = (uint64_t)a->f + (uint32_t)rate;
+    a->f = (uint32_t)f;
+    a->p += (uint32_t)(rate >> 32) + (uint32_t)(f >> 32);
+}
+static inline int32_t smp(Acc a) { return *a.p; }
 
-#define MUSIC   0x802A4790u     /* u16 ring position, then six voices from +8 */
-#define SFX     0x802A4918u     /* u64 lane mask, five voices from +8, a second source at +0x98 */
+extern unsigned short D_802A4790;   /* the ring position */
+extern int D_802A4918;              /* the effects' lane mask, a u64 as two words, high first */
+extern unsigned int D_802A491C;
+extern int D_802A49B0;              /* the effects' second source: an offset from voice 0's sample */
 
 /* BrCopy16: two doublewords, from an original address */
 void BrCopy16(void *dst, unsigned int src)
@@ -58,7 +65,7 @@ int BrFloatToInt(float f)
 /* the ring position and the chunk split at the ring's end */
 static uint8_t *ring_start(short *buf, int bytes, int32_t *first, int32_t *second)
 {
-    uint16_t pos = *TGR_PTR(uint16_t *, MUSIC);     /* the game keeps it natively (a short) */
+    uint16_t pos = D_802A4790;
     int32_t over;
     over = (int32_t)pos + bytes - 0x4000;
     if (over <= 0)
@@ -70,18 +77,18 @@ static uint8_t *ring_start(short *buf, int bytes, int32_t *first, int32_t *secon
 
 void BrMixMusic(short *buf, int bytes)
 {
-    Voice *v = TGR_PTR(Voice *, MUSIC + 8);
+    BrMixVoice *v = D_802A4798;
 
-    uint64_t a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
-    uint64_t a3 = acc_of(&v[3]), a4 = acc_of(&v[4]), a5 = acc_of(&v[5]);
+    Acc a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
+    Acc a3 = acc_of(&v[3]), a4 = acc_of(&v[4]), a5 = acc_of(&v[5]);
     int32_t n, rest;
     uint8_t *p = ring_start(buf, bytes, &n, &rest);
     for (;;) {
         if (n != 0) {
             do {
                 int32_t l, r;
-                a0 += v[0].rate; a2 += v[2].rate; a1 += v[1].rate;
-                a3 += v[3].rate; a4 += v[4].rate; a5 += v[5].rate;
+                acc_add(&a0, v[0].rate); acc_add(&a2, v[2].rate); acc_add(&a1, v[1].rate);
+                acc_add(&a3, v[3].rate); acc_add(&a4, v[4].rate); acc_add(&a5, v[5].rate);
                 n -= 4;
                 l = v[0].vol * smp(a0) + v[2].vol * smp(a2) + v[4].vol * smp(a4);
                 tgr_wr16(p, (uint16_t)l);
@@ -98,21 +105,21 @@ void BrMixMusic(short *buf, int bytes)
     }
     acc_set(&v[0], a0); acc_set(&v[2], a2); acc_set(&v[1], a1);
     acc_set(&v[3], a3); acc_set(&v[4], a4); acc_set(&v[5], a5);
-    *TGR_PTR(uint16_t *, MUSIC) = (uint16_t)(p - (uint8_t *)buf);
+    D_802A4790 = (uint16_t)(p - (uint8_t *)buf);
 }
 
 void BrMixMusicVoice(short *buf, int bytes, int voice)
 {
-    Voice *v = TGR_PTR(Voice *, MUSIC + 0x98 + voice);      /* this voice, and the next for the right */
-    uint64_t a = acc_of(&v[0]), b = acc_of(&v[1]);
+    BrMixVoice *v = &D_802A4798[voice];     /* this voice, and the next for the right */
+    Acc a = acc_of(&v[0]), b = acc_of(&v[1]);
     int32_t n, rest;
     uint8_t *p = ring_start(buf, bytes, &n, &rest);
     for (;;) {
         if (n != 0) {
             do {
                 int32_t l, r;
-                a += v[0].rate;
-                b += v[1].rate;
+                acc_add(&a, v[0].rate);
+                acc_add(&b, v[1].rate);
                 n -= 4;
                 l = v[0].vol * smp(a);
                 r = v[1].vol * smp(b);
@@ -129,86 +136,20 @@ void BrMixMusicVoice(short *buf, int bytes, int voice)
     }
     acc_set(&v[0], a);
     acc_set(&v[1], b);
-    *TGR_PTR(uint16_t *, MUSIC) = (uint16_t)(p - (uint8_t *)buf);
+    D_802A4790 = (uint16_t)(p - (uint8_t *)buf);
 }
 
 static inline uint64_t rd64(const uint8_t *p) { return (uint64_t)tgr_rd32(p) << 32 | tgr_rd32(p + 4); }
 static inline void wr64(uint8_t *p, uint64_t v) { tgr_wr32(p, (uint32_t)(v >> 32)); tgr_wr32(p + 4, (uint32_t)v); }
 
-/* TGR_SNDDUMP=FILE: the effects voices once a retrace, for tools: 'F' frame, the
- * effects level and fade, the lane mask, the second source, then six voices
- * (pos, rate, baseVol, and the sample's start, length and loop); 'S' start
- * length and the sample's bytes (and 0x800 after) the first time a start is seen;
- * 'M' after each 'F': the music player */
-static void snd_dump(void)
-{
-    static FILE *f;
-    static int init;
-    static uint32_t last = 0xFFFFFFFF, seen[256];
-    static int nseen;
-    const uint32_t *loops = TGR_PTR(const uint32_t *, 0x80378F50u);
-    Voice *v = TGR_PTR(Voice *, SFX + 8);
-    uint32_t fr = tgr_frame(), w[8];
-    int i, k;
-    if (!init) {
-        init = 1;
-        if (getenv("TGR_SNDDUMP"))
-            f = fopen(getenv("TGR_SNDDUMP"), "wb");
-    }
-    if (!f || fr == last)
-        return;
-    last = fr;
-    for (i = 0; i < 6; i++) {
-        uint32_t st = loops[i * 3];
-        for (k = 0; k < nseen && seen[k] != st; k++)
-            ;
-        if (k == nseen && st && nseen < 256) {
-            uint32_t len = loops[i * 3 + 1] + 0x800;
-            seen[nseen++] = st;
-            fputc('S', f);
-            fwrite(&st, 4, 1, f);
-            fwrite(&len, 4, 1, f);
-            fwrite(TGR_PTR(uint8_t *, st), 1, len, f);
-        }
-    }
-    fputc('F', f);
-    w[0] = fr;
-    w[1] = *TGR_PTR(uint8_t *, 0x802A49CCu);
-    w[2] = *TGR_PTR(uint8_t *, 0x802A49D0u);
-    w[3] = *TGR_PTR(uint32_t *, SFX);
-    w[4] = *TGR_PTR(uint32_t *, SFX + 4);
-    w[5] = *TGR_PTR(uint32_t *, SFX + 0x98);
-    fwrite(w, 4, 6, f);
-    for (i = 0; i < 6; i++) {
-        w[0] = v[i].pos;
-        w[1] = v[i].frac;
-        w[2] = (uint32_t)(v[i].rate >> 32);
-        w[3] = (uint32_t)v[i].rate;
-        w[4] = (uint32_t)v[i].baseVol;
-        w[5] = loops[i * 3];
-        w[6] = loops[i * 3 + 1];
-        w[7] = loops[i * 3 + 2];
-        fwrite(w, 4, 8, f);
-    }
-    /* 'M': the music player as it stands: its six channels, its state, its six
-       voices, the instrument and pattern tables (32 each), as the game holds them */
-    fputc('M', f);
-    fwrite(TGR_PTR(uint8_t *, 0x80378DD0u), 1, 6 * 0x18, f);
-    fwrite(TGR_PTR(uint8_t *, 0x80378FA0u), 1, 0x14, f);
-    fwrite(TGR_PTR(uint8_t *, MUSIC + 8), 1, 6 * 0x18, f);
-    fwrite(TGR_PTR(uint8_t *, 0x803787D0u), 1, 32 * 4, f);
-    fwrite(TGR_PTR(uint8_t *, 0x803789D0u), 1, 32 * 4, f);
-}
-
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)
 {
-    snd_dump();
     {
-    Voice *v = TGR_PTR(Voice *, SFX + 8);
-    uint64_t a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
-    uint64_t a3 = acc_of(&v[3]), a4 = acc_of(&v[4]);
-    uint64_t mask = (uint64_t)*TGR_PTR(uint32_t *, SFX) << 32 | *TGR_PTR(uint32_t *, SFX + 4);   /* the u64 as two native words, high first */
-    uint32_t second = *TGR_PTR(uint32_t *, SFX + 0x98);
+    BrMixVoice *v = D_802A4920;
+    Acc a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
+    Acc a3 = acc_of(&v[3]), a4 = acc_of(&v[4]);
+    uint64_t mask = (uint64_t)(uint32_t)D_802A4918 << 32 | D_802A491C;
+    int32_t second = D_802A49B0;
     int32_t n, rest, over;
     uint8_t *p;
     over = (int32_t)(pos + bytes) - 0x4000;
@@ -222,11 +163,11 @@ void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)
             do {
                 int32_t s, t;
                 uint64_t old, sum;
-                a0 += v[0].rate; a1 += v[1].rate; a2 += v[2].rate; a3 += v[3].rate; a4 += v[4].rate;
+                acc_add(&a0, v[0].rate); acc_add(&a1, v[1].rate); acc_add(&a2, v[2].rate); acc_add(&a3, v[3].rate); acc_add(&a4, v[4].rate);
                 old = rd64(p);
                 t = 0;
                 if (second != 0)
-                    t = (int8_t)*TGR_PTR(uint8_t *, second + (uint32_t)(a0 >> 32));
+                    t = a0.p[second];
                 s = v[0].vol * (t + smp(a0));
                 s += v[1].vol * smp(a1);
                 s += v[2].vol * smp(a2);

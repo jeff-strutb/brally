@@ -1,6 +1,7 @@
 /* credits.c -- the credits sequence
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/gbi.h"
 #include "tgr/pad.h"
 
@@ -13,7 +14,7 @@ extern char D_80270828[];
 extern char D_80271F88[];               /* the title card's lights */
 extern char D_80271F90[];
 extern int D_80271D98;                  /* BrModelDraw: the opaque surface mode, once */
-typedef struct BrRaceSnd { TgrAddr p; int x4; unsigned long long pitch; int x10; unsigned int level; } BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels */
 extern Gfx *D_8028A858;
 extern int D_8028AAB0;                  /* screen width */
@@ -49,7 +50,6 @@ unsigned int BrRomUnpack(void *, unsigned int, void *);
 void * BrModelLoad(void *, int);
 void BrAnimSetLoop(void *);
 short BrSfxFreeVoice(void);
-void BrSfxVoiceStart(short, unsigned int, unsigned int, unsigned int);
 void BrClockTick(void);
 void BrFrameBeginLayout1(void);
 void BrZBufferClear(void);
@@ -207,7 +207,7 @@ void BrIntroScreen(void)
         short v1 = BrSfxFreeVoice();
 
         if (v1 != -1) {
-          BrSfxVoiceStart(v1, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+          BrSfxVoiceStart(v1, D_80315EA4, D_80315EA0, 0);
           D_802A4920[v1].level = 0x200020;
           D_802A4920[v1].pitch = 0x100000000;
         }
@@ -217,7 +217,7 @@ void BrIntroScreen(void)
         short v2 = BrSfxFreeVoice();
 
         if (v2 != -1) {
-          BrSfxVoiceStart(v2, tgr_addr32(D_80315EAC), D_80315EA8, 0);
+          BrSfxVoiceStart(v2, D_80315EAC, D_80315EA8, 0);
           D_802A4920[v2].level = 0x200020;
           D_802A4920[v2].pitch = 0x100000000;
         }
@@ -237,7 +237,7 @@ void BrIntroScreen(void)
         if (D_80315EB4 < 2) {
           D_80315EB0 = BrSfxFreeVoice();
           if (D_80315EB0 != -1) {
-            BrSfxVoiceStart(D_80315EB0, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+            BrSfxVoiceStart(D_80315EB0, D_80315EA4, D_80315EA0, 0);
             D_802A4920[D_80315EB0].level = 0x140014;
             D_802A4920[D_80315EB0].pitch = 0x100000000;
           }
@@ -275,7 +275,7 @@ void BrIntroScreen(void)
         short v3 = BrSfxFreeVoice();
 
         if (v3 != -1) {
-          BrSfxVoiceStart(v3, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+          BrSfxVoiceStart(v3, D_80315EA4, D_80315EA0, 0);
           D_802A4920[v3].level = 0x200020;
           D_802A4920[v3].pitch = 0x100000000;
         }
@@ -285,7 +285,7 @@ void BrIntroScreen(void)
         short v4 = BrSfxFreeVoice();
 
         if (v4 != -1) {
-          BrSfxVoiceStart(v4, tgr_addr32(D_80315EAC), D_80315EA8, 0);
+          BrSfxVoiceStart(v4, D_80315EAC, D_80315EA8, 0);
           D_802A4920[v4].level = 0x200020;
           D_802A4920[v4].pitch = 0x100000000;
         }
@@ -307,7 +307,7 @@ void BrIntroScreen(void)
         if (D_80315EC0 < 2) {
           D_80315EBC = BrSfxFreeVoice();
           if (D_80315EBC != -1) {
-            BrSfxVoiceStart(D_80315EBC, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+            BrSfxVoiceStart(D_80315EBC, D_80315EA4, D_80315EA0, 0);
             D_802A4920[D_80315EBC].level = 0x140014;
             D_802A4920[D_80315EBC].pitch = 0x100000000;
           }
@@ -345,7 +345,7 @@ void BrIntroScreen(void)
         short v5 = BrSfxFreeVoice();
 
         if (v5 != -1) {
-          BrSfxVoiceStart(v5, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+          BrSfxVoiceStart(v5, D_80315EA4, D_80315EA0, 0);
           D_802A4920[v5].level = 0x200020;
           D_802A4920[v5].pitch = 0x100000000;
         }
@@ -355,7 +355,7 @@ void BrIntroScreen(void)
         short v6 = BrSfxFreeVoice();
 
         if (v6 != -1) {
-          BrSfxVoiceStart(v6, tgr_addr32(D_80315EAC), D_80315EA8, 0);
+          BrSfxVoiceStart(v6, D_80315EAC, D_80315EA8, 0);
           D_802A4920[v6].level = 0x200020;
           D_802A4920[v6].pitch = 0x100000000;
         }
@@ -377,7 +377,7 @@ void BrIntroScreen(void)
         if (D_80315ECC < 2) {
           D_80315EC8 = BrSfxFreeVoice();
           if (D_80315EC8 != -1) {
-            BrSfxVoiceStart(D_80315EC8, tgr_addr32(D_80315EA4), D_80315EA0, 0);
+            BrSfxVoiceStart(D_80315EC8, D_80315EA4, D_80315EA0, 0);
             D_802A4920[D_80315EC8].level = 0x140014;
             D_802A4920[D_80315EC8].pitch = 0x100000000;
           }

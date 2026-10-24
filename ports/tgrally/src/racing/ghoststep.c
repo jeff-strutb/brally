@@ -2,6 +2,7 @@
  * a carless entity (the ghost) along its recorded route
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/ent.h"
 #include "tgr/car.h"
 
@@ -9,13 +10,7 @@
 #include "tgr/track.h"
 typedef BrPathSeg BrRoute;          /* a route: a path segment (cartridge data) */
 
-typedef struct BrRaceSnd {     /* a sound channel (0x18 bytes) */
-  TgrAddr p;  /* void * */
-  int x4;
-  long long x8;
-  int x10;
-  int x14;
-} BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels */
 extern int D_8026FF08;                  /* players */
 extern int D_8026FF10;                  /* set: silence the channels and stop */

@@ -631,7 +631,8 @@ def main():
     # RAM outside the image stays the arena.
     inner = {}
     for line in aliases:
-        nm, owner, _pth, off = line.split()
+        f = line.split()
+        nm, owner, off = f[0], f[1], f[-1]       # the path between may hold spaces
         inner[nm] = (owner, int(off[3:], 16))
     tops = sorted(addr_of(n, syms) for n, a in arena if region(a) in ('data', 'bss') and n not in inner)
 

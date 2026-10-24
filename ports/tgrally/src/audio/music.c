@@ -1,6 +1,7 @@
 /* music.c -- the module music player
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 
 /* -- declarations -- */
 typedef struct BrModChan {      /* one module channel, 0x18 bytes */
@@ -18,13 +19,6 @@ typedef struct BrModChan {      /* one module channel, 0x18 bytes */
   unsigned char arpOn;          /* 0x16 */
   char pad17;
 } BrModChan;
-typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
-  unsigned int pos;             /* 0x00 */
-  int x4;                       /* that overruns its sample mixes these bytes */
-  unsigned long long rate;      /* 0x08  0 = silent */
-  int vol;                      /* 0x10  scaled volume */
-  int baseVol;                  /* 0x14 */
-} BrMixVoice;
 typedef struct BrModState {
   unsigned short x0;                   /* 0x00  ticks per row */
   unsigned short x2;                   /* 0x02  ticks left in the row */
@@ -38,14 +32,6 @@ typedef struct BrModState {
 } BrModState;
 extern BrModChan D_80378DD0[];
 extern BrModState D_80378FA0;
-extern BrMixVoice D_802A4798[];
-typedef struct BrSampleLoop {   /* 0x0C bytes */
-  unsigned int x0;
-  unsigned int x4;
-  unsigned int loop;            /* 0 = the sample does not loop */
-} BrSampleLoop;
-extern BrSampleLoop D_80378F50[];
-extern BrMixVoice D_802A4920[6];
 void BrModLoad(unsigned char *xm, unsigned char *buf);
 unsigned char *BrModRowRead(unsigned char *p);
 void BrModReset(void);
@@ -85,7 +71,7 @@ extern unsigned char D_802A49CC;        /* effects volume */
 extern unsigned char D_802A49D0;        /* effects fade */
 void BrMusicLoopSamples(void);
 void BrModTick(void);
-void BrMixMusicVoice(short *buf, int bytes, int voice);
+void BrMixMusicVoice(short *buf, int bytes, int voice);   /* voice: its number (and the next's) */
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos);   /* pos: the effects write position */
 void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
@@ -228,12 +214,12 @@ void BrMusicLoopSamples(void)
 {
   int i;
   int n;
-  unsigned int end;
+  signed char *end;
 
   for (i = 0; i < D_802A49C0; i++) {
     n = D_80378DD0[i].smp;
     if (n != 0) {
-      end = tgr_addr32(D_803787D0[n - 1]) + BE32(D_803787D0[n - 1]->len) + 0x28;
+      end = (signed char *)D_803787D0[n - 1] + BE32(D_803787D0[n - 1]->len) + 0x28;
       if (end < D_802A4798[i].pos) {
         if (D_803787D0[n - 1]->loops == 0) {
           D_802A4798[i].rate = 0;
@@ -380,7 +366,7 @@ unsigned char *BrModRowRead(unsigned char *p)
       D_80378DD0[i].arpIdx = 0;
       v->x4 = 0;
       inst = D_80378DD0[i].smp = D_80378DD0[i].inst;
-      v->pos = tgr_addr32(D_803787D0[inst - 1]) + 0x28;
+      v->pos = (signed char *)D_803787D0[inst - 1] + 0x28;
       n = D_80378DD0[i].note + D_803787D0[inst - 1]->relNote;
       smp = D_80378DD0[i].smp;
       v->rate = (&D_80379568[0][0])[n & 0xffff];
@@ -515,12 +501,12 @@ void BrMusicInit(int param_1, char *param_2)
   tgr_timer(D_80374710, (unsigned long long)10000 * tgr_clock_rate / 1000000,
              (unsigned long long)10000 * tgr_clock_rate / 1000000, &D_803746F0, 0);
   for (i = 0; i < D_802A49C0; i++) {
-    D_802A4798[i].pos = tgr_addr32(D_803747D0);
+    D_802A4798[i].pos = (signed char *)D_803747D0;
     D_802A4798[i].rate = 0;
     D_802A4798[i].baseVol = 0x20;
   }
   for (j = 0; j < 6; j++) {
-    D_802A4920[j].pos = tgr_addr32(D_802A4A08);
+    D_802A4920[j].pos = (signed char *)D_802A4A08;
     D_802A4920[j].rate = 0;
     D_802A4920[j].baseVol = 0x20;
   }
@@ -550,7 +536,7 @@ void BrMusicStop(void)
 
   D_80378F98 = 0;
   for (i = 0; i < D_802A49C0; i++) {
-    D_802A4798[i].pos = tgr_addr32(D_802A4A08);
+    D_802A4798[i].pos = (signed char *)D_802A4A08;
     D_802A4798[i].rate = 0;
     D_802A4798[i].baseVol = 0;
     D_80378DD0[i].smp = 0;
@@ -593,7 +579,7 @@ short BrSfxFreeVoice(void)
  * sample's start, length and loop length, and set the voice playing from the
  * start at rate 1.0 (32.32 fixed point), volume 0, both pans 0x20. */
 /* @implements 0x80257B04 tgr BrSfxVoiceStart */
-void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int loop)
+void BrSfxVoiceStart(short v, void *start, unsigned int len, unsigned int loop)
 {
   D_80378F50[v].x0 = start;
   D_80378F50[v].x4 = len;
@@ -606,13 +592,13 @@ void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int
 }
 
 /* WHAT IT DOES: Start a sound voice on a sample: record the sample's
- * start, end and loop, point the voice at the start, silent, at the normal
+ * start, length and loop, point the voice at the start, silent, at the normal
  * rate (1.0 in 32.32). */
 /* @implements 0x80257B78 tgr BrSfxVoicePlay */
-void BrSfxVoicePlay(short v, unsigned int start, unsigned int end, unsigned int loop)
+void BrSfxVoicePlay(short v, void *start, unsigned int len, unsigned int loop)
 {
   D_80378F50[v].x0 = start;
-  D_80378F50[v].x4 = end;
+  D_80378F50[v].x4 = len;
   D_80378F50[v].loop = loop;
   D_802A4920[v].baseVol = 0;
   D_802A4920[v].vol = 0;
@@ -711,7 +697,7 @@ void BrMusicThread(void *arg)
     BrMixMusic((short *)D_803747D0, D_80379930);
     for (D_80379938 = 6; D_80379938 < D_802A49C0; D_80379938 += 2) {
       D_802A4790 = save;
-      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
+      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938);   /* port: the voice by number */
     }
     /* port: the effects on the same stretch (the cartridge kept their own
        position, which was always the music's) */

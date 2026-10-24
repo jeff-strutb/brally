@@ -13,6 +13,7 @@
  */
 /* n64-cflags: -O2 */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/ent.h"
 #include "tgr/car.h"
 #include "tgr/pad.h"
@@ -56,13 +57,7 @@ typedef struct BrTip {          /* a demo caption (0x20 bytes) */
 } BrTip;
 extern BrTip D_8026FFB4[];
 
-typedef struct BrRaceSnd {      /* 0x18 bytes, six of them */
-  TgrAddr p;  /* void * */
-  int x4;
-  long long x8;
-  int x10;
-  int x14;
-} BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];
 extern int D_802A49B0;
 extern char D_802A4A08[];
@@ -1419,7 +1414,7 @@ draw:
       D_802A4920[kb8].x14 = 0;
       D_802A4920[kb8].x10 = 0;
       D_802A4920[kb8].x8 = 0;
-      D_802A4920[kb8].p = tgr_addr32(D_802A4A08);
+      D_802A4920[kb8].p = (signed char *)D_802A4A08;
     }
     D_8028AB10 = 0;
     if (D_802707CC != 0) {

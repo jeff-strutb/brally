@@ -1,25 +1,15 @@
 /* sfxsrc.c -- short sound-effect triggers
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
 void BrSfxSrcTrigger(int param_1);
-void BrSfxVoiceStart(short param_1,int param_2,int param_3,int param_4);
 extern int D_8028B7EC;
-typedef struct BrSfxSrc {       /* a car sound sample, 0x18 bytes */
-  TgrAddr data;          /* unsigned char * -- 0x00  where it was unpacked */
-  int rom;                      /* 0x04  its packed file */
-  int x8;
-  unsigned int size;            /* 0x0C  unpacked size */
-  unsigned int loop;            /* 0x10  loop start (-1 in the table: the end) */
-  unsigned int loopLen;         /* 0x14  bytes copied past the end for the loop (-1: all) */
-} BrSfxSrc;
-extern BrSfxSrc D_8028BC04[16];
 int BrRomReadSize(int rom);
 unsigned int BrRomUnpack(void *dst, int rom, unsigned int *out);
 void BrFatal(char *msg);
-void BrSfxVoicePlay(short v, unsigned int start, unsigned int end, unsigned int loop);
 extern int D_8028B7F4;                  /* player count */
 extern unsigned char D_80324550[];      /* the car sound buffer, 0x29FE0 bytes */
 typedef struct BrSndVec { float x, y, z; } BrSndVec;
@@ -47,15 +37,6 @@ float BrVec3Dot(float a[3], float b[3]);
 float BrVec3Length(float v[3]);
 void BrVec3DivBy(float v[3], float d);
 extern float D_8028AAD8;                /* seconds this frame */
-typedef struct BrSndVoice {     /* a mixer voice, 0x18 bytes */
-  unsigned int pos;
-  int x4;
-  unsigned long long rate;      /* 0x08  32.32 step, 0 = silent */
-  int vol;                      /* 0x10 */
-  unsigned int baseVol;         /* 0x14  packed left << 16 | right */
-} BrSndVoice;
-extern BrSndVoice D_802A4920[6];
-extern unsigned int D_802A497C;
 typedef BrRaceEnt BrSndCarLink;     /* a car's race entity (tgr/ent.h) */
 typedef struct BrSndView { int x, y, w, h; int car; } BrSndView;
 extern BrSndView D_8031B2C8[2];         /* the players' views */
@@ -191,7 +172,7 @@ void BrSndNearestCommit(void)
   }
 skip:
   if (D_8028B7A0.f8C == -1) {
-    D_802A4920[3].baseVol = 0;
+    D_802A4920[3].level = 0;
     D_802A4920[3].vol = 0;
     D_802A4920[3].rate = 0;
   } else if (D_8028B7A0.f8C == D_8028B7A0.f90 && D_8028B7A0.pObj == D_8028B7A0.pObjPrev) {
@@ -212,16 +193,16 @@ skip:
     vol >>= 8;
     if (D_8028B7A0.fA0 == 0) {
       D_8028B7A0.fA0 = 1;
-      BrSfxVoicePlay(3, (unsigned int)D_8028BC04[D_8028B7A0.f84].data, D_8028BC04[D_8028B7A0.f84].size,
+      BrSfxVoicePlay(3, D_8028BC04[D_8028B7A0.f84].data, D_8028BC04[D_8028B7A0.f84].size,
                      D_8028BC04[D_8028B7A0.f84].loop);
     }
     if ((D_8031B2C8[0].car + D_8031B760)->xf48 == 0
         && (D_8028AB0C == 1 || (D_8031B2C8[1].car + D_8031B760)->xf48 == 0)) {
       D_802A4920[3].rate = tgr_f2ull((double)(ratio * (1.0f / 11000.0f)) * 4294967296.0);
-      if (D_802A4920[3].baseVol == 0) {
-        D_802A497C = ((int)((float)((int)(vol * gainA) << 16) + gainB * vol) >> 1) & 0x7FFF7FFF;
+      if (D_802A4920[3].level == 0) {
+        D_802A4920[3].level = ((int)((float)((int)(vol * gainA) << 16) + gainB * vol) >> 1) & 0x7FFF7FFF;
       } else {
-        D_802A4920[3].baseVol = tgr_f2u((float)((int)(vol * gainA) << 16) + gainB * vol);
+        D_802A4920[3].level = tgr_f2u((float)((int)(vol * gainA) << 16) + gainB * vol);
       }
     }
     D_8028B7A0.posPrev.x = D_8028B7A0.pos.x;
@@ -233,8 +214,8 @@ skip:
     D_8028B7A0.objPosPrev.z = p[2];
   } else {
     D_8028B7A0.fA0 = 0;
-    vol = D_802A4920[3].baseVol;
-    D_802A4920[3].baseVol = ((unsigned int)vol >> 1) & 0x7FFF7FFF;
+    vol = D_802A4920[3].level;
+    D_802A4920[3].level = ((unsigned int)vol >> 1) & 0x7FFF7FFF;
   }
   D_8028B7A0.f90 = D_8028B7A0.f8C;
   D_8028B7A0.pObjPrev = D_8028B7A0.pObj;
@@ -262,7 +243,7 @@ void BrSfxSrcBeep2(void)
 /* @implements 0x8022B370 tgr BrSfxSrcTrigger */
 void BrSfxSrcTrigger(int n)
 {
-  BrSfxVoiceStart(3, (int)D_8028BC04[n].data, D_8028BC04[n].size, D_8028BC04[n].loop);
+  BrSfxVoiceStart(3, D_8028BC04[n].data, D_8028BC04[n].size, D_8028BC04[n].loop);
   D_8028B7EC = n;
 }
 
@@ -363,13 +344,13 @@ void BrSndNearestOfferDefault(int f8C, void *pPos, void *pListener)
 /* @implements 0x8022BAA0 tgr BrCarSfxLoad */
 void BrCarSfxLoad(void)
 {
-  unsigned int base;
-  unsigned int pos;
+  unsigned char *base;
+  unsigned char *pos;
   int i;
   unsigned int j;
   BrSfxSrc *s;
 
-  base = tgr_addr32(D_80324550);
+  base = D_80324550;
   pos = base;
   for (i = 0; i < 16; i++) {
     D_8028BC04[i].size = BrRomReadSize(D_8028BC04[i].rom);
@@ -384,23 +365,23 @@ void BrCarSfxLoad(void)
       tgr_print("ERROR: Sound buffer allocation overflow on car sound %d\n", i);
     } else {
       D_8028BC04[i].data = pos;
-      BrRomUnpack(TGR_PTR(unsigned char *, pos), D_8028BC04[i].rom, 0);
+      BrRomUnpack(pos, D_8028BC04[i].rom, 0);
       for (j = 0; j < D_8028BC04[i].loopLen; j++) {
-        TGR_PTR(unsigned char *, D_8028BC04[i].data)[j + D_8028BC04[i].size] = TGR_PTR(unsigned char *, D_8028BC04[i].data)[j];
+        D_8028BC04[i].data[j + D_8028BC04[i].size] = D_8028BC04[i].data[j];
       }
     }
     pos += D_8028BC04[i].size + D_8028BC04[i].loopLen;
   }
   s = D_8028BC04;
-  tgr_print("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
+  tgr_print("Car sound effect space used: %d/%d\n", (int)(pos - base), 0x29fe0);
   if (pos - base > 0x29fe0) {
     BrFatal("Car sound effect overflow");
   }
-  BrSfxVoicePlay(0, (unsigned int)s->data, s->size, s->loop);
+  BrSfxVoicePlay(0, s->data, s->size, s->loop);
   if (D_8028B7F4 > 1) {
-    BrSfxVoicePlay(2, (unsigned int)s->data, s->size, s->loop);
+    BrSfxVoicePlay(2, s->data, s->size, s->loop);
   }
   if (D_8028B7F4 > 2) {
-    BrSfxVoicePlay(4, (unsigned int)s->data, s->size, s->loop);
+    BrSfxVoicePlay(4, s->data, s->size, s->loop);
   }
 }

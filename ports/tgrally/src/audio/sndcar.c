@@ -2,26 +2,13 @@
  * the one-shot knocks and the surface loop
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
-typedef struct BrRaceSnd {      /* a sound channel (0x18 bytes) */
-  TgrAddr p;  /* void * */
-  int x4;
-  unsigned long long pitch;     /* 0x08  32.32 playback ratio */
-  int x10;
-  unsigned int level;           /* 0x14  left << 16 | right */
-} BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 typedef struct BrViewRec { int x; int y; int w; int h; int car; } BrViewRec;
 #include "tgr/track.h"
-typedef struct BrSurfSnd {      /* a surface loop (0x18 bytes) */
-  int start;
-  int x4;
-  int x8;
-  int len;                      /* 0x0C */
-  int loop;                     /* 0x10 */
-  int x14;
-} BrSurfSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels, two per car */
 extern int D_802A49B0;                  /* the engine channel's override rate */
 extern BrViewRec D_8031B2C8[2];         /* the views and the car each follows */
@@ -31,7 +18,6 @@ extern int D_8026FF10;                  /* set: silence the channels */
 extern int D_8028AB0C;                  /* views on screen */
 extern unsigned int D_8028C800;         /* the weather */
 #define D_80025C60 BR_TRACKOBJS()          /* the track's objects (cartridge data) */
-extern BrSurfSnd D_8028BC04[];          /* the surface loops */
 extern short D_802A4BEC[2];             /* the rumble pulse per player: on, */
 extern short D_802A4BF0[2];
 extern short D_802A4BF4[2];
@@ -40,7 +26,6 @@ extern short D_802A4BFC[2];
 extern short D_802A4C00[2];
 float BrSndDoppler(BrVec3 *pos, BrVec3 *prev, BrVec3 *lst, BrVec3 *lstPrev);
 void BrSndPan(BrVec3 *pos, BrCarCam *lst, float *l, float *r, int *vol, int x);
-void BrSfxVoicePlay(short v, int start, int len, int loop);
 float BrVec3Length(BrVec3 *v);
 /* -- end declarations -- */
 

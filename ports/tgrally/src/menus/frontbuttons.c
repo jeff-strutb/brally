@@ -1,6 +1,7 @@
 /* frontbuttons.c -- the button prompts along the bottom of front-end screens
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/romimage.h"
 #include "tgr/gbi.h"
 #include "tgr/car.h"
@@ -17,7 +18,7 @@ extern BrRomImage D_80271D70;           /* the A and B button images */
 extern BrRomImage D_80271D84;
 extern int D_8028AAB4;
 extern int D_80271FD0;
-typedef struct BrRaceSnd { TgrAddr p; int x4; long long x8; int x10; int x14; } BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels */
 extern char D_802A4A08[];
 extern BrRomImage D_80272048;            /* the menu background */
@@ -59,7 +60,6 @@ int BrFadeIsOut(void);
 int BrFadeAtTarget(void);
 void BrFadeBarsDraw(void);
 short BrSfxFreeVoice(void);
-void BrSfxVoiceStart(short, unsigned int, unsigned int, unsigned int);
 void BrClockTick(void);
 void BrFrameBeginLayout1(void);
 void BrPerfMark(int bar, int r, int g, int b, int a);
@@ -192,7 +192,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
       D_80316224 = -1.0f;
       v = BrSfxFreeVoice();
       if (v != -1) {
-        BrSfxVoiceStart(v, tgr_addr32(D_80316230), D_80316234, 0);
+        BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
       }
     }
     D_80271FD0 = -1;
@@ -349,7 +349,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           D_802A4920[ch].x14 = 0;
           D_802A4920[ch].x10 = 0;
           D_802A4920[ch].x8 = 0;
-          D_802A4920[ch].p = tgr_addr32(D_802A4A08);
+          D_802A4920[ch].p = (signed char *)D_802A4A08;
         }
         if (D_8031622C != 0) {
           return 1;
@@ -390,7 +390,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
             move:
               v = BrSfxFreeVoice();
               if (v != -1) {
-                BrSfxVoiceStart(v, tgr_addr32(D_80316230), D_80316234, 0);
+                BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
               }
             }
           }
@@ -431,7 +431,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           choose:
             v = BrSfxFreeVoice();
             if (v != -1) {
-              BrSfxVoiceStart(v, tgr_addr32(D_80316238), D_8031623C, 0);
+              BrSfxVoiceStart(v, D_80316238, D_8031623C, 0);
             }
           }
         }

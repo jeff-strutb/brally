@@ -1,6 +1,7 @@
 /* carselect.c -- the car-select screen
  */
 #include "tgr/common.h"
+#include "tgr/mix.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
 #include "tgr/romimage.h"
@@ -291,13 +292,7 @@ extern int D_80270850;
 extern unsigned char D_802724F4;
 extern int D_80271FA0;          /* the paint shop's player */
 extern BrRound D_8028B944[];
-typedef struct BrRaceSnd {      /* a sound channel (0x18 bytes) */
-  TgrAddr p;
-  int x4;
-  unsigned long long pitch;     /* 0x08  32.32 playback ratio */
-  int x10;
-  unsigned int level;           /* 0x14  left << 16 | right */
-} BrRaceSnd;
+typedef BrMixVoice BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];  /* six sound channels */
 extern char D_802A4A08[];
 #define D_001BF480 0x1BF480       /* a ROM offset */
@@ -356,7 +351,6 @@ void BrFrameEnd(void);
 void BrPadStickToButtons(void *);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
 short BrSfxFreeVoice(void);
-void BrSfxVoiceStart(short, unsigned int, unsigned int, unsigned int);
 void BrCarModelStream(BrStream *s, int slot, int car, int bufIdx);
 void BrEntPaintTexture(void *, unsigned int, unsigned int, int);
 int BrEntLoadModel(BrStream *s);
@@ -974,7 +968,7 @@ void BrCarSelect(void)
         D_802A4920[back].level = 0;
         D_802A4920[back].x10 = 0;
         D_802A4920[back].pitch = 0;
-        D_802A4920[back].p = tgr_addr32(D_802A4A08);
+        D_802A4920[back].p = (signed char *)D_802A4A08;
       }
       if (D_80316298 != 0) {
         if (D_80272074 != 0) {
@@ -1065,7 +1059,7 @@ void BrCarSelect(void)
               newcar:
                 v = BrSfxFreeVoice();
                 if (v != -1) {
-                  BrSfxVoiceStart(v, tgr_addr32(D_8031629C), D_803162A0, 0);
+                  BrSfxVoiceStart(v, D_8031629C, D_803162A0, 0);
                 }
                 D_80316258[p] ^= 2;
                 BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->x2058, p);
@@ -1156,7 +1150,7 @@ void BrCarSelect(void)
             tick:
               v = BrSfxFreeVoice();
               if (v != -1) {
-                BrSfxVoiceStart(v, tgr_addr32(D_8031629C), D_803162A0, 0);
+                BrSfxVoiceStart(v, D_8031629C, D_803162A0, 0);
               }
             }
           }
@@ -1232,7 +1226,7 @@ void BrCarSelect(void)
               D_80316258[p] = p ^ 2;
               v = BrSfxFreeVoice();
               if (v != -1) {
-                BrSfxVoiceStart(v, tgr_addr32(D_803162A4), D_803162A8, 0);
+                BrSfxVoiceStart(v, D_803162A4, D_803162A8, 0);
               }
               back = 0;
               BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->kind, p);
@@ -1298,7 +1292,7 @@ void BrCarSelect(void)
             if (back) {
               v = BrSfxFreeVoice();
               if (v != -1) {
-                BrSfxVoiceStart(v, tgr_addr32(D_803162A4), D_803162A8, 0);
+                BrSfxVoiceStart(v, D_803162A4, D_803162A8, 0);
               }
             }
           }
