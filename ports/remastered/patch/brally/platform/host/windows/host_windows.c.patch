@@ -1,6 +1,26 @@
 --- a/platform/host/windows/host_windows.c
 +++ b/platform/host/windows/host_windows.c
-@@ -686,7 +686,8 @@
+@@ -307,13 +307,15 @@
+     case WM_MOUSEMOVE:
+     case WM_LBUTTONDOWN:
+     case WM_LBUTTONUP:
++    case WM_RBUTTONDOWN:                /* Remastered: the right button (the paint shop's B) */
++    case WM_RBUTTONUP:
+         e.type = HOST_EV_MOUSE;
+         client_point(lp, &e.x, &e.y);
+-        e.buttons = (wp & MK_LBUTTON) ? 1 : 0;
+-        qpush(&e);
+-        if (m == WM_LBUTTONDOWN)
++        e.buttons = ((wp & MK_LBUTTON) ? 1 : 0) | ((wp & MK_RBUTTON) ? 2 : 0);
++        qpush(&e);
++        if (m == WM_LBUTTONDOWN || m == WM_RBUTTONDOWN)
+             SetCapture(h);
+-        else if (m == WM_LBUTTONUP)
++        else if ((m == WM_LBUTTONUP || m == WM_RBUTTONUP) && !e.buttons)
+             ReleaseCapture();
+         return 0;
+     case WM_SETFOCUS:
+@@ -721,7 +723,8 @@
  }
  
  /* ---- game controllers: XInput -------------------------------------------------- */
@@ -10,7 +30,7 @@
  {
      XINPUT_STATE st;
      const XINPUT_GAMEPAD *g;
-@@ -696,7 +697,7 @@
+@@ -731,7 +734,7 @@
      memset(o, 0, sizeof *o);
      o->pov = -1;
      for (i = 0; i < XUSER_MAX_COUNT; i++)
@@ -19,7 +39,7 @@
              break;
      if (i == XUSER_MAX_COUNT)
          return 0;
-@@ -734,3 +735,5 @@
+@@ -769,3 +772,5 @@
      }
      return 1;
  }

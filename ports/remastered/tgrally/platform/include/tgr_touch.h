@@ -44,4 +44,31 @@ void tgr_touch_swipe(float dx, float dy);
 /* a press of one N64 button (libultra's bits: START_BUTTON is 0x1000) */
 void tgr_touch_press(unsigned short button);
 
+/* ---- a pointer: the mouse, or a finger on a screen that takes one --------- */
+/* A screen that asks for it each frame (the paint shop: src/menus/rmpaintptr.c)
+ * gets the pointer itself, its cursor where the pointer is and its buttons
+ * as the pad's, rather than taps and swipes. */
+/* the host's side: the pointer at (u, v), fractions of the area the game is
+   drawn in as for a tap, with its buttons down (1 the left button or a
+   finger, 2 the right button) */
+void tgr_pointer(float u, float v, int buttons);
+/* 1 while the game is on a screen that takes the pointer: touch goes to it */
+int  tgr_pointer_wanted(void);
+
+/* the game's side, once a frame on such a screen */
+typedef struct TgrPointer {
+    int x, y;           /* where it is, in the paint shop's 640 by 480 */
+    int moved;          /* it moved, or a button went down, since the last frame */
+    int down;           /* buttons down */
+    int clicks;         /* buttons that went down since the last frame (a quick
+                           click counts though it is already up again) */
+    int dragged;        /* the left button came up since the last frame, having
+                           moved since it went down */
+} TgrPointer;
+void tgr_pointer_frame(TgrPointer *p);
+
+/* checks: an environment variable's number (dflt when unset), and a line to stderr */
+int  tgr_check_env(const char *name, int dflt);
+void tgr_check_print(const char *fmt, ...);
+
 #endif

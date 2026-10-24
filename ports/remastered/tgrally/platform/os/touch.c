@@ -14,6 +14,7 @@
  * that meets no target is A when the screen has no items to choose between
  * (a title, a results screen: tap to go on), else nothing. */
 #include <math.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +45,17 @@ static Set s_build, s_ready, s_shown;
 static float s_fbw = 320, s_fbh = 240, s_kx = 1, s_ky = 1;
 static int s_race;
 static int s_tag = -1, s_tagcur;        /* the next string is this row of a list */
+uint32_t tgr_frame(void);               /* the retraces so far (os/thread.c) */
+
+/* the pointer (tgr_pointer): where it is in the paint shop's 640 by 480 */
+#define DRAG_PIXELS 6                   /* from where the button went down: a drag, not a click */
+static struct {
+    int x, y;
+    int seq, seen;                      /* moves, and the last one the game has had */
+    int down, clicks;
+    int dx, dy, far, dragged;           /* where the left button went down; it went far; came up so */
+    unsigned asked;                     /* the retrace the game last asked (0: never) */
+} s_ptr;
 
 /* what is being played to the pad */
 static struct {
@@ -289,4 +301,108 @@ void tgr_touch_press(unsigned short button)
     s_play.seek = -1;
     press(button, 0, 0);
     unlock();
+}
+
+/* ---- the pointer ------------------------------------------------------------------ */
+/* a place in the drawing area (fractions) in the paint shop's 640 by 480: the
+ * menu frame as the renderer shows it, its shape, as large as the area holds,
+ * centred (as tgr_touch_tap) */
+static void to_screen(float u, float v, int *x, int *y)
+{
+    float dw, dh, s, ox, oy;
+    int w = 0, h = 0;
+    host_window_pixels(&w, &h);
+    dw = w > 0 && h > 0 ? (float)w : s_fbw;    /* headless: the frame itself */
+    dh = w > 0 && h > 0 ? (float)h : s_fbh;
+    s = fminf(dw / s_fbw, dh / s_fbh);
+    ox = (dw - s_fbw * s) * 0.5f;
+    oy = (dh - s_fbh * s) * 0.5f;
+    /* (a host's whole pixel comes back whole: u is x / 640 in float) */
+    *x = (int)floorf((u * dw - ox) / s * 640.0f / s_fbw + 1e-3f);
+    *y = (int)floorf((v * dh - oy) / s * 480.0f / s_fbh + 1e-3f);
+}
+
+void tgr_pointer(float u, float v, int buttons)
+{
+    int x, y;
+    lock();
+    to_screen(u, v, &x, &y);
+    if (x != s_ptr.x || y != s_ptr.y || (buttons & ~s_ptr.down)) {
+        s_ptr.x = x;
+        s_ptr.y = y;
+        s_ptr.seq++;
+    }
+    if (buttons & 1 & ~s_ptr.down) {
+        s_ptr.dx = x;
+        s_ptr.dy = y;
+        s_ptr.far = 0;
+    }
+    if (s_ptr.down & 1 && abs(x - s_ptr.dx) + abs(y - s_ptr.dy) > DRAG_PIXELS)
+        s_ptr.far = 1;
+    if (s_ptr.down & 1 & ~buttons && s_ptr.far)
+        s_ptr.dragged = 1;
+    s_ptr.clicks |= buttons & ~s_ptr.down;
+    s_ptr.down = buttons;
+    if (getenv("TGR_TOUCHLOG"))
+        fprintf(stderr, "pointer: %.3f,%.3f -> %d,%d buttons %d\n", u, v, x, y, buttons);
+    unlock();
+}
+
+int tgr_pointer_wanted(void)
+{
+    int r;
+    lock();
+    r = s_ptr.asked && tgr_frame() - s_ptr.asked <= 10;
+    unlock();
+    return r;
+}
+
+/* checks: RM_POINTER=F:u,v,b;... the pointer at u, v with buttons b from
+   retrace F (headless, where there is no mouse) */
+static void scripted(void)
+{
+    static const char *next;
+    static int started;
+    int f, b;
+    float u, v;
+    if (!started) {
+        started = 1;
+        next = getenv("RM_POINTER");
+    }
+    while (next && sscanf(next, "%d:%f,%f,%d", &f, &u, &v, &b) == 4 && (uint32_t)f <= tgr_frame()) {
+        tgr_pointer(u, v, b);
+        next = strchr(next, ';');
+        next = next ? next + 1 : NULL;
+    }
+}
+
+void tgr_pointer_frame(TgrPointer *p)
+{
+    scripted();
+    lock();
+    s_ptr.asked = tgr_frame() ? tgr_frame() : 1;
+    p->x = s_ptr.x;
+    p->y = s_ptr.y;
+    p->moved = s_ptr.seq != s_ptr.seen;
+    p->down = s_ptr.down;
+    p->clicks = s_ptr.clicks;
+    p->dragged = s_ptr.dragged;
+    s_ptr.seen = s_ptr.seq;
+    s_ptr.clicks = 0;
+    s_ptr.dragged = 0;
+    unlock();
+}
+
+int tgr_check_env(const char *name, int dflt)
+{
+    const char *e = getenv(name);
+    return e ? atoi(e) : dflt;
+}
+
+void tgr_check_print(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
 }

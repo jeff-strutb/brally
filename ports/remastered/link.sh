@@ -79,7 +79,7 @@ lump() {   # lump NAME LIB ENGINE SYMBOLS...
 # (and what a touch host asks of each: ios/Sources/Bridge.h)
 # (and the Remaster Options': options.c, mux.c)
 lump tgrally $T/$LIB/tgrally/libtgrally.a tgr tgr_main tgr_race_engine tgr_menus_engine tgr_flag tgr_flag_set \
-    tgr_view_driving tgr_touch_tap tgr_touch_swipe tgr_touch_press tgr_audio_lowpass tgr_race_speed \
+    tgr_view_driving tgr_touch_tap tgr_touch_swipe tgr_touch_press tgr_pointer tgr_pointer_wanted tgr_audio_lowpass tgr_race_speed \
     tgr_music_mute
 lump brally $T/$LIB/brally/libbrally.a br br_main br_race_serve br_race_run br_menus_run br_race_driving br_race_key \
     br_race_tap br_race_click br_flag_set br_music_gain br_effects_quiet br_music_volume

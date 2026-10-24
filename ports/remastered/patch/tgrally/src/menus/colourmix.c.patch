@@ -1,0 +1,18 @@
+--- a/src/menus/colourmix.c
++++ b/src/menus/colourmix.c
+@@ -46,6 +46,7 @@
+ void BrPadConsume(unsigned int *pad, unsigned int bits);
+ void BrPadStickRepeatPos(unsigned int *pressed, int *timer, float *axis, unsigned int bit);
+ void BrPadStickRepeatNeg(unsigned int *pressed, int *timer, float *axis, unsigned int bit);
++void rm_paint_bar(int *step);           /* Remastered (rmpaintptr.c) */
+ /* -- end declarations -- */
+ 
+ /* WHAT IT DOES: The paint shop's colour mixer: a preview of the chosen
+@@ -145,6 +146,7 @@
+   } else if (D_8036A8E0[D_8028DBBC].pressed & 0x800) {
+     step = -1;
+   }
++  rm_paint_bar(&step);                  /* Remastered: a bar dragged by pointer */
+   if (D_8036A8E0[D_8028DBBC].pressed & 0x402) {
+     BrPadConsume(&D_8036A8E0[D_8028DBBC].pressed, 0x402);
+     if (D_8028DCE0 == 2) {

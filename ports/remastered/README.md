@@ -24,7 +24,7 @@ Remastered adds laid over them (`tree.sh`).
 | `link.sh` | makes the tree (`OUT/tree`), builds both libraries in it, makes each one object (its thunks inside, only its entry points global: the two games share some hundred function names), links the executable |
 | `package_app.sh` | `Top Gear Rally Remastered.app` (macOS) |
 | `music.sh` | Boss Rally's CD audio as FLAC, the PC's music, into the app (`package_app.sh`, `ios/build.sh`) |
-| `tools/` | the lighting's tests (`lighttest/`, run against `build/remastered/tree`; `surfparity.sh` the textures' surface maps against `texregion.py`), `lightcheck.sh`, `texmat_h.py`; `mixcheck.sh`, the music's routing in `mux.c` checked against computed values |
+| `tools/` | the lighting's tests (`lighttest/`, run against `build/remastered/tree`; `surfparity.sh` the textures' surface maps against `texregion.py`), `lightcheck.sh`, `texmat_h.py`; `mixcheck.sh`, the music's routing in `mux.c` checked against computed values; `paintcheck.py`, the paint shop by pointer, headless (below) |
 | `ios/` | the iPhone app: `build.sh`, the xcodegen project, and in `Sources` the Swift host under the multiplexer (the Metal layer, events, Core Audio, the save folder) and the touch controls |
 | `icon.png` | the app's icon (the `.icns` on macOS, `icon.ico` beside the exe on Windows) |
 
@@ -144,6 +144,27 @@ menus (Boss Rally boots behind them at launch, its effects silent there) and
 the race's own pick under a race. A change crossfades over half a second; a
 limiter holds the sum under full scale (`platform/mux.c`).
 
+**Paint shop.** The mouse works it beside the pad, and on the iPhone a
+finger (`tgrally/src/menus/rmpaintptr.c`, the pointer in
+`tgrally/platform/os/touch.c`). The cursor goes where the pointer is (the
+stick still moves it); the left button or the finger is A and the right
+button B, given to the game's pad record with the cursor already placed, so
+a click acts where it lands, and a press the game has acted on is not given
+again until the button comes up. The brush paints while held, every texel on
+the way however fast it moves; the line, rectangle and oval tools take two
+clicks as before or a drag (the button coming up is the second click); B on
+the decal picks the colour under it and elsewhere cancels. In a popup a
+click chooses a choice and a second click on the chosen one takes it, the A
+and B button pictures (with their words) are those buttons, the right button
+is B, and the colour mixer's bars are dragged. On the iPhone a finger
+presses after 60 ms or once it moves, so a second finger first makes a
+two-finger tap: B where the first landed. `RM_POINTER=F:u,v,b;...` plays
+the pointer in headless (u, v fractions of the screen, b the buttons, from
+retrace F), `RM_PAINTLOG=1` logs each paint shop frame and `RM_PAINTDUMP=F`
+prints the decal's texels; `tools/paintcheck.py` drives a brush stroke, a
+dragged line, a style popup, B, the mixer and a pad-only session with them
+and checks the texels and the state against the shop's own geometry.
+
 One game is in front at a time (`mux_front`): the keys, the mouse and the
 pad are its, and only it draws. Top Gear Rally's window loop drains the real
 event queue and passes on what belongs to Boss Rally; keys held when a game
@@ -204,6 +225,7 @@ other comes in front:
 |---|---|
 | in a race | a finger right of the brake zone holds the accelerator; sideways steers (full lock 90 points either way, the neutral point sliding with the finger past it), a wheel drawn under the finger turning with it; lift to coast. A finger on the left 30% of the screen (a pedal is drawn there) brakes and, the car stopped, reverses; it lets the accelerator go while held. In Boss Rally's races it is that game's reverse (the gamepad's button 2), which drives backwards at any speed, slowing the car first; in this game's own it is B until the car is below 3 km/h (`tgr_race_speed`), then A with the stick pulled back (this game reverses only from first gear) |
 | in a race | the pause button at the top centre (two bars) pauses it |
+| paint shop | the finger is the pointer: the cursor where it is, held it is A (paint, drag out a line or a shape, tap a tool, a colour or a popup's choice); a two-finger tap is B where the first finger landed |
 | menus, pause menu | tap an item: the carousel's arrows step it, the item between them is A, a list row moves the cursor there and chooses it, the button prompts (Select, Go Back, OK, Cancel, Exit) press their button; a tap on a screen with nothing to choose is A. Swipe: the content follows the finger (left brings on the next item, up the row below); a value row (a volume) goes up with the finger |
 | anywhere | two-finger tap: START; three-finger tap: the sound's low-pass filter, off / 8 / 7 / 6 / 5 kHz (5 at first, kept between runs; `TGR_AUDIO_LOWPASS=Hz` on the desktop) |
 

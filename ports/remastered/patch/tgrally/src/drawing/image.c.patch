@@ -1,0 +1,18 @@
+--- a/src/drawing/image.c
++++ b/src/drawing/image.c
+@@ -115,6 +115,7 @@
+ 
+ /* WHAT IT DOES: Draw an image at (x, y) at its own size, strip by strip. */
+ /* @implements 0x80245604 tgr BrImageDrawAt */
++void rm_paint_drawn(BrImage *img, int x, int y);   /* Remastered: a popup's buttons (rmpaintptr.c) */
+ void BrImageDrawAt(BrImage *img, int x, int y)
+ {
+   unsigned int total;
+@@ -123,6 +124,7 @@
+   int step;
+   int i;
+ 
++  rm_paint_drawn(img, x, y);
+   if (img->siz == 4) {
+     total = img->w * img->h >> 1;
+     strip = img->w * img->stripH >> 1;

@@ -1,6 +1,26 @@
 --- a/platform/host/macos/host_macos.m
 +++ b/platform/host/macos/host_macos.m
-@@ -611,50 +611,78 @@
+@@ -280,10 +280,15 @@
+     e.buttons = buttons;
+     qpush(&e);
+ }
+-- (void)mouseMoved:(NSEvent *)ev { mouse_event(self, ev, (int)[NSEvent pressedMouseButtons] & 1); }
+-- (void)mouseDragged:(NSEvent *)ev { mouse_event(self, ev, 1); }
+-- (void)mouseDown:(NSEvent *)ev { mouse_event(self, ev, 1); }
+-- (void)mouseUp:(NSEvent *)ev { mouse_event(self, ev, 0); }
++/* the buttons: 1 the left, 2 the right (Remastered: the paint shop's B) */
++static int held_buttons(void) { return (int)[NSEvent pressedMouseButtons] & 3; }
++- (void)mouseMoved:(NSEvent *)ev { mouse_event(self, ev, held_buttons()); }
++- (void)mouseDragged:(NSEvent *)ev { mouse_event(self, ev, held_buttons() | 1); }
++- (void)mouseDown:(NSEvent *)ev { mouse_event(self, ev, held_buttons() | 1); }
++- (void)mouseUp:(NSEvent *)ev { mouse_event(self, ev, held_buttons() & ~1); }
++- (void)rightMouseDragged:(NSEvent *)ev { mouse_event(self, ev, held_buttons() | 2); }
++- (void)rightMouseDown:(NSEvent *)ev { mouse_event(self, ev, held_buttons() | 2); }
++- (void)rightMouseUp:(NSEvent *)ev { mouse_event(self, ev, held_buttons() & ~2); }
+ @end
+ 
+ @implementation BrWindowDelegate
+@@ -611,50 +616,78 @@
   * GameController.framework; the current one, else the first with a full
   * gamepad profile. One plugged in while the game runs is picked up at the
   * next read. */

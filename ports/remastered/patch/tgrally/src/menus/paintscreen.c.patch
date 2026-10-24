@@ -1,0 +1,27 @@
+--- a/src/menus/paintscreen.c
++++ b/src/menus/paintscreen.c
+@@ -178,6 +178,8 @@
+ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu, unsigned char *done);
+ void BrPaintClick(void);
+ extern unsigned char tgr_dash_slot;
++void rm_paint_pointer(void);            /* Remastered: the mouse and touch (rmpaintptr.c) */
++void rm_paint_pointer_after(void);
+ void BrPaintStickMove(void);
+ void BrPaintColourMix(void);
+ void BrPaintBrushSelect(void);
+@@ -533,6 +535,7 @@
+     BrMenuCameraSet((float)D_8028AAB0, (float)D_8028AAB4);
+     BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
+   }
++  rm_paint_pointer();                   /* Remastered: the cursor to the pointer, its buttons to the pad */
+   if (BrPaintCursorInRect(&D_8028DB94)) {
+     BrPaintClick();
+     BrPaintStickMove();
+@@ -658,6 +661,7 @@
+   } else {
+     D_8028DBEC = 0;
+   }
++  rm_paint_pointer_after();
+   if (D_8028DBE8 != 0 && BrFadeOutDone()) {
+     D_8028DBE8 = 0;
+     BrFrameBeginLayout1();
