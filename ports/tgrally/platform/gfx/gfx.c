@@ -15,8 +15,17 @@
 
 static uint32_t s_fb;
 
-static const uint8_t *ram(uint32_t a) { return tgr_rdram + (a & 0x7FFFFF); }
+static const uint8_t *ram(uint32_t a) { return tgr_ptr32((a & 0x7FFFFF) | 0x80000000u); }
 static uint32_t rd32(uint32_t a) { const uint8_t *p = ram(a); return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3]; }
+
+/* n bytes from an original address, each found on its own (they may run
+ * from one of the image's objects into the next) */
+static void hash_mem(Sha1 *h, uint32_t a, uint32_t n)
+{
+    uint32_t i;
+    for (i = 0; i < n; i++)
+        sha1_update(h, ram(a + i), 1);
+}
 
 /* n64box.Box.dl_digest, line for line (its segment table follows F3DEX2's
  * G_MOVEWORD, which this F3DEX 1.x game never sends, so segments read as 0) */
@@ -44,12 +53,12 @@ static void dl_digest(uint32_t dl, char out[17])
             if (op == 0xDB && ((w0 >> 16) & 0xFF) == 0x06) {
                 seg[((w0 & 0xFFFF) >> 2) & 0xF] = w1 & 0x1FFFFFFF;
             } else if (op == 0x01) {
-                sha1_update(&h, ram(ADDR(w1)), 64);
+                hash_mem(&h, ADDR(w1), 64);
             } else if (op == 0x04) {
                 uint32_t n = (w0 >> 10) & 0x3F;
-                sha1_update(&h, ram(ADDR(w1)), 16 * (n ? n : 1));
+                hash_mem(&h, ADDR(w1), 16 * (n ? n : 1));
             } else if (op == 0x03) {
-                sha1_update(&h, ram(ADDR(w1)), 16);
+                hash_mem(&h, ADDR(w1), 16);
             } else if (op == 0x06) {
                 if (((w0 >> 16) & 0xFF) == 1) {
                     pc = ADDR(w1);

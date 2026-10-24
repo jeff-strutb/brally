@@ -36,7 +36,7 @@ static uint8_t s_done[DATA_END - DATA_ROM];
 
 static void swap_runs(uint32_t addr, uint32_t run0, uint32_t nruns)
 {
-    uint8_t *base = tgr_rdram + (addr & 0x7FFFFF);
+    uint8_t *base = tgr_ptr32(addr);
     uint32_t j, k, b;
     for (j = 0; j < nruns; j++) {
         const TgrRun *r = &tgr_runs[run0 + j];
@@ -58,7 +58,13 @@ void tgr_lift(void)
     int i;
     uint32_t k;
     const uint8_t *data = tgr_romdata + (DATA_ROM - TGR_ROMDATA_BASE);   /* ROM DATA_ROM on */
-    memcpy(tgr_rdram + (DATA_VA & 0x7FFFFF), data, DATA_END - DATA_ROM);
+    for (i = 0; i < tgr_nobjs; i++) {               /* each .data object from the ROM */
+        const TgrObj *o = &tgr_objs[i];
+        if (o->addr >= DATA_VA && o->addr < DATA_VA + (DATA_END - DATA_ROM)) {
+            uint32_t n = o->size, room = DATA_VA + (DATA_END - DATA_ROM) - o->addr;
+            memcpy(o->nat, data + (o->addr - DATA_VA), n < room ? n : room);
+        }
+    }
     memset(s_done, 0, sizeof s_done);
     for (i = 0; i < tgr_nsyms; i++)
         swap_runs(tgr_syms[i].addr, tgr_syms[i].run0, tgr_syms[i].nruns);

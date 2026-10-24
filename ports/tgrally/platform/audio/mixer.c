@@ -146,9 +146,8 @@ static void snd_dump(void)
     static int init;
     static uint32_t last = 0xFFFFFFFF, seen[256];
     static int nseen;
-    uint8_t *blk = TGR_PTR(uint8_t *, SFX);
     const uint32_t *loops = TGR_PTR(const uint32_t *, 0x80378F50u);
-    Voice *v = (Voice *)(blk + 8);
+    Voice *v = TGR_PTR(Voice *, SFX + 8);
     uint32_t fr = tgr_frame(), w[8];
     int i, k;
     if (!init) {
@@ -176,9 +175,9 @@ static void snd_dump(void)
     w[0] = fr;
     w[1] = *TGR_PTR(uint8_t *, 0x802A49CCu);
     w[2] = *TGR_PTR(uint8_t *, 0x802A49D0u);
-    w[3] = *(uint32_t *)blk;
-    w[4] = *(uint32_t *)(blk + 4);
-    w[5] = *(uint32_t *)(blk + 0x98);
+    w[3] = *TGR_PTR(uint32_t *, SFX);
+    w[4] = *TGR_PTR(uint32_t *, SFX + 4);
+    w[5] = *TGR_PTR(uint32_t *, SFX + 0x98);
     fwrite(w, 4, 6, f);
     for (i = 0; i < 6; i++) {
         w[0] = v[i].pos;
@@ -205,12 +204,11 @@ void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)
 {
     snd_dump();
     {
-    uint8_t *blk = TGR_PTR(uint8_t *, SFX);
-    Voice *v = (Voice *)(blk + 8);
+    Voice *v = TGR_PTR(Voice *, SFX + 8);
     uint64_t a0 = acc_of(&v[0]), a1 = acc_of(&v[1]), a2 = acc_of(&v[2]);
     uint64_t a3 = acc_of(&v[3]), a4 = acc_of(&v[4]);
-    uint64_t mask = (uint64_t)*(uint32_t *)blk << 32 | *(uint32_t *)(blk + 4);   /* the u64 as two native words, high first */
-    uint32_t second = *(uint32_t *)(blk + 0x98);
+    uint64_t mask = (uint64_t)*TGR_PTR(uint32_t *, SFX) << 32 | *TGR_PTR(uint32_t *, SFX + 4);   /* the u64 as two native words, high first */
+    uint32_t second = *TGR_PTR(uint32_t *, SFX + 0x98);
     int32_t n, rest, over;
     uint8_t *p;
     over = (int32_t)(pos + bytes) - 0x4000;

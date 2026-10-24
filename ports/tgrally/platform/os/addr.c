@@ -6,8 +6,50 @@
 #include "tgr_addr.h"
 #include "tgr_syms.h"
 
-/* the N64's RAM, tgr_rdram, is defined with every data symbol of the game
- * as an alias into it at its original address (build/tgrally/null-null/gen/arena.s) */
+/* the fixed RAM outside the game's image (tgr_rdram) and the image's own
+ * objects, each a native object (build/tgrally/null-null/gen/arena.s) */
+
+/* ---- the image's objects: by original address (tgr_objs is sorted so) and by
+ * native address (s_bynat, sorted at start-up) */
+static const TgrObj **s_bynat;
+
+static int obj_cmp_nat(const void *x, const void *y)
+{
+    uintptr_t a = (uintptr_t)(*(const TgrObj *const *)x)->nat, b = (uintptr_t)(*(const TgrObj *const *)y)->nat;
+    return a < b ? -1 : a > b;
+}
+
+static const TgrObj *obj_at(uint32_t k)
+{
+    int lo = 0, hi = tgr_nobjs - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        const TgrObj *o = &tgr_objs[m];
+        if (k < o->addr)
+            hi = m - 1;
+        else if (k - o->addr >= o->size)
+            lo = m + 1;
+        else
+            return o;
+    }
+    return NULL;
+}
+
+static const TgrObj *obj_of(uintptr_t p)
+{
+    int lo = 0, hi = tgr_nobjs - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        const TgrObj *o = s_bynat[m];
+        if (p < (uintptr_t)o->nat)
+            hi = m - 1;
+        else if (p - (uintptr_t)o->nat >= o->size)
+            lo = m + 1;
+        else
+            return o;
+    }
+    return NULL;
+}
 
 /* ---- windows: native memory outside the arena the game stores an address of */
 #define WIN_FIRST 0x20
@@ -29,6 +71,11 @@ uint32_t tgr_addr32_slow(const void *p)
         if (a >= lo && d < n->count * sizeof(void *) && d % sizeof(void *) == 0)
             return n->addr + (uint32_t)(d / sizeof(void *)) * 4;
     }
+    {
+        const TgrObj *o = obj_of(a);
+        if (o)
+            return o->addr + (uint32_t)(a - (uintptr_t)o->nat);
+    }
     for (i = WIN_FIRST; i <= WIN_LAST; i++) {
         if (s_win[i] == base)
             return (uint32_t)i << 24 | (uint32_t)(a - base);
@@ -41,19 +88,13 @@ uint32_t tgr_addr32_slow(const void *p)
     abort();
 }
 
-uint8_t tgr_natpage[TGR_RDRAM_SIZE >> 12];
-
-/* mark the pages the native tables' original addresses fall in */
 void tgr_addr_init(void)
 {
     int i;
-    for (i = 0; i < tgr_nnatives; i++) {
-        uint32_t lo = tgr_natives[i].addr & (TGR_RDRAM_SIZE - 1);
-        uint32_t hi = lo + 4 * tgr_natives[i].count - 1;
-        uint32_t pg;
-        for (pg = lo >> 12; pg <= hi >> 12; pg++)
-            tgr_natpage[pg] = 1;
-    }
+    s_bynat = malloc(sizeof *s_bynat * (size_t)(tgr_nobjs ? tgr_nobjs : 1));
+    for (i = 0; i < tgr_nobjs; i++)
+        s_bynat[i] = &tgr_objs[i];
+    qsort(s_bynat, (size_t)tgr_nobjs, sizeof *s_bynat, obj_cmp_nat);
 }
 
 void *tgr_ptr32_slow(uint32_t a)
@@ -64,17 +105,24 @@ void *tgr_ptr32_slow(uint32_t a)
         return NULL;
     if (((a & 0xDFFFFFFFu) - 0x80000000u) < TGR_RDRAM_SIZE) {
         uint32_t k = (a & 0xDFFFFFFFu) | 0x80000000u;
+        const TgrObj *o;
         for (i = 0; i < tgr_nnatives; i++) {
             const TgrNat *n = &tgr_natives[i];
             if (k >= n->addr && k - n->addr < 4 * n->count && (k - n->addr) % 4 == 0)
                 return &n->nat[(k - n->addr) / 4];
+        }
+        if ((o = obj_at(k)) != NULL)
+            return o->nat + (k - o->addr);
+        if (k - TGR_IMAGE_LO < TGR_IMAGE_HI - TGR_IMAGE_LO && k >= 0x8026FAB0u) {
+            fprintf(stderr, "tgr: no object at %08X\n", a);
+            abort();
         }
         return tgr_rdram + (a & (TGR_RDRAM_SIZE - 1));
     }
     if (w >= WIN_FIRST && w <= WIN_LAST && s_win[w])
         return (void *)(s_win[w] + (a & (WIN_SPAN - 1)));
     if (a < TGR_RDRAM_SIZE)                 /* a physical address */
-        return tgr_rdram + a;
+        return tgr_ptr32(a | 0x80000000u);
     fprintf(stderr, "tgr: no memory at %08X\n", a);
     return tgr_rdram;                       /* reads zeros rather than faulting */
 }

@@ -28,6 +28,13 @@ extern const TgrSym tgr_syms[];
 extern const int tgr_nsyms;
 extern const TgrFn tgr_fns[];
 extern const int tgr_nfns;
+
+typedef struct TgrObj {     /* an object of the game's image: its original address, size, storage */
+    uint32_t addr, size;
+    char    *nat;
+} TgrObj;
+extern const TgrObj tgr_objs[];             /* by address */
+extern const int tgr_nobjs;
 #endif
 
 #ifndef TGR_SYMS_NATIVE

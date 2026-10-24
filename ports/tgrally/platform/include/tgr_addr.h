@@ -30,14 +30,15 @@ uint32_t tgr_addr32_slow(const void *p);
 void    *tgr_fn(uint32_t a);
 uint32_t tgr_fnaddr(const void *f);
 
-/* pages of the arena holding a pointer table the port keeps natively
- * (tgr_natives): an address there may name the native table */
-extern uint8_t tgr_natpage[TGR_RDRAM_SIZE >> 12];
+/* the game's image (.data, .bss) is not in the arena: each of its objects is
+ * a native object, found by its original address (tgr_ptr32_slow) */
+#define TGR_IMAGE_LO 0x80200000u
+#define TGR_IMAGE_HI 0x80382BB0u
 
 static inline void *tgr_ptr32(uint32_t a)
 {
-    if (((a & 0xDFFFFFFFu) - 0x80000000u) < TGR_RDRAM_SIZE &&   /* KSEG0 or KSEG1 */
-        !tgr_natpage[(a & (TGR_RDRAM_SIZE - 1)) >> 12])
+    uint32_t k = (a & 0xDFFFFFFFu) | 0x80000000u;          /* KSEG0, or its KSEG1 alias */
+    if ((a & 0xDFFFFFFFu) - 0x80000000u < TGR_RDRAM_SIZE && k - TGR_IMAGE_LO >= TGR_IMAGE_HI - TGR_IMAGE_LO)
         return tgr_rdram + (a & (TGR_RDRAM_SIZE - 1));
     return tgr_ptr32_slow(a);
 }

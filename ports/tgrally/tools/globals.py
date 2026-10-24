@@ -532,9 +532,48 @@ def main():
     else:
         lines += ['.globl tgr_rdram', '.bss', '.p2align 12', '.type tgr_rdram, @object',
                   'tgr_rdram:', '.space 0x800000', '.size tgr_rdram, 0x800000']
+    # the game's image (.data, .bss): each symbol its own object, as long as
+    # the distance to the next (so padding the game reads stays its own); a
+    # name inside another object is that object plus its offset.  The fixed
+    # RAM outside the image stays the arena.
+    inner = {}
+    for line in aliases:
+        nm, owner, _pth, off = line.split()
+        inner[nm] = (owner, int(off[3:], 16))
+    tops = sorted(addr_of(n, syms) for n, a in arena if region(a) in ('data', 'bss') and n not in inner)
+
+    def objsize(a):
+        i = bisect.bisect_right(tops, a)
+        lim = BSS_LO if region(a) == 'data' else BSS_HI
+        return min(tops[i] if i < len(tops) else lim, lim) - a
+    objs = []
     for name, a in arena:
-        lines += ['.globl %s%s' % (us, name), '%s%s = %stgr_rdram + 0x%X' % (us, name, us, a - ARENA_LO)]
+        if region(a) not in ('data', 'bss'):
+            lines += ['.globl %s%s' % (us, name), '%s%s = %stgr_rdram + 0x%X' % (us, name, us, a - ARENA_LO)]
+        elif name not in inner:
+            n = objsize(a)
+            objs.append((a, n, name))
+            if 'apple' in NATIVE or 'darwin' in NATIVE:
+                lines += ['.globl _%s' % name, '.zerofill __DATA,__bss,_%s,%d,4' % (name, n)]
+            elif 'mingw' in NATIVE or 'windows' in NATIVE:
+                lines += ['.globl %s%s' % (us, name), '.bss', '.p2align 4', '%s%s:' % (us, name), '.space %d' % n]
+            else:
+                lines += ['.globl %s' % name, '.bss', '.p2align 4', '.type %s, @object' % name,
+                          '%s:' % name, '.space %d' % n, '.size %s, %d' % (name, n)]
+    for name, a in arena:
+        if name in inner:
+            owner, off = inner[name]
+            while owner in inner:                   # (a name inside a name inside an object)
+                owner, o2 = inner[owner]
+                off += o2
+            lines += ['.globl %s%s' % (us, name), '%s%s = %s%s + 0x%X' % (us, name, us, owner, off)]
     open(os.path.join(GEN, 'arena.s'), 'w').write('\n'.join(lines) + '\n')
+    objs.sort()
+    obj_lines = ['/* the game\'s image objects by original address (platform/os/addr.c) */']
+    obj_lines += ['extern char %s[];' % nm for a, n, nm in objs]
+    obj_lines += ['const TgrObj tgr_objs[] = {'] + ['    {0x%08X, %d, %s},' % o for o in objs] + \
+                 ['    {0, 0, 0}', '};', 'const int tgr_nobjs = %d;' % len(objs), '']
+    open(os.path.join(GEN, 'tgr_syms.c'), 'a').write('\n'.join(obj_lines))
 
     # every .data/.bss symbol's multi-byte units, for tools/lockstep.py to read
     # the port's memory back as the original's bytes

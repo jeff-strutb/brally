@@ -121,7 +121,7 @@ static uint32_t seg_addr(uint32_t a)
 {
     return ((s_seg[(a >> 24) & 0xF] + (a & 0xFFFFFF)) & 0x7FFFFF);
 }
-static const uint8_t *mem(uint32_t phys) { return tgr_rdram + (phys & 0x7FFFFF); }
+static const uint8_t *mem(uint32_t phys) { return tgr_ptr32((phys & 0x7FFFFF) | 0x80000000u); }
 static uint32_t rd32(uint32_t phys)
 {
     const uint8_t *p = mem(phys);
