@@ -1,0 +1,50 @@
+--- a/src/core/driving/br_cardrive.c
++++ b/src/core/driving/br_cardrive.c
+@@ -1,3 +1,4 @@
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_collrespsolve.h"   /* br_globals: its objects */
+ /* br_cardrive.c -- 0x100645A0, the axle velocity constraint.
+  *
+@@ -78,6 +79,13 @@
+ /* @implements 0x100645A0 glide BrCarPhysDriveMatch */
+ void BrCarPhysDriveMatch(BrCarBody *param_1, float param_2, float *param_3, float *param_4, char *param_5, char *param_6)
+ {
++  /* Top Gear Rally Remastered (60 ticks a second, rm_tick.h): this solver is
++     not an integration but a projection of the axles' velocities, sized for
++     the game's 30th of a second (what it takes away is a share of what the
++     last 30th left); it runs 30 times a second in its own terms
++     (BrCarPhysStep, rm_tick_whole), the forces integrating every tick */
++  const float dt30 = rm_tick_hz() == 30 ? param_2 : 0.033333335f;
++
+   BrRbBody *pR_iVar5;
+   BrRbBody *pR_iVar9;
+   float fVar1;
+@@ -163,8 +171,8 @@
+   fVar2 = fVar6 * fVar2 * DAT_10077a84;
+   fVar2 = fVar2 / (*(float *)&pR_iVar9->f1C8);
+   fVar8 = (*(float *)&param_1->rb.mass) * _DAT_10077a88;
+-  local_88 = (fVar1 / fVar8) * param_2 * param_2;
+-  local_8c = (fVar2 / fVar8) * param_2 * param_2;
++  local_88 = (fVar1 / fVar8) * dt30 * dt30;
++  local_8c = (fVar2 / fVar8) * dt30 * dt30;
+   if (local_88 < BrCrK_Zero) {
+     fVar1 = -local_88;
+   } else {
+@@ -255,7 +263,7 @@
+       local_84 = (fVar2 > _DAT_10077a98);
+       fVar2 = (float)local_84 * _DAT_10077aa0;
+     }
+-    fVar8 = ((*(float *)&param_1->rb.mass) * fVar1) / param_2 + fVar7;
++    fVar8 = ((*(float *)&param_1->rb.mass) * fVar1) / dt30 + fVar7;
+     fVar2 = fVar8 - fVar2;
+     if (*param_5 != '\0') {
+       hold = _DAT_10077aa8;
+@@ -435,7 +443,7 @@
+      * and subtracts from the stored value; the int image forces that
+      * rounding.  Whole-image run: 1 ulp in the speed, then in the grip
+      * factor and the lateral velocity. */
+-    fVar1 = (fVar11 * (*(float *)&param_1->rb.mass)) / param_2 + local_8c;
++    fVar1 = (fVar11 * (*(float *)&param_1->rb.mass)) / dt30 + local_8c;
+     dotBits = *(int *)&fVar1;
+     fVar1 = *(float *)&dotBits - local_88 * _DAT_10077aa0;
+     fVar7 = _DAT_10077a90;

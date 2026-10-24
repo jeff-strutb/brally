@@ -1,16 +1,23 @@
 --- a/src/menus/mainmenu.c
 +++ b/src/menus/mainmenu.c
-@@ -18,6 +18,9 @@
+@@ -18,6 +18,10 @@
  void BrCarSelect(void);
  void BrLoadSaveScreen(void);
  void BrIntroScreen(void);
 +void tgr_menus_boot_leave(void);        /* port: Top Gear Rally Remastered (src/racing/handoff.c) */
 +MenuItem **rm_mainmenu_items(MenuItem **game);   /* port: Quit after the game's rows (rmmainmenu.c) */
 +void rm_mainmenu_row(int row);
++extern int rm_menu_no_back;               /* port: B left alone (rmmainmenu.c) */
  void BrOptionsScreen(void);
  extern int D_8026FF08;
  extern int D_8026FF18;
-@@ -83,7 +86,7 @@
+@@ -86,12 +90,13 @@
+ {
+   extern int D_80272384;         /* 0x80272384: 1 once set up, -1 = returning from a sub-screen */
+   extern int D_80316384;                 /* 0x80316384: the highlighted item */
++  int res;
+ 
+   if (D_80272384 <= 0) {
      D_80271FA4 = -1;
      D_80271FA0 = -1;
      D_8026FF08 = 2;
@@ -19,18 +26,21 @@
      if (D_802A49C0 < 8) {
        BrMusicStop();
        BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
-@@ -108,8 +111,9 @@
+@@ -116,8 +121,12 @@
        D_80316384 = 0;
      }
      D_80272384 = 1;
 +    tgr_menus_boot_leave();             /* port: at launch, to the other game's menus kept */
    }
 -  switch (BrMenu("TOP GEAR RALLY", D_80316380, D_80272360, &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
-+  switch (BrMenu("TOP GEAR RALLY", D_80316380, rm_mainmenu_items(D_80272360), &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40)) {
++  rm_menu_no_back = 1;                  /* port: the menus begin here (Quit is a row): no B, where */
++  res = BrMenu("TOP GEAR RALLY", D_80316380, rm_mainmenu_items(D_80272360), &D_80316384, 0, 0, 0, 0, 0x40, 0x40, 0x40);
++  rm_menu_no_back = 0;                  /* the cartridge went back to the intro, the front end again */
++  switch (res) {
    case 1:
      D_80272070 = 0;
      switch (D_80316384) {
-@@ -143,6 +147,9 @@
+@@ -151,6 +160,9 @@
      case 6:
        BrModeSet(BrOptionsScreen);
        break;

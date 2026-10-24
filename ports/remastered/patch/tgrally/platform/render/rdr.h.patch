@@ -11,3 +11,14 @@
  #ifndef TGR_RDR_H
  #define TGR_RDR_H
  #include <stdint.h>
+@@ -87,6 +89,10 @@
+ /* ---- what a renderer implements ----------------------------------------- */
+ int  rdr_init(void);                                   /* 1 on success */
+ void rdr_window(void);      /* the host's window is open (called on the main thread) */
++int  rdr_any_thread(void);  /* Top Gear Rally Remastered: 1 when any thread may draw, one at a
++                               time (the game's threads take turns: os/thread.c); 0 for GL,
++                               its context the drawing thread's own (gfx/rcp.c's pictures
++                               between frames go only from that thread) */
+ int  rdr_presents(void);    /* 1: frames reach the window by themselves (rdr_frame_end);
+                                0: the platform presents rdr_frame_pixels */
+ void rdr_frame_begin(float fb_w, float fb_h);          /* a new colour image, in N64 pixels */

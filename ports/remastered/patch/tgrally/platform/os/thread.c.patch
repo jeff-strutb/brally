@@ -1,0 +1,39 @@
+--- a/platform/os/thread.c
++++ b/platform/os/thread.c
+@@ -238,6 +238,9 @@
+ static uint64_t s_vi_due = TGR_TICKS_PER_FRAME;
+ 
+ /* nothing can run: deliver the next thing the hardware would do */
++int tgr_tween_present(void);            /* Top Gear Rally Remastered: gfx/rcp.c */
++int tgr_tween_render_thread(void);
++
+ static void advance_time(void)
+ {
+     uint64_t next_vi = s_vi_due;
+@@ -279,8 +282,10 @@
+             /* sleep to within a millisecond of it, then wait out the rest: a
+                millisecond's rounding would make the retraces uneven */
+             host_mutex_unlock(G);
+-            while (due > host_ticks_ns() + 1500000ull)
+-                host_sleep_ms(1);
++            while (due > host_ticks_ns() + 1500000ull) {
++                if (!tgr_tween_present())     /* Remastered: a picture between the game's frames */
++                    host_sleep_ms(1);
++            }
+             while (host_ticks_ns() < due)
+                 ;
+             host_mutex_lock(G);
+@@ -288,6 +293,13 @@
+             s_wall0 = now - (uint64_t)s_frame * 1000000000ull / 60;     /* fell behind: do not race */
+         }
+     }
++    if (g_tgr.headless && getenv("RM_TWEEN_CHECK")) {   /* (a check: the retrace's wait would draw one) */
++        static unsigned tries, went;
++        tries++;
++        went += tgr_tween_present() != 0;
++        if (tries % 600 == 0)
++            fprintf(stderr, "TWEEN CHECK %u retraces, %u from the renderer's thread\n", tries, went);
++    }
+     tgr_vi_retrace();
+     stats();
+     if (g_tgr.frames && s_frame >= (uint32_t)g_tgr.frames) {

@@ -1,0 +1,17 @@
+--- a/src/core/racing/br_replayon.c
++++ b/src/core/racing/br_replayon.c
+@@ -1,4 +1,5 @@
+ /* br_replayon.c -- racing.  See br_replayon.h. */
++int rm_tick_hz(void);                  /* Top Gear Rally Remastered: the races' tick rate (race_handoff.c) */
+ #include "br_coretypes.h"   /* br_globals: its objects */
+ #include "br_dl.h"   /* br_globals: its objects */
+ #include "slice3_42.h"   /* br_globals: its objects */
+@@ -67,7 +68,7 @@
+ {
+     int64_t t = g_18ABDE0_64;
+ 
+-    t += 0x17D784;
++    t += rm_tick_hz() == 30 ? 0x17D784 : 0xBEBC2;   /* Remastered: a tick's worth (1/30 s; 1/60) */
+     g_18ABDE0_64 = t;
+     return t;
+ }

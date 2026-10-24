@@ -1,0 +1,10 @@
+--- a/platform/render/metal/rdr_metal.m
++++ b/platform/render/metal/rdr_metal.m
+@@ -145,6 +145,7 @@
+     s_gamma = (ctrl & 0x08) != 0;
+ }
+ 
++int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */
+ int rdr_presents(void) { return 1; }
+ 
+ /* the window's Metal layer, taken on the main thread when the window opens */

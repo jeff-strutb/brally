@@ -1,0 +1,55 @@
+--- a/src/core/driving/br_ctlinput.c
++++ b/src/core/driving/br_ctlinput.c
+@@ -9,6 +9,7 @@
+ 
+ #define _CRTIMP __declspec(dllimport)
+ 
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include <math.h>
+ #include "slice3_41.h"
+@@ -298,6 +299,7 @@
+     if (dX < DAT_10077780) {
+       dX = -dX;
+     }
++    local[2] = RM_STEP(local[2]);   /* Remastered: the steering's slew, a tick's step */
+     if (dX < local[2]) {
+       pCar->f0E20 = (float)dL;
+     }
+@@ -433,7 +435,11 @@
+       local[4] = local[2] - DAT_10077854;
+     }
+     iVar9 = pCar->fE70;
+-    if ((iVar9 < 2) || (local[4] <= pCar->f0E24)) {
++    if (!rm_tick_whole()) {
++      /* Remastered: the automatic gearbox decides 30 times a second, as the
++         game's own ticks did (the revs' fall after a shift is a tick's step) */
++    }
++    else if ((iVar9 < 2) || (local[4] <= pCar->f0E24)) {
+       if ((iVar9 < pCar->f0E58) &&
+          ((local[2] < pCar->f0E24 &&
+           ((**(unsigned int * *)&pCar->pCtl & 0x20000) == 0)))) {
+@@ -516,7 +522,7 @@
+     if ((*puVar5 & 0x10000) != 0) {
+       local[4] = DAT_10077878;
+     }
+-    pCar->f0E24 = pCar->f0E24 - local[4];
++    pCar->f0E24 = pCar->f0E24 - RM_STEP(local[4]);   /* Remastered: the revs in neutral, a tick's step */
+     *(int *)&pCar->fE68 = 0;
+   }
+   else {
+@@ -557,12 +563,12 @@
+   if (local[4] < DAT_10077780) {
+     local[5] = -local[4];
+   }
+-  if (DAT_10077888 < local[5]) {
++  if (RM_STEP(DAT_10077888) < local[5]) {   /* Remastered: the revs' most change, a tick's */
+     local[5] = DAT_10077780;
+     if ((local[4] != DAT_10077780) && (local[5] = DAT_10077788, DAT_10077780 < local[4])) {
+       local[5] = DAT_10077784;
+     }
+-    local[4] = local[5] * DAT_10077888;
++    local[4] = local[5] * RM_STEP(DAT_10077888);
+   }
+   *(int *)&pCar->f0E6C = 0;
+   pCar->f0E24 = local[4] + local[1];

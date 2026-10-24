@@ -1,0 +1,15 @@
+--- a/src/menus/seasonmenu.c
++++ b/src/menus/seasonmenu.c
+@@ -446,7 +446,11 @@
+     }
+     break;
+   case 2:
+-    if (D_8026FF18 == 2 || D_8026FF18 == 0) {
++    if (D_8026FF18 == 0 && !D_80315EE0) {
++      BrModeSet(BrTrackSelectScreen);   /* port: from a Championship's race back to its season
++                                           screen (the track screen opens on it), where the
++                                           cartridge went on to the main menu */
++    } else if (D_8026FF18 == 2 || D_8026FF18 == 0) {
+       BrModeSet(BrMainMenu);
+     } else {
+       BrModeSet(BrPlayerSelectScreen);

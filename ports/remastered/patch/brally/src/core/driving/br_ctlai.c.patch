@@ -1,0 +1,76 @@
+--- a/src/core/driving/br_ctlai.c
++++ b/src/core/driving/br_ctlai.c
+@@ -130,6 +130,7 @@
+  *     into the shared induction, identical output.
+  * ------------------------------------------------------------------------
+  */
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include <stdint.h>
+@@ -403,9 +404,9 @@
+                 pCar->aim = (*(BrVec3 *)&DAT_10b1ce88);
+             else
+                 BrVec3Lerp(&pCar->aim, &pCar->aim, &(*(BrVec3 *)&DAT_10b1ce88),
+-                           g_brRaceFlyStep - -0.5f);
++                           RM_PER_TICK(g_brRaceFlyStep * (float)(rm_tick_hz() / 30) - -0.5f));   /* Remastered: a tick's share */
+         }
+-        BrVec3Lerp(&pCar->aim, &pCar->aim, &vTarget, 0.4f);   /* rule 11 */
++        BrVec3Lerp(&pCar->aim, &pCar->aim, &vTarget, RM_PER_TICK(0.4f));   /* rule 11 (Remastered: a tick's share) */
+ 
+         velFwd = BrVec3Dot(&pCar->f1024, &pCar->fwd);
+         BrVec3Direction(&aimDir, &pCar->pos, &pCar->aim);
+@@ -636,8 +637,8 @@
+ forward:
+         (*(BrAiCtl * *)&pCar->pCtl)->steer = -lat;
+         pCar->cFwdRun++;
+-        if (pCar->cFwdRun > 30 && speed < 1.0f) {
+-            pCar->cHoldRev = 60;
++        if (pCar->cFwdRun > RM_TICKS(30) && speed < 1.0f) {   /* Remastered: in ticks of the rate */
++            pCar->cHoldRev = RM_TICKS(60);
+             pCar->cRevRun = 0;
+             pCar->cFwdRun = 0;
+         }
+@@ -652,15 +653,15 @@
+         else
+             (*(BrAiCtl * *)&pCar->pCtl)->steer = 1.0f;
+         (*(BrAiCtl * *)&pCar->pCtl)->flags |= 0x20000;
+-        if (pCar->cRevRun > 150) {
+-            if (pCar->cRevRun > 270)
+-                pCar->cRevRun = 30;
++        if (pCar->cRevRun > RM_TICKS(150)) {
++            if (pCar->cRevRun > RM_TICKS(270))
++                pCar->cRevRun = RM_TICKS(30);
+             else
+                 (*(BrAiCtl * *)&pCar->pCtl)->steer *= -1.0;
+         }
+         pCar->cRevRun++;
+-        if (pCar->cRevRun > 30 && speed < 1.0f) {
+-            pCar->cHoldFwd = 60;
++        if (pCar->cRevRun > RM_TICKS(30) && speed < 1.0f) {
++            pCar->cHoldFwd = RM_TICKS(60);
+             pCar->cRevRun = 0;
+             pCar->cFwdRun = 0;
+         }
+@@ -753,17 +754,17 @@
+                 BrVec3MulAddTo(&pCar->aBody[0].rb.st.vel, &pCar->pathUp, t3);
+             }
+             if ((*(int32_t *)&g_brRaceRules.mode) == 0) {
+-                BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel,
++                BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel, RM_MUL(   /* Remastered: a tick's share */
+                               g_aBrAiDiffScale[pCar->pProfile->f74
+-                                  + ((*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b4 * 4 + (*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b5) * 2]);
++                                  + ((*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b4 * 4 + (*(BrAiMenuRec * *)&g_aBrRaceCar[0].pEquip)->b5) * 2]));
+             } else if ((*(int32_t *)&g_brRaceRules.mode) == 1 || (*(int32_t *)&g_brRaceRules.mode) == 6) {
+                 w = (short)(*(int32_t *)&DAT_104b15e8) - 1;
+                 if (w > 2 || w < 0)
+                     w = 0;
+                 if (w == 2)
+-                    BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel, 0.99f);
++                    BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel, RM_MUL(0.99f));
+                 else
+-                    BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel, 0.999f);
++                    BrVec3ScaleBy(&pCar->aBody[0].rb.st.vel, RM_MUL(0.999f));
+             }
+         }
+     }

@@ -1,0 +1,10 @@
+--- a/platform/render/null/rdr_null.c
++++ b/platform/render/null/rdr_null.c
+@@ -4,6 +4,7 @@
+ 
+ int rdr_init(void) { return 0; }
+ void rdr_window(void) {}
++int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */
+ int rdr_presents(void) { return 0; }
+ void rdr_frame_begin(float fb_w, float fb_h) { (void)fb_w; (void)fb_h; }
+ int rdr_texture(const uint8_t *rgba, int w, int h) { (void)rgba; (void)w; (void)h; return 0; }

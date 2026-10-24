@@ -1,0 +1,16 @@
+--- a/src/core/racing/BrCarRespawn_1005C6D0.cpp
++++ b/src/core/racing/BrCarRespawn_1005C6D0.cpp
+@@ -1,3 +1,4 @@
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include "slice3_44.h"   /* BrRbBody, the canonical record */
+@@ -144,7 +145,7 @@
+         (*(float *)&((BrDriverCar *)(this))->cHoldFwd) = 0.0f;
+         (*(float *)&((BrDriverCar *)(this))->cHoldRev) = 0.0f;
+         (*(float *)&((BrDriverCar *)(this))->cRevRun) = 0.0f;
+-        (*(int *)&((BrDriverCar *)(this))->cFwdRun) = 0xffffff4c;
++        (*(int *)&((BrDriverCar *)(this))->cFwdRun) = RM_TICKS(-180);   /* Remastered: 6 s of ticks (the game's 0xffffff4c) */
+         (*(int *)&((BrDriverCar *)(this))->aBody[0].f01F8) = 0;
+         (*(unsigned char *)&((BrDriverCar *)(this))->b29AF) = 2;
+         (*(int *)&((BrDriverCar *)(this))->f29B0) = 0x3dcccccd;

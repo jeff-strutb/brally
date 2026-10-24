@@ -1,0 +1,19 @@
+--- a/src/core/settings/br_ghostsave.c
++++ b/src/core/settings/br_ghostsave.c
+@@ -26,6 +26,7 @@
+ 
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "slice3_41.h"   /* br_globals: its objects */
+ #include <stdio.h>
+ 
+@@ -67,7 +68,7 @@
+     if (fp == 0) {
+         return 0;
+     }
+-    if (fwrite((*(char (*)[])&DAT_100b51e4[960]), 1, 4, fp) != 4) {
++    if (fwrite(rm_tick_hz() == 30 ? (*(char (*)[])&DAT_100b51e4[960]) : RM_GHOST_MAGIC60, 1, 4, fp) != 4) {   /* Remastered: a 60 a second recording says so */
+         fclose(fp);
+         return 0;
+     }

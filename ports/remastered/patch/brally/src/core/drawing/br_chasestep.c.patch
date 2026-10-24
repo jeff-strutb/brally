@@ -1,0 +1,47 @@
+--- a/src/core/drawing/br_chasestep.c
++++ b/src/core/drawing/br_chasestep.c
+@@ -6,6 +6,7 @@
+  * lives in its own file so that the three byte-exact helpers keep their
+  * surroundings.
+  */
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include <stdint.h>
+ #include "br_vec.h"
+ #include "slice3_41.h"   /* BrDriverCar, the canonical record */
+@@ -185,10 +186,10 @@
+     if (spin > _DAT_10077048)
+         spin = 31.415928f;
+     if (speed <= (*(float *)&((BrDriverCar *)(car))->f28D4))
+-        speed = (*(float *)&((BrDriverCar *)(car))->f28D4) * _DAT_10077050 + speed * _DAT_1007704c;
++        speed = (*(float *)&((BrDriverCar *)(car))->f28D4) * RM_KEEP(_DAT_10077050, _DAT_1007704c) + speed * RM_PER_TICK(_DAT_1007704c);   /* Remastered: a tick's share */
+     (*(float *)&((BrDriverCar *)(car))->f28D4) = speed;
+-    (*(float *)&((BrDriverCar *)(car))->f28D8) = (*(float *)&((BrDriverCar *)(car))->f28D8) * _DAT_10077050 + spin * _DAT_1007704c;
+-    (*(float *)&((BrDriverCar *)(car))->f28D8) = (_DAT_10077008 - (*(float *)&((BrDriverCar *)(car))->f28F8) * _DAT_10077054) * (*(float *)&((BrDriverCar *)(car))->f28D8);
++    (*(float *)&((BrDriverCar *)(car))->f28D8) = (*(float *)&((BrDriverCar *)(car))->f28D8) * RM_KEEP(_DAT_10077050, _DAT_1007704c) + spin * RM_PER_TICK(_DAT_1007704c);
++    (*(float *)&((BrDriverCar *)(car))->f28D8) = RM_MUL(_DAT_10077008 - (*(float *)&((BrDriverCar *)(car))->f28F8) * _DAT_10077054) * (*(float *)&((BrDriverCar *)(car))->f28D8);
+     (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).x = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).x;
+     (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).y = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).y;
+     (*(struct BrVec3 *)&((BrDriverCar *)(car))->aSnap[1].m[3][0]).z = (*(struct BrVec3 *)&((BrDriverCar *)(car))->f28EC[0]).z;
+@@ -211,11 +212,11 @@
+         FUN_10001510((BrDriverCar *)car, camArg.p, prevArg.p);
+         if (g_BrCamDemo != 0) {
+             if ((DAT_105ccb68[8]) != 0) {
+-                g_BrCamHold = 0x1E;
++                g_BrCamHold = RM_TICKS(0x1E);   /* Remastered: in ticks of the rate */
+                 if ((*(void * *)&((BrDriverCar *)(car))->pMatA) == (*(unsigned char (*)[48])&((BrDriverCar *)(car))->aSnap[1].m[0][0])) {
+                     (*(void * *)&((BrDriverCar *)(car))->pMatA) = &(*(struct BrCamFrame *)&((BrDriverCar *)(car))->aSnap[0].m[0][0]);
+                     (*(int *)&((BrDriverCar *)(car))->fF78)    = 2;
+-                    g_BrCamHold2 = 0x3C;
++                    g_BrCamHold2 = RM_TICKS(0x3C);
+                 }
+             }
+             if ((*(float *)&((BrDriverCar *)(car))->f28F8) < _DAT_1007706c) {
+@@ -230,7 +231,7 @@
+         } else {
+             if (g_BrCamHold != 0)
+                 g_BrCamHold = g_BrCamHold - 1;
+-            if (((*(float *)&((BrDriverCar *)(car))->f28F8) = (*(float *)&((BrDriverCar *)(car))->f28F8) - _DAT_10077078) < _DAT_10077000)
++            if (((*(float *)&((BrDriverCar *)(car))->f28F8) = (*(float *)&((BrDriverCar *)(car))->f28F8) - RM_STEP(_DAT_10077078)) < _DAT_10077000)
+                 (*(float *)&((BrDriverCar *)(car))->f28F8) = 0.0f;
+         }
+     }

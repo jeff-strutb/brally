@@ -1,0 +1,30 @@
+--- a/src/core/racing/BrLapSaveRestore_1005F6C0.cpp
++++ b/src/core/racing/BrLapSaveRestore_1005F6C0.cpp
+@@ -37,6 +37,7 @@
+ /* @implements 0x1005F6C0 glide BrLapSaveRestore
+  * @cpp_symbol ?LapSaveRestore@BrCar@@QAEXXZ */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include <stdint.h>
+@@ -229,7 +230,7 @@
+                 iVar11 = iVar11 + 1;
+                 pd->pCar = 0;
+                 iVar15->pProfile = 0;
+-                iVar15->fF04 = 0x3c;
++                iVar15->fF04 = RM_TICKS(0x3c);   /* Remastered: in ticks of the rate */
+               }
+             }
+           }
+@@ -322,8 +323,8 @@
+         pfVar7->cHoldFwd = 0;
+         pfVar7->cHoldRev = 0;
+         pfVar7->cRevRun = 0;
+-        pfVar7->cFwdRun = 0xffffff4c;
+-        pfVar7->aBody[0].f01F8 = 0x28;
++        pfVar7->cFwdRun = RM_TICKS(-180);   /* Remastered: 6 s of ticks (the game's 0xffffff4c) */
++        pfVar7->aBody[0].f01F8 = RM_TICKS(0x28);
+         *(int *)&pfVar7->f0E20 = 0;
+       }
+       self->apRank[local_d0] = &g_aBrRaceDriver[*(int *)(local_a0 + local_d0 * 2 + 1)];

@@ -1,0 +1,25 @@
+--- a/platform/render/vulkan/rdr_vulkan.c
++++ b/platform/render/vulkan/rdr_vulkan.c
+@@ -142,6 +142,7 @@
+ }
+ 
+ int rdr_covers(void) { return 0; }
++int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */
+ int rdr_presents(void) { return 1; }
+ void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
+ 
+@@ -1062,10 +1063,10 @@
+     /* the game keeps its own time (os/thread.c paces the retraces): a
+      * present must not wait for the display when it need not */
+     ci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+-    vkGetPhysicalDeviceSurfacePresentModesKHR(s_phys, s_surface, &nm, modes);
+-    for (i = 0; i < nm; i++)
+-        if (modes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+-            ci.presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
++    /* (Top Gear Rally Remastered: FIFO, its pictures drawn between the game's frames
++       keep to the display's refresh, as Boss Rally's do: gfx/rcp.c) */
++    (void)modes;
++    (void)nm;
+     ci.surface = s_surface;
+     ci.minImageCount = caps.minImageCount + 1;
+     if (caps.maxImageCount && ci.minImageCount > caps.maxImageCount)

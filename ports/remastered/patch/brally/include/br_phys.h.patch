@@ -1,0 +1,12 @@
+--- a/include/br_phys.h
++++ b/include/br_phys.h
+@@ -125,7 +125,8 @@
+  * call site in 0x1005A7A0.  Exposed here because it is the single most
+  * load-bearing number in the whole subsystem and nothing else in the tree
+  * names it. */
+-#define BR_PHYS_DT           0.03333333507180214f
++float rm_tick_dt(void);               /* Top Gear Rally Remastered: the races' tick rate (race_handoff.c) */
++#define BR_PHYS_DT           (rm_tick_dt())
+ 
+ /* ======================================================================
+  * 0x1006F310 (D3D) / 0x100682C0 (Glide), 387 bytes

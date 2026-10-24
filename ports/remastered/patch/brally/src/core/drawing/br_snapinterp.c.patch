@@ -1,0 +1,19 @@
+--- a/src/core/drawing/br_snapinterp.c
++++ b/src/core/drawing/br_snapinterp.c
+@@ -37,6 +37,7 @@
+  */
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++int rm_tick_hz(void);                  /* Top Gear Rally Remastered: the races' tick rate (race_handoff.c) */
+ #include <stddef.h>
+ #include <stdint.h>
+ #include <string.h>
+@@ -167,7 +168,7 @@
+         } else if ((*(int32_t *)&g_brRbB4F4) == 0) {
+             t = 0.0f;
+         } else {
+-            t = (float)(uint32_t)(now - (*(int32_t *)&g_brRbB4F4)) * 0.03f + (*(float *)&g_brRb6F24) - delta;
++            t = (float)(uint32_t)(now - (*(int32_t *)&g_brRbB4F4)) * (rm_tick_hz() == 30 ? 0.03f : 0.06f) +   /* Remastered: ticks a millisecond */ (*(float *)&g_brRb6F24) - delta;
+             if (delta == 0 && t > 1.0f) {
+                 reset = 0;
+             }

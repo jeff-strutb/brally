@@ -1,0 +1,35 @@
+--- a/src/core/drawing/br_chasecam.c
++++ b/src/core/drawing/br_chasecam.c
+@@ -17,6 +17,7 @@
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
+ #define BrCarSub9020 BrCarSub9020_port2
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_collrespsolve.h"   /* br_globals: its objects */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include "slice1_08.h"   /* br_globals: its objects */
+@@ -157,7 +158,7 @@
+   if (len != _DAT_10077000) {
+     BrVec3ScaleBy((void *)dst, _DAT_10077018 / len);
+   }
+-  BrVec3Lerp((void *)dst, (void *)dst, tmp, param_3);
++  BrVec3Lerp((void *)dst, (void *)dst, tmp, RM_MUL(param_3));   /* Remastered: the share kept, a tick's */
+   BrVec3AddTo((void *)dst, &param_1->pos.x);
+   *(float *)(param_2 + 0x38) = *(float *)(param_2 + 0x38) - _DAT_10077020;
+ }
+@@ -214,13 +215,13 @@
+     }
+ 
+     if (t > pCam->f28DC) {
+-        v = pCam->f28DC - _DAT_10077004;
++        v = pCam->f28DC - RM_STEP(_DAT_10077004);   /* Remastered: a tick's step */
+         pCam->f28DC = v;
+         if (v > t) {
+             pCam->f28DC = t;
+         }
+     } else if (t < pCam->f28DC) {
+-        v = pCam->f28DC - _DAT_1007703c;
++        v = pCam->f28DC - RM_STEP(_DAT_1007703c);
+         pCam->f28DC = v;
+         if (v < t) {
+             pCam->f28DC = t;

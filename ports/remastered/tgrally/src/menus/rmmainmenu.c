@@ -55,6 +55,11 @@ MenuItem **rm_mainmenu_items(MenuItem **game)
 }
 
 /* a row the game's switch does not know, chosen: Quit closes the app */
+/* 1 while the main menu runs its carousel: the menus begin there, so B (the
+ * cartridge's way back to the intro) does nothing and its prompt is not shown
+ * (mainmenu.c, frontbuttons.c) */
+int rm_menu_no_back;
+
 void rm_mainmenu_row(int row)
 {
   if (RM_QUIT_ROW && row == s_game_rows) {

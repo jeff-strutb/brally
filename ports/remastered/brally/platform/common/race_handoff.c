@@ -510,9 +510,105 @@ static void menu_pad(int on)
         }
 }
 
+/* The races' tick rate: Top Gear Rally Remastered runs Boss Rally's simulation
+ * at 60 ticks a second where the game ran 30 (RM_TICK=30: the game's own, its
+ * values exactly).  What the game made a constant of its 30 (the physics' step,
+ * the tick clock's period, the frame clock's fixed step, the blend between two
+ * ticks' snapshots) asks here instead.  A network race keeps the game's 30,
+ * so Remastered races the PC game's own machines. */
+static int s_tick_hz;
+
+int rm_tick_hz(void)
+{
+    if (!s_tick_hz) {
+        const char *e = getenv("RM_TICK");
+        s_tick_hz = e && atoi(e) == 30 ? 30 : 60;
+    }
+    if ((*(int *)&g_brRaceNet) != 0)
+        return 30;                  /* a network race: the game's own, as the other machines (its
+                                       packets count 30ths of a second: BrTicks30FromMs) */
+    return s_tick_hz;
+}
+
+/* the step, seconds: 1/30 the game's own float */
+float rm_tick_dt(void) { return rm_tick_hz() == 30 ? 0.03333333507180214f : 0.016666667535901070f; }
+
+/* a fraction taken every tick, the same a second at this rate (rm_tick.h) */
+float rm_per_tick(float k)
+{
+    if (rm_tick_hz() == 30)
+        return k;
+    return (float)(1.0 - pow(1.0 - (double)k, 30.0 / rm_tick_hz()));
+}
+
+/* an amount added every tick, the same a second at this rate (rm_tick.h) */
+float rm_step(float x)
+{
+    if (rm_tick_hz() == 30)
+        return x;
+    return (float)((double)x * 30.0 / rm_tick_hz());
+}
+
+/* a factor applied every tick, the same a second at this rate (rm_tick.h) */
+float rm_per_tick_mul(float s)
+{
+    if (rm_tick_hz() == 30 || !(s > 0.0f))
+        return s;
+    return (float)pow((double)s, 30.0 / rm_tick_hz());
+}
+
+/* the race ticks counted (plat_race_frame), for rm_tick_whole */
+static unsigned s_ticks;
+
+int rm_tick_whole(void) { return s_ticks % (unsigned)(rm_tick_hz() / 30) == 0; }
+
+/* the tick clock's period, milliseconds, k = 0, 1, 2 in turn (the game's 33, 33, 34) */
+int rm_tick_ms(int k)
+{
+    static const int t30[3] = { 33, 33, 34 }, t60[3] = { 17, 17, 16 };
+    return rm_tick_hz() == 30 ? t30[k] : t60[k];
+}
+
+/* BR_TICKLOG=1 (a check): on stderr, each race tick from the racing light on, the race
+ * clock and the first cars' place on the track, position and speed; two runs'
+ * files compare tick for tick (the same race at another tick rate: by clock) */
+static void ticklog(void)
+{
+    static int on = -1;
+    FILE *f = stderr;
+    int k, n;
+    if (on < 0)
+        on = getenv("BR_TICKLOG") != NULL;
+    if (!on || g_pfnStep != (BrGameStepFn)BrRaceStep || g_brRaceLights < 4 || DAT_105ccb68[8] != 0)
+        return;
+    fprintf(f, "TICK %u %.4f", (*(unsigned int *)&DAT_106ec768), g_brRaceFlyStep);
+    n = g_BrCarCount < 4 ? g_BrCarCount : 4;
+    for (k = 0; k < n; k++) {
+        BrDriverCar *c = &g_aBrRaceCar[k];
+        fprintf(f, " | %d %.3f %.3f %.3f %.3f %.3f %.3f %.3f", c->lap, c->fFF4, c->pos.x, c->pos.y, c->pos.z,
+                c->f1024.x, c->f1024.y, c->f1024.z);
+    }
+    if (getenv("BR_TICKLOG_CAR")) {             /* the first car's drive: gear, revs, wheels down, upright */
+        BrDriverCar *c = &g_aBrRaceCar[0];
+        fprintf(f, " || g%d rpm %.0f w %d %d %d %d up %.2f rs %d", c->fE70, c->f0E24,
+                *(int *)&c->aBody[0].rb.child[0]->f1B4, *(int *)&c->aBody[0].rb.child[1]->f1B4,
+                *(int *)&c->aBody[0].rb.child[2]->f1B4, *(int *)&c->aBody[0].rb.child[3]->f1B4,
+                c->aBody[0].rb.m.m[2][2], *(int *)&c->aBody[0].f01F8);
+        fprintf(f, " spin %.2f %.2f %.2f %.2f tq %.1f %.1f fe68 %.1f", c->aBody[0].rb.child[0]->f1C4,
+                c->aBody[0].rb.child[2]->f1C4, c->aBody[0].rb.child[0]->f1CC, c->aBody[0].rb.child[2]->f1CC,
+                c->aBody[0].rb.child[0]->f1CC, c->aBody[0].rb.child[2]->f1CC, c->fE68);
+        fprintf(f, " steer %.4f wa %.4f %.4f yaw %.3f", c->f0E20, c->aBody[0].rb.child[0]->f1C0,
+                c->aBody[0].rb.child[2]->f1C0, c->aBody[0].rb.st.angVel.z);
+    }
+    fputc('\n', f);
+}
+
 /* BrAppFrame's entry */
 void plat_race_frame(void)
 {
+    if (g_pfnStep == (BrGameStepFn)BrRaceStep)
+        s_ticks++;
+    ticklog();
     int state = DAT_105ccb68[21];
     int racing = g_pfnStep == (BrGameStepFn)BrRaceStep;
     init();
@@ -644,6 +740,15 @@ void plat_race_frame(void)
             }
             if (s_got && DAT_105ccb68[8] != 0)
                 DAT_10226a50 = 1;    /* the replay: Escape leaves it */
+            /* the result is the caller's: its championship round is not one of Boss
+               Rally's own season.  The finish's BrCarStateSave flag would send the
+               race's end through BrRaceSelFromMenu, which counts the round in Boss
+               Rally's standings and, at its season's last, has the front end start
+               Boss Rally's end-of-season ceremony (BrSeasonApply: mode 5) before the
+               caller has the result; without it the end goes to the menus as an
+               arcade race's does (BrInit220B20) */
+            if (s_got)
+                DAT_105ccb60 = 0;
             return;
         }
         if (PLAYBACK) {

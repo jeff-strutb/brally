@@ -1,0 +1,10 @@
+--- a/platform/render/soft/rdr_soft.c
++++ b/platform/render/soft/rdr_soft.c
+@@ -33,6 +33,7 @@
+ 
+ int rdr_init(void) { return 1; }
+ void rdr_window(void) {}
++int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */
+ int rdr_presents(void) { return 0; }
+ 
+ void rdr_frame_begin(float fb_wf, float fb_hf)

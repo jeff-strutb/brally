@@ -1,0 +1,10 @@
+--- a/platform/render/gl/rdr_gl.c
++++ b/platform/render/gl/rdr_gl.c
+@@ -239,6 +239,7 @@
+ static volatile int s_want;
+ 
+ int rdr_covers(void) { return 0; }
++int rdr_any_thread(void) { return 0; }   /* (Remastered: rdr.h) */
+ int rdr_presents(void) { return 1; }
+ void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
+ 

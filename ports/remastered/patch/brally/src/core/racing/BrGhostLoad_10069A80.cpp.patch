@@ -1,0 +1,39 @@
+--- a/src/core/racing/BrGhostLoad_10069A80.cpp
++++ b/src/core/racing/BrGhostLoad_10069A80.cpp
+@@ -59,6 +59,7 @@
+ 
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "slice3_41.h"   /* br_globals: its objects */
+ #include <stdio.h>
+ #include <string.h>
+@@ -127,6 +128,7 @@
+     unsigned int len;
+     unsigned int checksum;
+     uint32_t     cb;    /* the original reuses `path` as this byte count */
++    int          hz;    /* Remastered: the recording's frames a second */
+ 
+     fp = fopen(path, DAT_1007b0e0);
+     if (fp == 0)
+@@ -134,7 +136,11 @@
+ 
+     if (fread(DAT_117a6188, 1, 4, fp) != 4)
+         { fclose(fp); goto fail; }
+-    if (strncmp((const char *)DAT_117a6188, (*(char (*)[])&DAT_100b51e4[960]), 4) != 0)
++    if (strncmp((const char *)DAT_117a6188, (*(char (*)[])&DAT_100b51e4[960]), 4) == 0)
++        hz = 30;                    /* Remastered: the game's own, 30 frames a second */
++    else if (strncmp((const char *)DAT_117a6188, RM_GHOST_MAGIC60, 4) == 0)
++        hz = 60;                    /* Remastered's own, 60 */
++    else
+         { fclose(fp); goto fail; }
+     if (fread(&len, 4, 1, fp) != 1)
+         { fclose(fp); goto fail; }
+@@ -188,6 +194,7 @@
+ 
+         (*(int *)&g_brRace5BC8D8) = 0x10;
+         count = BrReplayCountFromBytes(cb);
++        rm_replay_slot_hz(1, hz);   /* Remastered: played at its own rate (br_replay.c) */
+         if (len >= 0xc) {
+             (*(int *)&g_brTime5C24) = 0;
+             *(float *)&g_brTime5C20 = (float)((int)count - 0xcc) * DAT_10077bec;

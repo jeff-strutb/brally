@@ -1,0 +1,18 @@
+--- a/src/core/racing/br_wrongway.c
++++ b/src/core/racing/br_wrongway.c
+@@ -4,6 +4,7 @@
+  * track gets the warning put on screen. Filed out of slice6_76.c's
+  * Ghidra-matched section.
+  */
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include <stddef.h>
+@@ -34,6 +35,7 @@
+       iVar1 = BrStrGet(0xf3);
+       iVar2 = param_1->f29B8 + 1;
+       param_1->f29B8 = iVar2;
++      iVar2 = RM_TICKS30(iVar2);    /* Remastered: in the game's ticks (1 s before it shows, blinking) */
+       if ((iVar2 > 0x1f) && ((iVar2 & 0x10) == 0x10)) {
+         if (param_1->pszBanner != 0) {
+           return;

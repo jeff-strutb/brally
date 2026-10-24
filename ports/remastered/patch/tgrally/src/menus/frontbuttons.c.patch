@@ -1,14 +1,30 @@
 --- a/src/menus/frontbuttons.c
 +++ b/src/menus/frontbuttons.c
-@@ -71,6 +71,7 @@
+@@ -71,6 +71,8 @@
  void guRotateF(float mf[4][4], float a, float x, float y, float z);
  void guMtxF2L(float mf[4][4], Mtx *m);
  void BrMenuRingDraw(void);
 +#include "tgr_touch.h"
++extern int rm_menu_no_back;               /* port: this menu takes no B (rmmainmenu.c) */
  void BrMenuBackdropDraw(void);
  void BrAnimUpdate(void *set);
  void BrMenuIconDraw(int, float, float, float, float);
-@@ -251,6 +252,10 @@
+@@ -89,9 +91,13 @@
+   BrTextHighlightOff();
+   BrTextAlignLeft();
+   BrRomImageDraw(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+-  BrRomImageDraw(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+   BrTextSetFont(0xb);
+   BrTextPrint("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
++  if (rm_menu_no_back) {                /* port: nothing to go back to */
++    return;
++  }
++  BrRomImageDraw(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
++  BrTextSetFont(0xb);
+   BrTextPrint("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
+ }
+ 
+@@ -251,6 +257,10 @@
        guMtxF2L(D_8031AB10, mtx);
        gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
        BrMenuRingDraw();
@@ -19,3 +35,12 @@
        row = D_80316244;
        do {
          row = (row + n - 1) % n;
+@@ -408,7 +418,7 @@
+               goto choose;
+             }
+           }
+-          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) {
++          if ((*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) && !rm_menu_no_back) {
+             BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0x20);
+             D_8031622C = 0;
+             BrFadeTo(0.0f, 0.2f);

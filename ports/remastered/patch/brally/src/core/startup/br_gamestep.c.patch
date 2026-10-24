@@ -1,0 +1,19 @@
+--- a/src/core/startup/br_gamestep.c
++++ b/src/core/startup/br_gamestep.c
+@@ -1,6 +1,7 @@
+ /* br_gamestep.c -- Glide 0x106E79F4 and the three functions around it.
+  * See br_gamestep.h.
+  */
++int rm_tick_hz(void);                  /* Top Gear Rally Remastered: the races' tick rate (race_handoff.c) */
+ #include "slice1_05.h"   /* br_globals: its objects */
+ #include <stddef.h>
+ 
+@@ -135,7 +136,7 @@
+     int now;
+ 
+     if ((*(int *)((char *)&g_aBrEntRecs + 0xA8)) != 0) {
+-        DAT_106ec740 += DAT_100ad7c0 * 0x1FCA055 / 1000000000;
++        DAT_106ec740 += DAT_100ad7c0 * (rm_tick_hz() == 30 ? 0x1FCA055 : 0xFE502B) / 1000000000;   /* Remastered: a tick */
+         DAT_106e7294 = BrTickAdd_10078C10();
+     } else if (DAT_106ec740 != 0) {
+         now = BrTickAdd_10078C10();

@@ -1,0 +1,19 @@
+--- a/src/core/driving/br_carstep.c
++++ b/src/core/driving/br_carstep.c
+@@ -7,6 +7,7 @@
+  * Either way it then hands off to the net/steer sub-steps, recomputes the
+  * scalar speed, and -- for the local camera car -- advances the chase camera.
+  */
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include "br_match.h"      /* BR_THISCALL1 -- thiscall via __fastcall on VC5 */
+ #include "slice3_41.h"
+@@ -174,7 +175,7 @@
+             (pCar->pCtl->pHdr != 0))
+           goto LAB_net;
+       } else if ((((*(int *)&g_brRaceRules.mode) != 5) && ((*(int *)&g_brRaceTick) == 0)) &&
+-                 (0x5a < *(int *)&pCar->aBody[2].rb.f1B4))
++                 (RM_TICKS(0x5a) < *(int *)&pCar->aBody[2].rb.f1B4))   /* Remastered: in ticks of the rate */
+         goto LAB_net;
+       BrCarPhysStep(pCar);
+     }

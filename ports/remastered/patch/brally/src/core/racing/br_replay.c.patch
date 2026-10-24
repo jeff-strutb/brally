@@ -1,0 +1,147 @@
+--- a/src/core/racing/br_replay.c
++++ b/src/core/racing/br_replay.c
+@@ -9,6 +9,7 @@
+  */
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "br_race.h"   /* br_globals: its objects */
+ #include "slice3_42.h"
+ #include "slice3_41.h"
+@@ -40,6 +41,43 @@
+ 
+ 
+ /* 0x1006AAB0 */
++/* Top Gear Rally Remastered: the races run at 60 ticks a second (rm_tick.h).
++ * A recording made in this run has a frame a tick; one read from a file made
++ * by the game (the CD's intro, credits and ending, a ghost saved by the PC
++ * game: their magic "RGho") has one every 30th of a second.  Such a slot is
++ * played a half frame a tick: s_half says the slot stands halfway to its next
++ * frame, shown as the two frames' blend (BrCarStateLerp, as the network's
++ * cars are), and its speed is taken at its own rate. */
++static int s_slotHz[BR_REPLAY_PLAYERS];   /* 0: the simulation's rate */
++static int s_half[BR_REPLAY_PLAYERS];
++
++void rm_replay_slot_hz(int slot, int hz)
++{
++    if (slot >= 0 && slot < BR_REPLAY_PLAYERS) {
++        s_slotHz[slot] = hz == rm_tick_hz() ? 0 : hz;
++        s_half[slot] = 0;
++    }
++}
++
++static int slot_halves(int i) { return s_slotHz[i] != 0 && s_slotHz[i] * 2 == rm_tick_hz(); }
++
++/* the slot's cursor moved by `step` of the simulation's ticks */
++static void slot_step(int i, int32_t step)
++{
++    if (slot_halves(i)) {
++        int32_t p = g_BrReplayCursor[i] * 2 + s_half[i] + step;
++        if (p < 0)
++            p = 0;
++        g_BrReplayCursor[i] = p >> 1;
++        s_half[i] = p & 1;
++    } else {
++        g_BrReplayCursor[i] += step;
++    }
++}
++
++/* frames a second of the slot's recording */
++static float slot_rate(int i) { return s_slotHz[i] ? (float)s_slotHz[i] : (float)rm_tick_hz(); }
++
+ /* WHAT IT DOES: writes down where one car is and which way it is facing, into
+  * that car's slot for the current replay frame. It does nothing if recording
+  * is off, if playback is running, or if this car has already filled its
+@@ -128,8 +166,12 @@
+          * increments in place, 2 B short. */
+         int32_t a = g_BrReplayCount[1];
+         int32_t b = g_BrReplayCursor[1];
+-        if (b < --a)
+-            g_BrReplayCursor[1] = g_BrReplayCursor[1] + 1;
++        if (b < --a) {
++            if (rm_tick_hz() == 30)
++                g_BrReplayCursor[1] = g_BrReplayCursor[1] + 1;
++            else
++                slot_step(1, 1);    /* Remastered: a tick's worth of the slot's recording */
++        }
+     }
+ }
+ 
+@@ -147,6 +189,7 @@
+     BrCarState    state;
+     BrReplaySlot *pSlot;
+     unsigned char z;
++    float         rate;             /* Remastered: the recording's frames a second */
+ 
+     pSlot = &g_BrReplayBuf[((uint32_t)iPlayer << 16)
+                            + (uint32_t)g_BrReplayCursor[iPlayer]];
+@@ -156,6 +199,14 @@
+      * whatever its stack held there.  The core starts the record at 0. */
+     memset(&state, 0, sizeof state);
+     BrFixDecodeRecord_10007AA0(&state, &pSlot->rec);
++    rate = slot_rate(iPlayer);
++    if (s_half[iPlayer] && slot_halves(iPlayer) && g_BrReplayCursor[iPlayer] < g_BrReplayCount[iPlayer] - 1) {
++        BrCarState next;            /* Remastered: halfway to the next frame */
++        memset(&next, 0, sizeof next);
++        BrFixDecodeRecord_10007AA0(&next, &pSlot[1].rec);
++        BrCarStateLerp(&state, 0.5f, &state, &next);
++        rate = rate * 2.0f;         /* (the next frame is half a frame away) */
++    }
+ 
+     /* orig `mov edx,[car+0xFF4]; mov [state.f78],edx` -- dword copy, not
+      * fld/fstp. Unpack leaves f78 alone. */
+@@ -200,15 +251,15 @@
+         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 0)))) =
+             (state.f10
+              - (&pCar->aBody[0].rb.st.pos)->x)
+-            * BR_K_0008FAA8;
++            * rate;                 /* Remastered: the recording's rate (the game's 30) */
+         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 4)))) =
+             (state.f14
+              - (&pCar->aBody[0].rb.st.pos)->y)
+-            * BR_K_0008FAA8;
++            * rate;                 /* Remastered: the recording's rate (the game's 30) */
+         ((*(float *)(void *)(((unsigned char *)&((BrDriverCar *)(((pCar))))->aBody[0].rb.st.vel.x + 8)))) =
+             (state.f18
+              - (&pCar->aBody[0].rb.st.pos)->z)
+-            * BR_K_0008FAA8;
++            * rate;                 /* Remastered: the recording's rate (the game's 30) */
+     }
+ }
+ 
+@@ -270,7 +321,10 @@
+      * the fold from every clamp spelling (ten probes, 2026-09-10).
+      * Byte-exact 2026-09-13. */
+     for (i = 0; i < BR_REPLAY_PLAYERS; ++i) {
+-        g_BrReplayCursor[i] += step;
++        if (rm_tick_hz() == 30)
++            g_BrReplayCursor[i] += step;
++        else
++            slot_step(i, step);     /* Remastered: a tick's worth of the slot's recording */
+         if (g_BrReplayCursor[i] < 0) {
+             g_BrReplayCursor[i] = 0;
+         } else if (g_BrReplayCursor[i] > g_BrReplayCount[i] - 1) {
+@@ -298,8 +352,10 @@
+ 
+     /* The `test ecx,ecx / jle` guard is dead (n is 1 or 8) but is kept as the
+      * loop bound so the shape matches. */
+-    for (i = 0; i < n; ++i)
++    for (i = 0; i < n; ++i) {
+         g_BrReplayCount[i] = 0;
++        rm_replay_slot_hz(i, 0);    /* Remastered: recorded at the simulation's rate */
++    }
+ 
+     g_BrReplayOn = 0;
+ }
+@@ -312,8 +368,10 @@
+ void BrReplayRewind(void)
+ {
+     int i;
+-    for (i = 0; i < BR_REPLAY_PLAYERS; ++i)
++    for (i = 0; i < BR_REPLAY_PLAYERS; ++i) {
+         g_BrReplayCursor[i] = 0;
++        s_half[i] = 0;
++    }
+ }
+ 
+ /* 0x1006ACF0 */

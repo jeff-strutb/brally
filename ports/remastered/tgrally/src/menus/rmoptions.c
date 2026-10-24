@@ -159,10 +159,11 @@ int rm_options_ours(int row)
 }
 
 /* the menu's answer on `row`: ours taken here (-1 back: nothing for the
- * game's switch); else the row's number in the game's own screen */
+ * game's switch); else the row's number in the game's own screen.  B (2: the
+ * menu backed out) is the screen's whatever the row, and goes to its switch */
 int rm_options_row(int result, int row)
 {
-  if (rm_options_ours(row)) {
+  if (rm_options_ours(row) && result != 2) {
     if (result == 1 || result == 3 || result == 4) {
       int o = k_opt[row - RM_FIRST];
       if (o == RM_OPT_MENUS) {
@@ -177,5 +178,5 @@ int rm_options_row(int result, int row)
     }
     return -1;
   }
-  return row < RM_FIRST ? row : row - RM_ROWS;
+  return row < RM_FIRST ? row : rm_options_ours(row) ? 0 : row - RM_ROWS;
 }

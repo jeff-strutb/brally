@@ -238,9 +238,26 @@ first `--`) go to the process: a Simulator check runs the same round trip as
 the headless one,
 
 Frame rates: `TGR_STATS=1` and `BR_STATS=1` report each second the frames
-each game drew and those the screen showed. On an iPhone 15 Pro Max
-(2026-10-12) Boss Rally's races and demos showed 60 a second, and Top Gear
-Rally's menus every frame the game draws (30 a second, the game's own rate).
+each game drew and those the screen showed.
+
+**60 ticks a second.** Boss Rally's races (the driving, the replays, the
+demos, the ceremony) step 60 times a second where the game stepped 30
+(`brally/include/rm_tick.h`, `race_handoff.c`: `RM_TICK=30` gives the game's
+own, value for value). What the game wrote in terms of its 30 goes through
+`rm_tick.h`: counts in ticks, shares taken each tick, steps added each tick;
+its grip solver (`br_cardrive.c`), a projection sized for a 30th of a second,
+runs 30 times a second as it did. A recording read from a file the game made
+(the CD's intro, credits and ending, a PC ghost: "RGho") plays half a frame a
+tick, blended; Remastered's own ghosts say "RG60". A network race keeps the
+game's 30, to race the PC game. Drawing is the game's own, a picture blended
+between the last two ticks at whatever rate the display takes. Top Gear
+Rally's menus run a frame a retrace (60 a second; they move by the time a
+frame took, so as fast as they did at 30), and the pictures between those
+frames are its display lists run again with their matrices, rectangles and
+scissors blended toward the frame before (`tgrally/platform/gfx/rcp.c`,
+`os/thread.c`; `RM_TWEEN=0` draws each frame once). A scripted run keeps the
+game's own pace (`TGR_MENU_RATE=60` for its checks). `BR_TICKLOG=1` writes
+each race tick's clock and cars, for comparing two runs.
 
 ```sh
 SIMCTL_CHILD_RM_LOG=1 SIMCTL_CHILD_BR_HANDOFF_AUTOPILOT=1 xcrun simctl launch --console-pty DEVICE \

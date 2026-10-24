@@ -1,0 +1,65 @@
+--- a/src/core/driving/br_carphys.c
++++ b/src/core/driving/br_carphys.c
+@@ -1,3 +1,4 @@
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include <stddef.h>
+ /* br_carphys.c -- 0x1005A7A0 and the four force generators it drives.
+  *
+@@ -193,7 +194,7 @@
+         wasLo   = *(unsigned short *)&pWheel->f1B4;
+         v       = pWheel->f1D8;
+ 
+-        if (contact < BR_CP_CONTACT_MAX) {
++        if (contact < RM_TICKS(BR_CP_CONTACT_MAX)) {   /* Remastered: in ticks of the rate */
+             *(int32_t *)&pWheel->f1B4 = contact + 1;
+         }
+ 
+@@ -669,7 +670,7 @@
+         pWheel->pForces->f.y = a.y + pWheel->pForces->f.y;
+         pWheel->pForces->f.z = a.z + pWheel->pForces->f.z;
+         w = ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4)
+-          - (pWheel->f1C8 * ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4) + dot) * 0.4000000059604645f;
++          - (pWheel->f1C8 * ((tq - q * pWheel->f1C8) * dt + pWheel->f1C4) + dot) * RM_PER_TICK(0.4000000059604645f);   /* Remastered: a tick's share */
+     } else {
+         w = pWheel->f1CC * dt + pWheel->f1C4;
+     }
+@@ -856,7 +857,8 @@
+ 
+     pState = (char *)&pCar->aBody[0].rb.st.pos.x;
+     BrCpIntegrateVelocity((BrRbState *)pState, (BrRbBodyFull *)pBody, BR_PHYS_DT);
+-    BrCarPhysDriveMatch((struct BrCarBody *)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
++    if (rm_tick_whole())             /* Remastered: 30 times a second, as the game's ticks (br_cardrive.c) */
++        BrCarPhysDriveMatch((struct BrCarBody *)pBody, BR_PHYS_DT, &pCar->f0E7C, &pCar->f0E74, (char *)&pCar->f0E80, (char *)&pCar->f0E78);
+     BrRbQuatDerivative(pState);
+ 
+     pCar->aBody[0].rb.pForces = &pCar->aForce[4];   /* car+0xC20 */
+@@ -1000,7 +1002,7 @@
+     BrPodNop();
+     h = pBody->f01DC;
+     scale.x = 1.0f / h;
+-    t = 0.033333335f;
++    t = BR_PHYS_DT;                  /* Remastered: the tick's step (was 1/30) */
+     h = pBody->f01E0;
+     scale.y = 1.0f / h;
+     h = pBody->f01E4;
+@@ -1033,17 +1035,17 @@
+             }
+             pBody->f01F8 = pBody->f01F8 - 1;
+         } else {
+-            pBody->f01F8 = 0x23;
++            pBody->f01F8 = RM_TICKS(0x23);   /* Remastered: in ticks of the rate */
+         }
+     } else if (!(pBody->rb.m.m[2][2] >= 0.5f)) {
+         if (pBody->f01F8 < 0) {
+             pBody->f01F8 = -1;
+         }
+-        if (!((*(float *)&pBody->rb.m.m[3] - pCar->f2AB0) * (*(float *)&pBody->rb.m.m[3] - pCar->f2AB0) + (pBody->rb.m.m[3][1] - pCar->f2AB4) * (pBody->rb.m.m[3][1] - pCar->f2AB4) + (pBody->rb.m.m[3][2] - pCar->f2AB8) * (pBody->rb.m.m[3][2] - pCar->f2AB8) >= DAT_10077a7c)) {
++        if (!((*(float *)&pBody->rb.m.m[3] - pCar->f2AB0) * (*(float *)&pBody->rb.m.m[3] - pCar->f2AB0) + (pBody->rb.m.m[3][1] - pCar->f2AB4) * (pBody->rb.m.m[3][1] - pCar->f2AB4) + (pBody->rb.m.m[3][2] - pCar->f2AB8) * (pBody->rb.m.m[3][2] - pCar->f2AB8) >= DAT_10077a7c * RM_STEP(1.0f) * RM_STEP(1.0f))) {   /* Remastered: a tick's movement, squared */
+             pBody->f01F8 = pBody->f01F8 - 1;
+         }
+     } else {
+-        pBody->f01F8 = 0x78;
++        pBody->f01F8 = RM_TICKS(0x78);
+     }
+     *(int *)&pCar->f2AB0 = *(int *)&pBody->rb.m.m[3];
+     *(int *)&pCar->f2AB4 = *(int *)&pBody->rb.m.m[3][1];
