@@ -8,7 +8,6 @@
 
 void br_data_lift(void);            /* build/brally/null-soft/gen/br_data.c */
 void br_data_initterm(void);
-void plat_dx_init(void);            /* dx.c */
 void plat_script_files(void);
 int  BrDllMain(void *hinst, int reason, int reserved);
 int  BrRallyMain(void *hinst, void *hprev, const char *cmdline, int show);
@@ -21,16 +20,15 @@ int main(int argc, char **argv)
     g_plat_log = getenv("BR_LOG") != NULL;
     host_init(argc, argv);
     plat_script_files();            /* script_game.c: save fixtures, before the game reads them */
-    plat_dx_init();
     br_data_lift();
     br_data_initterm();
-    BrDllMain(GetModuleHandleA(NULL), DLL_PROCESS_ATTACH, 0);
+    BrDllMain(NULL, 1, 0);          /* (1: the process attaching) */
     for (i = 1; i < argc; i++) {
         if (i > 1)
             strncat(cmd, " ", sizeof cmd - strlen(cmd) - 1);
         strncat(cmd, argv[i], sizeof cmd - strlen(cmd) - 1);
     }
-    r = BrRallyMain(GetModuleHandleA(NULL), NULL, cmd, SW_SHOWNORMAL);
+    r = BrRallyMain(NULL, NULL, cmd, 1 /* shown */);
     fprintf(stderr, "RallyMain returned %d\n", r);
     host_shutdown();
     return r;

@@ -78,24 +78,13 @@ int Input59350::CreateDevice(void *hWnd)
 {
     int hr;
 
-    hr = (*(DI * *)&g_pBr18ABD70)->lpVtbl->CreateDevice((*(DI * *)&g_pBr18ABD70), g_DeviceGuid, &pDev, 0);
+    hr = br_in_create(g_DeviceGuid, (void **)&pDev);
     if (hr < 0) {
         BrMsgBoxAA(hWnd, hr, BrStrGet(0xAC));
         return 0;
     }
-
-    hr = pDev->lpVtbl->SetDataFormat(pDev, g_DataFormat);
-    if (hr < 0) {
-        BrMsgBoxAA(hWnd, hr, BrStrGet(0xAD));
-        return 0;
-    }
-
-    hr = pDev->lpVtbl->SetCooperativeLevel(pDev, hWnd, 5);
-    if (hr < 0) {
-        BrMsgBoxAA(hWnd, hr, BrStrGet(0xAE));
-        return 0;
-    }
-
+    /* (the original then told DirectInput the state block it wanted and
+       that the game's window owned the device; br_in knows both) */
     return 1;
 }
 

@@ -174,7 +174,7 @@ int rm_menu_backdrop(int x, int y, struct BrSurf *src, const int *rect)
 }
 
 /* ---- the keys and the pointer ---------------------------------------------- */
-extern int plat_pointer_seq;            /* dx.c */
+extern int plat_pointer_seq;            /* br_in.c */
 void plat_mouse_park(void);
 static int s_keys;                      /* the keys have the menus: the pointer put away */
 

@@ -45,10 +45,7 @@ int Ctl71FC0::Activate()
 
     if (++g_BrDInputUsers != 1)
         return 1;
-    if (DirectInputCreateA((HINSTANCE)g_brhInstance2, 0x500, (void **)&g_pBr18ABD70, 0) < 0) {
-        br_os_message_box(BrStrGet(0x127), BrStrGet(0x126));
-        return 0;
-    }
+    *(void **)&g_pBr18ABD70 = br_in_open();     /* the original's DirectInputCreateA */
     p = ((DiDev *)br_new_obj(sizeof(DiDev), (void *(*)(void *))FUN_100592f0));
     (*(DiDev * *)&g_pBrAA2E80) = p;
     p->Init((*(void * *)&g_brOwner5BC72C));

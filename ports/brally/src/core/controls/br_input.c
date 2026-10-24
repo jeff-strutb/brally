@@ -197,20 +197,14 @@ int FUN_100703d0(void)
     (*(int *)&g_brInJoyPrev) = 0;
     DAT_118eebd0 = 1;
     BrSub100770C0();
-    iVar1 = (*(CC_std_4 *)&((void **)*(void ***)(((*(int * *)&g_pBr18ABD70))))[3])((*(int * *)&g_pBr18ABD70),&DAT_10078718,&(*(int * *)&g_pBrDik18ABDD0),0);
-    if (iVar1 < 0) {
-      return 0;
-    }
-    iVar1 = (*(CC_std_2 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[11])((*(int * *)&g_pBrDik18ABDD0),&DAT_10073ae0);
-    if (iVar1 < 0) {
-      return 0;
-    }
-    iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[13])((*(int * *)&g_pBrDik18ABDD0),g_brOwner5BC72C,6);
+    /* the keyboard (the original then told DirectInput its state block and
+       the game window's hold on it; br_in knows both) */
+    iVar1 = br_in_create(&DAT_10078718, (void **)&g_pBrDik18ABDD0);
     if (iVar1 < 0) {
       return 0;
     }
     if ((*(int * *)&g_pBrDik18ABDD0) != (int *)0x0) {
-      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_pBrDik18ABDD0))))[7])((*(int * *)&g_pBrDik18ABDD0));
+      br_in_acquire((*(void * *)&g_pBrDik18ABDD0));
     }
   }
   return 1;
@@ -592,11 +586,11 @@ int BrInputPollPressed(void)
     /* Re-read the device: the clear may alias it as far as the compiler
      * knows, so this is a second load, not the tested one. */
     pDev = (*(BrDIPollRec * *)&g_pBrAA2E80)->pDev;
-    hr = pDev->lpVtbl->GetDeviceState(pDev, 0x10, &st);
+    hr = br_in_state(pDev, 0x10, &st);
     /* 0x8007001E only -- any other failure is left alone. */
     if (hr != 0 && hr == 0x8007001E) {
         pDev = (*(BrDIPollRec * *)&g_pBrAA2E80)->pDev;
-        pDev->lpVtbl->Acquire(pDev);
+        br_in_acquire(pDev);
     }
 
     if (st.rgbButtons[0] & 0x80)
@@ -758,9 +752,8 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* WHAT IT DOES: take exclusive control of the input device back from Windows
- * -- what has to happen after the game regains focus before it can read the
- * device again. Reports whether it succeeded, and false if there is no
+/* WHAT IT DOES: take hold of the joystick again -- what has to happen after
+ * the game regains focus before it can read the device again. Reports whether it succeeded, and false if there is no
  * device. */
 /* @implements 0x100706B0 glide BrDiAcquire */
 int BrDiAcquire(void)
@@ -769,7 +762,7 @@ int BrDiAcquire(void)
   int iVar1;
   
   if ((*(int * *)&g_brFfb) != (int *)0x0) {
-    iVar1 = (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[7])((*(int * *)&g_brFfb));
+    iVar1 = br_in_acquire((*(void * *)&g_brFfb));
     return (iVar1 >= 0);
   }
   return 0;

@@ -33,9 +33,9 @@
 +ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK" >&2 || true
  
  SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/win_kernel.c $P/common/br_os_window.c \
--      $P/common/win_rsrc.c $P/common/dx.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
+-      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
 -      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
-+      $P/common/win_rsrc.c $P/common/dx.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/flags.c $P/common/br_gfx.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \
++      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/flags.c $P/common/br_gfx.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \
 +      $P/light/light_bvh.c $P/light/light_sky.c $P/light/light_smooth.c $P/light/light_surf.c $P/light/light_surf_draw.c $P/light/light_surf_shade.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 +# the track's ray-tracing world on the GPU (brr_metal_rt.h)
 +[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m $P/render/metal/brr_metal_gi.m $P/render/metal/brr_metal_taa.m $P/render/metal/brr_metal_refl.m $P/render/metal/brr_metal_env.m $P/render/metal/brr_metal_vsm.m"

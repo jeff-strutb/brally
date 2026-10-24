@@ -50,7 +50,6 @@ typedef struct BrDI {
 int BrDInputShutdown(void)
 {
     void *pRec;
-    BrDIVtbl *vt;
 
     if (--g_BrDInputUsers == 0 && (*(BrDI * *)&g_pBr18ABD70) != 0) {
         pRec = (*(void * *)&g_pBrAA2E80);
@@ -63,10 +62,8 @@ int BrDInputShutdown(void)
          * between `push eax` and `call [ecx+8]`, the way the original has
          * it. Writing the call as one `g_pDInput->lpVtbl->Release(...)`
          * expression keeps the store in source order and costs 8 bytes. */
-        vt = (*(BrDI * *)&g_pBr18ABD70)->lpVtbl;
         (*(void * *)&g_pBrAA2E80) = 0;
-        vt->Release((*(BrDI * *)&g_pBr18ABD70));
-        (*(BrDI * *)&g_pBr18ABD70) = 0;
+        (*(void * *)&g_pBr18ABD70) = 0;       /* the input system, let go of */
     }
     return 1;
 }
@@ -92,16 +89,16 @@ void BrExt_10079550(void)
   }
   if (DAT_118eef18 == 0) {
     if (DAT_118eef14 != (int *)0x0) {
-      (*(CC_std_1 *)&((void **)*(void ***)((DAT_118eef14)))[2])(DAT_118eef14);
+      br_in_release(DAT_118eef14);
       DAT_118eef14 = (int *)0x0;
     }
     if (DAT_118eef04 != (int *)0x0) {
-      (*(CC_std_1 *)&((void **)*(void ***)((DAT_118eef04)))[2])(DAT_118eef04);
+      br_in_release(DAT_118eef04);
       DAT_118eef04 = (int *)0x0;
     }
     if ((*(int * *)&g_brFfb) != (int *)0x0) {
-      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[8])((*(int * *)&g_brFfb));
-      (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[2])((*(int * *)&g_brFfb));
+      br_in_unacquire((*(int * *)&g_brFfb));
+      br_in_release((*(int * *)&g_brFfb));
       (*(int * *)&g_brFfb) = (int *)0x0;
     }
   }

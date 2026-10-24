@@ -228,7 +228,7 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
         }
         pEff = g_brFfb.pEffectSpring;
         if (pEff != NULL) {
-            BrDiEff(pEff)->pfnStop(pEff);
+            br_in_effect_stop(pEff);
         }
         g_br18ABDF8 = 1;
         return;
@@ -237,7 +237,7 @@ void BrFfbUpdateSpring(int32_t up, int32_t enable, int32_t decay)
     if (g_br18ABDF8 != 0) {
         pEff = g_brFfb.pEffectSpring;
         if (pEff != NULL) {
-            BrDiEff(pEff)->pfnStart(pEff, 1u, 0u);
+            br_in_effect_start(pEff, 1u, 0u);
         }
         BrFfbSetDurationLong();
         /* Both are re-read from memory here -- BrFfbSetDurationLong could in
@@ -352,8 +352,8 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
     g_brDiEffSpring.cbTypeSpecificParams   = 0x30u;   /* two DICONDITIONs */
     g_brDiEffSpring.lpvTypeSpecificParams  = g_brDiSpringCond;
 
-    hr = BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSpring, &g_brDiEffSpring,
-                                        &g_brFfb.pEffectSpring, NULL);
+    hr = br_in_effect_new(g_brFfb.pDevice, kBrGuidSpring, &g_brDiEffSpring,
+                          (void **)&g_brFfb.pEffectSpring);
     if (hr == 0) {
         g_br18ABD78 = springCoeff;
         g_br18ABDF8 = 1;               /* created, but not started */
@@ -378,8 +378,8 @@ void BrFfbSetup(int32_t springCoeff, int32_t springCoeff2)
     g_brDiEffSquare.cbTypeSpecificParams    = 0x10u;  /* one DIPERIODIC */
     g_brDiEffSquare.lpvTypeSpecificParams   = &g_brDiSquarePeriod;
 
-    (void)BrDiDev(g_brFfb.pDevice)->pfnCreateEffect(g_brFfb.pDevice, kBrGuidSquare, &g_brDiEffSquare,
-                                         &g_brFfb.pEffectSquare, NULL);
+    (void)br_in_effect_new(g_brFfb.pDevice, kBrGuidSquare, &g_brDiEffSquare,
+                           (void **)&g_brFfb.pEffectSquare);
 }
 
 /* 0x100790E0 */
@@ -416,36 +416,13 @@ int32_t BR_STDCALL BrFfbEnumDevice(const void *pDevInst, void *pvRef)
      * success arm -- that is what lands it at the function's tail (jl to the
      * end), where its return-0 shares the epilogue the SetDataFormat success
      * jumps to. A goto spelling gets pulled back inline. */
-    if (BrDiRoot(g_pBr18ABD70)->pfnCreateDevice(g_pBr18ABD70, guid,
-                                                (BrDiObj **)&pDevInst,
-                                                NULL) >= 0) {
-
-        hr = BrDiDev(pDevInst)->pfnQueryInterface(pDevInst, kBrIidDevice2A,
-                                                  (void **)(void *)&g_brFfb.pDevice);
-        BrDiDev(pDevInst)->pfnRelease(pDevInst);
-        if (hr < 0) {
-            /* Note: g_brFfb.pDevice is NOT cleared on this path. */
-            BR_DBG_OUT(kBrErrInterface);
-            return 0;
-        }
-
-        pDev = g_brFfb.pDevice;
-        /* pvRef is an integer cooperative level, not a pointer. */
-        if (BrDiDev(pDev)->pfnSetCooperativeLevel(pDev, (*(void * *)&g_brOwner5BC72C),
-                (uint32_t)(uintptr_t)pvRef) < 0) {
-            BR_DBG_OUT(kBrErrCoopLevel);
-        } else {
-            pDev = g_brFfb.pDevice;
-            if (BrDiDev(pDev)->pfnSetDataFormat(pDev, kBrDataFormatJoystick2) >= 0) {
-                return 0;                   /* success -- DIENUM_STOP */
-            }
-            BR_DBG_OUT(kBrErrDataFormat);
-        }
-
-        pDev = g_brFfb.pDevice;
-        BrDiDev(pDev)->pfnRelease(pDev);
-        g_brFfb.pDevice = NULL;
-        return 0;
+    (void)hr;
+    (void)pDev;
+    (void)pvRef;    /* the original's cooperative level: br_in has no other */
+    if (br_in_create(guid, (void **)&g_brFfb.pDevice) >= 0) {
+        /* (the original asked the device for its version-2 interface, the
+           game window's hold on it and the joystick's state block) */
+        return 0;                           /* success: stop looking */
     }
 
     BR_DBG_OUT(kBrErrCreateDevice);
@@ -485,14 +462,13 @@ int32_t BrFfbInit(void)
             pfnDbg = BR_DBG_SINK;
 
             if ((*(int32_t *)&DAT_10b71540) != 0 &&
-                BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                br_in_pads(4u,
                     BrFfbEnumDevice, (void *)(uintptr_t)5u, 0x101u) == 0 &&
                 g_brFfb.pDevice != NULL) {
 
                 /* pvRef 5 = DISCL_EXCLUSIVE|DISCL_FOREGROUND,
                  * flags 0x101 = DIEDFL_ATTACHEDONLY|DIEDFL_FORCEFEEDBACK. */
                 BrDiPropDword d;
-                const BrDiDevVtbl *pVtbl;
 
                 /* The vtable pointer is a NAMED local loaded before the
                  * struct fill -- that hoist is what makes VC5 push the three
@@ -502,7 +478,6 @@ int32_t BrFfbInit(void)
                  * pHdr hoists, call-embedded assignment, decl order all
                  * probed dead 2026-09-12. */
                 pDev = g_brFfb.pDevice;
-                pVtbl = BrDiDev(pDev);
 
                 (*(int32_t *)&DAT_118eeed4) = 1;
 
@@ -513,14 +488,14 @@ int32_t BrFfbInit(void)
                 d.dwData       = 0u;    /* autocentre OFF */
 
                 /* property 9 = DIPROP_AUTOCENTER */
-                if (pVtbl->pfnSetProperty(pDev, 9u, &d) < 0) {
+                if (br_in_set_property(pDev, 9u, &d) < 0) {
                     pfnDbg(kBrErrProperty);
                 }
                 (void)BrDiAcquire();
                 BrFfbSetup(0x3E8, 0x1F40);
             } else {
                 /* pvRef 6 = DISCL_NONEXCLUSIVE|DISCL_FOREGROUND, flags 1. */
-                (void)BrDiRoot(g_pBr18ABD70)->pfnEnumDevices(g_pBr18ABD70, 4u,
+                (void)br_in_pads(4u,
                          BrFfbEnumDevice, (void *)(uintptr_t)6u, 1u);
                 (void)BrDiAcquire();
                 (*(int32_t *)&DAT_118eeed4) = 0;
@@ -551,9 +526,9 @@ int32_t BrFfbInit(void)
 failRange:
                 pfnDbg(kBrErrPropRange);
                 pDev = g_brFfb.pDevice;
-                BrDiDev(pDev)->pfnUnacquire(pDev);
+                br_in_unacquire(pDev);
                 pDev = g_brFfb.pDevice;
-                BrDiDev(pDev)->pfnRelease(pDev);
+                br_in_release(pDev);
                 g_brFfb.pDevice = NULL;
                 /* NOTE: initCount stays raised. See slice1_10.h. */
                 return 0;
@@ -563,9 +538,9 @@ failRange:
 failDword:
                 pfnDbg(kBrErrPropWord);
                 pDev = g_brFfb.pDevice;
-                BrDiDev(pDev)->pfnUnacquire(pDev);
+                br_in_unacquire(pDev);
                 pDev = g_brFfb.pDevice;
-                BrDiDev(pDev)->pfnRelease(pDev);
+                br_in_release(pDev);
                 g_brFfb.pDevice = NULL;
                 /* NOTE: initCount stays raised. See slice1_10.h. */
                 return 0;

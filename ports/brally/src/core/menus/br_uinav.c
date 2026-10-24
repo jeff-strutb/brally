@@ -462,15 +462,15 @@ void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _unused)
         return;
 
     pDev = pNav->pDev;
-    pDev->pVtbl->pfnAcquire(pDev);
+    br_in_acquire(pDev);
     pDev = pNav->pDev;
-    while (pDev->pVtbl->pfnGetDeviceState(pDev, 0x10, aState) ==
+    while (br_in_state(pDev, 0x10, aState) ==
            (int32_t)0x8007001E) {
         pDev = pNav->pDev;
-        if (pDev->pVtbl->pfnAcquire(pDev) < 0)
+        if (br_in_acquire(pDev) < 0)
             break;
         pDev = pNav->pDev;
-        pDev->pVtbl->pfnAcquire(pDev);
+        br_in_acquire(pDev);
         pDev = pNav->pDev;
     }
 

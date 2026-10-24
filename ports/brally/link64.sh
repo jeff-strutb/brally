@@ -46,7 +46,7 @@ ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
 
 SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/win_kernel.c $P/common/br_os_window.c \
-      $P/common/win_rsrc.c $P/common/dx.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
+      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
       $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
 case "$($CC -dumpmachine 2>/dev/null)" in

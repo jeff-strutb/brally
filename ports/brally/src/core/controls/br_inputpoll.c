@@ -254,16 +254,16 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     /* ---- keyboard --------------------------------------------------- */
     g_brInKeyPrev = g_brInKeyCur;
     g_brInKeyCur = (g_brInKeyCur - 1) & 1;
-    hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_pBrDik18ABDD0), 0x100u,
+    hr = br_in_state((*(void **)&g_pBrDik18ABDD0), 0x100u,
                                                 g_brInKeys[g_brInKeyCur]);
     if (hr < 0) {
         if (hr == BR_DIERR_NOTACQUIRED) {
-            hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->Acquire((*(BrInDiDev * *)&g_pBrDik18ABDD0));
+            hr = br_in_acquire((*(void **)&g_pBrDik18ABDD0));
             if (hr < 0) {
                 (*(int32_t *)&g_BrX18ABAD0) = 0;
                 return 0;
             }
-            hr = (*(BrInDiDev * *)&g_pBrDik18ABDD0)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_pBrDik18ABDD0), 0x100u,
+            hr = br_in_state((*(void **)&g_pBrDik18ABDD0), 0x100u,
                                                         g_brInKeys[g_brInKeyCur]);
             if (hr < 0) {
                 (*(int32_t *)&g_BrX18ABAD0) = 0;
@@ -280,8 +280,8 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     if ((*(int32_t *)&g_BrCtrlCfg.active) == 1 || (*(int32_t *)&g_BrCtrlCfg.active) == 2) {
         g_brInJoyPrev = (*(int32_t *)&DAT_118eebd0);
         (*(int32_t *)&DAT_118eebd0) = ((*(int32_t *)&DAT_118eebd0) - 1) & 1;
-        (*(BrInDiDev * *)&g_brFfb)->pVtbl->Poll((*(BrInDiDev * *)&g_brFfb));
-        hr = (*(BrInDiDev * *)&g_brFfb)->pVtbl->GetDeviceState((*(BrInDiDev * *)&g_brFfb), 0x110u,
+        br_in_poll((*(void **)&g_brFfb));
+        hr = br_in_state((*(void **)&g_brFfb), 0x110u,
                                                   &g_brInJoy[(*(int32_t *)&DAT_118eebd0)]);
         if (hr != 0) {
             if (hr == BR_DIERR_NOTACQUIRED)
@@ -295,7 +295,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
     (*(int32_t *)&g_18ABD80) = ((*(int32_t *)&g_18ABD80) - 1) & 1;
     if ((*(BrInDiRoot * *)&g_pBrAA2E80) != 0 && (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse != 0) {
         BrInMouseState ms;
-        hr = (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse->pVtbl->GetDeviceState((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse,
+        hr = br_in_state((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse,
                                                           0x10u, &ms);
         if (hr == 0) {
             int32_t *pPrevAx = &(*(BrInMouse (*)[])&g_18ABD38)[g_brInMousePrev].ax;
@@ -339,7 +339,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             (*(BrInMouse (*)[])&g_18ABD38)[cur].buttons[3] = ms.rgbButtons[3];
         } else {
             if (hr == BR_DIERR_NOTACQUIRED)
-                (*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse->pVtbl->Acquire((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse);
+                br_in_acquire((*(BrInDiRoot * *)&g_pBrAA2E80)->pMouse);
             memset((*(BrInMouse (*)[])&g_18ABD38)[(*(int32_t *)&g_18ABD80)].buttons, 0, 4);
         }
     } else {
@@ -843,8 +843,8 @@ void BrDiKeyboardShutdown(void)
     return;
   }
   if (((((intptr_t)(g_brFfb.pEffectSpring))) == 0) && ((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) != (int *)0x0)) {
-    (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)))))[8])((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
-    (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)))))[2])((*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)));
+    br_in_unacquire((*(void * *)&g_pBrDik18ABDD0));
+    br_in_release((*(void * *)&g_pBrDik18ABDD0));
     (*(int * *)&(*(BrInDiDev * *)&g_pBrDik18ABDD0)) = (int *)0x0;
   }
   return;

@@ -1,9 +1,9 @@
---- a/platform/common/dx.c
-+++ b/platform/common/dx.c
-@@ -227,25 +227,40 @@
+--- a/platform/common/br_in.c
++++ b/platform/common/br_in.c
+@@ -191,25 +191,40 @@
   * game exactly the step from its cursor to the pointer; then it stops, so a
   * still mouse reads as still (the race reads the mouse as an axis). The
-  * wasm lane does the same (host_dx.c abs_step). */
+  * wasm lane did the same (host_dx.c abs_step). */
 +/* Top Gear Rally Remastered: the pointer's own movements and presses counted
 + * (rm_menuwide.c: the menus' keys take over from the pointer until it moves) */
 +int plat_pointer_seq;
@@ -38,6 +38,6 @@
 +    s_mdx = s_mdy = 0;
 +}
 +
- static HRESULT did_GetDeviceState(pobj *o, DWORD n, void *out)
- {
-     plat_pump(0);
+ /* the device now, in the block the game reads: the keyboard's 256 scan
+  * codes, the mouse's movement and buttons (x y z, 4 buttons), the
+  * joystick's axes, POVs at 0x20 and buttons at 0x30 */

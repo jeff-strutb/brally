@@ -41,12 +41,8 @@
 #undef BrEntSetPos
 
 
-typedef int32_t (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
-typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
-#define BR_DI_SETPROP(p, prop, pdiph) \
-    ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
+#define BR_DI_SETPARAMS(p, eff, flags) br_in_effect_params((p), (eff), (flags))
+#define BR_DI_SETPROP(p, prop, pdiph)  br_in_set_property((p), (prop), (pdiph))
 /* g_brFfb is the port's gathering of four scattered originals.  The matching
  * build names the two effect pointers as the separate globals they are
  * (Glide 0x118EEF04 and 0x118EEF14, config/brally/globals_glide.csv) so each

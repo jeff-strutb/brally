@@ -60,13 +60,10 @@ void BrFn1003E070(void)
  * reads again. When there is no keyboard device at all it reports what looks
  * like success and leaves the caller's buffer holding whatever was in it
  * before, so keys can appear stuck. */
-typedef int32_t (__stdcall *BrDiGetStateFn)(BrDInputDev *, uint32_t, void *);
-typedef int32_t (__stdcall *BrDiAcquireFn)(BrDInputDev *);
 /* Orig is `mov eax,[0x118eeee8]` three times, not an env-struct field. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* WHAT IT DOES: read the whole keyboard state array from DirectInput in one
- * go. Reports failure without touching the caller's buffer when there is no
+/* WHAT IT DOES: read the whole keyboard state array in one go. Reports failure without touching the caller's buffer when there is no
  * device. */
 /* @implements 0x10070490 glide BrDikGetDeviceState */
 int32_t BrDikGetDeviceState(uint8_t *pState)
@@ -82,14 +79,14 @@ int32_t BrDikGetDeviceState(uint8_t *pState)
     if (pDev == NULL) {
         hr = 1;
     } else {
-        hr = ((BrDiGetStateFn)pDev->pVtbl->GetDeviceState)(pDev, 0x100u, p);
+        hr = br_in_state(pDev, 0x100u, p);
         if (hr < 0) {
             if (hr == BR72_DIERR_NOTACQUIRED) {
                 pDev = g_pBrDik18ABDD0;
-                hr = ((BrDiAcquireFn)pDev->pVtbl->Acquire)(pDev);
+                hr = br_in_acquire(pDev);
                 if (hr >= 0) {
                     pDev = g_pBrDik18ABDD0;
-                    hr = ((BrDiGetStateFn)pDev->pVtbl->GetDeviceState)(pDev, 0x100u, p);
+                    hr = br_in_state(pDev, 0x100u, p);
                 }
             }
         }
@@ -227,8 +224,8 @@ int BrJoyScanAny(int *param_1)
       return 1;
     }
   }
-  (*(CC_std_1 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[25])(*(int * *)&g_brFfb);
-  iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brFfb))))[9])((*(int * *)&g_brFfb),0x110,(int)auStack_110);
+  br_in_poll(*(void * *)&g_brFfb);
+  iVar1 = br_in_state(*(void * *)&g_brFfb, 0x110, auStack_110);
   if ((iVar1 != 0) && (iVar1 == -0x7ff8ffe2)) {
     BrDiAcquire();
   }

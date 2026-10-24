@@ -11,11 +11,9 @@
 #define BrOperatorNew brw_BrOperatorNew
 #define CLSID_DirectPlay brw_CLSID_DirectPlay
 #define CLSID_DirectPlayLobby brw_CLSID_DirectPlayLobby
-#define CLSID_DirectSound brw_CLSID_DirectSound
 #define CoCreateInstance brw_CoCreateInstance
 #define CoInitialize brw_CoInitialize
 #define CoUninitialize brw_CoUninitialize
-#define DirectInputCreateA brw_DirectInputCreateA
 #define DirectPlayLobbyCreateA brw_DirectPlayLobbyCreateA
 #define DisableThreadLibraryCalls brw_DisableThreadLibraryCalls
 #define FreeLibrary brw_FreeLibrary
@@ -28,7 +26,6 @@
 #define GlobalLock brw_GlobalLock
 #define GlobalMemoryStatus brw_GlobalMemoryStatus
 #define GlobalUnlock brw_GlobalUnlock
-#define IID_IDirectSound brw_IID_IDirectSound
 #define LoadLibraryA brw_LoadLibraryA
 #define LoadStringA brw_LoadStringA
 #define _chdir brw__chdir
