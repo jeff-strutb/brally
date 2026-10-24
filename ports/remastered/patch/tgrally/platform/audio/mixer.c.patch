@@ -1,6 +1,6 @@
 --- a/platform/audio/mixer.c
 +++ b/platform/audio/mixer.c
-@@ -68,6 +68,11 @@
+@@ -75,6 +75,11 @@
      return (uint8_t *)buf + pos;
  }
  
@@ -11,9 +11,9 @@
 +
  void BrMixMusic(short *buf, int bytes)
  {
-     Voice *v = TGR_PTR(Voice *, MUSIC + 8);
-@@ -84,8 +89,10 @@
-                 a3 += v[3].rate; a4 += v[4].rate; a5 += v[5].rate;
+     BrMixVoice *v = D_802A4798;
+@@ -91,8 +96,10 @@
+                 acc_add(&a3, v[3].rate); acc_add(&a4, v[4].rate); acc_add(&a5, v[5].rate);
                  n -= 4;
                  l = v[0].vol * smp(a0) + v[2].vol * smp(a2) + v[4].vol * smp(a4);
 -                tgr_wr16(p, (uint16_t)l);
@@ -24,9 +24,9 @@
                  tgr_wr16(p + 2, (uint16_t)r);
                  p += 4;
              } while (n > 0);
-@@ -114,8 +121,8 @@
-                 a += v[0].rate;
-                 b += v[1].rate;
+@@ -121,8 +128,8 @@
+                 acc_add(&a, v[0].rate);
+                 acc_add(&b, v[1].rate);
                  n -= 4;
 -                l = v[0].vol * smp(a);
 -                r = v[1].vol * smp(b);
