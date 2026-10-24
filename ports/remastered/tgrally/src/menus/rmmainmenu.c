@@ -18,7 +18,7 @@
 
 /* -- declarations -- */
 int rm_quit(void);                      /* the app's (ports/remastered/platform/options.h) */
-unsigned int rm_options_icon_console(void);   /* rmoptions.c */
+void *rm_options_icon_console(void);   /* rmoptions.c */
 /* -- end declarations -- */
 
 #if defined(__APPLE__) && TARGET_OS_IPHONE
@@ -43,7 +43,7 @@ MenuItem **rm_mainmenu_items(MenuItem **game)
   }
   s_game_rows = n;
   if (RM_QUIT_ROW && n > 0) {
-    s_quit.label = tgr_addr32(s_quit_label);
+    s_quit.label = s_quit_label;
     s_quit.flags = game[n - 1]->flags;  /* a row like Options: A chooses it */
     s_quit.icon = rm_options_icon_console();
     s_quit.iconRomStart = 0;

@@ -79,7 +79,7 @@ static void labels(void)
   }
   sprintf(s_label[ROWS - 1], "Reset Player %d", s_player + 1);
   for (a = 0; a < ROWS; a++) {
-    s_row[a].label = tgr_addr32(s_label[a]);
+    s_row[a].label = s_label[a];
   }
 }
 

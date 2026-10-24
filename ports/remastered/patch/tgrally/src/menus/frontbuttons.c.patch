@@ -8,7 +8,7 @@
 +extern int rm_menu_no_back;               /* port: this menu takes no B (rmmainmenu.c) */
  void BrMenuBackdropDraw(void);
  void BrAnimUpdate(void *set);
- void BrMenuIconDraw(int, float, float, float, float);
+ void BrMenuIconDraw(void *, float, float, float, float);
 @@ -89,9 +91,13 @@
    BrTextHighlightOff();
    BrTextAlignLeft();

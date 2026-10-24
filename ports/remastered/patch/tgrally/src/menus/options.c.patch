@@ -32,7 +32,7 @@
      D_80271FB0 = &D_8027205C;
 @@ -167,10 +172,11 @@
    } else {
-     D_802723DC[2].label = tgr_addr32("Units: kph");
+     D_802723DC[2].label = ("Units: kph");
    }
 +  rm_options_frame();                   /* port: our rows' labels and icons */
    {

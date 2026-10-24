@@ -54,7 +54,7 @@ static const int k_opt[RM_ROWS] = { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS,
 static MenuItem s_row[RM_ROWS];
 static char s_label[RM_ROWS][32];
 static MenuItem *s_items[16];
-static unsigned int s_crt, s_wide, s_n64;   /* the icons, placed */
+static void *s_crt, *s_wide, *s_n64;    /* the icons, placed */
 
 /* a model copied to `at` (stretched across by kx: its vertices' x) and rebased;
  * answers where the next may go */
@@ -95,16 +95,16 @@ static void icons(void)
   if (s_crt != 0) {
     return;
   }
-  s_crt = at;
+  s_crt = TGR_PTR(void *, at);
   at = place(at, rm_icon_crt, rm_icon_crt_len, 1.0f);
-  s_wide = at;
+  s_wide = TGR_PTR(void *, at);
   at = place(at, rm_icon_crt, rm_icon_crt_len, 16.0f / 12.0f);
-  s_n64 = at;
+  s_n64 = TGR_PTR(void *, at);
   at = place(at, rm_icon_n64, rm_icon_n64_len, 1.0f);
 }
 
 /* the console's icon, placed (the main menu's Quit: rmmainmenu.c) */
-unsigned int rm_options_icon_console(void)
+void *rm_options_icon_console(void)
 {
   icons();
   return s_n64;
@@ -142,11 +142,11 @@ void rm_options_frame(void)
   sprintf(s_label[0], "Widescreen: %s", wide ? "On" : "Off");
   sprintf(s_label[1], "Music: %s", pc ? "PC" : "N64");
   sprintf(s_label[2], "Show FPS: %s", rm_option(RM_OPT_FPS) ? "On" : "Off");
-  s_row[0].label = tgr_addr32(s_label[0]);
-  s_row[1].label = tgr_addr32(s_label[1]);
+  s_row[0].label = s_label[0];
+  s_row[1].label = s_label[1];
   sprintf(s_label[3], "Menus: Top Gear Rally");
-  s_row[2].label = tgr_addr32(s_label[2]);
-  s_row[3].label = tgr_addr32(s_label[3]);
+  s_row[2].label = s_label[2];
+  s_row[3].label = s_label[3];
   s_row[0].icon = wide ? s_wide : s_crt;
   s_row[1].icon = pc ? s_crt : s_n64;
   s_row[3].icon = s_n64;
