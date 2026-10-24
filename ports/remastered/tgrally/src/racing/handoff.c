@@ -197,7 +197,7 @@ void tgr_menus_boot_leave(void)
 int BrRaceHandoff(void)
 {
   BrCar *car = &D_8031B760[0];
-  BrSeason *season = TGR_PTR(BrSeason *, car->season);
+  BrSeason *season = car->season;
   HostRace r;
   HostRaceResult res;
   int i, n, p;
@@ -229,7 +229,7 @@ int BrRaceHandoff(void)
   r.players = D_8026FF18 <= 3 ? D_8026FF08 : 1;
   r.car2 = -1;
   if (r.players == 2) {                /* the second player's car and set-up */
-    BrSeason *s2 = TGR_PTR(BrSeason *, D_8031B760[1].season);
+    BrSeason *s2 = D_8031B760[1].season;
     r.car2 = D_8031B760[1].kind;
     r.automatic2 = s2->xd8;
     r.tires2 = s2->xdc;
@@ -284,7 +284,7 @@ int BrRaceHandoff(void)
     for (p = 0; p < r.players; p++) {
       HostRaceResult *o = &s_job.res[p];
       BrCar *c = &D_8031B760[p];
-      BrSeason *sn = TGR_PTR(BrSeason *, c->season);
+      BrSeason *sn = c->season;
       n = o->laps < 5 ? o->laps : 5;
       for (i = 0; i < 5; i++) {
         c->lapTimes[i] = i < n ? o->lap[i] : 0.0f;

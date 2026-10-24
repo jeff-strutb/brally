@@ -39,8 +39,8 @@
                goto choose;
              }
            }
--          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) {
-+          if ((*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) && !rm_menu_no_back) {
-             BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0x20);
+-          if (*((unsigned int *)(D_8031B760[i].pad)) & 0x20) {
++          if ((*((unsigned int *)(D_8031B760[i].pad)) & 0x20) && !rm_menu_no_back) {
+             BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0x20);
              D_8031622C = 0;
              BrFadeTo(0.0f, 0.2f);

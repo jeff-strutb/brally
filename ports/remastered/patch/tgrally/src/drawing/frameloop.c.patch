@@ -1,14 +1,14 @@
 --- a/src/drawing/frameloop.c
 +++ b/src/drawing/frameloop.c
-@@ -15,6 +15,7 @@
- #include "tgr/car.h"
- #include "tgr/common.h"
+@@ -17,6 +17,7 @@
+ #include "tgr/tri.h"
+ #include "tgr/pad.h"
  #include "tgr/gbi.h"
 +#include "tgr_view.h"
  
  /* -- declarations -- */
  
-@@ -215,6 +216,7 @@
+@@ -211,6 +212,7 @@
  int BrPakCheckFiles(void);
  void BrPadConsume(void *pad, int button);
  extern void (*D_8031B318)(void);
@@ -16,7 +16,7 @@
  extern char D_80270840;
  extern int D_802724F0;
  extern char D_803163E0[];
-@@ -826,9 +828,60 @@
+@@ -814,9 +816,60 @@
   * The empty do/while before the first count ends uopt's first block, so
   * the gRaw locals' registers (v1, a0) are free again for the counts.
   * Task stores follow the ROM's ring order (output_buff and its size before
@@ -78,7 +78,7 @@
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -843,6 +896,7 @@
+@@ -831,6 +884,7 @@
    int i;
    void *fb;
  
@@ -86,7 +86,7 @@
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -925,7 +979,16 @@
+@@ -901,7 +955,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
      tgr_mq_recv(D_8031A390, 0, 1);
      tgr_video_show(fb);
@@ -104,7 +104,7 @@
      if (tgr_video_shown() != fb) {
        tgr_mq_recv(D_8031A390, 0, 1);
      }
-@@ -967,6 +1030,7 @@
+@@ -943,6 +1006,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -112,7 +112,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -999,15 +1063,18 @@
+@@ -975,15 +1039,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {
