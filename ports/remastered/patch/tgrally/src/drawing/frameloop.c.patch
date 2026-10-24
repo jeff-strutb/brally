@@ -8,17 +8,15 @@
  
  /* -- declarations -- */
  
-@@ -215,6 +216,9 @@
+@@ -215,6 +216,7 @@
  int BrPakCheckFiles(void);
  void BrPadConsume(void *pad, int button);
  extern void (*D_8031B318)(void);
 +void BrRaceTick(void);                 /* port: the race's mode (BrFrameEnd) */
-+int tgr_scripted(void);                /* port: platform/os/si.c */
-+int tgr_menu_rate60(void);             /* port: a check of it in a scripted run (si.c) */
  extern char D_80270840;
  extern int D_802724F0;
  extern char D_803163E0[];
-@@ -833,6 +837,57 @@
+@@ -833,6 +835,57 @@
   * ucode_size); the osGetCount difference shares the call's line and the
   * debug copy's multiplier shares its count's line, for as1's ordering.
   * v is an unused word of the ROM frame. */
@@ -76,7 +74,7 @@
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -847,6 +902,7 @@
+@@ -847,6 +900,7 @@
    int i;
    void *fb;
  
@@ -84,7 +82,7 @@
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -932,7 +988,15 @@
+@@ -932,7 +986,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
      osRecvMesg(D_8031A390, 0, 1);
      osViSwapBuffer(fb);
@@ -93,15 +91,16 @@
 +       for a second (30): the menus step by the frame's measured time
 +       (D_8028AAD8: the carousel, the icons' spin, the fades, the turntables),
 +       so they keep their speed, and every refresh of a 60 Hz display shows a
-+       new frame.  A race keeps the cartridge's cadence, as does a scripted run
-+       (its frames are the ROM's, compared against it) */
-+    if (D_8031B318 == BrRaceTick || (tgr_scripted() && !tgr_menu_rate60())) {
++       new frame.  (A race of this game's own keeps the cartridge's cadence, its
++       steps a frame's; in Remastered every race is Boss Rally's engine's, at 60
++       ticks: src/racing/handoff.c) */
++    if (D_8031B318 == BrRaceTick) {
 +      osRecvMesg(D_8031A390, 0, 1);
 +    }
      if (osViGetCurrentFramebuffer() != fb) {
        osRecvMesg(D_8031A390, 0, 1);
      }
-@@ -975,6 +1039,7 @@
+@@ -975,6 +1038,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -109,7 +108,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -1007,15 +1072,18 @@
+@@ -1007,15 +1071,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {

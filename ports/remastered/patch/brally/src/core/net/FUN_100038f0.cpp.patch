@@ -1,0 +1,41 @@
+--- a/src/core/net/FUN_100038f0.cpp
++++ b/src/core/net/FUN_100038f0.cpp
+@@ -68,6 +68,7 @@
+  * @t4-pass 0x100038F0 2 2026-09-16 probes 20 bytes 4240 insns 1341 regions 22 rows 354 census yes  (five more source levers -- volatile nMode (2654, worse), #pragma intrinsic, register loop vars, decl reorder, tb scalar -- none beats 2647; the A5 oracle runs the packet dispatcher on 48 valid-state seeds and returns EQUIVALENT: return + every in-image global write + side effects agree, so the residue is case-0 register allocation, not missing/wrong code. Numbers unmoved.)
+  */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "slice3_41.h"   /* br_globals: its objects */
+ #include "slice1_02.h"
+ #include <string.h>
+@@ -321,9 +322,9 @@
+                             br_os_wait(DAT_1021c81c, 0xffffffff);
+                             now = BrTicks30FromMs();
+                             x = DAT_10226a2c;
+-                            DAT_10226a30 = x % 100 / 0x21 + x / 100 * 3;
+-                            if (DAT_10226a30 > now + 0x5a)
+-                                DAT_10226a30 = now + 0x5a;
++                            DAT_10226a30 = rm_ms_to_ticks(x);   /* Remastered: ticks of the rate */
++                            if (DAT_10226a30 > now + RM_TICKS(0x5a))
++                                DAT_10226a30 = now + RM_TICKS(0x5a);
+                             br_os_release(DAT_1021c81c);
+                         }
+                     }
+@@ -377,7 +378,7 @@
+                     (&g_aBrNetSlot[slot].f038[0])[((g_aBrNetSlot[slot].f55C))] = 0x40;
+                     BrCarStateDecode(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], (struct BrBitReader *)&pkt);
+                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
+-                    ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
++                    ((g_aBrNetSlot[slot].f974)) = rm_ticks_to_ms(d);   /* Remastered: ticks of the rate */
+                     br_os_release(((g_aBrNetSlot[slot].hMutex)));
+                 } else {
+                     BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
+@@ -563,7 +564,7 @@
+                                    &(&g_aBrNetSlot[slot].cars[0])[iPrev], &(&g_aBrNetSlot[slot].cars[0])[iNew]);
+                     BrCarStateDecodeDelta(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &(&g_aBrNetSlot[slot].cars[0])[iNew], (struct BrBitReader *)&pkt);
+                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
+-                    ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
++                    ((g_aBrNetSlot[slot].f974)) = rm_ticks_to_ms(d);   /* Remastered: ticks of the rate */
+                     br_os_release(((g_aBrNetSlot[slot].hMutex)));
+                 } else {
+                     BrCarStateDecodeDelta(&scratch2, &scratch2, (struct BrBitReader *)&pkt);

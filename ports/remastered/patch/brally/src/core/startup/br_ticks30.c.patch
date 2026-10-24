@@ -1,0 +1,18 @@
+--- a/src/core/startup/br_ticks30.c
++++ b/src/core/startup/br_ticks30.c
+@@ -10,6 +10,7 @@
+ 
+ /* The original is /MD: CRT calls go through the import table (FF 15). */
+ #define _CRTIMP __declspec(dllimport)
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "slice1_01.h"
+ 
+ #include <stdlib.h>
+@@ -99,6 +100,6 @@
+ uint32_t BrTicks30FromMs(void)
+ {
+     uint32_t elapsed = (uint32_t)BrGetTimerState() - (uint32_t)DAT_1021c908;
+-    return 3u * (elapsed / 100u) + (elapsed % 100u) / 33u;
++    return rm_ms_to_ticks(elapsed);   /* Remastered: ticks of the rate (the game's 30: 3u * (elapsed / 100u) + (elapsed % 100u) / 33u) */
+ }
+ 

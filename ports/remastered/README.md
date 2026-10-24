@@ -248,15 +248,15 @@ own, value for value). What the game wrote in terms of its 30 goes through
 its grip solver (`br_cardrive.c`), a projection sized for a 30th of a second,
 runs 30 times a second as it did. A recording read from a file the game made
 (the CD's intro, credits and ending, a PC ghost: "RGho") plays half a frame a
-tick, blended; Remastered's own ghosts say "RG60". A network race keeps the
-game's 30, to race the PC game. Drawing is the game's own, a picture blended
+tick, blended; Remastered's own ghosts say "RG60". A network race runs at 60
+too (its clock and the ticks its packets carry: `rm_ms_to_ticks`). Drawing is the game's own, a picture blended
 between the last two ticks at whatever rate the display takes. Top Gear
 Rally's menus run a frame a retrace (60 a second; they move by the time a
 frame took, so as fast as they did at 30), and the pictures between those
 frames are its display lists run again with their matrices, rectangles and
 scissors blended toward the frame before (`tgrally/platform/gfx/rcp.c`,
-`os/thread.c`; `RM_TWEEN=0` draws each frame once). A scripted run keeps the
-game's own pace (`TGR_MENU_RATE=60` for its checks). `BR_TICKLOG=1` writes
+`os/thread.c`; `RM_TWEEN=0` draws each frame once). `RM_TICK=30` runs Boss
+Rally's races at the game's own 30 (a check against the original). `BR_TICKLOG=1` writes
 each race tick's clock and cars, for comparing two runs.
 
 ```sh

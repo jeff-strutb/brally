@@ -23,6 +23,8 @@ float rm_step(float x);
 float rm_per_tick_mul(float s);
 int   rm_tick_whole(void);
 void  rm_replay_slot_hz(int slot, int hz);   /* br_replay.c: a slot's recording rate */
+unsigned rm_ms_to_ticks(unsigned ms);        /* race_handoff.c: milliseconds as ticks, and back */
+int   rm_ticks_to_ms(int t);
 #ifdef __cplusplus
 }
 #endif

@@ -514,8 +514,8 @@ static void menu_pad(int on)
  * at 60 ticks a second where the game ran 30 (RM_TICK=30: the game's own, its
  * values exactly).  What the game made a constant of its 30 (the physics' step,
  * the tick clock's period, the frame clock's fixed step, the blend between two
- * ticks' snapshots) asks here instead.  A network race keeps the game's 30,
- * so Remastered races the PC game's own machines. */
+ * ticks' snapshots) asks here instead, a network race's too (its clock, the
+ * ticks its packets carry, counts at the rate: rm_ms_to_ticks). */
 static int s_tick_hz;
 
 int rm_tick_hz(void)
@@ -524,9 +524,6 @@ int rm_tick_hz(void)
         const char *e = getenv("RM_TICK");
         s_tick_hz = e && atoi(e) == 30 ? 30 : 60;
     }
-    if ((*(int *)&g_brRaceNet) != 0)
-        return 30;                  /* a network race: the game's own, as the other machines (its
-                                       packets count 30ths of a second: BrTicks30FromMs) */
     return s_tick_hz;
 }
 
@@ -555,6 +552,22 @@ float rm_per_tick_mul(float s)
     if (rm_tick_hz() == 30 || !(s > 0.0f))
         return s;
     return (float)pow((double)s, 30.0 / rm_tick_hz());
+}
+
+/* milliseconds as ticks of the rate, and back: the game's own sums at 30
+   (3 a tenth of a second, a tick 33 ms; BrTicks30FromMs) */
+unsigned rm_ms_to_ticks(unsigned ms)
+{
+    if (rm_tick_hz() == 30)
+        return 3u * (ms / 100u) + (ms % 100u) / 33u;
+    return (unsigned)((unsigned long long)ms * (unsigned)rm_tick_hz() / 1000u);
+}
+
+int rm_ticks_to_ms(int t)
+{
+    if (rm_tick_hz() == 30)
+        return (t % 3) * 0x21 + (t / 3) * 100;
+    return (int)((long long)t * 1000 / rm_tick_hz());
 }
 
 /* the race ticks counted (plat_race_frame), for rm_tick_whole */

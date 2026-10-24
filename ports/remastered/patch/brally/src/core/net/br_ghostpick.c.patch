@@ -1,0 +1,59 @@
+--- a/src/core/net/br_ghostpick.c
++++ b/src/core/net/br_ghostpick.c
+@@ -5,6 +5,7 @@
+  * the newest snapshot has aged), fold the along-track delta into the result,
+  * then renormalise the car's orientation quaternion and wrap its angles.
+  */
++#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
+ #include "slice1_02.h"   /* br_globals: its objects */
+ #include <windows.h>
+ 
+@@ -109,7 +110,7 @@
+     } while (iVar6 < 8);
+     iVar6 = (int)pSlot->f00C[iVar9] - (int)pSlot->f00C[iVar5];
+     if (pSlot->f560 == iVar9) {
+-      if ((int)pSlot->f568 < 0xf) {
++      if ((int)pSlot->f568 < RM_TICKS(0xf)) {   /* Remastered: in ticks of the rate */
+         pSlot->f568 = pSlot->f568 + 1;
+         pSlot->f564 = pSlot->f564 + 1;
+       }
+@@ -125,8 +126,8 @@
+       }
+       iVar7 = BrTicks30FromMs();
+       iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
+-      if (6 < iVar7) {
+-        iVar7 = 6;
++      if (RM_TICKS(6) < iVar7) {   /* Remastered: in ticks of the rate */
++        iVar7 = RM_TICKS(6);
+       }
+       BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                      &pSlot->cars[iVar9]);
+@@ -141,14 +142,14 @@
+     } else {
+       pSlot->f560 = iVar9;
+       if ((((unsigned int)(int)pSlot->f00C[iVar9] < (unsigned int)(pSlot->f564 + 1)) &&
+-           ((int)pSlot->f56C < 0x14)) && (iVar6 != 0)) {
++           ((int)pSlot->f56C < RM_TICKS(0x14))) && (iVar6 != 0)) {
+         pSlot->f568 = 1;
+         pSlot->f56C = pSlot->f56C + 1;
+         pSlot->f564 = pSlot->f564 + 1;
+         iVar7 = BrTicks30FromMs();
+         iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
+-        if (6 < iVar7) {
+-          iVar7 = 6;
++        if (RM_TICKS(6) < iVar7) {   /* Remastered: in ticks of the rate */
++          iVar7 = RM_TICKS(6);
+         }
+         BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                        &pSlot->cars[iVar9]);
+@@ -166,8 +167,8 @@
+         pSlot->f564 = (int)pSlot->f00C[iVar9];
+         iVar7 = BrTicks30FromMs();
+         iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
+-        if (6 < iVar7) {
+-          iVar7 = 6;
++        if (RM_TICKS(6) < iVar7) {   /* Remastered: in ticks of the rate */
++          iVar7 = RM_TICKS(6);
+         }
+         BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
+                        &pSlot->cars[iVar9]);
