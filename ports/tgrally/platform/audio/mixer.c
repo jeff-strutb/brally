@@ -6,7 +6,8 @@
  * sample's address.  Adding a rate adds its low word to the fraction and its
  * high word, with the carry, to the sample pointer.
  * The output ring (16 KB of 16-bit stereo) is kept big-endian, as the N64's
- * RAM held it and the audio interface read it; BrMixSfx adds into it as the
+ * RAM held it: music voices left idle point at its first byte and play it
+ * (BrMusicInit), so its byte order is heard.  BrMixSfx adds into it as the
  * original did, four samples at a time in one 64-bit register. */
 #include <stdint.h>
 #include <stdio.h>

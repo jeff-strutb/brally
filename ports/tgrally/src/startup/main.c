@@ -19,14 +19,14 @@ void BrIfaceMemReset(void);
 void BrPaintShopMemInit(void);
 int BrCpakCheck(int, unsigned char);
 void BrVolumesApply(void);
-void BrMusicInit(int, void *);
+void BrMusicInit(unsigned char *, unsigned char *);
 void BrMainLoop(void);
 extern int D_80270784;
 extern char D_80307F00[];
 #define BR_ROM_MODULES 0xEBC00          /* the front end's music module */
-extern char D_802AC400[];
+extern unsigned char D_802AC400[];
 void BrMusicStop(void);
-void BrMusicStart(int, int);
+void BrMusicStart(unsigned char *, unsigned char *);
 extern unsigned int D_8026FF24[];       /* each track's music: its ROM offset */
 extern int D_8028B940;                  /* the track */
 extern int D_8026FF58;                  /* animate the scene: 0 no, -1 frozen, else run */
@@ -75,7 +75,7 @@ void BrMainThread(void *arg)
   }
   BrVolumesApply();
   BrRomUnpack((unsigned char *)&D_80025C00, BR_ROM_MODULES, 0);
-  BrMusicInit(tgr_addr32(&D_80025C00), D_802AC400);
+  BrMusicInit((unsigned char *)&D_80025C00, D_802AC400);
   tgr_print("sizeof(UltraCarHeader)=%d\n", 0xdf88);
   tgr_print("sizeof(Vehicle)=%d\n", 0x2090);
   tgr_print("sizeof(Enemy)=%d\n", 0x78);
@@ -89,7 +89,7 @@ void BrMusicLoadTrack(void)
 {
   BrMusicStop();
   BrRomUnpack((unsigned char *)&D_80025C00, D_8026FF24[D_8028B940], 0);
-  BrMusicStart(tgr_addr32(&D_80025C00), tgr_addr32(D_802AC400));
+  BrMusicStart((unsigned char *)&D_80025C00, D_802AC400);
 }
 
 /* WHAT IT DOES: Step the scene's animations, if it has any; when they are

@@ -57,7 +57,8 @@ extern unsigned int D_802A491C;        /* its first two words differ in type */
 extern TgrMsgQueue D_803746F0;          /* the music timer's message queue */
 extern TgrMsg D_80374708[2];               /* its two messages */
 extern TgrTimer D_80374710[1];               /* the music timer */
-extern be16_t D_803747D0[];             /* the music output buffer (0x4000 bytes), as the AI reads it */
+extern be16_t D_803747D0[];             /* the music output ring (0x4000 bytes), in the N64's byte order:
+                                           idle music voices sit on its first byte and play it */
 extern short D_802A4A08[];              /* silence: where idle sound voices point */
 extern TgrThread D_80378FB8[1];             /* the mixer thread */
 extern unsigned short D_802A4790;
@@ -104,7 +105,6 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   unsigned int npat;
   unsigned int ninst;
   unsigned int j;
-  unsigned int hdr;
   int acc;
   unsigned char type;
   unsigned int len;
@@ -120,7 +120,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   for (i = 0; i < D_80378FA0.len; i++) {
     *buf++ = *src++;
   }
-  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
+  buf = start + ((buf - start + 3) & ~3);   /* port: buf starts word-aligned */
   tgr_print("Length = %d\n", D_80378FA0.len);
   D_80378FB2 = xm[0x42];
   tgr_print("Restartfrom = %d\n", D_80378FA0.restart);
@@ -128,8 +128,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   tgr_print("%d Patterns found\n", npat);
   ninst = xm[0x48];
   tgr_print("%d Instruments found\n", ninst);
-  hdr = tgr_rd32(xm + 0x3c);              /* the word as the N64 loaded it */
-  pat = xm + 0x3c + (((hdr >> 24) & 0xff) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + ((hdr & 0xff) << 24));
+  pat = xm + 0x3c + LE32(xm + 0x3c);    /* port: the cartridge read a word and swapped its bytes */
   for (i = 0; i < npat; i++) {
     D_803789D0[i] = buf;
     len = LE16(pat + 7) + LE32(pat);
@@ -140,7 +139,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
     pat = pat + (LE16(pat + 7) + LE32(pat));
   }
   p = pat;
-  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
+  buf = start + ((buf - start + 3) & ~3);   /* port: buf starts word-aligned */
   tgr_print("Now doSamples");
   for (i = 0; i < ninst; i++) {
     tgr_print(".");
@@ -174,7 +173,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
         tgr_print("WANKER fuck off no 16bit, no Ping fucking pong\n");
         break;
       }
-      buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
+      buf = start + ((buf - start + 3) & ~3);
       p = q + len + 0x28;
     } else {
       D_803787D0[i] = 0;
@@ -488,7 +487,7 @@ void BrModTick(void)
  * one constant, IDO would hold it in v0 across the entry block, which shifts
  * every register in the voice loop below. */
 /* @implements 0x802575C4 tgr BrMusicInit */
-void BrMusicInit(int param_1, char *param_2)
+void BrMusicInit(unsigned char *param_1, unsigned char *param_2)
 {
   int i;
   int j;
@@ -516,7 +515,7 @@ void BrMusicInit(int param_1, char *param_2)
   t += tgr_clock();
   tgr_print("%1.7f", (double)t / 46875500.0);
   tgr_print("Creating I entries\n");
-  BrModLoad(TGR_PTR(unsigned char *, param_1), param_2);
+  BrModLoad(param_1, param_2);
   tgr_print("Creating Note Frequency entries\n");
   BrNoteRatesInit();
   tgr_print("Starting Mod\n");
@@ -546,12 +545,12 @@ void BrMusicStop(void)
 /* WHAT IT DOES: Start a piece of music: builds its instrument entries,
  * starts the module player and sets every channel to its starting volume. */
 /* @implements 0x80257964 tgr BrMusicStart */
-void BrMusicStart(int param_1,int param_2)
+void BrMusicStart(unsigned char *param_1, unsigned char *param_2)
 {
   int i;
 
   tgr_print("Creating I entries\n");
-  BrModLoad(TGR_PTR(unsigned char *, param_1),TGR_PTR(unsigned char *, param_2));
+  BrModLoad(param_1, param_2);
   tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
