@@ -8,12 +8,11 @@
 extern int D_8028AA94;
 extern int D_8026FF20;
 extern int D_8028AA68;
-typedef struct BrCheat {        /* one button-sequence cheat (8 bytes) */
-  TgrAddr fn;  /* void (*)(void) */
-  TgrAddr seq;          /* unsigned short * -- newest button first, 0xFFFF ends; 0 ends the table */
+typedef struct BrCheat {        /* one button-sequence cheat (8 bytes on the N64) */
+  void (*fn)(void);
+  be16_t *seq;                  /* newest button first, 0xFFFF ends; 0 ends the table */
 } BrCheat;
 extern BrCheat D_8028DF48[12];         /* eleven and the end */
-extern TgrAddr D_8028DF4C;              /* D_8028DF48[0].seq (unsigned short *) */
 typedef struct BrPadHistory {   /* a controller's button history */
   unsigned int pressed;         /* 0x00  buttons held this frame: the low half (the
                                  * N64 read it as the halfword at 0x02) */
@@ -120,7 +119,7 @@ void BrCheatInput(BrPadHistory *pad)
   if ((unsigned short)pad->pressed != pad->hist[pad->pos]) {
     pad->pos = (pad->pos - 1) & 0x7f;
     pad->hist[pad->pos] = (unsigned short)pad->pressed;
-    seq = TGR_PTR(be16_t *, D_8028DF4C);
+    seq = D_8028DF48[0].seq;
     c = D_8028DF48;
     while (seq != 0) {
       i = pad->pos;
@@ -133,10 +132,10 @@ void BrCheatInput(BrPadHistory *pad)
         k++;
         i = (i + 1) & 0x7f;
       }
-      TGR_FN(void (*)(void), c->fn)();
+      c->fn();
     next:
       c++;
-      seq = TGR_PTR(be16_t *, c->seq);
+      seq = c->seq;
     }
   }
 }
