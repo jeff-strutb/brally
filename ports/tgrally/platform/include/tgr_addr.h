@@ -50,8 +50,11 @@ static inline uint32_t tgr_addr32(const void *p)
     return tgr_addr32_slow(p);
 }
 
-#define TGR_PTR(T, a)  ((T)tgr_ptr32((uint32_t)(a)))
-#define TGR_FN(T, a)   ((T)tgr_fn((uint32_t)(a)))
+/* an original address, never a native pointer: a pointer given here (a field
+ * already made native) is a compile error, not a silent truncation */
+#define TGR_ADDR_ARG(a) ((void)sizeof(char[__builtin_classify_type(a) == 5 ? -1 : 1]), (uint32_t)(a))
+#define TGR_PTR(T, a)  ((T)tgr_ptr32(TGR_ADDR_ARG(a)))
+#define TGR_FN(T, a)   ((T)tgr_fn(TGR_ADDR_ARG(a)))
 #define TGR_A32(p)     tgr_addr32(p)
 #define TGR_FA(f)      tgr_fnaddr((const void *)(f))
 

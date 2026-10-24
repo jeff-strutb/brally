@@ -48,8 +48,9 @@ typedef struct BrTimeLimit {    /* time allowed per difficulty and car class (0x
   float secs;
   char pad04[0x18];
 } BrTimeLimit;
-typedef struct BrTrackTimes {
-  char pad00[0x44];
+typedef struct BrTrackTimes {   /* a BrTrack (tgr/menu.h) */
+  MenuItem item;
+  char pad14[0x44 - 0x14];
   BrTimeLimit limit[4][3];      /* 0x44  [class][difficulty] */
 } BrTrackTimes;
 extern BrTrackTimes *D_80271D1C[];  /* per track (the same records as D_80270854) */

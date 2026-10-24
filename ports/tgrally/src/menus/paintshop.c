@@ -16,12 +16,14 @@ extern unsigned char D_8028DBB4;
 extern unsigned char D_8028DBDC;
 extern BrCarModel *D_8028AB08;
 typedef struct BrPaintState {   /* 0x8028D110 */
-  char pad00[0x1c];
+  unsigned char *data;          /* (a BrImage: its pixels) */
+  char pad04[0x1c - 4];
   int x;                        /* 0x1C  cursor */
   int y;                        /* 0x20 */
 } BrPaintState;
 typedef struct BrPaintBrush {   /* 0x8028D290 */
-  char pad00[0x1c];
+  unsigned char *data;          /* (a BrImage: its pixels) */
+  char pad04[0x1c - 4];
   int x;                        /* 0x1C */
   int y;                        /* 0x20 */
   int w;                        /* 0x24 */
@@ -163,7 +165,7 @@ void BrTextAlignCentre(void);
 void BrPadStickToButtons(int);
 extern unsigned char D_8028DBB8;       /* the chosen decal style */
 extern BrImage *D_8028DB34[4];         /* the four style pictures */
-typedef struct { TgrAddr n[4]; } BrPaintNames;   /* char * */
+typedef struct { char *n[4]; } BrPaintNames;
 extern BrPaintNames D_8028DCF4;        /* the four style names */
 extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
 extern BrPaintNames D_8028DD04;        /* and their names */
@@ -174,7 +176,7 @@ extern unsigned char D_8028DBA4;        /* the key under the cursor */
 extern char D_80369EA8[];               /* the typed text */
 void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
 extern BrImage D_8028D410;              /* the round brush picture */
-typedef struct { TgrAddr n[2]; } BrPaintNames2;   /* char * */
+typedef struct { char *n[2]; } BrPaintNames2;
 extern BrPaintNames2 D_8028DCE4;       /* "ROUND BRUSH", "SQUARE BRUSH" */
 extern unsigned char D_8028CE9C;        /* the chosen brush shape */
 extern unsigned char *D_8028DB84;         /* a scratch copy of the decal */
@@ -830,7 +832,7 @@ void BrPaintBrushSelect(void)
   BrBevelPanel(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
-  BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 138);
+  BrTextPrint(((char *)(names.n[D_8028DBB8])), 159, 138);
   BrImageDrawAt(&D_8028D0B0, 216, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrTextSetFont(10);
@@ -987,10 +989,10 @@ void BrPaintTextStamp(int sx, int sy)
           if (px >= 0 && px < D_8028DB88 && row + sy >= 0 && row + sy < D_8028DB8C) {
             o = (u >> 1) + row * ((unsigned int)D_8028D2C0.w >> 1);
             if (u & 1) {
-              if ((TGR_PTR(unsigned char *, D_8028D2C0.data)[o] & 0xf) == 0xf) {
+              if ((((unsigned char *)(D_8028D2C0.data))[o] & 0xf) == 0xf) {
                 BrPaintPlot(px + 1, row + sy - 1, D_8028DB5C);
               }
-            } else if (TGR_PTR(unsigned char *, D_8028D2C0.data)[o] >> 4 == 0xf) {
+            } else if (((unsigned char *)(D_8028D2C0.data))[o] >> 4 == 0xf) {
               BrPaintPlot(px + 1, row + sy - 1, D_8028DB5C);
             }
           }
@@ -1003,10 +1005,10 @@ void BrPaintTextStamp(int sx, int sy)
         if (px >= 0 && px < D_8028DB88 && row + sy >= 0 && row + sy < D_8028DB8C) {
           o = (u >> 1) + row * ((unsigned int)D_8028D2C0.w >> 1);
           if (u & 1) {
-            if ((TGR_PTR(unsigned char *, D_8028D2C0.data)[o] & 0xf) == 0xf) {
+            if ((((unsigned char *)(D_8028D2C0.data))[o] & 0xf) == 0xf) {
               BrPaintPlot(px, row + sy, D_8028DB58);
             }
-          } else if (TGR_PTR(unsigned char *, D_8028D2C0.data)[o] >> 4 == 0xf) {
+          } else if (((unsigned char *)(D_8028D2C0.data))[o] >> 4 == 0xf) {
             BrPaintPlot(px, row + sy, D_8028DB58);
           }
         }
@@ -1060,7 +1062,7 @@ void BrPaintStyleSelect(void)
   tgr_dash_slot_bevel(0x11e);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
-  BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 140);
+  BrTextPrint(((char *)(names.n[D_8028DBB8])), 159, 140);
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 219) >> 1, (y + 18) >> 1);
@@ -1594,7 +1596,7 @@ void BrPaintOvalStyleSelect(void)
   tgr_dash_slot_bevel(0xe4);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
-  BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 139);
+  BrTextPrint(((char *)(names.n[D_8028DBB8])), 159, 139);
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 220) >> 1, (y + 18) >> 1);

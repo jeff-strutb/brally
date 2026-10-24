@@ -31,7 +31,7 @@ float cosf(float x);
  * angle about the view axis and scaled to 1/32; while 0x8028A8A8 differs
  * from 0x8028A8AC it is mirrored and turns the other way. */
 /* @implements 0x8020A524 tgr BrMenuIconDraw */
-void BrMenuIconDraw(int icon, float x, float y, float z, float spin)
+void BrMenuIconDraw(void *icon, float x, float y, float z, float spin)
 {
   if (D_8028A8AC != D_8028A8A8) {
     guRotateF(D_8031AB10, -spin * 57.2957763671875f, 0.0f, 0.0f, 1.0f);
@@ -45,13 +45,13 @@ void BrMenuIconDraw(int icon, float x, float y, float z, float spin)
   guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
   guTranslateF(D_8031AB50, x, y, z);
   guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
-  BrModelDraw(TGR_PTR(void *, icon), D_8031AB10);
+  BrModelDraw(icon, D_8031AB10);
 }
 
 /* WHAT IT DOES: The same as BrMenuIconDraw with the scale given instead of
  * the fixed 1/32. */
 /* @implements 0x8020A6A4 tgr BrMenuIconDrawScaled */
-void BrMenuIconDrawScaled(int icon, float x, float y, float z, float spin, float scale)
+void BrMenuIconDrawScaled(void *icon, float x, float y, float z, float spin, float scale)
 {
   if (D_8028A8AC != D_8028A8A8) {
     guRotateF(D_8031AB10, -spin * 57.2957763671875f, 0.0f, 0.0f, 1.0f);
@@ -65,7 +65,7 @@ void BrMenuIconDrawScaled(int icon, float x, float y, float z, float spin, float
   guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
   guTranslateF(D_8031AB50, x, y, z);
   guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
-  BrModelDraw(TGR_PTR(void *, icon), D_8031AB10);
+  BrModelDraw(icon, D_8031AB10);
 }
 
 /* WHAT IT DOES: Draw the menu's ring: the first time, lay out its 31

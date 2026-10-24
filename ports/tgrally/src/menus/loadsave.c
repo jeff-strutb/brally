@@ -44,7 +44,7 @@ extern Gfx *D_8028A858;
 
 void BrIfaceMemReset(void);
 void BrAllocPaintShopGfxMem(BrImage *img);
-unsigned int BrIfaceMemAlloc(int size);
+void *BrIfaceMemAlloc(int size);
 void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
 void BrImageDrawAt(BrImage *img, int x, int y);
 void BrMenuCameraSet(float w, float h);
@@ -160,7 +160,7 @@ void BrLoadSaveScreen(void)
     BrAllocPaintShopGfxMem(&D_8028CB70);
     BrAllocPaintShopGfxMem(&D_8028D0B0);
     BrAllocPaintShopGfxMem(&D_8028D0E0);
-    D_80272500 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x3A00));
+    D_80272500 = ((unsigned char *)(BrIfaceMemAlloc(0x3A00)));
     if (D_802724F4 == 0) {
       D_80272550 = 0;
     } else if ((mode = D_802724F4) == 1) {

@@ -8,7 +8,7 @@
 typedef struct BrRomImage {
     int start;                  /* 0x00  ROM range */
     int end;                    /* 0x04 */
-    TgrAddr data;               /* unsigned char * -- 0x08  where it was loaded */
+    unsigned char *data;        /* 0x08  where it was loaded */
     unsigned short w;           /* 0x0C */
     unsigned short h;           /* 0x0E */
     unsigned char fmt;          /* 0x10  G_IM_FMT_*; 2 = colour-indexed */

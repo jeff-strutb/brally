@@ -20,12 +20,14 @@ extern char D_8036A8E0;
 #define PADS ((BrPadRec *)&D_8036A8E0)
 typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
 typedef struct BrPaintState {   /* 0x8028D110 */
-  char pad00[0x1c];
+  unsigned char *data;          /* (a BrImage: its pixels) */
+  char pad04[0x1c - 4];
   int x;                        /* 0x1C  cursor */
   int y;                        /* 0x20 */
 } BrPaintState;
 typedef struct BrPaintBrush {   /* 0x8028D290 */
-  char pad00[0x24];
+  unsigned char *data;          /* (a BrImage: its pixels) */
+  char pad04[0x24 - 4];
   int w;                        /* 0x24 */
   int h;                        /* 0x28 */
 } BrPaintBrush;

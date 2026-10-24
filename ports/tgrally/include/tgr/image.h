@@ -5,7 +5,7 @@
 #define TGR_IMAGE_H
 
 typedef struct BrImage {
-    TgrAddr data;        /* unsigned char * -- 0x00  pixels, top row first */
+    unsigned char *data;        /* 0x00  pixels, top row first */
     int x4;
     int x8;
     unsigned char siz;          /* 0x0C  bits per pixel */

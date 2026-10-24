@@ -2,6 +2,7 @@
  */
 #include "tgr/common.h"
 #include "tgr/car.h"
+#include "tgr/menu.h"
 
 /* -- declarations -- */
 typedef struct BrRaceEnt {      /* a race entity (0x78 bytes): the cars, then the rest */
@@ -63,8 +64,9 @@ void BrEntPaintTexture(char *model, int r, int g, int b);
 void BrCarPlaceAt(BrCar *car, float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
 
-typedef struct BrTrackAwards {
-  char pad00[0x2C];
+typedef struct BrTrackAwards {  /* a BrTrack (tgr/menu.h) */
+  MenuItem item;
+  char pad14[0x2C - 0x14];
   float award[4][3][7];         /* 0x2C  [car class][difficulty][checkpoint]; [6] is the start time */
 } BrTrackAwards;
 extern BrTrackAwards *D_80271D1C[];     /* per track */

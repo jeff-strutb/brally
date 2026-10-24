@@ -22,8 +22,8 @@ void BrFrontMenuEnter(MenuItem **items, int *count);
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int, int, int, int, int, int);
 void BrModeSet(void (*fn)(void));
 void BrOptionsScreen(void);
-void BrRomFileUnpack(void *file, unsigned int (*alloc)(int));
-unsigned int BrIfaceMemAlloc(int size);
+void BrRomFileUnpack(void *file, void *(*alloc)(int));
+void *BrIfaceMemAlloc(int size);
 void BrCtlConfigDrawLayout(int param_1);
 extern int D_80271FA0;                  /* the player being configured */
 extern void (*D_80271FC8)(int);         /* the menu panel's draw hook */

@@ -125,6 +125,33 @@ def leaves(t, off=0):
     return [(off, 'b', s)]
 
 
+def pointees(t):
+    """The pointee type of each pointer leaf of a type, in leaves() order."""
+    t = t.get_canonical()
+    k = t.kind
+    if k in (K.POINTER, K.BLOCKPOINTER):
+        return [t.get_pointee().get_canonical()]
+    if k == K.CONSTANTARRAY:
+        return pointees(t.element_type) * t.element_count
+    if k == K.RECORD:
+        fields = list(t.get_fields())
+        if t.get_declaration().kind == ci.CursorKind.UNION_DECL:
+            fields = fields[:1]
+        return [x for f in fields for x in pointees(f.type)]
+    return []
+
+
+def ptype_of(t0, t1):
+    """(spelling, n64 size, native size, runs) of a pointee laid out
+    differently natively (a record holding a native pointer), else None."""
+    if t0.kind not in (K.RECORD, K.CONSTANTARRAY) or t0.get_size() <= 0 or t0.get_size() == t1.get_size():
+        return None
+    try:
+        return (t0.spelling, t0.get_size(), t1.get_size(), runs(leaves(t0), leaves(t1)))
+    except Unlayable:
+        return None
+
+
 def paths(t, path='', off=0):
     """[(off, size, path)] of a type's scalar and pointer members, the path
     as C spells it after the object's name (".w", "[3].x")."""
@@ -146,18 +173,25 @@ def paths(t, path='', off=0):
     return [(off, max(1, t.get_size()), path)]
 
 
-def runs(n64, nat):
+def runs(n64, nat, pts=None):
     """Pair the two leaf lists into strided runs:
-    [(n64off, natoff, size (0 = pointer), count, n64stride, natstride)]."""
+    [(n64off, natoff, size (0 = pointer), count, n64stride, natstride)];
+    with pts (a type index per pointer leaf, -1 for none) a typed pointer's
+    size is -(1 + its type), so pointers to different types do not merge."""
     if len(n64) != len(nat):
         raise Unlayable('leaf count differs (%d/%d)' % (len(n64), len(nat)))
     out = []
+    pi = 0
     for (o0, k0, s0), (o1, k1, s1) in zip(n64, nat):
         if k0 != k1:
             raise Unlayable('leaf kinds differ at %d' % o0)
         # an integer wider natively (a pointer-sized one) keeps both sizes:
         # the N64's in the low half, the native one above
         s = (s0 if s0 == s1 else s0 | s1 << 16) if k0 == 'b' else 0
+        if k0 == 'p' and pts is not None:
+            t = pts[pi] if pi < len(pts) else -1
+            pi += 1
+            s = -(1 + t) if t >= 0 else 0
         if out:
             a0, a1, asz, n, st0, st1 = out[-1]
             if asz == s:
@@ -250,6 +284,16 @@ def scan(tu):
                 l0, l1 = leaves(t0.element_type), leaves(t1.element_type)
             except Unlayable as e:
                 err = str(e)
+        ptl = None                      # per pointer leaf: a pointee laid out differently, or None
+        if not err and l0 is not None:
+            try:
+                b0 = t0 if complete else t0.element_type.get_canonical()
+                b1 = t1 if complete else t1.element_type.get_canonical()
+                p0, p1 = pointees(b0), pointees(b1)
+                if len(p0) == len(p1):
+                    ptl = [ptype_of(x, y) for x, y in zip(p0, p1)]
+            except Exception:
+                ptl = None
         try:
             pth = paths(t0) if complete and t0.get_size() <= 0x10000 else None
         except Exception:
@@ -269,7 +313,7 @@ def scan(tu):
                     psize = pt.get_size()
                 except Unlayable:
                     pl = None
-        out[name] = dict(ptr=ptr, paths=pth, spelling=c0.type.spelling, st=st, complete=complete,
+        out[name] = dict(ptr=ptr, paths=pth, pt=ptl, spelling=c0.type.spelling, st=st, complete=complete,
                          n64=t0.get_size() if complete else None, nat=t1.get_size() if complete else None,
                          nat_el=None if complete else t1.element_type.get_canonical().get_size(),
                          l0=l0, l1=l1, elem=el, elsize=els, natelsize=None if complete else nels, err=err,
@@ -336,6 +380,15 @@ def main():
         return min(nxt, lim) - a
 
     arena, lift, native, allunits = [], [], [], []
+    types, type_rows = {}, []       # pointee types laid out differently natively (tgr_types)
+
+    def tindex(pt):
+        if pt is None:
+            return -1
+        if pt[0] not in types:
+            types[pt[0]] = len(type_rows)
+            type_rows.append(pt)
+        return types[pt[0]]
     relaid = {}     # name -> (native size, [(n64off, natoff, size (0: a pointer), count, n64stride, natstride)])
     for name in sorted(decl, key=lambda n: addr_of(n, syms)):
         a = addr_of(name, syms)
@@ -370,7 +423,12 @@ def main():
                     pu.setdefault(o, set()).add(z)
             punits = sorted((o, min(zs)) for o, zs in pu.items() if len(zs) == 1)
             psize = max([r['psize'] or 0 for r in rows] or [0])
-            native.append((name, a, max(1, n0 // 4), reg == 'data', punits, psize))
+            npt = -1
+            for r in rows:
+                if r['pt']:
+                    npt = tindex(r['pt'][0])
+                    break
+            native.append((name, a, max(1, n0 // 4), reg == 'data', punits, psize, npt))
             continue
         units = {}
         for r in rows:
@@ -414,16 +472,27 @@ def main():
             nl1 = [(i * ns + o, k, z) for i in range(cnt) for o, k, z in owner['l1']]
             nn = cnt * ns
             differs = ns != es
+        pts = None
+        if owner['pt'] is not None:
+            pts = [tindex(x) for x in owner['pt']]
+            if not owner['complete']:
+                pts = pts * cnt
         if differs:
             try:
-                relaid[name] = (nn, runs(nl0, nl1))
+                relaid[name] = (nn, runs(nl0, nl1, pts))
             except Unlayable as e:
                 report.append('%s: cannot map %s to its native layout: %s' % (name, owner['spelling'], e))
-            views = {round(r['nat'] / r['n64'], 4) for r in rows
-                     if r['complete'] and r['nat'] and r['n64']}       # (arrays may differ in length)
-            if len(views) > 1:
-                report.append('%s: declared at different native sizes %s: one definition is needed' % (
-                    name, sorted(views)))
+            # every view must put a field it shares with the owner at the
+            # owner's native offset (a shorter view of a prefix is fine)
+            want = dict((o0, o1) for (o0, _k0, _z0), (o1, _k1, _z1) in zip(nl0, nl1))
+            for r in rows:
+                if r is owner or not r['l0'] or not r['l1'] or len(r['l0']) != len(r['l1']):
+                    continue
+                bad = [o0 for (o0, _k0, _z0), (o1, _k1, _z1) in zip(r['l0'], r['l1'])
+                       if o0 in want and want[o0] != o1]
+                if bad:
+                    report.append('%s: %s (%s) puts +0x%X natively where %s does not: one definition is needed' % (
+                        name, r['spelling'], os.path.basename(r['tu']), bad[0], owner['spelling']))
             continue
         units = [(o, 4 if k == 'p' else z) for o, k, z in lv if (4 if k == 'p' else z) > 1]
         # what other declarations know of bytes the owner leaves as padding
@@ -526,17 +595,17 @@ def main():
     lines += ['void *%s[%d];' % (x[0], x[2]) for x in native]
     # the runs of what each one points at, after the symbols' runs
     nat_rows = []
-    for nm, a, n, d, punits, psize in native:
+    for nm, a, n, d, punits, psize, npt in native:
         r0 = len(runlist)
         for o, z in punits:
             runlist.append((o, z, 1, 0))
-        nat_rows.append((nm, a, n, d, r0, len(runlist) - r0))
+        nat_rows.append((nm, a, n, d, r0, len(runlist) - r0, npt))
     lines = lines[:lines.index('const TgrRun tgr_runs[] = {') + 1] + \
         ['    {0x%X, %d, %d, %d},' % r for r in runlist] + \
         lines[lines.index('    {0, 0, 0, 0}'):]
     lines += ['const TgrNat tgr_natives[] = {']
-    lines += ['    {%s, 0x%08X, %d, %d, %d, %d},' % r for r in nat_rows]
-    lines += ['    {0, 0, 0, 0, 0, 0}', '};', 'const int tgr_nnatives = %d;' % len(native), '']
+    lines += ['    {%s, 0x%08X, %d, %d, %d, %d, %d},' % r for r in nat_rows]
+    lines += ['    {0, 0, 0, 0, 0, 0, -1}', '};', 'const int tgr_nnatives = %d;' % len(native), '']
     impl = implemented()
     fns = sorted(impl)
     lines += ['extern char %s[];' % impl[va] for va in fns]
@@ -587,21 +656,44 @@ def main():
             else:
                 lines += ['.globl %s' % name, '.bss', '.p2align 4', '.type %s, @object' % name,
                           '%s:' % name, '.space %d' % n, '.size %s, %d' % (name, n)]
+    def nat_off(owner, off):
+        """an offset in owner's original layout, in its native one"""
+        if owner not in relaid:
+            return off
+        for o0, o1, z, c, s0, s1 in relaid[owner][1]:
+            n = (z & 0xFFFF) if z > 0 else 4
+            k = (off - o0) // s0 if c > 1 and s0 and off >= o0 else 0
+            if off >= o0 and k < c and off - o0 - k * s0 < n:
+                return o1 + k * s1 + (off - o0 - k * s0 if z > 0 and not z >> 16 else 0)
+        # past the fields: one for one after them, as platform/os/addr.c maps it
+        end0 = max(o0 + (c - 1) * s0 + ((z & 0xFFFF) if z > 0 else 4) for o0, o1, z, c, s0, s1 in relaid[owner][1])
+        ext, nn = next((n, m) for aa, n, nm, m in objs if nm == owner)
+        if off >= end0:
+            return nn - (ext - end0) + (off - end0)
+        report.append('%s: +0x%X in %s falls in no field of its native layout' % (owner, off, owner))
+        return off
     for name, a in arena:
         if name in inner:
             owner, off = inner[name]
             while owner in inner:                   # (a name inside a name inside an object)
                 owner, o2 = inner[owner]
                 off += o2
-            lines += ['.globl %s%s' % (us, name), '%s%s = %s%s + 0x%X' % (us, name, us, owner, off)]
+            lines += ['.globl %s%s' % (us, name), '%s%s = %s%s + 0x%X' % (us, name, us, owner, nat_off(owner, off))]
     open(os.path.join(GEN, 'arena.s'), 'w').write('\n'.join(lines) + '\n')
     objs.sort()
+    def maprow(r):
+        o0, o1, z, c, s0, s1 = r
+        return '    {0x%X, 0x%X, %d, %d, 0x%X, 0x%X, %d},' % (o0, o1, max(z, 0), c, s0, s1, -z - 1 if z < 0 else -1)
     obj_lines = ['/* the game\'s image objects by original address (platform/os/addr.c) */']
     obj_lines += ['extern char %s[];' % o[2] for o in objs]
     for a, n, nm, nn in objs:
         if nm in relaid:
-            obj_lines += ['static const TgrMap map_%s[] = {' % nm] + \
-                ['    {0x%X, 0x%X, %d, %d, 0x%X, 0x%X},' % r for r in relaid[nm][1]] + ['};']
+            obj_lines += ['static const TgrMap map_%s[] = {' % nm] + [maprow(r) for r in relaid[nm][1]] + ['};']
+    for i, (sp, z0, z1, rr) in enumerate(type_rows):
+        obj_lines += ['static const TgrMap tmap_%d[] = {  /* %s */' % (i, sp)] + [maprow(r) for r in rr] + ['};']
+    obj_lines += ['const TgrType tgr_types[] = {'] + \
+        ['    {%d, %d, tmap_%d, %d},' % (z0, z1, i, len(rr)) for i, (sp, z0, z1, rr) in enumerate(type_rows)] + \
+        ['    {0, 0, 0, 0}', '};', 'const int tgr_ntypes = %d;' % len(type_rows)]
     obj_lines += ['const TgrObj tgr_objs[] = {']
     for a, n, nm, nn in objs:
         if nm in relaid:
@@ -616,7 +708,7 @@ def main():
     import json
     json.dump([{'name': n, 'addr': a, 'size': z, 'units': u} for n, a, z, u in allunits],
               open(os.path.join(OUT, 'symunits.json'), 'w'))
-    json.dump([{'name': nm, 'addr': a, 'count': n, 'units': pu} for nm, a, n, d, pu, ps in native if d and pu],
+    json.dump([{'name': nm, 'addr': a, 'count': n, 'units': pu} for nm, a, n, d, pu, ps, npt in native if d and pu],
               open(os.path.join(OUT, 'natunits.json'), 'w'))
     open(os.path.join(OUT, 'globals.txt'), 'w').write('\n'.join(report) + '\n')
     print('globals: %d symbols in the arena, %d native, %d lifted in %d runs, %d to resolve (%s)' % (

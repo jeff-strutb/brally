@@ -19,9 +19,51 @@ static int obj_cmp_nat(const void *x, const void *y)
     return a < b ? -1 : a > b;
 }
 
+/* records reached through pointers that tgr_lift gave their native layout
+ * (each inside some object's extent, found before it), by original address */
+#define MAXDYN 2048
+static TgrObj s_dyn[MAXDYN];
+static int s_ndyn;
+
+void tgr_obj_add(uint32_t addr, uint32_t size, void *nat, uint32_t natsize, const TgrMap *map, uint32_t nmap)
+{
+    int i;
+    if (s_ndyn == MAXDYN) {
+        fprintf(stderr, "tgr: too many converted records\n");
+        abort();
+    }
+    for (i = s_ndyn; i > 0 && s_dyn[i - 1].addr > addr; i--)
+        s_dyn[i] = s_dyn[i - 1];
+    s_dyn[i].addr = addr;
+    s_dyn[i].size = size;
+    s_dyn[i].nat = nat;
+    s_dyn[i].natsize = natsize;
+    s_dyn[i].map = map;
+    s_dyn[i].nmap = nmap;
+    s_ndyn++;
+}
+
+const TgrObj *tgr_dyn_at(uint32_t k)
+{
+    int lo = 0, hi = s_ndyn - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        if (k < s_dyn[m].addr)
+            hi = m - 1;
+        else if (k - s_dyn[m].addr >= s_dyn[m].size)
+            lo = m + 1;
+        else
+            return &s_dyn[m];
+    }
+    return NULL;
+}
+
 static const TgrObj *obj_at(uint32_t k)
 {
     int lo = 0, hi = tgr_nobjs - 1;
+    const TgrObj *d = tgr_dyn_at(k);
+    if (d)
+        return d;
     while (lo <= hi) {
         int m = (lo + hi) / 2;
         const TgrObj *o = &tgr_objs[m];
@@ -39,9 +81,13 @@ static const TgrObj *obj_at(uint32_t k)
  * layout to the native one (to_nat) or back; -1 if it falls in no field */
 static long map_off(const TgrObj *o, uint32_t d, int to_nat)
 {
-    uint32_t i;
+    uint32_t i, end0, end1;
     if (!o->map)
         return d;
+    end0 = tgr_map_end(o);                              /* past the fields: one for one */
+    end1 = o->natsize - (o->size - end0);
+    if (to_nat ? d >= end0 : d >= end1)
+        return to_nat ? (long)(end1 + (d - end0)) : (long)(end0 + (d - end1));
     for (i = 0; i < o->nmap; i++) {
         const TgrMap *m = &o->map[i];
         uint32_t base = to_nat ? m->n64off : m->natoff, st = to_nat ? m->n64stride : m->natstride;
@@ -63,7 +109,10 @@ static long map_off(const TgrObj *o, uint32_t d, int to_nat)
 
 static const TgrObj *obj_of(uintptr_t p)
 {
-    int lo = 0, hi = tgr_nobjs - 1;
+    int lo = 0, hi = tgr_nobjs - 1, i;
+    for (i = 0; i < s_ndyn; i++)
+        if (p - (uintptr_t)s_dyn[i].nat < s_dyn[i].natsize)
+            return &s_dyn[i];
     while (lo <= hi) {
         int m = (lo + hi) / 2;
         const TgrObj *o = s_bynat[m];

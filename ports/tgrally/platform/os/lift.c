@@ -7,6 +7,7 @@
  * objects, are given native pointers for the original addresses the ROM
  * holds in them. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "tgr_addr.h"
 #include "tgr_syms.h"
@@ -50,21 +51,47 @@ static const TgrObj *obj_at(uint32_t a)
     return NULL;
 }
 
+static void lift_fields(const TgrMap *map, uint32_t nmap, uint8_t *nat, const uint8_t *rom);
+
+#define BSS_END 0x80382BB0u
+
+/* what a pointer to a record laid out differently natively points at: the
+ * record in its native layout (an object declared so, or a copy made here,
+ * once, of the ROM's bytes or zeros for .bss), never the N64's bytes */
+static void *pointee(uint32_t a, int t)
+{
+    const TgrType *ty = &tgr_types[t];
+    const TgrObj *o = tgr_dyn_at(a);
+    uint8_t *p;
+    if (o && o->addr == a)
+        return o->nat;
+    o = obj_at(a);
+    if ((o && o->map && a - o->addr < tgr_map_end(o)) || a < DATA_VA || a >= BSS_END)
+        return tgr_ptr32(a);        /* declared in its native layout, or fixed RAM */
+    p = calloc(1, ty->natsize);
+    tgr_obj_add(a, ty->n64size, p, ty->natsize, ty->map, ty->nmap);
+    if (a < DATA_VA + (DATA_END - DATA_ROM))
+        lift_fields(ty->map, ty->nmap, p, tgr_romdata + (DATA_ROM - TGR_ROMDATA_BASE) + (a - DATA_VA));
+    return p;
+}
+
 /* an object laid out differently natively: each field from the ROM's bytes,
  * a pointer as the native pointer for the original address it holds */
-static void lift_mapped(const TgrObj *o, const uint8_t *rom)
+static void lift_fields(const TgrMap *map, uint32_t nmap, uint8_t *nat, const uint8_t *rom)
 {
     uint32_t i, k, b;
-    for (i = 0; i < o->nmap; i++) {
-        const TgrMap *m = &o->map[i];
+    for (i = 0; i < nmap; i++) {
+        const TgrMap *m = &map[i];
         for (k = 0; k < m->count; k++) {
             const uint8_t *src = rom + m->n64off + k * m->n64stride;
-            uint8_t *dst = (uint8_t *)o->nat + m->natoff + k * m->natstride;
+            uint8_t *dst = nat + m->natoff + k * m->natstride;
             if (m->size == 0) {
                 uint32_t a = (uint32_t)src[0] << 24 | (uint32_t)src[1] << 16 | (uint32_t)src[2] << 8 | src[3];
                 void *p;
                 if (a >= TEXT_LO && a < DATA_VA)
                     p = tgr_fn(a);
+                else if (a && m->ptype >= 0)
+                    p = pointee(a, m->ptype);
                 else if (a & 0x80000000u)
                     p = tgr_ptr32(a);
                 else
@@ -118,7 +145,14 @@ void tgr_lift(void)
     }
     for (i = 0; i < tgr_nobjs; i++)                 /* those laid out differently, field by field */
         if (tgr_objs[i].map && tgr_objs[i].addr >= DATA_VA && tgr_objs[i].addr < DATA_VA + (DATA_END - DATA_ROM))
-            lift_mapped(&tgr_objs[i], data + (tgr_objs[i].addr - DATA_VA));
+        {
+            const TgrObj *o = &tgr_objs[i];
+            uint32_t end0 = tgr_map_end(o), end1 = o->natsize - (o->size - end0);
+            uint32_t room = DATA_VA + (DATA_END - DATA_ROM) - o->addr, n = o->size < room ? o->size : room;
+            lift_fields(o->map, o->nmap, (uint8_t *)o->nat, data + (o->addr - DATA_VA));
+            if (n > end0)                           /* the bytes after the fields, as they are */
+                memcpy(o->nat + end1, data + (o->addr - DATA_VA) + end0, n - end0);
+        }
     memset(s_done, 0, sizeof s_done);
     for (i = 0; i < tgr_nsyms; i++)
         swap_runs(tgr_syms[i].addr, tgr_syms[i].run0, tgr_syms[i].nruns);
@@ -131,6 +165,8 @@ void tgr_lift(void)
             uint32_t a = (uint32_t)b[0] << 24 | (uint32_t)b[1] << 16 | (uint32_t)b[2] << 8 | b[3];
             if (a >= TEXT_LO && a < DATA_VA) {
                 n->nat[k] = tgr_fn(a);
+            } else if (a && n->ptype >= 0) {
+                n->nat[k] = pointee(a, n->ptype);
             } else if (a & 0x80000000u) {
                 n->nat[k] = tgr_ptr32(a);
                 if (n->nruns)                       /* what it points at, if in .data */

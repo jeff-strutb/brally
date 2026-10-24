@@ -23,7 +23,7 @@ void BrFrameBeginLayout0(void);
 void BrFrameBeginLayout1(void);
 void BrFrameEnd(void);
 int BrRomReadSize(int rom);
-unsigned int BrIfaceMemAlloc(int size);
+void *BrIfaceMemAlloc(int size);
 void * BrModelLoad(void *, int);
 extern int D_8028A850;
 extern int D_8028A884;
@@ -146,7 +146,7 @@ void BrMenuLoadItems(MenuItem **items, int *count)
       }
       if (i == *count) {
         items[*count]->icon = BrIfaceMemAlloc(BrRomReadSize(items[*count]->iconRomStart));
-        BrModelLoad(TGR_PTR(void *, items[*count]->icon), items[*count]->iconRomStart);
+        BrModelLoad(((void *)(items[*count]->icon)), items[*count]->iconRomStart);
       }
     }
   }

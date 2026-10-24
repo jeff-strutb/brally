@@ -225,7 +225,7 @@ void BrSeasonDraw(void)
     }
     sprintf(D_80315F38, "Race %d", i + 1);
     BrTextPrint(D_80315F38, D_8028AAB0 * 4 / 32 - off, y);
-    sprintf(D_80315F38, "%s/%s", TGR_PTR(const char *, D_80271D1C[k]->label), TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[i][1]]->label));
+    sprintf(D_80315F38, "%s/%s", ((const char *)(D_80271D1C[k]->label)), ((const char *)(D_802722A4[D_8028B944[round].races[i][1]]->label)));
     BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
     BrTextAlignRight();
     if (TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k] != 0) {
@@ -345,13 +345,13 @@ void BrTrackSelectScreen(void)
     D_80315EE0 = D_80315F90 && D_80270850 == 0;
     D_80270850 = 0;
     if (D_8026FF18 == 0) {
-      D_80271D1C[D_8028AE04]->label = tgr_addr32("Load Season Data");
-      D_80271D1C[D_8028AE04 + 1]->label = tgr_addr32("Reset To First Round");
-      D_80271D1C[D_8028AE04 + 2]->label = tgr_addr32("Reset To First Season");
-      D_80271D1C[D_8028AE04 + 3]->label = tgr_addr32("Reset To First Year");
+      D_80271D1C[D_8028AE04]->label = ("Load Season Data");
+      D_80271D1C[D_8028AE04 + 1]->label = ("Reset To First Round");
+      D_80271D1C[D_8028AE04 + 2]->label = ("Reset To First Season");
+      D_80271D1C[D_8028AE04 + 3]->label = ("Reset To First Year");
     } else {
-      D_80271D1C[D_8028AE04]->label = tgr_addr32("Load Ghost Car Data");
-      D_80271D1C[D_8028AE04 + 2]->label = tgr_addr32("Reset Ghost Car");
+      D_80271D1C[D_8028AE04]->label = ("Load Ghost Car Data");
+      D_80271D1C[D_8028AE04 + 2]->label = ("Reset Ghost Car");
     }
     D_80271D60 = 1;
   }
@@ -359,15 +359,15 @@ void BrTrackSelectScreen(void)
     idx = D_8028B940;
     pp = &D_80271D1C[idx];
     item = *pp;
-    label = TGR_PTR(const char *, (*pp)->label);
+    label = ((const char *)((*pp)->label));
     if (D_80315EE0) {
       D_80271FCC = BrSeasonDraw;
       item->flags |= 2;
     } else {
       D_80271FCC = 0;
       sprintf(D_80315F98, "Race %d: %s/%s", TGR_PTR(BrSeason *, D_8031B760[0].season)->race + 1, label,
-              TGR_PTR(const char *, D_802722A4[D_8028C800]->label));
-      (*pp)->label = tgr_addr32(D_80315F98);
+              ((const char *)(D_802722A4[D_8028C800]->label)));
+      (*pp)->label = (D_80315F98);
     }
     i = BrMenu(TGR_PTR(char *, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].x0), D_80315F88, D_80271D1C, &D_80315F8C,
                BrTrackSelectable, 0, 0, 0, 0, 0x78, 0x82);
@@ -378,9 +378,9 @@ void BrTrackSelectScreen(void)
     if (D_8026FF18 == 1) {
       idx = D_80271FAC;
       pp = &D_80271D1C[idx];
-      label = TGR_PTR(const char *, (*pp)->label);
+      label = ((const char *)((*pp)->label));
       sprintf(D_80315F98, "%s: %d laps", label, D_8028B304);
-      (*pp)->label = tgr_addr32(D_80315F98);
+      (*pp)->label = (D_80315F98);
     }
     i = BrMenu("TRACK SELECT", D_80315F88, D_80271D1C, &D_80315F8C, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
   }
@@ -455,6 +455,6 @@ void BrTrackSelectScreen(void)
     break;
   }
   if (D_8026FF18 == 0 || D_8026FF18 == 1) {
-    D_80271D1C[idx]->label = tgr_addr32(label);
+    D_80271D1C[idx]->label = (label);
   }
 }

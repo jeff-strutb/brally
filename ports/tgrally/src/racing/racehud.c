@@ -3,6 +3,7 @@
 #include "tgr/common.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
+#include "tgr/romimage.h"
 
 /* -- declarations -- */
 void BrSceneAnimate(void);
@@ -62,23 +63,11 @@ void BrScissorSet(int x0, int y0, int x1, int y1);
 void BrHudDialDraw(void);
 extern int D_802723D8;                 /* speed in mph (else kph) */
 extern char D_80361C30[];              /* the speed text */
-typedef struct BrHudPanel {     /* one per view, 0x14 bytes */
-  short x0;
-  unsigned short h;             /* 0x02  height of the view's top panel */
-  char pad04[0x14 - 0x04];
-} BrHudPanel;
-extern BrHudPanel D_8028C7B4[2];
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                 /* the texture filter mode */
 void BrTexSizeBits(int n, int *shift, int *mask);
-typedef struct BrHudImg {       /* an image record for the image drawer (0x14 bytes) */
-  char pad00[8];
-  TgrAddr data;         /* unsigned short * -- 0x08 */
-  unsigned short w;             /* 0x0C */
-  unsigned short h;             /* 0x0E */
-  char pad10[4];
-} BrHudImg;
+typedef BrRomImage BrHudImg;    /* an image record for the image drawer (tgr/romimage.h) */
 extern BrHudImg D_8028C7A8[2];         /* each view's rev counter face */
 extern BrHudImg D_8028C7D0[2];         /* and its rev-lamp frame */
 extern unsigned int D_8028C790[2];     /* the face loaded for each view: car | night << 8 */
@@ -166,7 +155,7 @@ void BrHudDialDraw(void)
   if (key != D_8028C790[D_8028AAEC]) {
     D_8028C7A8[D_8028AAEC].w = D_8028AE0C[D_8028AAF0->kind].dialW;
     D_8028C7A8[D_8028AAEC].h = D_8028AE0C[D_8028AAF0->kind].dialH;
-    BrRomRead(TGR_PTR(unsigned short *, D_8028C7A8[D_8028AAEC].data), D_8028AE0C[D_8028AAF0->kind].dialRom + 0x400,
+    BrRomRead(((unsigned short *)(D_8028C7A8[D_8028AAEC].data)), D_8028AE0C[D_8028AAF0->kind].dialRom + 0x400,
               D_8028C7A8[D_8028AAEC].w * D_8028C7A8[D_8028AAEC].h);
     BrRomRead(D_80361530[D_8028AAEC], D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028AA80 * 0x200,
               0x200);
@@ -177,7 +166,7 @@ void BrHudDialDraw(void)
   }
   if (frame != D_8028C798[D_8028AAEC]) {
   read:
-    BrRomRead(TGR_PTR(unsigned short *, D_8028C7D0[D_8028AAEC].data),
+    BrRomRead(((unsigned short *)(D_8028C7D0[D_8028AAEC].data)),
               D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w * frame +
                   (D_8028AE0C[D_8028AAF0->kind].dialRom + D_8028C7A8[D_8028AAEC].w * D_8028C7A8[D_8028AAEC].h) + 0x400,
               D_8028C7D0[D_8028AAEC].h * D_8028C7D0[D_8028AAEC].w);
@@ -741,14 +730,14 @@ void BrHudDraw(void)
   y = D_8031B2C8[D_8028AAEC].y + D_8031B2C8[D_8028AAEC].h - 4;
   if (D_8028AB0C == 2) {
     if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
-      y = y - D_8028C7B4[D_8028AAEC].h * 3 / 4 - 1;
+      y = y - D_8028C7A8[D_8028AAEC].h * 3 / 4 - 1;
     }
     BrTextSetFont(15);
     BrTextPrint((unsigned char *)D_80361C30, x, y);
   } else {
     if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
       x = 266;
-      y = y - D_8028C7B4[D_8028AAEC].h;
+      y = y - D_8028C7A8[D_8028AAEC].h;
     }
     BrTextSetFont(20);
     if (D_802723D8 != 0) {

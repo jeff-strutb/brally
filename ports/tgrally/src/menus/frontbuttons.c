@@ -12,7 +12,7 @@ void BrTextAlignLeft(void);
 void BrTextSetFont(int param_1);
 void BrTextPrint(char *s, int x, int y);
 void BrRomImageDraw(void *, int, int, int, int, int, int, int, int, int, int, int, int, int);
-typedef struct BrRomFile { int start; int end; TgrAddr data; } BrRomFile;
+typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
 extern BrRomImage D_80271D70;           /* the A and B button images */
 extern BrRomImage D_80271D84;
 extern int D_8028AAB4;
@@ -47,8 +47,8 @@ extern Gfx *D_8028A858;
 extern int D_8026FF08;                  /* human players */
 extern BrCar D_8031B760[];
 extern float D_8031AB10[4][4];
-void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size));
-unsigned int BrIfaceMemAlloc(int size);
+void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
+void *BrIfaceMemAlloc(int size);
 int BrRomReadSize(int rom);
 unsigned int BrRomUnpack(void *, unsigned int, void *);
 void BrFadeTo(float level, float seconds);
@@ -73,7 +73,7 @@ void guMtxF2L(float mf[4][4], Mtx *m);
 void BrMenuRingDraw(void);
 void BrMenuBackdropDraw(void);
 void BrAnimUpdate(void *set);
-void BrMenuIconDraw(int, float, float, float, float);
+void BrMenuIconDraw(void *, float, float, float, float);
 void BrPerfMeterDraw(void);
 void BrFrameEnd(void);
 void BrScreenFlush3Layout1(void);
@@ -167,10 +167,10 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     BrRomFileUnpack(&D_80271D84, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_80272048, BrIfaceMemAlloc);
     D_80316234 = BrRomReadSize(D_001BF480);
-    D_80316230 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80316234 + D_80316234));
+    D_80316230 = ((unsigned char *)(BrIfaceMemAlloc(D_80316234 + D_80316234)));
     BrRomUnpack(D_80316230, D_001BF480, 0);
     D_8031623C = BrRomReadSize(D_001BFEC0);
-    D_80316238 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_8031623C + D_8031623C));
+    D_80316238 = ((unsigned char *)(BrIfaceMemAlloc(D_8031623C + D_8031623C)));
     BrRomUnpack(D_80316238, D_001BFEC0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80316230[D_80316234 + i] = 0;
@@ -266,7 +266,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         } else {
           shown = D_80316244;
         }
-        BrAnimUpdate(TGR_PTR(void *, items[shown]->icon));
+        BrAnimUpdate(((void *)(items[shown]->icon)));
         if (items[shown]->flags & 0x10) {
           D_8028A8A8 = 1;
         }
@@ -278,7 +278,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         }
       } else if (off != 0) {
         if (items[D_80316244]->icon != 0) {
-          BrAnimUpdate(TGR_PTR(void *, items[D_80316244]->icon));
+          BrAnimUpdate(((void *)(items[D_80316244]->icon)));
           if (items[D_80316244]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
@@ -286,13 +286,13 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
                          (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316244]->label));
+          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316244]->label)));
           BrTextHighlightOff();
           BrTextAlignCentre();
           BrTextPrint(buf, D_8028AAB0 / 2 - (int)(off * D_8028AAB0 / 6.0f), (D_8028AAB4 * 9) / 16);
         }
         if (items[D_80316220]->icon != 0) {
-          BrAnimUpdate(TGR_PTR(void *, items[D_80316220]->icon));
+          BrAnimUpdate(((void *)(items[D_80316220]->icon)));
           if (items[D_80316220]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
@@ -301,7 +301,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
                          (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316220]->label));
+          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316220]->label)));
           BrTextHighlightOff();
           BrTextAlignCentre();
           BrTextPrint(buf, D_8028AAB0 / 2 - (int)(((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f),
@@ -311,19 +311,19 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         BrTextHighlightOff();
         BrTextAlignCentre();
         if (items[D_80316244]->icon != 0) {
-          BrAnimUpdate(TGR_PTR(void *, items[D_80316244]->icon));
+          BrAnimUpdate(((void *)(items[D_80316244]->icon)));
           if (items[D_80316244]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
           BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316244]->label));
+          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316244]->label)));
           BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 9) / 16);
         }
       label:
         BrTextSetFont(20);
-        sprintf(buf, "%%ry%s", TGR_PTR(const char *, items[D_80316244]->label));
+        sprintf(buf, "%%ry%s", ((const char *)(items[D_80316244]->label)));
         BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 20) / 64);
         if (D_80271FC8 != 0) {
           D_80271FC8(D_80316244);

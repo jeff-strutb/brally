@@ -239,7 +239,7 @@ void BrTimeFormat(char *psz, float t)
 #include "tgr/pad.h"
 #include "tgr/menu.h"
 #include "tgr/season.h"
-typedef struct BrRomFile { int start; int end; TgrAddr data; } BrRomFile;
+typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
 typedef struct { char raw[0xdf88]; } BrCarModelBuf;
 extern BrCarModelBuf D_803C8000[];  /* each car's model buffer */
 extern BrStream D_8031B370[4];  /* the two players' model streams, two apiece */
@@ -315,8 +315,8 @@ void BrVec3Normalise(BrVec3 *pV);
 void BrVec3Cross(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
 void BrIfaceMemReset(void);
 void BrMenuLoadItems(MenuItem **items, int *count);
-void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size));
-unsigned int BrIfaceMemAlloc(int size);
+void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
+void *BrIfaceMemAlloc(int size);
 int BrRomReadSize(int rom);
 unsigned int BrRomUnpack(void *, unsigned int, void *);
 void BrDecalMemInit(void);
@@ -555,10 +555,10 @@ void BrCarSelect(void)
     BrRomFileUnpack(&D_80271D84, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_8027205C, BrIfaceMemAlloc);
     D_803162A0 = BrRomReadSize((int)D_001BF480);
-    D_8031629C = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_803162A0 + 0x100));
+    D_8031629C = ((unsigned char *)(BrIfaceMemAlloc(D_803162A0 + 0x100)));
     BrRomUnpack(D_8031629C, (int)D_001BF480, 0);
     D_803162A8 = BrRomReadSize((int)D_001BFEC0);
-    D_803162A4 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_803162A8 + 0x100));
+    D_803162A4 = ((unsigned char *)(BrIfaceMemAlloc(D_803162A8 + 0x100)));
     BrRomUnpack(D_803162A4, (int)D_001BFEC0, 0);
     for (p = 0; p != 0x100; p++) {
       D_8031629C[D_803162A0 + p] = 0;
@@ -641,17 +641,17 @@ void BrCarSelect(void)
 #define ICON(p, idx) ((D_803162B0[p] == 0 || D_803162B0[p] == 6) ? 0 : D_80316270[p][D_80316278[idx]]->icon)
 #define ICON2(p, idx) ((D_803162B0[p] == 0 || D_803162B0[p] == 6) ? 0 : D_80316270[p][D_80316280[idx]]->icon)
   if (D_80272074 != 0) {
-    BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), D_80316314 == 1, 0, 0x3B, D_8028AAB0, D_8028AAB4,
+    BrCarViewDraw(((BrModel *)(ICON(0, 0))), ((BrModel *)(ICON2(0, 0))), D_80316314 == 1, 0, 0x3B, D_8028AAB0, D_8028AAB4,
                   D_80316260[0], D_803162B0[0] == 6, D_80316258[D_80316314 == 1],
                   D_80316258[D_80316314 == 1] ^ 2, 12.0f, D_80316268[0]);
   } else {
     if (D_8026FF08 == 1) {
-      BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), 0, 0, 0x2D, D_8028AAB0, D_8028AAB4, D_80316260[0],
+      BrCarViewDraw(((BrModel *)(ICON(0, 0))), ((BrModel *)(ICON2(0, 0))), 0, 0, 0x2D, D_8028AAB0, D_8028AAB4, D_80316260[0],
                     D_803162B0[0] == 6, D_80316258[0], D_80316258[0] ^ 2, 8.0f, D_80316268[0]);
     } else {
-      BrCarViewDraw(TGR_PTR(BrModel *, ICON(0, 0)), TGR_PTR(BrModel *, ICON2(0, 0)), 0, 0, 0, D_8028AAB0, D_8028AAB4 - 24, D_80316260[0],
+      BrCarViewDraw(((BrModel *)(ICON(0, 0))), ((BrModel *)(ICON2(0, 0))), 0, 0, 0, D_8028AAB0, D_8028AAB4 - 24, D_80316260[0],
                     D_803162B0[0] == 6, D_80316258[0], D_80316258[0] ^ 2, 12.0f, D_80316268[0]);
-      BrCarViewDraw(TGR_PTR(BrModel *, ICON(1, 1)), TGR_PTR(BrModel *, ICON2(1, 1)), 1, 0, 0x47, D_8028AAB0, D_8028AAB4, D_80316260[1],
+      BrCarViewDraw(((BrModel *)(ICON(1, 1))), ((BrModel *)(ICON2(1, 1))), 1, 0, 0x47, D_8028AAB0, D_8028AAB4, D_80316260[1],
                     D_803162B0[1] == 6, D_80316258[1], D_80316258[1] ^ 2, 12.0f, D_80316268[1]);
     }
   }
@@ -666,7 +666,7 @@ void BrCarSelect(void)
     BrTextSetFont(30);
     if (D_80272074 != 0) {
       if (D_80316314 == 0 || D_80316314 == 1) {
-        sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", TGR_PTR(const char *, D_80271D1C[D_80316308 >= 5 ? D_80316308 - 5 : D_80316308]->item.label), TGR_PTR(const char *, D_802722A4[D_8031630C]->label));
+        sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", ((const char *)(D_80271D1C[D_80316308 >= 5 ? D_80316308 - 5 : D_80316308]->item.label)), ((const char *)(D_802722A4[D_8031630C]->label)));
 
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
       } else {
@@ -787,8 +787,8 @@ void BrCarSelect(void)
           }
         }
         BrTextAlignLeft();
-        sprintf(D_80316318, "%s/%s", TGR_PTR(const char *, D_80271D1C[tr]->item.label),
-                TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[p][1]]->label));
+        sprintf(D_80316318, "%s/%s", ((const char *)(D_80271D1C[tr]->item.label)),
+                ((const char *)(D_802722A4[D_8028B944[round].races[p][1]]->label)));
         BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y);
         BrTextAlignCentre();
         if (p <= (int)race) {
@@ -820,7 +820,7 @@ void BrCarSelect(void)
       } else if (D_803162B0[0] == 6) {
         sprintf(buf, "%%ryREADY!");
       } else {
-        sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], TGR_PTR(const char *, D_80316270[0][D_80316278[0]]->label));
+        sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], ((const char *)(D_80316270[0][D_80316278[0]]->label)));
       }
       BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 4);
       if (D_803162B0[1] == 0) {
@@ -828,7 +828,7 @@ void BrCarSelect(void)
       } else if (D_803162B0[1] == 6) {
         sprintf(buf, "%%ryREADY!");
       } else {
-        sprintf(buf, "%%ry%s: %%i%s", D_80316290[1], TGR_PTR(const char *, D_80316270[1][D_80316278[1]]->label));
+        sprintf(buf, "%%ry%s: %%i%s", D_80316290[1], ((const char *)(D_80316270[1][D_80316278[1]]->label)));
       }
       BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 3 / 5);
       BrTextSetFont(8);
@@ -891,7 +891,7 @@ void BrCarSelect(void)
         } else if (D_803162B0[0] == 6) {
           sprintf(buf, "%%ryLET'S GO!");
         } else {
-          sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], TGR_PTR(const char *, D_80316270[0][D_80316278[0]]->label));
+          sprintf(buf, "%%ry%s: %%i%s", D_80316290[0], ((const char *)(D_80316270[0][D_80316278[0]]->label)));
         }
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
         BrTextSetFont(8);

@@ -43,7 +43,7 @@ int BrFadeIsOut(void);
 int BrFadeAtTarget(void);
 void BrFadeBarsDraw(void);
 void BrIfaceMemReset(void);
-unsigned int BrIfaceMemAlloc(int size);
+void *BrIfaceMemAlloc(int size);
 int BrRomReadSize(int rom);
 unsigned int BrRomUnpack(void *, unsigned int, void *);
 void * BrModelLoad(void *, int);
@@ -62,7 +62,7 @@ Mtx *BrMtxAlloc(void);
 void guTranslateF(float mf[4][4], float x, float y, float z);
 void guRotateF(float mf[4][4], float a, float x, float y, float z);
 void guMtxF2L(float mf[4][4], Mtx *m);
-void BrMenuIconDrawScaled(int icon, float x, float y, float z, float spin, float scale);
+void BrMenuIconDrawScaled(void *icon, float x, float y, float z, float spin, float scale);
 void BrTextSetColours(int r1, int g1, int b1, int r2, int g2, int b2);
 void BrTextHighlightOff(void);
 void BrTextSetFont(int font);
@@ -80,21 +80,21 @@ void BrPadConsume(BrPadRec *pad, unsigned int bits);
 void BrCreditsDrawCars(void);
 /* -- end declarations -- */
 
-extern int D_80315E80;                  /* the three publisher logos, */
-extern int D_80315E84;
-extern int D_80315E88;
-extern int D_80315E8C;                  /* then the four title-card models */
-extern int D_80315E90;
-extern int D_80315E94;
-extern int D_80315E98;
+extern void *D_80315E80;                  /* the three publisher logos, */
+extern void *D_80315E84;
+extern void *D_80315E88;
+extern void *D_80315E8C;                  /* then the four title-card models */
+extern void *D_80315E90;
+extern void *D_80315E94;
+extern void *D_80315E98;
 
 /* WHAT IT DOES: Draw the three car models the credits sequence shows. */
 /* @implements 0x80206830 tgr BrCreditsDrawCars */
 void BrCreditsDrawCars(void)
 {
-  BrAnimUpdate(TGR_PTR(void *, D_80315E88));
-  BrAnimUpdate(TGR_PTR(void *, D_80315E8C));
-  BrAnimUpdate(TGR_PTR(void *, D_80315E90));
+  BrAnimUpdate(((void *)(D_80315E88)));
+  BrAnimUpdate(((void *)(D_80315E8C)));
+  BrAnimUpdate(((void *)(D_80315E90)));
 }
 
 /* WHAT IT DOES: One frame of the boot sequence before the main menu. The
@@ -140,28 +140,28 @@ void BrIntroScreen(void)
     BrSfxFadeTo(1.0f, 0.2f);
     BrIfaceMemReset();
     D_80315E88 = BrIfaceMemAlloc(BrRomReadSize((int)D_001DCD70));
-    BrModelLoad(TGR_PTR(void *, D_80315E88), (int)D_001DCD70);
+    BrModelLoad(((void *)(D_80315E88)), (int)D_001DCD70);
     D_80315E84 = BrIfaceMemAlloc(BrRomReadSize((int)D_001DBA40));
-    BrModelLoad(TGR_PTR(void *, D_80315E84), (int)D_001DBA40);
+    BrModelLoad(((void *)(D_80315E84)), (int)D_001DBA40);
     D_80315E80 = BrIfaceMemAlloc(BrRomReadSize((int)D_001DA030));
-    BrModelLoad(TGR_PTR(void *, D_80315E80), (int)D_001DA030);
+    BrModelLoad(((void *)(D_80315E80)), (int)D_001DA030);
     D_80315E8C = BrIfaceMemAlloc(BrRomReadSize((int)D_001E09F0));
-    BrModelLoad(TGR_PTR(void *, D_80315E8C), (int)D_001E09F0);
-    BrAnimSetLoop(TGR_PTR(void *, D_80315E8C));
+    BrModelLoad(((void *)(D_80315E8C)), (int)D_001E09F0);
+    BrAnimSetLoop(((void *)(D_80315E8C)));
     D_80315E90 = BrIfaceMemAlloc(BrRomReadSize((int)D_001E3DB0));
-    BrModelLoad(TGR_PTR(void *, D_80315E90), (int)D_001E3DB0);
-    BrAnimSetLoop(TGR_PTR(void *, D_80315E90));
+    BrModelLoad(((void *)(D_80315E90)), (int)D_001E3DB0);
+    BrAnimSetLoop(((void *)(D_80315E90)));
     D_80315E94 = BrIfaceMemAlloc(BrRomReadSize((int)D_001E1CA0));
-    BrModelLoad(TGR_PTR(void *, D_80315E94), (int)D_001E1CA0);
-    BrAnimSetLoop(TGR_PTR(void *, D_80315E94));
+    BrModelLoad(((void *)(D_80315E94)), (int)D_001E1CA0);
+    BrAnimSetLoop(((void *)(D_80315E94)));
     D_80315E98 = BrIfaceMemAlloc(BrRomReadSize((int)D_001E2B40));
-    BrModelLoad(TGR_PTR(void *, D_80315E98), (int)D_001E2B40);
-    BrAnimSetLoop(TGR_PTR(void *, D_80315E98));
+    BrModelLoad(((void *)(D_80315E98)), (int)D_001E2B40);
+    BrAnimSetLoop(((void *)(D_80315E98)));
     D_80315EA0 = BrRomReadSize((int)D_001B5440);
-    D_80315EA4 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80315EA0 + 0x100));
+    D_80315EA4 = ((unsigned char *)(BrIfaceMemAlloc(D_80315EA0 + 0x100)));
     BrRomUnpack(D_80315EA4, (int)D_001B5440, 0);
     D_80315EA8 = BrRomReadSize((int)D_001B93C0);
-    D_80315EAC = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80315EA8 + 0x100));
+    D_80315EAC = ((unsigned char *)(BrIfaceMemAlloc(D_80315EA8 + 0x100)));
     BrRomUnpack(D_80315EAC, (int)D_001B93C0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80315EA4[D_80315EA0 + i] = 0;

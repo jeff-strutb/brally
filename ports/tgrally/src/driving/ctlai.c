@@ -3,6 +3,7 @@
 #include "tgr/common.h"
 #include "tgr/vec.h"
 #include "tgr/car.h"
+#include "tgr/menu.h"
 
 /* -- declarations -- */
 void BrCtlAiBody(BrCar *car);
@@ -67,8 +68,9 @@ typedef struct BrTimeLimit {    /* 0x1C bytes */
   float secs;
   char pad04[0x18];
 } BrTimeLimit;
-typedef struct BrTrackTimes {
-  char pad00[0x44];
+typedef struct BrTrackTimes {   /* a BrTrack (tgr/menu.h) */
+  MenuItem item;
+  char pad14[0x44 - 0x14];
   BrTimeLimit limit[4][3];      /* 0x44  [class][difficulty] */
 } BrTrackTimes;
 extern BrTrackTimes *D_80271D1C[];
