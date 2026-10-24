@@ -815,7 +815,7 @@ void BrCarSelect(void)
     if (D_8026FF08 == 2) {
       BrTextSetFont(17);
       if (D_803162B0[0] == 0) {
-        sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(0)->x2058].name));
+        sprintf(buf, "%%ry%%i%s", ((char *)(D_8028AE0C[CAR(0)->x2058].name)));
       } else if (D_803162B0[0] == 6) {
         sprintf(buf, "%%ryREADY!");
       } else {
@@ -823,7 +823,7 @@ void BrCarSelect(void)
       }
       BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 4);
       if (D_803162B0[1] == 0) {
-        sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(1)->x2058].name));
+        sprintf(buf, "%%ry%%i%s", ((char *)(D_8028AE0C[CAR(1)->x2058].name)));
       } else if (D_803162B0[1] == 6) {
         sprintf(buf, "%%ryREADY!");
       } else {
@@ -853,15 +853,15 @@ void BrCarSelect(void)
         BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 + 2);
         BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 - 6);
         BrTextAlignCentre();
-        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+        BrTextPrint(D_80272030[D_8028AE0C[car->x2058].x40],
                     D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 + 2);
-        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+        sprintf(buf, "%%ww%d-Speed %s", D_8028AE0C[car->x2058].gears,
+                D_8027203C[D_8028AE0C[car->x2058].drive]);
         BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 / 4 - 6);
         BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 23, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+                         D_8028AE0C[car->x2058].maxSpeed / 500.0);
         BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 6, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+                         D_8028AE0C[car->x2058].accel / 10.0);
       }
       if (D_803162B0[1] == 0) {
         car = CAR(1);
@@ -869,24 +869,24 @@ void BrCarSelect(void)
         BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 + 2);
         BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 - 6);
         BrTextAlignCentre();
-        BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+        BrTextPrint(D_80272030[D_8028AE0C[car->x2058].x40],
                     D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 + 2);
-        sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+        sprintf(buf, "%%ww%d-Speed %s", D_8028AE0C[car->x2058].gears,
+                D_8027203C[D_8028AE0C[car->x2058].drive]);
         BrTextPrint(buf, D_8028AAB0 * 3 / 4, D_8028AAB4 * 3 / 5 - 6);
         BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 23, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+                         D_8028AE0C[car->x2058].maxSpeed / 500.0);
         BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 6, 80, 11,
-                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+                         D_8028AE0C[car->x2058].accel / 10.0);
       }
     } else {
       BrTextSetFont(20);
       if (D_80272070 != 0) {
-        sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(0)->x2058].name));
+        sprintf(buf, "%%ry%%i%s", ((char *)(D_8028AE0C[CAR(0)->x2058].name)));
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 22 / 64);
       } else {
         if (D_803162B0[0] == 0) {
-          sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(0)->x2058].name));
+          sprintf(buf, "%%ry%%i%s", ((char *)(D_8028AE0C[CAR(0)->x2058].name)));
         } else if (D_803162B0[0] == 6) {
           sprintf(buf, "%%ryLET'S GO!");
         } else {
@@ -908,15 +908,15 @@ void BrCarSelect(void)
           BrTextPrint("%wwMax Speed", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 - 6);
           BrTextPrint("%wwAcceleration", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 + 2);
           BrTextAlignCentre();
-          BrTextPrint(D_80272030[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x40)],
+          BrTextPrint(D_80272030[D_8028AE0C[car->x2058].x40],
                       D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 - 6);
-          sprintf(buf, "%%ww%d-Speed %s", *(int *)((char *)&D_8028AE0C[car->x2058] + 0x54),
-                  D_8027203C[*(int *)((char *)&D_8028AE0C[car->x2058] + 0x3C)]);
+          sprintf(buf, "%%ww%d-Speed %s", D_8028AE0C[car->x2058].gears,
+                  D_8027203C[D_8028AE0C[car->x2058].drive]);
           BrTextPrint(buf, D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 8 + 2);
           BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 23, 80, 11,
-                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x44) / 500.0);
+                           D_8028AE0C[car->x2058].maxSpeed / 500.0);
           BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 6, 80, 11,
-                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
+                           D_8028AE0C[car->x2058].accel / 10.0);
         }
       }
     }

@@ -206,7 +206,7 @@ typedef struct BrCarModel {
 
 /* A car's model file (0x60 bytes each), a table at 0x8028AE0C. */
 typedef struct BrCarModelRec {
-    TgrAddr name;               /* 0x00  the car's name (char *) */
+    char *name;                 /* 0x00  the car's name */
     int x04[4];                 /* 0x04 */
     int rom;                    /* 0x14  ROM address of the model file */
     int present;                /* 0x18  non-zero when the car is in this build */

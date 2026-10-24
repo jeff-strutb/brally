@@ -26,8 +26,8 @@ typedef struct BrSndVec { float x, y, z; } BrSndVec;
 typedef struct BrSndNearest {   /* the nearest positional sound, 0x8028B7A0 */
   BrSndVec pos;                 /* 0x00 */
   BrSndVec posPrev;             /* 0x0C */
-  TgrAddr pObj;                   /* void * -- 0x18 */
-  TgrAddr pObjPrev;               /* void * -- 0x1C */
+  void *pObj;                     /* 0x18 */
+  void *pObjPrev;                 /* 0x1C */
   BrSndVec objPosPrev;          /* 0x20 */
   int f84;                      /* 0x2C  (the PC record's names) */
   int f88;                      /* 0x30 */
@@ -144,7 +144,7 @@ void BrSndNearestOffer(int f8C, int f84, int f9C, float hz, void *pPos, void *pL
     D_8028B7A0.pos.x = ((BrSndVec *)pPos)->x;
     D_8028B7A0.pos.y = ((BrSndVec *)pPos)->y;
     D_8028B7A0.pos.z = ((BrSndVec *)pPos)->z;
-    D_8028B7A0.pObj = tgr_addr32(pListener);
+    D_8028B7A0.pObj = (pListener);
     D_8028B7A0.metric = d;
     D_8028B7A0.f84 = f84;
     D_8028B7A0.f8C = f8C;
@@ -197,16 +197,16 @@ skip:
   } else if (D_8028B7A0.f8C == D_8028B7A0.f90 && D_8028B7A0.pObj == D_8028B7A0.pObjPrev) {
     if (D_8028B7A0.f98 < 0.0f) {
       ratio = BrSndDoppler(&D_8028B7A0.pos.x, &D_8028B7A0.pos.x,
-                           (float *)((char *)TGR_PTR(void *, D_8028B7A0.pObj) + 0x30),
+                           (float *)((char *)((void *)(D_8028B7A0.pObj)) + 0x30),
                            &D_8028B7A0.objPosPrev.x);
       ratio = -D_8028B7A0.f98 * ratio;
-      BrSndPan(&D_8028B7A0.pos.x, TGR_PTR(void *, D_8028B7A0.pObj), &gainA, &gainB, &vol, 1);
+      BrSndPan(&D_8028B7A0.pos.x, ((void *)(D_8028B7A0.pObj)), &gainA, &gainB, &vol, 1);
     } else {
       ratio = BrSndDoppler(&D_8028B7A0.pos.x, &D_8028B7A0.posPrev.x,
-                           (float *)((char *)TGR_PTR(void *, D_8028B7A0.pObj) + 0x30),
+                           (float *)((char *)((void *)(D_8028B7A0.pObj)) + 0x30),
                            &D_8028B7A0.objPosPrev.x);
       ratio = D_8028B7A0.f98 * ratio;
-      BrSndPan(&D_8028B7A0.pos.x, TGR_PTR(void *, D_8028B7A0.pObj), &gainA, &gainB, &vol, 0);
+      BrSndPan(&D_8028B7A0.pos.x, ((void *)(D_8028B7A0.pObj)), &gainA, &gainB, &vol, 0);
     }
     vol *= D_8028B7A0.f9C;
     vol >>= 8;
@@ -227,7 +227,7 @@ skip:
     D_8028B7A0.posPrev.x = D_8028B7A0.pos.x;
     D_8028B7A0.posPrev.y = D_8028B7A0.pos.y;
     D_8028B7A0.posPrev.z = D_8028B7A0.pos.z;
-    p = (float *)((char *)TGR_PTR(void *, D_8028B7A0.pObj) + 0x30);
+    p = (float *)((char *)((void *)(D_8028B7A0.pObj)) + 0x30);
     D_8028B7A0.objPosPrev.x = p[0];
     D_8028B7A0.objPosPrev.y = p[1];
     D_8028B7A0.objPosPrev.z = p[2];
