@@ -1,6 +1,5 @@
 #include "slice1_02.h"   /* br_globals: its objects */
 #include "br_ui.h"
-#include "dplay.h"   /* DPNAME */   /* BrUiCtl_, the canonical record */
 /* WHAT IT DOES: handle a DirectPlay callback for one player record, ignoring
  * the notifications flagged as uninteresting and otherwise updating that
  * player's slot. */
@@ -55,7 +54,7 @@ extern "C" {
 /* BrTick36080: prototype in br_funcs.h */
 }
 
-int __stdcall BrWmHook36130(int a1, int a2, const DPNAME *a3, unsigned int a4, void *a5)
+int __stdcall BrWmHook36130(int a1, int a2, const BrNetName *a3, unsigned int a4, void *a5)
 {
     GameObjS *p;
 

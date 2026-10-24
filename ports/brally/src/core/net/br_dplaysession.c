@@ -162,9 +162,8 @@ int __stdcall BrNetSessionStore(char *pGuid, void *pPayload, unsigned int cbPayl
 
 /* 64-bit core: the session description, player name and player record are
  * the SDK's records at the build's native layout (dplay.h). */
-#include "dplay.h"
-typedef HRESULT (__stdcall *BrDpOpenFn)(void *, DPSESSIONDESC2 *, uint32_t, void *, void *);
-typedef HRESULT (__stdcall *BrDpCreatePlayerFn)(void *, DPID *, DPNAME *, void *,
+typedef HRESULT (__stdcall *BrDpOpenFn)(void *, BrNetSessionDesc *, uint32_t, void *, void *);
+typedef HRESULT (__stdcall *BrDpCreatePlayerFn)(void *, BrNetId *, BrNetName *, void *,
                                                 void *, uint32_t, uint32_t);
 
 /* WHAT IT DOES: hosts a brand-new game on the network. Builds the session
@@ -193,9 +192,9 @@ typedef HRESULT (__stdcall *BrDpCreatePlayerFn)(void *, DPID *, DPNAME *, void *
 /* @implements 0x10035C50 glide BrNetSessionHost */
 int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
 {
-    DPSESSIONDESC2 desc;
-    DPNAME         name;
-    DPID           id;
+    BrNetSessionDesc desc;
+    BrNetName         name;
+    BrNetId           id;
     void         **vt;
     void          *saved0;
     int32_t        saved3, saved4;
@@ -208,7 +207,6 @@ int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
         memset(&desc, 0, sizeof desc);
         memcpy((char *)&desc.guidApplication + 0, &DAT_10077500, 4);
         memcpy((char *)&desc.guidApplication + 4, &DAT_10077504, 4);
-        vt = *(void ***)pIface;           /* ONE vptr hoist, both calls */
         memcpy((char *)&desc.guidApplication + 8, &DAT_10077508, 4);
         memcpy((char *)&desc.guidApplication + 12, &DAT_1007750c, 4);
         desc.dwFlags = (*(int *)(pHost + 0xc8) != 0 ? 0x100 : 0) + 0x40;
@@ -219,7 +217,7 @@ int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
         desc.lpszSessionNameA = pHost;
         desc.dwUser3 = (DWORD)DAT_10ac5d70;
         desc.dwUser4 = DAT_100abdf8;
-        hr = ((BrDpOpenFn)vt[0x9c / 4])(pIface, &desc, 0x82, NULL, NULL);   /* SecureOpen */
+        hr = br_net_open(pIface, &desc, 0x82);
         if (hr < 0) {
             return hr;
         }
@@ -233,8 +231,7 @@ int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
         rec->f10 = *(int *)(pHost + 0xc8);
         name.dwSize = sizeof name;
         name.lpszShortNameA = g_aBrCfgPlayerName;
-        hr = ((BrDpCreatePlayerFn)vt[0x18 / 4])                       /* CreatePlayer */
-                 (pIface, &id, &name, rec->f04, NULL, 0, 0x100);
+        hr = br_net_create_player(pIface, &id, &name, rec->f04, NULL, 0, 0x100);
         if (hr < 0) {
             rec->f00 = saved0;
             rec->f0C = saved3;

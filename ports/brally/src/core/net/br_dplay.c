@@ -12,7 +12,6 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include "br_slots.h"   /* g_aBrAA2538 */
-#include "dplay.h"   /* DPSESSIONDESC2 */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdint.h>
 #include <stdio.h>
@@ -284,11 +283,10 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 
     for (;;) {
         BrDPlay4Obj     *pDP   = pCtx->pDP;
-        BrDPlay4VtblStd *pVtbl = (BrDPlay4VtblStd *)pDP->pVtbl;
 
         idFrom = 0;
         idTo   = 0;
-        hr = pVtbl->Receive(pDP, &idFrom, &idTo, 1u, pvBuf, &cbBuf);
+        hr = br_net_receive(pDP, &idFrom, &idTo, 1u, pvBuf, &cbBuf);
 
         if (hr == BR_DP_E_BUFFERTOOSMALL) {
             if (pvBuf != NULL) {
@@ -365,7 +363,7 @@ int BrComHolderRelease(void)
   uVar2 = 0;
   if (((g_brPA9D008 != 0) && (piVar1 = (int *)g_brPA9D008->f00, piVar1 != (int *)0x0)) &&
      (g_brPA9D008->f08 != 0)) {
-    uVar2 = (*(CC_std_2 *)&((void **)*(void ***)((piVar1)))[9])(piVar1,g_brPA9D008->f08);
+    uVar2 = br_net_destroy_player(piVar1,g_brPA9D008->f08);
     g_brPA9D008->f08 = 0;
   }
   return uVar2;
@@ -496,7 +494,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
     if (FUN_10036740(DPS_pDPGlobal, &pv) < 0)
         return 0xFFFFu;
 
-    n = ((DPSESSIONDESC2 *)pv)->dwCurrentPlayers;
+    n = ((BrNetSessionDesc *)pv)->dwCurrentPlayers;
     free(pv);
     return n;
 }
@@ -532,29 +530,13 @@ int BrDpCreateIface(BrIUnk **out)
 
     a = 0;
     b = 0;
-    hr = DirectPlayLobbyCreateA(0, (void **)&a, 0, 0, 0);
-    /* Early-out, not an enclosing `if (hr >= 0)` block: that shape flips
-     * the first branch to jl where the original has jge (cracked 2026-09-09,
-     * the only residue row). */
-    if (hr < 0)
-        goto fail;
-    hr = a->vt->QueryInterface(a, &DAT_100788e8, (void **)&b);
-    if (hr < 0) {
-        goto fail;
-    }
-    a->vt->Release(a);
-    a = 0;
+    (void)a;
+    (void)hr;
+    /* the lobby (the original made one and asked it for its version-3 face) */
+    b = (BrIUnk *)br_net_lobby_new();
     FUN_10036f40(g_brOwner5BC72C, b);
     *out = b;
     return 0;
-fail:
-    if (a != 0) {
-        a->vt->Release(a);
-    }
-    if (b != 0) {
-        b->vt->Release(b);
-    }
-    return hr;
 }
 
 
@@ -603,12 +585,12 @@ int BrNetSessionApply(void)
         }
         return r;
     }
-    g_brIdx0ABDE8 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser1;
+    g_brIdx0ABDE8 = (int)((BrNetSessionDesc *)pDesc)->dwUser1;
     (*(int *)&g_Br0B380C) = g_brIdx0ABDE8;
-    DAT_10ac5d58 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser2;
+    DAT_10ac5d58 = (int)((BrNetSessionDesc *)pDesc)->dwUser2;
     g_226e80 = DAT_10ac5d58;
-    DAT_10ac5d70 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser3;
-    g_CBE8 = (int)((DPSESSIONDESC2 *)pDesc)->dwUser4;
+    DAT_10ac5d70 = (int)((BrNetSessionDesc *)pDesc)->dwUser3;
+    g_CBE8 = (int)((BrNetSessionDesc *)pDesc)->dwUser4;
     DAT_100abdf8 = g_CBE8;
     BrSub10044540();
     start = g_brSel0ABDF4;
@@ -626,7 +608,7 @@ int BrNetSessionApply(void)
             }
         }
     }
-    pszName = ((DPSESSIONDESC2 *)pDesc)->lpszSessionNameA;
+    pszName = ((BrNetSessionDesc *)pDesc)->lpszSessionNameA;
     if (pszName != 0) {
         strcpy((*(char (*)[])&DAT_10ac40a8), pszName);
     }

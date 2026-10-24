@@ -44,11 +44,9 @@ typedef int (__stdcall *BrDpSend6)(void *, uint32_t, uint32_t, uint32_t,
 int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
                           uint32_t flags, void *pData, uint32_t cbData)
 {
-    BrDpSend6 send;
     int r;
     br_os_lock(&(g_BrDPlayCrit[0]));
-    send = *(BrDpSend6 *)(&(*(void ***)pIface)[0x68 / 4]);
-    r = send(pIface, idFrom, idTo, flags, pData, cbData);
+    r = br_net_send(pIface, idFrom, idTo, flags, pData, cbData);
     br_os_unlock(&(g_BrDPlayCrit[0]));
     return r;
 }

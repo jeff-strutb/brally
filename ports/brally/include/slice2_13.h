@@ -171,19 +171,18 @@ typedef struct BrDPlay4Obj {
 /* BrDPlayCtx: br_coretypes.h (0x10273328 is one) */
 
 /* A DirectPlay system message, as far as this packet reads one. Offsets 0x20
- * and 0x24 are the DPNAME.lpszShortNameA of DPMSG_CREATEPLAYERORGROUP and
+ * and 0x24 are the BrNetName.lpszShortNameA of DPMSG_CREATEPLAYERORGROUP and
  * DPMSG_DESTROYPLAYERORGROUP respectively, which is what fixes dwType 3 and
  * 5 as "player created" and "player destroyed". */
 /* 64-bit core: a DirectPlay system message, as the SDK's records at the
  * build's native layout (dplay.h). The leading dwords are shared: dwType,
- * then (CREATE/DESTROYPLAYERORGROUP) the player type and DPID at +0x08, or
+ * then (CREATE/DESTROYPLAYERORGROUP) the player type and BrNetId at +0x08, or
  * (CHAT) flags, the sender, the addressee and the group. */
-#include "dplay.h"
 typedef union BrDPlaySysMsg {
     struct {
         uint32_t dwType;      /* +0x00 */
         uint32_t f04;
-        uint32_t f08;         /* +0x08 -- the DPID for dwType 3 and 5 */
+        uint32_t f08;         /* +0x08 -- the BrNetId for dwType 3 and 5 */
         uint32_t f0C;
         uint32_t f10;
     };
@@ -191,7 +190,7 @@ typedef union BrDPlaySysMsg {
         uint32_t dwType, dwPlayerType, dpId, dwCurrentPlayers;
         void    *lpData;
         uint32_t dwDataSize;
-        DPNAME   dpnName;
+        BrNetName   dpnName;
         uint32_t dpIdParent, dwFlags;
     } create;
     struct {                  /* DPMSG_DESTROYPLAYERORGROUP (dwType 5) */
@@ -200,7 +199,7 @@ typedef union BrDPlaySysMsg {
         uint32_t dwLocalDataSize;
         void    *lpRemoteData;
         uint32_t dwRemoteDataSize;
-        DPNAME   dpnName;
+        BrNetName   dpnName;
         uint32_t dpIdParent, dwFlags;
     } destroy;
 } BrDPlaySysMsg;
@@ -349,7 +348,7 @@ BrDPlayState *BrDPlayGetState(void);
  * from state->pDPGlobal, then release that record. Returns 0xFFFF when
  * 0x1003D0B0 fails.
  *
- * +0x2C of a DPSESSIONDESC2 is dwCurrentPlayers (4+4+16+16 = 0x28 puts
+ * +0x2C of a BrNetSessionDesc is dwCurrentPlayers (4+4+16+16 = 0x28 puts
  * dwMaxPlayers at 0x28), and slice2_22.h independently identifies
  * 0x10277B40 as the IDirectPlay4A. That is the basis for the name; this
  * packet alone does not prove which "get" 0x1003D0B0 performs.

@@ -1,4 +1,3 @@
-#include "dplay.h"   /* DPSESSIONDESC2 */
 #include "br_ui.h"
 /* br_dplayenum.c -- net.
  *
@@ -87,7 +86,7 @@ int BrNetEnumSessionsStart(void *pIface)
     void *p = pIface;                /* the working copy; the else arm below
                                       * reads the PARAMETER, which is why the
                                       * original reloads [esp+arg] there */
-    DPSESSIONDESC2 desc;
+    BrNetSessionDesc desc;
     int   r;
 
     if (p == NULL) {
@@ -102,7 +101,7 @@ int BrNetEnumSessionsStart(void *pIface)
     memcpy((char *)&desc.guidApplication + 8, &DAT_10077508, 4);
     DAT_10ac5bcc = 1;
     if (DAT_10ac5bf0 != 0) {
-        r = (*(BrDpEnumSessionsFn *)&((void **)*(void ***)(p))[13])
+        r = br_net_enum_sessions
                 (p, &desc, 0, (void *)BrNetEnumSessionCb,
                  (*(void * *)&g_brOwner5BC72C), 0x91);
     } else {

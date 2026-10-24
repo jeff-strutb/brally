@@ -102,8 +102,9 @@ static void stop_peer(void)
 
 static void start_peer(const char *path)
 {
-    static char e_script[1200], e_save[1200], e_shots[1200], e_sync[64], log[1200];
-    const char *env[8];
+    static char e_script[1200], e_save[1200], e_shots[1200], e_sync[64], e_net[32], log[1200];
+    const char *env[12];
+    int k;
     uint16_t sync;
     const char *slash;
     int i;
@@ -120,18 +121,29 @@ static void start_peer(const char *path)
     host_mkdir(e_save + strlen("BR_SAVEDIR="));
     snprintf(e_shots, sizeof e_shots, "BR_SHOTS=%s/peer", s_shots);
     snprintf(log, sizeof log, "%s/peer/peer.log", host_save_dir());
-    env[0] = e_script;
-    env[1] = e_save;
-    env[2] = e_shots;
-    env[3] = "BR_PEER=1";
-    env[4] = "BR_VCLOCK_IMPORTS=1";     /* the oracle's clock: both copies */
-    env[5] = NULL;
+    /* the pair's own discovery port, chosen now: the network starts later,
+       and the second copy must have it from the start (dplay.c) */
+    if (!getenv("BR_NETPORT")) {
+        snprintf(e_net, sizeof e_net, "BR_NETPORT=%u", 40000u + (unsigned)((host_ticks_ns() / 1000u) % 20000u));
+        putenv(e_net);
+    } else
+        snprintf(e_net, sizeof e_net, "BR_NETPORT=%s", getenv("BR_NETPORT"));
+    k = 0;
+    env[k++] = e_script;
+    env[k++] = e_save;
+    env[k++] = e_shots;
+    env[k++] = "BR_PEER=1";
+    env[k++] = "BR_VCLOCK_IMPORTS=1";     /* the oracle's clock: both copies */
+    env[k++] = e_net;
+    env[k++] = "BR_RRLOG=";               /* nativecheck's logs are the first copy's */
+    env[k++] = "BR_AUDIOLOG=";
+    env[k++] = "BR_DUMP_EVERY=";
     plat_vclock_imports(1);
     if ((sync = plat_peersync_listen()) != 0) {      /* BR_VCLOCK: one timeline */
         snprintf(e_sync, sizeof e_sync, "BR_PEERSYNC=%u", sync);
-        env[5] = e_sync;
-        env[6] = NULL;
+        env[k++] = e_sync;
     }
+    env[k] = NULL;
     s_peer = host_spawn_self(env, log);
     fprintf(stderr, "script: peer %s %s\n", s_prog[i].a[0], s_peer ? "started" : "could not start");
     if (s_peer)

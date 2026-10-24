@@ -351,21 +351,3 @@ int br_os_message_box(const char *text, const char *caption)
     host_message_box(text, caption);
     return 1;
 }
-
-/* ---- ole32 -------------------------------------------------------------------------------------- */
-HRESULT plat_dplay_create(REFCLSID clsid, LPVOID *out);  /* dplay.c */
-
-HRESULT WINAPI CoInitialize(LPVOID p) { (void)p; return S_OK; }
-void    WINAPI CoUninitialize(void) {}
-
-HRESULT WINAPI CoCreateInstance(REFCLSID clsid, LPUNKNOWN outer, DWORD ctx, REFIID iid, LPVOID *out)
-{
-    (void)outer;
-    (void)ctx;
-    if (out)
-        *out = NULL;
-    if (plat_dplay_create(clsid, out) == 0)
-        return 0;
-    PLOG("CoCreateInstance(%08x-...): not available\n", clsid->Data1);
-    return E_FAIL;
-}

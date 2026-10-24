@@ -9,12 +9,6 @@
 #define BrFtolTrunc brw_BrFtolTrunc
 #define BrOperatorDelete brw_BrOperatorDelete
 #define BrOperatorNew brw_BrOperatorNew
-#define CLSID_DirectPlay brw_CLSID_DirectPlay
-#define CLSID_DirectPlayLobby brw_CLSID_DirectPlayLobby
-#define CoCreateInstance brw_CoCreateInstance
-#define CoInitialize brw_CoInitialize
-#define CoUninitialize brw_CoUninitialize
-#define DirectPlayLobbyCreateA brw_DirectPlayLobbyCreateA
 #define DisableThreadLibraryCalls brw_DisableThreadLibraryCalls
 #define FreeLibrary brw_FreeLibrary
 #define GetModuleHandleA brw_GetModuleHandleA

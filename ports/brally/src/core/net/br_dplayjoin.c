@@ -10,7 +10,6 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#include "dplay.h"
 #include "br_ui.h"     /* BrUiCtl_ */
 #include "slice2_25.h"   /* br_globals: its objects */
 #include <stdio.h>
@@ -114,23 +113,21 @@ int BrComCreateInstance(void **param_1)
   LPVOID local_4;
   HRESULT hr;
 
-  local_4 = (LPVOID)0x0;
-  hr = CoCreateInstance((IID *)&DAT_10078858,(LPUNKNOWN)0x0,1,(IID *)&DAT_10078828,&local_4);
+  local_4 = br_net_new();         /* the original's CoCreateInstance(CLSID_DirectPlay) */
   *param_1 = local_4;
+  hr = 0;
   return hr;
 }
 
 /* 0x10035BE0 -- the teardown twin of BrComCreateInstance above.  0x10AC4098
  * points at the session record whose first dword is the IDirectPlay object
- * (0x10273328, g_brP277B40) and whose +8 is our DPID.  Every access re-reads
+ * (0x10273328, g_brP277B40) and whose +8 is our BrNetId.  Every access re-reads
  * the pointer global: the original reloads it after each COM call. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC4098 -> the record at 0x10273328;
 
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AC4094 live-session counter */
 /* BrSub1003D070: prototype in br_funcs.h */
-typedef int (__stdcall *BrDpCall2)(void *pThis, int a);
-typedef int (__stdcall *BrDpCall1)(void *pThis);
 
 /* WHAT IT DOES: leaves the network game -- clears the lobby list, then, if a
  * DirectPlay object exists, destroys our player (when we have one), closes
@@ -145,13 +142,13 @@ int BrDpShutdown(void)
   pObj = g_brPA9D008->f00;
   if (pObj != 0) {
     if (g_brPA9D008->f08 != 0) {
-      BR_VFN(pObj, 0x24 / 4, BrDpCall2)(pObj, g_brPA9D008->f08);  /* DestroyPlayer */
+      br_net_destroy_player(pObj, g_brPA9D008->f08);
       g_brPA9D008->f08 = 0;
     }
     pObj = g_brPA9D008->f00;
-    BR_VFN(pObj, 0x10 / 4, BrDpCall1)(pObj);                     /* Close */
+    br_net_close(pObj);
     pObj = g_brPA9D008->f00;
-    BR_VFN(pObj, 0x08 / 4, BrDpCall1)(pObj);                     /* Release */
+    br_net_release(pObj);
     g_brPA9D008->f00 = 0;
   }
   g_brP277B40 = 0;
@@ -160,7 +157,7 @@ int BrDpShutdown(void)
 }
 
 /* 0x10035DD0 (D3D 0x1003C740, shared body) -- join a session.  The record
- * layouts are DirectPlay 3's: DPSESSIONDESC2 is 0x50 bytes, DPNAME 0x10,
+ * layouts are DirectPlay 3's: BrNetSessionDesc is 0x50 bytes, BrNetName 0x10,
  * DPCREDENTIALS 0x14; the vtable slots are IDirectPlay3's (+0x18
  * CreatePlayer, +0x9C SecureOpen).  The vtable pointer is read ONCE into a
  * local and both calls go through it, which is what the original's `mov
@@ -185,7 +182,7 @@ int BrDpShutdown(void)
  * cannot fold, e.g. a pointer returned by an earlier expression. */
 #include <windows.h>
 
-typedef struct BrDpSessDesc {           /* DPSESSIONDESC2 */
+typedef struct BrDpSessDesc {           /* BrNetSessionDesc */
     DWORD dwSize;                       /* +0x00 */
     DWORD dwFlags;                      /* +0x04 */
     DWORD guidInstance[4];              /* +0x08 */
@@ -202,7 +199,7 @@ typedef struct BrDpSessDesc {           /* DPSESSIONDESC2 */
     DWORD dwUser4;                      /* +0x4C */
 } BrDpSessDesc;
 
-typedef struct BrDpName {               /* DPNAME */
+typedef struct BrDpName {               /* BrNetName */
     DWORD dwSize;
     DWORD dwFlags;
     char *lpszShortName;
@@ -236,13 +233,6 @@ typedef struct BrDpLogin {
     char szDomain[200];                 /* +600 */
 } BrDpLogin;
 
-typedef int (__stdcall *BrDpSecureOpen)(void *pThis, BrDpSessDesc *pDesc,
-                                        DWORD dwFlags, void *pSecurity,
-                                        BrDpCredentials *pCred);
-typedef int (__stdcall *BrDpCreatePlayer)(void *pThis, DWORD *pId,
-                                          BrDpName *pName, void *hEvent,
-                                          void *pData, DWORD cbData,
-                                          DWORD dwFlags);
 
 /* FUN_10036740: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */             /* the player's name              */
@@ -281,7 +271,6 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     BrDpSess         save;
     BrDpSessDesc     desc;
     BrDpCredentials *pCred;
-    char            *pVt;
     int              hr;
     DWORD            dwFlags;
     void *          h;
@@ -313,8 +302,8 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
         cred.lpszDomain = pLogin->szDomain;
     }
 
-    pVt = *(char **)pDp;
-    hr = (*(BrDpSecureOpen *)(&((void **)pVt)[0x9C / 4]))(pDp, &desc, 0x81, NULL, pCred);
+    (void)pCred;    /* (the session takes no log-in: the original passed it on) */
+    hr = br_net_open(pDp, (BrNetSessionDesc *)&desc, 0x81);
     if (hr >= 0) {
         memset(&name, 0, sizeof(name));
         name.dwSize        = sizeof(name);
@@ -334,9 +323,9 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                 pSess->f0C = 0;
                 save.f10 = pSess->f10;
                 pSess->f10 = (pDesc->dwFlags >> 8) & 1;
-                hr = (*(BrDpCreatePlayer *)(&((void **)pVt)[0x18 / 4]))(pDp, &id, &name,
-                                                         pSess->hEvent,
-                                                         NULL, 0, dwFlags);
+                hr = br_net_create_player(pDp, &id, (const BrNetName *)&name,
+                                          pSess->hEvent,
+                                          NULL, 0, dwFlags);
                 if (hr < 0) {
                     pSess->pDp = save.pDp;
                     pSess->f0C = save.f0C;
@@ -444,7 +433,7 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
     void          *local_c;       /* IDirectPlayLobby3A */
     DWORD          local_8;
     DWORD          uStack_4;
-    DPLCONNECTION *pMem;
+    BrNetConnection *pMem;
     void *        pvVar3;
     int            iVar2;
     unsigned int   uVar4;
@@ -454,32 +443,29 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
     local_10 = NULL;
     local_c = NULL;
     pMem = NULL;
-    iVar2 = CoCreateInstance((IID *)&DAT_10078918, (LPUNKNOWN)0x0, 1,
-                             (IID *)&DAT_10078908, &local_c);
+    local_c = br_net_lobby_new();   /* the original's CoCreateInstance(CLSID_DirectPlayLobby) */
+    iVar2 = 0;
     if (iVar2 >= 0) {
-        iVar2 = BR_VFN(local_c, DPL3_GetConnectionSettings, BrLobGetConn)(local_c, 0, 0, &local_8);
+        iVar2 = br_net_lobby_settings(local_c, 0, 0, &local_8);
         if (iVar2 == (int)0x8877001e) {
             pvVar3 = calloc(1, local_8);
-            pMem = (DPLCONNECTION *)pvVar3;
+            pMem = (BrNetConnection *)pvVar3;
             if (pMem == NULL) {
                 iVar2 = (int)0x8007000e;
             } else {
-                iVar2 = BR_VFN(local_c, DPL3_GetConnectionSettings, BrLobGetConn)(local_c, 0, pMem,
-                                                                                  &local_8);
+                iVar2 = br_net_lobby_settings(local_c, 0, pMem, &local_8);
                 if (iVar2 >= 0) {
                     /* The low byte is masked when read and kept in esi across
                      * the call; the bit is extracted after it. */
                     uVar4 = pMem->dwFlags & 0xff;
                     pMem->lpSessionDesc->dwFlags = 0x44;
                     pMem->lpSessionDesc->dwMaxPlayers = 8;
-                    iVar2 = BR_VFN(local_c, DPL3_SetConnectionSettings, BrLobSetConn)(local_c, 0, 0,
-                                                                                      pMem);
+                    iVar2 = BR_NET_UNSUPPORTED;     /* (setting a lobby's connection: there is no lobby) */
                     flag = uVar4 >> 1 & 1;
                     if (iVar2 >= 0) {
-                        iVar2 = BR_VFN(local_c, DPL3_ConnectEx, BrLobConnectEx)(
-                            local_c, 0, &DAT_10078848, &local_10, 0);
+                        iVar2 = BR_NET_UNSUPPORTED; /* (connecting through the lobby) */
                         if (iVar2 >= 0) {
-                            iVar2 = BR_VFN(local_10, DP4_CreatePlayer, BrDpOpenX)(
+                            iVar2 = br_net_create_player(
                                 local_10, &uStack_4, pMem->lpPlayerName,
                                 param_1->hRecvEvent, 0, 0,
                                 flag != 0 ? 0x100 : 0);
@@ -505,10 +491,10 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
         }
     }
     if (local_10 != NULL) {
-        BR_VFN(local_10, DP4_Release, BrComRel)(local_10);
+        br_net_release(local_10);
     }
     if (local_c != NULL) {
-        BR_VFN(local_c, DPL3_Release, BrComRel)(local_c);
+        br_net_release(local_c);
     }
     if (pMem != NULL) {
         free(pMem);

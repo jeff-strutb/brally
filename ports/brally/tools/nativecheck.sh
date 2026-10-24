@@ -12,7 +12,7 @@
 # compressed for nativecheck_state.py. env: SECS (default 300) per script.
 cd "$(dirname "$0")/../../.."
 S=tools/brally/brbox_scripts
-DEFAULT="20_quickrace_drive 30_options 28_weather_rain 45_timeattack_save"
+DEFAULT="20_quickrace_drive 30_options 28_weather_rain 45_timeattack_save 61_mp_race"
 SECS=${SECS:-300}
 
 run_one() {

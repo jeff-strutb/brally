@@ -223,7 +223,7 @@ extern int32_t (*g_brPfn1003D0B0)(void *pObj, void **ppvOut);
 
 /* 0x1003CE80 (311 bytes)  Adopt the host's session settings.
  *
- * Fetch DPSESSIONDESC2 through 0x1003D0B0, copy its four dwUser fields into
+ * Fetch BrNetSessionDesc through 0x1003D0B0, copy its four dwUser fields into
  * six globals, re-derive the mode tables (0x10044540), step the track index
  * to the next selectable one, copy the session NAME into 0x10A9D018, and
  * release the Global-allocated descriptor.

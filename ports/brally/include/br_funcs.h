@@ -5295,7 +5295,7 @@ int BrWmAppHook35A30(char *, unsigned int, uintptr_t, intptr_t);
 #pragma pop_macro("BrWmAppHook35A30")
 #pragma push_macro("BrWmHook36130")
 #undef BrWmHook36130
-int BrWmHook36130(int, int, const struct DPNAME *, unsigned int, void *);
+int BrWmHook36130(int, int, const struct BrNetName *, unsigned int, void *);
 #pragma pop_macro("BrWmHook36130")
 #pragma push_macro("BrWndProc")
 #undef BrWndProc

@@ -119,7 +119,7 @@ int BrDPlayCreate(void)
   g_brPA9D008 = (BrOptUi *)&g_BrDPlayCtx;
   if (iVar4 == 0) {
     /* IDirectPlay4A::EnumConnections(&guidApp, callback, hwnd, 0) */
-    BR_VFN(g_brP277B40, 35, CC_std_5)(
+    br_net_enum_connections(
         g_brP277B40, (void *)&DAT_10077500, (void *)BrNetSessionStore, g_brOwner5BC72C, 0);
     iVar4 = BrDpCreateIface(&DAT_10ac3068);
     if (iVar4 < 0) {
@@ -204,7 +204,7 @@ void FUN_10035660(void)
   sprintf(local_104,s_DirectPlay_interface_final_insta_100aa514,DAT_10ac4094);
   br_os_debug(local_104);
   if (DAT_10ac3068 != (int *)0x0) {
-    (*(CC_std_1 *)&((void **)*(void ***)((DAT_10ac3068)))[2])(DAT_10ac3068);
+    br_net_release(DAT_10ac3068);
   }
   return;
 }
@@ -219,7 +219,6 @@ void FUN_10035660(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrComCreateInstance: prototype in br_funcs.h */
-typedef int (__stdcall *CC_std_3)(void *, void *, uint32_t);   /* InitializeConnection */
 
 /* WHAT IT DOES: connect to a chosen network transport -- tears down whatever
  * was running, asks the user's selection for its service provider, creates a
@@ -243,7 +242,7 @@ void FUN_100356b0(void)
     iVar1 = BrComCreateInstance((void **)&g_brP277B40);
     DAT_10ac4094 = DAT_10ac4094 + 1;
     if ((((iVar1 >= 0)) && ((*(int * *)&g_brP277B40) != (int *)0x0)) &&
-       (iVar1 = (*(CC_std_3 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[38])((*(int * *)&g_brP277B40),pAddr,0), (iVar1 >= 0))) {
+       (iVar1 = br_net_init_connection((*(int * *)&g_brP277B40),pAddr,0), (iVar1 >= 0))) {
       if ((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) {
         if ((g_brPAA29D4 != 0) && (iVar1 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40)), iVar1 < 0))
         goto LAB_100357b5;
@@ -355,7 +354,7 @@ int FUN_100361a0(void *param_1, void *param_2, void *param_3, int param_4)   /* 
     g_aBrAA2538[i].b = 0;
   }
   if ((*(int * *)&g_brP277B40) != (int *)0x0) {
-    uVar3 = (*(CC_std_5 *)&((void **)*(void ***)(((*(int * *)&g_brP277B40))))[12])((*(int * *)&g_brP277B40),param_1,param_2,param_3,param_4);
+    uVar3 = br_net_enum_players((*(int * *)&g_brP277B40),(const void *)param_1,(void *)param_2,(void *)param_3,param_4);
   }
   BrSlotsResetIfBZero();
   uVar2 = BrSlotsFindById(g_brPA9D008->f08);
@@ -367,7 +366,6 @@ int FUN_100361a0(void *param_1, void *param_2, void *param_3, int param_4)   /* 
 /* 0x10036740                                                         */
 /* ------------------------------------------------------------------ */
 
-typedef int (__stdcall *COM3)(void *this, void *buf, unsigned int *size);
 
 /* WHAT IT DOES: call a DirectPlay method that reports how big its answer is
  * before it will give it -- ask with no buffer, take the 'buffer too small'
@@ -377,15 +375,13 @@ typedef int (__stdcall *COM3)(void *this, void *buf, unsigned int *size);
 int FUN_10036740(void *param_1, void **param_2)
 
 {
-  COM3 fn;
   int hr;
   void * hMem;
   void *pMem;
   unsigned int size;
   
   pMem = 0;
-  fn = (COM3)(*(void ***)param_1)[0x58 / 4];   /* slot 22, GetSessionDesc */
-  hr = fn(param_1, 0, &size);
+  hr = br_net_get_session(param_1, 0, &size);
   if (hr == (int)0x8877001e) {
     hMem = calloc(1, size);
     pMem = hMem;
@@ -393,7 +389,7 @@ int FUN_10036740(void *param_1, void **param_2)
       hr = (int)0x8007000e;
     }
     else {
-      hr = fn(param_1, pMem, &size);
+      hr = br_net_get_session(param_1, pMem, &size);
       if (hr >= 0) {
         *param_2 = pMem;
         pMem = 0;
@@ -417,7 +413,7 @@ int FUN_10036740(void *param_1, void **param_2)
  * pointer when the element index is variable). */
 /* BrDpGuid: br_coretypes.h */
 
-/* One DPCOMPOUNDADDRESSELEMENT: data-type GUID, byte count, data pointer. */
+/* One BrNetAddrElem: data-type GUID, byte count, data pointer. */
 typedef struct { BrDpGuid g; int cb; char *pv; } BrDpAddrElem;
 
 /* CreateCompoundAddress lives at +0x38 in the IDirectPlayLobby vtable. */
@@ -546,9 +542,7 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
       iVar6 = 1;
     }
     pObj = DAT_10ac3068;
-    vt = *(int **)pObj;
-    iVar2 = (*(BrDpCreateAddr5 *)(&((void **)vt)[0x38 / 4]))
-                (pObj, aElem, iVar6, 0, &local_50);
+    iVar2 = br_net_lobby_address(pObj, (const BrNetAddrElem *)aElem, iVar6, 0, (uint32_t *)&local_50);
     if (iVar2 == (int)0x8877001e) {
       pvVar4 = calloc(1, local_50);
       pMem = pvVar4;
@@ -557,9 +551,7 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
       }
       else {
         pObj = DAT_10ac3068;
-        vt = *(int **)pObj;
-        iVar2 = (*(BrDpCreateAddr5 *)(&((void **)vt)[0x38 / 4]))
-                    (pObj, aElem, iVar6, pMem, &local_50);
+        iVar2 = br_net_lobby_address(pObj, (const BrNetAddrElem *)aElem, iVar6, pMem, (uint32_t *)&local_50);
         if (0 <= iVar2) {
           *param_1 = pMem;
           *param_2 = local_50;
@@ -580,8 +572,6 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
 
 /* BrSub1003D850: prototype in br_funcs.h */
 
-typedef int (__stdcall *COM4)(void *this, int a, void *b, int *c);
-typedef int (__stdcall *COM5)(void *this, void *cb, void *buf, int n, void *cookie);   /* EnumAddress */
 
 /* WHAT IT DOES: the same ask-then-allocate-then-ask-again dance for a
  * different DirectPlay method -- one that takes an extra argument and
@@ -598,10 +588,9 @@ int FUN_10036f40(HWND param_1, void *param_2)
   int *vt;
   
   pObj = (*(int * *)&g_brP277B40);
-  vt = *(int **)pObj;
   pMem = 0;
   size = 0;
-  hr = (*(COM4 *)(&((void **)vt)[0x48 / 4]))(pObj, 0, 0, &size);
+  hr = br_net_player_address(pObj, 0, 0, (uint32_t *)&size);
   if (hr == (int)0x8877001e) {
     hMem = calloc(1, (unsigned int)size);
     pMem = hMem;
@@ -610,10 +599,9 @@ int FUN_10036f40(HWND param_1, void *param_2)
     }
     else {
       pObj = (*(int * *)&g_brP277B40);
-      vt = *(int **)pObj;
-      hr = (*(COM4 *)(&((void **)vt)[0x48 / 4]))(pObj, 0, pMem, &size);
+      hr = br_net_player_address(pObj, 0, pMem, (uint32_t *)&size);
       if (hr >= 0) {
-        hr = (*(COM5 *)&((void **)*(void ***)(param_2))[5])(param_2, (void *)BrSub1003D850, pMem, size, param_1);
+        hr = BR_NET_UNSUPPORTED;    /* (walking the address through the lobby) */
       }
     }
   }

@@ -37,7 +37,7 @@ int32_t BrSub1003D950(BrOptUi *pUi, int a)
     if (pUi == NULL || (pObj = aSlot[0]) == NULL || DAT_10ac5be4 != 0) {
         return 0;
     }
-    pArg = (uint32_t)((const BrOptUi *)aSlot)->f08;   /* the DPID, +0x08 on i386 */
+    pArg = (uint32_t)((const BrOptUi *)aSlot)->f08;   /* the BrNetId, +0x08 on i386 */
 
     aPacket[0] = (int32_t)0x60000002u;
     aPacket[1] = (int32_t)a;

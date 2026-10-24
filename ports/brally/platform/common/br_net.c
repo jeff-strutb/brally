@@ -1,9 +1,9 @@
-/* dplay.c: DirectPlay 4 and DirectPlayLobby 3, over the network.
+/* br_net.c: the game's network play (br_net.h), over the local network.
  *
- * What the game sees is a DirectX 6 machine with DirectPlay's four stock
- * service providers, never launched from a lobby (the model the brbox oracle
+ * What the game sees is DirectPlay's model as it used it: four stock
+ * connection kinds, never launched from a lobby (the model the brbox oracle
  * runs the original against, tools/brally/brbox_com.py): it enumerates the
- * providers, opens or joins a session, creates its player, and exchanges
+ * connection kinds, opens or joins a session, creates its player, and exchanges
  * messages; the other machines' players arrive as DPSYS_CREATEPLAYERORGROUP
  * and leave as DPSYS_DESTROYPLAYERORGROUP. Which provider the player picks
  * makes no difference here: every one is this one transport.
@@ -25,10 +25,8 @@
 
 #include "plat.h"
 #include "host.h"
-#include "dplay.h"
+#include "br_net.h"
 
-const GUID CLSID_DirectPlay = { 0xD1EB6D20, 0x8923, 0x11D0, { 0x9D, 0x97, 0x00, 0xA0, 0xC9, 0x0A, 0x43, 0xCB } };
-const GUID CLSID_DirectPlayLobby = { 0x2FE8F810, 0xB2A5, 0x11D0, { 0xA7, 0x87, 0x00, 0x00, 0xF8, 0x03, 0xAB, 0xFC } };
 
 #define DPID_SERVERPLAYER       1
 #define DPPLAYER_SERVERPLAYER   0x100
@@ -53,24 +51,24 @@ const GUID CLSID_DirectPlayLobby = { 0x2FE8F810, 0xB2A5, 0x11D0, { 0xA7, 0x87, 0
 
 /* ---- the view ---------------------------------------------------------------------- */
 typedef struct player {
-    DPID     id;
+    BrNetId     id;
     int      used, local;
-    DWORD    flags;
-    HANDLE   event;
+    uint32_t    flags;
+    void *   event;
     char     sname[NAMELEN], lname[NAMELEN];
-    GUID     session;               /* the session it was announced in */
+    BrNetGuid     session;               /* the session it was announced in */
 } player;
 
 typedef struct session {
     int            used;
-    DPSESSIONDESC2 desc;            /* lpszSessionNameA / lpszPasswordA unused */
+    BrNetSessionDesc desc;            /* lpszSessionNameA / lpszPasswordA unused */
     char           name[NAMELEN];
     host_addr      host;            /* where its host listens */
 } session;
 
 typedef struct inmsg {
     struct inmsg *next;
-    DPID          from, to;         /* from 0: a system message */
+    BrNetId          from, to;         /* from 0: a system message */
     int           sys_kind;
     player        sys_p;
     int           n;
@@ -89,28 +87,11 @@ static inmsg      *s_inbox;
 static unsigned    s_pidbase, s_next_pid;
 static uint64_t    s_last_announce;
 
-/* the discovery port: BR_NETPORT keeps a scripted pair to itself. The first
- * copy of a pair (its script has a `peer` line) picks one before the network
- * starts; the copy it spawns inherits it (script.c). */
+/* the discovery port: BR_NETPORT keeps a scripted pair to itself (the
+ * first copy of a pair picks one before it spawns the second, script.c) */
 static uint16_t net_port(void)
 {
     const char *e = getenv("BR_NETPORT");
-    if (!e && !getenv("BR_PEER") && getenv("BR_SCRIPT")) {
-        FILE *f = fopen(getenv("BR_SCRIPT"), "r");
-        char line[256];
-        int pair = 0;
-        while (f && fgets(line, sizeof line, f))
-            if (!strncmp(line, "peer ", 5))
-                pair = 1;
-        if (f)
-            fclose(f);
-        if (pair) {
-            static char env[32];
-            snprintf(env, sizeof env, "BR_NETPORT=%u", 40000u + (unsigned)((host_ticks_ns() / 1000u) % 20000u));
-            putenv(env);
-            e = env + strlen("BR_NETPORT=");
-        }
-    }
     return e && atoi(e) > 0 ? (uint16_t)atoi(e) : NET_PORT;
 }
 
@@ -162,7 +143,7 @@ static void rstr(rbuf *r, char *out, int cap)
         r->at += n - k;
 }
 
-static void head(wbuf *w, int type, const GUID *g)
+static void head(wbuf *w, int type, const BrNetGuid *g)
 {
     w->n = 0;
     wraw(w, "BRDP", 4);
@@ -172,13 +153,13 @@ static void head(wbuf *w, int type, const GUID *g)
     if (g)
         wraw(w, g, 16);
     else {
-        GUID z;
+        BrNetGuid z;
         memset(&z, 0, sizeof z);
         wraw(w, &z, 16);
     }
 }
 
-static void put_desc(wbuf *w, const DPSESSIONDESC2 *d, const char *name)
+static void put_desc(wbuf *w, const BrNetSessionDesc *d, const char *name)
 {
     w32(w, d->dwFlags);
     wraw(w, &d->guidApplication, 16);
@@ -191,7 +172,7 @@ static void put_desc(wbuf *w, const DPSESSIONDESC2 *d, const char *name)
     wstr(w, name);
 }
 
-static void get_desc(rbuf *r, DPSESSIONDESC2 *d, char *name)
+static void get_desc(rbuf *r, BrNetSessionDesc *d, char *name)
 {
     d->dwFlags = r32(r);
     rraw(r, &d->guidApplication, 16);
@@ -248,7 +229,7 @@ static void send_session(const wbuf *w, const host_addr *except)
 }
 
 /* ---- players and the inbox ------------------------------------------------------------ */
-static player *find_player(DPID id)
+static player *find_player(BrNetId id)
 {
     int i;
     for (i = 0; i < MAXP; i++)
@@ -275,10 +256,10 @@ static int in_session(const player *p)
     return p->used && (p->local || (s_open && !memcmp(&p->session, &s_sess.desc.guidInstance, 16)));
 }
 
-static DWORD player_count(void)
+static uint32_t player_count(void)
 {
     int i;
-    DWORD n = 0;
+    uint32_t n = 0;
     for (i = 0; i < MAXP; i++)
         n += in_session(&s_pl[i]) ? 1 : 0;
     return n;
@@ -313,7 +294,7 @@ static void sys_msg(int kind, const player *p)
 }
 
 /* a message reaches each of our players it is addressed to, never its sender */
-static void deliver(DPID from, DPID to, const void *data, int n)
+static void deliver(BrNetId from, BrNetId to, const void *data, int n)
 {
     int i;
     if (getenv("BR_DPLOG"))
@@ -374,7 +355,7 @@ static void announce_to(const host_addr *a);
 static void receive(const unsigned char *b, int n, const host_addr *from)
 {
     rbuf r;
-    GUID g;
+    BrNetGuid g;
     int type, ours;
     r.b = b;
     r.n = n;
@@ -476,7 +457,7 @@ static void receive(const unsigned char *b, int n, const host_addr *from)
         break;
     }
     case P_PLAYER_DEL: {
-        DPID id = r32(&r);
+        BrNetId id = r32(&r);
         player *q = find_player(id);
         if (r.bad || !ours || !q || q->local)
             break;
@@ -491,7 +472,7 @@ static void receive(const unsigned char *b, int n, const host_addr *from)
         break;
     }
     case P_MSG: {
-        DPID f = r32(&r), t = r32(&r);
+        BrNetId f = r32(&r), t = r32(&r);
         int len = (int)r32(&r);
         if (r.bad || !ours || len < 0 || r.at + len > r.n)
             break;
@@ -561,7 +542,13 @@ static void net_up(void)
         s_lock = host_mutex_new();
     s_mc = host_udp_open(net_port(), NET_GROUP);
     s_uc = host_udp_open(0, 0);
-    s_pidbase = (unsigned)((host_ticks_ns() / 1000u) ^ (uintptr_t)&s_pidbase) & 0xFFFFu;
+    /* the base of this machine's player ids: from the clock, so two machines
+       differ; under BR_VCLOCK fixed per copy, so a scripted pair runs the
+       same every time */
+    if (plat_vclock())
+        s_pidbase = getenv("BR_PEER") ? 0x0B0Bu : 0x0A0Au;
+    else
+        s_pidbase = (unsigned)((host_ticks_ns() / 1000u) ^ (uintptr_t)&s_pidbase) & 0xFFFFu;
     if (s_pidbase == 0)
         s_pidbase = 1;
     PLOG("[%lu] dplay: network %s (port %u, discovery %u)\n", (unsigned long)plat_time_ms(), s_mc && s_uc ? "up" : "unavailable", s_uc ? host_udp_port(s_uc) : 0, net_port());
@@ -570,45 +557,43 @@ static void net_up(void)
 }
 
 /* ---- the objects -------------------------------------------------------------------- */
-typedef struct dpobj {
-    void *const *vtbl;
-    int refs;
-} dpobj;
+/* the game's network and lobby objects: all state is the one view above,
+ * so an object is only something for the game to hold */
+static int s_obj_net, s_obj_lobby;
 
-/* a method the game reaches that this machine cannot do */
-static HRESULT unsupported(void *self) { (void)self; return DPERR_UNSUPPORTED; }
-
-static HRESULT query(void *self, REFIID iid, void **out)
+void *br_net_new(void)
 {
-    (void)iid;
-    ((dpobj *)self)->refs++;
-    *out = self;
-    return DP_OK;
-}
-static ULONG addref(void *self) { return (ULONG)++((dpobj *)self)->refs; }
-static ULONG release(void *self)
-{
-    dpobj *o = (dpobj *)self;
-    int n = --o->refs;
-    return (ULONG)(n < 0 ? 0 : n);   /* left allocated: the game may still hold it */
+    if (!s_lock)
+        s_lock = host_mutex_new();
+    return &s_obj_net;
 }
 
-/* a buffer the caller sized: DPERR_BUFFERTOOSMALL with the size when short */
-static HRESULT give(void *dst, DWORD *size, const void *src, DWORD n)
+void *br_net_lobby_new(void)
 {
-    DWORD have = size ? *size : 0;
+    if (!s_lock)
+        s_lock = host_mutex_new();
+    return &s_obj_lobby;
+}
+
+/* an object let go of: the game may still hold a copy of it */
+void br_net_release(void *o) { (void)o; }
+
+/* a buffer the caller sized: BR_NET_BUFFERTOOSMALL with the size when short */
+static int32_t give(void *dst, uint32_t *size, const void *src, uint32_t n)
+{
+    uint32_t have = size ? *size : 0;
     if (size)
         *size = n;
     if (!dst || have < n)
-        return DPERR_BUFFERTOOSMALL;
+        return BR_NET_BUFFERTOOSMALL;
     memcpy(dst, src, n);
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-/* DPNAME + its strings, laid out for a buffer at base */
-static DWORD name_blob(unsigned char *out, const player *p, unsigned char *base)
+/* BrNetName + its strings, laid out for a buffer at base */
+static uint32_t name_blob(unsigned char *out, const player *p, unsigned char *base)
 {
-    DPNAME nm;
+    BrNetName nm;
     size_t a = strlen(p->sname) + 1, b = strlen(p->lname) + 1;
     memset(&nm, 0, sizeof nm);
     nm.dwSize = sizeof nm;
@@ -619,11 +604,10 @@ static DWORD name_blob(unsigned char *out, const player *p, unsigned char *base)
         memcpy(out + sizeof nm, p->sname, a);
         memcpy(out + sizeof nm + a, p->lname, b);
     }
-    return (DWORD)(sizeof nm + a + b);
+    return (uint32_t)(sizeof nm + a + b);
 }
 
-/* IDirectPlay4A */
-static HRESULT dp_close(void *self)
+int32_t br_net_close(void *self)
 {
     int i;
     wbuf w;
@@ -647,21 +631,21 @@ static HRESULT dp_close(void *self)
     memset(s_members, 0, sizeof s_members);
     clear_inbox();
     unlock();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *conn_cb)(const GUID *sp, void *conn, DWORD size, const DPNAME *name, DWORD flags, void *ctx);
+typedef BOOL (WINAPI *conn_cb)(const BrNetGuid *sp, void *conn, uint32_t size, const BrNetName *name, uint32_t flags, void *ctx);
 
-static HRESULT dp_enum_connections(void *self, const GUID *app, void *cb, void *ctx, DWORD flags)
+int32_t br_net_enum_connections(void *self, const void *app, void *cb, void *ctx, uint32_t flags)
 {
-    static const struct { GUID g; const char *name; } sp[4] = {
+    static const struct { BrNetGuid g; const char *name; } sp[4] = {
         { { 0x685BC400, 0x9D2C, 0x11CF, { 0xA9, 0xCD, 0x00, 0xAA, 0x00, 0x68, 0x86, 0xE3 } }, "IPX Connection For DirectPlay" },
         { { 0x36E95EE0, 0x8577, 0x11CF, { 0x96, 0x0C, 0x00, 0x80, 0xC7, 0x53, 0x4E, 0x82 } }, "Internet TCP/IP Connection For DirectPlay" },
         { { 0x44EAA760, 0xCB68, 0x11CF, { 0x9C, 0x4E, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E } }, "Modem Connection For DirectPlay" },
         { { 0x0F1D6860, 0x88D9, 0x11CF, { 0x9C, 0x4E, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E } }, "Serial Connection For DirectPlay" },
     };
     /* DPAID_ServiceProvider {07D916C0-E0AF-11CF-9C4E-00A0C905425E} */
-    static const GUID aid = { 0x07D916C0, 0xE0AF, 0x11CF, { 0x9C, 0x4E, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E } };
+    static const BrNetGuid aid = { 0x07D916C0, 0xE0AF, 0x11CF, { 0x9C, 0x4E, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E } };
     /* the game copies 200 bytes from the name: room for them */
     static char names[4][256];
     int i;
@@ -669,11 +653,11 @@ static HRESULT dp_enum_connections(void *self, const GUID *app, void *cb, void *
     /* the transports are listed without the network: the game lists them at
        start-up, and a socket opened then would have Windows' firewall ask
        before the first menu (and take the window's focus); it comes up when
-       one is chosen (dp_initialize_connection) */
+       one is chosen (br_net_init_connection) */
     for (i = 0; i < 4; i++) {
         unsigned char conn[36];
-        DWORD sz = 16;
-        DPNAME nm;
+        uint32_t sz = 16;
+        BrNetName nm;
         snprintf(names[i], sizeof names[i], "%s", sp[i].name);
         memcpy(conn, &aid, 16);
         memcpy(conn + 16, &sz, 4);
@@ -685,23 +669,23 @@ static HRESULT dp_enum_connections(void *self, const GUID *app, void *cb, void *
         if (!((conn_cb)cb)(&sp[i].g, conn, sizeof conn, &nm, 1, ctx))   /* DPCONNECTION_DIRECTPLAY */
             break;
     }
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_initialize_connection(void *self, void *conn, DWORD flags)
+int32_t br_net_init_connection(void *self, void *conn, uint32_t flags)
 {
     (void)self; (void)conn; (void)flags;
     net_up();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *sess_cb)(const DPSESSIONDESC2 *d, DWORD *timeout, DWORD flags, void *ctx);
+typedef BOOL (WINAPI *sess_cb)(const BrNetSessionDesc *d, uint32_t *timeout, uint32_t flags, void *ctx);
 
-static HRESULT dp_enum_sessions(void *self, DPSESSIONDESC2 *want, DWORD timeout, void *cb, void *ctx, DWORD flags)
+int32_t br_net_enum_sessions(void *self, BrNetSessionDesc *want, uint32_t timeout, void *cb, void *ctx, uint32_t flags)
 {
     session list[MAXS];
     int i, n = 0;
-    DWORD to = timeout;
+    uint32_t to = timeout;
     (void)self; (void)want; (void)flags;
     net_up();
     lock();
@@ -710,30 +694,30 @@ static HRESULT dp_enum_sessions(void *self, DPSESSIONDESC2 *want, DWORD timeout,
             list[n++] = s_known[i];
     unlock();
     for (i = 0; i < n; i++) {
-        DPSESSIONDESC2 d = list[i].desc;
+        BrNetSessionDesc d = list[i].desc;
         d.dwSize = sizeof d;
         d.lpszSessionNameA = list[i].name;
         d.lpszPasswordA = NULL;
         to = timeout;
         if (!((sess_cb)cb)(&d, &to, 0, ctx))
-            return DP_OK;
+            return BR_NET_OK;
     }
     to = timeout;
     ((sess_cb)cb)(NULL, &to, DPESC_TIMEDOUT, ctx);
     PLOG("[%lu] dplay: EnumSessions lists %d\n", (unsigned long)plat_time_ms(), n);
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_open(void *self, DPSESSIONDESC2 *d, DWORD flags, void *sec, void *cred)
+int32_t br_net_open(void *self, BrNetSessionDesc *d, uint32_t flags)
 {
     int i;
-    HRESULT hr = DPERR_NOSESSIONS;
-    (void)self; (void)sec; (void)cred;
+    int32_t hr = BR_NET_NOSESSIONS;
+    (void)self;
     net_up();
     PLOG("[%lu] dplay: Open flags %x\n", (unsigned long)plat_time_ms(), (unsigned)flags);
     lock();
     if (flags & DPOPEN_CREATE) {
-        uint64_t t = host_ticks_ns();
+        uint64_t t = plat_vclock() ? 0x4252414C4C59ull : host_ticks_ns();    /* (fixed under BR_VCLOCK) */
         memset(&s_sess, 0, sizeof s_sess);
         s_sess.desc = *d;
         s_sess.desc.dwSize = sizeof s_sess.desc;
@@ -747,7 +731,7 @@ static HRESULT dp_open(void *self, DPSESSIONDESC2 *d, DWORD flags, void *sec, vo
         s_last_announce = host_ticks_ns();
         announce_to(NULL);
         PLOG("[%lu] dplay: hosting \"%s\"\n", (unsigned long)plat_time_ms(), s_sess.name);
-        hr = DP_OK;
+        hr = BR_NET_OK;
     } else {
         for (i = 0; i < MAXS; i++)
             if (s_known[i].used && !memcmp(&s_known[i].desc.guidInstance, &d->guidInstance, 16)) {
@@ -758,7 +742,7 @@ static HRESULT dp_open(void *self, DPSESSIONDESC2 *d, DWORD flags, void *sec, vo
                 head(&w, P_JOIN, &s_sess.desc.guidInstance);
                 send_session(&w, NULL);
                 PLOG("[%lu] dplay: joined \"%s\"\n", (unsigned long)plat_time_ms(), s_sess.name);
-                hr = DP_OK;
+                hr = BR_NET_OK;
                 break;
             }
     }
@@ -766,12 +750,7 @@ static HRESULT dp_open(void *self, DPSESSIONDESC2 *d, DWORD flags, void *sec, vo
     return hr;
 }
 
-static HRESULT dp_open3(void *self, DPSESSIONDESC2 *d, DWORD flags)
-{
-    return dp_open(self, d, flags, NULL, NULL);
-}
-
-static HRESULT dp_create_player(void *self, DPID *id, const DPNAME *name, HANDLE ev, void *data, DWORD n, DWORD flags)
+int32_t br_net_create_player(void *self, BrNetId *id, const BrNetName *name, void * ev, void *data, uint32_t n, uint32_t flags)
 {
     player *p;
     (void)self; (void)data; (void)n;
@@ -779,12 +758,12 @@ static HRESULT dp_create_player(void *self, DPID *id, const DPNAME *name, HANDLE
     p = new_player();
     if (!p) {
         unlock();
-        return DPERR_UNSUPPORTED;
+        return BR_NET_UNSUPPORTED;
     }
     if (flags & DPPLAYER_SERVERPLAYER)
         p->id = DPID_SERVERPLAYER;
     else
-        p->id = (DPID)(s_pidbase << 8) + 0x10 + s_next_pid++;
+        p->id = (BrNetId)(s_pidbase << 8) + 0x10 + s_next_pid++;
     p->local = 1;
     p->flags = flags;
     p->event = ev;
@@ -801,10 +780,10 @@ static HRESULT dp_create_player(void *self, DPID *id, const DPNAME *name, HANDLE
     }
     *id = p->id;
     unlock();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_destroy_player(void *self, DPID id)
+int32_t br_net_destroy_player(void *self, BrNetId id)
 {
     player *p;
     (void)self;
@@ -820,12 +799,12 @@ static HRESULT dp_destroy_player(void *self, DPID id)
         p->used = 0;
     }
     unlock();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *player_cb)(DPID id, DWORD type, const DPNAME *name, DWORD flags, void *ctx);
+typedef BOOL (WINAPI *player_cb)(BrNetId id, uint32_t type, const BrNetName *name, uint32_t flags, void *ctx);
 
-static HRESULT dp_enum_players(void *self, const GUID *inst, void *cb, void *ctx, DWORD flags)
+int32_t br_net_enum_players(void *self, const void *inst, void *cb, void *ctx, uint32_t flags)
 {
     player list[MAXP];
     int i, n = 0;
@@ -833,13 +812,13 @@ static HRESULT dp_enum_players(void *self, const GUID *inst, void *cb, void *ctx
     lock();
     if (!s_open) {
         unlock();
-        return DPERR_NOSESSIONS;
+        return BR_NET_NOSESSIONS;
     }
     for (i = 0; i < MAXP; i++)
         if (in_session(&s_pl[i]))
             list[n++] = s_pl[i];
     unlock();
-    /* in DPID order, as the oracle's sorted walk */
+    /* in BrNetId order, as the oracle's sorted walk */
     for (i = 1; i < n; i++) {
         player t = list[i];
         int j = i;
@@ -850,30 +829,30 @@ static HRESULT dp_enum_players(void *self, const GUID *inst, void *cb, void *ctx
         list[j] = t;
     }
     for (i = 0; i < n; i++) {
-        unsigned char blob[sizeof(DPNAME) + 2 * NAMELEN];
-        DWORD fl;
+        unsigned char blob[sizeof(BrNetName) + 2 * NAMELEN];
+        uint32_t fl;
         if (list[i].id == DPID_SERVERPLAYER && !(flags & DPPLAYER_SERVERPLAYER))
             continue;
         name_blob(blob, &list[i], blob);
         fl = (list[i].local ? DPENUMPLAYERS_LOCAL : DPENUMPLAYERS_REMOTE) |
              (list[i].id == DPID_SERVERPLAYER ? DPPLAYER_SERVERPLAYER : 0);
-        if (!((player_cb)cb)(list[i].id, DPPLAYERTYPE_PLAYER, (const DPNAME *)blob, fl, ctx))
+        if (!((player_cb)cb)(list[i].id, DPPLAYERTYPE_PLAYER, (const BrNetName *)blob, fl, ctx))
             break;
     }
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_get_session_desc(void *self, void *data, DWORD *size)
+int32_t br_net_get_session(void *self, void *data, uint32_t *size)
 {
-    unsigned char buf[sizeof(DPSESSIONDESC2) + NAMELEN];
-    DPSESSIONDESC2 d;
-    DWORD n;
-    HRESULT hr;
+    unsigned char buf[sizeof(BrNetSessionDesc) + NAMELEN];
+    BrNetSessionDesc d;
+    uint32_t n;
+    int32_t hr;
     (void)self;
     lock();
     if (!s_open) {
         unlock();
-        return DPERR_NOCONNECTION;
+        return BR_NET_NOCONNECTION;
     }
     d = s_sess.desc;
     d.dwSize = sizeof d;
@@ -883,7 +862,7 @@ static HRESULT dp_get_session_desc(void *self, void *data, DWORD *size)
     if (getenv("BR_DPLOG"))
         PLOG("[%lu] dplay: GetSessionDesc user %x %x %x %x flags %x\n", (unsigned long)plat_time_ms(),
              (unsigned)d.dwUser1, (unsigned)d.dwUser2, (unsigned)d.dwUser3, (unsigned)d.dwUser4, (unsigned)d.dwFlags);
-    n = (DWORD)(sizeof d + strlen(s_sess.name) + 1);
+    n = (uint32_t)(sizeof d + strlen(s_sess.name) + 1);
     memcpy(buf, &d, sizeof d);
     memcpy(buf + sizeof d, s_sess.name, strlen(s_sess.name) + 1);
     unlock();
@@ -891,14 +870,14 @@ static HRESULT dp_get_session_desc(void *self, void *data, DWORD *size)
     return hr;
 }
 
-static HRESULT dp_set_session_desc(void *self, const DPSESSIONDESC2 *d, DWORD flags)
+int32_t br_net_set_session(void *self, const BrNetSessionDesc *d, uint32_t flags)
 {
-    GUID g;
+    BrNetGuid g;
     (void)self; (void)flags;
     lock();
     if (!s_open) {
         unlock();
-        return DPERR_NOCONNECTION;
+        return BR_NET_NOCONNECTION;
     }
     g = s_sess.desc.guidInstance;
     s_sess.desc = *d;
@@ -909,27 +888,27 @@ static HRESULT dp_set_session_desc(void *self, const DPSESSIONDESC2 *d, DWORD fl
     if (s_host)
         announce_to(NULL);
     unlock();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_get_player_name(void *self, DPID id, void *data, DWORD *size)
+int32_t br_net_player_name(void *self, BrNetId id, void *data, uint32_t *size)
 {
-    unsigned char blob[sizeof(DPNAME) + 2 * NAMELEN];
+    unsigned char blob[sizeof(BrNetName) + 2 * NAMELEN];
     player *p;
-    DWORD n;
+    uint32_t n;
     (void)self;
     lock();
     p = find_player(id);
     if (!p || !in_session(p)) {
         unlock();
-        return DPERR_INVALIDPLAYER;
+        return BR_NET_INVALIDPLAYER;
     }
     n = name_blob(blob, p, (unsigned char *)data);
     unlock();
     return give(data, size, blob, n);
 }
 
-static HRESULT dp_get_player_data(void *self, DPID id, void *data, DWORD *size, DWORD flags)
+int32_t br_net_player_data(void *self, BrNetId id, void *data, uint32_t *size, uint32_t flags)
 {
     player *p;
     (void)self; (void)data; (void)flags;
@@ -937,31 +916,35 @@ static HRESULT dp_get_player_data(void *self, DPID id, void *data, DWORD *size, 
     p = find_player(id);
     unlock();
     if (!p)
-        return DPERR_INVALIDPLAYER;
+        return BR_NET_INVALIDPLAYER;
     if (size)
         *size = 0;                  /* nobody sets player data */
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_player_query(void *self, DPID id)
+/* a player's network address: the game only learns whether the player is
+   there (the address itself it never gets) */
+int32_t br_net_player_address(void *self, BrNetId id, void *data, uint32_t *size)
 {
     player *p;
     (void)self;
+    (void)data;
+    (void)size;
     lock();
     p = find_player(id);
     unlock();
-    return p ? DP_OK : DPERR_INVALIDPLAYER;
+    return p ? BR_NET_OK : BR_NET_INVALIDPLAYER;
 }
 
 /* the DPMSG_CREATE/DESTROYPLAYERORGROUP record of m, for a buffer at base */
-static DWORD sys_body(unsigned char *out, const inmsg *m, unsigned char *base)
+static uint32_t sys_body(unsigned char *out, const inmsg *m, unsigned char *base)
 {
-    unsigned char nb[sizeof(DPNAME) + 2 * NAMELEN];
-    DWORD nn, hn;
+    unsigned char nb[sizeof(BrNetName) + 2 * NAMELEN];
+    uint32_t nn, hn;
     if (m->sys_kind == DPSYS_CREATEPLAYERORGROUP) {
         struct {
-            DWORD dwType, dwPlayerType; DPID dpId; DWORD dwCurrentPlayers;
-            void *lpData; DWORD dwDataSize; DPNAME dpnName; DPID dpIdParent; DWORD dwFlags;
+            uint32_t dwType, dwPlayerType; BrNetId dpId; uint32_t dwCurrentPlayers;
+            void *lpData; uint32_t dwDataSize; BrNetName dpnName; BrNetId dpIdParent; uint32_t dwFlags;
         } c;
         memset(&c, 0, sizeof c);
         hn = sizeof c;
@@ -973,13 +956,13 @@ static DWORD sys_body(unsigned char *out, const inmsg *m, unsigned char *base)
         memcpy(&c.dpnName, nb, sizeof c.dpnName);
         if (out) {
             memcpy(out, &c, hn);
-            memcpy(out + hn, nb + sizeof(DPNAME), nn - sizeof(DPNAME));
+            memcpy(out + hn, nb + sizeof(BrNetName), nn - sizeof(BrNetName));
         }
     } else {
         struct {
-            DWORD dwType, dwPlayerType; DPID dpId;
-            void *lpLocalData; DWORD dwLocalDataSize; void *lpRemoteData; DWORD dwRemoteDataSize;
-            DPNAME dpnName; DPID dpIdParent; DWORD dwFlags;
+            uint32_t dwType, dwPlayerType; BrNetId dpId;
+            void *lpLocalData; uint32_t dwLocalDataSize; void *lpRemoteData; uint32_t dwRemoteDataSize;
+            BrNetName dpnName; BrNetId dpIdParent; uint32_t dwFlags;
         } d;
         memset(&d, 0, sizeof d);
         hn = sizeof d;
@@ -990,33 +973,33 @@ static DWORD sys_body(unsigned char *out, const inmsg *m, unsigned char *base)
         memcpy(&d.dpnName, nb, sizeof d.dpnName);
         if (out) {
             memcpy(out, &d, hn);
-            memcpy(out + hn, nb + sizeof(DPNAME), nn - sizeof(DPNAME));
+            memcpy(out + hn, nb + sizeof(BrNetName), nn - sizeof(BrNetName));
         }
     }
-    return hn + nn - (DWORD)sizeof(DPNAME);
+    return hn + nn - (uint32_t)sizeof(BrNetName);
 }
 
-static HRESULT dp_receive(void *self, DPID *from, DPID *to, DWORD flags, void *data, DWORD *size)
+int32_t br_net_receive(void *self, BrNetId *from, BrNetId *to, uint32_t flags, void *data, uint32_t *size)
 {
     inmsg **pp, *m;
-    DPID want_to, want_from;
+    BrNetId want_to, want_from;
     (void)self;
     lock();
     want_to = (flags & DPRECEIVE_TOPLAYER) && to ? *to : 0;
     want_from = (flags & DPRECEIVE_FROMPLAYER) && from ? *from : 0;
     for (pp = &s_inbox; (m = *pp) != NULL; pp = &m->next) {
-        DWORD n, have;
+        uint32_t n, have;
         if ((flags & DPRECEIVE_TOPLAYER) && m->to != want_to && m->from != 0)
             continue;
         if ((flags & DPRECEIVE_FROMPLAYER) && m->from != want_from)
             continue;
-        n = m->sys_kind ? sys_body(NULL, m, (unsigned char *)data) : (DWORD)m->n;
+        n = m->sys_kind ? sys_body(NULL, m, (unsigned char *)data) : (uint32_t)m->n;
         have = size ? *size : 0;
         if (size)
             *size = n;
         if (!data || have < n) {
             unlock();
-            return DPERR_BUFFERTOOSMALL;
+            return BR_NET_BUFFERTOOSMALL;
         }
         if (m->sys_kind)
             sys_body((unsigned char *)data, m, (unsigned char *)data);
@@ -1034,26 +1017,26 @@ static HRESULT dp_receive(void *self, DPID *from, DPID *to, DWORD flags, void *d
             free(m);
         }
         unlock();
-        return DP_OK;
+        return BR_NET_OK;
     }
     unlock();
-    return DPERR_NOMESSAGES;
+    return BR_NET_NOMESSAGES;
 }
 
-static HRESULT dp_get_message_count(void *self, DPID id, DWORD *count)
+int32_t br_net_message_count(void *self, BrNetId id, uint32_t *count)
 {
     inmsg *m;
-    DWORD n = 0;
+    uint32_t n = 0;
     (void)self;
     lock();
     for (m = s_inbox; m; m = m->next)
         n += (m->to == id || m->from == 0) ? 1 : 0;
     unlock();
     *count = n;
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_send(void *self, DPID from, DPID to, DWORD flags, const void *data, DWORD n)
+int32_t br_net_send(void *self, BrNetId from, BrNetId to, uint32_t flags, const void *data, uint32_t n)
 {
     (void)self; (void)flags;
     lock();
@@ -1072,30 +1055,21 @@ static HRESULT dp_send(void *self, DPID from, DPID to, DWORD flags, const void *
         deliver(from, to, data, (int)n);
     }
     unlock();
-    return DP_OK;
+    return BR_NET_OK;
 }
 
-static HRESULT dp_send_ex(void *self, DPID from, DPID to, DWORD flags, const void *data, DWORD n,
-                          DWORD prio, DWORD timeout, void *ctx, DWORD *msgid)
-{
-    (void)prio; (void)timeout; (void)ctx;
-    if (msgid)
-        *msgid = 0;
-    return dp_send(self, from, to, flags, data, n);
-}
-
-/* IDirectPlayLobby3A */
-static HRESULT dpl_get_connection_settings(void *self, DWORD app, void *data, DWORD *size)
+/* the lobby */
+int32_t br_net_lobby_settings(void *self, uint32_t app, void *data, uint32_t *size)
 {
     (void)self; (void)app; (void)data; (void)size;
-    return DPERR_NOTLOBBIED;
+    return BR_NET_NOTLOBBIED;
 }
 
-/* each element as a DPADDRESS chunk {GUID; DWORD size} then its data */
-static HRESULT dpl_create_compound_address(void *self, const DPCOMPOUNDADDRESSELEMENT *e, DWORD count,
-                                           void *addr, DWORD *size)
+/* each element as a DPADDRESS chunk {BrNetGuid; uint32_t size} then its data */
+int32_t br_net_lobby_address(void *self, const BrNetAddrElem *e, uint32_t count,
+                                           void *addr, uint32_t *size)
 {
-    DWORD n = 0, i, have = size ? *size : 0;
+    uint32_t n = 0, i, have = size ? *size : 0;
     unsigned char *o = (unsigned char *)addr;
     (void)self;
     for (i = 0; i < count; i++)
@@ -1103,7 +1077,7 @@ static HRESULT dpl_create_compound_address(void *self, const DPCOMPOUNDADDRESSEL
     if (size)
         *size = n;
     if (!addr || have < n)
-        return DPERR_BUFFERTOOSMALL;
+        return BR_NET_BUFFERTOOSMALL;
     for (i = 0; i < count; i++) {
         memcpy(o, &e[i].guidDataType, 16);
         memcpy(o + 16, &e[i].dwDataSize, 4);
@@ -1111,75 +1085,5 @@ static HRESULT dpl_create_compound_address(void *self, const DPCOMPOUNDADDRESSEL
             memcpy(o + 20, e[i].lpData, e[i].dwDataSize);
         o += 20 + e[i].dwDataSize;
     }
-    return DP_OK;
-}
-
-static void *s_dp_vtbl[DP4_SLOTS], *s_dpl_vtbl[DPL3_SLOTS];
-
-static void tables(void)
-{
-    int i;
-    if (!s_lock)
-        s_lock = host_mutex_new();
-    if (s_dp_vtbl[0])
-        return;
-    for (i = 0; i < DP4_SLOTS; i++)
-        s_dp_vtbl[i] = (void *)unsupported;
-    for (i = 0; i < DPL3_SLOTS; i++)
-        s_dpl_vtbl[i] = (void *)unsupported;
-    s_dp_vtbl[DP4_QueryInterface] = s_dpl_vtbl[DPL3_QueryInterface] = (void *)query;
-    s_dp_vtbl[DP4_AddRef] = s_dpl_vtbl[DPL3_AddRef] = (void *)addref;
-    s_dp_vtbl[DP4_Release] = s_dpl_vtbl[DPL3_Release] = (void *)release;
-    s_dp_vtbl[DP4_Close] = (void *)dp_close;
-    s_dp_vtbl[DP4_CreatePlayer] = (void *)dp_create_player;
-    s_dp_vtbl[DP4_DestroyPlayer] = (void *)dp_destroy_player;
-    s_dp_vtbl[DP4_EnumPlayers] = (void *)dp_enum_players;
-    s_dp_vtbl[DP4_EnumSessions] = (void *)dp_enum_sessions;
-    s_dp_vtbl[DP4_GetMessageCount] = (void *)dp_get_message_count;
-    s_dp_vtbl[DP4_GetPlayerAddress] = (void *)dp_player_query;
-    s_dp_vtbl[DP4_GetPlayerCaps] = (void *)dp_player_query;
-    s_dp_vtbl[DP4_GetPlayerData] = (void *)dp_get_player_data;
-    s_dp_vtbl[DP4_GetPlayerName] = (void *)dp_get_player_name;
-    s_dp_vtbl[DP4_GetSessionDesc] = (void *)dp_get_session_desc;
-    s_dp_vtbl[DP4_Open] = (void *)dp_open3;
-    s_dp_vtbl[DP4_Receive] = (void *)dp_receive;
-    s_dp_vtbl[DP4_Send] = (void *)dp_send;
-    s_dp_vtbl[DP4_SetSessionDesc] = (void *)dp_set_session_desc;
-    s_dp_vtbl[DP4_EnumConnections] = (void *)dp_enum_connections;
-    s_dp_vtbl[DP4_InitializeConnection] = (void *)dp_initialize_connection;
-    s_dp_vtbl[DP4_SecureOpen] = (void *)dp_open;
-    s_dp_vtbl[DP4_GetPlayerAccount] = (void *)dp_player_query;
-    s_dp_vtbl[DP4_GetPlayerFlags] = (void *)dp_player_query;
-    s_dp_vtbl[DP4_SendEx] = (void *)dp_send_ex;
-    s_dpl_vtbl[DPL3_GetConnectionSettings] = (void *)dpl_get_connection_settings;
-    s_dpl_vtbl[DPL3_CreateCompoundAddress] = (void *)dpl_create_compound_address;
-}
-
-static HRESULT make(void *const *vtbl, LPVOID *out)
-{
-    dpobj *o = (dpobj *)calloc(1, sizeof *o);
-    if (!o)
-        return E_OUTOFMEMORY;
-    o->vtbl = vtbl;
-    o->refs = 1;
-    *out = o;
-    return DP_OK;
-}
-
-/* CoCreateInstance for the DirectPlay classes; E_FAIL (not handled) else */
-HRESULT plat_dplay_create(REFCLSID clsid, LPVOID *out)
-{
-    tables();
-    if (!memcmp(clsid, &CLSID_DirectPlay, sizeof(GUID)))
-        return make(s_dp_vtbl, out);
-    if (!memcmp(clsid, &CLSID_DirectPlayLobby, sizeof(GUID)))
-        return make(s_dpl_vtbl, out);
-    return E_FAIL;
-}
-
-HRESULT WINAPI DirectPlayLobbyCreateA(LPGUID g, LPVOID *out, LPUNKNOWN outer, LPVOID data, DWORD n)
-{
-    (void)g; (void)outer; (void)data; (void)n;
-    tables();
-    return make(s_dpl_vtbl, out);
+    return BR_NET_OK;
 }

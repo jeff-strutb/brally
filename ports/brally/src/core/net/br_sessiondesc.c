@@ -47,8 +47,7 @@ extern void BrExt_1003CDA0(void);
 /* The session description GlobalAlloc'd by 0x10036740; only the four user
  * dwords (+0x40..+0x4C on i386) are touched here. 64-bit core: the SDK
  * record at the native layout, where they follow two pointers. */
-#include "dplay.h"
-typedef DPSESSIONDESC2 BrDpSessionDesc;
+typedef BrNetSessionDesc BrDpSessionDesc;
 
 typedef struct BrDpObj BrDpObj;
 typedef struct BrDpVtbl {
@@ -88,7 +87,7 @@ int32_t BrSub1003CDA0(void)
 
         /* The original RE-READS the object here rather than reusing it. */
         pDP = (BrDpObj *)(*(void * *)&g_brP277B40);                   /* 0x10036498 */
-        hr = pDP->pVtbl->SetSessionDesc(pDP, pDesc, 0u); /* 0x100364A7 */
+        hr = br_net_set_session(pDP, pDesc, 0u); /* 0x100364A7 */
     }
 
     if (hr < 0) {

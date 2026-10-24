@@ -74,7 +74,7 @@ typedef int32_t (__stdcall *BrComGetFnStd)(void *pThis, void *pParam,
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
-    BrComGetFnStd pfn = (BrComGetFnStd)pObj->pVtbl->pfnGet;
+    BrComGetFnStd pfn = (BrComGetFnStd)br_net_player_name;     /* the original's GetPlayerName */
     uint32_t      cb;
     void         *pv = NULL;
     int32_t       hr;

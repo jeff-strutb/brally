@@ -252,7 +252,7 @@ struct BrDInputDev { const BrDInputDevVtbl *pVtbl; };
  * 6. DirectPlay -- what 0x1003CDA0 touches
  * ==========================================================================
  *
- * The four fields the function writes are DPSESSIONDESC2's dwUser1..dwUser4
+ * The four fields the function writes are BrNetSessionDesc's dwUser1..dwUser4
  * at +0x40..+0x4C of the 32-bit layout.  DEVIATION: the port does NOT overlay
  * that layout on the block DirectPlay hands back -- the injected builder
  * below owns the type, so no foreign buffer is ever punned.  Everything else
@@ -436,8 +436,8 @@ typedef struct Br72Env {
      * magic numbers; the other four are genuine floats. */
     uint32_t n4C5158, n4C515C;
     float    f4C5154, f4C5160, f4C1690, f4C0BA8;
-    int32_t  n0B380C;     /* 0x100B380C -- DPSESSIONDESC2 dwUser1           */
-    int32_t  n22B350;     /* 0x1022B350 -- DPSESSIONDESC2 dwUser2           */
+    int32_t  n0B380C;     /* 0x100B380C -- BrNetSessionDesc dwUser1           */
+    int32_t  n22B350;     /* 0x1022B350 -- BrNetSessionDesc dwUser2           */
     uint8_t  b4BBF00, b4BC194, b4C5150, b4C15CC;  /* the byte colour path   */
     int32_t  n4C5164, n4C516C, n4C5170, n4C01A0;  /* the clamp limits       */
     int32_t  n4C5188, n4C518C;                    /* index buffer + count   */

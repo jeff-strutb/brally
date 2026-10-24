@@ -111,7 +111,7 @@ int BrDPlaySpClassify(const uint8_t *pGuid,
  * and always returns 1 (keep enumerating) -- including when the GUID matches
  * nothing, in which case nothing at all is written.
  *
- * `pszName` is DPNAME::lpszShortNameA (the original reads lpName+8);
+ * `pszName` is BrNetName::lpszShortNameA (the original reads lpName+8);
  * `pConn`/`cbConn` are the opaque connection blob and its size.
  *
  * GOTCHA (original bug, preserved in spirit): when the connection blob cannot
@@ -197,7 +197,7 @@ void BrDPlaySlotsClearMarks(BrSlotTable *pTable);
 typedef struct BrDPlayLink {
     void    *pIface;  /* +0x00  IDirectPlay4A*                              */
     void    *f04;     /* +0x04  never read here                             */
-    uint32_t f08;     /* +0x08  our DPID: passed as Send's idFrom, and as
+    uint32_t f08;     /* +0x08  our BrNetId: passed as Send's idFrom, and as
                        *        DestroyPlayer's argument in 0x1003C550      */
     uint32_t f0C;     /* +0x0C  gates the extra call in BrDPlaySendTag8     */
 } BrDPlayLink;
@@ -251,8 +251,8 @@ int BrDPlaySendTag3(const BrDPlayLink *pLink, int32_t fGate);
 int BrDPlaySendTag6(const BrDPlayLink *pLink, uint32_t value);
 int BrDPlaySendTag7(const BrDPlayLink *pLink, uint32_t value);
 
-/* 0x1003DAE0  send tag 6 carrying our own DPID. Does nothing when pLink is
- * null or pLink->f08 is zero -- so DPID 0 is treated as "no player". */
+/* 0x1003DAE0  send tag 6 carrying our own BrNetId. Does nothing when pLink is
+ * null or pLink->f08 is zero -- so BrNetId 0 is treated as "no player". */
 void BrDPlaySendTag6Self(const BrDPlayLink *pLink);
 
 /* 0x1003DB50  tag 8: a TWELVE-byte payload { tag, a, b }.

@@ -81,7 +81,6 @@ int BrOpt3A00(void)
     BrDPSessionDesc *pDesc;
     int              fAllReady;
     BrSlot          *pSlot;
-    typedef int32_t (__stdcall *FnSetDesc)(BrDPlay *, BrDPSessionDesc *, uint32_t);
 
     pDesc = NULL;
     FUN_10036740(g_brP277B40, &pDesc);
@@ -113,8 +112,7 @@ int BrOpt3A00(void)
             BrSub1003D9F0(g_brPA9D008);
             DAT_10ac5be4 = 1;
             pDesc->dwFlags |= 0x20;
-            ((FnSetDesc)g_brP277B40->pVtbl->pfnSetSessionDesc)(
-                g_brP277B40, pDesc, 0);
+            br_net_set_session(g_brP277B40, (const BrNetSessionDesc *)pDesc, 0);
         } else {
             strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_NOTREADY));
             FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 1);

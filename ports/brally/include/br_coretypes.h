@@ -365,7 +365,7 @@ typedef void (*BrCheatFn)(void);
 #include "slice1_02.h"       /* BrCarState */
 typedef struct BrPeerRec {
     void *hMutex;                            /* +0x0000 */
-    int f004;                                /* +0x0004  the peer's DPID */
+    int f004;                                /* +0x0004  the peer's BrNetId */
     int f008;                                /* +0x0008  stamped with the current tick */
     unsigned int aTs[8];                     /* +0x000C  tick of each state */
     int f02C;                                /* +0x002C */

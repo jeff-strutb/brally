@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include "br_ui.h"   /* BrUiCtl_, BrTextList */
-#include "dplay.h"   /* DPSESSIONDESC2 */
 
 /* 64-bit core: the session list is the control's canonical BrTextList (+0x3838
  * on i386), called through its own vtable: slot 4 appends a row
@@ -31,7 +30,7 @@ extern "C"
 int __stdcall BrNetEnumSessionCb(void *pv, void *pUnused, unsigned flags,
                                  void *pCtx)
 {
-    const DPSESSIONDESC2 *pDesc = (const DPSESSIONDESC2 *)pv;
+    const BrNetSessionDesc *pDesc = (const BrNetSessionDesc *)pv;
     void *pMem;
     int32_t kind;
     BrUiCtl_ *pCtl;

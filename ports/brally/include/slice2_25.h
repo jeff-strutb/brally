@@ -35,7 +35,7 @@
  *     with three stdcall arguments; slot 31 of IDirectPlay4 is SetSessionDesc
  *   - the buffer handed to it has dwFlags at +0x04 and the code ORs in 0x20,
  *     which is DPSESSION_JOINDISABLED
- *   - the field compared against 1 is at +0x2C, which is DPSESSIONDESC2's
+ *   - the field compared against 1 is at +0x2C, which is BrNetSessionDesc's
  *     dwCurrentPlayers ("fewer than two players" -> refuse to start)
  *   - the same buffer is released with GlobalHandle/GlobalUnlock/GlobalFree,
  *     which is exactly how a DirectPlay GetSessionDesc wrapper's output is
@@ -171,7 +171,7 @@ typedef struct BrGameObj {
 
 /* --- DirectPlay ---------------------------------------------------------- */
 
-/* DPSESSIONDESC2, as far as this packet uses it. The two offsets that are
+/* BrNetSessionDesc, as far as this packet uses it. The two offsets that are
  * actually read are dwFlags (+0x04) and dwCurrentPlayers (+0x2C); the rest
  * of the prefix is spelled out because it is what fixes those offsets. */
 typedef struct BrDPSessionDesc {
