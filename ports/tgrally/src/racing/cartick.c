@@ -1,6 +1,7 @@
 /* cartick.c -- a car's per-frame clocks and message timers
  */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
 
@@ -35,10 +36,7 @@ void BrVec3Normalise(BrVec3 *v);
 extern int D_8028B940;
 extern int D_8026FF08;
 extern int D_8026FF10;
-typedef struct BrCarEnt {       /* a car's entity record (0x78 bytes) */
-  char pad00[0x60];
-  TgrAddr car;                   /* BrCar * -- 0x60 */
-} BrCarEnt;
+typedef BrRaceEnt BrCarEnt;     /* (tgr/ent.h) */
 void BrHudArrowDraw(BrCar *car, BrVec3 *at, short kind);
 void BrWrongWayCheck(BrCar *car);
 void BrRaceGateStep(BrCarEnt *e);
@@ -122,12 +120,12 @@ int BrCarTrackLocate(BrCar *car)
   }
   dist = car->xfa8 - BEF(D_80025C70->pt[0].dist) * car->xf7c;
   if (check &&
-      !BrSeg2SideTest(BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].left.x), BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].right.x),
+      !BrSeg2SideTest(BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].left.x), BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      !BrSeg2SideTest(BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60 + 1].left.x), BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60 + 1].right.x),
+      !BrSeg2SideTest(BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].left.x), BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      BrVec3Dist((BrVec3 *)car->mtx0[3], BRV(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].pos)) < 64.0f) {
-    seg = TGR_PTR(BrPathSeg *, car->xf5c);
+      BrVec3Dist((BrVec3 *)car->mtx0[3], BRV(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].pos)) < 64.0f) {
+    seg = ((BrPathSeg *)(car->xf5c));
     j = car->xf60;
   } else {
     bestD = BEF(D_80025C00.x2c) - BEF(D_80025C00.x28);
@@ -185,7 +183,7 @@ int BrCarTrackLocate(BrCar *car)
   if (!check || (-1000.0f < step && step < 1000.0f)) {
     car->xfa8 += step;
   }
-  car->xf5c = tgr_addr32(seg);
+  car->xf5c = (seg);
   car->xf60 = j;
   car->xf64 = across.x;
   car->xf68 = across.y;
@@ -201,7 +199,7 @@ none:
 /* @implements 0x8021F0A8 tgr BrCarTickClocks */
 void BrCarTickClocks(BrCar *car)
 {
-  if ((((struct BrCarLink *)(car->link))->flags & 3) == 0) {
+  if ((((BrCarLink *)(car->link))->flags & 3) == 0) {
     if (D_8026FF18 == 3) {
       car->raceTime += D_8028AAD8;
       return;
@@ -458,20 +456,20 @@ void BrCarGridCell(BrCar *car)
 void BrCarEntTick(BrCarEnt *e)
 {
   if (D_8026FF10 == 0 && e->car != 0) {
-    if (TGR_PTR(BrCar *, e->car)->body[0].hitSize != 0) {
-      BrHudArrowDraw(TGR_PTR(BrCar *, e->car), &TGR_PTR(BrCar *, e->car)->body[0].x1ec, TGR_PTR(BrCar *, e->car)->body[0].hitSize);
-      TGR_PTR(BrCar *, e->car)->body[0].hitSize = 0;
+    if (((BrCar *)(e->car))->body[0].hitSize != 0) {
+      BrHudArrowDraw(((BrCar *)(e->car)), &((BrCar *)(e->car))->body[0].x1ec, ((BrCar *)(e->car))->body[0].hitSize);
+      ((BrCar *)(e->car))->body[0].hitSize = 0;
     }
-    BrCarTickClocks(TGR_PTR(BrCar *, e->car));
-    BrCarTickMessages(TGR_PTR(BrCar *, e->car));
-    BrWrongWayCheck(TGR_PTR(BrCar *, e->car));
+    BrCarTickClocks(((BrCar *)(e->car)));
+    BrCarTickMessages(((BrCar *)(e->car)));
+    BrWrongWayCheck(((BrCar *)(e->car)));
     BrRaceGateStep(e);
-    BrCarGridCell(TGR_PTR(BrCar *, e->car));
-    BrVec3Sub(&TGR_PTR(BrCar *, e->car)->velfd8, (BrVec3 *)TGR_PTR(BrCar *, e->car)->mtx0[3], &TGR_PTR(BrCar *, e->car)->posPrev);
-    BrVec3ScaleBy(&TGR_PTR(BrCar *, e->car)->velfd8, 1.0f / D_8028AAD8);
-    TGR_PTR(BrCar *, e->car)->heading = BrAtan2(((BrCarCam *)((TGR_PTR(BrCar *, e->car)->cam)))->mtx[0][0], ((BrCarCam *)((TGR_PTR(BrCar *, e->car)->cam)))->mtx[0][1]);
-    if (TGR_PTR(BrCar *, e->car)->xed4 != 0) {
-      TGR_PTR(BrCar *, e->car)->xed4--;
+    BrCarGridCell(((BrCar *)(e->car)));
+    BrVec3Sub(&((BrCar *)(e->car))->velfd8, (BrVec3 *)((BrCar *)(e->car))->mtx0[3], &((BrCar *)(e->car))->posPrev);
+    BrVec3ScaleBy(&((BrCar *)(e->car))->velfd8, 1.0f / D_8028AAD8);
+    ((BrCar *)(e->car))->heading = BrAtan2(((BrCarCam *)((((BrCar *)(e->car))->cam)))->mtx[0][0], ((BrCarCam *)((((BrCar *)(e->car))->cam)))->mtx[0][1]);
+    if (((BrCar *)(e->car))->xed4 != 0) {
+      ((BrCar *)(e->car))->xed4--;
     }
   }
 }

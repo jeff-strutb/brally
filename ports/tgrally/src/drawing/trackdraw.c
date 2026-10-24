@@ -2,6 +2,7 @@
  * standing in them
  */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 
 /* -- declarations -- */
 typedef struct BrDrawSortItem { /* sorted before drawing */
@@ -84,11 +85,7 @@ typedef struct BrDrawCell {     /* a grid cell near the camera (4 bytes) */
   unsigned char row;
   short dist;                   /* 0x02  squared distance in cells */
 } BrDrawCell;
-typedef struct BrRaceEnt {      /* a race entity (0x78 bytes), as rank.c */
-  char pad00[0x60];
-  TgrAddr car;                   /* BrCar * -- 0x60 */
-  char pad64[0x78 - 0x64];
-} BrRaceEnt;
+
 extern int D_8028BD94;          /* the rows the view's grid span covers */
 extern int D_8028BD9C;
 extern int D_8034E5B0[64];      /* per row: its first and last column */
@@ -113,7 +110,6 @@ extern float D_802AA00C;
 extern float D_8031B338[3];     /* the sun's direction */
 extern BrVec3 D_8035D510;       /* the light direction this frame */
 extern unsigned char D_8028A9F0[0x18];   /* the light template, as the RSP reads it */
-extern BrRaceEnt D_803239A0[];
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];
 unsigned int BrTrackGridCell(int col, int row);
@@ -781,7 +777,7 @@ full:
   ((signed char *)D_8028C640[D_8028C6A0].l)[9] = (int)D_8035D510.y;   /* trunc.w.s then sb, as the ROM */
   ((signed char *)D_8028C640[D_8028C6A0].l)[10] = (int)D_8035D510.z;   /* trunc.w.s then sb, as the ROM */
   for (i = 0; i < D_8028B7F0; i++) {
-    car = TGR_PTR(BrCar *, D_803239A0[i].car);
+    car = ((BrCar *)(D_803239A0[i].car));
     if (car != 0) {
       v.x = car->mtx0[3][0];
       v.y = car->mtx0[3][1];

@@ -2,6 +2,7 @@
  * linked lists (index 0 ends a list), one free and one live.
  */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
@@ -28,12 +29,7 @@ extern float D_803634D0[3];             /* the wind: every particle drifts with 
 extern int D_8028AA80;                  /* race-kind flags (BrRaceSetKind) */
 extern int D_8028AA84;
 extern int D_8028AA8C;
-typedef struct BrWeatherObj {           /* 0x78 bytes */
-    char pad00[0x60];
-    int x60;                            /* 0x60  its emitter, 0 for none */
-    char pad64[0x78 - 0x64];
-} BrWeatherObj;
-extern BrWeatherObj D_803239A0[];
+typedef BrRaceEnt BrWeatherObj;     /* (tgr/ent.h) */
 extern int D_8028B7F0;                  /* entries in D_803239A0 */
 void BrCarSmokeEmit(BrCar *car);
 void BrSkidStep(BrCar *);
@@ -368,7 +364,7 @@ void BrSkidDraw(void)
       tgr_wr32(&_g->words.w1, 0xffffffff);
     }
     for (i = 0; i < D_8028B7F0; i++) {
-      if ((car = TGR_PTR(char *, D_803239A0[i].x60)) == 0) {
+      if ((car = ((char *)(D_803239A0[i].x60))) == 0) {
         continue;
       }
       gRaw(D_8028A858++, 0x1060040, ((BrCar *)car)->mtx);        /* port: by name (car + 0x1D88) */
@@ -436,7 +432,7 @@ void BrSkidAge(void)
     return;
   }
   for (i = 0; i < D_8028B7F0; i++) {
-    if ((car = TGR_PTR(BrCar *, D_803239A0[i].x60)) == 0) {
+    if ((car = ((BrCar *)(D_803239A0[i].x60))) == 0) {
       continue;
     }
     dx = (car->pos1d78.x - car->mtx0[3][0]) * 127.0f;
@@ -802,22 +798,22 @@ void BrParticleFrame(void)
     BrParticleStep();
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
-        BrCarSmokeEmit(TGR_PTR(BrCar *, o->x60));
-        BrSkidStep(TGR_PTR(BrCar *, o->x60));
+        BrCarSmokeEmit(((BrCar *)(o->x60)));
+        BrSkidStep(((BrCar *)(o->x60)));
       }
     }
   } else if (D_8028AA80 == 0 && D_8028AA8C == 0) {
     BrParticleFallStep();
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
-        BrWheelSprayEmit(TGR_PTR(BrCar *, o->x60));
-        BrSkidStep(TGR_PTR(BrCar *, o->x60));
+        BrWheelSprayEmit(((BrCar *)(o->x60)));
+        BrSkidStep(((BrCar *)(o->x60)));
       }
     }
   } else {
     for (i = 0, o = D_803239A0; i < D_8028B7F0; i++, o++) {
       if (o->x60 != 0) {
-        BrSkidStep(TGR_PTR(BrCar *, o->x60));
+        BrSkidStep(((BrCar *)(o->x60)));
       }
     }
   }

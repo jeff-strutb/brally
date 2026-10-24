@@ -1,6 +1,7 @@
 /* collresp.c -- collision response: contact planes and the list they are kept on
  */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
 
@@ -1009,12 +1010,7 @@ int BrObbOverlap(float *m, float *t, float *a, float *b)
 }
 
 /* -- declarations: BrCarCarCollide -- */
-typedef struct BrWeatherObj {           /* 0x78 bytes */
-  char pad00[0x60];
-  TgrAddr car;                           /* BrCar * -- 0x60 */
-  char pad64[0x78 - 0x64];
-} BrWeatherObj;
-extern BrWeatherObj D_803239A0[];
+typedef BrRaceEnt BrWeatherObj;     /* (tgr/ent.h) */
 extern int D_8028B7F0;                  /* entries in D_803239A0 */
 void BrMat3FromMat4T(float out[3][3], float m[4][4]);
 void BrMat3FromMat4(float out[3][3], float m[4][4]);
@@ -1058,12 +1054,12 @@ void BrCarCarCollide(void)
   float imp[3];
 
   for (i = 0; i < D_8028B7F0; i++) {
-    if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
-      TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].x201++;
-      pa = &TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].st;
+    if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
+      ((BrCar *)(D_803239A0[i].car))->body[0].x201++;
+      pa = &((BrCar *)(D_803239A0[i].car))->body[0].st;
       for (j = i + 1; j < D_8028B7F0; j++) {
-        if (D_803239A0[j].car != 0 && TGR_PTR(BrCar *, D_803239A0[j].car)->colour[3] != 2) {
-          pb = &TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].st;
+        if (D_803239A0[j].car != 0 && ((BrCar *)(D_803239A0[j].car))->colour[3] != 2) {
+          pb = &((BrCar *)(D_803239A0[j].car))->body[0].st;
           d.x = pa->pos.x - pb->pos.x;
           d.y = pa->pos.y - pb->pos.y;
           d.z = pa->pos.z - pb->pos.z;
@@ -1071,8 +1067,8 @@ void BrCarCarCollide(void)
             float ext[3] = { 2.5f, 1.0f, 1.0f };
             float x;
 
-            BrMat3FromMat4T(mB, TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].m);
-            BrMat3FromMat4(mA, TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].m);
+            BrMat3FromMat4T(mB, ((BrCar *)(D_803239A0[j].car))->body[0].m);
+            BrMat3FromMat4(mA, ((BrCar *)(D_803239A0[i].car))->body[0].m);
             BrMat3Mul(mR, mB, mA);
             dd[0] = pa->pos.x - pb->pos.x;
             dd[1] = pa->pos.y - pb->pos.y;
@@ -1098,48 +1094,48 @@ void BrCarCarCollide(void)
             if (x > 27.0f) {
               x = 27.0f;
             }
-            if (TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].x201 > 40) {
-              TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].x1fe = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].x1fe = tgr_f2u(127.0f * x / 27.0f + 128.0f);
+            if (((BrCar *)(D_803239A0[i].car))->body[0].x201 > 40) {
+              ((BrCar *)(D_803239A0[j].car))->body[0].x1fe = ((BrCar *)(D_803239A0[i].car))->body[0].x1fe = tgr_f2u(127.0f * x / 27.0f + 128.0f);
             }
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].x201 = 0;
+            ((BrCar *)(D_803239A0[i].car))->body[0].x201 = 0;
             sd[0] = d.x * -1.0f;
             sd[1] = d.y * -1.0f;
             sd[2] = d.z * -1.0f;
             t[0] = sd[0] * 2.5f;
             t[1] = sd[1] * 2.5f;
             t[2] = sd[2] * 2.5f;
-            BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].m, t);
+            BrMat4RotateVec(dd, ((BrCar *)(D_803239A0[i].car))->body[0].m, t);
             pa->vel.x = pa->vel.x - imp[0];
             pa->vel.y = pa->vel.y - imp[1];
             pa->vel.z = pa->vel.z - imp[2];
-            memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB, &TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].st, sizeof(BrRbState));
-            BrCrImpulseSolve(&TGR_PTR(BrCar *, D_803239A0[i].car)->body[0], dd, &d.x, 0, 0.45f);
-            memcpy(&TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].st, &TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB, sizeof(BrRbState));
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.x = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.x + imp[0];
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.y = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.y + imp[1];
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.z = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.z + imp[2];
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stA.vel.x = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.x;
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stA.vel.y = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.y;
-            TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stA.vel.z = TGR_PTR(BrCar *, D_803239A0[i].car)->body[0].stB.vel.z;
+            memcpy(&((BrCar *)(D_803239A0[i].car))->body[0].stB, &((BrCar *)(D_803239A0[i].car))->body[0].st, sizeof(BrRbState));
+            BrCrImpulseSolve(&((BrCar *)(D_803239A0[i].car))->body[0], dd, &d.x, 0, 0.45f);
+            memcpy(&((BrCar *)(D_803239A0[i].car))->body[0].st, &((BrCar *)(D_803239A0[i].car))->body[0].stB, sizeof(BrRbState));
+            ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.x = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.x + imp[0];
+            ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.y = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.y + imp[1];
+            ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.z = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.z + imp[2];
+            ((BrCar *)(D_803239A0[i].car))->body[0].stA.vel.x = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.x;
+            ((BrCar *)(D_803239A0[i].car))->body[0].stA.vel.y = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.y;
+            ((BrCar *)(D_803239A0[i].car))->body[0].stA.vel.z = ((BrCar *)(D_803239A0[i].car))->body[0].stB.vel.z;
             pa->vel.x = imp[0] + pa->vel.x;
             pa->vel.y = imp[1] + pa->vel.y;
             pa->vel.z = imp[2] + pa->vel.z;
             t[0] = d.x * 2.5f;
             t[1] = d.y * 2.5f;
             t[2] = d.z * 2.5f;
-            BrMat4RotateVec(dd, TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].m, t);
+            BrMat4RotateVec(dd, ((BrCar *)(D_803239A0[j].car))->body[0].m, t);
             pb->vel.x = pb->vel.x - imp[0];
             pb->vel.y = pb->vel.y - imp[1];
             pb->vel.z = pb->vel.z - imp[2];
-            memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB, &TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].st, sizeof(BrRbState));
-            BrCrImpulseSolve(&TGR_PTR(BrCar *, D_803239A0[j].car)->body[0], dd, sd, 0, 0.45f);
-            memcpy(&TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].st, &TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB, sizeof(BrRbState));
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.x = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.x + imp[0];
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.y = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.y + imp[1];
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.z = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.z + imp[2];
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stA.vel.x = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.x;
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stA.vel.y = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.y;
-            TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stA.vel.z = TGR_PTR(BrCar *, D_803239A0[j].car)->body[0].stB.vel.z;
+            memcpy(&((BrCar *)(D_803239A0[j].car))->body[0].stB, &((BrCar *)(D_803239A0[j].car))->body[0].st, sizeof(BrRbState));
+            BrCrImpulseSolve(&((BrCar *)(D_803239A0[j].car))->body[0], dd, sd, 0, 0.45f);
+            memcpy(&((BrCar *)(D_803239A0[j].car))->body[0].st, &((BrCar *)(D_803239A0[j].car))->body[0].stB, sizeof(BrRbState));
+            ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.x = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.x + imp[0];
+            ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.y = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.y + imp[1];
+            ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.z = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.z + imp[2];
+            ((BrCar *)(D_803239A0[j].car))->body[0].stA.vel.x = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.x;
+            ((BrCar *)(D_803239A0[j].car))->body[0].stA.vel.y = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.y;
+            ((BrCar *)(D_803239A0[j].car))->body[0].stA.vel.z = ((BrCar *)(D_803239A0[j].car))->body[0].stB.vel.z;
             pb->vel.x = imp[0] + pb->vel.x;
             pb->vel.y = imp[1] + pb->vel.y;
             pb->vel.z = imp[2] + pb->vel.z;

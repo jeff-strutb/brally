@@ -13,6 +13,7 @@
  */
 /* n64-cflags: -O2 */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 #include "tgr/car.h"
 #include "tgr/pad.h"
 #include "tgr/menu.h"
@@ -20,14 +21,7 @@
 #include "tgr/vec.h"
 
 /* -- declarations -- */
-typedef struct BrCarEnt {       /* a race entity (0x78 bytes): the cars, then the rest */
-  char pad00[0x60];
-  TgrAddr car;                   /* BrCar * -- 0x60  0 for an entity that is not a car */
-  int x64;
-  unsigned int flags;           /* 0x68  bit 0: held at the start, bit 1: finished */
-  char pad6c[0x78 - 0x6C];
-} BrCarEnt;
-extern BrCarEnt D_803239A0[];
+typedef BrRaceEnt BrCarEnt;     /* (tgr/ent.h) */
 
 typedef struct BrViewRect {     /* a player's view (0x14 bytes) */
   int x; int y; int w; int h;
@@ -741,7 +735,7 @@ void BrRaceTick(void)
     D_8026FF5C = 1;
     for (i = 0; i < D_8028B7F0; i++) {
       D_803239A0[i].flags |= 1;
-      car = TGR_PTR(BrCar *, D_803239A0[i].car);
+      car = ((BrCar *)(D_803239A0[i].car));
       if (car != 0 && car->slot < D_8026FF08) {
         if (D_8026FF18 == 1) {
           s = D_8028C800 - 1;
@@ -1078,8 +1072,8 @@ draw:
       BrFrameTintSetup();
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
-          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
+          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1093,8 +1087,8 @@ draw:
       BrFrameTintSetup();
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
-          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
+          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1103,13 +1097,13 @@ draw:
     BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
     for (i = 0; i < D_8028B7F0; i++) {
       if (D_803239A0[i].car != 0) {
-        BrCarDrawBody(TGR_PTR(BrCar *, D_803239A0[i].car));
+        BrCarDrawBody(((BrCar *)(D_803239A0[i].car)));
       }
     }
     BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
     for (i = 0; i < D_8028B7F0; i++) {
-      if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] == 2) {
-        BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+      if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] == 2) {
+        BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
       }
     }
     BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1154,8 +1148,8 @@ draw:
         BrFrameTintSetup();
         BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
         for (i = 0; i < D_8028B7F0; i++) {
-          if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
-            BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+          if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
+            BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
           }
         }
         BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1167,15 +1161,15 @@ draw:
         BrFrameTintSetup();
         BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
         for (i = 0; i < D_8028B7F0; i++) {
-          if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
-            BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+          if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
+            BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
           }
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] == 2) {
-          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
+        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] == 2) {
+          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
         }
       }
       BrScreenFlashDraw();
@@ -1211,7 +1205,7 @@ draw:
           if (&D_8028AAF0->cams[2] != D_8028AAF4) {
             BrStub8023870C();
           }
-        } else if (((struct BrCarLink *)(D_8028AAF0->link))->flags & 2) {
+        } else if (((BrCarLink *)(D_8028AAF0->link))->flags & 2) {
           BrHudPositionDraw();
         }
       }

@@ -1,44 +1,19 @@
 /* rank.c -- ordering the cars into race positions
  */
 #include "tgr/common.h"
+#include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
 #include "tgr/menu.h"
 
 /* -- declarations -- */
-typedef struct BrRaceEnt {      /* a race entity (0x78 bytes): the cars, then the rest */
-  BrVec3 pos;                   /* 0x00  (an AI slot: its car's position when saved) */
-  BrVec3 posPrev;               /* 0x0C */
-  BrVec3 vel;                   /* 0x18 */
-  float x24;                    /* 0x24  the car's 0xFE4 */
-  int seg;                      /* 0x28  its route segment and point */
-  int pt;                       /* 0x2C */
-  float raceTime;               /* 0x30 */
-  float x34;                    /* 0x34 */
-  float lapTime;                /* 0x38 */
-  float x3c;                    /* 0x3C */
-  int laps;                     /* 0x40 */
-  int x44;                      /* 0x44 */
-  int x48;                      /* 0x48 */
-  int x4c;                      /* 0x4C */
-  float progress;               /* 0x50  for an entity that is not a car */
-  int rank;                     /* 0x54  its race position, likewise */
-  char pad58[4];
-  unsigned char colour[3];      /* 0x5C  the body colour of the slot's car */
-  char pad5f;
-  TgrAddr car;                   /* BrCar * -- 0x60  0 for an entity that is not a car */
-  int x64;                      /* 0x64  the car slot it stands for */
-  unsigned int flags;           /* 0x68  bit 0: held at the start, bit 1: finished */
-  char pad6c[0x74 - 0x6C];
-  int group;                    /* 0x74  which half of the field (0 or 1) */
-} BrRaceEnt;
+
 typedef struct BrRankEntry {    /* one row of the ranking table */
   float key;
   int ent;
 } BrRankEntry;
 void BrQsort(void *base, unsigned int num, unsigned int width, int (*comp)(void *, void *));
 extern int D_8028B7F0;                  /* entity count */
-extern BrRaceEnt D_803239A0[];
 #include "tgr/track.h"
 typedef BrPathSeg BrRoute;          /* a route: a path segment (cartridge data) */
 #define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)
@@ -111,7 +86,7 @@ void BrRankUpdate(void)
     if (!(D_803239A0[i].flags & 2)) {
       tab[n].ent = i;
       if (D_803239A0[i].car != 0) {
-        tab[n++].key = TGR_PTR(BrCar *, D_803239A0[i].car)->xfa8;
+        tab[n++].key = ((BrCar *)(D_803239A0[i].car))->xfa8;
       } else {
         tab[n++].key = D_803239A0[i].progress;
       }
@@ -122,7 +97,7 @@ void BrRankUpdate(void)
   }
   for (i = 0; i < n; i++) {
     if (D_803239A0[tab[i].ent].car != 0) {
-      TGR_PTR(BrCar *, D_803239A0[tab[i].ent].car)->xfac = D_8028B7F0 - i - 1;
+      ((BrCar *)(D_803239A0[tab[i].ent].car))->xfac = D_8028B7F0 - i - 1;
     } else {
       D_803239A0[tab[i].ent].rank = D_8028B7F0 - i - 1;
     }
@@ -171,11 +146,11 @@ void BrCarSlotSwap(BrCar *me)
 
   lap = BEF(D_80025C70->pt[0].dist);
   for (i = 0; i < D_8028B7F0; i++) {
-    car = TGR_PTR(BrCar *, D_803239A0[i].car);
+    car = ((BrCar *)(D_803239A0[i].car));
     if (car != 0) {
       if (car != me && car->slot < D_8026FF08) {
         list[i].key = 1e10f;
-      } else if (D_8026FF18 == 0 && car->slot >= D_8026FF08 && (((struct BrCarLink *)(car->link))->flags & 2) &&
+      } else if (D_8026FF18 == 0 && car->slot >= D_8026FF08 && (((BrCarLink *)(car->link))->flags & 2) &&
                  car->colour[3] == 2 && car->x2064 == 0.0f) {
         list[i].key = 1e9f;
       } else {
@@ -219,18 +194,18 @@ void BrCarSlotSwap(BrCar *me)
           seen++;
           if (ent->car != 0) {
             open = 0;
-            if ((ent->flags & 2) && TGR_PTR(BrCar *, ent->car)->colour[3] == 2 && TGR_PTR(BrCar *, ent->car)->x2064 == 0.0f) {
-              car = TGR_PTR(BrCar *, ent->car);
+            if ((ent->flags & 2) && ((BrCar *)(ent->car))->colour[3] == 2 && ((BrCar *)(ent->car))->x2064 == 0.0f) {
+              car = ((BrCar *)(ent->car));
               goto save;
             }
           }
         } else {
-          car = TGR_PTR(BrCar *, ent->car);
+          car = ((BrCar *)(ent->car));
           if (ent->car != 0) {
             open = 0;
-            if (TGR_PTR(BrCar *, ent->car)->xed4 == 0 && 80000.0 < list[i].key) {
+            if (((BrCar *)(ent->car))->xed4 == 0 && 80000.0 < list[i].key) {
             save:
-              tgr_print("enemy %d loses slot %d (dist=%f)\n", ent->x64, TGR_PTR(BrCar *, ent->car)->slot, list[i].key);
+              tgr_print("enemy %d loses slot %d (dist=%f)\n", ent->x64, ((BrCar *)(ent->car))->slot, list[i].key);
               ent->pos.x = car->mtx0[3][0];
               ent->pos.y = car->mtx0[3][1];
               ent->pos.z = car->mtx0[3][2];
@@ -251,7 +226,7 @@ void BrCarSlotSwap(BrCar *me)
               tgr_print("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
               ent->progress = car->xfa8;
               ent->rank = car->xfac;
-              free[nFree++] = TGR_PTR(BrCar *, ent->car);
+              free[nFree++] = ((BrCar *)(ent->car));
               ent->car = 0;
               car->link = 0;
               car->xed4 = 60;
@@ -269,7 +244,7 @@ void BrCarSlotSwap(BrCar *me)
       ent = D_803239A0 + list[i].ent;
       if (ent->group == group && ent->x64 >= D_8026FF08 && !(ent->flags & 2) && ent->car == 0) {
         car = free[--nFree];
-        ent->car = tgr_addr32(car);
+        ent->car = (car);
         tgr_print("enemy %d acquires slot %d\n", ent->x64, car->slot);
         car->xfe4[0] = ent->x24;
         car->xf5c = ent->seg;
@@ -301,11 +276,11 @@ void BrCarSlotSwap(BrCar *me)
         car->colour[1] = ent->colour[1];
         car->colour[2] = ent->colour[2];
         BrEntPaintTexture(((char *)(car->model)), ent->colour[0] >> 3, ent->colour[1] >> 3, ent->colour[2] >> 3);
-        r = car->xf5c + car->xf60 * 40;
+        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
         BrVec3Sub(&tA, BRV(TGR_PTR(BrVec3be *, (r + 0x40))), BRV(TGR_PTR(BrVec3be *, (r + 0x4c))));
-        r = car->xf5c + car->xf60 * 40;
+        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
         BrVec3Sub(&tB, BRV(TGR_PTR(BrVec3be *, (r + 0x68))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
-        r = car->xf5c + car->xf60 * 40;
+        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
         BrVec3Direction(car->mtx0[0], BRV(TGR_PTR(BrVec3be *, (r + 0x4c))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
         BrVec3Midpoint(car->mtx0[1], &tA, &tB);
         BrVec3Cross(car->mtx0[2], car->mtx0[0], car->mtx0[1]);
@@ -316,7 +291,7 @@ void BrCarSlotSwap(BrCar *me)
         car->xf68 = car->mtx0[0][1];
         car->xf6c = car->mtx0[0][2];
         BrCarPlaceAt(car, car->mtx0);
-        if (((struct BrCarLink *)(car->link))->flags & 1) {
+        if (((BrCarLink *)(car->link))->flags & 1) {
           BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
         } else {
           BrCarSetVel(car, car->mtx0[0][0] * 50.0f, car->mtx0[0][1] * 50.0f, 50.0f * car->mtx0[0][2]);
@@ -381,7 +356,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
   if (BES32(D_80025C00.nGates) == 0) {
     return;
   }
-  car = TGR_PTR(BrCar *, drv->car);
+  car = ((BrCar *)(drv->car));
   if (car != 0) {
     drv->pos.x = car->mtx0[3][0];
     drv->pos.y = car->mtx0[3][1];
@@ -439,7 +414,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
         if (drv->x34 == 0.0f || tLap < drv->x34) {
           drv->x34 = tLap;
           if (drv->x64 < D_8026FF08) {
-            TGR_PTR(BrCar *, drv->car)->xf9c = drv->laps;
+            ((BrCar *)(drv->car))->xf9c = drv->laps;
             if (((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] == 0.0f ||
                 drv->x34 < ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940]) {
               ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] = drv->x34;
@@ -507,7 +482,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
         goto tail;
       }
     }
-    if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < TGR_PTR(BrCar *, drv->car)->xfa4) {
+    if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < ((BrCar *)(drv->car))->xfa4) {
       if (D_80270788 == 0) {
         BrSfxSrcBeep();
       }
@@ -515,14 +490,14 @@ void BrRaceGateStep(BrRaceEnt *drv)
       if (d < 0) {
         d = -d;
       }
-      ratio = TGR_PTR(BrCar *, drv->car)->xfe4[1] / (TGR_PTR(BrCar *, drv->car)->lapTime * 2.24f);
+      ratio = ((BrCar *)(drv->car))->xfe4[1] / (((BrCar *)(drv->car))->lapTime * 2.24f);
       if (ratio != 0.0f) {
         ratio = d / ratio;
       } else {
         ratio = 1000.0f;
       }
       for (i = 0; i < D_8026FF08; i++) {
-        c = TGR_PTR(BrCar *, D_803239A0[i].car);
+        c = ((BrCar *)(D_803239A0[i].car));
         c->msgA = tgr_addr32("%ryCheck Point!");
         c->msgATime = 0.4f;
         w = D_8028C800 - 1;
@@ -564,7 +539,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (drv->x34 == 0.0f || tLap < drv->x34) {
       drv->x34 = tLap;
       if (drv->x64 < D_8026FF08) {
-        TGR_PTR(BrCar *, drv->car)->xf9c = drv->laps;
+        ((BrCar *)(drv->car))->xf9c = drv->laps;
         if (((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] == 0.0f ||
             drv->x34 < ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940]) {
           ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] = tLap;

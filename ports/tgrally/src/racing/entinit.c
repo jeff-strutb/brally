@@ -193,13 +193,13 @@ void BrCarRespawn(BrCar *car)
   if (car->body[0].stuck < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
     BrCarPhysInit(car);
     if (D_8026FF18 == 2) {
-      BrCarSetPos(car, BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.x),
-                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.y),
-                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x),
+                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
+                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
     } else {
-      BrCarSetPos(car, BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.x) + car->slot * 0.01f,
-                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.y),
-                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x) + car->slot * 0.01f,
+                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
+                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
     }
     BrCarSetHeading(car, BrAtan2(car->xf64, car->xf68));
     BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
@@ -322,7 +322,7 @@ void BrCarPlayerCtl(BrCar *car)
   } else {
     car->x1dd4 = 0.0f;
   }
-  if ((((struct BrCarLink *)(car->link))->flags & 2) && VIEWED) {
+  if ((((BrCarLink *)(car->link))->flags & 2) && VIEWED) {
     if (D_8028B7F8 == 0) {
       goto scan;
     }

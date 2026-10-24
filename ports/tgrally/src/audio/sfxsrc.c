@@ -56,7 +56,7 @@ typedef struct BrSndVoice {     /* a mixer voice, 0x18 bytes */
 } BrSndVoice;
 extern BrSndVoice D_802A4920[6];
 extern unsigned int D_802A497C;
-typedef struct BrSndCarLink { char pad00[0x68]; unsigned int flags; } BrSndCarLink;
+typedef BrRaceEnt BrSndCarLink;     /* a car's race entity (tgr/ent.h) */
 typedef struct BrSndView { int x, y, w, h; int car; } BrSndView;
 extern BrSndView D_8031B2C8[2];         /* the players' views */
 extern int D_8028AB0C;                  /* number of players */

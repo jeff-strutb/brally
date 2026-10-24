@@ -380,7 +380,7 @@ void BrCarDriveInput(BrCar *car)
   }
   g = 0;
   car->xe38 = t * 7.0f;
-  if (((struct BrCarLink *)(car->link))->flags & 1) {
+  if (((BrCarLink *)(car->link))->flags & 1) {
     car->xe40 = 0;
   } else {
     g = car->xe40;

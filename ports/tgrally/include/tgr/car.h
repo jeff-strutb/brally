@@ -8,6 +8,7 @@
 #include "tgr/season.h"
 #include "tgr/vec.h"
 #include "tgr/body.h"
+#include "tgr/ent.h"
 
 /* A car's camera: its matrix and field of view (0x44 bytes). */
 typedef struct BrCarCam {
@@ -25,13 +26,8 @@ typedef struct BrCarKindParams {
 } BrCarKindParams;
 extern BrCarKindParams D_8028B330[];
 
-/* The record a car's +0xED0 points at; only its flags are known. */
-typedef struct BrCarLink {
-    char pad00[0x68];
-    unsigned int flags;         /* 0x68  bits 0-1: the car is out of the race */
-    char pad6c[0x74 - 0x6C];
-    int x74;                    /* 0x74  the entrant's row in the AI pace table */
-} BrCarLink;
+/* The record a car's +0xED0 points at: its race entity (tgr/ent.h). */
+typedef BrRaceEnt BrCarLink;
 
 /* A skid-mark vertex (an F3DEX Vtx, 16 bytes) and point (0x18 bytes):
  * a point's half-width is drawn while non-zero. */
@@ -98,7 +94,7 @@ typedef struct BrCar {
     int xf48;                   /* 0xF48  camera mode */
     int xf4c;                   /* 0xF4C  the camera keeps the car's up axis */
     BrVec3 posPrev;             /* 0xF50  last frame's position */
-    int xf5c;                   /* 0xF5C  the path segment the car is on */
+    struct BrPathSeg *xf5c;     /* 0xF5C  the path segment the car is on */
     int xf60;                   /* 0xF60  and the point in it */
     float xf64;                 /* 0xF64  the heading's atan2 arguments at the restart point */
     float xf68;                 /* 0xF68 */
