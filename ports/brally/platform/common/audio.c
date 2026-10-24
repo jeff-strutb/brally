@@ -49,13 +49,48 @@ static void mix(float *lr, int n, void *user)
     }
 }
 
+/* BR_AUDIOLOG=PATH (with BR_VCLOCK): no device; each script frame mixes
+ * 1/30 s of output itself and writes a line with its hash, so two builds
+ * that make the same sound write the same file. */
+static FILE *s_alog;
+
+static FILE *audiolog(void)
+{
+    static int init;
+    if (!init) {
+        const char *e = getenv("BR_AUDIOLOG");
+        init = 1;
+        if (e && *e && plat_vclock())
+            s_alog = fopen(e, "w");
+    }
+    return s_alog;
+}
+
+void plat_audio_frame(void)
+{
+    static float lr[2 * (OUT_RATE / 30)];
+    static unsigned long n;
+    uint64_t h = 1469598103934665603ull;
+    const unsigned char *b = (const unsigned char *)lr;
+    size_t i;
+    if (s_out != 1 || !audiolog())
+        return;
+    mix(lr, OUT_RATE / 30, NULL);
+    for (i = 0; i < sizeof lr; i++)
+        h = (h ^ b[i]) * 1099511628211ull;
+    fprintf(s_alog, "%lu %016llx\n", ++n, (unsigned long long)h);
+    fflush(s_alog);
+}
+
 /* the output: 1 when a device is mixing (it then moves the play cursors) */
 int plat_audio_start(void)
 {
     if (s_out == 0) {
         const char *e = getenv("BR_SFX");
         s_out = -1;
-        if (!(e && e[0] == '0') && !plat_vclock() && host_audio_open(OUT_RATE, mix, NULL))
+        if (audiolog())
+            s_out = 1;
+        else if (!(e && e[0] == '0') && !plat_vclock() && host_audio_open(OUT_RATE, mix, NULL))
             s_out = 1;
     }
     return s_out == 1;

@@ -38,6 +38,7 @@ void  plat_peersync(uint64_t us);       /* ... keep the two virtual clocks toget
 void  plat_peersync_end(void);          /* ... and let the other run on alone */
 DWORD plat_time_ms(void);              /* timeGetTime's value, not spending a BR_VCLOCK tick */
 int   plat_audio_start(void);           /* audio.c: the output; 1 when a device mixes */
+void  plat_audio_frame(void);           /* ... BR_AUDIOLOG: a script frame's 1/30 s, mixed and hashed */
 void  plat_cd_tracks(int *first, int *last);
 int   plat_cd_play(int from, int to, void (*end_fn)(void *), void *user);
 void  plat_cd_stop(void);

@@ -424,4 +424,5 @@ void plat_app_frame(void)
     if (s_ap)
         plat_script_autopilot();
     step();
+    plat_audio_frame();
 }
