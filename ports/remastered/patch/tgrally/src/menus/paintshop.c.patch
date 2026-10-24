@@ -1,0 +1,39 @@
+--- a/src/menus/paintshop.c
++++ b/src/menus/paintshop.c
+@@ -181,6 +181,7 @@
+ typedef struct { int y, xl, xr, dy; } BrFillSeg;
+ int BrPaintCursorInBox(BrPaintBox *);               /* defined below */
+ int BrPaintCursorInBrush(int *);
++void rm_paint_choose(int x, int y, int w, int h, unsigned char *sel, int i);   /* Remastered (rmpaintptr.c) */
+ /* -- end declarations -- */
+ 
+ /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
+@@ -837,6 +838,8 @@
+   BrTextAlignLeft();
+   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 222) >> 1, (y + 18) >> 1);
+   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
++  rm_paint_choose(250, 200, D_8028D410.drawW, D_8028D410.drawH, &D_8028DBB8, 0);   /* Remastered: by pointer */
++  rm_paint_choose(D_8028D410.drawW + 276, 202, 38, 38, &D_8028DBB8, 1);
+   BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
+     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
+@@ -1067,6 +1070,9 @@
+   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
+   BrImageDrawAt(&D_8028D0B0, 213, y);
+   BrImageDrawAt(&D_8028D0E0, bx, y);
++  for (i = 0; i < 4; i++) {             /* Remastered: by pointer */
++    rm_paint_choose(i * 76 + 175, 203, D_8028DB34[i]->drawW, D_8028DB34[i]->drawH, &D_8028DBB8, i);
++  }
+   BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
+     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
+@@ -1601,6 +1607,9 @@
+   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
+   BrImageDrawAt(&D_8028D0B0, 214, y);
+   BrImageDrawAt(&D_8028D0E0, bx, y);
++  for (i = 0; i < 4; i++) {             /* Remastered: by pointer */
++    rm_paint_choose(D_8028DB44[i]->x, D_8028DB44[i]->y, D_8028DB44[i]->drawW, D_8028DB44[i]->drawH, &D_8028DBB8, i);
++  }
+   BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
+     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);

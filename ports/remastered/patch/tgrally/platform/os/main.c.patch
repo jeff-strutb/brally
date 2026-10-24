@@ -1,6 +1,14 @@
 --- a/platform/os/main.c
 +++ b/platform/os/main.c
-@@ -16,6 +16,7 @@
+@@ -9,6 +9,7 @@
+ #include "host.h"
+ #include "plat.h"
+ #include "../render/rdr.h"
++#include "tgr_touch.h"                 /* Remastered: the mouse in the paint shop */
+ 
+ TgrConfig g_tgr;
+ extern volatile int tgr_quit;       /* Exit Game (si.c) */
+@@ -17,6 +18,7 @@
  void tgr_script_load(const char *path);
  void tgr_input_key(int vk, int down);
  void tgr_input_release(void);
@@ -8,7 +16,12 @@
  extern volatile int tgr_paused;
  
  void tgr_log(const char *fmt, ...)
-@@ -92,6 +93,7 @@
+@@ -90,9 +92,12 @@
+                     tgr_os_unlock();
+                     tgr_paused = !ev.down;
+                 }
++                if (ev.type == HOST_EV_MOUSE)   /* in the units of the window opened, 640 by 480 */
++                    tgr_pointer(ev.x / 640.0f, ev.y / 480.0f, ev.buttons);
                  if (ev.type == HOST_EV_KEY) {
                      tgr_os_lock();
                      tgr_input_key(ev.vk, ev.down);

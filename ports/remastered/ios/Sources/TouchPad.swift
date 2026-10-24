@@ -22,6 +22,14 @@
 // pause menu: a tap on a row chooses it, a choice on the Remaster Options
 // page sets it (br_race_tap); a swipe is an arrow key (the same way round).
 //
+// In the paint shop (tgr_pointer_wanted) a finger is the pointer
+// (platform/os/touch.c, src/menus/rmpaintptr.c): the cursor goes where it
+// is and it holds A, so a finger paints, drags a line or a shape out, or taps
+// a tool, a colour or a popup's choice; a tap with two fingers is B where
+// the first landed (on the decal, the colour there; elsewhere, cancel). A
+// finger is held back a moment (paintHold) before it presses, so a second
+// one landing makes the two a two-finger tap rather than a dot.
+//
 // While a race is driven, the pause button at the top centre (two bars)
 // pauses it. Anywhere, a tap with two fingers is START (pause), and a tap
 // with three steps the sound's low-pass filter (AudioFilter), its setting
@@ -85,7 +93,10 @@ final class TouchSurface: UIView {
     static let tapMaxPoints: CGFloat = 12
     static let swipeMinPoints: CGFloat = 30
 
-    private enum Role { case wheel, brake, menu, none }
+    private enum Role { case wheel, brake, menu, paint, none }
+
+    /// A finger in the paint shop presses once it has been down this long, or moved
+    static let paintHold = 0.06
     private struct Finger { var role: Role; var start: CGPoint; var began: Double }
     private var fingers: [UITouch: Finger] = [:]
     private var wheelOrigin = CGPoint.zero
@@ -95,6 +106,11 @@ final class TouchSurface: UIView {
     private var gestureFingers = 0
     private var gestureMoved = false
 
+    // the finger that is the paint shop's pointer: pressed (A) once it is held or moves
+    private var paintTouch: UITouch?
+    private var paintPressed = false
+    private var paintTwo = false            // a second finger came before the press: a two-finger tap
+    private var lastPaintStart = CGPoint.zero
     /// The area the game is drawn in, for a tap's place in it.
     var gameFrame = CGRect.zero
 
@@ -151,6 +167,10 @@ final class TouchSurface: UIView {
 
     /// The pedal is shown while a race is driven; a hand-over starts afresh.
     @objc private func tick() {
+        if let t = paintTouch, !paintPressed, !paintTwo, let f = fingers[t],
+           CACurrentMediaTime() - f.began >= TouchSurface.paintHold {
+            paintPress(f.start)
+        }
         if Front.bossRally != lastFront {
             lastFront = Front.bossRally
             reset()
@@ -168,7 +188,27 @@ final class TouchSurface: UIView {
             if p.x < bounds.width * TouchPad.brakeZone { return .brake }
             return hasWheel ? .none : .wheel
         }
+        if !Front.bossRally && tgr_pointer_wanted() != 0 {
+            return paintTouch == nil ? .paint : .none
+        }
         return fingers.values.contains { $0.role == .menu } ? .none : .menu
+    }
+
+    /// A place on the screen as fractions of the area the game is drawn in
+    private func fraction(_ p: CGPoint) -> (Float, Float) {
+        guard gameFrame.width > 0, gameFrame.height > 0 else { return (0, 0) }
+        return (Float((p.x - gameFrame.minX) / gameFrame.width), Float((p.y - gameFrame.minY) / gameFrame.height))
+    }
+
+    private func pointer(_ p: CGPoint, _ buttons: Int32) {
+        let (u, v) = fraction(p)
+        tgr_pointer(u, v, buttons)
+    }
+
+    /// The paint finger presses where it landed
+    private func paintPress(_ start: CGPoint) {
+        paintPressed = true
+        pointer(start, 1)
     }
 
     private func beginWheel(at p: CGPoint) {
@@ -186,6 +226,7 @@ final class TouchSurface: UIView {
                 gestureBegan = now
                 gestureFingers = 0
                 gestureMoved = false
+                paintTwo = false
             }
             gestureFingers += 1
             let p = t.location(in: self)
@@ -194,6 +235,8 @@ final class TouchSurface: UIView {
             switch r {
             case .wheel: beginWheel(at: p)
             case .brake: TouchPad.shared.setBrake(true); pedal.pressed = true
+            case .paint: paintTouch = t; paintPressed = false; paintTwo = false; lastPaintStart = p
+            case .none: if paintTouch != nil && !paintPressed { paintTwo = true }
             default: break
             }
         }
@@ -204,6 +247,13 @@ final class TouchSurface: UIView {
             guard let f = fingers[t] else { continue }
             let p = t.location(in: self)
             if hypot(p.x - f.start.x, p.y - f.start.y) > TouchSurface.tapMaxPoints { gestureMoved = true }
+            if f.role == .paint {
+                if !paintPressed && !paintTwo && hypot(p.x - f.start.x, p.y - f.start.y) > TouchSurface.tapMaxPoints / 2 {
+                    paintPress(f.start)
+                }
+                if paintPressed { pointer(p, 1) }
+                continue
+            }
             guard f.role == .wheel else { continue }
             var raw = p.x - wheelOrigin.x
             if raw > TouchPad.steerRange {
@@ -232,6 +282,15 @@ final class TouchSurface: UIView {
                 wheel.isHidden = true
             case .brake:
                 if !hasBrake { TouchPad.shared.setBrake(false); pedal.pressed = false }
+            case .paint:
+                paintTouch = nil
+                if paintPressed {
+                    pointer(p, 0)
+                } else if !cancelled && !paintTwo {
+                    pointer(f.start, 1)                                     // a quick tap: a click there
+                    pointer(f.start, 0)
+                }
+                paintPressed = false
             case .menu:
                 guard !cancelled, gestureFingers == 1 else { break }
                 let dx = p.x - f.start.x, dy = p.y - f.start.y
@@ -246,7 +305,10 @@ final class TouchSurface: UIView {
             }
         }
         if fingers.isEmpty && !cancelled && !gestureMoved && now - gestureBegan <= TouchSurface.tapMaxSeconds + 0.15 {
-            if gestureFingers == 2 {
+            if gestureFingers == 2 && paintTwo {
+                pointer(lastPaintStart, 2)                                  // B where the first finger landed
+                pointer(lastPaintStart, 0)
+            } else if gestureFingers == 2 {
                 if Front.bossRally {
                     br_race_key(Int32(BR_KEY_ESCAPE))                       // its pause
                 } else {
@@ -292,6 +354,10 @@ final class TouchSurface: UIView {
     }
 
     func reset() {
+        if paintPressed { pointer(lastPaintStart, 0) }
+        paintTouch = nil
+        paintPressed = false
+        paintTwo = false
         fingers.removeAll()
         wheel.isHidden = true
         pedal.pressed = false
