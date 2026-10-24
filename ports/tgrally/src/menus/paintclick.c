@@ -4,19 +4,13 @@
  * other paint-shop functions'.
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 typedef unsigned long long u64;
 extern u64 tgr_clock_rate;
 float sqrtf(float x);
-typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
-  unsigned int pressed;
-  unsigned int held;
-  int repeat[4];
-  float axis[2];
-  char pad20[0x15c - 0x20];
-} BrPadRec;
-extern char D_8036A8E0;
+extern BrPadRec D_8036A8E0[4];
 #define PADS ((BrPadRec *)&D_8036A8E0)
 typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
 typedef struct BrPaintState {   /* 0x8028D110 */

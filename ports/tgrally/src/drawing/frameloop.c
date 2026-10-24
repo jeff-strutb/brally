@@ -14,6 +14,7 @@
  */
 #include "tgr/car.h"
 #include "tgr/common.h"
+#include "tgr/pad.h"
 #include "tgr/gbi.h"
 
 /* -- declarations -- */
@@ -130,9 +131,9 @@ extern float D_802AB420;
 extern int D_8028AADC;
 void BrPadStartRead(void);
 extern TgrPad D_8031A3E0[4];
-void BrPadMapRead(unsigned int *param_1);
-void BrPadEdges(unsigned int *param_1);
-extern unsigned int D_8036A8E0[4][0x57];
+void BrPadMapRead(BrPadRec *param_1);
+void BrPadEdges(void *param_1);
+extern BrPadRec D_8036A8E0[4];
 
 void guLookAtF(float mf[4][4], float xEye, float yEye, float zEye, float xAt, float yAt, float zAt,
                float xUp, float yUp, float zUp);
@@ -800,8 +801,8 @@ void BrPadPollAll(void)
 
   BrPadRead();
   for (i = 0; i < 4; i++) {
-    BrPadMapRead(D_8036A8E0[i]);
-    BrPadEdges(D_8036A8E0[i]);
+    BrPadMapRead(&D_8036A8E0[i]);
+    BrPadEdges(&D_8036A8E0[i]);
   }
 }
 
@@ -1337,8 +1338,8 @@ void BrBootCheck(void)
       D_80316421 = 1;
     }
   }
-  if (D_8036A8E0[0][0] & 0x4000) {
-    BrPadConsume(D_8036A8E0[0], 0x4000);
+  if (D_8036A8E0[0].pressed & 0x4000) {
+    BrPadConsume(&D_8036A8E0[0], 0x4000);
     BrModeSet(BrPakManager);
     while (D_8031B318 == BrPakManager) {
       BrPakManager();

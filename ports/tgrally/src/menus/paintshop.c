@@ -1,6 +1,7 @@
 /* paintshop.c -- the paint shop
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
 
@@ -47,7 +48,7 @@ extern unsigned char D_8028DBC4;
 extern unsigned char D_8028DBE8;
 extern float D_802AB20C;
 extern float D_802AB210;
-extern char D_8036A8E0;
+extern BrPadRec D_8036A8E0[4];
 extern char D_8036A8F8;
 typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
 typedef struct BrPaintSwatch {  /* 0x14 bytes */
@@ -152,13 +153,6 @@ extern BrImage D_8028D0B0;              /* the A button */
 extern BrImage D_8028D0E0;              /* the B button */
 extern float D_802AB260;
 extern float D_802AB264;
-typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
-  unsigned int pressed;         /* 0x00 */
-  unsigned int held;            /* 0x04 */
-  int repeat[4];                /* 0x08 */
-  float axis[2];                /* 0x18  stick axes */
-  char pad20[0x15c - 0x20];
-} BrPadRec;
 #define PADS ((BrPadRec *)&D_8036A8E0)
 void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b);
 void BrTextAlignCentre(void);

@@ -103,7 +103,7 @@ void BrLastLapSave(BrCar *car)
     for (i = 0; i < D_8026FF08; i++) {
       ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->recLen[car->slot] = 0;
       ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->recKeep[car->slot] = 0x3840;
-      ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->rec[car->slot] = tgr_addr32((unsigned char *)D_803C8000[3 - car->slot].raw + i * 0x3840);
+      ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->rec[car->slot] = ((unsigned char *)D_803C8000[3 - car->slot].raw + i * 0x3840);
     }
     BrVarSaveAll(D_803C8000[3 - car->slot].raw);
   }

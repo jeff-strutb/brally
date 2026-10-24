@@ -4,6 +4,7 @@
  * other paint-shop functions'.
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
 
@@ -40,14 +41,7 @@ typedef struct BrPaintModel {   /* the car model being painted */
   unsigned char paint[2];       /* 0x11A */
   be32_t mask;         /* unsigned char ** -- 0x11C */
 } BrPaintModel;
-typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
-  unsigned int pressed;
-  unsigned int held;
-  int repeat[4];
-  float axis[2];
-  char pad20[0x15c - 0x20];
-} BrPadRec;
-extern char D_8036A8E0;
+extern BrPadRec D_8036A8E0[4];
 extern BrCar D_8031B760[];
 extern int D_80271FA8;                  /* the player's controller */
 extern int D_8028B7F4;

@@ -1,6 +1,7 @@
 /* entinit.c -- resetting car entities
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
 
@@ -10,8 +11,8 @@ extern int D_8028AE04;
 void BrCarPickKind(BrCar *car);
 extern int D_8026FF08;
 extern int D_8026FF18;
-void BrPadInit(unsigned int *param_1);
-extern unsigned int D_8036A8E0[4][0x57];
+void BrPadInit(void *param_1);
+extern BrPadRec D_8036A8E0[4];
 void guMtxIdent(int *m);
 void BrMat4ResetW(float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
@@ -42,7 +43,7 @@ void BrEntAllReset(void)
 
   for (i = 0; i < 4; i++) {
     BrCarReset(&D_8031B760[i]);
-    BrPadInit(D_8036A8E0[i]);
+    BrPadInit(&D_8036A8E0[i]);
   }
 }
 
@@ -98,7 +99,7 @@ void BrCarResetFrames(BrCar *car)
 /* @implements 0x802207A4 tgr BrCarBindPad */
 void BrCarBindPad(BrCar *car)
 {
-  car->pad = (D_8036A8E0[car - D_8031B760]);
+  car->pad = (unsigned int *)&D_8036A8E0[car - D_8031B760];
   guMtxIdent(car->mtx);
 }
 

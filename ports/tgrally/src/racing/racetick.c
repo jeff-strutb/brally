@@ -400,7 +400,7 @@ void BrRaceTick(void)
           D_802A4920[i].x10 = 0;
         }
         for (i = 0; i < D_8026FF08; i++) {
-          PAD(i)->ghost = tgr_addr32(D_80315E48[i]);
+          PAD(i)->ghost = (D_80315E48[i]);
           PAD(i)->ghostLen = D_80315E58[i];
           PAD(i)->ghostPos = 0;
         }
@@ -434,20 +434,20 @@ void BrRaceTick(void)
       D_8028B7F4 = 1;
       D_8027078C = 0;
       D_8031B760[0].xe58 = 0;
-      PAD(0)->ghost = 0x80197000;
+      PAD(0)->ghost = TGR_PTR(unsigned char *, 0x80197000);
       switch (D_8026FF1C) {
       case 0:
         PAD(0)->ghostLen = BrRomReadSize((int)D_000AD400);
-        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000AD400, 0);
+        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000AD400, 0);
         break;
       case 1:
         PAD(0)->ghostLen = BrRomReadSize((int)D_000AD740);
-        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000AD740, 0);
+        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000AD740, 0);
         break;
       case 2:
         BrRaceCueLayout();
         PAD(0)->ghostLen = BrRomReadSize((int)D_000ADB00);
-        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000ADB00, 0);
+        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000ADB00, 0);
         break;
       }
       PAD(0)->ghostPos = 8;
@@ -457,13 +457,13 @@ void BrRaceTick(void)
       car0->colour[0] = 0xFF;
       car0->colour[1] = 0xFF;
       car0->colour[2] = 0xFF;
-      D_8028B940 = TGR_PTR(unsigned char *, PAD(0)->ghost)[0];
-      D_8031B760[0].kind = D_8031B760[0].x2058 = TGR_PTR(unsigned char *, PAD(0)->ghost)[1];
-      D_8031B760[0].xe68 = TGR_PTR(unsigned char *, PAD(0)->ghost)[2];
-      D_8031B760[0].xe6c = TGR_PTR(unsigned char *, PAD(0)->ghost)[3];
-      D_8031B760[0].xe60 = TGR_PTR(unsigned char *, PAD(0)->ghost)[4];
-      D_8031B760[0].xe64 = TGR_PTR(unsigned char *, PAD(0)->ghost)[5];
-      PAD(0)->x25 = TGR_PTR(unsigned char *, PAD(0)->ghost)[6];
+      D_8028B940 = ((unsigned char *)(PAD(0)->ghost))[0];
+      D_8031B760[0].kind = D_8031B760[0].x2058 = ((unsigned char *)(PAD(0)->ghost))[1];
+      D_8031B760[0].xe68 = ((unsigned char *)(PAD(0)->ghost))[2];
+      D_8031B760[0].xe6c = ((unsigned char *)(PAD(0)->ghost))[3];
+      D_8031B760[0].xe60 = ((unsigned char *)(PAD(0)->ghost))[4];
+      D_8031B760[0].xe64 = ((unsigned char *)(PAD(0)->ghost))[5];
+      PAD(0)->x25 = ((unsigned char *)(PAD(0)->ghost))[6];
       break;
     case 2:
       if (D_8028B940 == 3 || D_8028B940 == 8) {
@@ -474,28 +474,28 @@ void BrRaceTick(void)
       D_8028B7F4 = D_8028B7F0 = D_8026FF08 + 1;
       D_8027078C = 0;
       D_802707A8 = 0;
-      PAD(D_8026FF08)->ghost = 0x80197000;
+      PAD(D_8026FF08)->ghost = TGR_PTR(unsigned char *, 0x80197000);
       tgr_print("savedRecordingLength = %d\n", D_80270784);
-      memcpy(TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost), D_80307F00, D_80270784);
-      D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[1];
-      if (TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0] != D_8028B940) {
-        tgr_print("WRONG TRACK (%d!=%d)\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0], D_8028B940);
+      memcpy(((unsigned char *)(PAD(D_8026FF08)->ghost)), D_80307F00, D_80270784);
+      D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = ((unsigned char *)(PAD(D_8026FF08)->ghost))[1];
+      if (((unsigned char *)(PAD(D_8026FF08)->ghost))[0] != D_8028B940) {
+        tgr_print("WRONG TRACK (%d!=%d)\n", ((unsigned char *)(PAD(D_8026FF08)->ghost))[0], D_8028B940);
         PAD(D_8026FF08)->ghost = 0;
       } else {
-        tgr_print("TRACK=%d\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0]);
+        tgr_print("TRACK=%d\n", ((unsigned char *)(PAD(D_8026FF08)->ghost))[0]);
         PAD(D_8026FF08)->ghostPos = 8;
         tgr_print("PLAYLIMIT=%d\n", D_80270784);
         PAD(D_8026FF08)->ghostLen = D_80270784;
       }
       for (i = 0; i < D_8026FF08; i++) {
-        PAD(i)->rec[i] = (0x801A6000 + i * 0xF000);
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[0] = D_8028B940;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[1] = D_8031B760[i].kind;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[2] = ((BrSeason *)(D_8031B760[i].season))->xd4;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[3] = ((BrSeason *)(D_8031B760[i].season))->xd8;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[4] = ((BrSeason *)(D_8031B760[i].season))->xdc;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[5] = ((BrSeason *)(D_8031B760[i].season))->xe0;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[6] = ((BrSeason *)(D_8031B760[i].season))->xe4;
+        PAD(i)->rec[i] = TGR_PTR(unsigned char *, 0x801A6000 + i * 0xF000);
+        ((unsigned char *)(PAD(i)->rec[i]))[0] = D_8028B940;
+        ((unsigned char *)(PAD(i)->rec[i]))[1] = D_8031B760[i].kind;
+        ((unsigned char *)(PAD(i)->rec[i]))[2] = ((BrSeason *)(D_8031B760[i].season))->xd4;
+        ((unsigned char *)(PAD(i)->rec[i]))[3] = ((BrSeason *)(D_8031B760[i].season))->xd8;
+        ((unsigned char *)(PAD(i)->rec[i]))[4] = ((BrSeason *)(D_8031B760[i].season))->xdc;
+        ((unsigned char *)(PAD(i)->rec[i]))[5] = ((BrSeason *)(D_8031B760[i].season))->xe0;
+        ((unsigned char *)(PAD(i)->rec[i]))[6] = ((BrSeason *)(D_8031B760[i].season))->xe4;
         PAD(i)->recLen[i] = 8;
         PAD(i)->recKeep[i] = 0xDE5C;
       }
@@ -594,11 +594,11 @@ void BrRaceTick(void)
         PAD(i)->x25 = ((BrSeason *)(D_8031B760[i].season))->xe4;
       }
       if (D_8026FF18 == 2 && PAD(1)->ghost != 0) {
-        D_8031B760[1].xe68 = TGR_PTR(unsigned char *, PAD(1)->ghost)[2];
-        D_8031B760[1].xe6c = TGR_PTR(unsigned char *, PAD(1)->ghost)[3];
-        D_8031B760[1].xe60 = TGR_PTR(unsigned char *, PAD(1)->ghost)[4];
-        D_8031B760[1].xe64 = TGR_PTR(unsigned char *, PAD(1)->ghost)[5];
-        PAD(1)->x25 = TGR_PTR(unsigned char *, PAD(1)->ghost)[6];
+        D_8031B760[1].xe68 = ((unsigned char *)(PAD(1)->ghost))[2];
+        D_8031B760[1].xe6c = ((unsigned char *)(PAD(1)->ghost))[3];
+        D_8031B760[1].xe60 = ((unsigned char *)(PAD(1)->ghost))[4];
+        D_8031B760[1].xe64 = ((unsigned char *)(PAD(1)->ghost))[5];
+        PAD(1)->x25 = ((unsigned char *)(PAD(1)->ghost))[6];
       } else {
         for (; i < D_8028B7F4; i++) {
           D_8031B760[i].xe6c = 1;
@@ -808,7 +808,7 @@ void BrRaceTick(void)
         if (D_8026FF18 == 2 && PAD(i)->rec[i] != 0) {
           tgr_print("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
           for (k50 = 0; k50 < PAD(i)->recLen[i]; k50 += 2) {
-            tgr_print("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
+            tgr_print("%.02x %.02x\n", ((unsigned char *)(PAD(i)->rec[i]))[k50], ((unsigned char *)(PAD(i)->rec[i]))[k50 + 1]);
           }
           if (i == 0
               && (PAD(i)->recLen[i] < D_80270784 || D_80307F00[0] != D_8028B940
@@ -817,7 +817,7 @@ void BrRaceTick(void)
                          D_80270784, PAD(i)->recLen[i] < D_80270784, D_80307F00[0], D_8028B940,
                          D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
             D_80270784 = PAD(i)->recLen[i];
-            memcpy(D_80307F00, TGR_PTR(unsigned char *, PAD(i)->rec[i]), D_80270784);
+            memcpy(D_80307F00, ((unsigned char *)(PAD(i)->rec[i])), D_80270784);
             D_8031B760[i].msgA = tgr_addr32("NEW RECORD!");
             D_8031B760[i].msgATime = 1.0f;
             BrTimeFormat(D_8031B760[i].xfc0, D_8031B760[i].lapTime);
@@ -1441,7 +1441,7 @@ draw:
             }
           }
           for (i = 0; i < D_8026FF08; i++) {
-            D_80315E48[i] = TGR_PTR(unsigned char *, PAD(i)->rec[D_80315E40]);
+            D_80315E48[i] = ((unsigned char *)(PAD(i)->rec[D_80315E40]));
             D_80315E58[i] = PAD(i)->recLen[D_80315E40];
           }
           for (i = 0; i < D_8026FF08; i++) {

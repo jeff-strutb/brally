@@ -1,6 +1,7 @@
 /* padread.c -- reading the controllers
  */
 #include "tgr/common.h"
+#include "tgr/pad.h"
 
 /* -- declarations -- */
 extern TgrMsgQueue D_80272D48;
@@ -15,26 +16,8 @@ extern float D_802AB420;
 extern int D_8028AADC;
 void BrPadStartRead(void);
 extern TgrPad D_8031A3E0[4];
-void BrPadEdges(unsigned int *param_1);
-extern unsigned int D_8036A8E0[4][0x57];
-typedef struct BrPadMap {       /* the pad record (0x15C bytes), as tgr/pad.h */
-  unsigned int pressed;         /* 0x00  the game's buttons */
-  unsigned int held;            /* 0x04 */
-  int repeat[4];                /* 0x08 */
-  float axis[3];                /* 0x18  stick x and y, and the steering */
-  signed char steer;            /* 0x24  the steering, -128..127 */
-  unsigned char layout;         /* 0x25  the control layout, 0..4 */
-  char pad26[2];
-  int absent;                   /* 0x28  non-zero while no controller answers */
-  TgrAddr rec[2];        /* unsigned char * -- 0x2C  the laps being recorded */
-  int recLen[2];                /* 0x34  bytes recorded */
-  int recMax[2];                /* 0x3C  room for */
-  TgrAddr ghost;         /* unsigned char * -- 0x44  the recording being played back */
-  int ghostPos;                 /* 0x48 */
-  int ghostLen;                 /* 0x4C */
-  char pad50[0x158 - 0x50];
-  TgrAddr cont;              /* OSContPad * -- 0x158  its read */
-} BrPadMap;
+void BrPadEdges(void *param_1);
+typedef BrPadRec BrPadMap;      /* (tgr/pad.h) */
 extern int D_8026FF10;                  /* the race is paused */
 int BrModeIs(void (*mode)(void));
 void BrRaceTick(void);
@@ -58,15 +41,15 @@ void BrPadMapRead(BrPadMap *p)
   unsigned int b;
   int k;
 
-  if ((b = TGR_PTR(TgrPad *, p->cont)->errnum) != 0) {
+  if ((b = ((TgrPad *)(p->cont))->errnum) != 0) {
     p->absent = b == 8;
-    TGR_PTR(TgrPad *, p->cont)->stick_x = 0;
-    TGR_PTR(TgrPad *, p->cont)->stick_y = 0;
-    TGR_PTR(TgrPad *, p->cont)->button = 0;
+    ((TgrPad *)(p->cont))->stick_x = 0;
+    ((TgrPad *)(p->cont))->stick_y = 0;
+    ((TgrPad *)(p->cont))->button = 0;
   } else {
     p->absent = 0;
   }
-  b = TGR_PTR(TgrPad *, p->cont)->button;
+  b = ((TgrPad *)(p->cont))->button;
   p->pressed = 0;
   if (b & 0x800) {
     p->pressed |= 8;
@@ -128,9 +111,9 @@ void BrPadMapRead(BrPadMap *p)
         p->pressed |= 0x100000;
       }
     stick:
-      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
+      p->steer = ((TgrPad *)(p->cont))->stick_x;
       if (p->pressed & 0x10) {
-        if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x40) {
+        if (((TgrPad *)(p->cont))->stick_y < -0x40) {
           p->pressed |= 0x20000;
         }
         p->pressed |= 0x10000;
@@ -159,9 +142,9 @@ void BrPadMapRead(BrPadMap *p)
       if (p->pressed & 0x2000) {
         p->pressed |= 0x100000;
       }
-      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
+      p->steer = ((TgrPad *)(p->cont))->stick_x;
       if (p->pressed & 0x10) {
-        if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x40) {
+        if (((TgrPad *)(p->cont))->stick_y < -0x40) {
           p->pressed |= 0x20000;
         }
         p->pressed |= 0x10000;
@@ -224,12 +207,12 @@ void BrPadMapRead(BrPadMap *p)
       }
       break;
     case 3:
-      if (TGR_PTR(TgrPad *, p->cont)->stick_y > 0x20) {
+      if (((TgrPad *)(p->cont))->stick_y > 0x20) {
         p->pressed |= 0x10000;
-      } else if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x10) {
+      } else if (((TgrPad *)(p->cont))->stick_y < -0x10) {
         p->pressed |= 0x30000;
       }
-      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
+      p->steer = ((TgrPad *)(p->cont))->stick_x;
       if (p->pressed & 0x8000) {
         if (p->pressed & 0x10000) {
           p->pressed |= 0x80000;
@@ -258,8 +241,8 @@ void BrPadMapRead(BrPadMap *p)
   if (p->rec[0] != 0 || p->rec[1] != 0) {
     for (k = 0; k < 2; k++) {
       if (p->rec[k] != 0 && p->recLen[k] < p->recMax[k]) {
-        TGR_PTR(unsigned char *, p->rec[k])[p->recLen[k]] = p->steer;
-        TGR_PTR(unsigned char *, p->rec[k])[p->recLen[k] + 1] = (p->pressed & 0x3f0000) >> 16;
+        ((unsigned char *)(p->rec[k]))[p->recLen[k]] = p->steer;
+        ((unsigned char *)(p->rec[k]))[p->recLen[k] + 1] = (p->pressed & 0x3f0000) >> 16;
         if (D_8026FF10 == 0) {
           p->recLen[k] += 2;
         }
@@ -267,8 +250,8 @@ void BrPadMapRead(BrPadMap *p)
     }
   } else if (p->ghost != 0) {
     if (p->ghostPos < p->ghostLen) {
-      p->steer = TGR_PTR(unsigned char *, p->ghost)[p->ghostPos];
-      p->pressed = (TGR_PTR(unsigned char *, p->ghost)[p->ghostPos + 1] << 16) | (p->pressed & 0xffc0ffff);
+      p->steer = ((unsigned char *)(p->ghost))[p->ghostPos];
+      p->pressed = (((unsigned char *)(p->ghost))[p->ghostPos + 1] << 16) | (p->pressed & 0xffc0ffff);
       if (D_8026FF10 == 0) {
         p->ghostPos += 2;
       }
@@ -277,8 +260,8 @@ void BrPadMapRead(BrPadMap *p)
       p->pressed &= 0xffc0ffff;
     }
   }
-  p->axis[0] = (float)TGR_PTR(TgrPad *, p->cont)->stick_x / 70.0f;
-  p->axis[1] = (float)TGR_PTR(TgrPad *, p->cont)->stick_y / 70.0f;
+  p->axis[0] = (float)((TgrPad *)(p->cont))->stick_x / 70.0f;
+  p->axis[1] = (float)((TgrPad *)(p->cont))->stick_y / 70.0f;
   p->axis[2] = (float)p->steer / 70.0f;
   if (p->axis[0] > 1.0f) {
     p->axis[0] = 1.0f;
@@ -390,8 +373,9 @@ void BrPadConsume(unsigned int *param_1,unsigned int param_2)
 /* WHAT IT DOES: Turn the raw button word into presses: a button counts as
  * pressed only on the frame it goes down. */
 /* @implements 0x80255934 tgr BrPadEdges */
-void BrPadEdges(unsigned int *pad)
+void BrPadEdges(void *p)
 {
+  unsigned int *pad = p;                /* (pressed and held, the record's first two words) */
   unsigned int cur = pad[0];
 
   pad[0] ^= cur & pad[1];
@@ -401,14 +385,15 @@ void BrPadEdges(unsigned int *pad)
 
 /* WHAT IT DOES: Reset a pad record and point it at its own controller data. */
 /* @implements 0x80255B54 tgr BrPadInit */
-void BrPadInit(unsigned int *pad)
+void BrPadInit(void *p)
 {
+  BrPadRec *pad = p;                    /* port: by name (the ROM's word offsets) */
   int i;
 
-  i = (unsigned int (*)[0x57])pad - D_8036A8E0;
-  pad[12] = 0;
-  pad[11] = 0;
-  pad[17] = 0;
-  pad[0x55] = i;
-  ((TgrAddr *)pad)[0x56] = tgr_addr32(&D_8031A3E0[i]);
+  i = pad - D_8036A8E0;
+  pad->rec[1] = 0;
+  pad->rec[0] = 0;
+  pad->ghost = 0;
+  pad->index = i;
+  pad->cont = &D_8031A3E0[i];
 }
