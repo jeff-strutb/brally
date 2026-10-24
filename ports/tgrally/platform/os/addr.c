@@ -45,7 +45,9 @@ static long map_off(const TgrObj *o, uint32_t d, int to_nat)
     for (i = 0; i < o->nmap; i++) {
         const TgrMap *m = &o->map[i];
         uint32_t base = to_nat ? m->n64off : m->natoff, st = to_nat ? m->n64stride : m->natstride;
-        uint32_t len = m->size ? m->size : to_nat ? 4 : sizeof(void *), k, in;
+        uint32_t n64len = m->size ? m->size & 0xFFFF : 4;
+        uint32_t natlen = m->size ? (m->size >> 16 ? m->size >> 16 : m->size) : sizeof(void *);
+        uint32_t len = to_nat ? n64len : natlen, k, in;
         if (d < base)
             continue;
         k = m->count > 1 && st ? (d - base) / st : 0;
@@ -54,7 +56,7 @@ static long map_off(const TgrObj *o, uint32_t d, int to_nat)
         in = d - base - k * st;
         if (in < len)
             return (long)((to_nat ? m->natoff : m->n64off) + k * (to_nat ? m->natstride : m->n64stride) +
-                          (m->size ? in : 0));
+                          (m->size && !(m->size >> 16) ? in : 0));
     }
     return -1;
 }

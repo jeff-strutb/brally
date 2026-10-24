@@ -93,7 +93,7 @@ static TThread *pick(void)
 /* ---- message queues: the game's layout, in game memory (the caller holds G) ---- */
 static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 {
-    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
+    TgrMsg *buf = mq->msg;
     int i;
     if (mq->validCount >= mq->msgCount)
         return 0;
@@ -116,7 +116,7 @@ static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 
 static int mq_recv(TgrMsgQueue *mq, TgrMsg *out)
 {
-    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
+    TgrMsg *buf = mq->msg;
     int i;
     if (mq->validCount == 0)
         return 0;

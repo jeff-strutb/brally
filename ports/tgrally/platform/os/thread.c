@@ -130,7 +130,7 @@ static TThread *find(TgrThread *t)
 /* ---- message queues: the game's layout, in game memory (the caller holds G) ---- */
 static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 {
-    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
+    TgrMsg *buf = mq->msg;
     if (mq->validCount >= mq->msgCount)
         return 0;
     if (jam) {
@@ -146,7 +146,7 @@ static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 
 static int mq_recv(TgrMsgQueue *mq, TgrMsg *out)
 {
-    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
+    TgrMsg *buf = mq->msg;
     if (mq->validCount == 0)
         return 0;
     if (out)
@@ -354,12 +354,12 @@ void tgr_thread_idle(void)
 
 void tgr_mq_init(TgrMsgQueue *mq, TgrMsg *msg, int32_t count)
 {
-    mq->mtqueue = 0x802A6230;       /* libultra's empty thread queue, as n64box sets it */
-    mq->fullqueue = 0x802A6230;
+    mq->mtqueue = NULL;
+    mq->fullqueue = NULL;
     mq->validCount = 0;
     mq->first = 0;
     mq->msgCount = count;
-    mq->msg = tgr_addr32(msg);
+    mq->msg = msg;
 }
 
 static int32_t send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag, int jam)

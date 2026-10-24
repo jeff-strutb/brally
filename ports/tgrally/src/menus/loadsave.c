@@ -30,7 +30,7 @@ extern TgrPak D_8031A3F8[4];     /* the Rumble Pak's, one per port */
 extern unsigned char D_803163E0[2][32];  /* the id of the pak last used on each port */
 extern unsigned char D_80316420[2];          /* a pak has been used on the port (ports 2-3 run on into the statics) */
 extern unsigned char D_8031B1E8[4];      /* the port has a Rumble Pak */
-extern char D_80272D48[];       /* the serial interface's message queue */
+extern TgrMsgQueue D_80272D48[1];       /* the serial interface's message queue */
 
 extern short D_802A4BE8;        /* a mode change is under way */
 extern int D_80271FA8;          /* the port of the controlling pad */

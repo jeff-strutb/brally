@@ -25,43 +25,43 @@ typedef int64_t  TgrTime;
 typedef int32_t  TgrPri;
 typedef int32_t  TgrId;
 typedef uint32_t TgrEvent;
-typedef uint32_t TgrMsg;            /* an integer or an original address */
+typedef uintptr_t TgrMsg;           /* an integer or a pointer */
 
-typedef struct TgrThread_s {         /* 0x1B0 bytes; the platform keeps its own state */
-    TgrAddr next;
+typedef struct TgrThread_s {         /* 0x1B0 bytes on the N64; the platform keeps its own state */
+    void   *next;
     TgrPri priority;
     char context[0x1B0 - 8];
 } TgrThread;
 
-typedef struct TgrMsgQueue_s {      /* 0x18 bytes */
-    TgrAddr mtqueue;
-    TgrAddr fullqueue;
+typedef struct TgrMsgQueue_s {      /* 0x18 bytes on the N64 */
+    void   *mtqueue;                /* (the threads waiting: the platform keeps its own) */
+    void   *fullqueue;
     int32_t validCount;
     int32_t first;
     int32_t msgCount;
-    TgrAddr msg;                    /* OSMesg[msgCount] */
+    TgrMsg *msg;                    /* [msgCount] */
 } TgrMsgQueue;
 
 typedef struct {
     uint16_t type;
     uint8_t  pri;
     uint8_t  status;
-    TgrAddr  retQueue;              /* OSMesgQueue */
+    struct TgrMsgQueue_s *retQueue;
 } TgrIoMsgHdr;
 
 typedef struct {                    /* 0x18 bytes */
     TgrIoMsgHdr hdr;
-    TgrAddr  dramAddr;
+    void    *dramAddr;
     uint32_t devAddr;
     uint32_t size;
-    TgrAddr  piHandle;
+    void    *piHandle;
 } TgrIoMsg;
 
-typedef struct TgrTimer_s {          /* 0x20 bytes */
-    TgrAddr next, prev;
+typedef struct TgrTimer_s {          /* 0x20 bytes on the N64 */
+    struct TgrTimer_s *next, *prev;
     TgrTime interval;
     TgrTime value;
-    TgrAddr mq;
+    TgrMsgQueue *mq;
     TgrMsg msg;
 } TgrTimer;
 
@@ -102,9 +102,9 @@ typedef struct {
     uint8_t  errnum;
 } TgrPadStatus;
 
-typedef struct {                    /* 0x68 bytes */
+typedef struct {                    /* 0x68 bytes on the N64 */
     int32_t status;
-    TgrAddr queue;                  /* OSMesgQueue */
+    TgrMsgQueue *queue;
     int32_t channel;
     uint8_t id[32];
     uint8_t label[32];

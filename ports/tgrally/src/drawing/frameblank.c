@@ -84,9 +84,9 @@ typedef struct { char x[16]; } BrVtx16;
 extern BrVtx16 *D_8028C764;             /* vertex pool: next and start */
 extern BrVtx16 *D_8028C768;
 extern int D_8028AB78;                  /* the most vertices in one frame */
-extern char D_8031A320[];               /* RSP done queue */
-extern char D_8031A358[];               /* RDP done queue */
-extern char D_8031A390[];               /* retrace queue */
+extern TgrMsgQueue D_8031A320[1];               /* RSP done queue */
+extern TgrMsgQueue D_8031A358[1];               /* RDP done queue */
+extern TgrMsgQueue D_8031A390[1];               /* retrace queue */
 extern void (*D_8031B31C)(void);        /* run once the RSP has finished */
 extern int D_8031B320;
 extern int D_8028AA94;                  /* debug: copy the low-memory frame into the display */

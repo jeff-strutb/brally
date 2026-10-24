@@ -30,7 +30,8 @@ extern const TgrFn tgr_fns[];
 extern const int tgr_nfns;
 
 typedef struct TgrMap {     /* count fields, n64stride apart in the original's layout, natstride natively */
-    uint32_t n64off, natoff, size;          /* size 0: a pointer (4 bytes on the N64) */
+    uint32_t n64off, natoff, size;          /* size 0: a pointer (4 bytes on the N64); an integer
+                                               wider natively: the N64's size | the native one << 16 */
     uint32_t count, n64stride, natstride;
 } TgrMap;
 

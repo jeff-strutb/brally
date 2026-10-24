@@ -519,7 +519,7 @@ int32_t tgr_pak_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel)
     if (!s_pak)
         return s_rumble ? TGR_PAK_ID_FATAL : TGR_PAK_NONE;
     pfs->status = 0;
-    pfs->queue = tgr_addr32(mq);
+    pfs->queue = mq;
     pfs->channel = channel;
     {
         int i;
@@ -788,7 +788,7 @@ int32_t tgr_rumble_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel)
     if (!s_rumble || channel != 0)
         return TGR_PAK_NONE;
     pfs->status = 0;
-    pfs->queue = tgr_addr32(mq);
+    pfs->queue = mq;
     pfs->channel = 0;
     pfs->activebank = 0xFF;
     return 0;

@@ -153,9 +153,11 @@ def runs(n64, nat):
         raise Unlayable('leaf count differs (%d/%d)' % (len(n64), len(nat)))
     out = []
     for (o0, k0, s0), (o1, k1, s1) in zip(n64, nat):
-        if k0 != k1 or (k0 == 'b' and s0 != s1):
+        if k0 != k1:
             raise Unlayable('leaf kinds differ at %d' % o0)
-        s = s0 if k0 == 'b' else 0
+        # an integer wider natively (a pointer-sized one) keeps both sizes:
+        # the N64's in the low half, the native one above
+        s = (s0 if s0 == s1 else s0 | s1 << 16) if k0 == 'b' else 0
         if out:
             a0, a1, asz, n, st0, st1 = out[-1]
             if asz == s:
@@ -417,7 +419,8 @@ def main():
                 relaid[name] = (nn, runs(nl0, nl1))
             except Unlayable as e:
                 report.append('%s: cannot map %s to its native layout: %s' % (name, owner['spelling'], e))
-            views = {r['nat'] for r in rows if r['complete'] and r['nat'] is not None}
+            views = {round(r['nat'] / r['n64'], 4) for r in rows
+                     if r['complete'] and r['nat'] and r['n64']}       # (arrays may differ in length)
             if len(views) > 1:
                 report.append('%s: declared at different native sizes %s: one definition is needed' % (
                     name, sorted(views)))

@@ -9,7 +9,7 @@
 extern short D_802A4BE8;
 extern Gfx *D_8028A858;                 /* the display list */
 extern int D_802724F0;                  /* the last Controller Pak status */
-extern char D_80272D48[];               /* the serial message queue */
+extern TgrMsgQueue D_80272D48[1];               /* the serial message queue */
 extern int D_8028AAB0;                  /* the screen width */
 extern int D_8028AAB4;                  /* and height */
 extern BrImage D_8028CB40;              /* the backdrop */

@@ -71,8 +71,8 @@ int32_t tgr_rom_load(TgrIoMsg *mb, int32_t pri, int32_t direction, uint32_t devA
     }
     tgr_rom_read(src, vAddr, nbytes);
     if (mb)
-        mb->hdr.retQueue = tgr_addr32(mq);
-    tgr_post_mesg(mq, tgr_addr32(mb));
+        mb->hdr.retQueue = mq;
+    tgr_post_mesg(mq, (TgrMsg)mb);
     return 0;
 }
 

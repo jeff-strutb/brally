@@ -3,7 +3,7 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
-extern int D_80272D48;
+extern TgrMsgQueue D_80272D48;
 extern int D_8028AB6C;
 extern short D_802A4BE8;
 void BrPadStickRepeatPos(unsigned int *pressed, int *timer, float *axis, unsigned int bit);

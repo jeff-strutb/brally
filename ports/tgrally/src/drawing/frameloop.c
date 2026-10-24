@@ -169,39 +169,38 @@ extern int D_8028A8A8;                  /* mirror flags: they differ when the vi
 
 #include "tgr/track.h"
 
-extern int D_8031A320[6];
-extern int D_8031A338[6];
-extern int D_8031A354[1];
-extern int D_8031A358[6];
-extern int D_8031A370[6];
-extern int D_8031A38C[1];
-extern int D_8031A390[6];
-extern int D_8031A3B0[6];
-extern int D_8031A3C8[1];
+extern TgrMsgQueue D_8031A320[1];
+extern TgrMsgQueue D_8031A338[1];
+extern TgrMsg D_8031A354[1];
+extern TgrMsgQueue D_8031A358[1];
+extern TgrMsgQueue D_8031A370[1];
+extern TgrMsg D_8031A38C[1];
+extern TgrMsgQueue D_8031A390[1];
+extern TgrMsgQueue D_8031A3B0[1];
+extern TgrMsg D_8031A3C8[1];
 extern int D_8031A3CC;
 typedef struct BrContStatus {   /* an OSContStatus */
   unsigned short type;
   unsigned char status;
   unsigned char errno;
 } BrContStatus;
-typedef struct { char raw[0x68]; } BrPfs;   /* an OSPfs */
 void BrStub802607AC(void);
 extern char D_80272D68[];
-extern int D_80319F88[6];
-extern int D_80319FA0[32];
-extern int D_8031A350[1];
-extern int D_8031A388[1];
-extern int D_8031A3A8[1];
-extern char D_802729E0[];
-extern char D_80272B90[];
+extern TgrMsgQueue D_80319F88[1];
+extern TgrMsg D_80319FA0[32];
+extern TgrMsg D_8031A350[1];
+extern TgrMsg D_8031A388[1];
+extern TgrMsg D_8031A3A8[1];
+extern TgrThread D_802729E0[1];
+extern TgrThread D_80272B90[1];
 extern void *D_8026FF04;
 extern char D_803196D0[];
 extern char D_80319ED0[];
 extern float D_8028A8B0;
-extern int D_80272D48[6];
-extern int D_80272D60[1];
+extern TgrMsgQueue D_80272D48[1];
+extern TgrMsg D_80272D60[1];
 extern BrContStatus D_8031A3D0[4];
-extern BrPfs D_8031A3F8[4];
+extern TgrPak D_8031A3F8[4];
 extern unsigned char D_8031B1E8[4];
 void BrPadPollAll(void);
 void BrModeSet(void (*fn)(void));
@@ -217,7 +216,7 @@ extern char D_80316400[];
 extern unsigned char D_80316420;
 extern unsigned char D_80316421;
 extern int D_8036A908;
-extern BrPfs D_80369EC0[2];
+extern TgrPak D_80369EC0[2];
 extern int D_8028AA78;
 extern int D_8028AA80;
 extern int D_8028AA84;
@@ -690,7 +689,7 @@ extern int D_8028B940;
 extern unsigned int D_8028AAD4;
 extern int D_8026FF10;
 extern int D_8028A880;
-extern int D_80319F88[];
+extern TgrMsgQueue D_80319F88[1];
 void *BrRomDmaSlot(void);
 
 /* WHAT IT DOES: Bring the track's textures up to date: each animated one
@@ -774,7 +773,7 @@ void BrPadStartRead(void)
   if (D_8028AB6C == 0) {
     D_8028AB6C = 1;
     D_802A4BE8 = 0;
-    tgr_pad_read(&D_80272D48);
+    tgr_pad_read(D_80272D48);
   }
 }
 
@@ -785,7 +784,7 @@ void BrPadStartRead(void)
 void BrPadRead(void)
 {
   BrPadStartRead();
-  tgr_mq_recv(&D_80272D48,0,1);
+  tgr_mq_recv(D_80272D48,0,1);
   tgr_pad_get(D_8031A3E0);
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
@@ -1233,8 +1232,8 @@ void BrCamShakeAdd(int cam, float amount)
 void BrSchedInit(void)
 {
   int i;
-  int q[6];
-  int msg;
+  TgrMsgQueue q[1];
+  TgrMsg msg;
   unsigned char bits;
   int r;
 
@@ -1323,7 +1322,7 @@ void BrBootCheck(void)
         BrPakWarnScreen();
       }
     } else {
-      memcpy(D_803163E0, D_80369EC0[0].raw + 0xc, 0x20);
+      memcpy(D_803163E0, D_80369EC0[0].id, 0x20);
       D_80316420 = 1;
     }
   }
@@ -1334,7 +1333,7 @@ void BrBootCheck(void)
         tgr_rumble_open(D_80272D48, &D_8031A3F8[1], 1);
       }
     } else {
-      memcpy(D_80316400, D_80369EC0[1].raw + 0xc, 0x20);
+      memcpy(D_80316400, D_80369EC0[1].id, 0x20);
       D_80316421 = 1;
     }
   }

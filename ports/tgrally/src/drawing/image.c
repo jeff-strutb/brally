@@ -462,7 +462,7 @@ extern TgrPak D_8031A3F8[4];
 extern unsigned char D_803163E0[2][32];
 extern unsigned char D_80316420[4];
 extern unsigned char D_8031B1E8[4];
-extern char D_80272D48[];
+extern TgrMsgQueue D_80272D48[1];
 extern int D_80271FA8;
 
 extern short D_802A4BE8;

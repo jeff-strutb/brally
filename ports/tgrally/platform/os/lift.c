@@ -71,8 +71,11 @@ static void lift_mapped(const TgrObj *o, const uint8_t *rom)
                     p = (void *)(uintptr_t)a;   /* a number the source types as a pointer */
                 memcpy(dst, &p, sizeof p);
             } else {
-                for (b = 0; b < m->size; b++)
-                    dst[b] = src[m->size - 1 - b];
+                uint32_t n = m->size & 0xFFFF, w = m->size >> 16 ? m->size >> 16 : n;
+                for (b = 0; b < n; b++)             /* (little-endian: the value in the low bytes) */
+                    dst[b] = src[n - 1 - b];
+                for (; b < w; b++)
+                    dst[b] = 0;
             }
         }
     }

@@ -69,11 +69,11 @@ extern unsigned long long D_80379568[10][12];
 extern int D_802A4918;                 /* the mixer's state block (mixer.s): */
 extern unsigned int D_802A491C;        /* its first two words differ in type */
 extern TgrMsgQueue D_803746F0;          /* the music timer's message queue */
-extern char D_80374708[];               /* its two messages */
-extern char D_80374710[];               /* the music timer */
+extern TgrMsg D_80374708[2];               /* its two messages */
+extern TgrTimer D_80374710[1];               /* the music timer */
 extern be16_t D_803747D0[];             /* the music output buffer (0x4000 bytes), as the AI reads it */
 extern short D_802A4A08[];              /* silence: where idle sound voices point */
-extern char D_80378FB8[];               /* the mixer thread */
+extern TgrThread D_80378FB8[1];             /* the mixer thread */
 extern unsigned short D_802A4790;
 extern unsigned long long tgr_clock_rate;
 void BrMixMusic(short *buf, int bytes);
