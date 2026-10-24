@@ -582,8 +582,8 @@ void BrPaintShopScreen(void)
         D_802724F0 = BrDecalPakTransfer(D_8028AB08, D_8028DBBC, 9, 0, &done);
       } else {
         BrPakMessage(D_802724F0, 9, 0);
-        if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x30) {
-          BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x30);
+        if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x30) {
+          BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x30);
           D_802724F0 = 0;
           D_8028DB60 = D_8028DB64;
         }
@@ -594,8 +594,8 @@ void BrPaintShopScreen(void)
         D_802724F0 = BrDecalPakTransfer(D_8028AB08, D_8028DBBC, 10, 0, &done);
       } else {
         BrPakMessage(D_802724F0, 10, 0);
-        if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x30) {
-          BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x30);
+        if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x30) {
+          BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x30);
           D_802724F0 = 0;
           D_8028DB60 = D_8028DB64;
         }
@@ -632,7 +632,7 @@ void BrPaintShopScreen(void)
     BrPerfMeterDraw();
   }
   BrFrameEnd();
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
     if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC0 == 0 && D_8028DBC4 == 0) {
       i = D_8028D110.x;
       r = D_8028D110.y;
@@ -641,7 +641,7 @@ void BrPaintShopScreen(void)
       D_8028DB58 = BrPaintGet(i, r);
       D_8028DBEC = 1;
     } else if (D_8028DBC0 != 0 || D_8028DBC4 != 0) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
+      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
       D_8028DBC4 = 0;
       D_8028DBC0 = 0;
       D_8028DBD8 = 1;

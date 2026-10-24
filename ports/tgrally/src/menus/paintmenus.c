@@ -144,23 +144,23 @@ void BrPaintClearMenu(void)
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
+  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
     if (D_8028CFC0.kind == 0) {
       D_8028CFC0.kind = 3;
     } else {
       D_8028CFC0.kind--;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 1) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 1);
+  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 1);
     if (D_8028CFC0.kind == 3) {
       D_8028CFC0.kind = 0;
     } else {
       D_8028CFC0.kind++;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
     switch (D_8028CFC0.kind) {
     case 0:
     case 1:
@@ -208,8 +208,8 @@ void BrPaintClearMenu(void)
       D_8028DB60 = D_8028DB64;
       break;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
     D_8028CFC0.kind = 0;
     D_8028DB60 = D_8028DB64;
   }
@@ -314,23 +314,23 @@ void BrPaintMirrorMenu(void)
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrPadStickToButtons(&PADS[D_8028DBBC]);
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
+  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 1);
     if (D_8028DBB8 == 2) {
       D_8028DBB8 = 0;
     } else {
       D_8028DBB8++;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
+  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
     if (D_8028DBB8 == 0) {
       D_8028DBB8 = 2;
     } else {
       D_8028DBB8--;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
     D_8028CFBC = D_8028DBB8;
     if (D_8028DBB8 == 0) {
       if (D_8028DBCC != 0) {
@@ -339,8 +339,8 @@ void BrPaintMirrorMenu(void)
     } else {
       BrPaintFlipApply();
     }
-  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
     D_8028CFBC = 0;
     D_8028DBE0 = 0;
     D_8028DB60 = D_8028DB64;
