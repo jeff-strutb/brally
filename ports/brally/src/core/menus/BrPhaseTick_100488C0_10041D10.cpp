@@ -2,6 +2,7 @@
 #include "br_ui.h"   /* BrUiPage_, the canonical record */
 #include "br_phase.h"   /* BrPhase_, the canonical record */
 #include "slice3_39.h"   /* br_globals: its objects */
+#include "br_crt.h"   /* plat_orig_fn */
 /* WHAT IT DOES: tick a phase, deciding on this frame whether its periodic
  * work is due -- every frame in one mode, and otherwise once every 120
  * ticks. */
@@ -47,8 +48,6 @@ public:
     virtual void v3();
     virtual void v4();
     virtual void v5();          /* +0x14 */
-    int f04;
-    int f08;                    /* +0x08 */
     int Tick();
 };
 
@@ -65,7 +64,13 @@ extern "C" {
 
 int Phase32T::Tick()
 {
-    if (f08 & 0x10)
+    /* +0x08 on i386 is the phase's hook (BrPhase_.pfnHook), a function
+     * pointer whose bit 4 the original tests: the 64-bit core tests the same
+     * bit of that function's original address.  (Read as an int after the
+     * vptr, as the i386 class has it, the test fell on the high half of
+     * pfnEnter: 0x1 on macOS and iOS, clear; 0x7FF6 on Windows, set, so the
+     * menus never ticked and never drew.) */
+    if (plat_orig_fn((const void *)((BrPhase_ *)(void *)this)->pfnHook) & 0x10)
         return 0;
 
     int go = 0;

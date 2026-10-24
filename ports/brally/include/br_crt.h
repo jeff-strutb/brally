@@ -101,6 +101,9 @@ void br_qsort(void *base, size_t num, size_t width, int (*comp)(const void *, co
 /* the platform's per-frame hook (scripted input), BrAppFrame calls it */
 void plat_app_frame(void);
 void plat_text_emit(const char *psz);   /* script_game.c: what the frame drew */
+/* script_game.c: a core function's address in the original (0 for null or
+ * anything else), for code that tests the bits of a stored function pointer */
+unsigned plat_orig_fn(const void *pfn);
 
 #ifdef __cplusplus
 }  /* BR_CLINK_END */

@@ -83,7 +83,7 @@ int tgr_keys_row(int result, int row)
   if (!tgr_keys_shown() || row <= CTL_ROW) {
     return row;
   }
-  if (row == CTL_ROW + 1) {
+  if (row == CTL_ROW + 1 && result != 2) {   /* (B, 2, is the screen's: its switch goes back) */
     if (result == 1) {
       D_802724E0 = -1;
       BrModeSet(tgr_keys_screen);

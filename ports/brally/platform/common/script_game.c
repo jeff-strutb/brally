@@ -52,6 +52,15 @@ const void *plat_script_orig(unsigned va, unsigned n)
  * points at; 0 when it is null or points anywhere else */
 extern const struct { unsigned va; const void *p; } g_brPtrMap[], g_brFnMap[];
 
+unsigned plat_orig_fn(const void *pfn)
+{
+    int i;
+    for (i = 0; pfn && g_brFnMap[i].p; i++)
+        if (g_brFnMap[i].p == pfn)
+            return g_brFnMap[i].va;
+    return 0;
+}
+
 int plat_script_orig_ptr(unsigned va, unsigned *out)
 {
     int i;
@@ -65,11 +74,8 @@ int plat_script_orig_ptr(unsigned va, unsigned *out)
     *out = 0;
     if (!v)
         return 1;
-    for (i = 0; g_brFnMap[i].p; i++)
-        if (g_brFnMap[i].p == v) {
-            *out = g_brFnMap[i].va;
-            return 1;
-        }
+    if ((*out = plat_orig_fn(v)) != 0)
+        return 1;
     for (i = 0; g_brDumpMap[i].p; i++)
         if ((const char *)v >= (const char *)g_brDumpMap[i].p &&
             (const char *)v < (const char *)g_brDumpMap[i].p + g_brDumpMap[i].n) {
