@@ -25,10 +25,10 @@ extern unsigned char D_8036A062;        /* the first note in use */
 extern unsigned char D_8036A063;        /* the last note in use */
 extern int D_8036A064;                  /* notes in use */
 extern int D_8036A068;                  /* free bytes */
-extern OSPfsState D_8036A070[16];       /* the notes */
+extern TgrPakFile D_8036A070[16];       /* the notes */
 extern unsigned char D_8036A270;        /* the manager's state */
-extern OSPfs D_80369EC0[4];
-extern OSPfs D_8031A3F8[4];
+extern TgrPak D_80369EC0[4];
+extern TgrPak D_8031A3F8[4];
 extern unsigned char D_803163E0[];      /* the pak's id when it was last read */
 void BrFrontReturnToTitle(void);
 void BrZBufferClear(void);
@@ -107,7 +107,7 @@ void BrPakManager(void)
   int bx;
   int u1[2];                    /* unused: the frame has them */
   char c;
-  OSPfsState *st;
+  TgrPakFile *st;
   int maxFiles;
   unsigned char pattern;
   char num[11];
@@ -118,7 +118,7 @@ void BrPakManager(void)
   if (D_8028DD94 == 0) {
     D_8028DD94 = 1;
     D_8036A060 = 0;
-    osPfsIsPlug(D_80272D48, &pattern);
+    tgr_pak_present(D_80272D48, &pattern);
     if ((pattern & 1) == 0) {
       BrModeSet(BrFrontReturnToTitle);
       D_8028DD94 = 0;
@@ -198,17 +198,17 @@ void BrPakManager(void)
   }
   switch (D_8036A270) {
   case 0:
-    D_802724F0 = osPfsInitPak(D_80272D48, &D_80369EC0[0], 0);
+    D_802724F0 = tgr_pak_open_new(D_80272D48, &D_80369EC0[0], 0);
     if (D_802724F0 != 0 && D_802724F0 == 10) {
-      if (osMotorInit(D_80272D48, &D_8031A3F8[0], 0) == 0) {
+      if (tgr_rumble_open(D_80272D48, &D_8031A3F8[0], 0) == 0) {
         D_802724F0 = 0;
         BrModeSet(BrFrontReturnToTitle);
         D_802A4BE8 = 1;
         return;
       }
-      D_802724F0 = osPfsRepairId(&D_80369EC0[0]);
+      D_802724F0 = tgr_pak_repair(&D_80369EC0[0]);
       if (D_802724F0 == 0) {
-        osPfsInitPak(D_80272D48, &D_80369EC0[0], 0);
+        tgr_pak_open_new(D_80272D48, &D_80369EC0[0], 0);
       }
     }
     if (D_802724F0 == 0) {
@@ -219,10 +219,10 @@ void BrPakManager(void)
     }
     break;
   case 1:
-    D_802724F0 = osPfsNumFiles(&D_80369EC0[0], &maxFiles, &D_8036A064);
+    D_802724F0 = tgr_pak_count(&D_80369EC0[0], &maxFiles, &D_8036A064);
     if (D_802724F0 != 0) {
       if (D_802724F0 == 3) {
-        if (osPfsChecker(&D_80369EC0[0]) != 0) {
+        if (tgr_pak_check(&D_80369EC0[0]) != 0) {
           D_8036A270 = 4;
           break;
         }
@@ -232,7 +232,7 @@ void BrPakManager(void)
       }
     }
     for (i = 0; i < 16; i++) {
-      if (osPfsFileState(&D_80369EC0[0], i, &D_8036A070[i]) != 0) {
+      if (tgr_pak_stat(&D_80369EC0[0], i, &D_8036A070[i]) != 0) {
         D_8028DD98 |= 1 << i;
       }
     }
@@ -250,10 +250,10 @@ void BrPakManager(void)
         D_8036A063 = i;
       }
     }
-    D_802724F0 = osPfsFreeBlocks(&D_80369EC0[0], &D_8036A068);
+    D_802724F0 = tgr_pak_free(&D_80369EC0[0], &D_8036A068);
     if (D_802724F0 != 0) {
       if (D_802724F0 == 3) {
-        if (osPfsChecker(&D_80369EC0[0]) != 0) {
+        if (tgr_pak_check(&D_80369EC0[0]) != 0) {
           D_8036A270 = 4;
           break;
         }
@@ -341,7 +341,7 @@ void BrPakManager(void)
     break;
   case 5:
     st = &D_8036A070[D_8036A061];
-    D_802724F0 = osPfsDeleteFile(&D_80369EC0[0], st->company_code, st->game_code, st->game_name, st->ext_name);
+    D_802724F0 = tgr_pak_delete(&D_80369EC0[0], st->company_code, st->game_code, st->game_name, st->ext_name);
     if (D_802724F0 == 0) {
       D_8028DD98 |= 1 << D_8036A061;
       D_8036A070[D_8036A061].game_name[0] = 0;
@@ -427,7 +427,6 @@ void BrPakManager(void)
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();

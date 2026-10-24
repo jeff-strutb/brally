@@ -43,9 +43,9 @@ void BrRumbleUpdate(int arg0)
       if (D_802A4BE8 != 0) {
         D_802A4BEC[i] = 0;
         D_8031B1E8[i] = 0;
-        if (osMotorInit(D_80272D48, &D_8031A3F8[i], i) == 0) {
+        if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) == 0) {
           D_8031B1E8[i] = 1;
-          osMotorStop(&D_8031A3F8[i]);
+          tgr_rumble_off(&D_8031A3F8[i]);
         }
       }
     }
@@ -56,17 +56,17 @@ void BrRumbleUpdate(int arg0)
         if (D_802A4BFC[j] == 0) {
           if (D_802A4BF0[j] != 0) {
             D_802A4BFC[j] = D_802A4BF8[j];
-            osMotorStop(&D_8031A3F8[j]);
+            tgr_rumble_off(&D_8031A3F8[j]);
           } else {
             D_802A4BFC[j] = D_802A4BF4[j];
-            osMotorStart(&D_8031A3F8[j]);
+            tgr_rumble_on(&D_8031A3F8[j]);
           }
           D_802A4BF0[j] ^= 1;
         } else {
           D_802A4BFC[j]--;
         }
         if (D_802A4C00[j] == 0) {
-          osMotorStop(&D_8031A3F8[j]);
+          tgr_rumble_off(&D_8031A3F8[j]);
           D_802A4BF0[j] = 0;
           D_802A4BFC[j] = 0;
           D_802A4BEC[j] = 0;
@@ -81,7 +81,7 @@ void BrRumbleUpdate(int arg0)
   if (k == 0 && D_802A4BE8 != 0) {
     for (i = 0; i != 2; i++) {
       D_8031B1E8[i] = 0;
-      if (osMotorInit(D_80272D48, &D_8031A3F8[i], i) == 0) {
+      if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) == 0) {
         D_8031B1E8[i] = 1;
       }
     }

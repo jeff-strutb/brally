@@ -1,4 +1,4 @@
-/* tgr_core.h: forced into every core TU after ultra64.h.  The host C
+/* tgr_core.h: forced into every core TU after tgr_os.h.  The host C
  * library's own declarations, so a TU's loose declaration of memcpy,
  * sprintf or strlen (IDO's int for size_t) is an error to fix, not a
  * silent ABI mismatch; and the address translation the core's 32-bit

@@ -106,11 +106,11 @@ extern int D_8028AAE0;                  /* CPU time of the last frame */
 extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
-extern int osTvType;
-extern OSViMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
-extern OSViMode D_802A54B0[1];
-extern OSViMode D_802A6040[1];
-extern OSViMode D_802A5780[1];
+extern int tgr_tv_type;
+extern TgrVideoMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern TgrVideoMode D_802A54B0[1];
+extern TgrVideoMode D_802A6040[1];
+extern TgrVideoMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;
@@ -134,7 +134,7 @@ extern float D_802AB41C;
 extern float D_802AB420;
 extern int D_8028AADC;
 void BrPadStartRead(void);
-extern OSContPad D_8031A3E0[4];
+extern TgrPad D_8031A3E0[4];
 void BrPadMapRead(unsigned int *param_1);
 void BrPadEdges(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
@@ -397,9 +397,9 @@ void BrFrameBegin(int hires)
     tgr_wr32(&_g->words.w0, 0xfe000000);
     tgr_wr32(&_g->words.w1, TGR_W1((D_00000400)));
   }
-  osViSetSpecialFeatures(0x40);
-  osViSetSpecialFeatures(0x10);
-  osViSetSpecialFeatures(D_8028AA4C != 0 ? 1 : 2);
+  tgr_video_features(0x40);
+  tgr_video_features(0x10);
+  tgr_video_features(D_8028AA4C != 0 ? 1 : 2);
 }
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -663,11 +663,9 @@ void BrViewFrame(int x, int y, int w, int h)
 void BrScreenFlush2Layout1(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
@@ -681,11 +679,9 @@ void BrScreenFlush2Layout1(void)
 void BrScreenFlush2Layout0(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
@@ -759,12 +755,12 @@ frame:
 palette:
       pal = BES32(anim->key[k].pal);
       if (BR_TEXSLOT_SIZE(slot) != 0 && tex != -1) {
-        osPiStartDma(BrRomDmaSlot(), 0, 0, tex + D_8028A880, BEPTR(void *, slot->dst),
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, tex + D_8028A880, BEPTR(void *, slot->dst),
                      BR_TEXSLOT_SIZE(slot), &D_80319F88);
       }
 load:
       if (BE32(slot->palDst) != 0 && pal != -1) {
-        osPiStartDma(BrRomDmaSlot(), 0, 0, pal + D_8028A880, BEPTR(void *, slot->palDst),
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, pal + D_8028A880, BEPTR(void *, slot->palDst),
                      BR_TEXSLOT_FMT(slot) == 1 ? 0x20 : 0x200, &D_80319F88);
       }
     } else if (D_8028AA88 != D_8028AA84) {
@@ -783,7 +779,7 @@ void BrPadStartRead(void)
   if (D_8028AB6C == 0) {
     D_8028AB6C = 1;
     D_802A4BE8 = 0;
-    osContStartReadData(&D_80272D48);
+    tgr_pad_read(&D_80272D48);
   }
 }
 
@@ -794,8 +790,8 @@ void BrPadStartRead(void)
 void BrPadRead(void)
 {
   BrPadStartRead();
-  osRecvMesg(&D_80272D48,0,1);
-  osContGetReadData(D_8031A3E0);
+  tgr_mq_recv(&D_80272D48,0,1);
+  tgr_pad_get(D_8031A3E0);
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
 }
@@ -882,17 +878,16 @@ void BrFrameEnd(void)
   if (D_8028AB70 > 6000) {
     BrFatal("HUGE GLIST ERROR");
   }
-  osWritebackDCacheAll();
   if (D_8028AB80 != 0) {
     BrPerfMark(0, 0, 0, 0, 0xff);
-    osRecvMesg(D_8031A320, 0, 1);
+    tgr_mq_recv(D_8031A320, 0, 1);
     BrPerfMark(0, 0xff, 0xff, 0, 0xff);
     if (D_8031B31C != 0) {
       D_8031B31C();
       D_8031B31C = 0;
     }
     BrPerfMark(0, 0, 0, 0, 0xff);
-    osRecvMesg(D_8031A358, 0, 1);
+    tgr_mq_recv(D_8031A358, 0, 1);
     if (D_8028AA94 != 0) {
       mul = D_8028A850 != 0 ? 4 : 1; n = mul * D_8028AAB0 * D_8028AAB4 >> 1;
       src = D_80000400;
@@ -905,24 +900,22 @@ void BrFrameEnd(void)
       D_8031B31C();
       D_8031B31C = 0;
     }
-    osWritebackDCacheAll();
-    D_8028AAE8 = osGetCount(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
+    D_8028AAE8 = tgr_clock(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
         if (D_8028A850 != 0) {
-          if (osTvType == 2) {
-            osViSetMode(D_802A6040);
+          if (tgr_tv_type == 2) {
+            tgr_video_mode(D_802A6040);
           } else {
-            osViSetMode(D_802A5780);
+            tgr_video_mode(D_802A5780);
           }
         } else {
-          if (osTvType == 2) {
-            osViSetMode(D_802A5D70);
+          if (tgr_tv_type == 2) {
+            tgr_video_mode(D_802A5D70);
           } else {
-            osViSetMode(D_802A54B0);
+            tgr_video_mode(D_802A54B0);
           }
         }
-        osViBlack(1);
         D_8028A854 = D_8028A850;
       }
     }
@@ -930,21 +923,20 @@ void BrFrameEnd(void)
     BrPerfMark(2, 0x20, 0x20, 0x20, 0xff);
     BrPerfMark(0, 0x20, 0x20, 0x20, 0xff);
     fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
-    osRecvMesg(D_8031A390, 0, 1);
-    osViSwapBuffer(fb);
-    osRecvMesg(D_8031A390, 0, 1);
-    if (osViGetCurrentFramebuffer() != fb) {
-      osRecvMesg(D_8031A390, 0, 1);
+    tgr_mq_recv(D_8031A390, 0, 1);
+    tgr_video_show(fb);
+    tgr_mq_recv(D_8031A390, 0, 1);
+    if (tgr_video_shown() != fb) {
+      tgr_mq_recv(D_8031A390, 0, 1);
     }
     if (D_8028A884 == 0 && D_8028A888 == 0) {
-      osViBlack(0);
     }
     if (D_8028A888 != 0) {
       D_8028A888--;
     }
     BrPerfFrameStart();
-    D_8028AAE4 = osGetCount();
-    D_8028AAE8 = osGetCount() - D_8028AAE8;
+    D_8028AAE4 = tgr_clock();
+    D_8028AAE8 = tgr_clock() - D_8028AAE8;
   } else {
     D_8028AB80++;
   }
@@ -952,8 +944,8 @@ void BrFrameEnd(void)
   D_8028AA24 = D_8028AA20;
   BrPerfMark(2, 200, 0, 0, 0xff);
   BrPerfMark(1, 200, 100, 0, 0xff);
-  osSpTaskLoad(t);
-  osSpTaskStartGo(t);
+  tgr_task_load(t);
+  tgr_task_run(t);
   D_8028A85C ^= 1;
 }
 
@@ -1191,12 +1183,12 @@ void BrRaceFlagsApply(void)
 /* @implements 0x8021BBDC tgr BrSpEventThread */
 void BrSpEventThread(void *arg)
 {
-  osCreateMesgQueue(D_8031A338, D_8031A354, 1);
-  osSetEventMesg(4, D_8031A338, D_8031A3CC);
+  tgr_mq_init(D_8031A338, D_8031A354, 1);
+  tgr_event_mq(4, D_8031A338, D_8031A3CC);
   for (;;) {
-    osRecvMesg(D_8031A338, 0, 1);
+    tgr_mq_recv(D_8031A338, 0, 1);
     BrPerfMark(1, 0, 0, 0, 0xff);
-    osSendMesg(D_8031A320, D_8031A3CC, 1);
+    tgr_mq_send(D_8031A320, D_8031A3CC, 1);
   }
 }
 
@@ -1206,12 +1198,12 @@ void BrSpEventThread(void *arg)
 /* @implements 0x8021BCA8 tgr BrDpEventThread */
 void BrDpEventThread(void *arg)
 {
-  osCreateMesgQueue(D_8031A370, D_8031A38C, 1);
-  osSetEventMesg(9, D_8031A370, D_8031A3CC);
+  tgr_mq_init(D_8031A370, D_8031A38C, 1);
+  tgr_event_mq(9, D_8031A370, D_8031A3CC);
   for (;;) {
-    osRecvMesg(D_8031A370, 0, 1);
+    tgr_mq_recv(D_8031A370, 0, 1);
     BrPerfMark(2, 0, 0, 0, 0xff);
-    osSendMesg(D_8031A358, D_8031A3CC, 1);
+    tgr_mq_send(D_8031A358, D_8031A3CC, 1);
   }
 }
 
@@ -1223,11 +1215,11 @@ void BrRetraceThread(void *arg)
 {
   extern int D_8028ADEC;    /* 0x8028ADEC */
 
-  osCreateMesgQueue(D_8031A3B0, D_8031A3C8, 1);
-  osViSetEvent(D_8031A3B0, D_8031A3CC, 1);
+  tgr_mq_init(D_8031A3B0, D_8031A3C8, 1);
+  tgr_retrace_mq(D_8031A3B0, D_8031A3CC, 1);
   for (;;) {
-    osRecvMesg(D_8031A3B0, 0, 1);
-    osSendMesg(D_8031A390, D_8031A3CC, 1);
+    tgr_mq_recv(D_8031A3B0, 0, 1);
+    tgr_mq_send(D_8031A390, D_8031A3CC, 1);
     D_8028ADEC = (D_8028ADEC + 1) & 0xf;
   }
 }
@@ -1266,35 +1258,35 @@ void BrSchedInit(void)
   D_8028A848 = D_80272D68;
   D_8031AA28[0] = tgr_addr32(D_801B5000);
   D_8031AA28[1] = tgr_addr32(D_801DA800);
-  osCreateMesgQueue(D_80319F88, D_80319FA0, 32);
-  osCreateMesgQueue(D_8031A320, D_8031A350, 1);
-  osSetEventMesg(4, D_8031A320, D_8031A3CC);
-  osCreateMesgQueue(D_8031A358, D_8031A388, 1);
-  osSetEventMesg(9, D_8031A358, D_8031A3CC);
-  osCreateMesgQueue(D_8031A390, D_8031A3A8, 1);
-  osViSetEvent(D_8031A390, D_8031A3CC, 1);
-  osCreateThread(D_802729E0, 10, BrSpEventThread, D_8026FF04, D_803196D0, 60);
-  osStartThread(D_802729E0);
-  osCreateThread(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_80319ED0, 60);
-  osStartThread(D_80272B90);
+  tgr_mq_init(D_80319F88, D_80319FA0, 32);
+  tgr_mq_init(D_8031A320, D_8031A350, 1);
+  tgr_event_mq(4, D_8031A320, D_8031A3CC);
+  tgr_mq_init(D_8031A358, D_8031A388, 1);
+  tgr_event_mq(9, D_8031A358, D_8031A3CC);
+  tgr_mq_init(D_8031A390, D_8031A3A8, 1);
+  tgr_retrace_mq(D_8031A390, D_8031A3CC, 1);
+  tgr_thread_new(D_802729E0, 10, BrSpEventThread, D_8026FF04, D_803196D0, 60);
+  tgr_thread_start(D_802729E0);
+  tgr_thread_new(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_80319ED0, 60);
+  tgr_thread_start(D_80272B90);
   D_8028A8B0 = 46875.0f;
-  osCreateMesgQueue(q, &msg, 1);
-  osSetEventMesg(5, q, 1);
-  osContInit(q, &bits, D_8031A3D0);
-  osCreateMesgQueue(D_80272D48, D_80272D60, 1);
-  osSetEventMesg(5, D_80272D48, 0);
+  tgr_mq_init(q, &msg, 1);
+  tgr_event_mq(5, q, 1);
+  tgr_pad_init(q, &bits, D_8031A3D0);
+  tgr_mq_init(D_80272D48, D_80272D60, 1);
+  tgr_event_mq(5, D_80272D48, 0);
   BrStub802607AC();
   for (i = 0; i < 4; i++) {
     D_8031B1E8[i] = 0;
     if ((bits >> i & 1) && !(D_8031A3D0[i].errno & 8) && (D_8031A3D0[i].type & 4) &&
         (D_8031A3D0[i].status & 1)) {
-      r = osPfsInit(D_80272D48, &D_8031A3F8[i], i);
+      r = tgr_pak_open(D_80272D48, &D_8031A3F8[i], i);
       if (r != 0 && (r == 10 || r == 11)) {
-        if (osMotorInit(D_80272D48, &D_8031A3F8[i], i) != 0) {
+        if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) != 0) {
           continue;
         }
         D_8031B1E8[i] = 1;
-        osMotorStop(&D_8031A3F8[i]);
+        tgr_rumble_off(&D_8031A3F8[i]);
       }
     }
   }
@@ -1325,7 +1317,7 @@ void BrBootCheck(void)
       BrPakWarnScreen();
     }
   }
-  osPfsIsPlug(D_80272D48, &plugged);
+  tgr_pak_present(D_80272D48, &plugged);
   if (!(plugged & 1)) {
     BrModeSet(BrPakWarnScreen);
     D_80270840 = 1;
@@ -1335,12 +1327,12 @@ void BrBootCheck(void)
   } else {
     if (D_8028ADF0 == 0) {
       D_8028ADF0 = 1;
-      osSyncPrintf("\nInitializing controller pak...\n");
-      D_802724F0 = osPfsInitPak(D_80272D48, &D_80369EC0[0], 0);
+      tgr_print("\nInitializing controller pak...\n");
+      D_802724F0 = tgr_pak_open_new(D_80272D48, &D_80369EC0[0], 0);
     }
     if (D_802724F0 != 0) {
       if (D_802724F0 == 10) {
-        osMotorInit(D_80272D48, &D_8031A3F8[0], 0);
+        tgr_rumble_open(D_80272D48, &D_8031A3F8[0], 0);
       }
       BrModeSet(BrPakWarnScreen);
       D_80270840 = 1;
@@ -1353,10 +1345,10 @@ void BrBootCheck(void)
     }
   }
   if (plugged & 2) {
-    D_802724F0 = osPfsInitPak(D_80272D48, &D_80369EC0[1], 1);
+    D_802724F0 = tgr_pak_open_new(D_80272D48, &D_80369EC0[1], 1);
     if (D_802724F0 != 0) {
       if (D_802724F0 == 10) {
-        osMotorInit(D_80272D48, &D_8031A3F8[1], 1);
+        tgr_rumble_open(D_80272D48, &D_8031A3F8[1], 1);
       }
     } else {
       memcpy(D_80316400, D_80369EC0[1].raw + 0xc, 0x20);

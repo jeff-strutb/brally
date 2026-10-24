@@ -182,7 +182,7 @@ def parse(tu, target):
     extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else []
     return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC'] + extra + [
                                                     '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
-                                                    '-I' + inc, '-include', os.path.join(inc, 'ultra64.h'),
+                                                    '-I' + inc, '-include', os.path.join(inc, 'tgr_os.h'),
                                                     '-include', os.path.join(inc, 'tgr_core.h')])
 
 

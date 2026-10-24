@@ -19,7 +19,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 FLAGS = ['-fsyntax-only', '-std=gnu89', '-Wno-everything', '-Iports/tgrally/include',
-         '-Iports/tgrally/platform/include', '-include', 'ports/tgrally/platform/include/ultra64.h',
+         '-Iports/tgrally/platform/include', '-include', 'ports/tgrally/platform/include/tgr_os.h',
          '-include', 'ports/tgrally/platform/include/tgr_core.h', '-Xclang', '-ast-dump=json']
 
 

@@ -288,7 +288,7 @@ void BrPaintShopScreen(void)
     D_8031B760[D_8028DBBC].x2000 = 0;
     D_8031B760[D_8028DBBC].x2044 = 0;
     BrIfaceMemReset();
-    osSyncPrintf("\nAllocating %d bytes (x2) for decal buffers...\n\n", 0x800);
+    tgr_print("\nAllocating %d bytes (x2) for decal buffers...\n\n", 0x800);
     D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
     D_8028DB84 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
     BrAllocPaintShopGfxMem(&D_8028CB40);

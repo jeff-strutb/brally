@@ -103,7 +103,6 @@ int inflateInit2_(z_streamp z, int w, const char *version, int stream_size)
     }
     else
     {
-      osViBlack(1);
       D_8028A888 = 2;
       D_80368AC8.next = (char *)D_801B5000;
       D_80368AC8.end = (char *)(D_801B5000 + ((char *)D_801DA800 - (char *)D_801B5000));

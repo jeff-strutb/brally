@@ -34,7 +34,7 @@ voidpf zcalloc(voidpf opaque, unsigned items, unsigned size)
   size = (size + 7) & ~7;
   if (h->end < (h->next += size))
   {
-    osSyncPrintf("Insufficient memory for zcalloc\n");
+    tgr_print("Insufficient memory for zcalloc\n");
     while (1)
       ;
   }

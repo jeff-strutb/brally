@@ -37,7 +37,7 @@ void BrPerfMark(int bar, int r, int g, int b, int a)
   colour = (r << 8) & 0xf800 | (g << 3) & 0x7c0 | (b >> 2) & 0x3e | (a >> 7) & 1;
   colour |= colour << 16;
   e[1].colour = colour;
-  e->time = osGetCount() - D_8028BDA8;
+  e->time = tgr_clock() - D_8028BDA8;
 }
 
 /* WHAT IT DOES: Start a new frame on the performance meter: close each bar
@@ -52,7 +52,7 @@ void BrPerfFrameStart(void)
     BrPerfMark(i, 0xff, 0, 0xff, 0x7f);
   }
   D_8028BDA0 ^= 1;
-  D_8028BDA8 = osGetCount();
+  D_8028BDA8 = tgr_clock();
   for (i = 0; i < 3; i++) {
     D_803519B0[D_8028BDA0][i] = 0;
     D_8034E9B0[D_8028BDA0][i][0].time = 0;

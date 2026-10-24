@@ -58,7 +58,7 @@ void BrRaceResultRestore(void)
       TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round] += D_802707AC[D_80315D60[i]];
       TGR_PTR(BrSeason *, D_8031B760[i].season)->place[TGR_PTR(BrSeason *, D_8031B760[i].season)->round][TGR_PTR(BrSeason *, D_8031B760[i].season)->race] = D_80315D60[i];
       TGR_PTR(BrSeason *, D_8031B760[i].season)->times[TGR_PTR(BrSeason *, D_8031B760[i].season)->round][TGR_PTR(BrSeason *, D_8031B760[i].season)->race] = D_80315D68[i];
-      osSyncPrintf("points = %d\n", TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round]);
+      tgr_print("points = %d\n", TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round]);
     }
   }
   for (i = 0; i < D_8026FF08; i++) {

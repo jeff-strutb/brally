@@ -29,12 +29,12 @@ extern void *D_80368AC0;
 extern void *D_80368AC4;
 extern char D_80324550[];
 extern char D_8033CBF0[];
-extern OSMesgQueue D_80319F88;
+extern TgrMsgQueue D_80319F88;
 extern int D_80272D44;
 extern int D_80272D40;
 void BrDlRebaseWord(be32_t *slot, unsigned int lo, unsigned int hi, unsigned int base);
 void BrDlRebase(Gfx *dl, unsigned int lo, unsigned int hi, unsigned int base);
-extern OSIoMesg D_8031A020[32];
+extern TgrIoMsg D_8031A020[32];
 
 #include "tgr/car.h"
 
@@ -80,11 +80,11 @@ extern int D_8028B940;
 extern int D_80315EE0;
 
 void BrIdleThread(void *arg);
-extern OSThread D_80272680;              /* the idle thread */
+extern TgrThread D_80272680;              /* the idle thread */
 void BrHaltLoop(int arg0);
 extern char *D_8028A88C;                 /* the fatal error's message */
-extern OSMesgQueue D_8031A390;           /* the retrace queue */
-extern OSMesgQueue D_8031B1B0;           /* the fault queue */
+extern TgrMsgQueue D_8031A390;           /* the retrace queue */
+extern TgrMsgQueue D_8031B1B0;           /* the fault queue */
 void BrMainThread(void *arg);
 typedef struct BrArgs { int argc; TgrAddr argv; } BrArgs;   /* argv: char ** */
 extern char *D_80316450[];           /* argv */
@@ -92,13 +92,13 @@ extern BrArgs *D_8026FF00;
 extern char **D_8026FF04;
 extern int D_8028AAB0;
 extern int D_8028AAB4;
-extern OSViMode D_802A5D70;          /* MPAL video mode */
-extern OSViMode D_802A54B0;          /* NTSC video mode */
-extern OSMesgQueue D_80319ED0;       /* the PI manager's command queue */
-extern OSMesg D_80319EE8[32];
-extern OSMesg D_8031B1C8[1];
-extern OSThread D_8031AC00;          /* the fault thread */
-extern OSThread D_80272830;          /* the main game thread */
+extern TgrVideoMode D_802A5D70;          /* MPAL video mode */
+extern TgrVideoMode D_802A54B0;          /* NTSC video mode */
+extern TgrMsgQueue D_80319ED0;       /* the PI manager's command queue */
+extern TgrMsg D_80319EE8[32];
+extern TgrMsg D_8031B1C8[1];
+extern TgrThread D_8031AC00;          /* the fault thread */
+extern TgrThread D_80272830;          /* the main game thread */
 extern unsigned long long D_80316CD0[0x400];
 extern unsigned long long D_8031ADB0[0x80];   /* the fault thread's stack */
 extern unsigned long long D_80318CD0[];
@@ -252,7 +252,7 @@ void BrCarModelLoad(void *buf, int car)
     sprintf(msg, "Car %d too big (%d vs. %d)", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
     BrFatal(msg);
   } else {
-    osSyncPrintf("Loading car %d (%d / %d)\n", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
+    tgr_print("Loading car %d (%d / %d)\n", car, D_8028AE0C[car].size, sizeof(BrCarModelBuf));
   }
   BrRomUnpack(buf, D_8028AE0C[car].rom, 0);
 }
@@ -560,16 +560,14 @@ void BrTrackLoad(int track)
   BrTrackObj *objs;
 
   SET32(D_80025C00.x00, BrRomReadSize(D_80270854[track].x14));
-  osInvalDCache(&D_80025C00, 4);
   if (BE32(D_80025C00.x00) > 0x171400) {
     sprintf(buf, "Track %d too big (%d vs. %d)", track, BE32(D_80025C00.x00), 0x171400);
     BrFatal(buf);
   } else {
-    osSyncPrintf("Loading track %d (%d / %d)\n", track, BE32(D_80025C00.x00), 0x171400);
+    tgr_print("Loading track %d (%d / %d)\n", track, BE32(D_80025C00.x00), 0x171400);
   }
   BrRomUnpack((unsigned char *)&D_80025C00, D_80270854[track].x14, 0);
-  osSyncPrintf("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, 0x80029560)), tgr_rd16(TGR_PTR(void *, 0x80029568)));
-  osInvalDCache(&D_80025C00, BE32(D_80025C00.x00));
+  tgr_print("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, 0x80029560)), tgr_rd16(TGR_PTR(void *, 0x80029568)));
   BrRomRead(D_80373EB0, D_80270854[track].x1c, 0x20);
   BrRomUnpack((unsigned char *)D_803736B0, D_80270854[track].x1c + 0x20, 0);
   BrRomRead(D_803746D0, D_80270854[track].x24, 0x20);
@@ -596,7 +594,7 @@ void BrTrackLoad(int track)
       SETF(objs[track].scale, len);
     }
   }
-  osSyncPrintf("Scalars: %d/%d\n", n, BES32(D_80025C00.nObjs));
+  tgr_print("Scalars: %d/%d\n", n, BES32(D_80025C00.nObjs));
   if (BES32(D_80025C00.nObjs) > 0x800) {
     sprintf(buf2, "ERROR: instances (%d) > MAX_INSTANCES (%d)", BES32(D_80025C00.nObjs), 0x800);
     BrFatal(buf2);
@@ -622,7 +620,7 @@ int BrTrackIsPresent(int n)
 /* @implements 0x8021E1C0 tgr BrWaitRetrace */
 void BrWaitRetrace(void)
 {
-  osRecvMesg(&D_8031A390,0,1);
+  tgr_mq_recv(&D_8031A390,0,1);
 }
 
 /* WHAT IT DOES: The end of the line after a fatal error: takes the error
@@ -651,15 +649,15 @@ void BrFaultThread(void *arg)
 {
   extern TgrAddr D_8031B1CC;     /* 0x8031B1CC: the faulted thread */
   extern int D_8031B1D0;
-  OSMesg msg;
+  TgrMsg msg;
 
-  osSetEventMesg(12, &D_8031B1B0, (OSMesg)16);
+  tgr_event_mq(12, &D_8031B1B0, (TgrMsg)16);
   D_8031B1D0 = 0;
   for (;;) {
     do {
-      osRecvMesg(&D_8031B1B0, &msg, 1);
-      osSyncPrintf("\n=> faultproc - got a fault message...\n");
-      D_8031B1CC = __osGetCurrFaultedThread();
+      tgr_mq_recv(&D_8031B1B0, &msg, 1);
+      tgr_print("\n=> faultproc - got a fault message...\n");
+      D_8031B1CC = tgr_faulted_thread();
     } while (D_8031B1CC == 0);
     BrHaltLoop(1);
   }
@@ -685,7 +683,7 @@ void BrIdleThread(void *arg)
   unsigned long long *s;
 
   for (i = 0; i < 16; i++) {
-    osPiReadIo(0xFFB000 + i * 4, &buf[i]);
+    tgr_rom_word(0xFFB000 + i * 4, &buf[i]);
     buf[i] = tgr_be32(buf[i]);          /* the words' bytes in ROM order: a string */
   }
   p = (char *)buf;
@@ -703,19 +701,16 @@ void BrIdleThread(void *arg)
   }
   D_8026FF04 = TGR_PTR(char **, D_8028B2EC.argv);
   D_8026FF00 = &D_8028B2EC;
-  osCreateViManager(0xfe);
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
-  if (osTvType == 2) {
-    osViSetMode(&D_802A5D70);
+  if (tgr_tv_type == 2) {
+    tgr_video_mode(&D_802A5D70);
   } else {
-    osViSetMode(&D_802A54B0);
+    tgr_video_mode(&D_802A54B0);
   }
-  osViBlack(1);
-  osCreatePiManager(150, &D_80319ED0, D_80319EE8, 32);
-  osCreateMesgQueue(&D_8031B1B0, D_8031B1C8, 1);
-  osCreateThread(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
-  osStartThread(&D_8031AC00);
+  tgr_mq_init(&D_8031B1B0, D_8031B1C8, 1);
+  tgr_thread_new(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
+  tgr_thread_start(&D_8031AC00);
   for (i = 0, s = D_80316CD0; i < 0x400; i++, s++) {
     *s = 0x5015A1DBFED15C00ULL;
   }
@@ -725,11 +720,10 @@ void BrIdleThread(void *arg)
   for (i = 0; i < 0x100; i++) {
     D_803196D0[i] = 0x5015A1DBFED15C00ULL;
   }
-  osCreateThread(&D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
-  osStartThread(&D_80272830);
-  osSetThreadPri(0, 0);
-  for (;;) {
-  }
+  tgr_thread_new(&D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
+  tgr_thread_start(&D_80272830);
+  tgr_thread_pri(0, 0);
+  tgr_thread_idle();                    /* port: the N64's spun here */
 }
 
 /* WHAT IT DOES: The game's entry point after the boot stub clears memory:
@@ -738,7 +732,7 @@ void BrIdleThread(void *arg)
 /* @implements 0x8021E5C4 tgr BrBoot */
 void BrBoot(void)
 {
-  osInitialize();
-  osCreateThread(&D_80272680,1,BrIdleThread,0,D_80316CD0,10);
-  osStartThread(&D_80272680);
+  tgr_os_init();
+  tgr_thread_new(&D_80272680,1,BrIdleThread,0,D_80316CD0,10);
+  tgr_thread_start(&D_80272680);
 }

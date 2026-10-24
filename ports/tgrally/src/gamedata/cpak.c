@@ -42,7 +42,7 @@ extern int D_8027257C;
 extern int D_80272580;
 extern int D_80272584;
 extern int D_80272588;
-extern OSMesgQueue D_80272D48;          /* the serial interface's queue */
+extern TgrMsgQueue D_80272D48;          /* the serial interface's queue */
 extern BrImage D_8028D0B0;              /* the A button */
 extern BrImage D_8028D0E0;              /* the B button */
 extern short D_802A4BE8;
@@ -60,8 +60,8 @@ typedef struct BrPfsState {    /* an OSPfsState, 0x20 bytes */
   unsigned short game;          /* 0x08 */
   char pad0a[0x16];
 } BrPfsState;
-extern OSPfs D_80369EC0[4];
-extern OSPfs D_8031A3F8[4];
+extern TgrPak D_80369EC0[4];
+extern TgrPak D_8031A3F8[4];
 extern unsigned char D_803163E0[2][32];  /* each player's pak id */
 extern int D_8026FF08;
 /* -- end declarations -- */
@@ -104,15 +104,15 @@ int BrRumbleInsertPrompt(int anyPad)
 void BrRumbleProbe(void)
 {
   int i;
-  OSPfs *pfs;
+  TgrPak *pfs;
   unsigned char *flag;
 
   D_802A4BE8 = 0;
   for (i = 0; i < D_8026FF08; i++) {
     pfs = &D_8031A3F8[i];
-    if (osMotorInit(&D_80272D48, pfs, i) == 0) {
+    if (tgr_rumble_open(&D_80272D48, pfs, i) == 0) {
       flag = &D_8031B1E8[i];
-      osMotorStop(pfs);
+      tgr_rumble_off(pfs);
       *flag = 1;
     }
   }
@@ -132,16 +132,16 @@ int BrRumbleInitAll(void)
 
   D_802A4BE8 = 0;
   for (i = 0; i < D_8026FF08; i++) {
-    osPfsIsPlug(&D_80272D48, &bits);
+    tgr_pak_present(&D_80272D48, &bits);
     if ((bits & (1 << i)) == 0)
       goto fail;
-    D_802724F0 = osPfsInitPak(&D_80272D48, &D_80369EC0[i], i);
+    D_802724F0 = tgr_pak_open_new(&D_80272D48, &D_80369EC0[i], i);
     if (D_802724F0 != 0) {
       if (D_802724F0 != 10)
         goto fail;
-      if (osMotorInit(&D_80272D48, &D_8031A3F8[i], i) != 0)
+      if (tgr_rumble_open(&D_80272D48, &D_8031A3F8[i], i) != 0)
         goto fail;
-      osMotorStop(&D_8031A3F8[i]);
+      tgr_rumble_off(&D_8031A3F8[i]);
     }
     if (D_802724F0 == 0)
       goto fail;
@@ -229,17 +229,17 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 2:                       /* probe the pak */
-    osPfsIsPlug(&D_80272D48, &pakBits);
+    tgr_pak_present(&D_80272D48, &pakBits);
     if ((pakBits & (1 << D_80271FA8)) == 0) {
       D_802724F0 = 1;
       D_80316430 = 9;
     } else {
-      osSyncPrintf("\nInitializing controller pak...\n");
-      D_802724F0 = osPfsInitPak(&D_80272D48, &D_80369EC0[D_80271FA8], D_80271FA8);
+      tgr_print("\nInitializing controller pak...\n");
+      D_802724F0 = tgr_pak_open_new(&D_80272D48, &D_80369EC0[D_80271FA8], D_80271FA8);
       if (D_802724F0 != 0) {
         if (D_802724F0 == 10) {         /* a Rumble Pak */
-          if (osMotorInit(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
-            osMotorStop(&D_8031A3F8[D_80271FA8]);
+          if (tgr_rumble_open(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+            tgr_rumble_off(&D_8031A3F8[D_80271FA8]);
             D_802724F0 = 9999;
             D_802724FC = 1;
             D_80316430 = 9;
@@ -267,7 +267,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 3:
-    D_802724F0 = osPfsRepairId(&D_80369EC0[D_80271FA8]);
+    D_802724F0 = tgr_pak_repair(&D_80369EC0[D_80271FA8]);
     if (D_802724F0 != 0) {
       D_80316430 = 9;
     } else {
@@ -294,11 +294,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 5:                       /* find the D_8031642C */
-    osSyncPrintf("Finding D_8031642C...\n");
-    D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &D_8031642C);
+    tgr_print("Finding D_8031642C...\n");
+    D_802724F0 = tgr_pak_find(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &D_8031642C);
     if (D_802724F0 == 3) {
-      osPfsChecker(&D_80369EC0[D_80271FA8]);
-      D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &D_8031642C);
+      tgr_pak_check(&D_80369EC0[D_80271FA8]);
+      D_802724F0 = tgr_pak_find(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &D_8031642C);
     }
     if (D_802724F0 == 0) {
       if (kind == 3) {
@@ -316,16 +316,16 @@ int BrCpakCheck(int kind, unsigned char quiet)
     break;
   case 6:                       /* load */
     if (kind == 0) {
-      osSyncPrintf("Loading season data...\n");
+      tgr_print("Loading season data...\n");
     } else if (kind == 1) {
-      osSyncPrintf("Loading ghost data...\n");
+      tgr_print("Loading ghost data...\n");
     } else if (kind == 2) {
-      osSyncPrintf("Loading configuration...\n");
+      tgr_print("Loading configuration...\n");
     }
     if (kind != 2) {
-      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0, size, D_80272500);
+      D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0, size, D_80272500);
     } else {
-      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0, 0x80, D_80272500);
+      D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0, 0x80, D_80272500);
     }
     if (D_802724F0 == 0) {
       if (kind == 0) {
@@ -341,17 +341,17 @@ int BrCpakCheck(int kind, unsigned char quiet)
         TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc = opts[2];
         TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0 = opts[3];
         TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4 = opts[4];
-        osSyncPrintf("Done!\n");
+        tgr_print("Done!\n");
       } else if (kind == 1) {
-        osSyncPrintf("Extracting ghost data...\n");
+        tgr_print("Extracting ghost data...\n");
         D_80270784 = BrRlePlanesUnpack(&D_80307F00, 0xDE5C, D_80272500, 2);
         TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << (&D_80307F00)[0];
         TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 1 << (&D_80307F00)[1];
-        osSyncPrintf("Done!\n");
+        tgr_print("Done!\n");
       } else if (kind == 2) {
         memcpy(&D_802723D0, D_80272500, 12);
-        osSyncPrintf("Loading car equipment settings...\n");
-        D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0x80, 0x80, D_80272500);
+        tgr_print("Loading car equipment settings...\n");
+        D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
           memcpy(opts, D_80272500, 20);
           TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4 = opts[0];
@@ -359,7 +359,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
           TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc = opts[2];
           TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0 = opts[3];
           TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4 = opts[4];
-          osSyncPrintf("Done!\n");
+          tgr_print("Done!\n");
         } else {
           D_80316430 = 9;
         }
@@ -378,17 +378,17 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 7:                       /* make room for the configuration */
-    D_802724F0 = osPfsFreeBlocks(&D_80369EC0[D_80271FA8], &freeBytes);
+    D_802724F0 = tgr_pak_free(&D_80369EC0[D_80271FA8], &freeBytes);
     if (D_802724F0 == 0) {
       if (freeBytes < 0x100) {
         D_802724F0 = 7;
         D_80316430 = 9;
       } else {
-        osSyncPrintf("Allocating %d bytes for configuration...\n", 0x100);
-        D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &D_8031642C);
+        tgr_print("Allocating %d bytes for configuration...\n", 0x100);
+        D_802724F0 = tgr_pak_create(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &D_8031642C);
         if (D_802724F0 == 3) {
-          osPfsChecker(&D_80369EC0[D_80271FA8]);
-          D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &D_8031642C);
+          tgr_pak_check(&D_80369EC0[D_80271FA8]);
+          D_802724F0 = tgr_pak_create(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &D_8031642C);
         }
         if (D_802724F0 == 0) {
           D_80316430 = 8;
@@ -401,9 +401,9 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 8:                       /* save the configuration */
-    osSyncPrintf("Saving configuration...\n");
+    tgr_print("Saving configuration...\n");
     memcpy(D_80272500, &D_802723D0, 12);
-    D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], D_8031642C, 1, 0, 0x80, D_80272500);
+    D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 1, 0, 0x80, D_80272500);
     if (D_802724F0 != 0) {
       D_80316430 = 9;
     } else {
@@ -413,9 +413,9 @@ int BrCpakCheck(int kind, unsigned char quiet)
       opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
       opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
       memcpy(D_80272500, opts, 20);
-      D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], D_8031642C, 1, 0x80, 0x80, D_80272500);
+      D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 1, 0x80, 0x80, D_80272500);
       if (D_802724F0 == 0) {
-        osSyncPrintf("Done!\n");
+        tgr_print("Done!\n");
         D_80316430 = 11;
       } else {
         D_80316430 = 9;
@@ -573,7 +573,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
   case 10:                      /* offer to put the Rumble Pak back */
     if (BrRumbleInsertPrompt(0) != 0) {
       D_802724FC = 0;
-      if (osMotorInit(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+      if (tgr_rumble_open(&D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
         D_8031B1E8[D_80271FA8] = 1;
       }
       D_80316430 = 12;

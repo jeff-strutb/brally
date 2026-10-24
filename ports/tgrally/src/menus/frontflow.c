@@ -125,17 +125,13 @@ void BrMenuLoadItems(MenuItem **items, int *count)
 
   D_8028A884 = 1;
   if (D_8028A850) {
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
   } else {
-    osViBlack(1);
     BrFrameBeginLayout0();
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout0();
     BrFrameEnd();
   }

@@ -7,7 +7,7 @@
 
 /* -- declarations -- */
 typedef unsigned long long u64;
-extern u64 osClockRate;
+extern u64 tgr_clock_rate;
 float sqrtf(float x);
 typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
   unsigned int pressed;
@@ -121,7 +121,7 @@ void BrPaintDashRect(int x0, int y0, int x1, int y1);
 void BrPaintDashRoundRect(int x0, int y0, int x1, int y1);
 void BrPaintDashOval(int x0, int y0, int x1, int y1);
 void BrPaintDashCircle(int x, int y, int r);
-#define BR_MSEC() ((unsigned int)((((u64)osGetCount() * 1000000) / osClockRate) / 1000))
+#define BR_MSEC() ((unsigned int)((((u64)tgr_clock() * 1000000) / tgr_clock_rate) / 1000))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The paint shop's click handling, A or Z on the cursor.
@@ -184,8 +184,8 @@ void BrPaintClick(void)
           D_8028DB7C = TGR_PTR(void *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->masks) + D_8028DB68));
           D_8028DB88 = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[i]].w);
           D_8028DB8C = BE16(BEPTR(BrDecalPart *, D_8028AB08->parts)[D_8028AB08->decalPart[i]].h);
-          osSyncPrintf("decal_width = %d\n", D_8028DB88);
-          osSyncPrintf("decal_height = %d\n", D_8028DB8C);
+          tgr_print("decal_width = %d\n", D_8028DB88);
+          tgr_print("decal_height = %d\n", D_8028DB8C);
           w = (D_8028D470.w - D_8028DB88 * 4) >> 1;
           h = (D_8028D470.h - D_8028DB8C * 4) >> 1;
           D_8028DB94.x = D_8028D470.x + w;

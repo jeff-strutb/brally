@@ -54,10 +54,8 @@ void BrPakWarnScreen(void)
   if (D_80270844 == 0) {
     D_80270844 = 1;
     BrIfaceMemReset();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
     BrAllocPaintShopGfxMem(&D_8028CB40);

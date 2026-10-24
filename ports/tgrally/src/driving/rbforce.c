@@ -112,9 +112,9 @@ void BrRbAddForce(BrRbBody *b, BrRbForce *a)
     b->torque[1] = b->torque[1] + t[1];
     b->torque[2] = b->torque[2] + t[2];
   }
-  osSyncPrintf("Force = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
+  tgr_print("Force = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
                 a->f[0], a->f[1], a->f[2], a->at[0], a->at[1], a->at[2]);
-  osSyncPrintf("F/T = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
+  tgr_print("F/T = %10.4f, %10.4f, %10.4f, %10.4f, %10.4f, %10.4f\n",
                 b->force[0], b->force[1], b->force[2], b->torque[0], b->torque[1], b->torque[2]);
 }
 

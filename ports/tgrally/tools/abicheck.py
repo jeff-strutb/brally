@@ -11,7 +11,7 @@ because Apple arm64 packs stack arguments by their declared size), and lists eve
 unprototyped declaration of a function that takes or returns a pointer,
 64-bit integer or floating value.  Calls to functions with no definition in
 the core (the platform's libultra surface) are checked against
-platform/include/ultra64.h by the compiler itself.
+platform/include/tgr_os.h by the compiler itself.
 
     .venv/bin/python ports/tgrally/tools/abicheck.py
 """
@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 SRC = 'ports/tgrally/src'
 FLAGS = ['-fsyntax-only', '-std=gnu89', '-Wno-everything', '-Iports/tgrally/include',
-         '-Iports/tgrally/platform/include', '-include', 'ports/tgrally/platform/include/ultra64.h',
+         '-Iports/tgrally/platform/include', '-include', 'ports/tgrally/platform/include/tgr_os.h',
          '-include', 'ports/tgrally/platform/include/tgr_core.h', '-Xclang', '-ast-dump=json']
 
 

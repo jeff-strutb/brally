@@ -76,9 +76,9 @@ void BrMainThread(void *arg)
   BrVolumesApply();
   BrRomUnpack((unsigned char *)&D_80025C00, BR_ROM_MODULES, 0);
   BrMusicInit(tgr_addr32(&D_80025C00), D_802AC400);
-  osSyncPrintf("sizeof(UltraCarHeader)=%d\n", 0xdf88);
-  osSyncPrintf("sizeof(Vehicle)=%d\n", 0x2090);
-  osSyncPrintf("sizeof(Enemy)=%d\n", 0x78);
+  tgr_print("sizeof(UltraCarHeader)=%d\n", 0xdf88);
+  tgr_print("sizeof(Vehicle)=%d\n", 0x2090);
+  tgr_print("sizeof(Enemy)=%d\n", 0x78);
   BrMainLoop();
 }
 

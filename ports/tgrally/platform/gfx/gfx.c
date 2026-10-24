@@ -66,7 +66,11 @@ static void dl_digest(uint32_t dl, char out[17])
     sha1_hex16(&h, out);
 }
 
-void tgr_gfx_init(void) {}
+static host_mutex *s_gfx;
+
+void tgr_gfx_init(void) { s_gfx = host_mutex_new(); }
+void tgr_gfx_lock(void)   { host_mutex_lock(s_gfx); }
+void tgr_gfx_unlock(void) { host_mutex_unlock(s_gfx); }
 
 static int s_task;
 
@@ -119,14 +123,16 @@ static void dump_task(uint32_t dl)
 void tgr_gfx_task(uint32_t dl)
 {
     char d[17];
+    tgr_gfx_lock();
     dump_task(dl);
     s_task++;
     if (g_tgr.trace) {
         dl_digest(dl, d);
         tgr_trace("gfx", "%s", d);
     }
-    if (!g_tgr.headless || g_tgr.shot_dir)     /* drawn only if a window or a shot will show it */
+    if (!g_tgr.headless || g_tgr.shot_dir || getenv("TGR_FRAMEHASH"))     /* drawn only if a window, a shot or a frame hash will show it */
         tgr_rcp_task(dl);
+    tgr_gfx_unlock();
 }
 
 void tgr_gfx_swap(uint32_t fb) { s_fb = fb; }
@@ -145,8 +151,40 @@ static int shot_wanted(uint32_t frame)
     return 0;
 }
 
+/* TGR_FRAMEHASH=FILE: each retrace, the frame shown as a hash of its pixels
+ * ("frame hash" lines), so two builds that draw the same write the same file */
+static void frame_hash(uint32_t f, const uint32_t *px, int w, int h)
+{
+    static FILE *out;
+    static int init;
+    uint64_t hv = 1469598103934665603ull;
+    const uint8_t *b = (const uint8_t *)px;
+    size_t i, n = (size_t)w * (size_t)h * 4;
+    if (!init) {
+        const char *e = getenv("TGR_FRAMEHASH");
+        init = 1;
+        if (e && *e)
+            out = fopen(e, "w");
+    }
+    if (!out)
+        return;
+    for (i = 0; i < n; i++)
+        hv = (hv ^ b[i]) * 1099511628211ull;
+    fprintf(out, "%u %016llx\n", f, (unsigned long long)hv);
+    fflush(out);
+}
+
 /* the retrace: the last finished frame to the window, and a shot if one is asked for */
+static void present(void);
+
 void tgr_gfx_present(void)
+{
+    tgr_gfx_lock();
+    present();
+    tgr_gfx_unlock();
+}
+
+static void present(void)
 {
     int w, h, shot = g_tgr.shot_dir && shot_wanted(tgr_frame());
     const uint32_t *px;
@@ -156,6 +194,7 @@ void tgr_gfx_present(void)
     px = rdr_frame_pixels(&w, &h);
     if (!px || !w)
         return;
+    frame_hash(f, px, w, h);
     if (shot) {
         char path[512];
         snprintf(path, sizeof path, "%s/frame%05u.png", g_tgr.shot_dir, f);

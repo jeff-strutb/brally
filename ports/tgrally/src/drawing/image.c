@@ -457,8 +457,8 @@ typedef struct BrPaintModel {   /* the car model being painted */
   be32_t mask;         /* unsigned char ** -- 0x11C  per decal: the pixels it keeps, 0 for all */
 } BrPaintModel;
 
-extern OSPfs D_80369EC0[4];
-extern OSPfs D_8031A3F8[4];
+extern TgrPak D_80369EC0[4];
+extern TgrPak D_8031A3F8[4];
 extern unsigned char D_803163E0[2][32];
 extern unsigned char D_80316420[4];
 extern unsigned char D_8031B1E8[4];
@@ -519,7 +519,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
   extern unsigned char D_80369E61;      /* the decal being moved */
   extern unsigned char D_80369E62;      /* a frame counter */
   BrPaintPart *part;
-  OSPfs *pfs;
+  TgrPak *pfs;
   unsigned char *tex;
   int top;
   unsigned char *mask;
@@ -603,13 +603,13 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     }
     break;
   case 3:                       /* probe the pak */
-    osPfsIsPlug(D_80272D48, &pakBits);
+    tgr_pak_present(D_80272D48, &pakBits);
     if ((pakBits & (1 << port)) == 0) {
       D_80369E54 = 1;
       D_80369E60 = 12;
     } else {
-      osSyncPrintf("\nInitializing controller pak...\n");
-      D_80369E54 = osPfsInitPak(D_80272D48, PFS, port);
+      tgr_print("\nInitializing controller pak...\n");
+      D_80369E54 = tgr_pak_open_new(D_80272D48, PFS, port);
       if (D_80369E54 == 0) {
         D_8031B1E8[D_80271FA8] = 0;
         if (D_80316420[port] == 0) {
@@ -623,8 +623,8 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           D_80369E60 = 6;
         }
       } else if (D_80369E54 == 10) {
-        if (osMotorInit(D_80272D48, &D_8031A3F8[port], port) == 0) {
-          osMotorStop(&D_8031A3F8[port]);
+        if (tgr_rumble_open(D_80272D48, &D_8031A3F8[port], port) == 0) {
+          tgr_rumble_off(&D_8031A3F8[port]);
           D_80369E54 = 9999;
           D_80369E50 = 1;
           D_80369E60 = 10;
@@ -640,7 +640,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     }
     break;
   case 4:
-    D_80369E54 = osPfsRepairId(PFS);
+    D_80369E54 = tgr_pak_repair(PFS);
     if (D_80369E54 != 0) {
       D_80369E60 = 10;
     } else {
@@ -654,7 +654,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     D_8028DCC0 = 0;
     pfs = PFS;
     D_80369E62 = 0;
-    D_80369E54 = osPfsFindFile(pfs, COMPANY, GAME, name, ext, &D_80369E58);
+    D_80369E54 = tgr_pak_find(pfs, COMPANY, GAME, name, ext, &D_80369E58);
     if (D_80369E54 == 0) {
       if (op == OP_LOAD) {
         top = 0xC5;
@@ -675,7 +675,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     } else if (D_80369E54 == 5) {
       if (op == OP_LOAD) {
         D_80369E60 = 12;
-      } else if (osPfsFreeBlocks(pfs, &freeBytes) == 0) {
+      } else if (tgr_pak_free(pfs, &freeBytes) == 0) {
         if (freeBytes < 0x3E00) {
           D_80369E54 = 7;
           D_80369E60 = 12;
@@ -696,7 +696,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         D_80369E60 = 12;
       }
     } else if (D_80369E54 == 3) {
-      D_80369E54 = osPfsChecker(pfs);
+      D_80369E54 = tgr_pak_check(pfs);
       if (D_80369E54 == 0) {
         D_80369E60 = 6;
       } else {
@@ -754,10 +754,10 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       if (D_8028DCC0 != 0) {
         pfs = PFS;
         D_8028DCC0 = 0;
-        D_80369E54 = osPfsAllocateFile(pfs, COMPANY, GAME, name, ext, 0x3E00, &D_80369E58);
+        D_80369E54 = tgr_pak_create(pfs, COMPANY, GAME, name, ext, 0x3E00, &D_80369E58);
         switch (D_80369E54) {
         case 3:
-          D_80369E54 = osPfsChecker(pfs);
+          D_80369E54 = tgr_pak_check(pfs);
           if (D_80369E54 == 0) {
             D_80369E60 = 3;
             return 0;
@@ -795,14 +795,14 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         }
         D_80369E5C = (int)(w * h) >> 1;
         if (op == OP_LOAD) {
-          D_80369E54 = osPfsReadWriteFile(pfs, D_80369E58, 0, D_8028DCC4, D_80369E5C, D_8028DB80);
+          D_80369E54 = tgr_pak_io(pfs, D_80369E58, 0, D_8028DCC4, D_80369E5C, D_8028DB80);
         } else {
-          D_80369E54 = osPfsReadWriteFile(pfs, D_80369E58, 1, D_8028DCC4, D_80369E5C, BEPTR(unsigned char *, BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].tex));
+          D_80369E54 = tgr_pak_io(pfs, D_80369E58, 1, D_8028DCC4, D_80369E5C, BEPTR(unsigned char *, BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].tex));
         }
         switch (D_80369E54) {
         case 0:
           if (op == OP_LOAD) {
-            osSyncPrintf("Loading decal %d...\n", D_80369E61);
+            tgr_print("Loading decal %d...\n", D_80369E61);
             tex = BEPTR(unsigned char *, BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].tex);
             mask = TGR_PTR(unsigned char *, tgr_rd32(BEPTR(be32_t *, m->mask) + D_80369E61));  /* a table of
                                                    original addresses, big-endian */
@@ -824,7 +824,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
               }
             }
           } else {
-            osSyncPrintf("Saving decal %d...\n", D_80369E61);
+            tgr_print("Saving decal %d...\n", D_80369E61);
           }
           D_8028DCC4 += D_80369E5C;
           break;
@@ -832,7 +832,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           D_80369E54 = 99999;
           break;
         case 3:
-          D_80369E54 = osPfsChecker(pfs);
+          D_80369E54 = tgr_pak_check(pfs);
           if (D_80369E54 == 1 || D_80369E54 == 4 || D_80369E54 == 3) {
             D_80369E61 = 0;
             D_8028DCC4 = 0;
@@ -867,9 +867,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     break;
   case 8:                       /* the palette */
     if (op == OP_LOAD) {
-      osSyncPrintf("Loading color palette...\n");
+      tgr_print("Loading color palette...\n");
       pfs = PFS;
-      D_80369E54 = osPfsReadWriteFile(pfs, D_80369E58, 0, D_8028DCC4, 0x20,
+      D_80369E54 = tgr_pak_io(pfs, D_80369E58, 0, D_8028DCC4, 0x20,
                                       (unsigned char *)BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal));
       if (D_80369E54 == 0) {
         pal = BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal);
@@ -883,17 +883,17 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         }
       }
     } else {
-      osSyncPrintf("Saving color palette...\n");
+      tgr_print("Saving color palette...\n");
       pfs = PFS;
-      D_80369E54 = osPfsReadWriteFile(pfs, D_80369E58, 1, D_8028DCC4, 0x20,
+      D_80369E54 = tgr_pak_io(pfs, D_80369E58, 1, D_8028DCC4, 0x20,
                                       (unsigned char *)BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal));
     }
     switch (D_80369E54) {
     case 0:
       if (op == OP_LOAD) {
-        osSyncPrintf("Color palette loaded successfully!\n\n");
+        tgr_print("Color palette loaded successfully!\n\n");
       } else {
-        osSyncPrintf("Color palette saved successfully!\n\n");
+        tgr_print("Color palette saved successfully!\n\n");
       }
       D_80369E60 = 11;
       if (fromMenu == 0) {
@@ -901,7 +901,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       }
       break;
     case 3:
-      D_80369E54 = osPfsChecker(pfs);
+      D_80369E54 = tgr_pak_check(pfs);
       if (D_80369E54 == 1 || D_80369E54 == 4 || D_80369E54 == 3) {
         D_80369E60 = 12;
       } else {
@@ -912,7 +912,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       break;
     }
     if (D_80369E54 != 0) {
-      osSyncPrintf("err_code = %d\n\n", D_80369E54);
+      tgr_print("err_code = %d\n\n", D_80369E54);
       if (D_80369E54 == 2) {
         D_80369E60 = 9;
         D_80369E51 = 1;
@@ -1018,7 +1018,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         BrPadConsume(PAD, 0x8010);
         D_80369E50 = 0;
         D_80369E54 = 0;
-        if (osMotorInit(D_80272D48, &D_8031A3F8[port], port) == 0) {
+        if (tgr_rumble_open(D_80272D48, &D_8031A3F8[port], port) == 0) {
           D_8031B1E8[port] = 1;
         }
         D_80369E60 = 12;

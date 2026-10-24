@@ -466,7 +466,7 @@ void tgr_input_frame(uint32_t frame)
 }
 
 /* ---- libultra ---------------------------------------------------------------- */
-int32_t osContInit(OSMesgQueue *mq, uint8_t *bitpattern, OSContStatus *status)
+int32_t tgr_pad_init(TgrMsgQueue *mq, uint8_t *bitpattern, TgrPadStatus *status)
 {
     int i;
     (void)mq;
@@ -479,18 +479,17 @@ int32_t osContInit(OSMesgQueue *mq, uint8_t *bitpattern, OSContStatus *status)
     return 0;
 }
 
-int32_t osContStartReadData(OSMesgQueue *mq)
+int32_t tgr_pad_read(TgrMsgQueue *mq)
 {
     (void)mq;
-    tgr_os_lock();
-    tgr_post_event_at(tgr_count(), OS_EVENT_SI);
-    tgr_os_unlock();
+    tgr_post_event(TGR_EVENT_SI);
     return 0;
 }
 
-void osContGetReadData(OSContPad *pad)
+void tgr_pad_get(TgrPad *pad)
 {
     int i;
+    tgr_os_lock();
     if (s_scripted)
         tgr_input_frame(tgr_frame());   /* the script's input at this frame, as n64box reads it */
     for (i = 0; i < 4; i++) {
@@ -504,20 +503,21 @@ void osContGetReadData(OSContPad *pad)
             pad[i].errnum = 8;
         }
     }
+    tgr_os_unlock();
 }
 
 /* ---- the Controller Pak: absent unless a script plugs one in -------------------- */
-int32_t osPfsIsPlug(OSMesgQueue *mq, uint8_t *pattern)
+int32_t tgr_pak_present(TgrMsgQueue *mq, uint8_t *pattern)
 {
     (void)mq;
     *pattern = (s_pak || s_rumble) ? 1 : 0;
     return 0;
 }
 
-int32_t osPfsInit(OSMesgQueue *mq, OSPfs *pfs, int32_t channel)
+int32_t tgr_pak_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel)
 {
     if (!s_pak)
-        return s_rumble ? PFS_ERR_ID_FATAL : PFS_ERR_NOPACK;
+        return s_rumble ? TGR_PAK_ID_FATAL : TGR_PAK_NONE;
     pfs->status = 0;
     pfs->queue = tgr_addr32(mq);
     pfs->channel = channel;
@@ -529,9 +529,9 @@ int32_t osPfsInit(OSMesgQueue *mq, OSPfs *pfs, int32_t channel)
     return 0;
 }
 
-int32_t osPfsInitPak(OSMesgQueue *mq, OSPfs *pfs, int32_t channel) { return osPfsInit(mq, pfs, channel); }
-int32_t osPfsRepairId(OSPfs *pfs) { (void)pfs; return s_pak ? 0 : PFS_ERR_NOPACK; }
-int32_t osPfsChecker(OSPfs *pfs) { (void)pfs; return s_pak ? 0 : PFS_ERR_NOPACK; }
+int32_t tgr_pak_open_new(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel) { return tgr_pak_open(mq, pfs, channel); }
+int32_t tgr_pak_repair(TgrPak *pfs) { (void)pfs; return s_pak ? 0 : TGR_PAK_NONE; }
+int32_t tgr_pak_check(TgrPak *pfs) { (void)pfs; return s_pak ? 0 : TGR_PAK_NONE; }
 
 /* the pak's notes: in a scripted run an empty pak whose saves last the run
  * (as n64box models it); in play, a pak kept in a file in the host's save
@@ -671,33 +671,33 @@ static int note_find(uint16_t company, uint32_t game, uint8_t *name, uint8_t *ex
     return -1;
 }
 
-int32_t osPfsFindFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext, int32_t *file_no)
+int32_t tgr_pak_find(TgrPak *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext, int32_t *file_no)
 {
     int i;
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     i = note_find(company, game, name, ext);
     if (i < 0)
-        return PFS_ERR_INVALID;
+        return TGR_PAK_INVALID;
     *file_no = i;
     return 0;
 }
 
-int32_t osPfsAllocateFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext,
+int32_t tgr_pak_create(TgrPak *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext,
                           int32_t length, int32_t *file_no)
 {
     int i, used = 0;
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     for (i = 0; i < PAK_NOTES; i++)
         if (s_notes[i].used)
             used += s_notes[i].size;
     for (i = 0; i < PAK_NOTES && s_notes[i].used; i++)
         ;
     if (i == PAK_NOTES || used + length > PAK_BYTES)
-        return PFS_DATA_FULL;
+        return TGR_PAK_FULL;
     s_notes[i].used = 1;
     s_notes[i].company = company;
     s_notes[i].game = game;
@@ -710,28 +710,28 @@ int32_t osPfsAllocateFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *
     return 0;
 }
 
-int32_t osPfsDeleteFile(OSPfs *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)
+int32_t tgr_pak_delete(TgrPak *pfs, uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)
 {
     int i;
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     i = note_find(company, game, name, ext);
     if (i < 0)
-        return PFS_ERR_INVALID;
+        return TGR_PAK_INVALID;
     free(s_notes[i].data);
     memset(&s_notes[i], 0, sizeof s_notes[i]);
     pak_save();
     return 0;
 }
 
-int32_t osPfsReadWriteFile(OSPfs *pfs, int32_t file_no, uint8_t flag, int32_t offset, int32_t size, uint8_t *data)
+int32_t tgr_pak_io(TgrPak *pfs, int32_t file_no, uint8_t flag, int32_t offset, int32_t size, uint8_t *data)
 {
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     if (file_no < 0 || file_no >= PAK_NOTES || !s_notes[file_no].used || offset + size > s_notes[file_no].size)
-        return PFS_ERR_INVALID;
+        return TGR_PAK_INVALID;
     if (flag == 0)
         memcpy(data, s_notes[file_no].data + offset, (size_t)size);
     else {
@@ -741,12 +741,12 @@ int32_t osPfsReadWriteFile(OSPfs *pfs, int32_t file_no, uint8_t flag, int32_t of
     return 0;
 }
 
-int32_t osPfsFreeBlocks(OSPfs *pfs, int32_t *bytes)
+int32_t tgr_pak_free(TgrPak *pfs, int32_t *bytes)
 {
     int i, used = 0;
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     for (i = 0; i < PAK_NOTES; i++)
         if (s_notes[i].used)
             used += s_notes[i].size;
@@ -754,12 +754,12 @@ int32_t osPfsFreeBlocks(OSPfs *pfs, int32_t *bytes)
     return 0;
 }
 
-int32_t osPfsNumFiles(OSPfs *pfs, int32_t *max_files, int32_t *files_used)
+int32_t tgr_pak_count(TgrPak *pfs, int32_t *max_files, int32_t *files_used)
 {
     int i, n = 0;
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     for (i = 0; i < PAK_NOTES; i++)
         n += s_notes[i].used;
     *max_files = PAK_NOTES;
@@ -767,13 +767,13 @@ int32_t osPfsNumFiles(OSPfs *pfs, int32_t *max_files, int32_t *files_used)
     return 0;
 }
 
-int32_t osPfsFileState(OSPfs *pfs, int32_t file_no, OSPfsState *st)
+int32_t tgr_pak_stat(TgrPak *pfs, int32_t file_no, TgrPakFile *st)
 {
     (void)pfs;
     if (!s_pak)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     if (file_no < 0 || file_no >= PAK_NOTES || !s_notes[file_no].used)
-        return PFS_ERR_INVALID;
+        return TGR_PAK_INVALID;
     st->file_size = (uint32_t)s_notes[file_no].size;
     st->game_code = s_notes[file_no].game;
     st->company_code = s_notes[file_no].company;
@@ -783,10 +783,10 @@ int32_t osPfsFileState(OSPfs *pfs, int32_t file_no, OSPfsState *st)
 }
 
 /* ---- the Rumble Pak ------------------------------------------------------------ */
-int32_t osMotorInit(OSMesgQueue *mq, OSPfs *pfs, int32_t channel)
+int32_t tgr_rumble_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel)
 {
     if (!s_rumble || channel != 0)
-        return PFS_ERR_NOPACK;
+        return TGR_PAK_NONE;
     pfs->status = 0;
     pfs->queue = tgr_addr32(mq);
     pfs->channel = 0;
@@ -794,5 +794,5 @@ int32_t osMotorInit(OSMesgQueue *mq, OSPfs *pfs, int32_t channel)
     return 0;
 }
 
-int32_t osMotorStart(OSPfs *pfs) { (void)pfs; return 0; }
-int32_t osMotorStop(OSPfs *pfs) { (void)pfs; return 0; }
+int32_t tgr_rumble_on(TgrPak *pfs) { (void)pfs; return 0; }
+int32_t tgr_rumble_off(TgrPak *pfs) { (void)pfs; return 0; }

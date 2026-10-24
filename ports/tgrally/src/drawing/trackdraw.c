@@ -1089,7 +1089,7 @@ void BrTrackDraw(int pass)
       }
       if (32767.0 < hi || lo < -32767.0) {
         if (i == 1) {
-          osSyncPrintf("Bad Final Matrix: in=%d (%s), s=%f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n",
+          tgr_print("Bad Final Matrix: in=%d (%s), s=%f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n",
                        obj, BE32(D_80025C00.names) == 0 ? "???" : BEPTR(char *, BEPTR(be32_t *, D_80025C00.names)[obj]), s,
                        BEF(o->m[0][0]), BEF(o->m[0][1]), BEF(o->m[0][2]), BEF(o->m[0][3]),
                        BEF(o->m[1][0]), BEF(o->m[1][1]), BEF(o->m[1][2]), BEF(o->m[1][3]),

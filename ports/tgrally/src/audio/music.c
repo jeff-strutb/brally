@@ -68,14 +68,14 @@ extern BrSample *D_803787D0[];  /* by instrument number - 1 */
 extern unsigned long long D_80379568[10][12];
 extern int D_802A4918;                 /* the mixer's state block (mixer.s): */
 extern unsigned int D_802A491C;        /* its first two words differ in type */
-extern OSMesgQueue D_803746F0;          /* the music timer's message queue */
+extern TgrMsgQueue D_803746F0;          /* the music timer's message queue */
 extern char D_80374708[];               /* its two messages */
 extern char D_80374710[];               /* the music timer */
 extern be16_t D_803747D0[];             /* the music output buffer (0x4000 bytes), as the AI reads it */
 extern short D_802A4A08[];              /* silence: where idle sound voices point */
 extern char D_80378FB8[];               /* the mixer thread */
 extern unsigned short D_802A4790;
-extern unsigned long long osClockRate;
+extern unsigned long long tgr_clock_rate;
 void BrMixMusic(short *buf, int bytes);
 void BrNoteRatesInit(void);
 void BrMusicThread(void *arg);
@@ -134,13 +134,13 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
     *buf++ = *src++;
   }
   buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
-  osSyncPrintf("Length = %d\n", D_80378FA0.len);
+  tgr_print("Length = %d\n", D_80378FA0.len);
   D_80378FB2 = xm[0x42];
-  osSyncPrintf("Restartfrom = %d\n", D_80378FA0.restart);
+  tgr_print("Restartfrom = %d\n", D_80378FA0.restart);
   npat = xm[0x46];
-  osSyncPrintf("%d Patterns found\n", npat);
+  tgr_print("%d Patterns found\n", npat);
   ninst = xm[0x48];
-  osSyncPrintf("%d Instruments found\n", ninst);
+  tgr_print("%d Instruments found\n", ninst);
   hdr = tgr_rd32(xm + 0x3c);              /* the word as the N64 loaded it */
   pat = xm + 0x3c + (((hdr >> 24) & 0xff) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + ((hdr & 0xff) << 24));
   for (i = 0; i < npat; i++) {
@@ -154,9 +154,9 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   }
   p = pat;
   buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
-  osSyncPrintf("Now doSamples");
+  tgr_print("Now doSamples");
   for (i = 0; i < ninst; i++) {
-    osSyncPrintf(".");
+    tgr_print(".");
     q = p + LE32(p);
     if (p[0x1b] > 0) {
       len = LE32(q);
@@ -184,7 +184,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
         }
         break;
       default:
-        osSyncPrintf("WANKER fuck off no 16bit, no Ping fucking pong\n");
+        tgr_print("WANKER fuck off no 16bit, no Ping fucking pong\n");
         break;
       }
       buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
@@ -194,7 +194,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
       p = q;
     }
   }
-  osSyncPrintf("\n\nSample Space used = %d bytes\n", buf - start);
+  tgr_print("\n\nSample Space used = %d bytes\n", buf - start);
 }
 
 /* WHAT IT DOES: Build the mixer's note-rate table: for ten octaves of the
@@ -509,10 +509,10 @@ void BrMusicInit(int param_1, char *param_2)
 
   D_802A4918 = 0xfffefffe;
   D_802A491C = 0xfffefffe;
-  osSyncPrintf("Real Frequency is = %d\n", osAiSetFrequency(21998));
-  osCreateMesgQueue(&D_803746F0, D_80374708, 2);
-  osSetTimer(D_80374710, (unsigned long long)10000 * osClockRate / 1000000,
-             (unsigned long long)10000 * osClockRate / 1000000, &D_803746F0, 0);
+  tgr_print("Real Frequency is = %d\n", tgr_audio_rate(21998));
+  tgr_mq_init(&D_803746F0, D_80374708, 2);
+  tgr_timer(D_80374710, (unsigned long long)10000 * tgr_clock_rate / 1000000,
+             (unsigned long long)10000 * tgr_clock_rate / 1000000, &D_803746F0, 0);
   for (i = 0; i < D_802A49C0; i++) {
     D_802A4798[i].pos = tgr_addr32(D_803747D0);
     D_802A4798[i].rate = 0;
@@ -524,20 +524,20 @@ void BrMusicInit(int param_1, char *param_2)
     D_802A4920[j].baseVol = 0x20;
   }
   D_802A4790 = 0;
-  t = -osGetCount();
+  t = -tgr_clock();
   BrMixMusic((short *)D_803747D0, 0x4000);
-  t += osGetCount();
-  osSyncPrintf("%1.7f", (double)t / 46875500.0);
-  osSyncPrintf("Creating I entries\n");
+  t += tgr_clock();
+  tgr_print("%1.7f", (double)t / 46875500.0);
+  tgr_print("Creating I entries\n");
   BrModLoad(TGR_PTR(unsigned char *, param_1), param_2);
-  osSyncPrintf("Creating Note Frequency entries\n");
+  tgr_print("Creating Note Frequency entries\n");
   BrNoteRatesInit();
-  osSyncPrintf("Starting Mod\n");
+  tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
-  osAiSetNextBuffer((short *)D_803747D0, 0x4000);
-  osCreateThread(D_80378FB8, 7, BrMusicThread, 0, D_80379568, 0x7f);
-  osStartThread(D_80378FB8);
+  tgr_audio_queue((short *)D_803747D0, 0x4000);
+  tgr_thread_new(D_80378FB8, 7, BrMusicThread, 0, D_80379568, 0x7f);
+  tgr_thread_start(D_80378FB8);
 }
 
 /* WHAT IT DOES: Stop the music: halt the module player and silence every
@@ -563,9 +563,9 @@ void BrMusicStart(int param_1,int param_2)
 {
   int i;
 
-  osSyncPrintf("Creating I entries\n");
+  tgr_print("Creating I entries\n");
   BrModLoad(TGR_PTR(unsigned char *, param_1),TGR_PTR(unsigned char *, param_2));
-  osSyncPrintf("Starting Mod\n");
+  tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
   for (i = 0; i < D_802A49C0; i++) {
@@ -693,7 +693,7 @@ void BrMusicThread(void *arg)
 
   for (;;) {
     D_802A4A0C ^= 1;
-    osRecvMesg(&D_803746F0, 0, 1);
+    tgr_mq_recv(&D_803746F0, 0, 1);
     for (D_80379938 = 0; D_80379938 < D_802A49C0; D_80379938++) {
       D_802A4798[D_80379938].vol = (unsigned int)(D_802A4798[D_80379938].baseVol * D_802A49C4 * D_802A49C8) >> 16;
     }
@@ -704,11 +704,11 @@ void BrMusicThread(void *arg)
       hi = D_802A49CC * hi * D_802A49D0 >> 16;
       D_802A4920[D_80379938].vol = (hi << 16) + lo;
     }
-    D_80379930 = osAiGetStatus();
+    D_80379930 = tgr_audio_status();
     if (!(D_80379930 & 0x80000000)) {
-      D_80379930 = osAiSetNextBuffer((short *)D_803747D0, 0x4000);
+      D_80379930 = tgr_audio_queue((short *)D_803747D0, 0x4000);
     }
-    len = osAiGetLength();
+    len = tgr_audio_left();
     D_80379934 = len - 0x1000;
     if (D_80379934 < 0) {
       D_80379934 += 0x4000;

@@ -49,7 +49,7 @@ typedef BrPathSeg BrRoute;          /* a route: a path segment (cartridge data) 
 #define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)
 extern int D_8026FF08;                  /* players */
 extern int D_8026FF18;                  /* game mode */
-void osSyncPrintf(const char *fmt, ...);
+void tgr_print(const char *fmt, ...);
 float BrVec3Dist(BrVec3 *pA, BrVec3 *pB);
 void BrVec3Sub(BrVec3 *pOut, BrVec3 *pA, BrVec3 *pB);
 void BrVec3Direction(float *pOut, BrVec3 *pA, BrVec3 *pB);
@@ -234,7 +234,7 @@ void BrCarSlotSwap(BrCar *me)
             open = 0;
             if (TGR_PTR(BrCar *, ent->car)->xed4 == 0 && 80000.0 < list[i].key) {
             save:
-              osSyncPrintf("enemy %d loses slot %d (dist=%f)\n", ent->x64, TGR_PTR(BrCar *, ent->car)->slot, list[i].key);
+              tgr_print("enemy %d loses slot %d (dist=%f)\n", ent->x64, TGR_PTR(BrCar *, ent->car)->slot, list[i].key);
               ent->pos.x = car->mtx0[3][0];
               ent->pos.y = car->mtx0[3][1];
               ent->pos.z = car->mtx0[3][2];
@@ -252,7 +252,7 @@ void BrCarSlotSwap(BrCar *me)
               ent->x44 = car->xf7c;
               ent->x48 = car->xf70;
               ent->x4c = car->xf74;
-              osSyncPrintf("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
+              tgr_print("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
               ent->progress = car->xfa8;
               ent->rank = car->xfac;
               free[nFree++] = TGR_PTR(BrCar *, ent->car);
@@ -266,7 +266,7 @@ void BrCarSlotSwap(BrCar *me)
     }
     i = 0;
     if (open) {
-      osSyncPrintf("init slot %d to being open\n", D_8026FF08 + group);
+      tgr_print("init slot %d to being open\n", D_8026FF08 + group);
       free[nFree++] = &D_8031B760[D_8026FF08 + group];
     }
     for (; nFree != 0 && i < D_8028B7F0; i++) {
@@ -274,7 +274,7 @@ void BrCarSlotSwap(BrCar *me)
       if (ent->group == group && ent->x64 >= D_8026FF08 && !(ent->flags & 2) && ent->car == 0) {
         car = free[--nFree];
         ent->car = tgr_addr32(car);
-        osSyncPrintf("enemy %d acquires slot %d\n", ent->x64, car->slot);
+        tgr_print("enemy %d acquires slot %d\n", ent->x64, car->slot);
         car->xfe4[0] = ent->x24;
         car->xf5c = ent->seg;
         car->xf60 = ent->pt;
@@ -286,7 +286,7 @@ void BrCarSlotSwap(BrCar *me)
         car->xf7c = ent->x44;
         car->xf70 = ent->x48;
         car->xf74 = ent->x4c;
-        osSyncPrintf("restoring lap (%d/%d) and gate (%d/%d)\n", car->laps, car->xf7c, car->xf70, car->xf74);
+        tgr_print("restoring lap (%d/%d) and gate (%d/%d)\n", car->laps, car->xf7c, car->xf70, car->xf74);
         car->xfa8 = ent->progress;
         car->xfac = ent->rank;
         car->link = tgr_addr32((BrCarLink *)ent);
@@ -410,11 +410,11 @@ void BrRaceGateStep(BrRaceEnt *drv)
   tLap = BrFloatToInt(drv->raceTime * 100.0f) / 100.0f;
   if (BrSegmentsOverlapXY(BR_GATE_POST(iCur, b), BR_GATE_POST(iCur, a), &drv->posPrev,
                           &drv->pos)) {
-    osSyncPrintf("%d went backwards, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c - 1);
+    tgr_print("%d went backwards, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c - 1);
     if (iCur == 0) {
       drv->x44--;
     }
-    osSyncPrintf("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, BES32(D_80025C00.nGates), drv->x4c,
+    tgr_print("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, BES32(D_80025C00.nGates), drv->x4c,
                  (drv->x4c + BES32(D_80025C00.nGates) * 2) % BES32(D_80025C00.nGates) == drv->x48 % BES32(D_80025C00.nGates) &&
                      drv->x4c < 0);
     if (iCur == drv->x48 % BES32(D_80025C00.nGates) && drv->x4c < 0) {
@@ -423,7 +423,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
       if (BE32(D_80025C00.path) != 0) {
         drv->progress += BEF(D_80025C70->pt[0].dist);
       }
-      osSyncPrintf("lapping %d forward to -1\n", drv->x64);
+      tgr_print("lapping %d forward to -1\n", drv->x64);
     }
     drv->x4c--;
     goto tail;
@@ -432,11 +432,11 @@ void BrRaceGateStep(BrRaceEnt *drv)
                            &drv->pos)) {
     goto tail;
   }
-  osSyncPrintf("%d went forward, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c + 1);
+  tgr_print("%d went forward, from gate %d to gate %d\n", drv->x64, drv->x4c, drv->x4c + 1);
   drv->x4c++;
   if (drv->x48 < drv->x4c) {
     drv->x48 = drv->x4c;
-    osSyncPrintf("moved ahead one gate, getting %f seconds\n", D_80025C00.gate[iNext].award);
+    tgr_print("moved ahead one gate, getting %f seconds\n", D_80025C00.gate[iNext].award);
     if (iNext == 0) {
       if (drv->laps < D_8028B304) {
         msg = 0;
@@ -454,7 +454,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
           }
         }
         if (car != 0) {
-          osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
+          tgr_print("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
           car->lapTimes[drv->laps] = tLap;
         }
         drv->raceTime -= tLap;
@@ -462,7 +462,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
         drv->x44 = drv->laps;
         if (D_8026FF18 == 3) {
           if (drv->laps == 1) {
-            osSyncPrintf("lapping %d back to 0 (a)\n", drv->x64);
+            tgr_print("lapping %d back to 0 (a)\n", drv->x64);
             drv->laps--;
             drv->x44--;
             drv->x48 -= BES32(D_80025C00.nGates);
@@ -472,7 +472,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
             }
           }
         } else if (car != 0) {
-          osSyncPrintf("******* LAP #%d ********\n", drv->laps);
+          tgr_print("******* LAP #%d ********\n", drv->laps);
           sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
           car->msgA = tgr_addr32(car->xfc0);
           car->msgATime = 1.0f;
@@ -579,13 +579,13 @@ void BrRaceGateStep(BrRaceEnt *drv)
       }
     }
     if (car != 0) {
-      osSyncPrintf("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
+      tgr_print("veh->lapTimeFinal[%d]=%f\n", drv->laps, tLap);
       car->lapTimes[drv->laps] = tLap;
     }
     drv->raceTime -= tLap;
     drv->laps = drv->x44;
     if (car != 0) {
-      osSyncPrintf("******* LAP #%d ********\n", drv->laps);
+      tgr_print("******* LAP #%d ********\n", drv->laps);
       sprintf(car->xfc0, "%%ryLAP %d", drv->laps + 1);
       car->msgA = tgr_addr32(car->xfc0);
       car->msgATime = 1.0f;
@@ -595,9 +595,9 @@ void BrRaceGateStep(BrRaceEnt *drv)
       }
     }
   }
-  osSyncPrintf("granting technically-earned lap %d/%d to %d\n", drv->x44, drv->laps, drv->x64);
+  tgr_print("granting technically-earned lap %d/%d to %d\n", drv->x44, drv->laps, drv->x64);
   if (D_8026FF18 == 3 && drv->laps == 1) {
-    osSyncPrintf("lapping %d back to 0 (b)\n", drv->x64);
+    tgr_print("lapping %d back to 0 (b)\n", drv->x64);
     drv->laps--;
     drv->x44--;
     drv->x48 -= BES32(D_80025C00.nGates);

@@ -33,7 +33,7 @@ CUR = os.path.join(ROOT, 'ports/tgrally')
 def flags(base):
     return ['clang', '-fsyntax-only', '-std=gnu89', '-w', '-ferror-limit=0',
             '-I' + os.path.join(base, 'include'), '-I' + os.path.join(base, 'platform/include'),
-            '-include', os.path.join(base, 'platform/include/ultra64.h'),
+            '-include', os.path.join(base, 'platform/include/tgr_os.h'),
             '-include', os.path.join(base, 'platform/include/tgr_core.h'),
             '-Xclang', '-ast-dump=json']
 

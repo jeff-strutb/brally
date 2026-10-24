@@ -25,8 +25,8 @@ extern BrImage D_8028CB70;      /* the panel */
 extern BrImage D_8028D0B0;      /* the A button */
 extern BrImage D_8028D0E0;      /* the B button */
 
-extern OSPfs D_80369EC0[4];     /* one per port */
-extern OSPfs D_8031A3F8[4];     /* the Rumble Pak's, one per port */
+extern TgrPak D_80369EC0[4];     /* one per port */
+extern TgrPak D_8031A3F8[4];     /* the Rumble Pak's, one per port */
 extern unsigned char D_803163E0[2][32];  /* the id of the pak last used on each port */
 extern unsigned char D_80316420[2];          /* a pak has been used on the port (ports 2-3 run on into the statics) */
 extern unsigned char D_8031B1E8[4];      /* the port has a Rumble Pak */
@@ -152,10 +152,8 @@ void BrLoadSaveScreen(void)
     D_802724F0 = 0;
     D_80316428 = 0;
     BrIfaceMemReset();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout1();
     BrFrameEnd();
     BrAllocPaintShopGfxMem(&D_8028CB40);
@@ -297,17 +295,17 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 4:                       /* probe the pak */
-    osPfsIsPlug(D_80272D48, &pakBits);
+    tgr_pak_present(D_80272D48, &pakBits);
     if ((pakBits & (1 << D_80271FA8)) == 0) {
       D_802724F0 = 1;
       D_80272554 = 12;
     } else {
-      osSyncPrintf("\nInitializing controller pak...\n");
-      D_802724F0 = osPfsInitPak(D_80272D48, PFS, D_80271FA8);
+      tgr_print("\nInitializing controller pak...\n");
+      D_802724F0 = tgr_pak_open_new(D_80272D48, PFS, D_80271FA8);
       if (D_802724F0 != 0) {
         if (D_802724F0 == 10) {
-          if (osMotorInit(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
-            osMotorStop(&D_8031A3F8[D_80271FA8]);
+          if (tgr_rumble_open(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+            tgr_rumble_off(&D_8031A3F8[D_80271FA8]);
             D_802724F0 = 9999;
             D_802724FC = 1;
             D_80272554 = 12;
@@ -335,7 +333,7 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 5:
-    D_802724F0 = osPfsRepairId(PFS);
+    D_802724F0 = tgr_pak_repair(PFS);
     if (D_802724F0 != 0) {
       D_80272554 = 12;
     } else {
@@ -359,11 +357,11 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 7:                       /* find the file */
-    D_802724F0 = osPfsFindFile(PFS, COMPANY, GAME, name, ext, &D_80316424);
+    D_802724F0 = tgr_pak_find(PFS, COMPANY, GAME, name, ext, &D_80316424);
     if (D_802724F0 == 3) {
-      osSyncPrintf("File system is corrupted, attempting repair...\n");
-      osPfsChecker(PFS);
-      D_802724F0 = osPfsFindFile(PFS, COMPANY, GAME, name, ext, &D_80316424);
+      tgr_print("File system is corrupted, attempting repair...\n");
+      tgr_pak_check(PFS);
+      D_802724F0 = tgr_pak_find(PFS, COMPANY, GAME, name, ext, &D_80316424);
     }
     if (D_802724F0 == 0) {
       switch (D_80272550) {
@@ -396,16 +394,16 @@ void BrLoadSaveScreen(void)
   case 8:                       /* load */
     if (D_802724F0 == 0) {
       if (D_80272550 == 0) {
-        osSyncPrintf("Loading season data...\n");
+        tgr_print("Loading season data...\n");
       } else if (D_80272550 == 2) {
-        osSyncPrintf("Loading compressed ghost data...\n");
+        tgr_print("Loading compressed ghost data...\n");
       } else if (D_80272550 == 4) {
-        osSyncPrintf("Loading Options...\n");
+        tgr_print("Loading Options...\n");
       }
       if (D_80272550 != 4) {
-        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, size, D_80272500);
+        D_802724F0 = tgr_pak_io(PFS, D_80316424, 0, 0, size, D_80272500);
       } else {
-        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, 0x80, D_80272500);
+        D_802724F0 = tgr_pak_io(PFS, D_80316424, 0, 0, 0x80, D_80272500);
       }
       if (D_802724F0 != 0) {
         D_80272554 = 12;
@@ -427,7 +425,7 @@ void BrLoadSaveScreen(void)
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0 = opts[3];
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4 = opts[4];
           }
-          osSyncPrintf("Done!\n");
+          tgr_print("Done!\n");
           if (D_802724FC == 0) {
             D_80272554 = 15;
           } else {
@@ -435,12 +433,12 @@ void BrLoadSaveScreen(void)
           }
           D_80316422 = 1;
         } else if (D_80272550 == 2) {
-          osSyncPrintf("Extracting ghost data...\n");
+          tgr_print("Extracting ghost data...\n");
           D_80270784 = BrRlePlanesUnpack(D_80307F00, 0xDE5C, D_80272500, 2);
           D_8028B940 = D_80307F00[0];
           TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << D_80307F00[0];
           TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 1 << D_80307F00[1];
-          osSyncPrintf("Done!\n");
+          tgr_print("Done!\n");
           if (D_802724FC == 0) {
             D_80272554 = 15;
           } else {
@@ -449,7 +447,7 @@ void BrLoadSaveScreen(void)
           D_80316422 = 1;
         } else if (D_80272550 == 4) {
           memcpy(D_802723D0, D_80272500, 12);
-          D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0x80, 0x80, D_80272500);
+          D_802724F0 = tgr_pak_io(PFS, D_80316424, 0, 0x80, 0x80, D_80272500);
           if (D_802724F0 == 0) {
             memcpy(opts, D_80272500, 20);
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4 = opts[0];
@@ -457,7 +455,7 @@ void BrLoadSaveScreen(void)
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc = opts[2];
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0 = opts[3];
             TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4 = opts[4];
-            osSyncPrintf("Done!\n");
+            tgr_print("Done!\n");
             BrVolumesApply();
             D_80272554 = 13;
           } else {
@@ -468,23 +466,23 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 9:                       /* make room for a new file */
-    D_802724F0 = osPfsFreeBlocks(PFS, &freeBytes);
+    D_802724F0 = tgr_pak_free(PFS, &freeBytes);
     if (D_802724F0 == 0) {
       if (freeBytes < size) {
         D_802724F0 = 7;
         D_80272554 = 12;
       } else {
         if (D_80272550 == 1) {
-          osSyncPrintf("Allocating %d bytes for season data...\n", size);
+          tgr_print("Allocating %d bytes for season data...\n", size);
         } else if (D_80272550 == 3) {
-          osSyncPrintf("Allocating %d bytes for ghost data...\n", size);
+          tgr_print("Allocating %d bytes for ghost data...\n", size);
         } else if (D_80272550 == 5) {
-          osSyncPrintf("Allocating %d bytes for options...\n", size);
+          tgr_print("Allocating %d bytes for options...\n", size);
         }
-        D_802724F0 = osPfsAllocateFile(PFS, COMPANY, GAME, name, ext, size, &D_80316424);
+        D_802724F0 = tgr_pak_create(PFS, COMPANY, GAME, name, ext, size, &D_80316424);
         if (D_802724F0 == 3) {
-          osPfsChecker(PFS);
-          D_802724F0 = osPfsAllocateFile(PFS, COMPANY, GAME, name, ext, size, &D_80316424);
+          tgr_pak_check(PFS);
+          D_802724F0 = tgr_pak_create(PFS, COMPANY, GAME, name, ext, size, &D_80316424);
         }
         if (D_802724F0 == 0) {
           D_80272554 = 11;
@@ -531,24 +529,24 @@ void BrLoadSaveScreen(void)
     break;
   case 11:                      /* save */
     if (D_80272550 == 1) {
-      osSyncPrintf("Saving season data...\n");
+      tgr_print("Saving season data...\n");
       memcpy(D_80272500, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
-      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x200, D_80272500);
+      D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x200, D_80272500);
       if (D_802724F0 == 0) {
-        osSyncPrintf("Done!\n");
+        tgr_print("Done!\n");
         D_80272554 = 13;
       } else {
         D_80272554 = 12;
       }
     } else if (D_80272550 == 3) {
-      osSyncPrintf("Compressing ghost data...\n");
+      tgr_print("Compressing ghost data...\n");
       newSize = BrRleEncode(D_80272500, 0x3A00, D_80307F00, D_80270784, 2);
-      osSyncPrintf("new size = %d\n", newSize);
+      tgr_print("new size = %d\n", newSize);
       if (newSize != -1) {
-        osSyncPrintf("Saving ghost data to controller pak...\n");
-        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
+        tgr_print("Saving ghost data to controller pak...\n");
+        D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
         if (D_802724F0 == 0) {
-          osSyncPrintf("Done!\n");
+          tgr_print("Done!\n");
           D_80272554 = 13;
         } else {
           D_80272554 = 12;
@@ -558,9 +556,9 @@ void BrLoadSaveScreen(void)
         D_80272554 = 12;
       }
     } else if (D_80272550 == 5) {
-      osSyncPrintf("Saving options...\n");
+      tgr_print("Saving options...\n");
       memcpy(D_80272500, D_802723D0, 12);
-      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x80, D_80272500);
+      D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x80, D_80272500);
       if (D_802724F0 != 0) {
         D_80272554 = 12;
       } else {
@@ -570,9 +568,9 @@ void BrLoadSaveScreen(void)
         opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
         opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
         memcpy(D_80272500, opts, 20);
-        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
+        D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
-          osSyncPrintf("Done!\n");
+          tgr_print("Done!\n");
           D_80272554 = 13;
         } else {
           D_80272554 = 12;
@@ -801,7 +799,7 @@ void BrLoadSaveScreen(void)
         D_80272554 = 15;
       }
       D_802724FC = 0;
-      if (osMotorInit(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
+      if (tgr_rumble_open(D_80272D48, &D_8031A3F8[D_80271FA8], D_80271FA8) == 0) {
         D_8031B1E8[D_80271FA8] = 1;
       }
     }

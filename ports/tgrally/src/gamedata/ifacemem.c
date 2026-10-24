@@ -75,7 +75,7 @@ void BrAllocPaintShopGfxMem(BrIfaceImage *img)
 {
   img->data = BrIfaceMemAlloc(img->w * img->h * img->depth >> 3);
   if (BrRomReadSize(img->rom) != img->w * img->h * img->depth >> 3) {
-    osSyncPrintf("ERROR: AllocPaintShopGfxMem given image %dx%dx%d = %d bytes but uncompressed rom image is %d bytes\n",
+    tgr_print("ERROR: AllocPaintShopGfxMem given image %dx%dx%d = %d bytes but uncompressed rom image is %d bytes\n",
                  img->w, img->h, img->depth, BrRomReadSize(img->rom));
     for (;;) {
     }
@@ -91,7 +91,7 @@ void BrPaintShopMemInit(void)
 {
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);
-  osSyncPrintf("Allocating %d bytes for data_buf...\n",0x3a00);
+  tgr_print("Allocating %d bytes for data_buf...\n",0x3a00);
   D_80272500 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x3a00));
 }
 
@@ -100,7 +100,7 @@ void BrPaintShopMemInit(void)
 /* @implements 0x80248F38 tgr BrDecalMemInit */
 void BrDecalMemInit(void)
 {
-  osSyncPrintf("\nAllocating %d bytes for decal buffer...\n\n",0x800);
+  tgr_print("\nAllocating %d bytes for decal buffer...\n\n",0x800);
   D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);

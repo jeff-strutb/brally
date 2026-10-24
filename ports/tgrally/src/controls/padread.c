@@ -14,7 +14,7 @@ extern float D_802AB41C;
 extern float D_802AB420;
 extern int D_8028AADC;
 void BrPadStartRead(void);
-extern OSContPad D_8031A3E0[4];
+extern TgrPad D_8031A3E0[4];
 void BrPadEdges(unsigned int *param_1);
 extern unsigned int D_8036A8E0[4][0x57];
 typedef struct BrPadMap {       /* the pad record (0x15C bytes), as tgr/pad.h */
@@ -58,15 +58,15 @@ void BrPadMapRead(BrPadMap *p)
   unsigned int b;
   int k;
 
-  if ((b = TGR_PTR(OSContPad *, p->cont)->errnum) != 0) {
+  if ((b = TGR_PTR(TgrPad *, p->cont)->errnum) != 0) {
     p->absent = b == 8;
-    TGR_PTR(OSContPad *, p->cont)->stick_x = 0;
-    TGR_PTR(OSContPad *, p->cont)->stick_y = 0;
-    TGR_PTR(OSContPad *, p->cont)->button = 0;
+    TGR_PTR(TgrPad *, p->cont)->stick_x = 0;
+    TGR_PTR(TgrPad *, p->cont)->stick_y = 0;
+    TGR_PTR(TgrPad *, p->cont)->button = 0;
   } else {
     p->absent = 0;
   }
-  b = TGR_PTR(OSContPad *, p->cont)->button;
+  b = TGR_PTR(TgrPad *, p->cont)->button;
   p->pressed = 0;
   if (b & 0x800) {
     p->pressed |= 8;
@@ -128,9 +128,9 @@ void BrPadMapRead(BrPadMap *p)
         p->pressed |= 0x100000;
       }
     stick:
-      p->steer = TGR_PTR(OSContPad *, p->cont)->stick_x;
+      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
       if (p->pressed & 0x10) {
-        if (TGR_PTR(OSContPad *, p->cont)->stick_y < -0x40) {
+        if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x40) {
           p->pressed |= 0x20000;
         }
         p->pressed |= 0x10000;
@@ -159,9 +159,9 @@ void BrPadMapRead(BrPadMap *p)
       if (p->pressed & 0x2000) {
         p->pressed |= 0x100000;
       }
-      p->steer = TGR_PTR(OSContPad *, p->cont)->stick_x;
+      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
       if (p->pressed & 0x10) {
-        if (TGR_PTR(OSContPad *, p->cont)->stick_y < -0x40) {
+        if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x40) {
           p->pressed |= 0x20000;
         }
         p->pressed |= 0x10000;
@@ -224,12 +224,12 @@ void BrPadMapRead(BrPadMap *p)
       }
       break;
     case 3:
-      if (TGR_PTR(OSContPad *, p->cont)->stick_y > 0x20) {
+      if (TGR_PTR(TgrPad *, p->cont)->stick_y > 0x20) {
         p->pressed |= 0x10000;
-      } else if (TGR_PTR(OSContPad *, p->cont)->stick_y < -0x10) {
+      } else if (TGR_PTR(TgrPad *, p->cont)->stick_y < -0x10) {
         p->pressed |= 0x30000;
       }
-      p->steer = TGR_PTR(OSContPad *, p->cont)->stick_x;
+      p->steer = TGR_PTR(TgrPad *, p->cont)->stick_x;
       if (p->pressed & 0x8000) {
         if (p->pressed & 0x10000) {
           p->pressed |= 0x80000;
@@ -277,8 +277,8 @@ void BrPadMapRead(BrPadMap *p)
       p->pressed &= 0xffc0ffff;
     }
   }
-  p->axis[0] = (float)TGR_PTR(OSContPad *, p->cont)->stick_x / 70.0f;
-  p->axis[1] = (float)TGR_PTR(OSContPad *, p->cont)->stick_y / 70.0f;
+  p->axis[0] = (float)TGR_PTR(TgrPad *, p->cont)->stick_x / 70.0f;
+  p->axis[1] = (float)TGR_PTR(TgrPad *, p->cont)->stick_y / 70.0f;
   p->axis[2] = (float)p->steer / 70.0f;
   if (p->axis[0] > 1.0f) {
     p->axis[0] = 1.0f;

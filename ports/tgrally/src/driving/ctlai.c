@@ -285,7 +285,7 @@ void BrCarEntInit(BrCarEnt *e)
     e->pt = D_8028B828;
     e->gates = e->gates2 = D_8028B82C;
     e->laps = e->laps2 = D_8028B830;
-    osSyncPrintf("Initial lap.gate for %d(%d): %d.%d (dist=%f)\n", e->index, e->x74, e->laps, e->gates, e->dist);
+    tgr_print("Initial lap.gate for %d(%d): %d.%d (dist=%f)\n", e->index, e->x74, e->laps, e->gates, e->dist);
     e->prev.x = e->pos.x;
     e->x30 = 0.0f;
     e->x38 = 0.0f;

@@ -377,10 +377,8 @@ void BrRaceTick(void)
 
   if (D_802707C8 == 0) {
     D_8028A884 = 1;
-    osViBlack(1);
     BrFrameBeginLayout0();
     BrFrameEnd();
-    osViBlack(1);
     BrFrameBeginLayout0();
     BrFrameEnd();
     BrRandSeed(123);
@@ -476,16 +474,16 @@ void BrRaceTick(void)
       D_8027078C = 0;
       D_802707A8 = 0;
       PAD(D_8026FF08)->ghost = 0x80197000;
-      osSyncPrintf("savedRecordingLength = %d\n", D_80270784);
+      tgr_print("savedRecordingLength = %d\n", D_80270784);
       memcpy(TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost), D_80307F00, D_80270784);
       D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[1];
       if (TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0] != D_8028B940) {
-        osSyncPrintf("WRONG TRACK (%d!=%d)\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0], D_8028B940);
+        tgr_print("WRONG TRACK (%d!=%d)\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0], D_8028B940);
         PAD(D_8026FF08)->ghost = 0;
       } else {
-        osSyncPrintf("TRACK=%d\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0]);
+        tgr_print("TRACK=%d\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0]);
         PAD(D_8026FF08)->ghostPos = 8;
-        osSyncPrintf("PLAYLIMIT=%d\n", D_80270784);
+        tgr_print("PLAYLIMIT=%d\n", D_80270784);
         PAD(D_8026FF08)->ghostLen = D_80270784;
       }
       for (i = 0; i < D_8026FF08; i++) {
@@ -528,31 +526,31 @@ void BrRaceTick(void)
       PLANE->segLen = 0.0f;
       PLANE->point = 0;
       PLANE->count = 0;
-      osSyncPrintf("specials: %d\n", BES32(D_80025C00.nSpecials));
+      tgr_print("specials: %d\n", BES32(D_80025C00.nSpecials));
       D_802707C4 = 0;
       for (i = 0; i < BES32(D_80025C00.nSpecials); i++) {
         switch (D_80025C00.specials[i].kind) {
         case 4:
           PLANE->count = BES32(D_80025C00.specials[i].arg);
-          osSyncPrintf("airplanePathLeft = %08x\n",
+          tgr_print("airplanePathLeft = %08x\n",
                        PLANE->left = BES32(D_80025C00.specials[i].obj));
           break;
         case 5:
           PLANE->right = BES32(D_80025C00.specials[i].obj);
-          osSyncPrintf("airplanePathRight = %08x\n", PLANE->right);
+          tgr_print("airplanePathRight = %08x\n", PLANE->right);
           break;
         case 3:
           PLANE->obj = BES32(D_80025C00.specials[i].obj);
-          osSyncPrintf("airplane = %d\n", PLANE->obj);
+          tgr_print("airplane = %d\n", PLANE->obj);
           break;
         case 6:
           PLANE->trigger = BES32(D_80025C00.specials[i].obj);
-          osSyncPrintf("airplanetrigger = %d\n", PLANE->trigger);
+          tgr_print("airplanetrigger = %d\n", PLANE->trigger);
           break;
         case 7:
           D_80315DF8[D_802707C4].obj = BES32(D_80025C00.specials[i].obj);
           D_802707C4++;
-          osSyncPrintf("waterfall = %d\n", BES32(D_80025C00.specials[i].obj));
+          tgr_print("waterfall = %d\n", BES32(D_80025C00.specials[i].obj));
           break;
         }
       }
@@ -807,14 +805,14 @@ void BrRaceTick(void)
     for (i = 0; i < D_8026FF08; i++) {
       if ((D_803239A0[i].flags & 2) != 0) {
         if (D_8026FF18 == 2 && PAD(i)->rec[i] != 0) {
-          osSyncPrintf("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
+          tgr_print("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
           for (k50 = 0; k50 < PAD(i)->recLen[i]; k50 += 2) {
-            osSyncPrintf("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
+            tgr_print("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
           }
           if (i == 0
               && (PAD(i)->recLen[i] < D_80270784 || D_80307F00[0] != D_8028B940
                   || D_80270784 < 9)) {
-            osSyncPrintf("%d: %d<%d=%d || %d!=%d=%d || %d<=%d=%d\n", i, PAD(i)->recLen[i],
+            tgr_print("%d: %d<%d=%d || %d!=%d=%d || %d<=%d=%d\n", i, PAD(i)->recLen[i],
                          D_80270784, PAD(i)->recLen[i] < D_80270784, D_80307F00[0], D_8028B940,
                          D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
             D_80270784 = PAD(i)->recLen[i];
@@ -1447,11 +1445,11 @@ draw:
           }
           for (i = 0; i < D_8026FF08; i++) {
             for (kbc = 0; kbc < D_8026FF08; kbc++) {
-              osSyncPrintf("veh[%d]->recIndex[%d] = %d\n", i, kbc, PAD(i)->recLen);
+              tgr_print("veh[%d]->recIndex[%d] = %d\n", i, kbc, PAD(i)->recLen);
               PAD(i)->rec[kbc] = 0;
             }
           }
-          osSyncPrintf("bestNumber = %d, bestIndex = %d\n", D_80315E40, D_80315E3C);
+          tgr_print("bestNumber = %d, bestIndex = %d\n", D_80315E40, D_80315E3C);
         }
         D_80270788 = 1;
       } else {

@@ -1,5 +1,7 @@
-/* rcp.c: the game's display lists, run as the N64's RSP (F3DEX 1.21) and
- * RDP would, onto a renderer (render/rdr.h).
+/* rcp.c: the game's renderer.  It draws the game's display lists, which
+ * stay the game's data in its own format (F3DEX 1.21 commands, RDP modes),
+ * onto a renderer (render/rdr.h), giving each command the meaning the N64's
+ * RSP and RDP gave it.
  *
  * The RSP half keeps the microcode's state -- the matrix stacks, the 32
  * vertex slots, the lights and look-at directions, the segment table, the

@@ -28,7 +28,7 @@ FLAGS = ['-O0', '-fsyntax-only', '-std=gnu89', '-Wno-everything', '-Werror=int-c
          '-Werror=pointer-to-int-cast', '-Werror=int-to-pointer-cast', '-Werror=void-pointer-to-int-cast',
          '-Werror=int-to-void-pointer-cast', '-fdiagnostics-print-source-range-info',
          '-fno-caret-diagnostics', '-ferror-limit=0', '-Iports/tgrally/include', '-I%s/include' % P,
-         '-include', '%s/include/ultra64.h' % P, '-include', '%s/include/tgr_core.h' % P]
+         '-include', '%s/include/tgr_os.h' % P, '-include', '%s/include/tgr_core.h' % P]
 
 DIAG = re.compile(r'^(.*?):(\d+):(\d+):((?:\{\d+:\d+-\d+:\d+\})*): error: (.*)$')
 

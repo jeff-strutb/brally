@@ -33,7 +33,7 @@ int BrRomReadSize(int rom);
 int BrRomReadWord(int rom);
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s);
 void BrStreamInit(BrUnpack *s, unsigned char *buf);
-OSIoMesg *BrRomDmaSlot(void);
+TgrIoMsg *BrRomDmaSlot(void);
 void BrRomWaitAll(void);
 void BrRomFileLoad(BrRomFile *f, unsigned int (*alloc)(int size));
 void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size));

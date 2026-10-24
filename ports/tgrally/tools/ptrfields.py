@@ -44,7 +44,7 @@ def scan(tu):
     tree = idx.parse(tu, args=['-target', 'mips-linux-gnu', '-std=gnu89', '-w',
                                '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
                                '-I' + os.path.join(ROOT, 'ports/tgrally/platform/include'),
-                               '-include', os.path.join(ROOT, 'ports/tgrally/platform/include/ultra64.h'),
+                               '-include', os.path.join(ROOT, 'ports/tgrally/platform/include/tgr_os.h'),
                                '-include', os.path.join(ROOT, 'ports/tgrally/platform/include/tgr_core.h')])
     out = set()
     for c in tree.cursor.walk_preorder():

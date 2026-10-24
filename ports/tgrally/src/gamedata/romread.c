@@ -19,22 +19,22 @@ typedef struct BrUnpack {      /* a streamed unpack in flight (BrStreamInit star
 } BrUnpack;
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s);
 int BrInflate(unsigned char *dst, int *dstLen, unsigned char *src, unsigned int srcLen);
-extern unsigned long long osClockRate;
+extern unsigned long long tgr_clock_rate;
 extern unsigned char D_802F7F00[];
 extern void *D_80368AC0;
 extern void *D_80368AC4;
 extern char D_80324550[];
 extern char D_8033CBF0[];
-OSIoMesg *BrRomDmaSlot(void);
+TgrIoMsg *BrRomDmaSlot(void);
 void BrRomWaitAll(void);
-extern OSMesgQueue D_80319F88;     /* the ROM transfers' queue */
+extern TgrMsgQueue D_80319F88;     /* the ROM transfers' queue */
 extern int D_80272D44;
 extern int D_80272D40;
 void BrDlRebaseWord(unsigned int *param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void BrDlRebase(unsigned int *dl, unsigned int lo, unsigned int hi, int base);
 extern int D_8021DC94;
 extern int D_8021DC98;
-extern OSIoMesg D_8031A020[32];
+extern TgrIoMsg D_8031A020[32];
 
 /* -- end declarations -- */
 
@@ -226,17 +226,16 @@ int BrRlePlanesUnpack(unsigned char *dst, int max, signed char *data, int n)
 /* @implements 0x8021C748 tgr BrRomRead */
 void BrRomRead(void *dst, unsigned int rom, int len)
 {
-  OSIoMesg *mb;
+  TgrIoMsg *mb;
   
-  osInvalDCache(dst,len);
   for (; 0x1000 < len; len = len + -0x1000) {
     mb = BrRomDmaSlot();
-    osPiStartDma(mb,0,0,rom,dst,0x1000,(&D_80319F88));
+    tgr_rom_load(mb,0,0,rom,dst,0x1000,(&D_80319F88));
     rom = rom + 0x1000;
     dst = (char *)dst + 0x1000;
   }
   mb = BrRomDmaSlot();
-  osPiStartDma(mb,0,0,rom,dst,len,(&D_80319F88));
+  tgr_rom_load(mb,0,0,rom,dst,len,(&D_80319F88));
   BrRomWaitAll();
 }
 
@@ -246,7 +245,7 @@ void BrRomRead(void *dst, unsigned int rom, int len)
 void BrRomWaitAll(void)
 {
   for (; D_80272D44 != 0; D_80272D44 = D_80272D44 + -1) {
-    osRecvMesg((&D_80319F88),0,1);
+    tgr_mq_recv((&D_80319F88),0,1);
   }
 }
 
@@ -318,7 +317,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
     first = 1;
     D_8031B348 = 0;
   }
-  t0 = osGetCount();
+  t0 = tgr_clock();
   for (;;) {
     prev = D_8031B348;
     if (((int)(D_8031B348 + 5) & ~1) < left) {
@@ -328,13 +327,11 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       BrRomRead(&D_8031B348, rom, 4);
       D_8031B348 = tgr_be32(D_8031B348);
       rom += 4;
-      osInvalDCache(buf + half, 16000);
-      osPiStartDma(BrRomDmaSlot(), 0, 0, rom, buf + half, (D_8031B348 + 1) & ~1, &D_80319F88);
+      tgr_rom_load(BrRomDmaSlot(), 0, 0, rom, buf + half, (D_8031B348 + 1) & ~1, &D_80319F88);
       rom += (int)(D_8031B348 + 1) & ~1;
     } else {
       BrRomWaitAll();
     }
-    osInvalDCache(buf + half, 16000);
     half ^= 16000;
     if (first) {
       first = 0;
@@ -358,8 +355,8 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
       break;
     }
   }
-  t0 = osGetCount() - t0;
-  (unsigned long long)t0 * 1000000 / osClockRate;
+  t0 = tgr_clock() - t0;
+  (unsigned long long)t0 * 1000000 / tgr_clock_rate;
   if (s != 0) {
     s->pos = rom;
     s->dst = tgr_addr32(dst);
@@ -377,10 +374,10 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
  * use, wait for one transfer to finish first; returns the slot's I/O
  * message block. */
 /* @implements 0x802172D0 tgr BrRomDmaSlot */
-OSIoMesg *BrRomDmaSlot(void)
+TgrIoMsg *BrRomDmaSlot(void)
 {
   if (D_80272D44 == 32) {
-    osRecvMesg(&D_80319F88, 0, 1);
+    tgr_mq_recv(&D_80319F88, 0, 1);
   } else {
     D_80272D44++;
   }

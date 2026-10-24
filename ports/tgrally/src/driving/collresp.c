@@ -440,7 +440,7 @@ void BrCrListPrintCount(void)
     for (; n != 0; n = TGR_PTR(struct BrCrNode *, n->next)) {
       count++;
     }
-    osSyncPrintf("----%d-------------------------------\n", count);
+    tgr_print("----%d-------------------------------\n", count);
   }
 }
 
@@ -578,12 +578,12 @@ int BrCollRespTipKick(BrTipBody *b)
   }
   if (count > 2 || count < 1)
     return 0;
-  osSyncPrintf("-- Stand Dist = %f\n", best);
+  tgr_print("-- Stand Dist = %f\n", best);
   if (best > 0.6)
     return 0;
   BrRbVelAtPoint(w, b, p);
   t = w[0] * pW->n[0] + w[1] * pW->n[1] + w[2] * pW->n[2];
-  osSyncPrintf("-- Stand Vel = %f\n", t);
+  tgr_print("-- Stand Vel = %f\n", t);
   if (ABS(t) > 0.1f)
     return 0;
   t = b->m[0][0] * b->n[0] + b->m[0][1] * b->n[1] + b->m[0][2] * b->n[2];
@@ -596,7 +596,7 @@ int BrCollRespTipKick(BrTipBody *b)
     p[1] = -0.1f;
     p[2] = 0.0f;
   }
-  osSyncPrintf("-- Stand Point = %f\n", t);
+  tgr_print("-- Stand Point = %f\n", t);
   BrMat4RotateVecT(w, b->m, p);
   b->angVel[0] = b->angVel[0] + w[0];
   b->angVel[1] = b->angVel[1] + w[1];
@@ -740,15 +740,15 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
           || (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) > 0.999f
           || (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) > 0.999f) {
         D_802A4A28 = 1;
-        osSyncPrintf("Wank CT1 case\n");
+        tgr_print("Wank CT1 case\n");
         spin = 1;
       } else if ((planeD < 0.0f ? -planeD : planeD) < 0.5f) {
-        osSyncPrintf("Triangle Edge to CubeFace\n");
+        tgr_print("Triangle Edge to CubeFace\n");
         spin = 0;
         D_802A4A28 = 2;
       }
     }
-    osSyncPrintf("Cube Edge to Triangle Face\n");
+    tgr_print("Cube Edge to Triangle Face\n");
     e1[0] = nrm[0] * planeD;
     e1[1] = nrm[1] * planeD;
     e1[2] = nrm[2] * planeD;
@@ -767,7 +767,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       flag = 0;
     }
     if (flag) {
-      osSyncPrintf("Resistive collision %10.3f\n", b->m[2][2]);
+      tgr_print("Resistive collision %10.3f\n", b->m[2][2]);
     }
     if (D_802A4A28 != 1) {
       r = BrCrImpulseSolve(b, D_8037EAA8, D_802A4A2C, flag, 0.0f);
@@ -843,7 +843,7 @@ void BrCarPhysAdvance(BrTipBody *b)
   dt = t / 4;
   while (t > 0.002f) {
     if (BrCollRespTipKick(b) != 0) {
-      osSyncPrintf("Standing on it's F'in Nose damnit\n");
+      tgr_print("Standing on it's F'in Nose damnit\n");
     }
     BrCarCarCollide();
     BrRbStateStep(b->cur, b->state, dt);

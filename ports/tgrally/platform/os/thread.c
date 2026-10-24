@@ -1,15 +1,15 @@
-/* thread.c: libultra's threads, message queues, events, timers and clock,
- * over the model tools/tgrally/n64box.py runs the original ROM in.
+/* thread.c: the game's threads, message queues, events, timers and clock
+ * (tgr_os.h), on the host's threads and the host's clock.
  *
- * Every game thread is a host thread, but exactly one runs at a time: the
- * one holding the baton (s_cur).  The baton moves only inside an OS call,
- * to the highest-priority runnable thread (ties to the thread created
- * first), as libultra's scheduler does on the VR4300.  When only the idle
- * thread (priority 0) could run, virtual time moves to the next thing the
- * hardware would do: a pending delivery (DMA done, RCP task done, timer,
- * controller read), or the next vertical retrace.  The same calls in the
- * same order give the same run, call for call, as the original's under
- * n64box. */
+ * Every game thread is a host thread of its own and runs whenever it can,
+ * as many at once as the host has cores; priorities are kept but schedule
+ * nothing.  The clock is real time: tgr_clock counts the N64's 46.875 MHz
+ * ticks since the start.  One clock thread wakes for what falls due: the
+ * retrace, 60 times a second (the controllers sampled, the finished frame
+ * shown, the retrace queue and event posted), and the timers the game sets.
+ * Message queues keep the layout the game gave them, in game memory; one
+ * lock guards them, and a thread waiting on one sleeps until it changes.
+ * While the window is in the background the clock stands still. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,52 +19,49 @@
 
 #define MAXT 16
 #define EV_MAX 16
+#define MAXTIMERS 16
+#define TICKS_HZ 46875000ull
 
 typedef struct TThread {
-    OSThread *os;
-    int id, pri, order;
+    TgrThread *os;
+    int id, pri;
     void (*entry)(void *);
     void *arg;
-    enum { T_STOPPED, T_RUNNABLE, T_BLOCKED } state;
-    OSMesgQueue *wait_mq;
-    int wait_full;
-    host_cond *cv;
     host_thread *ht;
     int started;
 } TThread;
 
-typedef struct Pending {
-    uint64_t when;
-    int kind;               /* 0 event, 1 message, 2 timer */
-    int event;
-    OSMesgQueue *mq;
-    OSMesg msg;
-    OSTimer *timer;
-    uint64_t interval;
-    uint32_t seq;
-} Pending;
+typedef struct TTimer {
+    int live;
+    uint64_t due, interval;         /* ticks */
+    TgrMsgQueue *mq;
+    TgrMsg msg;
+} TTimer;
 
-static host_mutex *G;
+static host_mutex *G;               /* the queues, events, timers, threads */
+static host_cond *s_changed;        /* a queue changed, or the run ended */
+static host_cond *s_wake;           /* the clock thread: a timer was set */
 static TThread s_threads[MAXT];
 static int s_nthreads;
-static TThread *s_cur;
-static int s_started;
-static uint64_t s_count;
-static uint32_t s_frame;
-static struct { OSMesgQueue *mq; OSMesg msg; } s_events[EV_MAX];
-static OSMesgQueue *s_vi_mq;
-static OSMesg s_vi_msg;
+static TTimer s_timers[MAXTIMERS];
+static struct { TgrMsgQueue *mq; TgrMsg msg; } s_events[EV_MAX];
+static TgrMsgQueue *s_vi_mq;
+static TgrMsg s_vi_msg;
 static uint32_t s_vi_every;
-static Pending s_pending[256];
-static int s_npending;
-static uint32_t s_seq;
-static uint64_t s_wall0;
-static host_cond *s_done;
+static volatile uint32_t s_frame;
+static uint64_t s_t0;               /* host ns at tick 0, moved on while paused */
 static int s_finished;
 
-uint64_t tgr_count(void) { return s_count; }
+volatile int tgr_paused;            /* set by the host loop while the window is not in front */
+
+static uint64_t now_ticks(void)
+{
+    uint64_t ns = host_ticks_ns() - s_t0;
+    return ns / 1000000000ull * TICKS_HZ + ns % 1000000000ull * TICKS_HZ / 1000000000ull;
+}
+
+uint64_t tgr_count(void) { return now_ticks(); }
 uint32_t tgr_frame(void) { return s_frame; }
-volatile int tgr_paused;                /* set by the host loop while the window is not in front */
 
 /* TGR_STATS: once a second of retraces, how they kept time and what reached
  * the window: retraces and frames finished, the worst gap between retraces,
@@ -82,7 +79,6 @@ static void stats(void)
     static uint64_t t0, last, worst;
     static uint32_t f0, r0;
     static int s0;
-    static uint64_t c0;
     uint64_t now;
     if (on < 0)
         on = getenv("TGR_STATS") != NULL;
@@ -95,7 +91,6 @@ static void stats(void)
     if (!t0) {
         t0 = now;
         f0 = s_frame;
-        c0 = s_count;
         r0 = tgr_rcp_frames;
         s0 = tgr_frames_shown;
         return;
@@ -106,22 +101,22 @@ static void stats(void)
         char sh[32] = "";
         if (shown >= 0)
             snprintf(sh, sizeof sh, " (%d shown)", shown - s0);
-        fprintf(stderr, "stats: %u retraces (%.3f s of N64 time) in %.3f s, %u frames%s, worst gap %.1f ms, present %.2f ms avg %.1f max, audio %d ms\n",
-                s_frame - f0, (s_count - c0) / 46875000.0, (now - t0) / 1e9, frames, sh, worst / 1e6,
+        fprintf(stderr, "stats: %u retraces in %.3f s, %u frames%s, worst gap %.1f ms, present %.2f ms avg %.1f max, audio %d ms\n",
+                s_frame - f0, (now - t0) / 1e9, frames, sh, worst / 1e6,
                 frames ? tgr_rcp_end_ns / 1e6 / frames : 0.0, tgr_rcp_end_max_ns / 1e6, tgr_audio_buffered_ms());
         s0 = shown;
         t0 = now;
         f0 = s_frame;
-        c0 = s_count;
         r0 = tgr_rcp_frames;
         worst = 0;
         tgr_rcp_end_ns = tgr_rcp_end_max_ns = 0;
     }
 }
+
 void tgr_os_lock(void)   { host_mutex_lock(G); }
 void tgr_os_unlock(void) { host_mutex_unlock(G); }
 
-static TThread *find(OSThread *t)
+static TThread *find(TgrThread *t)
 {
     int i;
     for (i = 0; i < s_nthreads; i++)
@@ -130,25 +125,10 @@ static TThread *find(OSThread *t)
     return NULL;
 }
 
-static TThread *pick(void)
+/* ---- message queues: the game's layout, in game memory (the caller holds G) ---- */
+static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 {
-    TThread *best = NULL;
-    int i;
-    for (i = 0; i < s_nthreads; i++) {
-        TThread *t = &s_threads[i];
-        if (t->state != T_RUNNABLE)
-            continue;
-        if (!best || t->pri > best->pri || (t->pri == best->pri && t->id < best->id))
-            best = t;
-    }
-    return best;
-}
-
-/* ---- message queues: libultra's layout, in game memory ----------------------- */
-static int mq_send(OSMesgQueue *mq, OSMesg msg, int jam)
-{
-    OSMesg *buf = TGR_PTR(OSMesg *, mq->msg);
-    int i;
+    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
     if (mq->validCount >= mq->msgCount)
         return 0;
     if (jam) {
@@ -158,209 +138,147 @@ static int mq_send(OSMesgQueue *mq, OSMesg msg, int jam)
         buf[(mq->first + mq->validCount) % mq->msgCount] = msg;
     }
     mq->validCount++;
-    for (i = 0; i < s_nthreads; i++) {
-        TThread *t = &s_threads[i];
-        if (t->state == T_BLOCKED && t->wait_mq == mq && !t->wait_full) {
-            t->state = T_RUNNABLE;
-            t->wait_mq = NULL;
-        }
-    }
+    host_cond_broadcast(s_changed);
     return 1;
 }
 
-static int mq_recv(OSMesgQueue *mq, OSMesg *out)
+static int mq_recv(TgrMsgQueue *mq, TgrMsg *out)
 {
-    OSMesg *buf = TGR_PTR(OSMesg *, mq->msg);
-    int i;
+    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
     if (mq->validCount == 0)
         return 0;
     if (out)
         *out = buf[mq->first];
     mq->first = (mq->first + 1) % mq->msgCount;
     mq->validCount--;
-    for (i = 0; i < s_nthreads; i++) {
-        TThread *t = &s_threads[i];
-        if (t->state == T_BLOCKED && t->wait_mq == mq && t->wait_full) {
-            t->state = T_RUNNABLE;
-            t->wait_mq = NULL;
-        }
-    }
+    host_cond_broadcast(s_changed);
     return 1;
 }
 
+/* an event happening now: its queue gets its message (a full queue drops
+ * it, as the N64's did); the caller holds G */
 void tgr_event(int ev)
 {
     if (ev >= 0 && ev < EV_MAX && s_events[ev].mq)
         mq_send(s_events[ev].mq, s_events[ev].msg, 0);
 }
 
-/* ---- pending deliveries, in time order (equal times in arrival order) -------- */
-static void pend(Pending p)
+/* what the platform delivers when it has done the work: now, in order */
+void tgr_post_event(int event)
 {
-    int i;
-    if (s_npending == (int)(sizeof s_pending / sizeof *s_pending)) {
-        fprintf(stderr, "tgr: too many pending deliveries\n");
-        abort();
-    }
-    p.seq = s_seq++;
-    i = s_npending++;
-    while (i > 0 && (s_pending[i - 1].when > p.when)) {
-        s_pending[i] = s_pending[i - 1];
-        i--;
-    }
-    s_pending[i] = p;
+    host_mutex_lock(G);
+    tgr_event(event);
+    host_mutex_unlock(G);
 }
 
-void tgr_post_event_at(uint64_t when, int event)
+void tgr_post_mesg(TgrMsgQueue *mq, TgrMsg msg)
 {
-    Pending p;
-    memset(&p, 0, sizeof p);
-    p.when = when;
-    p.kind = 0;
-    p.event = event;
-    pend(p);
+    host_mutex_lock(G);
+    mq_send(mq, msg, 0);
+    host_mutex_unlock(G);
 }
 
-void tgr_post_mesg_at(uint64_t when, OSMesgQueue *mq, OSMesg msg)
+/* ---- the clock thread: retraces and timers ----------------------------------- */
+static void retrace(void)
 {
-    Pending p;
-    memset(&p, 0, sizeof p);
-    p.when = when;
-    p.kind = 1;
-    p.mq = mq;
-    p.msg = msg;
-    pend(p);
-}
-
-/* the next retrace: the VI interrupts every 1/60 s whatever else falls due on
- * that tick (an event due exactly on it is delivered first, then the retrace),
- * as n64box.py has it too */
-static uint64_t s_vi_due = TGR_TICKS_PER_FRAME;
-
-/* nothing can run: deliver the next thing the hardware would do */
-static void advance_time(void)
-{
-    uint64_t next_vi = s_vi_due;
-    if (s_npending && s_pending[0].when <= next_vi) {
-        Pending p = s_pending[0];
-        memmove(s_pending, s_pending + 1, (size_t)(--s_npending) * sizeof *s_pending);
-        if (p.when > s_count)
-            s_count = p.when;
-        if (p.kind == 0) {
-            tgr_event(p.event);
-        } else if (p.kind == 1) {
-            mq_send(p.mq, p.msg, 0);
-        } else {
-            mq_send(p.mq, p.msg, 0);
-            if (p.interval) {
-                p.when = s_count + p.interval;
-                pend(p);
-            }
-        }
-        return;
-    }
-    /* the next vertical retrace */
-    s_count = next_vi;
-    s_vi_due = next_vi + TGR_TICKS_PER_FRAME;
     s_frame++;
-    if (!g_tgr.headless) {
-        /* the window is in the background: the N64's time stands still */
-        if (tgr_paused) {
-            host_mutex_unlock(G);
-            while (tgr_paused && !s_finished)
-                host_sleep_ms(10);
-            host_mutex_lock(G);
-            s_wall0 = host_ticks_ns() - (uint64_t)(s_frame - 1) * 1000000000ull / 60;
-        }
-        /* keep pace with the wall clock: 60 retraces a second */
-        uint64_t due = s_wall0 + (uint64_t)s_frame * 1000000000ull / 60;
-        uint64_t now = host_ticks_ns();
-        if (now < due) {
-            /* sleep to within a millisecond of it, then wait out the rest: a
-               millisecond's rounding would make the retraces uneven */
-            host_mutex_unlock(G);
-            while (due > host_ticks_ns() + 1500000ull)
-                host_sleep_ms(1);
-            while (host_ticks_ns() < due)
-                ;
-            host_mutex_lock(G);
-        } else if (now - due > 200000000ull) {
-            s_wall0 = now - (uint64_t)s_frame * 1000000000ull / 60;     /* fell behind: do not race */
-        }
-    }
-    tgr_vi_retrace();
+    tgr_vi_retrace();                           /* the controllers sampled, the frame shown */
     stats();
+    host_mutex_lock(G);
     if (g_tgr.frames && s_frame >= (uint32_t)g_tgr.frames) {
         s_finished = 1;
-        host_cond_broadcast(s_done);
+        host_cond_broadcast(s_changed);
+        host_mutex_unlock(G);
         return;
     }
     if (s_vi_mq && s_frame % (s_vi_every ? s_vi_every : 1) == 0)
         mq_send(s_vi_mq, s_vi_msg, 0);
-    tgr_event(OS_EVENT_VI);
+    tgr_event(TGR_EVENT_VI);
+    host_mutex_unlock(G);
 }
 
-/* hand the baton to the best runnable thread; the caller holds G and keeps
- * running (from where it called) once it has the baton back */
-static void reschedule(void)
+static void *clock_main(void *v)
 {
-    TThread *self = s_cur, *next;
-    for (;;) {
-        next = pick();
-        if (next && next->pri > 0)
-            break;
-        if (s_finished)
-            break;
-        advance_time();
+    (void)v;
+    host_thread_interactive();
+    host_mutex_lock(G);
+    while (!s_finished) {
+        uint64_t next_vi = (uint64_t)(s_frame + 1) * TICKS_HZ / 60, next = next_vi, now;
+        int i;
+        if (tgr_paused) {
+            /* the window is in the background: the N64's time stands still */
+            uint64_t at = host_ticks_ns();
+            host_mutex_unlock(G);
+            while (tgr_paused && !s_finished)
+                host_sleep_ms(10);
+            host_mutex_lock(G);
+            s_t0 += host_ticks_ns() - at;
+            continue;
+        }
+        for (i = 0; i < MAXTIMERS; i++)
+            if (s_timers[i].live && s_timers[i].due < next)
+                next = s_timers[i].due;
+        now = now_ticks();
+        if (now > next_vi + TICKS_HZ / 5) {
+            /* fell behind by more than 200 ms (the host stalled): the N64's
+               time stood still meanwhile, rather than racing to catch up */
+            s_t0 += (now - next_vi) * 1000000000ull / TICKS_HZ;
+            continue;
+        }
+        if (now < next) {
+            uint32_t ms = (uint32_t)((next - now) * 1000ull / TICKS_HZ);
+            if (ms > 1)
+                host_cond_wait(s_wake, G, ms - 1);       /* to within a millisecond, */
+            else {
+                host_mutex_unlock(G);
+                while (now_ticks() < next)               /* then waited out exactly */
+                    ;
+                host_mutex_lock(G);
+            }
+            continue;
+        }
+        for (i = 0; i < MAXTIMERS; i++) {
+            TTimer *t = &s_timers[i];
+            if (t->live && t->due <= now) {
+                mq_send(t->mq, t->msg, 0);
+                if (t->interval)
+                    t->due += t->interval;
+                else
+                    t->live = 0;
+            }
+        }
+        if (now >= next_vi) {
+            host_mutex_unlock(G);
+            retrace();
+            host_mutex_lock(G);
+        }
     }
-    while (s_finished) {
-        /* the run is over: park every game thread */
-        host_cond_wait(self ? self->cv : s_done, G, 0xFFFFFFFFu);
-    }
-    if (next == self)
-        return;
-    s_cur = next;
-    host_cond_broadcast(next->cv);
-    if (!self)
-        return;
-    while (s_cur != self)
-        host_cond_wait(self->cv, G, 0xFFFFFFFFu);
+    host_mutex_unlock(G);
+    return NULL;
+}
+
+/* ---- the calls ---------------------------------------------------------------- */
+/* the only part of libultra's start-up the game can see: the clock's rate is
+ * the count's, 3/4 of the CPU's (initialize.c) */
+void tgr_os_init(void)
+{
+    extern uint64_t tgr_clock_rate;
+    tgr_clock_rate = tgr_clock_rate * 3 / 4;
 }
 
 static void *thread_main(void *v)
 {
     TThread *t = (TThread *)v;
-    host_thread_interactive();                        /* the retraces are paced from these threads */
-    host_mutex_lock(G);
-    while (s_cur != t)
-        host_cond_wait(t->cv, G, 0xFFFFFFFFu);
-    host_mutex_unlock(G);
+    host_thread_interactive();
     t->entry(t->arg);
     fprintf(stderr, "tgr: thread %d returned from its entry function\n", t->id);
     abort();
 }
 
-static void spawn(TThread *t)
-{
-    if (!t->started) {
-        t->started = 1;
-        t->ht = host_thread_start(thread_main, t);
-    }
-}
-
-/* ---- the OS calls ------------------------------------------------------------ */
-/* the only thing of libultra's osInitialize the game can see: osClockRate is
- * left at the count's rate, 3/4 of the CPU's (initialize.c) */
-void osInitialize(void)
-{
-    extern uint64_t osClockRate;
-    osClockRate = osClockRate * 3 / 4;
-}
-
-void osCreateThread(OSThread *t, OSId id, void (*entry)(void *), void *arg, void *sp, OSPri pri)
+void tgr_thread_new(TgrThread *t, TgrId id, void (*entry)(void *), void *arg, void *sp, TgrPri pri)
 {
     TThread *th;
-    (void)sp;
+    (void)sp;                       /* (the N64's stack: the host thread brings its own) */
     host_mutex_lock(G);
     th = find(t);
     if (!th) {
@@ -370,52 +288,45 @@ void osCreateThread(OSThread *t, OSId id, void (*entry)(void *), void *arg, void
         }
         th = &s_threads[s_nthreads++];
         memset(th, 0, sizeof *th);
-        th->cv = host_cond_new();
     }
     th->os = t;
     th->id = id;
     th->pri = pri;
     th->entry = entry;
     th->arg = arg;
-    th->state = T_STOPPED;
     host_mutex_unlock(G);
 }
 
-void osStartThread(OSThread *t)
+void tgr_thread_start(TgrThread *t)
 {
     TThread *th;
     host_mutex_lock(G);
     th = find(t);
-    th->state = T_RUNNABLE;
-    spawn(th);
-    if (!s_started) {
-        /* from boot: this thread takes over, and the boot code never resumes */
-        s_started = 1;
-        s_wall0 = host_ticks_ns();
-        s_cur = NULL;
-        reschedule();
-        host_mutex_unlock(G);
-        for (;;)
-            host_sleep_ms(1000000);
+    if (th && !th->started) {
+        th->started = 1;
+        th->ht = host_thread_start(thread_main, th);
     }
-    if (th->pri > s_cur->pri)
-        reschedule();
     host_mutex_unlock(G);
 }
 
-void osSetThreadPri(OSThread *t, OSPri pri)
+void tgr_thread_pri(TgrThread *t, TgrPri pri)
 {
-    TThread *th, *best;
+    TThread *th;
     host_mutex_lock(G);
-    th = t ? find(t) : s_cur;
-    th->pri = pri;
-    best = pick();
-    if ((best && best != s_cur && best->pri > s_cur->pri) || s_cur->pri == 0)
-        reschedule();
+    th = t ? find(t) : NULL;
+    if (th)
+        th->pri = pri;
     host_mutex_unlock(G);
 }
 
-void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msg, int32_t count)
+/* the idle thread's rest: the N64's spun when nothing else could run */
+void tgr_thread_idle(void)
+{
+    for (;;)
+        host_sleep_ms(1000000);
+}
+
+void tgr_mq_init(TgrMsgQueue *mq, TgrMsg *msg, int32_t count)
 {
     mq->mtqueue = 0x802A6230;       /* libultra's empty thread queue, as n64box sets it */
     mq->fullqueue = 0x802A6230;
@@ -425,102 +336,102 @@ void osCreateMesgQueue(OSMesgQueue *mq, OSMesg *msg, int32_t count)
     mq->msg = tgr_addr32(msg);
 }
 
-static int32_t send(OSMesgQueue *mq, OSMesg msg, int32_t flag, int jam)
+static int32_t send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag, int jam)
 {
-    TThread *woke;
     host_mutex_lock(G);
-    for (;;) {
-        if (mq_send(mq, msg, jam)) {
-            woke = pick();
-            if (woke && woke != s_cur && woke->pri > s_cur->pri)
-                reschedule();
-            host_mutex_unlock(G);
-            return 0;
-        }
-        if (flag != OS_MESG_BLOCK) {
+    while (!mq_send(mq, msg, jam)) {
+        if (flag != TGR_BLOCK || s_finished) {
             host_mutex_unlock(G);
             return -1;
         }
-        s_cur->state = T_BLOCKED;
-        s_cur->wait_mq = mq;
-        s_cur->wait_full = 1;
-        reschedule();
+        host_cond_wait(s_changed, G, 0xFFFFFFFFu);
     }
-}
-
-int32_t osSendMesg(OSMesgQueue *mq, OSMesg msg, int32_t flag) { return send(mq, msg, flag, 0); }
-int32_t osJamMesg(OSMesgQueue *mq, OSMesg msg, int32_t flag)  { return send(mq, msg, flag, 1); }
-
-int32_t osRecvMesg(OSMesgQueue *mq, OSMesg *msg, int32_t flag)
-{
-    host_mutex_lock(G);
-    for (;;) {
-        if (mq_recv(mq, msg)) {
-            host_mutex_unlock(G);
-            return 0;
-        }
-        if (flag != OS_MESG_BLOCK) {
-            host_mutex_unlock(G);
-            return -1;
-        }
-        s_cur->state = T_BLOCKED;
-        s_cur->wait_mq = mq;
-        s_cur->wait_full = 0;
-        reschedule();
-    }
-}
-
-void osSetEventMesg(OSEvent e, OSMesgQueue *mq, OSMesg msg)
-{
-    if (e < EV_MAX) {
-        s_events[e].mq = mq;
-        s_events[e].msg = msg;
-    }
-}
-
-void osViSetEvent(OSMesgQueue *mq, OSMesg msg, uint32_t retraceCount)
-{
-    s_vi_mq = mq;
-    s_vi_msg = msg;
-    s_vi_every = retraceCount;
-}
-
-uint32_t osGetCount(void) { return (uint32_t)s_count; }
-
-int32_t osSetTimer(OSTimer *t, OSTime countdown, OSTime interval, OSMesgQueue *mq, OSMesg msg)
-{
-    Pending p;
-    memset(&p, 0, sizeof p);
-    p.when = s_count + (countdown > 0 ? (uint64_t)countdown : 1);
-    p.kind = 2;
-    p.mq = mq;
-    p.msg = msg;
-    p.timer = t;
-    p.interval = (uint64_t)interval;
-    host_mutex_lock(G);
-    pend(p);
     host_mutex_unlock(G);
     return 0;
 }
 
-void *__tgr_unused;
-TgrAddr __osGetCurrFaultedThread(void) { return 0; }
+int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return send(mq, msg, flag, 0); }
+int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return send(mq, msg, flag, 1); }
 
-/* ---- the run ----------------------------------------------------------------- */
+int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
+{
+    host_mutex_lock(G);
+    while (!mq_recv(mq, msg)) {
+        if (flag != TGR_BLOCK) {
+            host_mutex_unlock(G);
+            return -1;
+        }
+        while (s_finished)          /* the run is over: the game's threads stop here */
+            host_cond_wait(s_changed, G, 0xFFFFFFFFu);
+        host_cond_wait(s_changed, G, 0xFFFFFFFFu);
+    }
+    host_mutex_unlock(G);
+    return 0;
+}
+
+void tgr_event_mq(TgrEvent e, TgrMsgQueue *mq, TgrMsg msg)
+{
+    host_mutex_lock(G);
+    if (e < EV_MAX) {
+        s_events[e].mq = mq;
+        s_events[e].msg = msg;
+    }
+    host_mutex_unlock(G);
+}
+
+void tgr_retrace_mq(TgrMsgQueue *mq, TgrMsg msg, uint32_t retraceCount)
+{
+    host_mutex_lock(G);
+    s_vi_mq = mq;
+    s_vi_msg = msg;
+    s_vi_every = retraceCount;
+    host_mutex_unlock(G);
+}
+
+uint32_t tgr_clock(void) { return (uint32_t)now_ticks(); }
+
+int32_t tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue *mq, TgrMsg msg)
+{
+    int i;
+    (void)t;
+    host_mutex_lock(G);
+    for (i = 0; i < MAXTIMERS; i++)
+        if (!s_timers[i].live)
+            break;
+    if (i == MAXTIMERS) {
+        fprintf(stderr, "tgr: too many timers\n");
+        abort();
+    }
+    s_timers[i].live = 1;
+    s_timers[i].due = now_ticks() + (countdown > 0 ? (uint64_t)countdown : 1);
+    s_timers[i].interval = (uint64_t)interval;
+    s_timers[i].mq = mq;
+    s_timers[i].msg = msg;
+    host_cond_broadcast(s_wake);
+    host_mutex_unlock(G);
+    return 0;
+}
+
+TgrAddr tgr_faulted_thread(void) { return 0; }
+
+/* ---- the run ------------------------------------------------------------------- */
 static void (*s_boot)(void);
 
 static void *boot_main(void *v)
 {
     (void)v;
-    s_boot();
+    s_boot();                       /* starts the idle thread, which starts the rest */
     return NULL;
 }
 
 void tgr_os_start(void (*boot)(void))
 {
     G = host_mutex_new();
-    s_done = host_cond_new();
+    s_changed = host_cond_new();
+    s_wake = host_cond_new();
     s_boot = boot;
+    s_t0 = host_ticks_ns();
+    host_thread_start(clock_main, NULL);
     host_thread_start(boot_main, NULL);
 }
 
@@ -534,6 +445,6 @@ void tgr_os_wait(void)
 {
     host_mutex_lock(G);
     while (!s_finished)
-        host_cond_wait(s_done, G, 0xFFFFFFFFu);
+        host_cond_wait(s_changed, G, 0xFFFFFFFFu);
     host_mutex_unlock(G);
 }

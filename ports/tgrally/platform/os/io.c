@@ -1,6 +1,6 @@
-/* io.c: the rest of libultra's surface the game calls: the PI (ROM DMA), the
- * VI, the RCP's task handshake, the audio interface, the caches, printing,
- * and libm's sine table -- each as tools/tgrally/n64box.py models it. */
+/* io.c: the rest of what the game asks of the machine (tgr_os.h): loads
+ * from the cartridge's data, the picture shown, the drawing and sound tasks,
+ * the audio out, printing, and libm's sine table. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,26 +9,23 @@
 #include "tgr_core.h"
 #include "sha1.h"
 
-int32_t  osTvType = 1;              /* NTSC */
-uint32_t osMemSize = 0x400000;      /* 4 MB, no Expansion Pak */
-uint64_t osClockRate = 62500000;
-uint32_t osRomBase = 0xB0000000;
-int32_t  osResetType = 0;
+int32_t  tgr_tv_type = 1;              /* NTSC */
+uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
+uint64_t tgr_clock_rate = 62500000;
+uint32_t tgr_rom_base = 0xB0000000;
+int32_t  tgr_reset_type = 0;
 
-/* ---- managers the game starts: nothing to run ------------------------------- */
-void osCreateViManager(OSPri pri) { (void)pri; }
-void osCreatePiManager(OSPri pri, OSMesgQueue *q, OSMesg *b, int32_t n) { (void)pri; (void)q; (void)b; (void)n; }
 /* the VI's control register as libultra keeps it: the mode's, then the special
  * features' changes (the renderer's VI stage reads it, tgr_vi_ctrl) */
 static uint32_t s_vi_ctrl = 0x311E, s_vi_mode_aa = 0x100;
 
-void osViSetMode(OSViMode *mode)
+void tgr_video_mode(TgrVideoMode *mode)
 {
     s_vi_ctrl = mode->regs[0];
     s_vi_mode_aa = s_vi_ctrl & 0x300;
 }
 
-void osViSetSpecialFeatures(uint32_t f)
+void tgr_video_features(uint32_t f)
 {
     if (f & 0x01) s_vi_ctrl |= 0x08;                  /* OS_VI_GAMMA_ON */
     if (f & 0x02) s_vi_ctrl &= ~0x08u;
@@ -47,21 +44,18 @@ void osViSetSpecialFeatures(uint32_t f)
 }
 
 uint32_t tgr_vi_ctrl(void) { return s_vi_ctrl; }
-void osViBlack(uint8_t on) { (void)on; }
-void osInvalDCache(void *p, int32_t n) { (void)p; (void)n; }
-void osWritebackDCacheAll(void) {}
 
 /* ---- the VI ----------------------------------------------------------------- */
 static uint32_t s_framebuffer;
 
-void osViSwapBuffer(void *fb)
+void tgr_video_show(void *fb)
 {
     s_framebuffer = tgr_addr32(fb);
     tgr_trace("swap", "%08X", s_framebuffer);
     tgr_gfx_swap(s_framebuffer);
 }
 
-void *osViGetCurrentFramebuffer(void)
+void *tgr_video_shown(void)
 {
     return TGR_PTR(void *, s_framebuffer);
 }
@@ -79,25 +73,23 @@ void tgr_rom_read(uint32_t off, void *dst, uint32_t n)
         memcpy((uint8_t *)dst + (a - off), tgr_romdata + (a - lo), (size_t)(b - a));
 }
 
-int32_t osPiStartDma(OSIoMesg *mb, int32_t pri, int32_t direction, uint32_t devAddr, void *vAddr,
-                     uint32_t nbytes, OSMesgQueue *mq)
+int32_t tgr_rom_load(TgrIoMsg *mb, int32_t pri, int32_t direction, uint32_t devAddr, void *vAddr,
+                     uint32_t nbytes, TgrMsgQueue *mq)
 {
     uint32_t src = devAddr & 0x0FFFFFFF;
     (void)pri;
-    if (direction != OS_READ) {
+    if (direction != TGR_READ) {
         fprintf(stderr, "tgr: a DMA to the cartridge\n");
         abort();
     }
     tgr_rom_read(src, vAddr, nbytes);
     if (mb)
         mb->hdr.retQueue = tgr_addr32(mq);
-    tgr_os_lock();
-    tgr_post_mesg_at(tgr_count(), mq, tgr_addr32(mb));
-    tgr_os_unlock();
+    tgr_post_mesg(mq, tgr_addr32(mb));
     return 0;
 }
 
-int32_t osPiReadIo(uint32_t devAddr, uint32_t *data)
+int32_t tgr_rom_word(uint32_t devAddr, uint32_t *data)
 {
     uint32_t off = devAddr & 0x0FFFFFFF;
     uint8_t b[4];
@@ -107,20 +99,18 @@ int32_t osPiReadIo(uint32_t devAddr, uint32_t *data)
 }
 
 /* ---- the RCP: tasks --------------------------------------------------------- */
-void osSpTaskLoad(OSTask *task)
+void tgr_task_load(TgrTask *task)
 {
-    tgr_os_lock();
-    if (task->t.type == M_GFXTASK) {
+    if (task->t.type == TGR_TASK_GFX) {
         tgr_gfx_task(task->t.data_ptr);
-        tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
-        tgr_post_event_at(tgr_count() + 2, OS_EVENT_DP);
+        tgr_post_event(TGR_EVENT_SP);
+        tgr_post_event(TGR_EVENT_DP);
     } else {
-        tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
+        tgr_post_event(TGR_EVENT_SP);
     }
-    tgr_os_unlock();
 }
 
-void osSpTaskStartGo(OSTask *task) { (void)task; }
+void tgr_task_run(TgrTask *task) { (void)task; }
 
 /* ---- the audio interface: buffers played at the set rate, 4 bytes a sample -- */
 #define AI_CLOCK 48681812u
@@ -163,7 +153,7 @@ static void ai_update(void)
     }
 }
 
-uint32_t osAiGetLength(void)
+uint32_t tgr_audio_left(void)
 {
     uint64_t played;
     ai_update();
@@ -173,20 +163,20 @@ uint32_t osAiGetLength(void)
     return played >= s_aiq[0].n ? 0 : (uint32_t)(s_aiq[0].n - played) & ~7u;
 }
 
-uint32_t osAiGetStatus(void)
+uint32_t tgr_audio_status(void)
 {
     ai_update();
     return s_ain >= 2 ? 0x80000000u : 0;
 }
 
-int32_t osAiSetFrequency(uint32_t f)
+int32_t tgr_audio_rate(uint32_t f)
 {
     uint32_t dac = (uint32_t)((double)AI_CLOCK / f + 0.5);
     s_airate = AI_CLOCK / dac;
     return (int32_t)s_airate;
 }
 
-int32_t osAiSetNextBuffer(void *buf, uint32_t size)
+int32_t tgr_audio_queue(void *buf, uint32_t size)
 {
     uint64_t start;
     ai_update();
@@ -214,7 +204,7 @@ int32_t osAiSetNextBuffer(void *buf, uint32_t size)
 }
 
 /* ---- printing ---------------------------------------------------------------- */
-void osSyncPrintf(const char *fmt, ...)
+void tgr_print(const char *fmt, ...)
 {
     va_list ap;
     if (!getenv("TGR_LOG"))

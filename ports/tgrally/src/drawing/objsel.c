@@ -15,7 +15,7 @@ extern int D_8028DDD0;
 extern int D_8028DDD4;
 extern int D_8028DDD8;
 extern int D_8028AADC;                 /* frames this step */
-extern unsigned long long osClockRate;
+extern unsigned long long tgr_clock_rate;
 void BrPerfMark(int a, int r, int g, int b, int al);
 /* -- end declarations -- */
 
@@ -75,7 +75,7 @@ void BrObjViewFrame(void)
   BrPerfMark(0, 255, 255, 255, 255);
   for (t = D_8028AADC * 1000; t >= 1000; t -= 16667) {
   }
-  f = (float)(1000 * osClockRate / 1000000);
-  f = (float)(1000 * osClockRate / 1000000);
+  f = (float)(1000 * tgr_clock_rate / 1000000);
+  f = (float)(1000 * tgr_clock_rate / 1000000);
   BrObjViewReset();
 }

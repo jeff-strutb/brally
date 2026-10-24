@@ -41,15 +41,15 @@ int BrPakCheckFiles(void)
   int i;
 
   D_802A4BE8 = 0;
-  D_802724F0 = osPfsInitPak(&D_80272D48, &D_80369EC0[0], 0);
+  D_802724F0 = tgr_pak_open_new(&D_80272D48, &D_80369EC0[0], 0);
   if (D_802724F0 != 0 && D_802724F0 == 10) {
-    if (osMotorInit(&D_80272D48, &D_8031A3F8[0], 0) == 0) {
+    if (tgr_rumble_open(&D_80272D48, &D_8031A3F8[0], 0) == 0) {
       D_802A4BE8 = 1;
       return 1;
     }
-    D_802724F0 = osPfsRepairId(&D_80369EC0[0]);
+    D_802724F0 = tgr_pak_repair(&D_80369EC0[0]);
     if (D_802724F0 == 0) {
-      osPfsInitPak(&D_80272D48, &D_80369EC0[0], 0);
+      tgr_pak_open_new(&D_80272D48, &D_80369EC0[0], 0);
     }
   }
   if (D_802724F0 != 0) {
@@ -57,10 +57,10 @@ int BrPakCheckFiles(void)
     return 1;
   }
   bcopy(D_80369EC0[0].raw + 0xc, D_803163E0, 0x20);
-  D_802724F0 = osPfsNumFiles(&D_80369EC0[0], &maxFiles, &D_8036A278);
+  D_802724F0 = tgr_pak_count(&D_80369EC0[0], &maxFiles, &D_8036A278);
   if (D_802724F0 != 0) {
     if (D_802724F0 == 3) {
-      if (osPfsChecker(&D_80369EC0[0]) != 0) {
+      if (tgr_pak_check(&D_80369EC0[0]) != 0) {
         D_802A4BE8 = 1;
         return 1;
       }
@@ -70,13 +70,13 @@ int BrPakCheckFiles(void)
     }
   }
   for (i = 0; i < 16; i++) {
-    if (osPfsFileState(&D_80369EC0[0], i, &D_8036A280[i]) != 0) {
+    if (tgr_pak_stat(&D_80369EC0[0], i, &D_8036A280[i]) != 0) {
       D_8028DDA0 |= 1 << i;
     }
   }
   for (i = 0; i < 16; i++) {
     if (!(D_8028DDA0 & (1 << i))) {
-      osSyncPrintf("%d: %08x %04x\n", i, D_8036A280[i].company, D_8036A280[i].game);
+      tgr_print("%d: %08x %04x\n", i, D_8036A280[i].company, D_8036A280[i].game);
       if (D_8036A280[i].company != 0x4e475245 || D_8036A280[i].game != 0x3544) {
         D_802A4BE8 = 1;
         return 0;

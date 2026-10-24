@@ -382,7 +382,7 @@ void BrCarSfxLoad(void)
     }
     if (pos + D_8028BC04[i].size + D_8028BC04[i].loopLen > base + 0x29fe0) {
       D_8028BC04[i].data = base;
-      osSyncPrintf("ERROR: Sound buffer allocation overflow on car sound %d\n", i);
+      tgr_print("ERROR: Sound buffer allocation overflow on car sound %d\n", i);
     } else {
       D_8028BC04[i].data = pos;
       BrRomUnpack(TGR_PTR(unsigned char *, pos), D_8028BC04[i].rom, 0);
@@ -393,7 +393,7 @@ void BrCarSfxLoad(void)
     pos += D_8028BC04[i].size + D_8028BC04[i].loopLen;
   }
   s = D_8028BC04;
-  osSyncPrintf("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
+  tgr_print("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
   if (pos - base > 0x29fe0) {
     BrFatal("Car sound effect overflow");
   }

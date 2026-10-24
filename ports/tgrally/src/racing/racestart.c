@@ -10,7 +10,7 @@ extern int D_8028AADC;
 extern unsigned long long D_8028ADF8;
 extern unsigned int D_8028AE00;
 extern int D_8028AB10;
-extern unsigned long long osClockRate;
+extern unsigned long long tgr_clock_rate;
 void BrPadPollAll(void);
 void BrStub80254870(void);
 void BrStub80254F2C(void);
@@ -39,17 +39,17 @@ void BrClockTick(void)
   unsigned int d;
 
   if (D_8028AB10 != 0) {
-    D_8028ADF8 += 33333333ULL * osClockRate / 1000000000ULL;
-    D_8028AE00 = osGetCount();
+    D_8028ADF8 += 33333333ULL * tgr_clock_rate / 1000000000ULL;
+    D_8028AE00 = tgr_clock();
   } else if (D_8028ADF8 != 0) {
-    now = osGetCount();
+    now = tgr_clock();
     D_8028ADF8 += now - D_8028AE00;
     D_8028AE00 = now;
   } else {
-    D_8028ADF8 = D_8028AE00 = osGetCount();
+    D_8028ADF8 = D_8028AE00 = tgr_clock();
   }
   D_8028AAD0 = D_8028AAD4;
-  D_8028AAD4 = D_8028ADF8 * 1000000 / osClockRate / 1000;
+  D_8028AAD4 = D_8028ADF8 * 1000000 / tgr_clock_rate / 1000;
   BrPadPollAll();
   BrStub80254870();
   BrStub80254F2C();

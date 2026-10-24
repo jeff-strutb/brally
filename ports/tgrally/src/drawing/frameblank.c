@@ -95,11 +95,11 @@ extern int D_8028AAE0;                  /* CPU time of the last frame */
 extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
-extern int osTvType;
-extern OSViMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
-extern OSViMode D_802A54B0[1];
-extern OSViMode D_802A6040[1];
-extern OSViMode D_802A5780[1];
+extern int tgr_tv_type;
+extern TgrVideoMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern TgrVideoMode D_802A54B0[1];
+extern TgrVideoMode D_802A6040[1];
+extern TgrVideoMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;
@@ -223,15 +223,12 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b)
 void BrScreenFlush3Layout1(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout1();
   BrFrameEnd();
   D_8028A884 = 0;
@@ -244,15 +241,12 @@ void BrScreenFlush3Layout1(void)
 void BrScreenFlush3Layout0(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
   BrFrameBeginLayout0();
   BrFrameEnd();
   D_8028A884 = 0;
