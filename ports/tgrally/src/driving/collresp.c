@@ -7,10 +7,6 @@
 #include "tgr/car.h"
 
 /* -- declarations -- */
-typedef struct BrCrNode {       /* a contact-list node */
-  TgrAddr plane;  /* void * */
-  TgrAddr next;  /* struct BrCrNode * */
-} BrCrNode;
 extern BrCrNode *D_802A4A20;          /* the contact list */
 extern BrCrNode *D_802A4A24;          /* next free node */
 typedef BrRbBody BrTipBody;     /* (tgr/body.h) */
@@ -386,8 +382,8 @@ void BrCrListPush(void *plane)
 {
   BrCrNode *n = D_802A4A24++;
 
-  n->plane = tgr_addr32(plane);
-  n->next = tgr_addr32(D_802A4A20);
+  n->plane = (plane);
+  n->next = (D_802A4A20);
   D_802A4A20 = n;
 }
 
@@ -402,7 +398,7 @@ void BrCrListPrintCount(void)
   n = D_802A4A20;
   if (n != 0) {
     count = 0;
-    for (; n != 0; n = TGR_PTR(struct BrCrNode *, n->next)) {
+    for (; n != 0; n = ((struct BrCrNode *)(n->next))) {
       count++;
     }
     tgr_print("----%d-------------------------------\n", count);
@@ -678,8 +674,8 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
 
   ret = 0;
   cnt = 0;
-  for (node = D_802A4A20; node != 0; node = TGR_PTR(struct BrCrNode *, node->next)) {
-    pP = TGR_PTR(void *, node->plane);
+  for (node = D_802A4A20; node != 0; node = ((struct BrCrNode *)(node->next))) {
+    pP = ((void *)(node->plane));
     BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
     BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
     BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));

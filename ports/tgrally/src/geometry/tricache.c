@@ -11,7 +11,7 @@ extern short D_8037EA88[4];            /* each slot's triangle count */
 extern int D_8037EAA0;                 /* the use clock */
 /* A cached triangle (0x20 bytes): its plane and its three vertices. */
 
-extern int D_80379940[50][4][2];      /* 50 records of four pairs */
+extern BrCrNode D_80379940[50][4];    /* the contact-list nodes, 50 rows of four */
 extern void *D_802A4A20;
 extern void *D_802A4A24;
 /* -- end declarations -- */
@@ -61,8 +61,8 @@ void BrTriCacheReset(void)
   }
   for (i = 0; i < 50; i++) {
     for (j = 0; j < 4; j++) {
-      D_80379940[i][j][0] = 0;
-      D_80379940[i][j][1] = 0;
+      D_80379940[i][j].plane = 0;
+      D_80379940[i][j].next = 0;
     }
   }
   D_802A4A20 = 0;

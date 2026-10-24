@@ -40,4 +40,10 @@ typedef struct BrTri {
 
 extern BrTri D_80379F80[4][150];        /* each grid slot's triangles */
 
+/* A contact-list node (8 bytes on the N64): a triangle a body touches. */
+typedef struct BrCrNode {
+    BrTri *plane;
+    struct BrCrNode *next;
+} BrCrNode;
+
 #endif
