@@ -300,6 +300,7 @@ glide_va,name,module,basis,file
 0x1001CF90,BrRdpSetCombineLERP,drawing,description,src/brally/core/drawing/br_rdpmode.c
 0x1001D150,BrRdpACMux,drawing,neighbour-1,src/brally/core/drawing/br_rdpmode.c
 0x1001D180,BrRdpCCMux,drawing,description,src/brally/core/drawing/br_rdpmode.c
+0x1001D1B0,BrScenePropsDraw,drawing,filed,src/brally/core/drawing/br_sceneprops.c
 0x1001DC40,BrVec3dLenSq,geometry,filed,src/brally/core/geometry/br_vecd.c
 0x1001DC80,BrVec3dLen,geometry,filed,src/brally/core/geometry/br_vecd.c
 0x1001DC90,BrVec3dNormalise,geometry,filed,src/brally/core/geometry/br_vecd.c
