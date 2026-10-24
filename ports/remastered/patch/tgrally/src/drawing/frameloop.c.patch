@@ -16,8 +16,12 @@
  extern char D_80270840;
  extern int D_802724F0;
  extern char D_803163E0[];
-@@ -833,6 +835,57 @@
-  * ucode_size); the osGetCount difference shares the call's line and the
+@@ -826,9 +828,60 @@
+  * The empty do/while before the first count ends uopt's first block, so
+  * the gRaw locals' registers (v1, a0) are free again for the counts.
+  * Task stores follow the ROM's ring order (output_buff and its size before
+- * ucode_size); the osGetCount difference shares the call's line and the
++ * ucode_size); the tgr_clock difference shares the call's line and the
   * debug copy's multiplier shares its count's line, for as1's ordering.
   * v is an unused word of the ROM frame. */
 +/* Top Gear Rally Remastered's Show FPS (its Remaster Options,
@@ -74,7 +78,7 @@
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -847,6 +900,7 @@
+@@ -843,6 +896,7 @@
    int i;
    void *fb;
  
@@ -82,11 +86,11 @@
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -932,7 +986,16 @@
+@@ -925,7 +979,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
-     osRecvMesg(D_8031A390, 0, 1);
-     osViSwapBuffer(fb);
--    osRecvMesg(D_8031A390, 0, 1);
+     tgr_mq_recv(D_8031A390, 0, 1);
+     tgr_video_show(fb);
+-    tgr_mq_recv(D_8031A390, 0, 1);
 +    /* Remastered: a menu frame is one retrace, 60 a second where the cartridge waited
 +       for a second (30): the menus step by the frame's measured time
 +       (D_8028AAD8: the carousel, the icons' spin, the fades, the turntables),
@@ -95,12 +99,12 @@
 +       steps a frame's; in Remastered every race is Boss Rally's engine's, at 60
 +       ticks: src/racing/handoff.c) */
 +    if (D_8031B318 == BrRaceTick) {
-+      osRecvMesg(D_8031A390, 0, 1);
++      tgr_mq_recv(D_8031A390, 0, 1);
 +    }
-     if (osViGetCurrentFramebuffer() != fb) {
-       osRecvMesg(D_8031A390, 0, 1);
+     if (tgr_video_shown() != fb) {
+       tgr_mq_recv(D_8031A390, 0, 1);
      }
-@@ -975,6 +1038,7 @@
+@@ -967,6 +1030,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -108,7 +112,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -1007,15 +1071,18 @@
+@@ -999,15 +1063,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {

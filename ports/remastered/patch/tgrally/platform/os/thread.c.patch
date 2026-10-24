@@ -1,39 +1,54 @@
 --- a/platform/os/thread.c
 +++ b/platform/os/thread.c
-@@ -238,6 +238,9 @@
- static uint64_t s_vi_due = TGR_TICKS_PER_FRAME;
+@@ -352,7 +352,39 @@
  
- /* nothing can run: deliver the next thing the hardware would do */
+ int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return send(mq, msg, flag, 0); }
+ int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return send(mq, msg, flag, 1); }
++
 +int tgr_tween_present(void);            /* Top Gear Rally Remastered: gfx/rcp.c */
 +int tgr_tween_render_thread(void);
-+
- static void advance_time(void)
- {
-     uint64_t next_vi = s_vi_due;
-@@ -279,8 +282,10 @@
-             /* sleep to within a millisecond of it, then wait out the rest: a
-                millisecond's rounding would make the retraces uneven */
-             host_mutex_unlock(G);
--            while (due > host_ticks_ns() + 1500000ull)
--                host_sleep_ms(1);
-+            while (due > host_ticks_ns() + 1500000ull) {
-+                if (!tgr_tween_present())     /* Remastered: a picture between the game's frames */
-+                    host_sleep_ms(1);
-+            }
-             while (host_ticks_ns() < due)
-                 ;
-             host_mutex_lock(G);
-@@ -288,6 +293,13 @@
-             s_wall0 = now - (uint64_t)s_frame * 1000000000ull / 60;     /* fell behind: do not race */
-         }
-     }
-+    if (g_tgr.headless && getenv("RM_TWEEN_CHECK")) {   /* (a check: the retrace's wait would draw one) */
-+        static unsigned tries, went;
+ 
++/* Remastered: the thread that draws the game's frames, while it waits, puts
++   pictures between them on the screen (as often as the display takes one;
++   the renderer's present keeps the pace) and looks at its queue between
++   pictures; 1 if one went */
++static int tween_wait(void)
++{
++    static uint32_t checked, tries, went;
++    int drew;
++    if (!tgr_tween_render_thread())
++        return 0;
++    if (g_tgr.headless && getenv("RM_TWEEN_CHECK")) {   /* (a check: one try a retrace) */
++        if (checked == s_frame)
++            return 0;
++        checked = s_frame;
++    }
++    host_mutex_unlock(G);
++    tgr_gfx_lock();
++    drew = tgr_tween_present();
++    tgr_gfx_unlock();
++    host_mutex_lock(G);
++    if (g_tgr.headless && getenv("RM_TWEEN_CHECK")) {
 +        tries++;
-+        went += tgr_tween_present() != 0;
++        went += drew;
 +        if (tries % 600 == 0)
 +            fprintf(stderr, "TWEEN CHECK %u retraces, %u from the renderer's thread\n", tries, went);
 +    }
-     tgr_vi_retrace();
-     stats();
-     if (g_tgr.frames && s_frame >= (uint32_t)g_tgr.frames) {
++    return drew;
++}
++
+ int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
+ {
+     host_mutex_lock(G);
+@@ -363,6 +395,11 @@
+         }
+         while (s_finished)          /* the run is over: the game's threads stop here */
+             host_cond_wait(s_changed, G, 0xFFFFFFFFu);
++        if (tgr_tween_render_thread()) {
++            if (!tween_wait())
++                host_cond_wait(s_changed, G, 1);
++            continue;
++        }
+         host_cond_wait(s_changed, G, 0xFFFFFFFFu);
+     }
+     host_mutex_unlock(G);

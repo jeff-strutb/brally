@@ -72,10 +72,7 @@ extern float D_8028B768;                /* and its level */
 extern unsigned char D_802A49C8;        /* the level the mixer reads (BrFadeStep writes it) */
 typedef struct host_thread host_thread;  /* the host's (host.h) */
 host_thread *host_thread_start(void *(*fn)(void *), void *arg);
-void tgr_os_lock(void);                  /* the platform's (os/plat.h) */
-void tgr_os_unlock(void);
-unsigned long long tgr_count(void);
-void tgr_post_mesg_at(unsigned long long when, OSMesgQueue *mq, OSMesg msg);
+void tgr_post_mesg(TgrMsgQueue *mq, TgrMsg msg);
 char *getenv(const char *name);         /* the host's (a headless check's switch) */
 /* -- end declarations -- */
 
@@ -87,16 +84,14 @@ static struct {
   HostRaceResult res[2];              /* (host_race.h: the second player's beside the first's) */
   int ok;
 } s_job;
-static OSMesgQueue s_done;
-static OSMesg s_done_buf[1];
+static TgrMsgQueue s_done;
+static TgrMsg s_done_buf[1];
 
 static void *race_thread(void *arg)
 {
   (void)arg;
   s_job.ok = s_engine(&s_job.race, s_job.res);
-  tgr_os_lock();
-  tgr_post_mesg_at(tgr_count(), &s_done, 0);
-  tgr_os_unlock();
+  tgr_post_mesg(&s_done, 0);
   return 0;
 }
 
@@ -124,7 +119,7 @@ static int fake_engine(const HostRace *r, HostRaceResult *res)
     res[1] = res[0];
     res[1].place = place == 0 ? 1 : 0;
   }
-  osSyncPrintf("handoff: mode %d track %d mirrored %d weather %d laps %d car %d auto %d tires %d susp %d players %d car2 %d\n",
+  tgr_print("handoff: mode %d track %d mirrored %d weather %d laps %d car %d auto %d tires %d susp %d players %d car2 %d\n",
                r->mode, r->track, r->mirrored, r->weather, r->laps, r->car, r->automatic, r->tires, r->suspension,
                r->players, r->car2);
   return 1;
@@ -140,8 +135,8 @@ void tgr_race_engine(host_race_fn fn) { s_engine = fn; }
  * the player chooses this game's menus again there. */
 static void (*s_menus)(void);
 void tgr_shots_from_now(const char *offsets);   /* platform/os/view.c (checks) */
-static OSMesgQueue s_menus_done;
-static OSMesg s_menus_done_buf[1];
+static TgrMsgQueue s_menus_done;
+static TgrMsg s_menus_done_buf[1];
 
 void tgr_menus_engine(void (*fn)(void)) { s_menus = fn; }
 
@@ -149,9 +144,7 @@ static void *menus_thread(void *arg)
 {
   (void)arg;
   s_menus();
-  tgr_os_lock();
-  tgr_post_mesg_at(tgr_count(), &s_menus_done, 0);
-  tgr_os_unlock();
+  tgr_post_mesg(&s_menus_done, 0);
   return 0;
 }
 
@@ -161,9 +154,9 @@ void tgr_menus_away(void)
   if (s_menus == 0) {
     return;
   }
-  osCreateMesgQueue(&s_menus_done, s_menus_done_buf, 1);
+  tgr_mq_init(&s_menus_done, s_menus_done_buf, 1);
   host_thread_start(menus_thread, 0);
-  osRecvMesg(&s_menus_done, 0, OS_MESG_BLOCK);
+  tgr_mq_recv(&s_menus_done, 0, TGR_BLOCK);
   if (getenv("TGR_MENUS_SHOTS")) {     /* (a check: shots counted from the return) */
     tgr_shots_from_now(getenv("TGR_MENUS_SHOTS"));
   }
@@ -248,9 +241,9 @@ int BrRaceHandoff(void)
   D_8028B760 = D_8028B768 = 1.0f;
   D_802A49C8 = 255;
   s_job.race = r;
-  osCreateMesgQueue(&s_done, s_done_buf, 1);
+  tgr_mq_init(&s_done, s_done_buf, 1);
   host_thread_start(race_thread, 0);
-  osRecvMesg(&s_done, 0, OS_MESG_BLOCK);
+  tgr_mq_recv(&s_done, 0, TGR_BLOCK);
   if (!s_job.ok) {
     return 0;
   }

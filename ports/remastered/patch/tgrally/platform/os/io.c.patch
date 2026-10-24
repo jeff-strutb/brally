@@ -6,13 +6,15 @@
  #include "sha1.h"
 +#include "tgr_touch.h"
  
- int32_t  osTvType = 1;              /* NTSC */
- uint32_t osMemSize = 0x400000;      /* 4 MB, no Expansion Pak */
-@@ -111,6 +112,7 @@
+ int32_t  tgr_tv_type = 1;              /* NTSC */
+ uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
+@@ -102,6 +103,9 @@
+ void tgr_task_load(TgrTask *task)
  {
-     tgr_os_lock();
-     if (task->t.type == M_GFXTASK) {
+     if (task->t.type == TGR_TASK_GFX) {
++        tgr_os_lock();
 +        tgr_touch_built();                  /* the tap targets go with this frame */
++        tgr_os_unlock();
          tgr_gfx_task(task->t.data_ptr);
-         tgr_post_event_at(tgr_count() + 1, OS_EVENT_SP);
-         tgr_post_event_at(tgr_count() + 2, OS_EVENT_DP);
+         tgr_post_event(TGR_EVENT_SP);
+         tgr_post_event(TGR_EVENT_DP);
