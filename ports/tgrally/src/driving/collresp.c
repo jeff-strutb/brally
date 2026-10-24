@@ -1,6 +1,7 @@
 /* collresp.c -- collision response: contact planes and the list they are kept on
  */
 #include "tgr/common.h"
+#include "tgr/tri.h"
 #include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
@@ -32,15 +33,7 @@ void BrRbStateStep(void *out, void *in, float dt);
 int BrCrRespWalk(BrTipBody *b, float m[4][4]);
 int BrCollRespTipKick(BrTipBody *b);
 
-typedef struct BrCrPlane {      /* a collision triangle's plane (0x20 bytes) */
-  float n[3];
-  float d;
-  TgrAddr v0;                    /* float * -- 0x10  its corners */
-  TgrAddr v1;  /* float * */
-  TgrAddr v2;  /* float * */
-  int x1c;
-} BrCrPlane;
-extern BrCrPlane D_80379F80[][150];   /* each grid cell's collision planes */
+typedef BrTri BrCrPlane;     /* (tgr/tri.h) */
 extern unsigned short D_8037EA88[];   /* and how many */
 extern int D_802A4A30;                /* walk the cell backwards (flips every frame) */
 short BrCollGridCellAcquire(float x, float y);
@@ -113,20 +106,20 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
   int i;
   float u;
 
-  a0 = ABS(pT->n[0]);
+  a0 = ABS(pT->nf[0]);
   a1 = 0.0f;
-  a1 = ABS(pT->n[1]);
+  a1 = ABS(pT->nf[1]);
   if (a1 < a0) {
-    a0 = ABS(pT->n[0]);
-    a1 = ABS(pT->n[2]);
+    a0 = ABS(pT->nf[0]);
+    a1 = ABS(pT->nf[2]);
     if (a1 < a0) {
       c = 0;
     } else {
       c = 2;
     }
   } else {
-    a0 = ABS(pT->n[1]);
-    a1 = ABS(pT->n[2]);
+    a0 = ABS(pT->nf[1]);
+    a1 = ABS(pT->nf[2]);
     if (a1 < a0) {
       c = 1;
     } else {
@@ -135,14 +128,14 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
   }
   i1 = (c + 1) % 3;
   i2 = (c + 2) % 3;
-  d1 = pP[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
-  d2 = pP[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
+  d1 = pP[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
+  d2 = pP[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
   r = 0;
   i = 2;
-  b1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
-  b2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v1)))[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
-  c1 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i1] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i1];
-  c2 = ((float *)BRV(TGR_PTR(BrVec3be *, pT->v2)))[i2] - ((float *)BRV(TGR_PTR(BrVec3be *, pT->v0)))[i2];
+  b1 = ((float *)BRV(((BrVec3be *)(pT->v1))))[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
+  b2 = ((float *)BRV(((BrVec3be *)(pT->v1))))[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
+  c1 = ((float *)BRV(((BrVec3be *)(pT->v2))))[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
+  c2 = ((float *)BRV(((BrVec3be *)(pT->v2))))[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
   if (b1 == 0.0f) {
     u = d1 / c1;
     if (u >= 0.0f && u <= 1.0f) {
@@ -442,9 +435,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   if (D_802A4A30 != 0) {
     pP = &D_80379F80[cell][count - 1];
     for (i = count - 1; i >= 0; i--, pP--) {
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+      BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
+      BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
+      BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -462,9 +455,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   } else {
     pP = D_80379F80[cell];
     for (i = 0; i < count; i++, pP++) {
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+      BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
+      BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
+      BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -687,9 +680,9 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
   cnt = 0;
   for (node = D_802A4A20; node != 0; node = TGR_PTR(struct BrCrNode *, node->next)) {
     pP = TGR_PTR(void *, node->plane);
-    BrMat3MulVecRows(&v[0], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v0))));
-    BrMat3MulVecRows(&v[3], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v1))));
-    BrMat3MulVecRows(&v[6], m, ((float *)BRV(TGR_PTR(BrVec3be *, pP->v2))));
+    BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
+    BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
+    BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
     e1[0] = v[3] - v[0];
     e1[1] = v[4] - v[1];
     e1[2] = v[5] - v[2];
@@ -751,10 +744,10 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       dp[0] = b->cur[0] - b->stAf[0];
       dp[1] = b->cur[1] - b->stAf[1];
       dp[2] = b->cur[2] - b->stAf[2];
-      d = ((dp[0] * pP->n[0] + dp[1] * pP->n[1]) + dp[2] * pP->n[2]) * 1.1;
-      dp[0] = pP->n[0] * d;
-      dp[1] = pP->n[1] * d;
-      dp[2] = pP->n[2] * d;
+      d = ((dp[0] * pP->nf[0] + dp[1] * pP->nf[1]) + dp[2] * pP->nf[2]) * 1.1;
+      dp[0] = pP->nf[0] * d;
+      dp[1] = pP->nf[1] * d;
+      dp[2] = pP->nf[2] * d;
       b->cur[0] = b->cur[0] - dp[0];
       b->cur[1] = b->cur[1] - dp[1];
       b->cur[2] = b->cur[2] - dp[2];
@@ -871,6 +864,7 @@ short BrCollGridCellAcquire(float x, float y)
   float b[3];
   unsigned short *t2;
   float *p;
+  BrTri *t;
   short key;
   int i;
 
@@ -890,23 +884,24 @@ short BrCollGridCellAcquire(float x, float y)
   D_8037EA90[victim] = D_8037EAA0;
   D_8037EA80[victim] = key;
   n = 0;
-  p = D_80379F80[victim][0].n;
+  t = D_80379F80[victim];             /* port: one record at a time (tgr/tri.h) */
+  p = t->plane;
   packed = BrGridCellRangeAt(x, y);
   cur[1] = (packed >> 16) & 0xffff;
   cur[0] = packed;
   if (packed != 0) {
     while ((tri = BrU16QueuePop(cur)) != 0) {
       t0 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      ((unsigned int *)p)[4] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t0[0])]);
+      t->v0 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t0[0])];
       t1 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      ((unsigned int *)p)[5] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t1[1])]);
+      t->v1 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t1[1])];
       t2 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      ((unsigned int *)p)[6] = tgr_addr32(&BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t2[2])]);
-      ((unsigned char *)p)[0x1e] = BEPTR(unsigned char *, D_80025C00.surf)[tri] & 7;
-      *(unsigned short *)(p + 7) = tri;
-      v0 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[4]));   /* the corners natively */
-      v1 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[5]));
-      v2 = BRV(TGR_PTR(BrVec3be *, ((unsigned int *)p)[6]));
+      t->v2 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t2[2])];
+      t->kind = BEPTR(unsigned char *, D_80025C00.surf)[tri] & 7;
+      t->id = tri;
+      v0 = BRV((BrVec3be *)t->v0);   /* the corners natively */
+      v1 = BRV((BrVec3be *)t->v1);
+      v2 = BRV((BrVec3be *)t->v2);
       a[0] = v1->x - v0->x;
       a[1] = v1->y - v0->y;
       a[2] = v1->z - v0->z;
@@ -919,7 +914,7 @@ short BrCollGridCellAcquire(float x, float y)
       BrVec3NormaliseF(p);
       n++;
       p[3] = -(p[0] * v0->x + p[1] * v0->y + p[2] * v0->z);
-      p += 8;
+      p = (++t)->plane;
     }
   }
   D_8037EA88[victim] = n;

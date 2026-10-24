@@ -1,6 +1,7 @@
 /* carcam.c -- choosing where the camera looks from for a car
  */
 #include "tgr/common.h"
+#include "tgr/tri.h"
 #include "tgr/car.h"
 #include "tgr/track.h"
 
@@ -21,15 +22,7 @@ void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrVec3Lerp(BrVec3 *out, BrVec3 *a, BrVec3 *b, float t);
 extern int D_8028AB0C;                  /* the close camera mode */
-typedef struct BrCamPlane {     /* a collision triangle's plane (0x20 bytes) */
-  BrVec3 n;                     /* its normal */
-  float d;
-  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
-  TgrAddr v1;  /* BrVec3 * */
-  TgrAddr v2;  /* BrVec3 * */
-  int x1c;
-} BrCamPlane;
-extern BrCamPlane D_80379F80[][150];    /* each grid cell's collision planes */
+typedef BrTri BrCamPlane;     /* (tgr/tri.h) */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern int D_8028B710;                  /* the camera was pushed out of a wall */
 short BrCollGridCellAcquire(float, float);
@@ -348,11 +341,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), &car->camTarget);
+        BrVec3Sub(&toV0, BRV(((BrVec3be *)(pPlane->v0))), &car->camTarget);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, &car->camTarget, &dir, t);
-          if (BrTriContainsPoint(&hit, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), BRV(TGR_PTR(BrVec3be *, pPlane->v1)), BRV(TGR_PTR(BrVec3be *, pPlane->v2)), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, BRV(((BrVec3be *)(pPlane->v0))), BRV(((BrVec3be *)(pPlane->v1))), BRV(((BrVec3be *)(pPlane->v2))), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;
@@ -375,11 +368,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), prev);
+        BrVec3Sub(&toV0, BRV(((BrVec3be *)(pPlane->v0))), prev);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, prev, &dir, t);
-          if (BrTriContainsPoint(&hit, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), BRV(TGR_PTR(BrVec3be *, pPlane->v1)), BRV(TGR_PTR(BrVec3be *, pPlane->v2)), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, BRV(((BrVec3be *)(pPlane->v0))), BRV(((BrVec3be *)(pPlane->v1))), BRV(((BrVec3be *)(pPlane->v2))), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;

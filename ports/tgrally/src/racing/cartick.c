@@ -1,6 +1,7 @@
 /* cartick.c -- a car's per-frame clocks and message timers
  */
 #include "tgr/common.h"
+#include "tgr/tri.h"
 #include "tgr/ent.h"
 #include "tgr/body.h"
 #include "tgr/car.h"
@@ -9,16 +10,7 @@
 extern int D_8026FF18;
 extern float D_8028AAD8;
 #include "tgr/track.h"
-typedef struct BrCollPlane {    /* a collision triangle's plane (0x20 bytes) */
-  BrVec3 n;                     /* its normal */
-  float d;
-  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
-  TgrAddr v1;  /* BrVec3 * */
-  TgrAddr v2;  /* BrVec3 * */
-  short tri;                    /* 0x1C  its triangle */
-  short x1e;
-} BrCollPlane;
-extern BrCollPlane D_80379F80[][150];   /* each grid cell's collision planes */
+typedef BrTri BrCollPlane;     /* (tgr/tri.h) */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern BrVec3 D_8028B318;               /* the default normals */
 extern BrVec3 D_8028B324;
@@ -317,10 +309,10 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (dn == 0) {
       continue;
     }
-    BrVec3Sub(&tmpV, BRV(TGR_PTR(BrVec3be *, pP->v0)), &origin);
+    BrVec3Sub(&tmpV, BRV(((BrVec3be *)(pP->v0))), &origin);
     t = BrVec3Dot(&tmpV, &pP->n) / dn;
     BrVec3MulAdd(&hitPt, &origin, &dir, t);
-    if (!BrTriContainsPoint(&hitPt, BRV(TGR_PTR(BrVec3be *, pP->v0)), BRV(TGR_PTR(BrVec3be *, pP->v1)), BRV(TGR_PTR(BrVec3be *, pP->v2)), &pP->n)) {
+    if (!BrTriContainsPoint(&hitPt, BRV(((BrVec3be *)(pP->v0))), BRV(((BrVec3be *)(pP->v1))), BRV(((BrVec3be *)(pP->v2))), &pP->n)) {
       continue;
     }
     dist = pEye->z + 1.5f - hitPt.z;

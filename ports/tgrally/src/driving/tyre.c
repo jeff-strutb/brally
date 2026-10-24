@@ -1,6 +1,7 @@
 /* tyre.c -- tyre grip, skids and surface effects
  */
 #include "tgr/common.h"
+#include "tgr/tri.h"
 #include "tgr/body.h"
 
 /* -- declarations -- */
@@ -15,7 +16,6 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w);
 typedef struct { float v[3]; } BrTyreVec;
 extern BrTyreVec D_802A4B94;            /* (0, 0, -1): the body's down axis */
 extern unsigned short D_8037EA88[];     /* each grid cell's plane count */
-extern float D_80379F80[][150][8];      /* and its planes (normal, d, corners...) */
 short BrCollGridCellAcquire(float, float);
 void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
 void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);
@@ -96,9 +96,9 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
   BrMat4RotateVecT(dir, b->m, down.v);
   w->hit = 0;
   cell = BrCollGridCellAcquire(world[0], world[1]);
-  pPl = D_80379F80[cell][0];
+  pPl = D_80379F80[cell][0].plane;    /* port: one record at a time (BrTri) */
   n = D_8037EA88[cell];
-  for (i = 0; i < n; i++, pPl += 8) {
+  for (i = 0; i < n; i++, pPl = ((BrTri *)pPl + 1)->plane) {
     d = BrCrPlaneDist(pPl, pPl[3], world);
     if (d > -2.0 && d < 2.0) {
       t = pPl[0] * dir[0] + pPl[1] * dir[1] + pPl[2] * dir[2];
@@ -113,7 +113,7 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
         mount[2] = mount[2] + world[2];
         if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 && BrCrTriContainsPoint(pPl, mount) != 0) {
           w->hit = (pPl);
-          w->surface = ((unsigned char *)pPl)[0x1e];
+          w->surface = ((BrTri *)pPl)->kind;
           best = h;
           w->hitN[0] = pPl[0];
           w->hitN[1] = pPl[1];

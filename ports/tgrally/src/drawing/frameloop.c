@@ -14,6 +14,7 @@
  */
 #include "tgr/car.h"
 #include "tgr/common.h"
+#include "tgr/tri.h"
 #include "tgr/pad.h"
 #include "tgr/gbi.h"
 
@@ -245,15 +246,7 @@ void BrVec3Scale(void *out, void *v, float s);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrVec3Lerp(void *out, void *a, void *b, float t);
 extern int D_8028AB0C;                  /* the close camera mode */
-typedef struct BrCamPlane {     /* a collision triangle's plane (0x20 bytes) */
-  BrVec3 n;                     /* its normal */
-  float d;
-  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
-  TgrAddr v1;  /* BrVec3 * */
-  TgrAddr v2;  /* BrVec3 * */
-  int x1c;
-} BrCamPlane;
-extern BrCamPlane D_80379F80[][150];    /* each grid cell's collision planes */
+typedef BrTri BrCamPlane;     /* (tgr/tri.h) */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern int D_8028B710;                  /* the camera was pushed out of a wall */
 short BrCollGridCellAcquire(float, float);
