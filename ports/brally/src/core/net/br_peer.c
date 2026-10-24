@@ -47,9 +47,9 @@ void FUN_1006a650(void)
     pPeer = &g_aBrPeer71[i];
     h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
-    wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
+    wr = br_os_wait_many(2, h1, 0, 0xffffffff);
     if (wr == 0) {
-      ExitThread(0);
+      br_os_thread_exit(0);
     }
     st = pPeer->f02C & 0x3f;
     if (st < 2 || st == 3) {
@@ -58,7 +58,7 @@ void FUN_1006a650(void)
     else {
       skip = 1;
     }
-    ReleaseMutex(pPeer->hMutex);
+    br_os_release(pPeer->hMutex);
     if (skip) {
       return;
     }
@@ -70,23 +70,23 @@ void FUN_1006a650(void)
     pAlt = &g_aBr178FEF8[i][i];
     h1[0] = (HANDLE)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
-    wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
+    wr = br_os_wait_many(2, h1, 0, 0xffffffff);
     if (wr == 0) {
-      ExitThread(0);
+      br_os_thread_exit(0);
     }
     st = pPeer->f02C;
     skip = ((st & 0x3f) == 3);
-    ReleaseMutex(pPeer->hMutex);
+    br_os_release(pPeer->hMutex);
     if (skip) {
       h2[0] = (HANDLE)g_hBrSndWake86;
       h2[1] = pAlt->hMutex;
-      wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+      wr = br_os_wait_many(2, h2, 0, 0xffffffff);
       if (wr == 0) {
-        ExitThread(0);
+        br_os_thread_exit(0);
       }
       st = pAlt->f02C;
       skip = ((st & 0x3f) != 3);
-      ReleaseMutex(pAlt->hMutex);
+      br_os_release(pAlt->hMutex);
       if (skip) {
         return;
       }
@@ -97,16 +97,16 @@ void FUN_1006a650(void)
         pPeer = &g_aBrPeer71[i];
         h2[0] = (HANDLE)g_hBrSndWake86;
         h2[1] = pPeer->hMutex;
-        wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+        wr = br_os_wait_many(2, h2, 0, 0xffffffff);
         if (wr == 0) {
-          ExitThread(0);
+          br_os_thread_exit(0);
         }
         if ((pPeer->f02C & 0x3f) == 3) {
           pPeer->f02C = t;
           DAT_117b3250 = 1;
           (*(int *)&DAT_1184c074) = (*(int *)&DAT_1184c070) + 3000;
         }
-        ReleaseMutex(pPeer->hMutex);
+        br_os_release(pPeer->hMutex);
       }
       return;
     }
@@ -131,9 +131,9 @@ int BrNetPeerMutexInit(void)
   g_178FEE8 = BrSub10075020();
   DAT_117b324c = BrDelta_100713A0();
   for (i = 0; i < 16; i++) {
-    g_aBrPeer71[i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    g_aBrPeer71[i].hMutex = br_os_mutex(0);
     for (j = 0; j < 16; j++) {
-      g_aBr178FEF8[j][i].hMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+      g_aBr178FEF8[j][i].hMutex = br_os_mutex(0);
     }
   }
   FUN_1006a330();
@@ -152,11 +152,11 @@ int BrNetPeerMsgCancel(int id)
   int i;
 
   for (i = 0; i < 16; i++) {
-    WaitForSingleObject(g_aBrPeer71[i].hMutex,0xffffffff);
+    br_os_wait(g_aBrPeer71[i].hMutex, 0xffffffff);
     if ((g_aBrPeer71[i].f004 == id) && ((g_aBrPeer71[i].f02C & 0x3f) < 5)) {
       g_aBrPeer71[i].f02C = 0;
     }
-    ReleaseMutex(g_aBrPeer71[i].hMutex);
+    br_os_release(g_aBrPeer71[i].hMutex);
   }
   return;
 }
@@ -209,11 +209,11 @@ void BrNetPeerMsgReset(void)
   for (i = 0; i < 16; i++) {
     h[0] = (HANDLE)g_hBrSndWake86;
     h[1] = g_aBrPeer71[i].hMutex;
-    if (WaitForMultipleObjects(2, h, 0, 0xffffffff) == 0) {
-      ExitThread(0);
+    if (br_os_wait_many(2, h, 0, 0xffffffff) == 0) {
+      br_os_thread_exit(0);
     }
     BrObjResetMsgHdr(&g_aBrPeerMsg[i].bs);
-    ReleaseMutex(g_aBrPeer71[i].hMutex);
+    br_os_release(g_aBrPeer71[i].hMutex);
   }
 }
 

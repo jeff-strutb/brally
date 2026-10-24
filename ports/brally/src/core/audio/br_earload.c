@@ -137,7 +137,7 @@ int BrEarLoad(int usePds)
         DAT_104b1644 = (FARPROC)br_ear_StartTimer;
         DAT_104b1610 = (FARPROC)br_ear_ShutDownTimer;
         DAT_104b1664 = (FARPROC)br_ear_UpdateEar;
-        DAT_104b1620 = RegisterWindowMessageA(s_EAR_Interactive_Around_Sound_100a7190);
+        DAT_104b1620 = br_os_message_id(s_EAR_Interactive_Around_Sound_100a7190);
     }
     return 1;
 }

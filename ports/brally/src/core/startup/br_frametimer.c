@@ -93,7 +93,7 @@
 void * BR_THISCALL1 BrX100751D0(void *pThis)
 {
     if (g_br86Probed == 0) {
-        g_br86HasPerf = QueryPerformanceFrequency(&g_br86PerfFreq);
+        g_br86HasPerf = br_os_perf_hz((int64_t *)(&g_br86PerfFreq));
         g_br86Probed  = 1;
     }
     if (g_br86HasPerf) {
@@ -101,7 +101,7 @@ void * BR_THISCALL1 BrX100751D0(void *pThis)
          * LITERAL 30, i.e. a 30 Hz tick. */
         *(__int64 *)pThis = g_br86PerfFreq / 30;
     } else {
-        timeBeginPeriod(1);
+        /* (the original asked Windows for a 1 ms timer resolution here) */
         *(int *)((char *)pThis + BR86_TMR_PERIOD_MS) = 0x21;   /* 33 ms */
     }
     br86_timer_restart(pThis);
@@ -119,9 +119,9 @@ void * BR_THISCALL1 BrX100751D0(void *pThis)
 /* 64-bit core: timeEndPeriod is declared by the platform headers */
 static void BR_THISCALL1 br86_timer_end_period(void *pThis)
 {
+    /* the original gave back the 1 ms timer resolution it had asked Windows
+       for when there was no performance counter; the host's clock needs none */
     (void)pThis;
-    if (g_br86HasPerf == 0)
-        timeEndPeriod(1);
 }
 
 /* WHAT IT DOES: shuts the frame clock down on the way out of the game, by

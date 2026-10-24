@@ -154,7 +154,7 @@ static uint32_t cursor(dsbuf *b)
     }
     if (!b->playing)
         return b->pos;
-    p = b->pos + (uint64_t)(timeGetTime() - b->t0) * b->rate * b->align / 1000;
+    p = b->pos + (uint64_t)(br_os_ms() - b->t0) * b->rate * b->align / 1000;
     p -= p % b->align;
     if (p >= b->size) {
         if (b->looping)
@@ -185,14 +185,14 @@ void *br_snd_open(void)
     }
     /* the original started its primary buffer playing here, which read the
        clock: read it too, so a BR_VCLOCK run keeps the original's timeline */
-    (void)timeGetTime();
+    (void)br_os_ms();
     return &s_out;
 }
 
 void br_snd_close(void)
 {
     /* the original stopped its primary buffer here, which read the clock */
-    (void)timeGetTime();
+    (void)br_os_ms();
 }
 
 /* the samples, as floats: PCM, 8-bit unsigned or 16-bit signed; any other
@@ -261,7 +261,7 @@ void br_snd_play(BrSnd *b, int loop)
     lock();
     if (!b->playing) {
         b->playing = 1;
-        b->t0 = timeGetTime();
+        b->t0 = br_os_ms();
     }
     b->looping = loop != 0;
     if (b->pcm && !b->live && s_nlive < (int)(sizeof s_live / sizeof s_live[0])) {
@@ -276,7 +276,7 @@ void br_snd_seek(BrSnd *b, uint32_t p)
     lock();
     b->pos = p % (b->size ? b->size : 1);
     b->pos -= b->pos % b->align;
-    b->t0 = timeGetTime();
+    b->t0 = br_os_ms();
     b->fpos = b->pos / b->align;
     unlock();
 }

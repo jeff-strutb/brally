@@ -271,52 +271,23 @@ static const BrAppStartHost *g_pBrAppStartHost = &g_brAppStartHostDefault;
 
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* WHAT IT DOES: query total physical RAM via GlobalMemoryStatus and store it. */
+/* WHAT IT DOES: store how much memory the machine has, which the game sizes
+ * its texture cache by. The original asked Windows; the port answers the
+ * 128 MB of the machines it was written for (a modern one would overflow
+ * the 32-bit figure the game keeps). */
 /* @implements 0x10007F10 glide BrMemoryQuery */
 
 int BrMemoryQuery(void)
 
 {
-  MEMORYSTATUS local_20;
-  
-  local_20.dwLength = 0x20;
-  GlobalMemoryStatus(&local_20);
-  (*(int *)&g_brTexSysMem) = local_20.dwTotalPhys;
+  (*(int *)&g_brTexSysMem) = 128 << 20;
   return;
 }
 
-/* WHAT IT DOES: single-instance guard -- see the port version above.  The
- * original calls USER32 straight through the import table; the /MD import
- * pointers for GetWindowThreadProcessId and IsIconic are CSEd into edi
- * across their repeated calls, which /O2 does on its own. */
-/* @implements 0x10007E80 glide BrAppCheckPreviousApp */
-int32_t BrAppCheckPreviousApp(void)
-{
-    HWND hWnd = FindWindowA(BR_APP_WNDCLASS, BR_APP_WNDTITLE);
-
-    if (hWnd != NULL) {
-        HWND hFg = GetForegroundWindow();
-
-        if (GetWindowThreadProcessId(hWnd, NULL)
-                != GetWindowThreadProcessId(hFg, NULL)
-            || IsIconic(hWnd)) {
-
-            hWnd = GetLastActivePopup(hWnd);
-            if (IsIconic(hWnd)) {
-                ShowWindow(hWnd, BR_APP_SW_RESTORE);
-            }
-            BringWindowToTop(hWnd);
-            SetForegroundWindow(hWnd);
-        }
-
-        OutputDebugStringA(BR_APP_PREVAPP_MSG);
-        return 0;
-    }
-    return 1;
-}
+/* 0x10007E80, the check for another running copy, is not part of the port:
+ * it runs as a process of its own (br_boot.c). */
 
 /* ==========================================================================
  * 0x10003530 -- CHK_FReadLine, the byte-exact form.  The contract, the

@@ -135,7 +135,7 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
                         (&(*(int *)&g_aBrAA2538))[i * 3] = 1;
                         (&(*(int *)((char *)&g_aBrAA2538 + 0x4)))[i * 3] = 1;
                         sprintf(szDbg, s_Host_set_ready_message_received__100a5bc8, 1);
-                        OutputDebugStringA(szDbg);
+                        br_os_debug(szDbg);
                         break;
                     }
                     p += 3;
@@ -147,7 +147,7 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
                     if (p[-1] == idFrom) {
                         *p = pMsg[1];
                         sprintf(szDbg, s_APPMSG_PLAYERREADY__Set___d__ID__100a5ba0, pMsg[1], idFrom);
-                        OutputDebugStringA(szDbg);
+                        br_os_debug(szDbg);
                     }
                     p += 3;
                 } while ((uintptr_t)p < (uintptr_t)&(*(int *)((char *)&g_aBrAA2538 + 0x4)) + 0x60);
@@ -172,14 +172,14 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
         case 0x60000003:
             DAT_10ac5be4 = 1;
             sprintf(szDbg, s_APPMSG_HOSTSTARTED__received_100a5b80);
-            OutputDebugStringA(szDbg);
+            br_os_debug(szDbg);
             return;
         case 0x60000004:
             if ((int)pNet->idPlayer == pMsg[1]) {
                 DAT_10ac5bec = 1;
             }
             sprintf(szDbg, s_APPMSG_BOOTPLAYER__received_100a5b60);
-            OutputDebugStringA(szDbg);
+            br_os_debug(szDbg);
             break;
         case 0x60000006:
             if (idFrom == pMsg[1]) {
@@ -203,7 +203,7 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
         }
         if (pText != 0) {
             if (g_brOwner5BC72C != (HWND)0) {
-                PostMessageA(g_brOwner5BC72C, 0x501, 0, pText);
+                br_os_post(g_brOwner5BC72C, 0x501, 0, pText);
                 return;
             }
             free((void *)pText);

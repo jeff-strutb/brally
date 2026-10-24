@@ -80,7 +80,7 @@ FILE **BrChkFReadOpen(const char *pPath)
 
     if (BrChkVerbose != 0) {
         sprintf(szMsg, "CHK_FReadOpen(%s)\n", pf->pszName);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
     }
 
     pf->pFile = fopen(pf->pszName, "rb");
@@ -91,7 +91,7 @@ FILE **BrChkFReadOpen(const char *pPath)
         sprintf(szMsg, "CHK_FReadOpen(): error opening file %s.\n",
                 pf->pszName);
         fprintf(pLog, szMsg);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
         fclose(pLog);
         exit(1);
     }
@@ -146,7 +146,7 @@ void *BrChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
     if (BrFChkFRead(pDst, size, count, ppFile) == 0) {
         sprintf(szMsg, "CHK_FRead(): trying to read %u bytes, but got EOF.\n",
                 count * size);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
         exit(1);
     }
     return pDst;
@@ -164,11 +164,11 @@ void BrChkFClose(FILE **ppFile)
 
     if (BrChkVerbose != 0) {
         sprintf(szMsg, "CHK_FClose(%s)\n", pf->pszName);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
     }
     if (fclose(pf->pFile) == -1) {
         sprintf(szMsg, "CHK_FClose(): error closing file %s.\n", pf->pszName);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
         exit(1);
     }
     free(pf->pszName);
@@ -186,7 +186,7 @@ int BrChkFileExists(const char *pPath)
 
     if (BrChkVerbose != 0) {
         sprintf(szMsg, "CHK_FileExists(%s)\n", pPath);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
     }
     pFile = fopen(pPath, "rb");
     if (pFile == NULL) {
@@ -213,7 +213,7 @@ void *BrChkAlloc(size_t size, const char *pWhat)
     if (p == NULL) {
         sprintf(szMsg, "CHK_AllocateMemory(): Out of memory: couldn't allocate %s\n",
                 pWhat);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
         exit(1);
     }
     return p;
@@ -238,7 +238,7 @@ void *BrChkRealloc(void *pMem, size_t size, const char *pWhat)
         sprintf(szMsg,
                 "CHK_ReAllocateMemory(): Out of memory: couldn't reallocate %s\n",
                 pWhat);
-        OutputDebugStringA(szMsg);
+        br_os_debug(szMsg);
         exit(1);
     }
     return p;

@@ -607,7 +607,7 @@ int FUN_1003ee90(void)
     if (_chdrive(d) != 0) {
       continue;
     }
-    if (GetDriveTypeA((LPCSTR)0) != 5) {
+    if (br_os_drive_type((LPCSTR)0) != 5) {
       continue;
     }
     if (_chdir(DAT_100acacc) != 0) {

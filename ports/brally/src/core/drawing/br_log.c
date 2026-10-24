@@ -122,9 +122,9 @@ void BrLogPrint(const void *p)
     DAT_10b73530(aDl);
 
     for (;;) {
-        if (GetAsyncKeyState(0x1B) != 0)
+        if (br_os_key(0x1B) != 0)
             BrExt_10038F30(1);
-        Sleep(1);
+        br_os_sleep(1);
     }
 }
 

@@ -12,7 +12,7 @@ export CC OUT
 # pad axes on the pause frame, a replay record's spin), and the core must not
 # take whatever an earlier call left there (AUTOINIT=pattern finds them)
 CFLAGS="-O2 ${GFLAG:--g} -ftrivial-auto-var-init=${AUTOINIT:-zero} -Wno-everything -Wimplicit-function-declaration -Wimplicit-int -D_FORTIFY_SOURCE=0 -fms-extensions -fdeclspec -fno-strict-aliasing -fwrapv -ffp-contract=off -Wno-return-mismatch -Wno-error=incompatible-pointer-types -Wno-error=incompatible-function-pointer-types -Werror=implicit-function-declaration -Werror=implicit-int ${WARN}
-  -Iports/brally/platform/include -Iports/brally/include -include ports/brally/platform/include/win32.h -include ports/brally/platform/include/br_gfx.h -include ports/brally/platform/include/br_snd.h -include ports/brally/platform/include/br_x87.h -include ports/brally/include/br_crt.h -include ports/brally/include/br_addr32.h -include ports/brally/platform/include/br_lp64.h -include ports/brally/include/br_globals.h -include ports/brally/include/br_funcs.h"
+  -Iports/brally/platform/include -Iports/brally/include -include ports/brally/platform/include/win32.h -include ports/brally/platform/include/br_gfx.h -include ports/brally/platform/include/br_snd.h -include ports/brally/platform/include/br_os.h -include ports/brally/platform/include/br_x87.h -include ports/brally/include/br_crt.h -include ports/brally/include/br_addr32.h -include ports/brally/platform/include/br_lp64.h -include ports/brally/include/br_globals.h -include ports/brally/include/br_funcs.h"
 # a Windows target links nothing from a DLL: the dllimport the sources
 # spell (as the original's link did) must not ask the system's CRT for one
 # ... and the Win32 emulation takes private names (tools/brally/winnames.py)

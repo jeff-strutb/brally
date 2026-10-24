@@ -24,36 +24,17 @@ static void            *s_pUser;
 
 
 /* 0x10063860 */
-/* WHAT IT DOES: works out where the game's data files live, by reading the
- * install path the installer wrote into the registry. If there is no such
- * entry -- or no way to read one -- it falls back to the root of the C
- * drive, which is why a badly installed copy goes looking in c:\TRACKS
- * rather than beside the executable. */
+/* WHAT IT DOES: works out where the game's data files live. The original
+ * read the install path the installer wrote into the Windows registry and
+ * fell back to the root of the C drive without one; the port has no
+ * installer, so the data lives at that root (the game's C: drive, which
+ * the platform maps onto the host's folders). */
 /* @implements 0x10063860 glide BrBaseDirInit */
-#include <windows.h>
 #pragma intrinsic(strlen, strcpy, strcat)
 void BrBaseDirInit(void)
 {
-    HKEY  hKey;
-    DWORD cbData;
-
-    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, BR_BASEDIR_REGKEY, 0,
-                      KEY_READ, &hKey) == ERROR_SUCCESS) {
-        LONG r;
-        cbData = BR_BASEDIR_MAX;
-        r = RegQueryValueExA(hKey, BR_BASEDIR_REGVAL, NULL, NULL,
-                             (LPBYTE)g_aBrCfgBaseDir, &cbData);
-        RegCloseKey(hKey);          /* closed before the query result is tested */
-        if (r == ERROR_SUCCESS) {
-            if (g_aBrCfgBaseDir[strlen(g_aBrCfgBaseDir) - 1] != BR_BASEDIR_SEP)
-                strcat(g_aBrCfgBaseDir, "\\");
-            return;
-        }
-    }
-    {
-        const char *fb = BR_BASEDIR_FALLBACK;
-        strcpy(g_aBrCfgBaseDir, fb);
-    }
+    const char *fb = BR_BASEDIR_FALLBACK;
+    strcpy(g_aBrCfgBaseDir, fb);
 }
 
 /* Matching TU for 0x10007F40: settings loader (BossRally.ini + cmdline).

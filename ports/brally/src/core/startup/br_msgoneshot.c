@@ -25,7 +25,7 @@
  * pointer (&DAT_1021c9b0) and its 3.0f level.  Same lock idiom as BrNetReset. */
 void FUN_10006460(void)
 {
-    WaitForSingleObject((void *)DAT_10226a54, 0xffffffff);
+    br_os_wait((void *)DAT_10226a54, 0xffffffff);
     if (DAT_10226a28 >= 0) {
         BrSub10072AF0(DAT_10226a28, 0x200020);
         DAT_10226a28 = -1;
@@ -35,6 +35,6 @@ void FUN_10006460(void)
         (*(int *)&g_brRace4ABB24) = 0x40400000;
         DAT_10226a38 = 0;
     }
-    ReleaseMutex((void *)DAT_10226a54);
+    br_os_release((void *)DAT_10226a54);
 }
 

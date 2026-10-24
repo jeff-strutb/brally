@@ -83,25 +83,56 @@
 /* 64-bit core: GetObjectA is declared by the platform headers */
 /* 64-bit core: DeleteObject is declared by the platform headers */
 
-/* WHAT IT DOES: load a .BMP -- first as a resource baked into the executable,
- * then falling back to a file on disc -- and convert it into the renderer's
- * own 16-bit picture format. Returns NULL if it is missing or is not a
+/* A .BMP file read whole: its header into bm (bottom row first, rows padded
+ * to four bytes, as the file has them) and its pixels into a block of their
+ * own (bm->pBits, freed with free). 0 when it is not there or not a BMP. */
+static int bmp_read(const char *pszPath, BrGdiBitmap *bm)
+{
+    FILE    *f = fopen(pszPath, "rb");
+    uint8_t  hdr[54];
+    uint8_t *bits;
+    uint32_t off, size;
+    if (f == NULL)
+        return 0;
+    if (fread(hdr, 1, 54, f) != 54 || hdr[0] != 'B' || hdr[1] != 'M') {
+        fclose(f);
+        return 0;
+    }
+    off = (uint32_t)hdr[10] | (uint32_t)hdr[11] << 8 | (uint32_t)hdr[12] << 16 | (uint32_t)hdr[13] << 24;
+    memset(bm, 0, sizeof *bm);
+    bm->cx = (int32_t)((uint32_t)hdr[18] | (uint32_t)hdr[19] << 8 | (uint32_t)hdr[20] << 16 | (uint32_t)hdr[21] << 24);
+    bm->cy = (int32_t)((uint32_t)hdr[22] | (uint32_t)hdr[23] << 8 | (uint32_t)hdr[24] << 16 | (uint32_t)hdr[25] << 24);
+    bm->cPlanes = (uint16_t)(hdr[26] | hdr[27] << 8);
+    bm->cBitsPixel = (uint16_t)(hdr[28] | hdr[29] << 8);
+    if (bm->cy < 0)
+        bm->cy = -bm->cy;
+    bm->cbWidthBytes = ((bm->cx * bm->cBitsPixel + 31) / 32) * 4;
+    size = (uint32_t)bm->cbWidthBytes * (uint32_t)bm->cy;
+    bits = (uint8_t *)calloc(1, size ? size : 1);
+    fseek(f, (long)off, SEEK_SET);
+    if (fread(bits, 1, size, f) != size)
+        br_os_debug("bmp: short read\n");
+    fclose(f);
+    bm->pBits = bits;
+    return 1;
+}
+
+/* WHAT IT DOES: load a .BMP file (the original first looked for it as a
+ * resource in the executable, which carries none) and convert it into the
+ * renderer's own 16-bit picture format. Returns NULL if it is missing or is not a
  * 24-bit bitmap. This is how the loading screens and menu art get in. */
 /* @implements 0x10001290 glide BrBmpLoadSurface */
 BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 {
     BrGdiBitmap bm;
-    void       *hbm;
     BrSurf     *pSurf;
 
-    hbm = LoadImageA(GetModuleHandleA(NULL), pszPath, 0, cx, cy, 0x2000);
-    if (hbm == 0)
-        hbm = LoadImageA(hbm, pszPath, (unsigned int)hbm, cx, cy, 0x2010);
-    if (hbm == 0)
+    (void)cx;
+    (void)cy;
+    if (!bmp_read(pszPath, &bm))
         return 0;
-    GetObjectA(hbm, 0x18, &bm);
     pSurf = BrSurfFromBitmap(&bm);
-    DeleteObject(hbm);
+    free((void *)bm.pBits);
     if (pSurf)
         pSurf->key = 0x7E0;
     return pSurf;
@@ -127,17 +158,14 @@ BrSurf *BrBmpLoadSurface(const char *pszPath, int32_t cx, int32_t cy)
 uint8_t *BrBmpLoadRgba(const char *pszPath)
 {
     BrGdiBitmap bm;
-    void       *hbm;
     void       *pOut;
 
-    hbm = LoadImageA(0, pszPath, 0, 0, 0, 0x2010);
-    if (hbm == 0)
+    if (!bmp_read(pszPath, &bm))
         return 0;
-    GetObjectA(hbm, 0x18, &bm);
     if (bm.cBitsPixel != 0x18)
-        return 0;                 /* orig leaks hbm here */
+        return 0;                 /* orig leaks the bitmap here */
     pOut = BrBmpToRgba32(&bm);
-    DeleteObject(hbm);
+    free((void *)bm.pBits);
     return (uint8_t *)pOut;
 }
 

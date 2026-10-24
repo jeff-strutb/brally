@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "win32.h"
 #include "host.h"
+#include "br_os.h"
 
 /* ---- paths -------------------------------------------------------------- */
 /* A game path (C:\BOSSRALLY\..., D:\..., or relative to the current
@@ -36,7 +37,7 @@ void  plat_vclock_frame(void);          /* ... and a frame costs 1/30 s */
 uint16_t plat_peersync_listen(void);    /* peersync.c: a port for a scripted peer */
 void  plat_peersync(uint64_t us);       /* ... keep the two virtual clocks together */
 void  plat_peersync_end(void);          /* ... and let the other run on alone */
-DWORD plat_time_ms(void);              /* timeGetTime's value, not spending a BR_VCLOCK tick */
+uint32_t plat_time_ms(void);           /* br_os_ms's value, not spending a BR_VCLOCK tick */
 int   plat_audio_start(void);           /* audio.c: the output; 1 when a device mixes */
 void  plat_audio_frame(void);           /* ... BR_AUDIOLOG: a script frame's 1/30 s, mixed and hashed */
 void  plat_cd_tracks(int *first, int *last);
@@ -60,7 +61,7 @@ void  plat_pointer_units(int *w, int *h);   /* win_user.c: the units the host's 
 /* script_game.c: where the game's menu cursor is (0 before it exists) */
 int   plat_game_cursor(int *x, int *y);
 void  plat_app_frame(void);               /* script.c: BrAppFrame's entry */
-HWND  plat_main_window(void);
+void *plat_main_window(void);
 
 /* ---- modules (win_kernel.c) ------------------------------------------------- */
 /* a module the platform provides by name (ddraw.dll, dsound.dll ...) */

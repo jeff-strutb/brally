@@ -113,3 +113,25 @@ int plat_pe_string(void *pv, unsigned id, char *out, int n)
         return len;
     }
 }
+
+/* ---- br_os.h: the game's string table ---------------------------------------------- */
+void *br_os_strings_open(const char *game)
+{
+    char host[1024];
+    if (!plat_path(game, host, sizeof host))
+        return NULL;
+    return plat_pe_open(host);
+}
+
+int br_os_string(void *strings, unsigned id, char *out, int n)
+{
+    if (!strings || n <= 0)
+        return 0;
+    return plat_pe_string(strings, id, out, n);
+}
+
+void br_os_strings_close(void *strings)
+{
+    if (strings)
+        plat_pe_close(strings);
+}

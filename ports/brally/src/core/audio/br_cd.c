@@ -525,7 +525,7 @@ int BrCdTrackRequest(int param_1)
     g_220CD8 = 1;
     g_brCdTrackCur = param_1;
     if ((g_220C3C != 0) && (DAT_1021c80c != '\0')) {
-      PostMessageA(DAT_1021c77c,0x3b9,1,g_220C40);
+      br_os_post(DAT_1021c77c, 0x3b9, 1, g_220C40);
     }
   }
   return 1;

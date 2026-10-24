@@ -196,7 +196,7 @@ void BrNetErrMsgBox(const char *param_1,int param_2)
   char local_c8 [200];
 
   uVar1 = FUN_100372b0(param_2);
-  wsprintfA(local_c8,param_1,uVar1);
-  MessageBoxA((void *)0x0,local_c8,BrStrGet(0x126),0);
+  sprintf(local_c8, param_1, uVar1);
+  br_os_message_box(local_c8, BrStrGet(0x126));
   return;
 }

@@ -61,20 +61,20 @@ int BrNetShutdown(void)
      * bare `mov eax,ebp` at the end.  That one move was the whole diff. */
     ok = (BrDPlayShutdown(&(*(void * *)&g_brP277B40)) == 0);
 
-    if (DAT_1021c81c != 0) { CloseHandle((void *)DAT_1021c81c); DAT_1021c81c = 0; }
-    if (DAT_1021ce4c != 0) { CloseHandle((void *)DAT_1021ce4c); DAT_1021ce4c = 0; }
-    if (g_brH22AF04 != 0) { CloseHandle((void *)g_brH22AF04); g_brH22AF04 = 0; }
-    if (g_brH220DDC != 0) { CloseHandle((void *)g_brH220DDC); g_brH220DDC = 0; }
-    if (g_brH221324 != 0) { CloseHandle((void *)g_brH221324); g_brH221324 = 0; }
-    if (g_hBrNetMutex != 0) { CloseHandle((void *)g_hBrNetMutex); g_hBrNetMutex = 0; }
-    if (DAT_10226a5c != 0) { CloseHandle((void *)DAT_10226a5c); DAT_10226a5c = 0; }
-    if (g_h1022AF30 != 0) { CloseHandle((void *)g_h1022AF30); g_h1022AF30 = 0; }
-    if (DAT_10226a58 != 0) { CloseHandle((void *)DAT_10226a58); DAT_10226a58 = 0; }
-    if (DAT_10226a54 != 0) { CloseHandle((void *)DAT_10226a54); DAT_10226a54 = 0; }
+    if (DAT_1021c81c != 0) { br_os_close((void *)DAT_1021c81c); DAT_1021c81c = 0; }
+    if (DAT_1021ce4c != 0) { br_os_close((void *)DAT_1021ce4c); DAT_1021ce4c = 0; }
+    if (g_brH22AF04 != 0) { br_os_close((void *)g_brH22AF04); g_brH22AF04 = 0; }
+    if (g_brH220DDC != 0) { br_os_close((void *)g_brH220DDC); g_brH220DDC = 0; }
+    if (g_brH221324 != 0) { br_os_close((void *)g_brH221324); g_brH221324 = 0; }
+    if (g_hBrNetMutex != 0) { br_os_close((void *)g_hBrNetMutex); g_hBrNetMutex = 0; }
+    if (DAT_10226a5c != 0) { br_os_close((void *)DAT_10226a5c); DAT_10226a5c = 0; }
+    if (g_h1022AF30 != 0) { br_os_close((void *)g_h1022AF30); g_h1022AF30 = 0; }
+    if (DAT_10226a58 != 0) { br_os_close((void *)DAT_10226a58); DAT_10226a58 = 0; }
+    if (DAT_10226a54 != 0) { br_os_close((void *)DAT_10226a54); DAT_10226a54 = 0; }
 
     for (i = 0; i < 16; i++) {
         if (g_aBrNetSlot[i].hMutex != 0) {
-            CloseHandle(g_aBrNetSlot[i].hMutex);
+            br_os_close(g_aBrNetSlot[i].hMutex);
             g_aBrNetSlot[i].hMutex = 0;
         }
     }

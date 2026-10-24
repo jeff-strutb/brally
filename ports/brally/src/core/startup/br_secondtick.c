@@ -24,9 +24,8 @@
 void BrSecondTickStart(void)
 
 {
-  g_hBrSndWake86 = CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
-  g_hBrSndThread86 = CreateThread((LPSECURITY_ATTRIBUTES)0x0,0,(LPTHREAD_START_ROUTINE)BrSecondTickLoop,
-                              (LPVOID)0x0,0,(LPDWORD)&DAT_11849e64);
+  g_hBrSndWake86 = br_os_event(0, 0);
+  g_hBrSndThread86 = br_os_thread((LPTHREAD_START_ROUTINE)BrSecondTickLoop, (LPVOID)0x0, (LPDWORD)&DAT_11849e64);
   DAT_11849ea8 = 1000;
   (*(int *)&g_fBrSndThread86) = 1;
   return;

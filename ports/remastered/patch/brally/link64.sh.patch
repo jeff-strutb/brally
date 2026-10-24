@@ -32,7 +32,7 @@
 +# what the lighting reads of the game (platform/light): core types too
 +ports/brally/build64.sh ports/brally/platform/light/light_game.c | grep -v "^OK" >&2 || true
  
- SRCS="$P/common/main.c $P/common/crt.c $P/common/win_kernel.c $P/common/win_user.c \
+ SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/win_kernel.c $P/common/br_os_window.c \
 -      $P/common/win_rsrc.c $P/common/dx.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
 -      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 +      $P/common/win_rsrc.c $P/common/dx.c $P/common/br_snd.c $P/common/audio.c $P/common/dplay.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/flags.c $P/common/br_gfx.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \

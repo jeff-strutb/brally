@@ -232,15 +232,15 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
     BrCarState scratch2;
     BrCarState scratch;
 
-    WaitForSingleObject(DAT_1021ce4c, 0xffffffff);
+    br_os_wait(DAT_1021ce4c, 0xffffffff);
     bGo = DAT_1021c900;
-    ReleaseMutex(DAT_1021ce4c);
+    br_os_release(DAT_1021ce4c);
     if (bGo) {
         pkt.m_1006CDD0();
         (*(int *)tb) = pkt.m_1006CE50();
-        WaitForSingleObject(g_hBrNetMutex, 0xffffffff);
+        br_os_wait(g_hBrNetMutex, 0xffffffff);
         g_brNetPktTick = BrTicks30FromMs();
-        ReleaseMutex(g_hBrNetMutex);
+        br_os_release(g_hBrNetMutex);
         while (!pkt.m_1006CF80()) {
             cmd = pkt.m_1006CE00();
             slot = cmd & 0xf;
@@ -264,13 +264,13 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 }
                 if (kind == 4)
                     DAT_10226a2c = pkt.m_1006CE50();
-                WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
+                br_os_wait(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
                 if (slot != (unsigned)g_id) {
                     if (((g_aBrNetSlot[slot].f02C)) != (int)b0 && kind == 2) {
-                        WaitForSingleObject(DAT_10226a5c, 0xffffffff);
+                        br_os_wait(DAT_10226a5c, 0xffffffff);
                         DAT_1021c904 += 1;
                         (*(unsigned int (*)[])&DAT_1021c8c0)[DAT_1021c904] = slot;
-                        ReleaseMutex(DAT_10226a5c);
+                        br_os_release(DAT_10226a5c);
                         ((g_aBrNetSlot[slot].f008)) = 0;
                         memset((&g_aBrNetSlot[slot].f00C[0]), 0, 8 * sizeof(unsigned));
                         ((g_aBrNetSlot[slot].f02C)) = 0;
@@ -295,15 +295,15 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 }
                 if (slot == (unsigned)g_id) {
                     if (kind == 3) {
-                        WaitForSingleObject(g_brH221324, 0xffffffff);
+                        br_os_wait(g_brH221324, 0xffffffff);
                         DAT_102265d8 = 0;
-                        ReleaseMutex(g_brH221324);
+                        br_os_release(g_brH221324);
                     }
                     if (slot == (unsigned)g_id) {
                         if (b0 & 0x80) {
-                            WaitForSingleObject(g_brH22AF04, 0xffffffff);
+                            br_os_wait(g_brH22AF04, 0xffffffff);
                             (*(int *)&g_br22AAF4) = 0;
-                            ReleaseMutex(g_brH22AF04);
+                            br_os_release(g_brH22AF04);
                             DAT_10226a50 = 1;
                         }
                         if (b0 & 0x40) {
@@ -311,20 +311,20 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                                 DAT_10226a50 = 0;
                             if ((*(int *)&g_BrX06909B4) != 0)
                                 (*(int *)&DAT_105ccb68[6]) = 1;
-                            WaitForSingleObject(g_brH220DDC, 0xffffffff);
+                            br_os_wait(g_brH220DDC, 0xffffffff);
                             DAT_1021ce44 = 0;
-                            ReleaseMutex(g_brH220DDC);
+                            br_os_release(g_brH220DDC);
                         }
                         if (slot == (unsigned)g_id && kind == 4) {
                             unsigned now;
 
-                            WaitForSingleObject(DAT_1021c81c, 0xffffffff);
+                            br_os_wait(DAT_1021c81c, 0xffffffff);
                             now = BrTicks30FromMs();
                             x = DAT_10226a2c;
                             DAT_10226a30 = x % 100 / 0x21 + x / 100 * 3;
                             if (DAT_10226a30 > now + 0x5a)
                                 DAT_10226a30 = now + 0x5a;
-                            ReleaseMutex(DAT_1021c81c);
+                            br_os_release(DAT_1021c81c);
                         }
                     }
                 }
@@ -338,7 +338,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 if (nName)
                     strcpy((&g_aBrNetSlot[slot].szName[0]), szName);
                 BrNetSend4AD0(pNet, slot, b1, c2, c3, c4, id, szName, b0, 0x10);
-                ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 break;
 
             case 0x20: {
@@ -346,13 +346,13 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 
                 if (nMode != 1)
                     goto done;
-                WaitForSingleObject(DAT_10226a58, 0xffffffff);
+                br_os_wait(DAT_10226a58, 0xffffffff);
                 for (p = DAT_1021ce00; (uintptr_t)p < (uintptr_t)&DAT_1021ce00[16]; p += 2) {
                     nib = pkt.m_1006CE00();
                     p[1] = nib >> 4;
                     p[0] = nib & 0xf;
                 }
-                ReleaseMutex(DAT_10226a58);
+                br_os_release(DAT_10226a58);
                 break;
             }
 
@@ -361,7 +361,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 unsigned bestT;
                 int      d;
 
-                WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
+                br_os_wait(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
                 if ((((g_aBrNetSlot[slot].f02C)) & 0x3f) >= 2) {
                     best = 0;
                     bestT = 0xffffffff;
@@ -378,10 +378,10 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     BrCarStateDecode(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], (struct BrBitReader *)&pkt);
                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
-                    ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                    br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 } else {
                     BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
-                    ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                    br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 }
                 break;
             }
@@ -409,24 +409,24 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
 
                 case 0x60000005:
                     pHdr = pkt.m_1006D190();
-                    WaitForSingleObject(DAT_10226a54, 0xffffffff);
+                    br_os_wait(DAT_10226a54, 0xffffffff);
                     switch (pHdr->f04) {
                     case 4:
                         DAT_10226a28 = 0x14;
-                        ReleaseMutex(DAT_10226a54);
+                        br_os_release(DAT_10226a54);
                         break;
                     case 5:
                         DAT_10226a28 = 0x15;
-                        ReleaseMutex(DAT_10226a54);
+                        br_os_release(DAT_10226a54);
                         break;
                     case 6:
                         DAT_10226a28 = 0x16;
-                        ReleaseMutex(DAT_10226a54);
+                        br_os_release(DAT_10226a54);
                         break;
                     case 7:
                         DAT_10226a28 = 0x17;
                     default:
-                        ReleaseMutex(DAT_10226a54);
+                        br_os_release(DAT_10226a54);
                         break;
                     }
                     goto done;
@@ -459,10 +459,10 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                             for (i = 0; i < (*(int *)&g_BrCarCount); i++, pPeer++) {
                                 if (nMode == BrNetSlotGetF004(pPeer->iNetPlayer)) {
                                     if (BrNetSlotGetF02C(pPeer->iNetPlayer) & 0x3f) {
-                                        WaitForSingleObject(g_h1022AF30, 0xffffffff);
+                                        br_os_wait(g_h1022AF30, 0xffffffff);
                                         (*(int *)&g_i10221318) += 1;
                                         g_a10221288[(*(int *)&g_i10221318)] = pPeer->iNetPlayer;
-                                        ReleaseMutex(g_h1022AF30);
+                                        br_os_release(g_h1022AF30);
                                         BrNetSlotSetF02C(i, 0);
                                         psz = BrNetSlotName(pPeer->iNetPlayer);
                                         strcpy(szName, psz);
@@ -524,7 +524,7 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 unsigned bestT, tNew, tPrev;
                 int      d;
 
-                WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
+                br_os_wait(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
                 if ((((g_aBrNetSlot[slot].f02C)) & 0x3f) >= 2) {
                     best = 0;
                     bestT = 0xffffffff;
@@ -564,10 +564,10 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                     BrCarStateDecodeDelta(&(&g_aBrNetSlot[slot].cars[0])[((g_aBrNetSlot[slot].f55C))], &(&g_aBrNetSlot[slot].cars[0])[iNew], (struct BrBitReader *)&pkt);
                     d = (g_brNetPktTick - (*(int *)tb)) * 2;
                     ((g_aBrNetSlot[slot].f974)) = (d % 3) * 0x21 + (d / 3) * 100;
-                    ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                    br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 } else {
                     BrCarStateDecodeDelta(&scratch2, &scratch2, (struct BrBitReader *)&pkt);
-                    ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                    br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 }
                 break;
             }
@@ -581,10 +581,10 @@ extern "C" void FUN_100038f0(void *pNet, void *pBuf, int nBytes, int nMode)
                 a = BrSub10075020();
                 b = pkt.m_1006CE50();
                 c = pkt.m_1006CE20();
-                WaitForSingleObject(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
+                br_os_wait(((g_aBrNetSlot[slot].hMutex)), 0xffffffff);
                 ((g_aBrNetSlot[slot].f970)) = b;
                 ((g_aBrNetSlot[slot].f974)) = c;
-                ReleaseMutex(((g_aBrNetSlot[slot].hMutex)));
+                br_os_release(((g_aBrNetSlot[slot].hMutex)));
                 if (slot == (unsigned)g_id) {
                     Fn04C80(pNet, (*(unsigned int *)tb));
                     BrNetPingSync((*(int *)tb), a, b, c);

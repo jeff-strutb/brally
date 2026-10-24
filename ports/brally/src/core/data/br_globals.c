@@ -36,7 +36,6 @@
 #include "br_collrespsolve.h"
 #include "br_coretypes.h"
 #include "br_dl.h"
-#include "br_dxver.h"
 #include "br_gamestep.h"
 #include "br_mat.h"
 #include "br_phase.h"
@@ -424,9 +423,6 @@ BR_BLOCK_AT(1007776C, DAT_10077c6c, 0x52C);  /* 0x10077C6C */
 BR_BLOCK_AT(1007776C, DAT_10077c70, 0x530);  /* 0x10077C70 */
 BR_BLOCK_AT(1007776C, DAT_10077c74, 0x534);  /* 0x10077C74 */
 BR_BLOCK_AT(1007776C, DAT_10077c78, 0x538);  /* 0x10077C78 */
-BR_BLOCK_AT(1007776C, BrIidIDirectDraw2, 0x578);  /* 0x10077CB8 */
-BR_BLOCK_AT(1007776C, BrIidIDirectDrawSurface3, 0x5B8);  /* 0x10077CF8 */
-BR_BLOCK_AT(1007776C, BrIidIDirectDrawSurface4, 0x5C8);  /* 0x10077D08 */
 BR_BLOCK_AT(1007776C, g_DeviceGuid, 0xFC8);  /* 0x10078708 */
 BR_BLOCK_AT(1007776C, DAT_10078718, 0xFD8);  /* 0x10078718 */
 BR_BLOCK_AT(1007776C, DAT_10078828, 0x10E8);  /* 0x10078828 */

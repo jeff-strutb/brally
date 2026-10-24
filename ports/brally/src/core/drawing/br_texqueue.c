@@ -49,14 +49,14 @@ typedef int (*funcptr)();
 void BrTexQueuePush(int param_1, void *param_2)
 
 {
-  WaitForSingleObject(g_br18AA0A0,0xffffffff);
+  br_os_wait(g_br18AA0A0, 0xffffffff);
   g_aBrTexQueue[g_br18A9878].id = param_1;
   g_aBrTexQueue[g_br18A9878].pPix = param_2;
   g_br18A9878 = g_br18A9878 + 1;
   if (g_br18A9878 >= 0x100) {
     g_br18A9878 = 0;
   }
-  ReleaseMutex(g_br18AA0A0);
+  br_os_release(g_br18AA0A0);
   return;
 }
 
@@ -67,7 +67,7 @@ void BrTexQueuePush(int param_1, void *param_2)
 void BrTexQueuePop(void)
 
 {
-  WaitForSingleObject(g_br18AA0A0,0xffffffff);
+  br_os_wait(g_br18AA0A0, 0xffffffff);
   if (g_br18AA098 != g_br18A9878) {
     DAT_118ed1d0(g_aBrTexQueue[g_br18AA098].id, (int *)g_aBrTexQueue[g_br18AA098].pPix);
     g_br18AA098 = g_br18AA098 + 1;
@@ -75,7 +75,7 @@ void BrTexQueuePop(void)
       g_br18AA098 = 0;
     }
   }
-  ReleaseMutex(g_br18AA0A0);
+  br_os_release(g_br18AA0A0);
   return;
 }
 

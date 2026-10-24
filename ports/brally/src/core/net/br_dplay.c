@@ -225,29 +225,29 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
             pszName = (const char *)pMsg->create.dpnName.lpszShortNameA;
             if (pszName == NULL)
                 pszName = g_szUnknown;
-            cch1 = lstrlenA(g_szJoined);
-            cch2 = lstrlenA(pszName);
+            cch1 = br_os_strlen(g_szJoined);
+            cch2 = br_os_strlen(pszName);
             pszB = (char *)calloc(1, cch1 + 1 + cch2);
             if (pszB == NULL)
                 return;
-            wsprintfA(pszB, g_szJoined, pszName);
+            sprintf(pszB, g_szJoined, pszName);
             break;
         case 5:
             pszName = (const char *)pMsg->destroy.dpnName.lpszShortNameA;
             if (pszName == NULL)
                 pszName = g_szUnknown;
-            cch1 = lstrlenA(g_szLeft);
-            cch2 = lstrlenA(pszName);
+            cch1 = br_os_strlen(g_szLeft);
+            cch2 = br_os_strlen(pszName);
             pszB = (char *)calloc(1, cch1 + 1 + cch2);
             if (pszB == NULL)
                 return;
-            wsprintfA(pszB, g_szLeft, pszName);
+            sprintf(pszB, g_szLeft, pszName);
             for (i = 0; i < BR_DP_SLOTS; i++) {
                 if (g_aBrAA2538[i].id == (int)pMsg->f08) {     /* 0x10AA2538 */
                     g_aBrAA2538[i].id = -1;
                     g_aBrAA2538[i].a = 0;
                     sprintf(szDbg, g_szDestroy, pMsg->f08);
-                    OutputDebugStringA(szDbg);
+                    br_os_debug(szDbg);
                     break;
                 }
             }
@@ -258,7 +258,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
         }
         if (pszB != NULL) {
             if (g_BrDPlay.pWnd != NULL) {
-                PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (LPARAM)pszB);
+                br_os_post(g_BrDPlay.pWnd, 0x501u, 0u, (LPARAM)pszB);
                 return;
             }
             free(pszB);
@@ -339,12 +339,12 @@ uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
 
     ah[0] = pCtx->hRecvEvent;
     ah[1] = hQuit;
-    if (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u) {
+    if (br_os_wait_many(2u, ah, 0, 0xffffffffu) == 0u) {
         do {
             BrDPlayPump(pCtx);
-        } while (WaitForMultipleObjects(2u, ah, 0, 0xffffffffu) == 0u);
+        } while (br_os_wait_many(2u, ah, 0, 0xffffffffu) == 0u);
     }
-    ExitThread(0u);
+    br_os_thread_exit(0u);
     return 0;
 }
 
@@ -383,19 +383,19 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
 {
     /* The critical section really does go first -- see the GOTCHA. */
     if (DPS_fCritInit != 0) {
-        DeleteCriticalSection(g_BrDPlayCrit);
+        br_os_lock_free(g_BrDPlayCrit);
         DPS_fCritInit = 0;
     }
 
     if (DPS_hThread != NULL) {
-        SetEvent(DPS_hQuit);
-        WaitForSingleObject(DPS_hThread, 0xffffffffu);
-        CloseHandle(DPS_hThread);
+        br_os_set(DPS_hQuit);
+        br_os_wait(DPS_hThread, 0xffffffffu);
+        br_os_close(DPS_hThread);
         DPS_hThread = NULL;
     }
 
     if (DPS_hQuit != NULL) {
-        CloseHandle(DPS_hQuit);
+        br_os_close(DPS_hQuit);
         DPS_hQuit = NULL;
     }
 
@@ -414,7 +414,7 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
     /* Re-test: a nested `if (pCtx != NULL && ...)` inside the block above
      * is deleted as dead. A sibling if keeps the second cmp/je. */
     if (pCtx != NULL && pCtx->hRecvEvent != NULL) {
-        CloseHandle(pCtx->hRecvEvent);
+        br_os_close(pCtx->hRecvEvent);
         pCtx->hRecvEvent = NULL;
     }
 
@@ -437,19 +437,18 @@ int32_t BrDPlayStartup(void *pUnused, BrDPlayCtx *pCtx)
      * what lays the blocks out fail-first; the nested/&& forms put the
      * success exit first. */
     if (DPS_fCritInit == 0) {
-        InitializeCriticalSection(g_BrDPlayCrit);
+        br_os_lock_init(g_BrDPlayCrit);
         DPS_fCritInit = 1;
     }
     memset(pCtx, 0, sizeof *pCtx);
 
-    pCtx->hRecvEvent = CreateEventA(0, 0, 0, 0);
+    pCtx->hRecvEvent = br_os_event(0, 0);
     if (pCtx->hRecvEvent == NULL)
         goto fail;
-    DPS_hQuit = CreateEventA(0, 0, 0, 0);
+    DPS_hQuit = br_os_event(0, 0);
     if (DPS_hQuit == NULL)
         goto fail;
-    DPS_hThread = CreateThread(0, 0, BrDPlayThreadProc, pCtx, 0,
-                                     &DPS_idThread);
+    DPS_hThread = br_os_thread(BrDPlayThreadProc, pCtx, &DPS_idThread);
     if (DPS_hThread == NULL)
         goto fail;
     return 0;
@@ -471,7 +470,6 @@ fail:
 /* @implements 0x10009C00 glide BrDPlayBootInit */
 void BrDPlayBootInit(void)
 {
-    GetDesktopWindow();
     BrDPlayCreate();
 }
 

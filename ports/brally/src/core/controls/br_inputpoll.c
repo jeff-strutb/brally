@@ -384,9 +384,9 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
         (g_brInKeys[g_brInKeyCur][0x58] & 0x80) != 0)
         BrCdTrackNext();
 
-    if ((GetAsyncKeyState(0x46) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
+    if ((br_os_key(0x46) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
         g_BrFpsGuard = (g_BrFpsGuard == 0);
-    if ((GetAsyncKeyState(0x50) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
+    if ((br_os_key(0x50) & 1) && (((intptr_t)(g_brFfb.pEffectSquare))) > 15)
         (*(int32_t *)&DAT_118eeee0) = ((*(int32_t *)&DAT_118eeee0) == 0);
 
     /* ---- the non-race screens ------------------------------------------ */
@@ -644,7 +644,7 @@ uint32_t BrInputPoll(int32_t *pAxis0, int32_t *pAxis1)
             exit(1);
             BrLogPrint(buf);
         }
-        GetAsyncKeyState(0x1B);
+        br_os_key(0x1B);
         if ((((intptr_t)(g_brFfb.pEffectSquare))) == 1) {
             g_BrFpsGuard = 1;
             flags = 0x400;

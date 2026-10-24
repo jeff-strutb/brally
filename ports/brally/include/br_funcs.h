@@ -211,10 +211,6 @@ void BrAnimSetPingPong(struct BrAnimSet *);
 #undef BrAnimUpdate
 void BrAnimUpdate(struct BrAnimSet *);
 #pragma pop_macro("BrAnimUpdate")
-#pragma push_macro("BrAppCheckPreviousApp")
-#undef BrAppCheckPreviousApp
-int BrAppCheckPreviousApp(void);
-#pragma pop_macro("BrAppCheckPreviousApp")
 #pragma push_macro("BrAppFrame")
 #undef BrAppFrame
 int BrAppFrame(void);
@@ -1197,10 +1193,6 @@ int BrDpShutdown(void);
 #undef BrDriverAssetsFree
 void BrDriverAssetsFree(struct BrDriver *);
 #pragma pop_macro("BrDriverAssetsFree")
-#pragma push_macro("BrDxDetect")
-#undef BrDxDetect
-void BrDxDetect(unsigned int *, unsigned int *);
-#pragma pop_macro("BrDxDetect")
 #pragma push_macro("BrEarLoad")
 #undef BrEarLoad
 int BrEarLoad(int);

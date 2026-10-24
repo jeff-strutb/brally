@@ -189,14 +189,14 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             if ((flags & 0x3f) == 4)
                 pkt.m_1006CE50();
 
-            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
             if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) == 0)
                 goto c0_rel;
             if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
                 goto c0_rel;
             if (b10 != 0) {
                 roff = slot * 0x10 + b0;
-                WaitForSingleObject(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
+                br_os_wait(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
                 if (ts >= ((*(unsigned *)((char *)&(&g_aBr178FEF8[0][0])[roff].f008)))) {
                     if (slot == b0) {
                         if (flags & 0x40) {
@@ -218,8 +218,8 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                     if (hasName)
                         strcpy((((char *)((char *)&(&g_aBr178FEF8[0][0])[roff].szName))), name);
                 }
-                ReleaseMutex(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
-                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+                br_os_release(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
+                br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
                 break;
             }
             if (slot == b0) {
@@ -230,7 +230,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) = flags;
             }
         c0_rel:
-            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+            br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -238,7 +238,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             int      best, cur;
             unsigned bestT;
 
-            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
             if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) < 2)
                 goto c4_rel;
             if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
@@ -246,7 +246,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             cur = ((*(int *)((char *)&g_aBrPeer71[soff].f558)));
             if (ts <= (((unsigned *)((char *)&g_aBrPeer71[soff].aTs)))[cur]) {
                 BrCarStateDecode(&scratch, (struct BrBitReader *)&pkt);
-                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+                br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
                 break;
             }
             best  = 0;
@@ -268,7 +268,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 goto c4_rel;
             ((*(int *)((char *)&g_aBrPeer71[soff].f968))) = BrDelta_100713A0();
         c4_rel:
-            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+            br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -286,7 +286,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             unsigned bestT, tNew, tPrev;
             float    frac;
 
-            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
             if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) < 2)
                 goto c8_rel;
             if (idFrom != ((*(int *)((char *)&g_aBrPeer71[soff].f004))))
@@ -335,7 +335,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             BrCarStateDecodeDelta(&(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[((*(int *)((char *)&g_aBrPeer71[soff].f558)))],
                                   &(((BrCarState *)((char *)&g_aBrPeer71[soff].aState)))[iNew], (struct BrBitReader *)&pkt);
         c8_rel:
-            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+            br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -343,13 +343,13 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             int b   = pkt.m_1006CE50();
             int now = BrDelta_100713A0();
 
-            WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+            br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
             if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&g_aBrPeer71[soff].f004)))
                     && b10 != 0) {
                 ((*(int *)((char *)&g_aBrPeer71[soff].f960))) = b;
                 ((*(int *)((char *)&g_aBrPeer71[soff].f964))) = now - b;
             }
-            ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+            br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             break;
         }
 
@@ -375,7 +375,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 if (j == -1)
                     break;
                 soff = j;
-                WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+                br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
                 ((*(int *)((char *)&g_aBrPeer71[soff].f004))) = idFrom;
                 for (k = 0; k < 8; k++) {
                     g_aBrPeer71[soff].aTs[k] = 0;      /* timestamp ring entry */
@@ -388,16 +388,16 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                 roff = j * 0x10;
                 m = 0x10;
                 do {
-                    WaitForSingleObject(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
+                    br_os_wait(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))), 0xffffffff);
                     ((*(unsigned *)((char *)&(&g_aBr178FEF8[0][0])[roff].f008))) = 0;
                     ((*(int *)((char *)&(&g_aBr178FEF8[0][0])[roff].f02C)))      = 0;
-                    ReleaseMutex(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
+                    br_os_release(((*(void * *)((char *)&(&g_aBr178FEF8[0][0])[roff]))));
                     roff += 1;
                     m--;
                 } while (m != 0);
-                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+                br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             } else {
-                WaitForSingleObject(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
+                br_os_wait(((*(void * *)((char *)&g_aBrPeer71[soff]))), 0xffffffff);
                 if ((((*(int *)((char *)&g_aBrPeer71[soff].f02C))) & 0x3f) != 0 && idFrom == ((*(int *)((char *)&g_aBrPeer71[soff].f004)))
                         && slot == b0) {
                     ((*(int *)((char *)&g_aBrPeer71[soff].f030)))     = nib;
@@ -407,7 +407,7 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
                     strcpy((((char *)((char *)&g_aBrPeer71[soff].szName))), name);
                     ((*(int *)((char *)&g_aBrPeer71[soff].f02C))) = 2;
                 }
-                ReleaseMutex(((*(void * *)((char *)&g_aBrPeer71[soff]))));
+                br_os_release(((*(void * *)((char *)&g_aBrPeer71[soff]))));
             }
             break;
         }
@@ -424,11 +424,11 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             void    *h = g_aBrPeer71[ip].hMutex;
             unsigned s;
 
-            WaitForSingleObject(h, 0xffffffff);
+            br_os_wait(h, 0xffffffff);
             s = *pst & 0x3f;
             if (s > 1 && s < 5)
                 *pst = (*pst & 0xffffffbf) | 0x80;
-            ReleaseMutex(h);
+            br_os_release(h);
         }
     }
     if (bStart) {
@@ -438,11 +438,11 @@ extern "C" void FUN_1002f790(void *pNet, void *pBuf, int nBytes, int idFrom, int
             void    *h = g_aBrPeer71[ip].hMutex;
             unsigned s;
 
-            WaitForSingleObject(h, 0xffffffff);
+            br_os_wait(h, 0xffffffff);
             s = *pst & 0x3f;
             if (s > 1 && s < 5)
                 *pst = (*pst & 0xffffff7f) | 0x40;
-            ReleaseMutex(h);
+            br_os_release(h);
         }
     }
 

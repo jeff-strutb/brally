@@ -73,12 +73,12 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
   ahWait[0] = (*(HANDLE *)&g_hBrNetMutex);
   ahWait[1] = (HANDLE)g_aBrNetSlot[param_2].hMutex;
   pSlot = &g_aBrNetSlot[param_2];
-  WaitForMultipleObjects(2, ahWait, 1, 0xffffffff);
+  br_os_wait_many(2, ahWait, 1, 0xffffffff);
   if (param_2 != g_id) {
     if ((int)pSlot->f558 < 2) {
       param_1[0x1f] = 400.0f;
-      ReleaseMutex(pSlot->hMutex);
-      ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
+      br_os_release(pSlot->hMutex);
+      br_os_release((*(HANDLE *)&g_hBrNetMutex));
       return 0;
     }
     iVar5 = 0;
@@ -184,8 +184,8 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
     pfVar3[6] = (fVar12 - fVar13) + pfVar3[6];
   }
 LAB_done:
-  ReleaseMutex(pSlot->hMutex);
-  ReleaseMutex((*(HANDLE *)&g_hBrNetMutex));
+  br_os_release(pSlot->hMutex);
+  br_os_release((*(HANDLE *)&g_hBrNetMutex));
   BrCarClampUnit(pfVar3);
   pfVar10 = pfVar3 + 1;
   BrCarClampUnit(pfVar10);

@@ -102,12 +102,12 @@ static const char kBrErrProperty[]     = "Error: Failed to change device propert
  * above. */
 /* 64-bit core: OutputDebugStringA is declared by the platform headers */
 typedef void (__stdcall *BrDbgSink)(const char *pMsg);
-#define BR_DBG_SINK OutputDebugStringA
+#define BR_DBG_SINK br_os_debug
 
 /* BrFfbEnumDevice's original calls the import DIRECTLY per site
  * (`call dword ptr [__imp__OutputDebugStringA]`), unlike BrFfbInit's cached
  * register. The port routes the same sites through the safe sink. */
-#define BR_DBG_OUT(msg) OutputDebugStringA(msg)
+#define BR_DBG_OUT(msg) br_os_debug(msg)
 
 /* ====================================================================== */
 /* Small helpers                                                           */

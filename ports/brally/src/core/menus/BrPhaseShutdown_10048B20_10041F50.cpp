@@ -119,7 +119,7 @@ void __stdcall BrPhaseShutdown_10048B20(int bPartial)
         deadline = 0x604;
     deadline += BrSub10075020();
     while (BrSub10075020() < deadline)
-        Sleep(0);
+        br_os_sleep(0);
 
     if (bPartial == 0) {
         (*(int *)&g_AC300) = 0;

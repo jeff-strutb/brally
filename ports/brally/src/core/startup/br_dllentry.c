@@ -35,9 +35,10 @@ int BrEhArrayUnwindFilter(int *param_1)
 
 int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
 {
-  if ((param_2 == 1) && (DAT_118ef178 == 0)) {
-    DisableThreadLibraryCalls(param_1);
-  }
+  /* the original turned off the thread attach/detach calls Windows makes
+     to a DLL; the port is not a DLL */
+  (void)param_1;
+  (void)param_2;
   return 1;
 }
 

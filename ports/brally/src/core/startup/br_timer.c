@@ -38,7 +38,7 @@ void __fastcall br86_timer_restart(int *param_1)
   int uVar1;
   
   if ((*(int *)&g_br86HasPerf) != 0) {
-    QueryPerformanceCounter((LARGE_INTEGER *)(param_1 + 2));
+    br_os_perf((int64_t *)((LARGE_INTEGER *)(param_1 + 2)));
     param_1[4] = *param_1;
     param_1[5] = param_1[1];
     return;
@@ -83,16 +83,16 @@ int32_t BrSub10075020(void)
     __int64 t;
 
     if (DAT_100bb2dc != 0) {
-        DAT_118ee240 = QueryPerformanceFrequency(&DAT_118ee238);
-        QueryPerformanceCounter(&t);
+        DAT_118ee240 = br_os_perf_hz((int64_t *)(&DAT_118ee238));
+        br_os_perf((int64_t *)(&t));
         DAT_118ee248 = (int)((t * 1000 + 500) / DAT_118ee238);
         DAT_100bb2dc = 0;
     }
     if (DAT_118ee240 != 0) {
-        if (QueryPerformanceCounter(&t) != 0)
+        if (br_os_perf((int64_t *)(&t)) != 0)
             return (int)((t * 1000 + 500) / DAT_118ee238) - DAT_118ee248;
     }
-    return (int)timeGetTime();
+    return (int)br_os_ms();
 }
 
 /* ---- from slice4_53.c ------------------------------------------------
@@ -116,7 +116,7 @@ int BrTimerStart(void)
 
 {
   FUN_100356b0();
-  DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+  DAT_10ac306c = br_os_timer(g_brOwner5BC72C, 1, 1000);
   g_guardA = 1;
   if (g_brPAA29D4 != 0) {
     BrNetEnumSessionsStart(g_brP277B40);

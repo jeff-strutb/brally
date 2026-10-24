@@ -287,20 +287,19 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
         }
         BrPodNop();
         (*(int32_t *)&g_brRaceRules) = 1;
-        InvalidateRect(hWnd, 0, 0);
     }
     if ((*(uint32_t *)&DAT_105bc740) != 0) {
         if ((*(int32_t *)&g_brRaceRules) == 1 && (*(uint32_t *)&DAT_105bc748) == 0) {
             if (BrGlideResOpen((*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518)) == 0) {
-                MessageBoxA(hWnd, BrStrGet(0x129), 0, 0);
-                PostMessageA(hWnd, 0x10, 0, 0);
+                br_os_message_box(BrStrGet(0x129), 0);
+                br_os_post(hWnd, 0x10, 0, 0);
             }
             (*(int32_t *)&g_brRaceRules) = 2;
         }
         BrPodNop();
         BrRaceClockReset();
     }
-    return DefWindowProcA(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
+    return br_os_default_proc(hWnd, 0x1C, (uint32_t)wParam, (int32_t)lParam);
 }
 
 /* ================================================================== *
@@ -324,7 +323,6 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
 {
     uint32_t sc;
 
-    GetWindowLongA(hWnd, -21);
     sc = (uint32_t)wParam;
     switch (sc) {
     case 0xF000u:
@@ -332,7 +330,7 @@ BrWndResult BrOnSysCommand(void *hWnd, BrWParam wParam, BrLParam lParam)
     case 0xF030u:
         return 0;
     default:
-        return DefWindowProcA(hWnd, 0x112, sc, (int32_t)lParam);
+        return br_os_default_proc(hWnd, 0x112, sc, (int32_t)lParam);
     }
 }
 
@@ -427,12 +425,11 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         return 0;
     case 2:
         BrExt_10038F30(0);
-        PostQuitMessage(0);
+        br_os_quit(0);
         break;
     case 0x1C:
         return BrOnActivateApp(hWnd, wParam, lParam);
     case 0x20:
-        SetCursor(0);
         return 1;
     case 0x112:
         return BrOnSysCommand(hWnd, wParam, lParam);
@@ -450,7 +447,7 @@ BrWndResult __stdcall BrWndProc(void *hWnd, uint32_t uMsg, BrWParam wParam, BrLP
         break;
     }
 defwnd:
-    return DefWindowProcA(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
+    return br_os_default_proc(hWnd, uMsg, (uint32_t)wParam, (int32_t)lParam);
 }
 
 /* -- Ghidra-matched functions --------------------------- */
@@ -720,8 +717,8 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
         (*(int32_t *)&DAT_10ac6744) = 0x1B;
         break;
     case 0x112:
-        r = DefWindowProcA(hWnd, 0x112, wParam, lParam);
-        if (IsWindow(hWnd) == 0)
+        r = br_os_default_proc(hWnd, 0x112, wParam, lParam);
+        if (br_os_window_valid(hWnd) == 0)
             break;
         if (g_pBrAA2E80 == 0)
             break;
@@ -736,15 +733,15 @@ int32_t __stdcall BrSub100590D0(struct Obj400 * iArg, void *hWnd, uint32_t uMsg,
         break;
     case 0x212:
     case 0x232:
-        if (GetActiveWindow() == hWnd) {
-            b = IsIconic(hWnd);
+        if (br_os_active_window() == hWnd) {
+            b = 0;
             (*(int32_t *)&g_BrAA33E0) = 0;
             if (b == 0)
                 goto post;
         }
         (*(int32_t *)&g_BrAA33E0) = 1;
     post:
-        PostMessageA(hWnd, 0x400, 0, 0);
+        br_os_post(hWnd, 0x400, 0, 0);
         break;
     case 0x400:
     user:

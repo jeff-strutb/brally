@@ -87,9 +87,9 @@ static void ear_cd_end(void *user)
     static UINT msg;
     (void)user;
     if (!msg)
-        msg = RegisterWindowMessageA("EAR Interactive Around-Sound");
+        msg = br_os_message_id("EAR Interactive Around-Sound");
     if (s_ear_hwnd)
-        PostMessageA((HWND)s_ear_hwnd, msg, (WPARAM)EAR_CD_EVENT, 2);
+        br_os_post((HWND)s_ear_hwnd, msg, (WPARAM)EAR_CD_EVENT, 2);
 }
 
 /* the event block: +0x04 the track */

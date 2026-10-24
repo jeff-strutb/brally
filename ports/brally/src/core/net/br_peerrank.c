@@ -69,15 +69,15 @@ void BrNetPeerRank(void)
         for (i = BR_PEERS - 1; i >= 0; i--) {
             ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
-            if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
-                ExitThread(0);
+            if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+                br_os_thread_exit(0);
             if ((g_aBrPeer71[i].f02C & 0x3f) >= 2 && (g_aBrPeer71[i].f02C & 0x3f) < 5 &&
                 g_aBrPeer71[i].f968 != 0) {
                 g_aBrPeerRank[n].idx = i;
                 g_aBrPeerRank[n].score = (float)g_aBrPeer71[i].f968;
                 n++;
             }
-            ReleaseMutex(g_aBrPeer71[i].hMutex);
+            br_os_release(g_aBrPeer71[i].hMutex);
         }
 
         if (n != 0) {
@@ -87,14 +87,14 @@ void BrNetPeerRank(void)
 
                 ah[0] = g_hBrSndWake86;
                 ah[1] = p->hMutex;
-                if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
-                    ExitThread(0);
+                if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+                    br_os_thread_exit(0);
                 if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 && p->f968 != 0) {
                     FUN_100371f0((BrDPlayCtx *)g_brPA9D008, p->f004, DAT_11849e58);
                     p->f02C = DAT_11849e58 + 5;
                     DAT_11849e58 = DAT_11849e58 + 1;
                 }
-                ReleaseMutex(p->hMutex);
+                br_os_release(p->hMutex);
             }
         }
     }
@@ -109,8 +109,8 @@ void BrNetPeerRank(void)
             p = &g_aBrPeer71[i];
             ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
-            if (WaitForMultipleObjects(2, ah, 0, INFINITE) == 0)
-                ExitThread(0);
+            if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+                br_os_thread_exit(0);
             if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 &&
                 p->aState[p->f558].f78 >= BR_K_00077BF0) {
                 FUN_100371f0((BrDPlayCtx *)g_brPA9D008, p->f004, DAT_11849e58);
@@ -131,7 +131,7 @@ void BrNetPeerRank(void)
                 g_aBrPeerRank[j].score = BR_K_00077BF8 - (float)i;
                 j--;
             }
-            ReleaseMutex(g_aBrPeer71[i].hMutex);
+            br_os_release(g_aBrPeer71[i].hMutex);
         }
     }
     qsort(g_aBrPeerRank, n, 8, BrSub10071B60);

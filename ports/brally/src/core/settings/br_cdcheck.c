@@ -36,9 +36,9 @@ int FUN_100377a0(int param_1)
   
   sprintf(path, DAT_100acad0, param_1 + 0x40);
   if (_chdrive(param_1) == 0) {
-    if (GetDriveTypeA((LPCSTR)0) == 5) {
+    if (br_os_drive_type((LPCSTR)0) == 5) {
       if (_chdir(DAT_100acacc) == 0) {
-        if (GetVolumeInformationA(path, vol, 0x104, 0, 0, 0, 0, 0) != 0) {
+        if (br_os_volume_info(path, vol, 0x104, 0, 0, 0, 0, 0) != 0) {
           if (strcmp(vol, s_Boss_Rally_1007b384) == 0) {
             return 1;
           }

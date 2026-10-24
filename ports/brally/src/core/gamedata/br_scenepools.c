@@ -103,6 +103,6 @@ void FUN_1002dec3(void)
 next:
     ;
   }
-  (*(int *)((char *)&g_aBrEntRecs + 0xB0)) = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  (*(int *)((char *)&g_aBrEntRecs + 0xB0)) = br_os_mutex(0);
   return;
 }

@@ -81,7 +81,7 @@ int BrNetReset(void)
     /* every player slot, under its own mutex */
     for (i = 0; i < 16; i++) {
         BrNetSlot *slot = &g_aBrNetSlot[i];
-        WaitForSingleObject(slot->hMutex, 0xffffffff);
+        br_os_wait(slot->hMutex, 0xffffffff);
         slot->f008 = 0;
         memset(slot->f00C, 0, sizeof(slot->f00C));
         slot->f02C = 0;
@@ -93,46 +93,46 @@ int BrNetReset(void)
         slot->f56C = 0;
         slot->f564 = 0;
         slot->f974 = 0;
-        ReleaseMutex(slot->hMutex);
+        br_os_release(slot->hMutex);
     }
 
-    WaitForSingleObject((void *)DAT_10226a54, 0xffffffff);
+    br_os_wait((void *)DAT_10226a54, 0xffffffff);
     DAT_10226a28 = -1;
     DAT_10226a38 = 0;
     (DAT_1021c9b0[0]) = 0;
-    ReleaseMutex((void *)DAT_10226a54);
+    br_os_release((void *)DAT_10226a54);
 
-    WaitForSingleObject((void *)DAT_10226a58, 0xffffffff);
+    br_os_wait((void *)DAT_10226a58, 0xffffffff);
     memset(&(DAT_1021ce00[0]), 0, 64);
-    ReleaseMutex((void *)DAT_10226a58);
+    br_os_release((void *)DAT_10226a58);
 
-    WaitForSingleObject((void *)DAT_10226a5c, 0xffffffff);
+    br_os_wait((void *)DAT_10226a5c, 0xffffffff);
     DAT_1021c904 = -1;
-    ReleaseMutex((void *)DAT_10226a5c);
+    br_os_release((void *)DAT_10226a5c);
 
-    WaitForSingleObject((void *)g_h1022AF30, 0xffffffff);
+    br_os_wait((void *)g_h1022AF30, 0xffffffff);
     (*(int *)&(*(int *)&g_i10221318)) = -1;
-    ReleaseMutex((void *)g_h1022AF30);
+    br_os_release((void *)g_h1022AF30);
 
-    WaitForSingleObject((void *)g_brH221324, 0xffffffff);
+    br_os_wait((void *)g_brH221324, 0xffffffff);
     DAT_102265d8 = 0;
-    ReleaseMutex((void *)g_brH221324);
+    br_os_release((void *)g_brH221324);
 
-    WaitForSingleObject((void *)g_brH22AF04, 0xffffffff);
+    br_os_wait((void *)g_brH22AF04, 0xffffffff);
     (*(int *)&g_br22AAF4) = 0;
-    ReleaseMutex((void *)g_brH22AF04);
+    br_os_release((void *)g_brH22AF04);
 
-    WaitForSingleObject((void *)g_brH220DDC, 0xffffffff);
+    br_os_wait((void *)g_brH220DDC, 0xffffffff);
     DAT_1021ce44 = 0;
-    ReleaseMutex((void *)g_brH220DDC);
+    br_os_release((void *)g_brH220DDC);
 
-    WaitForSingleObject((void *)DAT_1021ce4c, 0xffffffff);
+    br_os_wait((void *)DAT_1021ce4c, 0xffffffff);
     DAT_1021c900 = 0;
-    ReleaseMutex((void *)DAT_1021ce4c);
+    br_os_release((void *)DAT_1021ce4c);
 
-    WaitForSingleObject((void *)DAT_1021c81c, 0xffffffff);
+    br_os_wait((void *)DAT_1021c81c, 0xffffffff);
     (*(int *)&DAT_10226a30) = -1;
-    ReleaseMutex((void *)DAT_1021c81c);
+    br_os_release((void *)DAT_1021c81c);
 
     DAT_1021c908 = 0;
     (*(int *)&g_brPingBestRtt) = -1;
@@ -167,9 +167,9 @@ int BrNetReset(void)
 
 void BrNetSlotSetF02C(int param_1, int param_2)
 {
-    WaitForSingleObject((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
+    br_os_wait((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
     g_aBrNetSlot[param_1].f02C = param_2;
-    ReleaseMutex((void *)g_aBrNetSlot[param_1].hMutex);
+    br_os_release((void *)g_aBrNetSlot[param_1].hMutex);
 }
 
 /* 64-bit core: WaitForSingleObject is declared by the platform headers */
@@ -184,9 +184,9 @@ void BrNetSlotSetF02C(int param_1, int param_2)
 /* @implements 0x10004BB0 d3d BrNetLockSet22AAA8 */
 int BrNetLockSet22AAA8(void)
 {
-    WaitForSingleObject(g_brH221324, (unsigned long)-1);
+    br_os_wait(g_brH221324, (unsigned long)-1);
     (*(int32_t *)&DAT_102265d8) = 1;
-    ReleaseMutex(g_brH221324);
+    br_os_release(g_brH221324);
     return 1;
 }
 
@@ -194,10 +194,10 @@ int BrNetLockSet22AAA8(void)
 /* @implements 0x10004BE0 d3d BrNetLockSetIfZero22AAF4 */
 int BrNetLockSetIfZero22AAF4(void)
 {
-    WaitForSingleObject(g_brH22AF04, (unsigned long)-1);
+    br_os_wait(g_brH22AF04, (unsigned long)-1);
     if (g_br22AAF4 == 0)
         g_br22AAF4 = 1;
-    ReleaseMutex(g_brH22AF04);
+    br_os_release(g_brH22AF04);
     return 1;
 }
 
@@ -227,22 +227,22 @@ int BrNetMutexInit(void)
   int i;
   
   for (i = 0; i < 16; i++) {
-    pvVar1 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+    pvVar1 = br_os_mutex(0);
     g_aBrNetSlot[i].hMutex = pvVar1;
   }
-  DAT_10226a54 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a58 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_10226a5c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_h1022AF30 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  DAT_10226a54 = br_os_mutex(0);
+  DAT_10226a58 = br_os_mutex(0);
+  DAT_10226a5c = br_os_mutex(0);
+  g_h1022AF30 = br_os_mutex(0);
   g_brNetPktTick = 0;
   DAT_1021c908 = 0;
   BrTimeUpdate();
-  g_hBrNetMutex = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_brH221324 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_brH22AF04 = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  g_brH220DDC = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021ce4c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
-  DAT_1021c81c = CreateMutexA((LPSECURITY_ATTRIBUTES)0x0,0,(LPCSTR)0x0);
+  g_hBrNetMutex = br_os_mutex(0);
+  g_brH221324 = br_os_mutex(0);
+  g_brH22AF04 = br_os_mutex(0);
+  g_brH220DDC = br_os_mutex(0);
+  DAT_1021ce4c = br_os_mutex(0);
+  DAT_1021c81c = br_os_mutex(0);
   ((int (*)())BrNetReset)();
   return 1;
 }
@@ -293,7 +293,7 @@ void BrNetBeaconTick(void)
 {
   int n;
 
-  WaitForSingleObject((void *)g_brH22AF04, INFINITE);
+  br_os_wait((void *)g_brH22AF04, INFINITE);
   if ((*(int *)&g_br22AAF4) != 0) {
     (*(int *)&g_br22AAF4)++;
     if ((*(int *)&g_br22AAF4) >= 27) {
@@ -302,7 +302,7 @@ void BrNetBeaconTick(void)
     }
   }
   n = (*(int *)&g_br22AAF4);
-  ReleaseMutex((void *)g_brH22AF04);
+  br_os_release((void *)g_brH22AF04);
   if (n != 0 && (*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0 && (*(int *)&DAT_105ccb68[8]) == 0
       && (*(int *)&g_aBrRaceCar[0].lap) < g_CBE8) {
     ((BrNetSend4AD0Int)BrNetSend4AD0)(g_brP277B40, g_id, g_226e7c, (*(unsigned char *)&g_aBrRaceCar[0].f29AC),
@@ -326,7 +326,7 @@ void BrNetSlotBroadcastTick(void)
 {
     int n;
 
-    WaitForSingleObject((void *)g_brH220DDC, 0xffffffff);
+    br_os_wait((void *)g_brH220DDC, 0xffffffff);
     if (DAT_1021ce44 != 0) {
         DAT_1021ce44++;
         if (DAT_1021ce44 >= 0x64) {
@@ -335,7 +335,7 @@ void BrNetSlotBroadcastTick(void)
         }
     }
     n = DAT_1021ce44;
-    ReleaseMutex((void *)g_brH220DDC);
+    br_os_release((void *)g_brH220DDC);
     if (n != 0) {
         ((BrNetSend4AD0Int)BrNetSend4AD0)(g_brP277B40, g_id, g_226e7c,
                       (*(unsigned char *)&g_aBrRaceCar[0].f29AC), (*(unsigned char *)&g_aBrRaceCar[0].f29AD), (*(unsigned char *)&g_aBrRaceCar[0].f29AE),
@@ -456,9 +456,9 @@ int BrNetSlotGetF004(int param_1)
 {
   int uVar1;
   
-  WaitForSingleObject((HANDLE)g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   uVar1 = g_aBrNetSlot[param_1].f004;
-  ReleaseMutex((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
   return uVar1;
 }
 
@@ -481,7 +481,7 @@ int BrNetStackPop(void)
     int v;
     int n;
 
-    WaitForSingleObject((HANDLE)DAT_10226a5c, 0xffffffff);
+    br_os_wait((HANDLE)DAT_10226a5c, 0xffffffff);
     n = DAT_1021c904;
     if (n >= 0) {
         v = DAT_1021c8c0[n];
@@ -489,7 +489,7 @@ int BrNetStackPop(void)
     } else {
         v = -1;
     }
-    ReleaseMutex((HANDLE)DAT_10226a5c);
+    br_os_release((HANDLE)DAT_10226a5c);
     return v;
 }
 
@@ -508,12 +508,12 @@ int BrNetSlotGetF030(int i, unsigned char *pb34, unsigned char *pb35,
 {
     int v;
 
-    WaitForSingleObject(g_aBrNetSlot[i].hMutex, 0xffffffff);
+    br_os_wait(g_aBrNetSlot[i].hMutex, 0xffffffff);
     v     = g_aBrNetSlot[i].f030;
     *pb34 = (unsigned char)g_aBrNetSlot[i].f034[0];
     *pb35 = (unsigned char)g_aBrNetSlot[i].f034[1];
     *pb36 = (unsigned char)g_aBrNetSlot[i].f034[2];
-    ReleaseMutex(g_aBrNetSlot[i].hMutex);
+    br_os_release(g_aBrNetSlot[i].hMutex);
     return v;
 }
 
@@ -529,9 +529,9 @@ int BrNetGetA102212D0(int param_1)
 {
   int uVar1;
   
-  WaitForSingleObject((void *)DAT_10226a58,0xffffffff);
+  br_os_wait((void *)DAT_10226a58, 0xffffffff);
   uVar1 = (&(DAT_1021ce00[0]))[param_1];
-  ReleaseMutex((void *)DAT_10226a58);
+  br_os_release((void *)DAT_10226a58);
   return uVar1;
 }
 
@@ -547,9 +547,9 @@ int BrNetGetA102212D0(int param_1)
 char *BrNetSlotName(int param_1)
 
 {
-  WaitForSingleObject(g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  br_os_wait(g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   strcpy(DAT_10226628, g_aBrNetSlot[param_1].szName);
-  ReleaseMutex(g_aBrNetSlot[param_1].hMutex);
+  br_os_release(g_aBrNetSlot[param_1].hMutex);
   return DAT_10226628;
 }
 
@@ -563,9 +563,9 @@ char *BrNetSlotName(int param_1)
 void BrNetSlotSetName(int param_1,char *param_2)
 
 {
-  WaitForSingleObject((HANDLE)g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   strcpy((&g_aBrNetSlot[param_1].szName[0]), param_2);
-  ReleaseMutex((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
   return;
 }
 
@@ -584,9 +584,9 @@ int BrNetSlotGetF02CBiased(int i)
 {
     int v;
 
-    WaitForSingleObject((HANDLE)g_aBrNetSlot[i].hMutex, 0xffffffff);
+    br_os_wait((HANDLE)g_aBrNetSlot[i].hMutex, 0xffffffff);
     v = (BrNetSlotGetF02C(i) & 0x3f) - 4;
-    ReleaseMutex((HANDLE)g_aBrNetSlot[i].hMutex);
+    br_os_release((HANDLE)g_aBrNetSlot[i].hMutex);
     return (v > 0) ? v : 0;
 }
 
@@ -602,9 +602,9 @@ int BrNetSlotGetF974(int param_1)
 {
   int iVar1;
   
-  WaitForSingleObject((HANDLE)g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   iVar1 = g_aBrNetSlot[param_1].f974;
-  ReleaseMutex((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
   if (iVar1 < 0) {
     iVar1 = 0;
   }
@@ -645,10 +645,10 @@ void BrNetDropMatching(int key)
         if ((BrNetSlotGetF02C(i) & 0x3F) == 0)
             continue;
 
-        WaitForSingleObject((void *)g_h1022AF30, 0xffffffff);
+        br_os_wait((void *)g_h1022AF30, 0xffffffff);
         (*(int *)&g_i10221318) = (*(int *)&g_i10221318) + 1;
         g_a10221288[(*(int *)&g_i10221318)] = i;
-        ReleaseMutex((void *)g_h1022AF30);
+        br_os_release((void *)g_h1022AF30);
 
         BrNetSlotSetF02C(i, 0);
 
@@ -667,9 +667,9 @@ void BrNetDropMatching(int key)
 void BrNetSetF10220DD0(void)
 
 {
-  WaitForSingleObject((void *)DAT_1021ce4c,0xffffffff);
+  br_os_wait((void *)DAT_1021ce4c, 0xffffffff);
   DAT_1021c900 = 1;
-  ReleaseMutex((void *)DAT_1021ce4c);
+  br_os_release((void *)DAT_1021ce4c);
   return;
 }
 
@@ -683,9 +683,9 @@ void BrNetSetF10220DD0(void)
 void BrNetClearF10220DD0(void)
 
 {
-  WaitForSingleObject((void *)DAT_1021ce4c,0xffffffff);
+  br_os_wait((void *)DAT_1021ce4c, 0xffffffff);
   DAT_1021c900 = 0;
-  ReleaseMutex((void *)DAT_1021ce4c);
+  br_os_release((void *)DAT_1021ce4c);
   return;
 }
 
@@ -704,12 +704,12 @@ void BrNetCheckDeadline(void)
 {
   unsigned int uVar1;
   
-  WaitForSingleObject((void *)DAT_1021c81c,0xffffffff);
+  br_os_wait((void *)DAT_1021c81c, 0xffffffff);
   uVar1 = BrTicks30FromMs();
   if (uVar1 >= (unsigned int)(*(int *)&DAT_10226a30)) {
     (*(int *)&g_brRaceTick) = 1;
   }
-  ReleaseMutex((void *)DAT_1021c81c);
+  br_os_release((void *)DAT_1021c81c);
   return;
 }
 
@@ -730,9 +730,9 @@ int BrNetSlotGetF02C(int param_1)
 {
   int uVar1;
   
-  WaitForSingleObject((HANDLE)g_aBrNetSlot[param_1].hMutex,0xffffffff);
+  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   uVar1 = g_aBrNetSlot[param_1].f02C;
-  ReleaseMutex((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
   return uVar1;
 }
 

@@ -109,13 +109,13 @@ extern "C" int BrVidModeListFill(void)
         hz  = pM->hz;
 
         if (hz != 0) {
-            wsprintfA(sz, DAT_100ad740, w, h, zd, hz);
+            sprintf(sz, DAT_100ad740, w, h, zd, hz);
             if (DAT_10b71a48 == w && DAT_10b71a4c == h
                 && DAT_10b71a50 == zd && DAT_10b71a54 == hz) {
                 goto take;
             }
         } else {
-            wsprintfA(sz, DAT_100ad730, w, h, zd);
+            sprintf(sz, DAT_100ad730, w, h, zd);
             if (DAT_10b71a48 == w && DAT_10b71a4c == h
                 && DAT_10b71a50 == zd) {
 take:

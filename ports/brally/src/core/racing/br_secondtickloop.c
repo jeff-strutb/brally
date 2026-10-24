@@ -39,7 +39,7 @@ void BrSecondTickLoop(void)
       BrNetPeerSendPass(&g_brP277B40);
       DAT_11849ea8 = DAT_11849ea8 + 1000;
     }
-    Sleep(DAT_11849ea8 - DAT_1184c070);
+    br_os_sleep(DAT_11849ea8 - DAT_1184c070);
   } while( 1 );
 }
 

@@ -49,9 +49,9 @@ void BrNetSendFlush(void)
     uint32_t flag;
 
     /* Orig: WaitForSingleObject(h, INFINITE); reload h; load flag; ReleaseMutex(h). */
-    WaitForSingleObject(g_brH221324, 0xffffffffu);
+    br_os_wait(g_brH221324, 0xffffffffu);
     flag = (uint32_t)(*(int32_t *)&DAT_102265d8);
-    ReleaseMutex(g_brH221324);
+    br_os_release(g_brH221324);
     if (flag == 0) {
         return;
     }

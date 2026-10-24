@@ -44,15 +44,7 @@ static int s_fSuspended;
  * MSG is the frame: `sub esp,0x1c` is exactly one of them, and the three
  * `lea` displacements (0x1c / 0x18 / 0x10 at three different esp values) all
  * resolve to it. */
-typedef struct BrPoint { int32_t x, y; } BrPoint;
-typedef struct BrMsg {
-    void    *hwnd;          /* +0x00 */
-    uint32_t message;       /* +0x04 */
-    uint32_t wParam;        /* +0x08 */
-    int32_t  lParam;        /* +0x0C */
-    uint32_t time;          /* +0x10 */
-    BrPoint  pt;            /* +0x14 */
-} BrMsg;                    /* 0x1C */
+typedef BrOsMsg BrMsg;      /* the original's MSG, 0x1C bytes there */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* the game window */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* nCmdShow, stashed by RallyMain */
@@ -77,24 +69,21 @@ void BrMainLoopRun(void)
 {
     BrMsg msg;
 
-    ShowWindow((*(void * *)&g_brOwner5BC72C), (*(int32_t *)&s_args.nCmdShow));      /* 0x10019744 */
-    UpdateWindow((*(void * *)&g_brOwner5BC72C));                  /* 0x10019751 */
-    SetFocus((*(void * *)&g_brOwner5BC72C));                      /* 0x1001975D */
+    br_os_window_show((*(void * *)&g_brOwner5BC72C), (*(int32_t *)&s_args.nCmdShow));      /* 0x10019744 */
 
     if ((*(int32_t *)&DAT_1007b074) == 2) {                     /* 0x10019763 */
         BrWindowEarStartup((*(void * *)&g_brOwner5BC72C));        /* 0x10019773, cdecl */
     }
 
     for (;;) {
-        /* 0x10019793: PM_NOREMOVE -- the queue is only peeked here. */
-        if (PeekMessageA(&msg, NULL, 0, 0, 0) != 0) {
-            /* 0x100197B1: zero is WM_QUIT, and the loop ends without
-             * running a frame. */
-            if (GetMessageA(&msg, NULL, 0, 0) == 0) {
+        /* 0x10019793: the queue is only peeked here. */
+        if (br_os_peek(&msg) != 0) {
+            /* 0x100197B1: zero is the quit message, and the loop ends
+             * without running a frame. */
+            if (br_os_get(&msg) == 0) {
                 return;
             }
-            TranslateMessage(&msg);              /* 0x100197BC */
-            DispatchMessageA(&msg);              /* 0x100197C3 */
+            br_os_dispatch(&msg);              /* 0x100197C3 */
             continue;
         }
 
@@ -106,6 +95,6 @@ void BrMainLoopRun(void)
             continue;
         }
 
-        WaitMessage();                           /* 0x100197ED -- BLOCK */
+        br_os_wait_message();                           /* 0x100197ED -- BLOCK */
     }
 }

@@ -76,7 +76,7 @@ int BrSub1003C260(void)
         if (hr >= 0) {
             memset(szName, 0, sizeof(szName));
             cbName = 0xC8;
-            GetUserNameA(szName, &cbName);
+            br_os_user_name(szName, &cbName);
 
             hr = BrDpSessionJoin(g_brP277B40, aJoin, szName, g_brPA9D008);
             if (hr == (int)0x88770820) {
@@ -300,15 +300,15 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     memset(&cred, 0, sizeof(cred));
     cred.dwSize  = sizeof(cred);
     cred.dwFlags = 0;
-    if (lstrlenA(pLogin->szUser) != 0) {
+    if (br_os_strlen(pLogin->szUser) != 0) {
         pCred = &cred;
         cred.lpszUsername = pLogin->szUser;
     }
-    if (lstrlenA(pLogin->szPass) != 0) {
+    if (br_os_strlen(pLogin->szPass) != 0) {
         pCred = &cred;
         cred.lpszPassword = pLogin->szPass;
     }
-    if (lstrlenA(pLogin->szDomain) != 0) {
+    if (br_os_strlen(pLogin->szDomain) != 0) {
         pCred = &cred;
         cred.lpszDomain = pLogin->szDomain;
     }

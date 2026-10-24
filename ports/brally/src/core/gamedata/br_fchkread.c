@@ -75,10 +75,8 @@ int BrFChkFRead(void *pDst, size_t size, size_t count, FILE **ppFile)
         return 1;
     }
 
-    wsprintfA(buf,
-              "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n",
-              (int)wanted, (int)((uint32_t)got * (uint32_t)size));
-    OutputDebugStringA(buf);
+    sprintf(buf, "FCHK_FRead(): trying to read %d bytes, but got only %d bytes.\n", (int)wanted, (int)((uint32_t)got * (uint32_t)size));
+    br_os_debug(buf);
     exit(1);
 
     return 1;   /* the original falls through to the `mov eax,1` tail */

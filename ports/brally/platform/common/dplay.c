@@ -298,7 +298,7 @@ static void signal_all(void)
     int i;
     for (i = 0; i < MAXP; i++)
         if (s_pl[i].used && s_pl[i].local && s_pl[i].event)
-            SetEvent(s_pl[i].event);
+            br_os_set(s_pl[i].event);
 }
 
 static void sys_msg(int kind, const player *p)
@@ -334,7 +334,7 @@ static void deliver(DPID from, DPID to, const void *data, int n)
             memcpy(m->data, data, (size_t)n);
         inbox_add(m);
         if (p->event)
-            SetEvent(p->event);
+            br_os_set(p->event);
     }
 }
 

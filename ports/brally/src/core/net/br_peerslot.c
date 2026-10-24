@@ -52,9 +52,9 @@ uint32_t BrSub100714D0(int index)
     /* GOTCHA: the original reloads hMutex for ReleaseMutex rather than
      * reusing the wait's handle, so the three field accesses stay as three
      * indexings of the global. Caching the handle would drop a load. */
-    WaitForSingleObject((*(void * *)&(&g_aBrPeer71[index])->hMutex), (unsigned long)-1);
+    br_os_wait((*(void * *)&(&g_aBrPeer71[index])->hMutex), (unsigned long)-1);
     v = (*(int32_t *)&(&g_aBrPeer71[index])->f02C);
-    ReleaseMutex((*(void * *)&(&g_aBrPeer71[index])->hMutex));
+    br_os_release((*(void * *)&(&g_aBrPeer71[index])->hMutex));
     return v;
 }
 
@@ -95,10 +95,10 @@ int32_t BrSub10071510(int32_t i)
     void    *h;
     int32_t  v;
 
-    WaitForSingleObject(g_aBr178FEF8[i][i].hMutex, (unsigned long)-1);
+    br_os_wait(g_aBr178FEF8[i][i].hMutex, (unsigned long)-1);
     h = g_aBr178FEF8[i][i].hMutex;
     v = g_aBr178FEF8[i][i].f02C;
-    ReleaseMutex(h);
+    br_os_release(h);
     return v;
 }
 
@@ -176,8 +176,8 @@ int32_t BrNetPeerSendPass(void **ppDp)
     for (i = 0; i < 16; i++) {
         h[0] = g_hBrSndWake86;
         h[1] = (*(void * *)&(&g_aBrPeer71[i])->hMutex);
-        if (WaitForMultipleObjects(2, h, 0, (unsigned long)-1) == 0)
-            ExitThread(0);
+        if (br_os_wait_many(2, h, 0, (unsigned long)-1) == 0)
+            br_os_thread_exit(0);
         /* `and ecx,0x3f; cmp cl,1; jl` -- a SIGNED compare, so the status word
          * is an int here (br_peer.c's `cmp cl,5; jge` is the same shape). */
         if (((*(int32_t *)&(&g_aBrPeer71[i])->f02C) & 0x3F) >= 1) {
@@ -194,7 +194,7 @@ int32_t BrNetPeerSendPass(void **ppDp)
                 }
             }
         }
-        ReleaseMutex((*(void * *)&(&g_aBrPeer71[i])->hMutex));
+        br_os_release((*(void * *)&(&g_aBrPeer71[i])->hMutex));
     }
     return result;
 }

@@ -83,15 +83,15 @@ int BrNetSendCarState(void *pState)
         pSlot = &g_aBrNetSlot[id];
         h[0] = g_hBrNetMutex;
         h[1] = (*(void * *)&((BrNetSlot *)(pSlot))->hMutex);
-        WaitForMultipleObjects(2, h, 1, 0xFFFFFFFF);
+        br_os_wait_many(2, h, 1, 0xFFFFFFFF);
         g_brNetPktTick = BrTicks30FromMs();
         if (++(*(int *)&((BrNetSlot *)(pSlot))->f55C) >= 8)
             (*(int *)&((BrNetSlot *)(pSlot))->f55C) = 0;
         (*(int (*)[8])&((BrNetSlot *)(pSlot))->f00C)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = g_brNetPktTick;
         (*(int (*)[8])&((BrNetSlot *)(pSlot))->f038)[(*(int *)&((BrNetSlot *)(pSlot))->f55C)] = 0x40;
         (*(CarStateBlob *)&((BrNetSlot *)(pSlot))->cars[pSlot->f55C]) = *(const CarStateBlob *)pState;
-        ReleaseMutex((*(void * *)&((BrNetSlot *)(pSlot))->hMutex));
-        ReleaseMutex(g_hBrNetMutex);
+        br_os_release((*(void * *)&((BrNetSlot *)(pSlot))->hMutex));
+        br_os_release(g_hBrNetMutex);
     }
     {
         Pkt pkt;

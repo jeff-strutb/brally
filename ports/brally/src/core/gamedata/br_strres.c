@@ -71,7 +71,7 @@ void BrStrResLoad(void)
     g_brStrResSize = BrChkFileSize(pFile);
     BrChkFClose(pFile);
 
-    hModule = LoadLibraryA(BR_STRRES_PATH);
+    hModule = br_os_strings_open(BR_STRRES_PATH);
     if (hModule == NULL)
         return;
 
@@ -79,7 +79,7 @@ void BrStrResLoad(void)
     g_pBrStrResBlob = (char *)malloc(g_brStrResSize);
     if (g_pBrStrResBlob != NULL) {
         for (id = 1; id < 0x12F; id++) {
-            int n = LoadStringA(hModule, id, g_pBrStrResBlob + g_brStrResUsed,
+            int n = br_os_string(hModule, id, g_pBrStrResBlob + g_brStrResUsed,
                                 g_brStrResSize - g_brStrResUsed);
             if (n != 0) {
                 g_apBrStrTable[id] = g_pBrStrResBlob + g_brStrResUsed;
@@ -87,7 +87,7 @@ void BrStrResLoad(void)
             }
         }
     }
-    FreeLibrary(hModule);
+    br_os_strings_close(hModule);
 }
 
 /* ==========================================================================

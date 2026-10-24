@@ -274,8 +274,6 @@ int32_t BrAppFrame(void)
  * because those headers give them the PORT's ops-table signatures. What the
  * original's bytes need is the original's: no arguments, direct calls. */
 /* BrStrGet: prototype in br_funcs.h */
-/* BrDxDetect: prototype in br_funcs.h */
-/* BrAppCheckPreviousApp: prototype in br_funcs.h */
 /* BrMemoryQuery: prototype in br_funcs.h */
 /* BrBaseDirInit: prototype in br_funcs.h */
 /* BrStrResLoad: prototype in br_funcs.h */
@@ -301,47 +299,23 @@ typedef struct BrCfgPathArg { const char *psz; } BrCfgPathArg;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* The three imports the original calls through the IAT. dllimport is what
- * produces `call dword ptr [__imp__...]` rather than a linker thunk. */
-/* 64-bit core: CoInitialize is declared by the platform headers */
-/* 64-bit core: CoUninitialize is declared by the platform headers */
-/* 64-bit core: MessageBoxA is declared by the platform headers */
 
 int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
                     const char *pszCmdLine, int32_t nCmdShow)
 {
-    int32_t dxVersion;
-    int32_t dxPlatform;
     BrCfgPathArg path;
 
     (DAT_105ccb68[22]) = 0;                       /* 0x1001CC03 */
 
-    /* 0x1001CC11..0x1001CC19. Failure jumps STRAIGHT to the CoUninitialize
-     * tail, skipping even the argument stores -- hence the wrapped body
-     * rather than an early return. */
-    if (CoInitialize(NULL) >= 0) {
+    /* The original started COM here and checked for DirectX 6, and refused
+     * to run beside another copy of itself (BrAppCheckPreviousApp); the
+     * port needs neither and runs as one process of its own. */
+    {
         s_args.hInstance     = hInstance;      /* 0x1001CC2F */
         s_args.hPrevInstance = hPrevInstance;  /* 0x1001CC34 */
         s_args.pszCmdLine    = pszCmdLine;     /* 0x1001CC44 */
         s_args.nCmdShow      = nCmdShow;       /* 0x1001CC4A */
 
-        BrDxDetect(&dxVersion, &dxPlatform);   /* 0x1001CC50 */
-
-        /* 0x1001CC5C is `jae`, i.e. UNSIGNED -- load-bearing, see br_boot.h. */
-        if ((uint32_t)dxVersion < (uint32_t)BR_APP_MIN_DXVERSION) {
-            /* 0x1001CC63. Pushes are uType, caption, text, hWnd, so the TEXT
-             * is 0x128 and the CAPTION is 0x126. */
-            MessageBoxA(NULL, BrStrGet(BR_APP_STR_DX_TEXT),
-                        BrStrGet(BR_APP_STR_DX_CAPTION), 0x10);
-            return 0;                          /* 0x1001CC89 xor eax,eax */
-        }
-
-        /* 0x1001CC91. Returns WITHOUT CoUninitialize -- the original really
-         * does leak the apartment on this one path, and eax is already zero
-         * from the test, so there is no `xor` here. */
-        if (BrAppCheckPreviousApp() == 0) {
-            return 0;
-        }
 
         BrMemoryQuery();                       /* 0x1001CCA0 */
         BrBaseDirInit();                       /* 0x1001CCA5 */
@@ -365,6 +339,5 @@ int32_t BrRallyMain(void *hInstance, void *hPrevInstance,
         }
     }
 
-    CoUninitialize();                          /* 0x1001CD33 */
     return (DAT_105ccb68[22]);                    /* 0x1001CD39 */
 }

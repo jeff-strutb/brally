@@ -80,8 +80,8 @@ int BrDPlayCreate(void)
   int iVar4;
   char local_400[1024];
 
-  lstrcpyA((LPSTR)&g_aBrA9CDF0, (LPCSTR)&g_aBr39B720);
-  lstrcpyA((LPSTR)&DAT_10ac3f88, (LPCSTR)&g_aBr39B720);
+  strcpy((LPSTR)&g_aBrA9CDF0, (LPCSTR)&g_aBr39B720);
+  strcpy((LPSTR)&DAT_10ac3f88, (LPCSTR)&g_aBr39B720);
   memset(&DAT_10b71aa0, 0, 32);
   memset(&DAT_10b71ac0, 0, 64);
   for (i = 0; i < 16; i++) {
@@ -133,7 +133,7 @@ int BrDPlayCreate(void)
         return 0;
       }
     }
-    DAT_10ac306c = SetTimer((HWND)g_brOwner5BC72C, 1, 1000, (TIMERPROC)0x0);
+    DAT_10ac306c = br_os_timer((HWND)g_brOwner5BC72C, 1, 1000);
     g_guardA = 1;
   }
   return 1;
@@ -163,7 +163,7 @@ void BrExt_1003BF60(void)
 
 {
   BrSub100586A0();
-  KillTimer(g_brOwner5BC72C,DAT_10ac306c);
+  br_os_timer_kill(g_brOwner5BC72C, DAT_10ac306c);
   if (g_host != 0) {
     BrSndThreadStop();
   }
@@ -202,7 +202,7 @@ void FUN_10035660(void)
   BrNetShutdown();
   BrGlobalFreeAll();
   sprintf(local_104,s_DirectPlay_interface_final_insta_100aa514,DAT_10ac4094);
-  OutputDebugStringA(local_104);
+  br_os_debug(local_104);
   if (DAT_10ac3068 != (int *)0x0) {
     (*(CC_std_1 *)&((void **)*(void ***)((DAT_10ac3068)))[2])(DAT_10ac3068);
   }
@@ -236,7 +236,7 @@ void FUN_100356b0(void)
   
   pAddr = 0;
   cbAddr = 0;
-  KillTimer(g_brOwner5BC72C,DAT_10ac306c);
+  br_os_timer_kill(g_brOwner5BC72C, DAT_10ac306c);
   BrDpShutdown();
   iVar1 = BrDpAddressBuild(&pAddr,&cbAddr);
   if (pAddr != 0) {
@@ -247,13 +247,13 @@ void FUN_100356b0(void)
       if ((DAT_10ac5bd4 != 2) && (DAT_10ac5bd4 != 3)) {
         if ((g_brPAA29D4 != 0) && (iVar1 = BrNetEnumSessionsStart((*(int * *)&g_brP277B40)), iVar1 < 0))
         goto LAB_100357b5;
-        DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+        DAT_10ac306c = br_os_timer(g_brOwner5BC72C, 1, 1000);
         g_guardA = 1;
       }
       if (DAT_1027332c != (HANDLE)0x0) {
         return;
       }
-      DAT_1027332c = CreateEventA((LPSECURITY_ATTRIBUTES)0x0,0,0,(LPCSTR)0x0);
+      DAT_1027332c = br_os_event(0, 0);
       if (DAT_1027332c != (HANDLE)0x0) {
         return;
       }
@@ -318,7 +318,7 @@ int BrTimerStart1003C230(void)
 
 {
   FUN_100356b0();
-  DAT_10ac306c = SetTimer(g_brOwner5BC72C,1,1000,(TIMERPROC)0x0);
+  DAT_10ac306c = br_os_timer(g_brOwner5BC72C, 1, 1000);
   g_guardA = 1;
   return 1;
 }
@@ -501,14 +501,14 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
       uVar5 = strlen(DAT_10ac3f88);
       if (1 < uVar5) {
         aElem[1].g = DAT_100789b8;
-        aElem[1].cb = lstrlenA(DAT_10ac3f88) + 1;
+        aElem[1].cb = br_os_strlen(DAT_10ac3f88) + 1;
         aElem[1].pv = DAT_10ac3f88;
         iVar6 = 2;
       }
       pcVar7 = g_aBrA9CDF0;
       if (pcVar7 != 0) {
         aElem[iVar6].g = DAT_10078998;
-        iVar3 = lstrlenA(g_aBrA9CDF0);
+        iVar3 = br_os_strlen(g_aBrA9CDF0);
         aElem[iVar6].cb = iVar3 + 1;
         aElem[iVar6].pv = g_aBrA9CDF0;
         iVar6 = iVar6 + 1;
@@ -520,17 +520,17 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
       aElem[0].pv = DAT_10078878;
       uVar5 = strlen(DAT_10b71ac0);
       if (uVar5 <= 1) {
-        lstrcpyA(DAT_10b71ac0, g_aBr39B720);
+        strcpy(DAT_10b71ac0, g_aBr39B720);
       }
       aElem[1].g = DAT_100789d8;
-      aElem[1].cb = lstrlenA(DAT_10b71ac0) + 1;
+      aElem[1].cb = br_os_strlen(DAT_10b71ac0) + 1;
       aElem[1].pv = DAT_10b71ac0;
       uVar5 = strlen(DAT_10b71aa0);
       if (uVar5 <= 1) {
-        lstrcpyA(DAT_10b71aa0, g_aBr39B720);
+        strcpy(DAT_10b71aa0, g_aBr39B720);
       }
       aElem[2].g = DAT_100789f8;
-      aElem[2].cb = lstrlenA(DAT_10b71aa0) + 1;
+      aElem[2].cb = br_os_strlen(DAT_10b71aa0) + 1;
       aElem[2].pv = DAT_10b71aa0;
       iVar6 = 3;
     }

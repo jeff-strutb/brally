@@ -87,10 +87,10 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
     strcpy((char *)lpString, g_szBrName4DB0);
     result = FUN_10036a30((struct BrDPlayObj *)param_2->pDP, (int)param_2->idPlayer, lpString, &local_4, param_3);
     if (result >= 0) {
-      PostMessageA(param_1, 0x501, 0, (LPARAM)local_4);
+      br_os_post(param_1, 0x501, 0, (LPARAM)local_4);
       local_4 = 0;
       {
-        int n = lstrlenA(lpString);
+        int n = br_os_strlen(lpString);
         n += 8;
         hMem = calloc(1, n);
         pMem = hMem;
@@ -99,7 +99,7 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
         }
         else {
           *pMem = (param_3 != 0) + 0x60000000;
-          lstrcpyA((LPSTR)(pMem + 1), lpString);
+          strcpy((LPSTR)(pMem + 1), lpString);
           result = BrDPlayRawSend((void *)param_2->pDP, (int)param_2->idPlayer, 0, 1, pMem, n);
         }
       }
@@ -177,12 +177,12 @@ int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOI
         if (lpName == 0) {
             lpName = "unknown";
         }
-        hMem = calloc(1, lstrlenA(param_3) + lstrlenA(lpFormat) + 1 + lstrlenA(lpName));
+        hMem = calloc(1, br_os_strlen(param_3) + br_os_strlen(lpFormat) + 1 + br_os_strlen(lpName));
         pBuf = hMem;
         if (pBuf == 0) {
             hr = 0x8007000e;
         } else {
-            wsprintfA(pBuf, lpFormat, lpName, param_3);
+            sprintf(pBuf, lpFormat, lpName, param_3);
             *param_4 = pBuf;
         }
     }
@@ -407,7 +407,7 @@ char *FUN_100372b0(int hr)
   }
   return "DPERR_LOGONDENIED";
 unknown:
-  wsprintfA(DAT_10ac3070, "0x%08X", hr);
+  sprintf(DAT_10ac3070, "0x%08X", hr);
   return DAT_10ac3070;
 }
 

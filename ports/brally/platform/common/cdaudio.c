@@ -20,7 +20,7 @@ static void cd_end(void *user)
 {
     (void)user;
     if (s_notify)
-        PostMessageA((HWND)s_notify, CD_ENDED, 1, CD_DEVICE);
+        br_os_post((HWND)s_notify, CD_ENDED, 1, CD_DEVICE);
 }
 
 int br_cd_open(uint32_t *pDevice, uint32_t *pLast)

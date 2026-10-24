@@ -36,22 +36,22 @@ void FUN_1006a330(void)
     DAT_117b3250 = 0;
     DAT_11849e58 = 0;
     for (i = 0; i < 16; i++) {
-        WaitForSingleObject(g_aBrPeer71[i].hMutex, 0xffffffff);
+        br_os_wait(g_aBrPeer71[i].hMutex, 0xffffffff);
         g_aBrPeer71[i].f95C = 0;
         g_aBrPeer71[i].f960 = 0;
         g_aBrPeer71[i].f964 = 0;
         g_aBrPeer71[i].f968 = 0;
         g_aBrPeer71[i].f02C = 0;
-        ReleaseMutex(g_aBrPeer71[i].hMutex);
+        br_os_release(g_aBrPeer71[i].hMutex);
         for (j = 0; j < 16; j++) {
-            WaitForSingleObject(g_aBr178FEF8[j][i].hMutex, 0xffffffff);
+            br_os_wait(g_aBr178FEF8[j][i].hMutex, 0xffffffff);
             g_aBr178FEF8[j][i].f008 = DAT_117b324c;
             g_aBr178FEF8[j][i].f95C = 0;
             g_aBr178FEF8[j][i].f960 = 0;
             g_aBr178FEF8[j][i].f964 = 0;
             g_aBr178FEF8[j][i].f968 = 0;
             g_aBr178FEF8[j][i].f02C = 0;
-            ReleaseMutex(g_aBr178FEF8[j][i].hMutex);
+            br_os_release(g_aBr178FEF8[j][i].hMutex);
         }
     }
 }

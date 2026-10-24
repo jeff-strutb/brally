@@ -176,11 +176,11 @@ int BrSndThreadStop(void)
 
 {
   if ((*(int *)&g_fBrSndThread86) != 0) {
-    SetEvent(g_hBrSndWake86);
-    WaitForSingleObject(g_hBrSndThread86,0xffffffff);
-    CloseHandle(g_hBrSndThread86);
+    br_os_set(g_hBrSndWake86);
+    br_os_wait(g_hBrSndThread86, 0xffffffff);
+    br_os_close(g_hBrSndThread86);
     g_hBrSndThread86 = (HANDLE)0x0;
-    CloseHandle(g_hBrSndWake86);
+    br_os_close(g_hBrSndWake86);
     g_hBrSndWake86 = (HANDLE)0x0;
     (*(int *)&g_fBrSndThread86) = 0;
   }

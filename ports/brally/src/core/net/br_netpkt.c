@@ -49,11 +49,11 @@ void BrNetPktStamp(void *pPkt)
     BrPktU24Arg tick;
 
     BrObjClear(pPkt);
-    WaitForSingleObject(g_hBrNetMutex, 0xffffffff);
+    br_os_wait(g_hBrNetMutex, 0xffffffff);
     g_brNetPktTick = BrTicks30FromMs();
     tick.v = (unsigned int)g_brNetPktTick;
     BrBitStreamWriteU24(pPkt, tick.v);
-    ReleaseMutex(g_hBrNetMutex);
+    br_os_release(g_hBrNetMutex);
 }
 
 /* 0x1006B080 */

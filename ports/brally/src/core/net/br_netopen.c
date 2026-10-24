@@ -73,7 +73,7 @@ int BrNetOpenAnnounce(void)
             if (BrSub10075020() >= t0 + 2000) {
                 break;
             }
-            Sleep(0);
+            br_os_sleep(0);
         }
     }
     return result;

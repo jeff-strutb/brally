@@ -22,7 +22,7 @@ void *BrMutexCreateAA0A0(void)
 
     g_br18A9878 = 0;
     g_br18AA098 = 0;
-    h = CreateMutexA(0, 0, 0);
+    h = br_os_mutex(0);
     g_br18AA0A0 = h;
     return h;
 }
@@ -36,6 +36,6 @@ void BrMutexCloseAA0A0(void)
     h = g_br18AA0A0;
     g_br18A9878 = 0;
     g_br18AA098 = 0;
-    (void)CloseHandle(h);
+    (void)br_os_close(h);
     g_br18AA0A0 = NULL;
 }

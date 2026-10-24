@@ -67,7 +67,7 @@ void BrLogFatalPrintf(const char *pFmt, ...)
 /* @implements 0x100590A0 glide BrMsgBoxAA */
 void BrMsgBoxAA(void *hWnd, int unused, const char *pText)
 {
-    MessageBoxA(hWnd, pText, BrStrGet(0xaa), 0);
+    br_os_message_box(pText, BrStrGet(0xaa));
 }
 
 
@@ -87,7 +87,7 @@ void FUN_100378c0(int iErr)
 
   if (iErr <= 8) {
     pText = BrStrGet(DAT_100abe00[iErr].idText);
-    MessageBoxA((void *)g_brOwner5BC72C, pText + 1, BrStrGet(0xaa), 0);
+    br_os_message_box(pText + 1, BrStrGet(0xaa));
     if (DAT_100abe00[iErr].fFatal != 0) {
       exit(1);
     }

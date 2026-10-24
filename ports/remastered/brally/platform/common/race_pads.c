@@ -27,7 +27,7 @@
 /* the app's (ports/remastered/platform/controls.h) */
 void rm_player_drive(int player, const unsigned char *dik, const host_pad *pad, unsigned short *buttons,
                      int *sx, int *sy);
-extern uint8_t g_plat_dik[256];         /* win_user.c: scan codes held down */
+extern uint8_t g_plat_dik[256];         /* br_os_window.c: scan codes held down */
 void plat_script_autopilot_want(int driver, int *want);   /* script_game.c (checks) */
 
 static int s_on;

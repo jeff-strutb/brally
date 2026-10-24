@@ -36,10 +36,10 @@ int __stdcall BrSub1003D850(const void *pGuid, unsigned dwDataSize,
     char *p = pList;
 
     if (memcmp(pGuid, (*(unsigned char (*)[16])&DAT_100789b8), 16) == 0) {
-        if (lstrlenA(p) != 0) {
+        if (br_os_strlen(p) != 0) {
             do {
-                p += lstrlenA(p) + 1;
-            } while (lstrlenA(p) != 0);
+                p += br_os_strlen(p) + 1;
+            } while (br_os_strlen(p) != 0);
         }
     }
     return 1;

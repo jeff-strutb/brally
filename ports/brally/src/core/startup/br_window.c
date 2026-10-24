@@ -82,38 +82,17 @@ static int32_t s_cEarStartupBodies;
  * This is 0x10019670: the instance-handle copy at 0x1001967B, both Win32
  * calls and the 0x1001971E return are all here, and the WNDCLASSA/
  * CreateWindowExA argument block is filled by BrWindowDescribe above. */
-/* WHAT IT DOES: makes the game's main window. It asks the window system to
- * learn about the game's window class and then to create the window itself,
- * and reports whether one came back. It does not remember the window: the
- * window's own message handler does that when it is told the window exists. */
-#include <windows.h>
+/* WHAT IT DOES: makes the game's main window, at the game's resolution,
+ * with BrWndProc handling what happens to it, and reports whether one came
+ * back. It does not remember the window: the window's own handler does that
+ * when it is told the window exists. */
 
 /* @implements 0x10019670 glide BrWindowCreate */
 int BrWindowCreate(void)
 {
-    WNDCLASSA wc;
-    void     *hInst = (*(void * *)&s_args);
-    HWND      hWnd;
-
-
-    g_brhInstance2 = hInst;
-
-    wc.style         = 3;
-    wc.lpfnWndProc   = (WNDPROC)BrWndProc;
-    wc.cbClsExtra    = 0;
-    wc.cbWndExtra    = 0;
-    wc.hInstance     = (HINSTANCE)hInst;
-    wc.hIcon         = LoadIconA((HINSTANCE)hInst, (LPCSTR)0x65);
-    wc.hCursor       = LoadCursorA(NULL, (LPCSTR)0x7F00);
-    wc.hbrBackground = (HBRUSH)GetStockObject(4);
-    wc.lpszMenuName  = "BossRally";
-    wc.lpszClassName = "BossRally";
-    RegisterClassA(&wc);
-
-    hWnd = CreateWindowExA(0x40000, "BossRally", "Boss Rally", 0x80C20000u,
-                           0, 0, (*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518),
-                           NULL, NULL, (HINSTANCE)(*(void * *)&s_args), NULL);
-    return hWnd != NULL;
+    g_brhInstance2 = (*(void * *)&s_args);
+    return br_os_window_open(BrWndProc, (*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518),
+                             "Boss Rally") != NULL;
 }
 
 /* ================================================================== *
@@ -163,7 +142,7 @@ int32_t BrWindowEarStartup(void *hWnd)
         return 1;
 
     if (BrEarLoad(DAT_100a74fc) == 0) {
-        MessageBoxA((HWND)hWnd, BrStrGet(0xFE), BrStrGet(0xFD), 0x10);
+        br_os_message_box(BrStrGet(0xFE), BrStrGet(0xFD));
         exit(1);
         /* VC5 has no noreturn: the original falls through into the
          * validate call, and so does this. */
@@ -173,8 +152,7 @@ int32_t BrWindowEarStartup(void *hWnd)
     (*(int (**)(void *))&DAT_104b1634)(hWnd);
     if ((*(int (**)(int))&DAT_104b1668)(0) == 0) {
         if ((*(int (**)(void))&DAT_104b166c)() == 3) {
-            MessageBoxA((HWND)hWnd, BrStrGet(0x12E), BrStrGet(0xFD),
-                        0x10);
+            br_os_message_box(BrStrGet(0x12E), BrStrGet(0xFD));
             exit(1);
         } else {
             (*(int (**)(void))&DAT_104b1650)();

@@ -75,9 +75,9 @@ void BrNetPeerPump(void)
     for (i = 0; i < BR_PEERS; i++) {
         h1[0] = (HANDLE)g_hBrSndWake86;
         h1[1] = g_aBrPeer71[i].hMutex;
-        wr = WaitForMultipleObjects(2, h1, 0, 0xffffffff);
+        wr = br_os_wait_many(2, h1, 0, 0xffffffff);
         if (wr == 0) {
-            ExitThread(0);
+            br_os_thread_exit(0);
         }
         st = g_aBrPeer71[i].f02C & 0x3f;
         if (st >= 1) {
@@ -90,16 +90,16 @@ void BrNetPeerPump(void)
                     BrPeerRec *pj = &g_aBrPeer71[j];
                     h2[0] = (HANDLE)g_hBrSndWake86;
                     h2[1] = pj->hMutex;
-                    wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+                    wr = br_os_wait_many(2, h2, 0, 0xffffffff);
                     if (wr == 0) {
-                        ExitThread(0);
+                        br_os_thread_exit(0);
                     }
                     /* The second wait reuses the SAME pair; only the mutex
                      * slot is replaced. */
                     h2[1] = g_aBr178FEF8[i][j].hMutex;
-                    wr = WaitForMultipleObjects(2, h2, 0, 0xffffffff);
+                    wr = br_os_wait_many(2, h2, 0, 0xffffffff);
                     if (wr == 0) {
-                        ExitThread(0);
+                        br_os_thread_exit(0);
                     }
                     st2 = pj->f02C;
                     id = pj->f030;
@@ -112,13 +112,13 @@ void BrNetPeerPump(void)
                         g_aBr178FEF8[i][j].f02C = st2;
                         changed = 0;
                     }
-                    ReleaseMutex(g_aBr178FEF8[i][j].hMutex);
+                    br_os_release(g_aBr178FEF8[i][j].hMutex);
                     if (changed) {
                         BrNetWritePlayerRec((unsigned char *)&g_aBrPeerMsg[i], j, st2, id,
                                             b4, b5, b6, name,
                                             pj->f004);
                     }
-                    ReleaseMutex(pj->hMutex);
+                    br_os_release(pj->hMutex);
                 }
             }
             BrNetWriteTag20((unsigned char *)&g_aBrPeerMsg[i], i);
@@ -135,9 +135,9 @@ void BrNetPeerPump(void)
                     if (i != k) {
                         h3[0] = (HANDLE)g_hBrSndWake86;
                         h3[1] = g_aBrPeer71[k].hMutex;
-                        wr = WaitForMultipleObjects(2, h3, 0, 0xffffffff);
+                        wr = br_os_wait_many(2, h3, 0, 0xffffffff);
                         if (wr == 0) {
-                            ExitThread(0);
+                            br_os_thread_exit(0);
                         }
                         if ((g_aBrPeer71[k].f02C & 0x3f) >= 1 &&
                             BrNetWriteTagC0((unsigned char *)&g_aBrPeerMsg[i], k,
@@ -145,13 +145,13 @@ void BrNetPeerPump(void)
                                           g_aBrPeer71[k].f964) == 0) {
                             k = BR_PEERS;
                         }
-                        ReleaseMutex(h3[1]);
+                        br_os_release(h3[1]);
                     }
                 }
             }
             }
         }
-        ReleaseMutex(g_aBrPeer71[i].hMutex);
+        br_os_release(g_aBrPeer71[i].hMutex);
     }
     if (didAny == 0) {
         DAT_117b3250 = 0;
