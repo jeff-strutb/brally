@@ -1,7 +1,7 @@
 /* audio.c: the sound the platform plays -- one output, two sources.
  *
  *   the mixer  the host's output, started on first use; each block is the
- *              DirectSound buffers (dsound.c) plus the CD
+ *              game's sounds (br_snd.c) plus the CD
  *   the CD     the disc's audio tracks, decoded by the host from the files
  *              host_music_dir() names (track02.flac ...), played the way a
  *              drive plays: from a track, on through to a last track, then
@@ -23,8 +23,8 @@
 
 #define OUT_RATE 44100
 
-void plat_dsound_mix(float *lr, int n);          /* dsound.c: adds into lr */
-int  plat_dsound_live(void);
+void br_snd_mix(float *lr, int n);              /* br_snd.c: adds into lr */
+int  br_snd_live(void);
 
 /* ---- the mixer ------------------------------------------------------------------- */
 static int s_out;                                /* -1 failed, 0 not tried, 1 running */
@@ -34,7 +34,7 @@ static void mix(float *lr, int n, void *user)
 {
     (void)user;
     memset(lr, 0, (size_t)n * 2 * sizeof *lr);
-    plat_dsound_mix(lr, n);
+    br_snd_mix(lr, n);
     cd_mix(lr, n);
     {   /* BR_LOG: once a second, what is sounding and how loud */
         static int acc;
@@ -43,7 +43,7 @@ static void mix(float *lr, int n, void *user)
             float pk = 0;
             for (i = 0; i < 2 * n; i++)
                 pk = fabsf(lr[i]) > pk ? fabsf(lr[i]) : pk;
-            PLOG("audio: %d buffers, cd track %d, peak %.3f\n", plat_dsound_live(), plat_cd_current(), pk);
+            PLOG("audio: %d buffers, cd track %d, peak %.3f\n", br_snd_live(), plat_cd_current(), pk);
             acc = 0;
         }
     }

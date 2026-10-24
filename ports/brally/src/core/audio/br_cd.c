@@ -81,8 +81,8 @@ int BrCdMciPause(void)
             int media = g_220C3C;
             g_220CD8 = 1;
             if (media) {
-                if (mciSendCommandA((unsigned long)g_220C40, 0x809u, 0, 0)) {
-                    mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+                if (br_cd_pause()) {
+                    br_cd_close();
                     return 0;
                 }
             }
@@ -311,8 +311,8 @@ static int BrCdStopMsg(void)
 static int BrCdMciStop(void)
 {
   if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
-    if (mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0)) {
-      mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+    if (br_cd_stop()) {
+      br_cd_close();
       return 0;
     }
   }
@@ -418,19 +418,19 @@ static int BrCdStopReleaseMsg(void)
  * @t4-pass 0x100030B0 2 2026-09-07 probes 9 bytes 105 insns 43 regions 1 rows 1 census no */
 static int BrCdStopReleaseMci(void)
 {
-  MCIERROR e1, e2;
+  int e1, e2;
   int r;
 
   if (DAT_1007b074 == 0) {
     return 1;
   }
   g_220CD0 = g_220CD0 - 1;
-  e1 = mciSendCommandA((unsigned long)g_220C40, 0x808u, 0, 0);
+  e1 = br_cd_stop();
   r = (e1 ? -1 : 0) + 1;
   if (g_220CD0 != 0) {
     return r;
   }
-  e2 = mciSendCommandA((unsigned long)g_220C40, 0x804u, 0, 0);
+  e2 = br_cd_close();
   return ~(e2 ? -1 : 0) & r;
 }
 
@@ -581,11 +581,7 @@ int FUN_10002980(char * param_1)
 
 {
   unsigned int _Seed;
-  MCIERROR MVar1;
-  MCI_STATUS_PARMS status;
-  MCI_SET_PARMS setp;
-  MCI_OPEN_PARMS open;
-  CHAR buf[1024];
+  uint32_t device, last;
 
   if ((DAT_1007b074 != 0) && (g_220CD0 = g_220CD0 + 1, g_220CD0 == 1)) {
     DAT_1021c77c = param_1;
@@ -596,28 +592,13 @@ int FUN_10002980(char * param_1)
     g_brCdTrackLast = 0;
     g_220CD8 = 0;
     g_220C3C = 0;
-    open.lpstrDeviceType = s_cdaudio_1007b094;
-    MVar1 = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE, (DWORD_PTR)&open);
-    if (MVar1 != 0) {
+    /* the "cdaudio" drive, its positions in tracks, and how many it has */
+    if (br_cd_open(&device, &last) != 0) {
       return 0;
     }
-    g_220C40 = open.wDeviceID;
-    setp.dwTimeFormat = MCI_FORMAT_TMSF;
-    MVar1 = mciSendCommandA(open.wDeviceID, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD_PTR)&setp);
-    if (MVar1 != 0) {
-      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
-      return 0;
-    }
-    status.dwItem = MCI_STATUS_NUMBER_OF_TRACKS;
-    MVar1 = mciSendCommandA(g_220C40, MCI_STATUS, MCI_STATUS_ITEM | MCI_WAIT, (DWORD_PTR)&status);
-    if (MVar1 != 0) {
-      wsprintfA(buf, s_MCI_STATUS_returned__d_1007b07c, MVar1);
-      OutputDebugStringA(buf);
-      mciSendCommandA(g_220C40, MCI_CLOSE, 0, 0);
-      return 0;
-    }
+    g_220C40 = device;
     g_brCdTrackFirst = 2;
-    g_brCdTrackLast = status.dwReturn;
+    g_brCdTrackLast = last;
     g_220C3C = 1;
   }
   return 1;
@@ -638,15 +619,8 @@ int FUN_10002980(char * param_1)
 int FUN_100027e0(void)
 
 {
-  /* the original's stack block is an MCI_STATUS_PARMS: item 8 is
-   * MCI_STATUS_CURRENT_TRACK, the answer comes back in dwReturn */
-  MCI_STATUS_PARMS st;
-
   if (((DAT_1007b074 != 0) && (g_220CD0 != 0)) && (g_220C3C != 0)) {
-    memset(&st, 0, sizeof st);
-    st.dwItem = 8;
-    mciSendCommandA(g_220C40,0x814,0x100,(DWORD_PTR)&st);
-    return (int)st.dwReturn;
+    return br_cd_track();           /* the track playing */
   }
   return 0;
 }
@@ -660,20 +634,16 @@ int FUN_100027e0(void)
 /* @implements 0x10002870 glide FUN_10002870 */
 /* auto-filed from ghidra --refine; transforms: stackshred */
 
-MCIERROR FUN_10002870(HWND param_1,unsigned char param_2)
+int FUN_10002870(HWND param_1,unsigned char param_2)
 
 {
-  MCIERROR MVar1;
-  /* an MCI_PLAY_PARMS: notify the window, from the track, to the last */
-  MCI_PLAY_PARMS play;
+  int rc;
 
-  play.dwFrom = param_2 & 0xff;
-  play.dwTo = g_brCdTrackLast & 0xff;
-  play.dwCallback = (DWORD_PTR)param_1;
-  MVar1 = mciSendCommandA(g_220C40,0x806,0xd,(DWORD_PTR)&play);
-  if (MVar1 != 0) {
-    mciSendCommandA(g_220C40,0x804,0,0);
-    return MVar1;
+  /* notify the window, from the track, to the last */
+  rc = br_cd_play((void *)param_1, param_2 & 0xff, g_brCdTrackLast & 0xff);
+  if (rc != 0) {
+    br_cd_close();
+    return rc;
   }
   return 0;
 }

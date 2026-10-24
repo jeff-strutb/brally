@@ -2029,7 +2029,7 @@ BR_BLOCK_AT(1184C080, DAT_1184c260, 0x1E0);  /* 0x1184C260 */
 BR_GLOBAL_EXTENT(struct BrSndVoice *, g_apBrSfxChanVoice, [15], 0x4);  /* 0x1184C268 */
 BrSndVoice g_BrSndPrimary;  /* 0x1184C2A8 */
 int g_184C454;  /* 0x1184C454 */
-LPDIRECTSOUND BrSndPDS;  /* 0x1184C458 */
+void *BrSndPDS;  /* 0x1184C458, the sound output (br_snd_open) */
 void *BrSndG18290FC;  /* 0x1184C45C */
 BR_BLOCK(1184C460, 0x20, 0x20028);  /* 0x1184C460 */
 BR_BLOCK_AT(1184C460, g_BrEnvTexLookup, 0x20);  /* 0x1184C460: env-map texture id per section */

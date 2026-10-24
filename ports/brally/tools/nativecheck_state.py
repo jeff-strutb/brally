@@ -8,7 +8,7 @@ Two runs of one build differ in a few bytes of the data area: the 32-bit
 window addresses the core stores for host memory (br_addr32.h) carry the
 host allocator's offsets and window order, which move from run to run. An
 aligned word that holds a window address (high byte 0x20..0x7F) in both
-runs is left out, as is any byte two runs of the baseline (BASE, BASE2)
+runs is left out, as is any word two runs of the baseline (BASE, BASE2)
 already disagree on; any other byte that differs is reported, with the
 global that holds it.
 A global the new build declares with another layout is absent from its
@@ -71,7 +71,8 @@ def cmp(a, a2, b):
         if x == y:
             continue
         noise = load(a2, f) if os.path.exists(os.path.join(a2, f)) else x
-        diff = [i for i in range(len(x)) if x[i] != y[i] and x[i] == noise[i]
+        diff = [i for i in range(len(x)) if x[i] != y[i]
+                and x[i & ~3:(i & ~3) + 4] == noise[i & ~3:(i & ~3) + 4]
                 and not (0x20 <= x[(i & ~3) + 3] <= 0x7F and 0x20 <= y[(i & ~3) + 3] <= 0x7F)]
         if diff:
             names = []

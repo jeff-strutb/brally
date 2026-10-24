@@ -284,7 +284,7 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
     char            *pVt;
     int              hr;
     DWORD            dwFlags;
-    HGLOBAL          h;
+    void *          h;
 
     if (pDp == NULL)
         return (int)0x88770082;         /* DPERR_INVALIDOBJECT */
@@ -352,20 +352,14 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                     (*(DWORD *)&DAT_10ac5d58) = (*(DWORD *)&g_226e80);
                     memcpy(DAT_10ac40a8, pDesc->lpszSessionName,
                            sizeof(DAT_10ac40a8));
-                    h = GlobalHandle(pDesc);
-                    GlobalUnlock(h);
-                    h = GlobalHandle(pDesc);
-                    GlobalFree(h);
+                    free(pDesc);
                     return 0;
                 }
             }
         }
     }
     if (pDesc != NULL) {
-        h = GlobalHandle(pDesc);
-        GlobalUnlock(h);
-        h = GlobalHandle(pDesc);
-        GlobalFree(h);
+        free(pDesc);
     }
     return hr;
 }
@@ -451,7 +445,7 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
     DWORD          local_8;
     DWORD          uStack_4;
     DPLCONNECTION *pMem;
-    HGLOBAL        pvVar3;
+    void *        pvVar3;
     int            iVar2;
     unsigned int   uVar4;
     int            flag;
@@ -465,8 +459,8 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
     if (iVar2 >= 0) {
         iVar2 = BR_VFN(local_c, DPL3_GetConnectionSettings, BrLobGetConn)(local_c, 0, 0, &local_8);
         if (iVar2 == (int)0x8877001e) {
-            pvVar3 = GlobalAlloc(0x42, local_8);
-            pMem = (DPLCONNECTION *)GlobalLock(pvVar3);
+            pvVar3 = calloc(1, local_8);
+            pMem = (DPLCONNECTION *)pvVar3;
             if (pMem == NULL) {
                 iVar2 = (int)0x8007000e;
             } else {
@@ -517,10 +511,7 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
         BR_VFN(local_c, DPL3_Release, BrComRel)(local_c);
     }
     if (pMem != NULL) {
-        pvVar3 = GlobalHandle(pMem);
-        GlobalUnlock(pvVar3);
-        pvVar3 = GlobalHandle(pMem);
-        GlobalFree(pvVar3);
+        free(pMem);
     }
     return iVar2;
 }

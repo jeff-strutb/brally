@@ -6841,7 +6841,7 @@ extern int g_184C454;  /* 0x1184C454 */
 #pragma pop_macro("g_184C454")
 #pragma push_macro("BrSndPDS")
 #undef BrSndPDS
-extern LPDIRECTSOUND BrSndPDS;  /* 0x1184C458 */
+extern void *BrSndPDS;  /* 0x1184C458, the sound output (br_snd_open) */
 #pragma pop_macro("BrSndPDS")
 #pragma push_macro("BrSndG18290FC")
 #undef BrSndG18290FC

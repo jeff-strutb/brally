@@ -172,8 +172,7 @@ int BrOpt3810(GameObj *pGame)
             }
         }
         if (pDesc != 0) {
-            GlobalUnlock(GlobalHandle(pDesc));
-            GlobalFree(GlobalHandle(pDesc));
+            free(pDesc);
         }
     }
 

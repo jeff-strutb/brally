@@ -73,77 +73,8 @@ typedef struct BrCollPlane {
 } BrCollPlane;
 
 /* ------------------------------------------------------------------ */
-/* DirectSound interface models                                        */
+/* The sound a voice plays (br_snd.h)                                 */
 /* ------------------------------------------------------------------ */
-
-#include "br_match.h"   /* BR_STDCALL */
-
-typedef struct BrDSBuffer BrDSBuffer;
-typedef struct BrDSound   BrDSound;
-
-/* sizeof(DSBUFFERDESC) == 0x14; the original hardcodes that in dwSize. */
-typedef struct BrDSBufferDesc {
-    uint32_t dwSize;
-    uint32_t dwFlags;
-    uint32_t dwBufferBytes;
-    uint32_t dwReserved;
-    void    *lpwfxFormat;
-} BrDSBufferDesc;
-
-/* sizeof(DSBCAPS) == 0x14. Only dwFlags is read back. */
-typedef struct BrDSBCaps {
-    uint32_t dwSize;
-    uint32_t dwFlags;
-    uint32_t dwBufferBytes;
-    uint32_t dwUnlockTransferRate;
-    uint32_t dwPlayCpuOverhead;
-} BrDSBCaps;
-
-/* Buffer creation flags the original passes (0x100722D0). */
-#define BR_DSBCAPS_LOCHARDWARE   0x00000004u
-#define BR_DSBSTATUS_PLAYING     0x00000001u
-#define BR_DSBVOLUME_MIN         (-10000)
-#define BR_SND_DESC_FLAGS        0x000100E2u   /* pVoice->f28 == 0 */
-#define BR_SND_DESC_FLAGS_ALT    0x000140E2u   /* pVoice->f28 != 0 */
-
-typedef struct BrDSBufferVtbl {
-    void   *QueryInterface;                                     /* +0x00 */
-    void   *AddRef;                                             /* +0x04 */
-    int32_t (BR_STDCALL *Release)(BrDSBuffer *);                           /* +0x08 */
-    int32_t (BR_STDCALL *GetCaps)(BrDSBuffer *, BrDSBCaps *);              /* +0x0C */
-    void   *GetCurrentPosition;                                 /* +0x10 */
-    void   *GetFormat;                                          /* +0x14 */
-    void   *GetVolume;                                          /* +0x18 */
-    void   *GetPan;                                             /* +0x1C */
-    void   *GetFrequency;                                       /* +0x20 */
-    int32_t (BR_STDCALL *GetStatus)(BrDSBuffer *, uint32_t *);             /* +0x24 */
-    void   *Initialize;                                         /* +0x28 */
-    int32_t (BR_STDCALL *Lock)(BrDSBuffer *, uint32_t, uint32_t,
-                    void **, uint32_t *, void **, uint32_t *,
-                    uint32_t);                                  /* +0x2C */
-    int32_t (BR_STDCALL *Play)(BrDSBuffer *, uint32_t, uint32_t, uint32_t);/* +0x30 */
-    int32_t (BR_STDCALL *SetCurrentPosition)(BrDSBuffer *, uint32_t);      /* +0x34 */
-    void   *SetFormat;                                          /* +0x38 */
-    int32_t (BR_STDCALL *SetVolume)(BrDSBuffer *, int32_t);                /* +0x3C */
-    int32_t (BR_STDCALL *SetPan)(BrDSBuffer *, int32_t);                   /* +0x40 */
-    int32_t (BR_STDCALL *SetFrequency)(BrDSBuffer *, uint32_t);            /* +0x44 */
-    int32_t (BR_STDCALL *Stop)(BrDSBuffer *);                              /* +0x48 */
-    int32_t (BR_STDCALL *Unlock)(BrDSBuffer *, void *, uint32_t,
-                      void *, uint32_t);                        /* +0x4C */
-    void   *Restore;                                            /* +0x50 */
-} BrDSBufferVtbl;
-
-struct BrDSBuffer { const BrDSBufferVtbl *pVtbl; };
-
-typedef struct BrDSoundVtbl {
-    void   *QueryInterface;                                     /* +0x00 */
-    void   *AddRef;                                             /* +0x04 */
-    void   *Release;                                            /* +0x08 */
-    int32_t (BR_STDCALL *CreateSoundBuffer)(BrDSound *, const BrDSBufferDesc *,
-                                 BrDSBuffer **, void *);        /* +0x0C */
-} BrDSoundVtbl;
-
-struct BrDSound { const BrDSoundVtbl *pVtbl; };
 
 /* ------------------------------------------------------------------ */
 /* The voice object                                                    */
@@ -157,7 +88,7 @@ struct BrDSound { const BrDSoundVtbl *pVtbl; };
  * f10/f14 are in the engine's own units where 400 is the neutral point:
  *   pan    = (f10 - 400) * 10   -> f10 in [0,800] gives DSBPAN  [-4000,4000]
  *   volume = (f14*master/255 - 400) * 10
- * Neither is clamped by the engine; DirectSound does the clamping. */
+ * Neither is clamped by the engine; br_snd does the clamping. */
 typedef struct BrSndVoice {
     void *pData;                             /* +0x0000 */
     uint32_t nDataBytes;                     /* +0x0004 */
@@ -171,19 +102,16 @@ typedef struct BrSndVoice {
     int32_t f24;                             /* +0x0024 */
     int32_t f28;                             /* +0x0028 */
     uint8_t _pad002C[0x70];
-    BrDSBuffer *pBuf;                        /* +0x009C */
+    BrSnd *pBuf;                             /* +0x009C  its sound (br_snd.h) */
     int32_t nameOff;                         /* +0x00A0  index just past the last '\' */
     char name[0x104];                        /* +0x00A4  the path it was loaded from */
     struct BrSndVoice *pNext;                /* +0x01A8 */
 } BrSndVoice;
 
-/* 0x1184C2A8: the primary buffer's record, a voice like the others; its
- * pNext heads the list of every loaded voice. The original also names its
- * fields as globals. */
+/* 0x1184C2A8: the original's primary buffer record, a voice like the
+ * others; its pNext heads the list of every loaded voice. */
 extern BrSndVoice g_BrSndPrimary;
 #define DAT_1184c2a8 (g_BrSndPrimary.pData)                                    /* 0x1184C2A8 */
-#define DAT_1184c2b0 (*(LPWAVEFORMATEX *)&g_BrSndPrimary.pFormat)              /* 0x1184C2B0 */
-#define DAT_1184c344 (*(LPDIRECTSOUNDBUFFER *)&g_BrSndPrimary.pBuf)            /* 0x1184C344 */
 
 /* ------------------------------------------------------------------ */
 /* Module globals                                                      */

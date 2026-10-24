@@ -67,7 +67,7 @@ int FUN_100371f0(BrDPlayCtx *param_1,int param_2,int param_3)
 
 int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
 {
-  HGLOBAL hMem;
+  void * hMem;
   LPCSTR lpString;
   int result;
   int *pMem;
@@ -78,8 +78,8 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
   if (param_2 == 0 || param_2->pDP == 0 || DAT_10ac5be4 != 0) {
     return 0;
   }
-  hMem = GlobalAlloc(0x42, 0xc9);
-  lpString = GlobalLock(hMem);
+  hMem = calloc(1, 0xc9);
+  lpString = hMem;
   if (lpString == 0) {
     result = 0x8007000e;
   }
@@ -92,8 +92,8 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
       {
         int n = lstrlenA(lpString);
         n += 8;
-        hMem = GlobalAlloc(0x42, n);
-        pMem = GlobalLock(hMem);
+        hMem = calloc(1, n);
+        pMem = hMem;
         if (pMem == 0) {
           result = 0x8007000e;
         }
@@ -106,16 +106,13 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
     }
   }
   if (lpString != 0) {
-    GlobalUnlock(GlobalHandle(lpString));
-    GlobalFree(GlobalHandle(lpString));
+    free(lpString);
   }
   if (local_4 != 0) {
-    GlobalUnlock(GlobalHandle(local_4));
-    GlobalFree(GlobalHandle(local_4));
+    free(local_4);
   }
   if (pMem != 0) {
-    GlobalUnlock(GlobalHandle(pMem));
-    GlobalFree(GlobalHandle(pMem));
+    free(pMem);
   }
   return result;
 }
@@ -159,7 +156,7 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
  * @t4-pass 0x10036A30 1 2026-09-06 probes 4 bytes 227 insns 86 regions 1 rows 1 census no */
 int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
 {
-    HGLOBAL hMem;
+    void * hMem;
     LPSTR pBuf;
     LPCSTR lpFormat;
     LPCSTR lpName;
@@ -180,8 +177,8 @@ int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOI
         if (lpName == 0) {
             lpName = "unknown";
         }
-        hMem = GlobalAlloc(0x42, lstrlenA(param_3) + lstrlenA(lpFormat) + 1 + lstrlenA(lpName));
-        pBuf = GlobalLock(hMem);
+        hMem = calloc(1, lstrlenA(param_3) + lstrlenA(lpFormat) + 1 + lstrlenA(lpName));
+        pBuf = hMem;
         if (pBuf == 0) {
             hr = 0x8007000e;
         } else {
@@ -190,8 +187,7 @@ int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOI
         }
     }
     if (local_4 != 0) {
-        GlobalUnlock(GlobalHandle(local_4));
-        GlobalFree(GlobalHandle(local_4));
+        free(local_4);
     }
     return hr;
 }

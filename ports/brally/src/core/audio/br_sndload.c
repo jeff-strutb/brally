@@ -1,8 +1,7 @@
 /* br_sndload.c -- audio.
  *
  * Loading one sample file into a fresh voice record: allocate the record,
- * keep the path it came from, read the WAV through WINMM, create its
- * DirectSound buffer, link it onto the device's voice list and apply the
+ * keep the path it came from, read the WAV, create its sound, link it onto the device's voice list and apply the
  * neutral level, the file's own rate and centre pan.
  *
  * Every function carries its original address.
@@ -13,7 +12,8 @@
 #include "slice1_08.h"
 #include <string.h>
 
-#include <windows.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /* The voice record, 0x1AC bytes, GlobalAlloc'd.  slice1_08.h's BrSndVoice
  * names the same fields with the same offsets; only what this file touches
@@ -57,8 +57,7 @@ BrSndLoadVoice *BrSndVoiceLoad(const char *pszPath)
     int32_t         info;
     char           *pSlash;
 
-    pVoice = (BrSndLoadVoice *)GlobalLock(
-        GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, sizeof(BrSndLoadVoice)));
+    pVoice = (BrSndLoadVoice *)calloc(1, sizeof(BrSndLoadVoice));
     if (pVoice == NULL)
         goto fail;
     pVoice->pData   = NULL;
@@ -83,15 +82,12 @@ fail:
         if (pVoice != NULL) {
             BrSndVoiceBufRelease(pVoice);
             if (pVoice->pFormat != NULL) {
-                GlobalUnlock(GlobalHandle(pVoice->pFormat));
-                GlobalFree(GlobalHandle(pVoice->pFormat));
+                free(pVoice->pFormat);
             }
             if (pVoice->pData != NULL) {
-                GlobalUnlock(GlobalHandle(pVoice->pData));
-                GlobalFree(GlobalHandle(pVoice->pData));
+                free(pVoice->pData);
             }
-            GlobalUnlock(GlobalHandle(pVoice));
-            GlobalFree(GlobalHandle(pVoice));
+            free(pVoice);
             pVoice = NULL;
         }
     } else {
@@ -111,271 +107,118 @@ fail:
 }
 
 /* ==========================================================================
- * 0x100701B0 -- the WINMM byte reader BrWavLoad uses for the sample data.
+ * 0x10070280 -- the RIFF/WAVE loader.
  * ========================================================================== */
-#include <mmsystem.h>
+static uint32_t rd32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
 
-/* WHAT IT DOES: reads up to n bytes of the current RIFF chunk into the
- * caller's buffer straight out of WINMM's I/O buffer, refilling it with
- * mmioAdvance as it empties, and takes what it read off the chunk's
- * remaining size.  Reports how many bytes it stored; a 0xE103 (end of
- * file) with nothing stored if the file ran out, or the WINMM error. */
-/* @t4-pass 0x100701B0 1 2026-09-07 probes 122 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x100701B0 2 2026-09-07 probes 92 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x100701B0 3 2026-09-07 probes 93 bytes 207 insns 85 regions 3 rows 1 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x100701B0 4 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census no  (hand, fn.py variants: copy/loop/guard/decl spellings, all inert or worse) */
-/* @t4-pass 0x100701B0 5 2026-09-09 probes 10 bytes 213 insns 86 regions 5 rows 4 census yes  (hand, fn.py variants: operand orders, casts, index forms, all inert; corpus query at +0xb0) */
-/* @t3 0x100701B0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 213/205 insns 86/84 rows 1+3 regions 5 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * residue is the EOF-block layout fork: the original lays the end-of-file
- * exit last and closes the loop with a bottom jb into mmioSetInfo; VC5
- * places it after the loop, turning the exit into jae/jmp (cancelled as
- * the either-or layout triple) and rematerialising the success zero
- * (xor singleton).  Dead list in the RESIDUE block below.
- * Do not reopen before the end-grind. */
-/* @implements 0x100701B0 glide BrWavReadData */
-unsigned int BrWavReadData(HMMIO hmmio, unsigned int n, char *pDst,
-                           MMCKINFO *pCk, unsigned int *pnRead)
+/* the chunk `id` among [pos, end) of the file's bytes: its data offset and
+ * size, or 0 (a chunk's data is padded to an even length) */
+static int wav_find(const uint8_t *f, uint32_t pos, uint32_t end, uint32_t id,
+                    uint32_t *pData, uint32_t *pSize)
 {
-    MMIOINFO     info;
-    unsigned int rc;
-    unsigned int left;
-    unsigned int i;
-
-    /* RESIDUE (T2, 8 B long, RAW 9+7, REGNORM 3+1): the end-of-file exit.
-     * The original lays that block LAST (0x100702B6) and closes the loop
-     * with a bottom `jb` falling into mmioSetInfo; VC5 puts it right after
-     * the loop, so the loop exit becomes `jae`/`jmp`, and it materialises
-     * the success return with `xor eax,eax` where the original returns
-     * mmioSetInfo's eax untouched.  PROBED AND DEAD, do not re-run: the EOF
-     * return inline in the loop, as a `goto` to a trailing label, the
-     * success `return rc` vs `return 0`, the fail arm as then-arm of the
-     * last test vs a trailing label, `if (rc == 0) {success}` first.
-     * What IS settled: the two unsigned tests are `n > left` and `n > 0`
-     * (`left < n` / `n != 0` encode `jae`/`jne` for the original's
-     * `jbe`/`jbe`); the fail arm is the THEN arm of the mmioSetInfo test
-     * with the two earlier failures jumping into it. */
-    rc = (mmioGetInfo(hmmio, &info, 0) != 0);
-    if (rc != 0) {
-        goto fail;
+    while (pos + 8 <= end) {
+        uint32_t size = rd32(f + pos + 4);
+        if (rd32(f + pos) == id) {
+            *pData = pos + 8;
+            *pSize = size;
+            return 1;
+        }
+        pos += 8 + ((size + 1) & ~1u);
     }
-    left = pCk->cksize;
-    if (n > left) {
-        n = left;
-    }
-    i = 0;
-    pCk->cksize = left - n;
-    if (n > 0) {
-        do {
-            if (info.pchNext == info.pchEndRead) {
-                rc = mmioAdvance(hmmio, &info, 0);
-                if (rc != 0) {
-                    goto fail;
-                }
-                if (info.pchNext == info.pchEndRead) {
-                    /* inline: VC5 hoists a `return` inside a loop to the
-                     * END of the function, which is where the original has
-                     * it; spelled as a `goto` to a trailing label the block
-                     * lands right after the loop instead */
-                    *pnRead = 0;
-                    return 0xe103;
-                }
-            }
-            pDst[i] = *info.pchNext++;
-            i++;
-        } while (i < n);
-    }
-    rc = mmioSetInfo(hmmio, &info, 0);
-    if (rc != 0) {
-fail:
-        *pnRead = 0;
-        return rc;
-    }
-    *pnRead = n;
-    return rc;          /* the zero mmioSetInfo left in eax, not a fresh 0 */
+    return 0;
 }
 
-/* ==========================================================================
- * 0x10070280 -- the RIFF/WAVE loader itself.
- * ========================================================================== */
-/* FUN_1006ffc0: prototype in br_funcs.h */
-/* BrWaveSeekData: prototype in br_funcs.h */
-
-/* WHAT IT DOES: loads a .WAV file for a voice: opens it and reads its
- * format block, seeks to the sample data, allocates a block for it and
- * reads it in, then closes the file.  Reports 0 with the byte count and
- * the format handed back; on any failure it frees whatever it had
- * allocated (the data block and the format block) and returns the error,
- * 0xE000 when the allocation itself failed.
- *
- * Two argument SLOTS are reused as locals, exactly as the original does:
- * the voice argument's slot holds the file handle once the voice pointer
- * has been copied out, and the format argument's slot receives the byte
- * count the reader hands back. */
-/* @t4-pass 0x10070280 1 2026-09-07 probes 89 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x10070280 2 2026-09-07 probes 100 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x10070280 3 2026-09-07 probes 84 bytes 227 insns 86 regions 4 rows 0 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x10070280 4 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census no  (hand, fn.py variants: copy-init order/statement forms, decl orders, literal spellings, all inert or worse) */
-/* @t4-pass 0x10070280 5 2026-09-09 probes 10 bytes 229 insns 86 regions 4 rows 0 census yes  (hand, fn.py variants: TU position sweep -- both other slots inert -- plus name-swap allocation-hint and cast respellings, all inert) */
-/* @t3 0x10070280 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 229/229 insns 86/86 rows 0+0 regions 4 oracle UNCLASSIFIED
- * @t3-effort passes 5 zero-movement 4 5
- * residue is register colouring only: the whole-body ebx/esi transposition
- * of the two argument copies (RAW 14+14, REGNORM 0+0, size-exact); the
- * dead list is in the RESIDUE block below plus the position/name-swap
- * sweep in pass 5.  Three crank census passes at the pre-fix numbers and
- * two hand passes at the current ones.
- * Do not reopen before the end-grind. */
+/* WHAT IT DOES: loads a .WAV file for a voice: checks it is a RIFF WAVE,
+ * reads its format block (the 16 bytes of a PCM one, and for any other
+ * format its cbSize and that many extra bytes) into a block of its own,
+ * then the sample data into a block hung off the voice.  Reports 0 with
+ * the byte count and the format handed back; on any failure it frees what
+ * it had allocated and returns the original's error: 0xE100 no such file,
+ * 0xE101 not a RIFF WAVE or a short format chunk, 0xE102 the file ends in
+ * the format, 0xE000 no memory, 0xE103 the file ends in the samples,
+ * 0x109 a chunk that is not there. */
 /* @implements 0x10070280 glide BrWavLoad */
 int32_t BrWavLoad(const char *pszPath, uint32_t *pnDataBytes,
                   int32_t *pInfo, uint32_t **ppFormat, BrSndLoadVoice *pVoice)
 {
-    BrSndLoadVoice *pv    = pVoice;
-    uint32_t      **ppFmt = ppFormat;
-    int32_t         rc;
-    MMCKINFO        ckData;
-    MMCKINFO        ckRiff;
-    /* The original keeps the open file in pVoice's argument slot and the
-     * byte count in ppFormat's: a pointer-sized slot that a 32-bit handle
-     * or count only half fills here, so each gets a local of its own. */
-    HMMIO           hmmio = 0;
-    unsigned int    nRead = 0;
+    FILE     *fp;
+    uint8_t  *f = NULL;
+    long      n;
+    uint32_t  size, riffEnd, fmtAt, fmtSize, dataAt, dataSize, extra = 0;
+    BrWavFmt *pFmt = NULL;
+    int32_t   rc;
 
     (void)pInfo;
-    /* RESIDUE (T2, 43 masked B, RAW 14+14, REGNORM 0+0, size-exact): the
-     * two register copies come out swapped -- the original holds the
-     * format pointer in ebx and the voice in esi, VC5 the reverse.  Every
-     * instruction is otherwise identical.  PROBED AND DEAD, do not re-run:
-     * declaration order of the two copies, the order of the two zeroing
-     * stores (+2 B), an allocation temp in place of re-reading pv->pData.
-     * What IS settled: every value read goes through the copies (taking
-     * `&pVoice`/`&ppFormat` pins the arguments to their slots, a parameter
-     * read is a reload); the cleanup is `if (rc != 0) {free} else {store
-     * count}` after ONE joined test, not a goto past it (that moves the
-     * count store to the end and the read arm out of line); the alloc
-     * failure threads straight to the cleanup. */
-    pv->pData    = 0;
-    *ppFmt       = 0;
-    *pnDataBytes = 0;
-    rc = FUN_1006ffc0(pszPath, &hmmio, (void **)ppFmt, &ckRiff);
-    if (rc == 0) {
-        rc = BrWaveSeekData(&hmmio, &ckData, &ckRiff);
-        if (rc == 0) {
-            pv->pData = GlobalAlloc(0, ckData.cksize);
-            if (pv->pData == 0) {
-                rc = 0xe000;
-            } else {
-                rc = BrWavReadData(hmmio, ckData.cksize,
-                                   (char *)pv->pData, &ckData, &nRead);
-            }
-        }
+    pVoice->pData = 0;
+    *ppFormat     = 0;
+    *pnDataBytes  = 0;
+    if ((fp = fopen(pszPath, "rb")) == NULL)
+        return 0xe100;
+    fseek(fp, 0, SEEK_END);
+    n = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    size = n > 0 ? (uint32_t)n : 0;
+    f = (uint8_t *)malloc(size ? size : 1);
+    if (f == NULL || fread(f, 1, size, fp) != size) {
+        fclose(fp);
+        free(f);
+        return 0xe100;
     }
+    fclose(fp);
+
+    rc = 0x109;                                 /* MMIOERR_CHUNKNOTFOUND */
+    if (size < 8)
+        goto done;
+    rc = 0xe101;
+    if (size < 12 || rd32(f) != 0x46464952 || rd32(f + 8) != 0x45564157)   /* "RIFF" ... "WAVE" */
+        goto done;
+    riffEnd = 8 + rd32(f + 4);
+    if (riffEnd > size)
+        riffEnd = size;
+    rc = 0x109;
+    if (!wav_find(f, 12, riffEnd, 0x20746d66, &fmtAt, &fmtSize))          /* "fmt " */
+        goto done;
+    rc = 0xe101;
+    if (fmtSize < BR_WAV_FMT_PCM_BYTES)
+        goto done;
+    rc = 0xe102;
+    if (fmtAt + BR_WAV_FMT_PCM_BYTES > size)
+        goto done;
+    if ((f[fmtAt] | f[fmtAt + 1] << 8) != 1) {                            /* not PCM: cbSize follows */
+        if (fmtAt + BR_WAV_FMT_PCM_BYTES + 2 > size)
+            goto done;
+        extra = (uint32_t)(f[fmtAt + 16] | f[fmtAt + 17] << 8);
+    }
+    rc = 0xe000;
+    if ((pFmt = (BrWavFmt *)malloc(sizeof(BrWavFmt) + extra)) == NULL)
+        goto done;
+    memcpy(pFmt, f + fmtAt, BR_WAV_FMT_PCM_BYTES);
+    pFmt->cbSize = (uint16_t)extra;
+    rc = 0xe101;
+    if (extra != 0) {
+        if (fmtAt + BR_WAV_FMT_PCM_BYTES + 2 + extra > size)
+            goto done;
+        memcpy(pFmt + 1, f + fmtAt + BR_WAV_FMT_PCM_BYTES + 2, extra);
+    }
+    rc = 0x109;
+    if (!wav_find(f, 12, riffEnd, 0x61746164, &dataAt, &dataSize))        /* "data" */
+        goto done;
+    rc = 0xe000;
+    if ((pVoice->pData = malloc(dataSize)) == NULL)
+        goto done;
+    rc = 0xe103;
+    if (dataAt + dataSize > size)
+        goto done;
+    memcpy(pVoice->pData, f + dataAt, dataSize);
+    rc = 0;
+    *ppFormat     = (uint32_t *)pFmt;
+    *pnDataBytes  = dataSize;
+done:
     if (rc != 0) {
-        if (pv->pData != 0) {
-            GlobalFree(pv->pData);
-            pv->pData = 0;
-        }
-        if (*ppFmt != 0) {
-            GlobalFree(*ppFmt);
-            *ppFmt = 0;
-        }
-    } else {
-        *pnDataBytes = nRead;
+        free(pVoice->pData);
+        pVoice->pData = 0;
+        free(pFmt);
     }
-    if (hmmio != 0) {
-        mmioClose(hmmio, 0);
-    }
+    free(f);
     return rc;
-}
-
-
-
-
-/* WaveOpenFile (DX5 wave.c, CSE'd PCM/extra alloc). Ghidra shredded
- * PCMWAVEFORMAT into 4 ints so mmioRead's HPSTR was only known to touch
- * the first dword: /O2 frame 0x18 vs orig 0x24. cbExtraBytes lives in
- * the dead pszFileName slot. Success returns the mmioAscend result, not
- * a fresh 0; cleanup nulls hmmio then stores it. */
-/* WHAT IT DOES: open a .WAV file and get it ready to read -- walks the RIFF
- * chunks, checks it really is PCM audio, hands back the format description
- * and leaves the file positioned at the start of the samples. */
-/* @implements 0x1006FFC0 glide FUN_1006ffc0 */
-MMRESULT FUN_1006ffc0(const char *param_1,HMMIO *param_2,void **param_3,LPMMCKINFO param_4)
-
-{
-  void **piVar1;
-  LPMMCKINFO pmmckiParent;
-  HMMIO hmmio;
-  LONG LVar2;
-  int *puVar3;
-  unsigned int uVar4;
-  MMRESULT MVar5;
-  PCMWAVEFORMAT pcmWaveFormat;
-  MMCKINFO local_14;
-  
-  *param_3 = 0;
-  hmmio = mmioOpenA((LPSTR)param_1,(LPMMIOINFO)0x0,0x10000);
-  pmmckiParent = param_4;
-  if (hmmio == 0) {
-    MVar5 = 0xe100;
-    goto LAB_10070133;
-  }
-
-    MVar5 = mmioDescend(hmmio,param_4,(MMCKINFO *)0x0,0);
-    if (MVar5 == 0) {
-      if ((pmmckiParent->ckid == 0x46464952) && (pmmckiParent->fccType == 0x45564157)) {
-        local_14.ckid = 0x20746d66;
-        MVar5 = mmioDescend(hmmio,&local_14,pmmckiParent,0x10);
-        if (MVar5 != 0) goto LAB_10070133;
-        if (local_14.cksize >= sizeof(PCMWAVEFORMAT)) {
-          LVar2 = mmioRead(hmmio,(HPSTR)&pcmWaveFormat,sizeof(PCMWAVEFORMAT));
-          if (LVar2 != (LONG)sizeof(PCMWAVEFORMAT)) {
-            MVar5 = 0xe102;
-            goto LAB_10070133;
-          }
-          if (pcmWaveFormat.wf.wFormatTag == WAVE_FORMAT_PCM) {
-            param_1 = (LPSTR)0x0;
-          }
-          else {
-            LVar2 = mmioRead(hmmio,(HPSTR)&param_1,2);
-            if (LVar2 != 2) {
-              MVar5 = 0xe102;
-              goto LAB_10070133;
-            }
-          }
-          puVar3 = GlobalAlloc(0,((unsigned int)param_1 & 0xffff) + sizeof(WAVEFORMATEX));
-          *param_3 = puVar3;
-          if (puVar3 == (int *)0x0) {
-            MVar5 = 0xe000;
-            goto LAB_10070133;
-          }
-          *(PCMWAVEFORMAT *)puVar3 = pcmWaveFormat;
-          *(short *)((char *)*param_3 + 0x10) = (short)param_1;
-          if (((short)param_1 == 0) ||
-             (uVar4 = mmioRead(hmmio,(HPSTR)((char *)*param_3 + 0x12),(unsigned int)param_1 & 0xffff),
-             uVar4 == ((unsigned int)param_1 & 0xffff))) {
-            MVar5 = mmioAscend(hmmio,&local_14,0);
-            if (MVar5 != 0) goto LAB_10070133;
-            goto TEMPCLEANUP;
-
-          }
-        }
-      }
-      MVar5 = 0xe101;
-    }
-  
-LAB_10070133: ;
-  piVar1 = param_3;
-  if ((HGLOBAL)*param_3 != (HGLOBAL)0x0) {
-    GlobalFree((HGLOBAL)*param_3);
-    *piVar1 = 0;
-  }
-  if (hmmio != (HMMIO)0x0) {
-    mmioClose(hmmio,0);
-    hmmio = (HMMIO)0x0;
-  }
-TEMPCLEANUP:
-  *param_2 = hmmio;
-  return MVar5;
 }

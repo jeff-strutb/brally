@@ -58,7 +58,7 @@ int __stdcall BrNetEnumSessionCb(void *pv, void *pUnused, unsigned flags,
         pList->pVtbl->f10(pList, pDesc->lpszSessionNameA, kind, (int32_t)flags,
                           &(*(int *)&g_hot0), 1);
 
-        pMem = GlobalLock(GlobalAlloc(0x42u, 0x10u));
+        pMem = calloc(1, 0x10u);
         if (pMem == 0)
             return 1;
         memcpy(pMem, &pDesc->guidInstance, 0x10);

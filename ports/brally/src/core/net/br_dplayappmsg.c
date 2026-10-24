@@ -206,8 +206,7 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
                 PostMessageA(g_brOwner5BC72C, 0x501, 0, pText);
                 return;
             }
-            GlobalUnlock(GlobalHandle((LPCVOID)pText));
-            GlobalFree(GlobalHandle((LPCVOID)pText));
+            free((void *)pText);
             return;
         }
     } else if (pNet->f10 == 0) {

@@ -379,7 +379,7 @@ int FUN_10036740(void *param_1, void **param_2)
 {
   COM3 fn;
   int hr;
-  HGLOBAL hMem;
+  void * hMem;
   void *pMem;
   unsigned int size;
   
@@ -387,8 +387,8 @@ int FUN_10036740(void *param_1, void **param_2)
   fn = (COM3)(*(void ***)param_1)[0x58 / 4];   /* slot 22, GetSessionDesc */
   hr = fn(param_1, 0, &size);
   if (hr == (int)0x8877001e) {
-    hMem = GlobalAlloc(0x42, size);
-    pMem = GlobalLock(hMem);
+    hMem = calloc(1, size);
+    pMem = hMem;
     if (pMem == 0) {
       hr = (int)0x8007000e;
     }
@@ -401,10 +401,7 @@ int FUN_10036740(void *param_1, void **param_2)
     }
   }
   if (pMem != 0) {
-    hMem = GlobalHandle(pMem);
-    GlobalUnlock(hMem);
-    hMem = GlobalHandle(pMem);
-    GlobalFree(hMem);
+    free(pMem);
   }
   return hr;
 }
@@ -553,8 +550,8 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
     iVar2 = (*(BrDpCreateAddr5 *)(&((void **)vt)[0x38 / 4]))
                 (pObj, aElem, iVar6, 0, &local_50);
     if (iVar2 == (int)0x8877001e) {
-      pvVar4 = GlobalAlloc(0x42, local_50);
-      pMem = GlobalLock(pvVar4);
+      pvVar4 = calloc(1, local_50);
+      pMem = pvVar4;
       if (pMem == 0) {
         iVar2 = (int)0x8007000e;
       }
@@ -572,10 +569,7 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
     }
   }
   if (pMem != 0) {
-    pvVar4 = GlobalHandle(pMem);
-    GlobalUnlock(pvVar4);
-    pvVar4 = GlobalHandle(pMem);
-    GlobalFree(pvVar4);
+    free(pMem);
   }
   return iVar2;
 }
@@ -597,7 +591,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
 
 {
   int hr;
-  HGLOBAL hMem;
+  void * hMem;
   void *pMem;
   int size;
   void *pObj;
@@ -609,8 +603,8 @@ int FUN_10036f40(HWND param_1, void *param_2)
   size = 0;
   hr = (*(COM4 *)(&((void **)vt)[0x48 / 4]))(pObj, 0, 0, &size);
   if (hr == (int)0x8877001e) {
-    hMem = GlobalAlloc(0x42, (unsigned int)size);
-    pMem = GlobalLock(hMem);
+    hMem = calloc(1, (unsigned int)size);
+    pMem = hMem;
     if (pMem == 0) {
       hr = (int)0x8007000e;
     }
@@ -624,10 +618,7 @@ int FUN_10036f40(HWND param_1, void *param_2)
     }
   }
   if (pMem != 0) {
-    hMem = GlobalHandle(pMem);
-    GlobalUnlock(hMem);
-    hMem = GlobalHandle(pMem);
-    GlobalFree(hMem);
+    free(pMem);
   }
   return hr;
 }

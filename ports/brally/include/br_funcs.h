@@ -5265,14 +5265,6 @@ void BrVtxSwap(struct BrVtxSrc16 *, int);
 #undef BrWavLoad
 int BrWavLoad(const char *, unsigned int *, int *, unsigned int **, struct BrSndVoice *);
 #pragma pop_macro("BrWavLoad")
-#pragma push_macro("BrWavReadData")
-#undef BrWavReadData
-unsigned int BrWavReadData(struct HMMIO__ *, unsigned int, char *, struct _MMCKINFO *, unsigned int *);
-#pragma pop_macro("BrWavReadData")
-#pragma push_macro("BrWaveSeekData")
-#undef BrWaveSeekData
-int BrWaveSeekData(struct HMMIO__ **, struct _MMCKINFO *, struct _MMCKINFO *);
-#pragma pop_macro("BrWaveSeekData")
 #pragma push_macro("BrWeatherRandomiseParticles")
 #undef BrWeatherRandomiseParticles
 void BrWeatherRandomiseParticles(void);
@@ -5524,7 +5516,7 @@ int FUN_10002830(void);
 #pragma pop_macro("FUN_10002830")
 #pragma push_macro("FUN_10002870")
 #undef FUN_10002870
-unsigned int FUN_10002870(struct HWND__ *, unsigned char);
+int FUN_10002870(struct HWND__ *, unsigned char);
 #pragma pop_macro("FUN_10002870")
 #pragma push_macro("FUN_10002980")
 #undef FUN_10002980
@@ -5894,10 +5886,6 @@ int FUN_1006ec30(struct BrVec3 *, struct BrVec3 *, const struct BrVec3 *, unsign
 #undef FUN_1006ff50
 void FUN_1006ff50(char *);
 #pragma pop_macro("FUN_1006ff50")
-#pragma push_macro("FUN_1006ffc0")
-#undef FUN_1006ffc0
-unsigned int FUN_1006ffc0(const char *, struct HMMIO__ **, void **, struct _MMCKINFO *);
-#pragma pop_macro("FUN_1006ffc0")
 #pragma push_macro("FUN_100703d0")
 #undef FUN_100703d0
 int FUN_100703d0(void);

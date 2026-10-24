@@ -252,16 +252,6 @@ void BrSndBankSetCar(int iCar, int iName)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* The DirectSound buffer behind a voice, seen through the only slot this
- * file uses. The full interface lives in slice1_08.h, which cannot be
- * included here: it types BrSndPDS as BrDSound* where this block needs the
- * plain int the Ghidra bodies were transcribed against. */
-typedef struct BrSfxDSBuf BrSfxDSBuf;
-typedef struct BrSfxDSBufVtbl {
-    void   *aBefore[9];                                          /* +0x00 .. +0x20 */
-    int32_t (BR_STDCALL *GetStatus)(BrSfxDSBuf *, uint32_t *);   /* +0x24 */
-} BrSfxDSBufVtbl;
-struct BrSfxDSBuf { const BrSfxDSBufVtbl *pVtbl; };
 /* slice1_08.h's BrSndVoice up to pBuf, field for field (its header cannot
  * be included here, see above): the head holds pointers, so pBuf is not at
  * the original's +0x9C on a 64-bit host */
@@ -272,7 +262,7 @@ typedef struct BrSfxVoice {
     uint32_t    f0C;
     int32_t     f10, f14, f18, f1C, f20, f24, f28;
     uint8_t     pad2C[0x70];
-    BrSfxDSBuf *pBuf;                                /* +0x9C in the original */
+    BrSnd      *pBuf;                                /* +0x9C in the original */
 } BrSfxVoice;
 
 /* BrSndVoiceBufIsPlaying: prototype in br_funcs.h */
@@ -295,7 +285,7 @@ int BrSndVoiceIsPlaying(int param_1)
   return 1;
 }
 
-/* WHAT IT DOES: ask DirectSound whether this voice's buffer is actually
+/* WHAT IT DOES: ask the mixer whether this voice's sound is actually
  * playing right now. BrSndVoiceIsPlaying above does the bookkeeping -- sound
  * enabled, device up, slot occupied -- and this does the one device query.
  * A failed query reads as "not playing" rather than propagating an error. */
@@ -303,12 +293,7 @@ int BrSndVoiceIsPlaying(int param_1)
 
 int BrSndVoiceBufIsPlaying(BrSfxVoice *pVoice)
 {
-    uint32_t    status = 0;
-    BrSfxDSBuf *pBuf   = pVoice->pBuf;
-
-    if (pBuf->pVtbl->GetStatus(pBuf, &status) == 0)
-        return (status & 1) == 1;   /* DSBSTATUS_PLAYING */
-    return 0;
+    return br_snd_playing(pVoice->pBuf);
 }
 
 /* WHAT IT DOES: zero-initialize all entries in the sound-bank state arrays. */

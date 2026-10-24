@@ -1,7 +1,8 @@
-/* ear.c: the EAR "Interactive Around-Sound" engine the game loads by name
- * (earias.dll, earpds.dll). The game uses it for one thing that makes a
- * sound: the CD channel, its default music route (PlayMusic=2). That
- * channel plays the disc's tracks through audio.c:
+/* ear.c: the EAR "Interactive Around-Sound" engine (br_ear.h), which the
+ * original loaded as a DLL (earias.dll, earpds.dll) and the port links in.
+ * The game uses it for one thing that makes a sound: the CD channel, its
+ * default music route (PlayMusic=2). That channel plays the disc's tracks
+ * through audio.c:
  *
  *   RegisterChannel(ch, 6, volume, ?)  channel ch is the CD
  *   ChangeChannelControl(ch, cmd)      0x10000020 / 0x10000040 the first and
@@ -18,8 +19,9 @@
  * entry point is a working engine that makes no sound: registration and
  * start calls hand back a non-zero id, status queries report idle. */
 #include "plat.h"
+#include "br_ear.h"
 
-#define EAR(name, value) static INT_PTR ear_##name(void) { return value; }
+#define EAR(name, value) intptr_t br_ear_##name(void) { return value; }
 EAR(AAA_Validate, 1)
 EAR(InitializeEar, 1)
 EAR(GetLastError, 0)
@@ -36,18 +38,26 @@ EAR(MoveEvent, 1)
 EAR(StartTimer, 1)
 EAR(UpdateEar, 1)
 EAR(ResetEar, 1)
-EAR(Zero, 0)
+EAR(ShutDownTimer, 0)
+EAR(ShutDownPreset, 0)
+EAR(ShutDownMatrix, 0)
+EAR(ShutDownEvent, 0)
+EAR(ShutDownEnvironment, 0)
+EAR(ShutDownEar, 0)
+EAR(ShutDownChannel, 0)
+EAR(ShutDownBank, 0)
+EAR(SetUserDistanceUnit, 0)
 
 /* ---- the CD channel --------------------------------------------------------- */
 #define EAR_CD_EVENT   0x4544
 
-static HWND s_ear_hwnd;
-static INT_PTR s_cd_ch = -1;          /* the channel the game registered as the CD */
+static void *s_ear_hwnd;
+static intptr_t s_cd_ch = -1;          /* the channel the game registered as the CD */
 
-static INT_PTR WINAPI ear_AssignHwnd2(HWND h) { s_ear_hwnd = h; return 1; }
+intptr_t br_ear_AssignHwnd(void *h) { s_ear_hwnd = h; return 1; }
 
 /* (channel, type, volume, ?): the game numbers its channels itself */
-static INT_PTR WINAPI ear_RegisterChannel2(INT_PTR ch, INT_PTR type, INT_PTR vol, INT_PTR d)
+intptr_t br_ear_RegisterChannel(intptr_t ch, intptr_t type, intptr_t vol, intptr_t d)
 {
     (void)d;
     if (type == 6) {
@@ -57,7 +67,7 @@ static INT_PTR WINAPI ear_RegisterChannel2(INT_PTR ch, INT_PTR type, INT_PTR vol
     return 1;
 }
 
-static INT_PTR WINAPI ear_ChangeChannelControl2(INT_PTR ch, INT_PTR cmd)
+intptr_t br_ear_ChangeChannelControl(intptr_t ch, intptr_t cmd)
 {
     int first, last;
     if (ch != s_cd_ch)
@@ -79,11 +89,11 @@ static void ear_cd_end(void *user)
     if (!msg)
         msg = RegisterWindowMessageA("EAR Interactive Around-Sound");
     if (s_ear_hwnd)
-        PostMessageA(s_ear_hwnd, msg, (WPARAM)EAR_CD_EVENT, 2);
+        PostMessageA((HWND)s_ear_hwnd, msg, (WPARAM)EAR_CD_EVENT, 2);
 }
 
 /* the event block: +0x04 the track */
-static INT_PTR WINAPI ear_MixEvent2(const void *ev)
+intptr_t br_ear_MixEvent(const void *ev)
 {
     int track = ev ? *(const int32_t *)((const char *)ev + 4) : 0;
     if (track <= 0)
@@ -92,7 +102,7 @@ static INT_PTR WINAPI ear_MixEvent2(const void *ev)
     return EAR_CD_EVENT;
 }
 
-static INT_PTR WINAPI ear_ClearChannel2(INT_PTR ch, INT_PTR b)
+intptr_t br_ear_ClearChannel(intptr_t ch, intptr_t b)
 {
     (void)b;
     if (ch == s_cd_ch)
@@ -100,33 +110,9 @@ static INT_PTR WINAPI ear_ClearChannel2(INT_PTR ch, INT_PTR b)
     return 0;
 }
 
-static INT_PTR WINAPI ear_SetAttenuationLevel2(INT_PTR ch, INT_PTR level)
+intptr_t br_ear_SetAttenuationLevel(intptr_t ch, intptr_t level)
 {
     if (ch == s_cd_ch)
         plat_cd_volume((float)level / 10000.0f);
     return 0;
-}
-
-#define X(n, at, f) { "_EAR_DLL_" #n "@" #at, (void *)ear_##f }
-static const plat_export k_ear[] = {
-    X(AAA_Validate, 4, AAA_Validate), X(AssignHwnd, 4, AssignHwnd2),
-    X(InitializeEar, 4, InitializeEar), X(GetLastError, 0, GetLastError),
-    X(ShowLastError, 0, ShowLastError), X(GetVersion, 0, GetVersion),
-    X(EarInactive, 0, EarInactive), X(GetEventStatus, 8, GetEventStatus),
-    X(RegisterBank, 8, RegisterBank), X(RegisterChannel, 16, RegisterChannel2),
-    X(RegisterEnvironment, 4, RegisterEnvironment), X(RegisterMatrix, 4, RegisterMatrix),
-    X(RegisterPreset, 8, RegisterPreset), X(StartEvent, 4, StartEvent),
-    X(MixEvent, 4, MixEvent2), X(MoveEvent, 4, MoveEvent),
-    X(StartTimer, 0, StartTimer), X(UpdateEar, 0, UpdateEar), X(ResetEar, 0, ResetEar),
-    X(ShutDownTimer, 0, Zero), X(ShutDownPreset, 4, Zero), X(ShutDownMatrix, 4, Zero),
-    X(ShutDownEvent, 8, Zero), X(ShutDownEnvironment, 4, Zero), X(ShutDownEar, 0, Zero),
-    X(ShutDownChannel, 4, Zero), X(ShutDownBank, 4, Zero), X(SetUserDistanceUnit, 8, Zero),
-    X(SetAttenuationLevel, 8, SetAttenuationLevel2), X(ClearChannel, 8, ClearChannel2),
-    X(ChangeChannelControl, 8, ChangeChannelControl2),
-};
-
-void plat_ear_init(void)
-{
-    plat_register_module("earias.dll", k_ear, (int)(sizeof k_ear / sizeof k_ear[0]));
-    plat_register_module("earpds.dll", k_ear, (int)(sizeof k_ear / sizeof k_ear[0]));
 }

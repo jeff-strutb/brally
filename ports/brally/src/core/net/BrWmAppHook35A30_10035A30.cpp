@@ -57,8 +57,7 @@ int __stdcall BrWmAppHook35A30(char * hwnd, unsigned int msg, uintptr_t wp, intp
             BrTextList *pl = &((BrUiCtl_ *)(p))->list;
             pl->pVtbl->f10(pl, (const void *)lp, 0, 1, &g_selArg, 1);
         }
-        GlobalUnlock(GlobalHandle((LPCVOID)lp));
-        GlobalFree(GlobalHandle((LPCVOID)lp));
+        free((void *)lp);
         break;
     case 0x113:
         if (g_brPAA29D4)

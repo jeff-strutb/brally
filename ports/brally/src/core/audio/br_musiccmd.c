@@ -114,25 +114,15 @@ int BrSndBufFreeAll(BrSndVoice *param_1)
 {
   BrSndVoice *pMem;
   BrSndVoice *pNext;
-  HGLOBAL pvVar2;
 
   pMem = param_1->pNext;
   param_1->pNext = 0;
   while (pMem != 0) {
     BrSndVoiceBufRelease(pMem);
-    pvVar2 = GlobalHandle(pMem->pFormat);
-    GlobalUnlock(pvVar2);
-    pvVar2 = GlobalHandle(pMem->pFormat);
-    GlobalFree(pvVar2);
-    pvVar2 = GlobalHandle(pMem->pData);
-    GlobalUnlock(pvVar2);
-    pvVar2 = GlobalHandle(pMem->pData);
-    GlobalFree(pvVar2);
+    free(pMem->pFormat);
+    free(pMem->pData);
     pNext = pMem->pNext;
-    pvVar2 = GlobalHandle(pMem);
-    GlobalUnlock(pvVar2);
-    pvVar2 = GlobalHandle(pMem);
-    GlobalFree(pvVar2);
+    free(pMem);
     pMem = pNext;
   }
   return 0;

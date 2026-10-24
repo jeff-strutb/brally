@@ -115,7 +115,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
         if (hr != BR_COM_E_BUFFERTOOSMALL)
             break;
         /* GMEM_MOVEABLE|GMEM_ZEROINIT == 0x42. */
-        pv = GlobalLock(GlobalAlloc(0x42u, cb));
+        pv = calloc(1, cb);
         if (pv == NULL) {
             hr = BR_COM_E_OUTOFMEMORY;
             goto cleanup;
@@ -128,8 +128,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 cleanup:
 
     if (pv != NULL) {
-        GlobalUnlock(GlobalHandle(pv));
-        GlobalFree(GlobalHandle(pv));
+        free(pv);
     }
     return hr;
 

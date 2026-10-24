@@ -94,8 +94,7 @@ int BrOpt3A00(void)
         strcpy(g_szBrName4DB0, BrStrGet(BR_OPT_STR_TOOFEW));
         FUN_100368a0(g_brOwner5BC72C, (BrDPlayCtx *)g_brPA9D008, 1);
         strcpy(g_szBrName4DB0, g_aBr39B720);
-        GlobalUnlock(GlobalHandle(pDesc));
-        GlobalFree(GlobalHandle(pDesc));
+        free(pDesc);
         return 1;
     } else if (g_host != 0) {
         fAllReady = 1;
@@ -125,8 +124,7 @@ int BrOpt3A00(void)
         BrSub1003D950(g_brPA9D008, BrSub10058700());
     }
 
-    GlobalUnlock(GlobalHandle(pDesc));
-    GlobalFree(GlobalHandle(pDesc));
+    free(pDesc);
     return 1;
 }
 

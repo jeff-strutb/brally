@@ -67,7 +67,6 @@ struct BrGameObj;
 struct BrSndVoice;
 /* BrSndVoiceStop: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x100B5DE8 */
-struct BrDSound;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x118290F8 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118290FC */
 
@@ -116,7 +115,7 @@ int BrX10072580(int a0)
 
     /* Nested so /O2 shares one `mov eax, 1 / ret` epilogue (`je` to it). */
     if ((*(int32_t *)&DAT_100b51e4[1036]) != 0) {
-        if ((*(struct BrDSound * *)&BrSndPDS) != NULL) {
+        if (BrSndPDS != NULL) {
             if (BrSndG18290FC != NULL) {
                 /* No bounds check on a0 in the original.  Preserved. */
                 pVoice = (struct BrSndVoice *)g_apBrSfxChanVoice[a0];
@@ -152,7 +151,7 @@ int BrX10072580(int a0)
 int BrSndChanSetRatio(int iSlot, int64_t ratio)
 
 {
-  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
     if (BrSndBufSetVolume((struct BrSndVoice *)g_apBrSfxChanVoice[iSlot],
                           (unsigned int)((double)ratio * g_aBrSfxChanRate[iSlot]
                                          * DAT_10077c00)) != 0) {
@@ -189,63 +188,55 @@ int BrSndThreadStop(void)
 }
 
 
-typedef void (__stdcall *dsbuf_fn2)(void *, int);
-
-typedef int (__stdcall *dsbuf_fn1)(void *);
 
 
-/* WHAT IT DOES: release the voice's DirectSound buffer (vtable +8 = Release)
- * and clear the pointer; always returns 0. */
+/* WHAT IT DOES: free the voice's sound and clear the pointer; always
+ * returns 0. */
 /* @implements 0x1006B490 glide BrSndVoiceBufRelease */
 
 int BrSndVoiceBufRelease(BrSndVoice *param_1)
 
 {
-  BrDSBuffer *piVar1;
-
-  piVar1 = param_1->pBuf;
-  if (piVar1 != 0) {
-    (((dsbuf_fn1)(*(void ***)(piVar1))[0x8 / 4]))(piVar1);
+  if (param_1->pBuf != 0) {
+    br_snd_free(param_1->pBuf);
     param_1->pBuf = 0;
   }
   return 0;
 }
 
-/* WHAT IT DOES: if the voice is playing, call IDirectSoundBuffer::Stop
- * (vtable +0x48) and clear the playing flag on S_OK; returns the HRESULT. */
+/* WHAT IT DOES: if the voice is playing, stop its sound and clear the
+ * playing flag; returns 0. */
 /* @implements 0x1006B4C0 glide BrSndVoiceBufStop */
 
 int BrSndVoiceBufStop(BrSndVoice * param_1)
 
 {
-  int iVar1;
-
   if (param_1->f1C == 0) {
     return 0;
   }
-  iVar1 = (((dsbuf_fn1)(*(void ***)(param_1->pBuf))[0x48 / 4]))(param_1->pBuf);
-  if (iVar1 == 0) {
-    param_1->f1C = iVar1;
-  }
-  return iVar1;
+  br_snd_stop(param_1->pBuf);
+  param_1->f1C = 0;
+  return 0;
 }
 
-/* WHAT IT DOES: call IDirectSoundBuffer::SetPan with a computed pan value. */
+/* WHAT IT DOES: set the voice's pan from its 0..800 position (400 centre). */
 /* @implements 0x1006B400 glide BrSndVoiceApplyPan */
 
 int BrSndVoiceApplyPan(BrSndVoice * param_1)
 
 {
-  return param_1->pBuf->pVtbl->SetPan(param_1->pBuf, (param_1->f10 + -400) * 10);
+  br_snd_pan(param_1->pBuf, (param_1->f10 + -400) * 10);
+  return 0;
 }
 
-/* WHAT IT DOES: call IDirectSoundBuffer::SetFrequency from the voice struct. */
+/* WHAT IT DOES: set the voice's playback rate from the voice struct. */
 /* @implements 0x1006B420 glide BrSndVoiceApplyFreq */
 
 int BrSndVoiceApplyFreq(BrSndVoice *param_1)
 
 {
-  return param_1->pBuf->pVtbl->SetFrequency(param_1->pBuf, param_1->f0C);
+  br_snd_rate(param_1->pBuf, param_1->f0C);
+  return 0;
 }
 
 /* br_musiccmd.c -- 0x1006BB60 and 0x1006BB90, the two list walkers. */
@@ -277,7 +268,7 @@ int BrSndBankFree(void)
   if ((*(int32_t *)&DAT_100b51e4[1036]) == 0) {
     return 1;
   }
-  if ((*(struct BrDSound * *)&BrSndPDS) == 0) {
+  if (BrSndPDS == 0) {
     return 1;
   }
   if (BrSndG18290FC == 0) {
@@ -312,7 +303,7 @@ int BrSndChanBind(int iGroup, int iSlot)
 {
   BrSndVoice *pVoice;
 
-  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
     g_aBrSfxChanRate[iSlot] = g_aBrSndRow[iGroup].baseRate;
     if (g_apBrSfxChanVoice[iSlot] != 0) {
       BrX10072580(iSlot);
@@ -333,7 +324,7 @@ int BrSndChanBind(int iGroup, int iSlot)
 int BrSfxChanSetLoop(int iSlot, int loop)
 
 {
-  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
     if (g_apBrSfxChanVoice[iSlot] != 0) {
       ((BrSndVoice *)g_apBrSfxChanVoice[iSlot])->f18 = loop;
       return 1;
@@ -343,9 +334,6 @@ int BrSfxChanSetLoop(int iSlot, int loop)
   return 1;
 }
 
-typedef int (__stdcall *dsbuf_fn2i)(void *, int);
-typedef int (__stdcall *dsbuf_getstatus)(void *, unsigned int *);
-typedef int (__stdcall *dsbuf_fn4i)(void *, int, int, int);
 
 /* WHAT IT DOES: start a voice's buffer.  If the buffer is already playing
  * (GetStatus, vtable +0x24, reports DSBSTATUS_PLAYING) it is rewound instead
@@ -358,27 +346,13 @@ typedef int (__stdcall *dsbuf_fn4i)(void *, int, int, int);
 int BrSndVoiceBufStart(BrSndVoice *param_1)
 
 {
-  unsigned int status;
-  int          bLoop;
-  int          hr;
-
-  status = 0;
-  bLoop  = 0;
-  if (param_1->f18 != 0) {
-    bLoop = 1;
+  if (br_snd_playing(param_1->pBuf)) {
+    br_snd_seek(param_1->pBuf, 0);      /* already playing: from the top */
+    return 0;
   }
-  if (((((dsbuf_getstatus)(*(void ***)(param_1->pBuf))[0x24 / 4]))
-         (param_1->pBuf, &status) == 0) && ((status & 1) == 1)) {
-    /* the original returns each call's result (EAX) */
-    return (((dsbuf_fn2i)(*(void ***)(param_1->pBuf))[0x34 / 4]))
-      (param_1->pBuf, 0);
-  }
-  hr = (((dsbuf_fn4i)(*(void ***)(param_1->pBuf))[0x30 / 4]))
-        (param_1->pBuf, 0, 0, bLoop);
-  if (hr == 0) {
-    param_1->f1C = 1;
-  }
-  return hr;
+  br_snd_play(param_1->pBuf, param_1->f18 != 0);
+  param_1->f1C = 1;
+  return 0;
 }
 
 /* WHAT IT DOES: silence the whole sound bank -- for every occupied voice slot
@@ -397,7 +371,7 @@ int BrSndBankMute(void)
   if ((*(int32_t *)&DAT_100b51e4[1036]) == 0) {
     return 1;
   }
-  if ((*(struct BrDSound * *)&BrSndPDS) == 0) {
+  if (BrSndPDS == 0) {
     return 1;
   }
   if (BrSndG18290FC == 0) {
@@ -407,10 +381,8 @@ int BrSndBankMute(void)
   do {
     pVoice = (BrSndVoice *)*ppVoice;
     if (pVoice != 0) {
-      (((dsbuf_fn2)(*(void ***)(pVoice->pBuf))[0x3C / 4]))
-        (pVoice->pBuf, -10000);
-      (((dsbuf_fn2)(*(void ***)(pVoice->pBuf))[0x40 / 4]))
-        (pVoice->pBuf, 0);
+      br_snd_volume(pVoice->pBuf, -10000);
+      br_snd_pan(pVoice->pBuf, 0);
     }
     ppVoice = ppVoice + 1;
   } while ((uintptr_t)ppVoice < (uintptr_t)&g_apBrSfxChanVoice[BR_SND_BANK_VOICES]);
@@ -507,7 +479,7 @@ int FUN_1006bdd0(void)
 int BrSndBufSetVolume(BrSndVoice *param_1,int param_2)
 
 {
-  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && ((*(struct BrDSound * *)&BrSndPDS) != 0)) && (BrSndG18290FC != 0)) {
+  if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {
     if (param_1 != 0) {
       *(int *)&param_1->f0C = param_2;
       BrSndVoiceApplyFreq(param_1);

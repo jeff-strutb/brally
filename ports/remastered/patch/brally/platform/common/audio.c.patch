@@ -19,13 +19,13 @@
  {
      (void)user;
      memset(lr, 0, (size_t)n * 2 * sizeof *lr);
--    plat_dsound_mix(lr, n);
+-    br_snd_mix(lr, n);
 +    if (!s_rm_quiet)
-+        plat_dsound_mix(lr, n);
++        br_snd_mix(lr, n);
      cd_mix(lr, n);
      {   /* BR_LOG: once a second, what is sounding and how loud */
          static int acc;
-@@ -183,9 +195,13 @@
+@@ -218,9 +230,13 @@
          return;
      cdlock();
      if (s_track && !s_paused) {
@@ -41,7 +41,7 @@
              s_rd = (s_rd + 1) % RING;
          }
          if (s_rd == s_wr && s_feeding_done) {
-@@ -272,6 +288,7 @@
+@@ -307,6 +323,7 @@
  }
  
  int plat_cd_current(void) { return s_track; }

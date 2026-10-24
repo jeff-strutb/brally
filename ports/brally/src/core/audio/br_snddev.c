@@ -16,11 +16,6 @@
  * which is how MSACM.H declares it. */
 #define _CRTIMP __declspec(dllimport)
 #include "slice1_08.h"   /* br_globals: its objects */
-#include <windows.h>
-#include <mmsystem.h>
-#include <mmreg.h>
-#include <msacm.h>
-#include <dsound.h>
 
 #include <string.h>
 
@@ -47,62 +42,17 @@
 /* @implements 0x1006C4D0 glide BrSndDevOpen */
 int BrSndDevOpen(void)
 {
-    DWORD        cbFormat;
-    DSBUFFERDESC dsbd;
-    HRESULT      hr;
-
     if ((*(int *)&DAT_100b51e4[1036]) == 0)
         return 1;
     BrSndG18290FC++;
     if (BrSndG18290FC != 1)
         return 1;
-
     memset((*(void * (*)[15])&g_apBrSfxChanVoice), 0, sizeof((*(void * (*)[15])&g_apBrSfxChanVoice)));
     BrSndBankClear();
-    if (acmMetrics(NULL, ACM_METRIC_MAX_SIZE_FORMAT, &cbFormat) != 0)
-        return 0;
-
-    DAT_1184c2b0 = (LPWAVEFORMATEX)GlobalLock(
-        GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, cbFormat));
-    if (DAT_1184c2b0 == NULL)
-        return 0;
-    DAT_1184c2b0->wFormatTag      = WAVE_FORMAT_PCM;
-    DAT_1184c2b0->nChannels       = 2;
-    DAT_1184c2b0->nSamplesPerSec  = 22050;
-    DAT_1184c2b0->nAvgBytesPerSec = 88200;
-    DAT_1184c2b0->nBlockAlign     = 4;
-    DAT_1184c2b0->wBitsPerSample  = 16;
-    DAT_1184c2b0->cbSize          = 0;
-
-    hr = CoCreateInstance(&DAT_10078a18, NULL, CLSCTX_INPROC_SERVER,
-                          &DAT_10078a38, (void **)&BrSndPDS);
-    if (hr >= 0 && BrSndPDS != NULL) {
-        hr = IDirectSound_Initialize(BrSndPDS, NULL);
-        if (hr >= 0) {
-            hr = IDirectSound_SetCooperativeLevel(BrSndPDS, g_brOwner5BC72C,
-                                                  DSSCL_PRIORITY);
-            if (hr >= 0) {
-                memset(&dsbd, 0, sizeof(dsbd));
-                dsbd.dwSize  = sizeof(dsbd);
-                dsbd.dwFlags = DSBCAPS_PRIMARYBUFFER;
-                hr = IDirectSound_CreateSoundBuffer(BrSndPDS, &dsbd,
-                                                    &DAT_1184c344, NULL);
-                if (hr >= 0) {
-                    hr = IDirectSoundBuffer_Play(DAT_1184c344, 0, 0,
-                                                 DSBPLAY_LOOPING);
-                    if (hr < 0) {
-                        IDirectSoundBuffer_Release(DAT_1184c344);
-                        DAT_1184c344 = NULL;
-                    }
-                }
-            }
-        }
-        if (hr < 0) {
-            IDirectSound_Release(BrSndPDS);
-            BrSndPDS = NULL;
-        }
-    }
-    return hr >= 0;
+    /* the original made its DirectSound object here, with a primary buffer
+       of 22 kHz 16-bit stereo it kept playing; the output is the host's */
+    BrSndPDS = br_snd_open();
+    return BrSndPDS != NULL;
 }
 
 
@@ -122,23 +72,12 @@ int FUN_1006c6a0(void)
     return 1;
   }
   BrSndBankFree();
-  if (DAT_1184c344 != NULL) {
-    IDirectSoundBuffer_Stop(DAT_1184c344);
-    IDirectSoundBuffer_Release(DAT_1184c344);
-    DAT_1184c344 = NULL;
-  }
   if (BrSndPDS != NULL) {
-    IDirectSound_Release(BrSndPDS);
+    br_snd_close();
     BrSndPDS = NULL;
   }
-  if (DAT_1184c2b0 != NULL) {
-    GlobalUnlock(GlobalHandle(DAT_1184c2b0));
-    GlobalFree(GlobalHandle(DAT_1184c2b0));
-    DAT_1184c2b0 = NULL;
-  }
   if (DAT_1184c2a8 != NULL) {
-    GlobalUnlock(GlobalHandle(DAT_1184c2a8));
-    GlobalFree(GlobalHandle(DAT_1184c2a8));
+    free(DAT_1184c2a8);
     DAT_1184c2a8 = NULL;
   }
   return 1;

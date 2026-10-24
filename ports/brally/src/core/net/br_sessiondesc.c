@@ -94,14 +94,12 @@ int32_t BrSub1003CDA0(void)
     if (hr < 0) {
         /* 0x100364B0 -- the failure path null-checks the descriptor. */
         if (pDesc != NULL) {
-            GlobalUnlock(GlobalHandle(pDesc));
-            GlobalFree(GlobalHandle(pDesc));
+            free(pDesc);
         }
         return hr;
     }
     /* 0x100364DC -- the success path does NOT null-check it. hr >= 0 means
      * 0x10036740 produced one. */
-    GlobalUnlock(GlobalHandle(pDesc));
-    GlobalFree(GlobalHandle(pDesc));
+    free(pDesc);
     return 0;
 }

@@ -77,16 +77,13 @@ int BrGlobalFreeAll(void)
 
 {
   LPCVOID pMem;
-  HGLOBAL pvVar1;
+  void * pvVar1;
   int i;
 
   for (i = 0; i < 16; i++) {
     pMem = g_aBrNetSession[i].pPayload;
     if (pMem != (LPCVOID)0x0) {
-      pvVar1 = GlobalHandle(pMem);
-      GlobalUnlock(pvVar1);
-      pvVar1 = GlobalHandle(pMem);
-      GlobalFree(pvVar1);
+      free(pMem);
       g_aBrNetSession[i].pPayload = 0;
     }
   }
@@ -142,7 +139,7 @@ int __stdcall BrNetSessionStore(char *pGuid, void *pPayload, unsigned int cbPayl
    * its 200-byte block (offset 8 on both 32- and 64-bit layouts) */
   memcpy(g_aBrNetSession[idx].player, *(void **)((char *)pEnum + 8), 0xc8);
   *(BrSessionGuid *)g_aBrNetSession[idx].guid = *(BrSessionGuid *)pGuid;
-  pBuf = GlobalLock(GlobalAlloc(0x42, cbPayload));
+  pBuf = calloc(1, cbPayload);
   g_aBrNetSession[idx].pPayload = pBuf;
   if (pBuf != (void *)0x0) {
     memcpy(pBuf, pPayload, cbPayload);

@@ -59,7 +59,6 @@ struct BrGameObj;
 struct BrSndVoice;
 /* BrSndVoiceStop: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x100B5DE8 */
-struct BrDSound;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */ /* 0x118290F8 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x118290FC */
 
@@ -107,14 +106,9 @@ int FUN_1006aaf0();
 
 /* BrSndVoiceSetPan (0x1006B5B0) stays in ghidra_batch.c: context-sensitive codegen. */
 
-typedef void (__stdcall *dsbuf_fn2)(int, int);
-
-typedef int (__stdcall *dsbuf_fn1)(int);
-
-/* WHAT IT DOES: push the voice's stored volume to DirectSound
- * (IDirectSoundBuffer::SetVolume, vtable +0x3c).  The stored level is scaled
- * by the global master level 0..255 and mapped onto DirectSound's
- * hundredths-of-a-decibel scale by (level - 400) * 10.  A master level of 0
+/* WHAT IT DOES: push the voice's stored volume to its sound (br_snd_volume).
+ * The stored level is scaled by the global master level 0..255 and mapped
+ * onto the hundredths-of-a-decibel scale by (level - 400) * 10.  A master level of 0
  * short-circuits to DSBVOLUME_MIN (-10000) rather than computing silence.
  *
  * RESIDUE (T3a, parked): 84 vs 79 bytes, regnorm 3+1.  The arithmetic, the
@@ -159,16 +153,16 @@ typedef int (__stdcall *dsbuf_fn1)(int);
  * the end-grind. */
 /* @implements 0x1006B440 glide BrSndVoiceApplyVolume */
 
-/* 64-bit core: returns SetVolume's result. The original is declared void
- * but leaves that HRESULT in eax, and BrSndVoiceSetLR reads it. */
+/* 64-bit core: returns 0, the success the original's SetVolume left in eax
+ * (declared void, but BrSndVoiceSetLR reads it). */
 int BrSndVoiceApplyVolume(BrSndVoice *param_1)
 
 {
-  BrDSBuffer *pBuf = param_1->pBuf;
-
   if (BrSndMasterVolume != 0) {
-    return pBuf->pVtbl->SetVolume(pBuf, (((unsigned int)param_1->f14 * BrSndMasterVolume) / 0xff - 400) * 10);
+    br_snd_volume(param_1->pBuf, (int32_t)((((unsigned int)param_1->f14 * BrSndMasterVolume) / 0xff - 400) * 10));
+    return 0;
   }
-  return pBuf->pVtbl->SetVolume(pBuf, -10000);
+  br_snd_volume(param_1->pBuf, -10000);
+  return 0;
 }
 

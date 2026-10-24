@@ -455,17 +455,8 @@ defwnd:
 
 /* -- Ghidra-matched functions --------------------------- */
 #include <windows.h>
-#include <mmsystem.h>
-/* WHAT IT DOES: seek a RIFF WAVE file to the start of its "data" chunk via mmioDescend. */
-/* @implements 0x10070170 glide BrWaveSeekData */
-
-int BrWaveSeekData(HMMIO *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)
-
-{
-  mmioSeek(*param_1,param_3->dwDataOffset + 4,0);
-  param_2->ckid = 0x61746164;
-  return mmioDescend(*param_1,param_2,param_3,0x10);
-}
+/* 0x10070170, the seek to a WAV file's data chunk, is part of BrWavLoad's
+ * own reading of the file (br_sndload.c). */
 
 /* ------------------------------------------------------------------ */
 /* 0x10059E70                                                         */

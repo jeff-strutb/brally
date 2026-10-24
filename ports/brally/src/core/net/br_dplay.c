@@ -227,7 +227,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                 pszName = g_szUnknown;
             cch1 = lstrlenA(g_szJoined);
             cch2 = lstrlenA(pszName);
-            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            pszB = (char *)calloc(1, cch1 + 1 + cch2);
             if (pszB == NULL)
                 return;
             wsprintfA(pszB, g_szJoined, pszName);
@@ -238,7 +238,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                 pszName = g_szUnknown;
             cch1 = lstrlenA(g_szLeft);
             cch2 = lstrlenA(pszName);
-            pszB = (char *)GlobalLock(GlobalAlloc(0x42u, cch1 + 1 + cch2));
+            pszB = (char *)calloc(1, cch1 + 1 + cch2);
             if (pszB == NULL)
                 return;
             wsprintfA(pszB, g_szLeft, pszName);
@@ -261,8 +261,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
                 PostMessageA(g_BrDPlay.pWnd, 0x501u, 0u, (LPARAM)pszB);
                 return;
             }
-            GlobalUnlock(GlobalHandle(pszB));
-            GlobalFree(GlobalHandle(pszB));
+            free(pszB);
         }
     }
 }
@@ -293,10 +292,9 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
 
         if (hr == BR_DP_E_BUFFERTOOSMALL) {
             if (pvBuf != NULL) {
-                GlobalUnlock(GlobalHandle(pvBuf));
-                GlobalFree(GlobalHandle(pvBuf));
+                free(pvBuf);
             }
-            pvBuf = GlobalLock(GlobalAlloc(0x42u, cbBuf));
+            pvBuf = calloc(1, cbBuf);
             if (pvBuf == NULL)
                 hr = BR_DP_E_OUTOFMEMORY;
             if (hr == BR_DP_E_BUFFERTOOSMALL)
@@ -317,8 +315,7 @@ int32_t BrDPlayPump(BrDPlayCtx *pCtx)
     }
 
     if (pvBuf != NULL) {
-        GlobalUnlock(GlobalHandle(pvBuf));
-        GlobalFree(GlobalHandle(pvBuf));
+        free(pvBuf);
     }
 
     return 0;
@@ -502,8 +499,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
         return 0xFFFFu;
 
     n = ((DPSESSIONDESC2 *)pv)->dwCurrentPlayers;
-    GlobalUnlock(GlobalHandle(pv));
-    GlobalFree(GlobalHandle(pv));
+    free(pv);
     return n;
 }
 
@@ -605,8 +601,7 @@ int BrNetSessionApply(void)
     r = FUN_10036740((*(void * *)&g_brP277B40), &pDesc);
     if (r < 0) {
         if (pDesc != 0) {
-            GlobalUnlock(GlobalHandle(pDesc));
-            GlobalFree(GlobalHandle(pDesc));
+            free(pDesc);
         }
         return r;
     }
@@ -637,7 +632,6 @@ int BrNetSessionApply(void)
     if (pszName != 0) {
         strcpy((*(char (*)[])&DAT_10ac40a8), pszName);
     }
-    GlobalUnlock(GlobalHandle(pDesc));
-    GlobalFree(GlobalHandle(pDesc));
+    free(pDesc);
     return 0;
 }
