@@ -711,10 +711,10 @@ void BrFadeTick(void);
  * Note the wipe's pos/pos2 roles are swapped relative to the D3D struct's
  * pos/pos2 field names. */
 extern int32_t g_brFadeKick, g_brFadeBounce, g_brFadeKickA, g_brFadeKickB;
-extern float   g_brFadeValue, g_brFadeTarget, g_brFadeRate;
+extern float   g_brFadeValue, g_brFadeTarget, g_brFadeDt;
 extern float   g_brFadeRateA, g_brFadeRateB;
 extern float   g_brFadeCurA, g_brFadeTgtA, g_brFadeCurB, g_brFadeTgtB;
-extern float   g_brFadeDt;
+extern float   g_brFadeRate;
 extern int32_t g_brFadeParity, g_brFadePos, g_brFadePos2;
 extern int32_t g_brFadeWidth, g_brFadeSpan, g_brFadeB4, g_brFadeA4;
 extern int32_t g_brFadePosHist[2], g_brFadePos2Hist[2];

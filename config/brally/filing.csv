@@ -244,6 +244,7 @@ glide_va,name,module,basis,file
 0x10018310,BrFadeIsClosing,drawing,description,src/brally/core/drawing/br_fade.c
 0x10018340,BrFadeIsSettled,drawing,description,src/brally/core/drawing/br_fade.c
 0x10018370,BrFadeIsShut,drawing,manual,src/brally/core/drawing/br_fade.c
+0x100186E0,BrFadeTick,drawing,filed,src/brally/core/drawing/br_fadewipe.c
 0x10018990,BrFtolArg,geometry,description,src/brally/core/geometry/br_ftol.c
 0x100189A0,BrCopy8Words,gamedata,description,src/brally/core/gamedata/br_copy8.c
 0x100189C0,BrFlagInit_1002B950,startup,filed,src/brally/core/startup/br_objlife.c

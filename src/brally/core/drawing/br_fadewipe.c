@@ -566,21 +566,7 @@ uint8_t g_brFadeOutB;      /* 0x100BB2E4 */
  * treats landing exactly on its target as an overshoot and the ramps do not.
  * The original INLINES both ramp steps (no helper) and works entirely in
  * globals; the NaN notes from the struct-based pass still describe the
- * comparison senses.
- *
- * NOT MATCHING by 4 bytes: one esi/edi role toggle in the backward-wipe
- * arm (sub eax,esi vs edi and the paired adds/cmp).  Statement-order probes
- * move the toggle between the load window and the arithmetic window but
- * never clear both -- allocator-residue class. */
-/* @t4-pass 0x100186E0 1 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x100186E0 2 2026-09-07 probes 54 bytes 685 insns 165 regions 1 rows 0 census yes  (tools/brally/crank.py) */
-/* @t3 0x100186E0 2026-09-09 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 685/685 insns 165/165 rows 0+0 regions 1 oracle UNCLASSIFIED
- * @t3-effort passes 2 zero-movement 1 2
- * residue is one esi/edi role toggle in the backward-wipe arm (see the
- * NOT MATCHING note above); identical multiset, size-exact; two crank
- * census passes at these numbers.
- * Do not reopen before the end-grind. */
+ * comparison senses. */
 /* @implements 0x100186E0 glide BrFadeTick */
 void BrFadeTick(void)
 {
@@ -607,28 +593,10 @@ void BrFadeTick(void)
         g_brFadeKick = 0;
     }
 
-    /* RESIDUE (glide 0x100186E0, 4 masked diffs, T3a): the original homes
-     * Pos in esi / Pos2 in edi (loads esi-first, stores PosHist-first);
-     * every probed spelling gets one axis wrong -- statement swap flips
-     * the load regs (8 diffs), a Pos temp survives the aliasing Hist
-     * store but binds edi (6), a Pos2 temp either dissolves (4) or flips
-     * the store order (6).
-     *
-     * CORRECTION (2026-09-03): "register pairing only" was wrong. Two of
-     * the four diffs are a SHAPE difference -- the original relocates both
-     * stores against ONE base and gives the second a literal +8:
-     *     mov [eax*4 + 0x104B1698], esi     ; PosHist  = Pos2Hist + 8
-     *     mov [eax*4 + 0x104B1690], edi
-     * so in the original these are ONE array of four ints at 0x104B1690,
-     * not the two arrays declared above. Reproducing that by indexing
-     * Pos2Hist past its end does fix the displacement (2 shape diffs -> 1)
-     * but perturbs an earlier READ of the same arrays and ends up worse
-     * (4 diffs -> 15/18). The real fix is to declare one array here and
-     * give the two names views of it, which means touching slice2_16.h --
-     * a serialised header edit, so it is left for a session that owns
-     * that header. */
-    g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
+    /* Pos's history is stored before Pos2's, and in the backward arm Pos
+     * steps before Pos2: in that order C2 gives Pos esi and Pos2 edi. */
     g_brFadePosHist[g_brFadeParity]  = g_brFadePos;
+    g_brFadePos2Hist[g_brFadeParity] = g_brFadePos2;
     g_brFadeB4 = 0;
     g_brFadeA4 = g_brFadeWidth;
 
@@ -639,8 +607,8 @@ void BrFadeTick(void)
     } else if (!(g_brFadeRate >= 0.0f)) {
         int32_t v = (int32_t)(g_brFadeSpan * g_brFadeValue);
         int32_t step = ((g_brFadeSpan - v - g_brFadePos) + 3) & ~3;
-        g_brFadePos2 += step;
         g_brFadePos  += step;
+        g_brFadePos2 += step;
         if (g_brFadePos2 > g_brFadeSpan)
             g_brFadePos2 = g_brFadeSpan;
     } else {
