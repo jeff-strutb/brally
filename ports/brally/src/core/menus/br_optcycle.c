@@ -487,7 +487,7 @@ BR_WRAP:
     if (pGate != NULL) {
         /* _itoa and sprintf through the /MD imports, not the wrappers --
          * the original's `call dword ptr [__imp__itoa]` / `[__imp_sprintf]`. */
-        _itoa(v, aNum, 10);
+        br_itoa(v, aNum, 10);
         sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_BD3E0), aNum);
         BrOptFlushMessage();
     }

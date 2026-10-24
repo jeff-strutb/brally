@@ -184,11 +184,7 @@ typedef struct BrDPSessionDesc {
 
 typedef struct BrDPlay BrDPlay;
 
-#include "br_dplayvtbl.h"
 
-struct BrDPlay {
-    const BrDPlayVtbl *pVtbl;   /* +0x00 */
-};
 
 /* --- assorted small objects reached through globals ---------------------- */
 

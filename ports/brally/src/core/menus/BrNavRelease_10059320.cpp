@@ -15,21 +15,7 @@
 
 struct CObj;
 
-struct CTbl {
-    void (__stdcall *f0)(CObj *);
-    void (__stdcall *f1)(CObj *);
-    void (__stdcall *f2)(CObj *);
-    void (__stdcall *f3)(CObj *);
-    void (__stdcall *f4)(CObj *);
-    void (__stdcall *f5)(CObj *);
-    void (__stdcall *f6)(CObj *);
-    void (__stdcall *f7)(CObj *);
-    void (__stdcall *f8)(CObj *);
-};
-
-struct CObj {
-    CTbl *tbl;
-};
+struct CObj;                    /* the mouse (br_in.h) */
 
 class Nav59320 {
 public:
@@ -46,8 +32,8 @@ void Nav59320::Release()
 
     p = f50;
     if (p != 0) {
-        p->tbl->f8(p);
-        f50->tbl->f2(f50);
+        br_in_unacquire(p);         /* the mouse (br_in.h) */
+        br_in_release(f50);
         f50 = 0;
     }
 }

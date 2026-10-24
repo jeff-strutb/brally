@@ -78,7 +78,7 @@ void __fastcall BrPodWriteAdd(void *pThis, const char *pszName,
     if (strlen(pEnt->szName) > 0x40)
         BrLogFatalPrintf("Add: Name is too long to be a pod name.");
 
-    _strupr(pEnt->szName);
+    br_strupr(pEnt->szName);
 
     {
         uint32_t off = (uint32_t)ftell(g_BrPodFile);

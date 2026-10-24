@@ -20,7 +20,6 @@
 #include "slice6_73.h"
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* FUN_100378c0: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -93,7 +92,7 @@ int __stdcall FUN_10055af0(short param_1)
   char acStack_104 [260];
 
   strcpy(acStack_208, s_RallySeason_100acb00);
-  _itoa((int)param_1,acStack_20c,10);
+  br_itoa((int)param_1,acStack_20c,10);
   pcVar3 = acStack_208; strcat(acStack_208, acStack_20c);
   pcVar3 = acStack_208; strcat(acStack_208, s_brf_100acaf8);
   _File = fopen(acStack_208,DAT_1007b0e0);
@@ -103,7 +102,7 @@ int __stdcall FUN_10055af0(short param_1)
     if ((int)sVar2 < 0x80) {
       FUN_100378c0(7);
     }
-    pcVar3 = _strupr(acStack_104);
+    pcVar3 = br_strupr(acStack_104);
     strcpy(((char *)g_brPAA29B8->fC0 + 4 + param_1 * 0x104), pcVar3);
     fclose(_File);
   }

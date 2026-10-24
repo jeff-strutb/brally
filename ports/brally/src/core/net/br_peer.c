@@ -15,7 +15,6 @@
 #include "slice1_09.h"   /* br_globals: its objects */
 #include <stdint.h>
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -33,11 +32,11 @@
 
 void FUN_1006a650(void)
 {
-  DWORD wr;
+  uint32_t wr;
   BrPeerRec *pPeer;
   BrPeerRec *pAlt;
-  HANDLE h1[2];
-  HANDLE h2[2];
+  void * h1[2];
+  void * h2[2];
   char skip;
   int st;
   int t;
@@ -45,7 +44,7 @@ void FUN_1006a650(void)
 
   for (i = 0; i < 16; i++) {
     pPeer = &g_aBrPeer71[i];
-    h1[0] = (HANDLE)g_hBrSndWake86;
+    h1[0] = (void *)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = br_os_wait_many(2, h1, 0, 0xffffffff);
     if (wr == 0) {
@@ -68,7 +67,7 @@ void FUN_1006a650(void)
   for (i = 0; ; i++) {
     pPeer = &g_aBrPeer71[i];
     pAlt = &g_aBr178FEF8[i][i];
-    h1[0] = (HANDLE)g_hBrSndWake86;
+    h1[0] = (void *)g_hBrSndWake86;
     h1[1] = pPeer->hMutex;
     wr = br_os_wait_many(2, h1, 0, 0xffffffff);
     if (wr == 0) {
@@ -78,7 +77,7 @@ void FUN_1006a650(void)
     skip = ((st & 0x3f) == 3);
     br_os_release(pPeer->hMutex);
     if (skip) {
-      h2[0] = (HANDLE)g_hBrSndWake86;
+      h2[0] = (void *)g_hBrSndWake86;
       h2[1] = pAlt->hMutex;
       wr = br_os_wait_many(2, h2, 0, 0xffffffff);
       if (wr == 0) {
@@ -95,7 +94,7 @@ void FUN_1006a650(void)
       t = 4;
       for (i = 0; i < 16; i++) {
         pPeer = &g_aBrPeer71[i];
-        h2[0] = (HANDLE)g_hBrSndWake86;
+        h2[0] = (void *)g_hBrSndWake86;
         h2[1] = pPeer->hMutex;
         wr = br_os_wait_many(2, h2, 0, 0xffffffff);
         if (wr == 0) {
@@ -204,10 +203,10 @@ struct BrBitStream;
 void BrNetPeerMsgReset(void)
 {
   int i;
-  HANDLE h[2];
+  void * h[2];
 
   for (i = 0; i < 16; i++) {
-    h[0] = (HANDLE)g_hBrSndWake86;
+    h[0] = (void *)g_hBrSndWake86;
     h[1] = g_aBrPeer71[i].hMutex;
     if (br_os_wait_many(2, h, 0, 0xffffffff) == 0) {
       br_os_thread_exit(0);

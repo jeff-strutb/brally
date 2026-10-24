@@ -33,7 +33,6 @@
 
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
-#include <io.h>        /* _findfirst / _findnext -- 0x10055ED0 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -81,7 +80,7 @@ int BrSaveProbeRallySeason(void *pList, int *pIdx)
     g_AB94 = n;
     if ((char *)pList + n * 0x438 + 0x35 != NULL) {
         strcpy(szPath, s_RallySeason_100acb00);
-        _itoa(n, szNum, 10);
+        br_itoa(n, szNum, 10);
         strcat(szPath, szNum);
         strcat(szPath, s_brf_100acaf8);
     }
@@ -117,7 +116,7 @@ int BrSaveProbeTimeAttack(void *pList, int *pIdx)
     g_AB94 = n;
     if ((char *)pList + n * 0x438 + 0x35 != NULL) {
         strcpy(szPath, s_TimeAttack_100acb14);
-        _itoa(n, szNum, 10);
+        br_itoa(n, szNum, 10);
         strcat(szPath, szNum);
         strcat(szPath, s_grf_100acb0c);
     }
@@ -209,20 +208,20 @@ int __stdcall BrSaveSlotNameSet_10055C50(const char *pKey, const char *pName)
 /* @implements 0x10055ED0 glide BrFileCountMatching */
 int __stdcall BrFileCountMatching(const char *pszPattern)
 {
-  struct _finddata_t fd;
+  BrFindData fd;
   intptr_t h;
   int n;
   int i;
 
-  h = _findfirst(pszPattern, &fd);
+  h = br_findfirst(pszPattern, &fd);
   if (h == -1) {
     return -1;
   }
   n = 0;
   for (i = 1; i < 100; i++) {
-    if (_findnext(h, &fd) != 0) break;
+    if (br_findnext(h, &fd) != 0) break;
     n++;
   }
-  _findclose(h);
+  br_findclose(h);
   return n;
 }

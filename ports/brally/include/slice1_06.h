@@ -152,11 +152,7 @@ typedef struct BrKeyEnt {
 #define BR_COM_E_OUTOFMEMORY    ((int32_t)0x8007000E)
 
 
-#include "br_dplayvtbl.h"
-
-typedef struct BrDPlayObj {
-    const BrDPlayVtbl *pVtbl;
-} BrDPlayObj;
+typedef struct BrDPlayObj BrDPlayObj;   /* the network object (br_net.h) */
 
 /* 0x1003D180.
  * Calls pfnGet(pObj, pParam, NULL, &cb) to size the result; only if that

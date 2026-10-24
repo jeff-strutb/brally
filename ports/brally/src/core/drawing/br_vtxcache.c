@@ -20,7 +20,6 @@
  * symbol-table size it brings sets a VC5 tie-break: without it
  * BrF3DListFixup (0x10019040) loads the first word's two top bytes in the
  * wrong order (7 differing bytes). */
-#include <windows.h>
 /* The originals of the vtx-cache cluster take no BrVtxCache parameter --
  * state is loose globals -- and BrVtxExpand/Insert/Resolve have different
  * arities. Hide the header's port prototypes behind renames so the

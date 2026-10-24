@@ -684,7 +684,7 @@ void BrCarPhysTyre(BrTyreView *pBody, BrTyreView *pWheel, float *pA,
         pWheel->f1C4 = s * 300.0f;
     }
     pWheel->f1D4 = pWheel->f1D4 - (pWheel->f1C4 * 57.2957763671875f) * dt;
-    if (_finite((double)pWheel->f1D4) != 0 && !((double)pWheel->f1D4 < -36000.0)
+    if (isfinite((double)pWheel->f1D4) != 0 && !((double)pWheel->f1D4 < -36000.0)
      && (double)pWheel->f1D4 < 36000.0) {
         while ((double)pWheel->f1D4 > 360.0)
             pWheel->f1D4 = (float)((double)pWheel->f1D4 - 360.0);

@@ -73,7 +73,6 @@ extern "C" {
 /* 64-bit core: g_f07763C is defined once, in br_globals.c */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP char *_strupr(char *s);
 }
 
 int BrItemSetBestTime_1003A6D0(Obj3A6D0 *pObj)
@@ -103,7 +102,7 @@ int BrItemSetBestTime_1003A6D0(Obj3A6D0 *pObj)
         return 0;
 
     pLabel = (*(class Item438H *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
-    strcpy(pLabel, _strupr(szTime));
+    strcpy(pLabel, br_strupr(szTime));
 
     (BR_VFN(&((*(class Item438H *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438H *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)

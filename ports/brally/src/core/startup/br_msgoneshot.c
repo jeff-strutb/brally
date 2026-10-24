@@ -5,7 +5,6 @@
  * BrNetMutexInit, which stays in the batch, so these are declarations only.
  */
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

@@ -112,7 +112,6 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP char *_strupr(char *s);
 }
 
 int BrItemSetSplitTime_1003A140(Obj3A140 *pObj)
@@ -149,7 +148,7 @@ int BrItemSetSplitTime_1003A140(Obj3A140 *pObj)
         return 0;
 
     pLabel = (*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
-    strcpy(pLabel, _strupr(szTime));
+    strcpy(pLabel, br_strupr(szTime));
 
     (BR_VFN(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438I *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)

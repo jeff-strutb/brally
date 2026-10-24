@@ -51,7 +51,6 @@ int FUN_100371f0(BrDPlayCtx *param_1,int param_2,int param_3)
 }
 
 
-#include <windows.h>
 /* FUN_10036a30: prototype in br_funcs.h */
 /* BrComGetAlloc: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -65,13 +64,13 @@ int FUN_100371f0(BrDPlayCtx *param_1,int param_2,int param_3)
 /* @implements 0x100368A0 glide FUN_100368a0 */
 /* auto-filed from ghidra --refine; transforms: as-is */
 
-int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
+int FUN_100368a0(void * param_1, BrDPlayCtx *param_2, int param_3)
 {
   void * hMem;
-  LPCSTR lpString;
+  const char * lpString;
   int result;
   int *pMem;
-  LPCVOID local_4;
+  const void * local_4;
 
   pMem = 0;
   local_4 = 0;
@@ -87,7 +86,7 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
     strcpy((char *)lpString, g_szBrName4DB0);
     result = FUN_10036a30((struct BrDPlayObj *)param_2->pDP, (int)param_2->idPlayer, lpString, &local_4, param_3);
     if (result >= 0) {
-      br_os_post(param_1, 0x501, 0, (LPARAM)local_4);
+      br_os_post(param_1, 0x501, 0, (intptr_t)local_4);
       local_4 = 0;
       {
         int n = br_os_strlen(lpString);
@@ -99,7 +98,7 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
         }
         else {
           *pMem = (param_3 != 0) + 0x60000000;
-          strcpy((LPSTR)(pMem + 1), lpString);
+          strcpy((char *)(pMem + 1), lpString);
           result = BrDPlayRawSend((void *)param_2->pDP, (int)param_2->idPlayer, 0, 1, pMem, n);
         }
       }
@@ -154,14 +153,14 @@ int FUN_100368a0(HWND param_1, BrDPlayCtx *param_2, int param_3)
  * (hMem-first vs hr-first). Spill LOCATION is a VC5 allocator choice not seen to
  * move from C source here.
  * @t4-pass 0x10036A30 1 2026-09-06 probes 4 bytes 227 insns 86 regions 1 rows 1 census no */
-int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOID *param_4, int param_5)
+int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, const char * param_3, const void * *param_4, int param_5)
 {
     void * hMem;
-    LPSTR pBuf;
-    LPCSTR lpFormat;
-    LPCSTR lpName;
+    char * pBuf;
+    const char * lpFormat;
+    const char * lpName;
     int hr;
-    LPCVOID local_4;
+    const void * local_4;
 
     local_4 = 0;
     if (param_1 == 0) {
@@ -173,7 +172,7 @@ int FUN_10036a30(struct BrDPlayObj *param_1, int param_2, LPCSTR param_3, LPCVOI
     }
     hr = BrComGetAlloc(param_1, param_2, &local_4);
     if (hr >= 0) {
-        lpName = *(LPCSTR *)((char *)local_4 + 8);
+        lpName = *(const char * *)((char *)local_4 + 8);
         if (lpName == 0) {
             lpName = "unknown";
         }

@@ -139,7 +139,6 @@ uint32_t __fastcall BrSub1005CB40(BrSub1005CB40Obj *pThis, BrSub1005CB40Arg arg)
 /* -- Ghidra-matched functions --------------------------- */
 /* operator_delete: prototype in br_funcs.h */
 typedef int (*funcptr)();
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

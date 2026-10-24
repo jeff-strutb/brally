@@ -18,7 +18,6 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrDelta_100713A0: prototype in br_funcs.h */
-#include <windows.h>
 
 /* WHAT IT DOES: a 1 Hz service loop that never returns: read the elapsed-ms counter; if the
  * next second has not arrived, Sleep until it does, otherwise run the five once-a-second

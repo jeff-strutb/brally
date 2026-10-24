@@ -26,7 +26,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include <stdio.h>
 #include <string.h>
-#include <io.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -46,14 +45,14 @@ public:
 int Scan55D40::ScanTrailers(char *pszPattern)
 {
     char trailer[260];
-    struct _finddata_t fd;
+    BrFindData fd;
     intptr_t h;
     long n;
     FILE *fp;
     int i;
 
     memset(trailer, 0, sizeof(trailer));
-    h = _findfirst(pszPattern, &fd);
+    h = br_findfirst(pszPattern, &fd);
     if (h == -1)
         return 0;
 
@@ -67,7 +66,7 @@ int Scan55D40::ScanTrailers(char *pszPattern)
 
     for (i = 1; i < 100; i++) {
         memset(trailer, 0, sizeof(trailer));
-        if (_findnext(h, &fd) != 0)
+        if (br_findnext(h, &fd) != 0)
             break;
         fp = fopen(fd.name, DAT_100ac9c8);
         fseek(fp, 0, SEEK_END);
@@ -77,7 +76,7 @@ int Scan55D40::ScanTrailers(char *pszPattern)
         OnTrailer(fd.name, trailer);
         fclose(fp);
     }
-    _findclose(h);
+    br_findclose(h);
     return 1;
 }
 

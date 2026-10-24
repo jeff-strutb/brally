@@ -105,8 +105,8 @@ static char *BrStrUpr(char *psz)
 /* Orig is /MD: `call [__imp__itoa]` / `[__imp__strupr]` (FF 15), not E8. */
 /* 64-bit core: _itoa is declared by the platform headers */
 /* 64-bit core: _strupr is declared by the platform headers */
-#define BrItoa _itoa
-#define BrStrUpr _strupr
+#define BrItoa br_itoa
+#define BrStrUpr br_strupr
 
 /* =====================================================================
  * 1. Module state
@@ -914,7 +914,7 @@ int32_t BrMenuTime0C00(BrMenuItem *pItem)
         BrMenuText *pText = &pItem->text;
         char       *pDst  = pText->sz;
 
-        strcpy(pDst, _strupr(sz));
+        strcpy(pDst, br_strupr(sz));
         pText->pVtbl->pfn04(pText);
         if (pDst != NULL)
             pText->pVtbl->pfn10(pText);

@@ -14,7 +14,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include "slice1_05.h"   /* br_globals: its objects */
 #include "slice3_42.h"   /* br_globals: its objects */
-#include <windows.h>
 
 class Save1290 {
 public:
@@ -53,8 +52,8 @@ void BrSessionReinitVideo(void)
         BrNetReset();
     }
     BrFlagInit_1002F690();
-    br_os_close((*(HANDLE *)((char *)&g_aBrEntRecs + 0xB0)));
-    (*(HANDLE *)((char *)&g_aBrEntRecs + 0xB0)) = 0;
+    br_os_close((*(void * *)((char *)&g_aBrEntRecs + 0xB0)));
+    (*(void * *)((char *)&g_aBrEntRecs + 0xB0)) = 0;
     BrRenderModeStart(3, 0x280, 0x1e0, 0x10, 0);
     FUN_1005a420();
 }

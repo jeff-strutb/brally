@@ -165,10 +165,6 @@ int BrOpt3FA0(BrGameObj *pGame)
 void BrOpt41A0(void)
 {
     BrDPSessionDesc *pDesc;
-    /* Header types the slot cdecl; IDirectPlay4::SetSessionDesc is stdcall
-     * (`call [ecx+0x7C]` with no `add esp`). Local vtable view only. */
-    typedef int32_t (__stdcall *BrOptSetSessFn)(BrDPlay *, BrDPSessionDesc *, uint32_t);
-    typedef struct { void *aSlots[31]; BrOptSetSessFn pfnSetSessionDesc; } BrOptDPlayVtblStd;
 
     DAT_10ac5bd4 = 1;
     BrSub100586A0();
@@ -179,8 +175,7 @@ void BrOpt41A0(void)
             FUN_10036740(g_brP277B40, &pDesc);
         if (pDesc != NULL) {
             pDesc->dwFlags &= ~0x20u;    /* clear DPSESSION_JOINDISABLED */
-            ((const BrOptDPlayVtblStd *)g_brP277B40->pVtbl)
-                ->pfnSetSessionDesc(g_brP277B40, pDesc, 0);
+            br_net_set_session(g_brP277B40, (const BrNetSessionDesc *)pDesc, 0);
         }
     }
 

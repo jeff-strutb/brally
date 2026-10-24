@@ -66,7 +66,6 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
     return 0;
 }
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -76,13 +75,13 @@ int32_t BrSub1003CFC0(uint8_t **ppGuid)
 int BrGlobalFreeAll(void)
 
 {
-  LPCVOID pMem;
+  const void * pMem;
   void * pvVar1;
   int i;
 
   for (i = 0; i < 16; i++) {
     pMem = g_aBrNetSession[i].pPayload;
-    if (pMem != (LPCVOID)0x0) {
+    if (pMem != (const void *)0x0) {
       free(pMem);
       g_aBrNetSession[i].pPayload = 0;
     }
@@ -162,9 +161,6 @@ int __stdcall BrNetSessionStore(char *pGuid, void *pPayload, unsigned int cbPayl
 
 /* 64-bit core: the session description, player name and player record are
  * the SDK's records at the build's native layout (dplay.h). */
-typedef HRESULT (__stdcall *BrDpOpenFn)(void *, BrNetSessionDesc *, uint32_t, void *, void *);
-typedef HRESULT (__stdcall *BrDpCreatePlayerFn)(void *, BrNetId *, BrNetName *, void *,
-                                                void *, uint32_t, uint32_t);
 
 /* WHAT IT DOES: hosts a brand-new game on the network. Builds the session
  * description -- our application id, room for eight players, the caller's
@@ -198,7 +194,7 @@ int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
     void         **vt;
     void          *saved0;
     int32_t        saved3, saved4;
-    HRESULT        hr;
+    int32_t        hr;
 
     if (g_guardB == 0) {
         if (pIface == 0) {
@@ -215,7 +211,7 @@ int BrNetSessionHost(void *pIface, char *pHost, BrOptUi *rec)
         desc.dwSize = sizeof desc;
         desc.dwMaxPlayers = 8;
         desc.lpszSessionNameA = pHost;
-        desc.dwUser3 = (DWORD)DAT_10ac5d70;
+        desc.dwUser3 = (uint32_t)DAT_10ac5d70;
         desc.dwUser4 = DAT_100abdf8;
         hr = br_net_open(pIface, &desc, 0x82);
         if (hr < 0) {

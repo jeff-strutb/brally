@@ -77,7 +77,6 @@ class GameUi;
 /* HostAgain: prototype in br_funcs.h */
 /* ObjHook: prototype in br_funcs.h */
 
-typedef void (__stdcall *Host_f7C)(void *self, void *item, int z);
 
 int Fn3DD20(void)
 {
@@ -99,7 +98,7 @@ int Fn3DD20(void)
         if (item != 0) {
             item->f04 &= ~0x20;
             host = (*(void * *)&g_brP277B40);
-            ((Host_f7C)(*(void ***)host)[0x1F])(host, item, 0);
+            br_net_set_session(host, (const BrNetSessionDesc *)item, 0);
         }
     }
 

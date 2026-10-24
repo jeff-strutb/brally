@@ -35,7 +35,6 @@ extern void BrErrorf(const char *pszFmt, ...);
 /* The checked-open twins fatal-report with strerror; the errno read is
  * the CRT's _errno() CALL through the import table (FF 15), not a
  * variable load. */
-_CRTIMP int *__cdecl _errno(void);
 
 /* WHAT IT DOES: open a file for WRITING, and abort the game with a message
  * naming the file and the C-library reason if it cannot be created. The
@@ -49,7 +48,7 @@ FILE *__stdcall BrFileCreateChecked(char *pszPath)
     pFile = fopen(pszPath, "wb");
     if (pFile == 0) {
         BrLogFatalPrintf("Error opening %s: %s", pszPath,
-                         strerror(*_errno()));
+                         strerror(errno));
     }
     return pFile;
 }
@@ -64,7 +63,7 @@ FILE *__stdcall BrFileOpenChecked(char *pszPath)
     pFile = fopen(pszPath, "rb");
     if (pFile == 0) {
         BrLogFatalPrintf("Error opening %s: %s", pszPath,
-                         strerror(*_errno()));
+                         strerror(errno));
     }
     return pFile;
 }

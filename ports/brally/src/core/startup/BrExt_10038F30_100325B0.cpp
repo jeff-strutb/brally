@@ -15,8 +15,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "br_phase.h"   /* BrPhase_, the canonical record */
-#include <windows.h>
-#include <objbase.h>
 #include <stdlib.h>
 
 typedef int (*funcptr)();

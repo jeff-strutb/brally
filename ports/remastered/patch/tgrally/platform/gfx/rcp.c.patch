@@ -68,7 +68,7 @@
 + * stretched only along an axis it spans its scissor on, else held at the distance from the
 + * edge (or the centre) it sat nearest.  2D draws are grouped into the elements they make up
 + * (touching boxes, words on one line), so a gauge or a line of text moves as one: the Boss
-+ * Rally port's placement (ports/brally/platform/common/glide.c).  Any other frame (the menus,
++ * Rally port's placement (ports/brally/platform/common/br_gfx.c).  Any other frame (the menus,
 + * the results, the car select) fills the window too: its 4:3 at its size in the centre, a
 + * picture across the whole screen scaled up to cover the window (place_menu). */
 +enum { K_2D, K_RACE, K_MIRROR };

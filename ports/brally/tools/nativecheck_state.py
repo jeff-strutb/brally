@@ -23,6 +23,8 @@ LO = 0x10077000
 MASK = [
     (0x10273310, 24),   # g_BrDPlayCrit: a CRITICAL_SECTION (a host mutex pointer)
     (0x105CCBD8, 0x94), # the 3dfx card's description of itself, which the native port never asks for
+    (0x104B15F8, 0x28), # the EAR engine's entry table (code addresses, br_earload.c) ...
+    (0x104B1624, 0x5C), # ... around 0x104B1620, the message number, which is game state
 ]
 
 

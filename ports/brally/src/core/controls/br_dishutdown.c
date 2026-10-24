@@ -15,17 +15,7 @@
 #include "br_match.h"
 
 
-struct BrDI;
-
-typedef struct BrDIVtbl {
-    void *QueryInterface;                               /* +0x00 */
-    void *AddRef;                                       /* +0x04 */
-    unsigned long(__stdcall *Release)(struct BrDI *);   /* +0x08 */
-} BrDIVtbl;
-
-typedef struct BrDI {
-    BrDIVtbl *lpVtbl;
-} BrDI;
+typedef struct BrDI BrDI;              /* the input system (br_in.h) */
 
 /* 0x118EEF00 -- how many subsystems still hold DirectInput open. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -73,7 +63,6 @@ int BrDInputShutdown(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 
 /* WHAT IT DOES: the same reference-counted release for the joystick/force-
  * feedback devices -- frees both interfaces when the last user goes, and

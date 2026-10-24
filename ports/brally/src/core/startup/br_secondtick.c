@@ -6,7 +6,6 @@
  * where it is; this TU only needs its address.
  */
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -25,7 +24,7 @@ void BrSecondTickStart(void)
 
 {
   g_hBrSndWake86 = br_os_event(0, 0);
-  g_hBrSndThread86 = br_os_thread((LPTHREAD_START_ROUTINE)BrSecondTickLoop, (LPVOID)0x0, (LPDWORD)&DAT_11849e64);
+  g_hBrSndThread86 = br_os_thread((uint32_t (*)(void *))BrSecondTickLoop, (void *)0x0, (uint32_t *)&DAT_11849e64);
   DAT_11849ea8 = 1000;
   (*(int *)&g_fBrSndThread86) = 1;
   return;

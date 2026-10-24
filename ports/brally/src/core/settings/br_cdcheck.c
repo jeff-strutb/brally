@@ -13,13 +13,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP int __cdecl _chdrive(int);
-_CRTIMP int __cdecl _chdir(const char *);
 
 /* WHAT IT DOES: check whether one drive letter is the Boss Rally CD -- it
  * must be a CD-ROM, hold the expected directory, and carry the expected
@@ -35,9 +32,9 @@ int FUN_100377a0(int param_1)
   char vol[260];
   
   sprintf(path, DAT_100acad0, param_1 + 0x40);
-  if (_chdrive(param_1) == 0) {
-    if (br_os_drive_type((LPCSTR)0) == 5) {
-      if (_chdir(DAT_100acacc) == 0) {
+  if (br_chdrive(param_1) == 0) {
+    if (br_os_drive_type((const char *)0) == 5) {
+      if (br_chdir(DAT_100acacc) == 0) {
         if (br_os_volume_info(path, vol, 0x104, 0, 0, 0, 0, 0) != 0) {
           if (strcmp(vol, s_Boss_Rally_1007b384) == 0) {
             return 1;

@@ -14,6 +14,7 @@
 #include <strings.h>
 
 #include "plat.h"
+#include "br_rt.h"
 
 /* ---- paths -------------------------------------------------------------------- */
 static char s_cwd[520] = "C:\\BOSSRALLY";
@@ -265,10 +266,10 @@ int br_access(const char *path, int mode)
     return plat_path(path, host, sizeof host) ? 0 : -1;
 }
 
-int _chdir(const char *p)   { return plat_chdir(p); }
-int _getdrive(void)         { return plat_drive(); }
-int _chdrive(int d)         { return plat_chdrive(d); }
-char *_getcwd(char *buf, int n)
+int br_chdir(const char *p)   { return plat_chdir(p); }
+int br_getdrive(void)         { return plat_drive(); }
+int br_chdrive(int d)         { return plat_chdrive(d); }
+char *br_getcwd(char *buf, int n)
 {
     if (!buf) {
         n = n > 0 ? n : 260;
@@ -301,11 +302,11 @@ static int wild(const char *p, const char *s)
     return 0;
 }
 
-static void find_hit(struct _finddata_t *fd, const char *nm, int is_dir, uint64_t size)
+static void find_hit(BrFindData *fd, const char *nm, int is_dir, uint64_t size)
 {
     memset(fd, 0, sizeof *fd);
-    fd->attrib = is_dir ? _A_SUBDIR : _A_ARCH;
-    fd->size = (_fsize_t)size;
+    fd->attrib = is_dir ? BR_FIND_DIR : BR_FIND_ARCH;
+    fd->size = (uint32_t)size;
     snprintf(fd->name, sizeof fd->name, "%s", nm);
 }
 
@@ -327,7 +328,7 @@ static const char *overlay_leaf(const pfind *f, const char *nm)
     return nm;
 }
 
-static int find_next(pfind *f, struct _finddata_t *fd)
+static int find_next(pfind *f, BrFindData *fd)
 {
     const char *nm, *leaf;
     int is_dir;
@@ -366,7 +367,7 @@ static int find_next(pfind *f, struct _finddata_t *fd)
     }
 }
 
-intptr_t _findfirst(const char *spec, struct _finddata_t *fd)
+intptr_t br_findfirst(const char *spec, BrFindData *fd)
 {
     char c[520], dir[520], host[1024];
     char *slash, *q;
@@ -404,12 +405,12 @@ intptr_t _findfirst(const char *spec, struct _finddata_t *fd)
     return (intptr_t)f;
 }
 
-int _findnext(intptr_t h, struct _finddata_t *fd)
+int br_findnext(intptr_t h, BrFindData *fd)
 {
     return h == -1 ? -1 : find_next((pfind *)h, fd);
 }
 
-int _findclose(intptr_t h)
+int br_findclose(intptr_t h)
 {
     if (h != -1) {
         if (((pfind *)h)->d)
@@ -420,16 +421,16 @@ int _findclose(intptr_t h)
 }
 
 /* ---- strings ------------------------------------------------------------------------- */
-int _stricmp(const char *a, const char *b) { return strcasecmp(a, b); }
-int _strnicmp(const char *a, const char *b, size_t n) { return strncasecmp(a, b, n); }
-char *_strupr(char *s)
+int br_stricmp(const char *a, const char *b) { return strcasecmp(a, b); }
+int br_strnicmp(const char *a, const char *b, size_t n) { return strncasecmp(a, b, n); }
+char *br_strupr(char *s)
 {
     char *p;
     for (p = s; *p; p++)
         *p = (char)toupper((unsigned char)*p);
     return s;
 }
-char *_strlwr(char *s)
+char *br_strlwr(char *s)
 {
     char *p;
     for (p = s; *p; p++)
@@ -437,7 +438,7 @@ char *_strlwr(char *s)
     return s;
 }
 
-char *_ltoa(long v, char *out, int radix)
+char *br_ltoa(long v, char *out, int radix)
 {
     /* MSVC: radix 10 is signed, any other radix shows the 32-bit pattern */
     char tmp[40];
@@ -456,18 +457,7 @@ char *_ltoa(long v, char *out, int radix)
     return out;
 }
 
-char *_itoa(int v, char *out, int radix) { return _ltoa(v, out, radix); }
-int _finite(double d) { return isfinite(d); }
-#ifdef _WIN32
-/* errno is (*_errno()) in the Windows CRT, and _errno here is the renamed
- * emulation (br_winemu.h): forward to the system's own */
-#undef _errno
-__declspec(dllimport) int *_errno(void);
-int *brw__errno(void) { return _errno(); }
-#define _errno brw__errno
-#else
-int *_errno(void) { return &errno; }
-#endif
+char *br_itoa(int v, char *out, int radix) { return br_ltoa(v, out, radix); }
 
 /* MSVC's rand/srand (one sequence for the process; the game seeds and draws
  * from one thread) */
@@ -570,7 +560,7 @@ static void run_onexit(void)
         s_onexit[--s_nonexit]();
 }
 
-BrCrtOnExitFn _onexit(BrCrtOnExitFn fn)
+BrCrtOnExitFn br_onexit(BrCrtOnExitFn fn)
 {
     if (s_nonexit == 0)
         atexit(run_onexit);
@@ -580,22 +570,14 @@ BrCrtOnExitFn _onexit(BrCrtOnExitFn fn)
     return fn;
 }
 
-BrCrtOnExitFn dllonexit(BrCrtOnExitFn fn, void *begin, void *end)
+BrCrtOnExitFn br_dllonexit(BrCrtOnExitFn fn, void *begin, void *end)
 {
     (void)begin;
     (void)end;
-    return _onexit(fn);
+    return br_onexit(fn);
 }
 
-/* MSVC's structured-exception frame handler, named by the decompiled
- * frames; nothing raises a structured exception here */
-int _except_handler3(void) { return 1; }
 
-#ifdef _WIN32
-/* mingw's float.h declares _finite dllimport; the import slot it then asks
- * for points at the emulation's (br_winemu.h renamed it) */
-void *__imp_brw__finite = (void *)&_finite;
-#endif
 
 void *BrOperatorNew(size_t cb) { return malloc(cb ? cb : 1); }
 void  BrOperatorDelete(void *p) { free(p); }

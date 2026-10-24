@@ -577,13 +577,10 @@ int BrInputBitHeld(int code)
 
 
 
-#include <windows.h>
 /* FUN_100377a0: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP int __cdecl _getdrive(void);
-_CRTIMP char *__cdecl _getcwd(char *, int);
-_CRTIMP int __cdecl _chdrive(int);
-_CRTIMP int __cdecl _chdir(const char *);
+_CRTIMP int __cdecl br_getdrive(void);
+_CRTIMP char *__cdecl br_getcwd(char *, int);
 
 /* WHAT IT DOES: hunt for the game CD by walking every drive letter from C
  * upwards, trying each in turn and restoring the original drive and
@@ -601,16 +598,16 @@ int FUN_1003ee90(void)
   char cwd[260];
   
   result = 0;
-  saved = _getdrive();
-  _getcwd(cwd, 0x104);
+  saved = br_getdrive();
+  br_getcwd(cwd, 0x104);
   for (d = 3; d <= 0x1a; d++) {
-    if (_chdrive(d) != 0) {
+    if (br_chdrive(d) != 0) {
       continue;
     }
-    if (br_os_drive_type((LPCSTR)0) != 5) {
+    if (br_os_drive_type((const char *)0) != 5) {
       continue;
     }
-    if (_chdir(DAT_100acacc) != 0) {
+    if (br_chdir(DAT_100acacc) != 0) {
       continue;
     }
     if (FUN_100377a0(d) == 0) {
@@ -619,8 +616,8 @@ int FUN_1003ee90(void)
     result = 1;
     break;
   }
-  _chdrive(saved);
-  _chdir(cwd);
+  br_chdrive(saved);
+  br_chdir(cwd);
   return result;
 }
 

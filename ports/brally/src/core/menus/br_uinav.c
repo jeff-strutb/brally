@@ -328,13 +328,7 @@ int BR_THISCALL1 BrUiNavCtlHit_10047A60(BrUiCtl_ *pCtl)
  * (g_..5DD8 = this; 0x10059060).
  * ====================================================================== */
 
-typedef struct BrDInVtbl_ {
-    int (__stdcall *f00[7])(void *);
-    int (__stdcall *pfnAcquire)(void *);                      /* +0x1C */
-    int (__stdcall *f20)(void *);
-    int (__stdcall *pfnGetDeviceState)(void *, int, void *);  /* +0x24 */
-} BrDInVtbl_;
-typedef struct BrDInDev_ { BrDInVtbl_ *pVtbl; } BrDInDev_;
+typedef struct BrDInDev_ BrDInDev_;   /* a device (br_in.h) */
 
 typedef struct BrGlNavRec {
     int32_t   x, y, z;            /* +0x00 +0x04 +0x08 */

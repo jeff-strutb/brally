@@ -52,7 +52,6 @@ void BrWrap_10072A70(int a, int b, int c)
 }
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

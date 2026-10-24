@@ -97,7 +97,6 @@ int FUN_1006aaf0();
 /* BrDelta_100713A0: prototype in br_funcs.h */
 /* Body in src/brally/core/racing/br_secondtick.c; the starter below spawns it. */
 /* BrSecondTickLoop: prototype in br_funcs.h */
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

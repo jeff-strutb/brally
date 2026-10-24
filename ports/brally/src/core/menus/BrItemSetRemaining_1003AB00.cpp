@@ -103,7 +103,6 @@ extern "C" {
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP char *_strupr(char *s);
 }
 
 int BrItemSetRemaining_1003AB00(Obj3AB00 *pObj)
@@ -123,13 +122,13 @@ int BrItemSetRemaining_1003AB00(Obj3AB00 *pObj)
     if (v < 0)
         v = 0;
 
-    _itoa(v, szNum, 10);
+    br_itoa(v, szNum, 10);
 
     if (strlen(szNum) == 0)
         return 0;
 
     pLabel = (*(class Item438D *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
-    strcpy(pLabel, _strupr(szNum));
+    strcpy(pLabel, br_strupr(szNum));
 
     (BR_VFN(&((*(class Item438D *)&((BrUiCtl_ *)(pObj))->aText[0])), 2, void (*)(void *)))(&((*(class Item438D *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)

@@ -26,7 +26,8 @@ void   *BrOperatorNew(size_t cb);            /* 0x1007DFE0 operator new    */
 void    BrOperatorDelete(void *p);           /* 0x1007DE40 operator delete */
 /* The CRT's exit-handler registration (the platform runs them at exit). */
 typedef int (*BrCrtOnExitFn)(void);
-BrCrtOnExitFn dllonexit(BrCrtOnExitFn pfn, void *pBegin, void *pEnd);
+BrCrtOnExitFn br_dllonexit(BrCrtOnExitFn pfn, void *pBegin, void *pEnd);
+BrCrtOnExitFn br_onexit(BrCrtOnExitFn pfn);
 
 /* C++ `delete p` on the original's classes: the scalar deleting destructor in
  * vtable slot 0, flag 1 (Itanium's vtables put destructors elsewhere, so the
@@ -50,6 +51,8 @@ static inline void *br_new_obj(size_t cb, void *(*ctor)(void *))
     return p != 0 ? ctor(p) : 0;
 }
 int32_t BrFtolTrunc(float f);                /* 0x1007C8A0 __ftol          */
+
+#include "br_rt.h"         /* the runtime extras: platform/include/br_rt.h */
 
 /* The C runtime's file names are DOS paths (C:\BOSSRALLY\..., D:\...,
  * backslashes); the platform maps them to the host's files. */

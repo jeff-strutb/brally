@@ -49,14 +49,7 @@ extern void BrExt_1003CDA0(void);
  * record at the native layout, where they follow two pointers. */
 typedef BrNetSessionDesc BrDpSessionDesc;
 
-typedef struct BrDpObj BrDpObj;
-typedef struct BrDpVtbl {
-    void *apfn00[31];                                        /* +0x00..+0x7B */
-    int32_t (__stdcall *SetSessionDesc)(BrDpObj *,
-                                        BrDpSessionDesc *,
-                                        uint32_t);           /* +0x7C */
-} BrDpVtbl;
-struct BrDpObj { const BrDpVtbl *pVtbl; };
+typedef struct BrDpObj BrDpObj;        /* the network object (br_net.h) */
 
 /* BrDpGetSessionDesc: prototype in br_funcs.h */
 /* BrDpRefreshSettings: prototype in br_funcs.h */

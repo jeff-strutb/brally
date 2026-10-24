@@ -412,6 +412,28 @@ static void trace_window(void)
     }
 }
 
+/* BR_FPS=N: script frames at N a second of real time, for a run against
+ * another machine, which the virtual clock cannot reach (a headless host
+ * otherwise runs frames as fast as it can) */
+static void pace(void)
+{
+    static int init;
+    static uint64_t step, next;
+    uint64_t now;
+    if (!init) {
+        const char *e = getenv("BR_FPS");
+        init = 1;
+        if (e && atoi(e) > 0)
+            step = 1000000000ull / (uint64_t)atoi(e);
+    }
+    if (!step)
+        return;
+    now = host_ticks_ns();
+    next = next ? next + step : now + step;
+    if (next > now)
+        host_sleep_ms((uint32_t)((next - now) / 1000000u));
+}
+
 /* BrAppFrame's entry: one script frame */
 void plat_app_frame(void)
 {
@@ -437,4 +459,5 @@ void plat_app_frame(void)
         plat_script_autopilot();
     step();
     plat_audio_frame();
+    pace();
 }

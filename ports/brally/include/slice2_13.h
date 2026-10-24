@@ -143,24 +143,8 @@ void BrCursorAdvance(void);
  * without editing that header, which this packet may not do. */
 struct BrDPlay4Obj;
 
-typedef struct BrDPlay4Vtbl {
-    void *aSlots00[2];                                        /* +0x00,+0x04 */
-    int32_t (*Release)(struct BrDPlay4Obj *pThis);            /* +0x08 */
-    void *aSlots03[1];                                        /* +0x0C */
-    int32_t (*Close)(struct BrDPlay4Obj *pThis);              /* +0x10 */
-    void *aSlots05[4];                                        /* +0x14..+0x20 */
-    int32_t (*DestroyPlayer)(struct BrDPlay4Obj *pThis,
-                             uint32_t idPlayer);              /* +0x24 */
-    void *aSlots10[15];                                       /* +0x28..+0x60 */
-    int32_t (*Receive)(struct BrDPlay4Obj *pThis,
-                       uint32_t *pidFrom, uint32_t *pidTo,
-                       uint32_t dwFlags, void *pvData,
-                       uint32_t *pcbData);                    /* +0x64 */
-} BrDPlay4Vtbl;
 
-typedef struct BrDPlay4Obj {
-    const BrDPlay4Vtbl *pVtbl;   /* +0x00 */
-} BrDPlay4Obj;
+typedef struct BrDPlay4Obj BrDPlay4Obj;   /* the network object (br_net.h) */
 
 #define BR_DP_E_BUFFERTOOSMALL ((int32_t)0x8877001E)   /* DPERR_BUFFERTOOSMALL */
 #define BR_DP_E_OUTOFMEMORY    ((int32_t)0x8007000E)   /* E_OUTOFMEMORY */

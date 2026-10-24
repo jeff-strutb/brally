@@ -163,7 +163,6 @@ int BrSndChanSetRatio(int iSlot, int64_t ratio)
   return 1;
 }
 
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -179,9 +178,9 @@ int BrSndThreadStop(void)
     br_os_set(g_hBrSndWake86);
     br_os_wait(g_hBrSndThread86, 0xffffffff);
     br_os_close(g_hBrSndThread86);
-    g_hBrSndThread86 = (HANDLE)0x0;
+    g_hBrSndThread86 = (void *)0x0;
     br_os_close(g_hBrSndWake86);
-    g_hBrSndWake86 = (HANDLE)0x0;
+    g_hBrSndWake86 = (void *)0x0;
     (*(int *)&g_fBrSndThread86) = 0;
   }
   return;

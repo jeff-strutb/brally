@@ -11,7 +11,6 @@
  * matched only because the image gate filled the call's displacement from
  * the original; they are fenced as data_table in config/brally/fenced.csv now.
  */
-#include <excpt.h>   /* GetExceptionInformation, for the array unwinders */
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared by the platform headers */
@@ -48,7 +47,6 @@ int __stdcall BrDllMain(void *param_1,int param_2,int _pad_2)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 typedef int (__cdecl *BrOnExitFn)(void);
-__declspec(dllimport) BrOnExitFn __cdecl _onexit(BrOnExitFn pfn);
 /* __dllonexit: prototype in br_funcs.h */
 
 /* WHAT IT DOES: register a function to run at exit. Picks between the
@@ -61,9 +59,9 @@ BrOnExitFn BrCrtOnExit(BrOnExitFn pfn)
 
 {
   if (DAT_118ef180 == -1) {
-    return _onexit(pfn);
+    return br_onexit(pfn);
   }
-  return dllonexit(pfn,&DAT_118ef180,&DAT_118ef17c);
+  return br_dllonexit(pfn,&DAT_118ef180,&DAT_118ef17c);
 }
 
 /* WHAT IT DOES: the CRT's atexit -- 0x100745B0 wrapped, returning 0 or -1. */

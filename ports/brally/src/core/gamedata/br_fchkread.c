@@ -39,7 +39,6 @@
  * caching and check reorder are all codegen-identical; only `wanted <= 0u`
  * went worse.  Do not reopen before the end-grind. */
 /* @implements 0x100030E0 d3d BrFChkFRead */
-#include <windows.h>
 /* RESIDUE (8 masked diffs, REGNORM 0+0): the original homes `size` in
  * ebx and `count` in edi; this build homes them the other way round, which
  * flips the two `push`es and the `imul` operands. Every instruction is the

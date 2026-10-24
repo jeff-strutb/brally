@@ -15,12 +15,10 @@
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_slots.h"   /* br_globals: its objects */
 #include "slice2_25.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <mmsystem.h>
 
 #ifndef true
 #define true 1
@@ -67,7 +65,6 @@
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-typedef int (__stdcall *CC_std_5)(void *, void *, void *, void *, intptr_t);
 
 /* WHAT IT DOES: initialise the multiplayer subsystem from cold -- clears the
  * session name and password buffers, zeroes every entry in the player table,
@@ -80,15 +77,15 @@ int BrDPlayCreate(void)
   int iVar4;
   char local_400[1024];
 
-  strcpy((LPSTR)&g_aBrA9CDF0, (LPCSTR)&g_aBr39B720);
-  strcpy((LPSTR)&DAT_10ac3f88, (LPCSTR)&g_aBr39B720);
+  strcpy((char *)&g_aBrA9CDF0, (const char *)&g_aBr39B720);
+  strcpy((char *)&DAT_10ac3f88, (const char *)&g_aBr39B720);
   memset(&DAT_10b71aa0, 0, 32);
   memset(&DAT_10b71ac0, 0, 64);
   for (i = 0; i < 16; i++) {
     g_aBrNetSession[i].pPayload = 0;
   }
 
-  iVar4 = BrDPlayStartup(GetModuleHandleA((LPCSTR)0x0), &g_BrDPlayCtx);
+  iVar4 = BrDPlayStartup(NULL, &g_BrDPlayCtx);   /* (the original passed its module) */
   if (iVar4 < 0) {
     return 0;
   }
@@ -133,7 +130,7 @@ int BrDPlayCreate(void)
         return 0;
       }
     }
-    DAT_10ac306c = br_os_timer((HWND)g_brOwner5BC72C, 1, 1000);
+    DAT_10ac306c = br_os_timer((void *)g_brOwner5BC72C, 1, 1000);
     g_guardA = 1;
   }
   return 1;
@@ -188,7 +185,6 @@ void BrExt_1003BF60(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrGlobalFreeAll: prototype in br_funcs.h */
 
-typedef int (__stdcall *CC_std_1)(void *);
 
 /* WHAT IT DOES: final multiplayer teardown at exit: closes the session,
  * frees every global allocation, logs the DirectPlay interface's remaining
@@ -249,11 +245,11 @@ void FUN_100356b0(void)
         DAT_10ac306c = br_os_timer(g_brOwner5BC72C, 1, 1000);
         g_guardA = 1;
       }
-      if (DAT_1027332c != (HANDLE)0x0) {
+      if (DAT_1027332c != (void *)0x0) {
         return;
       }
       DAT_1027332c = br_os_event(0, 0);
-      if (DAT_1027332c != (HANDLE)0x0) {
+      if (DAT_1027332c != (void *)0x0) {
         return;
       }
       iVar1 = -0x7ff8fff2;
@@ -417,8 +413,6 @@ int FUN_10036740(void *param_1, void **param_2)
 typedef struct { BrDpGuid g; int cb; char *pv; } BrDpAddrElem;
 
 /* CreateCompoundAddress lives at +0x38 in the IDirectPlayLobby vtable. */
-typedef int (__stdcall *BrDpCreateAddr5)(void *, BrDpAddrElem *, int,
-                                         void *, unsigned int *);
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* modem provider GUID  */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* serial provider GUID */
@@ -577,7 +571,7 @@ int BrDpAddressBuild(void **param_1, unsigned int *param_2)
  * different DirectPlay method -- one that takes an extra argument and
  * returns a variable-sized result. */
 /* @implements 0x10036F40 glide FUN_10036f40 */
-int FUN_10036f40(HWND param_1, void *param_2)
+int FUN_10036f40(void * param_1, void *param_2)
 
 {
   int hr;

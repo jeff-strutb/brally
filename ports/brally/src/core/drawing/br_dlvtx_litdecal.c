@@ -51,15 +51,12 @@
  *    the order of the file-scope externs, the block-scope externs and the
  *    locals below are what put every product and x-term in the original's
  *    order.  Exactly this count works (+-1 does not). */
-#include <windows.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include "br_dlcmd.h"
 #include "br_vecd.h"
 #include <math.h>
-#include <ddraw.h>
-#include <dsound.h>
 /* y column and the three colour-scale factors are absolute derefs: that
  * operand kind takes the fld side over the vertex field. */
 #define DAT_105ccd44 BrGbiRectG_5CCD44

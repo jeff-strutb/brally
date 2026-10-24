@@ -202,7 +202,6 @@ int BrNetLockSetIfZero22AAF4(void)
 }
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -223,7 +222,7 @@ int BrNetLockSetIfZero22AAF4(void)
 int BrNetMutexInit(void)
 
 {
-  HANDLE pvVar1;
+  void * pvVar1;
   int i;
   
   for (i = 0; i < 16; i++) {
@@ -293,7 +292,7 @@ void BrNetBeaconTick(void)
 {
   int n;
 
-  br_os_wait((void *)g_brH22AF04, INFINITE);
+  br_os_wait((void *)g_brH22AF04, BR_OS_FOREVER);
   if ((*(int *)&g_br22AAF4) != 0) {
     (*(int *)&g_br22AAF4)++;
     if ((*(int *)&g_br22AAF4) >= 27) {
@@ -456,15 +455,14 @@ int BrNetSlotGetF004(int param_1)
 {
   int uVar1;
   
-  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
+  br_os_wait((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   uVar1 = g_aBrNetSlot[param_1].f004;
-  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((void *)g_aBrNetSlot[param_1].hMutex);
   return uVar1;
 }
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* the stack's mutex handle */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* top index; negative = empty */
@@ -481,7 +479,7 @@ int BrNetStackPop(void)
     int v;
     int n;
 
-    br_os_wait((HANDLE)DAT_10226a5c, 0xffffffff);
+    br_os_wait((void *)DAT_10226a5c, 0xffffffff);
     n = DAT_1021c904;
     if (n >= 0) {
         v = DAT_1021c8c0[n];
@@ -489,13 +487,12 @@ int BrNetStackPop(void)
     } else {
         v = -1;
     }
-    br_os_release((HANDLE)DAT_10226a5c);
+    br_os_release((void *)DAT_10226a5c);
     return v;
 }
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* slot[0].hMutex; slot stride 0x978 (0x25E ints) */
 
@@ -563,15 +560,14 @@ char *BrNetSlotName(int param_1)
 void BrNetSlotSetName(int param_1,char *param_2)
 
 {
-  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
+  br_os_wait((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   strcpy((&g_aBrNetSlot[param_1].szName[0]), param_2);
-  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((void *)g_aBrNetSlot[param_1].hMutex);
   return;
 }
 
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* slot[0].hMutex; slot stride 0x978 (0x25E ints) */
 /* BrNetSlotGetF02C: prototype in br_funcs.h */
@@ -584,9 +580,9 @@ int BrNetSlotGetF02CBiased(int i)
 {
     int v;
 
-    br_os_wait((HANDLE)g_aBrNetSlot[i].hMutex, 0xffffffff);
+    br_os_wait((void *)g_aBrNetSlot[i].hMutex, 0xffffffff);
     v = (BrNetSlotGetF02C(i) & 0x3f) - 4;
-    br_os_release((HANDLE)g_aBrNetSlot[i].hMutex);
+    br_os_release((void *)g_aBrNetSlot[i].hMutex);
     return (v > 0) ? v : 0;
 }
 
@@ -602,9 +598,9 @@ int BrNetSlotGetF974(int param_1)
 {
   int iVar1;
   
-  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
+  br_os_wait((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   iVar1 = g_aBrNetSlot[param_1].f974;
-  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((void *)g_aBrNetSlot[param_1].hMutex);
   if (iVar1 < 0) {
     iVar1 = 0;
   }
@@ -730,9 +726,9 @@ int BrNetSlotGetF02C(int param_1)
 {
   int uVar1;
   
-  br_os_wait((HANDLE)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
+  br_os_wait((void *)g_aBrNetSlot[param_1].hMutex, 0xffffffff);
   uVar1 = g_aBrNetSlot[param_1].f02C;
-  br_os_release((HANDLE)g_aBrNetSlot[param_1].hMutex);
+  br_os_release((void *)g_aBrNetSlot[param_1].hMutex);
   return uVar1;
 }
 

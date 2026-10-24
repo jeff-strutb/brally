@@ -64,7 +64,7 @@ int BrItemSetNumWord_100380B0(Obj380B0 *pObj)
 {
     char *s = (*(class Item438B *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
 
-    _itoa(g_brVal40F8[g_brIdx5C04], s, 10);
+    br_itoa(g_brVal40F8[g_brIdx5C04], s, 10);
 
     (BR_VFN(&((*(class Item438B *)&((BrUiCtl_ *)(pObj))->aText[0])), 2, void (*)(void *)))(&((*(class Item438B *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (s != 0)

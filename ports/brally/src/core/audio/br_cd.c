@@ -13,7 +13,6 @@
 
 #include <stdlib.h>
 
-#include <windows.h>
 
 /* BrEarShutdownChannelFn: br_coretypes.h */
 /* BrCdVolumeSetFn: br_coretypes.h */
@@ -556,7 +555,6 @@ int BrCdEnableApply(char param_1)
 }
 
 
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -634,7 +632,7 @@ int FUN_100027e0(void)
 /* @implements 0x10002870 glide FUN_10002870 */
 /* auto-filed from ghidra --refine; transforms: stackshred */
 
-int FUN_10002870(HWND param_1,unsigned char param_2)
+int FUN_10002870(void * param_1,unsigned char param_2)
 
 {
   int rc;

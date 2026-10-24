@@ -95,7 +95,7 @@ int BrSaveNameCommitRallySeason(void *pList, int code)
     } else {
         if (((BrTextList *)pList)->aItems[g_AB94].sz != NULL) {
             strcpy(szPath, s_RallySeason_100acb00);
-            _itoa(g_AB94, szNum, 10);
+            br_itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_brf_100acaf8);
             strcpy(DAT_117a6030, szPath);
@@ -132,7 +132,7 @@ int BrSaveNameCommitTimeAttack(void *pList, int code)
     } else {
         if (((BrTextList *)pList)->aItems[g_AB94].sz != NULL) {
             strcpy(szPath, s_TimeAttack_100acb14);
-            _itoa(g_AB94, szNum, 10);
+            br_itoa(g_AB94, szNum, 10);
             strcat(szPath, szNum);
             strcat(szPath, s_grf_100acb0c);
             strcpy(DAT_117a5f28, szPath);

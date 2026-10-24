@@ -27,7 +27,7 @@ export OUT
 CC=${CC:-clang}
 P=ports/brally/platform
 PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -I$P/include -I$P/host -I$P/render -I$P/common"
-case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="-include $P/include/br_winemu.h $PFLAGS -Ddllimport=";; esac
+case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="$PFLAGS -Ddllimport=";; esac
 mkdir -p $OUT/plat
 
 ports/brally/build64.sh
@@ -45,7 +45,7 @@ ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
 # the script commands that read the game (core types, so core flags)
 ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
 
-SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/win_kernel.c $P/common/br_os_window.c \
+SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/br_os_window.c \
       $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/br_net.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
       $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX

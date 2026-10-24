@@ -39,8 +39,6 @@ extern void BrAppMsg107(void *pv1, const void *pData, uint32_t cbData,
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: EnterCriticalSection is declared by the platform headers */
 /* 64-bit core: LeaveCriticalSection is declared by the platform headers */
-typedef int (__stdcall *BrDpSend6)(void *, uint32_t, uint32_t, uint32_t,
-                                   void *, uint32_t);
 int BrDPlayRawSend(void *pIface, uint32_t idFrom, uint32_t idTo,
                           uint32_t flags, void *pData, uint32_t cbData)
 {

@@ -16,7 +16,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
 #include "slice3_41.h"   /* br_globals: its objects */
-#include <windows.h>
 
 
 /* FUN_10004900: prototype in br_funcs.h */

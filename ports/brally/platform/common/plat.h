@@ -3,7 +3,6 @@
 #define BR_PLAT_H
 
 #include <stdio.h>
-#include "win32.h"
 #include "host.h"
 #include "br_os.h"
 
@@ -62,11 +61,6 @@ void  plat_pointer_units(int *w, int *h);   /* win_user.c: the units the host's 
 int   plat_game_cursor(int *x, int *y);
 void  plat_app_frame(void);               /* script.c: BrAppFrame's entry */
 void *plat_main_window(void);
-
-/* ---- modules (win_kernel.c) ------------------------------------------------- */
-/* a module the platform provides by name (ddraw.dll, dsound.dll ...) */
-typedef struct { const char *name; void *fn; } plat_export;
-void plat_register_module(const char *dll, const plat_export *ex, int n);
 
 /* ---- resources (win_rsrc.c) ------------------------------------------------- */
 /* a PE file loaded for its resources; LoadStringA reads its string table */

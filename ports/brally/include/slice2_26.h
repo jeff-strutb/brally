@@ -178,18 +178,7 @@ struct BrEntSub {
  * Two more foreign objects
  * ========================================================================== */
 
-typedef struct BrHost     BrHost;      /* *(void**)0x10277B40 */
-typedef struct BrHostVtbl BrHostVtbl;
-
-struct BrHostVtbl {
-    void *aReserved[31];                                  /* +0x00..+0x78 */
-    /* +0x7C. __cdecl, and the object is pushed as the first argument. */
-    void (*f7C)(BrHost *pSelf, void *pItem, int32_t a);
-};
-
-struct BrHost {
-    const BrHostVtbl *pVtbl;   /* +0x00 */
-};
+typedef struct BrHost     BrHost;      /* *(void**)0x10277B40, the network object (br_net.h) */
 
 /* What 0x1003D0B0 hands back through its out-parameter. Only +0x04 is
  * touched (bit 0x20 cleared). */

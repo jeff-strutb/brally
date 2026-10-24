@@ -297,7 +297,7 @@ int FUN_100498a0(GameUi *parent)
     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn14) = (CtlFn)BrMenuSetAA28A8;
     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn18) = (CtlFn)BrMenuClearAA28A8;
     for (i = 0; i < g_brStages[(*(char *)&DAT_10ac5c10)].f04; i++) {
-        sprintf(szItem, BrStrGet(0xbf), _strupr(_itoa(i + 1, szNum, 10)));
+        sprintf(szItem, BrStrGet(0xbf), br_strupr(br_itoa(i + 1, szNum, 10)));
         (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4(szItem, 1, 1, &(*(char *)&g_hot0), 1);
     }
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;

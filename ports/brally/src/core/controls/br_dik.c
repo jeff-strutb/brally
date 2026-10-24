@@ -152,29 +152,20 @@ void BrSub100770C0(void)
 /* Original is 2-arg thiscall: `this` in ecx, one unread stack dword, `ret 4`.
  * BR_THISCALL1 (= __fastcall) would put that dword in edx; a struct is never
  * register-eligible, so it is forced back onto the stack.
- * COM methods on the iface are stdcall (`push eax; call [vtbl+n]`): the
- * header's cdecl pointers would emit `add esp, 4` after each call. */
+ */
 typedef struct { uint32_t v; } BrSub10060750Arg;
-typedef struct {
-    char pad[0x1C];
-    void (__stdcall *pfn1C)(void *pThis);
-    void (__stdcall *pfn20)(void *pThis);
-} BrSub10060750Vtbl;
-typedef struct {
-    BrSub10060750Vtbl *pVtbl;
-} BrSub10060750Iface;
 typedef struct {
     uint32_t _00, _04, _08, f0C;
 } BrSub10060750Phase;
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x10AA2904 */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */        /* 0x10AA33E0 */
 
-/* WHAT IT DOES: tell a device slot's object to show or hide itself,
- * depending on whether the current screen is live and a related flag. */
+/* WHAT IT DOES: take hold of the mouse, or let it go, as the game's screen
+ * is live and a flag says (the game losing or regaining the focus). */
 /* @implements 0x10060750 d3d BrSub10060750 */
 void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot)
 {
-    BrSub10060750Iface *pIface = (BrSub10060750Iface *)pSlot->pIface;
+    void               *pIface = pSlot->pIface;     /* the mouse (br_in.h) */
     uint32_t            live;
     uint32_t            flag;
 
@@ -184,9 +175,9 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot)
         if (live != 0) {
             flag = g_BrAA33E0;
             if (flag != 0) {
-                pIface->pVtbl->pfn20(pIface);
+                br_in_unacquire(pIface);
             } else {
-                pIface->pVtbl->pfn1C(pIface);
+                br_in_acquire(pIface);
             }
         }
     }
@@ -198,8 +189,6 @@ void BR_THISCALL1 BrSub10060750(BrDevSlot *pSlot)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* FUN_100724c0: prototype in br_funcs.h */
 /* BrDiAcquire: prototype in br_funcs.h */
-typedef int (__stdcall *CC_std_1)(int);
-typedef int (__stdcall *CC_std_3)(int, int, int);
 
 /* WHAT IT DOES: the joystick "press anything" scan for the control-binding
  * UI. Creates the joystick device on first use (marking the binding table

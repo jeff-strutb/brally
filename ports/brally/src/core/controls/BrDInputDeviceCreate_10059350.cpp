@@ -30,29 +30,7 @@
 
 struct DIDev;
 
-struct DIDevVtbl {
-    void *pad00[11];                                        /* +0x00..+0x28 */
-    int (__stdcall *SetDataFormat)(DIDev *, const void *);  /* +0x2C */
-    void *pad30;                                            /* +0x30 */
-    int (__stdcall *SetCooperativeLevel)(DIDev *, void *, unsigned int);
-                                                            /* +0x34 */
-};
-
-struct DIDev {
-    DIDevVtbl *lpVtbl;
-};
-
-struct DI;
-
-struct DIVtbl {
-    void *pad00[3];                                         /* +0x00..+0x08 */
-    int (__stdcall *CreateDevice)(DI *, const void *, DIDev **, void *);
-                                                            /* +0x0C */
-};
-
-struct DI {
-    DIVtbl *lpVtbl;
-};
+/* (a device, br_in.h) */
 
 class Input59350 {
 public:

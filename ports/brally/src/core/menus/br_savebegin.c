@@ -149,7 +149,7 @@ int BrSaveBeginRallySeason(int pList, int *pIdx)
     strcpy(g_aBrAA2518, g_aBr39B720);
     strcpy(DAT_10ac46a0, g_aBr39B720);
     strcpy(szPath, s_RallySeason_100acb00);
-    _itoa(*pIdx, szNum, 10);
+    br_itoa(*pIdx, szNum, 10);
     strcat(szPath, szNum);
     strcat(szPath, s_brf_100acaf8);
     fp = fopen(szPath, DAT_100ac9c8);
@@ -224,7 +224,7 @@ int BrSaveBeginTimeAttack(int pList, int *pIdx)
     (*(int *)&DAT_105ccb68[23]) = 0;
     BrSub1003E680();
     strcpy(szPath, s_TimeAttack_100acb14);
-    _itoa(*pIdx, szNum, 10);
+    br_itoa(*pIdx, szNum, 10);
     strcat(szPath, szNum);
     strcat(szPath, s_grf_100acb0c);
     strcpy(DAT_117a5f28, szPath);

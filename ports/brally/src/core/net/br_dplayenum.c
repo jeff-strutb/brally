@@ -20,7 +20,6 @@
 
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -58,8 +57,6 @@ typedef struct { int a, b, c, d; } BrSessionGuid;
 /* BrSub1003D070: prototype in br_funcs.h */
 /* FUN_10036130: prototype in br_funcs.h */
 
-typedef int (__stdcall *BrDpEnumSessionsFn)(void *, void *, int, void *,
-                                            void *, int);
 
 /* WHAT IT DOES: kicks off the search for advertised games -- resets the
  * session list, builds a fresh session description carrying our

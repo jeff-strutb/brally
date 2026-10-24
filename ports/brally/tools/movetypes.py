@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 CORE = os.path.join(ROOT, 'ports/brally/include/br_coretypes.h')
 FLAGS = ['-fsyntax-only', '-w', '-ferror-limit=0', '-fms-extensions', '-fdeclspec', '-D_FORTIFY_SOURCE=0',
          '-Iports/brally/platform/include', '-Iports/brally/include',
-         '-include', 'ports/brally/platform/include/win32.h', '-include', 'ports/brally/platform/include/br_lp64.h',
+         '-include', 'ports/brally/platform/include/br_os.h', '-include', 'ports/brally/platform/include/br_lp64.h',
          '-x', 'c', '-std=gnu89']
 
 

@@ -6,7 +6,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "slice1_09.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <string.h>
 
 /* One networking record, 0x96C bytes (br_peerslot.c pins the stride and the
@@ -54,7 +53,7 @@
 /* @implements 0x1006AB80 glide BrNetPeerPump */
 void BrNetPeerPump(void)
 {
-    DWORD wr;
+    uint32_t wr;
     int i;
     int j;
     int k;
@@ -63,9 +62,9 @@ void BrNetPeerPump(void)
     int st2;
     int id;
     char changed;
-    HANDLE h1[2];
-    HANDLE h2[2];
-    HANDLE h3[2];
+    void * h1[2];
+    void * h2[2];
+    void * h3[2];
     unsigned char b4;
     unsigned char b5;
     unsigned char b6;
@@ -73,7 +72,7 @@ void BrNetPeerPump(void)
 
     didAny = 0;
     for (i = 0; i < BR_PEERS; i++) {
-        h1[0] = (HANDLE)g_hBrSndWake86;
+        h1[0] = (void *)g_hBrSndWake86;
         h1[1] = g_aBrPeer71[i].hMutex;
         wr = br_os_wait_many(2, h1, 0, 0xffffffff);
         if (wr == 0) {
@@ -88,7 +87,7 @@ void BrNetPeerPump(void)
             else {
                 for (j = 0; j < BR_PEERS; j++) {
                     BrPeerRec *pj = &g_aBrPeer71[j];
-                    h2[0] = (HANDLE)g_hBrSndWake86;
+                    h2[0] = (void *)g_hBrSndWake86;
                     h2[1] = pj->hMutex;
                     wr = br_os_wait_many(2, h2, 0, 0xffffffff);
                     if (wr == 0) {
@@ -133,7 +132,7 @@ void BrNetPeerPump(void)
                 p->f95C = (*(int *)&DAT_1184c070);
                 for (k = 0; k < BR_PEERS; k++) {
                     if (i != k) {
-                        h3[0] = (HANDLE)g_hBrSndWake86;
+                        h3[0] = (void *)g_hBrSndWake86;
                         h3[1] = g_aBrPeer71[k].hMutex;
                         wr = br_os_wait_many(2, h3, 0, 0xffffffff);
                         if (wr == 0) {

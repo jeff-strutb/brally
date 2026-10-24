@@ -13,7 +13,6 @@
 #include "br_race.h"   /* br_globals: its objects */
 #include "br_vec.h"   /* br_globals: its objects */
 #include "slice1_08.h"   /* br_globals: its objects */
-#include <windows.h>
 #include "br_cartypes.h"
 #include <math.h>
 #include <string.h>

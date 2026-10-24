@@ -11,12 +11,10 @@
 #include "br_collresp.h"   /* br_globals: its objects */
 #include "br_collrespsolve.h"   /* br_globals: its objects */
 #include "slice1_08.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <mmsystem.h>
 
 #ifndef true
 #define true 1

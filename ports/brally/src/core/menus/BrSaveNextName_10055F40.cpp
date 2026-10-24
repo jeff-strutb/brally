@@ -99,10 +99,10 @@ void Save55F40::NextName(unsigned char *pIn, char **ppOut)
 
     num = atoi(digits) + 1;
     memset(digits, 0, sizeof(digits));
-    _itoa(num & 0xff000000, digits + 0, 10);
-    _itoa(num & 0xff0000, digits + 1, 10);
-    _itoa(num & 0xff00, digits + 2, 10);
-    _itoa(num & 0xff, digits + 3, 10);
+    br_itoa(num & 0xff000000, digits + 0, 10);
+    br_itoa(num & 0xff0000, digits + 1, 10);
+    br_itoa(num & 0xff00, digits + 2, 10);
+    br_itoa(num & 0xff, digits + 3, 10);
 
     strcpy(*ppOut, stripped);
     strcat(*ppOut, digits);

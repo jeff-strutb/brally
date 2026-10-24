@@ -209,23 +209,11 @@ typedef struct BrGfxSurf {
     int32_t f58;             /* +0x58 */
 } BrGfxSurf;
 
-typedef struct BrGfxTarget     BrGfxTarget;
-typedef struct BrGfxTargetVtbl BrGfxTargetVtbl;
-
-struct BrGfxTargetVtbl {
-    void *aReserved00[8];                                 /* +0x00 .. +0x1C */
-    void (*f20)(BrGfxTarget *pThis, int32_t a);           /* +0x20 */
-    void *aReserved24[3];                                 /* +0x24 .. +0x2C */
-    void (*f30)(BrGfxTarget *pThis, int32_t a1,
-                const int32_t *pRect, int32_t a3);        /* +0x30 */
-};
-
-struct BrGfxTarget { const BrGfxTargetVtbl *pVtbl; };
 
 /* *0x1027736C.  Only +0x08 and +0x64 are read. */
 typedef struct BrGfxCtx {
     BrGfxSurf   *pSurf;      /* +0x08 */
-    BrGfxTarget *pTarget;    /* +0x64 */
+    void        *pTarget;    /* +0x64 */
 } BrGfxCtx;
 
 /* ==========================================================================

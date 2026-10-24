@@ -57,21 +57,7 @@ typedef int32_t (*BrDiMethod0)(BrDiObj *pThis);
 /* Only the two slots this translation unit calls are typed. The rest are
  * deliberately left as `void *` rather than given plausible-looking
  * signatures we would not be reproducing faithfully. */
-typedef struct BrDiVtbl {
-    void        *pfnSlot0;      /* +0x00  QueryInterface */
-    void        *pfnSlot1;      /* +0x04  AddRef */
-    BrDiMethod0  pfnRelease;    /* +0x08  Release */
-    void        *pfnSlot3;      /* +0x0C */
-    void        *pfnSlot4;      /* +0x10 */
-    void        *pfnSlot5;      /* +0x14 */
-    void        *pfnSlot6;      /* +0x18  IDirectInputDevice::SetProperty */
-    void        *pfnSlot7;      /* +0x1C  IDirectInputDevice::Acquire */
-    BrDiMethod0  pfnUnacquire;  /* +0x20  IDirectInputDevice::Unacquire */
-} BrDiVtbl;
 
-struct BrDiObj {
-    const BrDiVtbl *pVtbl;      /* +0x00 -- the original does `mov ecx,[eax]` */
-};
 
 /* The four globals the routine owns, in ascending address order.
  *

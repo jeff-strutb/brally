@@ -114,17 +114,7 @@
 /* IDirectInputDevice2A: slot 7 (+0x1C) Acquire, slot 9 (+0x24)
  * GetDeviceState(cbData, lpvData), slot 25 (+0x64) Poll. */
 /* BrInDiDev: br_coretypes.h */
-typedef struct BrInDiDevVtbl BrInDiDevVtbl;
-struct BrInDiDevVtbl {
-    void   *aReserved00[7];                                     /* +0x00 */
-    int32_t (__stdcall *Acquire)(BrInDiDev *pThis);             /* +0x1C */
-    void   *f20;                                                /* +0x20 */
-    int32_t (__stdcall *GetDeviceState)(BrInDiDev *pThis,
-                                        uint32_t cb, void *pv); /* +0x24 */
-    void   *aReserved28[15];                                    /* +0x28 */
-    int32_t (__stdcall *Poll)(BrInDiDev *pThis);                /* +0x64 */
-};
-struct BrInDiDev { const BrInDiDevVtbl *pVtbl; };
+struct BrInDiDev;                  /* a device (br_in.h) */
 
 #define BR_DIERR_NOTACQUIRED  ((int32_t)0x8007001E)
 
@@ -828,7 +818,6 @@ uint8_t BrInputJustPressed(int32_t action)
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 
 /* WHAT IT DOES: drop one user of the keyboard system and release the
  * DirectInput device when the last one goes. Clamps its own counter at zero,

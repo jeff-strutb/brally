@@ -8,7 +8,6 @@
 /* The original binary is /MD: CRT calls resolve through the import table. */
 #define _CRTIMP __declspec(dllimport)
 #include "br_slots.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <stdio.h>
 
 /* FUN_10036a30: prototype in br_funcs.h */
@@ -110,7 +109,7 @@
 /* @implements 0x10009010 glide BrDpAppMsgHandle */
 void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
 {
-    LPARAM  pText;
+    intptr_t  pText;
     char    szDbg[260];
     char    szLine[1024];
     int     i;
@@ -121,10 +120,10 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
     if (DAT_10ac5be4 == 0) {
         switch (*pMsg) {
         case 0x60000000:
-            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 0);
+            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (const char *)(pMsg + 1), (const void * *)&pText, 0);
             break;
         case 0x60000001:
-            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (LPCSTR)(pMsg + 1), (LPCVOID *)&pText, 1);
+            FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, (const char *)(pMsg + 1), (const void * *)&pText, 1);
             break;
         case 0x60000002:
             if (idFrom == 1) {
@@ -183,12 +182,12 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
             break;
         case 0x60000006:
             if (idFrom == pMsg[1]) {
-                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_left_the_race__1007b2d8, (LPCVOID *)&pText, 1);
+                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_left_the_race__1007b2d8, (const void * *)&pText, 1);
             }
             break;
         case 0x60000007:
             if (idFrom == pMsg[1]) {
-                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_returned_to_race_lobby__1007b2bc, (LPCVOID *)&pText, 1);
+                FUN_10036a30((struct BrDPlayObj *)pNet->pDP, idFrom, s_returned_to_race_lobby__1007b2bc, (const void * *)&pText, 1);
             }
             break;
         case 0x60000008:
@@ -196,13 +195,13 @@ void BrDpAppMsgHandle(BrDPlayCtx *pNet, int *pMsg, int a3, int idFrom, int a5)
                 v = pMsg[2];
                 if (v >= 0 && v < 8) {
                     sprintf(szLine, s_finished__s_100a5b50, PTR_s_First__100aa3e8[v]);
-                    FUN_10036a30((struct BrDPlayObj *)pNet->pDP, pMsg[1], szLine, (LPCVOID *)&pText, 1);
+                    FUN_10036a30((struct BrDPlayObj *)pNet->pDP, pMsg[1], szLine, (const void * *)&pText, 1);
                 }
             }
             break;
         }
         if (pText != 0) {
-            if (g_brOwner5BC72C != (HWND)0) {
+            if (g_brOwner5BC72C != (void *)0) {
                 br_os_post(g_brOwner5BC72C, 0x501, 0, pText);
                 return;
             }

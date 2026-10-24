@@ -10,7 +10,6 @@
 /* TU state only (symbol-table size): with the DirectSound declarations in
  * front, VC5 orders the matrix row terms y, z, x as the original does.
  * Nothing here uses them. */
-#include <dsound.h>
 #include "br_x87.h"
 #include <stdint.h>
 #include "br_dl.h"

@@ -142,7 +142,7 @@ int Slots54A30::Add(const char *pszName, int flags, char kind,
         if (row >= 100)
             row = (short)((*(unsigned short *)&((BrTextList *)(this))->count) - 1);
 
-        if (_stricmp(((BrTextList *)(this))->aItems[row].sz, g_aBr39B720) == 0)
+        if (br_stricmp(((BrTextList *)(this))->aItems[row].sz, g_aBr39B720) == 0)
             return 0;
 
         (*(short *)&((BrTextList *)(this))->f1A92E)++;

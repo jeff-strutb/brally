@@ -9,7 +9,6 @@
  * See slice2_19.h for the recovered layouts and the gotchas.
  */
 #include "slice1_05.h"   /* br_globals: its objects */
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

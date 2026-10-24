@@ -6,9 +6,9 @@
   */
 +#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
  #include "slice1_02.h"   /* br_globals: its objects */
- #include <windows.h>
  
-@@ -109,7 +110,7 @@
+ /* BrTicks30FromMs: prototype in br_funcs.h */
+@@ -108,7 +109,7 @@
      } while (iVar6 < 8);
      iVar6 = (int)pSlot->f00C[iVar9] - (int)pSlot->f00C[iVar5];
      if (pSlot->f560 == iVar9) {
@@ -17,7 +17,7 @@
          pSlot->f568 = pSlot->f568 + 1;
          pSlot->f564 = pSlot->f564 + 1;
        }
-@@ -125,8 +126,8 @@
+@@ -124,8 +125,8 @@
        }
        iVar7 = BrTicks30FromMs();
        iVar7 = iVar7 - (int)pSlot->f00C[iVar9];
@@ -28,7 +28,7 @@
        }
        BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
                       &pSlot->cars[iVar9]);
-@@ -141,14 +142,14 @@
+@@ -140,14 +141,14 @@
      } else {
        pSlot->f560 = iVar9;
        if ((((unsigned int)(int)pSlot->f00C[iVar9] < (unsigned int)(pSlot->f564 + 1)) &&
@@ -46,7 +46,7 @@
          }
          BrCarStateLerp(pfVar3, (float)(iVar7 + iVar6) / (float)iVar6, &pSlot->cars[iVar5],
                         &pSlot->cars[iVar9]);
-@@ -166,8 +167,8 @@
+@@ -165,8 +166,8 @@
          pSlot->f564 = (int)pSlot->f00C[iVar9];
          iVar7 = BrTicks30FromMs();
          iVar7 = iVar7 - (int)pSlot->f00C[iVar9];

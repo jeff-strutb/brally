@@ -37,7 +37,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 FLAGS = ['-D_FORTIFY_SOURCE=0', '-w', '-fms-extensions', '-fdeclspec',
          '-Iports/brally/platform/include', '-Iports/brally/include']
-for h in ('ports/brally/platform/include/win32.h', 'ports/brally/platform/include/br_gfx.h',
+for h in ('ports/brally/platform/include/br_os.h', 'ports/brally/platform/include/br_gfx.h',
           'ports/brally/platform/include/br_x87.h', 'ports/brally/include/br_crt.h',
           'ports/brally/include/br_addr32.h', 'ports/brally/platform/include/br_lp64.h',
           'ports/brally/include/br_globals.h', 'ports/brally/include/br_funcs.h'):

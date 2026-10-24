@@ -5508,7 +5508,7 @@ int FUN_10002830(void);
 #pragma pop_macro("FUN_10002830")
 #pragma push_macro("FUN_10002870")
 #undef FUN_10002870
-int FUN_10002870(struct HWND__ *, unsigned char);
+int FUN_10002870(void *, unsigned char);
 #pragma pop_macro("FUN_10002870")
 #pragma push_macro("FUN_10002980")
 #undef FUN_10002980
@@ -5644,7 +5644,7 @@ void FUN_100367c0(char *);
 #pragma pop_macro("FUN_100367c0")
 #pragma push_macro("FUN_100368a0")
 #undef FUN_100368a0
-int FUN_100368a0(struct HWND__ *, struct BrDPlayCtx *, int);
+int FUN_100368a0(void *, struct BrDPlayCtx *, int);
 #pragma pop_macro("FUN_100368a0")
 #pragma push_macro("FUN_10036a30")
 #undef FUN_10036a30
@@ -5652,7 +5652,7 @@ int FUN_10036a30(struct BrDPlayObj *, int, const char *, const void * *, int);
 #pragma pop_macro("FUN_10036a30")
 #pragma push_macro("FUN_10036f40")
 #undef FUN_10036f40
-int FUN_10036f40(struct HWND__ *, void *);
+int FUN_10036f40(void *, void *);
 #pragma pop_macro("FUN_10036f40")
 #pragma push_macro("FUN_100371f0")
 #undef FUN_100371f0
@@ -5882,10 +5882,6 @@ void FUN_1006ff50(char *);
 #undef FUN_100703d0
 int FUN_100703d0(void);
 #pragma pop_macro("FUN_100703d0")
-#pragma push_macro("FUN_10074ae6")
-#undef FUN_10074ae6
-void FUN_10074ae6(void);
-#pragma pop_macro("FUN_10074ae6")
 #pragma push_macro("Fn04C80")
 #undef Fn04C80
 int Fn04C80(void *, unsigned int);

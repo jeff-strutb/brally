@@ -124,28 +124,6 @@ static __inline int32_t BrAddWrap(int32_t a, int32_t b)
     return (int32_t)((uint32_t)a + (uint32_t)b);
 }
 
-/* Cast helpers for the three COM interfaces. slice1_10.h's BrDiObj carries a
- * `const BrDiVtbl *`; these reinterpret it as the wider vtables declared in
- * slice3_45.h. See the note there -- BrDiVtbl is deliberately not redefined. */
-static __inline const BrDiRootVtbl *BrDiRoot(BrDiObj *p)
-{
-    return (const BrDiRootVtbl *)(const void *)p->pVtbl;
-}
-static __inline const BrDiDevVtbl *BrDiDev(BrDiObj *p)
-{
-    return (const BrDiDevVtbl *)(const void *)p->pVtbl;
-}
-static __inline const BrDiEffVtbl *BrDiEff(BrDiObj *p)
-{
-    return (const BrDiEffVtbl *)(const void *)p->pVtbl;
-}
-
-typedef int32_t (__stdcall *BrDiSetParamsFn)(BrDiObj *, const BrDiEffect *, uint32_t);
-typedef int32_t (__stdcall *BrDiSetPropFn)(BrDiObj *, uint32_t, const void *);
-#define BR_DI_SETPARAMS(p, eff, flags) \
-    ((BrDiSetParamsFn)(((const BrDiEffVtbl *)(const void *)(p)->pVtbl)->pfnSetParameters))((p), (eff), (flags))
-#define BR_DI_SETPROP(p, prop, pdiph) \
-    ((BrDiSetPropFn)(((const BrDiDevVtbl *)(const void *)(p)->pVtbl)->pfnSetProperty))((p), (prop), (pdiph))
 
 /* ====================================================================== */
 /* 4. DirectInput devices                                                  */

@@ -39,7 +39,7 @@ I686 = ['--target=i686-pc-windows-msvc', '-isystem', SDK + '/usr/include', '-D__
 FLAGS = ['-fsyntax-only', '-D_FORTIFY_SOURCE=0', '-w', '-fms-extensions', '-fdeclspec', '-Wno-return-mismatch', '-Wno-error=incompatible-pointer-types',
          '-Wno-error=incompatible-function-pointer-types',
          '-Iports/brally/platform/include', '-Iports/brally/include',
-         '-include', 'ports/brally/platform/include/win32.h',
+         '-include', 'ports/brally/platform/include/br_os.h',
          '-include', 'ports/brally/platform/include/br_gfx.h',
          '-include', 'ports/brally/platform/include/br_lp64.h',
          '-include', 'ports/brally/include/br_globals.h',

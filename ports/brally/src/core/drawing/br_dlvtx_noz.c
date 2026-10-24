@@ -27,7 +27,6 @@
 /* TU state only (symbol-table size): with these declarations in front,
  * VC5 gives the matrix products the operand roles the original has.
  * Nothing here uses them. */
-#include <dsound.h>
 #include "br_x87.h"
 #include <stdio.h>
 #include <stdint.h>

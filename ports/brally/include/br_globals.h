@@ -1443,11 +1443,11 @@ extern int DAT_10078918;  /* 0x10078918 */
 #pragma pop_macro("DAT_10078918")
 #pragma push_macro("DAT_10078a18")
 #undef DAT_10078a18
-extern GUID DAT_10078a18;  /* 0x10078A18 */
+extern BrGuid DAT_10078a18;  /* 0x10078A18 */
 #pragma pop_macro("DAT_10078a18")
 #pragma push_macro("DAT_10078a38")
 #undef DAT_10078a38
-extern GUID DAT_10078a38;  /* 0x10078A38 */
+extern BrGuid DAT_10078a38;  /* 0x10078A38 */
 #pragma pop_macro("DAT_10078a38")
 #pragma push_macro("g_szBrFmtTime")
 #undef g_szBrFmtTime
@@ -3838,39 +3838,39 @@ extern int DAT_104b15f4;  /* 0x104B15F4 */
 #pragma pop_macro("DAT_104b15f4")
 #pragma push_macro("DAT_104b15f8")
 #undef DAT_104b15f8
-extern FARPROC DAT_104b15f8;  /* 0x104B15F8 */
+extern BrEarFn DAT_104b15f8;  /* 0x104B15F8 */
 #pragma pop_macro("DAT_104b15f8")
 #pragma push_macro("DAT_104b1600")
 #undef DAT_104b1600
-extern FARPROC DAT_104b1600;  /* 0x104B1600 */
+extern BrEarFn DAT_104b1600;  /* 0x104B1600 */
 #pragma pop_macro("DAT_104b1600")
 #pragma push_macro("DAT_104b1604")
 #undef DAT_104b1604
-extern FARPROC DAT_104b1604;  /* 0x104B1604 */
+extern BrEarFn DAT_104b1604;  /* 0x104B1604 */
 #pragma pop_macro("DAT_104b1604")
 #pragma push_macro("DAT_104b1608")
 #undef DAT_104b1608
-extern FARPROC DAT_104b1608;  /* 0x104B1608 */
+extern BrEarFn DAT_104b1608;  /* 0x104B1608 */
 #pragma pop_macro("DAT_104b1608")
 #pragma push_macro("DAT_104b160c")
 #undef DAT_104b160c
-extern HMODULE DAT_104b160c;  /* 0x104B160C */
+extern void * DAT_104b160c;  /* 0x104B160C */
 #pragma pop_macro("DAT_104b160c")
 #pragma push_macro("DAT_104b1610")
 #undef DAT_104b1610
-extern FARPROC DAT_104b1610;  /* 0x104B1610 */
+extern BrEarFn DAT_104b1610;  /* 0x104B1610 */
 #pragma pop_macro("DAT_104b1610")
 #pragma push_macro("DAT_104b161c")
 #undef DAT_104b161c
-extern FARPROC DAT_104b161c;  /* 0x104B161C */
+extern BrEarFn DAT_104b161c;  /* 0x104B161C */
 #pragma pop_macro("DAT_104b161c")
 #pragma push_macro("DAT_104b1620")
 #undef DAT_104b1620
-extern UINT DAT_104b1620;  /* 0x104B1620 */
+extern uint32_t DAT_104b1620;  /* 0x104B1620 */
 #pragma pop_macro("DAT_104b1620")
 #pragma push_macro("DAT_104b1624")
 #undef DAT_104b1624
-extern FARPROC DAT_104b1624;  /* 0x104B1624 */
+extern BrEarFn DAT_104b1624;  /* 0x104B1624 */
 #pragma pop_macro("DAT_104b1624")
 #pragma push_macro("DAT_104b162c")
 #undef DAT_104b162c
@@ -3878,27 +3878,27 @@ extern int (*DAT_104b162c)(int, int);  /* 0x104B162C */
 #pragma pop_macro("DAT_104b162c")
 #pragma push_macro("DAT_104b1630")
 #undef DAT_104b1630
-extern FARPROC DAT_104b1630;  /* 0x104B1630 */
+extern BrEarFn DAT_104b1630;  /* 0x104B1630 */
 #pragma pop_macro("DAT_104b1630")
 #pragma push_macro("DAT_104b1634")
 #undef DAT_104b1634
-extern FARPROC DAT_104b1634;  /* 0x104B1634 */
+extern BrEarFn DAT_104b1634;  /* 0x104B1634 */
 #pragma pop_macro("DAT_104b1634")
 #pragma push_macro("DAT_104b1638")
 #undef DAT_104b1638
-extern FARPROC DAT_104b1638;  /* 0x104B1638 */
+extern BrEarFn DAT_104b1638;  /* 0x104B1638 */
 #pragma pop_macro("DAT_104b1638")
 #pragma push_macro("DAT_104b163c")
 #undef DAT_104b163c
-extern FARPROC DAT_104b163c;  /* 0x104B163C */
+extern BrEarFn DAT_104b163c;  /* 0x104B163C */
 #pragma pop_macro("DAT_104b163c")
 #pragma push_macro("DAT_104b1640")
 #undef DAT_104b1640
-extern FARPROC DAT_104b1640;  /* 0x104B1640 */
+extern BrEarFn DAT_104b1640;  /* 0x104B1640 */
 #pragma pop_macro("DAT_104b1640")
 #pragma push_macro("DAT_104b1644")
 #undef DAT_104b1644
-extern FARPROC DAT_104b1644;  /* 0x104B1644 */
+extern BrEarFn DAT_104b1644;  /* 0x104B1644 */
 #pragma pop_macro("DAT_104b1644")
 #pragma push_macro("DAT_104b1648")
 #undef DAT_104b1648
@@ -3906,47 +3906,47 @@ extern int (*DAT_104b1648)(int, int, int, int);  /* 0x104B1648 */
 #pragma pop_macro("DAT_104b1648")
 #pragma push_macro("DAT_104b164c")
 #undef DAT_104b164c
-extern FARPROC DAT_104b164c;  /* 0x104B164C */
+extern BrEarFn DAT_104b164c;  /* 0x104B164C */
 #pragma pop_macro("DAT_104b164c")
 #pragma push_macro("DAT_104b1650")
 #undef DAT_104b1650
-extern FARPROC DAT_104b1650;  /* 0x104B1650 */
+extern BrEarFn DAT_104b1650;  /* 0x104B1650 */
 #pragma pop_macro("DAT_104b1650")
 #pragma push_macro("DAT_104b1654")
 #undef DAT_104b1654
-extern FARPROC DAT_104b1654;  /* 0x104B1654 */
+extern BrEarFn DAT_104b1654;  /* 0x104B1654 */
 #pragma pop_macro("DAT_104b1654")
 #pragma push_macro("DAT_104b1658")
 #undef DAT_104b1658
-extern FARPROC DAT_104b1658;  /* 0x104B1658 */
+extern BrEarFn DAT_104b1658;  /* 0x104B1658 */
 #pragma pop_macro("DAT_104b1658")
 #pragma push_macro("DAT_104b165c")
 #undef DAT_104b165c
-extern FARPROC DAT_104b165c;  /* 0x104B165C */
+extern BrEarFn DAT_104b165c;  /* 0x104B165C */
 #pragma pop_macro("DAT_104b165c")
 #pragma push_macro("DAT_104b1660")
 #undef DAT_104b1660
-extern FARPROC DAT_104b1660;  /* 0x104B1660 */
+extern BrEarFn DAT_104b1660;  /* 0x104B1660 */
 #pragma pop_macro("DAT_104b1660")
 #pragma push_macro("DAT_104b1664")
 #undef DAT_104b1664
-extern FARPROC DAT_104b1664;  /* 0x104B1664 */
+extern BrEarFn DAT_104b1664;  /* 0x104B1664 */
 #pragma pop_macro("DAT_104b1664")
 #pragma push_macro("DAT_104b1668")
 #undef DAT_104b1668
-extern FARPROC DAT_104b1668;  /* 0x104B1668 */
+extern BrEarFn DAT_104b1668;  /* 0x104B1668 */
 #pragma pop_macro("DAT_104b1668")
 #pragma push_macro("DAT_104b166c")
 #undef DAT_104b166c
-extern FARPROC DAT_104b166c;  /* 0x104B166C */
+extern BrEarFn DAT_104b166c;  /* 0x104B166C */
 #pragma pop_macro("DAT_104b166c")
 #pragma push_macro("DAT_104b1670")
 #undef DAT_104b1670
-extern FARPROC DAT_104b1670;  /* 0x104B1670 */
+extern BrEarFn DAT_104b1670;  /* 0x104B1670 */
 #pragma pop_macro("DAT_104b1670")
 #pragma push_macro("DAT_104b1674")
 #undef DAT_104b1674
-extern FARPROC DAT_104b1674;  /* 0x104B1674 */
+extern BrEarFn DAT_104b1674;  /* 0x104B1674 */
 #pragma pop_macro("DAT_104b1674")
 #pragma push_macro("DAT_104b1678")
 #undef DAT_104b1678
@@ -4087,7 +4087,7 @@ extern unsigned char DAT_105b972c[];  /* 0x105B972C */
 #pragma pop_macro("DAT_105b972c")
 #pragma push_macro("g_brOwner5BC72C")
 #undef g_brOwner5BC72C
-extern HWND g_brOwner5BC72C;  /* 0x105BC72C */
+extern void * g_brOwner5BC72C;  /* 0x105BC72C */
 #pragma pop_macro("g_brOwner5BC72C")
 #pragma push_macro("DAT_105bc740")
 #undef DAT_105bc740
@@ -5669,7 +5669,7 @@ extern int32_t DAT_10ac40a0;  /* 0x10AC40A0 */
 #pragma pop_macro("DAT_10ac40a0")
 #pragma push_macro("DAT_10ac40a8")
 #undef DAT_10ac40a8
-extern DWORD DAT_10ac40a8[20];  /* 0x10AC40A8 */
+extern uint32_t DAT_10ac40a8[20];  /* 0x10AC40A8 */
 #pragma pop_macro("DAT_10ac40a8")
 #pragma push_macro("g_brVal40F8")
 #undef g_brVal40F8

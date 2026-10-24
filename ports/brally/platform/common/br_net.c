@@ -634,7 +634,7 @@ int32_t br_net_close(void *self)
     return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *conn_cb)(const BrNetGuid *sp, void *conn, uint32_t size, const BrNetName *name, uint32_t flags, void *ctx);
+typedef int (*conn_cb)(const BrNetGuid *sp, void *conn, uint32_t size, const BrNetName *name, uint32_t flags, void *ctx);
 
 int32_t br_net_enum_connections(void *self, const void *app, void *cb, void *ctx, uint32_t flags)
 {
@@ -679,7 +679,7 @@ int32_t br_net_init_connection(void *self, void *conn, uint32_t flags)
     return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *sess_cb)(const BrNetSessionDesc *d, uint32_t *timeout, uint32_t flags, void *ctx);
+typedef int (*sess_cb)(const BrNetSessionDesc *d, uint32_t *timeout, uint32_t flags, void *ctx);
 
 int32_t br_net_enum_sessions(void *self, BrNetSessionDesc *want, uint32_t timeout, void *cb, void *ctx, uint32_t flags)
 {
@@ -802,7 +802,7 @@ int32_t br_net_destroy_player(void *self, BrNetId id)
     return BR_NET_OK;
 }
 
-typedef BOOL (WINAPI *player_cb)(BrNetId id, uint32_t type, const BrNetName *name, uint32_t flags, void *ctx);
+typedef int (*player_cb)(BrNetId id, uint32_t type, const BrNetName *name, uint32_t flags, void *ctx);
 
 int32_t br_net_enum_players(void *self, const void *inst, void *cb, void *ctx, uint32_t flags)
 {

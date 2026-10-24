@@ -12,7 +12,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include <string.h>
 
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
@@ -26,10 +25,10 @@
 void FUN_100038a0(char *param_1)
 
 {
-  br_os_wait((*(HANDLE *)&DAT_10226a54), 0xffffffff);
+  br_os_wait((*(void * *)&DAT_10226a54), 0xffffffff);
   strcpy(DAT_1021c9b0, param_1);
   DAT_10226a38 = 1;
-  br_os_release((*(HANDLE *)&DAT_10226a54));
+  br_os_release((*(void * *)&DAT_10226a54));
   return;
 }
 

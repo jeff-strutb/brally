@@ -53,7 +53,6 @@
  */
 #define _CRTIMP __declspec(dllimport)
 
-#include <windows.h>   /* the preamble is a codegen input: see the header */
 
 extern "C" {
 

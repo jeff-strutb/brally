@@ -96,19 +96,6 @@ static const char g_szUnknown[] = "unknown";
 /* 0x10273310 -- the original's CRITICAL_SECTION. */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
-/* COM vtable slots are stdcall; slice2_13.h's BrDPlay4Vtbl is cdecl. */
-typedef struct BrDPlay4VtblStd {
-    void *aSlots00[2];
-    int32_t (__stdcall *Release)(BrDPlay4Obj *pThis);
-    void *aSlots03[1];
-    int32_t (__stdcall *Close)(BrDPlay4Obj *pThis);
-    void *aSlots05[4];
-    int32_t (__stdcall *DestroyPlayer)(BrDPlay4Obj *pThis, uint32_t idPlayer);
-    void *aSlots10[15];
-    int32_t (__stdcall *Receive)(BrDPlay4Obj *pThis, uint32_t *pidFrom,
-                                 uint32_t *pidTo, uint32_t dwFlags,
-                                 void *pvData, uint32_t *pcbData);
-} BrDPlay4VtblStd;
 
 /* -- 0x1000C000 ---------------------------------------------------------- */
 
@@ -257,7 +244,7 @@ void BrDPlaySysMsgLog(BrDPlayCtx *pCtx, const BrDPlaySysMsg *pMsg,
         }
         if (pszB != NULL) {
             if (g_BrDPlay.pWnd != NULL) {
-                br_os_post(g_BrDPlay.pWnd, 0x501u, 0u, (LPARAM)pszB);
+                br_os_post(g_BrDPlay.pWnd, 0x501u, 0u, (intptr_t)pszB);
                 return;
             }
             free(pszB);
@@ -347,7 +334,6 @@ uint32_t __stdcall BrDPlayThreadProc(void *pvCtx)
 }
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-typedef int (__stdcall *CC_std_2)(int *, int);
 
 /* WHAT IT DOES: destroy this machine's DirectPlay player, if the session
  * record at 0x10A9D008 has both an interface (+0) and a player id (+8):
@@ -400,12 +386,11 @@ int32_t BrDPlayShutdown(BrDPlayCtx *pCtx)
     if (pCtx != NULL) {
         if (pCtx->pDP != NULL) {
             if (pCtx->idPlayer != 0u) {
-                ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->DestroyPlayer(
-                    pCtx->pDP, pCtx->idPlayer);
+                br_net_destroy_player(pCtx->pDP, pCtx->idPlayer);
                 pCtx->idPlayer = 0u;
             }
-            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Close(pCtx->pDP);
-            ((BrDPlay4VtblStd *)pCtx->pDP->pVtbl)->Release(pCtx->pDP);
+            br_net_close(pCtx->pDP);
+            br_net_release(pCtx->pDP);
             pCtx->pDP = NULL;
         }
     }
@@ -504,14 +489,7 @@ uint32_t BrDPlayGetCurrentPlayers(void)
  * Filed from ghidra_batch.c 2026-09-09 (byte-exact; early-out guard shape).
  * ========================================================================== */
 
-typedef struct BrIUnk BrIUnk;
-struct BrIUnk {
-    struct {
-        int (__stdcall *QueryInterface)(BrIUnk *, void *, void **);
-        int (__stdcall *AddRef)(BrIUnk *);
-        int (__stdcall *Release)(BrIUnk *);
-    } *vt;
-};
+typedef struct BrIUnk BrIUnk;          /* the lobby object (br_net.h) */
 /* FUN_10072960: prototype in br_funcs.h */
 /* FUN_10036f40: prototype in br_funcs.h */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

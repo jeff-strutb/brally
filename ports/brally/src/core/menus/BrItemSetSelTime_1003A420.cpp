@@ -77,7 +77,6 @@ extern "C" {
 /* 64-bit core: g_f07763C is defined once, in br_globals.c */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
-_CRTIMP char *_strupr(char *s);
 }
 
 int BrItemSetSelTime_1003A420(Obj3A420 *pObj)
@@ -112,7 +111,7 @@ int BrItemSetSelTime_1003A420(Obj3A420 *pObj)
         return 0;
 
     pLabel = (*(class Item438J *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
-    strcpy(pLabel, _strupr(szTime));
+    strcpy(pLabel, br_strupr(szTime));
 
     (BR_VFN(&((*(class Item438J *)&((BrUiCtl_ *)(pObj))->aText[0])), 1, void (*)(void *)))(&((*(class Item438J *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)

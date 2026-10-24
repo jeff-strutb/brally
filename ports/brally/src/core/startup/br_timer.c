@@ -6,7 +6,6 @@
  */
 
 #include "slice2_25.h"   /* br_globals: its objects */
-#include <windows.h>
 
 /* ---- from slice1_09.c ---------------------------------------------- */
 
@@ -38,7 +37,7 @@ void __fastcall br86_timer_restart(int *param_1)
   int uVar1;
   
   if ((*(int *)&g_br86HasPerf) != 0) {
-    br_os_perf((int64_t *)((LARGE_INTEGER *)(param_1 + 2)));
+    br_os_perf((int64_t *)((int64_t *)(param_1 + 2)));
     param_1[4] = *param_1;
     param_1[5] = param_1[1];
     return;
@@ -102,7 +101,6 @@ int32_t BrSub10075020(void)
 #define BrCarSub9020 BrCarSub9020_port2
 #include "slice4_53.h"
 #undef BrCarSub9020
-#include <windows.h>
 
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */

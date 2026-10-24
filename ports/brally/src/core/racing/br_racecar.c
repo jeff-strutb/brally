@@ -15,13 +15,11 @@
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "br_race.h"   /* br_globals: its objects */
 #include "slice2_24.h"   /* br_globals: its objects */
-#include <windows.h>
 #include "slice3_41.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <mmsystem.h>
 #include "slice2_15.h"    /* BR_CAR_STRIDE */
 
 #ifndef true

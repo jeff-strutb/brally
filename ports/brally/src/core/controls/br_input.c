@@ -164,10 +164,6 @@ void BrOnActivate(BrWParam wParam)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* BrSub100770C0: prototype in br_funcs.h */
-typedef int (__stdcall *CC_std_4)();   /* COM method: this + arguments */
-typedef int (__stdcall *CC_std_2)();   /* COM method: this + arguments */
-typedef int (__stdcall *CC_std_3)();   /* COM method: this + arguments */
-typedef int (__stdcall *CC_std_1)();   /* COM method: this + arguments */
 
 /* WHAT IT DOES: bring the keyboard input system up, but only on the FIRST
  * caller -- later callers just increment the count. Clears the key-state and
@@ -445,7 +441,6 @@ defwnd:
 }
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* 0x10070170, the seek to a WAV file's data chunk, is part of BrWavLoad's
  * own reading of the file (br_sndload.c). */
 
@@ -535,17 +530,7 @@ int BrInputLatchUpdate(void)
  * pointer sits at +0x50.  Only the two vtable slots used here are named. */
 struct BrDIPollDev;
 
-typedef struct BrDIPollVtbl {
-    void *pad00[7];                                     /* +0x00..+0x18 */
-    int(__stdcall *Acquire)(struct BrDIPollDev *);      /* +0x1C */
-    void *pad20;                                        /* +0x20 */
-    int(__stdcall *GetDeviceState)(struct BrDIPollDev *,
-                                   unsigned int, void *);   /* +0x24 */
-} BrDIPollVtbl;
-
-typedef struct BrDIPollDev {
-    BrDIPollVtbl *lpVtbl;
-} BrDIPollDev;
+typedef struct BrDIPollDev BrDIPollDev;  /* a device (br_in.h) */
 
 typedef struct BrDIPollRec {
     char          pad00[0x50];

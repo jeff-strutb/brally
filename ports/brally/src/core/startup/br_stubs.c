@@ -105,18 +105,8 @@ void BrNop_1002EBCC(void)
 
 /* ---- from slice6_72.c ---------------------------------------------- */
 
-_CRTIMP void __cdecl _except_handler3(void);
-
-/* WHAT IT DOES: the compiler's structured-exception entry thunk -- it just
- * tail-calls the CRT handler. Not game code. */
-/* @implements 0x10074AE6 glide FUN_10074ae6 */
-/* auto-filed from ghidra --refine; transforms: as-is */
-
-void
-FUN_10074ae6(void)
-{
-    _except_handler3();
-}
+/* 0x10074AE6 was the compiler's structured-exception entry thunk (a tail
+ * call to the C runtime's handler), not game code; the port has none. */
 
 
 /* ---- from slice2_17.c ------------------------------------------------

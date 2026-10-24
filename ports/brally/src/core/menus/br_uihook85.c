@@ -12,12 +12,10 @@
 /* The original is /MD: CRT calls go through the import table (FF 15). */
 #define _CRTIMP __declspec(dllimport)
 #include "slice2_25.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <mmsystem.h>
 
 #ifndef true
 #define true 1
@@ -51,7 +49,7 @@ int BrUiFn1003EEF0(struct BrCtl85 *param_1)
   if (strlen(pcVar5) != 0) {
     ((BrUiCtl_ *)DAT_10ac5d00)->flags1C &= 0xffffffef;
   }
-  iVar2 = _stricmp(g_aBrCfgPlayerName,pcVar5);
+  iVar2 = br_stricmp(g_aBrCfgPlayerName,pcVar5);
   if (iVar2 != 0) {
     strcpy(g_aBrCfgPlayerName, pcVar5);
   }
@@ -111,7 +109,7 @@ int Br85TextReadBack(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(DAT_10b71aa0,((BrUiCtl_ *)param_1)->aText[0].sz);
+  iVar2 = br_stricmp(DAT_10b71aa0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
     strcpy(DAT_10b71aa0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
@@ -133,7 +131,7 @@ int BrUiHook85_1003F0B0(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(DAT_10b71ac0,((BrUiCtl_ *)param_1)->aText[0].sz);
+  iVar2 = br_stricmp(DAT_10b71ac0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
     strcpy(DAT_10b71ac0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
@@ -155,7 +153,7 @@ int BrUiFn1003F110(struct BrCtl85 *param_1)
   int iVar2;
   
   Br85ItemApply(param_1,0);
-  iVar2 = _stricmp(g_szBrName4DB0,((BrUiCtl_ *)param_1)->aText[0].sz);
+  iVar2 = br_stricmp(g_szBrName4DB0,((BrUiCtl_ *)param_1)->aText[0].sz);
   if (iVar2 != 0) {
     strcpy(g_szBrName4DB0, ((BrUiCtl_ *)param_1)->aText[0].sz);
   }
@@ -228,7 +226,7 @@ int BrUiFn1003F210(struct BrCtl85 *param_1)
   if (strlen(pcVar5) != 0) {
     ((BrUiCtl_ *)DAT_10ac5d14)->flags1C &= 0xffffffef;
   }
-  iVar2 = _stricmp((*(char (*)[])&DAT_10ac40a8),pcVar5);
+  iVar2 = br_stricmp((*(char (*)[])&DAT_10ac40a8),pcVar5);
   if (iVar2 != 0) {
     strcpy((*(char (*)[])&DAT_10ac40a8), pcVar5);
   }

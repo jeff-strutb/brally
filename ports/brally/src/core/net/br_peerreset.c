@@ -10,7 +10,6 @@
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include <stdint.h>
 
-#include <windows.h>
 
 /* BrPeerRec: br_coretypes.h */
 

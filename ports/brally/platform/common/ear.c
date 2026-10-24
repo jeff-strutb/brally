@@ -84,12 +84,12 @@ intptr_t br_ear_ChangeChannelControl(intptr_t ch, intptr_t cmd)
 
 static void ear_cd_end(void *user)
 {
-    static UINT msg;
+    static uint32_t msg;
     (void)user;
     if (!msg)
         msg = br_os_message_id("EAR Interactive Around-Sound");
     if (s_ear_hwnd)
-        br_os_post((HWND)s_ear_hwnd, msg, (WPARAM)EAR_CD_EVENT, 2);
+        br_os_post((void *)s_ear_hwnd, msg, (uintptr_t)EAR_CD_EVENT, 2);
 }
 
 /* the event block: +0x04 the track */

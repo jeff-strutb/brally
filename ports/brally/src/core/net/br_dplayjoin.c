@@ -100,7 +100,6 @@ int BrSub1003C260(void)
 }
 
 /* -- Ghidra-matched functions --------------------------- */
-#include <windows.h>
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
@@ -110,8 +109,8 @@ int BrSub1003C260(void)
 int BrComCreateInstance(void **param_1)
 
 {
-  LPVOID local_4;
-  HRESULT hr;
+  void * local_4;
+  int32_t hr;
 
   local_4 = br_net_new();         /* the original's CoCreateInstance(CLSID_DirectPlay) */
   *param_1 = local_4;
@@ -180,35 +179,34 @@ int BrDpShutdown(void)
  * declared first (inert); pDesc = NULL after the guard with pCred before
  * it (REGNORM 9+4).  Next idea, untested: the NULL might be a value VC5
  * cannot fold, e.g. a pointer returned by an earlier expression. */
-#include <windows.h>
 
 typedef struct BrDpSessDesc {           /* BrNetSessionDesc */
-    DWORD dwSize;                       /* +0x00 */
-    DWORD dwFlags;                      /* +0x04 */
-    DWORD guidInstance[4];              /* +0x08 */
-    DWORD guidApplication[4];           /* +0x18 */
-    DWORD dwMaxPlayers;                 /* +0x28 */
-    DWORD dwCurrentPlayers;             /* +0x2C */
+    uint32_t dwSize;                       /* +0x00 */
+    uint32_t dwFlags;                      /* +0x04 */
+    uint32_t guidInstance[4];              /* +0x08 */
+    uint32_t guidApplication[4];           /* +0x18 */
+    uint32_t dwMaxPlayers;                 /* +0x28 */
+    uint32_t dwCurrentPlayers;             /* +0x2C */
     char *lpszSessionName;              /* +0x30 */
     char *lpszPassword;                 /* +0x34 */
-    DWORD dwReserved1;                  /* +0x38 */
-    DWORD dwReserved2;                  /* +0x3C */
-    DWORD dwUser1;                      /* +0x40 */
-    DWORD dwUser2;                      /* +0x44 */
-    DWORD dwUser3;                      /* +0x48 */
-    DWORD dwUser4;                      /* +0x4C */
+    uint32_t dwReserved1;                  /* +0x38 */
+    uint32_t dwReserved2;                  /* +0x3C */
+    uint32_t dwUser1;                      /* +0x40 */
+    uint32_t dwUser2;                      /* +0x44 */
+    uint32_t dwUser3;                      /* +0x48 */
+    uint32_t dwUser4;                      /* +0x4C */
 } BrDpSessDesc;
 
 typedef struct BrDpName {               /* BrNetName */
-    DWORD dwSize;
-    DWORD dwFlags;
+    uint32_t dwSize;
+    uint32_t dwFlags;
     char *lpszShortName;
     char *lpszLongName;
 } BrDpName;
 
 typedef struct BrDpCredentials {        /* DPCREDENTIALS */
-    DWORD dwSize;
-    DWORD dwFlags;
+    uint32_t dwSize;
+    uint32_t dwFlags;
     char *lpszUsername;
     char *lpszPassword;
     char *lpszDomain;
@@ -220,7 +218,7 @@ typedef struct BrDpCredentials {        /* DPCREDENTIALS */
 typedef struct BrDpSess {
     void    *pDp;                       /* +0x00 */
     void    *hEvent;                    /* +0x04 */
-    DWORD    idPlayer;                  /* +0x08 */
+    uint32_t    idPlayer;                  /* +0x08 */
     int      f0C;                       /* +0x0C */
     int      f10;                       /* +0x10 */
 } BrDpSess;
@@ -261,18 +259,18 @@ typedef struct BrDpLogin {
  * multiset otherwise, 4 masked regions.  Dead probes in the two ledger
  * lines.  Do not reopen before the end-grind. */
 /* @implements 0x10035DD0 glide BrDpSessionJoin */
-int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
+int BrDpSessionJoin(void *pDp, uint32_t *pGuidInstance, BrDpLogin *pLogin,
                     BrDpSess *pSess)
 {
     BrDpSessDesc    *pDesc = NULL;
     BrDpCredentials  cred;
     BrDpName         name;
-    DWORD            id;
+    uint32_t            id;
     BrDpSess         save;
     BrDpSessDesc     desc;
     BrDpCredentials *pCred;
     int              hr;
-    DWORD            dwFlags;
+    uint32_t            dwFlags;
     void *          h;
 
     if (pDp == NULL)
@@ -332,13 +330,13 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
                     pSess->f10 = save.f10;
                 } else {
                     pSess->idPlayer = id;
-                    (*(DWORD *)&g_brIdx0ABDE8) = pDesc->dwUser1;
-                    (*(DWORD *)&g_226e80) = pDesc->dwUser2;
-                    (*(DWORD *)&DAT_10ac5d70) = pDesc->dwUser3;
-                    (*(DWORD *)&DAT_100abdf8) = pDesc->dwUser4;
-                    (*(DWORD *)&g_Br0B380C) = (*(DWORD *)&g_brIdx0ABDE8);
-                    (*(DWORD *)&g_CBE8) = (*(DWORD *)&DAT_100abdf8);
-                    (*(DWORD *)&DAT_10ac5d58) = (*(DWORD *)&g_226e80);
+                    (*(uint32_t *)&g_brIdx0ABDE8) = pDesc->dwUser1;
+                    (*(uint32_t *)&g_226e80) = pDesc->dwUser2;
+                    (*(uint32_t *)&DAT_10ac5d70) = pDesc->dwUser3;
+                    (*(uint32_t *)&DAT_100abdf8) = pDesc->dwUser4;
+                    (*(uint32_t *)&g_Br0B380C) = (*(uint32_t *)&g_brIdx0ABDE8);
+                    (*(uint32_t *)&g_CBE8) = (*(uint32_t *)&DAT_100abdf8);
+                    (*(uint32_t *)&DAT_10ac5d58) = (*(uint32_t *)&g_226e80);
                     memcpy(DAT_10ac40a8, pDesc->lpszSessionName,
                            sizeof(DAT_10ac40a8));
                     free(pDesc);
@@ -362,17 +360,6 @@ int BrDpSessionJoin(void *pDp, DWORD *pGuidInstance, BrDpLogin *pLogin,
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 
 /* The IDirectPlayLobby3A slots this function calls, all stdcall COM. */
-typedef int (__stdcall *BrLobGetConn)(void *pThis, DWORD dwAppId,
-                                      void *pData, DWORD *pcb);      /* +0x20 */
-typedef int (__stdcall *BrLobSetConn)(void *pThis, DWORD dwFlags,
-                                      DWORD dwAppId, void *pConn);   /* +0x30 */
-typedef int (__stdcall *BrLobConnectEx)(void *pThis, DWORD dwFlags,
-                                        void *riid, void **ppv,
-                                        void *pUnk);                 /* +0x3C */
-typedef int (__stdcall *BrDpOpenX)(void *pThis, DWORD *pOut, void *pDesc,
-                                   void *hEvent, void *pData, DWORD cb,
-                                   DWORD dwFlags);                   /* +0x18 CreatePlayer */
-typedef int (__stdcall *BrComRel)(void *pThis);                      /* +0x08 */
 
 /* History of the byte-exact attempts (the 455 B era, before the byte mask
  * moved to the load and the body reached 461/461):
@@ -431,8 +418,8 @@ int BrDpLobbyConnect(BrDPlayCtx *param_1)
 {
     void          *local_10;      /* IDirectPlay4A */
     void          *local_c;       /* IDirectPlayLobby3A */
-    DWORD          local_8;
-    DWORD          uStack_4;
+    uint32_t          local_8;
+    uint32_t          uStack_4;
     BrNetConnection *pMem;
     void *        pvVar3;
     int            iVar2;

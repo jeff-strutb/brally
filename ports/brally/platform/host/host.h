@@ -10,9 +10,7 @@
  *   host/macos    a Cocoa window and input, Core Audio
  *   host/windows  a Win32 window and input, WASAPI, Media Foundation, XInput
  *
- * and a renderer backend behind platform/render/brr.h. On Windows the
- * game's Win32 emulation takes private names (platform/include/br_winemu.h)
- * so it never collides with the system the host calls.
+ * and a renderer backend behind platform/render/brr.h.
  */
 #ifndef BR_HOST_H
 #define BR_HOST_H

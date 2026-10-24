@@ -8,6 +8,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* an entry in the game's table of them */
+typedef intptr_t (*BrEarFn)(void);
 intptr_t br_ear_AAA_Validate(void);
 intptr_t br_ear_AssignHwnd(void *h);
 intptr_t br_ear_ChangeChannelControl(intptr_t ch, intptr_t cmd);

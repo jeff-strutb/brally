@@ -302,7 +302,7 @@ int FUN_1004cba0(GameUi *parent)
     for (i = 0; i < g_brStages[(*(char *)&DAT_10ac5c10)].f04; i++) {
         strcpy(szItem, BrStrGet(0x37));
         strcat(szItem, &(g_strA[0]));
-        strcat(szItem, _strupr(_itoa(i + 1, szNum, 10)));
+        strcat(szItem, br_strupr(br_itoa(i + 1, szNum, 10)));
         (*(class Sel3838 *)&((BrUiCtl_ *)(p))->list).s4(szItem, 1, 1, &(*(char *)&g_hot0), 1);
     }
     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;

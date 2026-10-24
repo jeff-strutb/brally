@@ -82,9 +82,7 @@
  * inner parentheses: a parenthesised sub-sum becomes a c2 precision node,
  * one more DAG level, which changes the setup's store/load schedule. */
 #include <stdio.h>
-#include <dsound.h>
 #include <limits.h>
-#include <windows.h>
 /* BrDlVtx: br_dl.h */
 
 /* MVP matrix, 4x4 row-major at 0x105D1760. */

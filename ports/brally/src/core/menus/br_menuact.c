@@ -130,7 +130,7 @@ int BrCarNameCommit(BrUiCtl_ *param_1)
     if (strlen(s) != 0) {
         DAT_10ac5d40->flags1C &= ~0x10u;
     }
-    if (_stricmp(&(g_aBrA9CDF0[0]), s) != 0) {
+    if (br_stricmp(&(g_aBrA9CDF0[0]), s) != 0) {
         strcpy(&(g_aBrA9CDF0[0]), s);
         strcpy(&(DAT_10b71544[0]), &(g_aBrA9CDF0[0]));
     }

@@ -37,18 +37,7 @@ typedef char br06_assert_namelist[
  * answer is, allocates that much, then asks again to have it filled in, and
  * hands the block to the caller. On any failure it releases the block and
  * reports the error instead. */
-/* COM methods are stdcall; the header's BrComGetFn is cdecl. A local
- * stdcall typedef is what removes the `add esp, 10h` the cdecl form emits
- * after each call. __declspec(dllimport) is what emits `call dword ptr
- * [IAT]` rather than a direct `call` thunk. */
-typedef int32_t (__stdcall *BrComGetFnStd)(void *pThis, void *pParam,
-                                           void *pvBuf, uint32_t *pcb);
 
-/* 64-bit core: GlobalAlloc is declared by the platform headers */
-/* 64-bit core: GlobalLock is declared by the platform headers */
-/* 64-bit core: GlobalHandle is declared by the platform headers */
-/* 64-bit core: GlobalUnlock is declared by the platform headers */
-/* 64-bit core: GlobalFree is declared by the platform headers */
 
 /* WHAT IT DOES: fetch a blob whose size is not known in advance -- ask
  * once with no buffer, allocate that much, ask again, hand the block
@@ -74,7 +63,6 @@ typedef int32_t (__stdcall *BrComGetFnStd)(void *pThis, void *pParam,
 /* @implements 0x1003D180 d3d BrComGetAlloc */
 int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
 {
-    BrComGetFnStd pfn = (BrComGetFnStd)br_net_player_name;     /* the original's GetPlayerName */
     uint32_t      cb;
     void         *pv = NULL;
     int32_t       hr;
@@ -111,7 +99,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
      * if/else + `goto cleanup` in the OOM arm, and the literal transcription
      * `if (pv != NULL) goto call2;` (which VC5 inverts back to `je`, 2+3). */
     do {
-        hr = pfn(pObj, pParam, NULL, &cb);
+        hr = br_net_player_name(pObj, (BrNetId)(uintptr_t)pParam, NULL, &cb);
         if (hr != BR_COM_E_BUFFERTOOSMALL)
             break;
         /* GMEM_MOVEABLE|GMEM_ZEROINIT == 0x42. */
@@ -120,7 +108,7 @@ int32_t BrComGetAlloc(BrDPlayObj *pObj, void *pParam, void **ppvOut)
             hr = BR_COM_E_OUTOFMEMORY;
             goto cleanup;
         }
-        hr = pfn(pObj, pParam, pv, &cb);
+        hr = br_net_player_name(pObj, (BrNetId)(uintptr_t)pParam, pv, &cb);
         if (hr >= 0)
             goto success;
     } while (0);

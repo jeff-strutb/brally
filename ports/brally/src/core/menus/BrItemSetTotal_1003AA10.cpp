@@ -71,7 +71,6 @@ struct BrRow8 { unsigned short w[4]; };
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: declared once, in br_globals.h or its struct's header */
 /* 64-bit core: g_brSel5C10 is defined once, in br_globals.c */
-_CRTIMP char *_strupr(char *s);
 }
 
 int BrItemSetTotal_1003AA10(Obj3AA10 *pObj)
@@ -93,14 +92,14 @@ int BrItemSetTotal_1003AA10(Obj3AA10 *pObj)
             p++;
         }
 
-        _itoa(sum, szNum, 10);
+        br_itoa(sum, szNum, 10);
     }
 
     if (strlen(szNum) == 0)
         return 0;
 
     pLabel = (*(class Item438E *)&((BrUiCtl_ *)(pObj))->aText[0]).szName;
-    strcpy(pLabel, _strupr(szNum));
+    strcpy(pLabel, br_strupr(szNum));
 
     (BR_VFN(&((*(class Item438E *)&((BrUiCtl_ *)(pObj))->aText[0])), 2, void (*)(void *)))(&((*(class Item438E *)&((BrUiCtl_ *)(pObj))->aText[0])));
     if (pLabel != 0)

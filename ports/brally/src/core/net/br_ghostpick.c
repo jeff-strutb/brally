@@ -6,7 +6,6 @@
  * then renormalise the car's orientation quaternion and wrap its angles.
  */
 #include "slice1_02.h"   /* br_globals: its objects */
-#include <windows.h>
 
 /* BrTicks30FromMs: prototype in br_funcs.h */
 /* BrCarStateLerp: prototype in br_funcs.h */
@@ -65,20 +64,20 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
   float *pfVar11;
   float fVar12;
   float fVar13;
-  HANDLE ahWait[2];     /* the two mutexes, waited on together */
+  void * ahWait[2];     /* the two mutexes, waited on together */
   float v3[3];          /* a vector on the stack, measured by BrVec3Length */
 
   iVar4 = param_2;
   pfVar3 = param_1;
-  ahWait[0] = (*(HANDLE *)&g_hBrNetMutex);
-  ahWait[1] = (HANDLE)g_aBrNetSlot[param_2].hMutex;
+  ahWait[0] = (*(void * *)&g_hBrNetMutex);
+  ahWait[1] = (void *)g_aBrNetSlot[param_2].hMutex;
   pSlot = &g_aBrNetSlot[param_2];
   br_os_wait_many(2, ahWait, 1, 0xffffffff);
   if (param_2 != g_id) {
     if ((int)pSlot->f558 < 2) {
       param_1[0x1f] = 400.0f;
       br_os_release(pSlot->hMutex);
-      br_os_release((*(HANDLE *)&g_hBrNetMutex));
+      br_os_release((*(void * *)&g_hBrNetMutex));
       return 0;
     }
     iVar5 = 0;
@@ -185,7 +184,7 @@ unsigned int BrGhostPickBlend(float *param_1, int param_2)
   }
 LAB_done:
   br_os_release(pSlot->hMutex);
-  br_os_release((*(HANDLE *)&g_hBrNetMutex));
+  br_os_release((*(void * *)&g_hBrNetMutex));
   BrCarClampUnit(pfVar3);
   pfVar10 = pfVar3 + 1;
   BrCarClampUnit(pfVar10);

@@ -7,7 +7,6 @@
 #define _CRTIMP __declspec(dllimport)
 #include "br_coretypes.h"   /* br_globals: its objects */
 #include "slice2_25.h"   /* br_globals: its objects */
-#include <windows.h>
 #include <stdlib.h>
 
 /* One entry of the record's +0xD0 table: only its leading time is read. */
@@ -63,13 +62,13 @@ void BrNetPeerRank(void)
     int j;
 
     {
-        HANDLE ah[2];
+        void * ah[2];
 
         n = 0;
         for (i = BR_PEERS - 1; i >= 0; i--) {
             ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
-            if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+            if (br_os_wait_many(2, ah, 0, BR_OS_FOREVER) == 0)
                 br_os_thread_exit(0);
             if ((g_aBrPeer71[i].f02C & 0x3f) >= 2 && (g_aBrPeer71[i].f02C & 0x3f) < 5 &&
                 g_aBrPeer71[i].f968 != 0) {
@@ -87,7 +86,7 @@ void BrNetPeerRank(void)
 
                 ah[0] = g_hBrSndWake86;
                 ah[1] = p->hMutex;
-                if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+                if (br_os_wait_many(2, ah, 0, BR_OS_FOREVER) == 0)
                     br_os_thread_exit(0);
                 if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 && p->f968 != 0) {
                     FUN_100371f0((BrDPlayCtx *)g_brPA9D008, p->f004, DAT_11849e58);
@@ -99,7 +98,7 @@ void BrNetPeerRank(void)
         }
     }
     {
-        HANDLE ah[2];
+        void * ah[2];
         int st;
         BrPeerRec *p;
 
@@ -109,7 +108,7 @@ void BrNetPeerRank(void)
             p = &g_aBrPeer71[i];
             ah[0] = g_hBrSndWake86;
             ah[1] = g_aBrPeer71[i].hMutex;
-            if (br_os_wait_many(2, ah, 0, INFINITE) == 0)
+            if (br_os_wait_many(2, ah, 0, BR_OS_FOREVER) == 0)
                 br_os_thread_exit(0);
             if ((p->f02C & 0x3f) >= 2 && (p->f02C & 0x3f) < 5 &&
                 p->aState[p->f558].f78 >= BR_K_00077BF0) {
