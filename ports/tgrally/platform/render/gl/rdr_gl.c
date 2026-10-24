@@ -240,7 +240,7 @@ static volatile int s_want;
 
 int rdr_covers(void) { return 0; }
 int rdr_presents(void) { return 1; }
-void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
+void rdr_video(const RdrVideo *v) { s_gamma = v->gamma; }
 
 /* the host's window, on the main thread when it opens; the context is made on
  * it when the renderer starts (on the Mac, offscreen: its windows are Metal's) */

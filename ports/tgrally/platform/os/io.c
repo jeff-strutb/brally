@@ -8,6 +8,7 @@
 #include "plat.h"
 #include "tgr_core.h"
 #include "sha1.h"
+#include "../render/rdr.h"
 
 int32_t  tgr_tv_type = 1;              /* NTSC */
 uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
@@ -15,35 +16,22 @@ uint64_t tgr_clock_rate = 62500000;
 uint32_t tgr_rom_base = 0xB0000000;
 int32_t  tgr_reset_type = 0;
 
-/* the VI's control register as libultra keeps it: the mode's, then the special
- * features' changes (the renderer's VI stage reads it, tgr_vi_ctrl) */
-static uint32_t s_vi_ctrl = 0x311E, s_vi_mode_aa = 0x100;
+/* how the picture is shown: what a change of resolution sets (anti-aliased,
+ * divot filter, gamma, no dither filter), then the game's own settings */
+static RdrVideo s_video = { 1, 0, 1, 1 };
 
-void tgr_video_mode(TgrVideoMode *mode)
+void tgr_video_reset(void)
 {
-    s_vi_ctrl = mode->regs[0];
-    s_vi_mode_aa = s_vi_ctrl & 0x300;
+    s_video.antialias = 1;
+    s_video.dither_filter = 0;
+    s_video.divot = 1;
+    s_video.gamma = 1;
 }
 
-void tgr_video_features(uint32_t f)
-{
-    if (f & 0x01) s_vi_ctrl |= 0x08;                  /* OS_VI_GAMMA_ON */
-    if (f & 0x02) s_vi_ctrl &= ~0x08u;
-    if (f & 0x04) s_vi_ctrl |= 0x04;                  /* OS_VI_GAMMA_DITHER_ON */
-    if (f & 0x08) s_vi_ctrl &= ~0x04u;
-    if (f & 0x10) s_vi_ctrl |= 0x10;                  /* OS_VI_DIVOT_ON */
-    if (f & 0x20) s_vi_ctrl &= ~0x10u;
-    if (f & 0x40) {                                   /* OS_VI_DITHER_FILTER_ON: and anti-alias */
-        s_vi_ctrl |= 0x10000;                         /* with resampling, always fetching */
-        s_vi_ctrl &= ~0x300u;
-    }
-    if (f & 0x80) {
-        s_vi_ctrl &= ~0x10000u;
-        s_vi_ctrl = (s_vi_ctrl & ~0x300u) | s_vi_mode_aa;
-    }
-}
-
-uint32_t tgr_vi_ctrl(void) { return s_vi_ctrl; }
+void tgr_video_dither_filter(int on) { s_video.dither_filter = on != 0; }
+void tgr_video_divot(int on)         { s_video.divot = on != 0; }
+void tgr_video_gamma(int on)         { s_video.gamma = on != 0; }
+const RdrVideo *tgr_video_state(void) { return &s_video; }
 
 /* ---- the VI ----------------------------------------------------------------- */
 static uint32_t s_framebuffer;

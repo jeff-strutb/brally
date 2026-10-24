@@ -103,10 +103,11 @@ void rdr_clear_depth(void);
 /* 1 if the renderer counts coverage per pixel as the RDP does (seams under a
    pixel wide then close by themselves); 0: the RCP layer adds its own fill */
 int  rdr_covers(void);
-/* the VI's control register for the frame about to end (libultra's VI_CTRL_*
-   bits: pixel size, gamma, gamma dither, divot, the anti-alias mode, the
-   dither filter) */
-void rdr_vi(uint32_t ctrl);
+/* how the frame about to end is shown: anti-aliased edges, the dither filter
+   (smooths the 16-bit dither), the divot filter (mends one-pixel notches at
+   edges), gamma correction */
+typedef struct RdrVideo { uint8_t antialias, dither_filter, divot, gamma; } RdrVideo;
+void rdr_video(const RdrVideo *v);
 void rdr_frame_end(void);                              /* the finished frame */
 /* the last finished frame, 0xAARRGGBB, top row first (for screenshots and
  * hosts that present pixels); NULL if the renderer cannot read it back */

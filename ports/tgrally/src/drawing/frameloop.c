@@ -106,11 +106,6 @@ extern int D_8028AAE0;                  /* CPU time of the last frame */
 extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
-extern int tgr_tv_type;
-extern TgrVideoMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
-extern TgrVideoMode D_802A54B0[1];
-extern TgrVideoMode D_802A6040[1];
-extern TgrVideoMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;
@@ -397,9 +392,9 @@ void BrFrameBegin(int hires)
     tgr_wr32(&_g->words.w0, 0xfe000000);
     tgr_wr32(&_g->words.w1, TGR_W1((D_00000400)));
   }
-  tgr_video_features(0x40);
-  tgr_video_features(0x10);
-  tgr_video_features(D_8028AA4C != 0 ? 1 : 2);
+  tgr_video_dither_filter(1);
+  tgr_video_divot(1);
+  tgr_video_gamma(D_8028AA4C != 0);
 }
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -903,19 +898,7 @@ void BrFrameEnd(void)
     D_8028AAE8 = tgr_clock(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
-        if (D_8028A850 != 0) {
-          if (tgr_tv_type == 2) {
-            tgr_video_mode(D_802A6040);
-          } else {
-            tgr_video_mode(D_802A5780);
-          }
-        } else {
-          if (tgr_tv_type == 2) {
-            tgr_video_mode(D_802A5D70);
-          } else {
-            tgr_video_mode(D_802A54B0);
-          }
-        }
+        tgr_video_reset();              /* port: high or low resolution, MPAL or NTSC alike */
         D_8028A854 = D_8028A850;
       }
     }

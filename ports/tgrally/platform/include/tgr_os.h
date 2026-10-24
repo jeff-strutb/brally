@@ -128,7 +128,6 @@ typedef struct {                    /* 0x20 bytes */
     char     pad1e[2];
 } TgrPakFile;
 
-typedef struct { uint8_t type; uint8_t pad[3]; uint32_t regs[19]; } TgrVideoMode;   /* 0x50 bytes */
 
 #define TGR_NOBLOCK     0
 #define TGR_BLOCK       1
@@ -172,9 +171,11 @@ void     tgr_event_mq(TgrEvent e, TgrMsgQueue *mq, TgrMsg msg);
 uint32_t tgr_clock(void);
 int32_t  tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue *mq, TgrMsg msg);
 
-void     tgr_video_mode(TgrVideoMode *mode);
+void     tgr_video_reset(void);               /* a change of resolution: anti-aliased, divot, gamma, no dither filter */
 void     tgr_retrace_mq(TgrMsgQueue *mq, TgrMsg msg, uint32_t retraceCount);
-void     tgr_video_features(uint32_t func);
+void     tgr_video_dither_filter(int on);
+void     tgr_video_divot(int on);
+void     tgr_video_gamma(int on);
 void     tgr_video_show(void *fb);
 void    *tgr_video_shown(void);
 

@@ -92,8 +92,6 @@ extern BrArgs *D_8026FF00;
 extern char **D_8026FF04;
 extern int D_8028AAB0;
 extern int D_8028AAB4;
-extern TgrVideoMode D_802A5D70;          /* MPAL video mode */
-extern TgrVideoMode D_802A54B0;          /* NTSC video mode */
 extern TgrMsgQueue D_80319ED0;       /* the PI manager's command queue */
 extern TgrMsg D_80319EE8[32];
 extern TgrMsg D_8031B1C8[1];
@@ -703,11 +701,7 @@ void BrIdleThread(void *arg)
   D_8026FF00 = &D_8028B2EC;
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
-  if (tgr_tv_type == 2) {
-    tgr_video_mode(&D_802A5D70);
-  } else {
-    tgr_video_mode(&D_802A54B0);
-  }
+  tgr_video_reset();                    /* port: the low-resolution mode, MPAL or NTSC alike */
   tgr_mq_init(&D_8031B1B0, D_8031B1C8, 1);
   tgr_thread_new(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
   tgr_thread_start(&D_8031AC00);

@@ -68,6 +68,8 @@ void tgr_dump_state(const char *path, uint32_t dl);  /* game memory as the origi
 void tgr_gfx_swap(uint32_t fb);             /* the framebuffer osViSwapBuffer shows */
 void tgr_gfx_present(void);                 /* the retrace: show it */
 void tgr_gfx_init(void);
+struct RdrVideo;
+const struct RdrVideo *tgr_video_state(void);   /* how the picture is shown (os/io.c) */
 void tgr_gfx_lock(void);                    /* the renderer: one task or present at a time */
 void tgr_gfx_unlock(void);
 
