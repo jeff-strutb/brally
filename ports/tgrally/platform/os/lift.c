@@ -34,9 +34,57 @@ static void swap_unit(uint8_t *p, uint32_t size)
 /* bytes of .data already turned native: each byte is swapped once */
 static uint8_t s_done[DATA_END - DATA_ROM];
 
+/* the object of the image an original address falls in */
+static const TgrObj *obj_at(uint32_t a)
+{
+    int lo = 0, hi = tgr_nobjs - 1;
+    while (lo <= hi) {
+        int m = (lo + hi) / 2;
+        if (a < tgr_objs[m].addr)
+            hi = m - 1;
+        else if (a - tgr_objs[m].addr >= tgr_objs[m].size)
+            lo = m + 1;
+        else
+            return &tgr_objs[m];
+    }
+    return NULL;
+}
+
+/* an object laid out differently natively: each field from the ROM's bytes,
+ * a pointer as the native pointer for the original address it holds */
+static void lift_mapped(const TgrObj *o, const uint8_t *rom)
+{
+    uint32_t i, k, b;
+    for (i = 0; i < o->nmap; i++) {
+        const TgrMap *m = &o->map[i];
+        for (k = 0; k < m->count; k++) {
+            const uint8_t *src = rom + m->n64off + k * m->n64stride;
+            uint8_t *dst = (uint8_t *)o->nat + m->natoff + k * m->natstride;
+            if (m->size == 0) {
+                uint32_t a = (uint32_t)src[0] << 24 | (uint32_t)src[1] << 16 | (uint32_t)src[2] << 8 | src[3];
+                void *p;
+                if (a >= TEXT_LO && a < DATA_VA)
+                    p = tgr_fn(a);
+                else if (a & 0x80000000u)
+                    p = tgr_ptr32(a);
+                else
+                    p = (void *)(uintptr_t)a;   /* a number the source types as a pointer */
+                memcpy(dst, &p, sizeof p);
+            } else {
+                for (b = 0; b < m->size; b++)
+                    dst[b] = src[m->size - 1 - b];
+            }
+        }
+    }
+}
+
 static void swap_runs(uint32_t addr, uint32_t run0, uint32_t nruns)
 {
-    uint8_t *base = tgr_ptr32(addr);
+    const TgrObj *o = obj_at(addr);
+    uint8_t *base;
+    if (o && o->map)
+        return;                                     /* lifted field by field already */
+    base = tgr_ptr32(addr);
     uint32_t j, k, b;
     for (j = 0; j < nruns; j++) {
         const TgrRun *r = &tgr_runs[run0 + j];
@@ -60,11 +108,14 @@ void tgr_lift(void)
     const uint8_t *data = tgr_romdata + (DATA_ROM - TGR_ROMDATA_BASE);   /* ROM DATA_ROM on */
     for (i = 0; i < tgr_nobjs; i++) {               /* each .data object from the ROM */
         const TgrObj *o = &tgr_objs[i];
-        if (o->addr >= DATA_VA && o->addr < DATA_VA + (DATA_END - DATA_ROM)) {
+        if (o->addr >= DATA_VA && o->addr < DATA_VA + (DATA_END - DATA_ROM) && !o->map) {
             uint32_t n = o->size, room = DATA_VA + (DATA_END - DATA_ROM) - o->addr;
             memcpy(o->nat, data + (o->addr - DATA_VA), n < room ? n : room);
         }
     }
+    for (i = 0; i < tgr_nobjs; i++)                 /* those laid out differently, field by field */
+        if (tgr_objs[i].map && tgr_objs[i].addr >= DATA_VA && tgr_objs[i].addr < DATA_VA + (DATA_END - DATA_ROM))
+            lift_mapped(&tgr_objs[i], data + (tgr_objs[i].addr - DATA_VA));
     memset(s_done, 0, sizeof s_done);
     for (i = 0; i < tgr_nsyms; i++)
         swap_runs(tgr_syms[i].addr, tgr_syms[i].run0, tgr_syms[i].nruns);

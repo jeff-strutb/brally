@@ -179,7 +179,7 @@ def tus():
 def parse(tu, target):
     idx = ci.Index.create()
     inc = os.path.join(ROOT, 'ports/tgrally/platform/include')
-    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else []
+    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')]   # (both ABIs: no C library headers)
     return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC'] + extra + [
                                                     '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
                                                     '-I' + inc, '-include', os.path.join(inc, 'tgr_os.h'),
@@ -334,6 +334,7 @@ def main():
         return min(nxt, lim) - a
 
     arena, lift, native, allunits = [], [], [], []
+    relaid = {}     # name -> (native size, [(n64off, natoff, size (0: a pointer), count, n64stride, natstride)])
     for name in sorted(decl, key=lambda n: addr_of(n, syms)):
         a = addr_of(name, syms)
         rows = decl[name]
@@ -350,9 +351,7 @@ def main():
             if r['st'] != 'extern':
                 report.append('%s: defined in %s (game data lives in the arena: declare it extern)' % (
                     name, r['tu']))
-            if r['nat'] is not None and r['nat'] != r['n64'] and not is_native:
-                report.append('%s: %s is %s bytes natively, %s on the N64 (%s)' % (
-                    name, r['spelling'], r['nat'], r['n64'], os.path.basename(r['tu'])))
+            pass
         n64s = sorted({r['n64'] for r in rows if r['n64'] is not None})
         if any(r['ptr'] for r in rows) and reg != 'arena':
             # a pointer variable or a table of pointers: a native object (its
@@ -401,6 +400,28 @@ def main():
         elif n0 > ext:
             report.append('%s: %s is %d bytes, the next symbol %d bytes on (%s)' % (
                 name, owner['spelling'], n0, ext, os.path.basename(owner['tu'])))
+        # laid out differently natively (a pointer field is a native pointer):
+        # the object is the native layout, filled field by field (tgr_lift)
+        # and reached by original address through the same field map
+        if owner['complete']:
+            nl0, nl1, nn = owner['l0'], owner['l1'], owner['nat']
+            differs = owner['nat'] != owner['n64']
+        else:
+            es, ns = owner['elsize'] or 1, owner['natelsize'] or 1
+            nl0 = [(i * es + o, k, z) for i in range(cnt) for o, k, z in owner['l0']]
+            nl1 = [(i * ns + o, k, z) for i in range(cnt) for o, k, z in owner['l1']]
+            nn = cnt * ns
+            differs = ns != es
+        if differs:
+            try:
+                relaid[name] = (nn, runs(nl0, nl1))
+            except Unlayable as e:
+                report.append('%s: cannot map %s to its native layout: %s' % (name, owner['spelling'], e))
+            views = {r['nat'] for r in rows if r['complete'] and r['nat'] is not None}
+            if len(views) > 1:
+                report.append('%s: declared at different native sizes %s: one definition is needed' % (
+                    name, sorted(views)))
+            continue
         units = [(o, 4 if k == 'p' else z) for o, k, z in lv if (4 if k == 'p' else z) > 1]
         # what other declarations know of bytes the owner leaves as padding
         # (one TU's view of a record often names fields another pads over)
@@ -552,7 +573,10 @@ def main():
             lines += ['.globl %s%s' % (us, name), '%s%s = %stgr_rdram + 0x%X' % (us, name, us, a - ARENA_LO)]
         elif name not in inner:
             n = objsize(a)
-            objs.append((a, n, name))
+            nn = relaid[name][0] + max(0, n - (max([r['n64'] or 0 for r in decl[name]] or [0]))) \
+                if name in relaid else n
+            objs.append((a, n, name, nn))
+            n = nn
             if 'apple' in NATIVE or 'darwin' in NATIVE:
                 lines += ['.globl _%s' % name, '.zerofill __DATA,__bss,_%s,%d,4' % (name, n)]
             elif 'mingw' in NATIVE or 'windows' in NATIVE:
@@ -570,9 +594,18 @@ def main():
     open(os.path.join(GEN, 'arena.s'), 'w').write('\n'.join(lines) + '\n')
     objs.sort()
     obj_lines = ['/* the game\'s image objects by original address (platform/os/addr.c) */']
-    obj_lines += ['extern char %s[];' % nm for a, n, nm in objs]
-    obj_lines += ['const TgrObj tgr_objs[] = {'] + ['    {0x%08X, %d, %s},' % o for o in objs] + \
-                 ['    {0, 0, 0}', '};', 'const int tgr_nobjs = %d;' % len(objs), '']
+    obj_lines += ['extern char %s[];' % o[2] for o in objs]
+    for a, n, nm, nn in objs:
+        if nm in relaid:
+            obj_lines += ['static const TgrMap map_%s[] = {' % nm] + \
+                ['    {0x%X, 0x%X, %d, %d, 0x%X, 0x%X},' % r for r in relaid[nm][1]] + ['};']
+    obj_lines += ['const TgrObj tgr_objs[] = {']
+    for a, n, nm, nn in objs:
+        if nm in relaid:
+            obj_lines.append('    {0x%08X, %d, %s, %d, map_%s, %d},' % (a, n, nm, nn, nm, len(relaid[nm][1])))
+        else:
+            obj_lines.append('    {0x%08X, %d, %s, %d, 0, 0},' % (a, n, nm, nn))
+    obj_lines += ['    {0, 0, 0, 0, 0, 0}', '};', 'const int tgr_nobjs = %d;' % len(objs), '']
     open(os.path.join(GEN, 'tgr_syms.c'), 'a').write('\n'.join(obj_lines))
 
     # every .data/.bss symbol's multi-byte units, for tools/lockstep.py to read

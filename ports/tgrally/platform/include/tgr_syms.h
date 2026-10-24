@@ -29,9 +29,17 @@ extern const int tgr_nsyms;
 extern const TgrFn tgr_fns[];
 extern const int tgr_nfns;
 
-typedef struct TgrObj {     /* an object of the game's image: its original address, size, storage */
+typedef struct TgrMap {     /* count fields, n64stride apart in the original's layout, natstride natively */
+    uint32_t n64off, natoff, size;          /* size 0: a pointer (4 bytes on the N64) */
+    uint32_t count, n64stride, natstride;
+} TgrMap;
+
+typedef struct TgrObj {     /* an object of the game's image: its original address and size, storage */
     uint32_t addr, size;
     char    *nat;
+    uint32_t natsize;
+    const TgrMap *map;      /* laid out differently natively: its fields; 0 if the same */
+    uint32_t nmap;
 } TgrObj;
 extern const TgrObj tgr_objs[];             /* by address */
 extern const int tgr_nobjs;

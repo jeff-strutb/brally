@@ -35,6 +35,30 @@ static const TgrObj *obj_at(uint32_t k)
     return NULL;
 }
 
+/* an offset in an object laid out differently natively, from the original's
+ * layout to the native one (to_nat) or back; -1 if it falls in no field */
+static long map_off(const TgrObj *o, uint32_t d, int to_nat)
+{
+    uint32_t i;
+    if (!o->map)
+        return d;
+    for (i = 0; i < o->nmap; i++) {
+        const TgrMap *m = &o->map[i];
+        uint32_t base = to_nat ? m->n64off : m->natoff, st = to_nat ? m->n64stride : m->natstride;
+        uint32_t len = m->size ? m->size : to_nat ? 4 : sizeof(void *), k, in;
+        if (d < base)
+            continue;
+        k = m->count > 1 && st ? (d - base) / st : 0;
+        if (k >= m->count)
+            continue;
+        in = d - base - k * st;
+        if (in < len)
+            return (long)((to_nat ? m->natoff : m->n64off) + k * (to_nat ? m->natstride : m->n64stride) +
+                          (m->size ? in : 0));
+    }
+    return -1;
+}
+
 static const TgrObj *obj_of(uintptr_t p)
 {
     int lo = 0, hi = tgr_nobjs - 1;
@@ -43,7 +67,7 @@ static const TgrObj *obj_of(uintptr_t p)
         const TgrObj *o = s_bynat[m];
         if (p < (uintptr_t)o->nat)
             hi = m - 1;
-        else if (p - (uintptr_t)o->nat >= o->size)
+        else if (p - (uintptr_t)o->nat >= o->natsize)
             lo = m + 1;
         else
             return o;
@@ -73,8 +97,14 @@ uint32_t tgr_addr32_slow(const void *p)
     }
     {
         const TgrObj *o = obj_of(a);
-        if (o)
-            return o->addr + (uint32_t)(a - (uintptr_t)o->nat);
+        if (o) {
+            long d = map_off(o, (uint32_t)(a - (uintptr_t)o->nat), 0);
+            if (d < 0) {
+                fprintf(stderr, "tgr: %p is in no field of the object at %08X\n", p, o->addr);
+                abort();
+            }
+            return o->addr + (uint32_t)d;
+        }
     }
     for (i = WIN_FIRST; i <= WIN_LAST; i++) {
         if (s_win[i] == base)
@@ -111,8 +141,14 @@ void *tgr_ptr32_slow(uint32_t a)
             if (k >= n->addr && k - n->addr < 4 * n->count && (k - n->addr) % 4 == 0)
                 return &n->nat[(k - n->addr) / 4];
         }
-        if ((o = obj_at(k)) != NULL)
-            return o->nat + (k - o->addr);
+        if ((o = obj_at(k)) != NULL) {
+            long d = map_off(o, k - o->addr, 1);
+            if (d < 0) {
+                fprintf(stderr, "tgr: %08X is in no field of the object at %08X\n", a, o->addr);
+                abort();
+            }
+            return o->nat + d;
+        }
         if (k - TGR_IMAGE_LO < TGR_IMAGE_HI - TGR_IMAGE_LO && k >= 0x8026FAB0u) {
             fprintf(stderr, "tgr: no object at %08X\n", a);
             abort();
