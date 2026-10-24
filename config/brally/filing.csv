@@ -191,6 +191,7 @@ glide_va,name,module,basis,file
 0x1000E150,BrScrPtKeepNearest,drawing,neighbour,src/brally/core/drawing/br_vertlerp.c
 0x1000E270,BrPointProjectXY,drawing,filed,src/brally/core/drawing/br_vertlerp.c
 0x1000E2F0,BrQsortCmpS2,drawing,neighbour,src/brally/core/drawing/br_sortcmp.c
+0x1000E320,BrSceneVisPrepare,scene,filed,src/brally/core/scene/br_scenevis.c
 0x10010F80,BrRecHdrLatch_10010F80,drawing,filed,src/brally/core/drawing/br_rec.c
 0x10011300,BrPaceNoteEmit_10011300,drawing,filed,src/brally/core/drawing/BrPaceNoteEmit_10011300.cpp
 0x10011650,FUN_10011650,drawing,filed,src/brally/core/drawing/br_rdpmode.c

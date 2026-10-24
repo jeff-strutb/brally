@@ -37,8 +37,6 @@ extern int g_BrVisRowHi;                             /* 0x10AC2C54 */
 extern int g_BrVisColLo[64];                         /* 0x10AC2C60 */
 extern int g_BrVisColHi[64];                         /* 0x10AC2D60 */
 
-extern float g_BrVisCellRecip;                       /* 0x10077214 */
-extern float g_BrVisRangeRecip;                      /* 0x10077218 */
 extern float g_BrCamDist;                            /* 0x106E72A0 */
 
 /* ---- spans ------------------------------------------------------------ */
@@ -98,7 +96,6 @@ extern int32_t g_BrCarCount;                         /* 0x100B2F04 */
 extern int32_t g_brRaceNDriver;                      /* 0x100B2F00 */
 
 extern BrVec3 g_BrVisCarDelta;                       /* 0x102E0C90 */
-extern float  g_BrVisAheadMin;                       /* 0x1007721C */
 extern int    g_BrVisCarCount;                       /* 0x102E16C0 */
 extern int    g_BrVisCarIdx[];                       /* 0x102E16C8 */
 extern float  g_BrVisCarDot[];                       /* 0x1035F710 */
@@ -114,9 +111,6 @@ void  br_dl_normalise(BrVec3 *pV);
 
 /* ---- light ------------------------------------------------------------ */
 
-extern double g_BrZeroD;                             /* 0x10077220 */
-extern float  g_BrVisEyeScale;                       /* 0x1007722C */
-extern float  g_BrVisVelScale;                       /* 0x10077230 */
 extern int    g_BrDrawCombined;                      /* 0x106E78F0 */
 extern void  *g_BrVisLights;                         /* 0x1035FBA0 */
 extern int    g_BrVisLightFromCar;                   /* 0x106ED6AC */
@@ -166,18 +160,13 @@ void FUN_1000c9e0(BrViewRect *pView, BrVisPt *pPt, int n, short *pMin, short *pM
  * velocity), normalises it, and pushes its byte-packed direction into a
  * four-deep history; finally clamps every driver's projected box to the
  * current view rectangle. */
-/* @t4-pass 0x1000e320 1 2026-09-20 probes 40 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x1000e320 2 2026-09-20 probes 20 bytes 1992 insns 543 regions 2 rows 20 census yes  (tools/brally/crank.py) */
-/* @t3 0x1000E320 2026-09-20 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 1992/1992 insns 543/543 rows 10+10 regions 2 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * Residue is the two value-preserving VC5 orderings described above: region 1
- * schedules the two independent driver-loop loads (hoist vs just-in-time, same
- * values, no aliasing); region 2 reads a commutative 16-bit integer add in the
- * other operand order (same value, same flags, same two reads).  The A5
- * behavioural oracle RUNS the whole pass and returns EQUIVALENT over 48 seeds
- * with per-region negative controls, superseding the byte-distance gates.
- *  Do not reopen before the end-grind. */
+/* The constants (1/32, -1/32, 2.0, the double 0.0, 50.0, 4.0) are literals:
+ * they sit in .rdata in this function's order of first use.  The point for
+ * the box clamp is a block-scope initialiser, so all three fields are read
+ * before any is stored.  The car marks index the car array directly and the
+ * box clamp writes the driver's shorts through pDrv, with no pointer locals:
+ * those decide C2's temporary numbering, and with it the order of the two
+ * loads in each x + w and y + h sum. */
 /* @implements 0x1000E320 glide BrSceneVisPrepare */
 void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *pCars)
 {
@@ -188,11 +177,9 @@ void BrSceneVisPrepare(BrViewRect *pView, unsigned char *pRace, unsigned char *p
     BrU16Queue     q;
     unsigned short s;
     float          dot, fx, fy;
-    BrVisPt        pt;
     BrVisCell     *pCell;
     unsigned char *pCar;
     unsigned char *pDrv;
-    short         *pMin, *pMax;
     short         *pd;
 
     BrVec3        *pPos;
@@ -215,10 +202,10 @@ done:
     g_BrVisCells[n].col = 0xFF;
     g_BrVisCells[n].row = 0xFF;
 
-    cx = (int)(g_BrCamera->pos.x * g_BrVisCellRecip);
+    cx = (int)(g_BrCamera->pos.x * 0.03125f);
     if (cx == 64)
         cx = 63;
-    cy = (int)(g_BrCamera->pos.y * g_BrVisCellRecip);
+    cy = (int)(g_BrCamera->pos.y * 0.03125f);
     if (cy == 64)
         cy = 63;
 
@@ -234,7 +221,7 @@ done:
     g_BrVisFirstNear = -1;
     g_BrVisFirstFar  = -1;
     g_BrVisFirstMid  = -1;
-    r    = (int)(g_BrCamDist * g_BrVisRangeRecip);
+    r    = (int)(g_BrCamDist * -0.03125f);
     thr2 = (-3 - r) * (-3 - r);
     thr = (g_brRaceReplay != 0 && g_BrCamera == (BrCamera *)((unsigned char *)g_BrPlayerCar + 0x2808)) ? 9 : 1;
 
@@ -285,7 +272,7 @@ done:
         if (*(int *)(pCar + 0xF08) != 0 && g_BrCarVisOpaque[i] != 0) {
             BrVec3Sub(&g_BrVisCarDelta, (BrVec3 *)(pCar + 0x30), &g_BrCamera->pos);
             dot = BrVec3Dot(&g_BrCamera->dir, &g_BrVisCarDelta);
-            if (dot >= g_BrVisAheadMin) {
+            if (dot >= 2.0f) {
                 for (j = g_BrVisCarCount - 1; j >= 0; j--) {
                     if (dot >= g_BrVisCarDot[j])
                         break;
@@ -301,9 +288,8 @@ done:
     if (g_BrVisCarCount > 4)
         g_BrVisCarCount = 4;
     for (k = 0; k < g_BrVisCarCount; k++) {
-        pCar = pCars + g_BrVisCarIdx[k] * 0x2B68;
-        for (i = 0; i < *(int *)(pCar + 0x2990); i++)
-            g_BrSpanPending[((unsigned short *)(pCar + 0x2950))[i]] |= 1 << g_BrVisCarIdx[k];
+        for (i = 0; i < *(int *)(pCars + g_BrVisCarIdx[k] * 0x2B68 + 0x2990); i++)
+            g_BrSpanPending[((unsigned short *)(pCars + g_BrVisCarIdx[k] * 0x2B68 + 0x2950))[i]] |= 1 << g_BrVisCarIdx[k];
     }
 
     /* Environment flags of the flagged spans. */
@@ -314,16 +300,16 @@ done:
     /* The frame's light. */
     fx = g_BrCamera->dir.x;
     fy = g_BrCamera->dir.y;
-    if (fx == g_BrZeroD && fy == g_BrZeroD)
+    if (fx == 0.0 && fy == 0.0)
         fx = 0.0001f;
     g_BrVisLights = BrPool32Alloc();
     BrLightDirsFromLookAt(&g_BrDrawCombined, g_BrVisLights,
-                          fx * g_BrVisEyeScale, fy * g_BrVisEyeScale, 0.0f,
+                          fx * 50.0f, fy * 50.0f, 0.0f,
                           0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
     if (g_BrVisLightFromCar != 0) {
-        g_BrVisLightDir.x = g_BrPlayerCar->pos.x - g_BrPlayerCar->vel.x * g_BrVisVelScale;
-        g_BrVisLightDir.y = g_BrPlayerCar->pos.y - g_BrPlayerCar->vel.y * g_BrVisVelScale;
-        g_BrVisLightDir.z = g_BrPlayerCar->pos.z - g_BrPlayerCar->vel.z * g_BrVisVelScale;
+        g_BrVisLightDir.x = g_BrPlayerCar->pos.x - g_BrPlayerCar->vel.x * 4.0f;
+        g_BrVisLightDir.y = g_BrPlayerCar->pos.y - g_BrPlayerCar->vel.y * 4.0f;
+        g_BrVisLightDir.z = g_BrPlayerCar->pos.z - g_BrPlayerCar->vel.z * 4.0f;
     } else {
         g_BrVisLightDir = g_BrVisLightDefault;
     }
@@ -340,22 +326,19 @@ done:
     for (i = 0; i < g_brRaceNDriver; i++) {
         pDrv = *(unsigned char **)(pRace + 0x60 + i * 0x80);
         if (pDrv != 0) {
-            pt.h = *(float *)(pDrv + 0x38) - *(float *)(pDrv + 0x2994);
-            pt.x = *(int *)(pDrv + 0x30);
-            pt.y = *(int *)(pDrv + 0x34);
-            pMax = (short *)(pDrv + 0x29A0);
-            pMin = (short *)(pDrv + 0x299C);
-            FUN_1000c9e0(pView, &pt, 8, pMin, pMax);
-            if (*pMin < pView[g_brIView].x)
-                *pMin = (short)pView[g_brIView].x;
-            if (*pMax < pView[g_brIView].x)
-                *pMax = (short)pView[g_brIView].x;
+            BrVisPt pt = { *(int *)(pDrv + 0x30), *(int *)(pDrv + 0x34),
+                           *(float *)(pDrv + 0x38) - *(float *)(pDrv + 0x2994) };
+            FUN_1000c9e0(pView, &pt, 8, (short *)(pDrv + 0x299C), (short *)(pDrv + 0x29A0));
+            if (*(short *)(pDrv + 0x299C) < pView[g_brIView].x)
+                *(short *)(pDrv + 0x299C) = (short)pView[g_brIView].x;
+            if (*(short *)(pDrv + 0x29A0) < pView[g_brIView].x)
+                *(short *)(pDrv + 0x29A0) = (short)pView[g_brIView].x;
             if (*(short *)(pDrv + 0x299E) < pView[g_brIView].y)
                 *(short *)(pDrv + 0x299E) = (short)pView[g_brIView].y;
             if (*(short *)(pDrv + 0x29A2) < pView[g_brIView].y)
                 *(short *)(pDrv + 0x29A2) = (short)pView[g_brIView].y;
-            if (*pMin > pView[g_brIView].w + pView[g_brIView].x)
-                *pMin = (short)(pView[g_brIView].w + pView[g_brIView].x);
+            if (*(short *)(pDrv + 0x299C) > pView[g_brIView].w + pView[g_brIView].x)
+                *(short *)(pDrv + 0x299C) = (short)(pView[g_brIView].w + pView[g_brIView].x);
             if (*(short *)(pDrv + 0x29A0) > pView[g_brIView].w + pView[g_brIView].x)
                 *(short *)(pDrv + 0x29A0) = (short)(pView[g_brIView].w + pView[g_brIView].x);
             if (*(short *)(pDrv + 0x299E) > pView[g_brIView].y + pView[g_brIView].h)
