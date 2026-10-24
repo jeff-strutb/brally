@@ -662,6 +662,7 @@ glide_va,name,module,basis,file
 0x10037EE0,BrMenuClearAA28A8,menus,prefix,src/brally/core/menus/br_menucb.c
 0x10037EF0,BrItemSetNumByte_10037EF0,menus,neighbour,src/brally/core/menus/BrItemSetNumByte_10037EF0.cpp
 0x10037F40,BrUiFn1003E920,menus,description,src/brally/core/menus/br_uipoll.c
+0x10037F70,BrUiHook85_1003E950,menus,filed,src/brally/core/menus/br_uictlhook.c
 0x10037FA0,BrItemDrawIconRow,menus,neighbour,src/brally/core/menus/BrItemDrawIconRow_10037FA0.cpp
 0x10038000,BrUiHook85_1003E9E0,menus,neighbour,src/brally/core/menus/BrUiHook85_1003E9E0_10038000.cpp
 0x10038060,BrUiHook85_1003EA40,menus,description,src/brally/core/menus/br_uictlhook.c

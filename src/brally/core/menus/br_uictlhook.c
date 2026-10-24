@@ -369,50 +369,25 @@ int32_t BrUiHook85_1003E9E0(BrUiCtl_ *pCtl)
 /* WHAT IT DOES: picks which of two pictures a control is drawn with,
  * depending on which of the two volume rows the player last touched -- the
  * highlight that shows which row the cursor is on. */
-/* @t4-pass 0x10037F70 1 2026-09-10 probes 35 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/brally/crank.py) */
-/* @t4-pass 0x10037F70 2 2026-09-10 probes 134 bytes 44 insns 10 regions 1 rows 0 census yes  (tools/brally/crank.py) */
-/* @t3 0x10037F70 2026-09-10 -- CERTIFIED COMPLETE, NOT BYTE-EXACT.
- * @t3-measure bytes 44/43 insns 10/10 rows 0+0 regions 1 oracle EQUIVALENT
- * @t3-effort passes 2 zero-movement 1 2
- * residue after tools/brally/crank.py: 134 compiles this pass, levers accepted: none;
- * every candidate and score is in build/brally/win32/match/crank.log.
- * Do not reopen before the end-grind. */
 /* @implements 0x1003E950 d3d BrUiHook85_1003E950 */
 /* @n64 0x802649C0 located */
 int32_t BrUiHook85_1003E950(BrUiCtl_ *pCtl)
 {
     /* Note the inversion relative to the usual "flag set -> higher value".
      *
-     * NOT a ternary.  `c ? K1 : K2` over two constants compiles to the
-     * branchless neg/sbb/add sequence (see the VC5-IDIOMS two-constant-ternary
-     * entry); the original BRANCHES -- `mov ecx,0x68; test eax,eax; jne end;
-     * mov ecx,0x69` -- which is the shape of a preset followed by a
-     * conditional overwrite.
-     *
-     * RESIDUE 32 bytes, and 44 against the original's 43.  Every differing
-     * byte is one register swap: the original puts the global in EAX (so the
-     * load is the one-byte-shorter `A1` moffs form) and the constant in ECX,
-     * and the recompile does the reverse.  The instruction sequence is
-     * otherwise identical.  Probed and ruled out, do not re-run: if/else with
-     * either arm order (both collapse back to the branchless form, 36 B),
-     * reading the global into a local first, `!g` versus `g == 0`, the
-     * inverted preset (0x69 then conditionally 0x68), `int16_t`/`int` for c,
-     * a goto instead of the if, and both chained-store orders -- all seven
-     * preset variants compile to byte-identical output. T3a.
-     *
-     * WHY IT IS A BYTE LONGER, which is the whole of the size gap: VC5 emits
-     * the one-byte-shorter `A1` moffs load for a global ONLY when the
-     * destination is EAX.  Here `c` has taken eax, so the global has to use
-     * the 6-byte `8B 0D` form.  So the lever, if one exists, is anything that
-     * stops `c` claiming eax -- not anything about the branch shape, which is
-     * already exactly right.  Every attempt above changed the branch. */
-    uint16_t c = 0x68;
-
-    if (g_br0AB3D8 == 0)
-        c = 0x69;
-
-    pCtl->aStepId[0] = c;      /* +0x2A40, a WORD store */
-    pCtl->w1E20C     = c;      /* +0x1E20C, a WORD store */
+     * Both arms store their own constant.  VC5 cross-jumps the two identical
+     * store tails into one, with the constant in ECX: `mov ecx,0x68;
+     * test eax,eax; jne end; mov ecx,0x69; end:` and the two WORD stores.
+     * A local preset and a conditional overwrite compiles to the same
+     * branch, but the local outranks pCtl in C2's priority and takes EAX,
+     * which also costs the one-byte-shorter `A1` load of the global. */
+    if (g_br0AB3D8 != 0) {
+        pCtl->aStepId[0] = 0x68;   /* +0x2A40, a WORD store */
+        pCtl->w1E20C     = 0x68;   /* +0x1E20C, a WORD store */
+    } else {
+        pCtl->aStepId[0] = 0x69;
+        pCtl->w1E20C     = 0x69;
+    }
     return 1;
 }
 
