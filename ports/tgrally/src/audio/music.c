@@ -733,6 +733,11 @@ void BrMusicThread(void *arg)
       BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
     }
     n = (0x5000 - len) / 8 * 8 - D_802A4A14;
+    if ((int)n < 0) {                   /* port: woken late across the start of the next buffer
+                                           (a host thread can be; the N64's never was): what
+                                           played, counted round the buffer as the music's is */
+      n += 0x4000;
+    }
     if (n > 0x4000) {
       n -= 0x4000;
     }
