@@ -24,7 +24,7 @@ void rm_pause_note(int presses);
 int  rm_pause_take(void);
 void rm_fps_frame(int x, int h);    /* each race frame: the frame rate, when shown */
 
-/* glide.c: a tap at nx, ny (0..1 across the window) in the game's pixels, as
+/* br_gfx.c: a tap at nx, ny (0..1 across the window) in the game's pixels, as
  * a piece of 2D with box b (x0 y0 x1 y1) is placed on the window */
 void plat_tap_to_game(float nx, float ny, const float *b, float *gx, float *gy);
 

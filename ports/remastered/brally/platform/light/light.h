@@ -95,7 +95,7 @@ int  light_scene_spots(LightSpot *out, int max);
 int  light_scene_lights(LightSpot *out, int *id, int max);
 
 /* ---- the capture (light_capture.c) --------------------------------------------
- * glide.c hands over every display-list triangle of the camera's view (0) or
+ * br_gfx.c hands over every display-list triangle of the camera's view (0) or
  * the rear-view mirror's (2) as Glide receives it: the game's pixels, 1/w,
  * colour and texture coordinates; the capture rebuilds where it is in the
  * world. */
@@ -159,7 +159,7 @@ static inline int light_car_inbox(const LightCar *c, const float p[3], float mar
  * yet: everything of the car's model is its paint */
 int  light_capture_oncar(const float tri[9]);
 /* the game's pixel rows as Glide takes them: its height when the origin is
- * the lower left (y up, as the game's viewport works), else 0 (glide.c) */
+ * the lower left (y up, as the game's viewport works), else 0 (br_gfx.c) */
 int  light_glide_flip(void);
 
 #ifdef __cplusplus

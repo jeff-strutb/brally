@@ -5,8 +5,8 @@
 # Everything Remastered adds lives here: its own files under brally/ and
 # tgrally/, at the paths they take in each port, and its changes to the
 # ports' files under patch/brally and patch/tgrally, one unified diff a file
-# (patch/brally/platform/common/glide.c.patch changes
-# ports/brally/platform/common/glide.c).  A patch that no longer applies
+# (patch/brally/platform/common/br_gfx.c.patch changes
+# ports/brally/platform/common/br_gfx.c).  A patch that no longer applies
 # stops the build: the port moved under it, and the patch is carried over by
 # hand (make a tree, edit it, save it).
 #

@@ -14,5 +14,5 @@
          }                                                                   \
 +        plat_glide_view(br_dl_view());   /* port: br_dlview.h */           \
          if (list.cVerts == 3) {                                             \
-             grDrawTriangle(&out[0], &out[1], &out[2]);                      \
+             br_gfx_triangle(&out[0], &out[1], &out[2]);                      \
              return;                                                         \

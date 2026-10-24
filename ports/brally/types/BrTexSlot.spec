@@ -22,4 +22,4 @@
 0x0048  int32_t                       evenOdd
 0x004C  uint32_t                      start               TMEM start address
 0x0050  int32_t                       lodBlend
-0x00C4  GrTexInfo                     info
+0x00C4  BrGfxTexInfo                  info

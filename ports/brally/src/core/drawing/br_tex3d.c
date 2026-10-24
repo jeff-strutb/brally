@@ -500,7 +500,7 @@ void BrTex3dDownloadAt(unsigned int param_1,int *param_2)
     if (slot->bLive != 0) {
       slot->info.data = param_2;
       slot->pData = param_2;
-      grTexDownloadMipMap(slot->tmu, slot->start, slot->evenOdd, &slot->info);
+      br_gfx_tex_upload(slot->tmu, slot->start, &slot->info);
     }
   }
   return;
@@ -1093,7 +1093,7 @@ int BrTex3dRegister(void)
   r.f30 = 1;
   r.f34 = 0xc0000000;
   r.f38 = 0;
-  cb = grTexCalcMemRequired(r.aspect0,r.aspect1,r.f20,r.fmt);
+  cb = br_gfx_tex_bytes(r.aspect0,r.aspect1,r.f20,r.fmt);
   if (cb > 0x80000) {
     cb = 0x80000;
   }

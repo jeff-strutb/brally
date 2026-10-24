@@ -101,7 +101,7 @@ keyboard is there; on the iPhone with a game controller), and the race goes to
 Boss Rally's engine split screen. In a 4:3 window the two views sit one above
 the other with the HUD beside them, as the N64 lays them out; with Widescreen
 on they sit side by side, each filling its half, each with its own HUD
-(`br_framebegin.c`, `br_framedrive.c`, `glide.c`: the HUD's draws for a view are
+(`br_framebegin.c`, `br_framedrive.c`, `br_gfx.c`: the HUD's draws for a view are
 marked in the display list, `race_pads.c`, and placed in that view). Both views
 draw the sky, where the original filled them flat (black under a clear sky).
 `race_pads.c` keeps the second view's record beside each frame's snapshot,

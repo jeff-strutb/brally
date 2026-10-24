@@ -274,7 +274,7 @@ void BrSurfSetColourKey(BrSurf *pSurf, uint32_t colorref)
 void BrGlideLfbWrite(BrSurf *param_1)
 
 {
-  grLfbWriteRegion(1, 0, 0, 0, param_1->cx, param_1->cy, param_1->cx * 2, param_1->pPix);
+  br_gfx_pixels(0, 0, param_1->cx, param_1->cy, param_1->cx * 2, param_1->pPix);
   return;
 }
 

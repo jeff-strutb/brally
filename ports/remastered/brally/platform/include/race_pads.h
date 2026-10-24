@@ -16,7 +16,7 @@ void br_race_pads(void);        /* BrPadFrameBegin, after the game's own: the pl
 void  br_split_save(int slot);
 /* side by side, each view's HUD mapped into its half: a marker in the frame's display list
    (G_MOVEWORD index 8, which the game skips) at the HUD's start (view) and end (-1); the
-   list is run at the frame's end, the marker then sets the mapping (glide.c) */
+   list is run at the frame's end, the marker then sets the mapping (br_gfx.c) */
 void  br_hud_view_mark(int view, int x, int y, int w, int h);
 void  br_dl_marker(unsigned w1);
 void *br_split_views(int slot, void *snap);

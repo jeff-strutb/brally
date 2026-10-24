@@ -279,13 +279,13 @@ void BrTexInit(void)
 
     {
         int z = 0;
-        int hi = grTexMaxAddress(z);
-        span = hi - grTexMinAddress(z);
+        int hi = br_gfx_tex_hi(z);
+        span = hi - br_gfx_tex_lo(z);
     }
     s_texmem = (uint32_t)span;
     if ((DAT_105ccb68[26]) > 1) {
-        int hi = grTexMaxAddress(1);
-        span = hi - grTexMinAddress(1);
+        int hi = br_gfx_tex_hi(1);
+        span = hi - br_gfx_tex_lo(1);
         s_texmem = s_texmem + (uint32_t)span;
     }
 

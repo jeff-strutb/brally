@@ -474,9 +474,9 @@ void BrDlVtxRoutine(void)
 
     if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 0x10000u) != 0) {
         if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 0x10000u) != 0)
-            grFogMode(2);
+            br_gfx_fog_mode(2);
         else
-            grFogMode(0);
+            br_gfx_fog_mode(0);
     }
     if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 0x3000u) != 0) {
         int32_t m = 0;
@@ -490,15 +490,15 @@ void BrDlVtxRoutine(void)
             goto side;
         g_brDlCullMode = m;      /* one store, shared by both set arms */
 side:
-        grCullMode(m);
+        br_gfx_cull(m);
     }
     if ((((*(uint32_t *)&DAT_105d17cc) ^ (*(uint32_t *)&BrGbiRectG_5D17C8)) & 1u) != 0) {
         if (((*(uint32_t *)&BrGbiRectG_5D17C8) & 1u) != 0) {
             (*(int32_t *)&BrGlDepthFuncShadow) = 1;
-            grDepthBufferFunction(1);
+            br_gfx_depth_func(1);
         } else {
             (*(int32_t *)&BrGlDepthFuncShadow) = 7;
-            grDepthBufferFunction(7);
+            br_gfx_depth_func(7);
         }
     }
     geo = (*(uint32_t *)&BrGbiRectG_5D17C8);
@@ -932,7 +932,7 @@ const uint8_t *br_dl_scissorE2(const uint8_t *p)
     lry = (int)(*(const unsigned *)(p + 4) & 0xFFFu);
     minY = H - lry;
     (*(int *)&BrGlClipMinY) = minY;
-    grClipWindow(ulx, minY, lrx, maxY);
+    br_gfx_clip(ulx, minY, lrx, maxY);
     return p + 8;
 }
 
@@ -957,7 +957,7 @@ const uint8_t *br_dl_scissorED(const uint8_t *p)
     lry = (int)((*(const unsigned *)(p + 4) >> 2) & 0x3FFu);
     minY = H - lry;
     (*(int *)&BrGlClipMinY) = minY;
-    grClipWindow(ulx, minY, lrx, maxY);
+    br_gfx_clip(ulx, minY, lrx, maxY);
     return p + 8;
 }
 

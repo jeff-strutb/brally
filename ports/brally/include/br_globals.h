@@ -4277,14 +4277,8 @@ extern int g_5CCB64;  /* 0x105CCB64 */
 #undef DAT_105ccb68
 extern int32_t DAT_105ccb68[];  /* 0x105CCB68 */
 #pragma pop_macro("DAT_105ccb68")
-/* 0x105CCBD8, grSstQueryHardware's answer; the original names its fields */
-extern GrHwConfiguration BrGlHw;
-#define BrGlHwConfig (&BrGlHw)                                      /* 0x105CCBD8 */
-#define BrGlHwType   (BrGlHw.SSTs[0].type)                          /* 0x105CCBDC */
-#define BrGlHwCfgE0  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.fbRam)   /* 0x105CCBE0 */
-#define BrGlHwCfgE4  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.fbiRev)  /* 0x105CCBE4 */
-#define BrGlHwCfgE8  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.nTexelfx)/* 0x105CCBE8 */
-#define BrGlHwCfgEC  (BrGlHw.SSTs[0].sstBoard.VoodooConfig.sliDetect)/* 0x105CCBEC */
+/* 0x105CCBD8..0x105CCC6B: where the original kept the card's description
+ * of itself (BrGlInstall); the port asks no card, so nothing is kept there */
 #pragma push_macro("BrGlHwParamB")
 #undef BrGlHwParamB
 extern int32_t BrGlHwParamB;  /* 0x105CCC6C */

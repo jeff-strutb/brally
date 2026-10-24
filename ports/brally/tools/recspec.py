@@ -40,7 +40,7 @@ FLAGS = ['-fsyntax-only', '-D_FORTIFY_SOURCE=0', '-w', '-fms-extensions', '-fdec
          '-Wno-error=incompatible-function-pointer-types',
          '-Iports/brally/platform/include', '-Iports/brally/include',
          '-include', 'ports/brally/platform/include/win32.h',
-         '-include', 'ports/brally/platform/include/glide.h',
+         '-include', 'ports/brally/platform/include/br_gfx.h',
          '-include', 'ports/brally/platform/include/br_lp64.h',
          '-include', 'ports/brally/include/br_globals.h',
          '-include', 'ports/brally/include/br_funcs.h']

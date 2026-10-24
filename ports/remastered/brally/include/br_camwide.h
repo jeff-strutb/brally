@@ -6,7 +6,7 @@
 #include "slice2_19.h"
 #include "br_platview.h"
 
-/* BrCamMatrixSetup for a race view stretched over the window (glide.c's
+/* BrCamMatrixSetup for a race view stretched over the window (br_gfx.c's
  * screen map): the view keeps the game's vertical angle and sees more to
  * the sides in a wide window (Hor+), keeps its horizontal angle and sees
  * more above and below in a tall one (Vert+).  As BrCamMatrixSetup when the

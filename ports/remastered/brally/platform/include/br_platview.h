@@ -1,4 +1,4 @@
-/* br_platview.h: what the game's drawing tells the screen map (glide.c), so
+/* br_platview.h: what the game's drawing tells the screen map (br_gfx.c), so
  * a window of any shape is filled the way the wasm lane fills it. */
 #ifndef BR_PLATVIEW_H
 #define BR_PLATVIEW_H

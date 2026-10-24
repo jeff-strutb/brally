@@ -263,7 +263,7 @@ typedef struct BrTexSlot {
     uint32_t start;                          /* +0x004C  TMEM start address */
     int32_t lodBlend;                        /* +0x0050 */
     uint8_t _pad0054[0x70];
-    GrTexInfo info;                          /* +0x00C4 */
+    BrGfxTexInfo info;                          /* +0x00C4 */
 } BrTexSlot;
 
 /* ---------------------------------------------------------------------

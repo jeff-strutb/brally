@@ -286,7 +286,6 @@ BrWndResult BrOnActivateApp(void *hWnd, BrWParam wParam, BrLParam lParam)
             }
         }
         BrPodNop();
-        grSstWinClose();
         (*(int32_t *)&g_brRaceRules) = 1;
         InvalidateRect(hWnd, 0, 0);
     }

@@ -1,6 +1,6 @@
 # size 0x14
-# header ports/brally/platform/include/glide.h
-# headers glide.h
+# header ports/brally/platform/include/br_gfx.h
+# headers br_gfx.h
 # noemit 1
 0x0000  int32_t                       smallLod
 0x0004  int32_t                       largeLod

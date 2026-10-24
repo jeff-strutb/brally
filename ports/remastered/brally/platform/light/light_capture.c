@@ -2,7 +2,7 @@
  *
  * Every display-list triangle reaches Glide in the game's pixels with its
  * 1/w (br_dltri2.c unclipped, br_dltrim.c clipped; br_dlview.h tells
- * glide.c it is one).  The viewport took clip space to those pixels,
+ * br_gfx.c it is one).  The viewport took clip space to those pixels,
  * x = cx / cw * sx + ox, so cx = (x - ox) / sx * w, cy likewise, cw = w; and
  * clip = [p 1] x VP for the world point p.  The three equations of x, y and w
  * give p exactly (a 3x3 solve), whether or not the game clipped the triangle.

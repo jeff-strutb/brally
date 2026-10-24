@@ -1,13 +1,14 @@
 /* brr.h: the renderer backend interface, neutral between graphics APIs.
  *
- * The game draws through Glide 2 (platform/common/glide.c). Glide's model is
- * small and fixed: screen-space triangles, one texture, a colour and an
- * alpha combiner, alpha blending and testing, a depth buffer, table fog.
- * glide.c keeps Glide's state and textures and hands each draw here with
- * that state attached; a backend (Metal, OpenGL, a future Windows API, or
- * the null one) only has to rasterise it. The combiner parameters are
- * Glide's own values, so every backend evaluates the same equations, from
- * one description, in its own shading language.
+ * The game draws through br_gfx (platform/common/br_gfx.c). Its model is
+ * small and fixed, the 3dfx card's the game was written for: screen-space
+ * triangles, one texture, a colour and an alpha combiner, alpha blending
+ * and testing, a depth buffer, table fog. br_gfx keeps that state and the
+ * textures and hands each draw here with the state attached; a backend
+ * (Metal, Vulkan, OpenGL, or the null one) only has to rasterise it. The
+ * combiner parameters are the game's own values (Glide 2's, the API it was
+ * written for), so every backend evaluates the same equations, from one
+ * description, in its own shading language.
  */
 #ifndef BR_BRR_H
 #define BR_BRR_H

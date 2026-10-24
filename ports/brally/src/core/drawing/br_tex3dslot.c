@@ -90,10 +90,10 @@ int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
   slot->info.aspectRatio = a8;
   slot->info.format = a4;
   slot->info.data = 0;
-  req = grTexTextureMemRequired((int)(lod & 0xff), &slot->info);
+  req = br_gfx_tex_bytes(slot->info.smallLod, slot->info.largeLod, slot->info.aspectRatio, slot->info.format);
   start = g_aBrTmuMem[tmu].next;
   next = start + req;
-  if (next < grTexMaxAddress(tmu)
+  if (next < br_gfx_tex_hi(tmu)
       && next < 0x200000u) {
     g_aBrTmuMem[tmu].next = next;
   } else {
@@ -102,7 +102,7 @@ int FUN_10028200(int tmu, unsigned int lod, int a2, int a3, int a4, int a5,
     /* The high water-mark test is written with the SUCCESS arm first: the
      * original falls through on `jb` into the store and jumps away to the
      * failure exit. */
-    if (next < grTexMaxAddress(tmu)) {
+    if (next < br_gfx_tex_hi(tmu)) {
       g_aBrTmuMem[tmu].hi = next;
     } else {
       goto fail;

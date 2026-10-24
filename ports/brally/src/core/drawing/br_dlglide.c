@@ -273,11 +273,9 @@ void BrGlideFlipWait(void)
 {
   int iVar1;
 
-  iVar1 = grBufferNumPending();
-  while (0 < iVar1) {
-    iVar1 = grBufferNumPending();
-  }
-  grBufferSwap(1);
+  /* the original spun here until the card had no buffer pending; the
+     renderer presents in order, so none ever is */
+  br_gfx_present();
   return;
 }
 
@@ -313,7 +311,7 @@ void BrGlideFlipWait(void)
 /* 64-bit core: declared once, in br_globals.h or its struct's header */   /* 0x105CE2D4, 0x504340 = triangle path */
 
 /* glide2.h GrVertex, 0x3C bytes.  Only x, y, r, g, b, a, oow are written. */
-typedef GrVertex BrGrVertex;     /* glide.h; only x, y, r, g, b, a, oow are written */
+typedef BrGfxVertex BrGrVertex;     /* glide.h; only x, y, r, g, b, a, oow are written */
 
 /* 0x1001E380 -- the 914-byte rectangle emitter (opcodes 0xE1/0xF6 land
  * here).  Clamp the corners into the live window, pick the colour source
@@ -372,26 +370,26 @@ void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
         vD.r = (float)bR;  vD.g = (float)bG;
         vD.b = (float)bB;  vD.a = (float)bA;
 
-        grAlphaBlendFunction(1, 5, 4, 0);
-        grAlphaTestFunction(7);
-        grAlphaCombine(1, 0, 0, 2, 0);
-        grColorCombine(1, 0, 0, 2, 0);
-        grDepthBufferFunction(7);
-        grDepthMask(0);
-        grClipWindow(x1, y1, x2, y2);
-        grCullMode(0);
-        grDrawTriangle(&vA, &vB, &vC);
-        grDrawTriangle(&vA, &vD, &vB);
-        grClipWindow(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
-        grCullMode(0);
-        grAlphaCombine(3, 8, 1, 1, 0);
+        br_gfx_blend(1, 5, 4, 0);
+        br_gfx_alpha_test(7);
+        br_gfx_alpha_combine(1, 0, 0, 2, 0);
+        br_gfx_color_combine(1, 0, 0, 2, 0);
+        br_gfx_depth_func(7);
+        br_gfx_depth_mask(0);
+        br_gfx_clip(x1, y1, x2, y2);
+        br_gfx_cull(0);
+        br_gfx_triangle(&vA, &vB, &vC);
+        br_gfx_triangle(&vA, &vD, &vB);
+        br_gfx_clip(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
+        br_gfx_cull(0);
+        br_gfx_alpha_combine(3, 8, 1, 1, 0);
         return;
     }
 
-    grClipWindow(x1, y1, x2, y2);
-    grBufferClear(((((uint32_t)bR << 8 | bG) << 8 | bB) << 8) | bA,
+    br_gfx_clip(x1, y1, x2, y2);
+    br_gfx_clear(((((uint32_t)bR << 8 | bG) << 8 | bB) << 8) | bA,
                   0, 0xFFFF);
-    grClipWindow(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
+    br_gfx_clip(BrGlClipMinX, BrGlClipMinY, BrGlClipMaxX, BrGlClipMaxY);
 }
 
 /* grAlphaTestReferenceValue: prototype in br_funcs.h */
@@ -419,57 +417,57 @@ void BrGlRectFill(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 /* @implements 0x10021270 glide BrGlGbiCall */
 void BrGlGbiCall(uint32_t w1)
 {
-    grDepthMask(1);
+    br_gfx_depth_mask(1);
 
     if (w1 == 0x00504F50u) {
-        grAlphaTestReferenceValue(8);
+        br_gfx_alpha_ref(8);
         BrGlAtestFuncShadow = 6;
-        grAlphaTestFunction(6);
+        br_gfx_alpha_test(6);
         if (BrGlBlendLatch == 0) {
-            grAlphaCombine(3, 8, 1, 1, 0);
+            br_gfx_alpha_combine(3, 8, 1, 1, 0);
             BrGlBlendSrcRGB = 1;
             BrGlBlendDstRGB = 5;
             BrGlBlendSrcA   = 4;
             BrGlBlendDstA   = 0;
-            grAlphaBlendFunction(1, 5, 4, 0);
+            br_gfx_blend(1, 5, 4, 0);
         }
         BrGlDepthFuncShadow = 2;
-        grDepthBufferFunction(2);
+        br_gfx_depth_func(2);
         return;
     }
     if (w1 == 4u) {
-        grAlphaTestReferenceValue(8);
+        br_gfx_alpha_ref(8);
         BrGlAtestFuncShadow = 6;
-        grAlphaTestFunction(6);
+        br_gfx_alpha_test(6);
         if (BrGlBlendLatch == 0) {
-            grAlphaCombine(3, 8, 1, 1, 0);
+            br_gfx_alpha_combine(3, 8, 1, 1, 0);
             BrGlBlendSrcRGB = 1;
             BrGlBlendDstRGB = 4;
             BrGlBlendSrcA   = 4;
             BrGlBlendDstA   = 0;
-            grAlphaBlendFunction(1, 4, 4, 0);
+            br_gfx_blend(1, 4, 4, 0);
         }
         BrGlDepthFuncShadow = 2;
-        grDepthBufferFunction(2);
+        br_gfx_depth_func(2);
         return;
     }
     if (w1 == 0x0C184240u) {
-        grAlphaTestReferenceValue(0x80);
+        br_gfx_alpha_ref(0x80);
         BrGlAtestFuncShadow = 6;
-        grAlphaTestFunction(6);
+        br_gfx_alpha_test(6);
         return;
     }
     if (w1 == 0x00504240u) {
-        grAlphaTestReferenceValue(8);
+        br_gfx_alpha_ref(8);
         BrGlAtestFuncShadow = 6;
-        grAlphaTestFunction(6);
+        br_gfx_alpha_test(6);
         if (BrGlBlendLatch == 0) {
-            grAlphaCombine(3, 8, 1, 1, 0);
+            br_gfx_alpha_combine(3, 8, 1, 1, 0);
             BrGlBlendSrcRGB = 1;
             BrGlBlendDstRGB = 5;
             BrGlBlendSrcA   = 4;
             BrGlBlendDstA   = 0;
-            grAlphaBlendFunction(1, 5, 4, 0);
+            br_gfx_blend(1, 5, 4, 0);
         }
         return;
     }
@@ -479,68 +477,68 @@ void BrGlGbiCall(uint32_t w1)
     }
     if (w1 == 1u) {
         BrGlDepthFuncShadow = 3;
-        grDepthBufferFunction(3);
-        grDepthMask(0);
+        br_gfx_depth_func(3);
+        br_gfx_depth_mask(0);
         return;
     }
     if (w1 == 0u) {
         BrGlDepthFuncShadow = 1;
-        grDepthBufferFunction(1);
+        br_gfx_depth_func(1);
         return;
     }
     if (w1 == 2u) {
-        grAlphaCombine(3, 4, 1, 2, 0);
+        br_gfx_alpha_combine(3, 4, 1, 2, 0);
         BrGlBlendSrcRGB = 1;
         BrGlBlendDstRGB = 4;
         BrGlBlendSrcA   = 4;
         BrGlBlendDstA   = 0;
-        grAlphaBlendFunction(1, 4, 4, 0);
-        grDepthMask(0);
+        br_gfx_blend(1, 4, 4, 0);
+        br_gfx_depth_mask(0);
         BrGlBlendLatch = 1;
         return;
     }
     if (w1 == 0x0D1849D8u) {
-        grAlphaCombine(3, 4, 1, 2, 0);
+        br_gfx_alpha_combine(3, 4, 1, 2, 0);
         BrGlBlendSrcRGB = 1;
         BrGlBlendDstRGB = 5;
         BrGlBlendSrcA   = 4;
         BrGlBlendDstA   = 0;
-        grAlphaBlendFunction(1, 5, 4, 0);
-        grDepthMask(0);
+        br_gfx_blend(1, 5, 4, 0);
+        br_gfx_depth_mask(0);
         BrGlBlendLatch = 1;
         return;
     }
     if (w1 & 0x1800u) {
         if (w1 & 0x10000u) {
-            grAlphaTestReferenceValue(0x80);
+            br_gfx_alpha_ref(0x80);
             BrGlAtestFuncShadow = 6;
-            grAlphaTestFunction(6);
+            br_gfx_alpha_test(6);
             return;
         }
-        grAlphaTestReferenceValue(1);
+        br_gfx_alpha_ref(1);
         BrGlAtestFuncShadow = 6;
-        grAlphaTestFunction(6);
+        br_gfx_alpha_test(6);
         if (BrGlBlendLatch == 0) {
-            grAlphaCombine(3, 8, 1, 1, 0);
+            br_gfx_alpha_combine(3, 8, 1, 1, 0);
             BrGlBlendSrcRGB = 1;
             BrGlBlendDstRGB = 5;
             BrGlBlendSrcA   = 4;
             BrGlBlendDstA   = 0;
-            grAlphaBlendFunction(1, 5, 4, 0);
+            br_gfx_blend(1, 5, 4, 0);
         }
-        grDepthMask(0);
+        br_gfx_depth_mask(0);
         return;
     }
     if (BrGlBlendLatch == 0) {
-        grAlphaCombine(3, 8, 1, 1, 0);
+        br_gfx_alpha_combine(3, 8, 1, 1, 0);
         BrGlBlendSrcRGB = 4;
         BrGlBlendDstRGB = 0;
         BrGlBlendSrcA   = 4;
         BrGlBlendDstA   = 0;
-        grAlphaBlendFunction(4, 0, 4, 0);
+        br_gfx_blend(4, 0, 4, 0);
     }
     BrGlAtestFuncShadow = 7;
-    grAlphaTestFunction(7);
+    br_gfx_alpha_test(7);
 }
 
 /* grGlideInit: prototype in br_funcs.h */
@@ -603,28 +601,12 @@ void BrGlGbiCall(uint32_t w1)
 void BrGlInstall(void)
 {
     BrGlFlipHook  = (void *)BrGlideFlipWait;
-    BrGlFlipHook2 = (void *)grGlideShutdown;   /* 0x1001DD70 is a jump to it */
-    grGlideInit();
-    if (grSstQueryHardware(BrGlHwConfig) == 0)
-        return;
-    grSstSelect(0);
-    switch (BrGlHwType) {
-    default:
-        (DAT_105ccb68[26]) = 1;
-        BrGlHwParamB = 2;
-        break;
-    case 1:
-        (DAT_105ccb68[26]) = BrGlHwCfgE4;
-        BrGlHwParamB = BrGlHwCfgE0;
-        break;
-    case 0:
-    case 3:
-        (DAT_105ccb68[26]) = BrGlHwCfgE8;
-        BrGlHwParamB = BrGlHwCfgE0;
-        if (BrGlHwCfgEC != 0)
-            BrGlHwParamB = BrGlHwCfgE0 + BrGlHwCfgE0;
-        break;
-    }
+    BrGlFlipHook2 = (void *)br_gfx_shutdown;   /* 0x1001DD70 is a jump to it */
+    /* The original asked the card what it was and sized itself to the
+     * answer. The configuration it took on the card it was written for: one
+     * texture unit, 4 MB of frame buffer. */
+    (DAT_105ccb68[26]) = 1;
+    BrGlHwParamB = 4;
     BrGlideResOpen((*(int32_t *)&BrGbiRectG_A7514), (*(int32_t *)&BrGbiRectG_A7518));
     return;
 }
@@ -661,30 +643,30 @@ void BrGlSetCombine(unsigned w0, unsigned w1)
 {
     BrGbiRectG_5CDA04 = 0;
     if (w0 == 0xFCFFFFFFu && w1 == 0xFFFCF87Cu) {
-        grColorCombine(3, 8, 1, 1, 0);
+        br_gfx_color_combine(3, 8, 1, 1, 0);
     } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFE793Cu) {
-        grColorCombine(1, 0, 0, 2, 0);
+        br_gfx_color_combine(1, 0, 0, 2, 0);
     } else if (w0 == 0xFC567EACu && w1 == 0xFFFFF3F9u) {
-        grConstantColorValue(0xFF);
-        grColorCombine(3, 8, 1, 2, 0);
+        br_gfx_constant(0xFF);
+        br_gfx_color_combine(3, 8, 1, 2, 0);
     } else if (w0 == 0xFCFF97FFu && w1 == 0xFF2DFEFFu) {
-        grColorCombine(3, 8, 1, 2, 0);
+        br_gfx_color_combine(3, 8, 1, 2, 0);
     } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFDF2F9u) {
-        grColorCombine(3, 8, 1, 2, 0);
+        br_gfx_color_combine(3, 8, 1, 2, 0);
     } else if (w0 == 0xFCFFFFFFu && w1 == 0xFFFF73B9u) {
-        grConstantColorValue(0xFFFFFFFF);
-        grColorCombine(3, 8, 1, 2, 0);
+        br_gfx_constant(0xFFFFFFFF);
+        br_gfx_color_combine(3, 8, 1, 2, 0);
     } else if (w0 == 0xFC127E08u && w1 == 0xF3FFF2F8u) {
         if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0 || (*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0)
-            grColorCombine(7, 4, 1, 1, 0);
+            br_gfx_color_combine(7, 4, 1, 1, 0);
     } else if (w0 == 0xFC317E02u && (w1 == 0x5FFEF3FAu || w1 == 0x51FEF3FAu)) {
-        grColorCombine(3, 1, 0, 1, 0);
+        br_gfx_color_combine(3, 1, 0, 1, 0);
         BrGbiRectG_5CDA04 = 1;
     } else if (w0 == 0xFC127FFFu && w1 == 0xFFFFF838u) {
-        grConstantColorValue(0);
-        grColorCombine(3, 8, 1, 2, 0);
+        br_gfx_constant(0);
+        br_gfx_color_combine(3, 8, 1, 2, 0);
     } else {
-        grColorCombine(3, 1, 0, 1, 0);
+        br_gfx_color_combine(3, 1, 0, 1, 0);
     }
 
     /* The decal arm is the `if`: the original falls through into it and

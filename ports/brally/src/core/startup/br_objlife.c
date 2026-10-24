@@ -325,7 +325,7 @@ int br_dl_clip_reset(void);
  * unused: the sizes are read from the globals. */
 /* @implements 0x1001DD80 glide BrGlideResOpen */
 
-#define BR_TRY_RES(W,H,R) if (BrGbiRectG_A7514 == (W) && BrGbiRectG_A7518 == (H)) { if (grSstWinOpen(0,(R),0,2,1,2,1) == 0) return 0; } else
+#define BR_TRY_RES(W,H,R) if (BrGbiRectG_A7514 == (W) && BrGbiRectG_A7518 == (H)) { if (br_gfx_open((W),(H)) == 0) return 0; } else
 
 int BrGlideResOpen(int param_1,int param_2)
 
@@ -369,7 +369,6 @@ int BrGlideResSet(int param_1,int param_2,int param_3,int param_4)
     FUN_1001dfb0();
     return 1;
   }
-  grSstWinClose();
   g_scrW4 = param_1;
   BrGbiRectG_A7514 = param_1;
   (*(int *)&g_brRaceCueBase) = param_2;

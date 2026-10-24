@@ -46,19 +46,19 @@ void FUN_10023aa0(void)
 {
   if ((*(int *)((char *)&g_aBrEntRecs + 0x78)) != 0) {
     if ((*(int *)((char *)&g_aBrEntRecs + 0x84)) != 0) {
-      guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
+      br_gfx_fog_linear(&DAT_105d1718,-100.0f,300.0f);
     }
     else if ((*(int *)((char *)&g_aBrEntRecs + 0x80)) != 0) {
-      guFogGenerateLinear(&DAT_105d1718,-100.0f,300.0f);
+      br_gfx_fog_linear(&DAT_105d1718,-100.0f,300.0f);
     }
     else if ((*(int *)((char *)&g_aBrEntRecs + 0x7C)) != 0) {
-      guFogGenerateLinear(&DAT_105d1718,60.0f,200.0f);
+      br_gfx_fog_linear(&DAT_105d1718,60.0f,200.0f);
     }
     else {
-      guFogGenerateLinear(&DAT_105d1718,-40.0f,220.0f);
+      br_gfx_fog_linear(&DAT_105d1718,-40.0f,220.0f);
     }
   }
-  grFogTable(&DAT_105d1718);
+  br_gfx_fog_table(&DAT_105d1718);
   return;
 }
 
@@ -106,13 +106,13 @@ void BrFramePresent(BrGfxWords *pCmd)
     BrGfxWords aList[0x1000];
     int now, delta, count, gate;
 
-    grAlphaCombine(3, 8, 1, 1, 0);
+    br_gfx_alpha_combine(3, 8, 1, 1, 0);
     (*(int *)&BrGlBlendSrcRGB) = 4;
     (*(int *)&BrGlBlendDstRGB) = 0;
     (*(int *)&BrGlBlendSrcA) = 4;
     (*(int *)&BrGlBlendDstA) = 0;
-    grAlphaBlendFunction(4, 0, 4, 0);
-    grDepthMask(1);
+    br_gfx_blend(4, 0, 4, 0);
+    br_gfx_depth_mask(1);
     DAT_105ccfe8 = 0;
     BrTexQueuePop();
     BrGbiRun(pCmd);
@@ -188,27 +188,27 @@ void FUN_1001dfb0(void)
   int uVar3;
   int uVar4;
   
-  grClipWindow(0,0,BrGbiRectG_A7514,BrGbiRectG_A7518);
-  grDepthBufferMode(2);
-  grDepthBufferFunction(7);
-  grDepthMask(1);
-  grBufferClear(0,0,0xffff);
-  grCullMode(0);
-  grAlphaCombine(3,8,1,1,0);
-  grAlphaTestFunction(7);
-  grAlphaTestReferenceValue(0x80);
-  grTexFilterMode(0,0,0);
+  br_gfx_clip(0,0,BrGbiRectG_A7514,BrGbiRectG_A7518);
+  br_gfx_depth_mode(2);
+  br_gfx_depth_func(7);
+  br_gfx_depth_mask(1);
+  br_gfx_clear(0,0,0xffff);
+  br_gfx_cull(0);
+  br_gfx_alpha_combine(3,8,1,1,0);
+  br_gfx_alpha_test(7);
+  br_gfx_alpha_ref(0x80);
+  br_gfx_tex_filter(0,0,0);
   if (1 < (*(int *)&DAT_105ccb68[26])) {
-    grTexFilterMode(1,0,0);
+    br_gfx_tex_filter(1,0,0);
   }
-  grConstantColorValue(0xffffffff);
-  grColorCombine(1,0,0,2,0);
+  br_gfx_constant(0xffffffff);
+  br_gfx_color_combine(1,0,0,2,0);
   if (1 < (*(int *)&DAT_105ccb68[26])) {
-    grTexCombine(1, 1, 0, 1, 0, 0, 0);
-    grTexCombine(0, 3, 8, 3, 8, 0, 0);
+    br_gfx_tex_combine(1, 1, 0, 1, 0, 0, 0);
+    br_gfx_tex_combine(0, 3, 8, 3, 8, 0, 0);
   }
   else {
-    grTexCombine(0, 1, 0, 1, 0, 0, 0);
+    br_gfx_tex_combine(0, 1, 0, 1, 0, 0, 0);
   }
   return;
 }
@@ -248,11 +248,11 @@ void FUN_10028420(unsigned int param_1)
 
   if ((param_1 < DAT_105d17ec) && (slot = &g_aBrTexSlot[param_1], slot->bLive != 0)) {
     tmu = slot->tmu;
-    grTexSource(tmu,slot->start,slot->evenOdd,&slot->info);
-    grTexClampMode(tmu,slot->clampS,slot->clampT);
-    grTexFilterMode(tmu,slot->minFilter,slot->magFilter);
-    grTexLodBiasValue(tmu,(float)(unsigned int)slot->lodBias * _DAT_10077460);
-    grTexMipMapMode(tmu,slot->mipMode,slot->lodBlend);
+    br_gfx_tex_bind(tmu,slot->start,&slot->info);
+    br_gfx_tex_clamp(tmu,slot->clampS,slot->clampT);
+    br_gfx_tex_filter(tmu,slot->minFilter,slot->magFilter);
+    /* the slot's LOD bias and mip-map mode: the renderer samples the top
+       level only, so they set nothing */
   }
   return;
 }
@@ -280,7 +280,7 @@ void FUN_100281c0(void)
   }
   DAT_105d17ec = 0;
   for (i = 0; i < 2; i++) {
-    g_aBrTmuMem[i].next = grTexMinAddress(i);
+    g_aBrTmuMem[i].next = br_gfx_tex_lo(i);
     g_aBrTmuMem[i].hi = 0x200000;
   }
   return;
@@ -315,11 +315,11 @@ void BrTex3dMakeCurrent(int param_1)
     if ((*(int *)&s_g5E1820) != iVar1) {
       switch (iVar1) {
       case 1:
-        grTexCombine(1,1,0,1,0,0,0);
-        grTexCombine(0,3,8,3,8,0,0);
+        br_gfx_tex_combine(1,1,0,1,0,0,0);
+        br_gfx_tex_combine(0,3,8,3,8,0,0);
         break;
       default:
-        grTexCombine(0,1,0,1,0,0,0);
+        br_gfx_tex_combine(0,1,0,1,0,0,0);
       }
       (*(int *)&s_g5E1820) = (int)DAT_106b7aa0[param_1].req.fTmu2;
     }

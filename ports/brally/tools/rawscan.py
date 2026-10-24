@@ -28,7 +28,7 @@ FLAGS = ['-fsyntax-only', '-D_FORTIFY_SOURCE=0', '-w', '-ferror-limit=0', '-fms-
          '-Wno-return-mismatch', '-Wno-error=incompatible-pointer-types',
          '-Wno-error=incompatible-function-pointer-types', '-Iports/brally/platform/include', '-Iports/brally/include',
          '-include', 'ports/brally/platform/include/win32.h',
-         '-include', 'ports/brally/platform/include/glide.h',
+         '-include', 'ports/brally/platform/include/br_gfx.h',
          '-include', 'ports/brally/platform/include/br_x87.h',
          '-include', 'ports/brally/include/br_crt.h',
          '-include', 'ports/brally/include/br_addr32.h',

@@ -4,7 +4,7 @@
  * The menus are one 640x480 16-bit picture the game blits its pages into
  * (DAT_10ac5d84) and writes to the screen whole (BrMenuCallback41DB0).  Here
  * that picture is as wide as the window at the game's height
- * (plat_menu_width, glide.c: 854 at 16:9), and every page keeps its 640
+ * (plat_menu_width, br_gfx.c: 854 at 16:9), and every page keeps its 640
  * columns, centred: each blit lands rm_menu_ox() further right
  * (BrSprFontDraw), the pointer reaches across the whole width (BrGlNavPoll),
  * and the LFB write places the wide picture centred on the game's
@@ -33,7 +33,7 @@
 #include "br_surf.h"
 #include "slice2_25.h"
 
-int plat_menu_width(void);              /* platform/common/glide.c */
+int plat_menu_width(void);              /* platform/common/br_gfx.c */
 
 #define GW 640                          /* the pages' width */
 #define PITCH 157

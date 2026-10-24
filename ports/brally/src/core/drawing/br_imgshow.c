@@ -46,7 +46,7 @@
 /* @implements 0x1006C990 glide BrImgShowFullScreen */
 void BrImgShowFullScreen(const char *pszName, unsigned int key)
 {
-    GrVertex a, b, c, d;
+    BrGfxVertex a, b, c, d;
     FILE **fp;
     int cx, cy;
     int cb;
@@ -71,8 +71,8 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     hTex = FUN_10028200(0, 3, 0x80, 0x20, 0xB, 2, 0, 0, 3, 0, 0, 0, 0, 0, 0);
     BrTex3dDownloadAt(hTex, DAT_1184c488);
     FUN_10028420(hTex);
-    grTexCombine(0, 1, 0, 1, 0, 0, 0);
-    grColorCombine(3, 8, 1, 1, 0);
+    br_gfx_tex_combine(0, 1, 0, 1, 0, 0, 0);
+    br_gfx_color_combine(3, 8, 1, 1, 0);
 
     x0 = (float)((BrGbiRectG_A7514 - 0x100) / 2);
     if (x0 < 0.0f)
@@ -89,8 +89,8 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     a.y = y1;
     a.oow = 1.0f;
     a.a = 255.0f;
-    a.tmuvtx[0].sow = 0.0f;
-    a.tmuvtx[0].tow = 0.0f;
+    a.tc[0].sow = 0.0f;
+    a.tc[0].tow = 0.0f;
     a.r = 255.0f;
     a.g = 255.0f;
     a.b = 255.0f;
@@ -98,8 +98,8 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     b.y = y1;
     b.oow = 1.0f;
     b.a = 255.0f;
-    b.tmuvtx[0].sow = s1;
-    b.tmuvtx[0].tow = 0.0f;
+    b.tc[0].sow = s1;
+    b.tc[0].tow = 0.0f;
     b.r = 255.0f;
     b.g = 255.0f;
     b.b = 255.0f;
@@ -107,8 +107,8 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     c.y = y0;
     c.oow = 1.0f;
     c.a = 255.0f;
-    c.tmuvtx[0].sow = 0.0f;
-    c.tmuvtx[0].tow = t1;
+    c.tc[0].sow = 0.0f;
+    c.tc[0].tow = t1;
     c.r = 255.0f;
     c.g = 255.0f;
     c.b = 255.0f;
@@ -116,21 +116,21 @@ void BrImgShowFullScreen(const char *pszName, unsigned int key)
     d.y = y0;
     d.oow = 1.0f;
     d.a = 255.0f;
-    d.tmuvtx[0].sow = s1;
-    d.tmuvtx[0].tow = t1;
+    d.tc[0].sow = s1;
+    d.tc[0].tow = t1;
     d.r = 255.0f;
     d.g = 255.0f;
     d.b = 255.0f;
 
-    grClipWindow(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
-    grBufferClear(0, 0, 0xFFFF);
-    grDrawTriangle(&a, &b, &c);
-    grDrawTriangle(&b, &d, &c);
+    br_gfx_clip(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
+    br_gfx_clear(0, 0, 0xFFFF);
+    br_gfx_triangle(&a, &b, &c);
+    br_gfx_triangle(&b, &d, &c);
     (*(void (**)(void))&BrGlFlipHook)();
-    grClipWindow(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
-    grBufferClear(0, 0, 0xFFFF);
-    grDrawTriangle(&a, &b, &c);
-    grDrawTriangle(&b, &d, &c);
+    br_gfx_clip(0, 0, BrGbiRectG_A7514, BrGbiRectG_A7518);
+    br_gfx_clear(0, 0, 0xFFFF);
+    br_gfx_triangle(&a, &b, &c);
+    br_gfx_triangle(&b, &d, &c);
     (*(void (**)(void))&BrGlFlipHook)();
     FUN_100281c0();
 }

@@ -53,7 +53,7 @@
 /* alb.a, 8 bits, the pixel's material: below 64 no 3D (the deferred pass \
    and the reflections skip it); 64..80 a lamp (BRR_MAT_LAMP); 88..104 the 3D's car paint (BRR_MAT_CAR, \
    112 and 116 a car's tail and reversing lens, BRR_MAT_LENS; 84 a car's tyre, BRR_MAT_RUBBER; \
-   no glow; the capture's car flag, lit 3, glide.c); 128..255 the 3D's \
+   no glow; the capture's car flag, lit 3, br_gfx.c); 128..255 the 3D's \
    other surfaces, 128 + 127 x their glow */ \
 "#define BRR_MAT_CAR 96.0\n" \
 "static bool carpaint(float a) { a *= 255.0; return a > 87.5 && a < 104.5; }\n" \

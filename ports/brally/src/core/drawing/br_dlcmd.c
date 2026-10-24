@@ -170,7 +170,7 @@
  * and Glide is __stdcall: no `add esp` follows the call in any original.
  * Declared cdecl it costs an `add esp,0xc` after every draw. */
 /* grDrawTriangle: prototype in br_funcs.h */
-#define BrDlDrawTri grDrawTriangle
+#define BrDlDrawTri br_gfx_triangle
 
 /* DWORD-PUN stores. The original writes each value ONCE to the temp and
  * then copies it to both TMUs with integer movs (`fstp dword [esp+0x10];
@@ -813,7 +813,7 @@ unsigned char *BrDlCmdTri2Flat(unsigned char *p)
 /* grFogColorValue: prototype in br_funcs.h */
 const uint8_t *BrDlCmdFogColour(const uint8_t *p)
 {
-    grFogColorValue(*(const int *)(const void *)(p + 4));
+    br_gfx_fog_color(*(const int *)(const void *)(p + 4));
     return p + 8;
 }
 
@@ -837,7 +837,7 @@ const uint8_t *br_dl_prim(const uint8_t *p)
   BrGbiRectG_5D17B4 = (float)(w1 >> 0x10 & 0xff);
   BrGbiRectG_5CE2D0 = (float)(w1 >> 8 & 0xff);
   BrGlPrimA = (float)(w1 & 0xff);
-  grConstantColorValue((int)w1);
+  br_gfx_constant((int)w1);
   return p + 8;
 }
 

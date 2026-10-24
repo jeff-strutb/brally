@@ -1,16 +1,16 @@
---- a/platform/common/glide.c
-+++ b/platform/common/glide.c
-@@ -16,6 +16,9 @@
+--- a/platform/common/br_gfx.c
++++ b/platform/common/br_gfx.c
+@@ -15,6 +15,9 @@
  #include "plat.h"
- #include "glide.h"
+ #include "br_gfx.h"
  #include "brr.h"
 +#include "br_flags.h"
 +#include "br_platview.h"
 +#include "light.h"
  
- #define TMU_RAM   (4u << 20)
+ #define TEX_RAM   (4u << 20)        /* the game sizes its texture memory to 4 MB */
  
-@@ -143,22 +146,104 @@
+@@ -103,22 +106,104 @@
  }
  
  /* ---- the screen map ---------------------------------------------------------------- */
@@ -124,12 +124,10 @@
      int uw, uh;
      double tx, ty;
      plat_pointer_units(&uw, &uh);         /* (the window's units, not the game's resolution) */
-@@ -166,8 +251,59 @@
-     ty = (double)*y * s_rh / uh;
-     *x = (int)floor((tx - m.bx) / m.ax);
+@@ -128,6 +213,57 @@
      *y = (int)floor((ty - m.by) / m.ay);
-+}
-+
+ }
+ 
 +void plat_view_scale(float *kx, float *ky)
 +{
 +    double a = (double)s_rw / s_rh, g = (double)s_w / s_h;
@@ -156,8 +154,8 @@
 +    }
 +    *gx = (float)((nx * s_rw - m.bx) / m.ax);
 +    *gy = (float)((ny * s_rh - m.by) / m.ay);
- }
- 
++}
++
 +/* the clip window, clamped to the screen (all of it when empty) */
 +static void clip_rect(float *r)
 +{
@@ -184,7 +182,7 @@
  static void map_ndc(xmap m, float *T)
  {
      T[0] = (float)(2.0 * m.ax / s_rw);
-@@ -176,18 +312,133 @@
+@@ -136,18 +272,133 @@
      T[3] = (float)(1.0 - 2.0 * m.by / s_rh);
  }
  
@@ -322,7 +320,7 @@
      px0 = lround(m.ax * x0 + m.bx); px1 = lround(m.ax * x1 + m.bx);
      py0 = lround(m.ay * y0 + m.by); py1 = lround(m.ay * y1 + m.by);
      if (px0 < 0) px0 = 0;
-@@ -200,11 +451,108 @@
+@@ -160,11 +411,108 @@
      s_st.sx1 = (int32_t)px1; s_st.sy1 = (int32_t)py1;
  }
  
@@ -384,11 +382,11 @@
 +    scissor(which);
 +}
 +
- void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
- { plat_vclock_import();
+ void br_gfx_clear(uint32_t color, uint8_t alpha, uint16_t depth)
+ {
      uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
 +    float r[4];
-     gllog("grBufferClear %08X %u %u", color, alpha, depth);
+     gllog("clear %08X %u %u", color, alpha, depth);
 -    scissor();
 +    frame_start();
 +    clip_rect(r);
@@ -432,9 +430,9 @@
      brr_clear(c, depth / 65536.0f, 1, s_st.depth_mode != 0, &s_st);
  }
  
-@@ -215,10 +563,17 @@
-     (void)interval;
-     gllog("grBufferSwap");
+@@ -174,10 +522,17 @@
+ {
+     gllog("present");
      plat_text_swap();
 -    map_ndc(map_box(), s_xt[0]);
 -    brr_xf((const float (*)[4])s_xt, 1);
@@ -452,17 +450,17 @@
      plat_pump(0);
  }
  
-@@ -493,8 +848,83 @@
+@@ -506,8 +861,83 @@
      o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
-     o->s = v->tmuvtx[0].sow * w / su;
-     o->t = v->tmuvtx[0].tow * w / sv;
+     o->s = v->tc[0].sow * w / su;
+     o->t = v->tc[0].tow * w / sv;
 +    o->wx = o->wy = o->wz = o->lit = 0.0f;
 +}
 +
 +/* BR_LIGHT_DRAWLOG=N (diagnostic): every Nth frame, a line a draw: its view,
 + * what the capture made of it (1 world, 2 backdrop, 0 refused, -1 not
 + * offered), its state and first vertex */
-+static void drawlog(const GrVertex *a, int n)
++static void drawlog(const BrGfxVertex *a, int n)
 +{
 +    if (s_dl_every < 0) {
 +        const char *e = getenv("BR_LIGHT_DRAWLOG");
@@ -476,9 +474,9 @@
  
 +/* a display-list triangle of the camera's view or the mirror's, as drawn,
 + * to the lighting's capture (platform/light): read, never changed */
-+static void capture(const GrVertex *a, const GrVertex *b, const GrVertex *c, brr_vertex *o)
++static void capture(const BrGfxVertex *a, const BrGfxVertex *b, const BrGfxVertex *c, brr_vertex *o)
 +{
-+    const GrVertex *g[3] = { a, b, c };
++    const BrGfxVertex *g[3] = { a, b, c };
 +    LightVtx v[3];
 +    float world[3][3];
 +    int i;
@@ -486,7 +484,7 @@
 +    if ((s_view != 0 && s_view != 2) || !light_capture_on())
 +        return;
 +    for (i = 0; i < 3; i++) {
-+        float tw = g[i]->tmuvtx[0].oow != 0.0f ? g[i]->tmuvtx[0].oow : g[i]->oow;
++        float tw = g[i]->tc[0].oow != 0.0f ? g[i]->tc[0].oow : g[i]->oow;
 +        v[i].x = g[i]->x;
 +        v[i].y = g[i]->y;
 +        v[i].oow = g[i]->oow;
@@ -494,8 +492,8 @@
 +        v[i].g = g[i]->g;
 +        v[i].b = g[i]->b;
 +        v[i].a = g[i]->a;
-+        v[i].s = tw != 0.0f ? g[i]->tmuvtx[0].sow / tw : 0.0f;
-+        v[i].t = tw != 0.0f ? g[i]->tmuvtx[0].tow / tw : 0.0f;
++        v[i].s = tw != 0.0f ? g[i]->tc[0].sow / tw : 0.0f;
++        v[i].t = tw != 0.0f ? g[i]->tc[0].tow / tw : 0.0f;
 +    }
 +    int k = light_capture_tri(s_view, &v[0], &v[1], &v[2], s_st.texture,
 +                              (uint32_t)(s_st.blend_rgb_src & 15) | (uint32_t)(s_st.blend_rgb_dst & 15) << 4 |
@@ -533,10 +531,10 @@
 +    }
 +}
 +
- /* Glide's triangle setup drops a triangle with no area, and with culling on
+ /* Triangle setup drops a triangle with no area, and with culling on
   * drops the one facing away: the sign of its area in the coordinates the
   * application passed (before the lower-left origin turns y over).  The
-@@ -516,21 +946,25 @@
+@@ -529,21 +959,25 @@
      gllog_vtx(a);
      gllog_vtx(b);
      gllog_vtx(c);
@@ -557,15 +555,15 @@
      brr_draw(&s_st, v, 3);
  }
  
- void grDrawPolygonVertexList(int n, const GrVertex vl[])
- { plat_vclock_import();
+ void br_gfx_polygon(int n, const BrGfxVertex vl[])
+ {
      brr_vertex v[3 * 64];
 -    int i, k = 0;
 +    int i, k = 0, routed = 0;
-     gllog("grDrawPolygonVertexList %d", n);
+     gllog("polygon %d", n);
      for (i = 0; i < n && i < 16; i++)
          gllog_vtx(&vl[i]);
-@@ -540,18 +974,23 @@
+@@ -553,28 +987,36 @@
          if (culled(&vl[0], &vl[i], &vl[i + 1]))
              continue;
          if (k == 3 * 64) {
@@ -590,24 +588,22 @@
 +    s_view = 1;
  }
  
- FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
-@@ -561,11 +1000,14 @@
-     gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
-     if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
-         int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];
--        xmap m = map_box();
--        d[0] = (int)lround(m.ax * x + m.bx);
--        d[1] = (int)lround(m.ay * gy + m.by);
--        d[2] = (int)lround(m.ax * (x + w) + m.bx);
--        d[3] = (int)lround(m.ay * (gy + (int)h) + m.by);
-+        float b[4] = { (float)x, (float)gy, (float)(x + w), (float)(gy + (int)h) }, r[4];
-+        if ((int)w > s_w) {          /* the menus' wide picture (plat_menu_width): centred on the game's */
-+            b[0] = -(float)((int)w - s_w) * 0.5f;
-+            b[2] = b[0] + (float)w;
-+        }
-+        frame_start();
-+        clip_rect(r);
-+        place_now(b, r, d);     /* in a race frame a 2D element, placed on its own */
-         brr_lfb_write((int)x, gy, (int)w, (int)h, (const uint16_t *)data, stride, d);
-         return 1;
-     }
+ void br_gfx_pixels(uint32_t x, uint32_t y, uint32_t w, uint32_t h, int32_t stride, const void *data)
+ {
+     int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];
+-    xmap m = map_box();
++    float b[4] = { (float)x, (float)gy, (float)(x + w), (float)(gy + (int)h) }, r[4];
+     gllog("pixels x %u y %u w %u h %u stride %d", x, y, w, h, stride);
+-    d[0] = (int)lround(m.ax * x + m.bx);
+-    d[1] = (int)lround(m.ay * gy + m.by);
+-    d[2] = (int)lround(m.ax * (x + w) + m.bx);
+-    d[3] = (int)lround(m.ay * (gy + (int)h) + m.by);
++    if ((int)w > s_w) {          /* the menus' wide picture (plat_menu_width): centred on the game's */
++        b[0] = -(float)((int)w - s_w) * 0.5f;
++        b[2] = b[0] + (float)w;
++    }
++    frame_start();
++    clip_rect(r);
++    place_now(b, r, d);     /* in a race frame a 2D element, placed on its own */
+     brr_lfb_write((int)x, gy, (int)w, (int)h, (const uint16_t *)data, stride, d);
+ }

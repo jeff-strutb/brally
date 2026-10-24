@@ -1,6 +1,6 @@
 /* br_dlview.h -- port: which view a display-list triangle belongs to.
  *
- * The screen map (platform/common/glide.c) places each kind its own way on a
+ * The screen map (platform/common/br_gfx.c) places each kind its own way on a
  * window of any shape, as the wasm lane does (its native/render.m): 1 flat
  * 2D, drawn through an orthographic projection (w does not depend on the
  * position: the HUD, text); 2 the rear-view mirror, told by its viewport's
@@ -24,6 +24,6 @@ static inline int br_dl_view(void)
 }
 
 /* a display-list triangle: its view, then Glide */
-#define BR_DL_TRI(a, b, c)  (plat_glide_view(br_dl_view()), grDrawTriangle((a), (b), (c)))
+#define BR_DL_TRI(a, b, c)  (plat_glide_view(br_dl_view()), br_gfx_triangle((a), (b), (c)))
 
 #endif

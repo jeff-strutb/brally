@@ -1,12 +1,11 @@
-/* glide.c: Glide 2 for the game, over the renderer interface (brr.h).
+/* br_gfx.c: the game's drawing (br_gfx.h), over the renderer interface (brr.h).
  *
- * The board answers as a Voodoo Graphics with one TMU and 4 MB on each of
- * the frame buffer and the TMU. Texture memory is modelled as the card has
- * it: a download copies bytes to TMU memory, and grTexSource interprets the
- * bytes at its address with the format and size IT is given -- the game
- * downloads with one description and sources with another (the large font
- * page). A decoded RGBA8 copy is cached per (address, format, size) and
- * dropped when a download overwrites its bytes. */
+ * The game's texture memory is a range of bytes it allocates in itself: an
+ * upload copies the game's texels to an offset, and a bind reads the bytes
+ * at an offset with the description IT is given -- the game uploads with
+ * one description and binds with another (the large font page). A decoded
+ * RGBA8 copy is cached per (offset, format, size) and dropped when an
+ * upload overwrites its bytes. */
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,21 +13,20 @@
 #include <string.h>
 
 #include "plat.h"
-#include "glide.h"
+#include "br_gfx.h"
 #include "brr.h"
 
-#define TMU_RAM   (4u << 20)
+#define TEX_RAM   (4u << 20)        /* the game sizes its texture memory to 4 MB */
 
 static brr_state s_st;
-static int s_w = 640, s_h = 480, s_lower_left, s_cformat;
+static int s_w = 640, s_h = 480;
+static const int s_lower_left = 1;      /* the game's y runs up from the bottom */
 static int s_rw = 640, s_rh = 480;      /* the target (the screen map below) */
 static int s_depth_mode;
 
 /* ---- the call log ------------------------------------------------------------- */
 /* BR_GLLOG=PATH: during the frames BR_TRACE_FRAMES=A:B selects (script.c),
- * the Glide calls one per line with the vertices expanded, in the wasm
- * lane's text (ports/brally-wasm/wasm/host/host_glide.m), so the two streams diff
- * call by call. */
+ * the drawing calls one per line with the vertices expanded. */
 int g_plat_tracing;
 static FILE *s_gllog;
 
@@ -52,72 +50,36 @@ static void gllog(const char *fmt, ...)
     fputc('\n', s_gllog);
 }
 
-static void gllog_vtx(const GrVertex *v)
+static void gllog_vtx(const BrGfxVertex *v)
 {
     if (g_plat_tracing && s_gllog)
         fprintf(s_gllog, "  v %.4g %.4g z%.4g w%.4g st %.4g %.4g rgba %.4g %.4g %.4g %.4g\n",
-                v->x, v->y, v->ooz, v->oow, v->tmuvtx[0].sow, v->tmuvtx[0].tow, v->r, v->g, v->b, v->a);
+                v->x, v->y, v->ooz, v->oow, v->tc[0].sow, v->tc[0].tow, v->r, v->g, v->b, v->a);
 }
 
-/* ---- colours: GrColor_t in the format grSstWinOpen chose, to ARGB ----------- */
-static uint32_t argb(GrColor_t c)
+/* ---- colours: the game's RGBA (red in the top byte) to ARGB ------------------- */
+static uint32_t argb(uint32_t c)
 {
-    uint32_t a, r, g, b;
-    switch (s_cformat) {
-    case 1: /* ABGR */ a = c >> 24; b = (c >> 16) & 0xFF; g = (c >> 8) & 0xFF; r = c & 0xFF; break;
-    case 2: /* RGBA */ r = c >> 24; g = (c >> 16) & 0xFF; b = (c >> 8) & 0xFF; a = c & 0xFF; break;
-    case 3: /* BGRA */ b = c >> 24; g = (c >> 16) & 0xFF; r = (c >> 8) & 0xFF; a = c & 0xFF; break;
-    default: return c;
-    }
-    return a << 24 | r << 16 | g << 8 | b;
+    return (c & 0xFF) << 24 | c >> 8;
 }
 
 /* ---- start-up ------------------------------------------------------------------- */
-void grGlideInit(void) { plat_vclock_import();}
-void grGlideShutdown(void) { plat_vclock_import(); brr_close(); }
+void br_gfx_shutdown(void) { brr_close(); }
 
-FxBool grSstQueryHardware(GrHwConfiguration *hw)
-{ plat_vclock_import();
-    memset(hw, 0, sizeof *hw);
-    hw->num_sst = 1;
-    hw->SSTs[0].type = GR_SSTTYPE_VOODOO;
-    hw->SSTs[0].sstBoard.VoodooConfig.fbRam = 4;
-    hw->SSTs[0].sstBoard.VoodooConfig.fbiRev = 2;
-    hw->SSTs[0].sstBoard.VoodooConfig.nTexelfx = 1;
-    hw->SSTs[0].sstBoard.VoodooConfig.sliDetect = 0;
-    hw->SSTs[0].sstBoard.VoodooConfig.tmuConfig[0].tmuRev = 1;
-    hw->SSTs[0].sstBoard.VoodooConfig.tmuConfig[0].tmuRam = 4;
-    return 1;
-}
-
-void grSstSelect(int which) { plat_vclock_import(); (void)which; }
-
-static const short k_res[16][2] = {
-    { 320, 200 }, { 320, 240 }, { 400, 256 }, { 512, 384 }, { 640, 200 }, { 640, 350 },
-    { 640, 400 }, { 640, 480 }, { 800, 600 }, { 960, 720 }, { 856, 480 }, { 512, 256 },
-    { 1024, 768 }, { 1280, 1024 }, { 1600, 1200 }, { 400, 300 }
-};
-
-FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
-                    GrColorFormat_t cformat, GrOriginLocation_t org, int ncol, int naux)
-{ plat_vclock_import();
-    (void)hwnd; (void)ref; (void)ncol; (void)naux;
-    if (res >= 0 && res < 16) {
-        s_w = k_res[res][0];
-        s_h = k_res[res][1];
-    }
-    s_cformat = cformat;
-    s_lower_left = org == 1;
+int br_gfx_open(int w, int h)
+{
+    s_w = w;
+    s_h = h;
     s_st.clip_x0 = 0;
     s_st.clip_y0 = 0;
     s_st.clip_x1 = s_w;
     s_st.clip_y1 = s_h;
-    s_st.blend_rgb_src = 4;     /* GR_BLEND_ONE */
-    s_st.blend_rgb_dst = 0;     /* GR_BLEND_ZERO */
+    s_st.blend_rgb_src = 4;     /* one */
+    s_st.blend_rgb_dst = 0;     /* zero */
     s_st.blend_a_src = 4;
     s_st.blend_a_dst = 0;
-    s_st.atest_fn = 7;          /* GR_CMP_ALWAYS */
-    s_st.depth_fn = 1;          /* GR_CMP_LESS */
+    s_st.atest_fn = 7;          /* always */
+    s_st.depth_fn = 1;          /* less */
     s_st.depth_mask = 1;
     if (!brr_open(s_w, s_h))
         return 0;
@@ -125,12 +87,10 @@ FxBool grSstWinOpen(void *hwnd, GrScreenResolution_t res, GrScreenRefresh_t ref,
     return 1;
 }
 
-void grSstWinClose(void) { plat_vclock_import();}
-
 /* ---- frame ------------------------------------------------------------------------- */
-void grClipWindow(FxU32 x0, FxU32 y0, FxU32 x1, FxU32 y1)
-{ plat_vclock_import();
-    gllog("grClipWindow %u %u %u %u", x0, y0, x1, y1);
+void br_gfx_clip(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
+{
+    gllog("clip %u %u %u %u", x0, y0, x1, y1);
     s_st.clip_x0 = (int32_t)x0;
     s_st.clip_x1 = (int32_t)x1;
     if (s_lower_left) {
@@ -200,20 +160,19 @@ static void scissor(void)
     s_st.sx1 = (int32_t)px1; s_st.sy1 = (int32_t)py1;
 }
 
-void grBufferClear(GrColor_t color, GrAlpha_t alpha, FxU16 depth)
-{ plat_vclock_import();
+void br_gfx_clear(uint32_t color, uint8_t alpha, uint16_t depth)
+{
     uint32_t c = (argb(color) & 0x00FFFFFFu) | (uint32_t)alpha << 24;
-    gllog("grBufferClear %08X %u %u", color, alpha, depth);
+    gllog("clear %08X %u %u", color, alpha, depth);
     scissor();
     brr_clear(c, depth / 65536.0f, 1, s_st.depth_mode != 0, &s_st);
 }
 
 void plat_text_swap(void);         /* script_game.c */
 
-void grBufferSwap(int interval)
-{ plat_vclock_import();
-    (void)interval;
-    gllog("grBufferSwap");
+void br_gfx_present(void)
+{
+    gllog("present");
     plat_text_swap();
     map_ndc(map_box(), s_xt[0]);
     brr_xf((const float (*)[4])s_xt, 1);
@@ -222,71 +181,67 @@ void grBufferSwap(int interval)
     plat_pump(0);
 }
 
-int grBufferNumPending(void) { plat_vclock_import(); return 0; }
-
 /* ---- state ----------------------------------------------------------------------------- */
-void grColorCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
-{ plat_vclock_import();
-    gllog("grColorCombine %u %u %u %u %u", f, fa, l, o, inv);
+void br_gfx_color_combine(int32_t f, int32_t fa, int32_t l, int32_t o, int32_t inv)
+{
+    gllog("color_combine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.cc_fn = f; s_st.cc_factor = fa; s_st.cc_local = l; s_st.cc_other = o; s_st.cc_invert = inv;
 }
-void grAlphaCombine(GrCombineFunction_t f, GrCombineFactor_t fa, GrCombineLocal_t l, GrCombineOther_t o, FxBool inv)
-{ plat_vclock_import();
-    gllog("grAlphaCombine %u %u %u %u %u", f, fa, l, o, inv);
+void br_gfx_alpha_combine(int32_t f, int32_t fa, int32_t l, int32_t o, int32_t inv)
+{
+    gllog("alpha_combine %u %u %u %u %u", f, fa, l, o, inv);
     s_st.ac_fn = f; s_st.ac_factor = fa; s_st.ac_local = l; s_st.ac_other = o; s_st.ac_invert = inv;
 }
-void grAlphaBlendFunction(GrAlphaBlendFnc_t rs, GrAlphaBlendFnc_t rd, GrAlphaBlendFnc_t as, GrAlphaBlendFnc_t ad)
-{ plat_vclock_import();
-    gllog("grAlphaBlendFunction %u %u %u %u", rs, rd, as, ad);
+void br_gfx_blend(int32_t rs, int32_t rd, int32_t as, int32_t ad)
+{
+    gllog("blend %u %u %u %u", rs, rd, as, ad);
     s_st.blend_rgb_src = rs; s_st.blend_rgb_dst = rd; s_st.blend_a_src = as; s_st.blend_a_dst = ad;
 }
-void grAlphaTestFunction(GrCmpFnc_t f) { plat_vclock_import(); gllog("grAlphaTestFunction %d", f); s_st.atest_fn = f; }
-void grAlphaTestReferenceValue(GrAlpha_t v) { plat_vclock_import(); gllog("grAlphaTestReferenceValue %u", v); s_st.atest_ref = v; }
-void grConstantColorValue(GrColor_t v) { plat_vclock_import(); gllog("grConstantColorValue %08X", v); s_st.constant = argb(v); }
-void grCullMode(GrCullMode_t m) { plat_vclock_import(); gllog("grCullMode %d", m); s_st.cull = m; }
-void grDepthBufferMode(GrDepthBufferMode_t m) { plat_vclock_import(); gllog("grDepthBufferMode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
-void grDepthBufferFunction(GrCmpFnc_t f) { plat_vclock_import(); gllog("grDepthBufferFunction %d", f); s_st.depth_fn = f; }
-void grDepthMask(FxBool m) { plat_vclock_import(); gllog("grDepthMask %d", m); s_st.depth_mask = m; }
-void grFogMode(GrFogMode_t m) { plat_vclock_import(); gllog("grFogMode %d", m); s_st.fog_mode = m; }
-void grFogColorValue(GrColor_t c) { plat_vclock_import(); s_st.fog_color = argb(c); }
-void grFogTable(const GrFog_t ft[GR_FOG_TABLE_SIZE]) { plat_vclock_import(); memcpy(s_st.fog_table, ft, GR_FOG_TABLE_SIZE); }
+void br_gfx_alpha_test(int32_t f) { gllog("alpha_test %d", f); s_st.atest_fn = f; }
+void br_gfx_alpha_ref(uint8_t v) { gllog("alpha_ref %u", v); s_st.atest_ref = v; }
+void br_gfx_constant(uint32_t v) { gllog("constant %08X", v); s_st.constant = argb(v); }
+void br_gfx_cull(int32_t m) { gllog("cull %d", m); s_st.cull = m; }
+void br_gfx_depth_mode(int32_t m) { gllog("depth_mode %u", m); s_depth_mode = m; s_st.depth_mode = m; }
+void br_gfx_depth_func(int32_t f) { gllog("depth_func %d", f); s_st.depth_fn = f; }
+void br_gfx_depth_mask(int32_t m) { gllog("depth_mask %d", m); s_st.depth_mask = m; }
+void br_gfx_fog_mode(int32_t m) { gllog("fog_mode %d", m); s_st.fog_mode = m; }
+void br_gfx_fog_color(uint32_t c) { s_st.fog_color = argb(c); }
+void br_gfx_fog_table(const uint8_t ft[BR_GFX_FOG_TABLE_SIZE]) { memcpy(s_st.fog_table, ft, BR_GFX_FOG_TABLE_SIZE); }
 
-/* Glide's table entry i covers w = 2^(3 + i/4) / (8 - i%4) */
+/* table entry i covers w = 2^(3 + i/4) / (8 - i%4) */
 static float fog_w(int i) { return (float)(pow(2.0, 3.0 + (double)(i >> 2)) / (8 - (i & 3))); }
 
-void guFogGenerateLinear(GrFog_t ft[GR_FOG_TABLE_SIZE], float nearZ, float farZ)
-{ plat_vclock_import();
+void br_gfx_fog_linear(uint8_t ft[BR_GFX_FOG_TABLE_SIZE], float nearZ, float farZ)
+{
     int i;
-    for (i = 0; i < GR_FOG_TABLE_SIZE; i++) {
+    for (i = 0; i < BR_GFX_FOG_TABLE_SIZE; i++) {
         float f = (fog_w(i) - nearZ) / (farZ - nearZ);
-        ft[i] = (GrFog_t)(f < 0 ? 0 : f > 1 ? 255 : f * 255.0f);
+        ft[i] = (uint8_t)(f < 0 ? 0 : f > 1 ? 255 : f * 255.0f);
     }
 }
 
-void grTexCombine(GrChipID_t tmu, GrCombineFunction_t rf, GrCombineFactor_t rfa, GrCombineFunction_t af,
-                  GrCombineFactor_t afa, FxBool ri, FxBool ai)
-{ plat_vclock_import();
-    gllog("grTexCombine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
-    if (tmu != 0)
+/* the game sets up a second texture unit only when it has one; it has one */
+void br_gfx_tex_combine(int32_t unit, int32_t rf, int32_t rfa, int32_t af, int32_t afa, int32_t ri, int32_t ai)
+{
+    gllog("tex_combine %u %u %u %u %u %u", rf, rfa, af, afa, ri, ai);
+    if (unit != 0)
         return;
     s_st.tc_rgb_fn = rf; s_st.tc_rgb_factor = rfa; s_st.tc_alpha_fn = af;
     s_st.tc_alpha_factor = afa; s_st.tc_rgb_invert = ri; s_st.tc_alpha_invert = ai;
 }
-void grTexFilterMode(GrChipID_t tmu, GrTextureFilterMode_t mn, GrTextureFilterMode_t mg)
-{ plat_vclock_import();
-    if (tmu == 0) { s_st.min_filter = mn; s_st.mag_filter = mg; }
+void br_gfx_tex_filter(int32_t unit, int32_t mn, int32_t mg)
+{
+    if (unit == 0) { s_st.min_filter = mn; s_st.mag_filter = mg; }
 }
-void grTexClampMode(GrChipID_t tmu, GrTextureClampMode_t s, GrTextureClampMode_t t)
-{ plat_vclock_import();
-    if (tmu == 0) { s_st.clamp_s = s; s_st.clamp_t = t; }
+void br_gfx_tex_clamp(int32_t unit, int32_t s, int32_t t)
+{
+    if (unit == 0) { s_st.clamp_s = s; s_st.clamp_t = t; }
 }
-void grTexMipMapMode(GrChipID_t tmu, GrMipMapMode_t m, FxBool b) { plat_vclock_import(); (void)tmu; (void)m; (void)b; }
-void grTexLodBiasValue(GrChipID_t tmu, float bias) { plat_vclock_import(); (void)tmu; (void)bias; }
 
 /* ---- textures ----------------------------------------------------------------------------- */
-static int lod_side(GrLOD_t l) { return 256 >> l; }
+static int lod_side(int32_t l) { return 256 >> l; }
 
-static void dims(GrLOD_t lod, GrAspectRatio_t ar, int *w, int *h)
+static void dims(int32_t lod, int32_t ar, int *w, int *h)
 {
     int s = lod_side(lod);
     *w = *h = s;
@@ -298,41 +253,35 @@ static void dims(GrLOD_t lod, GrAspectRatio_t ar, int *w, int *h)
     if (*h < 1) *h = 1;
 }
 
-static int texel_bytes(GrTextureFormat_t f) { return f >= 8 ? 2 : 1; }
+static int texel_bytes(int32_t f) { return f >= 8 ? 2 : 1; }
 
-static FxU32 mem_required(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTextureFormat_t f)
+static uint32_t mem_required(int32_t small, int32_t large, int32_t ar, int32_t f)
 {
-    FxU32 n = 0;
-    GrLOD_t l;
+    uint32_t n = 0;
+    int32_t l;
     for (l = large; l <= small; l++) {
         int w, h;
         dims(l, ar, &w, &h);
-        n += (FxU32)(w * h * texel_bytes(f));
+        n += (uint32_t)(w * h * texel_bytes(f));
     }
     return (n + 7) & ~7u;
 }
 
-FxU32 grTexCalcMemRequired(GrLOD_t small, GrLOD_t large, GrAspectRatio_t ar, GrTextureFormat_t f)
-{ plat_vclock_import();
+uint32_t br_gfx_tex_bytes(int32_t small, int32_t large, int32_t ar, int32_t f)
+{
     return mem_required(small, large, ar, f);
 }
 
-FxU32 grTexTextureMemRequired(FxU32 evenOdd, GrTexInfo *info)
-{ plat_vclock_import();
-    (void)evenOdd;
-    return mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
-}
+uint32_t br_gfx_tex_lo(int32_t unit) { (void)unit; return 0; }
+/* the top of the range: 128 KB below the end of the 4 MB, as the original
+ * found it on the card it was written for (tools/brally/brbox_imports.py) */
+uint32_t br_gfx_tex_hi(int32_t unit) { (void)unit; return TEX_RAM - 0x20000; }
 
-FxU32 grTexMinAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return 0; }
-/* the top of texture memory as brbox and the 32-bit lane report it: 128 KB
- * below the end of the TMU's 4 MB (tools/brally/brbox_imports.py) */
-FxU32 grTexMaxAddress(GrChipID_t tmu) { plat_vclock_import(); (void)tmu; return TMU_RAM - 0x20000; }
-
-static uint8_t s_tmem[TMU_RAM];
+static uint8_t s_tmem[TEX_RAM];
 
 /* a decoded texture: the bytes [start, end) read as fmt at w x h, the
  * renderer's texture kept for them (s_kept[k]) */
-typedef struct ptex { FxU32 start, end; GrTextureFormat_t fmt; int w, h; uint32_t id; int k; } ptex;
+typedef struct ptex { uint32_t start, end; int32_t fmt; int w, h; uint32_t id; int k; } ptex;
 #define PTEX_MAX 2048
 static ptex s_tex[PTEX_MAX];
 static int s_ntex;
@@ -343,22 +292,22 @@ static int s_ntex;
  * animated texture cycles through a few frames, so without this each would
  * be a new texture for the renderer every frame (and, with Vulkan, a wait
  * for the GPU).  The least recently used goes when they are all taken. */
-typedef struct pkept { uint64_t key; GrTextureFormat_t fmt; int w, h; uint32_t id, used; } pkept;
+typedef struct pkept { uint64_t key; int32_t fmt; int w, h; uint32_t id, used; } pkept;
 #define PKEPT_MAX 1536
 static pkept s_kept[PKEPT_MAX];
 static uint32_t s_kept_clock;
 
-static uint64_t bytes_key(const uint8_t *p, FxU32 n)
+static uint64_t bytes_key(const uint8_t *p, uint32_t n)
 {
     uint64_t h = 14695981039346656037ull;          /* FNV-1a, 64 bits */
-    FxU32 i;
+    uint32_t i;
     for (i = 0; i < n; i++)
         h = (h ^ p[i]) * 1099511628211ull;
     return h;
 }
 
 /* the slot kept for these bytes, or -1 */
-static int kept_find(uint64_t key, GrTextureFormat_t fmt, int w, int h)
+static int kept_find(uint64_t key, int32_t fmt, int w, int h)
 {
     int k;
     for (k = 0; k < PKEPT_MAX; k++)
@@ -388,7 +337,7 @@ static int kept_slot(void)
     return old;
 }
 
-static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
+static void decode(int32_t f, const uint8_t *src, uint8_t *dst, int n)
 {
     int i;
     for (i = 0; i < n; i++, dst += 4) {
@@ -441,27 +390,26 @@ static void decode(GrTextureFormat_t f, const uint8_t *src, uint8_t *dst, int n)
 /* the current source, re-read before a draw when a download changed its
  * bytes: the card samples memory, so a texture rewritten in place while
  * bound draws with its new contents */
-static FxU32 s_src_start;
-static GrTexInfo s_src_info;
+static uint32_t s_src_start;
+static BrGfxTexInfo s_src_info;
 static int s_src_set, s_src_dirty;
 
 static void tex_resolve(void);
 
-void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
-{ plat_vclock_import();
-    FxU32 n, end;
+void br_gfx_tex_upload(int32_t unit, uint32_t start, const BrGfxTexInfo *info)
+{
+    uint32_t n, end;
     int i;
-    (void)evenOdd;
-    if (tmu != 0 || !info || !info->data || start >= TMU_RAM)
+    if (unit != 0 || !info || !info->data || start >= TEX_RAM)
         return;
     n = mem_required(info->smallLod, info->largeLod, info->aspectRatio, info->format);
-    if (start + n > TMU_RAM)
-        n = TMU_RAM - start;
+    if (start + n > TEX_RAM)
+        n = TEX_RAM - start;
     if (g_plat_tracing && s_gllog) {
         uint32_t hsh = 2166136261u, k;
         for (k = 0; k < n; k++)
             hsh = (hsh ^ ((const uint8_t *)info->data)[k]) * 16777619u;
-        gllog("grTexDownloadMipMap start %u n %u fmt %u hash %08X", start, n, info->format, hsh);
+        gllog("tex_upload start %u n %u fmt %u hash %08X", start, n, info->format, hsh);
     }
     memcpy(s_tmem + start, info->data, n);
     end = start + n;
@@ -476,16 +424,15 @@ void grTexDownloadMipMap(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *
         }
 }
 
-void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
-{ plat_vclock_import();
-    (void)evenOdd;
+void br_gfx_tex_bind(int32_t unit, uint32_t start, const BrGfxTexInfo *info)
+{
     if (info)
-        gllog("grTexSource start %u fmt %u large %u aspect %u", start, info->format, info->largeLod, info->aspectRatio);
-    if (tmu != 0)
+        gllog("tex_bind start %u fmt %u large %u aspect %u", start, info->format, info->largeLod, info->aspectRatio);
+    if (unit != 0)
         return;
     s_st.texture = 0;
     s_src_set = 0;
-    if (!info || start >= TMU_RAM)
+    if (!info || start >= TEX_RAM)
         return;
     s_src_start = start;
     s_src_info = *info;
@@ -496,10 +443,10 @@ void grTexSource(GrChipID_t tmu, FxU32 start, FxU32 evenOdd, GrTexInfo *info)
 static void tex_resolve(void)
 {
     int i, k, w, h;
-    FxU32 n, start = s_src_start;
+    uint32_t n, start = s_src_start;
     uint8_t *rgba;
     uint64_t key;
-    const GrTexInfo *info = &s_src_info;
+    const BrGfxTexInfo *info = &s_src_info;
     s_src_dirty = 0;
     s_st.texture = 0;
     dims(info->largeLod, info->aspectRatio, &w, &h);
@@ -511,8 +458,8 @@ static void tex_resolve(void)
             s_kept[s_tex[i].k].used = ++s_kept_clock;
             return;
         }
-    n = (FxU32)(w * h * texel_bytes(info->format));
-    if (start + n > TMU_RAM)
+    n = (uint32_t)(w * h * texel_bytes(info->format));
+    if (start + n > TEX_RAM)
         return;
     key = bytes_key(s_tmem + start, n);                     /* the largest level, as decoded */
     k = kept_find(key, info->format, w, h);
@@ -546,7 +493,7 @@ static void tex_resolve(void)
 }
 
 /* ---- drawing ------------------------------------------------------------------------------ */
-static void vert(brr_vertex *o, const GrVertex *v)
+static void vert(brr_vertex *o, const BrGfxVertex *v)
 {
     int big = s_st.tex_w > s_st.tex_h ? s_st.tex_w : s_st.tex_h;
     float su = big ? 256.0f * (float)s_st.tex_w / (float)big : 256.0f;
@@ -557,28 +504,28 @@ static void vert(brr_vertex *o, const GrVertex *v)
     o->z = s_depth_mode == 2 ? (v->oow > 0 ? 1.0f - v->oow : 1.0f) : v->ooz / 65535.0f;
     o->oow = v->oow;
     o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
-    o->s = v->tmuvtx[0].sow * w / su;
-    o->t = v->tmuvtx[0].tow * w / sv;
+    o->s = v->tc[0].sow * w / su;
+    o->t = v->tc[0].tow * w / sv;
 }
 
-/* Glide's triangle setup drops a triangle with no area, and with culling on
+/* Triangle setup drops a triangle with no area, and with culling on
  * drops the one facing away: the sign of its area in the coordinates the
  * application passed (before the lower-left origin turns y over).  The
  * start banners, the shadows and every other two-sided model depend on it;
  * drawing both faces left them to fight in the depth buffer. */
-static int culled(const GrVertex *a, const GrVertex *b, const GrVertex *c)
+static int culled(const BrGfxVertex *a, const BrGfxVertex *b, const BrGfxVertex *c)
 {
     float area = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
     if (area == 0.0f)
         return 1;
-    return (s_st.cull == 1 /* GR_CULL_NEGATIVE */ && area < 0.0f)
-        || (s_st.cull == 2 /* GR_CULL_POSITIVE */ && area > 0.0f);
+    return (s_st.cull == 1 /* negative */ && area < 0.0f)
+        || (s_st.cull == 2 /* positive */ && area > 0.0f);
 }
 
-void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
-{ plat_vclock_import();
+void br_gfx_triangle(const BrGfxVertex *a, const BrGfxVertex *b, const BrGfxVertex *c)
+{
     brr_vertex v[3];
-    gllog("grDrawTriangle");
+    gllog("triangle");
     gllog_vtx(a);
     gllog_vtx(b);
     gllog_vtx(c);
@@ -593,11 +540,11 @@ void grDrawTriangle(const GrVertex *a, const GrVertex *b, const GrVertex *c)
     brr_draw(&s_st, v, 3);
 }
 
-void grDrawPolygonVertexList(int n, const GrVertex vl[])
-{ plat_vclock_import();
+void br_gfx_polygon(int n, const BrGfxVertex vl[])
+{
     brr_vertex v[3 * 64];
     int i, k = 0;
-    gllog("grDrawPolygonVertexList %d", n);
+    gllog("polygon %d", n);
     for (i = 0; i < n && i < 16; i++)
         gllog_vtx(&vl[i]);
     if (s_src_dirty && s_src_set)
@@ -620,21 +567,14 @@ void grDrawPolygonVertexList(int n, const GrVertex vl[])
     }
 }
 
-FxBool grLfbWriteRegion(GrBuffer_t dst, FxU32 x, FxU32 y, GrLfbSrcFmt_t fmt, FxU32 w, FxU32 h,
-                        FxI32 stride, void *data)
-{ plat_vclock_import();
-    (void)dst;
-    gllog("grLfbWriteRegion buf %u x %u y %u fmt %u w %u h %u stride %d", dst, x, y, fmt, w, h, stride);
-    if (fmt == 0) {              /* GR_LFB_SRC_FMT_565 */
-        int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];
-        xmap m = map_box();
-        d[0] = (int)lround(m.ax * x + m.bx);
-        d[1] = (int)lround(m.ay * gy + m.by);
-        d[2] = (int)lround(m.ax * (x + w) + m.bx);
-        d[3] = (int)lround(m.ay * (gy + (int)h) + m.by);
-        brr_lfb_write((int)x, gy, (int)w, (int)h, (const uint16_t *)data, stride, d);
-        return 1;
-    }
-    PLOG("grLfbWriteRegion: format %d not handled\n", fmt);
-    return 0;
+void br_gfx_pixels(uint32_t x, uint32_t y, uint32_t w, uint32_t h, int32_t stride, const void *data)
+{
+    int gy = s_lower_left ? s_h - (int)y - (int)h : (int)y, d[4];
+    xmap m = map_box();
+    gllog("pixels x %u y %u w %u h %u stride %d", x, y, w, h, stride);
+    d[0] = (int)lround(m.ax * x + m.bx);
+    d[1] = (int)lround(m.ay * gy + m.by);
+    d[2] = (int)lround(m.ax * (x + w) + m.bx);
+    d[3] = (int)lround(m.ay * (gy + (int)h) + m.by);
+    brr_lfb_write((int)x, gy, (int)w, (int)h, (const uint16_t *)data, stride, d);
 }

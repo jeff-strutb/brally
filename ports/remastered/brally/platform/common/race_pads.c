@@ -131,7 +131,7 @@ static void dl_emit(uint32_t w0, uint32_t w1)
     g_BrGfxPtr[1] = w1;
     g_BrGfxPtr += 2;
 }
-void plat_hud_view(int on, int x, int y, int w, int h);   /* glide.c */
+void plat_hud_view(int on, int x, int y, int w, int h);   /* br_gfx.c */
 #define HUD_MARK 0x48550000u                /* "HU", then the view + 1 (0: off) */
 static int s_hudr[2][4];
 

@@ -183,10 +183,10 @@ void NAME ARGS                                                              \
             }                                                               \
         }                                                                   \
         if (list.cVerts == 3) {                                             \
-            grDrawTriangle(&out[0], &out[1], &out[2]);                      \
+            br_gfx_triangle(&out[0], &out[1], &out[2]);                      \
             return;                                                         \
         }                                                                   \
-        grDrawPolygonVertexList(list.cVerts, out);                          \
+        br_gfx_polygon(list.cVerts, out);                          \
     }                                                                       \
 }
 
