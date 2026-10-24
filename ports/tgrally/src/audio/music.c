@@ -89,6 +89,7 @@ void BrMixMusicVoice(short *buf, int bytes, int voice);
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos);   /* pos: the effects write position */
 void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
+int tgr_audio_check_nosfx(void);
 /* -- end declarations -- */
 
 #define LE16(p) ((p)[1] * 0x100 + (p)[0])
@@ -535,7 +536,7 @@ void BrMusicInit(int param_1, char *param_2)
   tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
-  tgr_audio_queue((short *)D_803747D0, 0x4000);
+  tgr_audio_start();                    /* port: the sound starts (out.c), where the AI's first buffer was queued */
   tgr_thread_new(D_80378FB8, 7, BrMusicThread, 0, D_80379568, 0x7f);
   tgr_thread_start(D_80378FB8);
 }
@@ -679,15 +680,10 @@ void BrSfxLoopSamples(void)
 void BrMusicThread(void *arg)
 {
   extern int D_802A4A0C;            /* 0x802A4A0C: the module steps on alternate wake-ups */
-  extern int D_802A4A10;        /* 0x802A4A10: where the AI was reading last time */
-  extern unsigned int D_802A4A14; /* 0x802A4A14: the effects write position */
   extern int D_80379930;             /* 0x80379930: bytes to mix this time */
-  extern int D_80379934;             /* 0x80379934: where the AI will be reading */
   extern int D_80379938;                 /* 0x80379938: voice counter */
   int i;
-  unsigned int len;
   unsigned short save;
-  unsigned int n;
   unsigned int lo;
   unsigned int hi;
 
@@ -704,24 +700,9 @@ void BrMusicThread(void *arg)
       hi = D_802A49CC * hi * D_802A49D0 >> 16;
       D_802A4920[D_80379938].vol = (hi << 16) + lo;
     }
-    D_80379930 = tgr_audio_status();
-    if (!(D_80379930 & 0x80000000)) {
-      D_80379930 = tgr_audio_queue((short *)D_803747D0, 0x4000);
-    }
-    len = tgr_audio_left();
-    D_80379934 = len - 0x1000;
-    if (D_80379934 < 0) {
-      D_80379934 += 0x4000;
-    }
-    D_80379930 = D_802A4A10 - D_80379934;
-    D_802A4A10 = D_80379934;
-    if (D_80379930 < 0) {
-      D_80379930 += 0x4000;
-    }
-    if (len > 0x4000) {
-    }
-    if (D_80379930 > 0x4000) {
-    }
+    /* port: the bytes the sound out needs (out.c), where the cartridge worked
+       out what the AI had played since the last time from its read position */
+    D_80379930 = tgr_audio_want();
     BrMusicLoopSamples();
     if (D_802A4A0C != 0 && D_80378F98 != 0) {
       BrModTick();
@@ -732,21 +713,12 @@ void BrMusicThread(void *arg)
       D_802A4790 = save;
       BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
     }
-    n = (0x5000 - len) / 8 * 8 - D_802A4A14;
-    if ((int)n < 0) {                   /* port: woken late across the start of the next buffer
-                                           (a host thread can be; the N64's never was): what
-                                           played, counted round the buffer as the music's is */
-      n += 0x4000;
-    }
-    if (n > 0x4000) {
-      n -= 0x4000;
-    }
-    BrMixSfx((short *)D_803747D0, n, D_802A4A14);
+    /* port: the effects on the same stretch (the cartridge kept their own
+       position, which was always the music's) */
+    if (!tgr_audio_check_nosfx())       /* port: a check of the music alone (out.c) */
+      BrMixSfx((short *)D_803747D0, D_80379930, save);
     BrSfxLoopSamples();
-    D_802A4A14 += n;
-    if (D_802A4A14 > 0x4000) {
-      D_802A4A14 -= 0x4000;
-    }
+    tgr_audio_submit(D_803747D0, 0x4000, save, D_80379930);   /* port: to the sound out */
     BrRumbleUpdate(0);
   }
 }

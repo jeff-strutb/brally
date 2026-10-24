@@ -210,10 +210,13 @@ int32_t  tgr_rumble_off(TgrPak *pfs);
 void     tgr_task_load(TgrTask *task);
 void     tgr_task_run(TgrTask *task);
 
-int32_t  tgr_audio_rate(uint32_t frequency);
-int32_t  tgr_audio_queue(void *buf, uint32_t size);
-uint32_t tgr_audio_status(void);
-uint32_t tgr_audio_left(void);
+/* the sound out (platform/audio/out.c): 16-bit stereo, big-endian, at the
+ * rate the game sets; the game mixes into a ring of its own and hands over
+ * each stretch it mixed */
+int32_t  tgr_audio_rate(uint32_t frequency);  /* the rate the game mixes at (the rate given) */
+void     tgr_audio_start(void);               /* the sound starts now */
+uint32_t tgr_audio_want(void);                /* bytes to mix now: what keeps the output fed, a multiple of 8 */
+void     tgr_audio_submit(const void *ring, uint32_t size, uint32_t pos, uint32_t n);  /* n bytes from pos, round the ring */
 
 void     tgr_print(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 TgrAddr  tgr_faulted_thread(void);

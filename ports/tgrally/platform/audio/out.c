@@ -1,10 +1,13 @@
-/* out.c: the audio interface's buffers to the host's output.
+/* out.c: the game's sound to the host's output.
  *
- * The audio interface (os/io.c) hands over what it has played of the
- * buffers the game queued: 16-bit stereo, big-endian as the N64's RAM held
- * it, at the rate the game set.  It goes into a ring the host's audio
- * callback drains, resampled to the device's rate.  The game paces itself on the modelled interface (os/io.c), never on
- * this ring, so audio cannot change what the game does.
+ * The music thread (src/audio/music.c), woken every 10 ms, asks how much to
+ * mix (tgr_audio_want), mixes it into its ring and hands the stretch over
+ * (tgr_audio_submit): 16-bit stereo, big-endian as the game writes it, at
+ * the rate it set.  It goes into a ring the host's audio callback drains,
+ * resampled to the device's rate; the music thread keeps LEAD_MS of sound
+ * there.  Without a device (headless, or a check) the sound plays out on
+ * the game's clock instead, read 0x1000 bytes behind the mixing as the
+ * cartridge's mixer ran, so a run mixes the same stretches every time.
  *
  * The resampling is band-limited, as the N64's own output was (its DAC and
  * the analog filter after it): each output sample is the ring's signal
@@ -27,7 +30,7 @@
 #include "plat.h"
 
 #define RING (1 << 16)              /* stereo frames */
-#define LEAD_MS 60                  /* the host's cushion against the wall clock's jitter */
+#define LEAD_MS 60                  /* kept in the ring: the music thread's 10 ms wake-ups and the device's own buffer */
 static float s_ring[RING][2];
 static volatile uint32_t s_w, s_r;
 static double s_pos, s_step = 1.0;
@@ -67,34 +70,13 @@ static void sinc_init(int rate)
     }
 }
 
-/* the device's clock is not the game's: over a long session the buffered
- * audio would creep.  Its average over a few seconds is held at what it
- * settled to once the game started, by playing up to 0.2% faster or slower
- * (inaudible), so the latency stays the N64's own plus LEAD_MS. */
-static double s_avg = -1, s_target = -1, s_trim = 1.0;
-static uint64_t s_played;
-
-static void trim(void)
-{
-    double have = (double)(s_w - s_r), err;
-    s_avg = s_avg < 0 ? have : s_avg + (have - s_avg) * 0.002;
-    if (s_target < 0) {
-        if (s_played > (uint64_t)s_devrate * 5)       /* settled: the game has been queueing for 5 s */
-            s_target = s_avg;
-        return;
-    }
-    err = (s_avg - s_target) / (s_target > 1 ? s_target : 1);
-    s_trim = 1.0 + (err > 1 ? 1 : err < -1 ? -1 : err) * 0.002;
-}
 
 static void cb(float *lr, int frames, void *user)
 {
     int i;
     (void)user;
     host_mutex_lock(s_m);
-    s_played += (uint64_t)frames;
     sinc_init((int)(s_step * s_devrate + 0.5));
-    trim();
     for (i = 0; i < frames; i++) {
         uint32_t have = s_w - s_r;
         if (have < TAPS / 2 + 1) {          /* the sinc reaches 16 samples ahead */
@@ -114,7 +96,7 @@ static void cb(float *lr, int frames, void *user)
             lr[2 * i] = l;
             lr[2 * i + 1] = r;
         }
-        s_pos += s_step * s_trim;
+        s_pos += s_step;
         while (s_pos >= 1.0 && s_w != s_r) {
             s_pos -= 1.0;
             s_r++;
@@ -135,6 +117,17 @@ void tgr_audio_init(void)
 }
 
 /* how much the host has yet to play, in milliseconds (TGR_STATS) */
+/* TGR_CHECK_NOSFX=1, in check mode only: the effects are left out, so a check
+ * can compare the music alone */
+int tgr_audio_check_nosfx(void)
+{
+    extern int tgr_check;
+    static int on = -1;
+    if (on < 0)
+        on = tgr_check && getenv("TGR_CHECK_NOSFX") && atoi(getenv("TGR_CHECK_NOSFX"));
+    return on;
+}
+
 int tgr_audio_buffered_ms(void)
 {
     return s_open ? (int)((uint64_t)(s_w - s_r) * 1000 / (uint32_t)(s_devrate * (s_step > 0 ? s_step : 1))) : -1;
@@ -162,27 +155,85 @@ static void wav_dump(const uint8_t *b, int frames)
     }
 }
 
-void tgr_audio_buffer(const int16_t *lr, int frames, int rate)
+/* ---- the game's side ------------------------------------------------------- */
+static uint32_t s_rate = 22050;     /* the game's rate */
+static int s_started;
+static uint64_t s_t0;               /* the game's clock when the sound started (no device) */
+static uint64_t s_mixed;            /* bytes handed over since the start (no device) */
+
+int32_t tgr_audio_rate(uint32_t f)
 {
-    const uint8_t *b = (const uint8_t *)lr;
-    int i;
-    wav_dump(b, frames);
-    if (!s_open || rate <= 0)
+    s_rate = f ? f : 1;
+    s_step = (double)s_rate / s_devrate;
+    return (int32_t)s_rate;
+}
+
+void tgr_audio_start(void)
+{
+    s_t0 = tgr_count();
+    s_mixed = 0;
+    s_started = 1;
+}
+
+/* No device: how far the sound has played on the game's clock, in bytes,
+ * as the console's audio interface read it: 0x4000-byte stretches back to
+ * back, each 0x4000 * 46875000 / (rate * 4) counts long, its read position
+ * in steps of 8 bytes. */
+static uint64_t played(void)
+{
+    uint64_t span = 0x4000ull * 46875000ull / ((uint64_t)s_rate * 4), e = tgr_count() - s_t0, k, in;
+    k = e / span;
+    in = (e - k * span) * s_rate * 4 / 46875000ull;
+    if (in >= 0x4000) {
+        k++;
+        in = 0;
+    }
+    return k * 0x4000 + 0x4000 - ((0x4000 - in) & ~7ull);
+}
+
+uint32_t tgr_audio_want(void)
+{
+    uint64_t want;
+    if (!s_started)
+        return 0;
+    if (s_open) {
+        uint32_t have, lead = s_rate * LEAD_MS / 1000;
+        host_mutex_lock(s_m);
+        have = s_w - s_r;
+        host_mutex_unlock(s_m);
+        want = have < lead ? (uint64_t)(lead - have) * 4 : 0;
+    } else {
+        uint64_t to = played() + 0x1000;            /* mixed 0x1000 bytes ahead of the reading */
+        want = to > s_mixed ? to - s_mixed : 0;
+        if (want > 0x4000) {                        /* the host stalled: what fell behind is skipped */
+            s_mixed = to - 0x4000;
+            want = 0x4000;
+        }
+    }
+    want &= ~7ull;
+    return (uint32_t)(want > 0x4000 ? 0x4000 : want);
+}
+
+void tgr_audio_submit(const void *ring, uint32_t size, uint32_t pos, uint32_t n)
+{
+    const uint8_t *b = (const uint8_t *)ring;
+    uint32_t i;
+    s_mixed += n;
+    for (i = 0; i < n; i += 4) {
+        uint32_t k = (pos + i) % size;
+        wav_dump(b + k, 1);
+    }
+    if (!s_open)
         return;
     host_mutex_lock(s_m);
-    s_step = (double)rate / s_devrate;
-    if (s_w - s_r < TAPS) {             /* starting, or the game was paused: lead with silence */
-        uint32_t lead = (uint32_t)rate * LEAD_MS / 1000;
-        for (i = 0; i < (int)lead; i++, s_w++)
-            s_ring[s_w & (RING - 1)][0] = s_ring[s_w & (RING - 1)][1] = 0.0f;
-    }
-    for (i = 0; i < frames; i++) {
+    for (i = 0; i < n; i += 4) {
+        const uint8_t *f = b + (pos + i) % size;
         uint32_t k;
         if (s_w - s_r >= RING - TAPS)    /* (the sinc reads 15 samples behind the read point) */
             break;
         k = s_w & (RING - 1);
-        s_ring[k][0] = (int16_t)(b[4 * i] << 8 | b[4 * i + 1]) / 32768.0f;
-        s_ring[k][1] = (int16_t)(b[4 * i + 2] << 8 | b[4 * i + 3]) / 32768.0f;
+        s_ring[k][0] = (int16_t)(f[0] << 8 | f[1]) / 32768.0f;
+        s_ring[k][1] = (int16_t)(f[2] << 8 | f[3]) / 32768.0f;
         s_w++;
     }
     host_mutex_unlock(s_m);

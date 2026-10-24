@@ -77,7 +77,6 @@ void tgr_gfx_unlock(void);
 void tgr_audio_init(void);
 /* the output's low-pass cut, Hz (0: none past the resampler's own; audio/out.c) */
 void tgr_audio_lowpass(int hz);
-void tgr_audio_buffer(const int16_t *lr, int frames, int rate);
 
 /* ---- the trace (os/trace.c): what n64box logs per retrace ------------------- */
 void tgr_trace(const char *kind, const char *fmt, ...);
