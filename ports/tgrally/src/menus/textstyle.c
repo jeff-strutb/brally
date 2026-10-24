@@ -45,7 +45,7 @@ void BrImageDrawAt(BrImage *img, int x, int y);
 void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
                      unsigned char r, unsigned char g, unsigned char b);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The paint shop's text-style popup: a normal and a
@@ -115,7 +115,7 @@ void BrPaintTextStyleMenu(void)
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
     BrImageDrawAt(&D_8028D0B0, x, yb);
     BrImageDrawAt(&D_8028D0E0, bx, yb);
-    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+    BrPadStickToButtons(&PADS[D_8028DBBC]);
     if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
       D_8028DBB8 ^= 1;
@@ -148,7 +148,7 @@ void BrPaintTextStyleMenu(void)
     BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
     }
-    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+    BrPadStickToButtons(&PADS[D_8028DBBC]);
     if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
       if (D_8028DB5C == 0) {

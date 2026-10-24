@@ -103,15 +103,15 @@ void BrResultsRun(void)
 /* @implements 0x80206304 tgr BrSeasonPickRace */
 void BrSeasonPickRace(void)
 {
-  D_8028B940 = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].races[TGR_PTR(BrSeason *, D_8031B760[0].season)->race][0];
-  if (TGR_PTR(BrSeason *, D_8031B760[0].season)->state & 1) {
+  D_8028B940 = D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].races[((BrSeason *)(D_8031B760[0].season))->race][0];
+  if (((BrSeason *)(D_8031B760[0].season))->state & 1) {
     if (D_8028B940 < 5) {
       D_8028B940 += 5;
     } else {
       D_8028B940 -= 5;
     }
   }
-  D_8028C800 = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].races[TGR_PTR(BrSeason *, D_8031B760[0].season)->race][1];
+  D_8028C800 = D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].races[((BrSeason *)(D_8031B760[0].season))->race][1];
 }
 
 /* WHAT IT DOES: Load a menu screen's items: blank the screen for two frames

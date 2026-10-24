@@ -55,10 +55,10 @@ void BrRaceResultRestore(void)
 
   if (D_8026FF18 == 0 && D_80270790 != 0) {
     for (i = 0; i < D_8026FF08; i++) {
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round] += D_802707AC[D_80315D60[i]];
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->place[TGR_PTR(BrSeason *, D_8031B760[i].season)->round][TGR_PTR(BrSeason *, D_8031B760[i].season)->race] = D_80315D60[i];
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->times[TGR_PTR(BrSeason *, D_8031B760[i].season)->round][TGR_PTR(BrSeason *, D_8031B760[i].season)->race] = D_80315D68[i];
-      tgr_print("points = %d\n", TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round]);
+      ((BrSeason *)(D_8031B760[i].season))->points[((BrSeason *)(D_8031B760[i].season))->round] += D_802707AC[D_80315D60[i]];
+      ((BrSeason *)(D_8031B760[i].season))->place[((BrSeason *)(D_8031B760[i].season))->round][((BrSeason *)(D_8031B760[i].season))->race] = D_80315D60[i];
+      ((BrSeason *)(D_8031B760[i].season))->times[((BrSeason *)(D_8031B760[i].season))->round][((BrSeason *)(D_8031B760[i].season))->race] = D_80315D68[i];
+      tgr_print("points = %d\n", ((BrSeason *)(D_8031B760[i].season))->points[((BrSeason *)(D_8031B760[i].season))->round]);
     }
   }
   for (i = 0; i < D_8026FF08; i++) {
@@ -95,72 +95,72 @@ void BrSeasonRaceDone(void)
   n = 0;
   if (D_8026FF18 == 0 && D_80270790 != 0) {
     for (i = 0; i < D_8026FF08; i++) {
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->race++;
-      if (TGR_PTR(BrSeason *, D_8031B760[i].season)->race == D_8028B944[TGR_PTR(BrSeason *, D_8031B760[i].season)->round].x8) {
-        TGR_PTR(BrSeason *, D_8031B760[i].season)->race = 0;
-        if (TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round] >= D_8028B944[TGR_PTR(BrSeason *, D_8031B760[i].season)->round].xc) {
-          TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= D_8028B944[TGR_PTR(BrSeason *, D_8031B760[i].season)->round].kindMask;
-          TGR_PTR(BrSeason *, D_8031B760[i].season)->round++;
-          if (TGR_PTR(BrSeason *, D_8031B760[i].season)->round == 6) {
+      ((BrSeason *)(D_8031B760[i].season))->race++;
+      if (((BrSeason *)(D_8031B760[i].season))->race == D_8028B944[((BrSeason *)(D_8031B760[i].season))->round].x8) {
+        ((BrSeason *)(D_8031B760[i].season))->race = 0;
+        if (((BrSeason *)(D_8031B760[i].season))->points[((BrSeason *)(D_8031B760[i].season))->round] >= D_8028B944[((BrSeason *)(D_8031B760[i].season))->round].xc) {
+          ((BrSeason *)(D_8031B760[i].season))->unlocked |= D_8028B944[((BrSeason *)(D_8031B760[i].season))->round].kindMask;
+          ((BrSeason *)(D_8031B760[i].season))->round++;
+          if (((BrSeason *)(D_8031B760[i].season))->round == 6) {
             D_80315DB0[n++] = "ALL SEASONS COMPLETED!";
             for (j = 0; j < D_8028B944[5].x8; j++) {
-              if (TGR_PTR(BrSeason *, D_8031B760[i].season)->place[5][j] != 0) {
+              if (((BrSeason *)(D_8031B760[i].season))->place[5][j] != 0) {
                 goto bonus;
               }
             }
-            if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state & 1) {
-              if (!(TGR_PTR(BrSeason *, D_8031B760[i].season)->xce & 0x100)) {
+            if (((BrSeason *)(D_8031B760[i].season))->state & 1) {
+              if (!(((BrSeason *)(D_8031B760[i].season))->xce & 0x100)) {
                 if (n) {
                   D_80315DB0[n++] = "";
                 }
                 D_80315DB0[n++] = "You Won all races this season!";
                 D_80315DB0[n++] = "Bonus: Mirror Mine Track Added!";
-                TGR_PTR(BrSeason *, D_8031B760[i].season)->xce |= 0x100;
+                ((BrSeason *)(D_8031B760[i].season))->xce |= 0x100;
               }
             } else {
-              if (!(TGR_PTR(BrSeason *, D_8031B760[i].season)->xce & 8)) {
+              if (!(((BrSeason *)(D_8031B760[i].season))->xce & 8)) {
                 if (n) {
                   D_80315DB0[n++] = "";
                 }
                 D_80315DB0[n++] = "You Won all races this season!";
                 D_80315DB0[n++] = "Bonus: Mine Track Added!";
-                TGR_PTR(BrSeason *, D_8031B760[i].season)->xce |= 8;
+                ((BrSeason *)(D_8031B760[i].season))->xce |= 8;
               }
             }
 bonus:
-            if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 0) {
+            if (((BrSeason *)(D_8031B760[i].season))->state == 0) {
               if (n) {
                 D_80315DB0[n++] = "";
               }
               D_80315DB0[n++] = "Bonus: Milk Truck Added!";
-              TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x400;
-            } else if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 1) {
+              ((BrSeason *)(D_8031B760[i].season))->unlocked |= 0x400;
+            } else if (((BrSeason *)(D_8031B760[i].season))->state == 1) {
               if (n) {
                 D_80315DB0[n++] = "";
               }
               D_80315DB0[n++] = "Bonus: Helmet Car Added!";
-              TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x200;
-            } else if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 2) {
+              ((BrSeason *)(D_8031B760[i].season))->unlocked |= 0x200;
+            } else if (((BrSeason *)(D_8031B760[i].season))->state == 2) {
               if (n) {
                 D_80315DB0[n++] = "";
               }
               D_80315DB0[n++] = "Bonus: Cupra Car Added!";
-              TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x800;
-            } else if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 3) {
+              ((BrSeason *)(D_8031B760[i].season))->unlocked |= 0x800;
+            } else if (((BrSeason *)(D_8031B760[i].season))->state == 3) {
               if (n) {
                 D_80315DB0[n++] = "";
               }
               D_80315DB0[n++] = "Bonus: Beach Ball Car Added!";
-              TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x1000;
-            } else if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 4) {
+              ((BrSeason *)(D_8031B760[i].season))->unlocked |= 0x1000;
+            } else if (((BrSeason *)(D_8031B760[i].season))->state == 4) {
               if (n) {
                 D_80315DB0[n++] = "";
               }
               D_80315DB0[n++] = "Bonus: Mirrored Cars Added!";
-              TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x8000;
+              ((BrSeason *)(D_8031B760[i].season))->unlocked |= 0x8000;
             }
-            TGR_PTR(BrSeason *, D_8031B760[i].season)->round = 0;
-            TGR_PTR(BrSeason *, D_8031B760[i].season)->state++;
+            ((BrSeason *)(D_8031B760[i].season))->round = 0;
+            ((BrSeason *)(D_8031B760[i].season))->state++;
           } else {
             D_80315DB0[n++] = "SEASON COMPLETED!";
             D_80315DB0[n++] = "";
@@ -170,15 +170,15 @@ bonus:
           D_80315DB0[n++] = "Sorry, you don't have enough points to";
           D_80315DB0[n++] = "pass this season.  You'll have to try again.";
         }
-        TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round] = 0;
+        ((BrSeason *)(D_8031B760[i].season))->points[((BrSeason *)(D_8031B760[i].season))->round] = 0;
       }
-      if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state & 1) {
+      if (((BrSeason *)(D_8031B760[i].season))->state & 1) {
         k = 5;
       } else {
         k = 0;
       }
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->xce |= 1 << (D_8028B944[TGR_PTR(BrSeason *, D_8031B760[i].season)->round].races[TGR_PTR(BrSeason *, D_8031B760[i].season)->race][0] + k);
-      TGR_PTR(BrSeason *, D_8031B760[i].season)->xd0 |= 1 << D_8028B944[TGR_PTR(BrSeason *, D_8031B760[i].season)->round].races[TGR_PTR(BrSeason *, D_8031B760[i].season)->race][1];
+      ((BrSeason *)(D_8031B760[i].season))->xce |= 1 << (D_8028B944[((BrSeason *)(D_8031B760[i].season))->round].races[((BrSeason *)(D_8031B760[i].season))->race][0] + k);
+      ((BrSeason *)(D_8031B760[i].season))->xd0 |= 1 << D_8028B944[((BrSeason *)(D_8031B760[i].season))->round].races[((BrSeason *)(D_8031B760[i].season))->race][1];
     }
   }
   D_802707C0 = n;

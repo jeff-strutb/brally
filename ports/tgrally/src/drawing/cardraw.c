@@ -136,7 +136,7 @@ void BrCarPlaceWheels(int n)
   int i;
   float w[3];
 
-  D_8028AB08 = (BrCarModel *)TGR_PTR(char *, car->model);
+  D_8028AB08 = (BrCarModel *)((char *)(car->model));
   if (BE32(D_8028AB08->dl2[0][0]) != 0) {
     for (i = 0; i < 4; i++) {
       memcpy(car->wheelMtx[i], car->mtx0, 0x30);
@@ -232,7 +232,7 @@ void BrCarVisibility(BrCar *car)
       return;
     }
   }
-  if (car == D_8028AAF0 && (TGR_PTR(BrCarCam *, car->cam) == &car->cams[0] || TGR_PTR(BrCarCam *, car->cam) == &car->cam4) && D_8028AA70 == 0) {
+  if (car == D_8028AAF0 && (((BrCarCam *)(car->cam)) == &car->cams[0] || ((BrCarCam *)(car->cam)) == &car->cam4) && D_8028AA70 == 0) {
     D_80351C80[car->slot] = 1;
     return;
   }
@@ -418,7 +418,7 @@ void BrCarDraw(BrCar *car, int lodBias)
     *(int *)car->pad1dc8 = 1;
     tunnel = 1;
   }
-  D_8028AB08 = (BrCarModel *)TGR_PTR(char *, car->model);
+  D_8028AB08 = (BrCarModel *)((char *)(car->model));
   if (D_8028AB0C == 2) {
     if (dist < 40.0f) {
       lod = 0;
@@ -445,7 +445,7 @@ void BrCarDraw(BrCar *car, int lodBias)
   BrMat4FitRange(D_8031AB10);
   D_80351CB0[car->slot] = tgr_addr32(BrMtxAlloc());
   guMtxF2L(D_8031AB10, TGR_PTR(void *, D_80351CB0[car->slot]));
-  if (car == D_8028AAF0 && (TGR_PTR(BrCarCam *, car->cam) == &car->cams[0] || TGR_PTR(BrCarCam *, car->cam) == &car->cam4) && D_8028AA70 == 0) {
+  if (car == D_8028AAF0 && (((BrCarCam *)(car->cam)) == &car->cams[0] || ((BrCarCam *)(car->cam)) == &car->cam4) && D_8028AA70 == 0) {
     return;
   }
   D_80351C90[car->slot] = lod;
@@ -663,7 +663,7 @@ void BrCarDraw(BrCar *car, int lodBias)
       tgr_wr16(&pal[15], 0x9001);
       tgr_wr16(&pal[10], 0xA001);
     }
-    if ((*TGR_PTR(unsigned int *, car->pad) & 0xC0000) != 0) {
+    if ((*((unsigned int *)(car->pad)) & 0xC0000) != 0) {
       tgr_wr16(&pal[14], 0xC000);
       tgr_wr16(&pal[13], 0xC000);
       tgr_wr16(&pal[9], 0xF904);
@@ -721,7 +721,7 @@ void BrCarDraw(BrCar *car, int lodBias)
     float near;
     int scroll;
 
-  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && &D_8028AAF0->cams[3] == (BrCarCam *)D_8028AAF4) {
+  if (((BrPadRec *)((unsigned int *)(D_8028AAF0->pad)))->ghost != 0 && &D_8028AAF0->cams[3] == (BrCarCam *)D_8028AAF4) {
     near = dist < 120.0f;
   } else {
     near = dist < 50.0f;
@@ -905,7 +905,7 @@ void BrCarDrawBody(BrCar *car)
     if (car->colour[3] == 2) {
       return;
     }
-    D_8028AB08 = (BrCarModel *)TGR_PTR(char *, car->model);
+    D_8028AB08 = (BrCarModel *)((char *)(car->model));
     gRaw(D_8028A858++, 0x1060040, D_80351CA0[car->slot]);
     gRaw(D_8028A858++, 0x1030040, D_8028A878);
     gRaw(D_8028A858++, 0x39e0010, D_80351CB0[car->slot]);

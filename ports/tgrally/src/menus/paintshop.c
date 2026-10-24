@@ -162,7 +162,7 @@ typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
 #define PADS ((BrPadRec *)&D_8036A8E0)
 void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, unsigned char g, unsigned char b);
 void BrTextAlignCentre(void);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 extern unsigned char D_8028DBB8;       /* the chosen decal style */
 extern BrImage *D_8028DB34[4];         /* the four style pictures */
 typedef struct { char *n[4]; } BrPaintNames;
@@ -839,7 +839,7 @@ void BrPaintBrushSelect(void)
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 222) >> 1, (y + 18) >> 1);
   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
-  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
     D_8028DBB8 ^= 1;
@@ -1069,7 +1069,7 @@ void BrPaintStyleSelect(void)
   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 213, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
     if (D_8028DBB8 == 0) {
@@ -1603,7 +1603,7 @@ void BrPaintOvalStyleSelect(void)
   BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 214, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
     if (D_8028DBB8 == 0) {
@@ -2015,7 +2015,7 @@ void BrPaintCarView(void)
   BrVec3 *q;
 
   D_8028AAF0 = &D_8031B760[D_8028DBBC];
-  D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cams[3]));
+  D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam = (&D_8028AAF0->cams[3])));
   if (D_8028DBD0 != 0) {
     p = &D_8028DC08[D_8028DB6C];
     from[0] = p->x;

@@ -151,14 +151,14 @@ void BrCtrlConfigScreen(void)
     D_80271FC0 = 42;
     D_80271FC8 = BrCtlConfigDrawLayout;
     if (D_80272670 == 0) {
-      D_80316444 = TGR_PTR(BrSeason *, D_8031B760[D_80271FA0].season)->xe4;
+      D_80316444 = ((BrSeason *)(D_8031B760[D_80271FA0].season))->xe4;
     }
     D_80272670 = 1;
   }
   switch (BrMenu(D_80271FA0 != 0 ? "Controller 2" : "Controller 1", D_80316440, D_80272658, &D_80316444, 0, 8, 0, 0,
                  0xa0, 0x80, 0x20)) {
   case 1:
-    TGR_PTR(BrSeason *, D_8031B760[D_80271FA0].season)->xe4 = D_80316444;
+    ((BrSeason *)(D_8031B760[D_80271FA0].season))->xe4 = D_80316444;
   case 2:
     BrModeSet(BrOptionsScreen);
     D_80272670 = 0;

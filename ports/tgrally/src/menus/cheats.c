@@ -33,56 +33,56 @@ void BrCheatToggleAA94(void)
 /* @implements 0x80254F58 tgr BrCheatUnlockCE1F */
 void BrCheatUnlockCE1F(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 0x1f;
+  ((BrSeason *)(D_8031B760[0].season))->xce |= 0x1f;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x1FF of player 1's season record's unlock mask. */
 /* @implements 0x80254F70 tgr BrCheatUnlockCars */
 void BrCheatUnlockCars(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x1ff;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x1ff;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x200 of player 1's season record's unlock mask. */
 /* @implements 0x80254F88 tgr BrCheatUnlock0200 */
 void BrCheatUnlock0200(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x200;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x200;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x1000 of player 1's season record's unlock mask. */
 /* @implements 0x80254FA0 tgr BrCheatUnlock1000 */
 void BrCheatUnlock1000(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x1000;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x1000;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x800 of player 1's season record's unlock mask. */
 /* @implements 0x80254FB8 tgr BrCheatUnlock0800 */
 void BrCheatUnlock0800(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x800;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x800;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x400 of player 1's season record's unlock mask. */
 /* @implements 0x80254FD0 tgr BrCheatUnlock0400 */
 void BrCheatUnlock0400(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x400;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x400;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x3E0 of player 1's season record's second unlock mask. */
 /* @implements 0x80254FE8 tgr BrCheatUnlockCE3E0 */
 void BrCheatUnlockCE3E0(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 0x3e0;
+  ((BrSeason *)(D_8031B760[0].season))->xce |= 0x3e0;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x8000 of player 1's season record's unlock mask. */
 /* @implements 0x80255000 tgr BrCheatUnlock8000 */
 void BrCheatUnlock8000(void)
 {
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x8000;
+  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x8000;
 }
 
 /* WHAT IT DOES: Flip the debug flag at 0x8026FF20 on or off. */

@@ -78,7 +78,7 @@ void BrTextSetColours(int a, int b, int c, int d, int e, int f);
 void BrTextSetFont(int font);
 void BrTextPrint(char *s, int x, int y);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 /* -- end declarations -- */
 
 #define PAD (&D_8036A8E0[D_80271FA8])
@@ -258,7 +258,7 @@ void BrLoadSaveScreen(void)
   case 1:                       /* the menu */
     D_80316423 = 1;
     if (D_802724F4 == 0) {
-      BrPadStickToButtons(tgr_addr32(PAD));
+      BrPadStickToButtons(PAD);
       if (PAD->pressed & 2) {
         BrPadConsume(PAD, 2);
         if (D_80272550 == 5) {
@@ -410,20 +410,20 @@ void BrLoadSaveScreen(void)
       } else {
         if (D_80272550 == 0) {
           if (D_802724F4 == 0) {
-            opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4;
-            opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8;
-            opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc;
-            opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0;
-            opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4;
+            opts[0] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd4;
+            opts[1] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd8;
+            opts[2] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xdc;
+            opts[3] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe0;
+            opts[4] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe4;
           }
-          memcpy(TGR_PTR(BrSeason *, D_8031B760[0].season), D_80272500, 0x128);
-          memcpy(TGR_PTR(BrSeason *, D_8031B760[1].season), D_80272500, 0x128);
+          memcpy(((BrSeason *)(D_8031B760[0].season)), D_80272500, 0x128);
+          memcpy(((BrSeason *)(D_8031B760[1].season)), D_80272500, 0x128);
           if (D_802724F4 == 0) {
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4 = opts[0];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8 = opts[1];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc = opts[2];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0 = opts[3];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4 = opts[4];
+            ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd4 = opts[0];
+            ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd8 = opts[1];
+            ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xdc = opts[2];
+            ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe0 = opts[3];
+            ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe4 = opts[4];
           }
           tgr_print("Done!\n");
           if (D_802724FC == 0) {
@@ -436,8 +436,8 @@ void BrLoadSaveScreen(void)
           tgr_print("Extracting ghost data...\n");
           D_80270784 = BrRlePlanesUnpack(D_80307F00, 0xDE5C, D_80272500, 2);
           D_8028B940 = D_80307F00[0];
-          TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << D_80307F00[0];
-          TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 1 << D_80307F00[1];
+          ((BrSeason *)(D_8031B760[0].season))->xce |= 1 << D_80307F00[0];
+          ((BrSeason *)(D_8031B760[0].season))->unlocked |= 1 << D_80307F00[1];
           tgr_print("Done!\n");
           if (D_802724FC == 0) {
             D_80272554 = 15;
@@ -450,11 +450,11 @@ void BrLoadSaveScreen(void)
           D_802724F0 = tgr_pak_io(PFS, D_80316424, 0, 0x80, 0x80, D_80272500);
           if (D_802724F0 == 0) {
             memcpy(opts, D_80272500, 20);
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4 = opts[0];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8 = opts[1];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc = opts[2];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0 = opts[3];
-            TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4 = opts[4];
+            ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd4 = opts[0];
+            ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd8 = opts[1];
+            ((BrSeason *)(D_8031B760[D_80271FA8].season))->xdc = opts[2];
+            ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe0 = opts[3];
+            ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe4 = opts[4];
             tgr_print("Done!\n");
             BrVolumesApply();
             D_80272554 = 13;
@@ -530,7 +530,7 @@ void BrLoadSaveScreen(void)
   case 11:                      /* save */
     if (D_80272550 == 1) {
       tgr_print("Saving season data...\n");
-      memcpy(D_80272500, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
+      memcpy(D_80272500, ((BrSeason *)(D_8031B760[0].season)), 0x128);
       D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x200, D_80272500);
       if (D_802724F0 == 0) {
         tgr_print("Done!\n");
@@ -562,11 +562,11 @@ void BrLoadSaveScreen(void)
       if (D_802724F0 != 0) {
         D_80272554 = 12;
       } else {
-        opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4;
-        opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8;
-        opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc;
-        opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
-        opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
+        opts[0] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd4;
+        opts[1] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd8;
+        opts[2] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xdc;
+        opts[3] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe0;
+        opts[4] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe4;
         memcpy(D_80272500, opts, 20);
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {

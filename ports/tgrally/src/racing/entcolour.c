@@ -27,7 +27,7 @@ extern char D_803D5F88[];
 /* @implements 0x80220398 tgr BrEntRefreshColour */
 void BrEntRefreshColour(BrCar *car)
 {
-  BrEntPaintTexture(TGR_PTR(BrCarModel *, car->model), car->colour[0] >> 3, car->colour[1] >> 3,
+  BrEntPaintTexture(((BrCarModel *)(car->model)), car->colour[0] >> 3, car->colour[1] >> 3,
                     car->colour[2] >> 3);
   BrCarPhysInit(car);
 }
@@ -67,7 +67,7 @@ int BrEntIsFree(void *p)
 /* @implements 0x802203F0 tgr BrEntSetRecord */
 void BrEntSetRecord(BrCar *car, int slot)
 {
-  car->model = tgr_addr32(&D_803C8000[slot]);
+  car->model = (&D_803C8000[slot]);
   BrEntRefreshColour(car);
 }
 

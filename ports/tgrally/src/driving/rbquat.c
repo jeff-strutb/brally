@@ -1,6 +1,7 @@
 /* rbquat.c -- rigid-body orientation
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 #include "tgr/vec.h"
 
 /* -- declarations -- */
@@ -18,50 +19,17 @@ typedef struct BrPose {         /* position and orientation */
   char pad0c[0xc];
   BrRbQuat q;                   /* 0x18 */
 } BrPose;
-typedef struct BrRbRates {      /* what a rigid body integrates from */
-  char pad00[0xfc];
-  float vel[3];                 /* 0xFC  linear */
-  float spin[3];                /* 0x108 angular */
-} BrRbRates;
-typedef struct BrRbParams {     /* set together by BrRbSetParams */
-  int x0;
-  int kind;                     /* 0x04 */
-  float x8;
-  float xc;
-  float x10;
-  float x14;
-  float x18;
-  float x1c;
-} BrRbParams;
-typedef struct BrRbBody {       /* a rigid body's shape and mass properties */
-  int x0[6];
-  int x18;
-  int shape;                    /* 0x1C  0, 1: box; 2: fixed (no inverse inertia) */
-  float w, h, d;                /* 0x20  box size */
-  float mass;                   /* 0x2C */
-  float I[3][3];                /* 0x30  inertia tensor */
-  float Iinv[3][3];             /* 0x54  its inverse (diagonal) */
-  char pad78[0x19C - 0x78];
-  int x19c;                     /* 0x19C */
-  char pad1a0[0x1B4 - 0x1A0];
-  int x1b4;                     /* 0x1B4 */
-  char pad1b8[0x1C0 - 0x1B8];
-  float x1c0;                   /* 0x1C0 */
-  float x1c4;                   /* 0x1C4 */
-  float x1c8;                   /* 0x1C8 */
-  float x1cc;
-  float x1d0;
-  float x1d4;
-  float x1d8;
-} BrRbBody;
+
+
+
 void BrStub80258070(int);
-typedef struct BrRbState {      /* a full rigid-body state (0x44 bytes) */
+typedef struct BrRbStateF {     /* a full rigid-body state (0x44 bytes; tgr/body.h's BrRbState as floats) */
   float pos[3];                 /* 0x00 */
   float vel[3];                 /* 0x0C */
   float q[4];                   /* 0x18  orientation */
   float omega[3];               /* 0x28  angular velocity */
   float qdot[4];                /* 0x34  orientation rate */
-} BrRbState;
+} BrRbStateF;
 float sqrtf(float x);
 /* -- end declarations -- */
 
@@ -121,7 +89,7 @@ void BrVec3NormaliseF(float v[3])
  * derivative from its angular velocity (half the product of the spin and
  * the orientation). */
 /* @implements 0x80258248 tgr BrRbQuatDerivative */
-void BrRbQuatDerivative(BrRbState *b)
+void BrRbQuatDerivative(BrRbStateF *b)
 {
   float h[3];
 
@@ -138,17 +106,17 @@ void BrRbQuatDerivative(BrRbState *b)
 /* WHAT IT DOES: Advance a rigid body by one time step: position by velocity
  * and orientation by its rate, both scaled by dt. */
 /* @implements 0x80258324 tgr BrRbIntegrate */
-void BrRbIntegrate(BrRb *b, BrRbRates *r, float dt)
+void BrRbIntegrate(BrRb *b, BrRbBody *r, float dt)
 {
   float dv[3];
   float dw[3];
 
-  dv[0] = r->vel[0] * dt;
-  dv[1] = r->vel[1] * dt;
-  dv[2] = r->vel[2] * dt;
-  dw[0] = r->spin[0] * dt;
-  dw[1] = r->spin[1] * dt;
-  dw[2] = r->spin[2] * dt;
+  dv[0] = r->force[0] * dt;
+  dv[1] = r->force[1] * dt;
+  dv[2] = r->force[2] * dt;
+  dw[0] = r->torque[0] * dt;
+  dw[1] = r->torque[1] * dt;
+  dw[2] = r->torque[2] * dt;
   b->pos.x = dv[0] + b->pos.x;
   b->pos.y = dv[1] + b->pos.y;
   b->pos.z = dv[2] + b->pos.z;
@@ -207,7 +175,7 @@ void BrQuatToMat(float m[4][4], BrPose *p)
  * velocity, orientation by its rate (renormalised); velocity, angular
  * velocity and orientation rate are carried over. */
 /* @implements 0x80258530 tgr BrRbStateStep */
-void BrRbStateStep(BrRbState *out, BrRbState *in, float dt)
+void BrRbStateStep(BrRbStateF *out, BrRbStateF *in, float dt)
 {
   float dp[3];
   float dq[4];
@@ -242,15 +210,15 @@ void BrRbStateStep(BrRbState *out, BrRbState *in, float dt)
 /* WHAT IT DOES: Fill in a block of seven rigid-body parameters: six floats
  * and an int. */
 /* @implements 0x80258680 tgr BrRbSetParams */
-void BrRbSetParams(BrRbParams *p, float a, float b, float c, float d, float e, float f, int kind)
+void BrRbSetParams(BrRbForce *p, float a, float b, float c, float d, float e, float f, int kind)
 {
-  p->kind = kind;
-  p->x8 = a;
-  p->xc = b;
-  p->x10 = c;
-  p->x14 = d;
-  p->x18 = e;
-  p->x1c = f;
+  p->frame = kind;
+  p->f[0] = a;
+  p->f[1] = b;
+  p->f[2] = c;
+  p->at[0] = d;
+  p->at[1] = e;
+  p->at[2] = f;
 }
 
 
@@ -274,14 +242,14 @@ void BrRbBodyInit(BrRbBody *b)
   BrVec3 s;
   BrVec3 *p;
 
-  b->x0[0] = 0;
-  b->x0[1] = 0;
-  b->x0[2] = 0;
-  b->x0[3] = 0;
-  b->x0[4] = 0;
-  b->x0[5] = 0;
+  b->x0 = 0;
+  b->sub[0] = 0;
+  b->sub[1] = 0;
+  b->sub[2] = 0;
+  b->sub[3] = 0;
+  *(int *)b->pad014 = 0;
   b->x1b4 = 0;
-  b->x19c = 0;
+  b->hit = 0;
   b->x1c4 = 0.0f;
   b->x1c0 = 0.174f;
   b->x1cc = 0.0f;

@@ -1,6 +1,7 @@
 /* cartick.c -- a car's per-frame clocks and message timers
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
@@ -44,13 +45,7 @@ void BrRaceGateStep(BrCarEnt *e);
 void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 float BrAtan2(float x, float y);
-typedef struct BrCarWheel {     /* a wheel's rigid body */
-  char pad000[0x1C0];
-  float x1c0;                   /* 0x1C0 */
-  char pad1c4[0x1CC - 0x1C4];
-  float x1cc;                   /* 0x1CC */
-  float x1d0;                   /* 0x1D0 */
-} BrCarWheel;
+typedef BrRbBody BrCarWheel;     /* (tgr/body.h) */
 typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];        /* the players' views */
 extern int D_8028AB0C;                  /* number of views */
@@ -206,7 +201,7 @@ none:
 /* @implements 0x8021F0A8 tgr BrCarTickClocks */
 void BrCarTickClocks(BrCar *car)
 {
-  if ((TGR_PTR(struct BrCarLink *, car->link)->flags & 3) == 0) {
+  if ((((struct BrCarLink *)(car->link))->flags & 3) == 0) {
     if (D_8026FF18 == 3) {
       car->raceTime += D_8028AAD8;
       return;
@@ -463,9 +458,9 @@ void BrCarGridCell(BrCar *car)
 void BrCarEntTick(BrCarEnt *e)
 {
   if (D_8026FF10 == 0 && e->car != 0) {
-    if (TGR_PTR(BrCar *, e->car)->x344 != 0) {
-      BrHudArrowDraw(TGR_PTR(BrCar *, e->car), &TGR_PTR(BrCar *, e->car)->x334, TGR_PTR(BrCar *, e->car)->x344);
-      TGR_PTR(BrCar *, e->car)->x344 = 0;
+    if (TGR_PTR(BrCar *, e->car)->body[0].hitSize != 0) {
+      BrHudArrowDraw(TGR_PTR(BrCar *, e->car), &TGR_PTR(BrCar *, e->car)->body[0].x1ec, TGR_PTR(BrCar *, e->car)->body[0].hitSize);
+      TGR_PTR(BrCar *, e->car)->body[0].hitSize = 0;
     }
     BrCarTickClocks(TGR_PTR(BrCar *, e->car));
     BrCarTickMessages(TGR_PTR(BrCar *, e->car));
@@ -474,7 +469,7 @@ void BrCarEntTick(BrCarEnt *e)
     BrCarGridCell(TGR_PTR(BrCar *, e->car));
     BrVec3Sub(&TGR_PTR(BrCar *, e->car)->velfd8, (BrVec3 *)TGR_PTR(BrCar *, e->car)->mtx0[3], &TGR_PTR(BrCar *, e->car)->posPrev);
     BrVec3ScaleBy(&TGR_PTR(BrCar *, e->car)->velfd8, 1.0f / D_8028AAD8);
-    TGR_PTR(BrCar *, e->car)->heading = BrAtan2(TGR_PTR(BrCarCam *, TGR_PTR(BrCar *, e->car)->cam)->mtx[0][0], TGR_PTR(BrCarCam *, TGR_PTR(BrCar *, e->car)->cam)->mtx[0][1]);
+    TGR_PTR(BrCar *, e->car)->heading = BrAtan2(((BrCarCam *)((TGR_PTR(BrCar *, e->car)->cam)))->mtx[0][0], ((BrCarCam *)((TGR_PTR(BrCar *, e->car)->cam)))->mtx[0][1]);
     if (TGR_PTR(BrCar *, e->car)->xed4 != 0) {
       TGR_PTR(BrCar *, e->car)->xed4--;
     }
@@ -510,7 +505,7 @@ void BrCarPhysTick(BrCar *car)
     BrCarRotate(car, car->x1dd4 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1dd8 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1de0 * 3.1415927f * 0.4f * D_8028AAD8);
-    if (*TGR_PTR(unsigned int *, car->pad) & 0x10) {
+    if (*((unsigned int *)(car->pad)) & 0x10) {
       z = (BrVec3 *)car->mtx0[2];
       y = (BrVec3 *)car->mtx0[1];
       z->x = 0.0f;
@@ -518,53 +513,53 @@ void BrCarPhysTick(BrCar *car)
       z->z = 1.0f;
       BrVec3Cross(y, z, (BrVec3 *)car->mtx0[0]);
       BrVec3Cross(z, (BrVec3 *)car->mtx0[0], y);
-      BrPadConsume(TGR_PTR(unsigned int *, car->pad), 0x10);
+      BrPadConsume(((unsigned int *)(car->pad)), 0x10);
     }
   } else {
     car->xfd4 = BrGroundRay((BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], (BrVec3 *)car->mtx0[3], car->x1fc0, &car->x2000,
                              car->x2004, &car->x2044, (float *)&car->x2048, &car->x204c);
-    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1c0 = TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1c0 = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[0]))->x1c0 = ((BrRbBody *)(car->body[0].sub[1]))->x1c0 = 0.0f;
     BrCarDriveInput(car);
-    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1c0 = TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1c0 = car->xdf0;
-    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1d0 = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1d0 = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1d0 = 0.0f;
-    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1d0 = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[2]))->x1c0 = ((BrRbBody *)(car->body[0].sub[3]))->x1c0 = car->xdf0;
+    ((BrRbBody *)(car->body[0].sub[0]))->x1cc = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[1]))->x1cc = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[2]))->x1cc = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[3]))->x1cc = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[0]))->x1d0 = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[1]))->x1d0 = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[2]))->x1d0 = 0.0f;
+    ((BrRbBody *)(car->body[0].sub[3]))->x1d0 = 0.0f;
     if (car->xe38 > 0.0f) {
-      if ((*TGR_PTR(unsigned int *, car->pad) & 0x20000) && car->xe40 == 1) {
+      if ((*((unsigned int *)(car->pad)) & 0x20000) && car->xe40 == 1) {
         car->xe38 = -car->xe38;
       }
       if (car->xe28[1] != 0) {
-        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = -car->xe38 * 2;
-        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = -car->xe38 * 2;
-        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = -car->xe38 * 0;
-        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = -car->xe38 * 0;
+        ((BrRbBody *)(car->body[0].sub[0]))->x1cc = -car->xe38 * 2;
+        ((BrRbBody *)(car->body[0].sub[1]))->x1cc = -car->xe38 * 2;
+        ((BrRbBody *)(car->body[0].sub[2]))->x1cc = -car->xe38 * 0;
+        ((BrRbBody *)(car->body[0].sub[3]))->x1cc = -car->xe38 * 0;
       } else {
-        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = -car->xe38;
-        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = -car->xe38;
-        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = -car->xe38;
-        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = -car->xe38;
+        ((BrRbBody *)(car->body[0].sub[0]))->x1cc = -car->xe38;
+        ((BrRbBody *)(car->body[0].sub[1]))->x1cc = -car->xe38;
+        ((BrRbBody *)(car->body[0].sub[2]))->x1cc = -car->xe38;
+        ((BrRbBody *)(car->body[0].sub[3]))->x1cc = -car->xe38;
       }
     }
     if (car->xe3c < 0.0f) {
-      TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1d0 = -car->xe3c;
-      TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1d0 = -car->xe3c;
-      TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = 0.0f;
-      TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = 0.0f;
-      if ((TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc < 0.0f ? -TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc : TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc) < 0.0001f) {
-        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1d0 = -car->xe3c;
-        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1d0 = -car->xe3c;
+      ((BrRbBody *)(car->body[0].sub[0]))->x1d0 = -car->xe3c;
+      ((BrRbBody *)(car->body[0].sub[1]))->x1d0 = -car->xe3c;
+      ((BrRbBody *)(car->body[0].sub[0]))->x1cc = 0.0f;
+      ((BrRbBody *)(car->body[0].sub[1]))->x1cc = 0.0f;
+      if ((((BrRbBody *)(car->body[0].sub[2]))->x1cc < 0.0f ? -((BrRbBody *)(car->body[0].sub[2]))->x1cc : ((BrRbBody *)(car->body[0].sub[2]))->x1cc) < 0.0001f) {
+        ((BrRbBody *)(car->body[0].sub[2]))->x1d0 = -car->xe3c;
+        ((BrRbBody *)(car->body[0].sub[3]))->x1d0 = -car->xe3c;
       }
     }
     BrCarPhysStep(car);
   }
   BrCarBuildMatrices(car);
-  if (car->wheels[1].x13c != 0) {
-    car->xfe4[0] = sqrtf(car->st.vel.z * car->st.vel.z + (car->st.vel.x * car->st.vel.x + car->st.vel.y * car->st.vel.y)) * 2.24f;
+  if (car->body[1 + (1)].x1b4 != 0) {
+    car->xfe4[0] = sqrtf(car->body[0].st.vel.z * car->body[0].st.vel.z + (car->body[0].st.vel.x * car->body[0].st.vel.x + car->body[0].st.vel.y * car->body[0].st.vel.y)) * 2.24f;
   }
   for (i = 0; i < D_8028AB0C; i++) {
     if (car->slot == D_8031B2C8[i].car) {

@@ -95,12 +95,12 @@ void BrSndCarStep(BrCar *car)
   }
   remote = 0;
   if (D_8028AB0C == 1) {
-    lst = TGR_PTR(BrCarCam *, view->cam);
+    lst = ((BrCarCam *)(view->cam));
     if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0) {
       remote = 1;
     }
   } else {
-    lst = TGR_PTR(BrCarCam *, car->cam);
+    lst = ((BrCarCam *)(car->cam));
     if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0 || D_8031B760[D_8031B2C8[1].car].xf48 != 0) {
       remote = 1;
     }
@@ -133,13 +133,13 @@ void BrSndCarStep(BrCar *car)
   }
   ch = &D_802A4920[k];
   prev = car->xf38;
-  if (ch[1].pitch == 0 || (car->sndImpact == 0 && car->xf38 >= 4 && car->xf38 < 8)) {
+  if (ch[1].pitch == 0 || (car->body[0].slide == 0 && car->xf38 >= 4 && car->xf38 < 8)) {
     car->xf38 = 0;
     car->xf3c = 0;
     car->xf40 = 0;
   }
-  m = car->sndHitA;
-  if (car->xf3c < car->sndHitA || (car->sndHitA != 0 && car->xf40 < 100)) {
+  m = car->body[0].x1fe;
+  if (car->xf3c < car->body[0].x1fe || (car->body[0].x1fe != 0 && car->xf40 < 100)) {
     car->xf3c = m;
     car->xf38 = 1;
     car->xf40 = 100;
@@ -152,9 +152,9 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->sndHitA = 0;
-  m = car->sndHitB;
-  if (car->xf3c < car->sndHitB || (car->sndHitB != 0 && car->xf40 < 90)) {
+  car->body[0].x1fe = 0;
+  m = car->body[0].hitPeak;
+  if (car->xf3c < car->body[0].hitPeak || (car->body[0].hitPeak != 0 && car->xf40 < 90)) {
     car->xf3c = m;
     car->xf38 = 2;
     car->xf40 = 90;
@@ -167,9 +167,9 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->sndHitB = 0;
-  m = car->sndHitC;
-  if (car->xf3c < car->sndHitC || (car->sndHitC != 0 && car->xf40 < 80)) {
+  car->body[0].hitPeak = 0;
+  m = car->body[0].x203;
+  if (car->xf3c < car->body[0].x203 || (car->body[0].x203 != 0 && car->xf40 < 80)) {
     car->xf3c = m;
     car->xf38 = 3;
     car->xf40 = 80;
@@ -182,16 +182,16 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->sndHitC = 0;
+  car->body[0].x203 = 0;
   if (!(car->xf38 != 0 && (car->xf38 < 4 || car->xf38 > 7) && (car->xf38 < 8 || car->xf38 > 12))) {
-    car->x34a = 0;
+    car->body[0].x202 = 0;
     ground = -1;
-    if (car->wheels[1].x13c != 0) {
-      ground = car->wheels[1].surface;
+    if (car->body[1 + (1)].x1b4 != 0) {
+      ground = car->body[1 + (1)].surface;
     }
-    m = car->sndImpact;
-    if (car->xf3c < car->sndImpact || (car->sndImpact != 0 && car->xf40 < 40) ||
-        (car->sndImpact != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)) {
+    m = car->body[0].slide;
+    if (car->xf3c < car->body[0].slide || (car->body[0].slide != 0 && car->xf40 < 40) ||
+        (car->body[0].slide != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)) {
       car->xf3c = m;
       if (D_8028C800 == 3) {
         switch (ground) {
@@ -220,7 +220,7 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 7;
-          m = car->sndImpact;
+          m = car->body[0].slide;
           break;
         case 1:
           if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
@@ -232,7 +232,7 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 5;
-          m = car->sndImpact;
+          m = car->body[0].slide;
           break;
         case 2:
           if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
@@ -244,11 +244,11 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 4;
-          m = car->sndImpact;
+          m = car->body[0].slide;
           break;
         case 4:
           car->xf38 = 12;
-          m = car->sndImpact;
+          m = car->body[0].slide;
           break;
         }
         car->xf3c = m >> 1;
@@ -329,12 +329,12 @@ void BrSndCarStep(BrCar *car)
     }
   }
   if (D_8028AB0C == 1) {
-    p = TGR_PTR(BrCarCam *, view->cam)->mtx[3];
+    p = ((BrCarCam *)(view->cam))->mtx[3];
     car->posStart.x = p[0];
     car->posStart.y = p[1];
     car->posStart.z = p[2];
   } else {
-    p = TGR_PTR(BrCarCam *, car->cam)->mtx[3];
+    p = ((BrCarCam *)(car->cam))->mtx[3];
     car->posStart.x = p[0];
     car->posStart.y = p[1];
     car->posStart.z = p[2];

@@ -1,6 +1,7 @@
 /* sfxsrc.c -- short sound-effect triggers
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 void BrSfxSrcTrigger(int param_1);
@@ -58,8 +59,6 @@ extern unsigned int D_802A497C;
 typedef struct BrSndCarLink { char pad00[0x68]; unsigned int flags; } BrSndCarLink;
 typedef struct BrSndView { int x, y, w, h; int car; } BrSndView;
 extern BrSndView D_8031B2C8[2];         /* the players' views */
-typedef struct BrSndCar { char pad0000[0xED0]; TgrAddr link; char padED4[0xF48 - 0xED4]; int camMode; char padf4c[0x2090 - 0xF4C]; } BrSndCar;
-extern BrSndCar D_8031B760[4];
 extern int D_8028AB0C;                  /* number of players */
 void BrSndPan(float pos[3], float m[4][4], float *left, float *right, int *vol, int narrow);
 float BrSndDoppler(float l[3], float lPrev[3], float s[3], float sPrev[3]);
@@ -180,7 +179,7 @@ void BrSndNearestCommit(void)
   float unused2[6];
   float *p;
 
-  if (TGR_PTR(BrSndCarLink *, D_8031B760[0].link)->flags & 1)
+  if (((BrSndCarLink *)(D_8031B760[0].link))->flags & 1)
     return;
   if (D_8028B7EC != -1) {
     if (D_802A4920[3].rate != 0)
@@ -216,8 +215,8 @@ skip:
       BrSfxVoicePlay(3, (unsigned int)D_8028BC04[D_8028B7A0.f84].data, D_8028BC04[D_8028B7A0.f84].size,
                      D_8028BC04[D_8028B7A0.f84].loop);
     }
-    if ((D_8031B2C8[0].car + D_8031B760)->camMode == 0
-        && (D_8028AB0C == 1 || (D_8031B2C8[1].car + D_8031B760)->camMode == 0)) {
+    if ((D_8031B2C8[0].car + D_8031B760)->xf48 == 0
+        && (D_8028AB0C == 1 || (D_8031B2C8[1].car + D_8031B760)->xf48 == 0)) {
       D_802A4920[3].rate = tgr_f2ull((double)(ratio * (1.0f / 11000.0f)) * 4294967296.0);
       if (D_802A4920[3].baseVol == 0) {
         D_802A497C = ((int)((float)((int)(vol * gainA) << 16) + gainB * vol) >> 1) & 0x7FFF7FFF;

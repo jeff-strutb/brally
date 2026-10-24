@@ -1140,17 +1140,17 @@ void BrRaceFlagsApply(void)
     for (j = 0; j < 3; j++) {
       if (D_8031B760[n].colour[3] == 2) {
         for (i = 0; i < 10; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl[j][i]), D_8028AC68);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl[j][i]), D_8028AC68);
         }
         for (i = 0; i < 3; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl2[j][i]), D_8028AD28);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl2[j][i]), D_8028AD28);
         }
       } else {
         for (i = 0; i < 10; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl[j][i]), D_8028ABA8);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl[j][i]), D_8028ABA8);
         }
         for (i = 0; i < 3; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl2[j][i]), D_8028ABA8);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl2[j][i]), D_8028ABA8);
         }
       }
     }

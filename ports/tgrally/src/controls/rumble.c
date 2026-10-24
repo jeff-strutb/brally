@@ -51,7 +51,7 @@ void BrRumbleUpdate(int arg0)
   }
   if (D_802A4BE8 != 0 && D_802A4C04 == 0 && D_8026FF10 == 0) {
     for (j = 0; j != 2; j++) {
-      if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && TGR_PTR(unsigned int *, D_8031B760[j].pad)[0x11] == 0) {
+      if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && ((unsigned int *)(D_8031B760[j].pad))[0x11] == 0) {
         if (D_802A4BFC[j] == 0) {
           if (D_802A4BF0[j] != 0) {
             D_802A4BFC[j] = D_802A4BF8[j];

@@ -1,6 +1,7 @@
 /* carphys.c -- the car's physical state
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
@@ -20,37 +21,8 @@ void BrTyreSkidCheck(void *body, void *force);
 void BrTyreLoads(void *body);
 void BrCarPhysAdvance(void *body);
 void BrTyreDepthAll(void *body);
-typedef struct BrCarWheel {     /* a wheel's rigid body */
-  char pad00[0x18];
-  TgrAddr forces;                 /* char * -- 0x18  its force list */
-  char pad1c[0x78 - 0x1C];
-  char state[0x44];             /* 0x78 */
-  float mtx[4][4];              /* 0xBC */
-} BrCarWheel;
-#define CP_AT(car, off) ((char *)(car) + (off))
-typedef struct BrPhysBody {     /* a rigid body as the car embeds it (0x208 bytes) */
-  char pad00[0x1C];
-  int shape;                    /* 0x1C  1: box; 2: wheel */
-  float w, h, d;                /* 0x20  box size */
-  float mass;                   /* 0x2C */
-  char pad30[0x78 - 0x30];
-  float pos[3];                 /* 0x78  state: position */
-  float vel[3];                 /* 0x84 */
-  float q[4];                   /* 0x90  orientation */
-  float omega[3];               /* 0xA0 */
-  float qdot[4];                /* 0xAC */
-  float mtx[4][4];              /* 0xBC */
-  char padfc[0x19C - 0xFC];
-  int x19c;                     /* 0x19C */
-  char pad1a0[0x1B8 - 0x1A0];
-  float spring;                 /* 0x1B8 */
-  float damper;                 /* 0x1BC */
-  char pad1c0[0x1C4 - 0x1C0];
-  float x1c4;                   /* 0x1C4 */
-  char pad1c8[0x1D8 - 0x1C8];
-  float x1d8;                   /* 0x1D8 */
-  char pad1dc[0x208 - 0x1DC];
-} BrPhysBody;
+typedef BrRbBody BrCarWheel;     /* (tgr/body.h) */
+typedef BrRbBody BrPhysBody;     /* (tgr/body.h) */
 typedef struct BrCarMounts {    /* the wheel mounts in a car's model buffer */
   char pad00[0xEC];
   bef_t rearX;                  /* 0xEC */
@@ -61,33 +33,33 @@ typedef struct BrCarMounts {    /* the wheel mounts in a car's model buffer */
 } BrCarMounts;                  /* (cartridge data: big-endian) */
 void BrRbBodyInit(void *body);
 void BrRbSetParams(void *force, float fx, float fy, float fz, float rx, float ry, float rz, int frame);
-#define CP_BODY(car, off) ((BrPhysBody *)CP_AT(car, off))
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Place a car at a new position: copies the 4x4 placement
  * matrix into the car, sets its position and velocity from it and rebuilds
  * the car's orientation. */
 /* @implements 0x80220150 tgr BrCarPlaceAt */
-void BrCarPlaceAt(char *car, float *mtx)
+void BrCarPlaceAt(char *carp, float *mtx)
 {
+  BrCar *car = (BrCar *)carp;           /* port: its fields by name (the ROM's offsets from the car) */
   float *q;
   float x;
   float y;
   float z;
   float w;
 
-  memcpy(car, mtx, 0x40);
-  BrMatToQuat(mtx, car + 0x1d8);
-  q = (float *)(car + 0x1d8);
+  memcpy(car->mtx0, mtx, 0x40);
+  BrMatToQuat(mtx, car->body[0].q);
+  q = car->body[0].q;
   x = q[0];
   y = q[1];
   z = q[2];
   w = q[3];
-  ((float *)(car + 0x274))[0] = ((float *)(car + 0x2b8))[0] = x;
-  ((float *)(car + 0x274))[1] = ((float *)(car + 0x2b8))[1] = y;
-  ((float *)(car + 0x274))[2] = ((float *)(car + 0x2b8))[2] = z;
-  ((float *)(car + 0x274))[3] = ((float *)(car + 0x2b8))[3] = w;
-  BrQuatToMat(car + 0x204, car + 0x1c0);
+  car->body[0].stA.q[0] = car->body[0].stB.q[0] = x;
+  car->body[0].stA.q[1] = car->body[0].stB.q[1] = y;
+  car->body[0].stA.q[2] = car->body[0].stB.q[2] = z;
+  car->body[0].stA.q[3] = car->body[0].stB.q[3] = w;
+  BrQuatToMat((void *)car->body[0].m, (void *)&car->body[0].st);
 }
 
 
@@ -107,85 +79,85 @@ void BrCarPhysStep(BrCar *car)
   int u[2];
 
   BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
-  *(TgrAddr *)CP_AT(car, 0x160) = tgr_addr32(CP_AT(car, 0xB70));
-  TGR_PTR(struct BrCarWheel *, car->wheel[0])->forces = tgr_addr32(CP_AT(car, 0xCF0));
-  TGR_PTR(struct BrCarWheel *, car->wheel[1])->forces = tgr_addr32(CP_AT(car, 0xD30));
-  TGR_PTR(struct BrCarWheel *, car->wheel[2])->forces = tgr_addr32(CP_AT(car, 0xD10));
-  TGR_PTR(struct BrCarWheel *, car->wheel[3])->forces = tgr_addr32(CP_AT(car, 0xD50));
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[0])->forces) + 0x08) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[0])->forces) + 0x0C) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[0])->forces) + 0x10) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[1])->forces) + 0x08) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[1])->forces) + 0x0C) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[1])->forces) + 0x10) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[2])->forces) + 0x08) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[2])->forces) + 0x0C) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[2])->forces) + 0x10) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[3])->forces) + 0x08) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[3])->forces) + 0x0C) = 0.0f;
-  *(float *)(TGR_PTR(char *, TGR_PTR(struct BrCarWheel *, car->wheel[3])->forces) + 0x10) = 0.0f;
-  BrTyreSprings(CP_AT(car, 0x148));
-  if (*(int *)CP_AT(car, 0xE54) == 0) {
-    *(float *)CP_AT(car, 0xE44) = 0.0f;
-    *(float *)CP_AT(car, 0xE4C) = 0.0f;
-    *(unsigned char *)CP_AT(car, 0xE50) = 0;
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[0]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[1]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[2]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[3]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), 0.033333335f);
+  car->body[0].forces = &car->forcerec[0];
+  car->body[0].sub[0]->forces = &car->forcerec[12];
+  car->body[0].sub[1]->forces = &car->forcerec[14];
+  car->body[0].sub[2]->forces = &car->forcerec[13];
+  car->body[0].sub[3]->forces = &car->forcerec[15];
+  ((BrRbBody *)(car->body[0].sub[0]))->forces->f[0] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[0]))->forces->f[1] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[0]))->forces->f[2] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[1]))->forces->f[0] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[1]))->forces->f[1] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[1]))->forces->f[2] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[2]))->forces->f[0] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[2]))->forces->f[1] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[2]))->forces->f[2] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[3]))->forces->f[0] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[3]))->forces->f[1] = 0.0f;
+  ((BrRbBody *)(car->body[0].sub[3]))->forces->f[2] = 0.0f;
+  BrTyreSprings(((char *)&(car)->body[0]));
+  if (*(int *)((char *)&(car)->pade44[0x10]) == 0) {
+    *(float *)((char *)&(car)->pade44[0x0]) = 0.0f;
+    *(float *)((char *)&(car)->pade44[0x8]) = 0.0f;
+    *(unsigned char *)((char *)&(car)->pade44[0xC]) = 0;
+    BrWheelTyre(((char *)&(car)->body[0]), ((BrRbBody *)(car->body[0].sub[0])), (float *)((char *)&(car)->pade44[0x8]), (unsigned char *)((char *)&(car)->pade44[0xC]), 0.033333335f);
+    BrWheelTyre(((char *)&(car)->body[0]), ((BrRbBody *)(car->body[0].sub[1])), (float *)((char *)&(car)->pade44[0x8]), (unsigned char *)((char *)&(car)->pade44[0xC]), 0.033333335f);
+    BrWheelTyre(((char *)&(car)->body[0]), ((BrRbBody *)(car->body[0].sub[2])), (float *)((char *)&(car)->pade44[0x0]), (unsigned char *)((char *)&(car)->pade44[0x4]), 0.033333335f);
+    BrWheelTyre(((char *)&(car)->body[0]), ((BrRbBody *)(car->body[0].sub[3])), (float *)((char *)&(car)->pade44[0x0]), (unsigned char *)((char *)&(car)->pade44[0x4]), 0.033333335f);
   }
-  *(int *)CP_AT(car, 0xE54) = 0;
-  *(float *)CP_AT(car, 0x244) = 0.0f;
-  *(float *)CP_AT(car, 0x248) = 0.0f;
-  *(float *)CP_AT(car, 0x24C) = 0.0f;
-  *(float *)CP_AT(car, 0x250) = 0.0f;
-  *(float *)CP_AT(car, 0x254) = 0.0f;
-  *(float *)CP_AT(car, 0x258) = 0.0f;
-  BrRbForcesClear(CP_AT(car, 0x148));
-  BrRbIntegrate(&car->st, CP_AT(car, 0x148), 0.033333335f);
-  BrCarAxleGrip(CP_AT(car, 0x148), 0.033333335f, (float *)CP_AT(car, 0xE4C), (float *)CP_AT(car, 0xE44),
-                (unsigned char *)CP_AT(car, 0xE50), (unsigned char *)CP_AT(car, 0xE48));
-  BrRbQuatDerivative(&car->st);
-  *(TgrAddr *)CP_AT(car, 0x160) = tgr_addr32(CP_AT(car, 0xBF0));
-  TGR_PTR(struct BrCarWheel *, car->wheel[0])->forces = 0;
-  TGR_PTR(struct BrCarWheel *, car->wheel[2])->forces = 0;
-  TGR_PTR(struct BrCarWheel *, car->wheel[1])->forces = 0;
-  TGR_PTR(struct BrCarWheel *, car->wheel[3])->forces = 0;
-  BrTyreSkidCheck(CP_AT(car, 0x148), CP_AT(car, 0xCD0));
-  BrTyreLoads(CP_AT(car, 0x148));
-  *(float *)CP_AT(car, 0x244) = 0.0f;
-  *(float *)CP_AT(car, 0x248) = 0.0f;
-  *(float *)CP_AT(car, 0x24C) = 0.0f;
-  *(float *)CP_AT(car, 0x250) = 0.0f;
-  *(float *)CP_AT(car, 0x254) = 0.0f;
-  *(float *)CP_AT(car, 0x258) = 0.0f;
-  BrRbForcesClear(CP_AT(car, 0x148));
-  memcpy((char *)&car->stB, (char *)&car->st, sizeof(BrRbState));
-  BrRbIntegrate(&car->stB, CP_AT(car, 0x148), 0.033333335f);
+  *(int *)((char *)&(car)->pade44[0x10]) = 0;
+  *(float *)((char *)&(car)->body[0].force[0]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].force[1]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].force[2]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[0]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[1]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[2]) = 0.0f;
+  BrRbForcesClear(((char *)&(car)->body[0]));
+  BrRbIntegrate(&car->body[0].st, ((char *)&(car)->body[0]), 0.033333335f);
+  BrCarAxleGrip(((char *)&(car)->body[0]), 0.033333335f, (float *)((char *)&(car)->pade44[0x8]), (float *)((char *)&(car)->pade44[0x0]),
+                (unsigned char *)((char *)&(car)->pade44[0xC]), (unsigned char *)((char *)&(car)->pade44[0x4]));
+  BrRbQuatDerivative(&car->body[0].st);
+  car->body[0].forces = &car->forcerec[4];
+  ((BrRbBody *)(car->body[0].sub[0]))->forces = 0;
+  ((BrRbBody *)(car->body[0].sub[2]))->forces = 0;
+  ((BrRbBody *)(car->body[0].sub[1]))->forces = 0;
+  ((BrRbBody *)(car->body[0].sub[3]))->forces = 0;
+  BrTyreSkidCheck(((char *)&(car)->body[0]), ((char *)&(car)->forcerec[11]));
+  BrTyreLoads(((char *)&(car)->body[0]));
+  *(float *)((char *)&(car)->body[0].force[0]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].force[1]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].force[2]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[0]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[1]) = 0.0f;
+  *(float *)((char *)&(car)->body[0].torque[2]) = 0.0f;
+  BrRbForcesClear(((char *)&(car)->body[0]));
+  memcpy((char *)&car->body[0].stB, (char *)&car->body[0].st, sizeof(BrRbState));
+  BrRbIntegrate(&car->body[0].stB, ((char *)&(car)->body[0]), 0.033333335f);
   for (i = 0; i < 3; i++) {
-    if (((&car->st.angVel.x)[i] == 0.0f ? 0.0f : ((&car->st.angVel.x)[i] > 0.0f ? 1.0f : -1.0f)) !=
-        ((&car->stB.angVel.x)[i] == 0.0f ? 0.0f : ((&car->stB.angVel.x)[i] > 0.0f ? 1.0f : -1.0f))) {
-      (&car->st.angVel.x)[i] = 0.0f;
+    if (((&car->body[0].st.angVel.x)[i] == 0.0f ? 0.0f : ((&car->body[0].st.angVel.x)[i] > 0.0f ? 1.0f : -1.0f)) !=
+        ((&car->body[0].stB.angVel.x)[i] == 0.0f ? 0.0f : ((&car->body[0].stB.angVel.x)[i] > 0.0f ? 1.0f : -1.0f))) {
+      (&car->body[0].st.angVel.x)[i] = 0.0f;
     } else {
-      (&car->st.angVel.x)[i] = (&car->stB.angVel.x)[i];
+      (&car->body[0].st.angVel.x)[i] = (&car->body[0].stB.angVel.x)[i];
     }
-    if (((&car->st.vel.x)[i] == 0.0f ? 0.0f : ((&car->st.vel.x)[i] > 0.0f ? 1.0f : -1.0f)) !=
-        ((&car->stB.vel.x)[i] == 0.0f ? 0.0f : ((&car->stB.vel.x)[i] > 0.0f ? 1.0f : -1.0f))) {
-      (&car->st.vel.x)[i] = 0.0f;
+    if (((&car->body[0].st.vel.x)[i] == 0.0f ? 0.0f : ((&car->body[0].st.vel.x)[i] > 0.0f ? 1.0f : -1.0f)) !=
+        ((&car->body[0].stB.vel.x)[i] == 0.0f ? 0.0f : ((&car->body[0].stB.vel.x)[i] > 0.0f ? 1.0f : -1.0f))) {
+      (&car->body[0].st.vel.x)[i] = 0.0f;
     } else {
-      (&car->st.vel.x)[i] = (&car->stB.vel.x)[i];
+      (&car->body[0].st.vel.x)[i] = (&car->body[0].stB.vel.x)[i];
     }
   }
-  memcpy((char *)&car->stA, (char *)&car->st, sizeof(BrRbState));
-  BrRbQuatDerivative(&car->stA);
-  BrRbQuatDerivative(&car->stA);
-  BrCarPhysAdvance(CP_AT(car, 0x148));
-  memcpy((char *)&car->st, (char *)&car->stB, sizeof(BrRbState));
-  BrTyreDepthAll(CP_AT(car, 0x148));
-  BrQuatToMat((float *)TGR_PTR(struct BrCarWheel *, car->wheel[0])->mtx, (float *)TGR_PTR(struct BrCarWheel *, car->wheel[0])->state);
-  BrQuatToMat((float *)TGR_PTR(struct BrCarWheel *, car->wheel[1])->mtx, (float *)TGR_PTR(struct BrCarWheel *, car->wheel[1])->state);
-  BrQuatToMat((float *)TGR_PTR(struct BrCarWheel *, car->wheel[2])->mtx, (float *)TGR_PTR(struct BrCarWheel *, car->wheel[2])->state);
-  BrQuatToMat((float *)TGR_PTR(struct BrCarWheel *, car->wheel[3])->mtx, (float *)TGR_PTR(struct BrCarWheel *, car->wheel[3])->state);
+  memcpy((char *)&car->body[0].stA, (char *)&car->body[0].st, sizeof(BrRbState));
+  BrRbQuatDerivative(&car->body[0].stA);
+  BrRbQuatDerivative(&car->body[0].stA);
+  BrCarPhysAdvance(((char *)&(car)->body[0]));
+  memcpy((char *)&car->body[0].st, (char *)&car->body[0].stB, sizeof(BrRbState));
+  BrTyreDepthAll(((char *)&(car)->body[0]));
+  BrQuatToMat((float *)((BrRbBody *)(car->body[0].sub[0]))->mtx, (float *)((BrRbBody *)(car->body[0].sub[0]))->state);
+  BrQuatToMat((float *)((BrRbBody *)(car->body[0].sub[1]))->mtx, (float *)((BrRbBody *)(car->body[0].sub[1]))->state);
+  BrQuatToMat((float *)((BrRbBody *)(car->body[0].sub[2]))->mtx, (float *)((BrRbBody *)(car->body[0].sub[2]))->state);
+  BrQuatToMat((float *)((BrRbBody *)(car->body[0].sub[3]))->mtx, (float *)((BrRbBody *)(car->body[0].sub[3]))->state);
   BrPerfMark(0, 0, 0x80, 0, 0xFF);
 }
 
@@ -244,8 +216,8 @@ void BrCarDriveInput(BrCar *car)
   short k;
   int g;
 
-  s = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->steer;
-  if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->kind == 4) {
+  s = ((BrDrivePad *)((unsigned int *)(car->pad)))->steer;
+  if (((BrDrivePad *)((unsigned int *)(car->pad)))->kind == 4) {
     a = s < 0.0f ? -s : s;
     car->xdf0 = -(SGN(s) * sqrtf(sqrtf(a) * sqrtf(sqrtf(a) * a))) * 10.0f * 3.1415927f / 180.0f;
   } else {
@@ -261,8 +233,8 @@ void BrCarDriveInput(BrCar *car)
       }
     }
     sp = car->xfe4[0];
-    sqrtf(car->st.vel.z * car->st.vel.z + (car->st.vel.x * car->st.vel.x + car->st.vel.y * car->st.vel.y));
-    BrMat4RotateVec(v, car->stMtx, &car->st.vel);
+    sqrtf(car->body[0].st.vel.z * car->body[0].st.vel.z + (car->body[0].st.vel.x * car->body[0].st.vel.x + car->body[0].st.vel.y * car->body[0].st.vel.y));
+    BrMat4RotateVec(v, car->body[0].m, &car->body[0].st.vel);
     t = v[0];
     if (t < 10.0f) {
       t = 10.0f;
@@ -336,24 +308,24 @@ void BrCarDriveInput(BrCar *car)
     k = SGN(tgt) != SGN(car->xdf0) || (0.0f < car->xdf0 && tgt < car->xdf0) || (car->xdf0 < 0.0f && car->xdf0 < tgt);
     if (car->xdf0 == 0.0f) {
       k = 0;
-      *(signed char *)CP_AT(car, 0xE51) = 0;
+      *(signed char *)((char *)&(car)->pade44[0xD]) = 0;
     }
     g = tgt < car->xdf0;
     ctlt = car->xdf0 < tgt;
-    if (g && *(signed char *)CP_AT(car, 0xE51) < 0) {
+    if (g && *(signed char *)((char *)&(car)->pade44[0xD]) < 0) {
       k = 1;
     }
-    if (ctlt && *(signed char *)CP_AT(car, 0xE51) > 0) {
+    if (ctlt && *(signed char *)((char *)&(car)->pade44[0xD]) > 0) {
       k = 1;
     }
     if (k) {
-      *(signed char *)CP_AT(car, 0xE51) = g ? -1 : 1;
+      *(signed char *)((char *)&(car)->pade44[0xD]) = g ? -1 : 1;
       rate = 1.0f;
       if (SGN(car->xdf0) != SGN(tgt)) {
         tgt = 0.0f;
       }
     } else {
-      *(signed char *)CP_AT(car, 0xE51) = 0;
+      *(signed char *)((char *)&(car)->pade44[0xD]) = 0;
     }
     if ((car->xdf0 < tgt ? -(car->xdf0 - tgt) : car->xdf0 - tgt) < rate) {
       car->xdf0 = tgt;
@@ -371,20 +343,20 @@ void BrCarDriveInput(BrCar *car)
     g = car->xe40;
     if (g >= 2 && car->xdf4 < 4000.0f) {
       car->xe40 = g - 1;
-    } else if (g < car->xe28[0] && 6000.0f < car->xdf4 && !(((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x20000)) {
+    } else if (g < car->xe28[0] && 6000.0f < car->xdf4 && !(((BrDrivePad *)((unsigned int *)(car->pad)))->flags & 0x20000)) {
       car->xe40 = g + 1;
     }
-    flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
-  } else if (car->xe40 > 0 && (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x200000)) {
-    BrPadConsume((BrDrivePad *)TGR_PTR(unsigned int *, car->pad), 0x200000);
+    flags = ((BrDrivePad *)((unsigned int *)(car->pad)))->flags;
+  } else if (car->xe40 > 0 && (((BrDrivePad *)((unsigned int *)(car->pad)))->flags & 0x200000)) {
+    BrPadConsume((BrDrivePad *)((unsigned int *)(car->pad)), 0x200000);
     car->xe40--;
-    flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
+    flags = ((BrDrivePad *)((unsigned int *)(car->pad)))->flags;
   } else {
-    flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
+    flags = ((BrDrivePad *)((unsigned int *)(car->pad)))->flags;
     if (car->xe40 < car->xe28[0] && (flags & 0x100000) && !(flags & 0x20000)) {
-      BrPadConsume((BrDrivePad *)TGR_PTR(unsigned int *, car->pad), 0x100000);
+      BrPadConsume((BrDrivePad *)((unsigned int *)(car->pad)), 0x100000);
       car->xe40++;
-      flags = ((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags;
+      flags = ((BrDrivePad *)((unsigned int *)(car->pad)))->flags;
     }
   }
   lo = 0.0f;
@@ -408,7 +380,7 @@ void BrCarDriveInput(BrCar *car)
   }
   g = 0;
   car->xe38 = t * 7.0f;
-  if (TGR_PTR(struct BrCarLink *, car->link)->flags & 1) {
+  if (((struct BrCarLink *)(car->link))->flags & 1) {
     car->xe40 = 0;
   } else {
     g = car->xe40;
@@ -418,9 +390,9 @@ void BrCarDriveInput(BrCar *car)
     }
   }
   if (g != 0) {
-    car->xdf4 = (-(*(float *)CP_AT(car, 0x71C) / 6.2831855f) * 60.0f * car->xe24) * ((float *)car->xdf8)[g];
+    car->xdf4 = (-(*(float *)((char *)&(car)->body[2].spin) / 6.2831855f) * 60.0f * car->xe24) * ((float *)car->xdf8)[g];
   } else {
-    if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x10000) {
+    if (((BrDrivePad *)((unsigned int *)(car->pad)))->flags & 0x10000) {
       car->xdf4 += 300.0f;
     } else {
       car->xdf4 -= 200.0f;
@@ -442,7 +414,7 @@ void BrCarDriveInput(BrCar *car)
   }
   car->xdf4 = old + lim;
   car->xe3c = 0;
-  if (((BrDrivePad *)TGR_PTR(unsigned int *, car->pad))->flags & 0x40000) {
+  if (((BrDrivePad *)((unsigned int *)(car->pad)))->flags & 0x40000) {
     car->xe3c = -140000.0f;
   }
 }
@@ -463,173 +435,173 @@ void BrCarDriveInput(BrCar *car)
 /* @implements 0x80222D54 tgr BrCarPhysInit */
 void BrCarPhysInit(BrCar *car)
 {
-  *(int *)CP_AT(car, 0xE54) = 1;
-  *(int *)CP_AT(car, 0xE40) = 0;
-  *(float *)CP_AT(car, 0xDF0) = 0.0f;
-  *(float *)CP_AT(car, 0xDF4) = 0.0f;
+  *(int *)((char *)&(car)->pade44[0x10]) = 1;
+  *(int *)((char *)&(car)->xe40) = 0;
+  *(float *)((char *)&(car)->xdf0) = 0.0f;
+  *(float *)((char *)&(car)->xdf4) = 0.0f;
   if (car->model != 0) {
-    CP_BODY(car, 0x148)->shape = 1;
-    CP_BODY(car, 0x148)->h = 2.0f;
-    CP_BODY(car, 0x148)->mass = 1000.0f;
-    CP_BODY(car, 0x148)->w = 3.5f;
-    CP_BODY(car, 0x148)->d = 1.5f;
-    BrRbBodyInit(CP_BODY(car, 0x148));
-    CP_BODY(car, 0x148)->pos[0] = 0.0f;
-    CP_BODY(car, 0x148)->pos[1] = 0.0f;
-    CP_BODY(car, 0x148)->pos[2] = 2.0f;
-    CP_BODY(car, 0x148)->vel[0] = 0.0f;
-    CP_BODY(car, 0x148)->vel[1] = 0.0f;
-    CP_BODY(car, 0x148)->vel[2] = 0.0f;
-    CP_BODY(car, 0x148)->q[1] = 0.0f;
-    CP_BODY(car, 0x148)->q[2] = 0.0f;
-    CP_BODY(car, 0x148)->q[3] = 0.0f;
-    CP_BODY(car, 0x148)->omega[0] = 0.0f;
-    CP_BODY(car, 0x148)->omega[1] = 0.0f;
-    CP_BODY(car, 0x148)->omega[2] = 0.0f;
-    CP_BODY(car, 0x148)->q[0] = 1.0f;
-    BrQuatToMat((float *)CP_BODY(car, 0x148)->mtx, CP_BODY(car, 0x148)->pos);
-    CP_BODY(car, 0x148)->spring = (car->xe64 * 4.0f + 20.0f) * 16000.0f;
-    CP_BODY(car, 0x148)->damper = -3000.0f;
-    CP_BODY(car, 0x350)->x19c = 0;
-    CP_BODY(car, 0x350)->shape = 2;
-    CP_BODY(car, 0x350)->mass = 0.0f;
-    CP_BODY(car, 0x350)->w = 0.0f;
-    CP_BODY(car, 0x350)->h = 0.0f;
-    CP_BODY(car, 0x350)->d = 0.0f;
-    CP_BODY(car, 0x350)->x1d8 = 0;
-    CP_BODY(car, 0x350)->x1c4 = 0;
-    BrRbBodyInit(CP_BODY(car, 0x350));
-    CP_BODY(car, 0x350)->pos[0] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->frontX);
-    CP_BODY(car, 0x350)->pos[1] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->frontY);
-    CP_BODY(car, 0x350)->pos[2] = -0.1f;
-    CP_BODY(car, 0x350)->vel[2] = 0.0f;
-    CP_BODY(car, 0x350)->vel[1] = 0.0f;
-    CP_BODY(car, 0x350)->vel[0] = 0.0f;
-    CP_BODY(car, 0x350)->q[3] = 0.0f;
-    CP_BODY(car, 0x350)->q[2] = 0.0f;
-    CP_BODY(car, 0x350)->q[1] = 0.0f;
-    CP_BODY(car, 0x350)->q[0] = 1.0f;
-    CP_BODY(car, 0x350)->omega[2] = 0.0f;
-    CP_BODY(car, 0x350)->omega[1] = 0.0f;
-    CP_BODY(car, 0x350)->omega[0] = 0.0f;
-    BrQuatToMat((float *)CP_BODY(car, 0x350)->mtx, CP_BODY(car, 0x350)->pos);
-    CP_BODY(car, 0x760)->x1d8 = 0;
-    CP_BODY(car, 0x760)->x19c = 0;
-    CP_BODY(car, 0x760)->x1c4 = 0;
-    CP_BODY(car, 0x760)->shape = 2;
-    CP_BODY(car, 0x760)->mass = 0.0f;
-    CP_BODY(car, 0x760)->w = 0.0f;
-    CP_BODY(car, 0x760)->h = 0.0f;
-    CP_BODY(car, 0x760)->d = 0.0f;
-    BrRbBodyInit(CP_BODY(car, 0x760));
-    CP_BODY(car, 0x760)->pos[0] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->frontX);
-    CP_BODY(car, 0x760)->pos[1] = -BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->frontY);
-    CP_BODY(car, 0x760)->pos[2] = -0.1f;
-    CP_BODY(car, 0x760)->vel[2] = 0.0f;
-    CP_BODY(car, 0x760)->vel[1] = 0.0f;
-    CP_BODY(car, 0x760)->vel[0] = 0.0f;
-    CP_BODY(car, 0x760)->q[3] = 0.0f;
-    CP_BODY(car, 0x760)->q[2] = 0.0f;
-    CP_BODY(car, 0x760)->q[1] = 0.0f;
-    CP_BODY(car, 0x760)->q[0] = 1.0f;
-    CP_BODY(car, 0x760)->omega[2] = 0.0f;
-    CP_BODY(car, 0x760)->omega[1] = 0.0f;
-    CP_BODY(car, 0x760)->omega[0] = 0.0f;
-    BrQuatToMat((float *)CP_BODY(car, 0x760)->mtx, CP_BODY(car, 0x760)->pos);
-    CP_BODY(car, 0x558)->x1d8 = 0;
-    CP_BODY(car, 0x558)->x19c = 0;
-    CP_BODY(car, 0x558)->x1c4 = 0;
-    CP_BODY(car, 0x558)->shape = 2;
-    CP_BODY(car, 0x558)->mass = 0.0f;
-    CP_BODY(car, 0x558)->w = 0.0f;
-    CP_BODY(car, 0x558)->h = 0.0f;
-    CP_BODY(car, 0x558)->d = 0.0f;
-    BrRbBodyInit(CP_BODY(car, 0x558));
-    CP_BODY(car, 0x558)->pos[0] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->rearX);
-    CP_BODY(car, 0x558)->pos[1] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->rearY);
-    CP_BODY(car, 0x558)->pos[2] = -0.1f;
-    CP_BODY(car, 0x558)->vel[2] = 0.0f;
-    CP_BODY(car, 0x558)->vel[1] = 0.0f;
-    CP_BODY(car, 0x558)->vel[0] = 0.0f;
-    CP_BODY(car, 0x558)->q[3] = 0.0f;
-    CP_BODY(car, 0x558)->q[2] = 0.0f;
-    CP_BODY(car, 0x558)->q[1] = 0.0f;
-    CP_BODY(car, 0x558)->q[0] = 1.0f;
-    CP_BODY(car, 0x558)->omega[2] = 0.0f;
-    CP_BODY(car, 0x558)->omega[1] = 0.0f;
-    CP_BODY(car, 0x558)->omega[0] = 0.0f;
-    BrQuatToMat((float *)CP_BODY(car, 0x558)->mtx, CP_BODY(car, 0x558)->pos);
-    CP_BODY(car, 0x968)->x1d8 = 0;
-    CP_BODY(car, 0x968)->x19c = 0;
-    CP_BODY(car, 0x968)->x1c4 = 0;
-    CP_BODY(car, 0x968)->shape = 2;
-    CP_BODY(car, 0x968)->mass = 0.0f;
-    CP_BODY(car, 0x968)->w = 0.0f;
-    CP_BODY(car, 0x968)->h = 0.0f;
-    CP_BODY(car, 0x968)->d = 0.0f;
-    BrRbBodyInit(CP_BODY(car, 0x968));
-    CP_BODY(car, 0x968)->pos[0] = BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->rearX);
-    CP_BODY(car, 0x968)->pos[1] = -BEF(((BrCarMounts *)TGR_PTR(char *, car->model))->rearY);
-    CP_BODY(car, 0x968)->pos[2] = -0.1f;
-    CP_BODY(car, 0x968)->vel[2] = 0.0f;
-    CP_BODY(car, 0x968)->vel[1] = 0.0f;
-    CP_BODY(car, 0x968)->vel[0] = 0.0f;
-    CP_BODY(car, 0x968)->q[3] = 0.0f;
-    CP_BODY(car, 0x968)->q[2] = 0.0f;
-    CP_BODY(car, 0x968)->q[1] = 0.0f;
-    CP_BODY(car, 0x968)->q[0] = 1.0f;
-    CP_BODY(car, 0x968)->omega[2] = 0.0f;
-    CP_BODY(car, 0x968)->omega[1] = 0.0f;
-    CP_BODY(car, 0x968)->omega[0] = 0.0f;
-    BrQuatToMat((float *)CP_BODY(car, 0x968)->mtx, CP_BODY(car, 0x968)->pos);
-    car->wheel[0] = tgr_addr32((struct BrCarWheel *)CP_AT(car, 0x350));
-    car->wheel[1] = tgr_addr32((struct BrCarWheel *)CP_AT(car, 0x760));
-    car->wheel[2] = tgr_addr32((struct BrCarWheel *)CP_AT(car, 0x558));
-    car->wheel[3] = tgr_addr32((struct BrCarWheel *)CP_AT(car, 0x968));
-    BrRbSetParams(CP_AT(car, 0xB70), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xBB0), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xB90), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xBD0), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xC70), 0.0f, 0.0f, -15450.75f, 0.0f, 0.0f, 0.0f, 0);
-    BrRbSetParams(CP_AT(car, 0xC90), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
-    BrRbSetParams(CP_AT(car, 0xCB0), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
-    *(TgrAddr *)CP_AT(car, 0xB70) = tgr_addr32(CP_AT(car, 0xBB0));
-    *(TgrAddr *)CP_AT(car, 0xBB0) = tgr_addr32(CP_AT(car, 0xB90));
-    *(TgrAddr *)CP_AT(car, 0xB90) = tgr_addr32(CP_AT(car, 0xBD0));
-    *(TgrAddr *)CP_AT(car, 0xBD0) = tgr_addr32(CP_AT(car, 0xC70));
-    *(TgrAddr *)CP_AT(car, 0xC70) = 0;
-    *(TgrAddr *)CP_AT(car, 0x160) = tgr_addr32(CP_AT(car, 0xB70));
-    BrRbSetParams(CP_AT(car, 0xCF0), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xD30), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xD10), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xD50), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
-    *(TgrAddr *)CP_AT(car, 0x368) = tgr_addr32(CP_AT(car, 0xCF0));
-    *(TgrAddr *)CP_AT(car, 0x778) = tgr_addr32(CP_AT(car, 0xD30));
-    *(TgrAddr *)CP_AT(car, 0x570) = tgr_addr32(CP_AT(car, 0xD10));
-    *(TgrAddr *)CP_AT(car, 0x980) = tgr_addr32(CP_AT(car, 0xD50));
-    *(TgrAddr *)CP_AT(car, 0xCB0) = 0;
-    *(TgrAddr *)CP_AT(car, 0xC90) = 0;
-    *(TgrAddr *)CP_AT(car, 0xCF0) = tgr_addr32(CP_AT(car, 0xCB0));
-    *(TgrAddr *)CP_AT(car, 0xD30) = tgr_addr32(CP_AT(car, 0xCB0));
-    *(TgrAddr *)CP_AT(car, 0xD10) = tgr_addr32(CP_AT(car, 0xC90));
-    *(TgrAddr *)CP_AT(car, 0xD50) = tgr_addr32(CP_AT(car, 0xC90));
-    BrRbSetParams(CP_AT(car, 0xBF0), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xC30), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xC10), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xC50), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
-    BrRbSetParams(CP_AT(car, 0xCD0), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
-    *(TgrAddr *)CP_AT(car, 0xBF0) = tgr_addr32(CP_AT(car, 0xC30));
-    *(TgrAddr *)CP_AT(car, 0xC30) = tgr_addr32(CP_AT(car, 0xC10));
-    *(TgrAddr *)CP_AT(car, 0xC10) = tgr_addr32(CP_AT(car, 0xC50));
-    *(TgrAddr *)CP_AT(car, 0xCD0) = 0;
-    *(unsigned char *)CP_AT(car, 0xE51) = 0;
-    *(float *)CP_AT(car, 0xE44) = 0;
-    *(float *)CP_AT(car, 0xE4C) = 0;
-    *(TgrAddr *)CP_AT(car, 0xC50) = tgr_addr32(CP_AT(car, 0xCD0));
-    *(unsigned char *)CP_AT(car, 0x345) = car->xe60;
+    (&(car)->body[0])->shape = 1;
+    (&(car)->body[0])->h = 2.0f;
+    (&(car)->body[0])->mass = 1000.0f;
+    (&(car)->body[0])->w = 3.5f;
+    (&(car)->body[0])->d = 1.5f;
+    BrRbBodyInit((&(car)->body[0]));
+    (&(car)->body[0])->pos[0] = 0.0f;
+    (&(car)->body[0])->pos[1] = 0.0f;
+    (&(car)->body[0])->pos[2] = 2.0f;
+    (&(car)->body[0])->vel[0] = 0.0f;
+    (&(car)->body[0])->vel[1] = 0.0f;
+    (&(car)->body[0])->vel[2] = 0.0f;
+    (&(car)->body[0])->q[1] = 0.0f;
+    (&(car)->body[0])->q[2] = 0.0f;
+    (&(car)->body[0])->q[3] = 0.0f;
+    (&(car)->body[0])->omega[0] = 0.0f;
+    (&(car)->body[0])->omega[1] = 0.0f;
+    (&(car)->body[0])->omega[2] = 0.0f;
+    (&(car)->body[0])->q[0] = 1.0f;
+    BrQuatToMat((float *)(&(car)->body[0])->mtx, (&(car)->body[0])->pos);
+    (&(car)->body[0])->spring = (car->xe64 * 4.0f + 20.0f) * 16000.0f;
+    (&(car)->body[0])->damper = -3000.0f;
+    (&(car)->body[1])->hit = 0;
+    (&(car)->body[1])->shape = 2;
+    (&(car)->body[1])->mass = 0.0f;
+    (&(car)->body[1])->w = 0.0f;
+    (&(car)->body[1])->h = 0.0f;
+    (&(car)->body[1])->d = 0.0f;
+    (&(car)->body[1])->x1d8 = 0;
+    (&(car)->body[1])->x1c4 = 0;
+    BrRbBodyInit((&(car)->body[1]));
+    (&(car)->body[1])->pos[0] = BEF(((BrCarMounts *)((char *)(car->model)))->frontX);
+    (&(car)->body[1])->pos[1] = BEF(((BrCarMounts *)((char *)(car->model)))->frontY);
+    (&(car)->body[1])->pos[2] = -0.1f;
+    (&(car)->body[1])->vel[2] = 0.0f;
+    (&(car)->body[1])->vel[1] = 0.0f;
+    (&(car)->body[1])->vel[0] = 0.0f;
+    (&(car)->body[1])->q[3] = 0.0f;
+    (&(car)->body[1])->q[2] = 0.0f;
+    (&(car)->body[1])->q[1] = 0.0f;
+    (&(car)->body[1])->q[0] = 1.0f;
+    (&(car)->body[1])->omega[2] = 0.0f;
+    (&(car)->body[1])->omega[1] = 0.0f;
+    (&(car)->body[1])->omega[0] = 0.0f;
+    BrQuatToMat((float *)(&(car)->body[1])->mtx, (&(car)->body[1])->pos);
+    (&(car)->body[3])->x1d8 = 0;
+    (&(car)->body[3])->hit = 0;
+    (&(car)->body[3])->x1c4 = 0;
+    (&(car)->body[3])->shape = 2;
+    (&(car)->body[3])->mass = 0.0f;
+    (&(car)->body[3])->w = 0.0f;
+    (&(car)->body[3])->h = 0.0f;
+    (&(car)->body[3])->d = 0.0f;
+    BrRbBodyInit((&(car)->body[3]));
+    (&(car)->body[3])->pos[0] = BEF(((BrCarMounts *)((char *)(car->model)))->frontX);
+    (&(car)->body[3])->pos[1] = -BEF(((BrCarMounts *)((char *)(car->model)))->frontY);
+    (&(car)->body[3])->pos[2] = -0.1f;
+    (&(car)->body[3])->vel[2] = 0.0f;
+    (&(car)->body[3])->vel[1] = 0.0f;
+    (&(car)->body[3])->vel[0] = 0.0f;
+    (&(car)->body[3])->q[3] = 0.0f;
+    (&(car)->body[3])->q[2] = 0.0f;
+    (&(car)->body[3])->q[1] = 0.0f;
+    (&(car)->body[3])->q[0] = 1.0f;
+    (&(car)->body[3])->omega[2] = 0.0f;
+    (&(car)->body[3])->omega[1] = 0.0f;
+    (&(car)->body[3])->omega[0] = 0.0f;
+    BrQuatToMat((float *)(&(car)->body[3])->mtx, (&(car)->body[3])->pos);
+    (&(car)->body[2])->x1d8 = 0;
+    (&(car)->body[2])->hit = 0;
+    (&(car)->body[2])->x1c4 = 0;
+    (&(car)->body[2])->shape = 2;
+    (&(car)->body[2])->mass = 0.0f;
+    (&(car)->body[2])->w = 0.0f;
+    (&(car)->body[2])->h = 0.0f;
+    (&(car)->body[2])->d = 0.0f;
+    BrRbBodyInit((&(car)->body[2]));
+    (&(car)->body[2])->pos[0] = BEF(((BrCarMounts *)((char *)(car->model)))->rearX);
+    (&(car)->body[2])->pos[1] = BEF(((BrCarMounts *)((char *)(car->model)))->rearY);
+    (&(car)->body[2])->pos[2] = -0.1f;
+    (&(car)->body[2])->vel[2] = 0.0f;
+    (&(car)->body[2])->vel[1] = 0.0f;
+    (&(car)->body[2])->vel[0] = 0.0f;
+    (&(car)->body[2])->q[3] = 0.0f;
+    (&(car)->body[2])->q[2] = 0.0f;
+    (&(car)->body[2])->q[1] = 0.0f;
+    (&(car)->body[2])->q[0] = 1.0f;
+    (&(car)->body[2])->omega[2] = 0.0f;
+    (&(car)->body[2])->omega[1] = 0.0f;
+    (&(car)->body[2])->omega[0] = 0.0f;
+    BrQuatToMat((float *)(&(car)->body[2])->mtx, (&(car)->body[2])->pos);
+    (&(car)->body[4])->x1d8 = 0;
+    (&(car)->body[4])->hit = 0;
+    (&(car)->body[4])->x1c4 = 0;
+    (&(car)->body[4])->shape = 2;
+    (&(car)->body[4])->mass = 0.0f;
+    (&(car)->body[4])->w = 0.0f;
+    (&(car)->body[4])->h = 0.0f;
+    (&(car)->body[4])->d = 0.0f;
+    BrRbBodyInit((&(car)->body[4]));
+    (&(car)->body[4])->pos[0] = BEF(((BrCarMounts *)((char *)(car->model)))->rearX);
+    (&(car)->body[4])->pos[1] = -BEF(((BrCarMounts *)((char *)(car->model)))->rearY);
+    (&(car)->body[4])->pos[2] = -0.1f;
+    (&(car)->body[4])->vel[2] = 0.0f;
+    (&(car)->body[4])->vel[1] = 0.0f;
+    (&(car)->body[4])->vel[0] = 0.0f;
+    (&(car)->body[4])->q[3] = 0.0f;
+    (&(car)->body[4])->q[2] = 0.0f;
+    (&(car)->body[4])->q[1] = 0.0f;
+    (&(car)->body[4])->q[0] = 1.0f;
+    (&(car)->body[4])->omega[2] = 0.0f;
+    (&(car)->body[4])->omega[1] = 0.0f;
+    (&(car)->body[4])->omega[0] = 0.0f;
+    BrQuatToMat((float *)(&(car)->body[4])->mtx, (&(car)->body[4])->pos);
+    car->body[0].sub[0] = ((BrRbBody *)((char *)&(car)->body[1]));
+    car->body[0].sub[1] = ((BrRbBody *)((char *)&(car)->body[3]));
+    car->body[0].sub[2] = ((BrRbBody *)((char *)&(car)->body[2]));
+    car->body[0].sub[3] = ((BrRbBody *)((char *)&(car)->body[4]));
+    BrRbSetParams(((char *)&(car)->forcerec[0]), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[2]), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[1]), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[3]), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[8]), 0.0f, 0.0f, -15450.75f, 0.0f, 0.0f, 0.0f, 0);
+    BrRbSetParams(((char *)&(car)->forcerec[9]), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
+    BrRbSetParams(((char *)&(car)->forcerec[10]), 0.0f, 0.0f, -103.005005f, 0.0f, 0.0f, 0.0f, 0);
+    car->forcerec[0].next = &car->forcerec[2];
+    car->forcerec[2].next = &car->forcerec[1];
+    car->forcerec[1].next = &car->forcerec[3];
+    car->forcerec[3].next = &car->forcerec[8];
+    car->forcerec[8].next = 0;
+    car->body[0].forces = &car->forcerec[0];
+    BrRbSetParams(((char *)&(car)->forcerec[12]), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[14]), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[13]), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[15]), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1);
+    car->body[1].forces = &car->forcerec[12];
+    car->body[3].forces = &car->forcerec[14];
+    car->body[2].forces = &car->forcerec[13];
+    car->body[4].forces = &car->forcerec[15];
+    car->forcerec[10].next = 0;
+    car->forcerec[9].next = 0;
+    car->forcerec[12].next = &car->forcerec[10];
+    car->forcerec[14].next = &car->forcerec[10];
+    car->forcerec[13].next = &car->forcerec[9];
+    car->forcerec[15].next = &car->forcerec[9];
+    BrRbSetParams(((char *)&(car)->forcerec[4]), 0.0f, 0.0f, 0.0f, -1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[6]), 0.0f, 0.0f, 0.0f, -1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[5]), 0.0f, 0.0f, 0.0f, 1.5f, -1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[7]), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, 0.0f, 1);
+    BrRbSetParams(((char *)&(car)->forcerec[11]), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
+    car->forcerec[4].next = &car->forcerec[6];
+    car->forcerec[6].next = &car->forcerec[5];
+    car->forcerec[5].next = &car->forcerec[7];
+    car->forcerec[11].next = 0;
+    *(unsigned char *)((char *)&(car)->pade44[0xD]) = 0;
+    *(float *)((char *)&(car)->pade44[0x0]) = 0;
+    *(float *)((char *)&(car)->pade44[0x8]) = 0;
+    car->forcerec[7].next = &car->forcerec[11];
+    *(unsigned char *)((char *)&(car)->body[0].tyres) = car->xe60;
   }
-  *(unsigned char *)CP_AT(car, 0xE50) = 0;
-  *(unsigned char *)CP_AT(car, 0xE48) = 0;
+  *(unsigned char *)((char *)&(car)->pade44[0xC]) = 0;
+  *(unsigned char *)((char *)&(car)->pade44[0x4]) = 0;
 }
 
 /* WHAT IT DOES: Build the car's draw matrices from its body state: the body
@@ -643,30 +615,30 @@ void BrCarBuildMatrices(BrCar *car)
   float m[4][4];
   float steer[4][4];
 
-  guRotateF(m, car->spin, 1.0f, 0.0f, 0.0f);
-  guMtxCatF(m, car->stMtx, car->mtx0);
-  car->wheels[0].pos[2] += 0.254f;
-  car->wheels[1].pos[2] += 0.254f;
-  car->wheels[2].pos[2] += 0.254f;
-  car->wheels[3].pos[2] += 0.254f;
-  guRotateF(m, car->wheels[0].spin, 0.0f, 1.0f, 0.0f);
-  guMtxCatF(m, car->stMtx, car->wheelMtx[2]);
-  BrMat3MulVecRows(car->wheelMtx[2][3], car->stMtx, car->wheels[0].pos);
-  guRotateF(m, car->wheels[2].spin, 0.0f, 1.0f, 0.0f);
-  guMtxCatF(m, car->stMtx, car->wheelMtx[3]);
-  BrMat3MulVecRows(car->wheelMtx[3][3], car->stMtx, car->wheels[2].pos);
-  guRotateF(spin, car->wheels[1].spin, 0.0f, 1.0f, 0.0f);
-  guRotateF(steer, car->wheels[1].steer * 114.59155f, 0.0f, 0.0f, 1.0f);
+  guRotateF(m, car->body[0].angle, 1.0f, 0.0f, 0.0f);
+  guMtxCatF(m, car->body[0].m, car->mtx0);
+  car->body[1 + (0)].m[3][2] += 0.254f;
+  car->body[1 + (1)].m[3][2] += 0.254f;
+  car->body[1 + (2)].m[3][2] += 0.254f;
+  car->body[1 + (3)].m[3][2] += 0.254f;
+  guRotateF(m, car->body[1 + (0)].angle, 0.0f, 1.0f, 0.0f);
+  guMtxCatF(m, car->body[0].m, car->wheelMtx[2]);
+  BrMat3MulVecRows(car->wheelMtx[2][3], car->body[0].m, car->body[1 + (0)].m[3]);
+  guRotateF(m, car->body[1 + (2)].angle, 0.0f, 1.0f, 0.0f);
+  guMtxCatF(m, car->body[0].m, car->wheelMtx[3]);
+  BrMat3MulVecRows(car->wheelMtx[3][3], car->body[0].m, car->body[1 + (2)].m[3]);
+  guRotateF(spin, car->body[1 + (1)].angle, 0.0f, 1.0f, 0.0f);
+  guRotateF(steer, car->body[1 + (1)].steer * 114.59155f, 0.0f, 0.0f, 1.0f);
   guMtxCatF(spin, steer, m);
-  guMtxCatF(m, car->stMtx, car->wheelMtx[1]);
-  BrMat3MulVecRows(car->wheelMtx[1][3], car->stMtx, car->wheels[1].pos);
-  guRotateF(spin, car->wheels[3].spin, 0.0f, 1.0f, 0.0f);
-  guRotateF(steer, car->wheels[3].steer * 114.59155f, 0.0f, 0.0f, 1.0f);
+  guMtxCatF(m, car->body[0].m, car->wheelMtx[1]);
+  BrMat3MulVecRows(car->wheelMtx[1][3], car->body[0].m, car->body[1 + (1)].m[3]);
+  guRotateF(spin, car->body[1 + (3)].angle, 0.0f, 1.0f, 0.0f);
+  guRotateF(steer, car->body[1 + (3)].steer * 114.59155f, 0.0f, 0.0f, 1.0f);
   guMtxCatF(spin, steer, m);
-  guMtxCatF(m, car->stMtx, car->wheelMtx[0]);
-  BrMat3MulVecRows(car->wheelMtx[0][3], car->stMtx, car->wheels[3].pos);
-  car->wheels[0].pos[2] -= 0.254f;
-  car->wheels[1].pos[2] -= 0.254f;
-  car->wheels[2].pos[2] -= 0.254f;
-  car->wheels[3].pos[2] -= 0.254f;
+  guMtxCatF(m, car->body[0].m, car->wheelMtx[0]);
+  BrMat3MulVecRows(car->wheelMtx[0][3], car->body[0].m, car->body[1 + (3)].m[3]);
+  car->body[1 + (0)].m[3][2] -= 0.254f;
+  car->body[1 + (1)].m[3][2] -= 0.254f;
+  car->body[1 + (2)].m[3][2] -= 0.254f;
+  car->body[1 + (3)].m[3][2] -= 0.254f;
 }

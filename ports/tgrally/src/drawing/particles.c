@@ -2,6 +2,7 @@
  * linked lists (index 0 ends a list), one free and one live.
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
 
@@ -103,13 +104,7 @@ void BrCarSmokeEmit(BrCar *car)
 extern int D_8028B940;          /* the track */
 /* A wheel's ground contact as the spray and skid marks read it (0x208 bytes, four from
  * car+0x350). */
-typedef struct BrSprayWheel {
-    char pad000[0x1A0];
-    unsigned char surface;      /* 0x1A0  1-3 throw spray (3 onto the second list) */
-    char pad1a1[0x1B4 - 0x1A1];
-    int contact;                /* 0x1B4  non-zero on the ground */
-    char pad1b8[0x208 - 0x1B8];
-} BrSprayWheel;
+
 void BrVec3MulAddTo(BrVec3 *pOut, BrVec3 *pV, float s);
 void BrVec3SubFrom(BrVec3 *pA, BrVec3 *pB);
 void BrVec3ScaleBy(BrVec3 *pV, float s);
@@ -153,7 +148,7 @@ BrCar *car;
   int hold;
   int u3[1];
   int onSnow;
-  BrSprayWheel *w[4];
+  BrRbBody *w[4];
   int u4[1];
   float slip;
   int u5[1];
@@ -168,10 +163,10 @@ BrCar *car;
     onSnow = 1;
   }
   if (D_8028AA84 == 0 || D_8028B940 == 2 || D_8028B940 == 7) {
-    w[0] = (BrSprayWheel *)((char *)car + 0x968);
-    w[1] = (BrSprayWheel *)((char *)car + 0x558);
-    w[2] = (BrSprayWheel *)((char *)car + 0x350);
-    w[3] = (BrSprayWheel *)((char *)car + 0x760);
+    w[0] = &car->body[4];
+    w[1] = &car->body[2];
+    w[2] = &car->body[1];
+    w[3] = &car->body[3];
     fade = (1.0f - 50.0f / (car->xfe4[0] + 50.0f)) * 3.0f;
     f = BrVec3Dot((BrVec3 *)car, &car->velfd8);
     if (f < 0) {
@@ -376,10 +371,10 @@ void BrSkidDraw(void)
       if ((car = TGR_PTR(char *, D_803239A0[i].x60)) == 0) {
         continue;
       }
-      gRaw(D_8028A858++, 0x1060040, car + 0x1D88);
+      gRaw(D_8028A858++, 0x1060040, ((BrCar *)car)->mtx);        /* port: by name (car + 0x1D88) */
       for (g = 0; g < 4; g++) {
-        pt = (BrSkidPt *)(car + 0x19E8 + g * 0xD8);
-        gRaw(D_8028A858++, 0x40081ff, car + 0x1110 + g * 0x240);
+        pt = &((BrCar *)car)->skidPt[g][1];                    /* (car + 0x19E8 + g * 0xD8) */
+        gRaw(D_8028A858++, 0x40081ff, &((BrCar *)car)->skidVtx[g][4]);   /* (car + 0x1110 + g * 0x240) */
         for (v = 0; v < 28; v += 4) {
           if (pt[0].half[0] != 0 || pt[0].half[1] != 0 || pt[0].half[2] != 0
               || pt[1].half[0] != 0 || pt[1].half[1] != 0 || pt[1].half[2] != 0) {
@@ -617,23 +612,23 @@ BrCar *car;
   int unused[3];
   int i;
   float rate;
-  BrSprayWheel *w[4];
-  BrSprayWheel *wh;
+  BrRbBody *w[4];
+  BrRbBody *wh;
   int n;
   BrParticle *p;
   float keep;
   float speed;
 
-  if (car->sndImpact != 0 && (speed = car->xfe4[0]) > 40.0f) {
+  if (car->body[0].slide != 0 && (speed = car->xfe4[0]) > 40.0f) {
     rate = D_8028AAD8 * 0.5f + speed * 0.00066006603f;
     for (i = 0; i < 4; i++) {
-      car->sprayTime[i] += rate * ((float)(unsigned int)car->sndImpact * 0.03f);
+      car->sprayTime[i] += rate * ((float)(unsigned int)car->body[0].slide * 0.03f);
       if (car->sprayTime[i] > 0.75f) {
         car->sprayTime[i] = 0.0f;
-        w[0] = (BrSprayWheel *)((char *)car + 0x968);
-        w[1] = (BrSprayWheel *)((char *)car + 0x558);
-        w[2] = (BrSprayWheel *)((char *)car + 0x350);
-        w[3] = (BrSprayWheel *)((char *)car + 0x760);
+        w[0] = &car->body[4];
+        w[1] = &car->body[2];
+        w[2] = &car->body[1];
+        w[3] = &car->body[3];
         wh = w[i];
         if (wh->contact == 0 || (wh->surface != 1 && wh->surface != 2 && wh->surface != (n = 3))
             || (n = D_8028C830) == 0) {

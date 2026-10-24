@@ -37,7 +37,7 @@ void BrTextSetColours(int r, int g, int b, int a, int x, int y);
 void BrTextPrint(char *s, int x, int y);
 void BrImageDrawAt(BrImage *img, int x, int y);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 void BrPaintFlipApply(void);
 void BrPaintMirrorSide(void);
 typedef struct BrPaintSwatch {  /* 0x14 bytes */
@@ -149,7 +149,7 @@ void BrPaintClearMenu(void)
   BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
     if (D_8028CFC0.kind == 0) {
@@ -319,7 +319,7 @@ void BrPaintMirrorMenu(void)
   BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  BrPadStickToButtons(&PADS[D_8028DBBC]);
   if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
     BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
     if (D_8028DBB8 == 2) {

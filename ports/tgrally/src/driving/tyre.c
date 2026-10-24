@@ -1,43 +1,15 @@
 /* tyre.c -- tyre grip, skids and surface effects
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 
 /* -- declarations -- */
 float sqrtf(float param_1);
 extern int D_8025E8FC;
 extern int D_8025E900;
 extern int D_8028C800;
-typedef struct BrTyreLoad {     /* one wheel's contact record */
-  TgrAddr next;      /* struct BrTyreLoad * -- 0x00 */
-  int x4;
-  float x8;                     /* 0x08 */
-  float xc;                     /* 0x0C */
-  float load;                   /* 0x10  the wheel's load */
-} BrTyreLoad;
-typedef struct BrRbBody {       /* a rigid body with four attached wheels */
-  int x0;
-  TgrAddr sub[4];      /* struct BrRbBody * -- 0x04 */
-  char pad14[0x18 - 0x14];
-  TgrAddr loads;            /* BrTyreLoad * -- 0x18  one per wheel, linked */
-  char pad1c[0x78 - 0x1c];
-  float mount[2];               /* 0x78  on a wheel: where it hangs off the body */
-  float x80;                    /* 0x80  on a wheel: x1d8 held to [-0.4, 0] */
-  float vel[3];                 /* 0x84 */
-  char pad90[0xbc - 0x90];
-  float m[4][4];                /* 0xBC  the body's matrix */
-  char padfc[0x19c - 0xfc];
-  TgrAddr hit;                    /* void * -- 0x19C  on a wheel: the ground plane under it */
-  unsigned char surface;        /* 0x1A0  on a wheel: what it is on */
-  char pad1a1[0x1a4 - 0x1a1];
-  float hitN[4];                /* 0x1A4  that plane's normal and constant */
-  int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
-  float x1b8;                   /* 0x1B8  spring load per unit of compression squared */
-  float x1bc;                   /* 0x1BC  load per unit of upward speed */
-  char pad1c0[0x1d8 - 0x1c0];
-  float x1d8;                   /* 0x1D8  on a wheel: minus 0x8025E96C's answer */
-  char pad1dc[0x203 - 0x1dc];
-  unsigned char x203;           /* 0x203  0x80: a wheel has just landed */
-} BrRbBody;
+
+
 #define SIGN(x) ((x) == 0.0f ? 0.0 : ((x) > 0 ? 1.0 : -1.0))
 float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w);
 typedef struct { float v[3]; } BrTyreVec;
@@ -49,11 +21,7 @@ void BrMat3MulVecRows(float out[3], float m[4][4], float v[3]);
 void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);
 float BrCrPlaneDist(float *n, float d, float *p);
 short BrCrTriContainsPoint(void *, void *);
-typedef struct BrRbForce {      /* a force applied to a body */
-  TgrAddr next;       /* struct BrRbForce * -- 0x00 */
-  int frame;                    /* 0x04 */
-  float f[3];                   /* 0x08 */
-} BrRbForce;
+
 void BrRbVelAtFlatPoint(float out[3], BrRbBody *b, BrRbBody *at);
 /* -- end declarations -- */
 
@@ -72,10 +40,10 @@ void BrTyreSkidCheck(BrRbBody *b, BrRbForce *f)
   f->f[0] = b->vel[0] * -110.0f;
   f->f[1] = b->vel[1] * -110.0f;
   f->f[2] = b->vel[2] * -110.0f;
-  s0 = TGR_PTR(struct BrRbBody *, b->sub[0])->surface;
-  s1 = TGR_PTR(struct BrRbBody *, b->sub[1])->surface;
-  s2 = TGR_PTR(struct BrRbBody *, b->sub[2])->surface;
-  s3 = TGR_PTR(struct BrRbBody *, b->sub[3])->surface;
+  s0 = ((struct BrRbBody *)(b->sub[0]))->surface;
+  s1 = ((struct BrRbBody *)(b->sub[1]))->surface;
+  s2 = ((struct BrRbBody *)(b->sub[2]))->surface;
+  s3 = ((struct BrRbBody *)(b->sub[3]))->surface;
   if (sqrtf(b->vel[0] * b->vel[0] + b->vel[1] * b->vel[1] + b->vel[2] * b->vel[2]) > 4.0f
       && D_8028C800 != 3 && (s0 == 4 || s1 == 4 || s2 == 4 || s3 == 4)) {
     d[0] = b->vel[0] * -220.0f;
@@ -144,7 +112,7 @@ float BrWheelGroundProbe(BrRbBody *b, BrRbBody *w)
         mount[1] = mount[1] + world[1];
         mount[2] = mount[2] + world[2];
         if (h > -2.0 && h < 2.0 && h < best && pPl[2] > 0.2 && BrCrTriContainsPoint(pPl, mount) != 0) {
-          w->hit = tgr_addr32(pPl);
+          w->hit = (pPl);
           w->surface = ((unsigned char *)pPl)[0x1e];
           best = h;
           w->hitN[0] = pPl[0];
@@ -181,21 +149,21 @@ void BrTyreSprings(BrRbBody *b)
   short prev;
   float d;
 
-  w = TGR_PTR(BrTyreLoad *, b->loads);
+  w = ((BrTyreLoad *)(b->loads));
   for (i = 0; i < 4; i++) {
     w->x8 = w->xc = 0.0f;
     switch (i) {
     case 0:
-      s = TGR_PTR(struct BrRbBody *, b->sub[0]);
+      s = ((struct BrRbBody *)(b->sub[0]));
       break;
     case 1:
-      s = TGR_PTR(struct BrRbBody *, b->sub[1]);
+      s = ((struct BrRbBody *)(b->sub[1]));
       break;
     case 2:
-      s = TGR_PTR(struct BrRbBody *, b->sub[2]);
+      s = ((struct BrRbBody *)(b->sub[2]));
       break;
     default:
-      s = TGR_PTR(struct BrRbBody *, b->sub[3]);
+      s = ((struct BrRbBody *)(b->sub[3]));
       break;
     }
     if (s->x1b4) {             /* an empty check, compiled out */
@@ -219,7 +187,7 @@ void BrTyreSprings(BrRbBody *b)
     d *= SIGN(d) * d;
     d *= b->x1b8;
     w->load = d;
-    w = TGR_PTR(struct BrTyreLoad *, w->next);
+    w = ((struct BrTyreLoad *)(w->next));
     if (s->x1b4 != 0 && prev == 0) {
       b->x203 = 0x80;
     }
@@ -239,25 +207,25 @@ void BrTyreLoads(BrRbBody *b)
   float v[3];
   float load;
 
-  w = TGR_PTR(BrTyreLoad *, b->loads);
+  w = ((BrTyreLoad *)(b->loads));
   for (i = 0; i < 4; i++) {
     w->x8 = w->xc = 0.0f;
     switch (i) {
     case 0:
-      BrRbVelAtFlatPoint(v, b, TGR_PTR(struct BrRbBody *, b->sub[0]));
-      s = TGR_PTR(struct BrRbBody *, b->sub[0]);
+      BrRbVelAtFlatPoint(v, b, ((struct BrRbBody *)(b->sub[0])));
+      s = ((struct BrRbBody *)(b->sub[0]));
       break;
     case 1:
-      BrRbVelAtFlatPoint(v, b, TGR_PTR(struct BrRbBody *, b->sub[1]));
-      s = TGR_PTR(struct BrRbBody *, b->sub[1]);
+      BrRbVelAtFlatPoint(v, b, ((struct BrRbBody *)(b->sub[1])));
+      s = ((struct BrRbBody *)(b->sub[1]));
       break;
     case 2:
-      BrRbVelAtFlatPoint(v, b, TGR_PTR(struct BrRbBody *, b->sub[2]));
-      s = TGR_PTR(struct BrRbBody *, b->sub[2]);
+      BrRbVelAtFlatPoint(v, b, ((struct BrRbBody *)(b->sub[2])));
+      s = ((struct BrRbBody *)(b->sub[2]));
       break;
     default:
-      BrRbVelAtFlatPoint(v, b, TGR_PTR(struct BrRbBody *, b->sub[3]));
-      s = TGR_PTR(struct BrRbBody *, b->sub[3]);
+      BrRbVelAtFlatPoint(v, b, ((struct BrRbBody *)(b->sub[3])));
+      s = ((struct BrRbBody *)(b->sub[3]));
       break;
     }
     if (s->x1b4 == 0) {
@@ -268,7 +236,7 @@ void BrTyreLoads(BrRbBody *b)
       load = v[2] * b->x1bc;
     }
     w->load = load;
-    w = TGR_PTR(struct BrTyreLoad *, w->next);
+    w = ((struct BrTyreLoad *)(w->next));
   }
 }
 
@@ -290,16 +258,16 @@ void BrTyreDepthAll(BrRbBody *b)
   for (i = 0; i < 4; i++) {
     switch (i) {
     case 0:
-      w = TGR_PTR(struct BrRbBody *, b->sub[0]);
+      w = ((struct BrRbBody *)(b->sub[0]));
       break;
     case 1:
-      w = TGR_PTR(struct BrRbBody *, b->sub[1]);
+      w = ((struct BrRbBody *)(b->sub[1]));
       break;
     case 2:
-      w = TGR_PTR(struct BrRbBody *, b->sub[2]);
+      w = ((struct BrRbBody *)(b->sub[2]));
       break;
     case 3:
-      w = TGR_PTR(struct BrRbBody *, b->sub[3]);
+      w = ((struct BrRbBody *)(b->sub[3]));
       break;
     }
     f = -BrWheelGroundProbe(b, w);

@@ -8,7 +8,7 @@
 /* -- declarations -- */
 extern int D_802723D0;
 extern int D_8028B94C;
-#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
+#define D_8031C5BC ((char *)D_8031B760[0].season)   /* car 0's season */
 void BrSeasonValidate(void);
 void BrFrontSetMenuFlag(int param_1);
 void BrChampionshipStart(void);
@@ -83,20 +83,20 @@ static int loadPending = 0;     /* 0x80271D58: Load Season/Ghost Data was chosen
 /* @implements 0x802089D0 tgr BrSeasonValidate */
 void BrSeasonValidate(void)
 {
-  if (TGR_PTR(BrSeason *, D_8031B760[0].season)->state >= 0) {
+  if (((BrSeason *)(D_8031B760[0].season))->state >= 0) {
     goto check;
   }
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->state = 0;
+  ((BrSeason *)(D_8031B760[0].season))->state = 0;
 bad_round:
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->round = 0;
+  ((BrSeason *)(D_8031B760[0].season))->round = 0;
 bad_race:
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->race = 0;
-  TGR_PTR(BrSeason *, D_8031B760[0].season)->points[TGR_PTR(BrSeason *, D_8031B760[0].season)->round] = 0;
+  ((BrSeason *)(D_8031B760[0].season))->race = 0;
+  ((BrSeason *)(D_8031B760[0].season))->points[((BrSeason *)(D_8031B760[0].season))->round] = 0;
 check:
-  if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round < 0 || TGR_PTR(BrSeason *, D_8031B760[0].season)->round >= 6) {
+  if (((BrSeason *)(D_8031B760[0].season))->round < 0 || ((BrSeason *)(D_8031B760[0].season))->round >= 6) {
     goto bad_round;
   }
-  if (TGR_PTR(BrSeason *, D_8031B760[0].season)->race < 0 || TGR_PTR(BrSeason *, D_8031B760[0].season)->race >= D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].x8) {
+  if (((BrSeason *)(D_8031B760[0].season))->race < 0 || ((BrSeason *)(D_8031B760[0].season))->race >= D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].x8) {
     goto bad_race;
   }
 }
@@ -123,7 +123,7 @@ void BrSeasonDrawHelp(int row)
     BrTextSetFont(10);
     BrTextHighlightOff();
     BrTextAlignCentre();
-    need = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].xc - TGR_PTR(BrSeason *, D_8031B760[0].season)->points[TGR_PTR(BrSeason *, D_8031B760[0].season)->round];
+    need = D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].xc - ((BrSeason *)(D_8031B760[0].season))->points[((BrSeason *)(D_8031B760[0].season))->round];
     if (need <= 0) {
       sprintf(D_80315EE8, "%%wwYou have enough points to advance to next season");
     } else {
@@ -139,14 +139,14 @@ void BrSeasonDrawHelp(int row)
         BrSeasonValidate();
         BrChampionshipStart();
         for (i = 0; i < 2; i++) {
-          BrCarModelStream(&D_8031B370[i], i, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].kinds[i], i);
+          BrCarModelStream(&D_8031B370[i], i, D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].kinds[i], i);
           while (BrEntLoadModel(&D_8031B370[i])) {
           }
         }
         D_80315EE0 = 1;
       } else if (D_8026FF18 == 2) {
         BrTimeAttackStart();
-        if ((1 << D_80307F00) & TGR_PTR(BrSeason *, D_8031B760->season)->xce) {
+        if ((1 << D_80307F00) & ((BrSeason *)(D_8031B760->season))->xce) {
           D_8028B940 = D_80307F00;
         }
       }
@@ -183,9 +183,9 @@ void BrSeasonDraw(void)
   y = 95;
   for (D_80271D5C += D_8028AAD8; D_80271D5C > 0.75f; D_80271D5C -= 0.75f) {
   }
-  race = TGR_PTR(BrSeason *, D_8031B760[0].season)->race;
-  round = TGR_PTR(BrSeason *, D_8031B760[0].season)->round;
-  state = TGR_PTR(BrSeason *, D_8031B760[0].season)->state;
+  race = ((BrSeason *)(D_8031B760[0].season))->race;
+  round = ((BrSeason *)(D_8031B760[0].season))->round;
+  state = ((BrSeason *)(D_8031B760[0].season))->state;
   BrTextHighlightOff();
   BrTextAlignCentre();
   BrTextSetFont(20);
@@ -228,14 +228,14 @@ void BrSeasonDraw(void)
     sprintf(D_80315F38, "%s/%s", ((const char *)(D_80271D1C[k]->label)), ((const char *)(D_802722A4[D_8028B944[round].races[i][1]]->label)));
     BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
     BrTextAlignRight();
-    if (TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k] != 0) {
-      BrTimeFormat(D_80315F38, TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k]);
+    if (((BrSeason *)(D_8031B760[0].season))->xe8[k] != 0) {
+      BrTimeFormat(D_80315F38, ((BrSeason *)(D_8031B760[0].season))->xe8[k]);
     } else {
       sprintf(D_80315F38, "--    ");
     }
     BrTextPrint(D_80315F38, D_8028AAB0 * 23 / 32 + off - 1, y);
-    if (TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[k] != 0) {
-      BrTimeFormat(D_80315F38, TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[k]);
+    if (((BrSeason *)(D_8031B760[0].season))->x8c[k] != 0) {
+      BrTimeFormat(D_80315F38, ((BrSeason *)(D_8031B760[0].season))->x8c[k]);
     } else {
       sprintf(D_80315F38, "--    ");
     }
@@ -306,8 +306,8 @@ void BrTrackSelectScreen(void)
     BrSeasonValidate();
     for (i = 0; i < 2; i++) {
       BrCarDefaultColour(&D_8031B760[i]);
-      D_8031B760[i].xed8 = TGR_FA(BrCarCamStep);
-      BrEntLoadRecord(&D_8031B760[i], i, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].kinds[i]);
+      D_8031B760[i].xed8 = BrCarCamStep;
+      BrEntLoadRecord(&D_8031B760[i], i, D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].kinds[i]);
       D_8031B760[i].x2000 = 0;
       D_8031B760[i].x2044 = 0;
       D_8031B760[i].mtx0[0][0] = 1.0f;
@@ -365,11 +365,11 @@ void BrTrackSelectScreen(void)
       item->flags |= 2;
     } else {
       D_80271FCC = 0;
-      sprintf(D_80315F98, "Race %d: %s/%s", TGR_PTR(BrSeason *, D_8031B760[0].season)->race + 1, label,
+      sprintf(D_80315F98, "Race %d: %s/%s", ((BrSeason *)(D_8031B760[0].season))->race + 1, label,
               ((const char *)(D_802722A4[D_8028C800]->label)));
       (*pp)->label = (D_80315F98);
     }
-    i = BrMenu(TGR_PTR(char *, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].x0), D_80315F88, D_80271D1C, &D_80315F8C,
+    i = BrMenu(TGR_PTR(char *, D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].x0), D_80315F88, D_80271D1C, &D_80315F8C,
                BrTrackSelectable, 0, 0, 0, 0, 0x78, 0x82);
     if (D_80315EE0) {
       (*pp)->flags &= ~2;
@@ -416,16 +416,16 @@ void BrTrackSelectScreen(void)
     } else if (D_80315F8C == D_8028AE04 + 3) {
       D_80315F8C = D_80315F8C;
       if (D_8026FF18 == 0) {
-        TGR_PTR(BrSeason *, D_8031B760[0].season)->state = 0;
+        ((BrSeason *)(D_8031B760[0].season))->state = 0;
       reset_round:
-        TGR_PTR(BrSeason *, D_8031B760[0].season)->round = 0;
+        ((BrSeason *)(D_8031B760[0].season))->round = 0;
       reset_race:
-        TGR_PTR(BrSeason *, D_8031B760[0].season)->race = 0;
-        TGR_PTR(BrSeason *, D_8031B760[0].season)->points[TGR_PTR(BrSeason *, D_8031B760[0].season)->round] = 0;
+        ((BrSeason *)(D_8031B760[0].season))->race = 0;
+        ((BrSeason *)(D_8031B760[0].season))->points[((BrSeason *)(D_8031B760[0].season))->round] = 0;
         BrChampionshipStart();
         BrFrontSetMenuFlag(D_80315F8C = D_8028B940);
         for (i = 0; i < 2; i++) {
-          BrCarModelStream(&D_8031B370[i], i, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].kinds[i], i);
+          BrCarModelStream(&D_8031B370[i], i, D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].kinds[i], i);
           while (BrEntLoadModel(&D_8031B370[i])) {
           }
         }

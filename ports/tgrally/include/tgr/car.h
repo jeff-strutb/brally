@@ -7,16 +7,7 @@
 
 #include "tgr/season.h"
 #include "tgr/vec.h"
-
-/* A rigid-body state (0x44 bytes): the car keeps three (current, and two
- * copies the integrator steps between). */
-typedef struct BrRbState {
-    BrVec3 pos;                 /* 0x00 */
-    BrVec3 vel;                 /* 0x0C */
-    float q[4];                 /* 0x18  orientation */
-    BrVec3 angVel;              /* 0x28 */
-    char pad34[0x10];
-} BrRbState;
+#include "tgr/body.h"
 
 /* A car's camera: its matrix and field of view (0x44 bytes). */
 typedef struct BrCarCam {
@@ -42,22 +33,6 @@ typedef struct BrCarLink {
     int x74;                    /* 0x74  the entrant's row in the AI pace table */
 } BrCarLink;
 
-/* A body of the car (0x208 bytes): the car itself is one, at 0x1C0 (its
- * fields named on BrCar), and each wheel another. */
-typedef struct BrCarBody {
-    char pad000[0x74];
-    float pos[3];               /* 0x74  where it hangs off the car body */
-    char pad080[0x128 - 0x80];
-    unsigned char surface;      /* 0x128  the surface under it (read when x13c is set) */
-    char pad129[0x13C - 0x129];
-    int x13c;                   /* 0x13C */
-    char pad140[0x148 - 0x140];
-    float steer;                /* 0x148  radians */
-    char pad14c[0x15C - 0x14C];
-    float spin;                 /* 0x15C  degrees */
-    char pad160[0x208 - 0x160];
-} BrCarBody;
-
 /* A skid-mark vertex (an F3DEX Vtx, 16 bytes) and point (0x18 bytes):
  * a point's half-width is drawn while non-zero. */
 typedef struct BrSkidVtx {     /* RSP memory: big-endian (tgr_core.h) */
@@ -77,32 +52,10 @@ typedef struct BrCar {
     float wheelMtx[4][4][4];    /* 0x040  one per wheel: the body's rotation, the wheel's position */
     int slot;                   /* 0x140  index in the car array */
     short sndHits;              /* 0x144  impact sounds in a row (to 16) */
-    char pad146[0x14C - 0x146];
-    TgrAddr wheel[4];  /* struct BrCarWheel * -- 0x14C  the wheels' rigid bodies */
-    char pad15c[0x1C0 - 0x15C];
-    BrRbState st;               /* 0x1C0  the body's state */
-    float stMtx[4][4];          /* 0x204  st's orientation as a matrix */
-    char pad244[0x25C - 0x244];
-    BrRbState stA;              /* 0x25C */
-    BrRbState stB;              /* 0x2A0 */
-    char pad2e4[0x31C - 0x2E4];
-    float spin;                 /* 0x31C  the body's roll angle, degrees */
-    char pad320[0x324 - 0x320];
-    float x324[4];              /* 0x324  from the kind table */
-    BrVec3 x334;                /* 0x334  where the HUD arrow points */
-    int x340;                   /* 0x340  negative: the car is off the track */
-    unsigned char x344;         /* 0x344  a pending HUD arrow (0 = none) */
-    unsigned char x345;         /* 0x345 */
-    unsigned char sndHitA;      /* 0x346  pending one-shot sounds: loudness, 0 none */
-    unsigned char sndHitB;      /* 0x347 */
-    char pad348;
-    unsigned char hitAge;       /* 0x349  frames since the last car-to-car hit */
-    unsigned char x34a;         /* 0x34A */
-    unsigned char sndHitC;      /* 0x34B */
-    unsigned char sndImpact;    /* 0x34C  the surface impact level */
-    char pad34d[0x3C8 - 0x34D];
-    BrCarBody wheels[4];        /* 0x3C8  the wheels' bodies (wheel[] points at them) */
-    char padbe8[0xDF0 - 0xBE8];
+    char pad146[0x148 - 0x146];
+    BrRbBody body[5];           /* 0x148  its own (wheels: its sub), then the four wheels' */
+    BrRbForce forcerec[16];     /* 0xB70  the force records its bodies' lists link */
+    char padd70[0xDF0 - 0xD70];
     float xdf0;                 /* 0xDF0 */
     float xdf4;                 /* 0xDF4  scales the exhaust smoke (0.001 per unit) */
     float xdf8[7];              /* 0xDF8  gear ratios, from the kind table */
@@ -119,16 +72,16 @@ typedef struct BrCar {
     int xe40;                   /* 0xE40 */
     char pade44[0xE58 - 0xE44];
     int xe58;                   /* 0xE58 */
-    TgrAddr season;           /* BrSeason * -- 0xE5C  the player's season, 0 for others */
+    BrSeason *season;           /* 0xE5C  the player's season, 0 for others */
     int xe60;                   /* 0xE60  from the season (or the ghost's header) */
     int xe64;                   /* 0xE64 */
     int xe68;                   /* 0xE68 */
     int xe6c;                   /* 0xE6C */
     int xe70[4];                /* 0xE70 */
     char pade80[0xED0 - 0xE80];
-    TgrAddr link;     /* struct BrCarLink * -- 0xED0 */
+    BrCarLink *link;            /* 0xED0 */
     int xed4;                   /* 0xED4  a countdown, one per frame */
-    TgrAddr xed8;               /* 0xED8  the car's control function (camera step, AI): void (*)(BrCar *) */
+    void (*xed8)(void *);       /* 0xED8  the car's control function (camera step, AI) */
     BrVec3 aim;                 /* 0xEDC  the AI's smoothed aim point */
     BrVec3 linePos;             /* 0xEE8  the nearest point on the racing line */
     BrVec3 lineDir;             /* 0xEF4  the line's direction there */
@@ -193,8 +146,8 @@ typedef struct BrCar {
     float x1ddc;                /* 0x1DDC  speed while free-flying */
     float x1de0;                /* 0x1DE0 */
     float fog;                  /* 0x1DE4  fog amount at the car */
-    TgrAddr cam;              /* BrCarCam * -- 0x1DE8  the camera in use */
-    TgrAddr cam2;             /* BrCarCam * -- 0x1DEC  the camera it switches back to */
+    BrCarCam *cam;              /* 0x1DE8  the camera in use */
+    BrCarCam *cam2;             /* 0x1DEC  the camera it switches back to */
     BrCarCam cams[4];           /* 0x1DF0 */
     char pad1f00[0x1F44 - 0x1F00];
     BrCarCam cam4;              /* 0x1F44 */
@@ -222,8 +175,8 @@ typedef struct BrCar {
     unsigned char cellX;        /* 0x2070  the 32-unit track grid cell it is in (0..63) */
     unsigned char cellY;        /* 0x2071 */
     char pad2072[0x2074 - 0x2072];
-    TgrAddr pad;          /* unsigned int * -- 0x2074  the slot's pad record */
-    TgrAddr model;                /* char * -- 0x2078  the slot's model buffer */
+    unsigned int *pad;          /* 0x2074  the slot's pad record */
+    char *model;                /* 0x2078  the slot's model buffer */
     short dent[8];              /* 0x207C  how far each side of the body has been pushed in */
     short dentWobble;           /* 0x208C  cycles -4..3, offsets the dent's vertex sample */
     char pad208e[0x2090 - 0x208E];

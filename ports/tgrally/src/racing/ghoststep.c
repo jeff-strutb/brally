@@ -91,8 +91,8 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
   void (*ctl)(BrCar *);
 
   if (e->car != 0 && TGR_PTR(BrCar *, e->car)->xed8 == TGR_FA(BrCtlAi) && D_8026FF18 != 5) {
-    *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) &= 0xF000000;
-    ((float *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[8] = 0;
+    *((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))) &= 0xF000000;
+    ((float *)((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))))[8] = 0;
   }
   if (D_8026FF10 != 0) {
     D_802A4920[0].x8 = 0;
@@ -113,11 +113,11 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
       BrCar *car;
       void (*ctl)(BrCar *);
 
-      *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) |= 0x40000;
+      *((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))) |= 0x40000;
       TGR_PTR(BrCar *, e->car)->xe40 = 0;
       VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
       car = TGR_PTR(BrCar *, e->car);
-      ctl = TGR_FN(void (*)(BrCar *), car->xed8);
+      ctl = ((void (*)(BrCar *))(car->xed8));
       if (ctl != 0) {
         ctl(car);
       }
@@ -126,9 +126,9 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
   } else if (flags & 2) {
     if (e->car != 0) {
       if (D_8026FF18 != 0 || e->x64 < D_8026FF08) {
-        *TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad) = 0xC0000;
-        ((signed char *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[0x24] = -0x7F;
-        ((float *)TGR_PTR(unsigned int *, TGR_PTR(BrCar *, e->car)->pad))[8] = -1.0f;
+        *((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))) = 0xC0000;
+        ((signed char *)((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))))[0x24] = -0x7F;
+        ((float *)((unsigned int *)((TGR_PTR(BrCar *, e->car)->pad))))[8] = -1.0f;
       }
       if (D_8026FF18 == 0 && e->x64 >= D_8026FF08) {
         TGR_PTR(BrCar *, e->car)->colour[3] = 2;
@@ -139,7 +139,7 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
       }
       VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
       car = TGR_PTR(BrCar *, e->car);
-      ctl = TGR_FN(void (*)(BrCar *), car->xed8);
+      ctl = ((void (*)(BrCar *))(car->xed8));
       if (ctl != 0) {
         ctl(car);
       }
@@ -158,7 +158,7 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
     }
     VEC3_COPY(&TGR_PTR(BrCar *, e->car)->posPrev, TGR_PTR(BrCar *, e->car)->mtx0[3]);
     car = TGR_PTR(BrCar *, e->car);
-    ctl = TGR_FN(void (*)(BrCar *), car->xed8);
+    ctl = ((void (*)(BrCar *))(car->xed8));
     if (ctl != 0) {
       ctl(car);
     }

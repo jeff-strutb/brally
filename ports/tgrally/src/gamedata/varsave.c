@@ -98,12 +98,12 @@ void BrLastLapSave(BrCar *car)
 
   if (D_80270788 == 0 && D_8026FF18 != 2 && D_8026FF18 != 4 && car->slot < D_8026FF08
       && (D_8028B304 == car->laps + 1 || D_8028B304 < 2)
-      && ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->rec[car->slot] == 0) {
+      && ((BrPadRec *)((unsigned int *)(car->pad)))->rec[car->slot] == 0) {
     tgr_print("SAVING LAST LAP INFO\n");
     for (i = 0; i < D_8026FF08; i++) {
-      ((BrPadRec *)TGR_PTR(unsigned int *, D_8031B760[i].pad))->recLen[car->slot] = 0;
-      ((BrPadRec *)TGR_PTR(unsigned int *, D_8031B760[i].pad))->recKeep[car->slot] = 0x3840;
-      ((BrPadRec *)TGR_PTR(unsigned int *, D_8031B760[i].pad))->rec[car->slot] = tgr_addr32((unsigned char *)D_803C8000[3 - car->slot].raw + i * 0x3840);
+      ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->recLen[car->slot] = 0;
+      ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->recKeep[car->slot] = 0x3840;
+      ((BrPadRec *)((unsigned int *)(D_8031B760[i].pad)))->rec[car->slot] = tgr_addr32((unsigned char *)D_803C8000[3 - car->slot].raw + i * 0x3840);
     }
     BrVarSaveAll(D_803C8000[3 - car->slot].raw);
   }

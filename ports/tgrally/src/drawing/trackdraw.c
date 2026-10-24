@@ -65,7 +65,7 @@ extern float D_8031AB10[4][4];    /* an object's matrix times the view */
 extern int D_8031B360[4];
 extern int D_8026FF18;          /* the game mode */
 extern int D_8028B940;          /* the track */
-#define D_8031C5BC TGR_PTR(BrSeason *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
+#define D_8031C5BC ((BrSeason *)D_8031B760[0].season)   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
 float BrMat4MaxAbs(float m[16]);
 void BrFogSetup(void);
 void BrViewportApply(void);
@@ -374,7 +374,7 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       if (s1 < 0.5f) {
         s1 = 0.5f;
       }
-      model = (BrCarModel *)TGR_PTR(char *, D_8031B760[i].model);
+      model = (BrCarModel *)((char *)(D_8031B760[i].model));
       s0 = D_802AA004 / BEF(model->wheel[0][0]) / s0;
       s1 = D_802AA008 / BEF(model->wheel[0][1]) / s1;
       BrVec3Normalise(&D_8035D1C0);
@@ -690,7 +690,7 @@ full:
   near2 = D_8028AACC / (float)32;
   near2 -= 3;
   near2 *= near2;
-  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && D_8028AAF4 == &D_8028AAF0->cams[3]) {
+  if (((BrPadRec *)((unsigned int *)(D_8028AAF0->pad)))->ghost != 0 && D_8028AAF4 == &D_8028AAF0->cams[3]) {
     lim = 9;
   } else {
     lim = 1;

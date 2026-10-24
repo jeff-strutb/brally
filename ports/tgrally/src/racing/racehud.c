@@ -458,7 +458,7 @@ void BrHudArrowDraw(BrCar *car, BrVec3 *dir, short amount)
     }
     for (k = 0; k < 3; k++) {
       for (j = 0; j < 10; j++) {
-        if (j != 9 && (dl = BEPTR(unsigned int *, ((BrCarModel *)TGR_PTR(char *, car->model))->dl[k][j])) != 0) {
+        if (j != 9 && (dl = BEPTR(unsigned int *, ((BrCarModel *)((char *)(car->model)))->dl[k][j])) != 0) {
           for (;;) {
             switch (tgr_rd32(dl) >> 24) {   /* the model's display list, big-endian */
             case 4:

@@ -77,7 +77,7 @@ void BrMenuIconDraw(void *, float, float, float, float);
 void BrPerfMeterDraw(void);
 void BrFrameEnd(void);
 void BrScreenFlush3Layout1(void);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
 /* -- end declarations -- */
 
@@ -362,13 +362,13 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           continue;
         }
         BrPadStickToButtons(D_8031B760[i].pad);
-        if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) != 0) {
+        if (*((unsigned int *)(D_8031B760[i].pad)) != 0) {
           D_80316240 = 0.0f;
         }
         if (D_80316224 == 0) {
-          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 4) {
-            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 10);
-            *TGR_PTR(unsigned int *, D_8031B760[i].pad) &= ~10;
+          if (*((unsigned int *)(D_8031B760[i].pad)) & 4) {
+            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 10);
+            *((unsigned int *)(D_8031B760[i].pad)) &= ~10;
             D_80316220 = D_80316244;
             do {
               D_80316244 = (D_80316244 + n - 1) % n;
@@ -378,9 +378,9 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
               goto move;
             }
           }
-          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 1) {
-            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 10);
-            *TGR_PTR(unsigned int *, D_8031B760[i].pad) &= ~10;
+          if (*((unsigned int *)(D_8031B760[i].pad)) & 1) {
+            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 10);
+            *((unsigned int *)(D_8031B760[i].pad)) &= ~10;
             D_80316220 = D_80316244;
             do {
               D_80316244 = (D_80316244 + 1) % n;
@@ -395,29 +395,29 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
             }
           }
           if (items[D_80316244]->flags & 1) {
-            if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 8) {
+            if (*((unsigned int *)(D_8031B760[i].pad)) & 8) {
               *sel = D_80316244;
-              BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 8);
+              BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 8);
               result = 3;
               goto choose;
             }
-            if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 2) {
+            if (*((unsigned int *)(D_8031B760[i].pad)) & 2) {
               *sel = D_80316244;
-              BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 2);
+              BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 2);
               result = 4;
               goto choose;
             }
           }
-          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) {
-            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0x20);
+          if (*((unsigned int *)(D_8031B760[i].pad)) & 0x20) {
+            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0x20);
             D_8031622C = 0;
             BrFadeTo(0.0f, 0.2f);
             BrSfxFadeTo(0.0f, 0.2f);
             goto choose;
           }
         }
-        if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0xC010)) {
-          BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0xC010);
+        if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*((unsigned int *)(D_8031B760[i].pad)) & 0xC010)) {
+          BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0xC010);
           if (i == 0 || !(items[D_80316244]->flags & 0x20)) {
             D_80271FA8 = i;
             if ((items[D_80316244]->flags & 2) == 0) {

@@ -304,13 +304,13 @@ void BrParticleFrame(void);
 void BrParticleFallDraw(void);
 void BrParticleDraw(void);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 void BrTriCacheReset(void);
 int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
 void tgr_exit_game(void);
 /* -- end declarations -- */
 
-#define PAD(i) TGR_PTR(BrPadRec *, D_8031B760[i].pad)
+#define PAD(i) ((BrPadRec *)(D_8031B760[i].pad))
 #define OBJ(n) (&BR_TRACKOBJS()[n])
 #define LEFT TGR_PTR(BrVec3be *, PLANE->left)     /* the plane's path: cartridge data */
 #define RIGHT TGR_PTR(BrVec3be *, PLANE->right)
@@ -424,7 +424,7 @@ void BrRaceTick(void)
       D_8027078C = 0;
       D_80270788 = 0;
       D_8031B760[0].xe58 = 1;
-      D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
+      D_8031B760[0].cam = (&D_8031B760[0].cams[1]);
       D_8028B7F8 = 0;
       break;
     case 4:
@@ -491,11 +491,11 @@ void BrRaceTick(void)
         PAD(i)->rec[i] = (0x801A6000 + i * 0xF000);
         TGR_PTR(unsigned char *, PAD(i)->rec[i])[0] = D_8028B940;
         TGR_PTR(unsigned char *, PAD(i)->rec[i])[1] = D_8031B760[i].kind;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[2] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd4;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[3] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd8;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[4] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xdc;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[5] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe0;
-        TGR_PTR(unsigned char *, PAD(i)->rec[i])[6] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe4;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[2] = ((BrSeason *)(D_8031B760[i].season))->xd4;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[3] = ((BrSeason *)(D_8031B760[i].season))->xd8;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[4] = ((BrSeason *)(D_8031B760[i].season))->xdc;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[5] = ((BrSeason *)(D_8031B760[i].season))->xe0;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[6] = ((BrSeason *)(D_8031B760[i].season))->xe4;
         PAD(i)->recLen[i] = 8;
         PAD(i)->recKeep[i] = 0xDE5C;
       }
@@ -583,15 +583,15 @@ void BrRaceTick(void)
     }
     D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
-      D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
+      D_8031B760[0].cam = (&D_8031B760[0].cams[1]);
       D_8028B7F8 = 180;
     } else {
       for (i = 0; i < D_8026FF08; i++) {
-        D_8031B760[i].xe6c = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd8;
-        D_8031B760[i].xe64 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe0;
-        D_8031B760[i].xe60 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xdc;
-        D_8031B760[i].xe68 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd4;
-        PAD(i)->x25 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe4;
+        D_8031B760[i].xe6c = ((BrSeason *)(D_8031B760[i].season))->xd8;
+        D_8031B760[i].xe64 = ((BrSeason *)(D_8031B760[i].season))->xe0;
+        D_8031B760[i].xe60 = ((BrSeason *)(D_8031B760[i].season))->xdc;
+        D_8031B760[i].xe68 = ((BrSeason *)(D_8031B760[i].season))->xd4;
+        PAD(i)->x25 = ((BrSeason *)(D_8031B760[i].season))->xe4;
       }
       if (D_8026FF18 == 2 && PAD(1)->ghost != 0) {
         D_8031B760[1].xe68 = TGR_PTR(unsigned char *, PAD(1)->ghost)[2];
@@ -615,19 +615,19 @@ void BrRaceTick(void)
         D_8031B760[i].x2064 = 1.0f;
         if (i < D_8026FF08) {
           p0 = &D_8031B760[i];
-          p0->xed8 = TGR_FA(BrCarCamStep);
+          p0->xed8 = BrCarCamStep;
           p1 = &D_8031B760[i];
           p1->colour[3] = 0;
         } else if (D_8026FF18 == 2) {
           p2 = &D_8031B760[i];
-          p2->xed8 = TGR_FA(BrCarCamStep);
+          p2->xed8 = BrCarCamStep;
           p3 = &D_8031B760[i];
           p3->colour[3] = 2;
           D_8031B760[i].x2064 = 0.375f;
         } else {
           BrCarPickKind(&D_8031B760[i]);
           p4 = &D_8031B760[i];
-          p4->xed8 = TGR_FA(BrCtlAi);
+          p4->xed8 = BrCtlAi;
           p5 = &D_8031B760[i];
           p5->colour[3] = 0;
         }
@@ -641,7 +641,7 @@ void BrRaceTick(void)
       }
     } else {
       for (i = D_8026FF08; i < D_8028B7F4; i++) {
-        BrEntPaintTexture(TGR_PTR(void *, (int)D_8031B760[i].model), D_8031B760[i].colour[0] >> 3,
+        BrEntPaintTexture(D_8031B760[i].model, D_8031B760[i].colour[0] >> 3,
                           D_8031B760[i].colour[1] >> 3, D_8031B760[i].colour[2] >> 3);
       }
     }
@@ -1008,7 +1008,7 @@ draw:
   BrSndNearestInvalidate();
   for (j = 0; j < D_8028AB0C; j++) {
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
+    D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
     if (PLANE->obj != 0 && PLANE->sent != 0) {
       br_vec3_from(&pl.x, (const BrVec3be *)OBJ(PLANE->obj)->m[3]);   /* copied by the offer */
       BrSndNearestOfferTrack(PLANE->obj, &pl, D_8028AAF4);
@@ -1042,7 +1042,7 @@ draw:
   for (j = 0; j < D_8028AB0C; j++) {
     BrPerfMark(0, 0, 0, 0, 0xFF);
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
+    D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
     D_8028AAEC = j;
     BrGroundRay(0, 0, D_8028AAF4->mtx[3], D_8031B248, &D_8028AB00, D_8031B288, &D_8028AB04,
                   &D_8028AAF8, &D_8028AAFC);
@@ -1133,7 +1133,7 @@ draw:
       mx = D_8031B2C8[j].x + ((D_8031B2C8[j].w - mw) >> 1);
       my = D_8031B2C8[j].y + D_8031B2C8[j].h / 16;
       saved = D_8028AAF4;
-      D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cam4));
+      D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam = (&D_8028AAF0->cam4)));
       BrViewportSet(mx, my, -mw, mh, 1);
       BrZBufferClearRect(mx, my, mw, mh);
       BrFrustumSet(D_8028AAF4, D_8028AAF4->fov, D_8028AAC8 * 0.2f, (float)mw, (float)mh);
@@ -1180,8 +1180,8 @@ draw:
       }
       BrScreenFlashDraw();
       BrPerfMark(0, 0, 0x82, 0, 0xFF);
-      D_8028AAF0->cam = tgr_addr32(saved);
-      D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
+      D_8028AAF0->cam = (saved);
+      D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
       BrViewportSet(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h, 1);
       BrViewFrame(mx, my, mw, mh);
     }
@@ -1189,7 +1189,7 @@ draw:
       BrTextHighlightOff();
       BrTextAlignCentre();
       BrTextSetFont(40);
-      if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round != 0) {
+      if (((BrSeason *)(D_8031B760[0].season))->round != 0) {
         BrTextPrint("%rySEASON WINNER!", 160, 210);
       } else {
         BrTextPrint("%ryCHAMPION!", 160, 210);
@@ -1211,7 +1211,7 @@ draw:
           if (&D_8028AAF0->cams[2] != D_8028AAF4) {
             BrStub8023870C();
           }
-        } else if (TGR_PTR(struct BrCarLink *, D_8028AAF0->link)->flags & 2) {
+        } else if (((struct BrCarLink *)(D_8028AAF0->link))->flags & 2) {
           BrHudPositionDraw();
         }
       }
@@ -1224,7 +1224,7 @@ draw:
   /* input: skip the demo, pause, or the pause menu */
   if (D_8026FF10 != 0) {
     for (i = 0; i < D_8026FF08; i++) {
-      BrPadStickToButtons(tgr_addr32(PAD(i)));
+      BrPadStickToButtons(PAD(i));
       if (PAD(i)->pressed & 0x20) {
         BrPadConsume(PAD(i), 0x20);
         BrSfxFadeTo(1.0f, 0.2f);
@@ -1457,7 +1457,7 @@ draw:
         BrScreenFlush2Layout1();
         D_8028A8AC = 0;
         if (D_8026FF18 == 5) {
-          if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round != 0) {
+          if (((BrSeason *)(D_8031B760[0].season))->round != 0) {
           next_race:
             D_8026FF18 = 0;
             BrSeasonPickRace();

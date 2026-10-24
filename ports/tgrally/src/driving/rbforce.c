@@ -1,57 +1,17 @@
 /* rbforce.c -- forces acting on the rigid-body car model
  */
 #include "tgr/common.h"
+#include "tgr/body.h"
 
 /* -- declarations -- */
-typedef struct BrRbBody {       /* a rigid body with up to four attached */
-  int x0;
-  TgrAddr sub[4];      /* struct BrRbBody * -- 0x04 */
-  char pad14[0x18 - 0x14];
-  TgrAddr forces;     /* struct BrRbForce * -- 0x18  applied forces, linked */
-  int kind;                     /* 0x1C  2: does not rotate */
-  char pad20[0x2c - 0x20];
-  float mass;                   /* 0x2C */
-  char pad30[0x54 - 0x30];
-  float Iinv[3][3];             /* 0x54  inverse inertia */
-  float f78[3];                 /* 0x78  (an attachment point, on attached bodies) */
-  float vel[3];                 /* 0x84 */
-  char pad90[0xa0 - 0x90];
-  float angVel[3];              /* 0xA0 */
-  float padac[4];
-  float m[4][4];                /* 0xBC  orientation */
-  float force[3];               /* 0xFC  accumulated this step */
-  float torque[3];              /* 0x108 */
-  char pad114[0x19c - 0x114];
-  int x19c;                     /* 0x19C  on a wheel: its contact record */
-  unsigned char surface;        /* 0x1A0  on a wheel: the surface under it */
-  char pad1a1[0x1a4 - 0x1a1];
-  float n[3];                   /* 0x1A4  on a wheel: the ground normal */
-  char pad1b0[0x1b4 - 0x1b0];
-  int x1b4;                     /* 0x1B4  on a wheel: it is on the ground */
-  char pad1b8[0x1c0 - 0x1b8];
-  float steer;                  /* 0x1C0  on a wheel: steering angle */
-  float spin;                   /* 0x1C4  on a wheel: spin rate */
-  float inertia;                /* 0x1C8  on a wheel */
-  float drive;                  /* 0x1CC  on a wheel: drive torque */
-  float brake;                  /* 0x1D0  on a wheel: brake torque */
-  float angle;                  /* 0x1D4  on a wheel: display angle, degrees; on the car: the visual roll */
-  char pad1d8[0x1fd - 0x1d8];
-  unsigned char tyres;          /* 0x1FD  on the car: the tyre compound, 1-3 */
-  char pad1fe[0x204 - 0x1fe];
-  unsigned char slide;          /* 0x204  on the car: 0x80 while sliding */
-} BrRbBody;
+
 void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w);
 void BrRbSolveAccel(BrRbBody *b);
 void BrMat4RotateVec(float out[3], float m[4][4], float v[3]);   /* v into the body frame */
 void BrMat4RotateVecT(float out[3], float m[4][4], float v[3]);   /* and back out */
 void BrMat3MulVec(float out[3], float m[3][3], float v[3]);
 typedef struct { float v[3]; } BrRbVec;
-typedef struct BrRbForce {      /* a force applied to a body */
-  TgrAddr next;       /* struct BrRbForce * -- 0x00 */
-  int frame;                    /* 0x04  0: world axes, 1: body axes */
-  float f[3];                   /* 0x08 */
-  float at[3];                  /* 0x14  where, in body axes */
-} BrRbForce;
+
 void BrRbAddForces(BrRbBody *b);
 void BrRbAddForce(BrRbBody *b, BrRbForce *a);
 /* -- end declarations -- */
@@ -125,7 +85,7 @@ void BrRbApplyForces(BrRbBody *param_1)
 {
   BrRbForce *piVar1;
   
-  for (piVar1 = TGR_PTR(BrRbForce *, param_1->forces); piVar1 != 0; piVar1 = TGR_PTR(BrRbForce *, piVar1->next)) {
+  for (piVar1 = ((BrRbForce *)(param_1->forces)); piVar1 != 0; piVar1 = ((BrRbForce *)(piVar1->next))) {
     BrRbAddForce(param_1,piVar1);
   }
 }
@@ -304,27 +264,27 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
 
   ran = 0;
   side = 0.0f;
-  n = TGR_PTR(struct BrRbBody *, b->sub[0])->x19c;
+  n = ((struct BrRbBody *)(b->sub[0]))->hit != 0;
   if (n == 0) {
-    TGR_PTR(struct BrRbBody *, b->sub[0])->x1b4 = 0;
+    ((struct BrRbBody *)(b->sub[0]))->x1b4 = 0;
   }
-  n = TGR_PTR(struct BrRbBody *, b->sub[1])->x19c;
+  n = ((struct BrRbBody *)(b->sub[1]))->hit != 0;
   if (n == 0) {
-    TGR_PTR(struct BrRbBody *, b->sub[1])->x1b4 = 0;
+    ((struct BrRbBody *)(b->sub[1]))->x1b4 = 0;
   }
-  n = TGR_PTR(struct BrRbBody *, b->sub[2])->x19c;
+  n = ((struct BrRbBody *)(b->sub[2]))->hit != 0;
   if (n == 0) {
-    TGR_PTR(struct BrRbBody *, b->sub[2])->x1b4 = 0;
+    ((struct BrRbBody *)(b->sub[2]))->x1b4 = 0;
   }
-  n = TGR_PTR(struct BrRbBody *, b->sub[3])->x19c;
+  n = ((struct BrRbBody *)(b->sub[3]))->hit != 0;
   if (n == 0) {
-    TGR_PTR(struct BrRbBody *, b->sub[3])->x1b4 = 0;
+    ((struct BrRbBody *)(b->sub[3]))->x1b4 = 0;
   }
   k = 2.0;
-  slipF = -ABS(TGR_PTR(struct BrRbBody *, b->sub[2])->brake) * SIGNF(TGR_PTR(struct BrRbBody *, b->sub[2])->spin) * k;
-  slipF /= TGR_PTR(struct BrRbBody *, b->sub[2])->inertia;
-  slipR = -ABS(TGR_PTR(struct BrRbBody *, b->sub[0])->brake) * SIGNF(TGR_PTR(struct BrRbBody *, b->sub[0])->spin) * k;
-  slipR /= TGR_PTR(struct BrRbBody *, b->sub[0])->inertia;
+  slipF = -ABS(((struct BrRbBody *)(b->sub[2]))->brake) * SIGNF(((struct BrRbBody *)(b->sub[2]))->spin) * k;
+  slipF /= ((struct BrRbBody *)(b->sub[2]))->inertia;
+  slipR = -ABS(((struct BrRbBody *)(b->sub[0]))->brake) * SIGNF(((struct BrRbBody *)(b->sub[0]))->spin) * k;
+  slipR /= ((struct BrRbBody *)(b->sub[0]))->inertia;
   m4 = b->mass / 4;
   slipF /= m4;
   slipR /= m4;
@@ -337,20 +297,20 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
     slipR = SIGN(slipR) * 1.5f;
   }
   pt[1] = pt[2] = 0.0f;
-  pt[0] = TGR_PTR(struct BrRbBody *, b->sub[0])->f78[0];
+  pt[0] = ((struct BrRbBody *)(b->sub[0]))->f78[0];
   BrRbVelAtPoint(tmpA, b, pt);
   BrMat4RotateVec(vA, b->m, tmpA);
-  sA = TGR_PTR(struct BrRbBody *, b->sub[0])->surface;
-  sB = TGR_PTR(struct BrRbBody *, b->sub[1])->surface;
-  sC = TGR_PTR(struct BrRbBody *, b->sub[2])->surface;
-  sD = TGR_PTR(struct BrRbBody *, b->sub[3])->surface;
+  sA = ((struct BrRbBody *)(b->sub[0]))->surface;
+  sB = ((struct BrRbBody *)(b->sub[1]))->surface;
+  sC = ((struct BrRbBody *)(b->sub[2]))->surface;
+  sD = ((struct BrRbBody *)(b->sub[3]))->surface;
   row = D_8028C800 - 1;
   if (row >= 3 || row < 0) {
     row = 0;
   }
   b->slide = 0;
   row <<= 3;
-  if ((TGR_PTR(struct BrRbBody *, b->sub[0])->x1b4 != 0 || TGR_PTR(struct BrRbBody *, b->sub[1])->x1b4 != 0) && (TGR_PTR(struct BrRbBody *, b->sub[2])->x1b4 != 0 || TGR_PTR(struct BrRbBody *, b->sub[3])->x1b4 != 0)) {
+  if ((((struct BrRbBody *)(b->sub[0]))->x1b4 != 0 || ((struct BrRbBody *)(b->sub[1]))->x1b4 != 0) && (((struct BrRbBody *)(b->sub[2]))->x1b4 != 0 || ((struct BrRbBody *)(b->sub[3]))->x1b4 != 0)) {
     idx = ((sA + sB + 1) >> 1) + row;
     s = ABS(vA[1]) * b->mass / dt + ABS(*gripF);
     ran = 1;
@@ -376,7 +336,7 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
       g = lo;
     }
     g = lo / g * 20.0f * grip;
-    if (TGR_PTR(struct BrRbBody *, b->sub[2])->steer == 0) {
+    if (((struct BrRbBody *)(b->sub[2]))->steer == 0) {
       g = 1.5 * g;
     }
     if (ABS(g) > 1.0f) {
@@ -419,18 +379,18 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   } else {
     *slipFp = 0;
   }
-  pt[0] = TGR_PTR(struct BrRbBody *, b->sub[2])->f78[0];
+  pt[0] = ((struct BrRbBody *)(b->sub[2]))->f78[0];
   BrRbVelAtPoint(tmpB, b, pt);
   BrMat4RotateVec(vB, b->m, tmpB);
-  if ((TGR_PTR(struct BrRbBody *, b->sub[2])->x1b4 != 0 || TGR_PTR(struct BrRbBody *, b->sub[3])->x1b4 != 0) && (TGR_PTR(struct BrRbBody *, b->sub[0])->x1b4 != 0 || TGR_PTR(struct BrRbBody *, b->sub[1])->x1b4 != 0)) {
+  if ((((struct BrRbBody *)(b->sub[2]))->x1b4 != 0 || ((struct BrRbBody *)(b->sub[3]))->x1b4 != 0) && (((struct BrRbBody *)(b->sub[0]))->x1b4 != 0 || ((struct BrRbBody *)(b->sub[1]))->x1b4 != 0)) {
     float d;
     float save[3];
     float lat[3];
     int u3[8];
 
     ran = 1;
-    pt[0] = cosf(TGR_PTR(struct BrRbBody *, b->sub[2])->steer);
-    pt[1] = sinf(TGR_PTR(struct BrRbBody *, b->sub[2])->steer);
+    pt[0] = cosf(((struct BrRbBody *)(b->sub[2]))->steer);
+    pt[1] = sinf(((struct BrRbBody *)(b->sub[2]))->steer);
     pt[2] = 0.f;
     d = pt[0] * vB[0] + pt[1] * vB[1] + pt[2] * vB[2];
     save[0] = vB[0];
@@ -464,7 +424,7 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
         g = lo;
       }
       g = lo / g * 20.0f * grip;
-      if (TGR_PTR(struct BrRbBody *, b->sub[2])->steer == 0.0f) {
+      if (((struct BrRbBody *)(b->sub[2]))->steer == 0.0f) {
         g = g * 1.5;
       }
       if (ABS(g) > 1.0f) {
@@ -488,8 +448,8 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   }
   if (ran != 0) {
     sv[0] = (vB[0] + vA[0]) / 2;
-    sv[2] = (vA[1] - vB[1]) / (TGR_PTR(struct BrRbBody *, b->sub[0])->f78[0] - TGR_PTR(struct BrRbBody *, b->sub[2])->f78[0]);
-    sv[1] = vA[1] - TGR_PTR(struct BrRbBody *, b->sub[0])->f78[0] * sv[2];
+    sv[2] = (vA[1] - vB[1]) / (((struct BrRbBody *)(b->sub[0]))->f78[0] - ((struct BrRbBody *)(b->sub[2]))->f78[0]);
+    sv[1] = vA[1] - ((struct BrRbBody *)(b->sub[0]))->f78[0] * sv[2];
     BrMat4RotateVec(w, b->m, b->angVel);
     w[2] = sv[2];
     BrMat4RotateVecT(b->angVel, b->m, w);
@@ -552,7 +512,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   float axis[3] = { 0.0f, 1.0f, 0.0f };
   int u2[2];
 
-  contact = w->x19c;
+  contact = w->hit != 0;
   if (contact == 0) {
     return;
   }
@@ -586,7 +546,7 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
   side[0] = side[0] + c[0];
   side[1] = side[1] + c[1];
   side[2] = side[2] + c[2];
-  if (TGR_PTR(struct BrRbBody *, b->sub[0])->x1b4 != 0 && TGR_PTR(struct BrRbBody *, b->sub[2])->x1b4 != 0 && TGR_PTR(struct BrRbBody *, b->sub[1])->x1b4 != 0 && TGR_PTR(struct BrRbBody *, b->sub[3])->x1b4 != 0) {
+  if (((struct BrRbBody *)(b->sub[0]))->x1b4 != 0 && ((struct BrRbBody *)(b->sub[2]))->x1b4 != 0 && ((struct BrRbBody *)(b->sub[1]))->x1b4 != 0 && ((struct BrRbBody *)(b->sub[3]))->x1b4 != 0) {
     BrRbVelAtBodyPoint(v, b, w);
     dot = v[0] * fwd[0] + v[1] * fwd[1] + v[2] * fwd[2];
     h = w->f78[2] - -0.97;
@@ -609,9 +569,9 @@ void BrWheelTyre(BrRbBody *b, BrRbBody *w, float *pA, unsigned char *pB, float d
     e[1] = -q * fwd[1];
     e[2] = -q * fwd[2];
     BrMat4RotateVec(a, b->m, e);
-    TGR_PTR(struct BrRbForce *, w->forces)->f[0] = TGR_PTR(struct BrRbForce *, w->forces)->f[0] + a[0];
-    TGR_PTR(struct BrRbForce *, w->forces)->f[1] = TGR_PTR(struct BrRbForce *, w->forces)->f[1] + a[1];
-    TGR_PTR(struct BrRbForce *, w->forces)->f[2] = TGR_PTR(struct BrRbForce *, w->forces)->f[2] + a[2];
+    ((struct BrRbForce *)(w->forces))->f[0] = ((struct BrRbForce *)(w->forces))->f[0] + a[0];
+    ((struct BrRbForce *)(w->forces))->f[1] = ((struct BrRbForce *)(w->forces))->f[1] + a[1];
+    ((struct BrRbForce *)(w->forces))->f[2] = ((struct BrRbForce *)(w->forces))->f[2] + a[2];
     h = tq - w->inertia * q;
     w->spin = w->spin + h * dt;
     w->spin = w->spin - (w->spin * w->inertia + dot) * 0.4;
@@ -653,10 +613,10 @@ void BrRbSolveAccel(BrRbBody *b)
   b->force[0] = t[0];
   b->force[1] = t[1];
   b->force[2] = t[2];
-  t[0] = (b->force[0] + TGR_PTR(struct BrRbBody *, b->sub[0])->force[0] + TGR_PTR(struct BrRbBody *, b->sub[1])->force[0] + TGR_PTR(struct BrRbBody *, b->sub[2])->force[0] +
-          TGR_PTR(struct BrRbBody *, b->sub[3])->force[0]) / b->mass;
-  t[1] = (b->force[1] + TGR_PTR(struct BrRbBody *, b->sub[0])->force[1] + TGR_PTR(struct BrRbBody *, b->sub[1])->force[1] + TGR_PTR(struct BrRbBody *, b->sub[2])->force[1] +
-          TGR_PTR(struct BrRbBody *, b->sub[3])->force[1]) / b->mass;
+  t[0] = (b->force[0] + ((struct BrRbBody *)(b->sub[0]))->force[0] + ((struct BrRbBody *)(b->sub[1]))->force[0] + ((struct BrRbBody *)(b->sub[2]))->force[0] +
+          ((struct BrRbBody *)(b->sub[3]))->force[0]) / b->mass;
+  t[1] = (b->force[1] + ((struct BrRbBody *)(b->sub[0]))->force[1] + ((struct BrRbBody *)(b->sub[1]))->force[1] + ((struct BrRbBody *)(b->sub[2]))->force[1] +
+          ((struct BrRbBody *)(b->sub[3]))->force[1]) / b->mass;
   t[2] = b->force[2] / b->mass;
   BrMat4RotateVecT(b->force, b->m, t);
   BrMat4RotateVec(u, b->m, b->torque);
@@ -680,7 +640,7 @@ void BrRbAddForces(BrRbBody *b)
   float r[3];
   float t[3];
 
-  for (a = TGR_PTR(struct BrRbForce *, b->forces); a != 0; a = TGR_PTR(struct BrRbForce *, a->next)) {
+  for (a = ((struct BrRbForce *)(b->forces)); a != 0; a = ((struct BrRbForce *)(a->next))) {
     switch (a->frame) {
     case 0:
       f[0] = a->f[0];
@@ -726,7 +686,7 @@ void BrRbAddWheelForces(BrRbBody *b, BrRbBody *w)
   float r[3];
   float t[3];
 
-  for (a = TGR_PTR(struct BrRbForce *, w->forces); a != 0; a = TGR_PTR(struct BrRbForce *, a->next)) {
+  for (a = ((struct BrRbForce *)(w->forces)); a != 0; a = ((struct BrRbForce *)(a->next))) {
     if (a->frame == 0) {
       BrMat4RotateVec(f, b->m, a->f);
     }
@@ -764,23 +724,23 @@ void BrRbForcesClear(BrRbBody *b)
 {
   b->force[2] = b->force[1] = b->force[0] = 0.0f;
   b->torque[2] = b->torque[1] = b->torque[0] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[0])->force[0] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[0])->force[1] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[0])->force[2] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[1])->force[0] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[1])->force[1] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[1])->force[2] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[2])->force[0] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[2])->force[1] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[2])->force[2] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[3])->force[0] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[3])->force[1] = 0.0f;
-  TGR_PTR(struct BrRbBody *, b->sub[3])->force[2] = 0.0f;
+  ((struct BrRbBody *)(b->sub[0]))->force[0] = 0.0f;
+  ((struct BrRbBody *)(b->sub[0]))->force[1] = 0.0f;
+  ((struct BrRbBody *)(b->sub[0]))->force[2] = 0.0f;
+  ((struct BrRbBody *)(b->sub[1]))->force[0] = 0.0f;
+  ((struct BrRbBody *)(b->sub[1]))->force[1] = 0.0f;
+  ((struct BrRbBody *)(b->sub[1]))->force[2] = 0.0f;
+  ((struct BrRbBody *)(b->sub[2]))->force[0] = 0.0f;
+  ((struct BrRbBody *)(b->sub[2]))->force[1] = 0.0f;
+  ((struct BrRbBody *)(b->sub[2]))->force[2] = 0.0f;
+  ((struct BrRbBody *)(b->sub[3]))->force[0] = 0.0f;
+  ((struct BrRbBody *)(b->sub[3]))->force[1] = 0.0f;
+  ((struct BrRbBody *)(b->sub[3]))->force[2] = 0.0f;
   BrRbAddForces(b);
-  BrRbAddWheelForces(b, TGR_PTR(struct BrRbBody *, b->sub[0]));
-  BrRbAddWheelForces(b, TGR_PTR(struct BrRbBody *, b->sub[1]));
-  BrRbAddWheelForces(b, TGR_PTR(struct BrRbBody *, b->sub[2]));
-  BrRbAddWheelForces(b, TGR_PTR(struct BrRbBody *, b->sub[3]));
+  BrRbAddWheelForces(b, ((struct BrRbBody *)(b->sub[0])));
+  BrRbAddWheelForces(b, ((struct BrRbBody *)(b->sub[1])));
+  BrRbAddWheelForces(b, ((struct BrRbBody *)(b->sub[2])));
+  BrRbAddWheelForces(b, ((struct BrRbBody *)(b->sub[3])));
   BrRbSolveAccel(b);
 }
 

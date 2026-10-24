@@ -53,7 +53,7 @@ extern char D_803D5F88[];
 
 int BrCarModelPresent(int param_1);
 extern int D_80272070;
-#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
+#define D_8031C5BC ((char *)D_8031B760[0].season)   /* car 0's season */
 extern Gfx *D_8028A858;
 
 void BrAnimSetFlags(BrAnimSet *set, int on, int off);

@@ -239,11 +239,11 @@ void BrPaintShopScreen(void)
     D_8028B7F4 = 1;
     BrCarDefaultColour(&D_8031B760[D_8028DBBC]);
     car = &D_8031B760[D_8028DBBC];
-    car->xed8 = TGR_FA(BrCarCamStep);
+    car->xed8 = BrCarCamStep;
     n = D_8028DBBC;
     D_8031B760[n].kind = D_8031B760[0].kind;
     BrEntLoadRecord(&D_8031B760[n], n, D_8031B760[n].kind);
-    D_8028AB08 = (BrPaintModel *)TGR_PTR(char *, D_8031B760[D_8028DBBC].model);
+    D_8028AB08 = (BrPaintModel *)((char *)(D_8031B760[D_8028DBBC].model));
     {
       float *p = D_8031B760[D_8028DBBC].mtx0[3];
 

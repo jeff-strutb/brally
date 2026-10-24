@@ -1,6 +1,7 @@
 /* carselect.c -- the car-select screen
  */
 #include "tgr/common.h"
+#include "tgr/car.h"
 #include "tgr/gbi.h"
 #include "tgr/romimage.h"
 
@@ -9,7 +10,7 @@ int BrCarModelPresent(int param_1);
 extern int D_8020C688;
 extern int D_8020C68C;
 extern int D_80272070;
-#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
+#define D_8031C5BC ((char *)D_8031B760[0].season)   /* car 0's season */
 extern char D_8028AE24;
 extern Gfx *D_8028A858;
 /* -- end declarations -- */
@@ -116,7 +117,7 @@ void BrCarViewDraw(BrModel *iconA, BrModel *iconB, int player, int x, int y, int
   D_8028AAF0->mtx0[0][1] = sinf(spin);
   D_8028AAF0->mtx0[0][2] = 0.0f;
   BrVec3Cross((BrVec3 *)D_8028AAF0->mtx0[1], (BrVec3 *)D_8028AAF0->mtx0[2], (BrVec3 *)D_8028AAF0->mtx0[0]);
-  D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cams[3]));
+  D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam = (&D_8028AAF0->cams[3])));
   D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
   D_8028AAF0->heading = BrAtan2(D_8028AAF4->mtx[0][0], D_8028AAF4->mtx[0][1]);
   BrCameraSet(D_8028AAF4, D_8028AAC0, D_8028AAC8 * 0.2f, w, h);
@@ -352,7 +353,7 @@ int BrDecalPakTransfer(BrCarModelBuf *m, unsigned char port, char op, char fromM
 void BrPakMessage(int status, char op, char fromMenu);
 void BrCarColourFromModel(BrCar *car, void *m);
 void BrFrameEnd(void);
-void BrPadStickToButtons(int);
+void BrPadStickToButtons(void *);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
 short BrSfxFreeVoice(void);
 void BrSfxVoiceStart(short, unsigned int, unsigned int, unsigned int);
@@ -457,9 +458,9 @@ void BrCarSelect(void)
     BrFadeTo(1.0f, 0.2f);
     BrSfxFadeTo(1.0f, 0.2f);
     BrMusicFadeTo(1.0f, 0.2f);
-    D_803162FC = TGR_PTR(BrSeason *, CAR(0)->season)->round;
-    D_80316300 = TGR_PTR(BrSeason *, CAR(0)->season)->race;
-    D_80316304 = TGR_PTR(BrSeason *, CAR(0)->season)->state;
+    D_803162FC = ((BrSeason *)(CAR(0)->season))->round;
+    D_80316300 = ((BrSeason *)(CAR(0)->season))->race;
+    D_80316304 = ((BrSeason *)(CAR(0)->season))->state;
     D_80316308 = D_8028B940;
     D_8031630C = D_8028C800;
     D_80316310 = 0;
@@ -469,7 +470,7 @@ void BrCarSelect(void)
     for (p = 0; p < D_8026FF08; p++) {
       if (D_80272074 == 0) {
         BrCarDefaultColour(CAR(p));
-        CAR(p)->xed8 = TGR_FA(BrCarCamStep);
+        CAR(p)->xed8 = BrCarCamStep;
       }
       D_80316258[p] = p;
       D_80316260[p] = 0;
@@ -481,7 +482,7 @@ void BrCarSelect(void)
     if (D_80272074 == 0) {
       for (; p < 4; p++) {
         BrCarDefaultColour(CAR(p));
-        CAR(p)->xed8 = TGR_FA(BrCtlAi);
+        CAR(p)->xed8 = BrCtlAi;
       }
     }
     D_8028B7F4 = 2;
@@ -703,7 +704,7 @@ void BrCarSelect(void)
       } else {
         if (D_8026FF18 == 0) {
           car = CAR(pl);
-          k = TGR_PTR(BrSeason *, CAR(pl)->season)->place[round][race];
+          k = ((BrSeason *)(CAR(pl)->season))->place[round][race];
           sprintf(D_80316318, "%%ry%s Place - %d Point%s", D_80271FE0[k], D_802707AC[k],
                   D_802707AC[k] == 1 ? "" : "s");
         } else {
@@ -722,7 +723,7 @@ void BrCarSelect(void)
         BrTextAlignLeft();
         if (p == D_8028B304) {
           y += 2;
-          if (car->lapTime == TGR_PTR(BrSeason *, CAR(0)->season)->xe8[D_80316308]) {
+          if (car->lapTime == ((BrSeason *)(CAR(0)->season))->xe8[D_80316308]) {
             BrTextPrint("  %yyRECORD TIME!", D_8028AAB0 * 11 / 16, y);
           }
           sprintf(D_80316318, "Race time:");
@@ -737,7 +738,7 @@ void BrCarSelect(void)
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 5 / 16, y);
         if (p < car->laps && p == car->xf9c) {
-          if (car->xf98 == TGR_PTR(BrSeason *, CAR(0)->season)->x8c[D_80316308]) {
+          if (car->xf98 == ((BrSeason *)(CAR(0)->season))->x8c[D_80316308]) {
             BrTextPrint("  %yyRECORD LAP!", D_8028AAB0 * 11 / 16, y);
           } else {
             BrTextPrint("  %yyBEST LAP!", D_8028AAB0 * 11 / 16, y);
@@ -790,18 +791,18 @@ void BrCarSelect(void)
         BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y);
         BrTextAlignCentre();
         if (p <= (int)race) {
-          BrTimeFormat(D_80316318, TGR_PTR(BrSeason *, CAR(0)->season)->times[round][p]);
+          BrTimeFormat(D_80316318, ((BrSeason *)(CAR(0)->season))->times[round][p]);
         } else {
           sprintf(D_80316318, "--");
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 17 / 32 + x, y);
-        BrTextPrint(p <= (int)race ? D_80271FE0[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]] : "--",
+        BrTextPrint(p <= (int)race ? D_80271FE0[((BrSeason *)(CAR(0)->season))->place[round][p]] : "--",
                     D_8028AAB0 * 21 / 32 + x, y);
         BrTextAlignRight();
         if (p <= (int)race) {
           sprintf(D_80316318, "%d PTS",
-                  D_802707AC[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]]);
-          total += D_802707AC[TGR_PTR(BrSeason *, CAR(0)->season)->place[round][p]];
+                  D_802707AC[((BrSeason *)(CAR(0)->season))->place[round][p]]);
+          total += D_802707AC[((BrSeason *)(CAR(0)->season))->place[round][p]];
         }
         BrTextPrint(D_80316318, D_8028AAB0 * 13 / 16 + x, y);
         y += 10;
@@ -943,8 +944,8 @@ void BrCarSelect(void)
       D_803162C4 = 1;
     } else {
       BrPakMessage(D_803162C0, 9, 1);
-      if (((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_803162BC)->pad))->pressed & 0x30) {
-        BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_803162BC)->pad), 0x30);
+      if (((BrPadRec *)((unsigned int *)(CAR(D_803162BC)->pad)))->pressed & 0x30) {
+        BrPadConsume((BrPadRec *)((unsigned int *)(CAR(D_803162BC)->pad)), 0x30);
         D_803162C4 = 1;
       }
     }
@@ -979,8 +980,8 @@ void BrCarSelect(void)
         if (D_80272074 != 0) {
           if (D_8026FF18 == 0) {
             D_8026FF08 = 1;
-            D_80270850 = TGR_PTR(BrSeason *, CAR(0)->season)->race != 0;
-            if (D_803162FC == TGR_PTR(BrSeason *, CAR(0)->season)->round) {
+            D_80270850 = ((BrSeason *)(CAR(0)->season))->race != 0;
+            if (D_803162FC == ((BrSeason *)(CAR(0)->season))->round) {
               BrSeasonPickRace();
               D_802724F4 = 1;
               BrModeSet(BrLoadSaveScreen);
@@ -1024,27 +1025,27 @@ void BrCarSelect(void)
     } else {
       if (D_80272070 != 0) {
         /* the paint shop's player drives the screen */
-        ((BrPadRec *)TGR_PTR(unsigned int *, CAR(0)->pad))->pressed = ((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_80271FA0)->pad))->pressed;
-        ((BrPadRec *)TGR_PTR(unsigned int *, CAR(0)->pad))->axis[0] = ((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_80271FA0)->pad))->axis[0];
-        ((BrPadRec *)TGR_PTR(unsigned int *, CAR(0)->pad))->axis[1] = ((BrPadRec *)TGR_PTR(unsigned int *, CAR(D_80271FA0)->pad))->axis[1];
+        ((BrPadRec *)((unsigned int *)(CAR(0)->pad)))->pressed = ((BrPadRec *)((unsigned int *)(CAR(D_80271FA0)->pad)))->pressed;
+        ((BrPadRec *)((unsigned int *)(CAR(0)->pad)))->axis[0] = ((BrPadRec *)((unsigned int *)(CAR(D_80271FA0)->pad)))->axis[0];
+        ((BrPadRec *)((unsigned int *)(CAR(0)->pad)))->axis[1] = ((BrPadRec *)((unsigned int *)(CAR(D_80271FA0)->pad)))->axis[1];
       }
       for (p = 0; p < D_8026FF08; p++) {
         car = CAR(p);
         back = 1;
         if (D_80272074 != 0) {
-          ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed &= ~0xF;
+          ((BrPadRec *)((unsigned int *)(car->pad)))->pressed &= ~0xF;
         } else {
-          BrPadStickToButtons(tgr_addr32((BrPadRec *)TGR_PTR(unsigned int *, car->pad)));
+          BrPadStickToButtons((BrPadRec *)((unsigned int *)(car->pad)));
         }
         if (D_803162B0[p] == 6) {
-          if (((BrPadRec *)TGR_PTR(unsigned int *, CAR(p)->pad))->pressed & 0x20) {
+          if (((BrPadRec *)((unsigned int *)(CAR(p)->pad)))->pressed & 0x20) {
             D_803162B0[p]--;
-            BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, CAR(p)->pad), 0x20);
+            BrPadConsume((BrPadRec *)((unsigned int *)(CAR(p)->pad)), 0x20);
           }
         } else if (D_80316260[p] == 0) {
           /* the car (step 0): left and right pick the next selectable car */
           if (D_803162B0[p] == 0) {
-            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 4) {
+            if (((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 4) {
               n = car->x2058;
               do {
                 car->x2058 = (car->x2058 + D_8028AE08 - 1) % D_8028AE08;
@@ -1054,7 +1055,7 @@ void BrCarSelect(void)
                 goto newcar;
               }
             }
-            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 1) {
+            if (((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 1) {
               n = car->x2058;
               do {
                 car->x2058 = (car->x2058 + 1) % D_8028AE08;
@@ -1073,30 +1074,30 @@ void BrCarSelect(void)
           }
           /* the colour, on the car and on the decals */
           if (D_803162B0[p] == 0 || D_803162B0[p] == 5) {
-            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 0x400) {
-              BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, car->pad), 0x400);
-              if (TGR_PTR(BrSeason *, car->season)->unlocked & 0x8000) {
+            if (((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 0x400) {
+              BrPadConsume((BrPadRec *)((unsigned int *)(car->pad)), 0x400);
+              if (((BrSeason *)(car->season))->unlocked & 0x8000) {
                 car->x2068 ^= 1;
               }
             }
-            a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+            a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
             if (a & 8) {
               if (a & 0x800) {
                 if (CAR(p)->colour[0] < 0xFC) {
                   CAR(p)->colour[0] += 4;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 } else {
                   CAR(p)->colour[0] = 0xFF;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 }
               }
               if (a & 0x100) {
                 if (CAR(p)->colour[1] < 0xFC) {
                   CAR(p)->colour[1] += 4;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 } else {
                   CAR(p)->colour[1] = 0xFF;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 }
               }
               if (a & 0x200) {
@@ -1106,27 +1107,27 @@ void BrCarSelect(void)
                   CAR(p)->colour[2] = 0xFF;
                 }
               }
-              BrEntPaintTexture(TGR_PTR(void *, (int)car->model), CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+              BrEntPaintTexture(car->model, CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
                                 CAR(p)->colour[2] >> 3);
-              a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+              a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
             }
             if (a & 2) {
               if (a & 0x800) {
                 if (CAR(p)->colour[0] >= 4) {
                   CAR(p)->colour[0] -= 4;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 } else {
                   CAR(p)->colour[0] = 0;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 }
               }
               if (a & 0x100) {
                 if (CAR(p)->colour[1] >= 4) {
                   CAR(p)->colour[1] -= 4;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 } else {
                   CAR(p)->colour[1] = 0;
-                  a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
+                  a = ((BrPadRec *)((unsigned int *)(car->pad)))->pressed;
                 }
               }
               if (a & 0x200) {
@@ -1136,19 +1137,19 @@ void BrCarSelect(void)
                   CAR(p)->colour[2] = 0;
                 }
               }
-              BrEntPaintTexture(TGR_PTR(void *, (int)car->model), CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+              BrEntPaintTexture(car->model, CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
                                 CAR(p)->colour[2] >> 3);
             }
           }
           /* the setup choice (steps 1-5): left and right */
           if (D_803162B0[p] != 0) {
-            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 4) {
+            if (((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 4) {
               D_80316280[p] = D_80316278[p];
               D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
               D_80316260[p] = 1.0f;
               goto tick;
             }
-            if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 1) {
+            if (((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 1) {
               D_80316280[p] = D_80316278[p];
               D_80316278[p] = (D_80316278[p] + 1) % D_80316288[p];
               D_80316260[p] = -1.0f;
@@ -1159,7 +1160,7 @@ void BrCarSelect(void)
               }
             }
           }
-          pad = (BrPadRec *)TGR_PTR(unsigned int *, car->pad);
+          pad = (BrPadRec *)((unsigned int *)(car->pad));
           if (pad->pressed & 0x20) {
             /* back */
             BrPadConsume(pad, 0x20);
@@ -1171,19 +1172,19 @@ void BrCarSelect(void)
               D_803162B0[p]--;
               switch (D_803162B0[p]) {
               case 1:
-                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd4;
+                D_80316278[p] = ((BrSeason *)(car->season))->xd4;
                 SETUP(p, D_802720B4, D_802720C4, "Handling");
                 break;
               case 2:
-                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd8;
+                D_80316278[p] = ((BrSeason *)(car->season))->xd8;
                 SETUP(p, D_802720F0, D_802720FC, "Transmission");
                 break;
               case 3:
-                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xdc;
+                D_80316278[p] = ((BrSeason *)(car->season))->xdc;
                 SETUP(p, D_8027213C, D_8027214C, "Tires");
                 break;
               case 4:
-                D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xe0;
+                D_80316278[p] = ((BrSeason *)(car->season))->xe0;
                 SETUP(p, D_8027218C, D_8027219C, "Suspension");
                 break;
               case 5:
@@ -1200,26 +1201,26 @@ void BrCarSelect(void)
             switch (D_803162B0[p]) {
             case 0:
               car->kind = car->x2058;
-              D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd4;
+              D_80316278[p] = ((BrSeason *)(car->season))->xd4;
               SETUP(p, D_802720B4, D_802720C4, "Handling");
               break;
             case 1:
-              TGR_PTR(BrSeason *, car->season)->xd4 = D_80316278[p];
-              D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xd8;
+              ((BrSeason *)(car->season))->xd4 = D_80316278[p];
+              D_80316278[p] = ((BrSeason *)(car->season))->xd8;
               SETUP(p, D_802720F0, D_802720FC, "Transmission");
               break;
             case 2:
-              TGR_PTR(BrSeason *, car->season)->xd8 = D_80316278[p];
-              D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xdc;
+              ((BrSeason *)(car->season))->xd8 = D_80316278[p];
+              D_80316278[p] = ((BrSeason *)(car->season))->xdc;
               SETUP(p, D_8027213C, D_8027214C, "Tires");
               break;
             case 3:
-              TGR_PTR(BrSeason *, car->season)->xdc = D_80316278[p];
-              D_80316278[p] = TGR_PTR(BrSeason *, car->season)->xe0;
+              ((BrSeason *)(car->season))->xdc = D_80316278[p];
+              D_80316278[p] = ((BrSeason *)(car->season))->xe0;
               SETUP(p, D_8027218C, D_8027219C, "Suspension");
               break;
             case 4:
-              TGR_PTR(BrSeason *, car->season)->xe0 = D_80316278[p];
+              ((BrSeason *)(car->season))->xe0 = D_80316278[p];
               D_80316278[p] = 0;
               D_80316270[p] = D_802721DC;
               if (car->kind < 9) {
@@ -1251,7 +1252,7 @@ void BrCarSelect(void)
               break;
             }
             D_80316280[p] = D_80316278[p];
-            if ((((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 0x4000) || D_80272070 != 0 || D_80272074 != 0) {
+            if ((((BrPadRec *)((unsigned int *)(car->pad)))->pressed & 0x4000) || D_80272070 != 0 || D_80272074 != 0) {
               /* START: straight to ready (or the next results page) */
               D_80316288[p] = D_802721EC - 1;
               D_80316278[p] = 0;

@@ -369,12 +369,13 @@ void BrPadStickRepeatNeg(unsigned int *pressed, int *timer, float *axis, unsigne
  * threshold on either axis sets the matching up, down, left or right bit,
  * with a delay before it starts repeating. */
 /* @implements 0x80255ADC tgr BrPadStickToButtons */
-void BrPadStickToButtons(int param_1)
+void BrPadStickToButtons(void *pad)
 {
-  BrPadStickRepeatPos(TGR_PTR(unsigned int *, param_1),TGR_PTR(int *, param_1 + 8),TGR_PTR(float *, param_1 + 0x1c),8);
-  BrPadStickRepeatNeg(TGR_PTR(unsigned int *, param_1),TGR_PTR(int *, param_1 + 0xc),TGR_PTR(float *, param_1 + 0x1c),2);
-  BrPadStickRepeatNeg(TGR_PTR(unsigned int *, param_1),TGR_PTR(int *, param_1 + 0x10),TGR_PTR(float *, param_1 + 0x18),4);
-  BrPadStickRepeatPos(TGR_PTR(unsigned int *, param_1),TGR_PTR(int *, param_1 + 0x14),TGR_PTR(float *, param_1 + 0x18),1);
+  char *p = pad;                        /* port: a native pointer (the fields before 0x2C: no pointers) */
+  BrPadStickRepeatPos((unsigned int *)p, (int *)(p + 8), (float *)(p + 0x1c), 8);
+  BrPadStickRepeatNeg((unsigned int *)p, (int *)(p + 0xc), (float *)(p + 0x1c), 2);
+  BrPadStickRepeatNeg((unsigned int *)p, (int *)(p + 0x10), (float *)(p + 0x18), 4);
+  BrPadStickRepeatPos((unsigned int *)p, (int *)(p + 0x14), (float *)(p + 0x18), 1);
 }
 
 /* WHAT IT DOES: Mark buttons as handled: moves the given bits from the
