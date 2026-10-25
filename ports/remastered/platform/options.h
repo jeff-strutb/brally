@@ -13,10 +13,12 @@ enum {
     RM_OPT_FPS,                     /* 1: the frame rate shown at the bottom centre */
     RM_OPT_TEXTURES,                /* shelved: always 0 (the Remastered textures; RM_OPT_TEXTURES=1 for its checks) */
     RM_OPT_MENUS,                   /* RM_MENUS_*: whose menus the app shows */
+    RM_OPT_VIEWDIST,                /* RM_VIEW_*: how far a race view sees */
     RM_OPT_COUNT
 };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 enum { RM_MENUS_TGR, RM_MENUS_BR };
+enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 
 int  rm_option(int which);
 /* the choice, now: both games told, the music crossfaded, the file written */

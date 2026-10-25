@@ -92,9 +92,10 @@ typedef int (*CtlFn)(RmCtl *);
 extern "C" int  rm_option(int which);
 extern "C" void rm_option_set(int which, int value);
 extern "C" void br_menus_leave(void);   /* race_handoff.c */
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_MENUS };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 enum { RM_MENUS_TGR, RM_MENUS_BR };
+enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 
 #define SPR_WRENCH  9                   /* the options pages' emblem (op.bmp) */
 #define SPR_MUSIC   RM_SPR_BASE         /* the soundtrack's machine, the PC or the N64 (rm_menuicons.c),
@@ -106,7 +107,7 @@ enum { RM_MENUS_TGR, RM_MENUS_BR };
  * centred where the control sits */
 #define RM_SPR_BASE 1000
 
-enum { ROW_WIDE, ROW_MUSIC, ROW_FPS, ROW_MENUS, NROW };
+enum { ROW_WIDE, ROW_MUSIC, ROW_FPS, ROW_VIEW, ROW_MENUS, NROW };
 static RmCtl *s_row[NROW];
 extern "C" const unsigned short rm_menuicon_key;
 extern "C" const int rm_pcicon_w, rm_pcicon_h, rm_n64icon_w, rm_n64icon_h;
@@ -224,6 +225,10 @@ static const char *row_text(int r)
     case ROW_FPS:
         snprintf(s_text[r], sizeof s_text[r], "SHOW FPS  %s", rm_option(RM_OPT_FPS) ? "ON" : "OFF");
         break;
+    case ROW_VIEW:
+        snprintf(s_text[r], sizeof s_text[r], "VIEW DISTANCE  %s",
+                 rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? "UNLIMITED" : "ORIGINAL");
+        break;
     default:
         snprintf(s_text[r], sizeof s_text[r], "MENUS  BOSS RALLY");
         break;
@@ -255,6 +260,13 @@ static int act_fps(RmCtl *)
 {
     rm_option_set(RM_OPT_FPS, !rm_option(RM_OPT_FPS));
     relabel(ROW_FPS);
+    return 1;
+}
+
+static int act_view(RmCtl *)
+{
+    rm_option_set(RM_OPT_VIEWDIST, rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? RM_VIEW_ORIGINAL : RM_VIEW_UNLIMITED);
+    relabel(ROW_VIEW);
     return 1;
 }
 
@@ -335,7 +347,8 @@ static int enter(GameUi *parent)
     s_row[ROW_WIDE] = row(parent, cont, k_dy[0], act_wide, row_text(ROW_WIDE));
     s_row[ROW_MUSIC] = row(parent, cont, k_dy[1], act_music, row_text(ROW_MUSIC));
     s_row[ROW_FPS] = row(parent, cont, k_dy[2], act_fps, row_text(ROW_FPS));
-    s_row[ROW_MENUS] = row(parent, cont, k_dy[3], act_menus, row_text(ROW_MENUS));
+    s_row[ROW_VIEW] = row(parent, cont, k_dy[3], act_view, row_text(ROW_VIEW));
+    s_row[ROW_MENUS] = row(parent, cont, k_dy[4], act_menus, row_text(ROW_MENUS));
     p = row(parent, cont, k_dy[6], act_back, BrStrGet(0x0C));
     (*(RmCtl **)&g_brUipAA29C8) = p;     /* Escape's row, as the game's pages name their Back */
 

@@ -1,0 +1,74 @@
+--- a/src/core/scene/br_scenevis.c
++++ b/src/core/scene/br_scenevis.c
+@@ -31,6 +31,11 @@
+ 
+ #define BR_VIS_CELL_MAX 192
+ 
++/* Remastered: at View Distance Unlimited (rm_view.h) the wedge can cover
++ * the whole 64 x 64 grid, past the original's 192 */
++#include "br_flags.h"
++static BrVisCell s_rmVisCells[64 * 64 + 1];
++
+ /* 64-bit core: declared once, in br_globals.h or its struct's header */  /* 0x1035F7E8 */
+ /* 64-bit core: declared once, in br_globals.h or its struct's header */                /* 0x102E16B8 */
+ 
+@@ -187,24 +192,26 @@
+     short         *pd;
+ 
+     BrVec3        *pPos;
++    BrVisCell     *cells = plat_flag(BR_FLAG_VIEW_UNLIMITED) ? s_rmVisCells : g_BrVisCells;   /* Remastered */
++    int            nMax = cells == g_BrVisCells ? BR_VIS_CELL_MAX : 64 * 64;
+ 
+ 
+     n = 0;
+     g_BrVisCellOverflow = 0;
+     for (row = g_BrVisRowLo; row <= g_BrVisRowHi; row++) {
+         for (col = g_BrVisColLo[row]; col <= g_BrVisColHi[row]; col++) {
+-            if (n == BR_VIS_CELL_MAX) {
++            if (n == nMax) {
+                 g_BrVisCellOverflow = 1;
+                 goto done;
+             }
+-            g_BrVisCells[n].col = (unsigned char)col;
+-            g_BrVisCells[n].row = (unsigned char)row;
++            cells[n].col = (unsigned char)col;
++            cells[n].row = (unsigned char)row;
+             n++;
+         }
+     }
+ done:
+-    g_BrVisCells[n].col = 0xFF;
+-    g_BrVisCells[n].row = 0xFF;
++    cells[n].col = 0xFF;
++    cells[n].row = 0xFF;
+ 
+     cx = (int)(g_BrCamera->pos.x * g_BrVisCellRecip);
+     if (cx == 64)
+@@ -214,11 +221,11 @@
+         cy = 63;
+ 
+     for (i = 0; i < n; i++) {
+-        int dx = g_BrVisCells[i].col - cx;
+-        int dy = g_BrVisCells[i].row - cy;
+-        g_BrVisCells[i].dist = (short)(dx * dx + dy * dy);
++        int dx = cells[i].col - cx;
++        int dy = cells[i].row - cy;
++        cells[i].dist = (short)(dx * dx + dy * dy);
+     }
+-    qsort(g_BrVisCells, n, 4, BrQsortCmpS2);
++    qsort(cells, n, 4, BrQsortCmpS2);
+ 
+     FUN_100597f0(g_BrSpanPending, g_brTrkHdr.cInstances, -1);
+     g_BrVisSpanCount = 0;
+@@ -229,9 +236,9 @@
+     thr2 = (-3 - r) * (-3 - r);
+     thr = ((DAT_105ccb68[8]) != 0 && g_BrCamera == (BrCamera *)&((BrDriverCar *)(*(BrPlayerCar * *)&g_pBr63Race))->aSnap[3]) ? 9 : 1;
+ 
+-    col = g_BrVisCells[0].col;
++    col = cells[0].col;
+     if (col != 0xFF) {
+-        pd = &g_BrVisCells[0].dist;
++        pd = &cells[0].dist;
+         do {
+         d = *pd;
+         if (d > 8 && g_BrVisFirstNear == -1)

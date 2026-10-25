@@ -1,0 +1,26 @@
+--- a/src/core/gamedata/br_framepool.c
++++ b/src/core/gamedata/br_framepool.c
+@@ -131,9 +131,23 @@
+ /* 64-bit core: declared once, in br_globals.h or its struct's header */      /* 0x10B01C40  64-byte bank counter       */
+ /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x10AF9BC0  64-byte bank base          */
+ /* 64-bit core: declared once, in br_globals.h or its struct's header */    /* 0x10AFDBC0  64-byte bank overflow slot */
++/* Remastered: at View Distance Unlimited (rm_view.h) a frame can draw every
++ * object of the track, each with its transform from this bank: past the
++ * original's 256 they would all share the overflow slot and be drawn through
++ * the last one written.  There, a bank of RM_MTX_MAX a frame (every object
++ * of a track, 0x800, in each of a split screen's two views and the mirror) */
++#include "br_flags.h"
++#define RM_MTX_MAX (0x800 * 3)
++static BrMat4 s_rmMtx[2][RM_MTX_MAX + 1];
++
+ BrMat4 *BrSub_10069490(void)
+ {
+     int32_t c = BrG_B01C40;
++    if (plat_flag(BR_FLAG_VIEW_UNLIMITED)) {
++        int32_t k = c < RM_MTX_MAX ? c : RM_MTX_MAX;
++        BrG_B01C40 = ++c;
++        return &s_rmMtx[(*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) & 1][k];
++    }
+     if (c < 256) {
+         uint8_t *p = &BrG_AF9BC0[((*(int32_t *)((char *)&g_aBrEntRecs + 0x4C)) * 257 + c) * 64];
+         BrG_B01C40 = ++c;

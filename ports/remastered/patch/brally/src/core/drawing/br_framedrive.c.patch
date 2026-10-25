@@ -1,6 +1,6 @@
 --- a/src/core/drawing/br_framedrive.c
 +++ b/src/core/drawing/br_framedrive.c
-@@ -103,11 +103,17 @@
+@@ -103,11 +103,18 @@
  
  /* The original is /MD: CRT calls go through the import table (FF 15). */
  #define _CRTIMP __declspec(dllimport)
@@ -15,10 +15,11 @@
 +#include "br_camwide.h"
 +#include "br_platview.h"
 +#include "pause_options.h"   /* Remastered: the pause menu's Remaster Options */
++#include "rm_view.h"         /* Remastered: View Distance */
  /* initialised in the original source (restored: the 64-bit core keeps them
   * private to this file; no Glide relocation places them elsewhere) */
  static const float kF728C = 0.6499999761581421f;
-@@ -293,7 +299,8 @@
+@@ -293,7 +300,8 @@
      (void)off;
      pCars  = g_aBrSnap[iSlot].car;
      pHdr   = (uint8_t *)g_aBrSnap[iSlot].drv;
@@ -28,32 +29,48 @@
      BrRecHdrLatch_10010F80((uint8_t *)&g_aBrSnap[iSlot].tailC.a[0]);
      BrFadeTick();
      BrFrameBeginRec(aViews);
-@@ -330,16 +337,20 @@
+@@ -330,16 +338,22 @@
          FUN_1006ec30(0, 0, (*(BrCamObj * *)&g_BrCamera)->pos, (*(uint8_t (*)[])&g_BrEnvFlagIndices), (*(uint8_t (*)[])&g_BrEnvFlagCount),
                       DAT_106ed590, DAT_106b7ac4, DAT_106e728c, DAT_106ec780);
          BrDlRectCmdEmit(pV->x, pV->y, pV->w, pV->h, 1);
 +        /* port: the view's lens and culling wedge widened to fill a window
-+         * of any shape (br_camwide.h); the mirror below keeps the game's */
++         * of any shape (br_camwide.h); the mirror below keeps the game's.
++         * Remastered: each view's distance, and the mirror's, the View
++         * Distance's (rm_view.h) */
          if (g_brMode0AA8B4 > 1) {
              BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
-                               DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
+-                              DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
 -            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
 -                             DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
++                              rm_view_far(DAT_100aa040 * kF728C), (float)pV->w, (float)pV->h);
 +            BrCamFrustumWiden();
 +            BrCamMatrixSetupWide((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov * kF7290,
-+                                 DAT_100aa040 * kF728C, (float)pV->w, (float)pV->h);
++                                 rm_view_far(DAT_100aa040 * kF728C), (float)pV->w, (float)pV->h);
          } else {
-             BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
+-            BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
++            BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, rm_view_far(DAT_100aa040),
                                (float)pV->w, (float)pV->h);
 -            BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
 -                             (float)pV->w, (float)pV->h);
 +            BrCamFrustumWiden();
-+            BrCamMatrixSetupWide((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, DAT_100aa040,
++            BrCamMatrixSetupWide((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov, rm_view_far(DAT_100aa040),
 +                                 (float)pV->w, (float)pV->h);
          }
          BrFrameFogEmit();
          BrFrameTintSetup();
-@@ -486,6 +497,11 @@
+@@ -429,9 +443,9 @@
+             BrDlRectCmdEmit(xMir, yMir, -wMir, hMir, 1);
+             BrNop_1002AB94();
+             BrCamFrustumBuild((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov,
+-                              DAT_100aa040 * kF7298, (float)wMir, (float)hMir);
++                              rm_view_far(DAT_100aa040 * kF7298), (float)wMir, (float)hMir);
+             BrCamMatrixSetup((*(BrCamObj * *)&g_BrCamera), (*(BrCamObj * *)&g_BrCamera)->fov,
+-                             DAT_100aa040 * kF729C, (float)wMir, (float)hMir);
++                             rm_view_far(DAT_100aa040 * kF729C), (float)wMir, (float)hMir);
+             BrFrameFogEmit();
+             BrFrameTintSetup();
+             BrPodNop();
+@@ -486,6 +500,11 @@
              BrDlBorderEmit(xMir, yMir, wMir, hMir);
          }
  
@@ -65,7 +82,7 @@
          BrFpsReadout();
  
          /* The split-screen captions, by game mode. */
-@@ -539,6 +555,10 @@
+@@ -539,6 +558,10 @@
          }
          BrNop_1002C509();
          BrHudDrawViewCentreText(aViews);
@@ -76,7 +93,7 @@
      }
  
      BrNop_1002AB8F();
-@@ -567,6 +587,8 @@
+@@ -567,6 +590,8 @@
          else
              psz = BrStrGet(0xFA);
          BrTextDraw(psz, x, y);
@@ -85,7 +102,7 @@
      } else if ((*(int *)&g_BrX06909B4) != 0) {
          x = (aViews->w >> 1) + aViews->x;
          BrPodNop();
-@@ -598,26 +620,31 @@
+@@ -598,26 +623,31 @@
                  DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
          BrTextDraw(DAT_10396f28, x, y);
          y += 0x14;

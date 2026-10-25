@@ -34,7 +34,8 @@ Each race is handed to Boss Rally (`host_race.h`,
 **Remaster Options.** Top Gear Rally's options screen has them as rows of its
 carousel after Units, each with its own turning icon (Widescreen the PC's
 monitor, 4:3 when off and 16:9 when on; Music the monitor for the PC's
-soundtrack or the console for the N64's; Show FPS Time Attack's stopwatch):
+soundtrack or the console for the N64's; Show FPS Time Attack's stopwatch;
+View Distance the Coastline course's own, its lighthouse included):
 up or down (a swipe on the iPhone) or A takes the other choice
 (`tgrally/src/menus/rmoptions.c`). Boss Rally's pause menu has a Remaster
 Options row before its quits. It opens a page of that name in the menu's own style: one
@@ -50,6 +51,7 @@ folder; `RM_OPT_<NAME>=N` sets one for a check):
 | Widescreen | On: a race and the menus fill the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
 | Music | PC: Boss Rally's CD; N64: Top Gear Rally's pieces | N64 |
 | Show FPS | the frames a second at the bottom centre, in either game | Off |
+| View Distance | Unlimited: a race sees the whole world, nothing pops in as it comes into range (`BR_FLAG_VIEW_UNLIMITED`, `rm_view.h`); Original: the game's 400 | Unlimited |
 | Menus | Top Gear Rally's or Boss Rally's (below) | Top Gear Rally |
 
 **Menus.** Top Gear Rally's options screen has a Menus row after Show FPS
@@ -59,7 +61,7 @@ while Top Gear Rally's game thread waits as it does for a race
 (`tgr_menus_away`, `main.c` `menus_engine`, `br_menus_run`), its music
 playing on.  Boss Rally's Options has a Remaster Options row before Back,
 opening a page in its own style: the wrench top left, a row an option saying
-the choice in force (Widescreen, Music, Show FPS, Menus), Back, and top right
+the choice in force (Widescreen, Music, Show FPS, View Distance, Menus), Back, and top right
 the machine whose music plays (the PC or the N64).  Return or a click takes
 a row's other choice; Menus there hands back to Top Gear Rally's options
 screen.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear

@@ -30,8 +30,9 @@
 /* the app's (ports/remastered/platform/options.h) */
 int  rm_option(int which);
 void rm_option_set(int which, int value);
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
+enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 uint32_t plat_time_ms(void);
 
 #define ROW     0x14                /* the menu's row: its text size and its spacing */
@@ -48,6 +49,7 @@ static const struct {
     { "Widescreen", RM_OPT_WIDESCREEN, { "On", "Off" }, { 1, 0 } },
     { "Music", RM_OPT_MUSIC, { "PC", "N64" }, { RM_MUSIC_PC, RM_MUSIC_N64 } },
     { "Show FPS", RM_OPT_FPS, { "On", "Off" }, { 1, 0 } },
+    { "View Distance", RM_OPT_VIEWDIST, { "Original", "Unlimited" }, { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED } },
 };
 #define NOPT ((int)(sizeof k_rows / sizeof k_rows[0]))
 #define NROW (NOPT + 1)             /* and Back */

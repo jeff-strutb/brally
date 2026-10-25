@@ -30,6 +30,10 @@ enum br_flag {
      * at its real size, laid over the world, with the original texture's
      * colour layout kept under it. Off: the original's textures, lit. */
     BR_FLAG_TEXTURES,
+    /* View Distance Unlimited (rm_view.h): every view's far distance past
+     * the whole world, so nothing pops in at the original's 400. Off: the
+     * original's distance. */
+    BR_FLAG_VIEW_UNLIMITED,
     BR_FLAG_COUNT
 };
 

@@ -1,7 +1,8 @@
 /* options_solo.c: the Remaster Options for Boss Rally built alone (HOST null,
  * macos, windows: the lighting's checks and shots), where the app's own
  * (ports/remastered/platform/options.c) is not linked.  Each is its default
- * (widescreen on, no frame rate; the lighting and textures shelved, off),
+ * (widescreen on, no frame rate, the view distance unlimited; the lighting
+ * and textures shelved, off),
  * RM_OPT_<NAME>=N sets one; a choice on the pause menu's page applies at
  * once and is not kept. */
 #include <stdio.h>
@@ -11,7 +12,8 @@
 #include "br_flags.h"
 
 /* (the order of the app's options.h, as pause_options.c has it) */
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_COUNT };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_MENUS, RM_OPT_VIEWDIST,
+       RM_OPT_COUNT };
 
 static const struct { const char *env; int def, flag; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_WIDESCREEN] = { "RM_OPT_WIDESCREEN", 1, BR_FLAG_ANY_ASPECT },
@@ -19,6 +21,8 @@ static const struct { const char *env; int def, flag; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_LIGHTING]   = { "RM_OPT_LIGHTING", 0, BR_FLAG_LIGHTING },     /* shelved */
     [RM_OPT_FPS]        = { "RM_OPT_FPS", 0, -1 },
     [RM_OPT_TEXTURES]   = { "RM_OPT_TEXTURES", 0, BR_FLAG_TEXTURES },     /* shelved */
+    [RM_OPT_MENUS]      = { "RM_OPT_MENUS", 0, -1 },            /* the game's own, alone */
+    [RM_OPT_VIEWDIST]   = { "RM_OPT_VIEWDIST", 1, BR_FLAG_VIEW_UNLIMITED },
 };
 
 static int s_val[RM_OPT_COUNT], s_loaded;
