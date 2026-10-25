@@ -62,7 +62,9 @@ while Top Gear Rally's game thread waits as it does for a race
 playing on.  Boss Rally's Options has a Remaster Options row before Back,
 opening a page in its own style: the wrench top left, a row an option saying
 the choice in force (Widescreen, Music, Show FPS, View Distance, Menus), Back, and top right
-the machine whose music plays (the PC or the N64).  Return or a click takes
+the machine whose music plays (the PC or the N64; with View Distance the row
+chosen, Race Setup's picture of Coastline, whole at Unlimited and without its
+lighthouse end at Original).  Return or a click takes
 a row's other choice; Menus there hands back to Top Gear Rally's options
 screen.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear
 Rally goes straight to its main menu (no intro) and hands over on its first

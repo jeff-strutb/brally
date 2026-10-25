@@ -11,6 +11,10 @@
  * whose soundtrack plays: the PC (the app's drawing of one,
  * ports/common/assets/retro_pc.svg) or the N64 (the console Top Gear Rally's
  * options screen turns, drawn from the same point of view), rm_menuicons.c.
+ * While the View Distance row is the one chosen the lobe shows Race Setup's
+ * own picture of Coastline instead, as that choice sees it: whole at
+ * Unlimited, its far end (the lighthouse and the loop behind it) gone at
+ * Original (coast_icon).
  * Each row says its option and the choice in force; Return or a click on it
  * takes the other choice, at once, both games told (the app's options.c,
  * rm_option_set).  Menus takes Top Gear Rally's: the game's menus wait for
@@ -27,6 +31,7 @@
 #include "br_ui.h"
 #include "slice2_25.h"
 #include "br_surf.h"
+#include "br_uispr.h"
 
 class GameUi;
 class RmCtl;
@@ -115,6 +120,28 @@ extern "C" const unsigned short rm_pcicon[], rm_n64icon[];
 extern "C" int rm_menu_ox(void);        /* rm_menuwide.c */
 static BrSurf *s_icon[2];
 
+#define SPR_COAST 17                    /* Race Setup's picture of Coastline */
+#define COAST_CUT 60                    /* Original's: its columns left of this gone */
+static BrSurf *s_coastcut;
+
+/* View Distance's picture: the game's at Unlimited; at Original a copy of it
+ * with the end the lighthouse stands at (its left) the lobe's (the key) */
+static BrSurf *coast_icon(int cut)
+{
+    BrSurf *src = (BrSurf *)g_img[g_aBrUiSprite[SPR_COAST].iImage].surf;
+    int x, y;
+    if (!cut || src == 0)
+        return src;
+    if (s_coastcut == 0 && (s_coastcut = BrSurfNew(src->cx, src->cy)) != 0) {
+        memcpy(s_coastcut->pPix, src->pPix, (size_t)src->cx * src->cy * 2);
+        s_coastcut->key = src->key;
+        for (y = 0; y < src->cy; y++)
+            for (x = 0; x < COAST_CUT && x < src->cx; x++)
+                s_coastcut->pPix[y * src->cx + x] = src->key;
+    }
+    return s_coastcut;
+}
+
 static BrSurf *icon(int k)
 {
     int w = k ? rm_n64icon_w : rm_pcicon_w, h = k ? rm_n64icon_h : rm_pcicon_h;
@@ -199,6 +226,9 @@ extern "C" int rm_sprite_draw(int i, int x, int y)
        whose music plays */
     if (s_row[ROW_MENUS] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_MENUS]))->flags1C & 0x20))
         s = boss_icon();
+    /* the View Distance row chosen: Coastline, as that choice sees it */
+    if (s_row[ROW_VIEW] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_VIEW]))->flags1C & 0x20))
+        s = coast_icon(rm_option(RM_OPT_VIEWDIST) == RM_VIEW_ORIGINAL);
     if (s == 0 && (s = icon(rm_option(RM_OPT_MUSIC) == RM_MUSIC_N64)) == 0)
         return 1;
     rect[0] = 0;
