@@ -557,15 +557,16 @@ void BrTrackLoad(int track)
   float m[4][4];
   BrTrackObj *objs;
 
-  SET32(D_80025C00.x00, BrRomReadSize(D_80270854[track].x14));
-  if (BE32(D_80025C00.x00) > 0x171400) {
-    sprintf(buf, "Track %d too big (%d vs. %d)", track, BE32(D_80025C00.x00), 0x171400);
+  tgr_track.size = BrRomReadSize(D_80270854[track].x14);
+  if (tgr_track.size > 0x171400) {
+    sprintf(buf, "Track %d too big (%d vs. %d)", track, tgr_track.size, 0x171400);
     BrFatal(buf);
   } else {
-    tgr_print("Loading track %d (%d / %d)\n", track, BE32(D_80025C00.x00), 0x171400);
+    tgr_print("Loading track %d (%d / %d)\n", track, tgr_track.size, 0x171400);
   }
-  BrRomUnpack((unsigned char *)&D_80025C00, D_80270854[track].x14, 0);
-  tgr_print("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, 0x80029560)), tgr_rd16(TGR_PTR(void *, 0x80029568)));
+  BrRomUnpack(D_80025C00, D_80270854[track].x14, 0);
+  tgr_track_convert();                  /* port: the native records (platform/os/track.c) */
+  tgr_print("hmm = %04x %04x\n", tgr_rd16(D_80025C00 + 0x3960), tgr_rd16(D_80025C00 + 0x3968));   /* two words of the file */
   BrRomRead(D_80373EB0, D_80270854[track].x1c, 0x20);
   BrRomUnpack((unsigned char *)D_803736B0, D_80270854[track].x1c + 0x20, 0);
   BrRomRead(D_803746D0, D_80270854[track].x24, 0x20);
@@ -576,29 +577,29 @@ void BrTrackLoad(int track)
   D_8028AA88 = -1;
   n = 0;
   objs = BR_TRACKOBJS();
-  for (track = 0; track < BES32(D_80025C00.nObjs); track++) {
+  for (track = 0; track < tgr_track.nObjs; track++) {
     v[0] = 1.0f;
     v[1] = 0.0f;
     v[2] = 0.0f;
-    br_mat4_from(m, (const bef_t (*)[4])objs[track].m);
+    memcpy(m, objs[track].m, sizeof m);
     BrMat4RotateDir(v, v, m);
     len = BrVec3Length(v);
     if (len != 0) {
       len = 1.0f / len;
       if (1.0f == m[0][0] * len && 1.0f == m[1][1] * len && 1.0f == m[2][2] * len) {
         n++;
-        SET16(objs[track].flags, BE16(objs[track].flags) | 0x2000);
+        objs[track].flags |= 0x2000;
       }
-      SETF(objs[track].scale, len);
+      objs[track].scale = len;
     }
   }
-  tgr_print("Scalars: %d/%d\n", n, BES32(D_80025C00.nObjs));
-  if (BES32(D_80025C00.nObjs) > 0x800) {
-    sprintf(buf2, "ERROR: instances (%d) > MAX_INSTANCES (%d)", BES32(D_80025C00.nObjs), 0x800);
+  tgr_print("Scalars: %d/%d\n", n, tgr_track.nObjs);
+  if (tgr_track.nObjs > 0x800) {
+    sprintf(buf2, "ERROR: instances (%d) > MAX_INSTANCES (%d)", tgr_track.nObjs, 0x800);
     BrFatal(buf2);
   }
-  if (BES32(D_80025C00.hdrSize) != 0x230) {
-    sprintf(buf3, "ERROR: Track header size mismatch! (%d!=%d)", BES32(D_80025C00.hdrSize), 0x230);
+  if (tgr_track.hdrSize != 0x230) {
+    sprintf(buf3, "ERROR: Track header size mismatch! (%d!=%d)", tgr_track.hdrSize, 0x230);
     BrFatal(buf3);
   }
   BrScenePassRun();

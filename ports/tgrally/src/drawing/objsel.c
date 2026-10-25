@@ -4,7 +4,7 @@
 
 /* -- declarations -- */
 #include "tgr/track.h"
-#define D_80025C64 BES32(D_80025C00.nObjs)       /* number of scene objects */
+#define D_80025C64 tgr_track.nObjs       /* number of scene objects */
 extern int D_8028C744;                 /* number of excluded objects */
 extern int D_8028C754;                 /* the selected object */
 extern int D_8028DDE0;                 /* pending step (+1 / -1) */

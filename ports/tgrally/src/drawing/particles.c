@@ -155,7 +155,7 @@ BrCar *car;
   int u6[1];
 
   onSnow = 0;
-  if (car->x2000 != 0 && (BES16(D_80025C60[car->x1fc0[0]].flags) & 0x10)) {
+  if (car->x2000 != 0 && (((short)D_80025C60[car->x1fc0[0]].flags) & 0x10)) {
     onSnow = 1;
   }
   if (D_8028AA84 == 0 || D_8028B940 == 2 || D_8028B940 == 7) {

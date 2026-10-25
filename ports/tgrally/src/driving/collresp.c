@@ -124,14 +124,14 @@ short BrCrTriContainsPoint(BrCrPlane *pT, float *pP)
   }
   i1 = (c + 1) % 3;
   i2 = (c + 2) % 3;
-  d1 = pP[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
-  d2 = pP[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
+  d1 = pP[i1] - ((float *)(((BrVec3 *)(pT->v0))))[i1];
+  d2 = pP[i2] - ((float *)(((BrVec3 *)(pT->v0))))[i2];
   r = 0;
   i = 2;
-  b1 = ((float *)BRV(((BrVec3be *)(pT->v1))))[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
-  b2 = ((float *)BRV(((BrVec3be *)(pT->v1))))[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
-  c1 = ((float *)BRV(((BrVec3be *)(pT->v2))))[i1] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i1];
-  c2 = ((float *)BRV(((BrVec3be *)(pT->v2))))[i2] - ((float *)BRV(((BrVec3be *)(pT->v0))))[i2];
+  b1 = ((float *)(((BrVec3 *)(pT->v1))))[i1] - ((float *)(((BrVec3 *)(pT->v0))))[i1];
+  b2 = ((float *)(((BrVec3 *)(pT->v1))))[i2] - ((float *)(((BrVec3 *)(pT->v0))))[i2];
+  c1 = ((float *)(((BrVec3 *)(pT->v2))))[i1] - ((float *)(((BrVec3 *)(pT->v0))))[i1];
+  c2 = ((float *)(((BrVec3 *)(pT->v2))))[i2] - ((float *)(((BrVec3 *)(pT->v0))))[i2];
   if (b1 == 0.0f) {
     u = d1 / c1;
     if (u >= 0.0f && u <= 1.0f) {
@@ -431,9 +431,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   if (D_802A4A30 != 0) {
     pP = &D_80379F80[cell][count - 1];
     for (i = count - 1; i >= 0; i--, pP--) {
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
+      BrMat3MulVecRows(&v[0], m, ((float *)(((BrVec3 *)(pP->v0)))));
+      BrMat3MulVecRows(&v[3], m, ((float *)(((BrVec3 *)(pP->v1)))));
+      BrMat3MulVecRows(&v[6], m, ((float *)(((BrVec3 *)(pP->v2)))));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -451,9 +451,9 @@ int BrCollRespBroadPhase(BrTipBody *b, float m[4][4])
   } else {
     pP = D_80379F80[cell];
     for (i = 0; i < count; i++, pP++) {
-      BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
-      BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
-      BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
+      BrMat3MulVecRows(&v[0], m, ((float *)(((BrVec3 *)(pP->v0)))));
+      BrMat3MulVecRows(&v[3], m, ((float *)(((BrVec3 *)(pP->v1)))));
+      BrMat3MulVecRows(&v[6], m, ((float *)(((BrVec3 *)(pP->v2)))));
       e1[0] = v[3] - v[0];
       e1[1] = v[4] - v[1];
       e1[2] = v[5] - v[2];
@@ -676,9 +676,9 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
   cnt = 0;
   for (node = D_802A4A20; node != 0; node = ((struct BrCrNode *)(node->next))) {
     pP = ((void *)(node->plane));
-    BrMat3MulVecRows(&v[0], m, ((float *)BRV(((BrVec3be *)(pP->v0)))));
-    BrMat3MulVecRows(&v[3], m, ((float *)BRV(((BrVec3be *)(pP->v1)))));
-    BrMat3MulVecRows(&v[6], m, ((float *)BRV(((BrVec3be *)(pP->v2)))));
+    BrMat3MulVecRows(&v[0], m, ((float *)(((BrVec3 *)(pP->v0)))));
+    BrMat3MulVecRows(&v[3], m, ((float *)(((BrVec3 *)(pP->v1)))));
+    BrMat3MulVecRows(&v[6], m, ((float *)(((BrVec3 *)(pP->v2)))));
     e1[0] = v[3] - v[0];
     e1[1] = v[4] - v[1];
     e1[2] = v[5] - v[2];
@@ -887,17 +887,14 @@ short BrCollGridCellAcquire(float x, float y)
   cur[0] = packed;
   if (packed != 0) {
     while ((tri = BrU16QueuePop(cur)) != 0) {
-      t0 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      t->v0 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t0[0])];
-      t1 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      t->v1 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t1[1])];
-      t2 = (unsigned short *)(BEPTR(char *, D_80025C00.tris) + tri * 8);
-      t->v2 = &BEPTR(BrVec3be *, D_80025C00.verts)[tgr_rd16(&t2[2])];
-      t->kind = BEPTR(unsigned char *, D_80025C00.surf)[tri] & 7;
+      t->v0 = &tgr_track.verts[tgr_track.tris[tri].v[0]];
+      t->v1 = &tgr_track.verts[tgr_track.tris[tri].v[1]];
+      t->v2 = &tgr_track.verts[tgr_track.tris[tri].v[2]];
+      t->kind = tgr_track.surf[tri] & 7;
       t->id = tri;
-      v0 = BRV((BrVec3be *)t->v0);   /* the corners natively */
-      v1 = BRV((BrVec3be *)t->v1);
-      v2 = BRV((BrVec3be *)t->v2);
+      v0 = ((BrVec3 *)t->v0);   /* the corners natively */
+      v1 = ((BrVec3 *)t->v1);
+      v2 = ((BrVec3 *)t->v2);
       a[0] = v1->x - v0->x;
       a[1] = v1->y - v0->y;
       a[2] = v1->z - v0->z;

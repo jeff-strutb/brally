@@ -705,16 +705,16 @@ void BrTexAnimUpdate(void)
   BrTexSlot *slot;
 
   night = D_8028AA84 != 0 && D_8028B940 != 2 && D_8028B940 != 7;
-  for (i = 0; i < BES32(D_80025C00.nTex); i++) {
-    slot = &BEPTR(BrTexSlot *, D_80025C00.tex)[i];
-    if (BE32(slot->dst) == 0) {
+  for (i = 0; i < tgr_track.nTex; i++) {
+    slot = &((BrTexSlot *)tgr_track.tex)[i];
+    if (slot->dst == 0) {
       continue;
     }
     if (BR_TEXSLOT_ANIMATED(slot)) {
-      anim = BEPTR(BrTexAnim *, slot->anim);
-      period = BE32(anim->key[BE16(anim->n) - 2].time) - BE32(anim->t0);
+      anim = ((BrTexAnim *)slot->anim);
+      period = (anim->key[anim->n - 2].time) - anim->t0;
       t = D_8028AAD4 - D_8028AAD4 / period * period;
-      if (BE16(anim->n) == 2 && BE32(anim->t0) == (unsigned int)-1) {
+      if (anim->n == 2 && anim->t0 == (unsigned int)-1) {
         if (D_8028AA84 != D_8028AA88) {
           k = D_8028AA84 == 0;
           if (D_8028AA84 == 0) {
@@ -731,28 +731,28 @@ void BrTexAnimUpdate(void)
       if (night && BR_TEXSLOT_FMT(slot) == 0xB) {
         k = 1;
       } else {
-        for (k = 1; k < BE16(anim->n); k++) {
-          if (t < BE32(anim->key[k - 1].time)) {
+        for (k = 1; k < anim->n; k++) {
+          if (t < (anim->key[k - 1].time)) {
             break;
           }
         }
       }
       k--;
 frame:
-      tex = BES32(anim->key[k].tex);
+      tex = ((int)anim->key[k].tex);
 palette:
-      pal = BES32(anim->key[k].pal);
+      pal = ((int)anim->key[k].pal);
       if (BR_TEXSLOT_SIZE(slot) != 0 && tex != -1) {
-        tgr_rom_load(BrRomDmaSlot(), 0, 0, tex + D_8028A880, BEPTR(void *, slot->dst),
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, tex + D_8028A880, ((void *)slot->dst),
                      BR_TEXSLOT_SIZE(slot), &D_80319F88);
       }
 load:
-      if (BE32(slot->palDst) != 0 && pal != -1) {
-        tgr_rom_load(BrRomDmaSlot(), 0, 0, pal + D_8028A880, BEPTR(void *, slot->palDst),
+      if (slot->palDst != 0 && pal != -1) {
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, pal + D_8028A880, ((void *)slot->palDst),
                      BR_TEXSLOT_FMT(slot) == 1 ? 0x20 : 0x200, &D_80319F88);
       }
     } else if (D_8028AA88 != D_8028AA84) {
-      pal = (BES32(slot->anim) & 0xFFF) << 5;
+      pal = (slot->pal & 0xFFF) << 5;
       goto load;
     }
   }
@@ -1122,12 +1122,12 @@ void BrRaceFlagsApply(void)
   BrTrackObj *objs = BR_TRACKOBJS();
 
   flag = D_8028B940 != 2 && D_8028B940 != 7;
-  for (i = 0; i < BES32(D_80025C00.nObjs); i++) {
-    if ((BE16(objs[i].flags) & 4) == 0) {
+  for (i = 0; i < tgr_track.nObjs; i++) {
+    if ((objs[i].flags & 4) == 0) {
       D_8028ADE8 = flag;
     }
-    if (BrDlRaceKindPatch(BEPTR(unsigned int *, objs[i].dl), D_8028ABA8)) {
-      SET16(objs[i].flags, BE16(objs[i].flags) | 8);
+    if (BrDlRaceKindPatch((unsigned int *)tgr_ptr32(objs[i].dl), D_8028ABA8)) {
+      objs[i].flags = objs[i].flags | 8;
     }
   }
   for (n = 0; n < D_8028B7F4; n++) {

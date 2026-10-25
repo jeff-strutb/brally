@@ -22,7 +22,7 @@ float cosf(float x);
 void BrQuatMul(float out[4], float a[4], float b[4]);
 void BrVec4Normalise(float v[4]);
 #include "tgr/track.h"
-#define D_80025C38 BEF(D_80025C00.fogLo)        /* the track's sky height */
+#define D_80025C38 tgr_track.fogLo        /* the track's sky height */
 void BrCarPhysInit(BrCar *car);
 void BrCarSetPos(BrCar *car, float x, float y, float z);
 void BrCarSetHeading(BrCar *car, float h);
@@ -193,13 +193,13 @@ void BrCarRespawn(BrCar *car)
   if (car->body[0].stuck < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
     BrCarPhysInit(car);
     if (D_8026FF18 == 2) {
-      BrCarSetPos(car, BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x),
-                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
-                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x),
+                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
+                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
     } else {
-      BrCarSetPos(car, BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x) + car->slot * 0.01f,
-                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
-                  BEF(((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x) + car->slot * 0.01f,
+                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
+                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
     }
     BrCarSetHeading(car, BrAtan2(car->xf64, car->xf68));
     BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
@@ -245,8 +245,8 @@ extern int D_8028A8AC;                  /* the picture is mirrored */
 extern int D_8028B7F8;                  /* frames the camera keeps its checkpoint target */
 extern int D_8028B7FC;
 extern int D_80270788;
-#define D_80025C84 BEPTR(BrVec3be *, D_80025C00.cams)   /* the camera checkpoints */
-#define D_80025C88 BES32(D_80025C00.nCams)              /* and their count */
+#define D_80025C84 ((BrVec3 *)tgr_track.cams)   /* the camera checkpoints */
+#define D_80025C88 tgr_track.nCams              /* and their count */
 void BrPadConsume(BrCarInput *pad, int bit);
 void BrCarCamPlaceChase(BrCar *car);
 void BrVec3MulAddTo(BrVec3 *pV, float *pD, float t);
@@ -331,7 +331,7 @@ void BrCarPlayerCtl(BrCar *car)
 scan:
       best = 16777216.0f;
       for (i = 0; i < D_80025C88; i++) {
-        p = BRV(&D_80025C84[i]);   /* cartridge data, read natively */
+        p = (&D_80025C84[i]);   /* cartridge data, read natively */
         dx = car->mtx0[3][0] - p->x;
         dy = car->mtx0[3][1] - p->y;
         dx = dx * dx;
@@ -340,7 +340,7 @@ scan:
         if (!(dz > 10.0f)) {
           dz = dz * dz;
           if ((d = dx + dy + dz) < best) {
-            q = BRV(&D_80025C84[i]);
+            q = (&D_80025C84[i]);
             b[0] = q->x;
             b[1] = q->y;
             b[2] = q->z;

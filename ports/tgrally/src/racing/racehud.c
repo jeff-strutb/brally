@@ -58,7 +58,7 @@ void BrTextAlignCentre(void);
 extern int D_80238EBC;
 extern int D_80238F10;
 #include "tgr/track.h"
-#define D_80025C70 BE32(D_80025C00.path)
+#define D_80025C70 tgr_track.path
 void BrScissorSet(int x0, int y0, int x1, int y1);
 void BrHudDialDraw(void);
 extern int D_802723D8;                 /* speed in mph (else kph) */

@@ -18,7 +18,7 @@ extern int D_8026FF18;                  /* game mode */
 extern float D_8028AAD8;                /* the frame time */
 extern float D_802A9D54;
 extern float D_802A9D58;
-#define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)
+#define D_80025C70 ((BrPathSeg *)tgr_track.path)
 extern BrCar D_8031B760[];
 extern BrRoute *D_8028B824;             /* the path walk's route and point */
 extern int D_8028B828;
@@ -140,9 +140,9 @@ void BrGhostPlaybackStep(BrRaceEnt *e)
     e->posPrev.x = e->pos.x;
     e->posPrev.y = e->pos.y;
     e->posPrev.z = e->pos.z;
-    t = BEF(D_80025C70->pt[0].dist) * (e->x44 + 1) - e->progress;
-    t -= BEF(((BrRoute *)(e->route))->pt[e->pt + 1].dist);
-    t /= BEF(((BrRoute *)(e->route))->pt[e->pt].dist) - BEF(((BrRoute *)(e->route))->pt[e->pt + 1].dist);
+    t = D_80025C70->pt[0].dist * (e->x44 + 1) - e->progress;
+    t -= (((BrRoute *)(e->route))->pt[e->pt + 1].dist);
+    t /= (((BrRoute *)(e->route))->pt[e->pt].dist) - (((BrRoute *)(e->route))->pt[e->pt + 1].dist);
     if (D_8031B760[D_8026FF08 + e->group].link != 0) {
       BrPathWalk(((BrRoute *)(e->route)), e->pt, t, BrVec3Length(&D_8031B760[D_8026FF08 + e->group].velfd8) * D_8028AAD8);
       e->progress += BrVec3Length(&D_8031B760[D_8026FF08 + e->group].velfd8) * D_8028AAD8;

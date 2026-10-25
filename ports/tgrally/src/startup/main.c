@@ -74,8 +74,8 @@ void BrMainThread(void *arg)
   while (!BrCpakCheck(2, 1)) {
   }
   BrVolumesApply();
-  BrRomUnpack((unsigned char *)&D_80025C00, BR_ROM_MODULES, 0);
-  BrMusicInit((unsigned char *)&D_80025C00, D_802AC400);
+  BrRomUnpack(D_80025C00, BR_ROM_MODULES, 0);
+  BrMusicInit(D_80025C00, D_802AC400);
   tgr_print("sizeof(UltraCarHeader)=%d\n", 0xdf88);
   tgr_print("sizeof(Vehicle)=%d\n", 0x2090);
   tgr_print("sizeof(Enemy)=%d\n", 0x78);
@@ -88,8 +88,8 @@ void BrMainThread(void *arg)
 void BrMusicLoadTrack(void)
 {
   BrMusicStop();
-  BrRomUnpack((unsigned char *)&D_80025C00, D_8026FF24[D_8028B940], 0);
-  BrMusicStart((unsigned char *)&D_80025C00, D_802AC400);
+  BrRomUnpack(D_80025C00, D_8026FF24[D_8028B940], 0);
+  BrMusicStart(D_80025C00, D_802AC400);
 }
 
 /* WHAT IT DOES: Step the scene's animations, if it has any; when they are
@@ -126,10 +126,10 @@ void BrSceneModelDraw(void)
   BrPathSeg *seg;
 
   if (D_8026FF5C != 0) {
-    if (BE32(D_80025C00.path) != 0) {
-      seg = BEPTR(BrPathSeg *, D_80025C00.path);
-      br_vec3_from(pos, &seg->pt[0].pos);          /* the segment at 0x4C and 0x58 */
-      br_vec3_from(right, &seg->pt[0].right);
+    if (tgr_track.path != 0) {
+      seg = ((BrPathSeg *)tgr_track.path);
+      memcpy(pos, &seg->pt[0].pos, sizeof(BrVec3));          /* the segment at 0x4C and 0x58 */
+      memcpy(right, &seg->pt[0].right, sizeof(BrVec3));
       m[0][3] = 0.0f;
       m[1][3] = 0.0f;
       m[2][3] = 0.0f;

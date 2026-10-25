@@ -250,7 +250,7 @@ void BrWeatherDraw(void)
     return;
   }
   for (i = 0; i < D_8028AB00; i++) {
-    if (BES16(D_80025C60[D_8031B248[i]].flags) & 0x10) {
+    if (((short)D_80025C60[D_8031B248[i]].flags) & 0x10) {
       return;
     }
   }

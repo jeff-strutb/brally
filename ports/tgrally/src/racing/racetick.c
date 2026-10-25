@@ -106,8 +106,8 @@ typedef struct BrAirplane {     /* the airplane some tracks fly over the course 
   int point;                    /* 0x10  the path point it is past */
   int count;                    /* 0x14  path points */
   float scale;                  /* 0x18 */
-  int left;                     /* 0x1C  its path, left and right edges (BrVec3 *) */
-  int right;                    /* 0x20 */
+  BrVec3 *left;                 /* 0x1C  its path, left and right edges */
+  BrVec3 *right;                /* 0x20 */
   float dist;                   /* 0x24  distance along the current path segment */
   float segLen;                 /* 0x28  the segment's length */
   BrVec3 prev;                  /* 0x2C  the previous, current and next segment directions */
@@ -301,8 +301,8 @@ void tgr_exit_game(void);
 
 #define PAD(i) ((BrPadRec *)(D_8031B760[i].pad))
 #define OBJ(n) (&BR_TRACKOBJS()[n])
-#define LEFT TGR_PTR(BrVec3be *, PLANE->left)     /* the plane's path: cartridge data */
-#define RIGHT TGR_PTR(BrVec3be *, PLANE->right)
+#define LEFT (PLANE->left)     /* the plane's path */
+#define RIGHT (PLANE->right)
 
 /* WHAT IT DOES: One frame of the race (the game mode function while a race
  * runs).  The first call sets the race up: how many cars and entities, the
@@ -516,31 +516,31 @@ void BrRaceTick(void)
       PLANE->segLen = 0.0f;
       PLANE->point = 0;
       PLANE->count = 0;
-      tgr_print("specials: %d\n", BES32(D_80025C00.nSpecials));
+      tgr_print("specials: %d\n", tgr_track.nSpecials);
       D_802707C4 = 0;
-      for (i = 0; i < BES32(D_80025C00.nSpecials); i++) {
-        switch (D_80025C00.specials[i].kind) {
+      for (i = 0; i < tgr_track.nSpecials; i++) {
+        switch (tgr_track.specials[i].kind) {
         case 4:
-          PLANE->count = BES32(D_80025C00.specials[i].arg);
-          tgr_print("airplanePathLeft = %08x\n",
-                       PLANE->left = BES32(D_80025C00.specials[i].obj));
+          PLANE->count = tgr_track.specials[i].arg;
+          tgr_print("airplanePathLeft = %p\n",
+                       (void *)(PLANE->left = tgr_track.specials[i].path));
           break;
         case 5:
-          PLANE->right = BES32(D_80025C00.specials[i].obj);
-          tgr_print("airplanePathRight = %08x\n", PLANE->right);
+          PLANE->right = tgr_track.specials[i].path;
+          tgr_print("airplanePathRight = %p\n", (void *)PLANE->right);
           break;
         case 3:
-          PLANE->obj = BES32(D_80025C00.specials[i].obj);
+          PLANE->obj = tgr_track.specials[i].obj;
           tgr_print("airplane = %d\n", PLANE->obj);
           break;
         case 6:
-          PLANE->trigger = BES32(D_80025C00.specials[i].obj);
+          PLANE->trigger = tgr_track.specials[i].obj;
           tgr_print("airplanetrigger = %d\n", PLANE->trigger);
           break;
         case 7:
-          D_80315DF8[D_802707C4].obj = BES32(D_80025C00.specials[i].obj);
+          D_80315DF8[D_802707C4].obj = tgr_track.specials[i].obj;
           D_802707C4++;
-          tgr_print("waterfall = %d\n", BES32(D_80025C00.specials[i].obj));
+          tgr_print("waterfall = %d\n", tgr_track.specials[i].obj);
           break;
         }
       }
@@ -554,7 +554,7 @@ void BrRaceTick(void)
         (&v)[0][0] = vx;
         (&v)[0][1] = vy;
         (&v)[0][2] = vz;
-        br_mat4_from(om, (const bef_t (*)[4])OBJ(PLANE->obj)->m);
+        memcpy(om, OBJ(PLANE->obj)->m, sizeof(float[4][4]));
         BrMat4ProjectPoint(v, v, om);
         PLANE->scale = BrVec3Length((BrVec3 *)v);
       }
@@ -888,21 +888,21 @@ draw:
       }
     }
     /* the track's moving objects */
-    for (i = 0; i < BES32(D_80025C00.nSpecials); i++) {
-      switch (D_80025C00.specials[i].kind) {
+    for (i = 0; i < tgr_track.nSpecials; i++) {
+      switch (tgr_track.specials[i].kind) {
       case 0:
-        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 0.0f, 0.0f, 1.0f);
+        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 0.0f, 0.0f, 1.0f);
         goto spin;
       case 1:
-        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 1.0f, 0.0f, 0.0f);
+        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 1.0f, 0.0f, 0.0f);
         goto spin;
       case 2:
-        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 0.0f, 1.0f, 0.0f);
+        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 0.0f, 1.0f, 0.0f);
       spin:
-        br_mat4_from(om, (const bef_t (*)[4])OBJ(BES32((D_80025C00.specials + i)->obj))->m);
+        memcpy(om, OBJ(((int)((tgr_track.specials + i)->obj)))->m, sizeof(float[4][4]));
         guMtxCatF(D_8031AB10, om, om);
-        br_mat4_to(OBJ(BES32((D_80025C00.specials + i)->obj))->m, om);
-        SET16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags, BE16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags) & 0xDFFF);
+        memcpy(OBJ(((int)((tgr_track.specials + i)->obj)))->m, om, sizeof(float[4][4]));
+        OBJ(((int)((tgr_track.specials + i)->obj)))->flags = (OBJ(((int)((tgr_track.specials + i)->obj)))->flags) & 0xDFFF;
         break;
       case 3:
         if (PLANE->obj == 0 || PLANE->sent == 0) {
@@ -924,11 +924,11 @@ draw:
             PLANE->obj = 0;
             break;
           }
-          br_vec3_from(&pl.x, &LEFT[PLANE->point - 1]);
-          br_vec3_from(&pr.x, &RIGHT[PLANE->point - 1]);
+          memcpy(&pl.x, &LEFT[PLANE->point - 1], sizeof(BrVec3));
+          memcpy(&pr.x, &RIGHT[PLANE->point - 1], sizeof(BrVec3));
           BrVec3Midpoint(&a, &pl, &pr);
-          br_vec3_from(&pl.x, &LEFT[PLANE->point]);
-          br_vec3_from(&pr.x, &RIGHT[PLANE->point]);
+          memcpy(&pl.x, &LEFT[PLANE->point], sizeof(BrVec3));
+          memcpy(&pr.x, &RIGHT[PLANE->point], sizeof(BrVec3));
           BrVec3Midpoint(&b, &pl, &pr);
           PLANE->segLen = BrVec3Dist(&a, &b);
           BrVec3Sub(&PLANE->dir, &b, &a);
@@ -940,8 +940,8 @@ draw:
             d1[1] = s1[1];
             d1[2] = s1[2];
           } else {
-            br_vec3_from(&pl.x, &LEFT[PLANE->point - 2]);
-            br_vec3_from(&pr.x, &RIGHT[PLANE->point - 2]);
+            memcpy(&pl.x, &LEFT[PLANE->point - 2], sizeof(BrVec3));
+            memcpy(&pr.x, &RIGHT[PLANE->point - 2], sizeof(BrVec3));
             BrVec3Midpoint(&c, &pl, &pr);
             BrVec3Sub(&PLANE->prev, &a, &c);
             BrVec3Normalise(&PLANE->prev);
@@ -953,8 +953,8 @@ draw:
             d2[1] = s2[1];
             d2[2] = s2[2];
           } else {
-            br_vec3_from(&pl.x, &LEFT[PLANE->point + 1]);
-            br_vec3_from(&pr.x, &RIGHT[PLANE->point + 1]);
+            memcpy(&pl.x, &LEFT[PLANE->point + 1], sizeof(BrVec3));
+            memcpy(&pr.x, &RIGHT[PLANE->point + 1], sizeof(BrVec3));
             BrVec3Midpoint(&c, &pl, &pr);
             BrVec3Sub(&PLANE->next, &c, &b);
             BrVec3Normalise(&PLANE->next);
@@ -963,12 +963,12 @@ draw:
         if (PLANE->obj != 0) {
           f = PLANE->dist / PLANE->segLen;
           /* the object's rows natively, written back to the cartridge data */
-          br_mat4_from(om, (const bef_t (*)[4])OBJ(PLANE->obj)->m);
-          br_vec3_from(&pl.x, &LEFT[PLANE->point]);
-          br_vec3_from(&pr.x, &LEFT[PLANE->point - 1]);
+          memcpy(om, OBJ(PLANE->obj)->m, sizeof(float[4][4]));
+          memcpy(&pl.x, &LEFT[PLANE->point], sizeof(BrVec3));
+          memcpy(&pr.x, &LEFT[PLANE->point - 1], sizeof(BrVec3));
           BrVec3Lerp(&a, &pl, &pr, f);
-          br_vec3_from(&pl.x, &RIGHT[PLANE->point]);
-          br_vec3_from(&pr.x, &RIGHT[PLANE->point - 1]);
+          memcpy(&pl.x, &RIGHT[PLANE->point], sizeof(BrVec3));
+          memcpy(&pr.x, &RIGHT[PLANE->point - 1], sizeof(BrVec3));
           BrVec3Lerp(&b, &pl, &pr, f);
           BrVec3Midpoint((BrVec3 *)om[3], &a, &b);
           if (f > 0.5f) {
@@ -985,7 +985,7 @@ draw:
           BrVec3ScaleBy((BrVec3 *)om[0], PLANE->scale);
           BrVec3ScaleBy((BrVec3 *)om[2], -PLANE->scale);
           BrVec3ScaleBy((BrVec3 *)om[1], PLANE->scale);
-          br_mat4_to(OBJ(PLANE->obj)->m, om);
+          memcpy(OBJ(PLANE->obj)->m, om, sizeof(float[4][4]));
         }
         break;
       }
@@ -999,11 +999,11 @@ draw:
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
     D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
     if (PLANE->obj != 0 && PLANE->sent != 0) {
-      br_vec3_from(&pl.x, (const BrVec3be *)OBJ(PLANE->obj)->m[3]);   /* copied by the offer */
+      memcpy(&pl.x, OBJ(PLANE->obj)->m[3], sizeof(BrVec3));   /* copied by the offer */
       BrSndNearestOfferTrack(PLANE->obj, &pl, D_8028AAF4);
     }
     for (i = 0; D_8028AAF4 != 0 && i < D_802707C4; i++) {
-      br_vec3_from(&pl.x, (const BrVec3be *)OBJ((D_80315DF8 + i)->obj)->m[3]);
+      memcpy(&pl.x, OBJ((D_80315DF8 + i)->obj)->m[3], sizeof(BrVec3));
       BrSndNearestOfferDefault(PLANE->obj, &pl, D_8028AAF4);
     }
     BrStub8022BA98(tgr_addr32(D_8028AAF4));

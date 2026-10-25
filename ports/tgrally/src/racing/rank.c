@@ -16,7 +16,7 @@ void BrQsort(void *base, unsigned int num, unsigned int width, int (*comp)(void 
 extern int D_8028B7F0;                  /* entity count */
 #include "tgr/track.h"
 typedef BrPathSeg BrRoute;          /* a route: a path segment (cartridge data) */
-#define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)
+#define D_80025C70 ((BrPathSeg *)tgr_track.path)
 extern int D_8026FF08;                  /* players */
 extern int D_8026FF18;                  /* game mode */
 void tgr_print(const char *fmt, ...);
@@ -47,7 +47,7 @@ extern int D_80270788;                  /* replay */
 extern char *D_8028BABC[];              /* the finishing-place messages */
 int BrSegmentsOverlapXY(float *pA, float *pB, BrVec3 *pC, BrVec3 *pD);
 /* a gate post (x, y) as native floats: the track keeps it big-endian */
-#define BR_GATE_POST(i, k) ((float[2]){BEF(D_80025C00.gate[i].k[0]), BEF(D_80025C00.gate[i].k[1])})
+#define BR_GATE_POST(i, k) (tgr_track.gate[i].k)
 int BrFloatToInt(float x);
 void BrSfxSrcBeep(void);
 void BrTimeFormat(char *buf, float t);
@@ -144,7 +144,7 @@ void BrCarSlotSwap(BrCar *me)
   int open;
   int r;
 
-  lap = BEF(D_80025C70->pt[0].dist);
+  lap = D_80025C70->pt[0].dist;
   for (i = 0; i < D_8028B7F0; i++) {
     car = ((BrCar *)(D_803239A0[i].car));
     if (car != 0) {
@@ -276,12 +276,9 @@ void BrCarSlotSwap(BrCar *me)
         car->colour[1] = ent->colour[1];
         car->colour[2] = ent->colour[2];
         BrEntPaintTexture(((char *)(car->model)), ent->colour[0] >> 3, ent->colour[1] >> 3, ent->colour[2] >> 3);
-        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
-        BrVec3Sub(&tA, BRV(TGR_PTR(BrVec3be *, (r + 0x40))), BRV(TGR_PTR(BrVec3be *, (r + 0x4c))));
-        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
-        BrVec3Sub(&tB, BRV(TGR_PTR(BrVec3be *, (r + 0x68))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
-        r = tgr_addr32(car->xf5c) + car->xf60 * 40;   /* port: the track's path is still its N64 layout */
-        BrVec3Direction(car->mtx0[0], BRV(TGR_PTR(BrVec3be *, (r + 0x4c))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
+        BrVec3Sub(&tA, &car->xf5c->pt[car->xf60].left, &car->xf5c->pt[car->xf60].pos);
+        BrVec3Sub(&tB, &car->xf5c->pt[car->xf60 + 1].left, &car->xf5c->pt[car->xf60 + 1].pos);
+        BrVec3Direction(car->mtx0[0], &car->xf5c->pt[car->xf60].pos, &car->xf5c->pt[car->xf60 + 1].pos);
         BrVec3Midpoint(car->mtx0[1], &tA, &tB);
         BrVec3Cross(car->mtx0[2], car->mtx0[0], car->mtx0[1]);
         BrVec3Normalise(car->mtx0[2]);
@@ -353,7 +350,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
   int unused48;
   short w;
 
-  if (BES32(D_80025C00.nGates) == 0) {
+  if (tgr_track.nGates == 0) {
     return;
   }
   car = ((BrCar *)(drv->car));
@@ -373,11 +370,11 @@ void BrRaceGateStep(BrRaceEnt *drv)
     drv->progress = car->xfa8;
   }
   if (drv->x4c < 0) {
-    iCur = (BES32(D_80025C00.nGates) - (-1 - drv->x4c) % BES32(D_80025C00.nGates) - 1) % BES32(D_80025C00.nGates);
+    iCur = (tgr_track.nGates - (-1 - drv->x4c) % tgr_track.nGates - 1) % tgr_track.nGates;
   } else {
-    iCur = drv->x4c % BES32(D_80025C00.nGates);
+    iCur = drv->x4c % tgr_track.nGates;
   }
-  iNext = (iCur + 1) % BES32(D_80025C00.nGates);
+  iNext = (iCur + 1) % tgr_track.nGates;
   tLap = BrFloatToInt(drv->raceTime * 100.0f) / 100.0f;
   if (BrSegmentsOverlapXY(BR_GATE_POST(iCur, b), BR_GATE_POST(iCur, a), &drv->posPrev,
                           &drv->pos)) {
@@ -385,14 +382,14 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (iCur == 0) {
       drv->x44--;
     }
-    tgr_print("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, BES32(D_80025C00.nGates), drv->x4c,
-                 (drv->x4c + BES32(D_80025C00.nGates) * 2) % BES32(D_80025C00.nGates) == drv->x48 % BES32(D_80025C00.nGates) &&
+    tgr_print("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, tgr_track.nGates, drv->x4c,
+                 (drv->x4c + tgr_track.nGates * 2) % tgr_track.nGates == drv->x48 % tgr_track.nGates &&
                      drv->x4c < 0);
-    if (iCur == drv->x48 % BES32(D_80025C00.nGates) && drv->x4c < 0) {
-      drv->x4c += BES32(D_80025C00.nGates);
+    if (iCur == drv->x48 % tgr_track.nGates && drv->x4c < 0) {
+      drv->x4c += tgr_track.nGates;
       drv->x44++;
-      if (BE32(D_80025C00.path) != 0) {
-        drv->progress += BEF(D_80025C70->pt[0].dist);
+      if (tgr_track.path != 0) {
+        drv->progress += D_80025C70->pt[0].dist;
       }
       tgr_print("lapping %d forward to -1\n", drv->x64);
     }
@@ -407,7 +404,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
   drv->x4c++;
   if (drv->x48 < drv->x4c) {
     drv->x48 = drv->x4c;
-    tgr_print("moved ahead one gate, getting %f seconds\n", D_80025C00.gate[iNext].award);
+    tgr_print("moved ahead one gate, getting %f seconds\n", tgr_track.gate[iNext].award);
     if (iNext == 0) {
       if (drv->laps < D_8028B304) {
         msg = 0;
@@ -436,10 +433,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
             tgr_print("lapping %d back to 0 (a)\n", drv->x64);
             drv->laps--;
             drv->x44--;
-            drv->x48 -= BES32(D_80025C00.nGates);
-            drv->x4c -= BES32(D_80025C00.nGates);
-            if (BE32(D_80025C00.path) != 0) {
-              drv->progress -= BEF(D_80025C70->pt[0].dist);
+            drv->x48 -= tgr_track.nGates;
+            drv->x4c -= tgr_track.nGates;
+            if (tgr_track.path != 0) {
+              drv->progress -= D_80025C70->pt[0].dist;
             }
           }
         } else if (car != 0) {
@@ -571,10 +568,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
     tgr_print("lapping %d back to 0 (b)\n", drv->x64);
     drv->laps--;
     drv->x44--;
-    drv->x48 -= BES32(D_80025C00.nGates);
-    drv->x4c -= BES32(D_80025C00.nGates);
-    if (0 != BE32(D_80025C00.path)) {
-      drv->progress -= BEF(D_80025C70->pt[0].dist);
+    drv->x48 -= tgr_track.nGates;
+    drv->x4c -= tgr_track.nGates;
+    if (0 != tgr_track.path) {
+      drv->progress -= D_80025C70->pt[0].dist;
     }
   }
 tail:

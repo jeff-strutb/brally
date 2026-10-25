@@ -341,11 +341,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, BRV(((BrVec3be *)(pPlane->v0))), &car->camTarget);
+        BrVec3Sub(&toV0, (((BrVec3 *)(pPlane->v0))), &car->camTarget);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, &car->camTarget, &dir, t);
-          if (BrTriContainsPoint(&hit, BRV(((BrVec3be *)(pPlane->v0))), BRV(((BrVec3be *)(pPlane->v1))), BRV(((BrVec3be *)(pPlane->v2))), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, (((BrVec3 *)(pPlane->v0))), (((BrVec3 *)(pPlane->v1))), (((BrVec3 *)(pPlane->v2))), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;
@@ -368,11 +368,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, BRV(((BrVec3be *)(pPlane->v0))), prev);
+        BrVec3Sub(&toV0, (((BrVec3 *)(pPlane->v0))), prev);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, prev, &dir, t);
-          if (BrTriContainsPoint(&hit, BRV(((BrVec3be *)(pPlane->v0))), BRV(((BrVec3be *)(pPlane->v1))), BRV(((BrVec3be *)(pPlane->v2))), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, (((BrVec3 *)(pPlane->v0))), (((BrVec3 *)(pPlane->v1))), (((BrVec3 *)(pPlane->v2))), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;

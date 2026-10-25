@@ -18,7 +18,7 @@ short BrCollGridCellAcquire(float, float);
 void BrVec3Negate(BrVec3 *out, BrVec3 *v);
 void BrVec3MulAdd(BrVec3 *out, BrVec3 *a, BrVec3 *b, float s);
 int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef);
-#define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)   /* the track's path (0 before a track loads) */
+#define D_80025C70 ((BrPathSeg *)tgr_track.path)   /* the track's path (0 before a track loads) */
 int BrFloatToInt(float f);
 int BrCarTrackLocate(BrCar *car);
 int BrSeg2SideTest(float *a, float *b, float *c, float *d);
@@ -110,45 +110,45 @@ int BrCarTrackLocate(BrCar *car)
     cy = 0x19;
     check = 0;
   }
-  dist = car->xfa8 - BEF(D_80025C70->pt[0].dist) * car->xf7c;
+  dist = car->xfa8 - D_80025C70->pt[0].dist * car->xf7c;
   if (check &&
-      !BrSeg2SideTest(BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].left.x), BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].right.x),
+      !BrSeg2SideTest((&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].left.x), (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      !BrSeg2SideTest(BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].left.x), BRF(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].right.x),
+      !BrSeg2SideTest((&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].left.x), (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      BrVec3Dist((BrVec3 *)car->mtx0[3], BRV(&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].pos)) < 64.0f) {
+      BrVec3Dist((BrVec3 *)car->mtx0[3], (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].pos)) < 64.0f) {
     seg = ((BrPathSeg *)(car->xf5c));
     j = car->xf60;
   } else {
-    bestD = BEF(D_80025C00.x2c) - BEF(D_80025C00.x28);
+    bestD = tgr_track.x2c - tgr_track.x28;
     bestD *= bestD;
-    for (k = 0; k < BES32(D_80025C00.nSegs); k++) {
-      if (car->slot < D_8026FF08 || D_8026FF18 == 2 || !(BES16(BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[k])->flags) & 1)) {
-        seg = BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[k]);
+    for (k = 0; k < tgr_track.nSegs; k++) {
+      if (car->slot < D_8026FF08 || D_8026FF18 == 2 || !(((short)(tgr_track.segs[k]->flags)) & 1)) {
+        seg = tgr_track.segs[k];
         if (cx < seg->x0 || cx > seg->x1 || cy < seg->y0 || cy > seg->y1) {
           continue;
         }
         if (check) {
-          if ((BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[0].dist)) - dist > 1000.f) {
+          if ((D_80025C70->pt[0].dist - seg->pt[0].dist) - dist > 1000.f) {
             continue;
           }
-          if (dist - (BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[BE16(seg->count)].dist)) > 1000.0f) {
+          if (dist - (D_80025C70->pt[0].dist - (seg->pt[seg->count].dist)) > 1000.0f) {
             continue;
           }
         }
-        n = BES16(seg->count);
+        n = ((short)seg->count);
         for (j = 0, p = seg->pt; j < n; j++, p++) {
-          d = BEF(p->pos.x) - x;
+          d = p->pos.x - x;
           d *= d;
-          e = BEF(p->pos.y) - y;
+          e = p->pos.y - y;
           d += e * e;
-          e = BEF(p->pos.z) - z;
+          e = p->pos.z - z;
           d += e * e;
           if (d < bestD) {
-            dir.x = BEF(p->left.y) - BEF(p->right.y);
-            dir.y = BEF(p->right.x) - BEF(p->left.x);
+            dir.x = p->left.y - p->right.y;
+            dir.y = p->right.x - p->left.x;
             dir.z = 0.0f;
-            BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], BRV(&p->pos));
+            BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], (&p->pos));
             if (BrVec3Dot(&dir, &rel) >= 0.0f) {
               bestD = d;
               best = j;
@@ -161,16 +161,16 @@ int BrCarTrackLocate(BrCar *car)
     if (best == -1) {
       goto none;
     }
-    seg = BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[bestSeg]);
+    seg = tgr_track.segs[bestSeg];
     j = best;
   }
-  across.x = BEF(seg->pt[j].left.y) - BEF(seg->pt[j].right.y);
-  across.y = BEF(seg->pt[j].right.x) - BEF(seg->pt[j].left.x);
+  across.x = seg->pt[j].left.y - seg->pt[j].right.y;
+  across.y = seg->pt[j].right.x - seg->pt[j].left.x;
   across.z = 0.0f;
   BrVec3Normalise(&across);
-  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], BRV(&seg->pt[j].pos));
+  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], (&seg->pt[j].pos));
   p = &seg->pt[j];
-  step = BrVec3Dot(&across, &off) + (BEF(D_80025C70->pt->dist) * (car->xf7c + 1) - BEF(p->dist));
+  step = BrVec3Dot(&across, &off) + (D_80025C70->pt->dist * (car->xf7c + 1) - p->dist);
   step -= car->xfa8;
   if (!check || (-1000.0f < step && step < 1000.0f)) {
     car->xfa8 += step;
@@ -283,7 +283,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   bestNearNorm = D_8028B324;
   bestFarHitZ = pEye->z;
   bestNearHitZ = pEye->z;
-  dt = BEF(D_80025C00.fogHi) - BEF(D_80025C00.fogLo);    /* x3c - x38 */
+  dt = tgr_track.fogHi - tgr_track.fogLo;    /* x3c - x38 */
   bestNearDist = bestFarDist = dt * dt + 1.0f;
   farFaceVal = 0;
   farFaceIdx = 0;
@@ -309,10 +309,10 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (dn == 0) {
       continue;
     }
-    BrVec3Sub(&tmpV, BRV(((BrVec3be *)(pP->v0))), &origin);
+    BrVec3Sub(&tmpV, (((BrVec3 *)(pP->v0))), &origin);
     t = BrVec3Dot(&tmpV, &pP->n) / dn;
     BrVec3MulAdd(&hitPt, &origin, &dir, t);
-    if (!BrTriContainsPoint(&hitPt, BRV(((BrVec3be *)(pP->v0))), BRV(((BrVec3be *)(pP->v1))), BRV(((BrVec3be *)(pP->v2))), &pP->n)) {
+    if (!BrTriContainsPoint(&hitPt, (((BrVec3 *)(pP->v0))), (((BrVec3 *)(pP->v1))), (((BrVec3 *)(pP->v2))), &pP->n)) {
       continue;
     }
     dist = pEye->z + 1.5f - hitPt.z;
@@ -332,30 +332,30 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
         if (nearCount < 32) {
           pNearIds[nearCount++] = pNearIds[0];
         }
-        pNearIds[0] = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
+        pNearIds[0] = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
         if (dist < 5.0f) {
-          ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[pP->tri]);
-          if (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
+          ci = ((short)tgr_track.triTrigger[pP->tri]);
+          if (((short)tgr_track.triggers[ci]) != 0) {
             do {
               if (farCount < 32) {
                 pFarIds[farCount++] = pFarIds[0];
               }
-              pFarIds[0] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
+              pFarIds[0] = tgr_track.triggers[ci];
               ci++;
-            } while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0);
+            } while (((short)tgr_track.triggers[ci]) != 0);
           }
         }
       } else if (nearCount < 32) {
-        pNearIds[nearCount++] = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
+        pNearIds[nearCount++] = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
         if (dist < 5.0f) {
-          ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[pP->tri]);
-          if (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
+          ci = ((short)tgr_track.triTrigger[pP->tri]);
+          if (((short)tgr_track.triggers[ci]) != 0) {
             do {
               if (farCount < 32) {
-                pFarIds[farCount++] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
+                pFarIds[farCount++] = tgr_track.triggers[ci];
               }
               ci++;
-            } while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0);
+            } while (((short)tgr_track.triggers[ci]) != 0);
           }
         }
       }
@@ -364,7 +364,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (!(dist <= 0.0f && dist < bestFarDist)) {
       continue;
     }
-    farFaceVal = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
+    farFaceVal = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
     if (-1.0f < dist) {
       bestFarDist = dist;
       farFaceIdx = pP->tri;
@@ -389,12 +389,12 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
       pNormOut->z = bestNearNorm.z;
     }
   } else {
-    ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[farFaceIdx]);
-    while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
+    ci = ((short)tgr_track.triTrigger[farFaceIdx]);
+    while (((short)tgr_track.triggers[ci]) != 0) {
       if (farCount < 32) {
-        pFarIds[farCount++] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
+        pFarIds[farCount++] = tgr_track.triggers[ci];
       } else {
-        pFarIds[31] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
+        pFarIds[31] = tgr_track.triggers[ci];
         break;
       }
       ci++;

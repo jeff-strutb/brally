@@ -105,7 +105,7 @@ void BrSndCarStep(BrCar *car)
     f = 0;
   }
   if (car->slot == 0) {
-    if (BES16(D_80025C60[car->x1fc0[0]].flags) & 0x10) {
+    if (((short)D_80025C60[car->x1fc0[0]].flags) & 0x10) {
       D_802A49B0 = 11000;
     } else {
       D_802A49B0 = 0;

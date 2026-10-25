@@ -44,7 +44,7 @@ extern unsigned int D_8028A898;         /* the texture filter */
 extern int D_8028A8A8;
 extern int D_8028A8AC;
 extern Mtx *D_8028A878;                 /* the projection matrix */
-#define D_80025C50 BE32(D_80025C00.x50)  /* the track's sky display list (an original address) */
+#define D_80025C50 tgr_track.x50  /* the track's sky display list (an original address) */
 typedef struct BrSkyView { int x; int y; int w; int h; int car; } BrSkyView;
 extern BrSkyView D_8031B2C8[2];
 int BrRaceSplitScreen(void);
@@ -140,7 +140,9 @@ void BrCarPlaceWheels(int n)
   if (BE32(D_8028AB08->dl2[0][0]) != 0) {
     for (i = 0; i < 4; i++) {
       memcpy(car->wheelMtx[i], car->mtx0, 0x30);
-      br_vec3_from(w, (const BrVec3be *)D_8028AB08->wheel[i]);   /* the model's wheel position, natively */
+      w[0] = BEF(D_8028AB08->wheel[i][0]);   /* the model's wheel position, natively */
+      w[1] = BEF(D_8028AB08->wheel[i][1]);
+      w[2] = BEF(D_8028AB08->wheel[i][2]);
       BrMat4TransformPoint4(car->wheelMtx[i][3], w, car->mtx0);
     }
   }
@@ -262,11 +264,6 @@ void BrVec3MulAddTo(BrVec3 *out, BrVec3 *v, float s);
 
 /* -- declarations: BrCarDraw -- */
 #include "tgr/pad.h"
-typedef struct BrTrackObjFl {  /* a track object, as far as the car draw reads it (0x54 bytes) */
-  char pad00[0x4C];
-  unsigned short flags;         /* 0x4C  0x10: a tunnel */
-  char pad4e[0x54 - 0x4E];
-} BrTrackObjFl;
 void BrVec3Normalise(BrVec3 *v);
 #define TXL2WORDS_4b(txls)      MAX(1, ((txls) / 16))
 #define CALC_DXT_4b(width)      (((1 << 11) + TXL2WORDS_4b(width) - 1) / TXL2WORDS_4b(width))
@@ -414,7 +411,7 @@ void BrCarDraw(BrCar *car, int lodBias)
     gDPSetFogColor(D_8028A858++, D_8028AB20, D_8028AB24, D_8028AB28, D_80351D00);
   }
   *(int *)car->pad1dc8 = 0;
-  if (car->x2000 != 0 && (BE16(BR_TRACKOBJS()[car->x1fc0[0]].flags) & 0x10) != 0) {
+  if (car->x2000 != 0 && ((BR_TRACKOBJS()[car->x1fc0[0]].flags) & 0x10) != 0) {
     *(int *)car->pad1dc8 = 1;
     tunnel = 1;
   }

@@ -96,7 +96,7 @@ void BrMainMenu(void)
     if (D_802A49C0 < 8) {
       BrMusicStop();
       BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
-      BrMusicStart((unsigned char *)&D_80025C00, D_802AC400);   /* the module, unpacked in the track's buffer */
+      BrMusicStart(D_80025C00, D_802AC400);   /* the module, unpacked in the track's buffer */
     }
     D_80271FB0 = &D_802722C0;
     D_80271FB4 = 25;
