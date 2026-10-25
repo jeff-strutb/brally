@@ -11,7 +11,7 @@ extern int D_8028AA84;
 extern int D_8028AA8C;
 extern int D_8026FF08;
 #include "tgr/track.h"
-#define D_80025C50 tgr_track.x50
+#define D_80025C50 BES32(D_80025C00.x50)
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Set the race-kind flags from a kind number (0-4): clears

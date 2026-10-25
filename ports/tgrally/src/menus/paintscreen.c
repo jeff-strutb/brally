@@ -4,7 +4,6 @@
  * other paint-shop functions'.
  */
 #include "tgr/common.h"
-#include "tgr/pad.h"
 #include "tgr/car.h"
 #include "tgr/gbi.h"
 
@@ -41,7 +40,14 @@ typedef struct BrPaintModel {   /* the car model being painted */
   unsigned char paint[2];       /* 0x11A */
   be32_t mask;         /* unsigned char ** -- 0x11C */
 } BrPaintModel;
-extern BrPadRec D_8036A8E0[4];
+typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
+  unsigned int pressed;
+  unsigned int held;
+  int repeat[4];
+  float axis[2];
+  char pad20[0x15c - 0x20];
+} BrPadRec;
+extern char D_8036A8E0;
 extern BrCar D_8031B760[];
 extern int D_80271FA8;                  /* the player's controller */
 extern int D_8028B7F4;
@@ -131,7 +137,7 @@ void BrVec3Negate(BrVec3 *out, BrVec3 *v);
 void BrVec3Normalise(BrVec3 *v);
 void BrVec3Cross(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 void BrIfaceMemReset(void);
-void *BrIfaceMemAlloc(int size);
+unsigned int BrIfaceMemAlloc(int size);
 void BrAllocPaintShopGfxMem(BrImage *img);
 void BrPaintPaletteLoad(void);
 void BrPaintPaletteDraw(void);
@@ -233,11 +239,11 @@ void BrPaintShopScreen(void)
     D_8028B7F4 = 1;
     BrCarDefaultColour(&D_8031B760[D_8028DBBC]);
     car = &D_8031B760[D_8028DBBC];
-    car->xed8 = BrCarCamStep;
+    car->xed8 = TGR_FA(BrCarCamStep);
     n = D_8028DBBC;
     D_8031B760[n].kind = D_8031B760[0].kind;
     BrEntLoadRecord(&D_8031B760[n], n, D_8031B760[n].kind);
-    D_8028AB08 = (BrPaintModel *)((char *)(D_8031B760[D_8028DBBC].model));
+    D_8028AB08 = (BrPaintModel *)TGR_PTR(char *, D_8031B760[D_8028DBBC].model);
     {
       float *p = D_8031B760[D_8028DBBC].mtx0[3];
 
@@ -283,8 +289,8 @@ void BrPaintShopScreen(void)
     D_8031B760[D_8028DBBC].x2044 = 0;
     BrIfaceMemReset();
     tgr_print("\nAllocating %d bytes (x2) for decal buffers...\n\n", 0x800);
-    D_8028DB80 = ((unsigned char *)(BrIfaceMemAlloc(0x800)));
-    D_8028DB84 = ((unsigned char *)(BrIfaceMemAlloc(0x800)));
+    D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
+    D_8028DB84 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
     BrAllocPaintShopGfxMem(&D_8028CB40);
     BrAllocPaintShopGfxMem(&D_8028CB70);
     BrAllocPaintShopGfxMem(&D_8028CBA0);
@@ -582,8 +588,8 @@ void BrPaintShopScreen(void)
         D_802724F0 = BrDecalPakTransfer(D_8028AB08, D_8028DBBC, 9, 0, &done);
       } else {
         BrPakMessage(D_802724F0, 9, 0);
-        if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x30) {
-          BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x30);
+        if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x30) {
+          BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x30);
           D_802724F0 = 0;
           D_8028DB60 = D_8028DB64;
         }
@@ -594,8 +600,8 @@ void BrPaintShopScreen(void)
         D_802724F0 = BrDecalPakTransfer(D_8028AB08, D_8028DBBC, 10, 0, &done);
       } else {
         BrPakMessage(D_802724F0, 10, 0);
-        if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x30) {
-          BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x30);
+        if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x30) {
+          BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x30);
           D_802724F0 = 0;
           D_8028DB60 = D_8028DB64;
         }
@@ -632,7 +638,7 @@ void BrPaintShopScreen(void)
     BrPerfMeterDraw();
   }
   BrFrameEnd();
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
     if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC0 == 0 && D_8028DBC4 == 0) {
       i = D_8028D110.x;
       r = D_8028D110.y;
@@ -641,7 +647,7 @@ void BrPaintShopScreen(void)
       D_8028DB58 = BrPaintGet(i, r);
       D_8028DBEC = 1;
     } else if (D_8028DBC0 != 0 || D_8028DBC4 != 0) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
       D_8028DBC4 = 0;
       D_8028DBC0 = 0;
       D_8028DBD8 = 1;

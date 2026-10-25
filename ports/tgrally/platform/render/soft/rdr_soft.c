@@ -25,11 +25,11 @@ static uint32_t *s_col, *s_done;
 static float *s_z;
 static uint8_t *s_cvg;                  /* each pixel's coverage, 0..8 samples */
 static int s_w, s_h, s_done_w, s_done_h, s_cap;
-static RdrVideo s_video = { 1, 0, 1, 1 };   /* how the frame is shown (rdr_video) */
+static uint32_t s_vi = 0x311E;          /* the VI's control register (rdr_vi) */
 static int s_x, s_y;                    /* the pixel being written (its dither cell) */
 
 int rdr_covers(void) { return 1; }
-void rdr_video(const RdrVideo *v) { s_video = *v; }
+void rdr_vi(uint32_t ctrl) { s_vi = ctrl; }
 
 int rdr_init(void) { return 1; }
 void rdr_window(void) {}
@@ -527,8 +527,8 @@ static int full(int x, int y)
 
 void rdr_frame_end(void)
 {
-    int aa = s_video.antialias, dither = s_video.dither_filter, divot = s_video.divot;
-    int gamma = s_video.gamma, x, y, c;
+    int aa = ((s_vi >> 8) & 3) != 3, dither = (s_vi & 0x10000) != 0, divot = (s_vi & 0x10) != 0;
+    int gamma = (s_vi & 0x08) != 0, x, y, c;
     static int *row;
     static int cap;
     if (s_done_w * s_done_h < s_w * s_h)

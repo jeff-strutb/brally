@@ -7,8 +7,8 @@
 
 typedef struct BrUnpack {       /* a streamed unpack in flight (BrStreamInit starts one) */
     unsigned int pos;           /* 0x00  ROM position of the next chunk */
-    unsigned char *dst;         /* 0x04  0 until the first call */
-    unsigned char *buf;         /* 0x08  2 x 16000-byte chunk buffer */
+    TgrAddr dst;         /* unsigned char * -- 0x04  0 until the first call */
+    TgrAddr buf;         /* unsigned char * -- 0x08  2 x 16000-byte chunk buffer */
     unsigned int half;          /* 0x0C  which half the next chunk goes to */
     unsigned int total;         /* 0x10  packed length */
     unsigned int size;          /* 0x14  unpacked length */
@@ -25,7 +25,7 @@ typedef struct BrStream {       /* a streamed car-model load in flight (0x28 byt
 typedef struct BrRomFile {      /* a ROM file and where it was loaded */
     int start;                  /* 0x00  ROM range */
     int end;                    /* 0x04 */
-    void *data;                 /* 0x08  where it was loaded */
+    TgrAddr data;                 /* void * -- 0x08  where it was loaded */
 } BrRomFile;
 
 void BrRomRead(void *dst, unsigned int rom, int len);
@@ -35,6 +35,6 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s);
 void BrStreamInit(BrUnpack *s, unsigned char *buf);
 TgrIoMsg *BrRomDmaSlot(void);
 void BrRomWaitAll(void);
-void BrRomFileLoad(BrRomFile *f, void *(*alloc)(int size));
-void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
+void BrRomFileLoad(BrRomFile *f, unsigned int (*alloc)(int size));
+void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size));
 #endif

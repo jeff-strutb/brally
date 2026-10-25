@@ -22,7 +22,7 @@ typedef struct BrBoltPt { float x, y, z; } BrBoltPt;
 extern BrBoltPt D_803634F8[];           /* the lightning bolt's points; [0] is where it struck */
 extern int D_8028C81C;                  /* the bolt's subdivision depth, 4 per level */
 #include "tgr/track.h"
-#define D_80025C38 tgr_track.fogLo        /* the track's sky height */
+#define D_80025C38 BEF(D_80025C00.fogLo)        /* the track's sky height */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Scatter both particle sets: 512 particles each at random

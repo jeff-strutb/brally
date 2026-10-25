@@ -25,43 +25,43 @@ typedef int64_t  TgrTime;
 typedef int32_t  TgrPri;
 typedef int32_t  TgrId;
 typedef uint32_t TgrEvent;
-typedef uintptr_t TgrMsg;           /* an integer or a pointer */
+typedef uint32_t TgrMsg;            /* an integer or an original address */
 
-typedef struct TgrThread_s {         /* 0x1B0 bytes on the N64; the platform keeps its own state */
-    void   *next;
+typedef struct TgrThread_s {         /* 0x1B0 bytes; the platform keeps its own state */
+    TgrAddr next;
     TgrPri priority;
     char context[0x1B0 - 8];
 } TgrThread;
 
-typedef struct TgrMsgQueue_s {      /* 0x18 bytes on the N64 */
-    void   *mtqueue;                /* (the threads waiting: the platform keeps its own) */
-    void   *fullqueue;
+typedef struct TgrMsgQueue_s {      /* 0x18 bytes */
+    TgrAddr mtqueue;
+    TgrAddr fullqueue;
     int32_t validCount;
     int32_t first;
     int32_t msgCount;
-    TgrMsg *msg;                    /* [msgCount] */
+    TgrAddr msg;                    /* OSMesg[msgCount] */
 } TgrMsgQueue;
 
 typedef struct {
     uint16_t type;
     uint8_t  pri;
     uint8_t  status;
-    struct TgrMsgQueue_s *retQueue;
+    TgrAddr  retQueue;              /* OSMesgQueue */
 } TgrIoMsgHdr;
 
 typedef struct {                    /* 0x18 bytes */
     TgrIoMsgHdr hdr;
-    void    *dramAddr;
+    TgrAddr  dramAddr;
     uint32_t devAddr;
     uint32_t size;
-    void    *piHandle;
+    TgrAddr  piHandle;
 } TgrIoMsg;
 
-typedef struct TgrTimer_s {          /* 0x20 bytes on the N64 */
-    struct TgrTimer_s *next, *prev;
+typedef struct TgrTimer_s {          /* 0x20 bytes */
+    TgrAddr next, prev;
     TgrTime interval;
     TgrTime value;
-    TgrMsgQueue *mq;
+    TgrAddr mq;
     TgrMsg msg;
 } TgrTimer;
 
@@ -102,9 +102,9 @@ typedef struct {
     uint8_t  errnum;
 } TgrPadStatus;
 
-typedef struct {                    /* 0x68 bytes on the N64 */
+typedef struct {                    /* 0x68 bytes */
     int32_t status;
-    TgrMsgQueue *queue;
+    TgrAddr queue;                  /* OSMesgQueue */
     int32_t channel;
     uint8_t id[32];
     uint8_t label[32];
@@ -128,6 +128,7 @@ typedef struct {                    /* 0x20 bytes */
     char     pad1e[2];
 } TgrPakFile;
 
+typedef struct { uint8_t type; uint8_t pad[3]; uint32_t regs[19]; } TgrVideoMode;   /* 0x50 bytes */
 
 #define TGR_NOBLOCK     0
 #define TGR_BLOCK       1
@@ -171,11 +172,9 @@ void     tgr_event_mq(TgrEvent e, TgrMsgQueue *mq, TgrMsg msg);
 uint32_t tgr_clock(void);
 int32_t  tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue *mq, TgrMsg msg);
 
-void     tgr_video_reset(void);               /* a change of resolution: anti-aliased, divot, gamma, no dither filter */
+void     tgr_video_mode(TgrVideoMode *mode);
 void     tgr_retrace_mq(TgrMsgQueue *mq, TgrMsg msg, uint32_t retraceCount);
-void     tgr_video_dither_filter(int on);
-void     tgr_video_divot(int on);
-void     tgr_video_gamma(int on);
+void     tgr_video_features(uint32_t func);
 void     tgr_video_show(void *fb);
 void    *tgr_video_shown(void);
 
@@ -210,16 +209,13 @@ int32_t  tgr_rumble_off(TgrPak *pfs);
 void     tgr_task_load(TgrTask *task);
 void     tgr_task_run(TgrTask *task);
 
-/* the sound out (platform/audio/out.c): 16-bit stereo, big-endian, at the
- * rate the game sets; the game mixes into a ring of its own and hands over
- * each stretch it mixed */
-int32_t  tgr_audio_rate(uint32_t frequency);  /* the rate the game mixes at (the rate given) */
-void     tgr_audio_start(void);               /* the sound starts now */
-uint32_t tgr_audio_want(void);                /* bytes to mix now: what keeps the output fed, a multiple of 8 */
-void     tgr_audio_submit(const void *ring, uint32_t size, uint32_t pos, uint32_t n);  /* n bytes from pos, round the ring */
+int32_t  tgr_audio_rate(uint32_t frequency);
+int32_t  tgr_audio_queue(void *buf, uint32_t size);
+uint32_t tgr_audio_status(void);
+uint32_t tgr_audio_left(void);
 
 void     tgr_print(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-void    *tgr_faulted_thread(void);
+TgrAddr  tgr_faulted_thread(void);
 
 /* the libm member the game links (gu's sinf/cosf are core C) */
 int16_t  sins(uint16_t angle);

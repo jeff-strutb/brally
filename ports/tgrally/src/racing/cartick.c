@@ -1,16 +1,22 @@
 /* cartick.c -- a car's per-frame clocks and message timers
  */
 #include "tgr/common.h"
-#include "tgr/tri.h"
-#include "tgr/ent.h"
-#include "tgr/body.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
 extern int D_8026FF18;
 extern float D_8028AAD8;
 #include "tgr/track.h"
-typedef BrTri BrCollPlane;     /* (tgr/tri.h) */
+typedef struct BrCollPlane {    /* a collision triangle's plane (0x20 bytes) */
+  BrVec3 n;                     /* its normal */
+  float d;
+  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
+  TgrAddr v1;  /* BrVec3 * */
+  TgrAddr v2;  /* BrVec3 * */
+  short tri;                    /* 0x1C  its triangle */
+  short x1e;
+} BrCollPlane;
+extern BrCollPlane D_80379F80[][150];   /* each grid cell's collision planes */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern BrVec3 D_8028B318;               /* the default normals */
 extern BrVec3 D_8028B324;
@@ -18,7 +24,7 @@ short BrCollGridCellAcquire(float, float);
 void BrVec3Negate(BrVec3 *out, BrVec3 *v);
 void BrVec3MulAdd(BrVec3 *out, BrVec3 *a, BrVec3 *b, float s);
 int BrTriContainsPoint(BrVec3 *pPt, BrVec3 *pA, BrVec3 *pB, BrVec3 *pC, BrVec3 *pRef);
-#define D_80025C70 ((BrPathSeg *)tgr_track.path)   /* the track's path (0 before a track loads) */
+#define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)   /* the track's path (0 before a track loads) */
 int BrFloatToInt(float f);
 int BrCarTrackLocate(BrCar *car);
 int BrSeg2SideTest(float *a, float *b, float *c, float *d);
@@ -28,14 +34,23 @@ void BrVec3Normalise(BrVec3 *v);
 extern int D_8028B940;
 extern int D_8026FF08;
 extern int D_8026FF10;
-typedef BrRaceEnt BrCarEnt;     /* (tgr/ent.h) */
+typedef struct BrCarEnt {       /* a car's entity record (0x78 bytes) */
+  char pad00[0x60];
+  TgrAddr car;                   /* BrCar * -- 0x60 */
+} BrCarEnt;
 void BrHudArrowDraw(BrCar *car, BrVec3 *at, short kind);
 void BrWrongWayCheck(BrCar *car);
 void BrRaceGateStep(BrCarEnt *e);
 void BrVec3Sub(BrVec3 *out, BrVec3 *a, BrVec3 *b);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 float BrAtan2(float x, float y);
-typedef BrRbBody BrCarWheel;     /* (tgr/body.h) */
+typedef struct BrCarWheel {     /* a wheel's rigid body */
+  char pad000[0x1C0];
+  float x1c0;                   /* 0x1C0 */
+  char pad1c4[0x1CC - 0x1C4];
+  float x1cc;                   /* 0x1CC */
+  float x1d0;                   /* 0x1D0 */
+} BrCarWheel;
 typedef struct BrViewRect { int x; int y; int w; int h; int car; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];        /* the players' views */
 extern int D_8028AB0C;                  /* number of views */
@@ -110,45 +125,45 @@ int BrCarTrackLocate(BrCar *car)
     cy = 0x19;
     check = 0;
   }
-  dist = car->xfa8 - D_80025C70->pt[0].dist * car->xf7c;
+  dist = car->xfa8 - BEF(D_80025C70->pt[0].dist) * car->xf7c;
   if (check &&
-      !BrSeg2SideTest((&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].left.x), (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].right.x),
+      !BrSeg2SideTest(BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].left.x), BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      !BrSeg2SideTest((&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].left.x), (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60 + 1].right.x),
+      !BrSeg2SideTest(BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60 + 1].left.x), BRF(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60 + 1].right.x),
                       &car->posPrev.x, car->mtx0[3]) &&
-      BrVec3Dist((BrVec3 *)car->mtx0[3], (&(((BrPathSeg *)(car->xf5c)))->pt[car->xf60].pos)) < 64.0f) {
-    seg = ((BrPathSeg *)(car->xf5c));
+      BrVec3Dist((BrVec3 *)car->mtx0[3], BRV(&(TGR_PTR(BrPathSeg *, car->xf5c))->pt[car->xf60].pos)) < 64.0f) {
+    seg = TGR_PTR(BrPathSeg *, car->xf5c);
     j = car->xf60;
   } else {
-    bestD = tgr_track.x2c - tgr_track.x28;
+    bestD = BEF(D_80025C00.x2c) - BEF(D_80025C00.x28);
     bestD *= bestD;
-    for (k = 0; k < tgr_track.nSegs; k++) {
-      if (car->slot < D_8026FF08 || D_8026FF18 == 2 || !(((short)(tgr_track.segs[k]->flags)) & 1)) {
-        seg = tgr_track.segs[k];
+    for (k = 0; k < BES32(D_80025C00.nSegs); k++) {
+      if (car->slot < D_8026FF08 || D_8026FF18 == 2 || !(BES16(BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[k])->flags) & 1)) {
+        seg = BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[k]);
         if (cx < seg->x0 || cx > seg->x1 || cy < seg->y0 || cy > seg->y1) {
           continue;
         }
         if (check) {
-          if ((D_80025C70->pt[0].dist - seg->pt[0].dist) - dist > 1000.f) {
+          if ((BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[0].dist)) - dist > 1000.f) {
             continue;
           }
-          if (dist - (D_80025C70->pt[0].dist - (seg->pt[seg->count].dist)) > 1000.0f) {
+          if (dist - (BEF(D_80025C70->pt[0].dist) - BEF(seg->pt[BE16(seg->count)].dist)) > 1000.0f) {
             continue;
           }
         }
-        n = ((short)seg->count);
+        n = BES16(seg->count);
         for (j = 0, p = seg->pt; j < n; j++, p++) {
-          d = p->pos.x - x;
+          d = BEF(p->pos.x) - x;
           d *= d;
-          e = p->pos.y - y;
+          e = BEF(p->pos.y) - y;
           d += e * e;
-          e = p->pos.z - z;
+          e = BEF(p->pos.z) - z;
           d += e * e;
           if (d < bestD) {
-            dir.x = p->left.y - p->right.y;
-            dir.y = p->right.x - p->left.x;
+            dir.x = BEF(p->left.y) - BEF(p->right.y);
+            dir.y = BEF(p->right.x) - BEF(p->left.x);
             dir.z = 0.0f;
-            BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], (&p->pos));
+            BrVec3Sub(&rel, (BrVec3 *)car->mtx0[3], BRV(&p->pos));
             if (BrVec3Dot(&dir, &rel) >= 0.0f) {
               bestD = d;
               best = j;
@@ -161,21 +176,21 @@ int BrCarTrackLocate(BrCar *car)
     if (best == -1) {
       goto none;
     }
-    seg = tgr_track.segs[bestSeg];
+    seg = BEPTR(BrPathSeg *, BEPTR(be32_t *, D_80025C00.segs)[bestSeg]);
     j = best;
   }
-  across.x = seg->pt[j].left.y - seg->pt[j].right.y;
-  across.y = seg->pt[j].right.x - seg->pt[j].left.x;
+  across.x = BEF(seg->pt[j].left.y) - BEF(seg->pt[j].right.y);
+  across.y = BEF(seg->pt[j].right.x) - BEF(seg->pt[j].left.x);
   across.z = 0.0f;
   BrVec3Normalise(&across);
-  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], (&seg->pt[j].pos));
+  BrVec3Sub(&off, (BrVec3 *)car->mtx0[3], BRV(&seg->pt[j].pos));
   p = &seg->pt[j];
-  step = BrVec3Dot(&across, &off) + (D_80025C70->pt->dist * (car->xf7c + 1) - p->dist);
+  step = BrVec3Dot(&across, &off) + (BEF(D_80025C70->pt->dist) * (car->xf7c + 1) - BEF(p->dist));
   step -= car->xfa8;
   if (!check || (-1000.0f < step && step < 1000.0f)) {
     car->xfa8 += step;
   }
-  car->xf5c = (seg);
+  car->xf5c = tgr_addr32(seg);
   car->xf60 = j;
   car->xf64 = across.x;
   car->xf68 = across.y;
@@ -191,7 +206,7 @@ none:
 /* @implements 0x8021F0A8 tgr BrCarTickClocks */
 void BrCarTickClocks(BrCar *car)
 {
-  if ((((BrCarLink *)(car->link))->flags & 3) == 0) {
+  if ((TGR_PTR(struct BrCarLink *, car->link)->flags & 3) == 0) {
     if (D_8026FF18 == 3) {
       car->raceTime += D_8028AAD8;
       return;
@@ -283,7 +298,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
   bestNearNorm = D_8028B324;
   bestFarHitZ = pEye->z;
   bestNearHitZ = pEye->z;
-  dt = tgr_track.fogHi - tgr_track.fogLo;    /* x3c - x38 */
+  dt = BEF(D_80025C00.fogHi) - BEF(D_80025C00.fogLo);    /* x3c - x38 */
   bestNearDist = bestFarDist = dt * dt + 1.0f;
   farFaceVal = 0;
   farFaceIdx = 0;
@@ -309,10 +324,10 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (dn == 0) {
       continue;
     }
-    BrVec3Sub(&tmpV, (((BrVec3 *)(pP->v0))), &origin);
+    BrVec3Sub(&tmpV, BRV(TGR_PTR(BrVec3be *, pP->v0)), &origin);
     t = BrVec3Dot(&tmpV, &pP->n) / dn;
     BrVec3MulAdd(&hitPt, &origin, &dir, t);
-    if (!BrTriContainsPoint(&hitPt, (((BrVec3 *)(pP->v0))), (((BrVec3 *)(pP->v1))), (((BrVec3 *)(pP->v2))), &pP->n)) {
+    if (!BrTriContainsPoint(&hitPt, BRV(TGR_PTR(BrVec3be *, pP->v0)), BRV(TGR_PTR(BrVec3be *, pP->v1)), BRV(TGR_PTR(BrVec3be *, pP->v2)), &pP->n)) {
       continue;
     }
     dist = pEye->z + 1.5f - hitPt.z;
@@ -332,30 +347,30 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
         if (nearCount < 32) {
           pNearIds[nearCount++] = pNearIds[0];
         }
-        pNearIds[0] = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
+        pNearIds[0] = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
         if (dist < 5.0f) {
-          ci = ((short)tgr_track.triTrigger[pP->tri]);
-          if (((short)tgr_track.triggers[ci]) != 0) {
+          ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[pP->tri]);
+          if (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
             do {
               if (farCount < 32) {
                 pFarIds[farCount++] = pFarIds[0];
               }
-              pFarIds[0] = tgr_track.triggers[ci];
+              pFarIds[0] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
               ci++;
-            } while (((short)tgr_track.triggers[ci]) != 0);
+            } while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0);
           }
         }
       } else if (nearCount < 32) {
-        pNearIds[nearCount++] = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
+        pNearIds[nearCount++] = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
         if (dist < 5.0f) {
-          ci = ((short)tgr_track.triTrigger[pP->tri]);
-          if (((short)tgr_track.triggers[ci]) != 0) {
+          ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[pP->tri]);
+          if (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
             do {
               if (farCount < 32) {
-                pFarIds[farCount++] = tgr_track.triggers[ci];
+                pFarIds[farCount++] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
               }
               ci++;
-            } while (((short)tgr_track.triggers[ci]) != 0);
+            } while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0);
           }
         }
       }
@@ -364,7 +379,7 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
     if (!(dist <= 0.0f && dist < bestFarDist)) {
       continue;
     }
-    farFaceVal = ((short)(((BrTrackTri *)tgr_track.tris)[pP->tri].surface)) + 1;
+    farFaceVal = BES16(BEPTR(BrTrackTri *, D_80025C00.tris)[pP->tri].surface) + 1;
     if (-1.0f < dist) {
       bestFarDist = dist;
       farFaceIdx = pP->tri;
@@ -389,12 +404,12 @@ int BrGroundRay(BrVec3 *pPosOut, BrVec3 *pNormOut, BrVec3 *pEye, unsigned short 
       pNormOut->z = bestNearNorm.z;
     }
   } else {
-    ci = ((short)tgr_track.triTrigger[farFaceIdx]);
-    while (((short)tgr_track.triggers[ci]) != 0) {
+    ci = BES16(BEPTR(be16_t *, D_80025C00.triTrigger)[farFaceIdx]);
+    while (BES16(BEPTR(be16_t *, D_80025C00.triggers)[ci]) != 0) {
       if (farCount < 32) {
-        pFarIds[farCount++] = tgr_track.triggers[ci];
+        pFarIds[farCount++] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
       } else {
-        pFarIds[31] = tgr_track.triggers[ci];
+        pFarIds[31] = BE16(BEPTR(be16_t *, D_80025C00.triggers)[ci]);
         break;
       }
       ci++;
@@ -448,20 +463,20 @@ void BrCarGridCell(BrCar *car)
 void BrCarEntTick(BrCarEnt *e)
 {
   if (D_8026FF10 == 0 && e->car != 0) {
-    if (((BrCar *)(e->car))->body[0].hitSize != 0) {
-      BrHudArrowDraw(((BrCar *)(e->car)), &((BrCar *)(e->car))->body[0].x1ec, ((BrCar *)(e->car))->body[0].hitSize);
-      ((BrCar *)(e->car))->body[0].hitSize = 0;
+    if (TGR_PTR(BrCar *, e->car)->x344 != 0) {
+      BrHudArrowDraw(TGR_PTR(BrCar *, e->car), &TGR_PTR(BrCar *, e->car)->x334, TGR_PTR(BrCar *, e->car)->x344);
+      TGR_PTR(BrCar *, e->car)->x344 = 0;
     }
-    BrCarTickClocks(((BrCar *)(e->car)));
-    BrCarTickMessages(((BrCar *)(e->car)));
-    BrWrongWayCheck(((BrCar *)(e->car)));
+    BrCarTickClocks(TGR_PTR(BrCar *, e->car));
+    BrCarTickMessages(TGR_PTR(BrCar *, e->car));
+    BrWrongWayCheck(TGR_PTR(BrCar *, e->car));
     BrRaceGateStep(e);
-    BrCarGridCell(((BrCar *)(e->car)));
-    BrVec3Sub(&((BrCar *)(e->car))->velfd8, (BrVec3 *)((BrCar *)(e->car))->mtx0[3], &((BrCar *)(e->car))->posPrev);
-    BrVec3ScaleBy(&((BrCar *)(e->car))->velfd8, 1.0f / D_8028AAD8);
-    ((BrCar *)(e->car))->heading = BrAtan2(((BrCarCam *)((((BrCar *)(e->car))->cam)))->mtx[0][0], ((BrCarCam *)((((BrCar *)(e->car))->cam)))->mtx[0][1]);
-    if (((BrCar *)(e->car))->xed4 != 0) {
-      ((BrCar *)(e->car))->xed4--;
+    BrCarGridCell(TGR_PTR(BrCar *, e->car));
+    BrVec3Sub(&TGR_PTR(BrCar *, e->car)->velfd8, (BrVec3 *)TGR_PTR(BrCar *, e->car)->mtx0[3], &TGR_PTR(BrCar *, e->car)->posPrev);
+    BrVec3ScaleBy(&TGR_PTR(BrCar *, e->car)->velfd8, 1.0f / D_8028AAD8);
+    TGR_PTR(BrCar *, e->car)->heading = BrAtan2(TGR_PTR(BrCarCam *, TGR_PTR(BrCar *, e->car)->cam)->mtx[0][0], TGR_PTR(BrCarCam *, TGR_PTR(BrCar *, e->car)->cam)->mtx[0][1]);
+    if (TGR_PTR(BrCar *, e->car)->xed4 != 0) {
+      TGR_PTR(BrCar *, e->car)->xed4--;
     }
   }
 }
@@ -495,7 +510,7 @@ void BrCarPhysTick(BrCar *car)
     BrCarRotate(car, car->x1dd4 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1dd8 * 3.1415927f * 0.4f * D_8028AAD8,
                 car->x1de0 * 3.1415927f * 0.4f * D_8028AAD8);
-    if (*((unsigned int *)(car->pad)) & 0x10) {
+    if (*TGR_PTR(unsigned int *, car->pad) & 0x10) {
       z = (BrVec3 *)car->mtx0[2];
       y = (BrVec3 *)car->mtx0[1];
       z->x = 0.0f;
@@ -503,53 +518,53 @@ void BrCarPhysTick(BrCar *car)
       z->z = 1.0f;
       BrVec3Cross(y, z, (BrVec3 *)car->mtx0[0]);
       BrVec3Cross(z, (BrVec3 *)car->mtx0[0], y);
-      BrPadConsume(((unsigned int *)(car->pad)), 0x10);
+      BrPadConsume(TGR_PTR(unsigned int *, car->pad), 0x10);
     }
   } else {
     car->xfd4 = BrGroundRay((BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], (BrVec3 *)car->mtx0[3], car->x1fc0, &car->x2000,
                              car->x2004, &car->x2044, (float *)&car->x2048, &car->x204c);
-    ((BrRbBody *)(car->body[0].sub[0]))->x1c0 = ((BrRbBody *)(car->body[0].sub[1]))->x1c0 = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1c0 = TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1c0 = 0.0f;
     BrCarDriveInput(car);
-    ((BrRbBody *)(car->body[0].sub[2]))->x1c0 = ((BrRbBody *)(car->body[0].sub[3]))->x1c0 = car->xdf0;
-    ((BrRbBody *)(car->body[0].sub[0]))->x1cc = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[1]))->x1cc = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[2]))->x1cc = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[3]))->x1cc = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[0]))->x1d0 = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[1]))->x1d0 = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[2]))->x1d0 = 0.0f;
-    ((BrRbBody *)(car->body[0].sub[3]))->x1d0 = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1c0 = TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1c0 = car->xdf0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1d0 = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1d0 = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1d0 = 0.0f;
+    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1d0 = 0.0f;
     if (car->xe38 > 0.0f) {
-      if ((*((unsigned int *)(car->pad)) & 0x20000) && car->xe40 == 1) {
+      if ((*TGR_PTR(unsigned int *, car->pad) & 0x20000) && car->xe40 == 1) {
         car->xe38 = -car->xe38;
       }
       if (car->xe28[1] != 0) {
-        ((BrRbBody *)(car->body[0].sub[0]))->x1cc = -car->xe38 * 2;
-        ((BrRbBody *)(car->body[0].sub[1]))->x1cc = -car->xe38 * 2;
-        ((BrRbBody *)(car->body[0].sub[2]))->x1cc = -car->xe38 * 0;
-        ((BrRbBody *)(car->body[0].sub[3]))->x1cc = -car->xe38 * 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = -car->xe38 * 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = -car->xe38 * 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = -car->xe38 * 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = -car->xe38 * 0;
       } else {
-        ((BrRbBody *)(car->body[0].sub[0]))->x1cc = -car->xe38;
-        ((BrRbBody *)(car->body[0].sub[1]))->x1cc = -car->xe38;
-        ((BrRbBody *)(car->body[0].sub[2]))->x1cc = -car->xe38;
-        ((BrRbBody *)(car->body[0].sub[3]))->x1cc = -car->xe38;
+        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = -car->xe38;
+        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = -car->xe38;
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc = -car->xe38;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1cc = -car->xe38;
       }
     }
     if (car->xe3c < 0.0f) {
-      ((BrRbBody *)(car->body[0].sub[0]))->x1d0 = -car->xe3c;
-      ((BrRbBody *)(car->body[0].sub[1]))->x1d0 = -car->xe3c;
-      ((BrRbBody *)(car->body[0].sub[0]))->x1cc = 0.0f;
-      ((BrRbBody *)(car->body[0].sub[1]))->x1cc = 0.0f;
-      if ((((BrRbBody *)(car->body[0].sub[2]))->x1cc < 0.0f ? -((BrRbBody *)(car->body[0].sub[2]))->x1cc : ((BrRbBody *)(car->body[0].sub[2]))->x1cc) < 0.0001f) {
-        ((BrRbBody *)(car->body[0].sub[2]))->x1d0 = -car->xe3c;
-        ((BrRbBody *)(car->body[0].sub[3]))->x1d0 = -car->xe3c;
+      TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1d0 = -car->xe3c;
+      TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1d0 = -car->xe3c;
+      TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1cc = 0.0f;
+      TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1cc = 0.0f;
+      if ((TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc < 0.0f ? -TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc : TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1cc) < 0.0001f) {
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1d0 = -car->xe3c;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1d0 = -car->xe3c;
       }
     }
     BrCarPhysStep(car);
   }
   BrCarBuildMatrices(car);
-  if (car->body[1 + (1)].x1b4 != 0) {
-    car->xfe4[0] = sqrtf(car->body[0].st.vel.z * car->body[0].st.vel.z + (car->body[0].st.vel.x * car->body[0].st.vel.x + car->body[0].st.vel.y * car->body[0].st.vel.y)) * 2.24f;
+  if (car->wheels[1].x13c != 0) {
+    car->xfe4[0] = sqrtf(car->st.vel.z * car->st.vel.z + (car->st.vel.x * car->st.vel.x + car->st.vel.y * car->st.vel.y)) * 2.24f;
   }
   for (i = 0; i < D_8028AB0C; i++) {
     if (car->slot == D_8031B2C8[i].car) {

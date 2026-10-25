@@ -8,7 +8,7 @@
 +extern int rm_menu_no_back;               /* port: this menu takes no B (rmmainmenu.c) */
  void BrMenuBackdropDraw(void);
  void BrAnimUpdate(void *set);
- void BrMenuIconDraw(void *, float, float, float, float);
+ void BrMenuIconDraw(int, float, float, float, float);
 @@ -89,9 +91,13 @@
    BrTextHighlightOff();
    BrTextAlignLeft();
@@ -39,8 +39,8 @@
                goto choose;
              }
            }
--          if (*((unsigned int *)(D_8031B760[i].pad)) & 0x20) {
-+          if ((*((unsigned int *)(D_8031B760[i].pad)) & 0x20) && !rm_menu_no_back) {
-             BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0x20);
+-          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) {
++          if ((*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) && !rm_menu_no_back) {
+             BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0x20);
              D_8031622C = 0;
              BrFadeTo(0.0f, 0.2f);

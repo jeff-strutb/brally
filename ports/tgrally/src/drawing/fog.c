@@ -95,7 +95,7 @@ void BrFogSetup(void)
       D_8028AB34 = 0x401;
     }
   } else if (D_8028AA78 != 0) {
-    a = (D_8028AAF0->mtx0[3][2] - tgr_track.fogLo) / (tgr_track.fogHi - tgr_track.fogLo) * 255.0f;
+    a = (D_8028AAF0->mtx0[3][2] - BEF(D_80025C00.fogLo)) / (BEF(D_80025C00.fogHi) - BEF(D_80025C00.fogLo)) * 255.0f;
     if (a < 0) {
       a = 0;
     } else if (a > 255) {
@@ -109,13 +109,13 @@ void BrFogSetup(void)
       }
       u = 1.0f - t;
       w = 160.0f * t;
-      D_8028AB20 = tgr_f2u(tgr_track.fogColour[0] * u + w);
-      D_8028AB24 = tgr_f2u(tgr_track.fogColour[1] * u + w);
-      D_8028AB28 = tgr_f2u(tgr_track.fogColour[2] * u + w);
+      D_8028AB20 = tgr_f2u(D_80025C00.fogColour[0] * u + w);
+      D_8028AB24 = tgr_f2u(D_80025C00.fogColour[1] * u + w);
+      D_8028AB28 = tgr_f2u(D_80025C00.fogColour[2] * u + w);
     } else {
-      D_8028AB20 = tgr_track.fogColour[0];
-      D_8028AB24 = tgr_track.fogColour[1];
-      D_8028AB28 = tgr_track.fogColour[2];
+      D_8028AB20 = D_80025C00.fogColour[0];
+      D_8028AB24 = D_80025C00.fogColour[1];
+      D_8028AB28 = D_80025C00.fogColour[2];
     }
     D_8028AB2C = a;
     if (D_8026FF08 == 2) {

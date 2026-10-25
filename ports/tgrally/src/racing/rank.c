@@ -1,22 +1,52 @@
 /* rank.c -- ordering the cars into race positions
  */
 #include "tgr/common.h"
-#include "tgr/ent.h"
-#include "tgr/body.h"
 #include "tgr/car.h"
-#include "tgr/menu.h"
 
 /* -- declarations -- */
-
+typedef struct BrRaceEnt {      /* a race entity (0x78 bytes): the cars, then the rest */
+  BrVec3 pos;                   /* 0x00  (an AI slot: its car's position when saved) */
+  BrVec3 posPrev;               /* 0x0C */
+  BrVec3 vel;                   /* 0x18 */
+  float x24;                    /* 0x24  the car's 0xFE4 */
+  int seg;                      /* 0x28  its route segment and point */
+  int pt;                       /* 0x2C */
+  float raceTime;               /* 0x30 */
+  float x34;                    /* 0x34 */
+  float lapTime;                /* 0x38 */
+  float x3c;                    /* 0x3C */
+  int laps;                     /* 0x40 */
+  int x44;                      /* 0x44 */
+  int x48;                      /* 0x48 */
+  int x4c;                      /* 0x4C */
+  float progress;               /* 0x50  for an entity that is not a car */
+  int rank;                     /* 0x54  its race position, likewise */
+  char pad58[4];
+  unsigned char colour[3];      /* 0x5C  the body colour of the slot's car */
+  char pad5f;
+  TgrAddr car;                   /* BrCar * -- 0x60  0 for an entity that is not a car */
+  int x64;                      /* 0x64  the car slot it stands for */
+  unsigned int flags;           /* 0x68  bit 0: held at the start, bit 1: finished */
+  char pad6c[0x74 - 0x6C];
+  int group;                    /* 0x74  which half of the field (0 or 1) */
+} BrRaceEnt;
 typedef struct BrRankEntry {    /* one row of the ranking table */
   float key;
   int ent;
 } BrRankEntry;
 void BrQsort(void *base, unsigned int num, unsigned int width, int (*comp)(void *, void *));
 extern int D_8028B7F0;                  /* entity count */
+extern BrRaceEnt D_803239A0[];
+struct BrCarWheel {              /* a wheel's rigid body */
+  char pad000[0x19C];
+  int x19c;                     /* 0x19C */
+  unsigned char x1a0;           /* 0x1A0 */
+  char pad1a1[0x1B4 - 0x1A1];
+  int x1b4;                     /* 0x1B4 */
+};
 #include "tgr/track.h"
 typedef BrPathSeg BrRoute;          /* a route: a path segment (cartridge data) */
-#define D_80025C70 ((BrPathSeg *)tgr_track.path)
+#define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)
 extern int D_8026FF08;                  /* players */
 extern int D_8026FF18;                  /* game mode */
 void tgr_print(const char *fmt, ...);
@@ -33,9 +63,8 @@ void BrEntPaintTexture(char *model, int r, int g, int b);
 void BrCarPlaceAt(BrCar *car, float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
 
-typedef struct BrTrackAwards {  /* a BrTrack (tgr/menu.h) */
-  MenuItem item;
-  char pad14[0x2C - 0x14];
+typedef struct BrTrackAwards {
+  char pad00[0x2C];
   float award[4][3][7];         /* 0x2C  [car class][difficulty][checkpoint]; [6] is the start time */
 } BrTrackAwards;
 extern BrTrackAwards *D_80271D1C[];     /* per track */
@@ -47,7 +76,7 @@ extern int D_80270788;                  /* replay */
 extern char *D_8028BABC[];              /* the finishing-place messages */
 int BrSegmentsOverlapXY(float *pA, float *pB, BrVec3 *pC, BrVec3 *pD);
 /* a gate post (x, y) as native floats: the track keeps it big-endian */
-#define BR_GATE_POST(i, k) (tgr_track.gate[i].k)
+#define BR_GATE_POST(i, k) ((float[2]){BEF(D_80025C00.gate[i].k[0]), BEF(D_80025C00.gate[i].k[1])})
 int BrFloatToInt(float x);
 void BrSfxSrcBeep(void);
 void BrTimeFormat(char *buf, float t);
@@ -86,7 +115,7 @@ void BrRankUpdate(void)
     if (!(D_803239A0[i].flags & 2)) {
       tab[n].ent = i;
       if (D_803239A0[i].car != 0) {
-        tab[n++].key = ((BrCar *)(D_803239A0[i].car))->xfa8;
+        tab[n++].key = TGR_PTR(BrCar *, D_803239A0[i].car)->xfa8;
       } else {
         tab[n++].key = D_803239A0[i].progress;
       }
@@ -97,7 +126,7 @@ void BrRankUpdate(void)
   }
   for (i = 0; i < n; i++) {
     if (D_803239A0[tab[i].ent].car != 0) {
-      ((BrCar *)(D_803239A0[tab[i].ent].car))->xfac = D_8028B7F0 - i - 1;
+      TGR_PTR(BrCar *, D_803239A0[tab[i].ent].car)->xfac = D_8028B7F0 - i - 1;
     } else {
       D_803239A0[tab[i].ent].rank = D_8028B7F0 - i - 1;
     }
@@ -144,13 +173,13 @@ void BrCarSlotSwap(BrCar *me)
   int open;
   int r;
 
-  lap = D_80025C70->pt[0].dist;
+  lap = BEF(D_80025C70->pt[0].dist);
   for (i = 0; i < D_8028B7F0; i++) {
-    car = ((BrCar *)(D_803239A0[i].car));
+    car = TGR_PTR(BrCar *, D_803239A0[i].car);
     if (car != 0) {
       if (car != me && car->slot < D_8026FF08) {
         list[i].key = 1e10f;
-      } else if (D_8026FF18 == 0 && car->slot >= D_8026FF08 && (((BrCarLink *)(car->link))->flags & 2) &&
+      } else if (D_8026FF18 == 0 && car->slot >= D_8026FF08 && (TGR_PTR(struct BrCarLink *, car->link)->flags & 2) &&
                  car->colour[3] == 2 && car->x2064 == 0.0f) {
         list[i].key = 1e9f;
       } else {
@@ -194,18 +223,18 @@ void BrCarSlotSwap(BrCar *me)
           seen++;
           if (ent->car != 0) {
             open = 0;
-            if ((ent->flags & 2) && ((BrCar *)(ent->car))->colour[3] == 2 && ((BrCar *)(ent->car))->x2064 == 0.0f) {
-              car = ((BrCar *)(ent->car));
+            if ((ent->flags & 2) && TGR_PTR(BrCar *, ent->car)->colour[3] == 2 && TGR_PTR(BrCar *, ent->car)->x2064 == 0.0f) {
+              car = TGR_PTR(BrCar *, ent->car);
               goto save;
             }
           }
         } else {
-          car = ((BrCar *)(ent->car));
+          car = TGR_PTR(BrCar *, ent->car);
           if (ent->car != 0) {
             open = 0;
-            if (((BrCar *)(ent->car))->xed4 == 0 && 80000.0 < list[i].key) {
+            if (TGR_PTR(BrCar *, ent->car)->xed4 == 0 && 80000.0 < list[i].key) {
             save:
-              tgr_print("enemy %d loses slot %d (dist=%f)\n", ent->x64, ((BrCar *)(ent->car))->slot, list[i].key);
+              tgr_print("enemy %d loses slot %d (dist=%f)\n", ent->x64, TGR_PTR(BrCar *, ent->car)->slot, list[i].key);
               ent->pos.x = car->mtx0[3][0];
               ent->pos.y = car->mtx0[3][1];
               ent->pos.z = car->mtx0[3][2];
@@ -226,7 +255,7 @@ void BrCarSlotSwap(BrCar *me)
               tgr_print("saving lap (%d/%d) and gate (%d/%d)\n", ent->laps, ent->x44, ent->x48, ent->x4c);
               ent->progress = car->xfa8;
               ent->rank = car->xfac;
-              free[nFree++] = ((BrCar *)(ent->car));
+              free[nFree++] = TGR_PTR(BrCar *, ent->car);
               ent->car = 0;
               car->link = 0;
               car->xed4 = 60;
@@ -244,7 +273,7 @@ void BrCarSlotSwap(BrCar *me)
       ent = D_803239A0 + list[i].ent;
       if (ent->group == group && ent->x64 >= D_8026FF08 && !(ent->flags & 2) && ent->car == 0) {
         car = free[--nFree];
-        ent->car = (car);
+        ent->car = tgr_addr32(car);
         tgr_print("enemy %d acquires slot %d\n", ent->x64, car->slot);
         car->xfe4[0] = ent->x24;
         car->xf5c = ent->seg;
@@ -260,7 +289,7 @@ void BrCarSlotSwap(BrCar *me)
         tgr_print("restoring lap (%d/%d) and gate (%d/%d)\n", car->laps, car->xf7c, car->xf70, car->xf74);
         car->xfa8 = ent->progress;
         car->xfac = ent->rank;
-        car->link = ((BrCarLink *)ent);
+        car->link = tgr_addr32((BrCarLink *)ent);
         car->colour[3] = 0;
         car->x2064 = 1.0f;
         car->xf48 = 1;
@@ -275,10 +304,13 @@ void BrCarSlotSwap(BrCar *me)
         car->colour[0] = ent->colour[0];
         car->colour[1] = ent->colour[1];
         car->colour[2] = ent->colour[2];
-        BrEntPaintTexture(((char *)(car->model)), ent->colour[0] >> 3, ent->colour[1] >> 3, ent->colour[2] >> 3);
-        BrVec3Sub(&tA, &car->xf5c->pt[car->xf60].left, &car->xf5c->pt[car->xf60].pos);
-        BrVec3Sub(&tB, &car->xf5c->pt[car->xf60 + 1].left, &car->xf5c->pt[car->xf60 + 1].pos);
-        BrVec3Direction(car->mtx0[0], &car->xf5c->pt[car->xf60].pos, &car->xf5c->pt[car->xf60 + 1].pos);
+        BrEntPaintTexture(TGR_PTR(char *, car->model), ent->colour[0] >> 3, ent->colour[1] >> 3, ent->colour[2] >> 3);
+        r = car->xf5c + car->xf60 * 40;
+        BrVec3Sub(&tA, BRV(TGR_PTR(BrVec3be *, (r + 0x40))), BRV(TGR_PTR(BrVec3be *, (r + 0x4c))));
+        r = car->xf5c + car->xf60 * 40;
+        BrVec3Sub(&tB, BRV(TGR_PTR(BrVec3be *, (r + 0x68))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
+        r = car->xf5c + car->xf60 * 40;
+        BrVec3Direction(car->mtx0[0], BRV(TGR_PTR(BrVec3be *, (r + 0x4c))), BRV(TGR_PTR(BrVec3be *, (r + 0x74))));
         BrVec3Midpoint(car->mtx0[1], &tA, &tB);
         BrVec3Cross(car->mtx0[2], car->mtx0[0], car->mtx0[1]);
         BrVec3Normalise(car->mtx0[2]);
@@ -288,28 +320,28 @@ void BrCarSlotSwap(BrCar *me)
         car->xf68 = car->mtx0[0][1];
         car->xf6c = car->mtx0[0][2];
         BrCarPlaceAt(car, car->mtx0);
-        if (((BrCarLink *)(car->link))->flags & 1) {
+        if (TGR_PTR(struct BrCarLink *, car->link)->flags & 1) {
           BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
         } else {
           BrCarSetVel(car, car->mtx0[0][0] * 50.0f, car->mtx0[0][1] * 50.0f, 50.0f * car->mtx0[0][2]);
         }
-        ((BrRbBody *)(car->body[0].sub[0]))->hit = 0;
-        ((BrRbBody *)(car->body[0].sub[0]))->x1b4 = 0;
-        ((BrRbBody *)(car->body[0].sub[0]))->x1a0 = 2;
-        ((BrRbBody *)(car->body[0].sub[1]))->hit = 0;
-        ((BrRbBody *)(car->body[0].sub[1]))->x1b4 = 0;
-        ((BrRbBody *)(car->body[0].sub[1]))->x1a0 = 2;
-        ((BrRbBody *)(car->body[0].sub[3]))->hit = 0;
-        ((BrRbBody *)(car->body[0].sub[3]))->x1b4 = 0;
-        ((BrRbBody *)(car->body[0].sub[3]))->x1a0 = 2;
-        ((BrRbBody *)(car->body[0].sub[2]))->hit = 0;
-        ((BrRbBody *)(car->body[0].sub[2]))->x1b4 = 0;
-        ((BrRbBody *)(car->body[0].sub[2]))->x1a0 = 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x19c = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1b4 = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1a0 = 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x19c = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1b4 = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1a0 = 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x19c = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1b4 = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1a0 = 2;
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x19c = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1b4 = 0;
+        TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1a0 = 2;
         car->xe70[0] = 0;
         car->xe70[1] = 0;
         car->xe70[2] = 0;
         car->xe70[3] = -180;
-        car->body[0].stuck = 40;
+        car->x340 = 40;
         car->xdf0 = 0.0f;
       }
       ((TgrAddr *)me->pade80)[i] = tgr_addr32(&D_803239A0[list[i].ent]);
@@ -350,10 +382,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
   int unused48;
   short w;
 
-  if (tgr_track.nGates == 0) {
+  if (BES32(D_80025C00.nGates) == 0) {
     return;
   }
-  car = ((BrCar *)(drv->car));
+  car = TGR_PTR(BrCar *, drv->car);
   if (car != 0) {
     drv->pos.x = car->mtx0[3][0];
     drv->pos.y = car->mtx0[3][1];
@@ -370,11 +402,11 @@ void BrRaceGateStep(BrRaceEnt *drv)
     drv->progress = car->xfa8;
   }
   if (drv->x4c < 0) {
-    iCur = (tgr_track.nGates - (-1 - drv->x4c) % tgr_track.nGates - 1) % tgr_track.nGates;
+    iCur = (BES32(D_80025C00.nGates) - (-1 - drv->x4c) % BES32(D_80025C00.nGates) - 1) % BES32(D_80025C00.nGates);
   } else {
-    iCur = drv->x4c % tgr_track.nGates;
+    iCur = drv->x4c % BES32(D_80025C00.nGates);
   }
-  iNext = (iCur + 1) % tgr_track.nGates;
+  iNext = (iCur + 1) % BES32(D_80025C00.nGates);
   tLap = BrFloatToInt(drv->raceTime * 100.0f) / 100.0f;
   if (BrSegmentsOverlapXY(BR_GATE_POST(iCur, b), BR_GATE_POST(iCur, a), &drv->posPrev,
                           &drv->pos)) {
@@ -382,14 +414,14 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (iCur == 0) {
       drv->x44--;
     }
-    tgr_print("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, tgr_track.nGates, drv->x4c,
-                 (drv->x4c + tgr_track.nGates * 2) % tgr_track.nGates == drv->x48 % tgr_track.nGates &&
+    tgr_print("Hmm %d == %d %% %d && %d < 0 ? %d\n", iCur, drv->x48, BES32(D_80025C00.nGates), drv->x4c,
+                 (drv->x4c + BES32(D_80025C00.nGates) * 2) % BES32(D_80025C00.nGates) == drv->x48 % BES32(D_80025C00.nGates) &&
                      drv->x4c < 0);
-    if (iCur == drv->x48 % tgr_track.nGates && drv->x4c < 0) {
-      drv->x4c += tgr_track.nGates;
+    if (iCur == drv->x48 % BES32(D_80025C00.nGates) && drv->x4c < 0) {
+      drv->x4c += BES32(D_80025C00.nGates);
       drv->x44++;
-      if (tgr_track.path != 0) {
-        drv->progress += D_80025C70->pt[0].dist;
+      if (BE32(D_80025C00.path) != 0) {
+        drv->progress += BEF(D_80025C70->pt[0].dist);
       }
       tgr_print("lapping %d forward to -1\n", drv->x64);
     }
@@ -404,17 +436,17 @@ void BrRaceGateStep(BrRaceEnt *drv)
   drv->x4c++;
   if (drv->x48 < drv->x4c) {
     drv->x48 = drv->x4c;
-    tgr_print("moved ahead one gate, getting %f seconds\n", tgr_track.gate[iNext].award);
+    tgr_print("moved ahead one gate, getting %f seconds\n", D_80025C00.gate[iNext].award);
     if (iNext == 0) {
       if (drv->laps < D_8028B304) {
         msg = 0;
         if (drv->x34 == 0.0f || tLap < drv->x34) {
           drv->x34 = tLap;
           if (drv->x64 < D_8026FF08) {
-            ((BrCar *)(drv->car))->xf9c = drv->laps;
-            if (((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] == 0.0f ||
-                drv->x34 < ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940]) {
-              ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] = drv->x34;
+            TGR_PTR(BrCar *, drv->car)->xf9c = drv->laps;
+            if (TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940] == 0.0f ||
+                drv->x34 < TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940]) {
+              TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940] = drv->x34;
               msg = "%ryNEW LAP RECORD!";
             } else if (drv->laps != 0) {
               msg = "%ryBEST LAP!";
@@ -433,10 +465,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
             tgr_print("lapping %d back to 0 (a)\n", drv->x64);
             drv->laps--;
             drv->x44--;
-            drv->x48 -= tgr_track.nGates;
-            drv->x4c -= tgr_track.nGates;
-            if (tgr_track.path != 0) {
-              drv->progress -= D_80025C70->pt[0].dist;
+            drv->x48 -= BES32(D_80025C00.nGates);
+            drv->x4c -= BES32(D_80025C00.nGates);
+            if (BE32(D_80025C00.path) != 0) {
+              drv->progress -= BEF(D_80025C70->pt[0].dist);
             }
           }
         } else if (car != 0) {
@@ -466,9 +498,9 @@ void BrRaceGateStep(BrRaceEnt *drv)
           car->msgA = tgr_addr32(places[D_8028B300]);
           car->msgATime = 5.0f;
           if (drv->x64 < D_8026FF08 && D_8028B304 == 3) {
-            if (((BrSeason *)(D_8031B760[0].season))->xe8[D_8028B940] == 0.0f ||
-                car->lapTime < ((BrSeason *)(D_8031B760[0].season))->xe8[D_8028B940]) {
-              ((BrSeason *)(D_8031B760[0].season))->xe8[D_8028B940] = car->lapTime;
+            if (TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[D_8028B940] == 0.0f ||
+                car->lapTime < TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[D_8028B940]) {
+              TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[D_8028B940] = car->lapTime;
               car->msgATime = 1.5f;
               car->msgB = tgr_addr32("%ryNEW COURSE RECORD!");
               car->msgBTime = 3.5f;
@@ -479,7 +511,7 @@ void BrRaceGateStep(BrRaceEnt *drv)
         goto tail;
       }
     }
-    if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < ((BrCar *)(drv->car))->xfa4) {
+    if (D_8026FF18 == 1 && drv->x64 < D_8026FF08 && 0.0f < TGR_PTR(BrCar *, drv->car)->xfa4) {
       if (D_80270788 == 0) {
         BrSfxSrcBeep();
       }
@@ -487,14 +519,14 @@ void BrRaceGateStep(BrRaceEnt *drv)
       if (d < 0) {
         d = -d;
       }
-      ratio = ((BrCar *)(drv->car))->xfe4[1] / (((BrCar *)(drv->car))->lapTime * 2.24f);
+      ratio = TGR_PTR(BrCar *, drv->car)->xfe4[1] / (TGR_PTR(BrCar *, drv->car)->lapTime * 2.24f);
       if (ratio != 0.0f) {
         ratio = d / ratio;
       } else {
         ratio = 1000.0f;
       }
       for (i = 0; i < D_8026FF08; i++) {
-        c = ((BrCar *)(D_803239A0[i].car));
+        c = TGR_PTR(BrCar *, D_803239A0[i].car);
         c->msgA = tgr_addr32("%ryCheck Point!");
         c->msgATime = 0.4f;
         w = D_8028C800 - 1;
@@ -536,10 +568,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
     if (drv->x34 == 0.0f || tLap < drv->x34) {
       drv->x34 = tLap;
       if (drv->x64 < D_8026FF08) {
-        ((BrCar *)(drv->car))->xf9c = drv->laps;
-        if (((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] == 0.0f ||
-            drv->x34 < ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940]) {
-          ((BrSeason *)(D_8031B760[0].season))->x8c[D_8028B940] = tLap;
+        TGR_PTR(BrCar *, drv->car)->xf9c = drv->laps;
+        if (TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940] == 0.0f ||
+            drv->x34 < TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940]) {
+          TGR_PTR(BrSeason *, D_8031B760[0].season)->x8c[D_8028B940] = tLap;
           msg = "%ryNEW LAP RECORD!";
         } else if (drv->laps != 0) {
           msg = "%ryBEST LAP!";
@@ -568,10 +600,10 @@ void BrRaceGateStep(BrRaceEnt *drv)
     tgr_print("lapping %d back to 0 (b)\n", drv->x64);
     drv->laps--;
     drv->x44--;
-    drv->x48 -= tgr_track.nGates;
-    drv->x4c -= tgr_track.nGates;
-    if (0 != tgr_track.path) {
-      drv->progress -= D_80025C70->pt[0].dist;
+    drv->x48 -= BES32(D_80025C00.nGates);
+    drv->x4c -= BES32(D_80025C00.nGates);
+    if (0 != BE32(D_80025C00.path)) {
+      drv->progress -= BEF(D_80025C70->pt[0].dist);
     }
   }
 tail:

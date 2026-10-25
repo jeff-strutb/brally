@@ -4,10 +4,17 @@
 #include "tgr/track.h"
 
 /* -- declarations -- */
-typedef BrPathSeg BrNode;        /* a scene-tree node: a path segment (tgr/track.h) */
+typedef struct BrNode {        /* a scene-tree node: a path segment (cartridge data, big-endian) */
+  be32_t child;                 /* 0x00  BrNode */
+  be32_t next;                  /* 0x04  next sibling */
+  char pad08[9];
+  unsigned char kind;           /* 0x11 */
+  char pad12[4];
+  be16_t flags;                 /* 0x16  bit 15: visited this pass, bit 0: skip */
+} BrNode;
 void BrNodeMarkPass(BrNode *n);
 void BrNodeClearMarkPass(BrNode *n);
-#define D_80025C70 ((BrNode *)tgr_track.path)
+#define D_80025C70 BEPTR(BrNode *, D_80025C00.path)
 extern int D_8028B940;
 /* -- end declarations -- */
 
@@ -28,14 +35,14 @@ void BrScenePassRun(void)
 void BrNodeMarkPass(BrNode *n)
 {
   while (n != 0) {
-    if (!(n->flags & 0x8000) && !(n->flags & 1)) {
-      n->flags |= 0x8000;
+    if (!(BE16(n->flags) & 0x8000) && !(BE16(n->flags) & 1)) {
+      SET16(n->flags, BE16(n->flags) | 0x8000);
       if (n->kind == 2 && (D_8028B940 == 3 || D_8028B940 == 8)) {
         n->kind = 0;
       }
-      BrNodeMarkPass(n->child);
+      BrNodeMarkPass(BEPTR(BrNode *, n->child));
     }
-    n = n->sibling;
+    n = BEPTR(BrNode *, n->next);
   }
 }
 
@@ -46,11 +53,11 @@ void BrNodeMarkPass(BrNode *n)
 void BrNodeClearMarkPass(BrNode *n)
 {
   while (n != 0) {
-    if (n->flags & 0x8000) {
-      n->flags &= 0x7fff;
-      BrNodeClearMarkPass(n->child);
+    if (BE16(n->flags) & 0x8000) {
+      SET16(n->flags, BE16(n->flags) & 0x7fff);
+      BrNodeClearMarkPass(BEPTR(BrNode *, n->child));
     }
-    n = n->sibling;
+    n = BEPTR(BrNode *, n->next);
   }
 }
 

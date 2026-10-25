@@ -2,13 +2,26 @@
  * the one-shot knocks and the surface loop
  */
 #include "tgr/common.h"
-#include "tgr/mix.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
-typedef BrMixVoice BrRaceSnd;
+typedef struct BrRaceSnd {      /* a sound channel (0x18 bytes) */
+  TgrAddr p;  /* void * */
+  int x4;
+  unsigned long long pitch;     /* 0x08  32.32 playback ratio */
+  int x10;
+  unsigned int level;           /* 0x14  left << 16 | right */
+} BrRaceSnd;
 typedef struct BrViewRec { int x; int y; int w; int h; int car; } BrViewRec;
 #include "tgr/track.h"
+typedef struct BrSurfSnd {      /* a surface loop (0x18 bytes) */
+  int start;
+  int x4;
+  int x8;
+  int len;                      /* 0x0C */
+  int loop;                     /* 0x10 */
+  int x14;
+} BrSurfSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels, two per car */
 extern int D_802A49B0;                  /* the engine channel's override rate */
 extern BrViewRec D_8031B2C8[2];         /* the views and the car each follows */
@@ -18,6 +31,7 @@ extern int D_8026FF10;                  /* set: silence the channels */
 extern int D_8028AB0C;                  /* views on screen */
 extern unsigned int D_8028C800;         /* the weather */
 #define D_80025C60 BR_TRACKOBJS()          /* the track's objects (cartridge data) */
+extern BrSurfSnd D_8028BC04[];          /* the surface loops */
 extern short D_802A4BEC[2];             /* the rumble pulse per player: on, */
 extern short D_802A4BF0[2];
 extern short D_802A4BF4[2];
@@ -26,6 +40,7 @@ extern short D_802A4BFC[2];
 extern short D_802A4C00[2];
 float BrSndDoppler(BrVec3 *pos, BrVec3 *prev, BrVec3 *lst, BrVec3 *lstPrev);
 void BrSndPan(BrVec3 *pos, BrCarCam *lst, float *l, float *r, int *vol, int x);
+void BrSfxVoicePlay(short v, int start, int len, int loop);
 float BrVec3Length(BrVec3 *v);
 /* -- end declarations -- */
 
@@ -80,12 +95,12 @@ void BrSndCarStep(BrCar *car)
   }
   remote = 0;
   if (D_8028AB0C == 1) {
-    lst = ((BrCarCam *)(view->cam));
+    lst = TGR_PTR(BrCarCam *, view->cam);
     if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0) {
       remote = 1;
     }
   } else {
-    lst = ((BrCarCam *)(car->cam));
+    lst = TGR_PTR(BrCarCam *, car->cam);
     if (car->xf48 != 0 || D_8031B760[D_8031B2C8[0].car].xf48 != 0 || D_8031B760[D_8031B2C8[1].car].xf48 != 0) {
       remote = 1;
     }
@@ -105,7 +120,7 @@ void BrSndCarStep(BrCar *car)
     f = 0;
   }
   if (car->slot == 0) {
-    if (((short)D_80025C60[car->x1fc0[0]].flags) & 0x10) {
+    if (BES16(D_80025C60[car->x1fc0[0]].flags) & 0x10) {
       D_802A49B0 = 11000;
     } else {
       D_802A49B0 = 0;
@@ -118,13 +133,13 @@ void BrSndCarStep(BrCar *car)
   }
   ch = &D_802A4920[k];
   prev = car->xf38;
-  if (ch[1].pitch == 0 || (car->body[0].slide == 0 && car->xf38 >= 4 && car->xf38 < 8)) {
+  if (ch[1].pitch == 0 || (car->sndImpact == 0 && car->xf38 >= 4 && car->xf38 < 8)) {
     car->xf38 = 0;
     car->xf3c = 0;
     car->xf40 = 0;
   }
-  m = car->body[0].x1fe;
-  if (car->xf3c < car->body[0].x1fe || (car->body[0].x1fe != 0 && car->xf40 < 100)) {
+  m = car->sndHitA;
+  if (car->xf3c < car->sndHitA || (car->sndHitA != 0 && car->xf40 < 100)) {
     car->xf3c = m;
     car->xf38 = 1;
     car->xf40 = 100;
@@ -137,9 +152,9 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->body[0].x1fe = 0;
-  m = car->body[0].hitPeak;
-  if (car->xf3c < car->body[0].hitPeak || (car->body[0].hitPeak != 0 && car->xf40 < 90)) {
+  car->sndHitA = 0;
+  m = car->sndHitB;
+  if (car->xf3c < car->sndHitB || (car->sndHitB != 0 && car->xf40 < 90)) {
     car->xf3c = m;
     car->xf38 = 2;
     car->xf40 = 90;
@@ -152,9 +167,9 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->body[0].hitPeak = 0;
-  m = car->body[0].x203;
-  if (car->xf3c < car->body[0].x203 || (car->body[0].x203 != 0 && car->xf40 < 80)) {
+  car->sndHitB = 0;
+  m = car->sndHitC;
+  if (car->xf3c < car->sndHitC || (car->sndHitC != 0 && car->xf40 < 80)) {
     car->xf3c = m;
     car->xf38 = 3;
     car->xf40 = 80;
@@ -167,16 +182,16 @@ void BrSndCarStep(BrCar *car)
       D_802A4BEC[car->slot] = 1;
     }
   }
-  car->body[0].x203 = 0;
+  car->sndHitC = 0;
   if (!(car->xf38 != 0 && (car->xf38 < 4 || car->xf38 > 7) && (car->xf38 < 8 || car->xf38 > 12))) {
-    car->body[0].x202 = 0;
+    car->x34a = 0;
     ground = -1;
-    if (car->body[1 + (1)].x1b4 != 0) {
-      ground = car->body[1 + (1)].surface;
+    if (car->wheels[1].x13c != 0) {
+      ground = car->wheels[1].surface;
     }
-    m = car->body[0].slide;
-    if (car->xf3c < car->body[0].slide || (car->body[0].slide != 0 && car->xf40 < 40) ||
-        (car->body[0].slide != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)) {
+    m = car->sndImpact;
+    if (car->xf3c < car->sndImpact || (car->sndImpact != 0 && car->xf40 < 40) ||
+        (car->sndImpact != 0 && car->xf40 == 40 && prev >= 4 && prev < 8)) {
       car->xf3c = m;
       if (D_8028C800 == 3) {
         switch (ground) {
@@ -205,7 +220,7 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 7;
-          m = car->body[0].slide;
+          m = car->sndImpact;
           break;
         case 1:
           if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
@@ -217,7 +232,7 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 5;
-          m = car->body[0].slide;
+          m = car->sndImpact;
           break;
         case 2:
           if (car->slot < D_8026FF08 && D_802A4BEC[car->slot] == 0) {
@@ -229,11 +244,11 @@ void BrSndCarStep(BrCar *car)
             D_802A4BEC[car->slot] = 1;
           }
           car->xf38 = 4;
-          m = car->body[0].slide;
+          m = car->sndImpact;
           break;
         case 4:
           car->xf38 = 12;
-          m = car->body[0].slide;
+          m = car->sndImpact;
           break;
         }
         car->xf3c = m >> 1;
@@ -314,12 +329,12 @@ void BrSndCarStep(BrCar *car)
     }
   }
   if (D_8028AB0C == 1) {
-    p = ((BrCarCam *)(view->cam))->mtx[3];
+    p = TGR_PTR(BrCarCam *, view->cam)->mtx[3];
     car->posStart.x = p[0];
     car->posStart.y = p[1];
     car->posStart.z = p[2];
   } else {
-    p = ((BrCarCam *)(car->cam))->mtx[3];
+    p = TGR_PTR(BrCarCam *, car->cam)->mtx[3];
     car->posStart.x = p[0];
     car->posStart.y = p[1];
     car->posStart.z = p[2];

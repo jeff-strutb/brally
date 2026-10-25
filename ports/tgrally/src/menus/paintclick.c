@@ -4,24 +4,28 @@
  * other paint-shop functions'.
  */
 #include "tgr/common.h"
-#include "tgr/pad.h"
 
 /* -- declarations -- */
 typedef unsigned long long u64;
 extern u64 tgr_clock_rate;
 float sqrtf(float x);
-extern BrPadRec D_8036A8E0[4];
+typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
+  unsigned int pressed;
+  unsigned int held;
+  int repeat[4];
+  float axis[2];
+  char pad20[0x15c - 0x20];
+} BrPadRec;
+extern char D_8036A8E0;
 #define PADS ((BrPadRec *)&D_8036A8E0)
 typedef struct BrPaintRect { int x, y, w, h; } BrPaintRect;
 typedef struct BrPaintState {   /* 0x8028D110 */
-  unsigned char *data;          /* (a BrImage: its pixels) */
-  char pad04[0x1c - 4];
+  char pad00[0x1c];
   int x;                        /* 0x1C  cursor */
   int y;                        /* 0x20 */
 } BrPaintState;
 typedef struct BrPaintBrush {   /* 0x8028D290 */
-  unsigned char *data;          /* (a BrImage: its pixels) */
-  char pad04[0x24 - 4];
+  char pad00[0x24];
   int w;                        /* 0x24 */
   int h;                        /* 0x28 */
 } BrPaintBrush;
@@ -166,10 +170,10 @@ void BrPaintClick(void)
   if (D_8028DBE8 != 0) {
     return;
   }
-  if (D_8028DBC4 == 0 && D_8028DBD0 == 0 && (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
+  if (D_8028DBC4 == 0 && D_8028DBD0 == 0 && (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
     for (i = 0; i < 10; i++) {
       if (BrPaintCursorInRect(&D_80369DB0[i])) {
-        BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+        BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
         D_8028DB6C = D_8028DB68;
         D_8028DB08 = D_8028DB0C[i];
         D_8028DB68 = i;
@@ -199,10 +203,10 @@ void BrPaintClick(void)
     }
   }
   if ((BrPaintCursorInRect(&D_8028D480) || BrPaintCursorInRect(&D_8028D490)) && D_8028DBC8 != 0 &&
-      (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
+      (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
     for (j = 0; j < 16; j++) {
       if (BrPaintCursorInRect2(&D_80369B98[j])) {
-        BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+        BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
         D_8028DB54 = D_8028DB58;
         D_8028DB58 = j;
         if (D_8028DB54 != j) {
@@ -224,8 +228,8 @@ void BrPaintClick(void)
   }
   if (D_8028DBC4 == 0) {
     for (i = 0; i < 13; i++) {
-      if (BrPaintCursorInRect(&D_80369CD8[i]) && (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
-        BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+      if (BrPaintCursorInRect(&D_80369CD8[i]) && (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
+        BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
         D_8028DBC0 = 0;
         if (i != 0) {
           D_8028DB64 = D_8028DB60;
@@ -276,8 +280,8 @@ void BrPaintClick(void)
   }
   if (D_8028DB60 == 4) {
     clicked = 0;
-    if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC4 == 0 && (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+    if (BrPaintCursorInRect(&D_8028DB94) && D_8028DBC4 == 0 && (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       D_80369B80 = D_8028D110.x;
       D_80369B84 = D_8028D110.y;
       clicked = 1;
@@ -293,7 +297,7 @@ void BrPaintClick(void)
       return;
     }
     if (D_8028DBC0 != 0 && !BrPaintCursorInRect(&D_8028D480) && !BrPaintCursorInRect(&D_8028D490) &&
-        !(*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
+        !(*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
       if (D_8028DBA8 > 0) {
         if (D_8028DBE4 != 0) {
           D_8028D110.x = D_80369B80;
@@ -309,8 +313,8 @@ void BrPaintClick(void)
       }
       return;
     }
-    if (D_8028DBC0 != 0 && (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+    if (D_8028DBC0 != 0 && (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       BrPaintDecalCommit();
       BrPaintTextStamp(D_8028D110.x, D_8028D110.y + 1);
       D_8028DBA8 = 0;
@@ -318,7 +322,7 @@ void BrPaintClick(void)
       D_8028DBC0 = 0;
       D_8028DBC4 = 0;
     }
-  } else if (D_8028DB60 != 4 && BrPaintCursorInRect(&D_8028DB94) && (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
+  } else if (D_8028DB60 != 4 && BrPaintCursorInRect(&D_8028DB94) && (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
     switch (D_8028DB60) {
     case 1:
       if (D_8028DBC0 == 0) {
@@ -349,12 +353,12 @@ void BrPaintClick(void)
         BrPaintLine(D_80369B80, D_80369B84, D_8028D110.x, D_8028D110.y);
         D_8028DBC0 = 0;
       }
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       return;
     case 2:
       BrPaintDecalCommit();
       BrPaintFloodFill(D_8028D110.x, D_8028D110.y);
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       return;
     case 5:
       if (D_8028DBC0 == 0) {
@@ -374,7 +378,7 @@ void BrPaintClick(void)
         }
         D_8028DBC0 = 0;
       }
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       return;
     case 6:
       if (0 == D_8028DBC0) {
@@ -400,11 +404,11 @@ void BrPaintClick(void)
         }
         D_8028DBC0 = 0;
       }
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x8010);
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x8010);
       return;
     }
   } else if (D_8028DB60 != 4 && D_8028DBC0 != 0 && BrPaintCursorInRect(&D_8028DB94) &&
-             !(*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x8010)) {
+             !(*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x8010)) {
     switch (D_8028DB60) {
     case 1:
       D_8028DBC0 = 0;

@@ -35,6 +35,7 @@
  *                        triangles of each frame (to find what draws a region) */
 static int s_log, s_only = -1, s_skip;
 int tgr_rcp_tri;
+uint32_t tgr_vi_ctrl(void);                         /* platform/os/io.c */
 uint64_t host_ticks_ns(void);
 uint32_t tgr_rcp_frames;                            /* frames finished (TGR_STATS) */
 uint64_t tgr_rcp_end_ns, tgr_rcp_end_max_ns;        /* time in rdr_frame_end: the present */
@@ -104,7 +105,7 @@ static void frame_end(void)
 {
     uint64_t t0 = host_ticks_ns(), t;
     hud_state();
-    rdr_video(tgr_video_state());
+    rdr_vi(tgr_vi_ctrl());
     rdr_frame_end();
     t = host_ticks_ns() - t0;
     tgr_rcp_frames++;
@@ -121,7 +122,7 @@ static uint32_t seg_addr(uint32_t a)
 {
     return ((s_seg[(a >> 24) & 0xF] + (a & 0xFFFFFF)) & 0x7FFFFF);
 }
-static const uint8_t *mem(uint32_t phys) { return tgr_ptr32((phys & 0x7FFFFF) | 0x80000000u); }
+static const uint8_t *mem(uint32_t phys) { return tgr_rdram + (phys & 0x7FFFFF); }
 static uint32_t rd32(uint32_t phys)
 {
     const uint8_t *p = mem(phys);

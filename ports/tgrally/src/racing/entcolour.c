@@ -27,7 +27,7 @@ extern char D_803D5F88[];
 /* @implements 0x80220398 tgr BrEntRefreshColour */
 void BrEntRefreshColour(BrCar *car)
 {
-  BrEntPaintTexture(((BrCarModel *)(car->model)), car->colour[0] >> 3, car->colour[1] >> 3,
+  BrEntPaintTexture(TGR_PTR(BrCarModel *, car->model), car->colour[0] >> 3, car->colour[1] >> 3,
                     car->colour[2] >> 3);
   BrCarPhysInit(car);
 }
@@ -59,7 +59,7 @@ void BrCarModelStream(BrStream *s, int slot, int car, int bufIdx)
 /* @implements 0x80220534 tgr BrEntIsFree */
 int BrEntIsFree(void *p)
 {
-  return ((BrStream *)p)->u.left == 0;  /* port: by name (the ROM reads the stream's word at 0x18) */
+  return *(int *)((char *)p + 0x18) == 0;
 }
 
 /* WHAT IT DOES: Attach one of the car artwork records to a car and repaint
@@ -67,7 +67,7 @@ int BrEntIsFree(void *p)
 /* @implements 0x802203F0 tgr BrEntSetRecord */
 void BrEntSetRecord(BrCar *car, int slot)
 {
-  car->model = (&D_803C8000[slot]);
+  car->model = tgr_addr32(&D_803C8000[slot]);
   BrEntRefreshColour(car);
 }
 

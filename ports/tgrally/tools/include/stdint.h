@@ -1,5 +1,5 @@
-/* stdint.h for the tools' reading of the core, at the N64's ABI (ILP32) and
- * the host's, without the C library's headers. */
+/* stdint.h for the tools' reading of the core at the N64's ABI (ILP32), where
+ * no C library headers exist. */
 #ifndef TGR_TOOLS_STDINT_H
 #define TGR_TOOLS_STDINT_H
 typedef signed char int8_t;
@@ -10,6 +10,6 @@ typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
-typedef __UINTPTR_TYPE__ uintptr_t;
-typedef __INTPTR_TYPE__ intptr_t;
+typedef unsigned long uintptr_t;
+typedef long intptr_t;
 #endif

@@ -160,12 +160,12 @@ void BrOptionsScreen(void)
   }
   sprintf(D_803163B0, "BGM Volume: %d", D_802723D0[0]);
   sprintf(D_803163C8, "SFX Volume: %d", D_802723D0[1]);
-  D_802723DC[0].label = (D_803163B0);
-  D_802723DC[1].label = (D_803163C8);
+  D_802723DC[0].label = tgr_addr32(D_803163B0);
+  D_802723DC[1].label = tgr_addr32(D_803163C8);
   if (D_802723D0[2] != 0) {
-    D_802723DC[2].label = ("Units: mph");
+    D_802723DC[2].label = tgr_addr32("Units: mph");
   } else {
-    D_802723DC[2].label = ("Units: kph");
+    D_802723DC[2].label = tgr_addr32("Units: kph");
   }
   {
   int res = BrMenu("OPTIONS", D_803163A8, tgr_keys_items(D_80272468), &D_803163AC, 0, 0, 0, 0, 0x80, 0x40, 0x20);

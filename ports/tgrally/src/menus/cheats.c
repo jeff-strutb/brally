@@ -8,11 +8,12 @@
 extern int D_8028AA94;
 extern int D_8026FF20;
 extern int D_8028AA68;
-typedef struct BrCheat {        /* one button-sequence cheat (8 bytes on the N64) */
-  void (*fn)(void);
-  be16_t *seq;                  /* newest button first, 0xFFFF ends; 0 ends the table */
+typedef struct BrCheat {        /* one button-sequence cheat (8 bytes) */
+  TgrAddr fn;  /* void (*)(void) */
+  TgrAddr seq;          /* unsigned short * -- newest button first, 0xFFFF ends; 0 ends the table */
 } BrCheat;
 extern BrCheat D_8028DF48[12];         /* eleven and the end */
+extern TgrAddr D_8028DF4C;              /* D_8028DF48[0].seq (unsigned short *) */
 typedef struct BrPadHistory {   /* a controller's button history */
   unsigned int pressed;         /* 0x00  buttons held this frame: the low half (the
                                  * N64 read it as the halfword at 0x02) */
@@ -33,56 +34,56 @@ void BrCheatToggleAA94(void)
 /* @implements 0x80254F58 tgr BrCheatUnlockCE1F */
 void BrCheatUnlockCE1F(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->xce |= 0x1f;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 0x1f;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x1FF of player 1's season record's unlock mask. */
 /* @implements 0x80254F70 tgr BrCheatUnlockCars */
 void BrCheatUnlockCars(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x1ff;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x1ff;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x200 of player 1's season record's unlock mask. */
 /* @implements 0x80254F88 tgr BrCheatUnlock0200 */
 void BrCheatUnlock0200(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x200;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x200;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x1000 of player 1's season record's unlock mask. */
 /* @implements 0x80254FA0 tgr BrCheatUnlock1000 */
 void BrCheatUnlock1000(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x1000;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x1000;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x800 of player 1's season record's unlock mask. */
 /* @implements 0x80254FB8 tgr BrCheatUnlock0800 */
 void BrCheatUnlock0800(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x800;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x800;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x400 of player 1's season record's unlock mask. */
 /* @implements 0x80254FD0 tgr BrCheatUnlock0400 */
 void BrCheatUnlock0400(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x400;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x400;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x3E0 of player 1's season record's second unlock mask. */
 /* @implements 0x80254FE8 tgr BrCheatUnlockCE3E0 */
 void BrCheatUnlockCE3E0(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->xce |= 0x3e0;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 0x3e0;
 }
 
 /* WHAT IT DOES: Cheat: set bits 0x8000 of player 1's season record's unlock mask. */
 /* @implements 0x80255000 tgr BrCheatUnlock8000 */
 void BrCheatUnlock8000(void)
 {
-  ((BrSeason *)(D_8031B760[0].season))->unlocked |= 0x8000;
+  TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 0x8000;
 }
 
 /* WHAT IT DOES: Flip the debug flag at 0x8026FF20 on or off. */
@@ -119,7 +120,7 @@ void BrCheatInput(BrPadHistory *pad)
   if ((unsigned short)pad->pressed != pad->hist[pad->pos]) {
     pad->pos = (pad->pos - 1) & 0x7f;
     pad->hist[pad->pos] = (unsigned short)pad->pressed;
-    seq = D_8028DF48[0].seq;
+    seq = TGR_PTR(be16_t *, D_8028DF4C);
     c = D_8028DF48;
     while (seq != 0) {
       i = pad->pos;
@@ -132,10 +133,10 @@ void BrCheatInput(BrPadHistory *pad)
         k++;
         i = (i + 1) & 0x7f;
       }
-      c->fn();
+      TGR_FN(void (*)(void), c->fn)();
     next:
       c++;
-      seq = c->seq;
+      seq = TGR_PTR(be16_t *, c->seq);
     }
   }
 }

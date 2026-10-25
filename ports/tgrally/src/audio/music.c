@@ -1,7 +1,6 @@
 /* music.c -- the module music player
  */
 #include "tgr/common.h"
-#include "tgr/mix.h"
 
 /* -- declarations -- */
 typedef struct BrModChan {      /* one module channel, 0x18 bytes */
@@ -19,19 +18,34 @@ typedef struct BrModChan {      /* one module channel, 0x18 bytes */
   unsigned char arpOn;          /* 0x16 */
   char pad17;
 } BrModChan;
+typedef struct BrMixVoice {     /* one mixer voice, 0x18 bytes */
+  unsigned int pos;             /* 0x00 */
+  int x4;                       /* that overruns its sample mixes these bytes */
+  unsigned long long rate;      /* 0x08  0 = silent */
+  int vol;                      /* 0x10  scaled volume */
+  int baseVol;                  /* 0x14 */
+} BrMixVoice;
 typedef struct BrModState {
   unsigned short x0;                   /* 0x00  ticks per row */
   unsigned short x2;                   /* 0x02  ticks left in the row */
   unsigned short x4;                   /* 0x04  rows left in the pattern */
   char pad06[2];
-  unsigned char *order;  /* 0x08  the order list */
-  unsigned char *row;    /* 0x0C  the next packed row */
+  TgrAddr order;         /* unsigned char * -- 0x08  the order list */
+  TgrAddr row;           /* unsigned char * -- 0x0C  the next packed row */
   unsigned char x10;            /* 0x10  order position */
   unsigned char len;            /* 0x11  orders in the song */
   unsigned char restart;        /* 0x12 */
 } BrModState;
 extern BrModChan D_80378DD0[];
 extern BrModState D_80378FA0;
+extern BrMixVoice D_802A4798[];
+typedef struct BrSampleLoop {   /* 0x0C bytes */
+  unsigned int x0;
+  unsigned int x4;
+  unsigned int loop;            /* 0 = the sample does not loop */
+} BrSampleLoop;
+extern BrSampleLoop D_80378F50[];
+extern BrMixVoice D_802A4920[6];
 void BrModLoad(unsigned char *xm, unsigned char *buf);
 unsigned char *BrModRowRead(unsigned char *p);
 void BrModReset(void);
@@ -55,12 +69,11 @@ extern unsigned long long D_80379568[10][12];
 extern int D_802A4918;                 /* the mixer's state block (mixer.s): */
 extern unsigned int D_802A491C;        /* its first two words differ in type */
 extern TgrMsgQueue D_803746F0;          /* the music timer's message queue */
-extern TgrMsg D_80374708[2];               /* its two messages */
-extern TgrTimer D_80374710[1];               /* the music timer */
-extern be16_t D_803747D0[];             /* the music output ring (0x4000 bytes), in the N64's byte order:
-                                           idle music voices sit on its first byte and play it */
+extern char D_80374708[];               /* its two messages */
+extern char D_80374710[];               /* the music timer */
+extern be16_t D_803747D0[];             /* the music output buffer (0x4000 bytes), as the AI reads it */
 extern short D_802A4A08[];              /* silence: where idle sound voices point */
-extern TgrThread D_80378FB8[1];             /* the mixer thread */
+extern char D_80378FB8[];               /* the mixer thread */
 extern unsigned short D_802A4790;
 extern unsigned long long tgr_clock_rate;
 void BrMixMusic(short *buf, int bytes);
@@ -72,11 +85,10 @@ extern unsigned char D_802A49CC;        /* effects volume */
 extern unsigned char D_802A49D0;        /* effects fade */
 void BrMusicLoopSamples(void);
 void BrModTick(void);
-void BrMixMusicVoice(short *buf, int bytes, int voice);   /* voice: its number (and the next's) */
+void BrMixMusicVoice(short *buf, int bytes, int voice);
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos);   /* pos: the effects write position */
 void BrSfxLoopSamples(void);
 void BrRumbleUpdate(int);
-int tgr_audio_check_nosfx(void);
 /* -- end declarations -- */
 
 #define LE16(p) ((p)[1] * 0x100 + (p)[0])
@@ -105,6 +117,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   unsigned int npat;
   unsigned int ninst;
   unsigned int j;
+  unsigned int hdr;
   int acc;
   unsigned char type;
   unsigned int len;
@@ -112,7 +125,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   unsigned char *start;
 
   start = buf;
-  D_80378FA0.order = (buf);
+  D_80378FA0.order = tgr_addr32(buf);
   D_80378FA0.len = xm[0x40];
   src = xm + 0x50;
   D_80378FA0.x0 = xm[0x4c];
@@ -120,7 +133,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   for (i = 0; i < D_80378FA0.len; i++) {
     *buf++ = *src++;
   }
-  buf = start + ((buf - start + 3) & ~3);   /* port: buf starts word-aligned */
+  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
   tgr_print("Length = %d\n", D_80378FA0.len);
   D_80378FB2 = xm[0x42];
   tgr_print("Restartfrom = %d\n", D_80378FA0.restart);
@@ -128,7 +141,8 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
   tgr_print("%d Patterns found\n", npat);
   ninst = xm[0x48];
   tgr_print("%d Instruments found\n", ninst);
-  pat = xm + 0x3c + LE32(xm + 0x3c);    /* port: the cartridge read a word and swapped its bytes */
+  hdr = tgr_rd32(xm + 0x3c);              /* the word as the N64 loaded it */
+  pat = xm + 0x3c + (((hdr >> 24) & 0xff) + ((hdr >> 16) & 0xff) * 0x100 + ((hdr >> 8) & 0xff) * 0x10000 + ((hdr & 0xff) << 24));
   for (i = 0; i < npat; i++) {
     D_803789D0[i] = buf;
     len = LE16(pat + 7) + LE32(pat);
@@ -139,7 +153,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
     pat = pat + (LE16(pat + 7) + LE32(pat));
   }
   p = pat;
-  buf = start + ((buf - start + 3) & ~3);   /* port: buf starts word-aligned */
+  buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
   tgr_print("Now doSamples");
   for (i = 0; i < ninst; i++) {
     tgr_print(".");
@@ -173,7 +187,7 @@ void BrModLoad(unsigned char *xm, unsigned char *buf)
         tgr_print("WANKER fuck off no 16bit, no Ping fucking pong\n");
         break;
       }
-      buf = start + ((buf - start + 3) & ~3);
+      buf = TGR_PTR(unsigned char *, (tgr_addr32((buf + 3)) & ~3));
       p = q + len + 0x28;
     } else {
       D_803787D0[i] = 0;
@@ -213,12 +227,12 @@ void BrMusicLoopSamples(void)
 {
   int i;
   int n;
-  signed char *end;
+  unsigned int end;
 
   for (i = 0; i < D_802A49C0; i++) {
     n = D_80378DD0[i].smp;
     if (n != 0) {
-      end = (signed char *)D_803787D0[n - 1] + BE32(D_803787D0[n - 1]->len) + 0x28;
+      end = tgr_addr32(D_803787D0[n - 1]) + BE32(D_803787D0[n - 1]->len) + 0x28;
       if (end < D_802A4798[i].pos) {
         if (D_803787D0[n - 1]->loops == 0) {
           D_802A4798[i].rate = 0;
@@ -365,7 +379,7 @@ unsigned char *BrModRowRead(unsigned char *p)
       D_80378DD0[i].arpIdx = 0;
       v->x4 = 0;
       inst = D_80378DD0[i].smp = D_80378DD0[i].inst;
-      v->pos = (signed char *)D_803787D0[inst - 1] + 0x28;
+      v->pos = tgr_addr32(D_803787D0[inst - 1]) + 0x28;
       n = D_80378DD0[i].note + D_803787D0[inst - 1]->relNote;
       smp = D_80378DD0[i].smp;
       v->rate = (&D_80379568[0][0])[n & 0xffff];
@@ -428,12 +442,12 @@ void BrModTick(void)
       if (++D_80378FA0.x10 == D_80378FA0.len) {
         D_80378FA0.x10 = D_80378FA0.restart;
       }
-      pat = D_803789D0[((unsigned char *)(D_80378FA0.order))[D_80378FA0.x10]];
-      D_80378FA0.row = (pat + 9);
+      pat = D_803789D0[TGR_PTR(unsigned char *, D_80378FA0.order)[D_80378FA0.x10]];
+      D_80378FA0.row = tgr_addr32(pat + 9);
       D_80378FA0.x4 = pat[5];
     }
     D_80378FA0.x4--;
-    D_80378FA0.row = (BrModRowRead(((unsigned char *)(D_80378FA0.row))));
+    D_80378FA0.row = tgr_addr32(BrModRowRead(TGR_PTR(unsigned char *, D_80378FA0.row)));
   }
   for (i = 0; i < D_802A49C0; i++) {
     smp = D_80378DD0[i].smp;
@@ -487,7 +501,7 @@ void BrModTick(void)
  * one constant, IDO would hold it in v0 across the entry block, which shifts
  * every register in the voice loop below. */
 /* @implements 0x802575C4 tgr BrMusicInit */
-void BrMusicInit(unsigned char *param_1, unsigned char *param_2)
+void BrMusicInit(int param_1, char *param_2)
 {
   int i;
   int j;
@@ -500,12 +514,12 @@ void BrMusicInit(unsigned char *param_1, unsigned char *param_2)
   tgr_timer(D_80374710, (unsigned long long)10000 * tgr_clock_rate / 1000000,
              (unsigned long long)10000 * tgr_clock_rate / 1000000, &D_803746F0, 0);
   for (i = 0; i < D_802A49C0; i++) {
-    D_802A4798[i].pos = (signed char *)D_803747D0;
+    D_802A4798[i].pos = tgr_addr32(D_803747D0);
     D_802A4798[i].rate = 0;
     D_802A4798[i].baseVol = 0x20;
   }
   for (j = 0; j < 6; j++) {
-    D_802A4920[j].pos = (signed char *)D_802A4A08;
+    D_802A4920[j].pos = tgr_addr32(D_802A4A08);
     D_802A4920[j].rate = 0;
     D_802A4920[j].baseVol = 0x20;
   }
@@ -515,13 +529,13 @@ void BrMusicInit(unsigned char *param_1, unsigned char *param_2)
   t += tgr_clock();
   tgr_print("%1.7f", (double)t / 46875500.0);
   tgr_print("Creating I entries\n");
-  BrModLoad(param_1, param_2);
+  BrModLoad(TGR_PTR(unsigned char *, param_1), param_2);
   tgr_print("Creating Note Frequency entries\n");
   BrNoteRatesInit();
   tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
-  tgr_audio_start();                    /* port: the sound starts (out.c), where the AI's first buffer was queued */
+  tgr_audio_queue((short *)D_803747D0, 0x4000);
   tgr_thread_new(D_80378FB8, 7, BrMusicThread, 0, D_80379568, 0x7f);
   tgr_thread_start(D_80378FB8);
 }
@@ -535,7 +549,7 @@ void BrMusicStop(void)
 
   D_80378F98 = 0;
   for (i = 0; i < D_802A49C0; i++) {
-    D_802A4798[i].pos = (signed char *)D_802A4A08;
+    D_802A4798[i].pos = tgr_addr32(D_802A4A08);
     D_802A4798[i].rate = 0;
     D_802A4798[i].baseVol = 0;
     D_80378DD0[i].smp = 0;
@@ -545,12 +559,12 @@ void BrMusicStop(void)
 /* WHAT IT DOES: Start a piece of music: builds its instrument entries,
  * starts the module player and sets every channel to its starting volume. */
 /* @implements 0x80257964 tgr BrMusicStart */
-void BrMusicStart(unsigned char *param_1, unsigned char *param_2)
+void BrMusicStart(int param_1,int param_2)
 {
   int i;
 
   tgr_print("Creating I entries\n");
-  BrModLoad(param_1, param_2);
+  BrModLoad(TGR_PTR(unsigned char *, param_1),TGR_PTR(unsigned char *, param_2));
   tgr_print("Starting Mod\n");
   BrModReset();
   D_80378F98 = 1;
@@ -578,7 +592,7 @@ short BrSfxFreeVoice(void)
  * sample's start, length and loop length, and set the voice playing from the
  * start at rate 1.0 (32.32 fixed point), volume 0, both pans 0x20. */
 /* @implements 0x80257B04 tgr BrSfxVoiceStart */
-void BrSfxVoiceStart(short v, void *start, unsigned int len, unsigned int loop)
+void BrSfxVoiceStart(short v, unsigned int start, unsigned int len, unsigned int loop)
 {
   D_80378F50[v].x0 = start;
   D_80378F50[v].x4 = len;
@@ -591,13 +605,13 @@ void BrSfxVoiceStart(short v, void *start, unsigned int len, unsigned int loop)
 }
 
 /* WHAT IT DOES: Start a sound voice on a sample: record the sample's
- * start, length and loop, point the voice at the start, silent, at the normal
+ * start, end and loop, point the voice at the start, silent, at the normal
  * rate (1.0 in 32.32). */
 /* @implements 0x80257B78 tgr BrSfxVoicePlay */
-void BrSfxVoicePlay(short v, void *start, unsigned int len, unsigned int loop)
+void BrSfxVoicePlay(short v, unsigned int start, unsigned int end, unsigned int loop)
 {
   D_80378F50[v].x0 = start;
-  D_80378F50[v].x4 = len;
+  D_80378F50[v].x4 = end;
   D_80378F50[v].loop = loop;
   D_802A4920[v].baseVol = 0;
   D_802A4920[v].vol = 0;
@@ -665,10 +679,15 @@ void BrSfxLoopSamples(void)
 void BrMusicThread(void *arg)
 {
   extern int D_802A4A0C;            /* 0x802A4A0C: the module steps on alternate wake-ups */
+  extern int D_802A4A10;        /* 0x802A4A10: where the AI was reading last time */
+  extern unsigned int D_802A4A14; /* 0x802A4A14: the effects write position */
   extern int D_80379930;             /* 0x80379930: bytes to mix this time */
+  extern int D_80379934;             /* 0x80379934: where the AI will be reading */
   extern int D_80379938;                 /* 0x80379938: voice counter */
   int i;
+  unsigned int len;
   unsigned short save;
+  unsigned int n;
   unsigned int lo;
   unsigned int hi;
 
@@ -685,9 +704,24 @@ void BrMusicThread(void *arg)
       hi = D_802A49CC * hi * D_802A49D0 >> 16;
       D_802A4920[D_80379938].vol = (hi << 16) + lo;
     }
-    /* port: the bytes the sound out needs (out.c), where the cartridge worked
-       out what the AI had played since the last time from its read position */
-    D_80379930 = tgr_audio_want();
+    D_80379930 = tgr_audio_status();
+    if (!(D_80379930 & 0x80000000)) {
+      D_80379930 = tgr_audio_queue((short *)D_803747D0, 0x4000);
+    }
+    len = tgr_audio_left();
+    D_80379934 = len - 0x1000;
+    if (D_80379934 < 0) {
+      D_80379934 += 0x4000;
+    }
+    D_80379930 = D_802A4A10 - D_80379934;
+    D_802A4A10 = D_80379934;
+    if (D_80379930 < 0) {
+      D_80379930 += 0x4000;
+    }
+    if (len > 0x4000) {
+    }
+    if (D_80379930 > 0x4000) {
+    }
     BrMusicLoopSamples();
     if (D_802A4A0C != 0 && D_80378F98 != 0) {
       BrModTick();
@@ -696,14 +730,23 @@ void BrMusicThread(void *arg)
     BrMixMusic((short *)D_803747D0, D_80379930);
     for (D_80379938 = 6; D_80379938 < D_802A49C0; D_80379938 += 2) {
       D_802A4790 = save;
-      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938);   /* port: the voice by number */
+      BrMixMusicVoice((short *)D_803747D0, D_80379930, D_80379938 * sizeof(BrMixVoice) - 0x90);
     }
-    /* port: the effects on the same stretch (the cartridge kept their own
-       position, which was always the music's) */
-    if (!tgr_audio_check_nosfx())       /* port: a check of the music alone (out.c) */
-      BrMixSfx((short *)D_803747D0, D_80379930, save);
+    n = (0x5000 - len) / 8 * 8 - D_802A4A14;
+    if ((int)n < 0) {                   /* port: woken late across the start of the next buffer
+                                           (a host thread can be; the N64's never was): what
+                                           played, counted round the buffer as the music's is */
+      n += 0x4000;
+    }
+    if (n > 0x4000) {
+      n -= 0x4000;
+    }
+    BrMixSfx((short *)D_803747D0, n, D_802A4A14);
     BrSfxLoopSamples();
-    tgr_audio_submit(D_803747D0, 0x4000, save, D_80379930);   /* port: to the sound out */
+    D_802A4A14 += n;
+    if (D_802A4A14 > 0x4000) {
+      D_802A4A14 -= 0x4000;
+    }
     BrRumbleUpdate(0);
   }
 }

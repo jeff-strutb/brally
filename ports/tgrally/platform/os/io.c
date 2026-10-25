@@ -1,13 +1,13 @@
 /* io.c: the rest of what the game asks of the machine (tgr_os.h): loads
  * from the cartridge's data, the picture shown, the drawing and sound tasks,
- * printing, and libm's sine table. */
+ * the audio out, printing, and libm's sine table. */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "plat.h"
 #include "tgr_core.h"
-#include "../render/rdr.h"
+#include "sha1.h"
 
 int32_t  tgr_tv_type = 1;              /* NTSC */
 uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
@@ -15,22 +15,35 @@ uint64_t tgr_clock_rate = 62500000;
 uint32_t tgr_rom_base = 0xB0000000;
 int32_t  tgr_reset_type = 0;
 
-/* how the picture is shown: what a change of resolution sets (anti-aliased,
- * divot filter, gamma, no dither filter), then the game's own settings */
-static RdrVideo s_video = { 1, 0, 1, 1 };
+/* the VI's control register as libultra keeps it: the mode's, then the special
+ * features' changes (the renderer's VI stage reads it, tgr_vi_ctrl) */
+static uint32_t s_vi_ctrl = 0x311E, s_vi_mode_aa = 0x100;
 
-void tgr_video_reset(void)
+void tgr_video_mode(TgrVideoMode *mode)
 {
-    s_video.antialias = 1;
-    s_video.dither_filter = 0;
-    s_video.divot = 1;
-    s_video.gamma = 1;
+    s_vi_ctrl = mode->regs[0];
+    s_vi_mode_aa = s_vi_ctrl & 0x300;
 }
 
-void tgr_video_dither_filter(int on) { s_video.dither_filter = on != 0; }
-void tgr_video_divot(int on)         { s_video.divot = on != 0; }
-void tgr_video_gamma(int on)         { s_video.gamma = on != 0; }
-const RdrVideo *tgr_video_state(void) { return &s_video; }
+void tgr_video_features(uint32_t f)
+{
+    if (f & 0x01) s_vi_ctrl |= 0x08;                  /* OS_VI_GAMMA_ON */
+    if (f & 0x02) s_vi_ctrl &= ~0x08u;
+    if (f & 0x04) s_vi_ctrl |= 0x04;                  /* OS_VI_GAMMA_DITHER_ON */
+    if (f & 0x08) s_vi_ctrl &= ~0x04u;
+    if (f & 0x10) s_vi_ctrl |= 0x10;                  /* OS_VI_DIVOT_ON */
+    if (f & 0x20) s_vi_ctrl &= ~0x10u;
+    if (f & 0x40) {                                   /* OS_VI_DITHER_FILTER_ON: and anti-alias */
+        s_vi_ctrl |= 0x10000;                         /* with resampling, always fetching */
+        s_vi_ctrl &= ~0x300u;
+    }
+    if (f & 0x80) {
+        s_vi_ctrl &= ~0x10000u;
+        s_vi_ctrl = (s_vi_ctrl & ~0x300u) | s_vi_mode_aa;
+    }
+}
+
+uint32_t tgr_vi_ctrl(void) { return s_vi_ctrl; }
 
 /* ---- the VI ----------------------------------------------------------------- */
 static uint32_t s_framebuffer;
@@ -71,8 +84,8 @@ int32_t tgr_rom_load(TgrIoMsg *mb, int32_t pri, int32_t direction, uint32_t devA
     }
     tgr_rom_read(src, vAddr, nbytes);
     if (mb)
-        mb->hdr.retQueue = mq;
-    tgr_post_mesg(mq, (TgrMsg)mb);
+        mb->hdr.retQueue = tgr_addr32(mq);
+    tgr_post_mesg(mq, tgr_addr32(mb));
     return 0;
 }
 
@@ -98,6 +111,97 @@ void tgr_task_load(TgrTask *task)
 }
 
 void tgr_task_run(TgrTask *task) { (void)task; }
+
+/* ---- the audio interface: buffers played at the set rate, 4 bytes a sample -- */
+#define AI_CLOCK 48681812u
+static struct { uint64_t start; uint32_t n; const uint8_t *buf; } s_aiq[2];
+static int s_ain;
+static uint32_t s_airate;
+static uint32_t s_aifed;                        /* bytes of s_aiq[0] the host has */
+
+static uint64_t ai_ticks(uint32_t bytes)
+{
+    return (uint64_t)bytes * 46875000ull / ((uint64_t)(s_airate ? s_airate : 1) * 4);
+}
+
+/* The DMA reads a buffer from RAM as it plays, not when it is queued: TGR
+ * queues one ring over and over and mixes into it only 46 ms ahead of the
+ * read position, so the host is given each stretch as the AI has played it,
+ * read from RAM now.  The mixer only ever writes ahead of the read position,
+ * so what the AI played since the last call is what the hardware played. */
+static void ai_update(void)
+{
+    while (s_ain && s_airate) {
+        uint64_t now = tgr_count();
+        uint64_t played = now > s_aiq[0].start ? (now - s_aiq[0].start) * s_airate * 4 / 46875000ull : 0;
+        uint64_t end;
+        if (played > s_aiq[0].n)
+            played = s_aiq[0].n;
+        played &= ~3ull;
+        if (played > s_aifed) {
+            tgr_audio_buffer((const int16_t *)(s_aiq[0].buf + s_aifed), (int)((played - s_aifed) / 4), (int)s_airate);
+            s_aifed = (uint32_t)played;
+        }
+        if (played < s_aiq[0].n)
+            break;
+        end = s_aiq[0].start + ai_ticks(s_aiq[0].n);
+        s_aiq[0] = s_aiq[1];
+        s_ain--;
+        s_aifed = 0;
+        if (s_ain)
+            s_aiq[0].start = end;               /* it began when its predecessor ended */
+    }
+}
+
+uint32_t tgr_audio_left(void)
+{
+    uint64_t played;
+    ai_update();
+    if (!s_ain || !s_airate)
+        return 0;
+    played = (tgr_count() - s_aiq[0].start) * s_airate * 4 / 46875000ull;
+    return played >= s_aiq[0].n ? 0 : (uint32_t)(s_aiq[0].n - played) & ~7u;
+}
+
+uint32_t tgr_audio_status(void)
+{
+    ai_update();
+    return s_ain >= 2 ? 0x80000000u : 0;
+}
+
+int32_t tgr_audio_rate(uint32_t f)
+{
+    uint32_t dac = (uint32_t)((double)AI_CLOCK / f + 0.5);
+    s_airate = AI_CLOCK / dac;
+    return (int32_t)s_airate;
+}
+
+int32_t tgr_audio_queue(void *buf, uint32_t size)
+{
+    uint64_t start;
+    ai_update();
+    if (s_ain >= 2)
+        return -1;
+    start = tgr_count();
+    if (s_ain) {
+        uint64_t end = s_aiq[s_ain - 1].start + ai_ticks(s_aiq[s_ain - 1].n);
+        if (end > start)
+            start = end;
+    }
+    s_aiq[s_ain].start = start;
+    s_aiq[s_ain].n = size;
+    s_aiq[s_ain].buf = (const uint8_t *)buf;
+    s_ain++;
+    if (g_tgr.trace) {
+        Sha1 h;
+        char d[17];
+        sha1_init(&h);
+        sha1_update(&h, buf, size);
+        sha1_hex16(&h, d);
+        tgr_trace("ai", "%s", d);
+    }
+    return 0;
+}
 
 /* ---- printing ---------------------------------------------------------------- */
 void tgr_print(const char *fmt, ...)

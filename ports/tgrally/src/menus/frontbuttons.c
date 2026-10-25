@@ -1,7 +1,6 @@
 /* frontbuttons.c -- the button prompts along the bottom of front-end screens
  */
 #include "tgr/common.h"
-#include "tgr/mix.h"
 #include "tgr/romimage.h"
 #include "tgr/gbi.h"
 #include "tgr/car.h"
@@ -13,12 +12,12 @@ void BrTextAlignLeft(void);
 void BrTextSetFont(int param_1);
 void BrTextPrint(char *s, int x, int y);
 void BrRomImageDraw(void *, int, int, int, int, int, int, int, int, int, int, int, int, int);
-typedef struct BrRomFile { int start; int end; void *data; } BrRomFile;
+typedef struct BrRomFile { int start; int end; TgrAddr data; } BrRomFile;
 extern BrRomImage D_80271D70;           /* the A and B button images */
 extern BrRomImage D_80271D84;
 extern int D_8028AAB4;
 extern int D_80271FD0;
-typedef BrMixVoice BrRaceSnd;
+typedef struct BrRaceSnd { TgrAddr p; int x4; long long x8; int x10; int x14; } BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];         /* six sound channels */
 extern char D_802A4A08[];
 extern BrRomImage D_80272048;            /* the menu background */
@@ -48,8 +47,8 @@ extern Gfx *D_8028A858;
 extern int D_8026FF08;                  /* human players */
 extern BrCar D_8031B760[];
 extern float D_8031AB10[4][4];
-void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size));
-void *BrIfaceMemAlloc(int size);
+void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size));
+unsigned int BrIfaceMemAlloc(int size);
 int BrRomReadSize(int rom);
 unsigned int BrRomUnpack(void *, unsigned int, void *);
 void BrFadeTo(float level, float seconds);
@@ -60,6 +59,7 @@ int BrFadeIsOut(void);
 int BrFadeAtTarget(void);
 void BrFadeBarsDraw(void);
 short BrSfxFreeVoice(void);
+void BrSfxVoiceStart(short, unsigned int, unsigned int, unsigned int);
 void BrClockTick(void);
 void BrFrameBeginLayout1(void);
 void BrPerfMark(int bar, int r, int g, int b, int a);
@@ -73,11 +73,11 @@ void guMtxF2L(float mf[4][4], Mtx *m);
 void BrMenuRingDraw(void);
 void BrMenuBackdropDraw(void);
 void BrAnimUpdate(void *set);
-void BrMenuIconDraw(void *, float, float, float, float);
+void BrMenuIconDraw(int, float, float, float, float);
 void BrPerfMeterDraw(void);
 void BrFrameEnd(void);
 void BrScreenFlush3Layout1(void);
-void BrPadStickToButtons(void *);
+void BrPadStickToButtons(int);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
 /* -- end declarations -- */
 
@@ -167,10 +167,10 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
     BrRomFileUnpack(&D_80271D84, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_80272048, BrIfaceMemAlloc);
     D_80316234 = BrRomReadSize(D_001BF480);
-    D_80316230 = ((unsigned char *)(BrIfaceMemAlloc(D_80316234 + D_80316234)));
+    D_80316230 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80316234 + D_80316234));
     BrRomUnpack(D_80316230, D_001BF480, 0);
     D_8031623C = BrRomReadSize(D_001BFEC0);
-    D_80316238 = ((unsigned char *)(BrIfaceMemAlloc(D_8031623C + D_8031623C)));
+    D_80316238 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_8031623C + D_8031623C));
     BrRomUnpack(D_80316238, D_001BFEC0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80316230[D_80316234 + i] = 0;
@@ -192,7 +192,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
       D_80316224 = -1.0f;
       v = BrSfxFreeVoice();
       if (v != -1) {
-        BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
+        BrSfxVoiceStart(v, tgr_addr32(D_80316230), D_80316234, 0);
       }
     }
     D_80271FD0 = -1;
@@ -266,7 +266,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         } else {
           shown = D_80316244;
         }
-        BrAnimUpdate(((void *)(items[shown]->icon)));
+        BrAnimUpdate(TGR_PTR(void *, items[shown]->icon));
         if (items[shown]->flags & 0x10) {
           D_8028A8A8 = 1;
         }
@@ -278,7 +278,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         }
       } else if (off != 0) {
         if (items[D_80316244]->icon != 0) {
-          BrAnimUpdate(((void *)(items[D_80316244]->icon)));
+          BrAnimUpdate(TGR_PTR(void *, items[D_80316244]->icon));
           if (items[D_80316244]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
@@ -286,13 +286,13 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
                          (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316244]->label)));
+          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316244]->label));
           BrTextHighlightOff();
           BrTextAlignCentre();
           BrTextPrint(buf, D_8028AAB0 / 2 - (int)(off * D_8028AAB0 / 6.0f), (D_8028AAB4 * 9) / 16);
         }
         if (items[D_80316220]->icon != 0) {
-          BrAnimUpdate(((void *)(items[D_80316220]->icon)));
+          BrAnimUpdate(TGR_PTR(void *, items[D_80316220]->icon));
           if (items[D_80316220]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
@@ -301,7 +301,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
                          (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316220]->label)));
+          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316220]->label));
           BrTextHighlightOff();
           BrTextAlignCentre();
           BrTextPrint(buf, D_8028AAB0 / 2 - (int)(((off < 0.0f ? 5.0f : -5.0f) + off) * D_8028AAB0 / 6.0f),
@@ -311,19 +311,19 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
         BrTextHighlightOff();
         BrTextAlignCentre();
         if (items[D_80316244]->icon != 0) {
-          BrAnimUpdate(((void *)(items[D_80316244]->icon)));
+          BrAnimUpdate(TGR_PTR(void *, items[D_80316244]->icon));
           if (items[D_80316244]->flags & 0x10) {
             D_8028A8A8 = 1;
           }
           BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
           D_8028A8A8 = 0;
         } else {
-          sprintf(buf, "%%ww%s", ((const char *)(items[D_80316244]->label)));
+          sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316244]->label));
           BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 9) / 16);
         }
       label:
         BrTextSetFont(20);
-        sprintf(buf, "%%ry%s", ((const char *)(items[D_80316244]->label)));
+        sprintf(buf, "%%ry%s", TGR_PTR(const char *, items[D_80316244]->label));
         BrTextPrint(buf, D_8028AAB0 / 2, (D_8028AAB4 * 20) / 64);
         if (D_80271FC8 != 0) {
           D_80271FC8(D_80316244);
@@ -349,7 +349,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           D_802A4920[ch].x14 = 0;
           D_802A4920[ch].x10 = 0;
           D_802A4920[ch].x8 = 0;
-          D_802A4920[ch].p = (signed char *)D_802A4A08;
+          D_802A4920[ch].p = tgr_addr32(D_802A4A08);
         }
         if (D_8031622C != 0) {
           return 1;
@@ -362,13 +362,13 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           continue;
         }
         BrPadStickToButtons(D_8031B760[i].pad);
-        if (*((unsigned int *)(D_8031B760[i].pad)) != 0) {
+        if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) != 0) {
           D_80316240 = 0.0f;
         }
         if (D_80316224 == 0) {
-          if (*((unsigned int *)(D_8031B760[i].pad)) & 4) {
-            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 10);
-            *((unsigned int *)(D_8031B760[i].pad)) &= ~10;
+          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 4) {
+            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 10);
+            *TGR_PTR(unsigned int *, D_8031B760[i].pad) &= ~10;
             D_80316220 = D_80316244;
             do {
               D_80316244 = (D_80316244 + n - 1) % n;
@@ -378,9 +378,9 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
               goto move;
             }
           }
-          if (*((unsigned int *)(D_8031B760[i].pad)) & 1) {
-            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 10);
-            *((unsigned int *)(D_8031B760[i].pad)) &= ~10;
+          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 1) {
+            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 10);
+            *TGR_PTR(unsigned int *, D_8031B760[i].pad) &= ~10;
             D_80316220 = D_80316244;
             do {
               D_80316244 = (D_80316244 + 1) % n;
@@ -390,34 +390,34 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
             move:
               v = BrSfxFreeVoice();
               if (v != -1) {
-                BrSfxVoiceStart(v, D_80316230, D_80316234, 0);
+                BrSfxVoiceStart(v, tgr_addr32(D_80316230), D_80316234, 0);
               }
             }
           }
           if (items[D_80316244]->flags & 1) {
-            if (*((unsigned int *)(D_8031B760[i].pad)) & 8) {
+            if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 8) {
               *sel = D_80316244;
-              BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 8);
+              BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 8);
               result = 3;
               goto choose;
             }
-            if (*((unsigned int *)(D_8031B760[i].pad)) & 2) {
+            if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 2) {
               *sel = D_80316244;
-              BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 2);
+              BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 2);
               result = 4;
               goto choose;
             }
           }
-          if (*((unsigned int *)(D_8031B760[i].pad)) & 0x20) {
-            BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0x20);
+          if (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0x20) {
+            BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0x20);
             D_8031622C = 0;
             BrFadeTo(0.0f, 0.2f);
             BrSfxFadeTo(0.0f, 0.2f);
             goto choose;
           }
         }
-        if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*((unsigned int *)(D_8031B760[i].pad)) & 0xC010)) {
-          BrPadConsume(((unsigned int *)(D_8031B760[i].pad)), 0xC010);
+        if (!(items[D_80316244]->flags & 8) && !(items[D_80316244]->flags & 0x40) && (*TGR_PTR(unsigned int *, D_8031B760[i].pad) & 0xC010)) {
+          BrPadConsume(TGR_PTR(unsigned int *, D_8031B760[i].pad), 0xC010);
           if (i == 0 || !(items[D_80316244]->flags & 0x20)) {
             D_80271FA8 = i;
             if ((items[D_80316244]->flags & 2) == 0) {
@@ -431,7 +431,7 @@ int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int r
           choose:
             v = BrSfxFreeVoice();
             if (v != -1) {
-              BrSfxVoiceStart(v, D_80316238, D_8031623C, 0);
+              BrSfxVoiceStart(v, tgr_addr32(D_80316238), D_8031623C, 0);
             }
           }
         }

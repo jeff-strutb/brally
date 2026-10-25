@@ -6,125 +6,8 @@
 #include "tgr_addr.h"
 #include "tgr_syms.h"
 
-/* the fixed RAM outside the game's image (tgr_rdram) and the image's own
- * objects, each a native object (build/tgrally/null-null/gen/arena.s) */
-
-/* ---- the image's objects: by original address (tgr_objs is sorted so) and by
- * native address (s_bynat, sorted at start-up) */
-static const TgrObj **s_bynat;
-
-static int obj_cmp_nat(const void *x, const void *y)
-{
-    uintptr_t a = (uintptr_t)(*(const TgrObj *const *)x)->nat, b = (uintptr_t)(*(const TgrObj *const *)y)->nat;
-    return a < b ? -1 : a > b;
-}
-
-/* records reached through pointers that tgr_lift gave their native layout
- * (each inside some object's extent, found before it), by original address */
-#define MAXDYN 2048
-static TgrObj s_dyn[MAXDYN];
-static int s_ndyn;
-
-void tgr_obj_add(uint32_t addr, uint32_t size, void *nat, uint32_t natsize, const TgrMap *map, uint32_t nmap)
-{
-    int i;
-    if (s_ndyn == MAXDYN) {
-        fprintf(stderr, "tgr: too many converted records\n");
-        abort();
-    }
-    for (i = s_ndyn; i > 0 && s_dyn[i - 1].addr > addr; i--)
-        s_dyn[i] = s_dyn[i - 1];
-    s_dyn[i].addr = addr;
-    s_dyn[i].size = size;
-    s_dyn[i].nat = nat;
-    s_dyn[i].natsize = natsize;
-    s_dyn[i].map = map;
-    s_dyn[i].nmap = nmap;
-    s_ndyn++;
-}
-
-const TgrObj *tgr_dyn_at(uint32_t k)
-{
-    int lo = 0, hi = s_ndyn - 1;
-    while (lo <= hi) {
-        int m = (lo + hi) / 2;
-        if (k < s_dyn[m].addr)
-            hi = m - 1;
-        else if (k - s_dyn[m].addr >= s_dyn[m].size)
-            lo = m + 1;
-        else
-            return &s_dyn[m];
-    }
-    return NULL;
-}
-
-static const TgrObj *obj_at(uint32_t k)
-{
-    int lo = 0, hi = tgr_nobjs - 1;
-    const TgrObj *d = tgr_dyn_at(k);
-    if (d)
-        return d;
-    while (lo <= hi) {
-        int m = (lo + hi) / 2;
-        const TgrObj *o = &tgr_objs[m];
-        if (k < o->addr)
-            hi = m - 1;
-        else if (k - o->addr >= o->size)
-            lo = m + 1;
-        else
-            return o;
-    }
-    return NULL;
-}
-
-/* an offset in an object laid out differently natively, from the original's
- * layout to the native one (to_nat) or back; -1 if it falls in no field */
-static long map_off(const TgrObj *o, uint32_t d, int to_nat)
-{
-    uint32_t i, end0, end1;
-    if (!o->map)
-        return d;
-    end0 = tgr_map_end(o);                              /* past the fields: one for one */
-    end1 = o->natsize - (o->size - end0);
-    if (to_nat ? d >= end0 : d >= end1)
-        return to_nat ? (long)(end1 + (d - end0)) : (long)(end0 + (d - end1));
-    for (i = 0; i < o->nmap; i++) {
-        const TgrMap *m = &o->map[i];
-        uint32_t base = to_nat ? m->n64off : m->natoff, st = to_nat ? m->n64stride : m->natstride;
-        uint32_t n64len = m->size ? m->size & 0xFFFF : 4;
-        uint32_t natlen = m->size ? (m->size >> 16 ? m->size >> 16 : m->size) : sizeof(void *);
-        uint32_t len = to_nat ? n64len : natlen, k, in;
-        if (d < base)
-            continue;
-        k = m->count > 1 && st ? (d - base) / st : 0;
-        if (k >= m->count)
-            continue;
-        in = d - base - k * st;
-        if (in < len)
-            return (long)((to_nat ? m->natoff : m->n64off) + k * (to_nat ? m->natstride : m->n64stride) +
-                          (m->size && !(m->size >> 16) ? in : 0));
-    }
-    return -1;
-}
-
-static const TgrObj *obj_of(uintptr_t p)
-{
-    int lo = 0, hi = tgr_nobjs - 1, i;
-    for (i = 0; i < s_ndyn; i++)
-        if (p - (uintptr_t)s_dyn[i].nat < s_dyn[i].natsize)
-            return &s_dyn[i];
-    while (lo <= hi) {
-        int m = (lo + hi) / 2;
-        const TgrObj *o = s_bynat[m];
-        if (p < (uintptr_t)o->nat)
-            hi = m - 1;
-        else if (p - (uintptr_t)o->nat >= o->natsize)
-            lo = m + 1;
-        else
-            return o;
-    }
-    return NULL;
-}
+/* the N64's RAM, tgr_rdram, is defined with every data symbol of the game
+ * as an alias into it at its original address (build/tgrally/null-null/gen/arena.s) */
 
 /* ---- windows: native memory outside the arena the game stores an address of */
 #define WIN_FIRST 0x20
@@ -146,17 +29,6 @@ uint32_t tgr_addr32_slow(const void *p)
         if (a >= lo && d < n->count * sizeof(void *) && d % sizeof(void *) == 0)
             return n->addr + (uint32_t)(d / sizeof(void *)) * 4;
     }
-    {
-        const TgrObj *o = obj_of(a);
-        if (o) {
-            long d = map_off(o, (uint32_t)(a - (uintptr_t)o->nat), 0);
-            if (d < 0) {
-                fprintf(stderr, "tgr: %p is in no field of the object at %08X\n", p, o->addr);
-                abort();
-            }
-            return o->addr + (uint32_t)d;
-        }
-    }
     for (i = WIN_FIRST; i <= WIN_LAST; i++) {
         if (s_win[i] == base)
             return (uint32_t)i << 24 | (uint32_t)(a - base);
@@ -169,13 +41,19 @@ uint32_t tgr_addr32_slow(const void *p)
     abort();
 }
 
+uint8_t tgr_natpage[TGR_RDRAM_SIZE >> 12];
+
+/* mark the pages the native tables' original addresses fall in */
 void tgr_addr_init(void)
 {
     int i;
-    s_bynat = malloc(sizeof *s_bynat * (size_t)(tgr_nobjs ? tgr_nobjs : 1));
-    for (i = 0; i < tgr_nobjs; i++)
-        s_bynat[i] = &tgr_objs[i];
-    qsort(s_bynat, (size_t)tgr_nobjs, sizeof *s_bynat, obj_cmp_nat);
+    for (i = 0; i < tgr_nnatives; i++) {
+        uint32_t lo = tgr_natives[i].addr & (TGR_RDRAM_SIZE - 1);
+        uint32_t hi = lo + 4 * tgr_natives[i].count - 1;
+        uint32_t pg;
+        for (pg = lo >> 12; pg <= hi >> 12; pg++)
+            tgr_natpage[pg] = 1;
+    }
 }
 
 void *tgr_ptr32_slow(uint32_t a)
@@ -186,30 +64,17 @@ void *tgr_ptr32_slow(uint32_t a)
         return NULL;
     if (((a & 0xDFFFFFFFu) - 0x80000000u) < TGR_RDRAM_SIZE) {
         uint32_t k = (a & 0xDFFFFFFFu) | 0x80000000u;
-        const TgrObj *o;
         for (i = 0; i < tgr_nnatives; i++) {
             const TgrNat *n = &tgr_natives[i];
             if (k >= n->addr && k - n->addr < 4 * n->count && (k - n->addr) % 4 == 0)
                 return &n->nat[(k - n->addr) / 4];
-        }
-        if ((o = obj_at(k)) != NULL) {
-            long d = map_off(o, k - o->addr, 1);
-            if (d < 0) {
-                fprintf(stderr, "tgr: %08X is in no field of the object at %08X\n", a, o->addr);
-                abort();
-            }
-            return o->nat + d;
-        }
-        if (k - TGR_IMAGE_LO < TGR_IMAGE_HI - TGR_IMAGE_LO && k >= 0x8026FAB0u) {
-            fprintf(stderr, "tgr: no object at %08X\n", a);
-            abort();
         }
         return tgr_rdram + (a & (TGR_RDRAM_SIZE - 1));
     }
     if (w >= WIN_FIRST && w <= WIN_LAST && s_win[w])
         return (void *)(s_win[w] + (a & (WIN_SPAN - 1)));
     if (a < TGR_RDRAM_SIZE)                 /* a physical address */
-        return tgr_ptr32(a | 0x80000000u);
+        return tgr_rdram + a;
     fprintf(stderr, "tgr: no memory at %08X\n", a);
     return tgr_rdram;                       /* reads zeros rather than faulting */
 }

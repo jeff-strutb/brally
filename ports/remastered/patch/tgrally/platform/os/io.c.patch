@@ -1,14 +1,14 @@
 --- a/platform/os/io.c
 +++ b/platform/os/io.c
-@@ -7,6 +7,7 @@
- #include <string.h>
+@@ -8,6 +8,7 @@
  #include "plat.h"
  #include "tgr_core.h"
+ #include "sha1.h"
 +#include "tgr_touch.h"
- #include "../render/rdr.h"
  
  int32_t  tgr_tv_type = 1;              /* NTSC */
-@@ -89,6 +90,9 @@
+ uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
+@@ -102,6 +103,9 @@
  void tgr_task_load(TgrTask *task)
  {
      if (task->t.type == TGR_TASK_GFX) {

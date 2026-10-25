@@ -42,7 +42,7 @@ void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, i
   gRaw(D_8028A858++, 0xba000c02, D_8028A898);
   gRaw(D_8028A858++, 0xfcffffff, 0xfffdf2f9);
   gRaw(D_8028A858++, 0xb900031d, 0x504240);
-  gRaw(D_8028A858++, 0xfd880000 | _SHIFTL(((unsigned int)img->w >> 1) - 1, 0, 12), ((unsigned char *)(img->data)));
+  gRaw(D_8028A858++, 0xfd880000 | _SHIFTL(((unsigned int)img->w >> 1) - 1, 0, 12), TGR_PTR(unsigned char *, img->data));
   {
     Gfx *_g = (Gfx *)(D_8028A858++);
 
@@ -108,7 +108,7 @@ void BrImageDraw(BrImage *img)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, ((unsigned char *)(img->data)) + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, 0, 0, 0);
   }
 }
@@ -133,7 +133,7 @@ void BrImageDrawAt(BrImage *img, int x, int y)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, ((unsigned char *)(img->data)) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
                  img->drawW, step, 0, 0, 0);
   }
 }
@@ -159,7 +159,7 @@ void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned 
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, ((unsigned char *)(img->data)) + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, r, g, b);
   }
 }
@@ -186,7 +186,7 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
   n = img->h / img->stripH;
   step = h / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, ((unsigned char *)(img->data)) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
                  w, step, r, g, b);
   }
 }
@@ -462,7 +462,7 @@ extern TgrPak D_8031A3F8[4];
 extern unsigned char D_803163E0[2][32];
 extern unsigned char D_80316420[4];
 extern unsigned char D_8031B1E8[4];
-extern TgrMsgQueue D_80272D48[1];
+extern char D_80272D48[];
 extern int D_80271FA8;
 
 extern short D_802A4BE8;

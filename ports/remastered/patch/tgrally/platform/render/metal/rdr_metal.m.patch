@@ -1,7 +1,7 @@
 --- a/platform/render/metal/rdr_metal.m
 +++ b/platform/render/metal/rdr_metal.m
 @@ -145,6 +145,7 @@
-     s_gamma = v->gamma;
+     s_gamma = (ctrl & 0x08) != 0;
  }
  
 +int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */

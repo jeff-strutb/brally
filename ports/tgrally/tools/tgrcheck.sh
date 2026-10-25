@@ -2,10 +2,8 @@
 # tgrcheck.sh -- what a build does, retrace by retrace, for a few scripts:
 # the per-retrace trace (--trace: each graphics task's display list with the
 # data it names, each swap, each audio buffer, the controllers) and the frame
-# shown as a pixel hash (TGR_FRAMEHASH, the soft renderer), and the audio
-# out (TGR_WAVDUMP), all in check mode (TGR_CHECK=1: one thread at a time on
-# a counted clock, so a run is the same every time). Two builds that differ
-# only below the game must give identical files.
+# shown as a pixel hash (TGR_FRAMEHASH, the soft renderer). Two builds that
+# differ only below the game must give identical files.
 #   tgrcheck.sh run BIN OUTDIR [SCRIPT ...]   record (default scripts below)
 #   tgrcheck.sh cmp DIR_A DIR_B               first difference per file
 # env: SECS (default 300) per script.
@@ -19,7 +17,6 @@ run_one() {
     d=$out/$n
     rm -rf "$d"; mkdir -p "$d/save"
     frames=$(sed -n 's/^frames \([0-9]*\).*/\1/p' "$S/$n.txt" | head -1)
-    TGR_CHECK=1 TGR_WAVDUMP=$d/audio.wav@0 \
     BR_SAVEDIR=$d/save TGR_PAK_FILE=$d/save/pak.bin TGR_FRAMEHASH=$d/frames.txt \
         "$bin" --headless --frames "${frames:-3000}" --script "$S/$n.txt" --trace "$d/trace.txt" > "$d/log.txt" 2>&1 &
     pid=$! i=0
@@ -45,16 +42,11 @@ cmp)
     a=$2 b=$3 bad=0
     for d in "$a"/*/; do
         n=$(basename "$d")
-        for f in trace frames audio; do
-            x=txt; [ $f = audio ] && x=wav
-            [ -f "$a/$n/$f.$x" ] || { echo "$n $f: not in $a"; continue; }
-            if cmp -s "$a/$n/$f.$x" "$b/$n/$f.$x"; then
-                echo "$n $f: identical ($(wc -c < "$a/$n/$f.$x" | tr -d ' ') bytes)"
-            elif [ $x = wav ]; then
-                echo "$n $f: DIFFER, $(cmp "$a/$n/$f.$x" "$b/$n/$f.$x" | head -1)"
-                bad=1
+        for f in trace frames; do
+            if cmp -s "$a/$n/$f.txt" "$b/$n/$f.txt"; then
+                echo "$n $f: identical ($(grep -c '' "$a/$n/$f.txt") lines)"
             else
-                echo "$n $f: DIFFER, first: $(diff "$a/$n/$f.$x" "$b/$n/$f.$x" | sed -n '2p' | cut -c1-120)"
+                echo "$n $f: DIFFER, first: $(diff "$a/$n/$f.txt" "$b/$n/$f.txt" | sed -n '2p' | cut -c1-120)"
                 bad=1
             fi
         done

@@ -1,6 +1,6 @@
 --- a/src/menus/carselect.c
 +++ b/src/menus/carselect.c
-@@ -340,6 +340,7 @@
+@@ -346,6 +346,7 @@
  void BrTextPrint(char *s, int x, int y);
  void BrCarStatBarDraw(int x, int y, int w, int h, float frac);
  void BrFrontPromptSelect(void);
@@ -8,8 +8,8 @@
  void BrFrontPromptContinue(void);
  void BrFadeBarsDraw(void);
  void BrPerfMeterDraw(void);
-@@ -874,6 +875,9 @@
-                          D_8028AE0C[car->x2058].accel / 10.0);
+@@ -881,6 +882,9 @@
+                          *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
        }
      } else {
 +      if (D_803162B0[0] != 6) {
@@ -17,4 +17,4 @@
 +      }
        BrTextSetFont(20);
        if (D_80272070 != 0) {
-         sprintf(buf, "%%ry%%i%s", ((char *)(D_8028AE0C[CAR(0)->x2058].name)));
+         sprintf(buf, "%%ry%%i%s", TGR_PTR(char *, D_8028AE0C[CAR(0)->x2058].name));

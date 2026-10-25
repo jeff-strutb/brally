@@ -1,7 +1,6 @@
 /* carcam.c -- choosing where the camera looks from for a car
  */
 #include "tgr/common.h"
-#include "tgr/tri.h"
 #include "tgr/car.h"
 #include "tgr/track.h"
 
@@ -22,7 +21,15 @@ void BrVec3Scale(BrVec3 *out, BrVec3 *v, float s);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrVec3Lerp(BrVec3 *out, BrVec3 *a, BrVec3 *b, float t);
 extern int D_8028AB0C;                  /* the close camera mode */
-typedef BrTri BrCamPlane;     /* (tgr/tri.h) */
+typedef struct BrCamPlane {     /* a collision triangle's plane (0x20 bytes) */
+  BrVec3 n;                     /* its normal */
+  float d;
+  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
+  TgrAddr v1;  /* BrVec3 * */
+  TgrAddr v2;  /* BrVec3 * */
+  int x1c;
+} BrCamPlane;
+extern BrCamPlane D_80379F80[][150];    /* each grid cell's collision planes */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern int D_8028B710;                  /* the camera was pushed out of a wall */
 short BrCollGridCellAcquire(float, float);
@@ -83,7 +90,7 @@ void BrStub8022BA98(int arg0)
 /* @implements 0x80221108 tgr BrCarCamPlaceChase */
 void BrCarCamPlaceChase(BrCar *car)
 {
-  car->cam = (&car->cams[3]);
+  car->cam = tgr_addr32(&car->cams[3]);
   BrVec3MulAdd((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[0], 6.0f);
   BrVec3MulAddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[1], 2.0f);
   BrVec3AddTo((BrVec3 *)car->cams[3].mtx[3], (BrVec3 *)car->mtx0[2]);
@@ -104,11 +111,11 @@ void BrCarCamInit(BrCar *car)
   float z;
 
   if (D_8026FF18 == 5) {
-    car->cam = (&car->cams[1]);
-    car->cam2 = (&car->cams[1]);
+    car->cam = tgr_addr32(&car->cams[1]);
+    car->cam2 = tgr_addr32(&car->cams[1]);
   } else {
-    car->cam = (&car->cams[0]);
-    car->cam2 = (&car->cams[0]);
+    car->cam = tgr_addr32(&car->cams[0]);
+    car->cam2 = tgr_addr32(&car->cams[0]);
   }
   BrVec3MulAdd((BrVec3 *)car->cams[1].mtx[3], (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2], 4.0f);
   if (D_80270788 != 0) {
@@ -164,8 +171,8 @@ void BrCamChaseStep(BrCar *car)
   prev.x = car->cams[1].mtx[3][0];
   prev.y = car->cams[1].mtx[3][1];
   prev.z = car->cams[1].mtx[3][2];
-  speed = BrVec3Length(&car->body[0].st.angVel);
-  len2 = BrVec3Length(&car->body[0].st.vel);
+  speed = BrVec3Length(&car->st.angVel);
+  len2 = BrVec3Length(&car->st.vel);
   spin = len2 * 0.3f;
   if (speed > 2.5f) {
     speed = speed - 2.5f;
@@ -203,8 +210,8 @@ void BrCamChaseStep(BrCar *car)
     if (D_8028B710 != 0) {
       if (D_80270788 != 0) {
         D_8028B7FC = 30;
-        if (cam == ((BrCarCam *)(car->cam))) {
-          car->cam = (&car->cams[0]);
+        if (cam == TGR_PTR(BrCarCam *, car->cam)) {
+          car->cam = tgr_addr32(&car->cams[0]);
           car->xf48 = 2;
           D_8028B7F8 = 60;
         }
@@ -235,9 +242,9 @@ void BrCamChaseStep(BrCar *car)
   if (car->xf4c != 0) {
     memcpy(&car->cams[0], car, sizeof(BrCarCam));
   } else {
-    car->cams[0].mtx[3][0] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)((char *)(car->model)))->xb0));
-    car->cams[0].mtx[3][1] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)((char *)(car->model)))->xb0));
-    car->cams[0].mtx[3][2] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)((char *)(car->model)))->xb0));
+    car->cams[0].mtx[3][0] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
+    car->cams[0].mtx[3][1] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
+    car->cams[0].mtx[3][2] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb0));
     BrVec3MulAddTo((BrVec3 *)&car->cams[0], (BrVec3 *)car, -20.0f);
     BrVec3Negate((BrVec3 *)&car->cams[0], (BrVec3 *)&car->cams[0]);
     BrVec3Normalise((BrVec3 *)&car->cams[0]);
@@ -272,9 +279,9 @@ void BrCamChaseStep(BrCar *car)
   car->cams[1].fov = D_8028AAC0;
   car->cams[0].fov = D_8028AAC0;
   car->cam4.fov = D_8028AAC0;
-  car->cam4.mtx[3][0] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)((char *)(car->model)))->xb4) * 2.0f);
-  car->cam4.mtx[3][1] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)((char *)(car->model)))->xb4) * 2.0f);
-  car->cam4.mtx[3][2] = BEF(((BrCamView *)((char *)(car->model)))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)((char *)(car->model)))->xb4) * 2.0f);
+  car->cam4.mtx[3][0] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->x + (((BrVec3 *)car->mtx0[3])->x + ((BrVec3 *)car->mtx0[0])->x * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
+  car->cam4.mtx[3][1] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->y + (((BrVec3 *)car->mtx0[3])->y + ((BrVec3 *)car->mtx0[0])->y * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
+  car->cam4.mtx[3][2] = BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb8) * ((BrVec3 *)car->mtx0[2])->z + (((BrVec3 *)car->mtx0[3])->z + ((BrVec3 *)car->mtx0[0])->z * BEF(((BrCamView *)TGR_PTR(char *, car->model))->xb4) * 2.0f);
   car->cam4.mtx[0][0] = -car->mtx0[0][0];
   car->cam4.mtx[0][1] = -car->mtx0[0][1];
   car->cam4.mtx[0][2] = -car->mtx0[0][2];
@@ -341,11 +348,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, (((BrVec3 *)(pPlane->v0))), &car->camTarget);
+        BrVec3Sub(&toV0, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), &car->camTarget);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, &car->camTarget, &dir, t);
-          if (BrTriContainsPoint(&hit, (((BrVec3 *)(pPlane->v0))), (((BrVec3 *)(pPlane->v1))), (((BrVec3 *)(pPlane->v2))), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), BRV(TGR_PTR(BrVec3be *, pPlane->v1)), BRV(TGR_PTR(BrVec3be *, pPlane->v2)), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;
@@ -368,11 +375,11 @@ void BrCarCamWallPush(BrCar *car, BrCarCam *cam, BrVec3 *prev)
     for (; pPlane != pEnd; pPlane++) {
       denom = BrVec3Dot(&dir, &pPlane->n);
       if (denom < 0.0f) {
-        BrVec3Sub(&toV0, (((BrVec3 *)(pPlane->v0))), prev);
+        BrVec3Sub(&toV0, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), prev);
         t = BrVec3Dot(&toV0, &pPlane->n) / denom;
         if (t > 0.0f && t < tBest) {
           BrVec3MulAdd(&hit, prev, &dir, t);
-          if (BrTriContainsPoint(&hit, (((BrVec3 *)(pPlane->v0))), (((BrVec3 *)(pPlane->v1))), (((BrVec3 *)(pPlane->v2))), &pPlane->n)) {
+          if (BrTriContainsPoint(&hit, BRV(TGR_PTR(BrVec3be *, pPlane->v0)), BRV(TGR_PTR(BrVec3be *, pPlane->v1)), BRV(TGR_PTR(BrVec3be *, pPlane->v2)), &pPlane->n)) {
             tBest = t;
             pBest = pPlane;
             hitOut.x = hit.x;
@@ -472,7 +479,7 @@ void BrCarCamTargetStep(BrCar *car)
     car->camTarget.x = car->mtx0[3][0];
     car->camTarget.y = car->mtx0[3][1];
     car->camTarget.z = car->mtx0[3][2] + 0.66f;
-    spin = BrVec3Length(&car->body[0].st.angVel);
+    spin = BrVec3Length(&car->st.angVel);
     if (D_8026FF18 != 5) {
       want = 0.0f;
       if (spin < 3.5f) {

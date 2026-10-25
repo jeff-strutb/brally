@@ -29,6 +29,6 @@ int BrTrackSelectable(int n)
   if (D_8026FF18 == 2 && (n == D_8028AE04 || n == D_8028AE04 + 2)) {
     return 1;
   }
-  return (((BrSeason *)(D_8031B760[0].season))->xce & (1 << n)) && BrTrackIsPresent(n);
+  return (TGR_PTR(BrSeason *, D_8031B760[0].season)->xce & (1 << n)) && BrTrackIsPresent(n);
 }
 

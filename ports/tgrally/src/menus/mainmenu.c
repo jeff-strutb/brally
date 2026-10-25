@@ -4,13 +4,12 @@
 #include "tgr/common.h"
 #include "tgr/romimage.h"
 #include "tgr/menu.h"
-#include "tgr/track.h"
 
 /* -- declarations -- */
 void BrModeSet(void (*fn)(void));
 void BrFrontMenuEnter(MenuItem **items, int *count);
 int BrMenu(void *, int, void *, void *, void *, int, int, int, int, int, int);
-void BrMusicStart(unsigned char *, unsigned char *);
+void BrMusicStart(int, int);
 #include "tgr/load.h"
 void BrMusicStop(void);
 void BrSeasonPickRace(void);
@@ -40,7 +39,7 @@ extern int D_80272380;
 extern unsigned char D_802724F4;
 extern int D_80316380;
 #define D_000EBC00 0xEBC00        /* a ROM offset */
-extern unsigned char D_802AC400[];
+extern char D_802AC400[];
 extern int D_8028AAB0;                  /* the screen's width */
 void BrTextSetFont(int size);
 void BrTextHighlightOff(void);
@@ -96,7 +95,7 @@ void BrMainMenu(void)
     if (D_802A49C0 < 8) {
       BrMusicStop();
       BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
-      BrMusicStart(D_80025C00, D_802AC400);   /* the module, unpacked in the track's buffer */
+      BrMusicStart(0x80025C00, tgr_addr32(D_802AC400));
     }
     D_80271FB0 = &D_802722C0;
     D_80271FB4 = 25;

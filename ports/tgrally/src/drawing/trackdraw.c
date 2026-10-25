@@ -2,7 +2,6 @@
  * standing in them
  */
 #include "tgr/common.h"
-#include "tgr/ent.h"
 
 /* -- declarations -- */
 typedef struct BrDrawSortItem { /* sorted before drawing */
@@ -66,7 +65,7 @@ extern float D_8031AB10[4][4];    /* an object's matrix times the view */
 extern int D_8031B360[4];
 extern int D_8026FF18;          /* the game mode */
 extern int D_8028B940;          /* the track */
-#define D_8031C5BC ((BrSeason *)D_8031B760[0].season)   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
+#define D_8031C5BC TGR_PTR(BrSeason *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
 float BrMat4MaxAbs(float m[16]);
 void BrFogSetup(void);
 void BrViewportApply(void);
@@ -85,7 +84,11 @@ typedef struct BrDrawCell {     /* a grid cell near the camera (4 bytes) */
   unsigned char row;
   short dist;                   /* 0x02  squared distance in cells */
 } BrDrawCell;
-
+typedef struct BrRaceEnt {      /* a race entity (0x78 bytes), as rank.c */
+  char pad00[0x60];
+  TgrAddr car;                   /* BrCar * -- 0x60 */
+  char pad64[0x78 - 0x64];
+} BrRaceEnt;
 extern int D_8028BD94;          /* the rows the view's grid span covers */
 extern int D_8028BD9C;
 extern int D_8034E5B0[64];      /* per row: its first and last column */
@@ -110,6 +113,7 @@ extern float D_802AA00C;
 extern float D_8031B338[3];     /* the sun's direction */
 extern BrVec3 D_8035D510;       /* the light direction this frame */
 extern unsigned char D_8028A9F0[0x18];   /* the light template, as the RSP reads it */
+extern BrRaceEnt D_803239A0[];
 typedef struct BrViewRect { int x; int y; int w; int h; int x10; } BrViewRect;
 extern BrViewRect D_8031B2C8[2];
 unsigned int BrTrackGridCell(int col, int row);
@@ -187,8 +191,8 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
   gp = &D_8028A858;
   vtx = D_8028C764;
   obj = &BR_TRACKOBJS()[idx];
-  start = (unsigned int *)tgr_ptr32(obj->dl);   /* its list, in the file */
-  if (cars != 0 && D_8028AAF4 != &D_8028AAF0->cam4 && (obj->flags & 0x200) == 0) {
+  start = BEPTR(unsigned int *, obj->dl);
+  if (cars != 0 && D_8028AAF4 != &D_8028AAF0->cam4 && (BE16(obj->flags) & 0x200) == 0) {
     BrPerfMark(0, 0x50, 0xFA, 0x50, 0xFF);
     {
       Gfx *g_ = D_8028A858++;
@@ -308,9 +312,9 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
     G(0xBA001402, 0x00100000);
     G(0xB900031D, D_8028C74C | D_8028C750);
     G(0xFC26A004, 0x1FFC93F8);
-    D_8028AA10 += obj->vtxs * 3;
-    D_8028AA08 += obj->tris * 3;
-    D_8028AA38 += obj->x52 * 3;
+    D_8028AA10 += BE16(obj->vtxs) * 3;
+    D_8028AA08 += BE16(obj->tris) * 3;
+    D_8028AA38 += BE16(obj->x52) * 3;
     {
       unsigned char clip[32];
       unsigned int *mark;
@@ -370,7 +374,7 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       if (s1 < 0.5f) {
         s1 = 0.5f;
       }
-      model = (BrCarModel *)((char *)(D_8031B760[i].model));
+      model = (BrCarModel *)TGR_PTR(char *, D_8031B760[i].model);
       s0 = D_802AA004 / BEF(model->wheel[0][0]) / s0;
       s1 = D_802AA008 / BEF(model->wheel[0][1]) / s1;
       BrVec3Normalise(&D_8035D1C0);
@@ -378,7 +382,7 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
       b = -D_8035D1C0.y * s0;
       d = D_8035D1C0.x * s1;
       e = -D_8035D1C0.y * s1;
-      memcpy((float (*)[4])D_8031AB10, obj->m, sizeof(float[4][4]));
+      br_mat4_from((float (*)[4])D_8031AB10, (const bef_t (*)[4])obj->m);
       D_8031AB10[3][0] -= D_8031B760[i].mtx0[3][0];
       D_8031AB10[3][1] -= D_8031B760[i].mtx0[3][1];
       D_8031AB50[0] = a;
@@ -585,9 +589,9 @@ void BrTrackShadowDraw(int idx, unsigned int cars, int pass)
     }
     G(0xE8000000, 0);
     G(0x06000000, start);
-    D_8028AA10 += obj->vtxs;
-    D_8028AA08 += obj->tris;
-    D_8028AA38 += obj->x52;
+    D_8028AA10 += BE16(obj->vtxs);
+    D_8028AA08 += BE16(obj->tris);
+    D_8028AA38 += BE16(obj->x52);
   }
   D_8028C764 = vtx;
   D_8028C75C = dl;
@@ -645,7 +649,7 @@ void BrTrackDrawSetup(void)
   BrCar *car;
   float lx;
   float ly;
-  float *pos;                   /* the object's translation row */
+  bef_t *pos;                   /* the object's translation row: cartridge data */
   BrVec3 v;
 
   D_8028C76C = 0;
@@ -678,7 +682,7 @@ full:
     D_8035D1D0[i].dist = dx * dx + dy * dy;
   }
   BrQsort(D_8035D1D0, n, 4, BrDrawSortCmp);
-  BrFill64(D_80351D80, tgr_track.nObjs, -1);
+  BrFill64(D_80351D80, BES32(D_80025C00.nObjs), -1);
   D_8028C740 = 0;
   D_8028C778 = -1;
   D_8028C780 = -1;
@@ -686,7 +690,7 @@ full:
   near2 = D_8028AACC / (float)32;
   near2 -= 3;
   near2 *= near2;
-  if (((BrPadRec *)((unsigned int *)(D_8028AAF0->pad)))->ghost != 0 && D_8028AAF4 == &D_8028AAF0->cams[3]) {
+  if (((BrPadRec *)TGR_PTR(unsigned int *, D_8028AAF0->pad))->ghost != 0 && D_8028AAF4 == &D_8028AAF0->cams[3]) {
     lim = 9;
   } else {
     lim = 1;
@@ -705,7 +709,7 @@ full:
     r = D_8035D1D0[n].row;
     if (D_8026FF64 != 0 && D_80351D80[D_8026FF64] != 0) {
       pos = BR_TRACKOBJS()[D_8026FF64].m[3];
-      if (BrGridSpanHasPoint(pos[0], pos[1])) {
+      if (BrGridSpanHasPoint(BEF(pos[0]), BEF(pos[1]))) {
         D_80352580[D_8028C740++] = D_8026FF64;
         D_80351D80[D_8026FF64] = 0;
       }
@@ -751,7 +755,7 @@ full:
   }
   D_8028C770 = 0;
   for (k = 0; k < D_8028AB00; k++) {
-    D_8028C770 |= (BR_TRACKOBJS()[D_8031B248[k]].x4a);
+    D_8028C770 |= BE16(BR_TRACKOBJS()[D_8031B248[k]].x4a);
   }
   lx = D_8028AAF4->mtx[0][0];
   ly = D_8028AAF4->mtx[0][1];
@@ -777,7 +781,7 @@ full:
   ((signed char *)D_8028C640[D_8028C6A0].l)[9] = (int)D_8035D510.y;   /* trunc.w.s then sb, as the ROM */
   ((signed char *)D_8028C640[D_8028C6A0].l)[10] = (int)D_8035D510.z;   /* trunc.w.s then sb, as the ROM */
   for (i = 0; i < D_8028B7F0; i++) {
-    car = ((BrCar *)(D_803239A0[i].car));
+    car = TGR_PTR(BrCar *, D_803239A0[i].car);
     if (car != 0) {
       v.x = car->mtx0[3][0];
       v.y = car->mtx0[3][1];
@@ -1002,10 +1006,10 @@ void BrTrackDraw(int pass)
       /* the first pass: an object flagged 8 is kept back for the second */
       obj = D_80352580[i];
       o = &BR_TRACKOBJS()[obj];
-      if ((o->hide & D_8028C770) || (D_8028C758 != 0 && D_8028C754 == obj)) {
+      if ((BE16(o->hide) & D_8028C770) || (D_8028C758 != 0 && D_8028C754 == obj)) {
         continue;
       }
-      fl = o->flags;
+      fl = BE16(o->flags);
       if (fl & D_8035D520) {
         continue;
       }
@@ -1019,7 +1023,7 @@ void BrTrackDraw(int pass)
     } else {
       obj = D_80352580[last - i + split];
       o = &BR_TRACKOBJS()[obj];
-      fl = o->flags;
+      fl = BE16(o->flags);
     }
     if (fl & 0x2000) {
       float s;
@@ -1035,16 +1039,16 @@ void BrTrackDraw(int pass)
         G(0x01020040, 0x28A8C0);
         billboard = 1;
       }
-      s = o->m[0][0] * D_8035D51C + 0.375f;
+      s = BEF(o->m[0][0]) * D_8035D51C + 0.375f;
       if (s == 0) {
-        s = o->m[0][0] * (1.1 * D_8035D51C) + 0.375;
+        s = BEF(o->m[0][0]) * (1.1 * D_8035D51C) + 0.375;
       }
       s = 1.99975586f / s;
-      D_8031AB10[3][0] = ((o->m[3][0] * mm[0][0] + o->m[3][1] * mm[1][0] + o->m[3][2] * mm[2][0]) + o->m[3][3] * mm[3][0]) * s;
-      D_8031AB10[3][1] = ((o->m[3][0] * mm[0][1] + o->m[3][1] * mm[1][1] + o->m[3][2] * mm[2][1]) + o->m[3][3] * mm[3][1]) * s;
-      D_8031AB10[3][2] = ((o->m[3][0] * mm[0][2] + o->m[3][1] * mm[1][2] + o->m[3][2] * mm[2][2]) + o->m[3][3] * mm[3][2]) * s;
-      D_8031AB10[3][3] = ((o->m[3][0] * mm[0][3] + o->m[3][1] * mm[1][3] + o->m[3][2] * mm[2][3]) + o->m[3][3] * mm[3][3]) * s;
-      s *= o->m[0][0];
+      D_8031AB10[3][0] = ((BEF(o->m[3][0]) * mm[0][0] + BEF(o->m[3][1]) * mm[1][0] + BEF(o->m[3][2]) * mm[2][0]) + BEF(o->m[3][3]) * mm[3][0]) * s;
+      D_8031AB10[3][1] = ((BEF(o->m[3][0]) * mm[0][1] + BEF(o->m[3][1]) * mm[1][1] + BEF(o->m[3][2]) * mm[2][1]) + BEF(o->m[3][3]) * mm[3][1]) * s;
+      D_8031AB10[3][2] = ((BEF(o->m[3][0]) * mm[0][2] + BEF(o->m[3][1]) * mm[1][2] + BEF(o->m[3][2]) * mm[2][2]) + BEF(o->m[3][3]) * mm[3][2]) * s;
+      D_8031AB10[3][3] = ((BEF(o->m[3][0]) * mm[0][3] + BEF(o->m[3][1]) * mm[1][3] + BEF(o->m[3][2]) * mm[2][3]) + BEF(o->m[3][3]) * mm[3][3]) * s;
+      s *= BEF(o->m[0][0]);
       D_8031AB10[0][0] = mm[0][0] * s;
       D_8031AB10[0][1] = mm[0][1] * s;
       D_8031AB10[0][2] = mm[0][2] * s;
@@ -1086,11 +1090,11 @@ void BrTrackDraw(int pass)
       if (32767.0 < hi || lo < -32767.0) {
         if (i == 1) {
           tgr_print("Bad Final Matrix: in=%d (%s), s=%f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n",
-                       obj, tgr_track.names == 0 ? "???" : tgr_track.names[obj], s,
-                       o->m[0][0], o->m[0][1], o->m[0][2], o->m[0][3],
-                       o->m[1][0], o->m[1][1], o->m[1][2], o->m[1][3],
-                       o->m[2][0], o->m[2][1], o->m[2][2], o->m[2][3],
-                       o->m[3][0], o->m[3][1], o->m[3][2], o->m[3][3],
+                       obj, BE32(D_80025C00.names) == 0 ? "???" : BEPTR(char *, BEPTR(be32_t *, D_80025C00.names)[obj]), s,
+                       BEF(o->m[0][0]), BEF(o->m[0][1]), BEF(o->m[0][2]), BEF(o->m[0][3]),
+                       BEF(o->m[1][0]), BEF(o->m[1][1]), BEF(o->m[1][2]), BEF(o->m[1][3]),
+                       BEF(o->m[2][0]), BEF(o->m[2][1]), BEF(o->m[2][2]), BEF(o->m[2][3]),
+                       BEF(o->m[3][0]), BEF(o->m[3][1]), BEF(o->m[3][2]), BEF(o->m[3][3]),
                        mm[0][0], mm[0][1], mm[0][2], mm[0][3],
                        mm[1][0], mm[1][1], mm[1][2], mm[1][3],
                        mm[2][0], mm[2][1], mm[2][2], mm[2][3],
@@ -1130,22 +1134,22 @@ void BrTrackDraw(int pass)
     } else {
       billboard = 0;
       mtx = BrMtxAlloc();
-      memcpy(om, o->m, sizeof(float[4][4]));   /* the cartridge's matrix, natively */
+      br_mat4_from(om, (const bef_t (*)[4])o->m);   /* the cartridge's matrix, natively */
       guMtxF2L(&om[0][0], mtx);
       g = D_8028A858++;
       tgr_wr32(&g->words.w0, 0x01020040);
       tgr_wr32(&g->words.w1, tgr_addr32(mtx) - 0x80000000);
     }
     /* the state the object's flags ask for */
-    fl = o->flags;
+    fl = BE16(o->flags);
     if (fl & 0x4A4) {
       if (fl & 0x400) {
         if (D_8028AA80 != 0 && (fl & 0x100)) {
           G(0xBC00000A, (D_8028AB58 >> 1) & 0x7F7F7F00);
           G(0xBC00040A, (D_8028AB58 >> 1) & 0x7F7F7F00);
-          G(0xBC00200A, D_8031B360[o->flags & 3]);
-          G(0xBC00240A, D_8031B360[o->flags & 3]);
-          fl = o->flags;
+          G(0xBC00200A, D_8031B360[BE16(o->flags) & 3]);
+          G(0xBC00240A, D_8031B360[BE16(o->flags) & 3]);
+          fl = BE16(o->flags);
         } else {
           {
             Gfx *g_ = D_8028A858++;
@@ -1159,19 +1163,19 @@ void BrTrackDraw(int pass)
             tgr_wr32(&g_->words.w0, 0xBC00040A);
             tgr_wr32(&g_->words.w1, 0);
           }
-          G(0xBC00200A, D_8031B360[o->flags & 3]);
-          G(0xBC00240A, D_8031B360[o->flags & 3]);
-          fl = o->flags;
+          G(0xBC00200A, D_8031B360[BE16(o->flags) & 3]);
+          G(0xBC00240A, D_8031B360[BE16(o->flags) & 3]);
+          fl = BE16(o->flags);
         }
       }
       if (fl & 4) {
         G(0xB6000000, 0x3000);
-        fl = o->flags;
+        fl = BE16(o->flags);
       }
       if ((fl & 0x20) && D_8028AA78 != 0 && D_8028AA80 == 0 && D_8028AA84 == 0
           && D_8028AA8C == 0) {
         G(0xB6000000, 0x10000);
-        fl = o->flags;
+        fl = BE16(o->flags);
       }
       if ((fl & 0x80) && D_8028AA48 != 0) {
         G(0xB6000000, 0x200);
@@ -1180,31 +1184,31 @@ void BrTrackDraw(int pass)
     if (D_8028C788 < i && i < D_8028C78C) {
       G(0xBB001001, 0xFFFFFFFF);
       G(0xE8000000, 0);
-      G(0x06000000, o->dl);
-      D_8028AA10 += ((short)o->vtxs);
-      D_8028AA08 += ((short)o->tris);
-      D_8028AA38 += ((short)o->x52);
+      G(0x06000000, BE32(o->dl));
+      D_8028AA10 += BES16(o->vtxs);
+      D_8028AA08 += BES16(o->tris);
+      D_8028AA38 += BES16(o->x52);
     } else {
       BrTrackShadowDraw(obj, D_80351D80[obj], pass);
     }
-    fl = o->flags;
+    fl = BE16(o->flags);
     if (fl & 0x4A4) {
       if ((fl & 0x80) && D_8028AA48 != 0) {
         G(0xB7000000, 0x200);
-        fl = o->flags;
+        fl = BE16(o->flags);
       }
       if (fl & 0x400) {
         G(0xBC00000A, D_8028AB58);
         G(0xBC00040A, D_8028AB58);
         G(0xBC00200A, D_8028AB5C);
         G(0xBC00240A, D_8028AB5C);
-        fl = o->flags;
+        fl = BE16(o->flags);
       }
       if (fl & 4) {
         G(0xB7000000, D_8028A8AC ^ D_8028A8A8 ? 0x1000 : 0x2000);
       }
       if (D_8028AA78 != 0 && D_8028AA80 == 0 && D_8028AA84 == 0 && D_8028AA8C == 0
-          && (((short)o->flags) & 0x20)) {
+          && (BES16(o->flags) & 0x20)) {
         G(0xB7000000, 0x10000);
       }
     }

@@ -140,9 +140,9 @@ static int s_gamma;                                   /* the VI's gamma correcti
 
 int rdr_covers(void) { return 0; }
 
-void rdr_video(const RdrVideo *v)
+void rdr_vi(uint32_t ctrl)
 {
-    s_gamma = v->gamma;
+    s_gamma = (ctrl & 0x08) != 0;
 }
 
 int rdr_presents(void) { return 1; }

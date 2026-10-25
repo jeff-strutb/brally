@@ -125,33 +125,6 @@ def leaves(t, off=0):
     return [(off, 'b', s)]
 
 
-def pointees(t):
-    """The pointee type of each pointer leaf of a type, in leaves() order."""
-    t = t.get_canonical()
-    k = t.kind
-    if k in (K.POINTER, K.BLOCKPOINTER):
-        return [t.get_pointee().get_canonical()]
-    if k == K.CONSTANTARRAY:
-        return pointees(t.element_type) * t.element_count
-    if k == K.RECORD:
-        fields = list(t.get_fields())
-        if t.get_declaration().kind == ci.CursorKind.UNION_DECL:
-            fields = fields[:1]
-        return [x for f in fields for x in pointees(f.type)]
-    return []
-
-
-def ptype_of(t0, t1):
-    """(spelling, n64 size, native size, runs) of a pointee laid out
-    differently natively (a record holding a native pointer), else None."""
-    if t0.kind not in (K.RECORD, K.CONSTANTARRAY) or t0.get_size() <= 0 or t0.get_size() == t1.get_size():
-        return None
-    try:
-        return (t0.spelling, t0.get_size(), t1.get_size(), runs(leaves(t0), leaves(t1)))
-    except Unlayable:
-        return None
-
-
 def paths(t, path='', off=0):
     """[(off, size, path)] of a type's scalar and pointer members, the path
     as C spells it after the object's name (".w", "[3].x")."""
@@ -173,25 +146,16 @@ def paths(t, path='', off=0):
     return [(off, max(1, t.get_size()), path)]
 
 
-def runs(n64, nat, pts=None):
+def runs(n64, nat):
     """Pair the two leaf lists into strided runs:
-    [(n64off, natoff, size (0 = pointer), count, n64stride, natstride)];
-    with pts (a type index per pointer leaf, -1 for none) a typed pointer's
-    size is -(1 + its type), so pointers to different types do not merge."""
+    [(n64off, natoff, size (0 = pointer), count, n64stride, natstride)]."""
     if len(n64) != len(nat):
         raise Unlayable('leaf count differs (%d/%d)' % (len(n64), len(nat)))
     out = []
-    pi = 0
     for (o0, k0, s0), (o1, k1, s1) in zip(n64, nat):
-        if k0 != k1:
+        if k0 != k1 or (k0 == 'b' and s0 != s1):
             raise Unlayable('leaf kinds differ at %d' % o0)
-        # an integer wider natively (a pointer-sized one) keeps both sizes:
-        # the N64's in the low half, the native one above
-        s = (s0 if s0 == s1 else s0 | s1 << 16) if k0 == 'b' else 0
-        if k0 == 'p' and pts is not None:
-            t = pts[pi] if pi < len(pts) else -1
-            pi += 1
-            s = -(1 + t) if t >= 0 else 0
+        s = s0 if k0 == 'b' else 0
         if out:
             a0, a1, asz, n, st0, st1 = out[-1]
             if asz == s:
@@ -215,7 +179,7 @@ def tus():
 def parse(tu, target):
     idx = ci.Index.create()
     inc = os.path.join(ROOT, 'ports/tgrally/platform/include')
-    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')]   # (both ABIs: no C library headers)
+    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else []
     return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC'] + extra + [
                                                     '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
                                                     '-I' + inc, '-include', os.path.join(inc, 'tgr_os.h'),
@@ -284,16 +248,6 @@ def scan(tu):
                 l0, l1 = leaves(t0.element_type), leaves(t1.element_type)
             except Unlayable as e:
                 err = str(e)
-        ptl = None                      # per pointer leaf: a pointee laid out differently, or None
-        if not err and l0 is not None:
-            try:
-                b0 = t0 if complete else t0.element_type.get_canonical()
-                b1 = t1 if complete else t1.element_type.get_canonical()
-                p0, p1 = pointees(b0), pointees(b1)
-                if len(p0) == len(p1):
-                    ptl = [ptype_of(x, y) for x, y in zip(p0, p1)]
-            except Exception:
-                ptl = None
         try:
             pth = paths(t0) if complete and t0.get_size() <= 0x10000 else None
         except Exception:
@@ -313,7 +267,7 @@ def scan(tu):
                     psize = pt.get_size()
                 except Unlayable:
                     pl = None
-        out[name] = dict(ptr=ptr, paths=pth, pt=ptl, spelling=c0.type.spelling, st=st, complete=complete,
+        out[name] = dict(ptr=ptr, paths=pth, spelling=c0.type.spelling, st=st, complete=complete,
                          n64=t0.get_size() if complete else None, nat=t1.get_size() if complete else None,
                          nat_el=None if complete else t1.element_type.get_canonical().get_size(),
                          l0=l0, l1=l1, elem=el, elsize=els, natelsize=None if complete else nels, err=err,
@@ -380,16 +334,6 @@ def main():
         return min(nxt, lim) - a
 
     arena, lift, native, allunits = [], [], [], []
-    types, type_rows = {}, []       # pointee types laid out differently natively (tgr_types)
-
-    def tindex(pt):
-        if pt is None:
-            return -1
-        if pt[0] not in types:
-            types[pt[0]] = len(type_rows)
-            type_rows.append(pt)
-        return types[pt[0]]
-    relaid = {}     # name -> (native size, [(n64off, natoff, size (0: a pointer), count, n64stride, natstride)])
     for name in sorted(decl, key=lambda n: addr_of(n, syms)):
         a = addr_of(name, syms)
         rows = decl[name]
@@ -406,7 +350,9 @@ def main():
             if r['st'] != 'extern':
                 report.append('%s: defined in %s (game data lives in the arena: declare it extern)' % (
                     name, r['tu']))
-            pass
+            if r['nat'] is not None and r['nat'] != r['n64'] and not is_native:
+                report.append('%s: %s is %s bytes natively, %s on the N64 (%s)' % (
+                    name, r['spelling'], r['nat'], r['n64'], os.path.basename(r['tu'])))
         n64s = sorted({r['n64'] for r in rows if r['n64'] is not None})
         if any(r['ptr'] for r in rows) and reg != 'arena':
             # a pointer variable or a table of pointers: a native object (its
@@ -423,12 +369,7 @@ def main():
                     pu.setdefault(o, set()).add(z)
             punits = sorted((o, min(zs)) for o, zs in pu.items() if len(zs) == 1)
             psize = max([r['psize'] or 0 for r in rows] or [0])
-            npt = -1
-            for r in rows:
-                if r['pt']:
-                    npt = tindex(r['pt'][0])
-                    break
-            native.append((name, a, max(1, n0 // 4), reg == 'data', punits, psize, npt))
+            native.append((name, a, max(1, n0 // 4), reg == 'data', punits, psize))
             continue
         units = {}
         for r in rows:
@@ -442,7 +383,7 @@ def main():
         arena.append((name, a))
         if reg == 'arena':
             continue
-        owner = max(rows, key=lambda r: (r['complete'], r['n64'] or 0, r['nat'] or 0, '*' in r['spelling'], -len(r['tu'])))
+        owner = max(rows, key=lambda r: (r['complete'], r['n64'] or 0, '*' in r['spelling'], -len(r['tu'])))
         ext = extent(a)
         if owner['err']:
             report.append('%s: cannot lay out %s: %s' % (name, owner['spelling'], owner['err']))
@@ -460,40 +401,6 @@ def main():
         elif n0 > ext:
             report.append('%s: %s is %d bytes, the next symbol %d bytes on (%s)' % (
                 name, owner['spelling'], n0, ext, os.path.basename(owner['tu'])))
-        # laid out differently natively (a pointer field is a native pointer):
-        # the object is the native layout, filled field by field (tgr_lift)
-        # and reached by original address through the same field map
-        if owner['complete']:
-            nl0, nl1, nn = owner['l0'], owner['l1'], owner['nat']
-            differs = owner['nat'] != owner['n64']
-        else:
-            es, ns = owner['elsize'] or 1, owner['natelsize'] or 1
-            nl0 = [(i * es + o, k, z) for i in range(cnt) for o, k, z in owner['l0']]
-            nl1 = [(i * ns + o, k, z) for i in range(cnt) for o, k, z in owner['l1']]
-            nn = cnt * ns
-            differs = ns != es
-        pts = None
-        if owner['pt'] is not None:
-            pts = [tindex(x) for x in owner['pt']]
-            if not owner['complete']:
-                pts = pts * cnt
-        # every view must put a field it shares with the owner at the
-        # owner's native offset (a shorter view of a prefix is fine)
-        want = dict((o0, o1) for (o0, _k0, _z0), (o1, _k1, _z1) in zip(nl0, nl1))
-        for r in rows:
-            if r is owner or not r['l0'] or not r['l1'] or len(r['l0']) != len(r['l1']):
-                continue
-            bad = [o0 for (o0, _k0, _z0), (o1, _k1, _z1) in zip(r['l0'], r['l1'])
-                   if o0 in want and want[o0] != o1]
-            if bad:
-                report.append('%s: %s (%s) puts +0x%X natively where %s does not: one definition is needed' % (
-                    name, r['spelling'], os.path.basename(r['tu']), bad[0], owner['spelling']))
-        if differs:
-            try:
-                relaid[name] = (nn, runs(nl0, nl1, pts))
-            except Unlayable as e:
-                report.append('%s: cannot map %s to its native layout: %s' % (name, owner['spelling'], e))
-            continue
         units = [(o, 4 if k == 'p' else z) for o, k, z in lv if (4 if k == 'p' else z) > 1]
         # what other declarations know of bytes the owner leaves as padding
         # (one TU's view of a record often names fields another pads over)
@@ -595,17 +502,17 @@ def main():
     lines += ['void *%s[%d];' % (x[0], x[2]) for x in native]
     # the runs of what each one points at, after the symbols' runs
     nat_rows = []
-    for nm, a, n, d, punits, psize, npt in native:
+    for nm, a, n, d, punits, psize in native:
         r0 = len(runlist)
         for o, z in punits:
             runlist.append((o, z, 1, 0))
-        nat_rows.append((nm, a, n, d, r0, len(runlist) - r0, npt))
+        nat_rows.append((nm, a, n, d, r0, len(runlist) - r0))
     lines = lines[:lines.index('const TgrRun tgr_runs[] = {') + 1] + \
         ['    {0x%X, %d, %d, %d},' % r for r in runlist] + \
         lines[lines.index('    {0, 0, 0, 0}'):]
     lines += ['const TgrNat tgr_natives[] = {']
-    lines += ['    {%s, 0x%08X, %d, %d, %d, %d, %d},' % r for r in nat_rows]
-    lines += ['    {0, 0, 0, 0, 0, 0, -1}', '};', 'const int tgr_nnatives = %d;' % len(native), '']
+    lines += ['    {%s, 0x%08X, %d, %d, %d, %d},' % r for r in nat_rows]
+    lines += ['    {0, 0, 0, 0, 0, 0}', '};', 'const int tgr_nnatives = %d;' % len(native), '']
     impl = implemented()
     fns = sorted(impl)
     lines += ['extern char %s[];' % impl[va] for va in fns]
@@ -625,91 +532,16 @@ def main():
     else:
         lines += ['.globl tgr_rdram', '.bss', '.p2align 12', '.type tgr_rdram, @object',
                   'tgr_rdram:', '.space 0x800000', '.size tgr_rdram, 0x800000']
-    # the game's image (.data, .bss): each symbol its own object, as long as
-    # the distance to the next (so padding the game reads stays its own); a
-    # name inside another object is that object plus its offset.  The fixed
-    # RAM outside the image stays the arena.
-    inner = {}
-    for line in aliases:
-        f = line.split()
-        nm, owner, off = f[0], f[1], f[-1]       # the path between may hold spaces
-        inner[nm] = (owner, int(off[3:], 16))
-    tops = sorted(addr_of(n, syms) for n, a in arena if region(a) in ('data', 'bss') and n not in inner)
-
-    def objsize(a):
-        i = bisect.bisect_right(tops, a)
-        lim = BSS_LO if region(a) == 'data' else BSS_HI
-        return min(tops[i] if i < len(tops) else lim, lim) - a
-    objs = []
     for name, a in arena:
-        if region(a) not in ('data', 'bss'):
-            lines += ['.globl %s%s' % (us, name), '%s%s = %stgr_rdram + 0x%X' % (us, name, us, a - ARENA_LO)]
-        elif name not in inner:
-            n = objsize(a)
-            nn = relaid[name][0] + max(0, n - (max([r['n64'] or 0 for r in decl[name]] or [0]))) \
-                if name in relaid else n
-            objs.append((a, n, name, nn))
-            n = nn
-            if 'apple' in NATIVE or 'darwin' in NATIVE:
-                lines += ['.globl _%s' % name, '.zerofill __DATA,__bss,_%s,%d,4' % (name, n)]
-            elif 'mingw' in NATIVE or 'windows' in NATIVE:
-                lines += ['.globl %s%s' % (us, name), '.bss', '.p2align 4', '%s%s:' % (us, name), '.space %d' % n]
-            else:
-                lines += ['.globl %s' % name, '.bss', '.p2align 4', '.type %s, @object' % name,
-                          '%s:' % name, '.space %d' % n, '.size %s, %d' % (name, n)]
-    def nat_off(owner, off):
-        """an offset in owner's original layout, in its native one"""
-        if owner not in relaid:
-            return off
-        for o0, o1, z, c, s0, s1 in relaid[owner][1]:
-            n = (z & 0xFFFF) if z > 0 else 4
-            k = (off - o0) // s0 if c > 1 and s0 and off >= o0 else 0
-            if off >= o0 and k < c and off - o0 - k * s0 < n:
-                return o1 + k * s1 + (off - o0 - k * s0 if z > 0 and not z >> 16 else 0)
-        # past the fields: one for one after them, as platform/os/addr.c maps it
-        end0 = max(o0 + (c - 1) * s0 + ((z & 0xFFFF) if z > 0 else 4) for o0, o1, z, c, s0, s1 in relaid[owner][1])
-        ext, nn = next((n, m) for aa, n, nm, m in objs if nm == owner)
-        if off >= end0:
-            return nn - (ext - end0) + (off - end0)
-        report.append('%s: +0x%X in %s falls in no field of its native layout' % (owner, off, owner))
-        return off
-    for name, a in arena:
-        if name in inner:
-            owner, off = inner[name]
-            while owner in inner:                   # (a name inside a name inside an object)
-                owner, o2 = inner[owner]
-                off += o2
-            lines += ['.globl %s%s' % (us, name), '%s%s = %s%s + 0x%X' % (us, name, us, owner, nat_off(owner, off))]
+        lines += ['.globl %s%s' % (us, name), '%s%s = %stgr_rdram + 0x%X' % (us, name, us, a - ARENA_LO)]
     open(os.path.join(GEN, 'arena.s'), 'w').write('\n'.join(lines) + '\n')
-    objs.sort()
-    def maprow(r):
-        o0, o1, z, c, s0, s1 = r
-        return '    {0x%X, 0x%X, %d, %d, 0x%X, 0x%X, %d},' % (o0, o1, max(z, 0), c, s0, s1, -z - 1 if z < 0 else -1)
-    obj_lines = ['/* the game\'s image objects by original address (platform/os/addr.c) */']
-    obj_lines += ['extern char %s[];' % o[2] for o in objs]
-    for a, n, nm, nn in objs:
-        if nm in relaid:
-            obj_lines += ['static const TgrMap map_%s[] = {' % nm] + [maprow(r) for r in relaid[nm][1]] + ['};']
-    for i, (sp, z0, z1, rr) in enumerate(type_rows):
-        obj_lines += ['static const TgrMap tmap_%d[] = {  /* %s */' % (i, sp)] + [maprow(r) for r in rr] + ['};']
-    obj_lines += ['const TgrType tgr_types[] = {'] + \
-        ['    {%d, %d, tmap_%d, %d},' % (z0, z1, i, len(rr)) for i, (sp, z0, z1, rr) in enumerate(type_rows)] + \
-        ['    {0, 0, 0, 0}', '};', 'const int tgr_ntypes = %d;' % len(type_rows)]
-    obj_lines += ['const TgrObj tgr_objs[] = {']
-    for a, n, nm, nn in objs:
-        if nm in relaid:
-            obj_lines.append('    {0x%08X, %d, %s, %d, map_%s, %d},' % (a, n, nm, nn, nm, len(relaid[nm][1])))
-        else:
-            obj_lines.append('    {0x%08X, %d, %s, %d, 0, 0},' % (a, n, nm, nn))
-    obj_lines += ['    {0, 0, 0, 0, 0, 0}', '};', 'const int tgr_nobjs = %d;' % len(objs), '']
-    open(os.path.join(GEN, 'tgr_syms.c'), 'a').write('\n'.join(obj_lines))
 
     # every .data/.bss symbol's multi-byte units, for tools/lockstep.py to read
     # the port's memory back as the original's bytes
     import json
     json.dump([{'name': n, 'addr': a, 'size': z, 'units': u} for n, a, z, u in allunits],
               open(os.path.join(OUT, 'symunits.json'), 'w'))
-    json.dump([{'name': nm, 'addr': a, 'count': n, 'units': pu} for nm, a, n, d, pu, ps, npt in native if d and pu],
+    json.dump([{'name': nm, 'addr': a, 'count': n, 'units': pu} for nm, a, n, d, pu, ps in native if d and pu],
               open(os.path.join(OUT, 'natunits.json'), 'w'))
     open(os.path.join(OUT, 'globals.txt'), 'w').write('\n'.join(report) + '\n')
     print('globals: %d symbols in the arena, %d native, %d lifted in %d runs, %d to resolve (%s)' % (

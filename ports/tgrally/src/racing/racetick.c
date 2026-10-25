@@ -13,8 +13,6 @@
  */
 /* n64-cflags: -O2 */
 #include "tgr/common.h"
-#include "tgr/mix.h"
-#include "tgr/ent.h"
 #include "tgr/car.h"
 #include "tgr/pad.h"
 #include "tgr/menu.h"
@@ -22,7 +20,14 @@
 #include "tgr/vec.h"
 
 /* -- declarations -- */
-typedef BrRaceEnt BrCarEnt;     /* (tgr/ent.h) */
+typedef struct BrCarEnt {       /* a race entity (0x78 bytes): the cars, then the rest */
+  char pad00[0x60];
+  TgrAddr car;                   /* BrCar * -- 0x60  0 for an entity that is not a car */
+  int x64;
+  unsigned int flags;           /* 0x68  bit 0: held at the start, bit 1: finished */
+  char pad6c[0x78 - 0x6C];
+} BrCarEnt;
+extern BrCarEnt D_803239A0[];
 
 typedef struct BrViewRect {     /* a player's view (0x14 bytes) */
   int x; int y; int w; int h;
@@ -43,21 +48,26 @@ typedef struct BrTimeLimit {    /* time allowed per difficulty and car class (0x
   float secs;
   char pad04[0x18];
 } BrTimeLimit;
-typedef struct BrTrackTimes {   /* a BrTrack (tgr/menu.h) */
-  MenuItem item;
-  char pad14[0x44 - 0x14];
+typedef struct BrTrackTimes {
+  char pad00[0x44];
   BrTimeLimit limit[4][3];      /* 0x44  [class][difficulty] */
 } BrTrackTimes;
 extern BrTrackTimes *D_80271D1C[];  /* per track (the same records as D_80270854) */
 
 typedef struct BrTip {          /* a demo caption (0x20 bytes) */
-  char *title;
+  TgrAddr title;  /* char * */
   float secs;
-  char *lines[6];
+  TgrAddr lines[6];  /* char * */
 } BrTip;
 extern BrTip D_8026FFB4[];
 
-typedef BrMixVoice BrRaceSnd;
+typedef struct BrRaceSnd {      /* 0x18 bytes, six of them */
+  TgrAddr p;  /* void * */
+  int x4;
+  long long x8;
+  int x10;
+  int x14;
+} BrRaceSnd;
 extern BrRaceSnd D_802A4920[6];
 extern int D_802A49B0;
 extern char D_802A4A08[];
@@ -106,8 +116,8 @@ typedef struct BrAirplane {     /* the airplane some tracks fly over the course 
   int point;                    /* 0x10  the path point it is past */
   int count;                    /* 0x14  path points */
   float scale;                  /* 0x18 */
-  BrVec3 *left;                 /* 0x1C  its path, left and right edges */
-  BrVec3 *right;                /* 0x20 */
+  int left;                     /* 0x1C  its path, left and right edges (BrVec3 *) */
+  int right;                    /* 0x20 */
   float dist;                   /* 0x24  distance along the current path segment */
   float segLen;                 /* 0x28  the segment's length */
   BrVec3 prev;                  /* 0x2C  the previous, current and next segment directions */
@@ -293,16 +303,16 @@ void BrParticleFrame(void);
 void BrParticleFallDraw(void);
 void BrParticleDraw(void);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
-void BrPadStickToButtons(void *);
+void BrPadStickToButtons(int);
 void BrTriCacheReset(void);
 int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
 void tgr_exit_game(void);
 /* -- end declarations -- */
 
-#define PAD(i) ((BrPadRec *)(D_8031B760[i].pad))
+#define PAD(i) TGR_PTR(BrPadRec *, D_8031B760[i].pad)
 #define OBJ(n) (&BR_TRACKOBJS()[n])
-#define LEFT (PLANE->left)     /* the plane's path */
-#define RIGHT (PLANE->right)
+#define LEFT TGR_PTR(BrVec3be *, PLANE->left)     /* the plane's path: cartridge data */
+#define RIGHT TGR_PTR(BrVec3be *, PLANE->right)
 
 /* WHAT IT DOES: One frame of the race (the game mode function while a race
  * runs).  The first call sets the race up: how many cars and entities, the
@@ -389,7 +399,7 @@ void BrRaceTick(void)
           D_802A4920[i].x10 = 0;
         }
         for (i = 0; i < D_8026FF08; i++) {
-          PAD(i)->ghost = (D_80315E48[i]);
+          PAD(i)->ghost = tgr_addr32(D_80315E48[i]);
           PAD(i)->ghostLen = D_80315E58[i];
           PAD(i)->ghostPos = 0;
         }
@@ -413,7 +423,7 @@ void BrRaceTick(void)
       D_8027078C = 0;
       D_80270788 = 0;
       D_8031B760[0].xe58 = 1;
-      D_8031B760[0].cam = (&D_8031B760[0].cams[1]);
+      D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
       D_8028B7F8 = 0;
       break;
     case 4:
@@ -423,20 +433,20 @@ void BrRaceTick(void)
       D_8028B7F4 = 1;
       D_8027078C = 0;
       D_8031B760[0].xe58 = 0;
-      PAD(0)->ghost = TGR_PTR(unsigned char *, 0x80197000);
+      PAD(0)->ghost = 0x80197000;
       switch (D_8026FF1C) {
       case 0:
         PAD(0)->ghostLen = BrRomReadSize((int)D_000AD400);
-        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000AD400, 0);
+        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000AD400, 0);
         break;
       case 1:
         PAD(0)->ghostLen = BrRomReadSize((int)D_000AD740);
-        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000AD740, 0);
+        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000AD740, 0);
         break;
       case 2:
         BrRaceCueLayout();
         PAD(0)->ghostLen = BrRomReadSize((int)D_000ADB00);
-        BrRomUnpack(((unsigned char *)(PAD(0)->ghost)), D_000ADB00, 0);
+        BrRomUnpack(TGR_PTR(unsigned char *, PAD(0)->ghost), D_000ADB00, 0);
         break;
       }
       PAD(0)->ghostPos = 8;
@@ -446,13 +456,13 @@ void BrRaceTick(void)
       car0->colour[0] = 0xFF;
       car0->colour[1] = 0xFF;
       car0->colour[2] = 0xFF;
-      D_8028B940 = ((unsigned char *)(PAD(0)->ghost))[0];
-      D_8031B760[0].kind = D_8031B760[0].x2058 = ((unsigned char *)(PAD(0)->ghost))[1];
-      D_8031B760[0].xe68 = ((unsigned char *)(PAD(0)->ghost))[2];
-      D_8031B760[0].xe6c = ((unsigned char *)(PAD(0)->ghost))[3];
-      D_8031B760[0].xe60 = ((unsigned char *)(PAD(0)->ghost))[4];
-      D_8031B760[0].xe64 = ((unsigned char *)(PAD(0)->ghost))[5];
-      PAD(0)->x25 = ((unsigned char *)(PAD(0)->ghost))[6];
+      D_8028B940 = TGR_PTR(unsigned char *, PAD(0)->ghost)[0];
+      D_8031B760[0].kind = D_8031B760[0].x2058 = TGR_PTR(unsigned char *, PAD(0)->ghost)[1];
+      D_8031B760[0].xe68 = TGR_PTR(unsigned char *, PAD(0)->ghost)[2];
+      D_8031B760[0].xe6c = TGR_PTR(unsigned char *, PAD(0)->ghost)[3];
+      D_8031B760[0].xe60 = TGR_PTR(unsigned char *, PAD(0)->ghost)[4];
+      D_8031B760[0].xe64 = TGR_PTR(unsigned char *, PAD(0)->ghost)[5];
+      PAD(0)->x25 = TGR_PTR(unsigned char *, PAD(0)->ghost)[6];
       break;
     case 2:
       if (D_8028B940 == 3 || D_8028B940 == 8) {
@@ -463,28 +473,28 @@ void BrRaceTick(void)
       D_8028B7F4 = D_8028B7F0 = D_8026FF08 + 1;
       D_8027078C = 0;
       D_802707A8 = 0;
-      PAD(D_8026FF08)->ghost = TGR_PTR(unsigned char *, 0x80197000);
+      PAD(D_8026FF08)->ghost = 0x80197000;
       tgr_print("savedRecordingLength = %d\n", D_80270784);
-      memcpy(((unsigned char *)(PAD(D_8026FF08)->ghost)), D_80307F00, D_80270784);
-      D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = ((unsigned char *)(PAD(D_8026FF08)->ghost))[1];
-      if (((unsigned char *)(PAD(D_8026FF08)->ghost))[0] != D_8028B940) {
-        tgr_print("WRONG TRACK (%d!=%d)\n", ((unsigned char *)(PAD(D_8026FF08)->ghost))[0], D_8028B940);
+      memcpy(TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost), D_80307F00, D_80270784);
+      D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[1];
+      if (TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0] != D_8028B940) {
+        tgr_print("WRONG TRACK (%d!=%d)\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0], D_8028B940);
         PAD(D_8026FF08)->ghost = 0;
       } else {
-        tgr_print("TRACK=%d\n", ((unsigned char *)(PAD(D_8026FF08)->ghost))[0]);
+        tgr_print("TRACK=%d\n", TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[0]);
         PAD(D_8026FF08)->ghostPos = 8;
         tgr_print("PLAYLIMIT=%d\n", D_80270784);
         PAD(D_8026FF08)->ghostLen = D_80270784;
       }
       for (i = 0; i < D_8026FF08; i++) {
-        PAD(i)->rec[i] = TGR_PTR(unsigned char *, 0x801A6000 + i * 0xF000);
-        ((unsigned char *)(PAD(i)->rec[i]))[0] = D_8028B940;
-        ((unsigned char *)(PAD(i)->rec[i]))[1] = D_8031B760[i].kind;
-        ((unsigned char *)(PAD(i)->rec[i]))[2] = ((BrSeason *)(D_8031B760[i].season))->xd4;
-        ((unsigned char *)(PAD(i)->rec[i]))[3] = ((BrSeason *)(D_8031B760[i].season))->xd8;
-        ((unsigned char *)(PAD(i)->rec[i]))[4] = ((BrSeason *)(D_8031B760[i].season))->xdc;
-        ((unsigned char *)(PAD(i)->rec[i]))[5] = ((BrSeason *)(D_8031B760[i].season))->xe0;
-        ((unsigned char *)(PAD(i)->rec[i]))[6] = ((BrSeason *)(D_8031B760[i].season))->xe4;
+        PAD(i)->rec[i] = (0x801A6000 + i * 0xF000);
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[0] = D_8028B940;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[1] = D_8031B760[i].kind;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[2] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd4;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[3] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd8;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[4] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xdc;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[5] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe0;
+        TGR_PTR(unsigned char *, PAD(i)->rec[i])[6] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe4;
         PAD(i)->recLen[i] = 8;
         PAD(i)->recKeep[i] = 0xDE5C;
       }
@@ -516,31 +526,31 @@ void BrRaceTick(void)
       PLANE->segLen = 0.0f;
       PLANE->point = 0;
       PLANE->count = 0;
-      tgr_print("specials: %d\n", tgr_track.nSpecials);
+      tgr_print("specials: %d\n", BES32(D_80025C00.nSpecials));
       D_802707C4 = 0;
-      for (i = 0; i < tgr_track.nSpecials; i++) {
-        switch (tgr_track.specials[i].kind) {
+      for (i = 0; i < BES32(D_80025C00.nSpecials); i++) {
+        switch (D_80025C00.specials[i].kind) {
         case 4:
-          PLANE->count = tgr_track.specials[i].arg;
-          tgr_print("airplanePathLeft = %p\n",
-                       (void *)(PLANE->left = tgr_track.specials[i].path));
+          PLANE->count = BES32(D_80025C00.specials[i].arg);
+          tgr_print("airplanePathLeft = %08x\n",
+                       PLANE->left = BES32(D_80025C00.specials[i].obj));
           break;
         case 5:
-          PLANE->right = tgr_track.specials[i].path;
-          tgr_print("airplanePathRight = %p\n", (void *)PLANE->right);
+          PLANE->right = BES32(D_80025C00.specials[i].obj);
+          tgr_print("airplanePathRight = %08x\n", PLANE->right);
           break;
         case 3:
-          PLANE->obj = tgr_track.specials[i].obj;
+          PLANE->obj = BES32(D_80025C00.specials[i].obj);
           tgr_print("airplane = %d\n", PLANE->obj);
           break;
         case 6:
-          PLANE->trigger = tgr_track.specials[i].obj;
+          PLANE->trigger = BES32(D_80025C00.specials[i].obj);
           tgr_print("airplanetrigger = %d\n", PLANE->trigger);
           break;
         case 7:
-          D_80315DF8[D_802707C4].obj = tgr_track.specials[i].obj;
+          D_80315DF8[D_802707C4].obj = BES32(D_80025C00.specials[i].obj);
           D_802707C4++;
-          tgr_print("waterfall = %d\n", tgr_track.specials[i].obj);
+          tgr_print("waterfall = %d\n", BES32(D_80025C00.specials[i].obj));
           break;
         }
       }
@@ -554,7 +564,7 @@ void BrRaceTick(void)
         (&v)[0][0] = vx;
         (&v)[0][1] = vy;
         (&v)[0][2] = vz;
-        memcpy(om, OBJ(PLANE->obj)->m, sizeof(float[4][4]));
+        br_mat4_from(om, (const bef_t (*)[4])OBJ(PLANE->obj)->m);
         BrMat4ProjectPoint(v, v, om);
         PLANE->scale = BrVec3Length((BrVec3 *)v);
       }
@@ -572,22 +582,22 @@ void BrRaceTick(void)
     }
     D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
-      D_8031B760[0].cam = (&D_8031B760[0].cams[1]);
+      D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
       D_8028B7F8 = 180;
     } else {
       for (i = 0; i < D_8026FF08; i++) {
-        D_8031B760[i].xe6c = ((BrSeason *)(D_8031B760[i].season))->xd8;
-        D_8031B760[i].xe64 = ((BrSeason *)(D_8031B760[i].season))->xe0;
-        D_8031B760[i].xe60 = ((BrSeason *)(D_8031B760[i].season))->xdc;
-        D_8031B760[i].xe68 = ((BrSeason *)(D_8031B760[i].season))->xd4;
-        PAD(i)->x25 = ((BrSeason *)(D_8031B760[i].season))->xe4;
+        D_8031B760[i].xe6c = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd8;
+        D_8031B760[i].xe64 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe0;
+        D_8031B760[i].xe60 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xdc;
+        D_8031B760[i].xe68 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd4;
+        PAD(i)->x25 = TGR_PTR(BrSeason *, D_8031B760[i].season)->xe4;
       }
       if (D_8026FF18 == 2 && PAD(1)->ghost != 0) {
-        D_8031B760[1].xe68 = ((unsigned char *)(PAD(1)->ghost))[2];
-        D_8031B760[1].xe6c = ((unsigned char *)(PAD(1)->ghost))[3];
-        D_8031B760[1].xe60 = ((unsigned char *)(PAD(1)->ghost))[4];
-        D_8031B760[1].xe64 = ((unsigned char *)(PAD(1)->ghost))[5];
-        PAD(1)->x25 = ((unsigned char *)(PAD(1)->ghost))[6];
+        D_8031B760[1].xe68 = TGR_PTR(unsigned char *, PAD(1)->ghost)[2];
+        D_8031B760[1].xe6c = TGR_PTR(unsigned char *, PAD(1)->ghost)[3];
+        D_8031B760[1].xe60 = TGR_PTR(unsigned char *, PAD(1)->ghost)[4];
+        D_8031B760[1].xe64 = TGR_PTR(unsigned char *, PAD(1)->ghost)[5];
+        PAD(1)->x25 = TGR_PTR(unsigned char *, PAD(1)->ghost)[6];
       } else {
         for (; i < D_8028B7F4; i++) {
           D_8031B760[i].xe6c = 1;
@@ -604,19 +614,19 @@ void BrRaceTick(void)
         D_8031B760[i].x2064 = 1.0f;
         if (i < D_8026FF08) {
           p0 = &D_8031B760[i];
-          p0->xed8 = BrCarCamStep;
+          p0->xed8 = TGR_FA(BrCarCamStep);
           p1 = &D_8031B760[i];
           p1->colour[3] = 0;
         } else if (D_8026FF18 == 2) {
           p2 = &D_8031B760[i];
-          p2->xed8 = BrCarCamStep;
+          p2->xed8 = TGR_FA(BrCarCamStep);
           p3 = &D_8031B760[i];
           p3->colour[3] = 2;
           D_8031B760[i].x2064 = 0.375f;
         } else {
           BrCarPickKind(&D_8031B760[i]);
           p4 = &D_8031B760[i];
-          p4->xed8 = BrCtlAi;
+          p4->xed8 = TGR_FA(BrCtlAi);
           p5 = &D_8031B760[i];
           p5->colour[3] = 0;
         }
@@ -630,7 +640,7 @@ void BrRaceTick(void)
       }
     } else {
       for (i = D_8026FF08; i < D_8028B7F4; i++) {
-        BrEntPaintTexture(D_8031B760[i].model, D_8031B760[i].colour[0] >> 3,
+        BrEntPaintTexture(TGR_PTR(void *, (int)D_8031B760[i].model), D_8031B760[i].colour[0] >> 3,
                           D_8031B760[i].colour[1] >> 3, D_8031B760[i].colour[2] >> 3);
       }
     }
@@ -730,7 +740,7 @@ void BrRaceTick(void)
     D_8026FF5C = 1;
     for (i = 0; i < D_8028B7F0; i++) {
       D_803239A0[i].flags |= 1;
-      car = ((BrCar *)(D_803239A0[i].car));
+      car = TGR_PTR(BrCar *, D_803239A0[i].car);
       if (car != 0 && car->slot < D_8026FF08) {
         if (D_8026FF18 == 1) {
           s = D_8028C800 - 1;
@@ -797,7 +807,7 @@ void BrRaceTick(void)
         if (D_8026FF18 == 2 && PAD(i)->rec[i] != 0) {
           tgr_print("# Format SB BitSize 24 Rows %d Columns 1\n", PAD(i)->recLen[i] >> 1);
           for (k50 = 0; k50 < PAD(i)->recLen[i]; k50 += 2) {
-            tgr_print("%.02x %.02x\n", ((unsigned char *)(PAD(i)->rec[i]))[k50], ((unsigned char *)(PAD(i)->rec[i]))[k50 + 1]);
+            tgr_print("%.02x %.02x\n", TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50], TGR_PTR(unsigned char *, PAD(i)->rec[i])[k50 + 1]);
           }
           if (i == 0
               && (PAD(i)->recLen[i] < D_80270784 || D_80307F00[0] != D_8028B940
@@ -806,7 +816,7 @@ void BrRaceTick(void)
                          D_80270784, PAD(i)->recLen[i] < D_80270784, D_80307F00[0], D_8028B940,
                          D_80307F00[0] != D_8028B940, D_80270784, 8, D_80270784 < 9);
             D_80270784 = PAD(i)->recLen[i];
-            memcpy(D_80307F00, ((unsigned char *)(PAD(i)->rec[i])), D_80270784);
+            memcpy(D_80307F00, TGR_PTR(unsigned char *, PAD(i)->rec[i]), D_80270784);
             D_8031B760[i].msgA = tgr_addr32("NEW RECORD!");
             D_8031B760[i].msgATime = 1.0f;
             BrTimeFormat(D_8031B760[i].xfc0, D_8031B760[i].lapTime);
@@ -888,21 +898,21 @@ draw:
       }
     }
     /* the track's moving objects */
-    for (i = 0; i < tgr_track.nSpecials; i++) {
-      switch (tgr_track.specials[i].kind) {
+    for (i = 0; i < BES32(D_80025C00.nSpecials); i++) {
+      switch (D_80025C00.specials[i].kind) {
       case 0:
-        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 0.0f, 0.0f, 1.0f);
+        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 0.0f, 0.0f, 1.0f);
         goto spin;
       case 1:
-        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 1.0f, 0.0f, 0.0f);
+        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 1.0f, 0.0f, 0.0f);
         goto spin;
       case 2:
-        guRotateF(D_8031AB10, tgr_track.specials[i].angle, 0.0f, 1.0f, 0.0f);
+        guRotateF(D_8031AB10, tgr_rdf(&D_80025C00.specials[i].arg), 0.0f, 1.0f, 0.0f);
       spin:
-        memcpy(om, OBJ(((int)((tgr_track.specials + i)->obj)))->m, sizeof(float[4][4]));
+        br_mat4_from(om, (const bef_t (*)[4])OBJ(BES32((D_80025C00.specials + i)->obj))->m);
         guMtxCatF(D_8031AB10, om, om);
-        memcpy(OBJ(((int)((tgr_track.specials + i)->obj)))->m, om, sizeof(float[4][4]));
-        OBJ(((int)((tgr_track.specials + i)->obj)))->flags = (OBJ(((int)((tgr_track.specials + i)->obj)))->flags) & 0xDFFF;
+        br_mat4_to(OBJ(BES32((D_80025C00.specials + i)->obj))->m, om);
+        SET16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags, BE16(OBJ(BES32((D_80025C00.specials + i)->obj))->flags) & 0xDFFF);
         break;
       case 3:
         if (PLANE->obj == 0 || PLANE->sent == 0) {
@@ -924,11 +934,11 @@ draw:
             PLANE->obj = 0;
             break;
           }
-          memcpy(&pl.x, &LEFT[PLANE->point - 1], sizeof(BrVec3));
-          memcpy(&pr.x, &RIGHT[PLANE->point - 1], sizeof(BrVec3));
+          br_vec3_from(&pl.x, &LEFT[PLANE->point - 1]);
+          br_vec3_from(&pr.x, &RIGHT[PLANE->point - 1]);
           BrVec3Midpoint(&a, &pl, &pr);
-          memcpy(&pl.x, &LEFT[PLANE->point], sizeof(BrVec3));
-          memcpy(&pr.x, &RIGHT[PLANE->point], sizeof(BrVec3));
+          br_vec3_from(&pl.x, &LEFT[PLANE->point]);
+          br_vec3_from(&pr.x, &RIGHT[PLANE->point]);
           BrVec3Midpoint(&b, &pl, &pr);
           PLANE->segLen = BrVec3Dist(&a, &b);
           BrVec3Sub(&PLANE->dir, &b, &a);
@@ -940,8 +950,8 @@ draw:
             d1[1] = s1[1];
             d1[2] = s1[2];
           } else {
-            memcpy(&pl.x, &LEFT[PLANE->point - 2], sizeof(BrVec3));
-            memcpy(&pr.x, &RIGHT[PLANE->point - 2], sizeof(BrVec3));
+            br_vec3_from(&pl.x, &LEFT[PLANE->point - 2]);
+            br_vec3_from(&pr.x, &RIGHT[PLANE->point - 2]);
             BrVec3Midpoint(&c, &pl, &pr);
             BrVec3Sub(&PLANE->prev, &a, &c);
             BrVec3Normalise(&PLANE->prev);
@@ -953,8 +963,8 @@ draw:
             d2[1] = s2[1];
             d2[2] = s2[2];
           } else {
-            memcpy(&pl.x, &LEFT[PLANE->point + 1], sizeof(BrVec3));
-            memcpy(&pr.x, &RIGHT[PLANE->point + 1], sizeof(BrVec3));
+            br_vec3_from(&pl.x, &LEFT[PLANE->point + 1]);
+            br_vec3_from(&pr.x, &RIGHT[PLANE->point + 1]);
             BrVec3Midpoint(&c, &pl, &pr);
             BrVec3Sub(&PLANE->next, &c, &b);
             BrVec3Normalise(&PLANE->next);
@@ -963,12 +973,12 @@ draw:
         if (PLANE->obj != 0) {
           f = PLANE->dist / PLANE->segLen;
           /* the object's rows natively, written back to the cartridge data */
-          memcpy(om, OBJ(PLANE->obj)->m, sizeof(float[4][4]));
-          memcpy(&pl.x, &LEFT[PLANE->point], sizeof(BrVec3));
-          memcpy(&pr.x, &LEFT[PLANE->point - 1], sizeof(BrVec3));
+          br_mat4_from(om, (const bef_t (*)[4])OBJ(PLANE->obj)->m);
+          br_vec3_from(&pl.x, &LEFT[PLANE->point]);
+          br_vec3_from(&pr.x, &LEFT[PLANE->point - 1]);
           BrVec3Lerp(&a, &pl, &pr, f);
-          memcpy(&pl.x, &RIGHT[PLANE->point], sizeof(BrVec3));
-          memcpy(&pr.x, &RIGHT[PLANE->point - 1], sizeof(BrVec3));
+          br_vec3_from(&pl.x, &RIGHT[PLANE->point]);
+          br_vec3_from(&pr.x, &RIGHT[PLANE->point - 1]);
           BrVec3Lerp(&b, &pl, &pr, f);
           BrVec3Midpoint((BrVec3 *)om[3], &a, &b);
           if (f > 0.5f) {
@@ -985,7 +995,7 @@ draw:
           BrVec3ScaleBy((BrVec3 *)om[0], PLANE->scale);
           BrVec3ScaleBy((BrVec3 *)om[2], -PLANE->scale);
           BrVec3ScaleBy((BrVec3 *)om[1], PLANE->scale);
-          memcpy(OBJ(PLANE->obj)->m, om, sizeof(float[4][4]));
+          br_mat4_to(OBJ(PLANE->obj)->m, om);
         }
         break;
       }
@@ -997,13 +1007,13 @@ draw:
   BrSndNearestInvalidate();
   for (j = 0; j < D_8028AB0C; j++) {
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
+    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
     if (PLANE->obj != 0 && PLANE->sent != 0) {
-      memcpy(&pl.x, OBJ(PLANE->obj)->m[3], sizeof(BrVec3));   /* copied by the offer */
+      br_vec3_from(&pl.x, (const BrVec3be *)OBJ(PLANE->obj)->m[3]);   /* copied by the offer */
       BrSndNearestOfferTrack(PLANE->obj, &pl, D_8028AAF4);
     }
     for (i = 0; D_8028AAF4 != 0 && i < D_802707C4; i++) {
-      memcpy(&pl.x, OBJ((D_80315DF8 + i)->obj)->m[3], sizeof(BrVec3));
+      br_vec3_from(&pl.x, (const BrVec3be *)OBJ((D_80315DF8 + i)->obj)->m[3]);
       BrSndNearestOfferDefault(PLANE->obj, &pl, D_8028AAF4);
     }
     BrStub8022BA98(tgr_addr32(D_8028AAF4));
@@ -1031,7 +1041,7 @@ draw:
   for (j = 0; j < D_8028AB0C; j++) {
     BrPerfMark(0, 0, 0, 0, 0xFF);
     D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-    D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
+    D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
     D_8028AAEC = j;
     BrGroundRay(0, 0, D_8028AAF4->mtx[3], D_8031B248, &D_8028AB00, D_8031B288, &D_8028AB04,
                   &D_8028AAF8, &D_8028AAFC);
@@ -1067,8 +1077,8 @@ draw:
       BrFrameTintSetup();
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
-          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
+          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1082,8 +1092,8 @@ draw:
       BrFrameTintSetup();
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
-          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
+          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1092,13 +1102,13 @@ draw:
     BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
     for (i = 0; i < D_8028B7F0; i++) {
       if (D_803239A0[i].car != 0) {
-        BrCarDrawBody(((BrCar *)(D_803239A0[i].car)));
+        BrCarDrawBody(TGR_PTR(BrCar *, D_803239A0[i].car));
       }
     }
     BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
     for (i = 0; i < D_8028B7F0; i++) {
-      if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] == 2) {
-        BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+      if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] == 2) {
+        BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
       }
     }
     BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1122,7 +1132,7 @@ draw:
       mx = D_8031B2C8[j].x + ((D_8031B2C8[j].w - mw) >> 1);
       my = D_8031B2C8[j].y + D_8031B2C8[j].h / 16;
       saved = D_8028AAF4;
-      D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam = (&D_8028AAF0->cam4)));
+      D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam = tgr_addr32(&D_8028AAF0->cam4));
       BrViewportSet(mx, my, -mw, mh, 1);
       BrZBufferClearRect(mx, my, mw, mh);
       BrFrustumSet(D_8028AAF4, D_8028AAF4->fov, D_8028AAC8 * 0.2f, (float)mw, (float)mh);
@@ -1143,8 +1153,8 @@ draw:
         BrFrameTintSetup();
         BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
         for (i = 0; i < D_8028B7F0; i++) {
-          if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
-            BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+          if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
+            BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
           }
         }
         BrPerfMark(0, 0x80, 0x80, 0, 0xFF);
@@ -1156,21 +1166,21 @@ draw:
         BrFrameTintSetup();
         BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
         for (i = 0; i < D_8028B7F0; i++) {
-          if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] != 2) {
-            BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+          if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] != 2) {
+            BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
           }
         }
       }
       BrPerfMark(0, 0x80, 0x80, 0x80, 0xFF);
       for (i = 0; i < D_8028B7F0; i++) {
-        if (D_803239A0[i].car != 0 && ((BrCar *)(D_803239A0[i].car))->colour[3] == 2) {
-          BrCarDraw(((BrCar *)(D_803239A0[i].car)), 0);
+        if (D_803239A0[i].car != 0 && TGR_PTR(BrCar *, D_803239A0[i].car)->colour[3] == 2) {
+          BrCarDraw(TGR_PTR(BrCar *, D_803239A0[i].car), 0);
         }
       }
       BrScreenFlashDraw();
       BrPerfMark(0, 0, 0x82, 0, 0xFF);
-      D_8028AAF0->cam = (saved);
-      D_8028AAF4 = ((BrCarCam *)(D_8028AAF0->cam));
+      D_8028AAF0->cam = tgr_addr32(saved);
+      D_8028AAF4 = TGR_PTR(BrCarCam *, D_8028AAF0->cam);
       BrViewportSet(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h, 1);
       BrViewFrame(mx, my, mw, mh);
     }
@@ -1178,7 +1188,7 @@ draw:
       BrTextHighlightOff();
       BrTextAlignCentre();
       BrTextSetFont(40);
-      if (((BrSeason *)(D_8031B760[0].season))->round != 0) {
+      if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round != 0) {
         BrTextPrint("%rySEASON WINNER!", 160, 210);
       } else {
         BrTextPrint("%ryCHAMPION!", 160, 210);
@@ -1200,7 +1210,7 @@ draw:
           if (&D_8028AAF0->cams[2] != D_8028AAF4) {
             BrStub8023870C();
           }
-        } else if (((BrCarLink *)(D_8028AAF0->link))->flags & 2) {
+        } else if (TGR_PTR(struct BrCarLink *, D_8028AAF0->link)->flags & 2) {
           BrHudPositionDraw();
         }
       }
@@ -1213,7 +1223,7 @@ draw:
   /* input: skip the demo, pause, or the pause menu */
   if (D_8026FF10 != 0) {
     for (i = 0; i < D_8026FF08; i++) {
-      BrPadStickToButtons(PAD(i));
+      BrPadStickToButtons(tgr_addr32(PAD(i)));
       if (PAD(i)->pressed & 0x20) {
         BrPadConsume(PAD(i), 0x20);
         BrSfxFadeTo(1.0f, 0.2f);
@@ -1375,15 +1385,15 @@ draw:
         }
       }
       y0 = 132 - i * 40 / 4;
-      if (((char *)(D_8026FFB4[D_80315E6C].title))[0] == 0) {
+      if (TGR_PTR(char *, D_8026FFB4[D_80315E6C].title)[0] == 0) {
         y0 -= 5;
       }
       while (--i >= 0) {
         BrTextSetFont(20);
-        BrTextPrint(((char *)(D_8026FFB4[D_80315E6C].lines[i])), 160, i * 40 / 2 + y0);
+        BrTextPrint(TGR_PTR(char *, D_8026FFB4[D_80315E6C].lines[i]), 160, i * 40 / 2 + y0);
       }
       BrTextSetFont(15);
-      BrTextPrint(((char *)(D_8026FFB4[D_80315E6C].title)), 160, y0 - 20);
+      BrTextPrint(TGR_PTR(char *, D_8026FFB4[D_80315E6C].title), 160, y0 - 20);
     }
     D_80315E68 += D_8028AAD8;
     if (D_8026FFB4[D_80315E6C].secs < D_80315E68) {
@@ -1414,7 +1424,7 @@ draw:
       D_802A4920[kb8].x14 = 0;
       D_802A4920[kb8].x10 = 0;
       D_802A4920[kb8].x8 = 0;
-      D_802A4920[kb8].p = (signed char *)D_802A4A08;
+      D_802A4920[kb8].p = tgr_addr32(D_802A4A08);
     }
     D_8028AB10 = 0;
     if (D_802707CC != 0) {
@@ -1430,7 +1440,7 @@ draw:
             }
           }
           for (i = 0; i < D_8026FF08; i++) {
-            D_80315E48[i] = ((unsigned char *)(PAD(i)->rec[D_80315E40]));
+            D_80315E48[i] = TGR_PTR(unsigned char *, PAD(i)->rec[D_80315E40]);
             D_80315E58[i] = PAD(i)->recLen[D_80315E40];
           }
           for (i = 0; i < D_8026FF08; i++) {
@@ -1446,7 +1456,7 @@ draw:
         BrScreenFlush2Layout1();
         D_8028A8AC = 0;
         if (D_8026FF18 == 5) {
-          if (((BrSeason *)(D_8031B760[0].season))->round != 0) {
+          if (TGR_PTR(BrSeason *, D_8031B760[0].season)->round != 0) {
           next_race:
             D_8026FF18 = 0;
             BrSeasonPickRace();

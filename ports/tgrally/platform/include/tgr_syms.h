@@ -28,49 +28,6 @@ extern const TgrSym tgr_syms[];
 extern const int tgr_nsyms;
 extern const TgrFn tgr_fns[];
 extern const int tgr_nfns;
-
-typedef struct TgrMap {     /* count fields, n64stride apart in the original's layout, natstride natively */
-    uint32_t n64off, natoff, size;          /* size 0: a pointer (4 bytes on the N64); an integer
-                                               wider natively: the N64's size | the native one << 16 */
-    uint32_t count, n64stride, natstride;
-    int32_t  ptype;                         /* a pointer: what it points at, if laid out differently
-                                               natively (tgr_types), else -1 */
-} TgrMap;
-
-typedef struct TgrType {    /* a record laid out differently natively, reached through pointers */
-    uint32_t n64size, natsize;
-    const TgrMap *map;
-    uint32_t nmap;
-} TgrType;
-extern const TgrType tgr_types[];
-extern const int tgr_ntypes;
-
-typedef struct TgrObj {     /* an object of the game's image: its original address and size, storage */
-    uint32_t addr, size;
-    char    *nat;
-    uint32_t natsize;
-    const TgrMap *map;      /* laid out differently natively: its fields; 0 if the same */
-    uint32_t nmap;
-} TgrObj;
-extern const TgrObj tgr_objs[];             /* by address */
-extern const int tgr_nobjs;
-/* where an object's mapped fields end, in the original's layout (the bytes
- * after them, its extent's padding and whatever the game keeps there, follow
- * natively one for one) */
-static inline uint32_t tgr_map_end(const TgrObj *o)
-{
-    uint32_t i, end = 0;
-    for (i = 0; i < o->nmap; i++) {
-        const TgrMap *m = &o->map[i];
-        uint32_t e = m->n64off + (m->count - 1) * m->n64stride + (m->size ? m->size & 0xFFFF : 4);
-        if (e > end)
-            end = e;
-    }
-    return end;
-}
-/* a record given its native layout at start-up (os/lift.c, os/addr.c) */
-void tgr_obj_add(uint32_t addr, uint32_t size, void *nat, uint32_t natsize, const TgrMap *map, uint32_t nmap);
-const TgrObj *tgr_dyn_at(uint32_t addr);
 #endif
 
 #ifndef TGR_SYMS_NATIVE
@@ -83,7 +40,6 @@ typedef struct TgrNat {     /* a pointer variable or table: native, outside the 
     uint32_t run0, nruns;   /* the layout of what each pointer points at: an
                              * object in .data reached only through it is
                              * lifted with these runs */
-    int32_t  ptype;         /* what it points at, if laid out differently natively, else -1 */
 } TgrNat;
 extern const TgrNat tgr_natives[];
 extern const int tgr_nnatives;

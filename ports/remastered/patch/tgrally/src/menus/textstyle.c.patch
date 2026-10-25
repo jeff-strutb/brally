@@ -1,30 +1,30 @@
 --- a/src/menus/textstyle.c
 +++ b/src/menus/textstyle.c
-@@ -40,6 +40,7 @@
+@@ -46,6 +46,7 @@
                       unsigned char r, unsigned char g, unsigned char b);
  void BrPadConsume(unsigned int *pad, unsigned int bits);
- void BrPadStickToButtons(void *);
+ void BrPadStickToButtons(int);
 +void rm_paint_choose(int x, int y, int w, int h, unsigned char *sel, int i);   /* Remastered (rmpaintptr.c) */
  /* -- end declarations -- */
  
  /* WHAT IT DOES: The paint shop's text-style popup: a normal and a
-@@ -109,6 +110,9 @@
+@@ -115,6 +116,9 @@
      BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
      BrImageDrawAt(&D_8028D0B0, x, yb);
      BrImageDrawAt(&D_8028D0E0, bx, yb);
 +    for (i = 0; (int)i < 2; i++) {      /* Remastered: by pointer */
 +      rm_paint_choose(r[i][0], r[i][1], r[i][2], r[i][3], &D_8028DBB8, i);
 +    }
-     BrPadStickToButtons(&PADS[D_8028DBBC]);
-     if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 5) {
-       BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 5);
-@@ -142,6 +146,9 @@
+     BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+     if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
+       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
+@@ -148,6 +152,9 @@
      BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
      BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
      }
 +    for (i = 0; (int)i < 16; i++) {     /* Remastered: by pointer */
 +      rm_paint_choose(sw[i][0], sw[i][1], sw[i][2], sw[i][3], &D_8028DB5C, i);
 +    }
-     BrPadStickToButtons(&PADS[D_8028DBBC]);
-     if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
-       BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
+     BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+     if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
+       BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);

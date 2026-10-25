@@ -4,11 +4,12 @@
 #include "tgr/common.h"
 
 /* -- declarations -- */
+typedef struct { char raw[0x68]; } BrPfs;   /* an OSPfs */
 void BrRaceTick(void);
 int BrModeIs(void (*mode)(void));
 extern int D_8026FF10;                  /* the race is paused */
 extern int D_8026FF18;
-extern TgrMsgQueue D_80272D48[1];               /* the controller message queue */
+extern int D_80272D48[6];               /* the controller message queue */
 extern short D_802A4BE8;                /* rumble is on */
 extern short D_802A4BEC[2];             /* each player's effect is running */
 extern short D_802A4BF0[2];             /* the motor is on */
@@ -19,7 +20,7 @@ extern short D_802A4C00[2];             /* frames left in the effect */
 extern short D_802A4C04;
 extern int D_802A4C08;                  /* frame count for the re-detect */
 extern char D_8031B1E8[2];              /* a Rumble Pak is in */
-extern TgrPak D_8031A3F8[4];
+extern BrPfs D_8031A3F8[4];
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Run the Rumble Paks: re-detect them outside a race (or
@@ -51,7 +52,7 @@ void BrRumbleUpdate(int arg0)
   }
   if (D_802A4BE8 != 0 && D_802A4C04 == 0 && D_8026FF10 == 0) {
     for (j = 0; j != 2; j++) {
-      if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && ((unsigned int *)(D_8031B760[j].pad))[0x11] == 0) {
+      if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && TGR_PTR(unsigned int *, D_8031B760[j].pad)[0x11] == 0) {
         if (D_802A4BFC[j] == 0) {
           if (D_802A4BF0[j] != 0) {
             D_802A4BFC[j] = D_802A4BF8[j];

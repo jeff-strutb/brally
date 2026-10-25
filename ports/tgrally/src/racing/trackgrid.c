@@ -5,7 +5,7 @@
 /* -- declarations -- */
 
 #include "tgr/track.h"
-#define D_80025C6C tgr_track.x6c   /* the loaded track's table (big-endian) */
+#define D_80025C6C BEPTR(be16_t *, D_80025C00.x6c)   /* the loaded track's table (big-endian) */
 /* -- end declarations -- */
 
 /* WHAT IT DOES: BrTrackGridCell for a world position: the track grid cell
@@ -21,8 +21,8 @@ unsigned int BrTrackGridCellAt(float x, float y)
     return 0;
   }
   i = (unsigned char)tgr_f2u(x / 32.0f) + (unsigned char)tgr_f2u(y / 32.0f) * 64;
-  first = D_80025C6C[i];
-  return ((D_80025C6C[(unsigned short)(i + 1)]) - first) << 16 | first;
+  first = BE16(D_80025C6C[i]);
+  return (BE16(D_80025C6C[(unsigned short)(i + 1)]) - first) << 16 | first;
 }
 
 /* WHAT IT DOES: Look up the track's 64x64 grid cell (x, y): returns the
@@ -38,7 +38,7 @@ unsigned int BrTrackGridCell(int x, int y)
     return 0;
   }
   i = (x & 0xff) + (y & 0xff) * 64;
-  first = D_80025C6C[i];
-  return ((D_80025C6C[(unsigned short)(i + 1)]) - first) << 16 | first;
+  first = BE16(D_80025C6C[i]);
+  return (BE16(D_80025C6C[(unsigned short)(i + 1)]) - first) << 16 | first;
 }
 

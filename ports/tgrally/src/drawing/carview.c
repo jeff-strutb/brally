@@ -87,7 +87,7 @@ void BrMenuCarDraw(BrCar *car)
   gSPMatrix(D_8028A858++, D_8028A878, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
   gSPPerspNormalize(D_8028A858++, &D_8028A874);
   m = BrMtxAlloc();
-  k = D_8031B238[(BrCarModelBuf *)((char *)(car->model)) - D_803C8000];
+  k = D_8031B238[(BrCarModelBuf *)TGR_PTR(char *, car->model) - D_803C8000];
   guScaleF(D_8031AB10, D_8028AE0C[k].len / (double)256, D_8028AE0C[k].wid * 2.0 / 256, 1.0f / 256.0f);
   memcpy(D_8031AB50, car, 0x40);
   D_8031AB10[3][2] -= D_802A9EF0;

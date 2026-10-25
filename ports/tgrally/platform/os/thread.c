@@ -16,7 +16,6 @@
 #include <string.h>
 #include "host.h"
 #include "plat.h"
-#include "checkrun.h"
 
 #define MAXT 16
 #define EV_MAX 16
@@ -53,7 +52,6 @@ static volatile uint32_t s_frame;
 static uint64_t s_t0;               /* host ns at tick 0, moved on while paused */
 static int s_finished;
 
-int tgr_check;                     /* TGR_CHECK=1: one thread at a time on a counted clock (checkrun.c) */
 volatile int tgr_paused;            /* set by the host loop while the window is not in front */
 
 static uint64_t now_ticks(void)
@@ -62,8 +60,8 @@ static uint64_t now_ticks(void)
     return ns / 1000000000ull * TICKS_HZ + ns % 1000000000ull * TICKS_HZ / 1000000000ull;
 }
 
-uint64_t tgr_count(void) { return tgr_check ? chk_count() : now_ticks(); }
-uint32_t tgr_frame(void) { return tgr_check ? chk_frame() : s_frame; }
+uint64_t tgr_count(void) { return now_ticks(); }
+uint32_t tgr_frame(void) { return s_frame; }
 
 /* TGR_STATS: once a second of retraces, how they kept time and what reached
  * the window: retraces and frames finished, the worst gap between retraces,
@@ -115,8 +113,8 @@ static void stats(void)
     }
 }
 
-void tgr_os_lock(void)   { if (tgr_check) chk_lock(); else host_mutex_lock(G); }
-void tgr_os_unlock(void) { if (tgr_check) chk_unlock(); else host_mutex_unlock(G); }
+void tgr_os_lock(void)   { host_mutex_lock(G); }
+void tgr_os_unlock(void) { host_mutex_unlock(G); }
 
 static TThread *find(TgrThread *t)
 {
@@ -130,7 +128,7 @@ static TThread *find(TgrThread *t)
 /* ---- message queues: the game's layout, in game memory (the caller holds G) ---- */
 static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 {
-    TgrMsg *buf = mq->msg;
+    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
     if (mq->validCount >= mq->msgCount)
         return 0;
     if (jam) {
@@ -146,7 +144,7 @@ static int mq_send(TgrMsgQueue *mq, TgrMsg msg, int jam)
 
 static int mq_recv(TgrMsgQueue *mq, TgrMsg *out)
 {
-    TgrMsg *buf = mq->msg;
+    TgrMsg *buf = TGR_PTR(TgrMsg *, mq->msg);
     if (mq->validCount == 0)
         return 0;
     if (out)
@@ -161,10 +159,6 @@ static int mq_recv(TgrMsgQueue *mq, TgrMsg *out)
  * it, as the N64's did); the caller holds G */
 void tgr_event(int ev)
 {
-    if (tgr_check) {
-        chk_event(ev);
-        return;
-    }
     if (ev >= 0 && ev < EV_MAX && s_events[ev].mq)
         mq_send(s_events[ev].mq, s_events[ev].msg, 0);
 }
@@ -172,10 +166,6 @@ void tgr_event(int ev)
 /* what the platform delivers when it has done the work: now, in order */
 void tgr_post_event(int event)
 {
-    if (tgr_check) {
-        chk_post_event(event);
-        return;
-    }
     host_mutex_lock(G);
     tgr_event(event);
     host_mutex_unlock(G);
@@ -183,10 +173,6 @@ void tgr_post_event(int event)
 
 void tgr_post_mesg(TgrMsgQueue *mq, TgrMsg msg)
 {
-    if (tgr_check) {
-        chk_post_mesg(mq, msg);
-        return;
-    }
     host_mutex_lock(G);
     mq_send(mq, msg, 0);
     host_mutex_unlock(G);
@@ -293,10 +279,6 @@ void tgr_thread_new(TgrThread *t, TgrId id, void (*entry)(void *), void *arg, vo
 {
     TThread *th;
     (void)sp;                       /* (the N64's stack: the host thread brings its own) */
-    if (tgr_check) {
-        chk_thread_new(t, id, entry, arg, pri);
-        return;
-    }
     host_mutex_lock(G);
     th = find(t);
     if (!th) {
@@ -318,10 +300,6 @@ void tgr_thread_new(TgrThread *t, TgrId id, void (*entry)(void *), void *arg, vo
 void tgr_thread_start(TgrThread *t)
 {
     TThread *th;
-    if (tgr_check) {
-        chk_thread_start(t);
-        return;
-    }
     host_mutex_lock(G);
     th = find(t);
     if (th && !th->started) {
@@ -334,10 +312,6 @@ void tgr_thread_start(TgrThread *t)
 void tgr_thread_pri(TgrThread *t, TgrPri pri)
 {
     TThread *th;
-    if (tgr_check) {
-        chk_thread_pri(t, pri);
-        return;
-    }
     host_mutex_lock(G);
     th = t ? find(t) : NULL;
     if (th)
@@ -354,12 +328,12 @@ void tgr_thread_idle(void)
 
 void tgr_mq_init(TgrMsgQueue *mq, TgrMsg *msg, int32_t count)
 {
-    mq->mtqueue = NULL;
-    mq->fullqueue = NULL;
+    mq->mtqueue = 0x802A6230;       /* libultra's empty thread queue, as n64box sets it */
+    mq->fullqueue = 0x802A6230;
     mq->validCount = 0;
     mq->first = 0;
     mq->msgCount = count;
-    mq->msg = msg;
+    mq->msg = tgr_addr32(msg);
 }
 
 static int32_t send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag, int jam)
@@ -376,13 +350,11 @@ static int32_t send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag, int jam)
     return 0;
 }
 
-int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return tgr_check ? chk_mq_send(mq, msg, flag) : send(mq, msg, flag, 0); }
-int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return tgr_check ? chk_mq_jam(mq, msg, flag) : send(mq, msg, flag, 1); }
+int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return send(mq, msg, flag, 0); }
+int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return send(mq, msg, flag, 1); }
 
 int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
 {
-    if (tgr_check)
-        return chk_mq_recv(mq, msg, flag);
     host_mutex_lock(G);
     while (!mq_recv(mq, msg)) {
         if (flag != TGR_BLOCK) {
@@ -399,10 +371,6 @@ int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
 
 void tgr_event_mq(TgrEvent e, TgrMsgQueue *mq, TgrMsg msg)
 {
-    if (tgr_check) {
-        chk_event_mq(e, mq, msg);
-        return;
-    }
     host_mutex_lock(G);
     if (e < EV_MAX) {
         s_events[e].mq = mq;
@@ -413,10 +381,6 @@ void tgr_event_mq(TgrEvent e, TgrMsgQueue *mq, TgrMsg msg)
 
 void tgr_retrace_mq(TgrMsgQueue *mq, TgrMsg msg, uint32_t retraceCount)
 {
-    if (tgr_check) {
-        chk_retrace_mq(mq, msg, retraceCount);
-        return;
-    }
     host_mutex_lock(G);
     s_vi_mq = mq;
     s_vi_msg = msg;
@@ -424,16 +388,12 @@ void tgr_retrace_mq(TgrMsgQueue *mq, TgrMsg msg, uint32_t retraceCount)
     host_mutex_unlock(G);
 }
 
-uint32_t tgr_clock(void) { return (uint32_t)tgr_count(); }
+uint32_t tgr_clock(void) { return (uint32_t)now_ticks(); }
 
 int32_t tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue *mq, TgrMsg msg)
 {
     int i;
     (void)t;
-    if (tgr_check) {
-        chk_timer(countdown, interval, mq, msg);
-        return 0;
-    }
     host_mutex_lock(G);
     for (i = 0; i < MAXTIMERS; i++)
         if (!s_timers[i].live)
@@ -452,7 +412,7 @@ int32_t tgr_timer(TgrTimer *t, TgrTime countdown, TgrTime interval, TgrMsgQueue 
     return 0;
 }
 
-void *tgr_faulted_thread(void) { return NULL; }
+TgrAddr tgr_faulted_thread(void) { return 0; }
 
 /* ---- the run ------------------------------------------------------------------- */
 static void (*s_boot)(void);
@@ -466,12 +426,6 @@ static void *boot_main(void *v)
 
 void tgr_os_start(void (*boot)(void))
 {
-    const char *c = getenv("TGR_CHECK");
-    if (c && atoi(c)) {
-        tgr_check = 1;
-        chk_start(boot);
-        return;
-    }
     G = host_mutex_new();
     s_changed = host_cond_new();
     s_wake = host_cond_new();
@@ -484,15 +438,11 @@ void tgr_os_start(void (*boot)(void))
 /* 1 once the run is over (--frames reached) */
 int tgr_os_finished(void)
 {
-    return tgr_check ? chk_finished() : s_finished;
+    return s_finished;
 }
 
 void tgr_os_wait(void)
 {
-    if (tgr_check) {
-        chk_wait();
-        return;
-    }
     host_mutex_lock(G);
     while (!s_finished)
         host_cond_wait(s_changed, G, 0xFFFFFFFFu);

@@ -109,7 +109,7 @@ void BrWeatherStep(void)
   }
   D_8028C804 = 512 / D_8028AB0C;
   for (n = 0; n < D_8028AB0C; n++) {
-    BrVec3MulAdd(cur, ((BrCarCam *)(D_8031B760[n].cam))->mtx[3], ((BrCarCam *)(D_8031B760[n].cam))->mtx[0], 3.0f);
+    BrVec3MulAdd(cur, TGR_PTR(BrCarCam *, D_8031B760[n].cam)->mtx[3], TGR_PTR(BrCarCam *, D_8031B760[n].cam)->mtx[0], 3.0f);
     if (D_8028C824 == 0) {
       BrParticlesInit();
       x = cur[0];
@@ -250,7 +250,7 @@ void BrWeatherDraw(void)
     return;
   }
   for (i = 0; i < D_8028AB00; i++) {
-    if (((short)D_80025C60[D_8031B248[i]].flags) & 0x10) {
+    if (BES16(D_80025C60[D_8031B248[i]].flags) & 0x10) {
       return;
     }
   }

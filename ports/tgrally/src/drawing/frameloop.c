@@ -14,8 +14,6 @@
  */
 #include "tgr/car.h"
 #include "tgr/common.h"
-#include "tgr/tri.h"
-#include "tgr/pad.h"
 #include "tgr/gbi.h"
 
 /* -- declarations -- */
@@ -108,6 +106,11 @@ extern int D_8028AAE0;                  /* CPU time of the last frame */
 extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
+extern int tgr_tv_type;
+extern TgrVideoMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern TgrVideoMode D_802A54B0[1];
+extern TgrVideoMode D_802A6040[1];
+extern TgrVideoMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;
@@ -132,9 +135,9 @@ extern float D_802AB420;
 extern int D_8028AADC;
 void BrPadStartRead(void);
 extern TgrPad D_8031A3E0[4];
-void BrPadMapRead(BrPadRec *param_1);
-void BrPadEdges(void *param_1);
-extern BrPadRec D_8036A8E0[4];
+void BrPadMapRead(unsigned int *param_1);
+void BrPadEdges(unsigned int *param_1);
+extern unsigned int D_8036A8E0[4][0x57];
 
 void guLookAtF(float mf[4][4], float xEye, float yEye, float zEye, float xAt, float yAt, float zAt,
                float xUp, float yUp, float zUp);
@@ -171,38 +174,39 @@ extern int D_8028A8A8;                  /* mirror flags: they differ when the vi
 
 #include "tgr/track.h"
 
-extern TgrMsgQueue D_8031A320[1];
-extern TgrMsgQueue D_8031A338[1];
-extern TgrMsg D_8031A354[1];
-extern TgrMsgQueue D_8031A358[1];
-extern TgrMsgQueue D_8031A370[1];
-extern TgrMsg D_8031A38C[1];
-extern TgrMsgQueue D_8031A390[1];
-extern TgrMsgQueue D_8031A3B0[1];
-extern TgrMsg D_8031A3C8[1];
+extern int D_8031A320[6];
+extern int D_8031A338[6];
+extern int D_8031A354[1];
+extern int D_8031A358[6];
+extern int D_8031A370[6];
+extern int D_8031A38C[1];
+extern int D_8031A390[6];
+extern int D_8031A3B0[6];
+extern int D_8031A3C8[1];
 extern int D_8031A3CC;
 typedef struct BrContStatus {   /* an OSContStatus */
   unsigned short type;
   unsigned char status;
   unsigned char errno;
 } BrContStatus;
+typedef struct { char raw[0x68]; } BrPfs;   /* an OSPfs */
 void BrStub802607AC(void);
 extern char D_80272D68[];
-extern TgrMsgQueue D_80319F88[1];
-extern TgrMsg D_80319FA0[32];
-extern TgrMsg D_8031A350[1];
-extern TgrMsg D_8031A388[1];
-extern TgrMsg D_8031A3A8[1];
-extern TgrThread D_802729E0[1];
-extern TgrThread D_80272B90[1];
+extern int D_80319F88[6];
+extern int D_80319FA0[32];
+extern int D_8031A350[1];
+extern int D_8031A388[1];
+extern int D_8031A3A8[1];
+extern char D_802729E0[];
+extern char D_80272B90[];
 extern void *D_8026FF04;
 extern char D_803196D0[];
 extern char D_80319ED0[];
 extern float D_8028A8B0;
-extern TgrMsgQueue D_80272D48[1];
-extern TgrMsg D_80272D60[1];
+extern int D_80272D48[6];
+extern int D_80272D60[1];
 extern BrContStatus D_8031A3D0[4];
-extern TgrPak D_8031A3F8[4];
+extern BrPfs D_8031A3F8[4];
 extern unsigned char D_8031B1E8[4];
 void BrPadPollAll(void);
 void BrModeSet(void (*fn)(void));
@@ -218,7 +222,7 @@ extern char D_80316400[];
 extern unsigned char D_80316420;
 extern unsigned char D_80316421;
 extern int D_8036A908;
-extern TgrPak D_80369EC0[2];
+extern BrPfs D_80369EC0[2];
 extern int D_8028AA78;
 extern int D_8028AA80;
 extern int D_8028AA84;
@@ -246,7 +250,15 @@ void BrVec3Scale(void *out, void *v, float s);
 void BrVec3ScaleBy(BrVec3 *v, float s);
 void BrVec3Lerp(void *out, void *a, void *b, float t);
 extern int D_8028AB0C;                  /* the close camera mode */
-typedef BrTri BrCamPlane;     /* (tgr/tri.h) */
+typedef struct BrCamPlane {     /* a collision triangle's plane (0x20 bytes) */
+  BrVec3 n;                     /* its normal */
+  float d;
+  TgrAddr v0;                   /* BrVec3 * -- 0x10  its corners */
+  TgrAddr v1;  /* BrVec3 * */
+  TgrAddr v2;  /* BrVec3 * */
+  int x1c;
+} BrCamPlane;
+extern BrCamPlane D_80379F80[][150];    /* each grid cell's collision planes */
 extern unsigned short D_8037EA88[];     /* and how many */
 extern int D_8028B710;                  /* the camera was pushed out of a wall */
 short BrCollGridCellAcquire(float, float);
@@ -385,9 +397,9 @@ void BrFrameBegin(int hires)
     tgr_wr32(&_g->words.w0, 0xfe000000);
     tgr_wr32(&_g->words.w1, TGR_W1((D_00000400)));
   }
-  tgr_video_dither_filter(1);
-  tgr_video_divot(1);
-  tgr_video_gamma(D_8028AA4C != 0);
+  tgr_video_features(0x40);
+  tgr_video_features(0x10);
+  tgr_video_features(D_8028AA4C != 0 ? 1 : 2);
 }
 
 /* WHAT IT DOES: Start building a new frame using the first of the two
@@ -683,7 +695,7 @@ extern int D_8028B940;
 extern unsigned int D_8028AAD4;
 extern int D_8026FF10;
 extern int D_8028A880;
-extern TgrMsgQueue D_80319F88[1];
+extern int D_80319F88[];
 void *BrRomDmaSlot(void);
 
 /* WHAT IT DOES: Bring the track's textures up to date: each animated one
@@ -705,16 +717,16 @@ void BrTexAnimUpdate(void)
   BrTexSlot *slot;
 
   night = D_8028AA84 != 0 && D_8028B940 != 2 && D_8028B940 != 7;
-  for (i = 0; i < tgr_track.nTex; i++) {
-    slot = &((BrTexSlot *)tgr_track.tex)[i];
-    if (slot->dst == 0) {
+  for (i = 0; i < BES32(D_80025C00.nTex); i++) {
+    slot = &BEPTR(BrTexSlot *, D_80025C00.tex)[i];
+    if (BE32(slot->dst) == 0) {
       continue;
     }
     if (BR_TEXSLOT_ANIMATED(slot)) {
-      anim = ((BrTexAnim *)slot->anim);
-      period = (anim->key[anim->n - 2].time) - anim->t0;
+      anim = BEPTR(BrTexAnim *, slot->anim);
+      period = BE32(anim->key[BE16(anim->n) - 2].time) - BE32(anim->t0);
       t = D_8028AAD4 - D_8028AAD4 / period * period;
-      if (anim->n == 2 && anim->t0 == (unsigned int)-1) {
+      if (BE16(anim->n) == 2 && BE32(anim->t0) == (unsigned int)-1) {
         if (D_8028AA84 != D_8028AA88) {
           k = D_8028AA84 == 0;
           if (D_8028AA84 == 0) {
@@ -731,28 +743,28 @@ void BrTexAnimUpdate(void)
       if (night && BR_TEXSLOT_FMT(slot) == 0xB) {
         k = 1;
       } else {
-        for (k = 1; k < anim->n; k++) {
-          if (t < (anim->key[k - 1].time)) {
+        for (k = 1; k < BE16(anim->n); k++) {
+          if (t < BE32(anim->key[k - 1].time)) {
             break;
           }
         }
       }
       k--;
 frame:
-      tex = ((int)anim->key[k].tex);
+      tex = BES32(anim->key[k].tex);
 palette:
-      pal = ((int)anim->key[k].pal);
+      pal = BES32(anim->key[k].pal);
       if (BR_TEXSLOT_SIZE(slot) != 0 && tex != -1) {
-        tgr_rom_load(BrRomDmaSlot(), 0, 0, tex + D_8028A880, ((void *)slot->dst),
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, tex + D_8028A880, BEPTR(void *, slot->dst),
                      BR_TEXSLOT_SIZE(slot), &D_80319F88);
       }
 load:
-      if (slot->palDst != 0 && pal != -1) {
-        tgr_rom_load(BrRomDmaSlot(), 0, 0, pal + D_8028A880, ((void *)slot->palDst),
+      if (BE32(slot->palDst) != 0 && pal != -1) {
+        tgr_rom_load(BrRomDmaSlot(), 0, 0, pal + D_8028A880, BEPTR(void *, slot->palDst),
                      BR_TEXSLOT_FMT(slot) == 1 ? 0x20 : 0x200, &D_80319F88);
       }
     } else if (D_8028AA88 != D_8028AA84) {
-      pal = (slot->pal & 0xFFF) << 5;
+      pal = (BES32(slot->anim) & 0xFFF) << 5;
       goto load;
     }
   }
@@ -767,7 +779,7 @@ void BrPadStartRead(void)
   if (D_8028AB6C == 0) {
     D_8028AB6C = 1;
     D_802A4BE8 = 0;
-    tgr_pad_read(D_80272D48);
+    tgr_pad_read(&D_80272D48);
   }
 }
 
@@ -778,7 +790,7 @@ void BrPadStartRead(void)
 void BrPadRead(void)
 {
   BrPadStartRead();
-  tgr_mq_recv(D_80272D48,0,1);
+  tgr_mq_recv(&D_80272D48,0,1);
   tgr_pad_get(D_8031A3E0);
   D_802A4BE8 = 1;
   D_8028AB6C = 0;
@@ -794,8 +806,8 @@ void BrPadPollAll(void)
 
   BrPadRead();
   for (i = 0; i < 4; i++) {
-    BrPadMapRead(&D_8036A8E0[i]);
-    BrPadEdges(&D_8036A8E0[i]);
+    BrPadMapRead(D_8036A8E0[i]);
+    BrPadEdges(D_8036A8E0[i]);
   }
 }
 
@@ -891,7 +903,19 @@ void BrFrameEnd(void)
     D_8028AAE8 = tgr_clock(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
-        tgr_video_reset();              /* port: high or low resolution, MPAL or NTSC alike */
+        if (D_8028A850 != 0) {
+          if (tgr_tv_type == 2) {
+            tgr_video_mode(D_802A6040);
+          } else {
+            tgr_video_mode(D_802A5780);
+          }
+        } else {
+          if (tgr_tv_type == 2) {
+            tgr_video_mode(D_802A5D70);
+          } else {
+            tgr_video_mode(D_802A54B0);
+          }
+        }
         D_8028A854 = D_8028A850;
       }
     }
@@ -1122,29 +1146,29 @@ void BrRaceFlagsApply(void)
   BrTrackObj *objs = BR_TRACKOBJS();
 
   flag = D_8028B940 != 2 && D_8028B940 != 7;
-  for (i = 0; i < tgr_track.nObjs; i++) {
-    if ((objs[i].flags & 4) == 0) {
+  for (i = 0; i < BES32(D_80025C00.nObjs); i++) {
+    if ((BE16(objs[i].flags) & 4) == 0) {
       D_8028ADE8 = flag;
     }
-    if (BrDlRaceKindPatch((unsigned int *)tgr_ptr32(objs[i].dl), D_8028ABA8)) {
-      objs[i].flags = objs[i].flags | 8;
+    if (BrDlRaceKindPatch(BEPTR(unsigned int *, objs[i].dl), D_8028ABA8)) {
+      SET16(objs[i].flags, BE16(objs[i].flags) | 8);
     }
   }
   for (n = 0; n < D_8028B7F4; n++) {
     for (j = 0; j < 3; j++) {
       if (D_8031B760[n].colour[3] == 2) {
         for (i = 0; i < 10; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl[j][i]), D_8028AC68);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl[j][i]), D_8028AC68);
         }
         for (i = 0; i < 3; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl2[j][i]), D_8028AD28);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl2[j][i]), D_8028AD28);
         }
       } else {
         for (i = 0; i < 10; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl[j][i]), D_8028ABA8);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl[j][i]), D_8028ABA8);
         }
         for (i = 0; i < 3; i++) {
-          BrDlRaceKindPatch(BEPTR(unsigned int *, ((BrCarModel *)(D_8031B760[n].model))->dl2[j][i]), D_8028ABA8);
+          BrDlRaceKindPatch(BEPTR(unsigned int *, TGR_PTR(BrCarModel *, D_8031B760[n].model)->dl2[j][i]), D_8028ABA8);
         }
       }
     }
@@ -1226,8 +1250,8 @@ void BrCamShakeAdd(int cam, float amount)
 void BrSchedInit(void)
 {
   int i;
-  TgrMsgQueue q[1];
-  TgrMsg msg;
+  int q[6];
+  int msg;
   unsigned char bits;
   int r;
 
@@ -1316,7 +1340,7 @@ void BrBootCheck(void)
         BrPakWarnScreen();
       }
     } else {
-      memcpy(D_803163E0, D_80369EC0[0].id, 0x20);
+      memcpy(D_803163E0, D_80369EC0[0].raw + 0xc, 0x20);
       D_80316420 = 1;
     }
   }
@@ -1327,12 +1351,12 @@ void BrBootCheck(void)
         tgr_rumble_open(D_80272D48, &D_8031A3F8[1], 1);
       }
     } else {
-      memcpy(D_80316400, D_80369EC0[1].id, 0x20);
+      memcpy(D_80316400, D_80369EC0[1].raw + 0xc, 0x20);
       D_80316421 = 1;
     }
   }
-  if (D_8036A8E0[0].pressed & 0x4000) {
-    BrPadConsume(&D_8036A8E0[0], 0x4000);
+  if (D_8036A8E0[0][0] & 0x4000) {
+    BrPadConsume(D_8036A8E0[0], 0x4000);
     BrModeSet(BrPakManager);
     while (D_8031B318 == BrPakManager) {
       BrPakManager();

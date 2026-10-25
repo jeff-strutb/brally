@@ -9,7 +9,7 @@
 extern short D_802A4BE8;
 extern Gfx *D_8028A858;                 /* the display list */
 extern int D_802724F0;                  /* the last Controller Pak status */
-extern TgrMsgQueue D_80272D48[1];               /* the serial message queue */
+extern char D_80272D48[];               /* the serial message queue */
 extern int D_8028AAB0;                  /* the screen width */
 extern int D_8028AAB4;                  /* and height */
 extern BrImage D_8028CB40;              /* the backdrop */
@@ -59,7 +59,7 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
 void BrBevelPanel(int, int, int, int, int, char, char, unsigned char, unsigned char, unsigned char);
 char BrPaintCharset(unsigned char i);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
-void BrPadStickToButtons(void *);
+void BrPadStickToButtons(int);
 extern int D_8028A850;                  /* hi-res screen */
 extern int D_8028A85C;                  /* the frame buffer being drawn */
 extern unsigned int D_8031AA28[];       /* the frame buffers */
@@ -267,7 +267,7 @@ void BrPakManager(void)
     D_8036A061 = D_8036A062;
     break;
   case 2:
-    BrPadStickToButtons(&D_8036A8E0[0]);
+    BrPadStickToButtons(tgr_addr32(&D_8036A8E0[0]));
     if (D_8036A8E0[0].pressed & 8) {
       BrPadConsume(&D_8036A8E0[0], 8);
       if (D_8036A064 != 0 && D_8036A061 != D_8036A062) {

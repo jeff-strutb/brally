@@ -2,7 +2,6 @@
  * triangle planes of one 32x32 grid cell, recycled least-recently used.
  */
 #include "tgr/common.h"
-#include "tgr/tri.h"
 
 /* -- declarations -- */
 extern unsigned short D_8037EA80[4];   /* the cell each slot holds (0 = none) */
@@ -10,8 +9,15 @@ extern int D_8037EA90[4];              /* each slot's last-use stamp */
 extern short D_8037EA88[4];            /* each slot's triangle count */
 extern int D_8037EAA0;                 /* the use clock */
 /* A cached triangle (0x20 bytes): its plane and its three vertices. */
-
-extern BrCrNode D_80379940[50][4];    /* the contact-list nodes, 50 rows of four */
+typedef struct BrTri {
+    float plane[4];             /* 0x00  normal and distance */
+    TgrAddr v[3];                /* float * -- 0x10 */
+    short id;                   /* 0x1C */
+    unsigned char kind;         /* 0x1E */
+    char pad1f;
+} BrTri;
+extern BrTri D_80379F80[4][150];       /* each slot's triangles */
+extern int D_80379940[50][4][2];      /* 50 records of four pairs */
 extern void *D_802A4A20;
 extern void *D_802A4A24;
 /* -- end declarations -- */
@@ -61,8 +67,8 @@ void BrTriCacheReset(void)
   }
   for (i = 0; i < 50; i++) {
     for (j = 0; j < 4; j++) {
-      D_80379940[i][j].plane = 0;
-      D_80379940[i][j].next = 0;
+      D_80379940[i][j][0] = 0;
+      D_80379940[i][j][1] = 0;
     }
   }
   D_802A4A20 = 0;

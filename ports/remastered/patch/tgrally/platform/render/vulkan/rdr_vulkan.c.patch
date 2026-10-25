@@ -6,7 +6,7 @@
  int rdr_covers(void) { return 0; }
 +int rdr_any_thread(void) { return 1; }   /* (Remastered: rdr.h) */
  int rdr_presents(void) { return 1; }
- void rdr_video(const RdrVideo *v) { s_gamma = v->gamma; }
+ void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
  
 @@ -1062,10 +1063,10 @@
      /* the game keeps its own time (os/thread.c paces the retraces): a

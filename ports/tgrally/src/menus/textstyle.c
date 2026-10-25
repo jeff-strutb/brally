@@ -4,11 +4,17 @@
  * the other popups'.
  */
 #include "tgr/common.h"
-#include "tgr/pad.h"
 
 /* -- declarations -- */
 #include "tgr/image.h"
-extern BrPadRec D_8036A8E0[4];
+typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
+  unsigned int pressed;
+  unsigned int held;
+  int repeat[4];
+  float axis[2];
+  char pad20[0x15c - 0x20];
+} BrPadRec;
+extern char D_8036A8E0;
 #define PADS ((BrPadRec *)&D_8036A8E0)
 typedef struct BrPaintSwatch {  /* 0x14 bytes */
   int x, y, w, h;
@@ -39,7 +45,7 @@ void BrImageDrawAt(BrImage *img, int x, int y);
 void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
                      unsigned char r, unsigned char g, unsigned char b);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
-void BrPadStickToButtons(void *);
+void BrPadStickToButtons(int);
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The paint shop's text-style popup: a normal and a
@@ -109,9 +115,9 @@ void BrPaintTextStyleMenu(void)
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
     BrImageDrawAt(&D_8028D0B0, x, yb);
     BrImageDrawAt(&D_8028D0E0, bx, yb);
-    BrPadStickToButtons(&PADS[D_8028DBBC]);
-    if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 5) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 5);
+    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
       D_8028DBB8 ^= 1;
     }
   } else {
@@ -142,9 +148,9 @@ void BrPaintTextStyleMenu(void)
     BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
     BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
     }
-    BrPadStickToButtons(&PADS[D_8028DBBC]);
-    if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
+    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
       if (D_8028DB5C == 0) {
         D_8028DB5C = 7;
       } else if (D_8028DB5C == 8) {
@@ -152,8 +158,8 @@ void BrPaintTextStyleMenu(void)
       } else {
         D_8028DB5C--;
       }
-    } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 1) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 1);
+    } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
       if (D_8028DB5C == 7) {
         D_8028DB5C = 0;
       } else if (D_8028DB5C == 15) {
@@ -161,34 +167,34 @@ void BrPaintTextStyleMenu(void)
       } else {
         D_8028DB5C++;
       }
-    } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 10) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 10);
+    } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 10) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 10);
       if (D_8028DB5C < 8) {
         D_8028DB5C += 8;
       } else {
         D_8028DB5C -= 8;
       }
     }
-    if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
+    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
       D_8028CF2C = D_8028DBB8;
       D_8028DBE4 = 0;
       D_8028DBE0 = 0;
-    } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
-      BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
+    } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
       D_8028DB5C = D_8028DB54;
       D_8028DBE4 = 0;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
     if (D_8028DBB8 != 0) {
       D_8028DBE4 = 1;
     } else {
       D_8028DBE0 = 0;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
     D_8028DBE0 = 0;
     D_8028DBE4 = 0;
   }

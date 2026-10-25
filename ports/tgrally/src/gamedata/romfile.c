@@ -7,7 +7,7 @@
 typedef struct BrRomFile {
   int start;                    /* 0x00  ROM range */
   int end;                      /* 0x04 */
-  void *data;                     /* 0x08  where it was loaded */
+  TgrAddr data;                   /* void * -- 0x08  where it was loaded */
 } BrRomFile;
 void BrRomRead(void *dst, int rom, int len);
 unsigned int BrRomReadSize(int rom);
@@ -26,19 +26,19 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits);
 /* WHAT IT DOES: Load a ROM file as it is: allocate its length with the
  * given allocator and copy it in. */
 /* @implements 0x8023DF00 tgr BrRomFileLoad */
-void BrRomFileLoad(BrRomFile *f, void *(*alloc)(int size))
+void BrRomFileLoad(BrRomFile *f, unsigned int (*alloc)(int size))
 {
   f->data = alloc(f->end - f->start);
-  BrRomRead(((void *)(f->data)), f->start, f->end - f->start);
+  BrRomRead(TGR_PTR(void *, f->data), f->start, f->end - f->start);
 }
 
 /* WHAT IT DOES: Load a compressed ROM file: allocate its unpacked size with
  * the given allocator and unpack it there. */
 /* @implements 0x8023DF4C tgr BrRomFileUnpack */
-void BrRomFileUnpack(BrRomFile *f, void *(*alloc)(int size))
+void BrRomFileUnpack(BrRomFile *f, unsigned int (*alloc)(int size))
 {
   f->data = alloc(BrRomReadSize(f->start));
-  BrRomUnpack(((void *)(f->data)), f->start, 0);
+  BrRomUnpack(TGR_PTR(void *, f->data), f->start, 0);
 }
 
 /* WHAT IT DOES: Draw a loaded ROM image as a w by h rectangle at (x, y)
@@ -158,7 +158,7 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
     yb -= step;
     switch (img->siz) {
     case 0:
-      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, ((unsigned char *)(img->data)) + line * row);
+      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, TGR_PTR(unsigned char *, img->data) + line * row);
       gDPSetTile(D_8028A858++, img->fmt, G_IM_SIZ_16b, 0, 0, 7, 0, 2, bitsT, 0, 2, bitsS, 0);
       gDPLoadSync(D_8028A858++);
       gDPLoadBlock(D_8028A858++, 7, 0, 0, ((img->w * (lines + 1) + 3) >> 2) - 1, CALC_DXT_4b(img->w));
@@ -167,7 +167,7 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
       gDPSetTileSize(D_8028A858++, 0, 0, 0, (img->w - 1) << 2, lines << 2);
       break;
     case 1:
-      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, ((unsigned char *)(img->data)) + line * row);
+      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, TGR_PTR(unsigned char *, img->data) + line * row);
       gDPSetTile(D_8028A858++, img->fmt, G_IM_SIZ_16b, 0, 0, 7, 0, 2, bitsT, 0, 2, bitsS, 0);
       gDPLoadSync(D_8028A858++);
       gDPLoadBlock(D_8028A858++, 7, 0, 0, ((img->w * (lines + 1) + 1) >> 1) - 1, CALC_DXT(img->w, 1));
@@ -176,7 +176,7 @@ void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg,
       gDPSetTileSize(D_8028A858++, 0, 0, 0, (img->w - 1) << 2, lines << 2);
       break;
     case 2:
-      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, ((unsigned char *)(img->data)) + line * row);
+      gDPSetTextureImage(D_8028A858++, img->fmt, G_IM_SIZ_16b, 1, TGR_PTR(unsigned char *, img->data) + line * row);
       gDPSetTile(D_8028A858++, img->fmt, G_IM_SIZ_16b, 0, 0, 7, 0, 2, bitsT, 0, 2, bitsS, 0);
       gDPLoadSync(D_8028A858++);
       gDPLoadBlock(D_8028A858++, 7, 0, 0, img->w * (lines + 1) - 1, CALC_DXT(img->w, 2));

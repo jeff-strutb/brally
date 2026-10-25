@@ -1,8 +1,6 @@
 /* entinit.c -- resetting car entities
  */
 #include "tgr/common.h"
-#include "tgr/pad.h"
-#include "tgr/body.h"
 #include "tgr/car.h"
 
 /* -- declarations -- */
@@ -11,8 +9,8 @@ extern int D_8028AE04;
 void BrCarPickKind(BrCar *car);
 extern int D_8026FF08;
 extern int D_8026FF18;
-void BrPadInit(void *param_1);
-extern BrPadRec D_8036A8E0[4];
+void BrPadInit(unsigned int *param_1);
+extern unsigned int D_8036A8E0[4][0x57];
 void guMtxIdent(int *m);
 void BrMat4ResetW(float m[4][4]);
 void BrCarSetVel(BrCar *car, float x, float y, float z);
@@ -22,14 +20,20 @@ float cosf(float x);
 void BrQuatMul(float out[4], float a[4], float b[4]);
 void BrVec4Normalise(float v[4]);
 #include "tgr/track.h"
-#define D_80025C38 tgr_track.fogLo        /* the track's sky height */
+#define D_80025C38 BEF(D_80025C00.fogLo)        /* the track's sky height */
 void BrCarPhysInit(BrCar *car);
 void BrCarSetPos(BrCar *car, float x, float y, float z);
 void BrCarSetHeading(BrCar *car, float h);
 void BrCarSetAngVel(BrCar *car, float x, float y, float z);
 float BrAtan2(float y, float x);
 void BrCarCamPlaceBehind(BrCar *car, BrCarCam *cam, float t);
-
+typedef struct BrCarWheel {     /* a wheel's rigid body (rbquat.c's BrRbBody) */
+  char pad000[0x19C];
+  int x19c;                     /* 0x19C */
+  unsigned char x1a0;           /* 0x1A0 */
+  char pad1a1[0x1B4 - 0x1A1];
+  int x1b4;                     /* 0x1B4 */
+} BrCarWheel;
 
 /* -- end declarations -- */
 
@@ -43,7 +47,7 @@ void BrEntAllReset(void)
 
   for (i = 0; i < 4; i++) {
     BrCarReset(&D_8031B760[i]);
-    BrPadInit(&D_8036A8E0[i]);
+    BrPadInit(D_8036A8E0[i]);
   }
 }
 
@@ -67,7 +71,7 @@ void BrCarResetFrames(BrCar *car)
   car->cams[3].fov = 0.5235988f;
   BrMat4ResetW(car->cam4.mtx);
   car->cam4.fov = 0.5235988f;
-  car->cam = (&car->cams[0]);
+  car->cam = tgr_addr32(&car->cams[0]);
   car->model = 0;
   BrMat4ResetW(car->wheelMtx[0]);
   BrMat4ResetW(car->wheelMtx[1]);
@@ -87,10 +91,10 @@ void BrCarResetFrames(BrCar *car)
   car->xe28[0] = D_8028B330[kind].x30[0];
   car->xe30 = car->xe6c;
   car->xe28[1] = D_8028B330[kind].x30[1];
-  car->body[0].x1dc[0] = D_8028B330[kind].x38[0];
-  car->body[0].x1dc[1] = D_8028B330[kind].x38[1];
-  car->body[0].x1dc[2] = D_8028B330[kind].x38[2];
-  car->body[0].x1dc[3] = D_8028B330[kind].x38[3];
+  car->x324[0] = D_8028B330[kind].x38[0];
+  car->x324[1] = D_8028B330[kind].x38[1];
+  car->x324[2] = D_8028B330[kind].x38[2];
+  car->x324[3] = D_8028B330[kind].x38[3];
   car->xe34 = D_8028B330[kind].x48;
 }
 
@@ -99,7 +103,7 @@ void BrCarResetFrames(BrCar *car)
 /* @implements 0x802207A4 tgr BrCarBindPad */
 void BrCarBindPad(BrCar *car)
 {
-  car->pad = (unsigned int *)&D_8036A8E0[car - D_8031B760];
+  car->pad = tgr_addr32(D_8036A8E0[car - D_8031B760]);
   guMtxIdent(car->mtx);
 }
 
@@ -117,7 +121,7 @@ void BrCarPickKind(BrCar *car)
   int r;
   short mask;
 
-  r = ((BrSeason *)(D_8031B760[0].season))->round;
+  r = TGR_PTR(BrSeason *, D_8031B760[0].season)->round;
   if (r > 3) {
     r = 3;
   }
@@ -139,11 +143,11 @@ void BrCarPickKind(BrCar *car)
     if (car->slot > D_8026FF08) {
       car->kind = i;
     } else {
-      car->kind = D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].kinds[car->slot - D_8026FF08];
+      car->kind = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].kinds[car->slot - D_8026FF08];
     }
   } else {
     if (D_8026FF18 == 0) {
-      car->kind = D_8028B944[((BrSeason *)(D_8031B760[0].season))->round].kinds[0];
+      car->kind = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].kinds[0];
     }
   }
 }
@@ -159,22 +163,22 @@ void BrCarReset(BrCar *car)
   BrCarBindPad(car);
   car->slot = car - D_8031B760;
   if (car->slot < 2) {
-    car->season = (&D_80324300[car->slot]);
-    ((BrSeason *)(car->season))->state = 0;
-    ((BrSeason *)(car->season))->round = 0;
-    ((BrSeason *)(car->season))->points[0] = 0;
-    ((BrSeason *)(car->season))->race = 0;
-    ((BrSeason *)(car->season))->unlocked = 0x102;
-    ((BrSeason *)(car->season))->xce = 4;
-    ((BrSeason *)(car->season))->xd0 = 1;
-    ((BrSeason *)(car->season))->xd8 = 1;
-    ((BrSeason *)(car->season))->xd4 = 0;
-    ((BrSeason *)(car->season))->xe0 = 1;
-    ((BrSeason *)(car->season))->xdc = 2;
-    ((BrSeason *)(car->season))->xe4 = 0;
+    car->season = tgr_addr32(&D_80324300[car->slot]);
+    TGR_PTR(BrSeason *, car->season)->state = 0;
+    TGR_PTR(BrSeason *, car->season)->round = 0;
+    TGR_PTR(BrSeason *, car->season)->points[0] = 0;
+    TGR_PTR(BrSeason *, car->season)->race = 0;
+    TGR_PTR(BrSeason *, car->season)->unlocked = 0x102;
+    TGR_PTR(BrSeason *, car->season)->xce = 4;
+    TGR_PTR(BrSeason *, car->season)->xd0 = 1;
+    TGR_PTR(BrSeason *, car->season)->xd8 = 1;
+    TGR_PTR(BrSeason *, car->season)->xd4 = 0;
+    TGR_PTR(BrSeason *, car->season)->xe0 = 1;
+    TGR_PTR(BrSeason *, car->season)->xdc = 2;
+    TGR_PTR(BrSeason *, car->season)->xe4 = 0;
     for (i = 0; i < D_8028AE04; i++) {
-      ((BrSeason *)(car->season))->x8c[i] = 0.0f;
-      ((BrSeason *)(car->season))->xe8[i] = 0.0f;
+      TGR_PTR(BrSeason *, car->season)->x8c[i] = 0.0f;
+      TGR_PTR(BrSeason *, car->season)->xe8[i] = 0.0f;
     }
   } else {
     car->season = 0;
@@ -190,37 +194,37 @@ void BrCarReset(BrCar *car)
 /* @implements 0x80226248 tgr BrCarRespawn */
 void BrCarRespawn(BrCar *car)
 {
-  if (car->body[0].stuck < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
+  if (car->x340 < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
     BrCarPhysInit(car);
     if (D_8026FF18 == 2) {
-      BrCarSetPos(car, (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x),
-                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
-                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.x),
+                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.y),
+                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.z) + 2.0);
     } else {
-      BrCarSetPos(car, (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.x) + car->slot * 0.01f,
-                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.y),
-                  (((BrPathSeg *)(car->xf5c))->pt[car->xf60].pos.z) + 2.0);
+      BrCarSetPos(car, BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.x) + car->slot * 0.01f,
+                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.y),
+                  BEF(TGR_PTR(BrPathSeg *, car->xf5c)->pt[car->xf60].pos.z) + 2.0);
     }
     BrCarSetHeading(car, BrAtan2(car->xf64, car->xf68));
     BrCarSetVel(car, 0.0f, 0.0f, 0.0f);
     BrCarSetAngVel(car, 0.0f, 0.0f, 0.0f);
-    ((BrRbBody *)(car->body[0].sub[0]))->hit = 0;
-    ((BrRbBody *)(car->body[0].sub[0]))->x1b4 = 0;
-    ((BrRbBody *)(car->body[0].sub[0]))->x1a0 = 2;
-    ((BrRbBody *)(car->body[0].sub[1]))->hit = 0;
-    ((BrRbBody *)(car->body[0].sub[1]))->x1b4 = 0;
-    ((BrRbBody *)(car->body[0].sub[1]))->x1a0 = 2;
-    ((BrRbBody *)(car->body[0].sub[3]))->hit = 0;
-    ((BrRbBody *)(car->body[0].sub[3]))->x1b4 = 0;
-    ((BrRbBody *)(car->body[0].sub[3]))->x1a0 = 2;
-    ((BrRbBody *)(car->body[0].sub[2]))->hit = 0;
-    ((BrRbBody *)(car->body[0].sub[2]))->x1b4 = 0;
-    ((BrRbBody *)(car->body[0].sub[2]))->x1a0 = 2;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x19c = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1b4 = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[0])->x1a0 = 2;
+    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x19c = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1b4 = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[1])->x1a0 = 2;
+    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x19c = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1b4 = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[3])->x1a0 = 2;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x19c = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1b4 = 0;
+    TGR_PTR(struct BrCarWheel *, car->wheel[2])->x1a0 = 2;
     car->xe70[0] = 0;
     car->xe70[1] = 0;
     car->xe70[2] = 0;
     car->xe70[3] = -180;
-    car->body[0].stuck = 0;
+    car->x340 = 0;
     car->colour[3] = 2;
     car->x2064 = 0.1f;
     BrCarCamPlaceBehind(car, &car->cams[1], 1.0f);
@@ -245,8 +249,8 @@ extern int D_8028A8AC;                  /* the picture is mirrored */
 extern int D_8028B7F8;                  /* frames the camera keeps its checkpoint target */
 extern int D_8028B7FC;
 extern int D_80270788;
-#define D_80025C84 ((BrVec3 *)tgr_track.cams)   /* the camera checkpoints */
-#define D_80025C88 tgr_track.nCams              /* and their count */
+#define D_80025C84 BEPTR(BrVec3be *, D_80025C00.cams)   /* the camera checkpoints */
+#define D_80025C88 BES32(D_80025C00.nCams)              /* and their count */
 void BrPadConsume(BrCarInput *pad, int bit);
 void BrCarCamPlaceChase(BrCar *car);
 void BrVec3MulAddTo(BrVec3 *pV, float *pD, float t);
@@ -264,7 +268,7 @@ float sqrtf(float x);
 void BrCamShakeAdd(int slot, float s);
 /* -- end declarations -- */
 
-#define PAD ((BrCarInput *)(car->pad))
+#define PAD TGR_PTR(BrCarInput *, car->pad)
 #define VIEWED (car->slot == D_8031B2C8[0].car || (D_8028AB0C >= 2 && car->slot == D_8031B2C8[1].car))
 
 /* WHAT IT DOES: One frame of a car's control from its pad: the steering and
@@ -322,7 +326,7 @@ void BrCarPlayerCtl(BrCar *car)
   } else {
     car->x1dd4 = 0.0f;
   }
-  if ((((BrCarLink *)(car->link))->flags & 2) && VIEWED) {
+  if ((TGR_PTR(struct BrCarLink *, car->link)->flags & 2) && VIEWED) {
     if (D_8028B7F8 == 0) {
       goto scan;
     }
@@ -331,7 +335,7 @@ void BrCarPlayerCtl(BrCar *car)
 scan:
       best = 16777216.0f;
       for (i = 0; i < D_80025C88; i++) {
-        p = (&D_80025C84[i]);   /* cartridge data, read natively */
+        p = BRV(&D_80025C84[i]);   /* cartridge data, read natively */
         dx = car->mtx0[3][0] - p->x;
         dy = car->mtx0[3][1] - p->y;
         dx = dx * dx;
@@ -340,7 +344,7 @@ scan:
         if (!(dz > 10.0f)) {
           dz = dz * dz;
           if ((d = dx + dy + dz) < best) {
-            q = (&D_80025C84[i]);
+            q = BRV(&D_80025C84[i]);
             b[0] = q->x;
             b[1] = q->y;
             b[2] = q->z;
@@ -349,20 +353,20 @@ scan:
         }
       }
       if (best < 22500.0f) {
-        if (((BrCarCam *)(car->cam)) != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
+        if (TGR_PTR(BrCarCam *, car->cam) != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
             car->cams[3].mtx[3][2] != b[2]) {
           car->xf48 = 1;
         }
         car->cams[3].mtx[3][0] = b[0];
         car->cams[3].mtx[3][1] = b[1];
         car->cams[3].mtx[3][2] = b[2];
-        car->cam = (&car->cams[3]);
-      } else if (((BrCarCam *)(car->cam)) == &car->cams[3]) {
+        car->cam = tgr_addr32(&car->cams[3]);
+      } else if (TGR_PTR(BrCarCam *, car->cam) == &car->cams[3]) {
         car->xf48 = 1;
         if (D_8028B9EC != 0 || D_8028B7FC != 0) {
-          car->cam = (&car->cams[0]);
+          car->cam = tgr_addr32(&car->cams[0]);
         } else {
-          car->cam = (&car->cams[1]);
+          car->cam = tgr_addr32(&car->cams[1]);
         }
         D_8028B9EC = D_8028B9EC == 0;
         D_8028B7F8 = 60;
@@ -377,7 +381,7 @@ scan:
     D_8028B7F8 = 0;
   }
   if (PAD->flags & 0x1000000) {
-    car->cam = (&car->cams[0]);
+    car->cam = tgr_addr32(&car->cams[0]);
     car->xf48 = 1;
     BrPadConsume(PAD, 0x1000000);
   }
@@ -387,12 +391,12 @@ scan:
     BrPadConsume(PAD, 0x2000000);
   }
   if (PAD->flags & 0x4000000) {
-    car->cam = (&car->cams[1]);
+    car->cam = tgr_addr32(&car->cams[1]);
     car->xf48 = 1;
     BrPadConsume(PAD, 0x4000000);
   }
   if (D_8028AB0C == 1 && (PAD->flags & 0x8000000)) {
-    car->cam = (&car->cams[2]);
+    car->cam = tgr_addr32(&car->cams[2]);
     car->xf48 = 1;
     BrPadConsume(PAD, 0x8000000);
   }
@@ -506,16 +510,16 @@ void BrCarSetPos(BrCar *car, float x, float y, float z)
   car->pos1d78.x = x;
   car->pos1d78.y = y;
   car->pos1d78.z = z;
-  car->body[0].st.pos.x = x;
-  car->body[0].st.pos.y = y;
-  car->body[0].st.pos.z = z;
-  car->body[0].stB.pos.x = x;
-  car->body[0].stB.pos.y = y;
-  car->body[0].stB.pos.z = z;
-  car->body[0].stA.pos.x = x;
-  car->body[0].stA.pos.y = y;
-  car->body[0].stA.pos.z = z;
-  BrQuatToMat(car->body[0].m, &car->body[0].st);
+  car->st.pos.x = x;
+  car->st.pos.y = y;
+  car->st.pos.z = z;
+  car->stB.pos.x = x;
+  car->stB.pos.y = y;
+  car->stB.pos.z = z;
+  car->stA.pos.x = x;
+  car->stA.pos.y = y;
+  car->stA.pos.z = z;
+  BrQuatToMat(car->stMtx, &car->st);
 }
 
 /* WHAT IT DOES: Turn a car to face heading a (radians, about z): the body
@@ -543,17 +547,17 @@ void BrCarSetHeading(BrCar *car, float a)
   car->mtx0[2][0] = 0.0f;
   car->mtx0[1][1] = s2;
   car->mtx0[2][2] = 1.0f;
-  car->body[0].st.q[0] = cosf(a * 0.5f);
-  car->body[0].st.q[2] = 0.0f;
-  car->body[0].st.q[1] = 0.0f;
-  car->body[0].stA.q[3] = car->body[0].stB.q[3] = car->body[0].st.q[3] = sinf(a * 0.5f);
-  car->body[0].stB.q[0] = car->body[0].st.q[0];
-  car->body[0].stB.q[1] = car->body[0].st.q[1];
-  car->body[0].stB.q[2] = car->body[0].st.q[2];
-  car->body[0].stA.q[0] = car->body[0].st.q[0];
-  car->body[0].stA.q[1] = car->body[0].st.q[1];
-  car->body[0].stA.q[2] = car->body[0].st.q[2];
-  BrQuatToMat(car->body[0].m, &car->body[0].st);
+  car->st.q[0] = cosf(a * 0.5f);
+  car->st.q[2] = 0.0f;
+  car->st.q[1] = 0.0f;
+  car->stA.q[3] = car->stB.q[3] = car->st.q[3] = sinf(a * 0.5f);
+  car->stB.q[0] = car->st.q[0];
+  car->stB.q[1] = car->st.q[1];
+  car->stB.q[2] = car->st.q[2];
+  car->stA.q[0] = car->st.q[0];
+  car->stA.q[1] = car->st.q[1];
+  car->stA.q[2] = car->st.q[2];
+  BrQuatToMat(car->stMtx, &car->st);
 }
 
 /* WHAT IT DOES: Turn a rotation matrix into a unit quaternion (w, x, y, z)
@@ -600,15 +604,15 @@ void BrCarSetVel(BrCar *car, float x, float y, float z)
   BrVec3 *v;
 
   v = &car->velfd8;
-  car->body[0].st.vel.x = x;
-  car->body[0].st.vel.y = y;
-  car->body[0].st.vel.z = z;
-  car->body[0].stB.vel.x = x;
-  car->body[0].stB.vel.y = y;
-  car->body[0].stB.vel.z = z;
-  car->body[0].stA.vel.x = x;
-  car->body[0].stA.vel.y = y;
-  car->body[0].stA.vel.z = z;
+  car->st.vel.x = x;
+  car->st.vel.y = y;
+  car->st.vel.z = z;
+  car->stB.vel.x = x;
+  car->stB.vel.y = y;
+  car->stB.vel.z = z;
+  car->stA.vel.x = x;
+  car->stA.vel.y = y;
+  car->stA.vel.z = z;
   v = &car->velfd8;
   v->x = x;
   v->y = y;
@@ -637,28 +641,28 @@ void BrCarRotate(BrCar *car, float az, float ay, float ax)
   q[1] = 0.0f;
   q[2] = 0.0f;
   q[3] = s;
-  BrQuatMul(car->body[0].st.q, car->body[0].st.q, q);
+  BrQuatMul(car->st.q, car->st.q, q);
   s = sinf(ay);
   q[0] = cosf(ay);
   q[1] = 0.0f;
   q[2] = s;
   q[3] = 0.0f;
-  BrQuatMul(car->body[0].st.q, car->body[0].st.q, q);
+  BrQuatMul(car->st.q, car->st.q, q);
   s = sinf(ax);
   q[0] = cosf(ax);
   q[1] = s;
   q[2] = 0.0f;
   q[3] = 0.0f;
-  BrQuatMul(car->body[0].st.q, car->body[0].st.q, q);
-  BrVec4Normalise(car->body[0].st.q);
-  car->body[0].stB.q[0] = car->body[0].st.q[0];
-  car->body[0].stB.q[1] = car->body[0].st.q[1];
-  car->body[0].stB.q[2] = car->body[0].st.q[2];
-  car->body[0].stB.q[3] = car->body[0].st.q[3];
-  car->body[0].stA.q[0] = car->body[0].st.q[0];
-  car->body[0].stA.q[1] = car->body[0].st.q[1];
-  car->body[0].stA.q[2] = car->body[0].st.q[2];
-  car->body[0].stA.q[3] = car->body[0].st.q[3];
+  BrQuatMul(car->st.q, car->st.q, q);
+  BrVec4Normalise(car->st.q);
+  car->stB.q[0] = car->st.q[0];
+  car->stB.q[1] = car->st.q[1];
+  car->stB.q[2] = car->st.q[2];
+  car->stB.q[3] = car->st.q[3];
+  car->stA.q[0] = car->st.q[0];
+  car->stA.q[1] = car->st.q[1];
+  car->stA.q[2] = car->st.q[2];
+  car->stA.q[3] = car->st.q[3];
 }
 
 /* WHAT IT DOES: Set a car's angular velocity in all three rigid-body
@@ -666,13 +670,13 @@ void BrCarRotate(BrCar *car, float az, float ay, float ax)
 /* @implements 0x80220358 tgr BrCarSetAngVel */
 void BrCarSetAngVel(BrCar *car, float x, float y, float z)
 {
-  car->body[0].st.angVel.x = x;
-  car->body[0].st.angVel.y = y;
-  car->body[0].st.angVel.z = z;
-  car->body[0].stB.angVel.x = x;
-  car->body[0].stB.angVel.y = y;
-  car->body[0].stB.angVel.z = z;
-  car->body[0].stA.angVel.x = x;
-  car->body[0].stA.angVel.y = y;
-  car->body[0].stA.angVel.z = z;
+  car->st.angVel.x = x;
+  car->st.angVel.y = y;
+  car->st.angVel.z = z;
+  car->stB.angVel.x = x;
+  car->stB.angVel.y = y;
+  car->stB.angVel.z = z;
+  car->stA.angVel.x = x;
+  car->stA.angVel.y = y;
+  car->stA.angVel.z = z;
 }

@@ -19,14 +19,14 @@ void BrIfaceMemReset(void);
 void BrPaintShopMemInit(void);
 int BrCpakCheck(int, unsigned char);
 void BrVolumesApply(void);
-void BrMusicInit(unsigned char *, unsigned char *);
+void BrMusicInit(int, void *);
 void BrMainLoop(void);
 extern int D_80270784;
 extern char D_80307F00[];
 #define BR_ROM_MODULES 0xEBC00          /* the front end's music module */
-extern unsigned char D_802AC400[];
+extern char D_802AC400[];
 void BrMusicStop(void);
-void BrMusicStart(unsigned char *, unsigned char *);
+void BrMusicStart(int, int);
 extern unsigned int D_8026FF24[];       /* each track's music: its ROM offset */
 extern int D_8028B940;                  /* the track */
 extern int D_8026FF58;                  /* animate the scene: 0 no, -1 frozen, else run */
@@ -74,8 +74,8 @@ void BrMainThread(void *arg)
   while (!BrCpakCheck(2, 1)) {
   }
   BrVolumesApply();
-  BrRomUnpack(D_80025C00, BR_ROM_MODULES, 0);
-  BrMusicInit(D_80025C00, D_802AC400);
+  BrRomUnpack((unsigned char *)&D_80025C00, BR_ROM_MODULES, 0);
+  BrMusicInit(tgr_addr32(&D_80025C00), D_802AC400);
   tgr_print("sizeof(UltraCarHeader)=%d\n", 0xdf88);
   tgr_print("sizeof(Vehicle)=%d\n", 0x2090);
   tgr_print("sizeof(Enemy)=%d\n", 0x78);
@@ -88,8 +88,8 @@ void BrMainThread(void *arg)
 void BrMusicLoadTrack(void)
 {
   BrMusicStop();
-  BrRomUnpack(D_80025C00, D_8026FF24[D_8028B940], 0);
-  BrMusicStart(D_80025C00, D_802AC400);
+  BrRomUnpack((unsigned char *)&D_80025C00, D_8026FF24[D_8028B940], 0);
+  BrMusicStart(tgr_addr32(&D_80025C00), tgr_addr32(D_802AC400));
 }
 
 /* WHAT IT DOES: Step the scene's animations, if it has any; when they are
@@ -126,10 +126,10 @@ void BrSceneModelDraw(void)
   BrPathSeg *seg;
 
   if (D_8026FF5C != 0) {
-    if (tgr_track.path != 0) {
-      seg = ((BrPathSeg *)tgr_track.path);
-      memcpy(pos, &seg->pt[0].pos, sizeof(BrVec3));          /* the segment at 0x4C and 0x58 */
-      memcpy(right, &seg->pt[0].right, sizeof(BrVec3));
+    if (BE32(D_80025C00.path) != 0) {
+      seg = BEPTR(BrPathSeg *, D_80025C00.path);
+      br_vec3_from(pos, &seg->pt[0].pos);          /* the segment at 0x4C and 0x58 */
+      br_vec3_from(right, &seg->pt[0].right);
       m[0][3] = 0.0f;
       m[1][3] = 0.0f;
       m[2][3] = 0.0f;

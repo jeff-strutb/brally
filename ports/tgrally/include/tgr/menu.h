@@ -4,12 +4,12 @@
 #ifndef TGR_MENU_H
 #define TGR_MENU_H
 
-/* One row of a menu screen (20 bytes on the N64, static in .data).  A
- * screen is a NULL-terminated array of MenuItem pointers. */
+/* One row of a menu screen (20 bytes, static in .data).  A screen is a
+ * NULL-terminated array of MenuItem pointers. */
 typedef struct MenuItem {
-    const char *label;          /* 0x00  may carry %XY colour codes */
+    TgrAddr label;          /* const char * -- 0x00  may carry %XY colour codes */
     unsigned int flags;         /* 0x04 */
-    void *icon;                 /* 0x08  decompressed icon, 0 in ROM */
+    TgrAddr icon;                 /* void * -- 0x08  decompressed icon, 0 in ROM */
     unsigned int iconRomStart;  /* 0x0C */
     unsigned int iconRomEnd;    /* 0x10 */
 } MenuItem;

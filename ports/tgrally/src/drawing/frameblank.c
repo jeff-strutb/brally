@@ -84,9 +84,9 @@ typedef struct { char x[16]; } BrVtx16;
 extern BrVtx16 *D_8028C764;             /* vertex pool: next and start */
 extern BrVtx16 *D_8028C768;
 extern int D_8028AB78;                  /* the most vertices in one frame */
-extern TgrMsgQueue D_8031A320[1];               /* RSP done queue */
-extern TgrMsgQueue D_8031A358[1];               /* RDP done queue */
-extern TgrMsgQueue D_8031A390[1];               /* retrace queue */
+extern char D_8031A320[];               /* RSP done queue */
+extern char D_8031A358[];               /* RDP done queue */
+extern char D_8031A390[];               /* retrace queue */
 extern void (*D_8031B31C)(void);        /* run once the RSP has finished */
 extern int D_8031B320;
 extern int D_8028AA94;                  /* debug: copy the low-memory frame into the display */
@@ -95,6 +95,11 @@ extern int D_8028AAE0;                  /* CPU time of the last frame */
 extern int D_8028AAE4;
 extern int D_8028AAE8;
 extern int D_8028A854;                  /* resolution the VI is set to */
+extern int tgr_tv_type;
+extern TgrVideoMode D_802A5D70[1];               /* VI modes: low res MPAL, NTSC; high res MPAL, NTSC */
+extern TgrVideoMode D_802A54B0[1];
+extern TgrVideoMode D_802A6040[1];
+extern TgrVideoMode D_802A5780[1];
 extern int D_8028A888;                  /* frames the screen stays blank */
 extern int D_8028AA20;
 extern int D_8028AA24;

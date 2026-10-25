@@ -329,24 +329,24 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     if (D_802724F0 == 0) {
       if (kind == 0) {
-        opts[0] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd4;
-        opts[1] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd8;
-        opts[2] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xdc;
-        opts[3] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe0;
-        opts[4] = ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe4;
-        memcpy(((BrSeason *)(D_8031B760[0].season)), D_80272500, 0x128);
-        memcpy(((BrSeason *)(D_8031B760[1].season)), D_80272500, 0x128);
-        ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd4 = opts[0];
-        ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xd8 = opts[1];
-        ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xdc = opts[2];
-        ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe0 = opts[3];
-        ((BrSeason *)(D_8031B760[D_80271FA8 ^ 1].season))->xe4 = opts[4];
+        opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4;
+        opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8;
+        opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc;
+        opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0;
+        opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4;
+        memcpy(TGR_PTR(BrSeason *, D_8031B760[0].season), D_80272500, 0x128);
+        memcpy(TGR_PTR(BrSeason *, D_8031B760[1].season), D_80272500, 0x128);
+        TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4 = opts[0];
+        TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8 = opts[1];
+        TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc = opts[2];
+        TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0 = opts[3];
+        TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4 = opts[4];
         tgr_print("Done!\n");
       } else if (kind == 1) {
         tgr_print("Extracting ghost data...\n");
         D_80270784 = BrRlePlanesUnpack(&D_80307F00, 0xDE5C, D_80272500, 2);
-        ((BrSeason *)(D_8031B760[0].season))->xce |= 1 << (&D_80307F00)[0];
-        ((BrSeason *)(D_8031B760[0].season))->unlocked |= 1 << (&D_80307F00)[1];
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << (&D_80307F00)[0];
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 1 << (&D_80307F00)[1];
         tgr_print("Done!\n");
       } else if (kind == 2) {
         memcpy(&D_802723D0, D_80272500, 12);
@@ -354,11 +354,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
         D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
           memcpy(opts, D_80272500, 20);
-          ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd4 = opts[0];
-          ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd8 = opts[1];
-          ((BrSeason *)(D_8031B760[D_80271FA8].season))->xdc = opts[2];
-          ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe0 = opts[3];
-          ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe4 = opts[4];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4 = opts[0];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8 = opts[1];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc = opts[2];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0 = opts[3];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4 = opts[4];
           tgr_print("Done!\n");
         } else {
           D_80316430 = 9;
@@ -407,11 +407,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
     if (D_802724F0 != 0) {
       D_80316430 = 9;
     } else {
-      opts[0] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd4;
-      opts[1] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xd8;
-      opts[2] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xdc;
-      opts[3] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe0;
-      opts[4] = ((BrSeason *)(D_8031B760[D_80271FA8].season))->xe4;
+      opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4;
+      opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8;
+      opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc;
+      opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
+      opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
       memcpy(D_80272500, opts, 20);
       D_802724F0 = tgr_pak_io(&D_80369EC0[D_80271FA8], D_8031642C, 1, 0x80, 0x80, D_80272500);
       if (D_802724F0 == 0) {

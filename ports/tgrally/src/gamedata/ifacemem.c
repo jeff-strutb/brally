@@ -4,10 +4,10 @@
 
 /* -- declarations -- */
 extern unsigned int D_80369B70;
-void *BrIfaceMemAlloc(int size);
+unsigned int BrIfaceMemAlloc(int size);
 void BrFatal(char *msg);
 typedef struct BrIfaceImage {
-  unsigned char *data;          /* 0x00  RAM copy, from the interface pool */
+  unsigned int data;            /* 0x00  RAM copy, from the interface pool */
   int rom;                      /* 0x04  compressed image in ROM */
   int x8;
   unsigned char depth;          /* 0x0C  bits per pixel */
@@ -52,7 +52,7 @@ void BrIfaceMemRelease(int param_1)
  * aligned; running past the pool's end (0x800D4000) is fatal, with the
  * sizes in the message. */
 /* @implements 0x8024296C tgr BrIfaceMemAlloc */
-void *BrIfaceMemAlloc(int size)
+unsigned int BrIfaceMemAlloc(int size)
 {
   unsigned int p;
   char msg[120];
@@ -63,7 +63,7 @@ void *BrIfaceMemAlloc(int size)
     sprintf(msg, "Insufficient interface memory (need %d, have %d)", size, 0x800D4000 - p);
     BrFatal(msg);
   }
-  return TGR_PTR(void *, p);            /* port: a native pointer (the pool is fixed RAM, for now) */
+  return p;
 }
 
 /* WHAT IT DOES: Give an interface image its RAM copy: take width x height x
@@ -80,7 +80,7 @@ void BrAllocPaintShopGfxMem(BrIfaceImage *img)
     for (;;) {
     }
   }
-  BrRomUnpack(((void *)(img->data)), img->rom, 0);
+  BrRomUnpack(TGR_PTR(void *, img->data), img->rom, 0);
 }
 
 /* WHAT IT DOES: Set aside memory for the paint shop: its two car-texture
@@ -92,7 +92,7 @@ void BrPaintShopMemInit(void)
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);
   tgr_print("Allocating %d bytes for data_buf...\n",0x3a00);
-  D_80272500 = ((unsigned char *)(BrIfaceMemAlloc(0x3a00)));
+  D_80272500 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x3a00));
 }
 
 /* WHAT IT DOES: Set aside the 2 KB decal buffer from the interface memory
@@ -101,7 +101,7 @@ void BrPaintShopMemInit(void)
 void BrDecalMemInit(void)
 {
   tgr_print("\nAllocating %d bytes for decal buffer...\n\n",0x800);
-  D_8028DB80 = ((unsigned char *)(BrIfaceMemAlloc(0x800)));
+  D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);
 }

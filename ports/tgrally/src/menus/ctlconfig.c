@@ -22,8 +22,8 @@ void BrFrontMenuEnter(MenuItem **items, int *count);
 int BrMenu(char *title, int n, MenuItem **items, int *sel, int (*ok)(int), int, int, int, int, int, int);
 void BrModeSet(void (*fn)(void));
 void BrOptionsScreen(void);
-void BrRomFileUnpack(void *file, void *(*alloc)(int));
-void *BrIfaceMemAlloc(int size);
+void BrRomFileUnpack(void *file, unsigned int (*alloc)(int));
+unsigned int BrIfaceMemAlloc(int size);
 void BrCtlConfigDrawLayout(int param_1);
 extern int D_80271FA0;                  /* the player being configured */
 extern void (*D_80271FC8)(int);         /* the menu panel's draw hook */
@@ -151,14 +151,14 @@ void BrCtrlConfigScreen(void)
     D_80271FC0 = 42;
     D_80271FC8 = BrCtlConfigDrawLayout;
     if (D_80272670 == 0) {
-      D_80316444 = ((BrSeason *)(D_8031B760[D_80271FA0].season))->xe4;
+      D_80316444 = TGR_PTR(BrSeason *, D_8031B760[D_80271FA0].season)->xe4;
     }
     D_80272670 = 1;
   }
   switch (BrMenu(D_80271FA0 != 0 ? "Controller 2" : "Controller 1", D_80316440, D_80272658, &D_80316444, 0, 8, 0, 0,
                  0xa0, 0x80, 0x20)) {
   case 1:
-    ((BrSeason *)(D_8031B760[D_80271FA0].season))->xe4 = D_80316444;
+    TGR_PTR(BrSeason *, D_8031B760[D_80271FA0].season)->xe4 = D_80316444;
   case 2:
     BrModeSet(BrOptionsScreen);
     D_80272670 = 0;

@@ -53,7 +53,7 @@ extern char D_803D5F88[];
 
 int BrCarModelPresent(int param_1);
 extern int D_80272070;
-#define D_8031C5BC ((char *)D_8031B760[0].season)   /* car 0's season */
+#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
 extern Gfx *D_8028A858;
 
 void BrAnimSetFlags(BrAnimSet *set, int on, int off);
@@ -86,12 +86,14 @@ extern char *D_8028A88C;                 /* the fatal error's message */
 extern TgrMsgQueue D_8031A390;           /* the retrace queue */
 extern TgrMsgQueue D_8031B1B0;           /* the fault queue */
 void BrMainThread(void *arg);
-typedef struct BrArgs { int argc; char **argv; } BrArgs;
+typedef struct BrArgs { int argc; TgrAddr argv; } BrArgs;   /* argv: char ** */
 extern char *D_80316450[];           /* argv */
 extern BrArgs *D_8026FF00;
 extern char **D_8026FF04;
 extern int D_8028AAB0;
 extern int D_8028AAB4;
+extern TgrVideoMode D_802A5D70;          /* MPAL video mode */
+extern TgrVideoMode D_802A54B0;          /* NTSC video mode */
 extern TgrMsgQueue D_80319ED0;       /* the PI manager's command queue */
 extern TgrMsg D_80319EE8[32];
 extern TgrMsg D_8031B1C8[1];
@@ -557,16 +559,15 @@ void BrTrackLoad(int track)
   float m[4][4];
   BrTrackObj *objs;
 
-  tgr_track.size = BrRomReadSize(D_80270854[track].x14);
-  if (tgr_track.size > 0x171400) {
-    sprintf(buf, "Track %d too big (%d vs. %d)", track, tgr_track.size, 0x171400);
+  SET32(D_80025C00.x00, BrRomReadSize(D_80270854[track].x14));
+  if (BE32(D_80025C00.x00) > 0x171400) {
+    sprintf(buf, "Track %d too big (%d vs. %d)", track, BE32(D_80025C00.x00), 0x171400);
     BrFatal(buf);
   } else {
-    tgr_print("Loading track %d (%d / %d)\n", track, tgr_track.size, 0x171400);
+    tgr_print("Loading track %d (%d / %d)\n", track, BE32(D_80025C00.x00), 0x171400);
   }
-  BrRomUnpack(D_80025C00, D_80270854[track].x14, 0);
-  tgr_track_convert();                  /* port: the native records (platform/os/track.c) */
-  tgr_print("hmm = %04x %04x\n", tgr_rd16(D_80025C00 + 0x3960), tgr_rd16(D_80025C00 + 0x3968));   /* two words of the file */
+  BrRomUnpack((unsigned char *)&D_80025C00, D_80270854[track].x14, 0);
+  tgr_print("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, 0x80029560)), tgr_rd16(TGR_PTR(void *, 0x80029568)));
   BrRomRead(D_80373EB0, D_80270854[track].x1c, 0x20);
   BrRomUnpack((unsigned char *)D_803736B0, D_80270854[track].x1c + 0x20, 0);
   BrRomRead(D_803746D0, D_80270854[track].x24, 0x20);
@@ -577,29 +578,29 @@ void BrTrackLoad(int track)
   D_8028AA88 = -1;
   n = 0;
   objs = BR_TRACKOBJS();
-  for (track = 0; track < tgr_track.nObjs; track++) {
+  for (track = 0; track < BES32(D_80025C00.nObjs); track++) {
     v[0] = 1.0f;
     v[1] = 0.0f;
     v[2] = 0.0f;
-    memcpy(m, objs[track].m, sizeof m);
+    br_mat4_from(m, (const bef_t (*)[4])objs[track].m);
     BrMat4RotateDir(v, v, m);
     len = BrVec3Length(v);
     if (len != 0) {
       len = 1.0f / len;
       if (1.0f == m[0][0] * len && 1.0f == m[1][1] * len && 1.0f == m[2][2] * len) {
         n++;
-        objs[track].flags |= 0x2000;
+        SET16(objs[track].flags, BE16(objs[track].flags) | 0x2000);
       }
-      objs[track].scale = len;
+      SETF(objs[track].scale, len);
     }
   }
-  tgr_print("Scalars: %d/%d\n", n, tgr_track.nObjs);
-  if (tgr_track.nObjs > 0x800) {
-    sprintf(buf2, "ERROR: instances (%d) > MAX_INSTANCES (%d)", tgr_track.nObjs, 0x800);
+  tgr_print("Scalars: %d/%d\n", n, BES32(D_80025C00.nObjs));
+  if (BES32(D_80025C00.nObjs) > 0x800) {
+    sprintf(buf2, "ERROR: instances (%d) > MAX_INSTANCES (%d)", BES32(D_80025C00.nObjs), 0x800);
     BrFatal(buf2);
   }
-  if (tgr_track.hdrSize != 0x230) {
-    sprintf(buf3, "ERROR: Track header size mismatch! (%d!=%d)", tgr_track.hdrSize, 0x230);
+  if (BES32(D_80025C00.hdrSize) != 0x230) {
+    sprintf(buf3, "ERROR: Track header size mismatch! (%d!=%d)", BES32(D_80025C00.hdrSize), 0x230);
     BrFatal(buf3);
   }
   BrScenePassRun();
@@ -646,7 +647,7 @@ void BrFatal(char *msg)
 /* @implements 0x8021E21C tgr BrFaultThread */
 void BrFaultThread(void *arg)
 {
-  extern void *D_8031B1CC;       /* 0x8031B1CC: the faulted thread */
+  extern TgrAddr D_8031B1CC;     /* 0x8031B1CC: the faulted thread */
   extern int D_8031B1D0;
   TgrMsg msg;
 
@@ -698,13 +699,17 @@ void BrIdleThread(void *arg)
       p++;
     }
   }
-  D_8026FF04 = ((char **)(D_8028B2EC.argv));
+  D_8026FF04 = TGR_PTR(char **, D_8028B2EC.argv);
   D_8026FF00 = &D_8028B2EC;
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
-  tgr_video_reset();                    /* port: the low-resolution mode, MPAL or NTSC alike */
+  if (tgr_tv_type == 2) {
+    tgr_video_mode(&D_802A5D70);
+  } else {
+    tgr_video_mode(&D_802A54B0);
+  }
   tgr_mq_init(&D_8031B1B0, D_8031B1C8, 1);
-  tgr_thread_new(&D_8031AC00, 5, BrFaultThread, ((char **)(D_8028B2EC.argv)), D_8031ADB0 + 0x80, 50);
+  tgr_thread_new(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
   tgr_thread_start(&D_8031AC00);
   for (i = 0, s = D_80316CD0; i < 0x400; i++, s++) {
     *s = 0x5015A1DBFED15C00ULL;

@@ -59,7 +59,7 @@ MenuItem **tgr_keys_items(MenuItem **game)
   if (!tgr_keys_shown()) {
     return game;
   }
-  s_opt.label = ("Keys and Pad");
+  s_opt.label = tgr_addr32("Keys and Pad");
   s_opt.flags = game[CTL_ROW]->flags;   /* a row like the controller's: A chooses it */
   s_opt.iconRomStart = game[CTL_ROW]->iconRomStart;
   s_opt.iconRomEnd = game[CTL_ROW]->iconRomEnd;
@@ -98,9 +98,9 @@ static void labels(void)
   int i;
 
   for (i = 0; i < TGR_KEYS_COUNT; i++) {
-    s_row[i].label = (tgr_keys_name(i));
+    s_row[i].label = tgr_addr32(tgr_keys_name(i));
   }
-  s_row[ROWS - 1].label = ("Reset");
+  s_row[ROWS - 1].label = tgr_addr32("Reset");
 }
 
 /* the selected row's line, and the awaited press */

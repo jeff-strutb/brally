@@ -3,12 +3,18 @@
  * and .data)
  */
 #include "tgr/common.h"
-#include "tgr/pad.h"
 #include "tgr/gbi.h"
 
 /* -- declarations -- */
 #include "tgr/image.h"
-extern BrPadRec D_8036A8E0[4];
+typedef struct BrPadRec {       /* as tgr/pad.h (0x15C bytes) */
+  unsigned int pressed;
+  unsigned int held;
+  int repeat[4];
+  float axis[2];
+  char pad20[0x15c - 0x20];
+} BrPadRec;
+extern char D_8036A8E0;
 #define PADS ((BrPadRec *)&D_8036A8E0)
 extern unsigned char D_8028DB60;
 extern unsigned char D_8028DB64;
@@ -31,7 +37,7 @@ void BrTextSetColours(int r, int g, int b, int a, int x, int y);
 void BrTextPrint(char *s, int x, int y);
 void BrImageDrawAt(BrImage *img, int x, int y);
 void BrPadConsume(unsigned int *pad, unsigned int bits);
-void BrPadStickToButtons(void *);
+void BrPadStickToButtons(int);
 void BrPaintFlipApply(void);
 void BrPaintMirrorSide(void);
 typedef struct BrPaintSwatch {  /* 0x14 bytes */
@@ -143,24 +149,24 @@ void BrPaintClearMenu(void)
   BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(&PADS[D_8028DBBC]);
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
+  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
     if (D_8028CFC0.kind == 0) {
       D_8028CFC0.kind = 3;
     } else {
       D_8028CFC0.kind--;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 1) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 1);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 1);
     if (D_8028CFC0.kind == 3) {
       D_8028CFC0.kind = 0;
     } else {
       D_8028CFC0.kind++;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x10);
     switch (D_8028CFC0.kind) {
     case 0:
     case 1:
@@ -208,8 +214,8 @@ void BrPaintClearMenu(void)
       D_8028DB60 = D_8028DB64;
       break;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 0x20);
     D_8028CFC0.kind = 0;
     D_8028DB60 = D_8028DB64;
   }
@@ -313,24 +319,24 @@ void BrPaintMirrorMenu(void)
   BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
   BrImageDrawAt(&D_8028D0B0, 0xd3, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
-  BrPadStickToButtons(&PADS[D_8028DBBC]);
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 1) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 1);
+  BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 1) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 1);
     if (D_8028DBB8 == 2) {
       D_8028DBB8 = 0;
     } else {
       D_8028DBB8++;
     }
-  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 4) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 4);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 4) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 4);
     if (D_8028DBB8 == 0) {
       D_8028DBB8 = 2;
     } else {
       D_8028DBB8--;
     }
   }
-  if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x10) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x10);
+  if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x10) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x10);
     D_8028CFBC = D_8028DBB8;
     if (D_8028DBB8 == 0) {
       if (D_8028DBCC != 0) {
@@ -339,8 +345,8 @@ void BrPaintMirrorMenu(void)
     } else {
       BrPaintFlipApply();
     }
-  } else if (*(unsigned int *)(&D_8036A8E0[D_8028DBBC]) & 0x20) {
-    BrPadConsume((unsigned int *)(&D_8036A8E0[D_8028DBBC]), 0x20);
+  } else if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 0x20) {
+    BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 0x20);
     D_8028CFBC = 0;
     D_8028DBE0 = 0;
     D_8028DB60 = D_8028DB64;

@@ -9,8 +9,8 @@ extern int D_8031B330;
 void BrModelRebase(void *);
 typedef struct BrUnpack {      /* a streamed unpack in flight (BrStreamInit starts one) */
   unsigned int pos;             /* 0x00  ROM position of the next chunk */
-  unsigned char *dst;           /* 0x04  0 until the first call */
-  unsigned char *buf;           /* 0x08  2 x 16000-byte chunk buffer */
+  TgrAddr dst;           /* unsigned char * -- 0x04  0 until the first call */
+  TgrAddr buf;           /* unsigned char * -- 0x08  2 x 16000-byte chunk buffer */
   unsigned int half;            /* 0x0C  which half the next chunk goes to */
   unsigned int total;           /* 0x10  packed length */
   unsigned int size;            /* 0x14  unpacked length */
@@ -255,7 +255,7 @@ void BrRomWaitAll(void)
 void BrStreamInit(BrUnpack *s, unsigned char *buf)
 {
   s->dst = 0;
-  s->buf = (buf);
+  s->buf = tgr_addr32(buf);
 }
 
 /* WHAT IT DOES: Unpack a compressed ROM file (packed length, unpacked
@@ -289,11 +289,11 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
 
   if (s != 0 && s->dst != 0) {
     rom = s->pos;
-    dst = ((unsigned char *)(s->dst));
+    dst = TGR_PTR(unsigned char *, s->dst);
     left = s->left;
     total = s->total;
     size = s->size;
-    buf = ((unsigned char *)(s->buf));
+    buf = TGR_PTR(unsigned char *, s->buf);
     half = s->half;
     D_8031B348 = s->len;
     first = 0;
@@ -309,7 +309,7 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
     size = D_8031B348;
     left -= 8;
     if (s != 0) {
-      buf = ((unsigned char *)(s->buf));
+      buf = TGR_PTR(unsigned char *, s->buf);
     } else {
       buf = D_802F7F00;
     }
@@ -359,12 +359,12 @@ unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, BrUnpack *s)
   (unsigned long long)t0 * 1000000 / tgr_clock_rate;
   if (s != 0) {
     s->pos = rom;
-    s->dst = (dst);
+    s->dst = tgr_addr32(dst);
     s->left = left;
     s->total = total;
     s->size = size;
     s->half = half;
-    s->buf = (buf);
+    s->buf = tgr_addr32(buf);
     s->len = D_8031B348;
   }
   return size;

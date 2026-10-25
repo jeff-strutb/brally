@@ -143,7 +143,7 @@ static int vk_check(VkResult r, const char *what)
 
 int rdr_covers(void) { return 0; }
 int rdr_presents(void) { return 1; }
-void rdr_video(const RdrVideo *v) { s_gamma = v->gamma; }
+void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
 
 /* the host's window, on the main thread when it opens; the surface is made
  * from it when the renderer starts */
