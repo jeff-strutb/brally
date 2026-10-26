@@ -28,7 +28,7 @@
 + * ports/remastered/platform/options.c): the frames this game showed in the
 + * last second, at the bottom centre of its picture, over everything; the text
 + * state as the game left it */
-+int rm_option(int which);               /* the app's (options.h: RM_OPT_FPS 3) */
++int rm_option(int which);               /* the app's (options.h: RM_OPT_FPS 2) */
 +uint64_t host_ticks_ns(void);
 +void BrTextHighlightOff(void);
 +void BrTextAlignCentre(void);
@@ -57,7 +57,7 @@
 +    t0 = now;
 +    n = 0;
 +  }
-+  if (fps < 0 || !rm_option(3))
++  if (fps < 0 || !rm_option(2))
 +    return;
 +  sv[0] = D_8028BDC0; sv[1] = D_8028BDC4; sv[2] = D_8028BDC8; sv[3] = D_8028BDCC; sv[4] = D_8028BDD0;
 +  sv[5] = D_8028BDD4; sv[6] = D_8028BDD8; sv[7] = D_8028BDDC; sv[8] = D_8028BDE0; sv[9] = D_8028BDE4;

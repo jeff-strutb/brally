@@ -14,7 +14,7 @@ carries its own differences.
 | `brally/` | Boss Rally, native 64-bit: a retyped fork of the decomp's core (`src/`, `include/`) plus a cross-platform layer (`platform/`: hosts null / macOS / Windows, renderers null / soft / Metal / Vulkan). `PORTABLE-CORE.md` describes it. |
 | `tgrally/` | Top Gear Rally, native: a fork of the N64 decomp with an arena memory model and the same hosts. `PORT.md` describes it. |
 | `remastered/` | Top Gear Rally Remastered: Top Gear Rally's menus with Boss Rally's engine running the races, the two native ports in one executable over one host (macOS, Windows, the iPhone; Linux headless), with its own files and changes laid over them (`tree.sh`): the two ports are the games alone. `README.md` describes it. |
-| `common/` | the Remastered assets (models, textures, music). The binaries stay out of git; their recipes are tracked. |
+| `common/` | the Remastered assets (the menu icons' drawings, music). The binaries stay out of git; their recipes are tracked. |
 
 ## Building and checking
 
@@ -49,8 +49,7 @@ nor this tree once built. Extraction happens once per disc (cached in
 with a native macOS host) was deprecated and then removed: the 64-bit port is
 the game. What it still supplied moved: the verified build's placement table
 (`ports/brally/tools/placement.py`, made by `link64.sh` into
-`build/brally/placement/`), and the Remastered asset pipeline's Blender tools
-and texture catalogue (`ports/common/models/tools`, `ports/common/models/texmat.csv`).
+`build/brally/placement/`).
 Its music and sound decisions are in `docs/brally/port/music-decision.md`.
 
 ## History

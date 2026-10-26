@@ -173,9 +173,6 @@ docs/tgrally/progress-map.svg`.
   the PC game.
 - [docs/brally/port/splitscreen.md](docs/brally/port/splitscreen.md): the PC game's complete but unreachable
   two-player split-screen renderer.
-- [docs/brally/remaster/REMASTER.md](docs/brally/remaster/REMASTER.md): the Remastered car, skies and music
-  (written for the 32-bit lane, removed 2026-10-12); the Remastered lighting is
-  [docs/brally/remaster/lighting/DESIGN.md](docs/brally/remaster/lighting/DESIGN.md).
 
 ## Boss Rally (PC) decompilation
 
@@ -259,8 +256,7 @@ bars, or BRGlide `.text` at 480,853 B: say which).
 
 In-scope EXE game code (BRally.exe, BossRally.exe, SetVideo.exe) is complete;
 what remains in those images is statically-linked CRT, reproduced by linking.
-C++ EH functions are a separate lane (`tools/brally/cpp_sweep.py`). The Mac port is
-described in [docs/brally/remaster/REMASTER.md](docs/brally/remaster/REMASTER.md).
+C++ EH functions are a separate lane (`tools/brally/cpp_sweep.py`).
 
 A byte-exact session picks targets with `python3 tools/brally/t4lane.py --claim`
 (Pool B). Procedure: `docs/brally/MATCHING.md`.

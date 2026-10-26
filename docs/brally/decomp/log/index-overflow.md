@@ -13,7 +13,6 @@ Verbatim index lines (each links its topic file):
 **SUPERSEDED (kept for T4 lessons only - verdict changed under A5)**
 - [BrTex3dExpand wall / doubling lever](brtex3dexpand-wall-broken.md) ([doubling](brtex3dexpand-doubling-lever-2026-09-10.md)) - 0x100250D0 now T3. [scenedl 0x1000EAF0 state](scenedl-0x1000EAF0-state.md) - now T3; keep the RE dossier.
 - [T3 frontier map](t3-frontier-map-2026-09-10b.md) / [Gate-A distance survey](gate-a-distance-survey-2026-09-10.md) - keep the 4-class taxonomy + survey-script pattern. [Five largest 2026-09-13b](five-largest-2026-09-13b.md) / [largest-to-t3 survey](largest-to-t3-survey-2026-09-12.md) - several now T3; keep the x87 class + levers.
-- [Mac Remastered lighting PoC 2026-09-29](mac-remastered-lighting-2026-09-29.md) - uncommitted host_fx.m, ~ toggle, weather 4 = night rain; port "sky corruption" in shots was a capture race (fixed)
 - [Mac app + native music 2026-09-29](mac-app-and-music-2026-09-29.md) - package_app.sh self-contained .app; music DECIDED (AVAudioEngine CD + libopenmpt N64); bare-return/stub traps
 - [Mac sound effects 2026-09-29](mac-sfx-2026-09-29.md) - DS mixer + sound.m; mmio/bare-return/empty-stand-in defects; brbox COMTRACE diff to verify
 - [Native 64-bit portable core](native-64bit-portable-core-2026-09-30.md) - ports/brally: plays, multiplayer, Metal/Vulkan/soft, Windows build (2026-10-03); render bugs: copy host_glide.m semantics first
@@ -25,9 +24,6 @@ Verbatim index lines (each links its topic file):
 - [N64 session 2026-09-29](n64-session--2026-09-29.md) - VA split with peer, 17 T4 + 5 T2, parked list, claims file
 - [N64 zlib + libultra lode 2026-09-29](n64-zlib-lode-2026-09-29.md) - zlib 1.0.4 (28 fns) and libultra (gu/libc -O3, os/io -O1) byte-exact from their own source; grep ROM for library strings first
 - [N64 coverage scripts LANDED](n64-coverage-scripts-2026-09-28.md) - 38ffda50: 49 driver-made scripts, T4 reach 302→343/403; what is still unreached
-- [Remastered load path 2026-09-30](remaster-load-path-2026-09-30.md) - prefetch + parallel loaders (host_load.m), 18.8 s → 40 ms; 30 fps stall-debt trap; 4.6 s car-setup pause is the original sfx wait, leave it
-- [Remastered lighthouse 2026-10-01](remaster-lighthouse-2026-10-01.md) - landmark animation = specials table (rigid spin/fly-past); tower + rotating optic plan; .blend via Remesh convert_format_only
-- [Remastered skies 2026-09-29](remaster-skies-2026-09-29.md) - 35 per-track/weather panoramas; host_sky.m + compfs pano; 1280px per 60deg copy x6; committed
 - [Verify display on screen](native-64bit-portable-core-2026-10-03-addendum.md) - BR_SHOTS shows the target, not the screen; screencapture fullscreen + window for aspect work
 
 ## Moved from the notes index 2026-10-05 (verbatim)

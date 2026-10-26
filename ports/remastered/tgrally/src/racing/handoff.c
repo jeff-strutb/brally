@@ -167,7 +167,7 @@ void tgr_menus_away(void)
  * the other game's on that menu's first frame, its music started
  * (menus/mainmenu.c): the main menu is where the player comes back to. */
 int rm_option(int which);               /* the app's (ports/remastered/platform/options.h) */
-#define RM_OPT_MENUS 5
+#define RM_OPT_MENUS 3                  /* (options.h: keep in step) */
 #define RM_MENUS_BR 1
 void BrFadeTo(float level, float secs);
 void BrSfxFadeTo(float level, float secs);

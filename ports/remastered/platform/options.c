@@ -2,12 +2,7 @@
  * folder, "remaster.cfg", one "name value" a line; a missing file or line is
  * the default (widescreen on, the N64's music, no frame rate shown, Top Gear
  * Rally's menus, the view distance unlimited).  Each game
- * reads the frame rate's switch itself (rm_option, from its own drawing).
- *
- * The lighting is shelved: its code is kept (and built), but no menu offers
- * it and it is always off, whatever remaster.cfg says; RM_OPT_LIGHTING=1
- * still turns it on for its own checks (its skies are packaged only with
- * RM_SHELVED_ASSETS=1). */
+ * reads the frame rate's switch itself (rm_option, from its own drawing). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +16,6 @@
 static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_WIDESCREEN] = { "widescreen", 1 },
     [RM_OPT_MUSIC]      = { "music", RM_MUSIC_N64 },
-    [RM_OPT_LIGHTING]   = { "lighting", 0 },          /* shelved */
     [RM_OPT_FPS]        = { "fps", 0 },
     [RM_OPT_MENUS]      = { "menus", RM_MENUS_TGR },
     [RM_OPT_VIEWDIST]   = { "viewdist", RM_VIEW_UNLIMITED },
@@ -29,9 +23,6 @@ static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
 
 static volatile int s_val[RM_OPT_COUNT];
 static int s_loaded;
-
-/* the shelved one: off, never kept, never chosen (only the environment's check turns it on) */
-static int shelved(int which) { return which == RM_OPT_LIGHTING; }
 
 static void apply(int which)
 {
@@ -43,9 +34,6 @@ static void apply(int which)
         break;
     case RM_OPT_MUSIC:
         mux_music(v);
-        break;
-    case RM_OPT_LIGHTING:
-        br_flag_set(BR_FLAG_LIGHTING, v);
         break;
     case RM_OPT_VIEWDIST:
         br_flag_set(BR_FLAG_VIEW_UNLIMITED, v == RM_VIEW_UNLIMITED);
@@ -67,8 +55,7 @@ static void save(void)
     if (!(f = fopen(p, "w")))
         return;
     for (i = 0; i < RM_OPT_COUNT; i++)
-        if (!shelved(i))
-            fprintf(f, "%s %d\n", k_opt[i].name, s_val[i]);
+        fprintf(f, "%s %d\n", k_opt[i].name, s_val[i]);
     fclose(f);
 }
 
@@ -87,7 +74,7 @@ void rm_options_load(void)
             if (sscanf(line, "%63s %d", name, &v) != 2)
                 continue;
             for (i = 0; i < RM_OPT_COUNT; i++)
-                if (!shelved(i) && !strcmp(name, k_opt[i].name))
+                if (!strcmp(name, k_opt[i].name))
                     s_val[i] = i == RM_OPT_MUSIC ? (v == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : v != 0;
         }
         fclose(f);
@@ -121,7 +108,7 @@ void rm_option_set(int which, int value)
 {
     if (!s_loaded)
         rm_options_load();
-    if (which < 0 || which >= RM_OPT_COUNT || shelved(which))
+    if (which < 0 || which >= RM_OPT_COUNT)
         return;
     value = which == RM_OPT_MUSIC ? (value == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : value != 0;
     if (s_val[which] == value)

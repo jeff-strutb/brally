@@ -9,7 +9,6 @@
 enum {
     RM_OPT_WIDESCREEN,              /* 1: a race fills the window (0: the games' 4:3) */
     RM_OPT_MUSIC,                   /* RM_MUSIC_*: which soundtrack plays */
-    RM_OPT_LIGHTING,                /* shelved: always 0 (the Remastered lighting; RM_OPT_LIGHTING=1 for its checks) */
     RM_OPT_FPS,                     /* 1: the frame rate shown at the bottom centre */
     RM_OPT_MENUS,                   /* RM_MENUS_*: whose menus the app shows */
     RM_OPT_VIEWDIST,                /* RM_VIEW_*: how far a race view sees */

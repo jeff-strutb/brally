@@ -30,7 +30,7 @@
 /* the app's (ports/remastered/platform/options.h) */
 int  rm_option(int which);
 void rm_option_set(int which, int value);
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 uint32_t plat_time_ms(void);

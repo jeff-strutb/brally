@@ -10,7 +10,7 @@ Remastered adds laid over them (`tree.sh`).
 | piece | what |
 |---|---|
 | `tree.sh` | the two ports as Remastered builds them: each port, Remastered's own files over it (`brally/`, `tgrally/`, at the paths they take in the port), its changes to the port's files applied (`patch/brally`, `patch/tgrally`, one unified diff a file, no fuzz). `make ROOT` builds a tree, `save ROOT` turns an edited tree back into files and patches, `check ROOT` says whether it would. A patch that stops applying stops the build: the port moved under it |
-| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), its own menus as the app's (`race_handoff.c`, `br_menus_run`), their Remaster Options page (`src/core/menus/rm_menuopts.cpp`, `rm_menuicons.c`) and their 16:9 layout (`src/core/drawing/rm_menuwide.c`), the music hooks (`audio.c`); shelved, built but off: the lighting (`platform/light`, the Metal renderer's lit passes) |
+| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), its own menus as the app's (`race_handoff.c`, `br_menus_run`), their Remaster Options page (`src/core/menus/rm_menuopts.cpp`, `rm_menuicons.c`) and their 16:9 layout (`src/core/drawing/rm_menuwide.c`), the music hooks (`audio.c`) |
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over of the races and of the menus (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
 | `tools/menuicons.py` | Boss Rally's Remaster Options page's two machines, into `brally/src/core/menus/rm_menuicons.c`: the PC from `ports/common/assets/retro_pc.svg`, the N64 the hand-built console drawn in that drawing's oblique, its greys a real console's (`ports/common/assets/n64console.png`) |
@@ -24,7 +24,7 @@ Remastered adds laid over them (`tree.sh`).
 | `link.sh` | makes the tree (`OUT/tree`), builds both libraries in it, makes each one object (its thunks inside, only its entry points global: the two games share some hundred function names), links the executable |
 | `package_app.sh` | `Top Gear Rally Remastered.app` (macOS) |
 | `music.sh` | Boss Rally's CD audio as FLAC, the PC's music, into the app (`package_app.sh`, `ios/build.sh`) |
-| `tools/` | the lighting's tests (`lighttest/`, run against `build/remastered/tree`), `lightcheck.sh`, `texmat_h.py`; `mixcheck.sh`, the music's routing in `mux.c` checked against computed values; `paintcheck.py`, the paint shop by pointer, headless (below) |
+| `tools/` | `mixcheck.sh`, the music's routing in `mux.c` checked against computed values; `paintcheck.py`, the paint shop by pointer, headless (below) |
 | `ios/` | the iPhone app: `build.sh`, the xcodegen project, and in `Sources` the Swift host under the multiplexer (the Metal layer, events, Core Audio, the save folder) and the touch controls |
 | `icon.png` | the app's icon (the `.icns` on macOS, `icon.ico` beside the exe on Windows) |
 
@@ -91,13 +91,6 @@ the 4:3 edges, simply shows more (`tgrally/platform/gfx/rcp.c`, `place_menu`).
 The renderer hashes the texture memory once a load rather than once a
 primitive (`rcp.c`, `tile_texture`): the icons are thousands of one-colour
 triangles, and the console's 8000 hashed 4 KB each, some 30 ms a frame.
-
-**Shelved: the lighting.** Its code stays and is built, but it is always off
-and no menu offers it (`platform/options.c`; the `lighting` line of
-`remaster.cfg` is ignored); the packaging leaves its skies out.
-`RM_OPT_LIGHTING=1` (`BR_FLAG_LIGHTING=1` for Boss Rally alone) still turns it
-on for its checks, and `RM_SHELVED_ASSETS=1` packages its skies
-(`package_app.sh`, `ios/build.sh`).
 
 **Two players.** The 1P/2P screen offers two players (on a desktop always: a
 keyboard is there; on the iPhone with a game controller), and the race goes to

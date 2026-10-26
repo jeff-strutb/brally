@@ -1,8 +1,7 @@
 # The iPhone and iPad app (xcodegen): the Swift host and the touch controls in Sources
 # over libgames.a (ports/remastered/link.sh, HOST=ios: both games, the
-# multiplexer and the process), Boss Rally's disc data (Resources/disc), the
-# shelved lighting's 4K skymaps (Resources/skies; empty unless
-# RM_SHELVED_ASSETS=1) and the icon (Assets.xcassets), which
+# multiplexer and the process), Boss Rally's disc data (Resources/disc) and
+# the icon (Assets.xcassets), which
 # build.sh makes. It generates the project into
 # build/remastered/ios-metal (paths here are relative to that folder) and
 # builds, signs and installs it. The bundle identifier is the one the iPhone
@@ -25,9 +24,6 @@ targets:
       - path: ../../../ports/remastered/ios/Sources
       - path: Assets.xcassets
       - path: disc
-        type: folder
-        buildPhase: resources
-      - path: skies
         type: folder
         buildPhase: resources
       - path: music

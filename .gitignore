@@ -61,8 +61,6 @@ ports/common/**
 !ports/common/**/remastered.json
 !ports/common/**/prompts/*.txt
 !ports/common/**/prompts/*.json
-!ports/common/skies/skies.txt
-!ports/common/models/carlamp.csv
 
 # Scratch files: anything named temp*
 temp*

@@ -97,7 +97,7 @@ typedef int (*CtlFn)(RmCtl *);
 extern "C" int  rm_option(int which);
 extern "C" void rm_option_set(int which, int value);
 extern "C" void br_menus_leave(void);   /* race_handoff.c */
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 enum { RM_MENUS_TGR, RM_MENUS_BR };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
