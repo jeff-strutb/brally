@@ -19,7 +19,7 @@
  case "$($CC -dumpmachine 2>/dev/null)" in *mingw*|*windows*) PFLAGS="$PFLAGS -Ddllimport=";; esac
  mkdir -p $OUT/plat
  
-@@ -44,10 +45,26 @@
+@@ -44,10 +45,24 @@
  ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
  # the script commands that read the game (core types, so core flags)
  ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
@@ -36,19 +36,17 @@
 -      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/br_net.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
 -      $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 +      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/br_net.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/flags.c $P/common/br_gfx.c $P/common/data_image.c $P/light/light_capture.c $P/light/light_scene.c $P/light/light_world.c $P/light/light_cluster.c \
-+      $P/light/light_bvh.c $P/light/light_sky.c $P/light/light_smooth.c $P/light/light_surf.c $P/light/light_surf_draw.c $P/light/light_surf_shade.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
++      $P/light/light_bvh.c $P/light/light_sky.c $P/light/light_smooth.c $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 +# the track's ray-tracing world on the GPU (brr_metal_rt.h)
 +[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_rt.m $P/render/metal/brr_metal_gi.m $P/render/metal/brr_metal_taa.m $P/render/metal/brr_metal_refl.m $P/render/metal/brr_metal_env.m $P/render/metal/brr_metal_vsm.m"
 +# the volumetric fog's passes (brr_metal_vol.h)
 +[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_vol.m"
-+# the Remastered textures' sets and surface maps (brr_metal_surf.h)
-+[ "$RENDER" = metal ] && SRCS="$SRCS $P/render/metal/brr_metal_surf.m"
 +# Boss Rally alone (its checks, shots): the Remaster Options from the environment
 +[ "$HOST" != lib ] && SRCS="$SRCS $P/common/options_solo.c ports/remastered/platform/controls.c"
  # the OS layer under the host: Windows or POSIX
  case "$($CC -dumpmachine 2>/dev/null)" in
    *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
-@@ -75,12 +92,13 @@
+@@ -75,12 +90,13 @@
  case "$HOST" in
    null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
           # Metal without a window: frames drawn offscreen (shots, measurements)

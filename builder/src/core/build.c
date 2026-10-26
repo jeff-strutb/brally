@@ -9,7 +9,6 @@
  *                     /Contents/Resources/romdata.bin the cartridge's data
  *   Top Gear Rally Remastered.app/Contents/MacOS/remastered     the two games
  *                                /Contents/Resources/disc/, music/cd/, romdata.bin, AppIcon.icns
- *                                /Contents/Resources/surfaces/    the Remastered textures' sets
  * iPhone (Remastered): Top Gear Rally Remastered.ipa, the app (Payload/...app)
  *   with disc/, music/cd/ and romdata.bin inside, signed with the player's
  *   Xcode signing when this Mac has it (rb_ios_signing), else unsigned for the
@@ -17,7 +16,7 @@
  * Windows: a folder named for the game
  *   Boss Rally\Boss Rally.exe, icon.ico (the disc's), disc\, music\cd\
  *   Top Gear Rally\Top Gear Rally.exe, romdata.bin
- *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, surfaces\, disc\, music\cd\, romdata.bin
+ *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, disc\, music\cd\, romdata.bin
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -374,45 +373,6 @@ static int payload(ctx *c, const char *name, const char *to, int tree)
     return 1;
 }
 
-/* the Remastered textures' photographed sets (ports/common/surfaces, baked): surfaces.txt and each
- * set's two files, beside the game (the iPhone app carries its own).  The textures are shelved: a
- * builder made without them (builder/build.sh, RM_SHELVED_ASSETS unset) has none to copy */
-static int surfaces(ctx *c)
-{
-    char src[2048], to[2048], dir[2048], name[512], line[512], quiet[256];
-    FILE *f;
-    if (!rb_host_payload("surfaces/surfaces.txt", src, sizeof src, quiet, sizeof quiet))
-        return 1;
-    rb_join(dir, sizeof dir, c->res, "surfaces/baked");
-    if (!rb_mkdirs(dir)) {
-        rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->res);
-        return 0;
-    }
-    rb_join(to, sizeof to, c->res, "surfaces/surfaces.txt");
-    if (!payload(c, "surfaces/surfaces.txt", to, 0) || !rb_host_payload("surfaces/surfaces.txt", src, sizeof src, c->err, c->errlen))
-        return 0;
-    if (!(f = fopen(src, "r"))) {
-        rb_err(c->err, c->errlen, "cannot read the builder's surfaces.txt");
-        return 0;
-    }
-    while (fgets(line, sizeof line, f)) {
-        char id[256];
-        int k;
-        if (line[0] == '#' || sscanf(line, "%255s", id) != 1)
-            continue;
-        for (k = 0; k < 2; k++) {
-            snprintf(name, sizeof name, "surfaces/baked/%s_%c.raw", id, k ? 'b' : 'a');
-            rb_join(to, sizeof to, c->res, name);
-            if (!payload(c, name, to, 0)) {
-                fclose(f);
-                return 0;
-            }
-        }
-    }
-    fclose(f);
-    return 1;
-}
-
 /* the staged layout, with the game and its icon in it */
 static int stage(ctx *c)
 {
@@ -437,7 +397,7 @@ static int stage(ctx *c)
         if (g != RB_REMASTERED)
             return 1;
         rb_join(path, sizeof path, c->res, "AppIcon.icns");
-        return payload(c, "icon", path, 0) && surfaces(c);
+        return payload(c, "icon", path, 0);
     }
     if (t == RB_IOS) {
         rb_join(dir, sizeof dir, c->root, "Payload");
@@ -461,7 +421,7 @@ static int stage(ctx *c)
     if (g != RB_REMASTERED)
         return 1;
     rb_join(path, sizeof path, c->root, "icon.ico");     /* the window's icon (host/windows) */
-    return payload(c, "icon", path, 0) && surfaces(c);   /* (host_resource_dir: beside the exe) */
+    return payload(c, "icon", path, 0);   /* (host_resource_dir: beside the exe) */
 nodir:
     rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->job->dest_dir);
     return 0;

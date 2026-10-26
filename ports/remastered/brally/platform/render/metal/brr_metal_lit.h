@@ -28,7 +28,6 @@
 
 #include "brr_metal_env.h"
 #include "brr_metal_ao.h"
-#include "brr_metal_surf.h"
 #include "brr_vsm.h"
 
 /* the lighting's constants (LU in brr_metal.m: the same layout).  The sun's
@@ -336,11 +335,9 @@ BRR_VSM_SRC \
 /* the G-buffer */ \
 "struct GB { float4 alb [[color(0)]]; float4 pos [[color(1)]]; float4 nrm [[color(2)]]; float d [[depth(any)]]; };\n" \
 "fragment GB fsgb(O in [[stage_in]], constant U &u [[buffer(0)]], texture2d<float> t [[texture(0)]], sampler sm [[sampler(0)]],\n" \
-"                 texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(2)]], constant SurfU &su [[buffer(3)]],\n" \
-"                 texture2d<float> smap [[texture(11)]], texture2d<float> svar [[texture(12)]],\n" \
-"                 texture2d_array<float> sseta [[texture(13)]], texture2d_array<float> ssetb [[texture(14)]]) {\n" \
+"                 texture2d<float> em [[texture(1)]], constant LU &lu [[buffer(2)]]) {\n" \
 "  SH h = shade(in, u, t, sm);\n" \
-"  if (!h.keep && !(su.flags.x > 0.5 && su.misc.x > 0.5)) discard_fragment();   /* a foliage card: its own crisp silhouette below */\n" \
+"  if (!h.keep) discard_fragment();\n" \
 "  GB r; r.d = h.d;\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float mat = in.mat > 2.5 ? (u.lp3 > 0.5 ? BRR_MAT_RUBBER : BRR_MAT_CAR) : u.lamp > 0.5 ? BRR_MAT_LAMP : 128.0 + floor(saturate(g) * 127.0 + 0.5);   /* lp3: a tyre's texture (texmat rubber) */\n" \
@@ -349,13 +346,6 @@ BRR_VSM_SRC \
 "  if (in.mat > 2.5 && u.lensk.x > 0.5 && all(in.st >= u.lens0.xy) && all(in.st < u.lens0.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.x - 1.0);\n" \
 "  if (in.mat > 2.5 && u.lensk.y > 0.5 && all(in.st >= u.lens1.xy) && all(in.st < u.lens1.zw)) mat = BRR_MAT_LENS + 4.0 * (u.lensk.y - 1.0);\n" \
 "  float3 alb = albedo(u, h.tex.rgb, h.it.rgb), nn = shadenrm(lu, in.wp, in.nrm);\n" \
-/* the Remastered textures (brr_metal_surf.h): a draw whose texture has a surface map */ \
-"  if (su.flags.w == 2.0 && su.flags.x < 0.5) alb = float3(0);   /* BR_SURF_VIEW=2: no surface, black */\n" \
-"  if (su.flags.x > 0.5) {\n" \
-"    SurfO so = surfshade(su, smap, svar, sseta, ssetb, in.st, in.wp, nn, alb, h.it.rgb);\n" \
-"    if (so.a >= 0.0 && so.a < 0.5) discard_fragment();\n" \
-"    alb = so.alb; float3 n2 = normalize(nn + so.dn); nn = dot(n2, nn) > 0.2 ? n2 : nn;\n" \
-"  }\n" \
 "  r.alb = float4(alb, mat / 255.0);\n" \
 "  uint fc = (uint(u.fog_color.r * 255.0) << 16) | (uint(u.fog_color.g * 255.0) << 8) | uint(u.fog_color.b * 255.0);\n" \
 "  r.pos = float4(in.wp, float(fc)); r.nrm = float4(nn, h.fog);   /* toward the eye */\n" \
@@ -436,18 +426,11 @@ BRR_VSM_SRC \
 "                    device const float4 *gsh [[buffer(7)]], texture2d<float> gdst [[texture(7)]],\n" \
 "                    constant VU &vu [[buffer(4)]], texture3d<float> iv [[texture(8)]], texturecube<float> sp [[texture(9)]],\n" \
 "                    constant VSU &vsu [[buffer(5)]], const device uint *vent [[buffer(8)]], const device uint *vdyn [[buffer(9)]],\n" \
-"                    texture2d<float> vpool [[texture(11)]], depth2d<float> vdp [[texture(12)]], depth2d<float> vtm [[texture(13)]],\n" \
-"                    constant SurfU &su [[buffer(10)]], texture2d<float> smap [[texture(14)]], texture2d<float> svar [[texture(15)]],\n" \
-"                    texture2d_array<float> sseta [[texture(16)]], texture2d_array<float> ssetb [[texture(17)]]) {\n" \
+"                    texture2d<float> vpool [[texture(11)]], depth2d<float> vdp [[texture(12)]], depth2d<float> vtm [[texture(13)]]) {\n" \
 "  SH h = shade(in, u, t, sm);\n" \
-"  if (!h.keep && !(su.flags.x > 0.5 && su.misc.x > 0.5)) discard_fragment();   /* a foliage card: its own crisp silhouette below */\n" \
+"  if (!h.keep) discard_fragment();\n" \
 "  float g = u.glow * (u.has_tex ? em.sample(sm, in.st).r : 0.0);\n" \
 "  float3 n = shadenrm(lu, in.wp, in.nrm), c, ge = 0.0;\n" \
-/* the Remastered textures (brr_metal_surf.h): a blended draw whose texture has a surface map */ \
-"  SurfO so; so.alb = float3(0); so.dn = float3(0); so.a = -1.0; bool sf = su.flags.x > 0.5;\n" \
-"  if (sf) { so = surfshade(su, smap, svar, sseta, ssetb, in.st, in.wp, n, albedo(u, h.tex.rgb, h.it.rgb), h.it.rgb);\n" \
-"    if (so.a >= 0.0 && so.a < 0.5) discard_fragment();\n" \
-"    float3 n2 = normalize(n + so.dn); n = dot(n2, n) > 0.2 ? n2 : n; }\n" \
 /* a lighthouse beam: its own colour as light, the game's gradient along it, \
    no face normal; under the volumetric fog the spot's in-scatter carries it */ \
 "  if (u.beam > 0.0) c = lin(h.o.rgb) * u.beam * lu.wb.rgb * (lu.vol.x > 0.5 ? u.beamw : 1.0);\n" \
@@ -460,7 +443,7 @@ BRR_VSM_SRC \
 "    if (lu.gi.x > 0.5) gi = lu.misc.z > BRR_TRACED_MAX ? gi_irr2(gu, goff, gsh, gdst, in.wp, n, ve, reflect(-ve, n), gis) : gi_irr(gu, goff, gsh, gdst, in.wp, n, ve);\n" \
 /* a flat decal (lp2, brr_metal.m: a tire mark): its colour the game's own combine of texture and \
    vertex colour, the paint it laid, where delit would divide the vertex colour out as baked light */ \
-"    float3 al = sf ? so.alb : u.lp2 > 0.5 ? min(lin(h.o.rgb) * 0.85, 0.9) : albedo(u, h.tex.rgb, h.it.rgb);\n" \
+"    float3 al = u.lp2 > 0.5 ? min(lin(h.o.rgb) * 0.85, 0.9) : albedo(u, h.tex.rgb, h.it.rgb);\n" \
 "    c = radiance(lu, ls, atl, in.wp, n, al, lu.misc.z, 0.0, sv, bE, gi, ign(in.pos.xy) * 6.2831853, sp, 1.0, u.lp1, gis);\n" \
 "    ge = al / max(dot(al, float3(0.2126, 0.7152, 0.0722)), 0.02) * g * 100.0 * lu.wb.rgb;   /* a lit window's own light */\n" \
 "  }\n" \

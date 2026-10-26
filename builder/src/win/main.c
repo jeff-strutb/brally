@@ -104,13 +104,6 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs%ls.exe", name, vulkan_usable() ? L"" : L"-gl");
     else if (!strcmp(name, "icon"))
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\icon.ico");
-    else if (!strncmp(name, "surfaces/", 9)) {   /* the Remastered textures' sets: games\surfaces\... */
-        size_t k, at = wcslen(src);
-        swprintf(src + at, MAX_PATH - at, L"\\games\\%hs", name);
-        for (k = at; src[k]; k++)
-            if (src[k] == L'/')
-                src[k] = L'\\';
-    }
     else
         src[0] = 0;
     if (!src[0] || GetFileAttributesW(src) == INVALID_FILE_ATTRIBUTES) {

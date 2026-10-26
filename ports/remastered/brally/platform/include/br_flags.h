@@ -4,7 +4,7 @@
  * the original could not is one switch here, on until the app's Remaster
  * Options set it (ports/remastered/platform/options.c, through br_flag_set);
  * BR_FLAG_<NAME>=0|1 sets one at start (checks), e.g. BR_FLAG_ANY_ASPECT=0.
- * The lighting and the textures are shelved: off unless their switch is set. */
+ * The lighting is shelved: off unless its switch is set. */
 #ifndef BR_FLAGS_H
 #define BR_FLAGS_H
 
@@ -24,12 +24,6 @@ enum br_flag {
      * game draws them. Off: the original's picture. Switched live; the
      * game's simulation never sees it. */
     BR_FLAG_LIGHTING,
-    /* the Remastered textures (platform/light/light_surf.h): under the
-     * lighting, each natural surface (road, dirt, grass, rock, sand, snow,
-     * ice, concrete, wood, metal, building) drawn in a photographed material
-     * at its real size, laid over the world, with the original texture's
-     * colour layout kept under it. Off: the original's textures, lit. */
-    BR_FLAG_TEXTURES,
     /* View Distance Unlimited (rm_view.h): every view's far distance past
      * the whole world, so nothing pops in at the original's 400. Off: the
      * original's distance. */

@@ -192,7 +192,7 @@
 + * spans its clip window, else its own size, kept at the distance from the
 + * edge (or the centre) it sat nearest. */
 +static void place(double lo, double hi, double r0, double r1, double k, double u, double *a, double *b)
-+{
+ {
 +    double rw = r1 - r0;
 +    if (hi - lo >= 0.9 * rw) { *a = k; *b = 0; return; }
 +    *a = u;
@@ -297,7 +297,7 @@
 +
 +/* the clip window as a scissor in target pixels, for a draw through `which` */
 +static void scissor(int which)
- {
++{
      int x0 = s_st.clip_x0 < 0 ? 0 : s_st.clip_x0, y0 = s_st.clip_y0 < 0 ? 0 : s_st.clip_y0;
      int x1 = s_st.clip_x1 > s_w ? s_w : s_st.clip_x1, y1 = s_st.clip_y1 > s_h ? s_h : s_st.clip_y1;
      long px0, py0, px1, py1;
@@ -450,7 +450,7 @@
      plat_pump(0);
  }
  
-@@ -506,8 +861,83 @@
+@@ -506,8 +861,72 @@
      o->r = v->r; o->g = v->g; o->b = v->b; o->a = v->a;
      o->s = v->tc[0].sow * w / su;
      o->t = v->tc[0].tow * w / sv;
@@ -502,19 +502,8 @@
 +    s_dl_k = k;
 +    if (!k || s_view != 0)
 +        return;                         /* the mirror: recorded, drawn as the game drew it */
-+    if (!plat_flag(BR_FLAG_LIGHTING)) {
-+        /* the game's own lighting with the Remastered textures (light_surf.h): the camera's
-+           world triangles carry their world positions, lit 4 (drawn as the game draws them) */
-+        if (k != 1 || !plat_flag(BR_FLAG_TEXTURES))
-+            return;
-+        for (i = 0; i < 3; i++) {
-+            o[i].wx = world[i][0];
-+            o[i].wy = world[i][1];
-+            o[i].wz = world[i][2];
-+            o[i].lit = 4.0f;
-+        }
-+        return;
-+    }
++    if (!plat_flag(BR_FLAG_LIGHTING))
++        return;                         /* the game's own lighting: drawn as the game drew it */
 +    if (k == 2) {                       /* the backdrop: drawn behind the lit scene */
 +        for (i = 0; i < 3; i++)
 +            o[i].lit = 2.0f;
@@ -534,7 +523,7 @@
  /* Triangle setup drops a triangle with no area, and with culling on
   * drops the one facing away: the sign of its area in the coordinates the
   * application passed (before the lower-left origin turns y over).  The
-@@ -529,21 +959,25 @@
+@@ -529,21 +948,25 @@
      gllog_vtx(a);
      gllog_vtx(b);
      gllog_vtx(c);
@@ -563,7 +552,7 @@
      gllog("polygon %d", n);
      for (i = 0; i < n && i < 16; i++)
          gllog_vtx(&vl[i]);
-@@ -553,28 +987,36 @@
+@@ -553,28 +976,36 @@
          if (culled(&vl[0], &vl[i], &vl[i + 1]))
              continue;
          if (k == 3 * 64) {

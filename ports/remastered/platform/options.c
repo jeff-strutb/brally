@@ -4,10 +4,10 @@
  * Rally's menus, the view distance unlimited).  Each game
  * reads the frame rate's switch itself (rm_option, from its own drawing).
  *
- * The lighting and the textures are shelved: their code is kept (and built),
- * but no menu offers them and they are always off, whatever remaster.cfg says;
- * RM_OPT_LIGHTING=1 / RM_OPT_TEXTURES=1 still turn them on for their own
- * checks (their sets and skies are packaged only with RM_SHELVED_ASSETS=1). */
+ * The lighting is shelved: its code is kept (and built), but no menu offers
+ * it and it is always off, whatever remaster.cfg says; RM_OPT_LIGHTING=1
+ * still turns it on for its own checks (its skies are packaged only with
+ * RM_SHELVED_ASSETS=1). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +23,6 @@ static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
     [RM_OPT_MUSIC]      = { "music", RM_MUSIC_N64 },
     [RM_OPT_LIGHTING]   = { "lighting", 0 },          /* shelved */
     [RM_OPT_FPS]        = { "fps", 0 },
-    [RM_OPT_TEXTURES]   = { "textures", 0 },          /* shelved */
     [RM_OPT_MENUS]      = { "menus", RM_MENUS_TGR },
     [RM_OPT_VIEWDIST]   = { "viewdist", RM_VIEW_UNLIMITED },
 };
@@ -31,8 +30,8 @@ static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
 static volatile int s_val[RM_OPT_COUNT];
 static int s_loaded;
 
-/* the shelved ones: off, never kept, never chosen (only the environment's check turns one on) */
-static int shelved(int which) { return which == RM_OPT_LIGHTING || which == RM_OPT_TEXTURES; }
+/* the shelved one: off, never kept, never chosen (only the environment's check turns it on) */
+static int shelved(int which) { return which == RM_OPT_LIGHTING; }
 
 static void apply(int which)
 {
@@ -47,9 +46,6 @@ static void apply(int which)
         break;
     case RM_OPT_LIGHTING:
         br_flag_set(BR_FLAG_LIGHTING, v);
-        break;
-    case RM_OPT_TEXTURES:
-        br_flag_set(BR_FLAG_TEXTURES, v);
         break;
     case RM_OPT_VIEWDIST:
         br_flag_set(BR_FLAG_VIEW_UNLIMITED, v == RM_VIEW_UNLIMITED);

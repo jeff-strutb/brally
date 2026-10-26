@@ -47,7 +47,7 @@ extern const unsigned char rm_icon_crt[], rm_icon_n64[];
 extern const unsigned int rm_icon_crt_len, rm_icon_n64_len;
 /* -- end declarations -- */
 
-enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_TEXTURES, RM_OPT_MENUS, RM_OPT_VIEWDIST };
+enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_LIGHTING, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64 };
 enum { RM_MENUS_TGR, RM_MENUS_BR };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };

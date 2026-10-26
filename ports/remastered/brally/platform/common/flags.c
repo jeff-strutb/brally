@@ -8,12 +8,11 @@
 static const char *const k_names[BR_FLAG_COUNT] = {   /* BR_FLAG_<name>=0|1 sets it at start */
     [BR_FLAG_ANY_ASPECT] = "ANY_ASPECT",
     [BR_FLAG_LIGHTING]   = "LIGHTING",
-    [BR_FLAG_TEXTURES]   = "TEXTURES",
     [BR_FLAG_VIEW_UNLIMITED] = "VIEW_UNLIMITED",
 };
 
-/* on until the app sets them; the lighting and the textures are shelved, off
-   unless BR_FLAG_LIGHTING=1 / BR_FLAG_TEXTURES=1 (their checks) */
+/* on until the app sets them; the lighting is shelved, off unless
+   BR_FLAG_LIGHTING=1 (its checks) */
 static const unsigned char k_def[BR_FLAG_COUNT] = { [BR_FLAG_ANY_ASPECT] = 1, [BR_FLAG_VIEW_UNLIMITED] = 1 };
 
 static int s_loaded;

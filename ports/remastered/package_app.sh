@@ -7,7 +7,6 @@
 #   Contents/MacOS/remastered            the two games and the host
 #   Contents/Resources/disc              Boss Rally's data track, less the installer and the video
 #   Contents/Resources/skies             the lighting's skymaps (shelved: only with RM_SHELVED_ASSETS=1)
-#   Contents/Resources/surfaces          the Remastered textures' sets (shelved: only with RM_SHELVED_ASSETS=1)
 #   Contents/Resources/music/cd          Boss Rally's CD audio, the PC's music (music.sh)
 #   Contents/Resources/AppIcon.icns      from icon.png
 #
@@ -63,7 +62,7 @@ rsync -a --exclude 'brally.avi' --exclude '*.cab' --exclude '*.exe' --exclude '*
 # ---- the PC's music: Boss Rally's CD audio (host_music_dir: Resources/music/cd) ------
 BIN=$BIN ports/remastered/music.sh "$APP/Contents/Resources/music/cd"
 
-# ---- the shelved lighting's skies and textures' sets: only with RM_SHELVED_ASSETS=1 ----
+# ---- the shelved lighting's skies: only with RM_SHELVED_ASSETS=1 -----------------------
 if [ "${RM_SHELVED_ASSETS:-0}" = 1 ]; then
     # ---- the skymaps (the Remastered lighting's skies, ports/common/skies) ---------------
     if [ -f ports/common/skies/skies.txt ]; then   # ports/common/skies/fetch.sh brings them
@@ -79,20 +78,6 @@ if [ "${RM_SHELVED_ASSETS:-0}" = 1 ]; then
     else
         echo "package_app: no ports/common/skies/skies.txt: the Remastered lighting falls back to a grey day" >&2
     fi
-
-    # ---- the Remastered textures' sets (ports/common/surfaces: fetch.py, then bake.py) ---
-    mkdir -p "$APP/Contents/Resources/surfaces/baked"
-    cp ports/common/surfaces/surfaces.txt "$APP/Contents/Resources/surfaces/"
-    grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
-        for m in a b; do
-            if [ -f "ports/common/surfaces/baked/${id}_$m.raw" ]; then
-                cp "ports/common/surfaces/baked/${id}_$m.raw" "$APP/Contents/Resources/surfaces/baked/"
-            else
-                echo "package_app: surface set $id missing (ports/common/surfaces/fetch.py, bake.py): Textures off" >&2
-            fi
-        done
-    done
-
 fi
 
 # ---- the icon ------------------------------------------------------------------------

@@ -76,19 +76,6 @@ for R in vulkan gl; do
 done
 cp $B/remastered-windows-vulkan/icon.ico $B/payload-windows/icon.ico
 
-# ---- the Remastered textures' sets (shelved: only with RM_SHELVED_ASSETS=1), beside both games ---
-if [ "${RM_SHELVED_ASSETS:-0}" = 1 ]; then
-    for P in $B/payload-macos $B/payload-windows; do
-        mkdir -p $P/surfaces/baked
-        cp ports/common/surfaces/surfaces.txt $P/surfaces/
-        grep -v '^#' ports/common/surfaces/surfaces.txt | awk 'NF >= 2 { print $1 }' | while read id; do
-            cp ports/common/surfaces/baked/${id}_a.raw ports/common/surfaces/baked/${id}_b.raw $P/surfaces/baked/ \
-                || { echo "build: surface set $id missing (ports/common/surfaces: fetch.py, bake.py)" >&2; exit 1; }
-        done
-    done
-
-fi
-
 # x86-64 game code must not assume 16-byte alignment of the original's data
 $PY builder/check_alignment.py $B/brally-macos-x86_64/obj $B/tgrally-macos-x86_64/obj \
     $B/brally-windows-vulkan/obj $B/tgrally-windows-vulkan/obj \
@@ -136,6 +123,5 @@ x86_64-w64-mingw32-gcc -municode -mwindows -static -s -o "$B/win/Rally Builder/R
 # the game and its icon beside it as plain files: the builder copies them, it
 # carries no executable inside itself
 cp $B/payload-windows/*.exe $B/payload-windows/icon.ico "$B/win/Rally Builder/games/"
-[ -d $B/payload-windows/surfaces ] && cp -R $B/payload-windows/surfaces "$B/win/Rally Builder/games/"   # the shelved textures' sets
 (cd $B/win && zip -qrX "$PWD/../dist/RallyBuilder-$VERSION-Windows.zip" "Rally Builder")
 ls -la $DIST
