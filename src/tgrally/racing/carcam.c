@@ -132,6 +132,45 @@ void BrCarCamInit(BrCar *car)
   car->x1f90 = 2.0f;
 }
 
+#if TGR_REGION_EUR
+/* WHAT IT DOES: Aim a trackside camera at the car: its up axis is world up,
+ * it looks from where it stands at the point one unit up the car's up axis,
+ * its side and up axes are rebuilt square to that, and its lens widens as
+ * the car gets closer (the distance less one, held to 0..100).  The USA
+ * build does this inline for the fourth camera in BrCamChaseStep; Europe's
+ * intro demo also aims it from BrDemoVarsLoad.  The up axis is cleared y
+ * first, as the ROM stores it; the unused pair is two words of the ROM
+ * frame with no visible use. */
+/* @implements eur:0x802224B0 tgr BrCamTracksideAim */
+void BrCamTracksideAim(BrCar *car, BrCarCam *cam)
+{
+  float unused[2];
+  BrVec3 *pUp;
+  BrVec3 *pLook;
+  float dist;
+
+  pUp = (BrVec3 *)cam->mtx[2];
+  pLook = (BrVec3 *)cam->mtx[0];
+  pUp->y = 0.0f;
+  pUp->x = 0.0f;
+  pUp->z = 1.0f;
+  BrVec3Add(pLook, (BrVec3 *)car->mtx0[3], (BrVec3 *)car->mtx0[2]);
+  BrVec3SubFrom(pLook, (BrVec3 *)cam->mtx[3]);
+  dist = BrVec3Length(pLook);
+  BrVec3DivBy(pLook, dist);
+  BrVec3Cross((BrVec3 *)cam->mtx[1], pUp, pLook);
+  BrVec3Cross(pUp, pLook, (BrVec3 *)cam->mtx[1]);
+  if (dist <= 1.0f) {
+    dist = 0.0f;
+  } else if (dist >= 101.0f) {
+    dist = 100.0f;
+  } else {
+    dist = dist - 1.0f;
+  }
+  cam->fov = ((cosf((dist - 1.0f) * 0.041887902f) * 0.1f + 0.7f) + (51.0f - dist) * 0.004f) * D_8028AAC0;
+}
+#endif
+
 /* WHAT IT DOES: Advance a car's chase camera by a frame: smooth the car's
  * spin and speed into the camera's damped copies, place it behind the car
  * lifted by how far the smoothed spin outruns the speed, step the target,
@@ -148,7 +187,9 @@ void BrCarCamInit(BrCar *car)
  * ROM's spilled temps.  The lift is written with its products inline and
  * the 0.5/0.15 factor divided inline: uopt CSEs both products (f12, f14)
  * as temps that take the first spill slots, so &cams[1] spills to 0x28.
- * The unused arrays are words of the ROM frame with no visible use. */
+ * The unused arrays are words of the ROM frame with no visible use.
+ * Europe aims the fourth camera with BrCamTracksideAim instead of inline,
+ * and its frame is the smaller one that leaves. */
 /* @implements 0x80221170 tgr BrCamChaseStep */
 void BrCamChaseStep(BrCar *car)
 {
@@ -162,11 +203,15 @@ void BrCamChaseStep(BrCar *car)
   float speed;
   BrCarCam *cam;
   BrVec3 *pRow;
+#if TGR_REGION_EUR
+  int unused2[10];
+#else
   BrVec3 *pUp;
   BrVec3 *pLook;
   int unused2[10];
   float dist;
   int unused3[2];
+#endif
 
   prev.x = car->cams[1].mtx[3][0];
   prev.y = car->cams[1].mtx[3][1];
@@ -230,9 +275,16 @@ void BrCamChaseStep(BrCar *car)
         D_8028B7FC--;
       }
       car->x1fac = car->x1fac - 0.005f;
+#if TGR_REGION_EUR
+      /* Europe's two zeros are separate constants (a second spelling) */
+      if (car->x1fac < 0.0f) {
+        car->x1fac = .0f;
+      }
+#else
       if (car->x1fac < 0.0f) {
         car->x1fac = 0.0f;
       }
+#endif
     }
   }
   BrCarCamLookAt(car, cam);
@@ -256,6 +308,9 @@ void BrCamChaseStep(BrCar *car)
   }
   memcpy(&car->cams[2], &car->cams[0], sizeof(BrCarCam));
   BrVec3MulAddTo((BrVec3 *)car->cams[2].mtx[3], (BrVec3 *)car, 0.5f);
+#if TGR_REGION_EUR
+  BrCamTracksideAim(car, &car->cams[3]);
+#else
   pUp = (BrVec3 *)car->cams[3].mtx[2];
   pLook = (BrVec3 *)car->cams[3].mtx[0];
   pUp->x = 0.0f;
@@ -275,6 +330,7 @@ void BrCamChaseStep(BrCar *car)
     dist = dist - 1.0f;
   }
   car->cams[3].fov = ((cosf((dist - 1.0f) * 0.041887902f) * 0.1f + 0.7f) + (51.0f - dist) * 0.004f) * D_8028AAC0;
+#endif
   car->cams[2].fov = D_8028AAC0;
   car->cams[1].fov = D_8028AAC0;
   car->cams[0].fov = D_8028AAC0;
