@@ -26,6 +26,16 @@ void BrFrameBeginLayout1(void);
 void BrFrameEnd(void);
 void osViBlack(char param_1);
 extern int D_8028A884;
+#if TGR_REGION_EUR
+typedef struct BrViField {      /* libultra's OSViFieldRegs */
+  unsigned int origin, yScale, vStart, vBurst, vIntr;
+} BrViField;
+typedef struct BrViMode {       /* libultra's OSViMode */
+  unsigned char type;
+  unsigned int com[9];
+  BrViField fld[2];
+} BrViMode;
+#endif
 void BrFrameBeginLayout0(void);
 extern int D_8028AA08;
 extern int D_8028AA0C;
@@ -695,12 +705,73 @@ void BrViewFrame(int x, int y, int w, int h)
   }
 }
 
+#if TGR_REGION_EUR
+extern BrViMode osViModePalHaf1;
+extern BrViMode osViModePalLan1;
+extern BrViMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
+extern BrViMode eur_D_8028CDC4;         /* and its 320-wide one */
+extern int eur_D_8028CE14;              /* the picture is blanked */
+
+/* WHAT IT DOES: Blank the picture (Europe): unless it already is, first
+ * put the VI back on libultra's own PAL mode for the resolution in use (640
+ * or 320 wide), then turn the output black and note it is blanked. */
+/* @implements eur:0x8021B4E8 tgr BrVideoBlank */
+void BrVideoBlank(void)
+{
+  if (eur_D_8028CE14 == 0) {
+    if (D_8028A854 != 0) {
+      osViSetMode(&osViModePalHaf1);
+    } else {
+      osViSetMode(&osViModePalLan1);
+    }
+  }
+  osViBlack(1);
+  eur_D_8028CE14 = 1;
+}
+
+/* WHAT IT DOES: Show the picture again (Europe): turn the output on and, if
+ * it was blanked, switch the VI to the game's own PAL mode for the
+ * resolution in use (the 240-line window). */
+/* @implements eur:0x8021B54C tgr BrVideoUnblank */
+void BrVideoUnblank(void)
+{
+  osViBlack(0);
+  if (eur_D_8028CE14 != 0) {
+    if (D_8028A854 != 0) {
+      osViSetMode(&eur_D_8028CD74);
+    } else {
+      osViSetMode(&eur_D_8028CDC4);
+    }
+  }
+  eur_D_8028CE14 = 0;
+}
+#endif
+
 /* WHAT IT DOES: Push two empty black frames through the second screen
  * layout with the video output blanked, so a mode change starts from a
- * clean screen. */
+ * clean screen.  Europe leaves the output as it is, pushes the first frame
+ * through the first layout and clears the frame buffers' words (0x800D4000
+ * to the code) between the two.  The dead i = 0 after the clear keeps IDO
+ * from unrolling it, as the ROM has it (also in BrScreenFlush2Layout0). */
 /* @implements 0x8021A4C8 tgr BrScreenFlush2Layout1 */
 void BrScreenFlush2Layout1(void)
 {
+#if TGR_REGION_EUR
+  unsigned int i;
+
+  D_8028A884 = 1;
+  BrFrameBeginLayout0();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  for (i = 0x800D4000 / 4; i < 0x80200000 / 4; i++) {
+    ((int *)0)[i] = 0;
+  }
+  i = 0;
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  D_8028A884 = 0;
+#else
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout1();
@@ -711,14 +782,36 @@ void BrScreenFlush2Layout1(void)
   BrScreenClear(0,0,0);
   BrFrameEnd();
   D_8028A884 = 0;
+#endif
 }
 
 /* WHAT IT DOES: Push two empty black frames through the first screen layout
  * with the video output blanked, so a mode change starts from a clean
- * screen. */
+ * screen.  Europe leaves the output as it is, pushes the two frames through
+ * the second layout, clears the words from 0x801B5000 to the code and
+ * pushes a third through the first layout. */
 /* @implements 0x8021A540 tgr BrScreenFlush2Layout0 */
 void BrScreenFlush2Layout0(void)
 {
+#if TGR_REGION_EUR
+  unsigned int i;
+
+  D_8028A884 = 1;
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  for (i = 0x801B5000 / 4; i < 0x80200000 / 4; i++) {
+    ((int *)0)[i] = 0;
+  }
+  i = 0;
+  BrFrameBeginLayout0();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  D_8028A884 = 0;
+#else
   D_8028A884 = 1;
   osViBlack(1);
   BrFrameBeginLayout0();
@@ -729,6 +822,7 @@ void BrScreenFlush2Layout0(void)
   BrScreenClear(0,0,0);
   BrFrameEnd();
   D_8028A884 = 0;
+#endif
 }
 
 typedef struct BrTexKey {       /* one frame of an animated texture (0xC bytes) */
