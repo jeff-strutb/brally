@@ -741,8 +741,15 @@ def build_file(path, rom, fmap, syms, want_diff=None):
         if want_diff is not None and want_diff == va:
             print_diff(va, ours, theirs)
     absent = {name for uva, name in absent}
+    # a region that built several files as one object includes them; their
+    # functions are tagged (and graded) in their own files
+    elsewhere = set()
+    for inc in re.findall(r'^\s*#\s*include\s+"([^"]+\.c)"', src, re.M):
+        ip = os.path.normpath(os.path.join(os.path.dirname(path), inc))
+        if os.path.exists(ip):
+            elsewhere |= {n for u, v, n, ln in region.tags(open(ip, encoding='utf-8', errors='replace').read())}
     for name, p in have.items():
-        if name not in fnvas and name not in absent:
+        if name not in fnvas and name not in absent and name not in elsewhere:
             rows.append(dict(va='', name=name, file=rel, status='UNTAGGED', ndiff='',
                              size=p[2] - p[1], note='defined but carries no @implements tag'))
     return rows

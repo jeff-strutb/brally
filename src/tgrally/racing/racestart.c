@@ -4,7 +4,7 @@
 
 /* -- declarations -- */
 extern int D_8028AAD0;
-extern int D_8028AAD4;
+extern unsigned int D_8028AAD4;
 extern float D_8028AAD8;
 extern int D_8028AADC;
 unsigned long long D_8028ADF8 = 0;

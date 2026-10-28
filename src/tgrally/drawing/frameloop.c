@@ -1536,7 +1536,11 @@ void BrPreNmiThread(void *arg);
  * When the second pak call fails the loop continues to the next controller,
  * which puts the loop bound ahead of the stored 1 when equal-priority
  * constants are coloured: the bound keeps its saved register and the 1 is
- * loaded where it is stored. */
+ * loaded where it is stored.
+ * Europe and Japan test each port's rumble flag twice at the end of the loop
+ * with empty bodies (reports compiled out): the four extra blocks raise
+ * uopt's saved-register cost above a loop constant's saving, so none of the
+ * loop's constants is kept in a saved register. */
 /* @implements 0x8021BE88 tgr BrSchedInit */
 void BrSchedInit(void)
 {
@@ -1599,6 +1603,13 @@ void BrSchedInit(void)
 #endif
       }
     }
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    /* compiled-out reports of each port: a rumble pak, or none */
+    if (D_8031B1E8[i] != 0) {
+    }
+    if (D_8031B1E8[i] == 0) {
+    }
+#endif
   }
 }
 
