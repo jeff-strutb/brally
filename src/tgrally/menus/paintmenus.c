@@ -271,8 +271,25 @@ void BrPaintMirrorMenu(void)
   int y;
   int bx;
   int r[3][4];
+#if TGR_REGION_JPN
+  char *flip[2][2] = {
+    { "%jqt\xBB\x81(\xA8w", " %j\xD8\xD9\xDC\xDD" "B6R&" },
+    { "%jqt\xBB\x81(\xA8w", " %j\xDA\xDB\xDC\xDD" "B6R&" },
+  };
+  char *mirror[8][2] = {        /* by decal part: where its mirror goes */
+    { "%jqt\xBB\x81(\xA8w", " %j\xD9\xCB\x80" "D\xDE\xDF" "B6R&" },
+    { "%jqt\xBB\x81(\xA8w", " %j\xD8\xCB\x80" "D\xDE\xDF" "B6R&" },
+    { "%jqt\xBB\x81(\xA8w\xD9\xA5\xC8\xCF\xC3", " %j\xA5\xBE\xCF\x8B(D\xDE\xDF" "B6R&" },
+    { "%jqt\xBB\x81(\xA8w\xD8\xA5\xC8\xCF\xC3", " %j\xA5\xBE\xCF\x8B(D\xDE\xDF" "B6R&" },
+    { 0, 0 },
+    { 0, 0 },
+    { "%jqt\xBB\x81(\xA8w\xD9\x98\x80", " %j\xA5\xBE\xCF\x8B(D\xDE\xDF" "B6R&" },
+    { "%jqt\xBB\x81(\xA8w\xD8\x98\x80", " %j\xA5\xBE\xCF\x8B(D\xDE\xDF" "B6R&" },
+  };
+#else
   char *flip1[2] = { "FLIP CURRENT DECAL", "FLIP CURRENT DECAL" };
   char *flip2[2] = { "HORIZONTALLY", "VERTICALLY" };
+#endif
 #if TGR_REGION_EUR
   char *mirror[8][2] = {        /* by decal part: where its mirror goes */
     { "MIRROR CURRENT DECAL", "TO THE RIGHT DOOR" },
@@ -322,6 +339,23 @@ void BrPaintMirrorMenu(void)
       BrFillFrame(r[i][0], r[i][1], r[i][2], r[i][3], 1, 0x20, 0x20, 0x20);
     }
   }
+#if TGR_REGION_JPN
+  BrBevelPanel(0xac, 0xf8, 0x128, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+  BrTextSetFont(14);
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  if (D_8028DBB8 == 0) {
+    if (D_8028DBCC != 0) {
+      BrTextPrint(mirror[D_8028DB68][0], 0x9f, 0x87);
+      BrTextPrint(mirror[D_8028DB68][1], 0x9f, 0x94);
+    } else {
+      BrTextPrint("%jqt\xBB\x81(\xA8" "5", 0x9f, 0x87);
+      BrTextPrint(" %j\xE9" "D\xDE\xDFkA6b\x7F&", 0x9f, 0x94);
+    }
+  } else {
+    BrTextPrint(flip[D_8028DBB8 - 1][0], 0x9f, 0x87);
+    BrTextPrint(flip[D_8028DBB8 - 1][1], 0x9f, 0x94);
+  }
+#else
   BrBevelPanel(0xac, 0xf8, 0x128, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
@@ -366,6 +400,7 @@ void BrPaintMirrorMenu(void)
     BrTextPrint(flip1[D_8028DBB8 - 1], 0x9f, 0x87);
     BrTextPrint(flip2[D_8028DBB8 - 1], 0x9f, 0x94);
   }
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", ((unsigned int)D_8028D0B0.w + 0xd9) >> 1, (y + 18) >> 1);
