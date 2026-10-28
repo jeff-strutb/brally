@@ -94,7 +94,9 @@ int BrJpGlyphSlot(int c)
  * glyph offset table from ROM (0xDCF40); then every character with a slot
  * whose glyph is not there yet has it read in, as stored (a negative
  * offset) or run-length packed and unpacked into the slot; the slots no
- * character holds are marked empty. */
+ * character holds are marked empty.  One variable walks the slots in both
+ * loops (one web, so the glyph slot takes a0), and the packed glyph's ROM
+ * address adds the offset first ((a | 0) keeps it a node). */
 /* @implements jpn:0x8022F2B0 tgr BrJpGlyphLoad */
 void BrJpGlyphLoad(void)
 {
@@ -103,7 +105,6 @@ void BrJpGlyphLoad(void)
   int b;
   int a;
   int dst;
-  int i;
 
   if (jpn_D_8028DF60 == 0) {
     jpn_D_8028DF60 = 1;
@@ -130,8 +131,8 @@ void BrJpGlyphLoad(void)
       c += 0x20;
     }
   }
-  for (i = jpn_D_8028DF50; i < jpn_D_8028DF5C; i++) {
-    jpn_D_80351F50[i] = 0;
+  for (slot = jpn_D_8028DF50; slot < jpn_D_8028DF5C; slot++) {
+    jpn_D_80351F50[slot] = 0;
   }
 }
 #endif
