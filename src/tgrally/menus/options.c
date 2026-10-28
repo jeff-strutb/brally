@@ -375,3 +375,65 @@ fail:
   return 0;
 }
 #endif
+
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Save the settings to the EEPROM: read the block back, and
+ * when its checksum is bad first lay both players' season records out in
+ * it afresh; then refresh player 1's five per-season words, the three
+ * option values and player 2's five words, recompute the checksum and write
+ * the block.  Nothing is written without an EEPROM or when the read fails;
+ * the SI is marked busy while it works. */
+/* @implements jpn:0x80211D38 tgr BrOptionsEepromSave */
+void BrOptionsEepromSave(void)
+{
+  int i;
+  unsigned char *data;
+  int n;
+  int check;
+  int *p2;
+  int u0;                       /* unused: the frame has it */
+  int sum;
+
+  data = D_80272500 + 4;
+  p2 = (int *)(data + 0x128);
+  n = (data - D_80272500 + 0x14f) & ~7;
+  D_802A4BE8 = 0;
+  if (osEepromProbe(D_80272D48) != 0) {
+    if (osEepromLongRead(D_80272D48, 0, D_80272500, n) == 0) {
+      memcpy(&sum, D_80272500, 4);
+      check = 0xBFED812;
+      for (i = 4; i < n; i++) {
+        check += D_80272500[i];
+      }
+      if (check != sum) {
+        memcpy(data, D_8031B760[0].season, 0x128);
+        p2[0] = D_8031B760[1].season->xd4;
+        p2[1] = D_8031B760[1].season->xd8;
+        p2[2] = D_8031B760[1].season->xdc;
+        p2[3] = D_8031B760[1].season->xe0;
+        p2[4] = D_8031B760[1].season->xe4;
+        memcpy(data + 0x13c, D_802723D0, 0xc);
+      }
+      ((BrSeason *)data)->xd4 = D_8031B760[0].season->xd4;
+      ((BrSeason *)data)->xd8 = D_8031B760[0].season->xd8;
+      ((BrSeason *)data)->xdc = D_8031B760[0].season->xdc;
+      ((BrSeason *)data)->xe0 = D_8031B760[0].season->xe0;
+      ((BrSeason *)data)->xe4 = D_8031B760[0].season->xe4;
+      memcpy(data + 0x13c, D_802723D0, 0xc);
+      p2[0] = D_8031B760[1].season->xd4;
+      p2[1] = D_8031B760[1].season->xd8;
+      p2[2] = D_8031B760[1].season->xdc;
+      p2[3] = D_8031B760[1].season->xe0;
+      p2[4] = D_8031B760[1].season->xe4;
+      sum = 0xBFED812;
+      for (i = 4; i < n; i++) {
+        sum += D_80272500[i];
+      }
+      memcpy(D_80272500, &sum, 4);
+      osEepromLongWrite(D_80272D48, 0, D_80272500, n);
+    }
+  }
+  D_802A4BE8 = 1;
+}
+#endif
+
