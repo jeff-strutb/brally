@@ -337,13 +337,16 @@ void BrOptionsScreen(void)
 /* @implements jpn:0x80211B60 tgr BrOptionsEepromLoad */
 int BrOptionsEepromLoad(void)
 {
+  int i;
+  int sum;
   unsigned char *data;
+  int *p2;
+  int u0;                       /* unused: the frame has it */
   int n;
   int stored;
-  int sum;
-  int i;
 
   data = D_80272500 + 4;
+  p2 = (int *)(data + 0x128);
   n = (data - D_80272500 + 0x14f) & ~7;
   D_802A4BE8 = 0;
   if (osEepromProbe(D_80272D48) == 0) {
@@ -362,11 +365,11 @@ int BrOptionsEepromLoad(void)
   }
   memcpy(D_8031B760[0].season, data, 0x128);
   memcpy(D_8031B760[1].season, data, 0x128);
-  D_8031B760[1].season->xd4 = ((int *)(data + 0x128))[0];
-  D_8031B760[1].season->xd8 = ((int *)(data + 0x128))[1];
-  D_8031B760[1].season->xdc = ((int *)(data + 0x128))[2];
-  D_8031B760[1].season->xe0 = ((int *)(data + 0x128))[3];
-  D_8031B760[1].season->xe4 = ((int *)(data + 0x128))[4];
+  D_8031B760[1].season->xd4 = p2[0];
+  D_8031B760[1].season->xd8 = p2[1];
+  D_8031B760[1].season->xdc = p2[2];
+  D_8031B760[1].season->xe0 = p2[3];
+  D_8031B760[1].season->xe4 = p2[4];
   memcpy(D_802723D0, data + 0x13c, 0xc);
   D_802A4BE8 = 1;
   return 1;
