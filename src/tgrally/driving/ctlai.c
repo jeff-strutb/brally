@@ -1017,7 +1017,11 @@ void BrCtlAiBody(BrCar *car)
         BrVec3MulAddTo(&car->st.vel, &car->lineUp, rel[2]);
       }
       if (D_8026FF18 == 0) {
+#if TGR_REGION_EUR
+        BrVec3ScaleBy(&car->st.vel, D_8028B9F0[D_8031C5BC->b4][D_8031C5BC->b5][car->link->x74] * 0.9988f);
+#else
         BrVec3ScaleBy(&car->st.vel, D_8028B9F0[D_8031C5BC->b4][D_8031C5BC->b5][car->link->x74]);
+#endif
       } else if (D_8026FF18 == 1) {
         w = D_8028C800 - 1;
         if (w > 2 || w < 0) {
