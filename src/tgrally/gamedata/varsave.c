@@ -140,6 +140,49 @@ void BrVarLoadSmall(void)
 #endif
 }
 
+#if TGR_REGION_EUR
+extern int eur_D_8028DEC0;              /* demo frames played */
+extern BrVarEnt eur_D_8028DEC4[];       /* the demo's resync lists */
+extern BrVarEnt eur_D_8028E22C[];
+extern BrVarEnt eur_D_8028E2CC[];
+extern int D_8026FF1C;                  /* which demo */
+void BrCamTracksidePick(BrCar *car);
+void BrCamTracksideAim(BrCar *car, BrCarCam *cam);
+
+/* WHAT IT DOES: Europe's intro demo (mode 4, demo 0) resyncs itself from
+ * its recording: count the frame, and where the recording being played
+ * for the first car has an 0xFF 0xFF marker at its read position, skip it
+ * and copy three variable lists back out of the recording (the read
+ * position steps over them, rounded up to even), then put the first car on
+ * its trackside camera. */
+/* @implements eur:0x8022C340 tgr BrDemoVarsLoad */
+void BrDemoVarsLoad(void)
+{
+  BrPadRec *p;
+  int n;
+
+  eur_D_8028DEC0++;
+  if (D_8026FF18 == 4 && D_8026FF1C == 0) {
+    p = (BrPadRec *)D_8031B760[0].pad;
+    if (p->ghostPos < p->ghostLen && (p->ghostPos + p->ghost)[0] == 0xff
+        && (p->ghostPos + p->ghost)[1] == 0xff) {
+      p->ghostPos += 2;
+      p = (BrPadRec *)D_8031B760[0].pad;
+      n = BrVarListLoad(eur_D_8028E2CC, p->ghostPos + (char *)p->ghost, 0);
+      p = (BrPadRec *)D_8031B760[0].pad;
+      n += BrVarListLoad(eur_D_8028E22C, p->ghostPos + (char *)p->ghost + n, 0);
+      p = (BrPadRec *)D_8031B760[0].pad;
+      n += BrVarListLoad(eur_D_8028DEC4, p->ghostPos + (char *)p->ghost + n, 0);
+      p = (BrPadRec *)D_8031B760[0].pad;
+      p->ghostPos += (n + 1) & ~1;
+      D_8031B760[0].xf48 = 1;
+      BrCamTracksidePick(&D_8031B760[0]);
+      BrCamTracksideAim(&D_8031B760[0], &D_8031B760[0].cams[3]);
+    }
+  }
+}
+#endif
+
 /* WHAT IT DOES: When a player starts the last lap (or the race is one lap)
  * in a mode that keeps laps, and nothing is being recorded for them yet:
  * borrow a spare car model buffer (the fourth for player 0, the third for

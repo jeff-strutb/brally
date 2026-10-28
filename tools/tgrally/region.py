@@ -98,10 +98,16 @@ def addrmap():
 
 
 def to_region(usa_va):
-    """A USA address in this region, or None when it has no counterpart."""
+    """A USA address in this region, or None when it has no counterpart.
+    An address below the image (the OS globals, the buffers the game keeps
+    in low RAM) the map does not pair stays where it is; the ones it pairs
+    can move (Europe's frame buffers do)."""
     if REGION == 'usa':
         return usa_va
-    return addrmap().get(usa_va)
+    v = addrmap().get(usa_va)
+    if v is None and (usa_va & 0xffffffff) < BASE:
+        return usa_va
+    return v
 
 
 # ------------------------------------------------------------------- tags
