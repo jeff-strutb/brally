@@ -747,17 +747,21 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     D_80369E54 = osPfsFindFile(pfs, COMPANY, GAME, name, ext, &D_80369E58);
     if (D_80369E54 == 0) {
       if (op == OP_LOAD) {
+#if !TGR_REGION_EUR
         top = 0xC5;
         if (fromMenu == 1) {
           top = 0xDB;
         }
         BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
         BrTextAlignLeft();
         BrTextHighlightOff();
         BrTextSetFont(13);
         BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+#if !TGR_REGION_EUR
         BrTextPrint("LOADING DECALS...", 114, (top + 30) >> 1);
         BrBevelPanel(0xE6, top + 0x34, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
         D_80369E60 = 7;
       } else {
         D_80369E60 = 5;
@@ -770,13 +774,17 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           D_80369E54 = 7;
           D_80369E60 = 12;
         } else {
+#if !TGR_REGION_EUR
           BrBevelPanel(0xD4, 0xC5, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
           BrTextAlignLeft();
           BrTextHighlightOff();
           BrTextSetFont(13);
           BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+#if !TGR_REGION_EUR
           BrTextPrint("SAVING DECALS...", 115, 113);
           BrBevelPanel(0xE6, 0xF9, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
           D_8028DCC0 = 1;
           D_80369E60 = 7;
           D_80369E62 = 0;
@@ -828,8 +836,13 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       ty = 0x7C; if (ty); top = 0xDB;
     }
     BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+    BrTextHighlightOff();
+    BrTextAlignLeft();
+#else
     BrTextAlignLeft();
     BrTextHighlightOff();
+#endif
     BrTextSetFont(13);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
     tx = 114;
@@ -892,7 +905,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         switch (D_80369E54) {
         case 0:
           if (op == OP_LOAD) {
+#if !TGR_REGION_EUR
             osSyncPrintf("Loading decal %d...\n", D_80369E61);
+#endif
             tex = m->parts[m->decal[D_80369E61]].tex;
             mask = m->mask[D_80369E61];
             if (mask == 0) {
@@ -912,6 +927,16 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
                 }
               }
             }
+#if TGR_REGION_EUR
+            /* dump the decal's bytes on the debug output, one a line */
+            n = (m->parts[m->decal[D_80369E61]].h * m->parts[m->decal[D_80369E61]].w) >> 1;
+            if (D_80369E61 == 0) {
+              osSyncPrintf("# Format SB BitSize 8 Rows 1 Columns 1\n");
+            }
+            for (k = 0; k < n; k++) {
+              osSyncPrintf("%02x\n", tex[k]);
+            }
+#endif
           } else {
             osSyncPrintf("Saving decal %d...\n", D_80369E61);
           }
