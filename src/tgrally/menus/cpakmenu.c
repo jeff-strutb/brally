@@ -447,6 +447,9 @@ void BrPakManager(void)
       w = 0x134;
     }
 #endif
+#if TGR_REGION_JPN
+    ox = (0x280 - w) >> 1;      /* dead: numbers the box's left edge ahead of by */
+#endif
     by = 0x110 - D_8028D0B0.h;
     func_80246F90((0x280 - w) >> 1, 200, w, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignCentre();
