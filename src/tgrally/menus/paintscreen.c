@@ -173,7 +173,14 @@ void BrFrameTintSetup(void);
 void BrPerfMeterDraw(void);
 void BrModeSet(void (*mode)(void));
 void BrFrontReturnToTitle(void);
+/* Europe's BrImageDraw takes a palette for a 4-bit image; these pass none. */
+#if TGR_REGION_EUR
+void BrImageDraw(BrImage *img, void *tlut);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img, 0)
+#else
 void BrImageDraw(BrImage *img);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img)
+#endif
 void BrImageDrawAt(BrImage *img, int x, int y);
 void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
 void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
@@ -492,7 +499,7 @@ void BrPaintShopScreen(void)
   BrZBufferClear();
   BrScreenClear(0, 0, 0);
   BrImageDrawTinted(&D_8028CB40, 0x71, 0xb, 0x40);
-  BrImageDraw(&D_8028CB70);
+  BR_IMAGE_DRAW(&D_8028CB70);
   BrTextSetFont(0x22);
   BrTextAlignCentre();
   BrTextHighlightOff();
@@ -513,9 +520,9 @@ void BrPaintShopScreen(void)
   BrFillRect(D_80369CD8[0].x, D_80369CD8[0].y, D_80369CD8[0].w, D_80369CD8[0].h, 0, 0, 0);
   BrFillRect(D_80369CD8[0].x + 4, D_80369CD8[0].y + 4, D_80369CD8[0].w - 8, D_80369CD8[0].h - 8, 0xff, 0xca, 0);
   if (D_8028CE70.kind == 0) {
-    BrImageDraw(&D_8028CE10);
+    BR_IMAGE_DRAW(&D_8028CE10);
   } else {
-    BrImageDraw(&D_8028CE40);
+    BR_IMAGE_DRAW(&D_8028CE40);
   }
   BrFillRect(D_8028D4F0[D_8028DAC0].x, D_8028D4F0[D_8028DAC0].y, D_8028D4F0[D_8028DAC0].w,
              D_8028D4F0[D_8028DAC0].h, 0, 0, 0);
@@ -537,7 +544,7 @@ void BrPaintShopScreen(void)
       BrFillRect(D_80369CD8[i].x, D_80369CD8[i].y, D_80369CD8[i].w, D_80369CD8[i].h, 0, 0, 0);
     }
     BrFillRect(D_80369CD8[i].x + 4, D_80369CD8[i].y + 4, D_80369CD8[i].w - 8, D_80369CD8[i].h - 8, 0xff, 0xca, 0);
-    BrImageDraw(D_8028DAD4[i]);
+    BR_IMAGE_DRAW(D_8028DAD4[i]);
   }
   if (D_8028DBD8 != 0) {
     D_8028AA80 = 0;
@@ -575,7 +582,7 @@ void BrPaintShopScreen(void)
           BrImageDrawAt(&D_8028D1D0, D_8028D110.x - (D_8028D1D0.drawW >> 1), D_8028D110.y - D_8028D1D0.drawH);
         }
       } else {
-        BrImageDraw(&D_8028D110);
+        BR_IMAGE_DRAW(&D_8028D110);
       }
       break;
     case 2:
@@ -586,7 +593,7 @@ void BrPaintShopScreen(void)
       }
       break;
     default:
-      BrImageDraw(&D_8028D110);
+      BR_IMAGE_DRAW(&D_8028D110);
       break;
     }
     } else {
@@ -640,7 +647,7 @@ void BrPaintShopScreen(void)
       } else {
         BrPaintClick();
         BrPaintStickMove();
-        BrImageDraw(&D_8028D110);
+        BR_IMAGE_DRAW(&D_8028D110);
       }
       break;
     }
