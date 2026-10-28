@@ -132,16 +132,18 @@ void BrCarCamInit(BrCar *car)
   car->x1f90 = 2.0f;
 }
 
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 /* WHAT IT DOES: Aim a trackside camera at the car: its up axis is world up,
  * it looks from where it stands at the point one unit up the car's up axis,
  * its side and up axes are rebuilt square to that, and its lens widens as
  * the car gets closer (the distance less one, held to 0..100).  The USA
  * build does this inline for the fourth camera in BrCamChaseStep; Europe's
- * intro demo also aims it from BrDemoVarsLoad.  The up axis is cleared y
+ * and Japan's
+ * intro demos also aim it from BrDemoVarsLoad.  The up axis is cleared y
  * first, as the ROM stores it; the unused pair is two words of the ROM
  * frame with no visible use. */
 /* @implements eur:0x802224B0 tgr BrCamTracksideAim */
+/* @implements jpn:0x80221CA0 tgr BrCamTracksideAim */
 void BrCamTracksideAim(BrCar *car, BrCarCam *cam)
 {
   float unused[2];
@@ -203,7 +205,7 @@ void BrCamChaseStep(BrCar *car)
   float speed;
   BrCarCam *cam;
   BrVec3 *pRow;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   int unused2[10];
 #else
   BrVec3 *pUp;
@@ -275,7 +277,7 @@ void BrCamChaseStep(BrCar *car)
         D_8028B7FC--;
       }
       car->x1fac = car->x1fac - 0.005f;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
       /* Europe's two zeros are separate constants (a second spelling) */
       if (car->x1fac < 0.0f) {
         car->x1fac = .0f;
@@ -308,7 +310,7 @@ void BrCamChaseStep(BrCar *car)
   }
   memcpy(&car->cams[2], &car->cams[0], sizeof(BrCarCam));
   BrVec3MulAddTo((BrVec3 *)car->cams[2].mtx[3], (BrVec3 *)car, 0.5f);
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   BrCamTracksideAim(car, &car->cams[3]);
 #else
   pUp = (BrVec3 *)car->cams[3].mtx[2];
