@@ -948,7 +948,9 @@ def _score_source(src_text, func_name, orig_bytes, opts, tag):
     over opts; (None, '', None, None) on error."""
     import match_diff
     import match_sweep
-    tmpdir = tempfile.mkdtemp(prefix='ghidra_ref_')
+    # Under the repo: the compiler only sees the repo drive, so a system temp
+    # path is unreachable and every source reads as a compile error.
+    tmpdir = tempfile.mkdtemp(prefix='ghidra_ref_', dir=os.path.join(ROOT, 'build'))
     src_path = os.path.join(tmpdir, 'r.c')
     best = (None, '', None, None)
     try:
