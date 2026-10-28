@@ -141,7 +141,7 @@ void BrOptionsDrawHelp(int row)
 }
 
 
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 int BrOptionsChanged = 0;               /* a setting changed: save them on the way out */
 #endif
 
@@ -150,11 +150,13 @@ int BrOptionsChanged = 0;               /* a setting changed: save them on the w
  * from a sub-screen), refresh the volume and units labels, run the menu and
  * act on it -- left/right adjust the volumes or flip the units, A opens the
  * controller setup, the pak save/load checks or the credits, B returns to
- * the main menu. */
+ * the main menu.  Europe and Japan drop the pak rows, note any change and
+ * save the settings to the EEPROM on the way out (Japan with its own
+ * layout and unit names). */
 /* @implements 0x80211A3C tgr BrOptionsScreen */
 void BrOptionsScreen(void)
 {
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
   static int entered = 0;         /* 1 once set up, -1 = returning from a sub-screen */
   static int sel;                 /* the highlighted item */
 
@@ -165,10 +167,17 @@ void BrOptionsScreen(void)
     BrPaintShopMemInit();
     D_80271FC8 = BrOptionsDrawHelp;
     D_80271FB0 = &D_8027205C;
+#if TGR_REGION_JPN
     D_80271FB4 = 25;
     D_80271FB8 = 14;
     D_80271FBC = 280;
     D_80271FC0 = 32;
+#else
+    D_80271FB4 = 22;
+    D_80271FB8 = 9;
+    D_80271FBC = 280;
+    D_80271FC0 = 42;
+#endif
     if (entered == 0) {
       BrOptionsChanged = 0;
       sel = 0;
@@ -180,9 +189,17 @@ void BrOptionsScreen(void)
   D_802723DC[0].label = D_803163B0;
   D_802723DC[1].label = D_803163C8;
   if (D_802723D0[2] != 0) {
+#if TGR_REGION_JPN
     D_802723DC[2].label = "Units: MILE/H";
+#else
+    D_802723DC[2].label = "Units: mph";
+#endif
   } else {
+#if TGR_REGION_JPN
     D_802723DC[2].label = "Units: KM/H";
+#else
+    D_802723DC[2].label = "Units: kph";
+#endif
   }
   switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &sel, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
   case 4:
