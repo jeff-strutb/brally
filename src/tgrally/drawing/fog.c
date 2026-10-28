@@ -175,7 +175,8 @@ float BrFogAmount(float v[3])
  * tints from the fog colour by shifts, and the default blends fixed colours
  * with the fog colour by the fog alpha; the ramp is fixed or quarter, half,
  * three-quarter and full steps of the first tint.  All of it is packed into
- * the RGB words the renderer reads.  The PC twin is BrFrameTintSetup
+ * the RGB words the renderer reads.  Japan's fixed second tint is 0x10
+ * lighter in each channel.  The PC twin is BrFrameTintSetup
  * (br_framebegin.c).
  * The packed words shift the promoted colour bytes (no casts): the int
  * conversion of each tint byte is its own value, copied from the third
@@ -204,9 +205,15 @@ void BrFrameTintSetup(void)
     D_8028AB40 = 0xDD;
     D_8028AB44 = 0xEE;
     D_8028AB48 = 0xFF;
+#if TGR_REGION_JPN
+    D_8028AB4C = 0x4C;
+    D_8028AB50 = 0x49;
+    D_8028AB54 = 0x46;
+#else
     D_8028AB4C = 0x3C;
     D_8028AB50 = 0x39;
     D_8028AB54 = 0x36;
+#endif
   } else if (D_8028AA78 != 0) {
     D_8028AB40 = (((D_8028AB20 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
     D_8028AB44 = (((D_8028AB24 + 0xFF) >> 1) * D_8028AB2C + (0xFF - D_8028AB2C) * 0xFF) / 0xFF;
