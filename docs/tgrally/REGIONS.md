@@ -77,19 +77,27 @@ The USA source, unchanged, against each region (functions):
 
 ## Plan
 
-1. **Region layer** (done): `region.py`, `regionmap.py`, `n64build.py` and
+Two independent tracks. Neither waits on the other.
+
+**Decomp: one effort per region.** Europe and Japan are each their own
+byte-exact effort, tracked like the USA decomp (counts with denominators, a
+status line in the README).
+
+1. Region layer (done): `region.py`, `regionmap.py`, `n64build.py` and
    `n64rom.py` take `TGR_REGION`.
-2. **Region-only functions**: tags for functions the USA does not have, the
-   rest of the N64 tools (`n64box.py`, `n64link.py`, `pair.py`, `cover.py`,
-   `n64strs.py`, `n64t3.py`) on `region.py`.
-3. **Transcription**, by hand, one function at a time: each DIFF body under
-   `#if`, each new game function, until both ledgers are all EXACT; then the
-   whole-image check per region.
-4. **Port** (`ports/tgrally`): a region flag that builds from that region's
-   source and ROM data, always at 60 Hz (the PAL timing is in the decomp, never
-   run).
-5. **Remastered**: the Menus option offers Boss Rally, Top Gear Rally (USA),
-   Top Gear Rally (Europe) and Top Gear Rally (Japan). A region changes the
-   content (title screen, music, demo, cars, text), not the game logic.
-   Packaging Remastered requires all three ROMs; building the port requires
-   only the chosen region's.
+2. Tags for functions only the region has; the rest of the N64 tools
+   (`n64box.py`, `n64link.py`, `pair.py`, `cover.py`, `n64strs.py`, `n64t3.py`)
+   on `region.py`; a per-region count for the progress reports.
+3. Hand transcription, one function at a time: each DIFF body under `#if`,
+   each new function, until the region's ledger is all EXACT; then the
+   whole-image check.
+
+**Port and Remastered: region content.** Built on the USA code, so they do not
+depend on the region decomps. A region swaps content (title screen, music,
+demo, cars, text) taken from that region's ROM; the game logic stays the
+USA's and always runs at 60 Hz.
+
+1. Port (`ports/tgrally`): a region flag; building needs only that region's ROM.
+2. Remastered: the Menus option offers Boss Rally, Top Gear Rally (USA), Top
+   Gear Rally (Europe) and Top Gear Rally (Japan). Packaging needs all three
+   ROMs.
