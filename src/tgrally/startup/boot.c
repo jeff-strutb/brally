@@ -227,6 +227,13 @@ extern BrViMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
 extern BrViMode eur_D_8028CDC4;         /* and its 320-wide one */
 extern int eur_D_8028CE14;
 extern int eur_D_8031C3B0[];            /* the PI manager's queue */
+#define BR_VI_UP eur_D_8028CE14         /* set once the video is up */
+#define BR_PI_QUEUE eur_D_8031C3B0
+#elif TGR_REGION_JPN
+extern int jpn_D_8028C844;
+extern int jpn_D_8031ADE0[];
+#define BR_VI_UP jpn_D_8028C844
+#define BR_PI_QUEUE jpn_D_8031ADE0
 #endif
 /* -- end declarations -- */
 
@@ -801,7 +808,7 @@ void BrIdleThread(void *arg)
   char *p;
   unsigned int i;
   unsigned int buf[16];
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   int u[2];
 #endif
   unsigned long long *s;
@@ -827,6 +834,7 @@ void BrIdleThread(void *arg)
   osCreateViManager(0xfe);
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
+#if TGR_REGION_EUR || TGR_REGION_JPN
 #if TGR_REGION_EUR
   memcpy(&eur_D_8028CD74, &osViModePalHaf1, sizeof(BrViMode));
   memcpy(&eur_D_8028CDC4, &osViModePalLan1, sizeof(BrViMode));
@@ -838,17 +846,22 @@ void BrIdleThread(void *arg)
   eur_D_8028CDC4.fld[1].vStart = (osViModePalLan1.fld[1].vStart & 0xFC00FC00) | 0x3B0000 | 0x25D;
   eur_D_8028CDC4.fld[0].yScale = 0x378;
   eur_D_8028CDC4.fld[1].yScale = 0x378;
+#endif
   if (osTvType == 2) {
     osViSetMode(D_802A5D70);
   } else {
+#if TGR_REGION_EUR
     osViSetMode(&osViModePalLan1);
+#else
+    osViSetMode(D_802A54B0);
+#endif
   }
   osViBlack(1);
-  eur_D_8028CE14 = 1;
+  BR_VI_UP = 1;
   for (i = 0x800D4000 / 4; i < 0x80200000 / 4; i++) {
     ((int *)0)[i] = 0;
   }
-  osCreatePiManager(150, eur_D_8031C3B0, D_80319EE8, 32);
+  osCreatePiManager(150, BR_PI_QUEUE, D_80319EE8, 32);
 #else
   if (osTvType == 2) {
     osViSetMode(D_802A5D70);
@@ -870,7 +883,7 @@ void BrIdleThread(void *arg)
   for (i = 0; i < 0x100; i++) {
     D_803196D0[i] = 0x5015A1DBFED15C00ULL;
   }
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   osCreateThread(D_80272830, 3, BrMainThread, arg, D_80316CD0 + 0x400, 10);
 #else
   osCreateThread(D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
