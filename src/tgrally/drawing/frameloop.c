@@ -35,6 +35,13 @@ typedef struct BrViMode {       /* libultra's OSViMode */
   unsigned int com[9];
   BrViField fld[2];
 } BrViMode;
+extern BrViMode osViModePalHaf1;
+extern BrViMode osViModePalLan1;
+extern BrViMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
+extern BrViMode eur_D_8028CDC4;         /* and its 320-wide one */
+extern int eur_D_8028CE14;              /* the picture is blanked */
+extern int eur_D_8028CA8C;              /* the reset button was pressed */
+void BrVideoUnblank(void);
 #endif
 void BrFrameBeginLayout0(void);
 extern int D_8028AA08;
@@ -706,11 +713,6 @@ void BrViewFrame(int x, int y, int w, int h)
 }
 
 #if TGR_REGION_EUR
-extern BrViMode osViModePalHaf1;
-extern BrViMode osViModePalLan1;
-extern BrViMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
-extern BrViMode eur_D_8028CDC4;         /* and its 320-wide one */
-extern int eur_D_8028CE14;              /* the picture is blanked */
 
 /* WHAT IT DOES: Blank the picture (Europe): unless it already is, first
  * put the VI back on libultra's own PAL mode for the resolution in use (640
@@ -996,7 +998,10 @@ void BrPadPollAll(void)
  * Task stores follow the ROM's ring order (output_buff and its size before
  * ucode_size); the osGetCount difference shares the call's line and the
  * debug copy's multiplier shares its count's line, for as1's ordering.
- * v is an unused word of the ROM frame. */
+ * v is an unused word of the ROM frame.
+ * Europe switches to its own 240-line PAL modes after a resolution change,
+ * and only while nothing holds the picture blank (a flush, the blank
+ * counter, the reset button), and shows the picture through BrVideoUnblank. */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {
@@ -1073,6 +1078,17 @@ void BrFrameEnd(void)
     D_8028AAE8 = osGetCount(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
+#if TGR_REGION_EUR
+        if (D_8028A850 != 0) {
+          if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+            osViSetMode(&eur_D_8028CD74);
+          }
+        } else {
+          if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+            osViSetMode(&eur_D_8028CDC4);
+          }
+        }
+#else
         if (D_8028A850 != 0) {
           if (osTvType == 2) {
             osViSetMode(D_802A6040);
@@ -1087,6 +1103,7 @@ void BrFrameEnd(void)
           }
         }
         osViBlack(1);
+#endif
         D_8028A854 = D_8028A850;
       }
     }
@@ -1100,9 +1117,17 @@ void BrFrameEnd(void)
     if (osViGetCurrentFramebuffer() != fb) {
       osRecvMesg(D_8031A390, 0, 1);
     }
+#if TGR_REGION_EUR
+    if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+      BrVideoUnblank();
+    } else {
+      /* the empty arm is the ROM's block layout */
+    }
+#else
     if (D_8028A884 == 0 && D_8028A888 == 0) {
       osViBlack(0);
     }
+#endif
     if (D_8028A888 != 0) {
       D_8028A888--;
     }
@@ -1383,7 +1408,6 @@ extern int eur_D_8031C870[];            /* the reset button's queue */
 extern int eur_D_8031C888[];
 extern unsigned char D_802A49C4;        /* music volume */
 extern unsigned char D_802A49CC;        /* effects volume */
-extern int eur_D_8028CA8C;              /* the reset button was pressed */
 void BrVideoBlank(void);
 
 /* WHAT IT DOES: Europe's reset-button thread: wait for the pre-NMI event
