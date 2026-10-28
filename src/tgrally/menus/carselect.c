@@ -42,14 +42,19 @@ void BrCarStatBarDraw(int x, int y, int w, int h, float frac)
 }
 
 /* WHAT IT DOES: Tell whether car n may be picked on the car-select screen:
- * cars 9 and up only while the flag at 0x80272070 is clear, the car's bit
+ * cars 9 and up (Japan: 10 and up) only while the flag at 0x80272070 is clear, the car's bit
  * must be set in the season record's unlock mask, and its model must be
  * present. */
 /* @implements 0x8020C66C tgr BrCarSelectable */
 int BrCarSelectable(int n)
 {
+#if TGR_REGION_JPN
+  return (D_80272070 == 0 || n < 9 || n == 9) && (*(unsigned short *)(D_8031C5BC + 0xcc) & (1 << n)) &&
+         BrCarModelPresent(n);
+#else
   return (D_80272070 == 0 || n < 9) && (*(unsigned short *)(D_8031C5BC + 0xcc) & (1 << n)) &&
          BrCarModelPresent(n);
+#endif
 }
 
 /* -- declarations: BrCarViewDraw -- */
@@ -99,7 +104,8 @@ void BrModelDraw(BrModel *model, float m[4][4]);
  * lights when given -- and while the view is sliding the car kindB (or
  * iconB) comes in from the other side, k further along.  The unused
  * array and the order of la among the locals are what the ROM frame holds
- * (0xE0, the two look-at pointers at 0xCC and 0xA4). */
+ * (0xE0, the two look-at pointers at 0xCC and 0xA4).  Japan draws the
+ * incoming car whenever its model slot is free, without reloading it. */
 /* @implements 0x8020C6D0 tgr BrCarViewDraw */
 void BrCarViewDraw(BrModel *iconA, BrModel *iconB, int player, int x, int y, int w, int h, float slide,
                    int noBegin, int kindA, int kindB, float k, float spin)
@@ -194,7 +200,11 @@ void BrCarViewDraw(BrModel *iconA, BrModel *iconB, int player, int x, int y, int
       guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB10);
       BrModelDraw(iconB, D_8031AB10);
     } else {
+#if TGR_REGION_JPN
+      if (BrEntIsFree(sB)) {
+#else
       if (BrEntIsFree(sB) || !BrEntLoadModel(sB)) {
+#endif
         BrEntSetRecord(D_8028AAF0, kindB);
         if (0.0f < slide) {
           p = D_8028AAF0->mtx0[3];
