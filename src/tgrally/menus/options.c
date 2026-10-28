@@ -24,6 +24,9 @@ void BrModeSet(void (*fn)(void));
 void BrCtrlConfigScreen(void);
 void BrMainMenu(void);
 void func_80200634(void);
+#if TGR_REGION_JPN
+void BrOptionsSave(void);
+#endif
 int sprintf(char *buf, const char *fmt, ...);
 extern int D_80271FA0;
 extern int D_80271FA4;
@@ -98,18 +101,20 @@ void BrSfxVolumeDown(void)
 }
 
 /* WHAT IT DOES: Draw the options screen's help line (for the two volume
- * rows) and run a pending Controller Pak check (0x803163A0, else
+ * rows; Japan has none) and run a pending Controller Pak check (0x803163A0, else
  * 0x803163A4): once the check succeeds its flag is cleared; until then
  * player 1's fresh presses and first stick axis are swallowed each frame. */
 /* @implements 0x8021196C tgr BrOptionsDrawHelp */
 void BrOptionsDrawHelp(int row)
 {
+#if !TGR_REGION_JPN
   if (row < 2) {
     BrTextSetFont(10);
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextPrint("%wwPush up or down to adjust", 160, 90);
   }
+#endif
   if (D_803163A0 != 0) {
     if (BrCpakCheck(2, 0) != 0) {
       D_803163A0 = 0;
@@ -137,6 +142,97 @@ void BrOptionsDrawHelp(int row)
 /* @implements 0x80211A3C tgr BrOptionsScreen */
 void BrOptionsScreen(void)
 {
+#if TGR_REGION_JPN
+  static int changed = 0;         /* a setting changed: save them on the way out */
+  static int entered = 0;         /* 1 once set up, -1 = returning from a sub-screen */
+  static int sel;                 /* the highlighted item */
+
+  if (entered <= 0) {
+    D_80271FA4 = -1;
+    D_80271FA0 = -1;
+    BrFrontMenuEnter(D_80272468, &D_803163A8);
+    BrPaintShopMemInit();
+    D_80271FC8 = BrOptionsDrawHelp;
+    D_80271FB0 = &D_8027205C;
+    D_80271FB4 = 25;
+    D_80271FB8 = 14;
+    D_80271FBC = 280;
+    D_80271FC0 = 32;
+    if (entered == 0) {
+      changed = 0;
+      sel = 0;
+    }
+    entered = 1;
+  }
+  sprintf(D_803163B0, "BGM Volume: %d", D_802723D0[0]);
+  sprintf(D_803163C8, "SFX Volume: %d", D_802723D0[1]);
+  D_802723DC[0].label = D_803163B0;
+  D_802723DC[1].label = D_803163C8;
+  if (D_802723D0[2] != 0) {
+    D_802723DC[2].label = "Units: MILE/H";
+  } else {
+    D_802723DC[2].label = "Units: KM/H";
+  }
+  switch (BrMenu("OPTIONS", D_803163A8, D_80272468, &sel, 0, 0, 0, 0, 0x80, 0x40, 0x20)) {
+  case 4:
+    switch (sel) {
+    case 0:
+      BrMusicVolumeDown();
+      changed = 1;
+      break;
+    case 1:
+      BrSfxVolumeDown();
+      changed = 1;
+      break;
+    case 2:
+      D_802723D0[2] = !D_802723D0[2];
+      changed = 1;
+      break;
+    }
+    break;
+  case 3:
+    switch (sel) {
+    case 0:
+      BrMusicVolumeUp();
+      changed = 1;
+      break;
+    case 1:
+      BrSfxVolumeUp();
+      changed = 1;
+      break;
+    case 2:
+      D_802723D0[2] = !D_802723D0[2];
+      changed = 1;
+      break;
+    }
+    break;
+  case 1:
+    switch (sel) {
+    case 2:
+      D_802723D0[2] = !D_802723D0[2];
+      changed = 1;
+      break;
+    case 3:
+      entered = -1;
+      D_80271FA0 = D_80271FA8;
+      D_80271FA4 = 1 << D_80271FA0;
+      BrModeSet(BrCtrlConfigScreen);
+      break;
+    case 4:
+      entered = -1;
+      func_80200634();
+      break;
+    }
+    break;
+  case 2:
+    BrModeSet(BrMainMenu);
+    entered = 0;
+    if (changed) {
+      BrOptionsSave();
+    }
+    break;
+  }
+#else
   static int entered = 0;         /* 0x802724E0: 1 once set up, -1 = returning from a sub-screen */
   static int sel;                 /* 0x803163AC: the highlighted item */
 
@@ -220,5 +316,6 @@ void BrOptionsScreen(void)
     entered = 0;
     break;
   }
+#endif
 }
 
