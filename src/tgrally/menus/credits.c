@@ -418,8 +418,10 @@ void BrIntroScreen(void)
     goto fade;
   }
   for (i = 0; i != 2; i++) {
-    if (D_8036A8E0[i].pressed & 0xC010) {
-      BrPadConsume(&D_8036A8E0[i], 0xC010);
+    BrPadRec *pad = &D_8036A8E0[i];
+
+    if (pad->pressed & 0xC010) {
+      BrPadConsume(pad, 0xC010);
       D_80315ED4 = 1;
       if (D_8027081C != 0) {
         goto fade;
