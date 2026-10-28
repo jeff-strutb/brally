@@ -18,3 +18,5 @@ va,name,kind
 8022F1A0,BrJpGlyphReset,func
 80226FC0,BrCamTracksidePick,func
 80221CA0,BrCamTracksideAim,func
+80220F38,BrEntLoadRecordPainted,func
+8022BAF8,BrDemoVarsLoad,func

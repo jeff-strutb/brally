@@ -203,6 +203,12 @@ extern char D_001CB410[];
 extern char D_001D9CF0[];
 
 void osViBlack(int black);
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define RACE_BLANK() BrScreenBlank()
+#else
+#define RACE_BLANK() osViBlack(1)
+#endif
 void osSyncPrintf(char *fmt, ...);
 void *memcpy(void *dst, void *src, unsigned int n);
 int sprintf(char *buf, char *fmt, ...);
@@ -261,6 +267,12 @@ int BrModelReadRaw(char *dst, char *rom, char *romEnd);
 void func_8021DE5C(int track);
 int func_8021F380(int a, int b, float *at, int *c, int *d, int *e, int *f, int *g, int *h);
 void BrEntLoadRecord(BrCar *car, int slot, int kind);
+#if TGR_REGION_JPN
+void BrEntLoadRecordPainted(BrCar *car, int slot, int kind);
+void BrDemoVarsLoad(void);
+extern int jpn_D_8028D8F0;              /* demo frames played */
+extern int jpn_D_80272248;              /* the FINISH! cheat */
+#endif
 void BrScreenFlashClear(void);
 void BrScreenFlashDraw(void);
 void BrFadeTo(float level, float seconds);
@@ -401,10 +413,10 @@ void BrRaceTick(void)
 
   if (D_802707C8 == 0) {
     D_8028A884 = 1;
-    osViBlack(1);
+    RACE_BLANK();
     BrFrameBeginLayout0();
     BrFrameEnd();
-    osViBlack(1);
+    RACE_BLANK();
     BrFrameBeginLayout0();
     BrFrameEnd();
     BrRandSeed(123);
@@ -608,7 +620,15 @@ void BrRaceTick(void)
     D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
       D_8031B760[0].cam = &D_8031B760[0].cams[1];
+#if TGR_REGION_JPN
+      if (D_8026FF1C == 0) {
+        D_8028B7F8 = 0;
+      } else {
+        D_8028B7F8 = 180;
+      }
+#else
       D_8028B7F8 = 180;
+#endif
     } else {
       for (i = 0; i < D_8026FF08; i++) {
         D_8031B760[i].xe6c = D_8031B760[i].season->xd8;
@@ -649,9 +669,23 @@ void BrRaceTick(void)
           p4 = &D_8031B760[i]; p4->xed8 = (int)BrCtlAi;
           p5 = &D_8031B760[i]; p5->colour[3] = 0;
         }
+#if TGR_REGION_JPN
+        if (D_8031B760[i].xe58 == 0) {
+          if (i < D_8026FF08) {
+            BrEntLoadRecordPainted(&D_8031B760[i], i, D_8031B760[i].kind);
+          } else if (i == 1 && (D_8026FF18 == 1 || D_8026FF18 == 2)) {
+            BrEntLoadRecordPainted(&D_8031B760[i], i, D_8031B760[i].kind);
+          } else {
+            BrEntLoadRecord(&D_8031B760[i], i, D_8031B760[i].kind);
+          }
+        } else {
+          osSyncPrintf("not loading %d\n", i);
+        }
+#else
         if (D_8031B760[i].xe58 == 0) {
           BrEntLoadRecord(&D_8031B760[i], i, D_8031B760[i].kind);
         }
+#endif
         func_80228A6C(&D_8031B760[i]);
         D_8031B760[i].xf4c = 0;
         D_8031B760[i].msgA = 0;
@@ -667,6 +701,10 @@ void BrRaceTick(void)
       D_802F7EF8 = 4;
     } else if (D_8026FF18 == 5) {
       D_802F7EF8 = 4;
+#if TGR_REGION_JPN
+    } else if (D_8026FF18 == 4 && D_8026FF1C == 0) {
+      D_802F7EF8 = 4;
+#endif
     } else {
       D_802F7EF8 = 0;
     }
@@ -702,17 +740,30 @@ void BrRaceTick(void)
       BrRaceClockReset();
       BrSndNearestReset();
     }
+#if TGR_REGION_JPN
+    D_80315E70 = 0;
     D_8028A884 = 0;
+    jpn_D_8028D8F0 = -1;
+#else
+    D_8028A884 = 0;
+#endif
   }
 
   /* ---- every frame ---- */
   D_802A4C04 = 0;
+#if TGR_REGION_JPN
+  BrDemoVarsLoad();
+#endif
   if (D_80315E78 == 4) {
     for (i = 0; i < D_8026FF08; i++) {
       func_8022AF90(&D_8031B760[i]);
     }
   }
+#if TGR_REGION_JPN
+  if (D_8026FF18 != 4 || D_8026FF1C == 0) {
+#else
   if (D_8026FF18 != 4) {
+#endif
     D_802A4A30 ^= 1;
   }
   /* the replay ends when the recordings run out */
@@ -809,9 +860,16 @@ void BrRaceTick(void)
     goto timer;
   } else if (D_80315E78 == 4) {
     running = 1;
+#if TGR_REGION_JPN
+    if (((D_8026FF18 == 4
+          && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
+              || (D_8026FF1C == 1 && D_8031B760[0].lapTime > 39.6f)
+              || (D_8026FF1C == 0 && PAD(0)->ghostPos == PAD(0)->ghostLen)))
+#else
     if (((D_8026FF18 == 4
           && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
               || (D_8026FF1C != 2 && D_8031B760[0].lapTime > 39.6f)))
+#endif
          || (D_8026FF18 == 5 && D_8031B760[0].lapTime > 16.0f))
         && BrFadeIsOut() == 0) {
       BrFadeTo(0.0f, 0.2f);
@@ -1020,7 +1078,13 @@ draw:
     BrStub8022BA98((int)D_8028AAF4);
   }
   func_8022B534();
+#if TGR_REGION_JPN
+  if (D_8026FF18 != 4 || D_8026FF1C != 0 || PAD(0)->ghostPos >= 0x7EA) {
+    BrFadeStep();
+  }
+#else
   BrFadeStep();
+#endif
   BrFrameBeginLayout0();
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrVtxPoolsReset();
@@ -1199,10 +1263,18 @@ draw:
         BrTextHighlightOff();
         BrTextAlignLeft();
         BrTextSetFont(15);
+#if !TGR_REGION_JPN
         BrTextPrint("%wwINSTANT REPLAY!", 28, 32);
+#endif
+#if TGR_REGION_JPN
+        BrTextPrint("%wwA : RESTART", 28, D_8028AAB4 - 24);
+        BrTextAlignRight();
+        BrTextPrint("%wwSTART : EXIT", D_8028AAB0 - 28, D_8028AAB4 - 24);
+#else
         BrTextPrint("%wwA to restart", 28, D_8028AAB4 - 24);
         BrTextAlignRight();
         BrTextPrint("%wwSTART to exit", D_8028AAB0 - 28, D_8028AAB4 - 24);
+#endif
       } else {
         if (&D_8028AAF0->cams[3] != D_8028AAF4) {
           BrPerfMark(0, 0xFF, 0, 0, 0xFF);
@@ -1220,6 +1292,24 @@ draw:
   }
   BrStub80217C8C();
   BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
+#if TGR_REGION_JPN
+  /* the FINISH! cheat: both cars have done every lap */
+  if (jpn_D_80272248 != 0) {
+    D_8031B760[0].xfac = 0;
+    D_8031B760[0].laps = D_8028B304;
+    D_803239A0[0].flags &= 1;
+    D_803239A0[0].flags |= 2;
+    D_8031B760[1].xfac = 1;
+    D_8031B760[1].laps = D_8028B304;
+    D_803239A0[1].flags &= 1;
+    D_803239A0[1].flags |= 2;
+    D_8027078C = 0;
+    if (D_80315E78 < 4) {
+      D_80315E78 = 4;
+    }
+    jpn_D_80272248 = 0;
+  }
+#endif
 
   /* input: skip the demo, pause, or the pause menu */
   if (D_8026FF10 != 0) {
@@ -1404,6 +1494,12 @@ draw:
   func_8021A5B8();
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrFrameSetHook((int)BrRaceDrawLayers);
+#if TGR_REGION_JPN
+  /* the intro demo's last half-second goes to black */
+  if (D_8026FF18 == 4 && D_8026FF1C == 0 && PAD(0)->ghostLen - 30 <= PAD(0)->ghostPos) {
+    BrScreenClear(0, 0, 0);
+  }
+#endif
   BrFrameEnd();
 
   /* faded out: on to the next thing */
