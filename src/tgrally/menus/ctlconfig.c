@@ -34,7 +34,7 @@ extern int D_80271FC0;
 extern int D_8027205C;
 extern MenuItem *D_80272658[];
 extern int D_80316440;
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 extern int BrOptionsChanged;
 #endif
 /* The emergency brake's name in the layout captions: Japan calls it the
@@ -139,7 +139,7 @@ void BrCtlConfigDrawLayout(int param_1)
  * entry lay out the menu, unpack the five controller diagrams, set up the
  * panel that draws the chosen layout and start from the player's current
  * control type; A stores the choice in
- * the player's season record (in Japan also marking the settings to be
+ * the player's season record (in Europe and Japan also marking the settings to be
  * saved), and A or B go back to the options screen. */
 /* @implements 0x802170C8 tgr BrCtrlConfigScreen */
 void BrCtrlConfigScreen(void)
@@ -176,7 +176,7 @@ void BrCtrlConfigScreen(void)
                  0xa0, 0x80, 0x20)) {
   case 1:
     D_8031B760[D_80271FA0].season->xe4 = sel;
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
     BrOptionsChanged = 1;
 #endif
   case 2:

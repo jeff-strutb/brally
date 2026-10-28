@@ -14,3 +14,4 @@ va,name,kind
 8026B210,__osPackEepReadData,func
 80381378,__osEepromTimer,data
 803837E0,__osEepPifRam,data
+80274490,BrOptionsChanged,data
