@@ -31,7 +31,7 @@ void BrRaceClockReset(void)
 
 
 /* WHAT IT DOES: Advance the game clock once per frame: from the CPU
- * counter (or exactly 1/30 s in fixed-step mode), keep the millisecond time
+ * counter (or exactly 1/30 s in fixed-step mode, 1/25 s in Europe), keep the millisecond time
  * and the frame's length in seconds, and poll the controllers. */
 /* @implements 0x8021C4B4 tgr BrClockTick */
 void BrClockTick(void)
@@ -40,7 +40,11 @@ void BrClockTick(void)
   unsigned int d;
 
   if (D_8028AB10 != 0) {
+#if TGR_REGION_EUR
+    D_8028ADF8 += 40000000ULL * osClockRate / 1000000000ULL;
+#else
     D_8028ADF8 += 33333333ULL * osClockRate / 1000000000ULL;
+#endif
     D_8028AE00 = osGetCount();
   } else if (D_8028ADF8 != 0) {
     now = osGetCount();
