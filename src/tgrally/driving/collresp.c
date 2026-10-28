@@ -78,6 +78,7 @@ int BrTriCubeTest(float *tri, float *norm);
 void BrCrListPush(void *plane);
 
 extern int D_8026FF18;                /* the game mode; 4 arms the contact-kick path */
+extern int D_8026FF1C;                /* which demo */
 void BrVec3NormaliseF(float v[3]);
 int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag);
 extern double D_802AB7E8;              /* 1.05 */
@@ -747,7 +748,11 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
     cnt++;
     planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
 #if !TGR_REGION_EUR
+#if TGR_REGION_JPN
+    if (D_8026FF18 == 4 && D_8026FF1C != 0) {   /* not in the demos */
+#else
     if (D_8026FF18 == 4) {
+#endif
       if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) > 0.999f
           || (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) > 0.999f
           || (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) > 0.999f) {
