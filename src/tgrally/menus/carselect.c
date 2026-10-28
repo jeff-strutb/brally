@@ -386,11 +386,18 @@ void BrMainMenu(void);
 void BrRaceTick(void);
 void func_80243260(void);
 void BrLoadSaveScreen(void);
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 int BrModeIs(void (*fn)(void));
 void BrResultsRun(void);
-void BrScreenBlank(void);
 extern int D_8028A884;
+#endif
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define CARSEL_BLANK BrScreenBlank
+#endif
+#if TGR_REGION_EUR
+void BrVideoBlank(void);
+#define CARSEL_BLANK BrVideoBlank
 #endif
 #if TGR_REGION_JPN
 extern unsigned char D_8028B904[][3];     /* the players' own colours */
@@ -419,7 +426,9 @@ extern unsigned char D_8028B904[][3];     /* the players' own colours */
  * turns the turntables, draws each player's car and setup choice (or the
  * results pages), runs the Controller Pak decal load, then reads the pads:
  * pick a car, tint it, step the setup choices, and when all are ready fade
- * out to the race, paint shop, menus, season screens or pak save.  The
+ * out to the race, paint shop, menus, season screens or pak save.  Europe
+ * and Japan blank two frames after the results, tint in steps of 8 and
+ * repaint once; only Japan has the separate decal choice.  The
  * branches run in the order of the file's literals in the ROM, so stored
  * title and message pointers are the ROM's; six scalars declared above buf
  * put buf/time at the ROM's 0xE8/0xC4.
@@ -486,13 +495,13 @@ void BrCarSelect(void)
   float dt;
 
   if (D_80272238 == 0) {
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
     if (BrModeIs(BrResultsRun)) {
       D_8028A884 = 1;
-      BrScreenBlank();
+      CARSEL_BLANK();
       BrFrameBeginLayout1();
       BrFrameEnd();
-      BrScreenBlank();
+      CARSEL_BLANK();
       BrFrameBeginLayout1();
       BrFrameEnd();
     }
@@ -611,8 +620,10 @@ void BrCarSelect(void)
     D_80272238 = 1;
     D_80316270[0] = D_80316270[1] = D_802720B4;
     D_80316278[0] = D_80316278[1] = 0;
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
     D_8028A884 = 0;
+#endif
+#if TGR_REGION_JPN
     D_80316248[0] = D_80316248[1] = 1;
 #endif
     D_80316314 = 0;
@@ -1219,6 +1230,7 @@ void BrCarSelect(void)
               }
             }
           }
+#if TGR_REGION_JPN || TGR_REGION_EUR
 #if TGR_REGION_JPN
           /* the decal choice (step 5): left and right */
           if (D_803162B0[p] == 5) {
@@ -1239,6 +1251,7 @@ void BrCarSelect(void)
               }
             }
           }
+#endif
           if (D_80316260[p] != 0.f) {
             continue;
           }
@@ -1310,8 +1323,13 @@ void BrCarSelect(void)
             BrEntPaintTexture((int)&D_803C8000[D_80316258[p]], CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
                               CAR(p)->colour[2] >> 3);
           }
+#if TGR_REGION_JPN
           /* the setup choice (steps 1-4): left and right */
           if (D_803162B0[p] != 0 && D_803162B0[p] != 5) {
+#else
+          /* the setup choice (steps 1-5): left and right */
+          if (D_803162B0[p] != 0) {
+#endif
             if (((BrPadRec *)car->pad)->pressed & 4) {
               D_80316280[p] = D_80316278[p];
               D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
