@@ -549,6 +549,15 @@ void BrPaintExitPrompt(void)
       y = 285 - D_8028D0B0.w;
       bx = 361 - D_8028D0E0.w;
       BrBevelPanel(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_JPN
+      BrTextHighlightOff();
+      BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+      BrTextAlignCentre();
+      BrTextSetFont(14);
+      BrTextPrint("%j\xB2(\xAC" "bZD", D_8028AAB0 / 2, 109);
+      BrTextPrint("EXIT%jB6R1%%", D_8028AAB0 / 2, 123);
+      BrTextAlignLeft();
+#else
 #if TGR_REGION_EUR
       BrTextHighlightOff();
       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
@@ -562,6 +571,7 @@ void BrPaintExitPrompt(void)
 #endif
       BrTextPrint("CHANGES NOT SAVED.", 103, 109);
       BrTextPrint("EXIT ANYWAY?", 103, 123);
+#endif
       BrTextSetFont(10);
       BrTextPrint("%wwYES", (D_8028D0B0.drawW + 249) >> 1, (y + 18) >> 1);
       BrTextPrint("%wwNO", (bx + D_8028D0E0.drawW + 8) >> 1, (y + 18) >> 1);
