@@ -287,23 +287,33 @@ void BrCamShakeAdd(int slot, float s);
  * within 150, the car switched to that camera (a cut when it moved); with
  * none that near, a car still on it goes back to one of the two fallback
  * views, alternately, and keeps it for 60 frames.  The USA build does this
- * inline in BrCarPlayerCtl; Europe's intro demo also calls it. */
+ * inline in BrCarPlayerCtl; Europe's intro demo also calls it.
+ * The two empty tests emit nothing; uopt colours these webs in the order
+ * they first appear.  `car` first gives it a0; `i * 12` (i not yet set, so
+ * not folded) numbers the scaled counter and the checkpoint pointer ahead
+ * of p, so the counter takes v0, the pointer a1, the bound a2, and p's
+ * empty web v1.  The uninitialised read keeps i a home, so i sits just
+ * under b: the ROM frame's spare word. */
 /* @implements eur:0x802277D0 tgr BrCamTracksidePick */
 /* @implements jpn:0x80226FC0 tgr BrCamTracksidePick */
 void BrCamTracksidePick(BrCar *car)
 {
   static int D_8028B9EC = 0;
   float b[3];
+  int i;
   BrVec3 *p;
   BrVec3 *q;
   float best;
   float dx;
   float dz;
   float d;
-  int i;
   float dy;
 
   best = 16777216.0f;
+  if (car) {
+  }
+  if (i * 12) {
+  }
   for (i = 0; i < D_80025C88; i++) {
     p = &D_80025C84[i];
     dx = car->mtx0[3][0] - p->x;
