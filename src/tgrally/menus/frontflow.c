@@ -117,7 +117,10 @@ void BrSeasonPickRace(void)
 
 /* Blanking the picture: Europe goes through BrVideoBlank, which also puts
  * libultra's PAL mode back. */
-#if TGR_REGION_EUR
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define BLANK_SCREEN() BrScreenBlank()
+#elif TGR_REGION_EUR
 void BrVideoBlank(void);
 #define BLANK_SCREEN() BrVideoBlank()
 #else
