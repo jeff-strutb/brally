@@ -1378,6 +1378,33 @@ void BrDpEventThread(void *arg)
   }
 }
 
+#if TGR_REGION_EUR
+extern int eur_D_8031C870[];            /* the reset button's queue */
+extern int eur_D_8031C888[];
+extern unsigned char D_802A49C4;        /* music volume */
+extern unsigned char D_802A49CC;        /* effects volume */
+extern int eur_D_8028CA8C;              /* the reset button was pressed */
+void BrVideoBlank(void);
+
+/* WHAT IT DOES: Europe's reset-button thread: wait for the pre-NMI event
+ * (the console's reset button) and, each time it comes, mute the music and
+ * the effects, note the reset and blank the picture, so the reset is clean.
+ * Never returns. */
+/* @implements eur:0x8021CE88 tgr BrPreNmiThread */
+void BrPreNmiThread(void *arg)
+{
+  osCreateMesgQueue(eur_D_8031C870, eur_D_8031C888, 1);
+  osSetEventMesg(14, eur_D_8031C870, D_8031A3CC);       /* OS_EVENT_PRENMI */
+  for (;;) {
+    osRecvMesg(eur_D_8031C870, 0, 1);
+    D_802A49CC = 0;
+    D_802A49C4 = 0;
+    eur_D_8028CA8C = 1;
+    BrVideoBlank();
+  }
+}
+#endif
+
 /* WHAT IT DOES: The retrace thread: on every vertical retrace, pass the
  * event on to the retrace queue the game waits on and step the 16-frame
  * retrace counter. Never returns. */
