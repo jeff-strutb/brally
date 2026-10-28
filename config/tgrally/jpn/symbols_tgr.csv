@@ -12,3 +12,5 @@ va,name,kind
 8037FFE8,__osEepromTimer,data
 80382450,__osEepPifRam,data
 80273F40,BrOptionsChanged,data
+8021AE40,BrScreenBlank,func
+8021AE68,BrScreenUnblank,func
