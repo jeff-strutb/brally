@@ -47,6 +47,7 @@ extern unsigned char jpn_D_803837A0[];  /* free memory after .bss */
 extern char jpn_D_000DCF40[];          /* the Japanese glyphs in ROM */
 void BrRomRead(void *dst, int rom, int len);
 int BrRlePlanesUnpack(void *dst, int max, void *data, int n);
+int BrJpGlyphSlot(int c);
 #endif
 /* -- end declarations -- */
 
@@ -152,6 +153,288 @@ void BrJpGlyphLoad(void)
 /* @implements 0x8022E4E0 tgr BrTextEmitString */
 void BrTextEmitString(unsigned char *s)
 {
+#if TGR_REGION_JPN
+  int size;
+  int x;
+  int w;
+  int adv;
+  int uls;
+  int lrs;
+  int row;
+  int y;
+  int cell;
+  unsigned char *rampA;
+  unsigned char *rampB;
+  int dtdy;
+  int line;
+  int lastW;
+  int lastCell;
+  int lastLine;
+  int jp;
+  int c;
+  unsigned char n;
+  int pad;
+  int texw;
+  unsigned char *tex;
+  int *tbl;
+  unsigned char g;
+  int small;
+  unsigned char *p;
+
+  lastW = -1;
+  lastCell = -1;
+  lastLine = -1;
+  jp = 0;
+  size = D_803519D8;
+  x = D_803519D0[0];
+  y = D_803519D0[1];
+  y -= size * 30 / 40;
+  if (D_8028A850 != 0) {
+    x <<= 1;
+    y <<= 1;
+    size <<= 1;
+  }
+  small = size < 25;
+  if (small) {
+    cell = 20;
+    pad = 4;
+    tbl = D_802A187C;
+    texw = 392;
+    tex = D_8029DA00;
+    rampA = D_8028C070;
+    rampB = D_8028C1B0;
+  } else {
+    cell = 40;
+    pad = 7;
+    tbl = D_802A17A0;
+    texw = 704;
+    tex = D_8028FE00;
+    rampA = D_8028BDF0;
+    rampB = D_8028BF30;
+  }
+  dtdy = ((cell << 10) - (1 << 10)) / size;
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_2CYCLE);
+  if (D_8028BDC8) {
+    gDPSetCombine(D_8028A858++, 0x317E02, 0x51FEF3FA);
+  } else {
+    gDPSetCombine(D_8028A858++, 0x317E02, 0x5FFEF3FA);
+  }
+  gDPSetRenderMode(D_8028A858++, G_RM_PASS, G_RM_XLU_SURF2);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gDPSetTextureLUT(D_8028A858++, 0);
+  gDPSetTexturePersp(D_8028A858++, G_TP_NONE);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)( 0xba) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 16) & ((0x01 << ( 8)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 8)) - 1)) << ( 0))) );
+    _g->words.w1 = (unsigned int)( 0);
+  }
+  gSPTexture(D_8028A858++, 0xffff, 0xffff, 0, 0, 1);
+  gDPTileSync(D_8028A858++);
+  gDPLoadSync(D_8028A858++);
+  gDPPipeSync(D_8028A858++);
+  gDPSetTile(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0x1B0, 7, 0, 0, 0, 0, 0, 0, 0);
+  gDPSetTextureImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, D_8028BDC8 ? rampB : rampA);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)(0xf3) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+    _g->words.w1 = (((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)(((( 319) < ( 2047) ? ( 319) : ( 2047)))) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0x1B0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0x1E) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0x9E) & ((0x01 << ( 12)) - 1)) << ( 0)));
+  }
+  if (D_8028BDCC != 0) {
+    gDPSetEnvColor(D_8028A858++, D_8028BDD0, D_8028BDD4, D_8028BDD8, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, D_8028BDDC, D_8028BDE0, D_8028BDE4, 0xff);
+  } else if (D_8028BDC0) {
+    gDPSetEnvColor(D_8028A858++, 0xff, 0x7f, 0, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff, 0x7f, 0xff);
+  } else {
+    gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xe6, 0xe6, 0, 0xff);
+  }
+  p = s;
+  while (*p != 0) {
+    c = *p;
+    if (c != ' ') {
+      if (c == '%' && (n = p[1]) != 0) {
+        if (n == '%') {
+          c = p[1];
+          p++;
+        } else if (n == 'j') {
+          jp = 1;
+          if (small) {
+            cell = 40;
+            pad = 7;
+            tbl = D_802A17A0;
+            texw = 704;
+            tex = D_8028FE00;
+            dtdy = ((cell << 10) - (1 << 10)) / size;
+          }
+          p++;
+          goto next;
+        } else if (n == 'e') {
+          jp = 0;
+          if (small) {
+            cell = 20;
+            pad = 4;
+            tbl = D_802A187C;
+            texw = 392;
+            tex = D_8029DA00;
+            dtdy = ((cell << 10) - (1 << 10)) / size;
+          }
+          p++;
+          goto next;
+        } else if (n == 'i') {
+          p++;
+          goto next;
+        } else if (n == 'n') {
+          p++;
+          goto next;
+        } else if (p[2] != 0) {
+          gDPPipeSync(D_8028A858++);
+          switch (p[1]) {
+          case 'r':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xbe, 0, 0, 0xff);
+            break;
+          case 'o':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xcd, 0x5f, 0, 0xff);
+            break;
+          case 'O':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0x78, 0, 0xff);
+            break;
+          case 'y':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xf5, 0, 0xff);
+            break;
+          case 'Y':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xfa, 0x80, 0xff);
+            break;
+          case 'g':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0x96, 0, 0xff);
+            break;
+          case 'b':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0, 0xc8, 0xff);
+            break;
+          case 'p':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xc8, 0, 0xc8, 0xff);
+            break;
+          case '1':
+          case 'w':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+            break;
+          case '5':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0x80, 0x80, 0x80, 0xff);
+            break;
+          case '0':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0, 0, 0xff);
+            break;
+          }
+          switch (p[2]) {
+          case 'r':
+            gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0, 0xff);
+            break;
+          case 'o':
+            gDPSetEnvColor(D_8028A858++, 0xcd, 0x5f, 0, 0xff);
+            break;
+          case 'O':
+            gDPSetEnvColor(D_8028A858++, 0xff, 0x78, 0, 0xff);
+            break;
+          case 'y':
+            gDPSetEnvColor(D_8028A858++, 0xd2, 0xbe, 0, 0xff);
+            break;
+          case 'Y':
+            gDPSetEnvColor(D_8028A858++, 0xd2, 0xc8, 0x69, 0xff);
+            break;
+          case 'g':
+            gDPSetEnvColor(D_8028A858++, 0, 0x96, 0, 0xff);
+            break;
+          case 'b':
+            gDPSetEnvColor(D_8028A858++, 0, 0, 0xc8, 0xff);
+            break;
+          case 'p':
+            gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0xc8, 0xff);
+            break;
+          case '1':
+          case 'w':
+            gDPSetEnvColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff);
+            break;
+          case '5':
+            gDPSetEnvColor(D_8028A858++, 0x80, 0x80, 0x80, 0xff);
+            break;
+          case '0':
+            gDPSetEnvColor(D_8028A858++, 0, 0, 0, 0xff);
+            break;
+          }
+          p += 2;
+          goto next;
+        }
+      }
+      if ((c >= 0x21 && c < 0x80) || jp) {
+        if (jp) {
+          w = cell * 36 / 40;
+          adv = w - pad;
+          gDPSetTextureImage(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, 36, BrJpGlyphSlot((unsigned char)c));
+          line = ((w + 1) + 7) >> 3;
+          if (lastLine != line) {
+            gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, line, 0, 7, 0, 2, 6, 0, 2, 6, 0);
+            lastLine = line;
+          }
+          gDPLoadSync(D_8028A858++);
+          gDPLoadTile(D_8028A858++, 7, 0, 0, w << 2, cell << 2);
+          gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, ((w + 1) + 7) >> 3, 0, 0, 0, 2, 6, 0, 2, 6, 0);
+        } else {
+          g = D_802A1740[c - 0x21];
+          row = g < 27 ? cell : 0;
+          uls = tbl[g];
+          w = tbl[g + 1] - uls + 1;
+          lrs = uls + w;
+          adv = w - pad;
+          gDPSetTextureImage(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, texw, tex);
+          line = ((lrs - uls + 1) + 7) >> 3;
+          if (lastLine != line) {
+            gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, line, 0, 7, 0, 2, 6, 0, 2, 6, 0);
+            lastLine = line;
+          }
+          gDPLoadSync(D_8028A858++);
+          gDPLoadTile(D_8028A858++, 7, uls << 2, row << 2, lrs << 2, (row + cell) << 2);
+          gDPSetTile(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, ((w + 1) + 7) >> 3, 0, 0, 0, 2, 6, 0, 2, 6, 0);
+        }
+        if (w != lastW || cell != lastCell) {
+          gDPSetTileSize(D_8028A858++, 0, 0, 0, ((w - 1) << 2) + 2, ((cell - 1) << 2) + 2);
+          lastCell = cell;
+          lastW = w;
+        }
+        lrs = w * size / cell;
+        if (x < 0 || x + lrs > 320 || y < 0 || y + size > 240) {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)((x + lrs) << 2), 0), 12, 12) | _SHIFTL(MAX((s16)((y + size) << 2), 0), 0, 12));
+            _g->words.w1 = (_SHIFTL((0), 24, 3) | _SHIFTL(MAX((s16)(x << 2), 0), 12, 12) | _SHIFTL(MAX((s16)(y << 2), 0), 0, 12));
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(((16) - (((s16)(x << 2) < 0) ? (((s16)((w << 10) / (lrs)) < 0) ? (MAX((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0)) : (MIN((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0))) : 0)), 16, 16) | _SHIFTL(((((cell - 1) << 5) + 16) - (((y << 2) < 0) ? (((s16)(-dtdy) < 0) ? (MAX((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0)) : (MIN((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0))) : 0)), 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(((w << 10) / (lrs)), 16, 16) | _SHIFTL((-dtdy), 0, 16)));
+          }
+        } else {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + lrs) << 2, 12, 12) | _SHIFTL((y + size) << 2, 0, 12));
+            _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(16, 16, 16) | _SHIFTL(((cell - 1) << 5) + 16, 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((w << 10) / (lrs), 16, 16) | _SHIFTL(-dtdy, 0, 16)));
+          }
+        }
+        x += adv * size / cell;
+      }
+    } else {
+      x += size * 12 / 40 + 1;
+    }
+  next:
+    p++;
+  }
+  gDPPipeSync(D_8028A858++);
+  gDPSetTexturePersp(D_8028A858++, G_TP_PERSP);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+#else
   int size;
   int x;
   int y;
@@ -394,6 +677,7 @@ void BrTextEmitString(unsigned char *s)
   gDPPipeSync(D_8028A858++);
   gDPSetTexturePersp(D_8028A858++, G_TP_PERSP);
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+#endif
 }
 
 /* WHAT IT DOES: Draw the following text in the highlight colours (orange
