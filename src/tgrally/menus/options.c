@@ -141,6 +141,10 @@ void BrOptionsDrawHelp(int row)
 }
 
 
+#if TGR_REGION_JPN
+int BrOptionsChanged = 0;               /* a setting changed: save them on the way out */
+#endif
+
 /* WHAT IT DOES: The options screen, run once per frame: on entry set up
  * the menu (items, layout, help line; keep the selection when returning
  * from a sub-screen), refresh the volume and units labels, run the menu and
@@ -151,7 +155,6 @@ void BrOptionsDrawHelp(int row)
 void BrOptionsScreen(void)
 {
 #if TGR_REGION_JPN
-  static int changed = 0;         /* a setting changed: save them on the way out */
   static int entered = 0;         /* 1 once set up, -1 = returning from a sub-screen */
   static int sel;                 /* the highlighted item */
 
@@ -167,7 +170,7 @@ void BrOptionsScreen(void)
     D_80271FBC = 280;
     D_80271FC0 = 32;
     if (entered == 0) {
-      changed = 0;
+      BrOptionsChanged = 0;
       sel = 0;
     }
     entered = 1;
@@ -186,15 +189,15 @@ void BrOptionsScreen(void)
     switch (sel) {
     case 0:
       BrMusicVolumeDown();
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     case 1:
       BrSfxVolumeDown();
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     case 2:
       D_802723D0[2] = !D_802723D0[2];
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     }
     break;
@@ -202,15 +205,15 @@ void BrOptionsScreen(void)
     switch (sel) {
     case 0:
       BrMusicVolumeUp();
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     case 1:
       BrSfxVolumeUp();
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     case 2:
       D_802723D0[2] = !D_802723D0[2];
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     }
     break;
@@ -218,7 +221,7 @@ void BrOptionsScreen(void)
     switch (sel) {
     case 2:
       D_802723D0[2] = !D_802723D0[2];
-      changed = 1;
+      BrOptionsChanged = 1;
       break;
     case 3:
       entered = -1;
@@ -235,7 +238,7 @@ void BrOptionsScreen(void)
   case 2:
     BrModeSet(BrMainMenu);
     entered = 0;
-    if (changed) {
+    if (BrOptionsChanged) {
       BrOptionsEepromSave();
     }
     break;
