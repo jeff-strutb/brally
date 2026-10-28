@@ -3,6 +3,7 @@
 #include "tgr/common.h"
 #include "tgr/pad.h"
 #include "tgr/menu.h"
+#include "tgr/car.h"
 
 /* -- declarations -- */
 int BrCpakCheck(int param_1,char param_2);
@@ -24,8 +25,15 @@ void BrModeSet(void (*fn)(void));
 void BrCtrlConfigScreen(void);
 void BrMainMenu(void);
 void func_80200634(void);
-#if TGR_REGION_JPN
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrOptionsEepromSave(void);
+extern unsigned char *D_80272500;      /* the paint shop's data buffer */
+extern char D_80272D48[];              /* the SI message queue */
+extern short D_802A4BE8;               /* the SI is free for the pak code */
+s32 osEepromProbe(void *mq);
+s32 osEepromLongRead(void *mq, unsigned char address, unsigned char *buffer, int length);
+s32 osEepromLongWrite(void *mq, unsigned char address, unsigned char *buffer, int length);
+void *memcpy(void *dst, const void *src, unsigned int n);
 #endif
 int sprintf(char *buf, const char *fmt, ...);
 extern int D_80271FA0;
@@ -319,3 +327,51 @@ void BrOptionsScreen(void)
 #endif
 }
 
+#if TGR_REGION_EUR || TGR_REGION_JPN
+/* WHAT IT DOES: Load the saved settings from the EEPROM: both players'
+ * season records (player 2's five per-season words kept apart) and the
+ * three option values, read as one block into the paint shop's buffer and
+ * checked against its additive checksum (seeded 0xBFED812).  Answers 1 when
+ * it loaded; the SI is marked busy while it works. */
+/* @implements eur:0x80211CA0 tgr BrOptionsEepromLoad */
+/* @implements jpn:0x80211B60 tgr BrOptionsEepromLoad */
+int BrOptionsEepromLoad(void)
+{
+  unsigned char *data;
+  int n;
+  int stored;
+  int sum;
+  int i;
+
+  data = D_80272500 + 4;
+  n = (data - D_80272500 + 0x14f) & ~7;
+  D_802A4BE8 = 0;
+  if (osEepromProbe(D_80272D48) == 0) {
+    goto fail;
+  }
+  if (osEepromLongRead(D_80272D48, 0, D_80272500, n) != 0) {
+    goto fail;
+  }
+  memcpy(&stored, D_80272500, 4);
+  sum = 0xBFED812;
+  for (i = 4; i < n; i++) {
+    sum += D_80272500[i];
+  }
+  if (sum != stored) {
+    goto fail;
+  }
+  memcpy(D_8031B760[0].season, data, 0x128);
+  memcpy(D_8031B760[1].season, data, 0x128);
+  D_8031B760[1].season->xd4 = ((int *)(data + 0x128))[0];
+  D_8031B760[1].season->xd8 = ((int *)(data + 0x128))[1];
+  D_8031B760[1].season->xdc = ((int *)(data + 0x128))[2];
+  D_8031B760[1].season->xe0 = ((int *)(data + 0x128))[3];
+  D_8031B760[1].season->xe4 = ((int *)(data + 0x128))[4];
+  memcpy(D_802723D0, data + 0x13c, 0xc);
+  D_802A4BE8 = 1;
+  return 1;
+fail:
+  D_802A4BE8 = 1;
+  return 0;
+}
+#endif
