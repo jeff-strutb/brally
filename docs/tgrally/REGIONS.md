@@ -100,11 +100,13 @@ and tables the region rewrote (Japanese-script messages, Europe's EEPROM
 messages), so a build from that ROM alone has nothing to put there. The port
 always runs at 60 Hz.
 
-**Remastered: region content now.** Built on the USA code, so it does not
-wait for the region decomps. A region swaps content taken from that region's
-ROM: the title screen and legal text, the title and menu music, the intro
-demo, the cars (models, liveries, names) and the plain-text terms. The game
-logic stays the USA's at 60 Hz. Japan's Japanese-script text needs Japan's
-own text code and arrives with the Japan decomp; until then those lines stay
-English. The Menus option offers Boss Rally, Top Gear Rally (USA), Top Gear
-Rally (Europe) and Top Gear Rally (Japan); packaging needs all three ROMs.
+**Remastered: after the decomps.** Its Menus option will offer Boss Rally, Top
+Gear Rally (USA), Top Gear Rally (Europe) and Top Gear Rally (Japan), its
+Top Gear Rally menus built from that region's source; packaging needs all three
+ROMs; the game logic runs at 60 Hz. It waits because the menus a region
+changes are code, not only assets: the title screen's code loads seven models
+in the USA, six in Europe (the Midway one dropped) and a different set of two
+in Japan. Only the menu music is a pure asset swap (the module the main menu
+loads: USA 0xEBC00, Europe 0xEB310, Japan 0x102B50). Races are Boss Rally's,
+whose cars include Japan's three (Type-PJ, Type-TR, Type-MN for Type-RS,
+Type-M3 and Helmet); the attract demos are Boss Rally's too.
