@@ -21,6 +21,9 @@ extern short D_802A4BF8[2];             /* frames off */
 extern short D_802A4BFC[2];             /* frames left in this phase */
 extern short D_802A4C00[2];             /* frames left in the effect */
 extern short D_802A4C04;
+#if TGR_REGION_EUR
+extern int eur_D_8028CA8C;              /* the reset button was pressed */
+#endif
 extern int D_802A4C08;                  /* frame count for the re-detect */
 extern char D_8031B1E8[2];              /* a Rumble Pak is in */
 extern BrPfs D_8031A3F8[4];
@@ -41,7 +44,12 @@ void BrRumbleUpdate(int arg0)
   int j;
   int k;
 
+#if TGR_REGION_EUR
+  if (!BrModeIs(BrRaceTick) || D_8026FF18 == 5 || D_802A4C04 != 0 || eur_D_8028CA8C != 0 ||
+      D_8026FF10 != 0) {
+#else
   if (!BrModeIs(BrRaceTick) || D_8026FF18 == 5 || D_802A4C04 != 0 || D_8026FF10 != 0) {
+#endif
     for (i = 0; i != 2; i++) {
       if (D_802A4BE8 != 0) {
         D_802A4BEC[i] = 0;
@@ -53,7 +61,11 @@ void BrRumbleUpdate(int arg0)
       }
     }
   }
+#if TGR_REGION_EUR
+  if (D_802A4BE8 != 0 && D_802A4C04 == 0 && eur_D_8028CA8C == 0 && D_8026FF10 == 0) {
+#else
   if (D_802A4BE8 != 0 && D_802A4C04 == 0 && D_8026FF10 == 0) {
+#endif
     for (j = 0; j != 2; j++) {
       if (D_8031B1E8[j] != 0 && D_802A4BEC[j] != 0 && D_8031B760[j].pad[0x11] == 0) {
         if (D_802A4BFC[j] == 0) {
