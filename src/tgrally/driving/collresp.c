@@ -847,7 +847,11 @@ void BrCarPhysAdvance(BrTipBody *b)
   BrCollRespBroadPhase(b, m);
   BrPerfMark(0, 0x80, 0x80, 0, 0xff);
   s[0] = 1.0f / b->f1DC;
+#if TGR_REGION_EUR
+  t = 0.04f;                    /* 1/25 s: the PAL physics step */
+#else
   t = 0.033333335f;
+#endif
   s[1] = 1.0f / b->f1E0;
   s[2] = 1.0f / b->f1E4;
   dt = t / 4;
