@@ -116,8 +116,17 @@ void BrPaintClearMenu(void)
   int y;
   int bx;
   int r[4][4];
+#if TGR_REGION_JPN
+  char *msg[4][2] = {
+    { "%j\xE7\x7F;\x81\x88(k", "  %jqt\xBB\x81(\xA8w\xE0" "B6R&" },
+    { "%j\xCC\xBB\x9E\x81\x88(k", "  %jqt\xBB\x81(\xA8w\xE0" "B6R&" },
+    { "%j\xE7\x7F;\x81\x88(k", "  %j\xEA" "ct\xBB\x81(\xA8w\xE0" "B6R&" },
+    { "%j\xCC\xBB\x9E\x81\x88(k", "  %j\xEA" "ct\xBB\x81(\xA8w\xE0" "B6R&" },
+  };
+#else
   char *what[2] = { "CLEAR CURRENT DECAL", "CLEAR ALL DECALS" };
   char *to[2] = { "TO SELECTED COLOR", "TO BODY COLOR" };
+#endif
 
   y = 0x160 - D_8028D0B0.h;
   bx = 0x161 - D_8028D0E0.w;
@@ -153,6 +162,12 @@ void BrPaintClearMenu(void)
   BrTextSetFont(16);
   BrTextPrint("%rySELECT OPTION", 0x9e, 0x4e);
   BrBevelPanel(0xba, r[0][1] + r[0][3] + 12, 0x10c, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+#if TGR_REGION_JPN
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  BrTextSetFont(14);
+  BrTextPrint(msg[D_8028CFC0.x2c][0], 0x9e, 0x8e);
+  BrTextPrint(msg[D_8028CFC0.x2c][1], 0x9e, 0x9b);
+#else
 #if TGR_REGION_EUR
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   BrTextSetFont(11);
@@ -162,6 +177,7 @@ void BrPaintClearMenu(void)
 #endif
   BrTextPrint(what[D_8028CFC0.x2c >> 1], 0x9e, 0x8e);
   BrTextPrint(to[D_8028CFC0.x2c & 1], 0x9e, 0x9b);
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", ((unsigned int)D_8028D0B0.w + 0xd9) >> 1, (y + 18) >> 1);
