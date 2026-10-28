@@ -275,6 +275,69 @@ float sqrtf(float x);
 void BrCamShakeAdd(int slot, float s);
 /* -- end declarations -- */
 
+#if TGR_REGION_EUR
+/* WHAT IT DOES: Put a car on the nearest trackside camera: the camera
+ * checkpoint closest to it (squared distance, any checkpoint more than 10
+ * below the car skipped) becomes the fourth camera's position when it is
+ * within 150, the car switched to that camera (a cut when it moved); with
+ * none that near, a car still on it goes back to one of the two fallback
+ * views, alternately, and keeps it for 60 frames.  The USA build does this
+ * inline in BrCarPlayerCtl; Europe's intro demo also calls it. */
+/* @implements eur:0x802277D0 tgr BrCamTracksidePick */
+void BrCamTracksidePick(BrCar *car)
+{
+  static int D_8028B9EC = 0;
+  float b[3];
+  BrVec3 *p;
+  BrVec3 *q;
+  float best;
+  float dx;
+  float dz;
+  float d;
+  int i;
+  float dy;
+
+  best = 16777216.0f;
+  for (i = 0; i < D_80025C88; i++) {
+    p = &D_80025C84[i];
+    dx = car->mtx0[3][0] - p->x;
+    dy = car->mtx0[3][1] - p->y;
+    dx = dx * dx;
+    dz = car->mtx0[3][2] - p->z;
+    dy = dy * dy;
+    if (!(dz > 10.0f)) {
+      dz = dz * dz;
+      if ((d = dx + dy + dz) < best) {
+        q = &D_80025C84[i];
+        b[0] = q->x;
+        b[1] = q->y;
+        b[2] = q->z;
+        best = d;
+      }
+    }
+  }
+  if (best < 22500.0f) {
+    if (car->cam != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
+        car->cams[3].mtx[3][2] != b[2]) {
+      car->xf48 = 1;
+    }
+    car->cams[3].mtx[3][0] = b[0];
+    car->cams[3].mtx[3][1] = b[1];
+    car->cams[3].mtx[3][2] = b[2];
+    car->cam = &car->cams[3];
+  } else if (car->cam == &car->cams[3]) {
+    car->xf48 = 1;
+    if (D_8028B9EC != 0 || D_8028B7FC != 0) {
+      car->cam = &car->cams[0];
+    } else {
+      car->cam = &car->cams[1];
+    }
+    D_8028B9EC = D_8028B9EC == 0;
+    D_8028B7F8 = 60;
+  }
+}
+#endif
+
 #define PAD ((BrCarInput *)car->pad)
 #define VIEWED (car->slot == D_8031B2C8[0].car || (D_8028AB0C >= 2 && car->slot == D_8031B2C8[1].car))
 
@@ -297,15 +360,19 @@ void BrCamShakeAdd(int slot, float s);
  * division $f2), so the zero is materialised in $f12.  s is its own local
  * (the PC twin's v): with the scan's dx the division could not take $f2.
  * The Dist result goes through dy, so the slot is the frame's lowest word;
- * u2 is an unused word above it. */
+ * u2 is an unused word above it.  Europe moves the checkpoint scan into
+ * BrCamTracksidePick, and its frame drops the scan's locals and the unused
+ * words. */
 /* @implements 0x80226488 tgr BrCarPlayerCtl */
 void BrCarPlayerCtl(BrCar *car)
 {
+#if !TGR_REGION_EUR
   static int D_8028B9EC = 0;
   float b[3];
   BrVec3 *p;
   BrVec3 *q;
   int u0[8];
+#endif
   BrVec3 la;
   int u1[2];
   float v[3];
@@ -319,7 +386,9 @@ void BrCarPlayerCtl(BrCar *car)
   float s;
   int i;
   float dy;
+#if !TGR_REGION_EUR
   int u2;
+#endif
 
   if (D_8028A8AC != 0) {
     PAD->steer = -PAD->steer;
@@ -340,6 +409,9 @@ void BrCarPlayerCtl(BrCar *car)
   } else if ((D_8026FF18 == 4 || D_8026FF18 == 5 || D_80270788 != 0) && VIEWED) {
     if (D_8028B7F8 == 0) {
 scan:
+#if TGR_REGION_EUR
+      BrCamTracksidePick(car);
+#else
       best = 16777216.0f;
       for (i = 0; i < D_80025C88; i++) {
         p = &D_80025C84[i];
@@ -378,6 +450,7 @@ scan:
         D_8028B9EC = D_8028B9EC == 0;
         D_8028B7F8 = 60;
       }
+#endif
     } else {
       D_8028B7F8--;
     }
