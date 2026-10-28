@@ -64,7 +64,7 @@ void BrPadStickToButtons(BrPadRec *pad);
 
 /* WHAT IT DOES: The paint shop's text-style popup: a normal and a
  * drop-shadow sample letter, the chosen style framed in blue and named
- * below; left/right toggle it.  A on drop shadow opens the shadow colour
+ * below (Japan leaves the name out); left/right toggle it.  A on drop shadow opens the shadow colour
  * picker (sixteen palette swatches in two rows, the current one framed;
  * left/right walk a row, up/down switch rows, A keeps the colour, B
  * restores it); A on normal closes, B cancels.
@@ -83,7 +83,9 @@ void BrPaintTextStyleMenu(void)
   char x;
   int r[2][4];
   int sw[16][5];
+#if !TGR_REGION_JPN
   char *names[2] = { "NORMAL TEXT", "DROP-SHADOW TEXT" };
+#endif
 
   BrBevelPanel(0xb4, 0x82, 0x118, 0xd0, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(16);
@@ -116,10 +118,15 @@ void BrPaintTextStyleMenu(void)
                   D_80369B98[D_8028DB58].r, D_80369B98[D_8028DB58].g, D_80369B98[D_8028DB58].b);
   x = 0xd6;
   if (D_8028DBE4 == 0) {
+#if TGR_REGION_JPN
+    BrTextSetFont(11);
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#else
     BrBevelPanel(0xc6, r[0][1] + r[0][3] + 0x11, 0xf4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
     BrTextSetFont(11);
     BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
     BrTextPrint(names[D_8028DBB8], 0x9e, (r[0][1] + r[1][3] + 0x26) >> 1);
+#endif
     BrTextSetFont(10);
     BrTextAlignLeft();
     yb = 0x14a - D_8028D0B0.w;
