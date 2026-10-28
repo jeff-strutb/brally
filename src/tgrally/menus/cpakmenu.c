@@ -103,6 +103,10 @@ extern unsigned short D_8028DDDC; /* the text colour */
 extern short D_8028DFC0[][7][5];   /* the 5 by 7 font */
 extern short D_8028F2A0[][7][3];   /* the 3 by 7 font, its own colours */
 
+#if TGR_REGION_EUR
+extern int D_8028A884;                  /* a screen flush holds the picture blank */
+void BrVideoBlank(void);
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The Controller Pak manager, one frame of it: on the first
@@ -158,6 +162,13 @@ void BrPakManager(void)
   if (D_8028DD94 == 0) {
     D_8028DD94 = 1;
     D_8036A060 = 0;
+#if TGR_REGION_EUR
+    D_8028A884 = 1;
+    BrVideoBlank();
+    BrFrameBeginLayout1();
+    BrFrameEnd();
+    D_8028A884 = 0;
+#endif
     osPfsIsPlug(D_80272D48, &pattern);
     if ((pattern & 1) == 0) {
       BrModeSet(BrFrontReturnToTitle);
@@ -174,6 +185,9 @@ void BrPakManager(void)
     D_802724F0 = 0;
     D_8036A270 = 1;
     BrFadeTo(1.0f, 0.2f);
+#if TGR_REGION_EUR
+    D_8028A884 = 0;
+#endif
   }
   BrClockTick();
   BrFadeStep();
@@ -424,8 +438,13 @@ void BrPakManager(void)
   case 6:
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_EUR
+    func_80246F90(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextSetFont(12);
+#else
     BrTextSetFont(12);
     func_80246F90(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
     BrTextPrint("%ywA NEW CONTROLLER PAK", 0x5f, 0x6a);
     BrTextPrint("%ywWAS INSERTED.", 0x5f, 0x77);
     BrTextPrint("%ywTHIS CONTROLLER PAK", 0x5f, 0x8a);
@@ -467,10 +486,19 @@ void BrPakManager(void)
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();
+#if TGR_REGION_EUR
+    D_8028A884 = 1;
+    BrVideoBlank();
+    BrFrameBeginLayout1();
+    BrScreenClear(0, 0, 0);
+    BrFrameEnd();
+    D_8028A884 = 0;
+#else
     osViBlack(1);
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();
+#endif
     BrModeSet(BrFrontReturnToTitle);
   }
   D_802A4BE8 = 1;
