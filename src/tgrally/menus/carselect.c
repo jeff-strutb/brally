@@ -1009,12 +1009,21 @@ void BrCarSelect(void)
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
         BrTextSetFont(8);
         BrTextAlignCentre();
+#if TGR_REGION_JPN
+        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
+          BrTextSetFont(14);
+          BrTextPrint("%ww %j\xD2\xD3" "2b3@sA5'\xD2\xD3\x8D\x8F\xA1w2Bc\xDB" "2@&", D_8028AAB0 / 2,
+                      D_8028AAB4 * 3 / 8 - 1);
+          BrTextSetFont(8);
+        }
+#else
         if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
           BrTextPrint("%wwIf you wish to use the Rumble Pak, you should", D_8028AAB0 / 2,
                       D_8028AAB4 * 3 / 8 - 6);
           BrTextPrint("%wwensure that it is plugged in before pressing A.", D_8028AAB0 / 2,
                       D_8028AAB4 * 3 / 8 + 2);
         }
+#endif
         if (D_803162B0[0] == 0) {
           car = CAR(0);
           BrTextAlignRight();
