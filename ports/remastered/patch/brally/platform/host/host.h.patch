@@ -1,6 +1,6 @@
 --- a/platform/host/host.h
 +++ b/platform/host/host.h
-@@ -85,7 +85,7 @@
+@@ -86,7 +86,7 @@
  /* 1 while any of the window can be seen (not minimised, hidden or covered) */
  int  host_window_visible(void);
  /* 1: the window keeps the game's shape as it is resized (the original's
@@ -9,13 +9,18 @@
  void host_window_lock_aspect(int lock);
  /* the next event, waiting up to wait_ms for one; 1 if *ev was filled */
  int  host_poll_event(host_event *ev, uint32_t wait_ms);
-@@ -132,6 +132,9 @@
+@@ -133,6 +133,14 @@
      int      pov;
  } host_pad;
  int host_pad_read(host_pad *p);
 +/* the i-th game controller (0: the first, as host_pad_read), for a second player;
 + * 0 when there is none */
 +int host_pad_read_n(int i, host_pad *p);
++/* the i-th game controller's rumble (counted as host_pad_read_n's): the N64
++ * Rumble Pak's one motor, on or off; 1 if it took it.  host_pad_can_rumble:
++ * 1 if the i-th is there and can */
++int host_pad_can_rumble(int i);
++int host_pad_rumble(int i, int on);
  
  /* ---- network: IPv4 UDP ---------------------------------------------------------- */
  typedef struct host_addr {

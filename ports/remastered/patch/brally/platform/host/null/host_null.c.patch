@@ -1,6 +1,6 @@
 --- a/platform/host/null/host_null.c
 +++ b/platform/host/null/host_null.c
-@@ -98,6 +98,11 @@
+@@ -98,6 +98,24 @@
      p->pov = -1;
      return 0;
  }
@@ -8,6 +8,19 @@
 +{
 +    (void)i;
 +    return host_pad_read(p);
++}
++/* no pads, so no rumble; BR_RUMBLE_LOG=1 (a check) has two that rumble, each
++ * change of their motors on stderr with the time in milliseconds */
++int host_pad_can_rumble(int i)
++{
++    return getenv("BR_RUMBLE_LOG") && i >= 0 && i < 2;
++}
++int host_pad_rumble(int i, int on)
++{
++    if (!host_pad_can_rumble(i))
++        return 0;
++    fprintf(stderr, "RUMBLE %d %s %.1f\n", i, on ? "on" : "off", host_ticks_ns() / 1e6);
++    return 1;
 +}
  host_stream *host_stream_open(const char *path, int rate)
  {

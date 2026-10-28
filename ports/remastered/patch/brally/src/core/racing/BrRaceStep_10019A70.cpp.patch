@@ -1,15 +1,16 @@
 --- a/src/core/racing/BrRaceStep_10019A70.cpp
 +++ b/src/core/racing/BrRaceStep_10019A70.cpp
-@@ -14,6 +14,8 @@
+@@ -14,6 +14,9 @@
   * option 2 and 0x10059E50/0x10059E30 for option 3; the leader search clears
   * every record of every entrant; the sound-offer loop reads each view's car
   * (0x1001b968 steps ebx by 0x58). */
 +#include "rm_tick.h"   /* Top Gear Rally Remastered: the races' tick rate */
 +#include "race_pads.h"   /* Remastered */
++#include "rm_rumble.h"   /* Remastered: its Rumble Pak */
  #include "br_trkhdr.h"   /* g_brTrkHdr, the loaded track header */
  #include "br_mat.h"   /* br_globals: its objects */
  #include "br_race.h"   /* br_globals: its objects */
-@@ -26,6 +28,7 @@
+@@ -26,6 +29,7 @@
  #include "slice3_42.h"   /* br_globals: its objects */
  #include "br_racestep.h"   /* g_aBrRaceLightScript, g_aBrRaceBeepT */
  #include "br_bits.h"   /* BrBitLatch, the control block's first word */
@@ -17,7 +18,7 @@
  #include <stdint.h>
  #include <string.h>
  #pragma intrinsic(memcpy)   /* original inlines the copies as rep movsd, not a call */
-@@ -58,6 +61,7 @@
+@@ -58,6 +62,7 @@
      return 0;
  }
  
@@ -25,7 +26,7 @@
  extern "C" void BrRaceStep(void)
  {
      int loc10, loc14, loc18;
-@@ -113,7 +117,7 @@
+@@ -113,7 +118,7 @@
          case 1:     /* 0x10019bf1 */
              (*(int *)&g_brRaceNDriver) = 2; (*(int *)&g_BrCarCount) = 2;
              BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
@@ -34,7 +35,7 @@
              g_aBrRaceCar[1].i29B4 = 0;
              goto Lcf3;
          case 6:     /* 0x10019c2a */
-@@ -249,6 +253,8 @@
+@@ -249,6 +254,8 @@
          default: Ldefault:      /* 0x1001a1ee (== case 3) */
          case 3:
              BrEntitySetIndex(&g_aBrRaceCar[0], g_226e7c);
@@ -43,7 +44,7 @@
              DAT_105ccb68[9] = 0;
              (*(int *)&g_brRaceNDriver) = (*(int *)&g_brRaceNEntrant);
              (*(int *)&g_BrCarCount) = (*(int *)&g_brRaceNEntrant);
-@@ -355,7 +361,7 @@
+@@ -355,7 +362,7 @@
          /* 0x1001a462: wheel/tyre + camera-mode setup */
          if (g_brRaceRules.mode == 4) {
              g_aBrRaceCar[0].pMatA = &g_aBrRaceCar[0].aSnap[1];
@@ -52,7 +53,7 @@
              goto La58d;
          }
          if ((*(int *)&g_brRaceNEntrant) > 0) {                     /* 0x1001a485 tyre loop */
-@@ -372,6 +378,9 @@
+@@ -372,6 +379,9 @@
                      pc->pCtl->b25 = 2;
                  i++;
              } while (i < (*(int *)&g_brRaceNEntrant));
@@ -62,7 +63,17 @@
          }
          {
              int ecx = (*(int *)&g_brRaceNEntrant);                 /* 0x1001a4f1 */
-@@ -977,6 +986,7 @@
+@@ -926,7 +936,9 @@
+ Lb887:  /* 0x1001b887 */
+     {
+         int i;
++        rm_rumble_lock();         /* Remastered: the effects are the pulse thread's too */
+         for (i = 0; i < (*(int *)&g_BrCarCount); i++) BrSndCarStep(&g_aBrRaceCar[i]);
++        rm_rumble_unlock();
+     }
+     BrSndNearestInvalidate();                               /* 0x1001b8ae */
+     {
+@@ -977,6 +989,7 @@
          }
          /* 0x1001bbcd: the first view's record, then the particle state */
          memcpy(&ps->tailA, &g_aBrView[0], 0x16 * 4);   /* rep movsd 0x16 */
@@ -70,7 +81,7 @@
          BrPfxSaveState((short *)&ps->tailC);
      }
      if ((*(int *)&g_brRaceBeginLimitOn) == 0) goto Lc583;                /* 0x1001bc04 -> replay-advance */
-@@ -985,6 +995,8 @@
+@@ -985,6 +998,8 @@
      (*(int *)&g_brRaceBeginLimitOn) = 0;
      DAT_105ccb68[14] = 0;
      GhostBody:  /* 0x1001bc37 */
@@ -79,7 +90,7 @@
          if ((*(int *)&g_BrX06909B4) == 2) {                      /* 0x1001bc44 */
              int f = (*(int *)&g_BrX18ABAD0);
              if (f & 0x8000) {
-@@ -1017,6 +1029,10 @@
+@@ -1017,6 +1032,10 @@
          }
          /* 0x1001bd72: g_5CCB5C != 2 main path */
          if ((*(int *)&g_BrX06909B4) == 0) goto Lc024;
@@ -90,7 +101,7 @@
          if ((*(int *)&g_brRaceNEntrant) > 0) {                       /* 0x1001bd7a per-driver replay */
              int i = 0;
              do {                                  /* loop top 0x1001bd94 */
-@@ -1030,7 +1046,7 @@
+@@ -1030,7 +1049,7 @@
                  if (!skip) {
                      if (DAT_105bc8dc != 0 || ((uint8_t)pCtl->ctl & 0x10) == 0)   /* 0x1001bdbf */
                          BrBitLatchTake((BrBitLatch *)pCtl, 0xc010);       /* 0x1001bdca */
@@ -99,7 +110,7 @@
                          switch (DAT_105bc8dc) {        /* jmp [.. 0x1001c688] */
                          case 0:  /* 0x1001bdec */
                              if ((*(int *)&g_brRaceNet) != 0 && (*(int *)&g_brRaceTick) != 0) BrNetLockSetIfZero221314();
-@@ -1043,7 +1059,10 @@
+@@ -1043,7 +1062,10 @@
                              DAT_105ccb68[12] = 0; DAT_105ccb68[9] = 0; DAT_105ccb68[11] = 0;
                              BrRaceDriverReset(); (*(int *)&g_brRaceTick) = 0; BrSndBankFree(); BrClearFlag_AB504();
                              break;
@@ -111,7 +122,7 @@
                              BrFadeSetTarget(0, 0.2f);
                              BrFadeSetTargetA(0, 0.2f);
                              BrFadeSetTargetB(0, 0.2f);
-@@ -1052,7 +1071,7 @@
+@@ -1052,7 +1074,7 @@
                                                   BrCdVolumeSet((unsigned char)(*(char *)&DAT_100bb2e0)); }
                              if (g_brRaceRules.mode == 6) { BrDPlayMsg6SendSelf(); BrNetClearF10220DD0(); }
                              break;
@@ -120,7 +131,7 @@
                              loc10 = 2; (*(int *)&g_BrX06909B4) = 2; DAT_105bc8dc = 1;
                              break;
                          case 2: case 3: default: break;   /* 0x1001befc */
-@@ -1068,12 +1087,12 @@
+@@ -1068,12 +1090,12 @@
                  }
                  f = (*(int *)&g_BrX18ABAD0);
                  if (f & 0x1000) {
@@ -137,7 +148,7 @@
                  }
                  if (f & 1) {
                      if (DAT_105bc8dc == 2)      BrUiSelADec();
-@@ -1261,7 +1280,8 @@
+@@ -1261,7 +1283,8 @@
                      }
                  } else {                          /* 0x1001c4a5 */
                      BrWrap_10067980();
@@ -147,7 +158,7 @@
                      BrSndBankMute();
                      BrSndTableClear();
                  }
-@@ -1286,7 +1306,7 @@
+@@ -1286,7 +1309,7 @@
          return;                                   /* 0x1001c57b epilogue */
  
      Lc583:  /* 0x1001c583 replay-advance clock (after the ret; forward-goto only) */

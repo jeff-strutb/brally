@@ -10,7 +10,7 @@ Remastered adds laid over them (`tree.sh`).
 | piece | what |
 |---|---|
 | `tree.sh` | the two ports as Remastered builds them: each port, Remastered's own files over it (`brally/`, `tgrally/`, at the paths they take in the port), its changes to the port's files applied (`patch/brally`, `patch/tgrally`, one unified diff a file, no fuzz). `make ROOT` builds a tree, `save ROOT` turns an edited tree back into files and patches, `check ROOT` says whether it would. A patch that stops applying stops the build: the port moved under it |
-| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), its own menus as the app's (`race_handoff.c`, `br_menus_run`), their Remaster Options page (`src/core/menus/rm_menuopts.cpp`, `rm_menuicons.c`) and their 16:9 layout (`src/core/drawing/rm_menuwide.c`), the music hooks (`audio.c`) |
+| `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), Top Gear Rally's Rumble Pak (`rm_rumble.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), its own menus as the app's (`race_handoff.c`, `br_menus_run`), their Remaster Options page (`src/core/menus/rm_menuopts.cpp`, `rm_menuicons.c`) and their 16:9 layout (`src/core/drawing/rm_menuwide.c`), the music hooks (`audio.c`) |
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over of the races and of the menus (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
 | `tools/menuicons.py` | Boss Rally's Remaster Options page's two machines, into `brally/src/core/menus/rm_menuicons.c`: the PC from `ports/common/assets/retro_pc.svg`, the N64 the hand-built console drawn in that drawing's oblique, its greys a real console's (`ports/common/assets/n64console.png`) |
@@ -125,6 +125,20 @@ B brakes, X reverses, RB and LB change gear, Y the view. In a race Change View
 steps through the views from the one on the screen: the car's own (where a race
 starts), the chase view, then (one player on the screen) the bonnet, and round
 again (`race_pads.c`).
+
+**Rumble.** Each player's pad shakes as Top Gear Rally's Rumble Pak did, in
+Boss Rally's races too (`brally/platform/common/rm_rumble.c`). Boss Rally's
+sound step is Top Gear Rally's carried to the PC: it still starts the surface
+impacts' effects into Top Gear Rally's per-player pulse state, and its three
+knocks (two cars colliding, the body's hardest hit, a wheel landing) are the
+same bytes on the car, written with the same values. The sound step starts
+Top Gear Rally's three knock effects there, and a thread runs
+`BrRumbleUpdate`'s pulses every 10 ms, the tick of the mixer timer that ran
+them on the N64: so many hundredths of a second on, so many off. Paused, in a
+replay or the attract demos, in the season's ceremony and out of a race the
+motors are off. The motor is the pad's heavy one at full strength, on or off
+(XInput on Windows, Core Haptics on the Mac and the iPhone); on the iPhone the
+touch controls have none, so only a game controller rumbles.
 
 The window opens at 16:9 with Widescreen on and takes any shape the player
 gives it; the games' wishes to lock its shape are not passed on. Nothing

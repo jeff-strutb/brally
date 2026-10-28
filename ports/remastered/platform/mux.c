@@ -426,6 +426,13 @@ static int pad_read_n(int g, int i, host_pad *p)
 int mux_tgr_host_pad_read_n(int i, host_pad *p) { return pad_read_n(MUX_TGR, i, p); }
 int mux_br_host_pad_read_n(int i, host_pad *p)  { return pad_read_n(MUX_BR, i, p); }
 
+/* the pads' rumble (Boss Rally's races: its rm_rumble.c), whichever game is in
+ * front: a motor left on when the other comes forward must still be stopped */
+int mux_tgr_host_pad_can_rumble(int i)        { return host_pad_can_rumble(i); }
+int mux_br_host_pad_can_rumble(int i)         { return host_pad_can_rumble(i); }
+int mux_tgr_host_pad_rumble(int i, int on)    { return host_pad_rumble(i, on); }
+int mux_br_host_pad_rumble(int i, int on)     { return host_pad_rumble(i, on); }
+
 /* ---- sound: one output, both mixers ----------------------------------------------- */
 #define CHUNK 1024                      /* frames mixed at a time */
 static struct {

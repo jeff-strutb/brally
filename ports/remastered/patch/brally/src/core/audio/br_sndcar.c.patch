@@ -1,0 +1,18 @@
+--- a/src/core/audio/br_sndcar.c
++++ b/src/core/audio/br_sndcar.c
+@@ -16,6 +16,7 @@
+ #include "slice3_41.h"
+ 
+ #include "br_match.h"
++#include "rm_rumble.h"   /* Top Gear Rally Remastered: its Rumble Pak */
+ 
+ #define BR_K_00778D8   0.0f
+ #define BR_K_00778CC   0.5f
+@@ -217,6 +218,7 @@
+     pCar->f0F6C = 0;
+     pCar->f0F70 = 0;
+   }
++  rm_rumble_knocks(pCar);   /* Remastered: Top Gear Rally's knock effects */
+   if (0x7f < *(unsigned char *)&pCar->aBody[0].f01FE) {
+     BrSndPan(pPos, pMat, &local_8, &local_c, (int *)&local_28, 0);
+     dVar11 = (double)*(int *)&local_28;

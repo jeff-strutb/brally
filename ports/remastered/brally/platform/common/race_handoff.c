@@ -51,6 +51,7 @@
 #include "../host/host_race.h"
 #include "pause_options.h"
 #include "race_pads.h"
+#include "rm_rumble.h"
 
 typedef struct host_mutex host_mutex;   /* host.h (not includable beside the core's Win32 surface) */
 typedef struct host_cond host_cond;
@@ -622,6 +623,7 @@ void plat_race_frame(void)
     if (g_pfnStep == (BrGameStepFn)BrRaceStep)
         s_ticks++;
     ticklog();
+    rm_rumble_frame();               /* the Rumble Pak's view of the race (rm_rumble.c) */
     int state = DAT_105ccb68[21];
     int racing = g_pfnStep == (BrGameStepFn)BrRaceStep;
     init();

@@ -9,10 +9,9 @@
          e.type = HOST_EV_MOUSE;
          client_point(lp, &e.x, &e.y);
 -        e.buttons = (wp & MK_LBUTTON) ? 1 : 0;
--        qpush(&e);
--        if (m == WM_LBUTTONDOWN)
 +        e.buttons = ((wp & MK_LBUTTON) ? 1 : 0) | ((wp & MK_RBUTTON) ? 2 : 0);
-+        qpush(&e);
+         qpush(&e);
+-        if (m == WM_LBUTTONDOWN)
 +        if (m == WM_LBUTTONDOWN || m == WM_RBUTTONDOWN)
              SetCapture(h);
 -        else if (m == WM_LBUTTONUP)
@@ -39,9 +38,41 @@
              break;
      if (i == XUSER_MAX_COUNT)
          return 0;
-@@ -769,3 +772,5 @@
+@@ -769,3 +772,37 @@
      }
      return 1;
  }
 +
 +int host_pad_read(host_pad *o) { return host_pad_read_n(0, o); }
++
++/* the n-th connected pad's rumble (as host_pad_read_n counts them): the N64
++ * Rumble Pak's one motor, on or off at one strength, as the pad's heavy
++ * low-frequency motor at full */
++static int pad_user(int n)
++{
++    XINPUT_STATE st;
++    DWORD i;
++    for (i = 0; i < XUSER_MAX_COUNT; i++)
++        if (XInputGetState(i, &st) == ERROR_SUCCESS && n-- == 0)
++            return (int)i;
++    return -1;
++}
++
++int host_pad_can_rumble(int n)
++{
++    XINPUT_CAPABILITIES caps;
++    int u = pad_user(n);
++    return u >= 0 && XInputGetCapabilities((DWORD)u, 0, &caps) == ERROR_SUCCESS &&
++           caps.Vibration.wLeftMotorSpeed != 0;
++}
++
++int host_pad_rumble(int n, int on)
++{
++    XINPUT_VIBRATION v;
++    int u = pad_user(n);
++    if (u < 0)
++        return 0;
++    v.wLeftMotorSpeed = on ? 65535 : 0;
++    v.wRightMotorSpeed = 0;
++    return XInputSetState((DWORD)u, &v) == ERROR_SUCCESS;
++}

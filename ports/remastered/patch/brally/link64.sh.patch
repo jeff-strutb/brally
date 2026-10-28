@@ -10,7 +10,7 @@
  #        RENDER null (default) | metal (metal needs HOST=macos) | vulkan (Vulkan headers
  #               and loader: VULKAN_SDK, else Homebrew's; on macOS it runs on MoltenVK) |
  #               gl (OpenGL 3.3 core: the fallback on a PC without Vulkan; on macOS
-@@ -44,10 +45,18 @@
+@@ -44,10 +45,20 @@
  ports/brally/build64.sh $OUT/gen/br_data.c >/dev/null
  # the script commands that read the game (core types, so core flags)
  ports/brally/build64.sh ports/brally/platform/common/script_game.c | grep -v "^OK" >&2 || true
@@ -20,6 +20,8 @@
 +ports/brally/build64.sh ports/brally/platform/common/pause_options.c | grep -v "^OK" >&2 || true
 +# the players' cars from the app's controls (race_pads.c): core types too
 +ports/brally/build64.sh ports/brally/platform/common/race_pads.c | grep -v "^OK" >&2 || true
++# Top Gear Rally's Rumble Pak in the races (rm_rumble.c): core types too
++ports/brally/build64.sh ports/brally/platform/common/rm_rumble.c | grep -v "^OK" >&2 || true
  
  SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/br_os_window.c \
 -      $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/br_net.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
@@ -30,7 +32,7 @@
  # the OS layer under the host: Windows or POSIX
  case "$($CC -dumpmachine 2>/dev/null)" in
    *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
-@@ -78,7 +87,8 @@
+@@ -78,9 +89,10 @@
           [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
    windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
             LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
@@ -38,5 +40,8 @@
 +  lib)   SRCS="$SRCS $OSHOST";;                  # the app's own (ports/remastered)
 +         # (the app's Remaster Options are its own, platform/options.c)
    macos) SRCS="$SRCS $OSHOST $P/host/macos/host_macos.m"
-          LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
+-         LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
++         LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController -framework CoreHaptics";;
  esac
+ OBJS=""
+ for s in $SRCS; do

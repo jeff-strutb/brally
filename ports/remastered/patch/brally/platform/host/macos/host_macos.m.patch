@@ -1,6 +1,14 @@
 --- a/platform/host/macos/host_macos.m
 +++ b/platform/host/macos/host_macos.m
-@@ -280,10 +280,15 @@
+@@ -20,6 +20,7 @@
+ #import <Metal/Metal.h>
+ #import <AudioToolbox/AudioToolbox.h>
+ #import <GameController/GameController.h>
++#import <CoreHaptics/CoreHaptics.h>
+ #include <sys/stat.h>
+ 
+ #include "host.h"
+@@ -280,10 +281,15 @@
      e.buttons = buttons;
      qpush(&e);
  }
@@ -20,7 +28,7 @@
  @end
  
  @implementation BrWindowDelegate
-@@ -611,50 +616,78 @@
+@@ -611,50 +617,170 @@
   * GameController.framework; the current one, else the first with a full
   * gamepad profile. One plugged in while the game runs is picked up at the
   * next read. */
@@ -118,26 +126,116 @@
 -        if (u || r || d || l) {
 -            static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
 -            o->pov = ang[r - l + 1][u - d + 1];
--        }
--        return 1;
 +        return pad_fill(pad_first(), o);
-     }
- }
++    }
++}
 +
 +/* the i-th: the first as above, then the others with a full gamepad profile in
 + * the order macOS lists them */
++static GCController *pad_nth(int i)
++{
++    GCController *first = pad_first();
++    int n = 0;
++    if (i == 0)
++        return first;
++    for (GCController *k in GCController.controllers)
++        if (k.extendedGamepad && k != first && ++n == i)
++            return k;
++    return nil;
++}
++
 +int host_pad_read_n(int i, host_pad *o)
 +{
 +    @autoreleasepool {
-+        GCController *first = pad_first(), *c = nil;
-+        int n = 0;
-+        if (i == 0)
-+            return pad_fill(first, o);
-+        for (GCController *k in GCController.controllers)
-+            if (k.extendedGamepad && k != first && ++n == i) {
-+                c = k;
-+                break;
-+            }
-+        return pad_fill(c, o);
++        return pad_fill(pad_nth(i), o);
++    }
++}
++
++/* the i-th pad's rumble: the N64 Rumble Pak's one motor, on or off at one
++ * strength, as the controller's own motors through Core Haptics (macOS 11):
++ * full intensity, sharpness 0 (the heavy low motor's).  Each pad keeps an
++ * engine and a looping player; a failed start or stop drops them, and the
++ * next call makes them again. */
++static GCController *s_rpad[2];
++static id s_reng[2], s_rplay[2];
++
++static void rumble_drop(int i)
++{
++    if (@available(macOS 11.0, *)) {
++        if (s_rplay[i])
++            [(id<CHHapticAdvancedPatternPlayer>)s_rplay[i] stopAtTime:CHHapticTimeImmediate error:nil];
++        if (s_reng[i])
++            [(CHHapticEngine *)s_reng[i] stopWithCompletionHandler:nil];
++    }
++    s_rpad[i] = nil;
++    s_reng[i] = nil;
++    s_rplay[i] = nil;
++}
++
++static int rumble_make(int i, GCController *c)
++{
++    if (@available(macOS 11.0, *)) {
++        NSError *err = nil;
++        CHHapticEngine *e = [c.haptics createEngineWithLocality:GCHapticsLocalityDefault];
++        CHHapticEventParameter *in =
++            [[CHHapticEventParameter alloc] initWithParameterID:CHHapticEventParameterIDHapticIntensity value:1.0f];
++        CHHapticEventParameter *sh =
++            [[CHHapticEventParameter alloc] initWithParameterID:CHHapticEventParameterIDHapticSharpness value:0.0f];
++        CHHapticEvent *ev = [[CHHapticEvent alloc] initWithEventType:CHHapticEventTypeHapticContinuous
++                                                          parameters:@[ in, sh ] relativeTime:0 duration:30];
++        CHHapticPattern *pat = [[CHHapticPattern alloc] initWithEvents:@[ ev ] parameters:@[] error:&err];
++        id<CHHapticAdvancedPatternPlayer> pl;
++        if (!e || !pat || ![e startAndReturnError:&err])
++            return 0;
++        pl = [e createAdvancedPlayerWithPattern:pat error:&err];
++        if (!pl) {
++            [e stopWithCompletionHandler:nil];
++            return 0;
+         }
++        pl.loopEnabled = YES;
++        pl.loopEnd = 30;
++        s_rpad[i] = c;
++        s_reng[i] = e;
++        s_rplay[i] = pl;
+         return 1;
+     }
++    return 0;
+ }
++
++int host_pad_can_rumble(int i)
++{
++    if (i < 0 || i > 1)
++        return 0;
++    @autoreleasepool {
++        GCController *c = pad_nth(i);
++        if (@available(macOS 11.0, *))
++            return c && c.haptics != nil;
++        return 0;
++    }
++}
++
++int host_pad_rumble(int i, int on)
++{
++    if (i < 0 || i > 1)
++        return 0;
++    @autoreleasepool {
++        GCController *c = pad_nth(i);
++        if (c != s_rpad[i])
++            rumble_drop(i);          /* another pad now, or none */
++        if (!c || !host_pad_can_rumble(i))
++            return 0;
++        if (!s_rplay[i]) {
++            if (!on)
++                return 1;            /* never started: off already */
++            if (!rumble_make(i, c))
++                return 0;
++        }
++        if (@available(macOS 11.0, *)) {
++            id<CHHapticAdvancedPatternPlayer> pl = s_rplay[i];
++            if (on ? [pl startAtTime:CHHapticTimeImmediate error:nil] : [pl stopAtTime:CHHapticTimeImmediate error:nil])
++                return 1;
++        }
++        rumble_drop(i);
++        return 0;
 +    }
 +}

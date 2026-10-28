@@ -16,6 +16,7 @@ import AudioToolbox
 import QuartzCore
 import UIKit
 import GameController
+import CoreHaptics
 
 // ---- process -------------------------------------------------------------------
 
@@ -200,6 +201,73 @@ func hostPadReadN(_ i: Int32, _ p: UnsafeMutablePointer<host_pad>) -> Int32 {
     o.buttons = b
     p.pointee = o
     return 1
+}
+
+// ---- the pads' rumble -----------------------------------------------------------------
+// The i-th pad's rumble, counted as host_pad_read_n's (0, the touch controls, has
+// none): the N64 Rumble Pak's one motor, on or off at one strength, as the
+// controller's own motors through Core Haptics: full intensity, sharpness 0 (the
+// heavy low motor's).  Each pad keeps an engine and a looping player; a failed start
+// or stop drops them, and the next call makes them again.  (Boss Rally's pulse
+// thread asks, platform/common/rm_rumble.c: one thread.)
+
+private final class Rumble {
+    let pad: GCController
+    let engine: CHHapticEngine
+    let player: CHHapticAdvancedPatternPlayer
+    init?(_ pad: GCController) {
+        guard let engine = pad.haptics?.createEngine(withLocality: .default) else { return nil }
+        let event = CHHapticEvent(eventType: .hapticContinuous, parameters: [
+            CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+            CHHapticEventParameter(parameterID: .hapticSharpness, value: 0),
+        ], relativeTime: 0, duration: 30)
+        guard let pattern = try? CHHapticPattern(events: [event], parameters: []),
+              (try? engine.start()) != nil,
+              let player = try? engine.makeAdvancedPlayer(with: pattern) else { return nil }
+        player.loopEnabled = true
+        player.loopEnd = 30
+        self.pad = pad
+        self.engine = engine
+        self.player = player
+    }
+    func drop() {
+        try? player.stop(atTime: CHHapticTimeImmediate)
+        engine.stop(completionHandler: nil)
+    }
+}
+private var rumbles: [Int32: Rumble] = [:]
+
+private func rumblePad(_ i: Int32) -> GCController? {
+    guard i >= 1 else { return nil }
+    let pads = GCController.controllers().filter { $0.extendedGamepad != nil }
+    return Int(i) - 1 < pads.count ? pads[Int(i) - 1] : nil
+}
+
+@_cdecl("host_pad_can_rumble")
+func hostPadCanRumble(_ i: Int32) -> Int32 {
+    rumblePad(i)?.haptics != nil ? 1 : 0
+}
+
+@_cdecl("host_pad_rumble")
+func hostPadRumble(_ i: Int32, _ on: Int32) -> Int32 {
+    let pad = rumblePad(i)
+    if let r = rumbles[i], r.pad !== pad {        // another pad now, or none
+        r.drop()
+        rumbles[i] = nil
+    }
+    guard let pad, pad.haptics != nil else { return 0 }
+    if rumbles[i] == nil {
+        if on == 0 { return 1 }                      // never started: off already
+        guard let r = Rumble(pad) else { return 0 }
+        rumbles[i] = r
+    }
+    let r = rumbles[i]!
+    if (try? on != 0 ? r.player.start(atTime: CHHapticTimeImmediate) : r.player.stop(atTime: CHHapticTimeImmediate)) != nil {
+        return 1
+    }
+    r.drop()
+    rumbles[i] = nil
+    return 0
 }
 
 // ---- audio out: a RemoteIO unit pulling the multiplexer's mix -------------------------
