@@ -386,6 +386,15 @@ void BrMainMenu(void);
 void BrRaceTick(void);
 void func_80243260(void);
 void BrLoadSaveScreen(void);
+#if TGR_REGION_JPN
+int BrModeIs(void (*fn)(void));
+void BrResultsRun(void);
+void BrScreenBlank(void);
+extern int D_8028A884;
+#endif
+#if TGR_REGION_JPN
+extern unsigned char D_8028B904[][3];     /* the players' own colours */
+#endif
 /* -- end declarations -- */
 
 #define CAR(i) (&D_8031B760[i])
@@ -414,6 +423,9 @@ void BrLoadSaveScreen(void);
 /* @implements 0x8020D004 tgr BrCarSelect */
 void BrCarSelect(void)
 {
+#if TGR_REGION_JPN
+  static int D_80316248[2];       /* each player's car is to be repainted */
+#endif
   static int D_80316250;
   static int D_80316254;
   static int D_80316258[2];       /* each player's model slot (0-3; slot ^ 2 is the other) */
@@ -466,6 +478,17 @@ void BrCarSelect(void)
   float dt;
 
   if (D_80272238 == 0) {
+#if TGR_REGION_JPN
+    if (BrModeIs(BrResultsRun)) {
+      D_8028A884 = 1;
+      BrScreenBlank();
+      BrFrameBeginLayout1();
+      BrFrameEnd();
+      BrScreenBlank();
+      BrFrameBeginLayout1();
+      BrFrameEnd();
+    }
+#endif
     D_80316250 = D_8028AAD4;
     BrFadeTo(1.0f, 0.2f);
     BrSfxFadeTo(1.0f, 0.2f);
@@ -580,6 +603,10 @@ void BrCarSelect(void)
     D_80272238 = 1;
     D_80316270[0] = D_80316270[1] = D_802720B4;
     D_80316278[0] = D_80316278[1] = 0;
+#if TGR_REGION_JPN
+    D_8028A884 = 0;
+    D_80316248[0] = D_80316248[1] = 1;
+#endif
     D_80316314 = 0;
   }
 
@@ -587,6 +614,27 @@ void BrCarSelect(void)
   BrClockTick();
   BrFadeStep();
   BrFrameBeginLayout1();
+#if TGR_REGION_JPN
+  for (p = 0; p < D_8026FF08; p++) {
+    if (D_80316248[p] != 0) {
+      D_80316248[p] = 0;
+      if (D_803162B0[p] == 0) {
+        BrCarColourFromModel(CAR(p), &D_803C8000[D_80316258[p]]);
+        if (D_8026FF08 == 2) {
+          CAR(p)->colour[0] = D_8028B904[p][0];
+          CAR(p)->colour[1] = D_8028B904[p][1];
+          CAR(p)->colour[2] = D_8028B904[p][2];
+        }
+        BrEntPaintTexture((int)&D_803C8000[D_80316258[p]], CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+                          CAR(p)->colour[2] >> 3);
+      } else if (D_803162B0[p] == 5) {
+        BrCarColourFromModel(CAR(p), &D_803C8000[D_80316258[p]]);
+      }
+      BrEntPaintTexture((int)&D_803C8000[D_80316258[p]], CAR(p)->colour[0] >> 3, CAR(p)->colour[1] >> 3,
+                        CAR(p)->colour[2] >> 3);
+    }
+  }
+#endif
   D_8028AA78 = 0;
   D_8028AA80 = 0;
   D_8028AA8C = 0;
@@ -621,12 +669,27 @@ void BrCarSelect(void)
       if (0.0f < D_80316260[p]) {
         D_80316260[p] = 0.0f;
       }
+#if TGR_REGION_JPN
+      if (D_803162B0[p] == 5 && D_80316278[p] != 1) {
+        D_80316248[p] = 1;
+      }
+#endif
     } else if (0.0f < D_80316260[p]) {
       D_80316260[p] = D_80316260[p] - (dt + dt);
       if (D_80316260[p] < 0.0f) {
         D_80316260[p] = 0.0f;
       }
+#if TGR_REGION_JPN
+      if (D_803162B0[p] == 5 && D_80316278[p] != 1) {
+        D_80316248[p] = 1;
+      }
+#endif
     }
+#if TGR_REGION_JPN
+    if (D_80316248[p] == 0 && BrEntIsFree(STREAM(D_80316258[p])) == 0) {
+      D_80316248[p] = -1;
+    }
+#endif
   }
   /* which model slot each player shows */
   for (p = 0; p < D_8026FF08; p++) {
@@ -666,6 +729,17 @@ void BrCarSelect(void)
                     D_803162B0[1] == 6, D_80316258[1], D_80316258[1] ^ 2, 12.0f, D_80316268[1]);
     }
   }
+#if TGR_REGION_JPN
+  for (p = 0; p < D_8026FF08; p++) {
+    if (D_80316248[p] == -1) {
+      if (BrEntIsFree(STREAM(D_80316258[p]))) {
+        D_80316248[p] = 1;
+      } else {
+        D_80316248[p] = 0;
+      }
+    }
+  }
+#endif
   BrScreenCameraSet((float)D_8028AAB0, (float)D_8028AAB4);
   BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
 
@@ -677,7 +751,11 @@ void BrCarSelect(void)
     BrTextSetFont(30);
     if (D_80272074 != 0) {
       if (D_80316314 == 0 || D_80316314 == 1) {
+#if TGR_REGION_JPN
+        sprintf(buf, "%%ry%s%s %%j%c", D_80316308 >= 5 ? "M-" : "", D_80271D1C[D_80316308 >= 5 ? D_80316308 - 5 : D_80316308]->item.label, D_8031630C + 0x29);
+#else
         sprintf(buf, "%%ry%s%s/%s", D_80316308 >= 5 ? "M-" : "", D_80271D1C[D_80316308 >= 5 ? D_80316308 - 5 : D_80316308]->item.label, D_802722A4[D_8031630C]->label);
+#endif
 
         BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 6 - 2);
       } else {
@@ -798,9 +876,17 @@ void BrCarSelect(void)
           }
         }
         BrTextAlignLeft();
+#if TGR_REGION_JPN
+        sprintf(D_80316318, "%%j%c", D_8028B944[round].races[p][1] + 0x29);
+        BrTextSetFont(13);
+        BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y + 1);
+        BrTextSetFont(10);
+        BrTextPrint(D_80271D1C[tr]->item.label, D_8028AAB0 * 3 / 16 - x + 12, y);
+#else
         sprintf(D_80316318, "%s/%s", D_80271D1C[tr]->item.label,
                 D_802722A4[D_8028B944[round].races[p][1]]->label);
         BrTextPrint(D_80316318, D_8028AAB0 * 3 / 16 - x, y);
+#endif
         BrTextAlignCentre();
         if (p <= (int)race) {
           BrTimeFormat(D_80316318, CAR(0)->season->times[round][p]);
