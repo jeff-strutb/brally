@@ -115,6 +115,14 @@ void BrPerfFrameStart(void);
 unsigned int osGetCount(void);
 void osSpTaskLoad(BrTask *t);
 void osSpTaskStartGo(BrTask *t);
+/* Blanking the picture: Japan goes through its own call, which also notes
+ * the picture is blanked. */
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define BLANK_SCREEN() BrScreenBlank()
+#else
+#define BLANK_SCREEN() osViBlack(1)
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Clear the Z-buffer: point the colour image at it, fill it
@@ -233,15 +241,15 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b)
 void BrScreenFlush3Layout1(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrFrameEnd();
   D_8028A884 = 0;
@@ -254,15 +262,15 @@ void BrScreenFlush3Layout1(void)
 void BrScreenFlush3Layout0(void)
 {
   D_8028A884 = 1;
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
-  osViBlack(1);
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrFrameEnd();
   D_8028A884 = 0;
