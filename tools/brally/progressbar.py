@@ -24,6 +24,13 @@ write.  The block itemises that rest so the two numbers reconcile.
     python3 tools/brally/progressbar.py            # rewrite README + regenerate SVG
     python3 tools/brally/progressbar.py --check     # exit 1 if README is stale, write nothing
     python3 tools/brally/progressbar.py --no-svg    # skip the treemap regen
+    python3 tools/brally/progressbar.py --regions   # only the Top Gear Rally region lines
+
+Top Gear Rally's Europe and Japan cartridges are sub-variants of the N64
+decomp with their own counts (TGR_REGION=<region> tools/tgrally/n64tiers.py).
+Each has its own markers, `<!-- N64-<REGION>-PROGRESS:BEGIN -->` and
+`<!-- N64-<REGION>-PROGRESS:END -->`; a region whose markers are not in the
+README is skipped.
 """
 import datetime
 import os
@@ -93,12 +100,14 @@ def text_breakdown():
     return fenced, mapped
 
 
-def n64_counts():
+def n64_counts(region='usa'):
     """(t3_fns, t3_b, t4_fns, t4_b, target_fns, target_bytes) from
-    tools/tgrally/n64tiers.py -- the Top Gear Rally lane. Same parse-the-stdout
-    approach as tier_counts(); the numbers carry commas here, so strip them."""
+    tools/tgrally/n64tiers.py -- the Top Gear Rally lane, for one cartridge.
+    Same parse-the-stdout approach as tier_counts(); the numbers carry commas
+    here, so strip them."""
     out = subprocess.run([PY, os.path.join(ROOT, 'tools', 'tgrally', 'n64tiers.py')],
-                         capture_output=True, text=True, cwd=ROOT).stdout
+                         capture_output=True, text=True, cwd=ROOT,
+                         env=dict(os.environ, TGR_REGION=region)).stdout
 
     def grab(pat):
         m = re.search(pat, out)
@@ -138,6 +147,33 @@ def n64_block(t3_fns, t3_b, t4_fns, t4_b, target_fns, target_b):
            f'{m1_fns:,}', f'{target_fns:,}',
            bar(m2_pct), m2_pct, f'{t4_b:,}', f'{target_b:,}',
            f'{t4_fns:,}', f'{target_fns:,}'))
+
+
+REGIONS = [('eur', 'Europe'), ('jpn', 'Japan')]
+
+
+def region_block(region, label, t3_fns, t3_b, t4_fns, t4_b, target_fns, target_b):
+    """One region cartridge's status: functions byte-exact out of that
+    region's game-code total, the percent, and how many are left."""
+    pct_f = 100 * t4_fns / target_fns if target_fns else 0
+    pct_b = 100 * t4_b / target_b if target_b else 0
+    today = datetime.date.today().isoformat()
+    return (
+        '_Snapshot %s._ **%s: %s of %s game functions byte-exact (%.1f%%), %s left.**\n\n'
+        '```\n'
+        'M2  Byte-exact (T4)\n'
+        '    %s  %.1f%%   %s / %s B   %s / %s fns\n'
+        '```\n'
+        % (today, label, f'{t4_fns:,}', f'{target_fns:,}', pct_f, f'{target_fns - t4_fns:,}',
+           bar(pct_b), pct_b, f'{t4_b:,}', f'{target_b:,}', f'{t4_fns:,}', f'{target_fns:,}'))
+
+
+def splice_regions(text):
+    for reg, label in REGIONS:
+        b, e = '<!-- N64-%s-PROGRESS:BEGIN' % reg.upper(), '<!-- N64-%s-PROGRESS:END -->' % reg.upper()
+        if b in text and e in text:
+            text = splice(text, region_block(reg, label, *n64_counts(reg)), b, e)
+    return text
 
 
 # report_exe.csv's `exe` column -> the shipped filename, in the order the
@@ -266,6 +302,16 @@ def splice(text, new_block, begin=BEGIN, end=END):
 
 def main():
     argv = sys.argv[1:]
+    if '--regions' in argv:
+        old = open(README, encoding='utf-8').read()
+        updated = splice_regions(old)
+        if '--check' in argv:
+            print('README region lines are %s.' % ('STALE' if updated != old else 'current'))
+            return 1 if updated != old else 0
+        if updated != old:
+            open(README, 'w', encoding='utf-8').write(updated)
+        print('README region lines %s.' % ('rewritten' if updated != old else 'already current'))
+        return 0
     (t3_fns, t3_b, t4_fns, t4_b, target, target_b,
      t2_fns, t2_b, ex_fns, ex_b) = tier_counts()
     fenced_b, mapped_b = text_breakdown()
@@ -281,6 +327,7 @@ def main():
     n3f, n3b, n4f, n4b, ntf, ntb = n64_counts()
     updated = splice(updated, n64_block(n3f, n3b, n4f, n4b, ntf, ntb),
                      N64_BEGIN, N64_END)
+    updated = splice_regions(updated)
 
     if '--check' in argv:
         if updated != old:
