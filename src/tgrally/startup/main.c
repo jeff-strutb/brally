@@ -74,7 +74,7 @@ void BrMainThread(void)
   D_80270784 = 8;
   BrIfaceMemReset();
   BrPaintShopMemInit();
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   if (!BrOptionsEepromLoad()) {
     BrIfaceMemReset();
     BrPaintShopMemInit();
@@ -96,12 +96,14 @@ void BrMainThread(void)
   BrVolumesApply();
   BrRomUnpack((void *)0x80025C00, D_000EBC00, 0);
   BrMusicInit((void *)0x80025C00, D_802AC400);
+#if !TGR_REGION_JPN
 #if TGR_REGION_EUR
   osSyncPrintf("sizeof(OBJECT)=%d\n", 0x208);
 #endif
   osSyncPrintf("sizeof(UltraCarHeader)=%d\n", 0xdf88);
   osSyncPrintf("sizeof(Vehicle)=%d\n", 0x2090);
   osSyncPrintf("sizeof(Enemy)=%d\n", 0x78);
+#endif
   BrMainLoop();
 }
 
