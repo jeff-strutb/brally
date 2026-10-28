@@ -113,6 +113,7 @@ void BrJpGlyphLoad(void)
     slot = jpn_D_80352058[c];
     if (slot != 0 && c != jpn_D_80351F50[slot]) {
       jpn_D_80351F50[slot] = c;
+      a = 0;                    /* dead: numbers a ahead of b */
       dst = slot * 0x5A0 + jpn_D_8028DF54;
       c -= 0x20;
       b = jpn_D_80352258[c + 1];
