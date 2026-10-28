@@ -86,6 +86,14 @@ int osPfsReadWriteFile(BrPfs *pfs, int file, unsigned char flag, int offset, int
 int osPfsFreeBlocks(BrPfs *pfs, int *bytes);
 int osPfsAllocateFile(BrPfs *pfs, unsigned short company, unsigned int game, char *name,
                       unsigned char *ext, int size, int *file);
+/* The game's Controller Pak notes: company and game code. */
+#if TGR_REGION_EUR
+#define PAK_COMPANY 0x3746      /* "7F" */
+#define PAK_GAME 0x4E545250     /* "NTRP" */
+#else
+#define PAK_COMPANY 0x3544      /* "5D" */
+#define PAK_GAME 0x4E475245     /* "NGRE" */
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Ask the player to swap the Controller Pak for the Rumble
@@ -195,7 +203,9 @@ fail:
  * ROM reads without ever setting (the "loaded" box's height when the screen
  * was not entered from a save).
  * BrTextSetColours is void (an int result would hold v0 in the block that
- * starts the error switch) and BrTextPrint takes three arguments. */
+ * starts the error switch) and BrTextPrint takes three arguments.
+ * Europe's notes carry its own company and game code ("7F", "NTRP"), and
+ * it never shows the configuration message (settings live in the EEPROM). */
 /* @implements 0x80214E0C tgr BrCpakCheck */
 int BrCpakCheck(int kind, unsigned char quiet)
 {
@@ -308,8 +318,13 @@ int BrCpakCheck(int kind, unsigned char quiet)
     } else {
       BrTextHighlightOff();
       BrTextAlignLeft();
+#if TGR_REGION_EUR
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      BrTextSetFont(12);
+#else
       BrTextSetFont(12);
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+#endif
       func_80246F90(0xAF, 0xC3, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("A NEW CONTROLLER PAK", 95, 113);
       BrTextPrint("WAS INSERTED.", 95, 126);
@@ -323,10 +338,10 @@ int BrCpakCheck(int kind, unsigned char quiet)
     break;
   case 5:                       /* find the file */
     osSyncPrintf("Finding file...\n");
-    D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &file);
+    D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, &file);
     if (D_802724F0 == 3) {
       func_80262A80(&D_80369EC0[D_80271FA8]);
-      D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, &file);
+      D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, &file);
     }
     if (D_802724F0 == 0) {
       if (kind == 3) {
@@ -413,10 +428,10 @@ int BrCpakCheck(int kind, unsigned char quiet)
         state = 9;
       } else {
         osSyncPrintf("Allocating %d bytes for configuration...\n", 0x100);
-        D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &file);
+        D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, 0x100, &file);
         if (D_802724F0 == 3) {
           func_80262A80(&D_80369EC0[D_80271FA8]);
-          D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], 0x3544, 0x4E475245, name, ext, 0x100, &file);
+          D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, 0x100, &file);
         }
         if (D_802724F0 == 0) {
           state = 8;
@@ -524,7 +539,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
     default:
       func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("CONTROLLER PAK ERROR", 95, 124);
+#if TGR_REGION_EUR
+      BrTextPrint("HAS BEEN DETECTED!", 95, 138);
+#else
       BrTextPrint("HAS BEEN DETECTED.", 95, 138);
+#endif
       break;
     }
     if (D_802724F0 != 9999) {
@@ -575,6 +594,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
       BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
       break;
+#if !TGR_REGION_EUR
     case 2:
     case 3:
       func_80246F90(0xD8, 0xD9, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -585,6 +605,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
         BrTextPrint("%ywSAVED OK!", 159, 138);
       }
       break;
+#endif
     }
     if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
       BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
