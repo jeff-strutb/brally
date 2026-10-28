@@ -33,7 +33,106 @@ extern unsigned char D_8028C070[];      /* the small font's */
 extern unsigned char D_8028C1B0[];
 extern unsigned char D_8028FE00[];      /* the large font's glyph page */
 extern unsigned char D_8029DA00[];      /* the small font's */
+#if TGR_REGION_JPN
+extern int jpn_D_8028DF50;              /* the next free glyph slot */
+extern unsigned int jpn_D_8028DF54;              /* the glyph cache, less one slot */
+extern unsigned int jpn_D_8028DF58;              /* the glyph cache's end */
+extern int jpn_D_8028DF5C;              /* the number of glyph slots */
+extern int jpn_D_8028DF60;              /* the glyph offsets are loaded */
+extern unsigned char jpn_D_80351F50[];  /* each slot's character */
+extern unsigned char jpn_D_80352058[];  /* each character's slot */
+extern int jpn_D_80352258[];            /* each glyph's offset in ROM */
+extern unsigned char jpn_D_803525A0[];  /* a packed glyph */
+extern unsigned char jpn_D_803837A0[];  /* free memory after .bss */
+extern char jpn_D_000DCF40[];          /* the Japanese glyphs in ROM */
+void BrRomRead(void *dst, int rom, int len);
+int BrRlePlanesUnpack(void *dst, int max, void *data, int n);
+#endif
 /* -- end declarations -- */
+
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Empty the Japanese glyph cache: no character has a slot,
+ * and the slots (0x5A0 bytes each, slot 0 unused) fill the free memory from
+ * the end of .bss, 8-byte aligned, to 0x803B1000. */
+/* @implements jpn:0x8022F1A0 tgr BrJpGlyphReset */
+void BrJpGlyphReset(void)
+{
+  int i;
+  unsigned int size;
+
+  for (i = 0; i < 256; i++) {
+    jpn_D_80352058[i] = 0;
+  }
+  size = 0x5A0;
+  jpn_D_8028DF54 = ((unsigned int)jpn_D_803837A0 + 7) & ~7;
+  jpn_D_8028DF58 = 0x803B1000;
+  jpn_D_8028DF5C = (jpn_D_8028DF58 - jpn_D_8028DF54) / size;
+  jpn_D_8028DF58 = jpn_D_8028DF5C * size + jpn_D_8028DF54;
+  jpn_D_8028DF50 = 1;
+  jpn_D_8028DF54 -= size;
+}
+
+/* WHAT IT DOES: The address of a Japanese character's glyph in the cache,
+ * giving it the next free slot the first time it is asked for. */
+/* @implements jpn:0x8022F258 tgr BrJpGlyphSlot */
+int BrJpGlyphSlot(int c)
+{
+  unsigned char *p;
+  int slot;
+
+  p = &jpn_D_80352058[c];
+  slot = *p;
+  if (slot == 0) {
+    slot = jpn_D_8028DF50++;
+    *p = slot;
+  }
+  return slot * 0x5A0 + jpn_D_8028DF54;
+}
+
+/* WHAT IT DOES: Fill the Japanese glyph cache: the first time, read the
+ * glyph offset table from ROM (0xDCF40); then every character with a slot
+ * whose glyph is not there yet has it read in, as stored (a negative
+ * offset) or run-length packed and unpacked into the slot; the slots no
+ * character holds are marked empty. */
+/* @implements jpn:0x8022F2B0 tgr BrJpGlyphLoad */
+void BrJpGlyphLoad(void)
+{
+  int c;
+  int slot;
+  int b;
+  int a;
+  int dst;
+  int i;
+
+  if (jpn_D_8028DF60 == 0) {
+    jpn_D_8028DF60 = 1;
+    BrRomRead(jpn_D_80352258, (int)jpn_D_000DCF40, 0x344);
+  }
+  for (c = 0; c < 256; c++) {
+    slot = jpn_D_80352058[c];
+    if (slot != 0 && c != jpn_D_80351F50[slot]) {
+      jpn_D_80351F50[slot] = c;
+      dst = slot * 0x5A0 + jpn_D_8028DF54;
+      c -= 0x20;
+      b = jpn_D_80352258[c + 1];
+      if (b < 0) {
+        b = -b;
+      }
+      a = jpn_D_80352258[c];
+      if (a < 0) {
+        BrRomRead((void *)dst, (int)(jpn_D_000DCF40 - a), a + b);
+      } else {
+        BrRomRead(jpn_D_803525A0, (int)(jpn_D_000DCF40 + a), b - a);
+        BrRlePlanesUnpack((void *)dst, 0x5A0, jpn_D_803525A0, 1);
+      }
+      c += 0x20;
+    }
+  }
+  for (i = jpn_D_8028DF50; i < jpn_D_8028DF5C; i++) {
+    jpn_D_80351F50[i] = 0;
+  }
+}
+#endif
 
 /* WHAT IT DOES: Draw a string at the text position in the current font size
  * and colours: set up the two-cycle shaded-glyph combine and load the
