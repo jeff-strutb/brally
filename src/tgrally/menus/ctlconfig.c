@@ -34,6 +34,16 @@ extern int D_80271FC0;
 extern int D_8027205C;
 extern MenuItem *D_80272658[];
 extern int D_80316440;
+#if TGR_REGION_JPN
+extern int BrOptionsChanged;
+#endif
+/* The emergency brake's name in the layout captions: Japan calls it the
+ * hand brake. */
+#if TGR_REGION_JPN
+#define EBRAKE "H-BRAKE"
+#else
+#define EBRAKE "E-BRAKE"
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the controller diagram for the chosen control type,
@@ -52,7 +62,7 @@ void BrCtlConfigDrawLayout(int param_1)
     BrRomImageDraw(&D_80272590,0x6f,0x55,0x68,0x30,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,1);
     BrTextAlignLeft();
     BrTextPrint("%wwACCELERATE",0xc9,0x7f);
-    BrTextPrint("%wwPLUS BRAKE = E-BRAKE",0xc1,0x87);
+    BrTextPrint("%wwPLUS BRAKE = " EBRAKE,0xc1,0x87);
     BrTextPrint("%wwCHANGE VIEW",0xd7,0x68);
     BrTextPrint("%wwGEAR UP",199,0x56);
     BrTextAlignRight();
@@ -69,7 +79,7 @@ void BrCtlConfigDrawLayout(int param_1)
     BrTextPrint("%wwACCELERATE",0xc9,0x80);
     BrTextPrint("%wwCHANGE VIEW",0xd7,0x68);
     BrTextPrint("%wwGEAR UP",199,0x56);
-    BrTextPrint("%wwE-BRAKE",0xd3,0x76);
+    BrTextPrint("%ww" EBRAKE,0xd3,0x76);
     BrTextAlignRight();
     BrTextPrint("%wwSTEERING / REVERSE",0x6b,99);
     BrTextPrint("%wwGEAR DOWN",0x75,0x83);
@@ -82,7 +92,7 @@ void BrCtlConfigDrawLayout(int param_1)
     BrRomImageDraw(&D_802725B8,0x6f,0x55,0x68,0x30,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,1);
     BrTextAlignLeft();
     BrTextPrint("%wwACCELERATE",0xc9,0x7f);
-    BrTextPrint("%wwPLUS BRAKE = E-BRAKE",0xc1,0x87);
+    BrTextPrint("%wwPLUS BRAKE = " EBRAKE,0xc1,0x87);
     BrTextPrint("%wwCHANGE VIEW",0xd7,0x68);
     BrTextPrint("%wwGEAR UP",199,0x56);
     BrTextAlignRight();
@@ -103,7 +113,7 @@ void BrCtlConfigDrawLayout(int param_1)
     BrTextPrint("%wwSTEERING ",0x7c,0x61);
     BrTextPrint("%wwGEAR UP/DOWN",0x6e,0x72);
     BrTextPrint("%wwBRAKE",0x77,0x81);
-    BrTextPrint("%wwPLUS ACCELERATE = E-BRAKE ",0x77,0x89);
+    BrTextPrint("%wwPLUS ACCELERATE = " EBRAKE " ",0x77,0x89);
     BrTextAlignCentre();
     BrTextPrint("%wwGEAR UP",0x9c,0x56);
     break;
@@ -114,7 +124,7 @@ void BrCtlConfigDrawLayout(int param_1)
     BrTextAlignLeft();
     BrTextPrint("%wwBRAKE",199,0x59);
     BrTextPrint("%wwACCELERATE",0xd0,0x6e);
-    BrTextPrint("%wwPLUS BRAKE = E-BRAKE",200,0x76);
+    BrTextPrint("%wwPLUS BRAKE = " EBRAKE,200,0x76);
     BrTextAlignCentre();
     BrTextPrint("%wwCHANGE VIEW",0xa7,0x55);
     BrTextAlignRight();
@@ -129,7 +139,8 @@ void BrCtlConfigDrawLayout(int param_1)
  * entry lay out the menu, unpack the five controller diagrams, set up the
  * panel that draws the chosen layout and start from the player's current
  * control type; A stores the choice in
- * the player's season record, and A or B go back to the options screen. */
+ * the player's season record (in Japan also marking the settings to be
+ * saved), and A or B go back to the options screen. */
 /* @implements 0x802170C8 tgr BrCtrlConfigScreen */
 void BrCtrlConfigScreen(void)
 {
@@ -144,10 +155,17 @@ void BrCtrlConfigScreen(void)
     BrRomFileUnpack(&D_802725CC, BrIfaceMemAlloc);
     BrRomFileUnpack(&D_802725E0, BrIfaceMemAlloc);
     D_80271FB0 = &D_8027205C;
+#if TGR_REGION_JPN
+    D_80271FB4 = 25;
+    D_80271FB8 = 14;
+    D_80271FBC = 280;
+    D_80271FC0 = 32;
+#else
     D_80271FB4 = 22;
     D_80271FB8 = 9;
     D_80271FBC = 280;
     D_80271FC0 = 42;
+#endif
     D_80271FC8 = BrCtlConfigDrawLayout;
     if (entered == 0) {
       sel = D_8031B760[D_80271FA0].season->xe4;
@@ -158,6 +176,9 @@ void BrCtrlConfigScreen(void)
                  0xa0, 0x80, 0x20)) {
   case 1:
     D_8031B760[D_80271FA0].season->xe4 = sel;
+#if TGR_REGION_JPN
+    BrOptionsChanged = 1;
+#endif
   case 2:
     BrModeSet(BrOptionsScreen);
     entered = 0;
