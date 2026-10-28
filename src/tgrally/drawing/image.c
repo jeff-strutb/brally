@@ -599,7 +599,10 @@ void BrPadConsume(BrPadRec *pad, unsigned int bits);
  * and share it with the other painted parts; offer the Rumble Pak back; then
  * report.  Sets *done when the caller may leave; returns the pak status on
  * an error.  (Run by the box with an empty pak: save, load, overwrite; the
- * pak errors, a new pak and the Rumble Pak swap are not reached.) */
+ * pak errors, a new pak and the Rumble Pak swap are not reached.)
+ * Europe also dumps each loaded decal and the loaded palette on the debug
+ * output; both dump loops keep their counters in blocks of their own, which
+ * puts their homes below the arrays where the ROM frame has them. */
 /* @implements 0x80248F88 tgr BrDecalPakTransfer */
 int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu,
                        unsigned char *done)
@@ -629,9 +632,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
   int freeBytes;
   int w;
   int h;
+  unsigned short *pal;
   int k;
   int flip;
-  unsigned short *pal;
   int n;
   int x2;
   int tx;
@@ -780,6 +783,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           top = 0xDB;
         }
         BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#elif TGR_REGION_EUR
+        if (fromMenu == 1) {    /* the panel moved to state 7; the test stays */
+        }
 #endif
         BrTextAlignLeft();
         BrTextHighlightOff();
@@ -843,6 +849,15 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     BrTextSetFont(14);
     BrTextPrint("%j\xDA\xE4" "AB6R1%%", 121, 113);
     y = 0x118 - D_8028D0B0.w;
+#elif TGR_REGION_EUR
+    BrBevelPanel(0xD6, 0xBB, 0xD4, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextAlignLeft();
+    BrTextHighlightOff();
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    BrTextSetFont(13);
+    BrTextPrint("OK TO OVERWRITE", 114, 108);
+    BrTextPrint("SAVED DECALS?", 114, 122);
+    y = 0x11D - D_8028D0B0.w;
 #else
     y = 0x11D - D_8028D0B0.w;
     BrBevelPanel(0xD6, 0xBB, 0xD4, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -988,13 +1003,18 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
               }
             }
 #if TGR_REGION_EUR
-            /* dump the decal's bytes on the debug output, one a line */
-            n = (m->parts[m->decal[D_80369E61]].h * m->parts[m->decal[D_80369E61]].w) >> 1;
-            if (D_80369E61 == 0) {
-              osSyncPrintf("# Format SB BitSize 8 Rows 1 Columns 1\n");
-            }
-            for (k = 0; k < n; k++) {
-              osSyncPrintf("%02x\n", tex[k]);
+            {
+              /* dump the decal's bytes on the debug output, one a line */
+              int i;
+              int size;
+
+              size = (m->parts[m->decal[D_80369E61]].w * m->parts[m->decal[D_80369E61]].h) >> 1;
+              if (D_80369E61 == 0) {
+                osSyncPrintf("# Format SB BitSize 8 Rows 1 Columns 1\n");
+              }
+              for (i = 0; i < size; i++) {
+                osSyncPrintf("%02x\n", tex[i]);
+              }
             }
 #endif
           } else {
@@ -1041,7 +1061,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     break;
   case 8:                       /* the palette */
     if (op == OP_LOAD) {
-#if !TGR_REGION_JPN
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
       osSyncPrintf("Loading color palette...\n");
 #endif
       pfs = PFS;
@@ -1049,6 +1069,16 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
                                       (unsigned char *)m->parts[m->decal[2]].pal);
       if (D_80369E54 == 0) {
         pal = m->parts[m->decal[2]].pal;
+#if TGR_REGION_EUR
+        {
+          /* dump the palette on the debug output, a byte a line */
+          int i;
+
+          for (i = 0; i < 16; i++) {
+            osSyncPrintf("%02x\n%02x\n", pal[i] >> 8, pal[i] & 0xFF);
+          }
+        }
+#endif
         m->parts[m->paint[0]].pal[0] = pal[0];
         m->parts[m->paint[0]].pal[1] = pal[1];
         m->parts[m->paint[1]].pal[0] = pal[0];
@@ -1227,8 +1257,13 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       BrBevelPanel(0x73, 0xCC, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextHighlightOff();
       BrTextAlignLeft();
+#if TGR_REGION_EUR
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      BrTextSetFont(12);
+#else
       BrTextSetFont(12);
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+#endif
       BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 118);
       BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 131);
       BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 144);
