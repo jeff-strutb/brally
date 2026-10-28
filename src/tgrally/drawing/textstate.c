@@ -887,6 +887,7 @@ int BrTextWidth(unsigned char *s, int size)
 next:
     s++;
   }
+  if (div);                     /* compiled out: keeps div live, so size keeps a1 */
   if (D_8028A850 != 0) {
     w >>= 1;
   }
