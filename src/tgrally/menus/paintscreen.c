@@ -174,7 +174,7 @@ void BrPerfMeterDraw(void);
 void BrModeSet(void (*mode)(void));
 void BrFrontReturnToTitle(void);
 /* Europe's BrImageDraw takes a palette for a 4-bit image; these pass none. */
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrImageDraw(BrImage *img, void *tlut);
 #define BR_IMAGE_DRAW(img) BrImageDraw(img, 0)
 #else
@@ -209,6 +209,12 @@ void BrPaintOvalStyleSelect(void);
 void BrPaintMirrorMenu(void);
 void BrPaintClearMenu(void);
 void BrPaintExitPrompt(void);
+#if TGR_REGION_JPN
+extern unsigned char jpn_D_8028F020[];  /* a 16-colour palette, read from ROM */
+extern char jpn_D_001DC050[];
+extern char jpn_D_001DC070[];
+void BrRomRead(void *dst, int rom, int len);
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The paint shop screen, one frame.  The first time in: put
@@ -310,7 +316,9 @@ void BrPaintShopScreen(void)
     D_8031B760[D_8028DBBC].x2000 = 0;
     D_8031B760[D_8028DBBC].x2044 = 0;
     BrIfaceMemReset();
+#if !TGR_REGION_JPN
     osSyncPrintf("\nAllocating %d bytes (x2) for decal buffers...\n\n", 0x800);
+#endif
     D_8028DB80 = BrIfaceMemAlloc(0x800);
     D_8028DB84 = BrIfaceMemAlloc(0x800);
     BrAllocPaintShopGfxMem(&D_8028CB40);
@@ -423,6 +431,9 @@ void BrPaintShopScreen(void)
       D_8028DAD4[i]->kind = 0;
       BrAllocPaintShopGfxMem(D_8028DAD4[i]);
     }
+#if TGR_REGION_JPN
+    BrRomRead(jpn_D_8028F020, (int)jpn_D_001DC050, (int)jpn_D_001DC070 - (int)jpn_D_001DC050);
+#endif
     BrAllocPaintShopGfxMem(&D_8028D110);
     BrAllocPaintShopGfxMem(&D_8028D140);
     BrAllocPaintShopGfxMem(&D_8028D170);
@@ -544,7 +555,11 @@ void BrPaintShopScreen(void)
       BrFillRect(D_80369CD8[i].x, D_80369CD8[i].y, D_80369CD8[i].w, D_80369CD8[i].h, 0, 0, 0);
     }
     BrFillRect(D_80369CD8[i].x + 4, D_80369CD8[i].y + 4, D_80369CD8[i].w - 8, D_80369CD8[i].h - 8, 0xff, 0xca, 0);
+#if TGR_REGION_JPN
+    BrImageDraw(D_8028DAD4[i], jpn_D_8028F020);
+#else
     BR_IMAGE_DRAW(D_8028DAD4[i]);
+#endif
   }
   if (D_8028DBD8 != 0) {
     D_8028AA80 = 0;
