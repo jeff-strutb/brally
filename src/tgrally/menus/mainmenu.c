@@ -3,6 +3,10 @@
  */
 #include "tgr/common.h"
 #include "tgr/menu.h"
+#if TGR_REGION_JPN
+#include "tgr/pad.h"
+#include "tgr/car.h"
+#endif
 
 /* -- declarations -- */
 void BrModeSet(void (*fn)(void));
@@ -39,6 +43,10 @@ extern unsigned char D_802724F4;
 extern int D_80316380;
 extern char D_000EBC00[];
 extern char D_802AC400[];
+#if TGR_REGION_JPN
+void osSyncPrintf(char *fmt, ...);
+void BrPadConsume(BrPadRec *pad, unsigned int bits);
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Begin a one-player Championship: set the race type, go to
@@ -71,11 +79,16 @@ void BrTimeAttackStart(void)
  * set up the menu (and start the title music if it is not playing), put the
  * cursor back on the mode just left, run the menu and start the chosen
  * mode -- Championship, Arcade, Time Attack, Practice, Paint Shop,
- * Load/Save or Options; B goes back to the attract sequence. */
+ * Load/Save or Options; B goes back to the attract sequence.  Japan adds a
+ * cheat: holding 0x3000 and pressing 0x200 three times (letting go starts
+ * the count again) opens every car, track and weather. */
 /* @implements 0x802111E0 tgr BrMainMenu */
 void BrMainMenu(void)
 {
   static int entered = 0;         /* 0x80272384: 1 once set up, -1 = returning from a sub-screen */
+#if TGR_REGION_JPN
+  static int bangs = 0;           /* times the cheat combination was pressed */
+#endif
   static int sel;                 /* 0x80316384: the highlighted item */
 
   if (entered <= 0) {
@@ -151,4 +164,19 @@ void BrMainMenu(void)
     entered = 0;
     break;
   }
+#if TGR_REGION_JPN
+  if ((D_8036A8E0[0].pressed & 0x3000) == 0x3000) {
+    if (bangs < 3 && (D_8036A8E0[0].pressed & 0x200)) {
+      osSyncPrintf("BANG!\n");
+      BrPadConsume(&D_8036A8E0[0], 0x200);
+      if (++bangs == 3) {
+        D_8031B760[0].season->xce = 0xffff;
+        D_8031B760[0].season->unlocked = 0xffff;
+        D_8031B760[0].season->xd0 = 0xffff;
+      }
+    }
+  } else {
+    bangs = 0;
+  }
+#endif
 }
