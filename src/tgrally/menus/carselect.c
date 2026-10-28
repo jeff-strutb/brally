@@ -928,6 +928,21 @@ void BrCarSelect(void)
         sprintf(buf, "%%ry%s: %%i%s", D_80316290[1], D_80316270[1][D_80316278[1]]->label);
       }
       BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 3 / 5);
+#if TGR_REGION_JPN
+      BrTextSetFont(14);
+      BrTextAlignLeft();
+      if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
+        BrTextPrint("%ww%j\xD2\xD3" "2b3@sA5'", D_8028AAB0 / 16, D_8028AAB4 / 4 + 22);
+        BrTextPrint("%ww%j\xD2\xD3\x8D\x8F\xA1w", D_8028AAB0 / 16, D_8028AAB4 / 4 + 34);
+        BrTextPrint("%ww%j2Bc\xDB" "2@&", D_8028AAB0 / 16, D_8028AAB4 / 4 + 47);
+      }
+      if (D_803162B0[1] == 5 && D_80316278[1] != 1 && D_80316260[1] == 0) {
+        BrTextPrint("%ww%j\xD2\xD3" "2b3@sA5'", D_8028AAB0 / 16, D_8028AAB4 * 3 / 5 + 22);
+        BrTextPrint("%ww%j\xD2\xD3\x8D\x8F\xA1w", D_8028AAB0 / 16, D_8028AAB4 * 3 / 5 + 34);
+        BrTextPrint("%ww%j2Bc\xDB" "2@&", D_8028AAB0 / 16, D_8028AAB4 * 3 / 5 + 47);
+      }
+      BrTextSetFont(8);
+#else
       BrTextSetFont(8);
       BrTextAlignLeft();
       if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
@@ -944,6 +959,7 @@ void BrCarSelect(void)
         BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 45);
         BrTextPrint("%wwpressing A.", D_8028AAB0 * 11 / 16, D_8028AAB4 * 3 / 5 + 54);
       }
+#endif
       BrTextAlignRight();
       if (D_803162B0[0] == 0) {
         car = CAR(0);
