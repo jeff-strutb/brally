@@ -153,8 +153,13 @@ void BrPaintClearMenu(void)
   BrTextSetFont(16);
   BrTextPrint("%rySELECT OPTION", 0x9e, 0x4e);
   BrBevelPanel(0xba, r[0][1] + r[0][3] + 12, 0x10c, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  BrTextSetFont(11);
+#else
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#endif
   BrTextPrint(what[D_8028CFC0.x2c >> 1], 0x9e, 0x8e);
   BrTextPrint(to[D_8028CFC0.x2c & 1], 0x9e, 0x9b);
   BrTextSetFont(10);
@@ -240,7 +245,8 @@ void BrPaintClearMenu(void)
  * the chosen one framed in blue, a description of the choice below (which
  * side a mirror goes to, by the decal), and A (select) and B (cancel)
  * buttons.  Left/right move the choice; A applies it (mirror or flip); B
- * cancels back to the previous screen. */
+ * cancels back to the previous screen.  Europe looks the mirror lines up
+ * in a table by decal part instead of a switch. */
 /* @implements 0x8024843C tgr BrPaintMirrorMenu */
 void BrPaintMirrorMenu(void)
 {
@@ -251,6 +257,18 @@ void BrPaintMirrorMenu(void)
   int r[3][4];
   char *flip1[2] = { "FLIP CURRENT DECAL", "FLIP CURRENT DECAL" };
   char *flip2[2] = { "HORIZONTALLY", "VERTICALLY" };
+#if TGR_REGION_EUR
+  char *mirror[8][2] = {        /* by decal part: where its mirror goes */
+    { "MIRROR CURRENT DECAL", "TO THE RIGHT DOOR" },
+    { "MIRROR CURRENT DECAL", "TO THE LEFT DOOR" },
+    { "MIRROR CURRENT DECAL TO", "THE RIGHT FRONT FENDER" },
+    { "MIRROR CURRENT DECAL TO", "THE LEFT FRONT FENDER" },
+    { 0, 0 },
+    { 0, 0 },
+    { "MIRROR CURRENT DECAL TO", "THE RIGHT REAR FENDER" },
+    { "MIRROR CURRENT DECAL TO", "THE LEFT REAR FENDER" },
+  };
+#endif
 
   y = 0x155 - D_8028D0B0.w;
   bx = 0x163 - D_8028D0E0.w;
@@ -293,6 +311,10 @@ void BrPaintMirrorMenu(void)
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   if (D_8028DBB8 == 0) {
     if (D_8028DBCC != 0) {
+#if TGR_REGION_EUR
+      BrTextPrint(mirror[D_8028DB68][0], 0x9f, 0x87);
+      BrTextPrint(mirror[D_8028DB68][1], 0x9f, 0x94);
+#else
       switch (D_8028DB68) {
       case 0:
         BrTextPrint("MIRROR CURRENT DECAL", 0x9f, 0x87);
@@ -319,6 +341,7 @@ void BrPaintMirrorMenu(void)
         BrTextPrint("THE LEFT REAR FENDER", 0x9f, 0x94);
         break;
       }
+#endif
     } else {
       BrTextPrint("MIRROR IS NOT APPLICABLE", 0x9f, 0x87);
       BrTextPrint("TO THE CURRENT DECAL", 0x9f, 0x94);
