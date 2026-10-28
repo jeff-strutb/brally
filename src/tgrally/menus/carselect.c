@@ -665,7 +665,11 @@ void BrCarSelect(void)
   }
   for (p = 0; p < D_8026FF08; p++) {
     if (D_80316260[p] < 0.0f) {
+#if TGR_REGION_JPN
+      D_80316260[p] = D_80316260[p] + (D_8028AAD8 + D_8028AAD8);
+#else
       D_80316260[p] = D_80316260[p] + (dt + dt);
+#endif
       if (0.0f < D_80316260[p]) {
         D_80316260[p] = 0.0f;
       }
@@ -675,7 +679,11 @@ void BrCarSelect(void)
       }
 #endif
     } else if (0.0f < D_80316260[p]) {
+#if TGR_REGION_JPN
+      D_80316260[p] = D_80316260[p] - (D_8028AAD8 + D_8028AAD8);
+#else
       D_80316260[p] = D_80316260[p] - (dt + dt);
+#endif
       if (D_80316260[p] < 0.0f) {
         D_80316260[p] = 0.0f;
       }
