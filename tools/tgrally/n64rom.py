@@ -1,14 +1,16 @@
-"""Top Gear Rally (N64, USA) ROM analyser.
+"""Top Gear Rally (N64) ROM analyser.
 
-  TGR_ROM=<path to .z64> .venv/bin/python tools/tgrally/n64rom.py <cmd>
+  [TGR_REGION=usa|eur|jpn] .venv/bin/python tools/tgrally/n64rom.py <cmd>
 
     stats                 segment/function summary
     func   <vram>         disassemble the function containing <vram>
     dis    <vram> [n]     disassemble n instructions
     xref   <vram>         data xrefs + direct callers
     dumpxref <lo> <hi>    every data xref target in a vram range
+    funcs                 every function start, one per line
 
-Layout (verified): one resident segment, no overlays.
+Layout (verified, USA; the other regions' bounds are in region.py): one
+resident segment, no overlays.
   .text            rom 0x001000-0x070AB0  vram 0x80200000  883 functions
   .data/.rodata    rom 0x070AB0-0x0AD400
   .bss             vram 0x802AC400 + 0xD67B0   (zeroed by the entry stub)
@@ -17,11 +19,13 @@ Layout (verified): one resident segment, no overlays.
 import struct,collections,sys,json
 from capstone import *
 import os
-ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ROM=os.environ.get("TGR_ROM",os.path.join(ROOT,"reference/tgrally/Top Gear Rally (USA).z64"))
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+import region
+ROOT=region.ROOT
+ROM=region.ROM_PATH
 d=open(ROM,'rb').read(); n=len(d)
-BASE=0x80200000; ROMOFF=0x1000
-TEXT_S,TEXT_E=0x1000,0x70AB0
+BASE=region.BASE; ROMOFF=region.ROMOFF
+TEXT_S,TEXT_E=region.TEXT_S,region.TEXT_E
 def v2r(v): return v-BASE+ROMOFF
 def r2v(r): return r-ROMOFF+BASE
 def W(r): return struct.unpack('>I',d[r:r+4])[0]
@@ -138,6 +142,8 @@ if __name__=="__main__":
         e=F[i] if i<len(F) else r2v(TEXT_E)
         print("func %08X..%08X (%d bytes) callers=%d"%(s,e,e-s,len(calls.get(s,()))))
         for l in dis(s,(e-s)//4): print(l)
+    elif a[0]=='funcs':
+        for v in F: print("%08X"%v)
     elif a[0]=='dumpxref':
         lo=int(a[1],16); hi=int(a[2],16)
         for v in sorted(xref):

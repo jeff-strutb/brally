@@ -6,6 +6,7 @@
 | `excluded_tgr.csv` | game code left out of the target. Empty: the functions the retail game provably never runs are counted like the rest (the proof stays in each function's source header). |
 | `fenced_tgr.csv` | library code linked into the ROM, outside the target (the N64 counterpart of the PC lane's static CRT). |
 | `functions_tgr.csv` | the older cross-compile survey (`tools/tgrally/manifest.py`); not the tier record. |
+| `eur/addrmap.csv`, `jpn/addrmap.csv` | USA address -> its home in the Europe / Japan ROM, for the region sub-variants (`tools/tgrally/regionmap.py` writes them; `docs/tgrally/REGIONS.md`). |
 
 ## Why the fenced ranges are library code
 

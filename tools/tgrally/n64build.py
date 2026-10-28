@@ -32,6 +32,13 @@ Rules the builder enforces (they keep grading sound):
 
 Per-file compiler flags: a `/* n64-cflags: -O1 */` line in the file's first
 40 lines replaces the default optimisation flags.
+
+Regions: TGR_REGION=eur|jpn grades the same source against Europe's or
+Japan's ROM (tools/tgrally/region.py).  Every address the source writes is a
+USA address; it is translated through config/tgrally/<region>/addrmap.csv, and
+each compile sees -DTGR_REGION_EUR or -DTGR_REGION_JPN (USA: -DTGR_REGION_USA)
+so a body the region changed is written under `#if`.  A USA function the region
+does not have is ABSENT there.  The ledger goes to build/tgrally/n64-<region>.
 """
 import argparse
 import csv
@@ -42,19 +49,23 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ROM_PATH = os.environ.get('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import region  # noqa: E402
+
+ROOT = region.ROOT
+ROM_PATH = region.ROM_PATH
 CC = os.environ.get('TGR_CC', os.path.join(ROOT, 'tools/toolchains/ido53/cc'))
 SYMS = os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv')
-OUT = os.path.join(ROOT, 'build/tgrally/n64')
+OUT = region.build_dir()
 
-BASE, ROMOFF = 0x80200000, 0x1000
-TEXT_S, TEXT_E = 0x1000, 0x70AB0            # ROM offsets of .text
-DATA_E = 0xAD400                            # end of .data/.rodata in ROM
-BSS_S, BSS_E = 0x802AC400, 0x802AC400 + 0xD67B0
+BASE, ROMOFF = region.BASE, region.ROMOFF
+TEXT_S, TEXT_E = region.TEXT_S, region.TEXT_E      # ROM offsets of .text
+DATA_E = region.DATA_E                             # end of .data/.rodata in ROM
+BSS_S, BSS_E = region.BSS_S, region.BSS_E
 
 BASE_FLAGS = ['-c', '-mips2', '-non_shared', '-G', '0', '-w', '-Xfullwarn',
               '-Wab,-r4300_mul',          # the VR4300 multiply-errata nops
+              '-DTGR_REGION_' + region.REGION.upper(),
               '-I' + os.path.join(ROOT, 'src/tgrally/include')]
 DEFAULT_OPT = ['-O2']
 
@@ -115,13 +126,33 @@ def load_symbols():
 ADDR_NAME = re.compile(r'^(?:func|D|jtbl|L)_([0-9A-Fa-f]{8})$')
 
 
-def resolve(name, syms):
+def resolve_usa(name, syms):
     if name in syms:
         return syms[name]
     m = ADDR_NAME.match(name)
     if m:
         return int(m.group(1), 16)
     return None
+
+
+def resolve(name, syms):
+    """name -> its address in this region's ROM."""
+    v = resolve_usa(name, syms)
+    return None if v is None else region.to_region(v)
+
+
+def place(name, addend, syms):
+    """The region address of name+addend.  The USA address itself is looked
+    up first (the map pairs each referenced address), then the symbol's own
+    home plus the addend (an element of an array whose start is referenced)."""
+    v = resolve_usa(name, syms)
+    if v is None:
+        return None
+    t = region.to_region((v + addend) & 0xffffffff)
+    if t is None:
+        b = region.to_region(v)
+        t = None if b is None else (b + addend) & 0xffffffff
+    return t
 
 
 # ------------------------------------------------------------------ ELF32 BE
@@ -357,8 +388,8 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                 elif ss['type'] != 3 and ss['name']:
                     # a pointer initialiser: the symbol's address plus the
                     # addend stored in place
-                    v = fnvas.get(ss['name'], resolve(ss['name'], syms))
-                    want = None if v is None else (v + tgt) & 0xffffffff
+                    v = fnvas.get(ss['name'])
+                    want = (v + tgt) & 0xffffffff if v is not None else place(ss['name'], tgt, syms)
                 elif ss['type'] == 3:
                     # a pointer initialiser into another section of this
                     # object (a string in .rodata): that section's ROM base,
@@ -441,7 +472,14 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
                         continue
                     tgt = rom_va
             else:
-                tgt = (val + addend) & 0xffffffff
+                name = obj.syms[si]['name']
+                if obj.syms[si]['shndx'] == ti and name in fnvas:
+                    tgt = (fnvas[name] + addend) & 0xffffffff
+                else:
+                    tgt = place(name, addend, syms)
+                    if tgt is None:
+                        notes.append('%s+0x%X has no home in %s' % (name, addend, region.REGION))
+                        continue
             if typ == 5:
                 fixed[i] = (w & 0xFFFF0000) | (((tgt + 0x8000) >> 16) & 0xffff)
             else:
@@ -571,13 +609,16 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
     return out
 
 
-def tags_in(src):
-    """-> [(va, name, line)] for every @implements in the file."""
+def tags_in(src, usa=False):
+    """-> [(va, name, line)] for every @implements in the file, the VA in this
+    region's ROM (None where the region has no such function); usa=True keeps
+    the address as written."""
     out = []
     for i, l in enumerate(src.split('\n')):
         m = TAG.search(l)
         if m:
-            out.append((int(m.group(1), 16), m.group(2), i + 1))
+            v = int(m.group(1), 16)
+            out.append((v if usa else region.to_region(v), m.group(2), i + 1))
     return out
 
 
@@ -586,7 +627,11 @@ def build_file(path, rom, fmap, syms, want_diff=None):
     rel = os.path.relpath(path, ROOT)
     rows = []
     obj, err = compile_c(path)
-    tags = tags_in(src)
+    tags = [t for t in tags_in(src) if t[0] is not None]
+    for (uva, name, ln), (va, _, _) in zip(tags_in(src, usa=True), tags_in(src)):
+        if va is None:
+            rows.append(dict(va='%08X' % uva, name=name, file=rel, status='ABSENT', ndiff='',
+                             size=0, note='%s has no counterpart of this function' % region.REGION))
     if obj is None:
         for va, name, ln in tags:
             rows.append(dict(va='%08X' % va, name=name, file=rel, status='CCFAIL',
@@ -618,8 +663,9 @@ def build_file(path, rom, fmap, syms, want_diff=None):
                          size=fmap[va], note='; '.join(notes)[:300]))
         if want_diff is not None and want_diff == va:
             print_diff(va, ours, theirs)
+    absent = {name for va, name, ln in tags_in(src) if va is None}
     for name, p in have.items():
-        if name not in fnvas:
+        if name not in fnvas and name not in absent:
             rows.append(dict(va='', name=name, file=rel, status='UNTAGGED', ndiff='',
                              size=p[2] - p[1], note='defined but carries no @implements tag'))
     return rows
@@ -653,16 +699,19 @@ def all_sources():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('files', nargs='*')
-    ap.add_argument('--diff', help='print the side-by-side diff for this VA')
+    ap.add_argument('--diff', help='print the side-by-side diff for this (USA) VA')
     ap.add_argument('--csv', default=os.path.join(OUT, 'verify.csv'))
     ap.add_argument('-q', action='store_true', help='summary only')
     a = ap.parse_args()
+    region.check_rom()
     rom, fmap, syms = Rom(), function_map(), load_symbols()
     want = int(a.diff, 16) if a.diff else None
     files = [os.path.abspath(f) for f in a.files] or all_sources()
     if want is not None and not a.files:
         files = [f for f in all_sources()
-                 if any(v == want for v, _, _ in tags_in(open(f).read()))]
+                 if any(v == want for v, _, _ in tags_in(open(f).read(), usa=True))]
+    if want is not None:
+        want = region.to_region(want)           # --diff names the USA address
     rows = []
     for f in files:
         rows += build_file(f, rom, fmap, syms, want)
