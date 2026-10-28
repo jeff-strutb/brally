@@ -36,14 +36,19 @@ extern char D_803163E0[];
  * Returns 1 when the pak can be used.
  * The ROM's frame is 0x80 with the file-count word at sp+0x64: two
  * declared, never-used buffers around it (24 bytes above, 40 below) hold
- * their slots under IDO. */
+ * their slots under IDO.  Europe checks for its own codes ("7F", "NTRP"),
+ * and its frame is 0x68 (4 bytes above). */
 /* @implements 0x80254620 tgr BrPakCheckFiles */
 int BrPakCheckFiles(void)
 {
   static unsigned short bad = 0;          /* 0x8028DDA0: files whose state would not read */
   static int used;                        /* 0x8036A278 */
   static BrPfsState states[16];           /* 0x8036A280 */
+#if TGR_REGION_EUR
+  char unusedA[4];
+#else
   char unusedA[24];
+#endif
   int maxFiles;
   char unusedB[40];
   int i;
@@ -85,7 +90,11 @@ int BrPakCheckFiles(void)
   for (i = 0; i < 16; i++) {
     if (!(bad & (1 << i))) {
       osSyncPrintf("%d: %08x %04x\n", i, states[i].company, states[i].game);
+#if TGR_REGION_EUR
+      if (states[i].company != 0x4e545250 || states[i].game != 0x3746) {   /* "NTRP", "7F" */
+#else
       if (states[i].company != 0x4e475245 || states[i].game != 0x3544) {
+#endif
         D_802A4BE8 = 1;
         return 0;
       }
