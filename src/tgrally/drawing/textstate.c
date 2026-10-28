@@ -124,7 +124,7 @@ void BrJpGlyphLoad(void)
       if (a < 0) {
         BrRomRead((void *)dst, (int)(jpn_D_000DCF40 - a), a + b);
       } else {
-        BrRomRead(jpn_D_803525A0, (int)(jpn_D_000DCF40 + a), b - a);
+        BrRomRead(jpn_D_803525A0, (a | 0) + (int)jpn_D_000DCF40, b - a);
         BrRlePlanesUnpack((void *)dst, 0x5A0, jpn_D_803525A0, 1);
       }
       c += 0x20;
