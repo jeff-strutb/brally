@@ -179,7 +179,14 @@ typedef struct { char *n[4]; } BrPaintNames;
 extern BrPaintNames D_8028DCF4;        /* the four style names */
 extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
 extern BrPaintNames D_8028DD04;        /* and their names */
+/* Europe's BrImageDraw takes a palette for a 4-bit image; these pass none. */
+#if TGR_REGION_EUR
+void BrImageDraw(BrImage *img, void *tlut);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img, 0)
+#else
 void BrImageDraw(BrImage *img);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img)
+#endif
 extern BrImage D_8028D230;              /* the on-screen keyboard */
 extern BrImage D_8028D260;              /* the text box under it */
 extern unsigned char D_8028DBA4;        /* the key under the cursor */
@@ -528,10 +535,17 @@ void BrPaintExitPrompt(void)
       y = 285 - D_8028D0B0.w;
       bx = 361 - D_8028D0E0.w;
       BrBevelPanel(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextHighlightOff();
+      BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+      BrTextAlignLeft();
+      BrTextSetFont(12);
+#else
       BrTextSetFont(12);
       BrTextAlignLeft();
       BrTextHighlightOff();
       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+#endif
       BrTextPrint("CHANGES NOT SAVED.", 103, 109);
       BrTextPrint("EXIT ANYWAY?", 103, 123);
       BrTextSetFont(10);
@@ -591,7 +605,7 @@ void BrPaintKeyboard(void)
       BrImageDrawTinted((BrImage *)&D_8028D290, 0xff, 0xeb, 0);
     }
   }
-  BrImageDraw(&D_8028D230);
+  BR_IMAGE_DRAW(&D_8028D230);
   x = D_8028D230.x;
   y = D_8028D230.y + D_8028D230.h + 32;
   BrImageDrawRect(&D_8028D260, x, y, 200, 48, 0xe0, 0xe0, 0xe0);
@@ -1578,7 +1592,7 @@ void BrPaintOvalStyleSelect(void)
       BrImageDrawRect(D_8028DB44[i], D_8028DB44[i]->x, D_8028DB44[i]->y, D_8028DB44[i]->drawW,
                       D_8028DB44[i]->drawH, 0x20, 200, 0xff);
     } else {
-      BrImageDraw(D_8028DB44[i]);
+      BR_IMAGE_DRAW(D_8028DB44[i]);
     }
   }
   BrBevelPanel(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
