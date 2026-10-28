@@ -1523,10 +1523,15 @@ extern char eur_D_80274D90[];                   /* the reset-button thread */
 extern unsigned long long eur_D_8031B9B0[0x100];   /* and its stack */
 void BrPreNmiThread(void *arg);
 #endif
+#if TGR_REGION_JPN
+extern char jpn_D_80274860[];                   /* the reset-button thread */
+extern unsigned long long jpn_D_8031A5E0[0x100];   /* and its stack */
+void BrPreNmiThread(void *arg);
+#endif
 
 /* WHAT IT DOES: Bring up the scheduler side of the game: the two frame
  * buffers, the RSP, RDP and retrace event queues, the RSP and RDP event
- * threads (Europe also starts its reset-button thread), the controllers (through the SI queue), and for each controller
+ * threads (Europe and Japan also start the reset-button thread), the controllers (through the SI queue), and for each controller
  * with a pak that answers as a rumble pak, mark it and stop its motor.
  * When the second pak call fails the loop continues to the next controller,
  * which puts the loop bound ahead of the stored 1 when equal-priority
@@ -1558,6 +1563,11 @@ void BrSchedInit(void)
   osStartThread(D_80272B90);
   osCreateThread(eur_D_80274D90, 12, BrPreNmiThread, D_8026FF04, eur_D_8031B9B0 + 0x100, 60);
   osStartThread(eur_D_80274D90);
+#elif TGR_REGION_JPN
+  osCreateThread(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_803196D0 + 0x800, 60);
+  osStartThread(D_80272B90);
+  osCreateThread(jpn_D_80274860, 12, BrPreNmiThread, D_8026FF04, jpn_D_8031A5E0 + 0x100, 60);
+  osStartThread(jpn_D_80274860);
 #else
   osCreateThread(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_80319ED0, 60);
   osStartThread(D_80272B90);
@@ -1575,7 +1585,7 @@ void BrSchedInit(void)
         (D_8031A3D0[i].status & 1)) {
       r = func_80265CD0(D_80272D48, &D_8031A3F8[i], i);
       if (r != 0 && (r == 10 || r == 11)) {
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
         if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
           D_8031B1E8[i] = 1;
           func_80261F20(&D_8031A3F8[i]);
