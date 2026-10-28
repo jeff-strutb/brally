@@ -17,3 +17,5 @@ va,name,kind
 80274490,BrOptionsChanged,data
 8021B4E8,BrVideoBlank,func
 8021B54C,BrVideoUnblank,func
+80221774,BrEntLoadRecordPainted,func
+8022C340,BrDemoVarsLoad,func

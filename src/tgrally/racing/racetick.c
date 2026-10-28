@@ -206,6 +206,9 @@ void osViBlack(int black);
 #if TGR_REGION_JPN
 void BrScreenBlank(void);
 #define RACE_BLANK() BrScreenBlank()
+#elif TGR_REGION_EUR
+void BrVideoBlank(void);
+#define RACE_BLANK() BrVideoBlank()
 #else
 #define RACE_BLANK() osViBlack(1)
 #endif
@@ -269,9 +272,24 @@ int func_8021F380(int a, int b, float *at, int *c, int *d, int *e, int *f, int *
 void BrEntLoadRecord(BrCar *car, int slot, int kind);
 #if TGR_REGION_JPN
 void BrEntLoadRecordPainted(BrCar *car, int slot, int kind);
+#endif
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrDemoVarsLoad(void);
+#endif
+#if TGR_REGION_EUR
+void BrScreenDim(float level);
+#endif
+#if TGR_REGION_EUR
+extern int eur_D_8028DEC0;              /* demo frames played */
+extern int eur_D_80272798;              /* the FINISH! cheat */
+#define DEMO_FRAMES eur_D_8028DEC0
+#define CHEAT_FINISH eur_D_80272798
+#endif
+#if TGR_REGION_JPN
 extern int jpn_D_8028D8F0;              /* demo frames played */
 extern int jpn_D_80272248;              /* the FINISH! cheat */
+#define DEMO_FRAMES jpn_D_8028D8F0
+#define CHEAT_FINISH jpn_D_80272248
 #endif
 void BrScreenFlashClear(void);
 void BrScreenFlashDraw(void);
@@ -364,7 +382,9 @@ void BrTriCacheReset(void);
  * entity, flies the airplane, draws each view (and the rear-view mirror)
  * with the HUD or the replay captions, runs the pause menu, and once the
  * screen has faded out picks the next game mode: the replay, results, the
- * next race or the menus.
+ * next race or the menus.  Europe and Japan add the intro demo (Mountain,
+ * resynced every frame from the demo variables) and the FINISH! cheat;
+ * Europe's demo cuts at 170 s and 42 s and dims over its last half-second.
  */
 /* @implements 0x8020082C tgr BrRaceTick */
 void BrRaceTick(void)
@@ -620,7 +640,7 @@ void BrRaceTick(void)
     D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
       D_8031B760[0].cam = &D_8031B760[0].cams[1];
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
       if (D_8026FF1C == 0) {
         D_8028B7F8 = 0;
       } else {
@@ -701,7 +721,7 @@ void BrRaceTick(void)
       D_802F7EF8 = 4;
     } else if (D_8026FF18 == 5) {
       D_802F7EF8 = 4;
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
     } else if (D_8026FF18 == 4 && D_8026FF1C == 0) {
       D_802F7EF8 = 4;
 #endif
@@ -740,10 +760,10 @@ void BrRaceTick(void)
       BrRaceClockReset();
       BrSndNearestReset();
     }
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
     D_80315E70 = 0;
     D_8028A884 = 0;
-    jpn_D_8028D8F0 = -1;
+    DEMO_FRAMES = -1;
 #else
     D_8028A884 = 0;
 #endif
@@ -751,7 +771,7 @@ void BrRaceTick(void)
 
   /* ---- every frame ---- */
   D_802A4C04 = 0;
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
   BrDemoVarsLoad();
 #endif
   if (D_80315E78 == 4) {
@@ -759,6 +779,12 @@ void BrRaceTick(void)
       func_8022AF90(&D_8031B760[i]);
     }
   }
+#if TGR_REGION_EUR
+  /* Europe flips it every frame; the attract-race test is left empty */
+  D_802A4A30 ^= 1;
+  if (D_8026FF18 != 4) {
+  }
+#else
 #if TGR_REGION_JPN
   if (D_8026FF18 != 4 || D_8026FF1C == 0) {
 #else
@@ -766,6 +792,7 @@ void BrRaceTick(void)
 #endif
     D_802A4A30 ^= 1;
   }
+#endif
   /* the replay ends when the recordings run out */
   if (D_80270788 != 0 && D_80315E78 == 4) {
     if (D_8026FF18 == 1) {
@@ -860,7 +887,12 @@ void BrRaceTick(void)
     goto timer;
   } else if (D_80315E78 == 4) {
     running = 1;
-#if TGR_REGION_JPN
+#if TGR_REGION_EUR
+    if (((D_8026FF18 == 4
+          && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 170.0f)
+              || (D_8026FF1C == 1 && D_8031B760[0].lapTime > 42.0f)
+              || (D_8026FF1C == 0 && PAD(0)->ghostPos == PAD(0)->ghostLen)))
+#elif TGR_REGION_JPN
     if (((D_8026FF18 == 4
           && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
               || (D_8026FF1C == 1 && D_8031B760[0].lapTime > 39.6f)
@@ -1292,9 +1324,9 @@ draw:
   }
   BrStub80217C8C();
   BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
   /* the FINISH! cheat: both cars have done every lap */
-  if (jpn_D_80272248 != 0) {
+  if (CHEAT_FINISH != 0) {
     D_8031B760[0].xfac = 0;
     D_8031B760[0].laps = D_8028B304;
     D_803239A0[0].flags &= 1;
@@ -1307,7 +1339,7 @@ draw:
     if (D_80315E78 < 4) {
       D_80315E78 = 4;
     }
-    jpn_D_80272248 = 0;
+    CHEAT_FINISH = 0;
   }
 #endif
 
@@ -1494,10 +1526,14 @@ draw:
   func_8021A5B8();
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrFrameSetHook((int)BrRaceDrawLayers);
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
   /* the intro demo's last half-second goes to black */
   if (D_8026FF18 == 4 && D_8026FF1C == 0 && PAD(0)->ghostLen - 30 <= PAD(0)->ghostPos) {
+#if TGR_REGION_EUR
+    BrScreenDim((PAD(0)->ghostLen - PAD(0)->ghostPos) / 30.0f);
+#else
     BrScreenClear(0, 0, 0);
+#endif
   }
 #endif
   BrFrameEnd();
