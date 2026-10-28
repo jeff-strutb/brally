@@ -6,6 +6,7 @@
 /* -- declarations -- */
 void func_8021D140(int param_1,unsigned int param_2,unsigned int param_3,int param_4);
 void func_80222D54(int param_1);
+void func_8021D2A0(int param_1,int param_2);
 void BrCarModelInstall(int slot, int car, void *src);
 unsigned int BrRomReadSize(int rom);
 void osSyncPrintf(char *fmt, ...);
@@ -36,24 +37,45 @@ extern char D_803D5F88[];
 
 /* WHAT IT DOES: Repaint a car's artwork record in the car's own colour (its
  * red, green and blue reduced to the 5-bit texture format), then refresh
- * what depends on it. */
+ * what depends on it.  Japan's cars keep their liveries: it only refreshes. */
 /* @implements 0x80220398 tgr BrEntRefreshColour */
 void BrEntRefreshColour(int param_1)
 {
+#if !TGR_REGION_JPN
   func_8021D140(*(int *)(param_1 + 0x2078),(int)(unsigned int)*(unsigned char *)(param_1 + 0x2060) >> 3,
                (int)(unsigned int)*(unsigned char *)(param_1 + 0x2061) >> 3,
                (int)(unsigned int)*(unsigned char *)(param_1 + 0x2062) >> 3);
+#endif
   func_80222D54(param_1);
 }
 
 /* WHAT IT DOES: Load a car into its slot and attach that car's artwork
- * record to the entity, repainting it. */
+ * record to the entity, repainting it.  In Japan the car instead takes its
+ * colour from the record's livery. */
 /* @implements 0x80220438 tgr BrEntLoadRecord */
 void BrEntLoadRecord(int param_1,int param_2,int param_3)
 {
   BrCarModelInstall(param_2,param_3,0);
   func_802203F0(param_1,param_2);
+#if TGR_REGION_JPN
+  func_8021D2A0(param_1,*(int *)(param_1 + 0x2078));
+#endif
 }
+
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Load a car into its slot, attach that car's artwork record
+ * to the entity and paint it in the car's own colour (Japan only: the
+ * paint-shop colour over the livery). */
+/* @implements jpn:0x80220F38 tgr BrEntLoadRecordPainted */
+void BrEntLoadRecordPainted(int param_1,int param_2,int param_3)
+{
+  BrCarModelInstall(param_2,param_3,0);
+  func_802203F0(param_1,param_2);
+  func_8021D140(*(int *)(param_1 + 0x2078),(int)(unsigned int)*(unsigned char *)(param_1 + 0x2060) >> 3,
+               (int)(unsigned int)*(unsigned char *)(param_1 + 0x2061) >> 3,
+               (int)(unsigned int)*(unsigned char *)(param_1 + 0x2062) >> 3);
+}
+#endif
 
 /* WHAT IT DOES: Start streaming car n's model file from ROM into a slot's
  * model buffer through one of the 32 KB stream buffers, recording its size
