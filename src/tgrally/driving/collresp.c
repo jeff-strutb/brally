@@ -700,7 +700,9 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * case is the else); each half-extent sign is a conditional expression; the
  * plane offset and the push-out distance add the first two products and
  * then the third; the last two angular copies share a line.  Europe has no
- * game-mode-4 special cases: every contact is a cube edge on a triangle. */
+ * game-mode-4 special cases: every contact is a cube edge on a triangle.
+ * Japan computes the plane offset before the flag and counter stores, so
+ * the axis test reloads the normal. */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
@@ -743,10 +745,17 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       continue;
     }
     BrVec3NormaliseF(nrm);
+#if TGR_REGION_JPN
+    planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+    flag = 1;
+    D_802A4A28 = 0;
+    cnt++;
+#else
     flag = 1;
     D_802A4A28 = 0;
     cnt++;
     planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+#endif
 #if !TGR_REGION_EUR
 #if TGR_REGION_JPN
     if (D_8026FF18 == 4 && D_8026FF1C != 0) {   /* not in the demos */
