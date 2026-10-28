@@ -204,7 +204,7 @@ void BrCarRespawn(BrCar *car)
 {
   if (car->x340 < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
     func_80222D54(car);
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
     if (D_8026FF18 == 2 || D_8026FF18 == 4) {
 #else
     if (D_8026FF18 == 2) {
@@ -280,7 +280,7 @@ float sqrtf(float x);
 void BrCamShakeAdd(int slot, float s);
 /* -- end declarations -- */
 
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 /* WHAT IT DOES: Put a car on the nearest trackside camera: the camera
  * checkpoint closest to it (squared distance, any checkpoint more than 10
  * below the car skipped) becomes the fourth camera's position when it is
@@ -289,6 +289,7 @@ void BrCamShakeAdd(int slot, float s);
  * views, alternately, and keeps it for 60 frames.  The USA build does this
  * inline in BrCarPlayerCtl; Europe's intro demo also calls it. */
 /* @implements eur:0x802277D0 tgr BrCamTracksidePick */
+/* @implements jpn:0x80226FC0 tgr BrCamTracksidePick */
 void BrCamTracksidePick(BrCar *car)
 {
   static int D_8028B9EC = 0;
@@ -371,7 +372,7 @@ void BrCamTracksidePick(BrCar *car)
 /* @implements 0x80226488 tgr BrCarPlayerCtl */
 void BrCarPlayerCtl(BrCar *car)
 {
-#if !TGR_REGION_EUR
+#if !(TGR_REGION_EUR || TGR_REGION_JPN)
   static int D_8028B9EC = 0;
   float b[3];
   BrVec3 *p;
@@ -391,7 +392,7 @@ void BrCarPlayerCtl(BrCar *car)
   float s;
   int i;
   float dy;
-#if !TGR_REGION_EUR
+#if !(TGR_REGION_EUR || TGR_REGION_JPN)
   int u2;
 #endif
 
@@ -414,7 +415,7 @@ void BrCarPlayerCtl(BrCar *car)
   } else if ((D_8026FF18 == 4 || D_8026FF18 == 5 || D_80270788 != 0) && VIEWED) {
     if (D_8028B7F8 == 0) {
 scan:
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
       BrCamTracksidePick(car);
 #else
       best = 16777216.0f;
