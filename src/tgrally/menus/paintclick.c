@@ -186,8 +186,10 @@ void BrPaintClick(void)
           D_8028DB7C = D_8028AB08->masks[D_8028DB68];
           D_8028DB88 = D_8028AB08->parts[D_8028AB08->decalPart[i]].w;
           D_8028DB8C = D_8028AB08->parts[D_8028AB08->decalPart[i]].h;
+#if !TGR_REGION_JPN
           osSyncPrintf("decal_width = %d\n", D_8028DB88);
           osSyncPrintf("decal_height = %d\n", D_8028DB8C);
+#endif
           w = (D_8028D470.w - D_8028DB88 * 4) >> 1;
           h = (D_8028D470.h - D_8028DB8C * 4) >> 1;
           D_8028DB94.x = D_8028D470.x + w;
