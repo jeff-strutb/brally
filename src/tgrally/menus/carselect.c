@@ -1203,6 +1203,117 @@ void BrCarSelect(void)
               }
             }
           }
+#if TGR_REGION_JPN
+          /* the decal choice (step 5): left and right */
+          if (D_803162B0[p] == 5) {
+            if (((BrPadRec *)car->pad)->pressed & 4) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
+              D_80316260[p] = 1.0f;
+              goto tick5;
+            }
+            if (((BrPadRec *)car->pad)->pressed & 1) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + 1) % D_80316288[p];
+              D_80316260[p] = -1.0f;
+            tick5:
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, D_8031629C, D_803162A0, 0);
+              }
+            }
+          }
+          if (D_80316260[p] != 0.0f) {
+            continue;
+          }
+          /* the colour, on the car and on the decals */
+          if (D_803162B0[p] == 0 || D_803162B0[p] == 5) {
+            if (((BrPadRec *)car->pad)->pressed & 0x400) {
+              BrPadConsume((BrPadRec *)car->pad, 0x400);
+              if (car->season->unlocked & 0x8000) {
+                car->x2068 ^= 1;
+              }
+            }
+            a = ((BrPadRec *)car->pad)->pressed;
+            if (a & 8) {
+              if (a & 0x800) {
+                if (car->colour[0] < 0xF8) {
+                  car->colour[0] += 8;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                } else {
+                  car->colour[0] = 0xFF;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                }
+              }
+              if (a & 0x100) {
+                if (car->colour[1] < 0xF8) {
+                  car->colour[1] += 8;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                } else {
+                  car->colour[1] = 0xFF;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                }
+              }
+              if (a & 0x200) {
+                if (car->colour[2] < 0xF8) {
+                  car->colour[2] += 8;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                } else {
+                  car->colour[2] = 0xFF;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                }
+              }
+            }
+            if (a & 2) {
+              if (a & 0x800) {
+                if (car->colour[0] < 8) {
+                  car->colour[0] = 0;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                } else {
+                  car->colour[0] -= 8;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                }
+              }
+              if (a & 0x100) {
+                if (car->colour[1] < 8) {
+                  car->colour[1] = 0;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                } else {
+                  car->colour[1] -= 8;
+                  a = ((BrPadRec *)car->pad)->pressed;
+                }
+              }
+              if (a & 0x200) {
+                if (car->colour[2] < 8) {
+                  car->colour[2] = 0;
+                } else {
+                  car->colour[2] -= 8;
+                }
+              }
+            }
+            BrEntPaintTexture((int)&D_803C8000[D_80316258[p]], car->colour[0] >> 3, car->colour[1] >> 3,
+                              car->colour[2] >> 3);
+          }
+          /* the setup choice (steps 1-4): left and right */
+          if (D_803162B0[p] != 0 && D_803162B0[p] != 5) {
+            if (((BrPadRec *)car->pad)->pressed & 4) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + D_80316288[p] - 1) % D_80316288[p];
+              D_80316260[p] = 1.0f;
+              goto tick;
+            }
+            if (((BrPadRec *)car->pad)->pressed & 1) {
+              D_80316280[p] = D_80316278[p];
+              D_80316278[p] = (D_80316278[p] + 1) % D_80316288[p];
+              D_80316260[p] = -1.0f;
+            tick:
+              v = BrSfxFreeVoice();
+              if (v != -1) {
+                BrSfxVoiceStart(v, D_8031629C, D_803162A0, 0);
+              }
+            }
+          }
+#else
           /* the colour, on the car and on the decals */
           if (D_803162B0[p] == 0 || D_803162B0[p] == 5) {
             if (((BrPadRec *)car->pad)->pressed & 0x400) {
@@ -1291,6 +1402,7 @@ void BrCarSelect(void)
               }
             }
           }
+#endif
           pad = (BrPadRec *)car->pad;
           if (pad->pressed & 0x20) {
             /* back */
