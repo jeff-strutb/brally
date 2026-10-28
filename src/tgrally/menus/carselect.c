@@ -481,12 +481,20 @@ void BrCarSelect(void)
   BrCar *car;
   char buf[256];
   char time[36];
+#if TGR_REGION_JPN
+  int total;
+#else
   unsigned int round;
+#endif
   unsigned int race;
   int tr;
   unsigned int pl;
   int x;
+#if TGR_REGION_JPN
+  unsigned int round;
+#else
   int total;
+#endif
   int a;
   int back;
   short v;
@@ -772,7 +780,11 @@ void BrCarSelect(void)
 
   /* ---- the title ---- */
   if (D_803162AC != 0 || BrFadeAtTarget() == 0) {
+#if TGR_REGION_JPN
+    BrRomImageDraw(&D_8027205C, 0x19, 0xE, 0x118, 0x20, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 2);
+#else
     BrRomImageDraw(&D_8027205C, 0x16, 9, 0x118, 0x2A, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 2);
+#endif
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextSetFont(30);

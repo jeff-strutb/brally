@@ -155,8 +155,6 @@ void BrJpGlyphLoad(void)
 void BrTextEmitString(unsigned char *s)
 {
 #if TGR_REGION_JPN
-  int size;
-  int x;
   int w;
   int adv;
   int uls;
@@ -181,6 +179,8 @@ void BrTextEmitString(unsigned char *s)
   unsigned char g;
   int small;
   unsigned char *p;
+  int size;
+  int x;
 
   lastW = -1;
   lastCell = -1;
