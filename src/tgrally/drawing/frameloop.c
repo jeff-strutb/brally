@@ -1482,9 +1482,15 @@ void BrCamShakeAdd(int cam, float amount)
   }
 }
 
+#if TGR_REGION_EUR
+extern char eur_D_80274D90[];                   /* the reset-button thread */
+extern unsigned long long eur_D_8031B9B0[0x100];   /* and its stack */
+void BrPreNmiThread(void *arg);
+#endif
+
 /* WHAT IT DOES: Bring up the scheduler side of the game: the two frame
  * buffers, the RSP, RDP and retrace event queues, the RSP and RDP event
- * threads, the controllers (through the SI queue), and for each controller
+ * threads (Europe also starts its reset-button thread), the controllers (through the SI queue), and for each controller
  * with a pak that answers as a rumble pak, mark it and stop its motor.
  * When the second pak call fails the loop continues to the next controller,
  * which puts the loop bound ahead of the stored 1 when equal-priority
@@ -1511,8 +1517,15 @@ void BrSchedInit(void)
   osViSetEvent(D_8031A390, D_8031A3CC, 1);
   osCreateThread(D_802729E0, 10, BrSpEventThread, D_8026FF04, D_803196D0, 60);
   osStartThread(D_802729E0);
+#if TGR_REGION_EUR
+  osCreateThread(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_803196D0 + 0x800, 60);
+  osStartThread(D_80272B90);
+  osCreateThread(eur_D_80274D90, 12, BrPreNmiThread, D_8026FF04, eur_D_8031B9B0 + 0x100, 60);
+  osStartThread(eur_D_80274D90);
+#else
   osCreateThread(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_80319ED0, 60);
   osStartThread(D_80272B90);
+#endif
   D_8028A8B0 = 46875.0f;
   osCreateMesgQueue(q, &msg, 1);
   osSetEventMesg(5, q, 1);
@@ -1526,11 +1539,18 @@ void BrSchedInit(void)
         (D_8031A3D0[i].status & 1)) {
       r = func_80265CD0(D_80272D48, &D_8031A3F8[i], i);
       if (r != 0 && (r == 10 || r == 11)) {
+#if TGR_REGION_EUR
+        if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+          D_8031B1E8[i] = 1;
+          func_80261F20(&D_8031A3F8[i]);
+        }
+#else
         if (func_80262370(D_80272D48, &D_8031A3F8[i], i) != 0) {
           continue;
         }
         D_8031B1E8[i] = 1;
         func_80261F20(&D_8031A3F8[i]);
+#endif
       }
     }
   }
