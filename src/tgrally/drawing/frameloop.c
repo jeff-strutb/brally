@@ -1425,28 +1425,44 @@ void BrDpEventThread(void *arg)
   }
 }
 
+#if TGR_REGION_EUR || TGR_REGION_JPN
 #if TGR_REGION_EUR
 extern int eur_D_8031C870[];            /* the reset button's queue */
 extern int eur_D_8031C888[];
+void BrVideoBlank(void);
+#define PRENMI_QUEUE eur_D_8031C870
+#define PRENMI_MSG eur_D_8031C888
+#define PRENMI_RESET eur_D_8028CA8C
+#define PRENMI_BLANK BrVideoBlank
+#else
+extern int jpn_D_8031B4A0[];            /* the reset button's queue */
+extern int jpn_D_8031B4B8[];
+extern int jpn_D_8028C55C;              /* the reset button was pressed */
+void BrScreenBlank(void);
+#define PRENMI_QUEUE jpn_D_8031B4A0
+#define PRENMI_MSG jpn_D_8031B4B8
+#define PRENMI_RESET jpn_D_8028C55C
+#define PRENMI_BLANK BrScreenBlank
+#endif
 extern unsigned char D_802A49C4;        /* music volume */
 extern unsigned char D_802A49CC;        /* effects volume */
-void BrVideoBlank(void);
 
-/* WHAT IT DOES: Europe's reset-button thread: wait for the pre-NMI event
- * (the console's reset button) and, each time it comes, mute the music and
- * the effects, note the reset and blank the picture, so the reset is clean.
- * Never returns. */
+/* WHAT IT DOES: The reset-button thread (Europe and Japan): wait for the
+ * pre-NMI event (the console's reset button) and, each time it comes, mute
+ * the music and the effects, note the reset and blank the picture, so the
+ * reset is clean.  Never returns. */
 /* @implements eur:0x8021CE88 tgr BrPreNmiThread */
+/* @implements jpn:0x8021C758 tgr BrPreNmiThread */
 void BrPreNmiThread(void *arg)
 {
-  osCreateMesgQueue(eur_D_8031C870, eur_D_8031C888, 1);
-  osSetEventMesg(14, eur_D_8031C870, D_8031A3CC);       /* OS_EVENT_PRENMI */
+  osCreateMesgQueue(PRENMI_QUEUE, PRENMI_MSG, 1);
+  osSetEventMesg(14, PRENMI_QUEUE, D_8031A3CC);       /* OS_EVENT_PRENMI */
   for (;;) {
-    osRecvMesg(eur_D_8031C870, 0, 1);
+    osRecvMesg(PRENMI_QUEUE, 0, 1);
     D_802A49CC = 0;
     D_802A49C4 = 0;
-    eur_D_8028CA8C = 1;
-    BrVideoBlank();
+    PRENMI_RESET = 1;
+    PRENMI_BLANK();
   }
 }
 #endif
