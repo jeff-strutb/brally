@@ -28,6 +28,9 @@ void osViBlack(char param_1);
 extern int D_8028A884;
 #if TGR_REGION_JPN
 extern int jpn_D_8028C844;               /* the picture is blanked */
+extern int jpn_D_8028C55C;               /* the reset button was pressed */
+void BrJpGlyphLoad(void);
+void BrScreenUnblank(void);
 #endif
 #if TGR_REGION_EUR
 typedef struct BrViField {      /* libultra's OSViFieldRegs */
@@ -1096,6 +1099,9 @@ void BrFrameEnd(void)
       D_8031B31C();
       D_8031B31C = 0;
     }
+#if TGR_REGION_JPN
+    BrJpGlyphLoad();
+#endif
     osWritebackDCacheAll();
     D_8028AAE8 = osGetCount(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
@@ -1124,7 +1130,9 @@ void BrFrameEnd(void)
             osViSetMode(D_802A54B0);
           }
         }
+#if !TGR_REGION_JPN
         osViBlack(1);
+#endif
 #endif
         D_8028A854 = D_8028A850;
       }
@@ -1142,6 +1150,12 @@ void BrFrameEnd(void)
 #if TGR_REGION_EUR
     if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
       BrVideoUnblank();
+    } else {
+      /* the empty arm is the ROM's block layout */
+    }
+#elif TGR_REGION_JPN
+    if (D_8028A884 == 0 && D_8028A888 == 0 && jpn_D_8028C55C == 0) {
+      BrScreenUnblank();
     } else {
       /* the empty arm is the ROM's block layout */
     }
