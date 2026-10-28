@@ -87,12 +87,21 @@ int osPfsFreeBlocks(BrPfs *pfs, int *bytes);
 int osPfsAllocateFile(BrPfs *pfs, unsigned short company, unsigned int game, char *name,
                       unsigned char *ext, int size, int *file);
 /* The game's Controller Pak notes: company and game code. */
-#if TGR_REGION_EUR
+#if TGR_REGION_JPN
+#define PAK_COMPANY 0x3238      /* "28" */
+#define PAK_GAME 0x4E54524A     /* "NTRJ" */
+#elif TGR_REGION_EUR
 #define PAK_COMPANY 0x3746      /* "7F" */
 #define PAK_GAME 0x4E545250     /* "NTRP" */
 #else
 #define PAK_COMPANY 0x3544      /* "5D" */
 #define PAK_GAME 0x4E475245     /* "NGRE" */
+#endif
+/* Japan's pak check logs nothing. */
+#if TGR_REGION_JPN
+#define CPAK_LOG(args)
+#else
+#define CPAK_LOG(args) osSyncPrintf args
 #endif
 /* -- end declarations -- */
 
@@ -281,7 +290,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
       D_802724F0 = 1;
       state = 9;
     } else {
-      osSyncPrintf("\nInitializing controller pak...\n");
+      CPAK_LOG(("\nInitializing controller pak...\n"));
       D_802724F0 = func_80261CB0(&D_80272D48, &D_80369EC0[D_80271FA8], D_80271FA8);
       if (D_802724F0 != 0) {
         if (D_802724F0 == 10) {         /* a Rumble Pak */
@@ -327,6 +336,15 @@ int BrCpakCheck(int kind, unsigned char quiet)
     } else {
       BrTextHighlightOff();
       BrTextAlignLeft();
+#if TGR_REGION_JPN
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      BrTextSetFont(14);
+      func_80246F90(0x99, 0xC3, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 113);
+      BrTextPrint("%j2Bq6hc@6R&", 84, 126);
+      BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 145);
+      BrTextPrint("%j\xDE@6R&", 84, 158);
+#else
 #if TGR_REGION_EUR
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
       BrTextSetFont(12);
@@ -339,6 +357,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
       BrTextPrint("WAS INSERTED.", 95, 126);
       BrTextPrint("THIS CONTROLLER PAK", 95, 145);
       BrTextPrint("WILL BE USED.", 95, 158);
+#endif
       if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
         BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
         state = 5;
@@ -346,7 +365,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 5:                       /* find the file */
-    osSyncPrintf("Finding file...\n");
+    CPAK_LOG(("Finding file...\n"));
     D_802724F0 = osPfsFindFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, &file);
     if (D_802724F0 == 3) {
       func_80262A80(&D_80369EC0[D_80271FA8]);
@@ -367,6 +386,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 6:                       /* load */
+#if !TGR_REGION_JPN
     if (kind == 0) {
       osSyncPrintf("Loading season data...\n");
     } else if (kind == 1) {
@@ -374,6 +394,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     } else if (kind == 2) {
       osSyncPrintf("Loading configuration...\n");
     }
+#endif
     if (kind != 2) {
       D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 0, 0, size, D_80272500);
     } else {
@@ -393,16 +414,16 @@ int BrCpakCheck(int kind, unsigned char quiet)
         D_8031B760[D_80271FA8 ^ 1].season->xdc = opts[2];
         D_8031B760[D_80271FA8 ^ 1].season->xe0 = opts[3];
         D_8031B760[D_80271FA8 ^ 1].season->xe4 = opts[4];
-        osSyncPrintf("Done!\n");
+        CPAK_LOG(("Done!\n"));
       } else if (kind == 1) {
-        osSyncPrintf("Extracting ghost data...\n");
+        CPAK_LOG(("Extracting ghost data...\n"));
         D_80270784 = func_8021CB4C(&D_80307F00, 0xDE5C, D_80272500, 2);
         D_8031B760[0].season->xce |= 1 << (&D_80307F00)[0];
         D_8031B760[0].season->unlocked |= 1 << (&D_80307F00)[1];
-        osSyncPrintf("Done!\n");
+        CPAK_LOG(("Done!\n"));
       } else if (kind == 2) {
         memcpy(&D_802723D0, D_80272500, 12);
-        osSyncPrintf("Loading car equipment settings...\n");
+        CPAK_LOG(("Loading car equipment settings...\n"));
         D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
           memcpy(opts, D_80272500, 20);
@@ -411,7 +432,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
           D_8031B760[D_80271FA8].season->xdc = opts[2];
           D_8031B760[D_80271FA8].season->xe0 = opts[3];
           D_8031B760[D_80271FA8].season->xe4 = opts[4];
-          osSyncPrintf("Done!\n");
+          CPAK_LOG(("Done!\n"));
         } else {
           state = 9;
         }
@@ -436,7 +457,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
         D_802724F0 = 7;
         state = 9;
       } else {
-        osSyncPrintf("Allocating %d bytes for configuration...\n", 0x100);
+        CPAK_LOG(("Allocating %d bytes for configuration...\n", 0x100));
         D_802724F0 = osPfsAllocateFile(&D_80369EC0[D_80271FA8], PAK_COMPANY, PAK_GAME, name, ext, 0x100, &file);
         if (D_802724F0 == 3) {
           func_80262A80(&D_80369EC0[D_80271FA8]);
@@ -453,7 +474,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     break;
   case 8:                       /* save the configuration */
-    osSyncPrintf("Saving configuration...\n");
+    CPAK_LOG(("Saving configuration...\n"));
     memcpy(D_80272500, &D_802723D0, 12);
     D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 1, 0, 0x80, D_80272500);
     if (D_802724F0 != 0) {
@@ -467,7 +488,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
       memcpy(D_80272500, opts, 20);
       D_802724F0 = osPfsReadWriteFile(&D_80369EC0[D_80271FA8], file, 1, 0x80, 0x80, D_80272500);
       if (D_802724F0 == 0) {
-        osSyncPrintf("Done!\n");
+        CPAK_LOG(("Done!\n"));
         state = 11;
       } else {
         state = 9;
@@ -480,6 +501,76 @@ int BrCpakCheck(int kind, unsigned char quiet)
       break;
     }
     BrTextHighlightOff();
+#if TGR_REGION_JPN
+    BrTextAlignLeft();
+    BrTextSetFont(14);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+    switch (D_802724F0) {
+    case 10:
+      func_80246F90(0x50, 0xD9, 0x1E0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9'qghc@6R&", 48, 124);
+      BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'2Bc\xDB" "2@&", 48, 138);
+      break;
+    case 1:
+    case 11:
+      func_80246F90(0x94, 0xD8, 0x158, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "90H6b\x7F&", 82, 124);
+      if (kind == 3) {
+        BrTextPrint("%j\xBB(\x83w\xB2(\xACkA6b\x7F&", 82, 138);
+      } else {
+        BrTextPrint("%j\xBB(\x83w\xC8(\xCBkA6b\x7F&", 82, 138);
+      }
+      break;
+    case 9999:
+      y = 0x13B - D_8028D0C0;
+      func_80246F90(0xC8, 0xBD, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1s", 108, 110);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w", 108, 123);
+      BrTextPrint("%j\xD4\xD5" "Bc\xDB" "2@&", 108, 136);
+      BrTextAlignLeft();
+      BrTextSetFont(10);
+      BrTextPrint("%wwOK", (D_8028D0C0 + 0xDEU) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwCANCEL", (D_8028D0F0 + 0x14AU) >> 1, (y + 18) >> 1);
+      BrImageDrawAt(&D_8028D0B0, 0xD8, y);
+      BrImageDrawAt(&D_8028D0E0, 0x144, y);
+      break;
+    case 7:
+    case 8:
+      func_80246F90(0xA5, 0xBD, 0x136, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 90, 110);
+      BrTextPrint("%j\xE1" "A\xBD(\x9A" "90H6b\x7F&", 90, 123);
+      BrTextPrint("%j\xC0\xAD\x92\xBF\xCF\xBB(\x83w\xB2(\xACRXD5", 90, 142);
+      BrTextPrint("1%j\xBD(\x9A\xD6\xD7kR&", 90, 155);
+      break;
+    case 4:
+      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88" "D\xB0\x88(", 103, 124);
+      BrTextPrint("%j9\xED\xEE" "B6B3&", 103, 138);
+      break;
+    case 5:
+      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      if (kind == 3) {
+        BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", 95, 124);
+        BrTextPrint("%j9\xD0\xD1kR&", 95, 138);
+      } else {
+        BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 95, 124);
+        BrTextPrint("%j\xBB(\x83" "90H6b\x7F&", 95, 138);
+      }
+      break;
+    case 2:
+      func_80246F90(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 108);
+      BrTextPrint("%j2Bq6hc@6R&", 84, 121);
+      BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 140);
+      BrTextPrint("%j\xDE@6R&", 84, 153);
+      break;
+    default:
+      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", 95, 124);
+      BrTextPrint("%j9\xD0\xD1kR&", 95, 138);
+      break;
+    }
+#else
     BrTextAlignLeft();
     BrTextSetFont(12);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -555,6 +646,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
 #endif
       break;
     }
+#endif
     if (D_802724F0 != 9999) {
       if (D_8036A8E0[D_80271FA8].pressed & 0x8030) {
         BrPadConsume(&D_8036A8E0[D_80271FA8].pressed, 0x8030);
@@ -581,7 +673,11 @@ int BrCpakCheck(int kind, unsigned char quiet)
     }
     BrTextAlignCentre();
     BrTextHighlightOff();
+#if TGR_REGION_JPN
+    BrTextSetFont(14);
+#else
     BrTextSetFont(12);
+#endif
     switch (kind) {
     case 0:
       if (D_802724F4 == 0) {
@@ -590,8 +686,12 @@ int BrCpakCheck(int kind, unsigned char quiet)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_JPN
+      BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+#else
       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+#endif
       break;
     case 1:
       if (D_802724F4 == 0) {
@@ -600,10 +700,14 @@ int BrCpakCheck(int kind, unsigned char quiet)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_JPN
+      BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+#else
       BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+#endif
       break;
-#if !TGR_REGION_EUR
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
     case 2:
     case 3:
       func_80246F90(0xD8, 0xD9, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
