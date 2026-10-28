@@ -709,7 +709,8 @@ void BrHudPositionDraw(void)
  * counter and position and the car's message, then its speed (never
  * negative) in kph or mph at the bottom right -- smaller in the two-player
  * layout, with the units under it in the one-player one.  (From the third
- * camera in the one-player layout x keeps its first value, 296.) */
+ * camera in the one-player layout x keeps its first value, 296.)  Japan
+ * labels the units Mile/h and Km/h, set further left. */
 /* @implements 0x80238F30 tgr BrHudDraw */
 void BrHudDraw(void)
 {
@@ -749,6 +750,22 @@ void BrHudDraw(void)
       y = y - D_8028C7B4[D_8028AAEC].h;
     }
     func_8022F5D0(20);
+#if TGR_REGION_JPN
+    if (D_802723D8 != 0) {
+      func_8022F5DC((unsigned char *)D_80361C30, x - 20, y - 3);
+    } else {
+      func_8022F5DC((unsigned char *)D_80361C30, x - 11, y - 3);
+    }
+    if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
+      func_8022F5D0(15);
+      func_8022F514();
+      if (D_802723D8 != 0) {
+        func_8022F5DC((unsigned char *)"%wwMile/h", x - 20, y - 3);
+      } else {
+        func_8022F5DC((unsigned char *)"%wwKm/h", x - 11, y - 3);
+      }
+    }
+#else
     if (D_802723D8 != 0) {
       func_8022F5DC((unsigned char *)D_80361C30, x, y - 3);
     } else {
@@ -763,6 +780,7 @@ void BrHudDraw(void)
         func_8022F5DC((unsigned char *)"%wwkph", x - 3, y - 3);
       }
     }
+#endif
   }
 }
 
