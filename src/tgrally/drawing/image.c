@@ -20,7 +20,7 @@ typedef struct BrImage {
   int drawH;                    /* 0x28 */
   char kind;                    /* 0x2C  'c': drawn with the car-select combiner */
 } BrImage;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
                   int dh, unsigned char r, unsigned char g, unsigned char b);
 #else
@@ -108,7 +108,7 @@ void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, i
 
 /* Europe's strips take a palette for 4-bit images (0 for none); only
  * BrImageDraw passes one on. */
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 #define STRIP_TLUT(t) t,
 #else
 #define STRIP_TLUT(t)
@@ -118,7 +118,7 @@ void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, i
  * strip from the bottom of its pixel data (Europe: with a palette for a
  * 4-bit image, or 0). */
 /* @implements 0x80245470 tgr BrImageDraw */
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrImageDraw(BrImage *img, void *tlut)
 #else
 void BrImageDraw(BrImage *img)
@@ -233,7 +233,7 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
  * the 8-bit line as width * 1), each through fmt; the tile-size command
  * is a block, one statement per line, as the other commands here. */
 /* @implements 0x80245B00 tgr BrImageStrip */
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
                   int dh, unsigned char r, unsigned char g, unsigned char b)
 #else
@@ -261,7 +261,7 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
   switch (img->siz) {
   case 4:
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
     if (tlut != 0) {
       fmt = 2;
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
@@ -276,7 +276,7 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
       gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
     }
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
     }
 #endif
     gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
@@ -335,7 +335,7 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
     }
     break;
   }
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   if (fmt == 2) {
     /* a 4-bit image with a palette: load its 16 colours (RGBA16) */
     gDPSetTextureImage(D_8028A858++, 0, 2, 1, tlut);
