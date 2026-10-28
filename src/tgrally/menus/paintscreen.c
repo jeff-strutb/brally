@@ -511,10 +511,18 @@ void BrPaintShopScreen(void)
   BrScreenClear(0, 0, 0);
   BrImageDrawTinted(&D_8028CB40, 0x71, 0xb, 0x40);
   BR_IMAGE_DRAW(&D_8028CB70);
+#if TGR_REGION_JPN
+  BrTextSetFont(0x1e);
+#else
   BrTextSetFont(0x22);
+#endif
   BrTextAlignCentre();
   BrTextHighlightOff();
+#if TGR_REGION_JPN
+  BrTextPrint("%ryPAINT SHOP", 0xa0, 0x25);
+#else
   BrTextPrint("%ryPAINT SHOP", 0xa0, 0x26);
+#endif
   for (i = 0; i < 10; i++) {
     if (i == D_8028DB68) {
       BrImageDrawTinted(D_8028DB0C[i], 0x20, 200, 0xff);
