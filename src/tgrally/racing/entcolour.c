@@ -62,18 +62,22 @@ void BrEntLoadRecord(int param_1,int param_2,int param_3)
 #endif
 }
 
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 /* WHAT IT DOES: Load a car into its slot, attach that car's artwork record
  * to the entity and paint it in the car's own colour (Japan only: the
- * paint-shop colour over the livery). */
+ * paint-shop colour over the livery).  Europe has it without the paint,
+ * and nothing in Europe calls it. */
 /* @implements jpn:0x80220F38 tgr BrEntLoadRecordPainted */
+/* @implements eur:0x80221774 tgr BrEntLoadRecordPainted */
 void BrEntLoadRecordPainted(int param_1,int param_2,int param_3)
 {
   BrCarModelInstall(param_2,param_3,0);
   func_802203F0(param_1,param_2);
+#if TGR_REGION_JPN
   func_8021D140(*(int *)(param_1 + 0x2078),(int)(unsigned int)*(unsigned char *)(param_1 + 0x2060) >> 3,
                (int)(unsigned int)*(unsigned char *)(param_1 + 0x2061) >> 3,
                (int)(unsigned int)*(unsigned char *)(param_1 + 0x2062) >> 3);
+#endif
 }
 #endif
 
