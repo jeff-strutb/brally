@@ -99,9 +99,15 @@ int BrRumbleInsertPrompt(int anyPad)
 
   BrTextHighlightOff();
   BrTextAlignLeft();
+#if TGR_REGION_EUR
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrTextSetFont(12);
+#else
   BrTextSetFont(12);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
   BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 0x41, 0x6a);
   BrTextPrint("REMOVE THE CONTROLLER PAK AND", 0x41, 0x77);
   BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 0x41, 0x84);
