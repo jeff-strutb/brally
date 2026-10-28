@@ -379,14 +379,16 @@ fail:
 }
 #endif
 
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 /* WHAT IT DOES: Save the settings to the EEPROM: read the block back, and
  * when its checksum is bad first lay both players' season records out in
  * it afresh; then refresh player 1's five per-season words, the three
  * option values and player 2's five words, recompute the checksum and write
  * the block.  Nothing is written without an EEPROM or when the read fails;
- * the SI is marked busy while it works. */
+ * the SI is marked busy while it works.  Europe also reports a bad and the
+ * new checksum on the debug output. */
 /* @implements jpn:0x80211D38 tgr BrOptionsEepromSave */
+/* @implements eur:0x80211E78 tgr BrOptionsEepromSave */
 void BrOptionsEepromSave(void)
 {
   int i;
@@ -409,6 +411,10 @@ void BrOptionsEepromSave(void)
         check += D_80272500[i];
       }
       if (check != sum) {
+#if TGR_REGION_EUR
+        osSyncPrintf("checksum fail (%08x vs %08x/%02x%02x%02x%02x) (%d)\n", check, sum,
+                     D_80272500[0], D_80272500[1], D_80272500[2], D_80272500[3], n);
+#endif
         memcpy(data, D_8031B760[0].season, 0x128);
         p2[0] = D_8031B760[1].season->xd4;
         p2[1] = D_8031B760[1].season->xd8;
@@ -433,6 +439,10 @@ void BrOptionsEepromSave(void)
         sum += D_80272500[i];
       }
       memcpy(D_80272500, &sum, 4);
+#if TGR_REGION_EUR
+      osSyncPrintf("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum,
+                   D_80272500[0], D_80272500[1], D_80272500[2], D_80272500[3], n);
+#endif
       osEepromLongWrite(D_80272D48, 0, D_80272500, n);
     }
   }
