@@ -551,19 +551,12 @@ void BrLoadSaveScreen(void)
       ((int *)(data + 0x128))[3] = D_8031B760[1].season->xe0;
       ((int *)(data + 0x128))[4] = D_8031B760[1].season->xe4;
       sum = 0xBFED812;
-#if TGR_REGION_EUR
       for (k = 4; k < len; k++) {
         sum += D_80272500[k];
       }
       memcpy(D_80272500, &sum, 4);
-      osSyncPrintf("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum, D_80272500[0], D_80272500[1],
-                   D_80272500[2], D_80272500[3], len);
-#else
-      for (; k < len; k++) {
-        sum += D_80272500[k];
-      }
-      memcpy(D_80272500, &sum, 4);
-#endif
+      DBG(("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum, D_80272500[0], D_80272500[1],
+           D_80272500[2], D_80272500[3], len));
       if (osEepromLongWrite(D_80272D48, 0, D_80272500, len) != 0) {
         D_802724F0 = 5;
         D_80272554 = 15;
