@@ -196,14 +196,19 @@ void BrCarReset(BrCar *car)
 
 /* WHAT IT DOES: Put a car that has left the track (flagged, or fallen 10
  * below the sky height) back on it: at its current restart point, 2 above
- * the road (0.01 sideways per slot outside mode 2), facing along the
- * route, stopped, wheels reset, and the chase camera moved in behind. */
+ * the road (0.01 sideways per slot outside mode 2, and in Europe outside
+ * the demo mode 4 too), facing along the route, stopped, wheels reset, and
+ * the chase camera moved in behind. */
 /* @implements 0x80226248 tgr BrCarRespawn */
 void BrCarRespawn(BrCar *car)
 {
   if (car->x340 < 0 || car->mtx0[3][2] < D_80025C38 - 10.0f) {
     func_80222D54(car);
+#if TGR_REGION_EUR
+    if (D_8026FF18 == 2 || D_8026FF18 == 4) {
+#else
     if (D_8026FF18 == 2) {
+#endif
       BrCarSetPos(car, ((BrRoute *)car->xf5c)->pt[car->xf60].pos[0],
                   ((BrRoute *)car->xf5c)->pt[car->xf60].pos[1],
                   ((BrRoute *)car->xf5c)->pt[car->xf60].pos[2] + 2.0);
