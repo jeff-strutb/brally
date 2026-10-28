@@ -366,11 +366,19 @@ void BrPakMessage(int msg, char op, char mode)
     }
     break;
   case 4:
+#if TGR_REGION_EUR
+    y = 0xaf;
+    if (mode == 1) {
+      y = 0xdb;
+    }
+    BrBevelPanel(0xae, y, 0x124, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+#else
     y = 0xb0;
     if (mode == 1) {
       y = 0xdc;
     }
     BrBevelPanel(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
     ty = (y + 30) >> 1;
     BrTextPrint("CONTROLLER ERROR HAS", 0x5e, ty);
     BrTextPrint("BEEN DETECTED.", 0x5e, ty + 12);
