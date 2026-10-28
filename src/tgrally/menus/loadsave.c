@@ -197,7 +197,10 @@ void BrVideoBlank(void);
  * The cursor-up search loops by label: with no landing block the row store
  * stays on its last test and the pad is read afresh after the arms.  The
  * two season records are written through p2 (data + 0x128) set beside
- * data, and the kind tests that follow a pak read go through mode. */
+ * data, and the kind tests that follow a pak read go through mode.  Japan
+ * dispatches on the item kind with switches where the USA tests in turn,
+ * and its delete prompt's panel width is its own local (newSize), apart
+ * from h. */
 /* @implements 0x80211D70 tgr BrLoadSaveScreen */
 void BrLoadSaveScreen(void)
 {
@@ -205,7 +208,7 @@ void BrLoadSaveScreen(void)
   int i;
   int mode;
   int h;
-  int newSize;                  /* Europe: the packed ghost's size */
+  int newSize;                  /* Europe: the packed ghost's size; Japan: a panel's width */
   int unusedCC;
   int unusedC8;
   int unusedC4;
@@ -714,7 +717,7 @@ void BrLoadSaveScreen(void)
         break;
       }
     } else if (D_802724F0 == 5) {
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
       switch (items[D_80272550].kind) {
       case 0:
       case 2:
@@ -758,7 +761,7 @@ void BrLoadSaveScreen(void)
       }
       if (D_802724F0 != 0) {
         D_80272554 = 15;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
       } else switch (items[D_80272550].kind) {
       case 0:
 #else
@@ -787,7 +790,7 @@ void BrLoadSaveScreen(void)
           D_80272554 = 16;
         }
         D_80316422 = 1;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
         break;
       case 2:
 #else
@@ -796,7 +799,7 @@ void BrLoadSaveScreen(void)
         DBG(("Extracting ghost data...\n"));
         D_80270784 = func_8021CB4C(D_80307F00, 0xDE5C, D_80272500, 2);
         D_8028B940 = D_80307F00[0];
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
         D_8031B760[0].season->xce |= 1 << D_80307F00[0];
 #else
         D_8031B760[0].season->xce |= 1 << D_8028B940;
@@ -809,7 +812,7 @@ void BrLoadSaveScreen(void)
           D_80272554 = 16;
         }
         D_80316422 = 1;
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
         break;
       case 4:
 #else
@@ -830,11 +833,11 @@ void BrLoadSaveScreen(void)
         } else {
           D_80272554 = 15;
         }
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
         break;
 #endif
       }
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
     }
 #else
     } else {
@@ -1005,6 +1008,51 @@ void BrLoadSaveScreen(void)
         D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
           osSyncPrintf("Done!\n");
+          D_80272554 = 16;
+        } else {
+          D_80272554 = 15;
+        }
+      }
+      break;
+    }
+#elif TGR_REGION_JPN
+    switch (items[D_80272550].kind) {
+    case 1:
+      memcpy(D_80272500, D_8031B760[0].season, 0x128);
+      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x200, D_80272500);
+      if (D_802724F0 == 0) {
+        D_80272554 = 16;
+      } else {
+        D_80272554 = 15;
+      }
+      break;
+    case 3:
+      if (func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2) != -1) {
+        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
+        if (D_802724F0 == 0) {
+          D_80272554 = 16;
+        } else {
+          D_80272554 = 15;
+        }
+      } else {
+        D_802724F0 = -99999;
+        D_80272554 = 15;
+      }
+      break;
+    case 5:
+      memcpy(D_80272500, D_802723D0, 12);
+      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x80, D_80272500);
+      if (D_802724F0 != 0) {
+        D_80272554 = 15;
+      } else {
+        opts[0] = D_8031B760[D_80271FA8].season->xd4;
+        opts[1] = D_8031B760[D_80271FA8].season->xd8;
+        opts[2] = D_8031B760[D_80271FA8].season->xdc;
+        opts[3] = D_8031B760[D_80271FA8].season->xe0;
+        opts[4] = D_8031B760[D_80271FA8].season->xe4;
+        memcpy(D_80272500, opts, 20);
+        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
+        if (D_802724F0 == 0) {
           D_80272554 = 16;
         } else {
           D_80272554 = 15;
@@ -1210,14 +1258,14 @@ void BrLoadSaveScreen(void)
       case 7:
       case 8:
       case 9:
-        h = 0x172;
+        newSize = 0x172;
         break;
       default:
-        h = 0x1E0;
+        newSize = 0x1E0;
         break;
       }
-      y = (0x280 - h) >> 1;
-      func_80246F90(y, 0xD8, h, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      y = (0x280 - newSize) >> 1;
+      func_80246F90(y, 0xD8, newSize, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
       switch (items[D_80272550].kind) {
       case 6:
       case 7:
@@ -1258,21 +1306,25 @@ void BrLoadSaveScreen(void)
     case 7:
     case 8:
       func_80246F90(0x82, 0xB7, 0x17C, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
-      if (items[D_80272550].kind == 1) {
+      switch (items[D_80272550].kind) {
+      case 1:
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 73, 107);
         BrTextPrint("%j\xE1" "A\xBD(\x9A" "90H6b\x7F&", 73, 120);
         BrTextPrint("%j\x92(\xAA\xCF\xBB(\x83w\xB2(\xACRXD5", 73, 139);
         BrTextPrint("2%j\xBD(\x9A\xD6\xD7kR&", 73, 152);
-      } else if (items[D_80272550].kind == 3) {
+        break;
+      case 3:
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 73, 107);
         BrTextPrint("%j\xE1" "A\xBD(\x9A" "90H6b\x7F&", 73, 120);
         BrTextPrint("%j\xC9(\xA2\xC3\x81(\xBB(\x83w\xB2(\xACRXD5", 73, 139);
         BrTextPrint("58%j\xBD(\x9A\xD6\xD7kR&", 73, 152);
-      } else if (items[D_80272550].kind == 5) {
+        break;
+      case 5:
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 73, 107);
         BrTextPrint("%j\xE1" "A\xBD(\x9A" "90H6b\x7F&", 73, 120);
         BrTextPrint("%j\xC0\xAD\x92\xBF\xCF\xBB(\x83w\xB2(\xACRXD5", 73, 139);
         BrTextPrint("1%j\xBD(\x9A\xD6\xD7kR&", 73, 152);
+        break;
       }
       break;
     case -99999:
