@@ -395,6 +395,14 @@ extern int D_8028A884;
 #if TGR_REGION_JPN
 extern unsigned char D_8028B904[][3];     /* the players' own colours */
 #endif
+/* The setup lists' titles: Japan's are singular. */
+#if TGR_REGION_JPN
+#define TIRES_TITLE "Tire"
+#define DECALS_TITLE "Decal"
+#else
+#define TIRES_TITLE "Tires"
+#define DECALS_TITLE "Decals"
+#endif
 /* -- end declarations -- */
 
 #define CAR(i) (&D_8031B760[i])
@@ -1424,7 +1432,7 @@ void BrCarSelect(void)
                 break;
               case 3:
                 D_80316278[p] = car->season->xdc;
-                SETUP(p, D_8027213C, D_8027214C, "Tires");
+                SETUP(p, D_8027213C, D_8027214C, TIRES_TITLE);
                 break;
               case 4:
                 D_80316278[p] = car->season->xe0;
@@ -1432,7 +1440,7 @@ void BrCarSelect(void)
                 break;
               case 5:
                 D_80316278[p] = 0;
-                D_80316290[p] = "Decals";
+                D_80316290[p] = DECALS_TITLE;
                 break;
               }
               D_80316280[p] = D_80316278[p];
@@ -1455,7 +1463,7 @@ void BrCarSelect(void)
             case 2:
               car->season->xd8 = D_80316278[p];
               D_80316278[p] = car->season->xdc;
-              SETUP(p, D_8027213C, D_8027214C, "Tires");
+              SETUP(p, D_8027213C, D_8027214C, TIRES_TITLE);
               break;
             case 3:
               car->season->xdc = D_80316278[p];
@@ -1466,12 +1474,16 @@ void BrCarSelect(void)
               car->season->xe0 = D_80316278[p];
               D_80316278[p] = 0;
               D_80316270[p] = D_802721DC;
+#if TGR_REGION_JPN
+              if (car->kind < 9 || car->kind == 9) {
+#else
               if (car->kind < 9) {
+#endif
                 D_80316288[p] = D_802721EC - 1;
               } else {
                 D_80316288[p] = D_802721EC - 2;
               }
-              D_80316290[p] = "Decals";
+              D_80316290[p] = DECALS_TITLE;
               D_80316258[p] = p ^ 2;
               v = BrSfxFreeVoice();
               if (v != -1) {
