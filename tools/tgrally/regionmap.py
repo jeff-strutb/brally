@@ -18,7 +18,15 @@ Data.  Walking each `same` pair in step, every jal target and every
 body forms at the same instruction; a `changed` pair contributes through an
 opcode alignment, at lower weight.  The address with the most votes wins;
 a USA address whose votes disagree is listed with how=`conflict`.
+
+Pins.  config/tgrally/<region>/addrmap_pins.csv (usa,va; va empty = the
+region has no counterpart) is the hand record for what the rules above get
+wrong, each pin checked against the two bodies.  A pinned function is taken
+out of the sequence pairing (so its neighbours pair without it) and paired as
+pinned; a pinned data address takes the pin over its votes.  Pins are listed
+with how=`pin`.
 """
+import copy
 import collections
 import csv
 import difflib
@@ -177,17 +185,37 @@ def pair_functions(U, X):
     return pairs
 
 
+def load_pins(reg):
+    p = os.path.join(region.config_dir(reg), 'addrmap_pins.csv')
+    if not os.path.exists(p):
+        return {}
+    return {int(r['usa'], 16): int(r['va'], 16) if r['va'].strip() else None
+            for r in csv.DictReader(open(p))}
+
+
 def main():
     reg = sys.argv[1] if len(sys.argv) > 1 else ''
     if reg not in region.REGIONS or reg == 'usa':
         sys.exit('usage: regionmap.py eur|jpn')
     U, X = Image('usa'), Image(reg)
-    fpairs = pair_functions(U, X)
+    pins = load_pins(reg)
+    fpins = {u: x for u, x in pins.items() if u in U.size}
+    bad_pin = [x for x in fpins.values() if x is not None and x not in X.size]
+    if bad_pin:
+        sys.exit('pinned %s address(es) not a function start: %s'
+                 % (reg, ' '.join('%08X' % x for x in bad_pin)))
+    U2, X2 = copy.copy(U), copy.copy(X)
+    U2.F = [f for f in U.F if f not in fpins]
+    X2.F = [f for f in X.F if f not in set(fpins.values())]
+    fpairs = pair_functions(U2, X2)
+    for u, x in fpins.items():
+        if x is not None:
+            fpairs[u] = (x, 'pin')
     votes = collections.defaultdict(collections.Counter)
     for fu, (fx, how) in fpairs.items():
         wu, wx = U.body(fu), X.body(fx)
         pu, px = lui_pairs(wu), lui_pairs(wx)
-        if how == 'same':
+        if how == 'same' or (how == 'pin' and signature(wu) == signature(wx)):
             idx = {i: i for i in pu}
             weight = 10
         else:
@@ -217,6 +245,12 @@ def main():
         how = 'conflict' if len(c) > 1 else 'xref'
         rows[au] = dict(usa='%08X' % au, va='%08X' % best, kind='data', how=how,
                         votes=' '.join('%08X:%d' % kv for kv in c.most_common(3)))
+    for au, x in pins.items():
+        if au not in fset:
+            rows[au] = dict(usa='%08X' % au, va='' if x is None else '%08X' % x, kind='data',
+                            how='pin', votes=rows.get(au, {}).get('votes', ''))
+        elif x is None:
+            rows[au] = dict(usa='%08X' % au, va='', kind='func', how='pin', votes='')
     # a jal that disagrees with the sequence pairing is a pairing error
     bad = [(au, c) for au, c in votes.items() if au in fpairs and fpairs[au][0] not in c]
     out = os.path.join(region.config_dir(reg), 'addrmap.csv')

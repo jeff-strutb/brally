@@ -61,10 +61,38 @@ TGR_REGION=eur .venv/bin/python tools/tgrally/n64build.py --diff 0x8021D6A8   # 
   with `-DTGR_REGION_USA`, `-DTGR_REGION_EUR` or `-DTGR_REGION_JPN`, and writes
   its ledger to `build/tgrally/n64-<region>/verify.csv`. A USA function the
   region does not have is `ABSENT`.
-- A body the region changed is written once, with `#if` on the region macro
-  where it differs. A function only a region has is tagged with its region
-  address (`@implements 0x80XXXXXX tgr Name` under `#if`), once the tools
-  learn region-only tags.
+- A body the region changed is written once, with `#if TGR_REGION_EUR` (or
+  `_JPN`) where it differs and the USA code in the `#else`.
+- A function only a region has is tagged with that region's own address,
+  `@implements eur:0x80XXXXXX tgr Name`, and defined under `#if
+  TGR_REGION_EUR`; the other regions' tools skip the tag. `@t3` tags take the
+  same form. A USA function a region does not have is left out of that
+  region's build with `#if !TGR_REGION_EUR`; until it is, the region's ledger
+  lists it `ABSENT`.
+- Data only a region has is named by its region address, `eur_D_80XXXXXX`
+  (`func_`, `jtbl_` and `L_` likewise), or listed in
+  `config/tgrally/<region>/symbols_tgr.csv` (name, region address). Neither is
+  translated.
+- `config/tgrally/<region>/addrmap_pins.csv` (usa,va) holds the pairings the
+  map rules get wrong, by hand: `regionmap.py` takes a pinned function out of
+  its sequence pairing and pairs it as pinned, and a pinned data address
+  overrides its votes. An empty `va` says the region has no counterpart.
+- Every other N64 tool reads `TGR_REGION` too: `n64tiers.py` (the region's
+  counts, with denominators), `n64image.py`, `n64link.py`, `n64box.py`,
+  `n64t3.py`, `n64strs.py`, `pair.py`, `cover.py`. A region's own records
+  (`fenced_tgr.csv` for its extra library functions, `t3_live.csv`,
+  `whole_image.csv`) live in `config/tgrally/<region>/`; addresses on a
+  region tool's command line and in its records are the region's.
+- `n64box.py` translates the libultra entry points it models and the data
+  it touches through the map. Europe's box runs at 50 Hz (PAL) and models the
+  cartridge's 4 Kbit EEPROM (`osEepromProbe`, `osEepromRead`,
+  `osEepromWrite`; the long read and write run for real, waiting on the timer
+  queue `osContInit` creates).
+
+```bash
+TGR_REGION=eur .venv/bin/python tools/tgrally/n64tiers.py     # Europe's counts
+TGR_REGION=eur .venv/bin/python tools/tgrally/n64image.py     # Europe's M2 image
+```
 
 ## Where it stands (2026-10-28)
 

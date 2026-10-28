@@ -32,7 +32,7 @@ ANNEX_DATA = 0x80600000
 
 
 def t3_certified():
-    p = os.path.join(ROOT, 'config/tgrally/t3_live.csv')
+    p = os.path.join(B.region.config_dir(), 't3_live.csv')
     if not os.path.exists(p):
         return set()
     return {int(r['va'], 16) for r in csv.DictReader(open(p)) if r['verdict'] == 'EQUIVALENT'}
@@ -51,7 +51,7 @@ def build(t3=False, only=None, all_tagged=False):
         tags = B.tags_in(src)
         if not tags:
             continue
-        t3tags = {int(m, 16) for m in B.T3TAG.findall(src)}
+        t3tags = B.region.t3_tags(src)
         obj, err = B.compile_c(f)
         if obj is None:
             rep['skipped'].append((os.path.relpath(f, ROOT), 'compile error'))

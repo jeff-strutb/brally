@@ -26,7 +26,8 @@ Rules the builder enforces (they keep grading sound):
     be guesswork.  A function that was static in the original is written
     global; IDO -O2 emits the same body either way.
   * one `@implements 0x80XXXXXX tgr Name` per function; the name must be the
-    C function's name.
+    C function's name.  A function only one region has carries that region's
+    address, `@implements eur:0x80XXXXXX tgr Name`, under `#if TGR_REGION_EUR`.
   * `.bss` referenced through a section (a file-static array) cannot be
     pinned; declare it `extern` under its ROM name instead.
 
@@ -38,7 +39,7 @@ Japan's ROM (tools/tgrally/region.py).  Every address the source writes is a
 USA address; it is translated through config/tgrally/<region>/addrmap.csv, and
 each compile sees -DTGR_REGION_EUR or -DTGR_REGION_JPN (USA: -DTGR_REGION_USA)
 so a body the region changed is written under `#if`.  A USA function the region
-does not have is ABSENT there.  The ledger goes to build/tgrally/n64-<region>.
+does not have is ABSENT there until `#if` leaves it out of that region's build.  The ledger goes to build/tgrally/n64-<region>.
 """
 import argparse
 import csv
@@ -69,8 +70,8 @@ BASE_FLAGS = ['-c', '-mips2', '-non_shared', '-G', '0', '-w', '-Xfullwarn',
               '-I' + os.path.join(ROOT, 'src/tgrally/include')]
 DEFAULT_OPT = ['-O2']
 
-TAG = re.compile(r'@implements\s+(0x[0-9A-Fa-f]{8})\s+tgr\s+(\w+)')
-T3TAG = re.compile(r'@t3\s+(0x[0-9A-Fa-f]{8})')
+TAG = region.TAG
+T3TAG = region.T3TAG
 STATIC_FN = re.compile(r'^\s*static\s+[^;=]*\([^;]*\)\s*$', re.M)
 
 
@@ -124,6 +125,28 @@ def load_symbols():
 
 
 ADDR_NAME = re.compile(r'^(?:func|D|jtbl|L)_([0-9A-Fa-f]{8})$')
+# A symbol only a region has, named by that region's own address
+# (`eur_D_8028DF50`), or listed in config/tgrally/<region>/symbols_tgr.csv
+# (name -> region address).  Neither is translated.
+REGION_NAME = re.compile(r'^(usa|eur|jpn)_(?:func|D|jtbl|L)_([0-9A-Fa-f]{8})$')
+_RSYMS = None
+
+
+def region_symbol(name):
+    """-> the region address of a region-only symbol, None when it is
+    another region's, False when the name is not region-only."""
+    global _RSYMS
+    if _RSYMS is None:
+        _RSYMS = {}
+        p = os.path.join(region.config_dir(), 'symbols_tgr.csv')
+        if region.REGION != 'usa' and os.path.exists(p):
+            _RSYMS = {r['name']: int(r['va'], 16) for r in csv.DictReader(open(p))}
+    if name in _RSYMS:
+        return _RSYMS[name]
+    m = REGION_NAME.match(name)
+    if m:
+        return int(m.group(2), 16) if m.group(1) == region.REGION else None
+    return False
 
 
 def resolve_usa(name, syms):
@@ -137,6 +160,9 @@ def resolve_usa(name, syms):
 
 def resolve(name, syms):
     """name -> its address in this region's ROM."""
+    r = region_symbol(name)
+    if r is not False:
+        return r
     v = resolve_usa(name, syms)
     return None if v is None else region.to_region(v)
 
@@ -145,6 +171,9 @@ def place(name, addend, syms):
     """The region address of name+addend.  The USA address itself is looked
     up first (the map pairs each referenced address), then the symbol's own
     home plus the addend (an element of an array whose start is referenced)."""
+    r = region_symbol(name)
+    if r is not False:
+        return None if r is None else (r + addend) & 0xffffffff
     v = resolve_usa(name, syms)
     if v is None:
         return None
@@ -610,16 +639,11 @@ def static_bases(obj, fnvas, rom=None, fmap=None):
 
 
 def tags_in(src, usa=False):
-    """-> [(va, name, line)] for every @implements in the file, the VA in this
-    region's ROM (None where the region has no such function); usa=True keeps
-    the address as written."""
-    out = []
-    for i, l in enumerate(src.split('\n')):
-        m = TAG.search(l)
-        if m:
-            v = int(m.group(1), 16)
-            out.append((v if usa else region.to_region(v), m.group(2), i + 1))
-    return out
+    """-> [(va, name, line)] for every @implements this region builds, the VA
+    in this region's ROM (None where the region has no such function);
+    usa=True keeps the USA address as written (None for a region-only tag).
+    region.tags has the tag forms."""
+    return [(u if usa else v, n, ln) for u, v, n, ln in region.tags(src)]
 
 
 def build_file(path, rom, fmap, syms, want_diff=None):
@@ -628,16 +652,22 @@ def build_file(path, rom, fmap, syms, want_diff=None):
     rows = []
     obj, err = compile_c(path)
     tags = [t for t in tags_in(src) if t[0] is not None]
-    for (uva, name, ln), (va, _, _) in zip(tags_in(src, usa=True), tags_in(src)):
-        if va is None:
-            rows.append(dict(va='%08X' % uva, name=name, file=rel, status='ABSENT', ndiff='',
-                             size=0, note='%s has no counterpart of this function' % region.REGION))
+    absent = [(u, n) for u, v, n, ln in region.tags(src) if v is None]
     if obj is None:
         for va, name, ln in tags:
             rows.append(dict(va='%08X' % va, name=name, file=rel, status='CCFAIL',
                              ndiff='', size=fmap.get(va, 0), note=err.strip().split('\n')[0][:160]))
         return rows
     pieces = carve(obj)
+    # a USA function the region has no counterpart of is ABSENT while this
+    # region still compiles it; written out under `#if`, it is simply not
+    # part of this region's game and has no row
+    defined = {p[0] for p in pieces}
+    for uva, name in absent:
+        if name in defined:
+            rows.append(dict(va='%08X' % uva, name=name, file=rel, status='ABSENT', ndiff='',
+                             size=0, note='%s has no counterpart of this function; '
+                                          'leave it out under #if' % region.REGION))
     for m in re.finditer(r'^static\s+[^;=]*?\b(\w+)\s*\([^;]*?\)\s*\{', src, re.M):
         rows.append(dict(va='', name=m.group(1), file=rel, status='ERROR', ndiff='', size=0,
                          note='static function %s: write it global (IDO leaves no symbol)' % m.group(1)))
@@ -663,7 +693,7 @@ def build_file(path, rom, fmap, syms, want_diff=None):
                          size=fmap[va], note='; '.join(notes)[:300]))
         if want_diff is not None and want_diff == va:
             print_diff(va, ours, theirs)
-    absent = {name for va, name, ln in tags_in(src) if va is None}
+    absent = {name for uva, name in absent}
     for name, p in have.items():
         if name not in fnvas and name not in absent:
             rows.append(dict(va='', name=name, file=rel, status='UNTAGGED', ndiff='',
@@ -699,7 +729,8 @@ def all_sources():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('files', nargs='*')
-    ap.add_argument('--diff', help='print the side-by-side diff for this (USA) VA')
+    ap.add_argument('--diff', help='print the side-by-side diff for this VA: the USA '
+                    'address, else the region address the region ledger lists')
     ap.add_argument('--csv', default=os.path.join(OUT, 'verify.csv'))
     ap.add_argument('-q', action='store_true', help='summary only')
     a = ap.parse_args()
@@ -707,18 +738,28 @@ def main():
     rom, fmap, syms = Rom(), function_map(), load_symbols()
     want = int(a.diff, 16) if a.diff else None
     files = [os.path.abspath(f) for f in a.files] or all_sources()
-    if want is not None and not a.files:
-        files = [f for f in all_sources()
-                 if any(v == want for v, _, _ in tags_in(open(f).read(), usa=True))]
+    partial = bool(a.files)
     if want is not None:
-        want = region.to_region(want)           # --diff names the USA address
+        # --diff names the USA address, else the region's own (the address
+        # the region ledger lists)
+        hit, own = {}, {}
+        for f in (files if a.files else all_sources()):
+            for u, v, n, ln in region.tags(open(f).read()):
+                if u == want:
+                    hit[f] = v
+                elif v == want:
+                    own[f] = v
+        hit = hit or own
+        if not a.files:
+            files, partial = sorted(hit), True
+        want = next(iter(hit.values()), None)
     rows = []
     for f in files:
         rows += build_file(f, rom, fmap, syms, want)
     # a partial run refreshes only its files' rows in the shared ledger
     os.makedirs(OUT, exist_ok=True)
     keep = []
-    if a.files and os.path.exists(a.csv):
+    if partial and os.path.exists(a.csv):
         done = {os.path.relpath(f, ROOT) for f in files}
         keep = [r for r in csv.DictReader(open(a.csv)) if r['file'] not in done]
     cols = ['va', 'name', 'file', 'status', 'ndiff', 'size', 'note']

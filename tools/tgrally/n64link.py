@@ -185,7 +185,7 @@ def link_function(obj, name, place_va, data_va, fnvas, syms, self_va=None, stati
     return code, [(b, bytes(blob)) for b, blob, _ in blocks]
 
 
-ROM_RODATA = (0x8026FAB0, 0x802AC400)      # the ROM's .data/.rodata, vram
+ROM_RODATA = (B.region.DATA_VA, B.region.BSS_S)   # the ROM's .data/.rodata, vram
 MIN_LITERALS = 32                          # bytes; shorter prefixes are not trusted
 _rom = None
 

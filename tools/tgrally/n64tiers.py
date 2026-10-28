@@ -2,6 +2,12 @@
 
     .venv/bin/python tools/tgrally/n64tiers.py            # M1 / M2 and the four tiers
     .venv/bin/python tools/tgrally/n64tiers.py --list T2  # VAs in a tier
+    TGR_REGION=eur .venv/bin/python tools/tgrally/n64tiers.py   # the Europe cartridge
+
+A region's counts are over that region's ROM: its own function map, the USA
+fenced and excluded lists translated through its address map plus its own
+fenced list (config/tgrally/<region>/fenced_tgr.csv, region addresses), its
+own T3 ledger and its own build ledger.
 
 Same standard as the PC lane, measured against the ROM:
 
@@ -35,8 +41,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import n64build as B  # noqa: E402
+import region as R  # noqa: E402
 
-T3TAG = re.compile(r'@t3\s+(0x[0-9A-Fa-f]{8})')
 
 
 def csv_vas(path):
@@ -48,8 +54,17 @@ def csv_vas(path):
 def t3_tags():
     out = set()
     for f in B.all_sources():
-        for m in T3TAG.finditer(open(f, errors='replace').read()):
-            out.add('%08X' % int(m.group(1), 16))
+        out |= {'%08X' % v for v in R.t3_tags(open(f, errors='replace').read())}
+    return out
+
+
+def region_vas(rows):
+    """A USA-keyed config table, keyed by this region's addresses."""
+    out = {}
+    for k, r in rows.items():
+        v = R.to_region(int(k, 16))
+        if v is not None:
+            out['%08X' % v] = r
     return out
 
 
@@ -58,9 +73,9 @@ def classify(fresh=True):
         subprocess.run([sys.executable, os.path.join(ROOT, 'tools/tgrally/n64build.py'), '-q'],
                        cwd=ROOT, capture_output=True)
     fmap = B.function_map()
-    fenced = csv_vas(os.path.join(ROOT, 'config/tgrally/fenced_tgr.csv'))
-    excluded = csv_vas(os.path.join(ROOT, 'config/tgrally/excluded_tgr.csv'))
-    live = csv_vas(os.path.join(ROOT, 'config/tgrally/t3_live.csv'))
+    fenced = {'%08X' % v: lib for v, lib in R.fenced().items()}
+    excluded = region_vas(csv_vas(os.path.join(ROOT, 'config/tgrally/excluded_tgr.csv')))
+    live = csv_vas(os.path.join(R.config_dir(), 't3_live.csv'))
     ver = {}
     p = os.path.join(B.OUT, 'verify.csv')
     if os.path.exists(p):
@@ -116,8 +131,8 @@ def main():
     m1 = [g('T3')[0] + g('T4')[0], g('T3')[1] + g('T4')[1]]
     m2 = g('T4')
     print('=' * 64)
-    print('  Top Gear Rally (N64) game code: %d functions   (%s B of %s B .text)'
-          % (tf, format(tb, ','), format(allb, ',')))
+    print('  %s game code: %d functions   (%s B of %s B .text)'
+          % (R.R['name'], tf, format(tb, ','), format(allb, ',')))
     print('  ' + '-' * 60)
     for t, what in (('T1', 'not started (Ghidra draft only)'),
                     ('T2', 'in progress (not done)'),
@@ -127,8 +142,12 @@ def main():
     ex = [(t, c) for t, c in agg.items() if t.startswith('EXCLUDED')]
     for t, c in sorted(ex):
         print('  %-36s %5d fns %9s B' % (t, c[0], format(c[1], ',')))
-    print('  %-36s %5d fns %9s B   (libultra, zlib: config/tgrally/fenced_tgr.csv)'
-          % ('FENCED library', g('FENCED')[0], format(g('FENCED')[1], ',')))
+    print('  %-36s %5d fns %9s B   (libultra, zlib: %s)'
+          % ('FENCED library', g('FENCED')[0], format(g('FENCED')[1], ','),
+             'config/tgrally/fenced_tgr.csv' + ('' if R.REGION == 'usa' else
+                                                ' + %s/fenced_tgr.csv' % os.path.relpath(R.config_dir(), ROOT))))
+    left = tf - m2[0]
+    print('  M2 left: %d of %d functions (%s B)' % (left, tf, format(tb - m2[1], ',')))
     print('  ' + '-' * 60)
     for name, c in (('M1  Contract-valid (T3 + T4)', m1), ('M2  Byte-exact (T4)', m2)):
         f = c[1] / tb if tb else 0

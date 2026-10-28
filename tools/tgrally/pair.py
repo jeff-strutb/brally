@@ -5,7 +5,7 @@ lineage; 195 string literals survive verbatim in both images.  A string
 referenced by exactly one function on each side pairs those two functions with
 no matching work at all.  That is the bridge this file builds.
 
-  .venv/bin/python tools/tgrally/pair.py [--csv build/tgrally/n64/pairs.csv]
+  [TGR_REGION=eur] .venv/bin/python tools/tgrally/pair.py [--csv build/tgrally/n64/pairs.csv]
 
 Output columns: n64_va, pc_va, pc_name, n_anchors, anchor
   n_anchors  how many distinct shared strings support the pair
@@ -21,7 +21,6 @@ import sys, os, csv, struct, collections, bisect, argparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
-os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 
 MIN_LEN = 6          # shorter runs pair by accident, not by lineage
 
@@ -29,7 +28,7 @@ MIN_LEN = 6          # shorter runs pair by accident, not by lineage
 # ---------------------------------------------------------------- N64 side
 import n64rom  # noqa: E402  (analyses the ROM at import time)
 
-DATA_S, DATA_E = n64rom.TEXT_E, 0xAD400
+DATA_S, DATA_E = n64rom.TEXT_E, n64rom.region.DATA_E
 
 
 def n64_strings():
@@ -87,7 +86,7 @@ def pc_strings(d, secs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--csv', default=os.path.join(ROOT, 'build/tgrally/n64/pairs.csv'))
+    ap.add_argument('--csv', default=os.path.join(n64rom.region.build_dir(), 'pairs.csv'))
     ap.add_argument('--dll', default=os.path.join(ROOT, 'reference/brally/orig/BRGlide.dll'))
     ap.add_argument('--min-len', type=int, default=MIN_LEN)
     args = ap.parse_args()
@@ -107,7 +106,7 @@ def main():
 
     # ---- PC function map + a VA -> containing function lookup
     fns = []
-    with open(os.path.join(ROOT, 'config/functions_glide.csv')) as f:
+    with open(os.path.join(ROOT, 'config/brally/functions_glide.csv')) as f:
         for row in csv.DictReader(f):
             fns.append((int(row['va'], 16), int(row['size']), row['name']))
     fns.sort()

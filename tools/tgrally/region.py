@@ -17,6 +17,7 @@ up to the start of .bss.
 """
 import hashlib
 import os
+import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -101,3 +102,73 @@ def to_region(usa_va):
     if REGION == 'usa':
         return usa_va
     return addrmap().get(usa_va)
+
+
+# ------------------------------------------------------------------- tags
+# `@implements 0x80XXXXXX tgr Name` names a USA address: the function every
+# region has (its body may differ under `#if TGR_REGION_<R>`).  A function
+# only one region has is tagged with that region's own address,
+# `@implements eur:0x80XXXXXX tgr Name`, and its definition sits under
+# `#if TGR_REGION_EUR`; the other regions' tools skip the tag.
+TAG = re.compile(r'@implements\s+(?:(usa|eur|jpn):)?(0x[0-9A-Fa-f]{8})\s+tgr\s+(\w+)')
+
+
+def tags(src):
+    """-> [(usa_va, va, name, line)] for every tag this region builds:
+    usa_va is the written USA address (None for a region-only tag), va its
+    home in this region's ROM (None when the region has no counterpart)."""
+    out = []
+    for i, l in enumerate(src.split('\n')):
+        m = TAG.search(l)
+        if not m:
+            continue
+        q, v = m.group(1), int(m.group(2), 16)
+        if q is None:
+            out.append((v, to_region(v), m.group(3), i + 1))
+        elif q == REGION:
+            out.append((None, v, m.group(3), i + 1))
+    return out
+
+
+T3TAG = re.compile(r'@t3\s+(?:(usa|eur|jpn):)?(0x[0-9A-Fa-f]{8})')
+
+
+def t3_tags(src):
+    """-> {this region's VA} for every `@t3` tag in src, written like the
+    @implements tags (a USA address, or `eur:0x80XXXXXX` for a region-only
+    function)."""
+    out = set()
+    for q, v in T3TAG.findall(src):
+        v = int(v, 16)
+        if q == '':
+            v = to_region(v)
+        elif q != REGION:
+            continue
+        if v is not None:
+            out.add(v)
+    return out
+
+
+def tag_line(src, va):
+    """The text offset of the @implements tag that builds this region's va."""
+    for u, v, n, ln in tags(src):
+        if v == va:
+            return sum(len(l) + 1 for l in src.split('\n')[:ln - 1])
+    return -1
+
+
+def fenced():
+    """This region's FENCED library functions (region VA -> library): the
+    USA list (config/tgrally/fenced_tgr.csv) translated, plus the region's
+    own (config/tgrally/<region>/fenced_tgr.csv, region addresses)."""
+    import csv
+    out = {}
+    for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/fenced_tgr.csv'))):
+        v = to_region(int(r['va'], 16))
+        if v is not None:
+            out[v] = r['library']
+    p = os.path.join(config_dir(), 'fenced_tgr.csv')
+    if REGION != 'usa' and os.path.exists(p):
+        for r in csv.DictReader(open(p)):
+            out[int(r['va'], 16)] = r['library']
+    return out

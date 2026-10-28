@@ -7,6 +7,8 @@
 | `fenced_tgr.csv` | library code linked into the ROM, outside the target (the N64 counterpart of the PC lane's static CRT). |
 | `functions_tgr.csv` | the older cross-compile survey (`tools/tgrally/manifest.py`); not the tier record. |
 | `eur/addrmap.csv`, `jpn/addrmap.csv` | USA address -> its home in the Europe / Japan ROM, for the region sub-variants (`tools/tgrally/regionmap.py` writes them; `docs/tgrally/REGIONS.md`). |
+| `eur/fenced_tgr.csv` | Europe's library functions the USA does not have (libultra's EEPROM calls), Europe addresses; added to the translated USA list. |
+| `<region>/addrmap_pins.csv`, `<region>/symbols_tgr.csv` | hand pins for the region map (usa,va), and names of data only that region has (name, region address); see `docs/tgrally/REGIONS.md`. |
 
 ## Why the fenced ranges are library code
 

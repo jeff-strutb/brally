@@ -39,15 +39,27 @@ from unicorn import (Uc, UcError, UC_ARCH_MIPS, UC_MODE_MIPS64, UC_MODE_BIG_ENDI
                      UC_HOOK_MEM_WRITE)
 from unicorn import mips_const as M
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ROM_PATH = os.environ.get('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import region  # noqa: E402
+
+ROOT = region.ROOT
+ROM_PATH = region.ROM_PATH
+
+
+def U(va):
+    """A USA address (the ones this file names) in the region's ROM."""
+    v = region.to_region(va)
+    if v is None:
+        raise SystemExit('n64box: %08X has no home in %s' % (va, region.REGION))
+    return v
 
 RDRAM = 0x800000                 # 8 MB: the game's 4 MB plus room for placed bodies
 ANNEX = 0x80500000               # where bodies that outgrow their slot are placed
 MMIO_LO, MMIO_HI = 0x04000000, 0x04900000
 ENTRY = 0x80200000
-CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0     # the game's .text
-TICKS_PER_FRAME = 781250         # osGetCount runs at 46.875 MHz; 1/60 s
+CODE_LO, CODE_HI = 0x80200000, region.DATA_VA  # the game's .text
+PAL = region.REGION == 'eur'
+TICKS_PER_FRAME = 937500 if PAL else 781250   # osGetCount runs at 46.875 MHz; 1/50 s PAL, 1/60 s
 FAKE_RA = 0x80000180             # an exception-vector address the game never runs
 
 GPR = [getattr(M, 'UC_MIPS_REG_%d' % i) for i in range(32)]
@@ -69,6 +81,19 @@ def sx(v):
 
 class Unmodelled(Exception):
     pass
+
+
+class _UsaKeys:
+    """The HLE table written with USA addresses, stored under the region's."""
+
+    def __init__(self, d):
+        self.d = d
+
+    def __setitem__(self, va, v):
+        self.d[U(va)] = v
+
+
+LIB_LO = U(0x802607AC)                         # libultra and its libc/libm, to the end of .text
 
 
 class Thread:
@@ -99,7 +124,7 @@ class Box:
         for va, blob in extra:                  # bodies placed in the annex
             self.uc.mem_write(va & 0x1FFFFFFF, blob)
 
-        self.w32(0x80000300, 1)                 # osTvType: NTSC
+        self.w32(0x80000300, 0 if PAL else 1)   # osTvType: PAL / NTSC
         self.w32(0x80000318, 0x400000)          # osMemSize: 4 MB, no Expansion Pak
         self.quiet = quiet
         self.threads = {}
@@ -308,12 +333,24 @@ class Box:
     # does not look at them (see ram_digest).  Bottoms are
     # from the idle thread's stack-fill loops where it has them (main, SP and
     # DP event threads), otherwise the end of the thread's own OSThread.
-    STACKS = {0x80316CD0: 0x803168D0,       # idle (boot stack top below it)
-              0x80318CD0: 0x80316CD0,       # main game thread, filled 8 KB
-              0x803196D0: 0x80318ED0,       # SP event thread, filled 2 KB
-              0x80319ED0: 0x803196D0,       # DP event thread, filled 2 KB
-              0x8031B1B0: 0x8031ADB0,       # fault thread
-              0x80379568: 0x80379168}       # audio thread
+    STACKS = {'usa': {0x80316CD0: 0x803168D0,       # idle (boot stack top below it)
+                      0x80318CD0: 0x80316CD0,       # main game thread, filled 8 KB
+                      0x803196D0: 0x80318ED0,       # SP event thread, filled 2 KB
+                      0x80319ED0: 0x803196D0,       # DP event thread, filled 2 KB
+                      0x8031B1B0: 0x8031ADB0,       # fault thread
+                      0x80379568: 0x80379168},      # audio thread
+              # Europe, from its own code: BrBoot (idle), BrIdleThread (the
+              # fills, main, fault), BrSchedInit (SP and DP event threads,
+              # and Europe's Pre-NMI thread, whose stack is not filled: its
+              # bottom is taken as the DP stack's top) and BrMusicInit
+              'eur': {0x803189B0: 0x803185B0,       # idle
+                      0x8031A9B0: 0x803189B0,       # main game thread, filled 8 KB
+                      0x8031B1B0: 0x8031A9B0,       # SP event thread, filled 2 KB
+                      0x8031B9B0: 0x8031B1B0,       # DP event thread, filled 2 KB
+                      0x8031C1B0: 0x8031B9B0,       # Pre-NMI thread
+                      0x8031D6B0: 0x8031D2B0,       # fault thread
+                      0x8037BA68: 0x8037B668}}.get(region.REGION, {})   # audio thread
+    BOOT_SP = {'usa': 0x803168D0, 'eur': 0x803185B0}.get(region.REGION)   # the entry stub's sp
 
     def ram_digest(self):
         """The game's .data and .bss, without the threads' stacks.  A stack
@@ -322,7 +359,7 @@ class Box:
         reads keep whatever the last call left there.  What a call does to
         memory is compared call by call by the live oracle (A5); the whole-
         image run compares the game's state."""
-        lo, hi = 0x8026FAB0, 0x802AC400 + 0xD67B0
+        lo, hi = region.DATA_VA, region.BSS_E
         ram = bytearray(self.read(lo, hi - lo))
         for top, bottom in self.STACKS.items():
             a, b = max(bottom, lo) - lo, min(top, hi) - lo
@@ -332,7 +369,7 @@ class Box:
 
     # ---------------------------------------------------------------- HLE
     def install_hle(self):
-        H = self.hle
+        H = _UsaKeys(self.hle)
         H[0x80265D90] = ('osInitialize', self.os_initialize)
         H[0x80265670] = ('osCreateThread', self.os_create_thread)
         H[0x802657C0] = ('osStartThread', self.os_start_thread)
@@ -398,12 +435,13 @@ class Box:
         H[0x80268530] = ('osAiGetLength', lambda: self.ret(self.ai_length()))
         H[0x80268230] = ('osAiSetFrequency', self.os_ai_set_frequency)
         H[0x80268470] = ('osAiSetNextBuffer', self.os_ai_set_next)
+        if PAL:
+            self.install_eeprom()
+        H = self.hle
         for va in H:
             self.uc.hook_add(UC_HOOK_CODE, self.on_hle, begin=sx(va), end=sx(va))
         self.last_lib = None
-        import csv
-        for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/fenced_tgr.csv'))):
-            v = int(r['va'], 16)
+        for v in region.fenced():
             if v not in H:
                 self.uc.hook_add(UC_HOOK_CODE, self.on_lib, begin=sx(v), end=sx(v))
         # a thread returning from its entry function has nowhere to go
@@ -418,7 +456,7 @@ class Box:
             uc.emu_stop()
 
     def on_lib(self, uc, addr, size, data):
-        if self.last_lib is None or not (0x802607AC <= self.reg('ra') < 0x80270000):
+        if self.last_lib is None or not (LIB_LO <= self.reg('ra') < CODE_HI):
             self.last_lib = (addr & 0xffffffff, self.reg('ra'))
 
     def on_thread_exit(self, uc, addr, size, data):
@@ -464,7 +502,7 @@ class Box:
 
     def os_create_mq(self):
         mq, buf, count = self.arg(0), self.arg(1), self.arg(2)
-        for off, v in ((0, 0x802A6230), (4, 0x802A6230), (MQ_VALID, 0), (MQ_FIRST, 0),
+        for off, v in ((0, U(0x802A6230)), (4, U(0x802A6230)), (MQ_VALID, 0), (MQ_FIRST, 0),
                        (MQ_COUNT, count), (MQ_MSG, buf)):
             self.w32(mq + off, v)
         self.ret()
@@ -580,13 +618,43 @@ class Box:
         self.log.append((self.frame, 'ai', hashlib.sha1(self.read(self.arg(0), n)).hexdigest()[:16]))
         self.ret(0)
 
+    # Europe's cartridge has a 4 Kbit EEPROM beside the Controller Pak.
+    # osEepromProbe / osEepromRead / osEepromWrite are modelled (the SI
+    # transfer behind them is hardware); osEepromLongRead/LongWrite, which
+    # loop over 8-byte blocks with a timer between writes, run for real.
+    EEP_BLOCKS = 64
+    EEPROM = {'eur': dict(probe=0x80262DD0, read=0x8026AB40, write=0x8026B020)}
+
+    def install_eeprom(self):
+        e = self.EEPROM[region.REGION]
+        self.eeprom = bytearray(b'\xff' * (8 * self.EEP_BLOCKS))     # a blank part
+        self.hle[e['probe']] = ('osEepromProbe', lambda: self.ret(1))     # EEPROM_TYPE_4K
+        self.hle[e['read']] = ('osEepromRead', self.os_eeprom_read)
+        self.hle[e['write']] = ('osEepromWrite', self.os_eeprom_write)
+
+    def os_eeprom_read(self):
+        a, buf = self.arg(1) & 0xff, self.arg(2)
+        if a > self.EEP_BLOCKS:
+            return self.ret(0xffffffff)
+        self.uc.mem_write(buf & 0x1FFFFFFF, bytes(self.eeprom[8 * a:8 * a + 8]))
+        self.ret(0)
+
+    def os_eeprom_write(self):
+        a, buf = self.arg(1) & 0xff, self.arg(2)
+        if a > self.EEP_BLOCKS:
+            return self.ret(0xffffffff)
+        self.eeprom[8 * a:8 * a + 8] = self.read(buf, 8)
+        self.log.append((self.frame, 'eeprom', hashlib.sha1(bytes(self.eeprom)).hexdigest()[:16]))
+        self.ret(0)
+
     def os_initialize(self):
         # the ROM's osInitialize leaves osClockRate (0x802A6140, u64) at 3/4
         # of its value: the count's rate, 46,875,000.  Its other work (PIF,
         # exception vectors, caches) is the box's own.
-        rate = (self.r32(0x802A6140) << 32 | self.r32(0x802A6144)) * 3 // 4
-        self.w32(0x802A6140, rate >> 32)
-        self.w32(0x802A6144, rate & 0xffffffff)
+        clk = U(0x802A6140)
+        rate = (self.r32(clk) << 32 | self.r32(clk + 4)) * 3 // 4
+        self.w32(clk, rate >> 32)
+        self.w32(clk + 4, rate & 0xffffffff)
         self.ret()
 
     def os_set_timer(self):
@@ -634,6 +702,12 @@ class Box:
         self.write(pattern, bytes([(1 << n) - 1]))
         # OSContStatus[4]: type (u16), status (u8), errno (u8)
         self.write(status, b'\x05\x00\x00\x00' * n + b'\x00\x00\x00\x08' * (4 - n))
+        # osContInit's last act: osCreateMesgQueue(&__osEepromTimerQ,
+        # &__osEepromTimerMsg, 1), the queue osEepromLongWrite waits on
+        q = U(0x8037F458)
+        for off, v in ((0, U(0x802A6230)), (4, U(0x802A6230)), (MQ_VALID, 0), (MQ_FIRST, 0),
+                       (MQ_COUNT, 1), (MQ_MSG, U(0x8037F470))):
+            self.w32(q + off, v)
         self.ret(0)
 
     def os_pfs_is_plug(self):
@@ -842,7 +916,7 @@ class Box:
     # ---------------------------------------------------------------- run
     def boot(self):
         self.uc.reg_write(M.UC_MIPS_REG_PC, sx(ENTRY))
-        self.uc.reg_write(GPR[REG['sp']], sx(0x803168D0))
+        self.uc.reg_write(GPR[REG['sp']], sx(self.BOOT_SP))
 
     def run(self, frames, max_insns=0):
         """Run until `frames` retraces.  The CPU is only ever stopped from

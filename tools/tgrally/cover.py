@@ -1,16 +1,15 @@
 """Coverage of the Top Gear Rally (N64) .text by the PC decomp's source.
 
 Every number here carries its denominator: the ROM's own .text is
-0x001000-0x070AB0 = 457,392 bytes across 883 functions, and that is what a
+the region's .text (USA: 0x001000-0x070AB0 = 457,392 bytes), and that is what a
 percentage is a percentage OF.
 
-  .venv/bin/python tools/tgrally/cover.py [build/tgrally/n64/report.csv]
+  [TGR_REGION=eur] .venv/bin/python tools/tgrally/cover.py [build/tgrally/n64/report.csv]
 """
 import sys, os, csv, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
-os.environ.setdefault('TGR_ROM', os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))
 import n64rom  # noqa: E402
 
 TEXT = n64rom.TEXT_E - n64rom.TEXT_S
@@ -23,7 +22,7 @@ def sizes():
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        ROOT, 'build/tgrally/n64/report.csv')
+        n64rom.region.build_dir(), 'report.csv')
     sz = sizes()
     rows = list(csv.DictReader(open(path)))
     byst = collections.defaultdict(lambda: [0, 0])     # status -> [fns, bytes]
@@ -40,7 +39,7 @@ def main():
         byst[st][0] += 1
         byst[st][1] += b
 
-    print("Top Gear Rally (USA) .text: %d bytes / %d functions" % (TEXT, len(n64rom.F)))
+    print("%s .text: %d bytes / %d functions" % (n64rom.region.R['name'], TEXT, len(n64rom.F)))
     print()
     print("  %-8s %6s  %10s  %7s" % ('status', 'fns', 'bytes', 'of .text'))
     for st in ('EXACT', 'SHAPE', 'MISS', 'CCFAIL'):

@@ -27,13 +27,16 @@ loop head ends the run) through one iteration to its second head arrival.
 All memory outside the thread's frame and every OS call must agree;
 registers are not compared, since the loop carries nothing in them.
 Verdicts: EQUIVALENT (compared >= 1, no divergence), DIVERGENT, UNCOVERED.
-They land in config/tgrally/t3_live.csv with the source's hash.
+They land in config/tgrally/t3_live.csv (a region: config/tgrally/<region>/) with the
+source's hash.
 
 A7 -- WHOLE IMAGE.  Every T3 body placed at once (n64image.py --t3, plus
 --with for bodies being qualified), every script run for its full length, and
 the log -- each display list with the data it uses, each audio buffer, the
 game's RAM at every retrace -- compared with the original's.  IDENTICAL or the
-first frame that differs.  Recorded in config/tgrally/whole_image.csv.
+first frame that differs.  Recorded in config/tgrally/whole_image.csv (a region:
+config/tgrally/<region>/whole_image.csv).  TGR_REGION=eur runs it all against
+the Europe cartridge (addresses on the command line are then Europe's).
 
 THE GATE (--qualify).  Gate 0: a WHAT IT DOES comment, an @t3 tag, no
 unfinished markers.  Gate A5: EQUIVALENT for the current source.  Gate A7:
@@ -63,8 +66,8 @@ from unicorn import UC_HOOK_CODE  # noqa: E402
 from unicorn import mips_const as M  # noqa: E402
 
 SCRIPTS = os.path.join(ROOT, 'tools/tgrally/n64box_scripts')
-LIVE = os.path.join(ROOT, 'config/tgrally/t3_live.csv')
-WHOLE = os.path.join(ROOT, 'config/tgrally/whole_image.csv')
+LIVE = os.path.join(B.region.config_dir(), 't3_live.csv')
+WHOLE = os.path.join(B.region.config_dir(), 'whole_image.csv')
 FRAMES = {'race_pause.txt': 4000, 'arcade_timeup.txt': 6000, 'loadsave_pak.txt': 3000}   # per script; default 3600 frames (a minute)
 
 
@@ -74,14 +77,15 @@ def script_frames(sc):
     n = NB.Script(path).frames
     return n or FRAMES.get(os.path.basename(sc), 3600)
 TEST_CODE, TEST_DATA = 0x80600000, 0x80780000
-CODE_LO, CODE_HI = 0x80200000, 0x8026FAB0
+CODE_LO, CODE_HI = 0x80200000, B.region.DATA_VA
 DEAD_STACK = 0x4000
 ARG_HOME = 0x20
 MAX_CALLS = 150
 # Thread entries that never return: compared one loop iteration at a time
 # (see Lockstep.on_head).  The iteration runs from the outer loop head to the
 # next arrival there.
-THREAD_LOOPS = {0x80257D3C}       # BrMusicThread
+THREAD_LOOPS = {B.region.to_region(0x80257D3C)}       # BrMusicThread
+THREAD_LOOPS |= {'eur': {0x8021CE88}}.get(B.region.REGION, set())   # Europe's Pre-NMI thread
 
 
 def loop_head(words, base):
@@ -144,7 +148,7 @@ def function_text(src, name):
 def return_kind(va):
     if CAND_DIR:
         f = os.path.join(CAND_DIR, '0x%08X.c' % va)
-        name = re.search(r'@implements 0x[0-9A-F]{8} tgr (\w+)', open(f).read()).group(1)
+        name = B.region.TAG.search(open(f).read()).group(3)
     else:
         f, name, sha = source_of(va)
     text = function_text(open(f).read(), name)
@@ -167,7 +171,7 @@ def link_candidate(va, code_va, data_va):
     if CAND_DIR:
         f = os.path.join(CAND_DIR, '0x%08X.c' % va)
         src = open(f).read()
-        name = re.search(r'@implements 0x[0-9A-F]{8} tgr (\w+)', src).group(1)
+        name = B.region.TAG.search(src).group(3)
         obj, err = B.compile_c(f)
         if obj is None:
             raise L.LinkError('compile error')
@@ -833,8 +837,7 @@ def _image_worker(job):
 def t3_tagged():
     out = set()
     for f in B.all_sources():
-        for m in re.finditer(r'@t3 (0x[0-9A-Fa-f]{8})', open(f).read()):
-            out.add(int(m.group(1), 16))
+        out |= B.region.t3_tags(open(f).read())
     return out
 
 
@@ -908,9 +911,9 @@ def qualify(va):
         return False
     src = open(f).read()
     body = function_text(src, name)
-    idx = src.find('@implements 0x%08X' % va)
+    idx = B.region.tag_line(src, va)
     head = src[max(0, idx - 1500):idx]
-    gate('0', 'WHAT IT DOES:' in head and ('@t3 0x%08X' % va) in src
+    gate('0', 'WHAT IT DOES:' in head and va in B.region.t3_tags(src)
          and not re.search(r'\b(TODO|FIXME|XXX)\b', body),
          'description, @t3 tag, no unfinished markers')
     live = {r['va']: r for r in csv.DictReader(open(LIVE))} if os.path.exists(LIVE) else {}

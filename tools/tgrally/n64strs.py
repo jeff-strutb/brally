@@ -11,7 +11,7 @@ def strings_of(va):
     e = n.F[i + 1] if i + 1 < len(n.F) else n.r2v(n.TEXT_E)
     out = []
     for t, pcs in n.xref.items():
-        if any(s <= p < e for p in pcs) and 0x8026FAB0 <= t < 0x802AC400:
+        if any(s <= p < e for p in pcs) and n.region.DATA_VA <= t < n.region.BSS_S:
             r = n.v2r(t)
             j = r
             while j < len(n.d) and n.d[j] != 0 and j - r < 120:
