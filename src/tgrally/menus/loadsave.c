@@ -191,7 +191,13 @@ void BrVideoBlank(void);
  * has faded out it starts the loaded championship or time attack, or returns
  * to where it came from.
  * The menu pointer is set on the first frame only (a local the later frames
- * find in its stack slot, as the ROM has it). */
+ * find in its stack slot, as the ROM has it).
+ * The menu rows and the panels keep their y in two locals, so the panels'
+ * y is short-lived and the shared (y + 18) >> 1 takes s0 as in the ROM.
+ * The cursor-up search loops by label: with no landing block the row store
+ * stays on its last test and the pad is read afresh after the arms.  The
+ * two season records are written through p2 (data + 0x128) set beside
+ * data, and the kind tests that follow a pak read go through mode. */
 /* @implements 0x80211D70 tgr BrLoadSaveScreen */
 void BrLoadSaveScreen(void)
 {
@@ -199,13 +205,13 @@ void BrLoadSaveScreen(void)
   int i;
   int mode;
   int h;
-  int unusedD0;
+  int newSize;                  /* Europe: the packed ghost's size */
   int unusedCC;
   int unusedC8;
   int unusedC4;
   int unusedC0;
   int y;
-  int unusedB8;
+  int menuY;                    /* the menu rows' y; y is the panels' */
   unsigned char *name;
   int freeBytes;
   unsigned char pakBits;
@@ -225,15 +231,12 @@ void BrLoadSaveScreen(void)
   unsigned char ext[4] = { 0, 0, 0, 0 };
   int u94;                      /* unused: the frame has it */
   int k;
-  int u8C;                      /* unused: the frame has it */
+  int *p2;
   unsigned char *data;
   int u84[2];                   /* unused: the frame has them */
   int len;
   int sum;
   int check;
-#if TGR_REGION_EUR
-  int newSize;
-#endif
   static BrDataItem jpn_D_80273F98[] = {
     { 13, "-- GAME PAK --" },
     { 6, "LOAD SEASON DATA" },
@@ -358,18 +361,18 @@ void BrLoadSaveScreen(void)
   } else {
     BrTextPrint("%ryDATA SAVE", 160, 41);
   }
-  y = 0;
+  menuY = 0;
   BrTextSetFont(13);
   for (i = 0; items[i].label != 0; i++) {
     if (items[i].kind == 15) {
-      y += 6;
+      menuY += 6;
     } else if (items[i].kind == 14) {
-      y += 3;
+      menuY += 3;
     } else {
-      y += 12;
+      menuY += 12;
     }
   }
-  y = 0x8B - (y >> 1);
+  menuY = 0x8B - (menuY >> 1);
   for (i = 0; items[i].label != 0; i++) {
     if (D_80316423 != 0) {
       if (i == D_80272550) {
@@ -382,13 +385,13 @@ void BrLoadSaveScreen(void)
     } else {
       BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
     }
-    BrTextPrint(items[i].label, 158, y);
+    BrTextPrint(items[i].label, 158, menuY);
     if (items[i].kind == 15) {
-      y += 6;
+      menuY += 6;
     } else if (items[i].kind == 14) {
-      y += 3;
+      menuY += 3;
     } else {
-      y += 12;
+      menuY += 12;
     }
   }
   BrImageDrawAt(&D_8028D0B0, 222, 432);
@@ -418,15 +421,17 @@ void BrLoadSaveScreen(void)
                items[D_80272550].kind == 13);
     } else if (PAD->pressed & 8) {
       BrPadConsume(PAD, 8);
-      do {
-        if (D_80272550 == 0) {
-          while (items[D_80272550].label != 0) {
-            D_80272550++;
-          }
+    up:
+      if (D_80272550 == 0) {
+        while (items[D_80272550].label != 0) {
+          D_80272550++;
         }
-        D_80272550--;
-      } while (items[D_80272550].kind == 15 || items[D_80272550].kind == 14 ||
-               items[D_80272550].kind == 13);
+      }
+      D_80272550--;
+      if (items[D_80272550].kind == 15 || items[D_80272550].kind == 14 ||
+          items[D_80272550].kind == 13) {
+        goto up;
+      }
     }
     if (PAD->pressed & 0x10) {
       BrPadConsume(PAD, 0x10);
@@ -463,10 +468,11 @@ void BrLoadSaveScreen(void)
       break;
     }
     data = D_80272500 + 4;
+    p2 = (int *)(data + 0x128);
     len = (data - D_80272500 + 0x14f) & ~7;
     if (jpn_D_80316D38 == 0) {
       if (osEepromLongRead(D_80272D48, 0, D_80272500, len) != 0 &&
-          (items[D_80272550].kind == 6 || items[D_80272550].kind == 8)) {
+          ((mode = items[D_80272550].kind) == 6 || mode == 8)) {
         D_802724F0 = 5;
         D_80272554 = 15;
         break;
@@ -481,17 +487,17 @@ void BrLoadSaveScreen(void)
         osSyncPrintf("checksum fail (%08x vs %08x/%02x%02x%02x%02x) (%d)\n", check, sum, D_80272500[0],
                      D_80272500[1], D_80272500[2], D_80272500[3], len);
 #endif
-        if (items[D_80272550].kind == 6 || items[D_80272550].kind == 8) {
+        if ((mode = items[D_80272550].kind) == 6 || mode == 8) {
           D_802724F0 = 5;
           D_80272554 = 15;
           break;
         }
         memcpy(data, D_8031B760[0].season, 0x128);
-        ((int *)(data + 0x128))[0] = D_8031B760[1].season->xd4;
-        ((int *)(data + 0x128))[1] = D_8031B760[1].season->xd8;
-        ((int *)(data + 0x128))[2] = D_8031B760[1].season->xdc;
-        ((int *)(data + 0x128))[3] = D_8031B760[1].season->xe0;
-        ((int *)(data + 0x128))[4] = D_8031B760[1].season->xe4;
+        p2[0] = D_8031B760[1].season->xd4;
+        p2[1] = D_8031B760[1].season->xd8;
+        p2[2] = D_8031B760[1].season->xdc;
+        p2[3] = D_8031B760[1].season->xe0;
+        p2[4] = D_8031B760[1].season->xe4;
         memcpy(data + 0x13c, D_802723D0, 12);
       } else {
 #if TGR_REGION_EUR
@@ -508,11 +514,11 @@ void BrLoadSaveScreen(void)
     case 6:
       memcpy(D_8031B760[0].season, data, 0x128);
       memcpy(D_8031B760[1].season, data, 0x128);
-      D_8031B760[1].season->xd4 = ((int *)(data + 0x128))[0];
-      D_8031B760[1].season->xd8 = ((int *)(data + 0x128))[1];
-      D_8031B760[1].season->xdc = ((int *)(data + 0x128))[2];
-      D_8031B760[1].season->xe0 = ((int *)(data + 0x128))[3];
-      D_8031B760[1].season->xe4 = ((int *)(data + 0x128))[4];
+      D_8031B760[1].season->xd4 = p2[0];
+      D_8031B760[1].season->xd8 = p2[1];
+      D_8031B760[1].season->xdc = p2[2];
+      D_8031B760[1].season->xe0 = p2[3];
+      D_8031B760[1].season->xe4 = p2[4];
       D_80272554 = 18;
       D_80316422 = 1;
       break;
@@ -522,11 +528,11 @@ void BrLoadSaveScreen(void)
       D_8031B760[0].season->xdc = ((BrSeason *)data)->xdc;
       D_8031B760[0].season->xe0 = ((BrSeason *)data)->xe0;
       D_8031B760[0].season->xe4 = ((BrSeason *)data)->xe4;
-      D_8031B760[1].season->xd4 = ((int *)(data + 0x128))[0];
-      D_8031B760[1].season->xd8 = ((int *)(data + 0x128))[1];
-      D_8031B760[1].season->xdc = ((int *)(data + 0x128))[2];
-      D_8031B760[1].season->xe0 = ((int *)(data + 0x128))[3];
-      D_8031B760[1].season->xe4 = ((int *)(data + 0x128))[4];
+      D_8031B760[1].season->xd4 = p2[0];
+      D_8031B760[1].season->xd8 = p2[1];
+      D_8031B760[1].season->xdc = p2[2];
+      D_8031B760[1].season->xe0 = p2[3];
+      D_8031B760[1].season->xe4 = p2[4];
       memcpy(D_802723D0, data + 0x13c, 12);
       BrVolumesApply();
       D_80316422 = 1;
@@ -545,11 +551,11 @@ void BrLoadSaveScreen(void)
       k = 4;
       memcpy(data, D_8031B760[0].season, 0x128);
     write:
-      ((int *)(data + 0x128))[0] = D_8031B760[1].season->xd4;
-      ((int *)(data + 0x128))[1] = D_8031B760[1].season->xd8;
-      ((int *)(data + 0x128))[2] = D_8031B760[1].season->xdc;
-      ((int *)(data + 0x128))[3] = D_8031B760[1].season->xe0;
-      ((int *)(data + 0x128))[4] = D_8031B760[1].season->xe4;
+      p2[0] = D_8031B760[1].season->xd4;
+      p2[1] = D_8031B760[1].season->xd8;
+      p2[2] = D_8031B760[1].season->xdc;
+      p2[3] = D_8031B760[1].season->xe0;
+      p2[4] = D_8031B760[1].season->xe4;
       sum = 0xBFED812;
       for (k = 4; k < len; k++) {
         sum += D_80272500[k];
@@ -573,22 +579,23 @@ void BrLoadSaveScreen(void)
       D_80272554 = 15;
     } else {
       unsigned char *blk;
-      int n;
       int j;
       int unused6C;
+      int n;
       int s;
-      int unused5C[3];
+      int *p2;
 
       blk = D_80272500 + 4;
+      p2 = (int *)(blk + 0x128);
       n = (blk - D_80272500 + 0x14f) & ~7;
       BrCarReset(&D_8031B760[0]);
       BrCarReset(&D_8031B760[1]);
       memcpy(blk, D_8031B760[0].season, 0x128);
-      ((int *)(blk + 0x128))[0] = D_8031B760[1].season->xd4;
-      ((int *)(blk + 0x128))[1] = D_8031B760[1].season->xd8;
-      ((int *)(blk + 0x128))[2] = D_8031B760[1].season->xdc;
-      ((int *)(blk + 0x128))[3] = D_8031B760[1].season->xe0;
-      ((int *)(blk + 0x128))[4] = D_8031B760[1].season->xe4;
+      p2[0] = D_8031B760[1].season->xd4;
+      p2[1] = D_8031B760[1].season->xd8;
+      p2[2] = D_8031B760[1].season->xdc;
+      p2[3] = D_8031B760[1].season->xe0;
+      p2[4] = D_8031B760[1].season->xe4;
       memcpy(blk + 0x13c, D_802723D0, 12);
       s = 0xBFED812;
       for (j = 4; j < n; j++) {
@@ -659,6 +666,15 @@ void BrLoadSaveScreen(void)
     D_80316423 = 0;
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_EUR
+    BrTextSetFont(12);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+    func_80246F90(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextPrint("A NEW CONTROLLER PAK", 95, 108);
+    BrTextPrint("WAS INSERTED.", 95, 121);
+    BrTextPrint("THIS CONTROLLER PAK", 95, 140);
+    BrTextPrint("WILL BE USED.", 95, 153);
+#else
     BrTextSetFont(14);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     func_80246F90(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -666,6 +682,7 @@ void BrLoadSaveScreen(void)
     BrTextPrint("%j2Bq6hc@6R&", 84, 121);
     BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 140);
     BrTextPrint("%j\xDE@6R&", 84, 153);
+#endif
     if (PAD->pressed & 0x8030) {
       BrPadConsume(PAD, 0x8030);
       D_80272554 = 10;
@@ -861,8 +878,8 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 6:                       /* erase both seasons and the options? */
-    y = 0x139 - D_8028D0B0.w;
     D_80316423 = 0;
+    y = 0x139 - D_8028D0B0.w;
 #if TGR_REGION_EUR
     func_80246F90(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
@@ -1511,9 +1528,9 @@ void BrLoadSaveScreen(void)
       D_80272550 = 0;
       if (D_802724F4 == 0) {
         BrModeSet((int)BrMainMenu);
-      } else if (D_802724F4 == 1) {
+      } else if ((mode = D_802724F4) == 1) {
         BrModeSet((int)func_80209434);
-      } else if (D_802724F4 == 2) {
+      } else if ((mode | 0) == 2) {
         BrModeSet((int)BrMainMenu);
       }
     }
