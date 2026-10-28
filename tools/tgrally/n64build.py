@@ -168,20 +168,20 @@ def resolve(name, syms):
 
 
 def place(name, addend, syms):
-    """The region address of name+addend.  The USA address itself is looked
-    up first (the map pairs each referenced address), then the symbol's own
-    home plus the addend (an element of an array whose start is referenced)."""
+    """The region address of name+addend: the symbol's own home plus the
+    addend (an element of the array it starts, or the address just past
+    it, which in a region need not be the object that follows it in the
+    USA), else the map's pairing of the USA address itself."""
     r = region_symbol(name)
     if r is not False:
         return None if r is None else (r + addend) & 0xffffffff
     v = resolve_usa(name, syms)
     if v is None:
         return None
-    t = region.to_region((v + addend) & 0xffffffff)
-    if t is None:
-        b = region.to_region(v)
-        t = None if b is None else (b + addend) & 0xffffffff
-    return t
+    b = region.to_region(v)
+    if b is not None:
+        return (b + addend) & 0xffffffff
+    return region.to_region((v + addend) & 0xffffffff)
 
 
 # ------------------------------------------------------------------ ELF32 BE
@@ -494,9 +494,11 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
             continue
         w = ours[i]
         kind, val = sym_target(si, o, typ)
-        if kind == 'unresolved':
+        if kind == 'unresolved' and typ not in (5, 6):
             notes.append('unresolved symbol %s' % val)
             continue
+        # a %hi/%lo pair is placed by name+addend below (place), which can
+        # resolve an array end whose start the region map does not pair
         if typ == 4:                                        # R_MIPS_26
             if kind == 'section':
                 tgt = text_off_to_va((w & 0x03FFFFFF) << 2)
