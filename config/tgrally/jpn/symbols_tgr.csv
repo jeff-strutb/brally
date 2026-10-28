@@ -16,3 +16,5 @@ va,name,kind
 8021AE68,BrScreenUnblank,func
 8022F2B0,BrJpGlyphLoad,func
 8022F1A0,BrJpGlyphReset,func
+80226FC0,BrCamTracksidePick,func
+80221CA0,BrCamTracksideAim,func
