@@ -803,7 +803,11 @@ void BrCarSelect(void)
       if (D_8026FF08 >= 2) {
         car = CAR(pl);
         if (car->laps < D_8028B304) {
+#if TGR_REGION_JPN
+          sprintf(D_80316318, "%%ryP%d:GAME OVER", pl + 1);
+#else
           sprintf(D_80316318, "%%ryP%d: Did not finish", pl + 1);
+#endif
         } else {
           sprintf(D_80316318, "%%ryP%d: %s Place", pl + 1, D_80271FE0[car->xfac]);
         }
@@ -816,7 +820,11 @@ void BrCarSelect(void)
         } else {
           car = CAR(pl);
           if (car->laps < D_8028B304) {
+#if TGR_REGION_JPN
+            sprintf(D_80316318, "%%ryGAME OVER");
+#else
             sprintf(D_80316318, "%%ryDid not finish");
+#endif
           } else {
             sprintf(D_80316318, "%%ry%s Place", D_80271FE0[car->xfac]);
           }
@@ -1424,19 +1432,43 @@ void BrCarSelect(void)
               switch (D_803162B0[p]) {
               case 1:
                 D_80316278[p] = car->season->xd4;
+#if TGR_REGION_JPN
+                D_80316270[p] = D_802720B4;
+                D_80316288[p] = D_802720C4;
+                D_80316290[p] = "Handling";
+#else
                 SETUP(p, D_802720B4, D_802720C4, "Handling");
+#endif
                 break;
               case 2:
                 D_80316278[p] = car->season->xd8;
+#if TGR_REGION_JPN
+                D_80316270[p] = D_802720F0;
+                D_80316288[p] = D_802720FC;
+                D_80316290[p] = "Transmission";
+#else
                 SETUP(p, D_802720F0, D_802720FC, "Transmission");
+#endif
                 break;
               case 3:
                 D_80316278[p] = car->season->xdc;
+#if TGR_REGION_JPN
+                D_80316270[p] = D_8027213C;
+                D_80316288[p] = D_8027214C;
+                D_80316290[p] = "TIRE";
+#else
                 SETUP(p, D_8027213C, D_8027214C, TIRES_TITLE);
+#endif
                 break;
               case 4:
                 D_80316278[p] = car->season->xe0;
+#if TGR_REGION_JPN
+                D_80316270[p] = D_8027218C;
+                D_80316288[p] = D_8027219C;
+                D_80316290[p] = "Suspension";
+#else
                 SETUP(p, D_8027218C, D_8027219C, "Suspension");
+#endif
                 break;
               case 5:
                 D_80316278[p] = 0;
@@ -1453,22 +1485,46 @@ void BrCarSelect(void)
             case 0:
               car->kind = car->x2058;
               D_80316278[p] = car->season->xd4;
+#if TGR_REGION_JPN
+              D_80316270[p] = D_802720B4;
+              D_80316288[p] = D_802720C4;
+              D_80316290[p] = "Handling";
+#else
               SETUP(p, D_802720B4, D_802720C4, "Handling");
+#endif
               break;
             case 1:
               car->season->xd4 = D_80316278[p];
               D_80316278[p] = car->season->xd8;
+#if TGR_REGION_JPN
+              D_80316270[p] = D_802720F0;
+              D_80316288[p] = D_802720FC;
+              D_80316290[p] = "Transmission";
+#else
               SETUP(p, D_802720F0, D_802720FC, "Transmission");
+#endif
               break;
             case 2:
               car->season->xd8 = D_80316278[p];
               D_80316278[p] = car->season->xdc;
+#if TGR_REGION_JPN
+              D_80316270[p] = D_8027213C;
+              D_80316288[p] = D_8027214C;
+              D_80316290[p] = TIRES_TITLE;
+#else
               SETUP(p, D_8027213C, D_8027214C, TIRES_TITLE);
+#endif
               break;
             case 3:
               car->season->xdc = D_80316278[p];
               D_80316278[p] = car->season->xe0;
+#if TGR_REGION_JPN
+              D_80316270[p] = D_8027218C;
+              D_80316288[p] = D_8027219C;
+              D_80316290[p] = "Suspension";
+#else
               SETUP(p, D_8027218C, D_8027219C, "Suspension");
+#endif
               break;
             case 4:
               car->season->xe0 = D_80316278[p];
@@ -1489,8 +1545,12 @@ void BrCarSelect(void)
               if (v != -1) {
                 BrSfxVoiceStart(v, D_803162A4, D_803162A8, 0);
               }
+#if TGR_REGION_JPN
+              back = 0; BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->kind, p);
+#else
               back = 0;
               BrCarModelStream(STREAM(D_80316258[p]), D_80316258[p], car->kind, p);
+#endif
               while (BrEntLoadModel(STREAM(D_80316258[p])) != 0) {
               }
               BrCarModelStream(STREAM(D_80316258[p] ^ 2), D_80316258[p] ^ 2, car->kind, p);
