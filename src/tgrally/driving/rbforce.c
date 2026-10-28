@@ -303,6 +303,9 @@ void BrCarAxleGrip(BrRbBody *b, float dt, float *gripF, float *gripR, unsigned c
   float sp;
   float t;
 
+#if TGR_REGION_EUR
+  dt = 0.033333335f;            /* the grip still works in the USA's 1/30 s step */
+#endif
   ran = 0;
   side = 0.0f;
   n = b->sub[0]->x19c;
