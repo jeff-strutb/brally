@@ -205,10 +205,29 @@ extern char D_8031AC00[];
 extern char D_80272830[];
 extern unsigned long long D_80316CD0[0x400];
 extern int osTvType;
+#if TGR_REGION_EUR
+extern int osViClock;
+#endif
 extern unsigned long long D_8031ADB0[0x80];   /* the fault thread's stack */
 extern unsigned long long D_80318CD0[];
 extern unsigned long long D_80318ED0[0x100];
 extern unsigned long long D_803196D0[0x100];
+#if TGR_REGION_EUR
+typedef struct BrViField {      /* libultra's OSViFieldRegs */
+  unsigned int origin, yScale, vStart, vBurst, vIntr;
+} BrViField;
+typedef struct BrViMode {       /* libultra's OSViMode */
+  unsigned char type;
+  unsigned int com[9];
+  BrViField fld[2];
+} BrViMode;
+extern BrViMode osViModePalHaf1;
+extern BrViMode osViModePalLan1;
+extern BrViMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
+extern BrViMode eur_D_8028CDC4;         /* and its 320-wide one */
+extern int eur_D_8028CE14;
+extern int eur_D_8031C3B0[];            /* the PI manager's queue */
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Correct one address inside data just loaded from ROM: if it
@@ -766,7 +785,13 @@ void BrFaultThread(void *arg)
  * to the lowest priority for good.
  * The first two stack fills walk a pointer alongside the counter (which
  * keeps IDO from unrolling them) and the third indexes the array (which it
- * unrolls by four), as the ROM has them. */
+ * unrolls by four), as the ROM has them.
+ * Europe also makes the game's two PAL video modes (640 and 320 wide, the
+ * picture's vertical window and scale set for 240 lines), starts in the
+ * 320-wide PAL mode unless the console is MPAL, clears the frame buffers
+ * (the words from 0x800D4000 to the code) and gives the PI manager a queue
+ * of its own; its main stack's top is the end of the stack array.  u is
+ * two words of Europe's frame with no visible use. */
 /* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (tools/tgrally/n64permute.py) */
 /* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021E2C8 tgr BrIdleThread */
@@ -776,6 +801,9 @@ void BrIdleThread(void *arg)
   char *p;
   unsigned int i;
   unsigned int buf[16];
+#if TGR_REGION_EUR
+  int u[2];
+#endif
   unsigned long long *s;
 
   for (i = 0; i < 16; i++) {
@@ -799,6 +827,29 @@ void BrIdleThread(void *arg)
   osCreateViManager(0xfe);
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
+#if TGR_REGION_EUR
+  memcpy(&eur_D_8028CD74, &osViModePalHaf1, sizeof(BrViMode));
+  memcpy(&eur_D_8028CDC4, &osViModePalLan1, sizeof(BrViMode));
+  eur_D_8028CD74.fld[0].vStart = (osViModePalHaf1.fld[0].vStart & 0xFC00FC00) | 0x390000 | 0x25B;
+  eur_D_8028CD74.fld[1].vStart = (osViModePalHaf1.fld[1].vStart & 0xFC00FC00) | 0x3B0000 | 0x25D;
+  eur_D_8028CD74.fld[0].yScale = 0x6F0;
+  eur_D_8028CD74.fld[1].yScale = 0x6F0;
+  eur_D_8028CDC4.fld[0].vStart = (osViModePalLan1.fld[0].vStart & 0xFC00FC00) | 0x390000 | 0x25B;
+  eur_D_8028CDC4.fld[1].vStart = (osViModePalLan1.fld[1].vStart & 0xFC00FC00) | 0x3B0000 | 0x25D;
+  eur_D_8028CDC4.fld[0].yScale = 0x378;
+  eur_D_8028CDC4.fld[1].yScale = 0x378;
+  if (osTvType == 2) {
+    osViSetMode(D_802A5D70);
+  } else {
+    osViSetMode(&osViModePalLan1);
+  }
+  osViBlack(1);
+  eur_D_8028CE14 = 1;
+  for (i = 0x800D4000 / 4; i < 0x80200000 / 4; i++) {
+    ((int *)0)[i] = 0;
+  }
+  osCreatePiManager(150, eur_D_8031C3B0, D_80319EE8, 32);
+#else
   if (osTvType == 2) {
     osViSetMode(D_802A5D70);
   } else {
@@ -806,6 +857,7 @@ void BrIdleThread(void *arg)
   }
   osViBlack(1);
   osCreatePiManager(150, D_80319ED0, D_80319EE8, 32);
+#endif
   osCreateMesgQueue(D_8031B1B0, D_8031B1C8, 1);
   osCreateThread(D_8031AC00, 5, BrFaultThread, args.argv, D_8031ADB0 + 0x80, 50);
   osStartThread(D_8031AC00);
@@ -818,7 +870,11 @@ void BrIdleThread(void *arg)
   for (i = 0; i < 0x100; i++) {
     D_803196D0[i] = 0x5015A1DBFED15C00ULL;
   }
+#if TGR_REGION_EUR
+  osCreateThread(D_80272830, 3, BrMainThread, arg, D_80316CD0 + 0x400, 10);
+#else
   osCreateThread(D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
+#endif
   osStartThread(D_80272830);
   osSetThreadPri(0, 0);
   for (;;) {
@@ -827,10 +883,15 @@ void BrIdleThread(void *arg)
 
 /* WHAT IT DOES: The game's entry point after the boot stub clears memory:
  * initialise the N64 operating system, then create and start the idle
- * thread that brings everything else up. */
+ * thread that brings everything else up.  Europe first sets the TV type
+ * to PAL and the video clock to the PAL rate, whatever the console says. */
 /* @implements 0x8021E5C4 tgr BrBoot */
 void BrBoot(void)
 {
+#if TGR_REGION_EUR
+  osTvType = 0;                 /* OS_TV_PAL */
+  osViClock = 49656530;         /* VI_PAL_CLOCK */
+#endif
   osInitialize();
   osCreateThread(&D_80272680,1,BrIdleThread,0,D_80316CD0,10);
   osStartThread(&D_80272680);
