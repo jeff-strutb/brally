@@ -621,9 +621,9 @@ class Box:
     # Europe's cartridge has a 4 Kbit EEPROM beside the Controller Pak.
     # osEepromProbe / osEepromRead / osEepromWrite are modelled (the SI
     # transfer behind them is hardware); osEepromLongRead/LongWrite, which
-    # loop over 8-byte blocks with a timer between writes, run for real.
+    # loop over 8-byte blocks with a timer between them, run for real.
     EEP_BLOCKS = 64
-    EEPROM = {'eur': dict(probe=0x80262DD0, read=0x8026AB40, write=0x8026B020)}
+    EEPROM = {'eur': dict(probe=0x80262DD0, read=0x8026B020, write=0x8026AB40)}
 
     def install_eeprom(self):
         e = self.EEPROM[region.REGION]
