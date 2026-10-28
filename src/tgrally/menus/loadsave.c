@@ -122,6 +122,9 @@ void BrPadStickToButtons(BrPadRec *pad);
 #if TGR_REGION_JPN
 #define COMPANY 0x3238          /* "28" */
 #define GAME 0x4E54524A         /* "NTRJ" */
+#elif TGR_REGION_EUR
+#define COMPANY 0x3746          /* "7F" */
+#define GAME 0x4E545250         /* "NTRP" */
 #else
 #define COMPANY 0x3544          /* "5D" */
 #define GAME 0x4E475245         /* "NGRE" */
@@ -144,7 +147,12 @@ unsigned char D_802724F8 = 0;           /* the screen has been set up */
 unsigned char D_802724FC = 0;           /* the Rumble Pak was taken out for this */
 unsigned char *D_80272500 = 0;          /* the transfer buffer */
 
-#if TGR_REGION_JPN
+#if TGR_REGION_EUR
+#define DBG(args) osSyncPrintf args   /* Europe keeps the debug output */
+#else
+#define DBG(args)
+#endif
+#if TGR_REGION_JPN || TGR_REGION_EUR
 typedef struct BrDataItem {     /* one row of the data screen's menu */
   unsigned char kind;           /* 0-5 Controller Pak rows (as the USA's), 6-9 the Game Pak's
                                    EEPROM (load/save season, load/save options), 10 erase,
@@ -161,10 +169,15 @@ s32 osEepromLongRead(void *mq, unsigned char address, unsigned char *buffer, int
 s32 osEepromLongWrite(void *mq, unsigned char address, unsigned char *buffer, int length);
 void BrCarReset(BrCar *car);
 extern int D_8028A884;          /* a screen flush holds the picture blank */
+#if TGR_REGION_JPN
 void BrScreenBlank(void);
+#else
+void BrVideoBlank(void);
+#define BrScreenBlank BrVideoBlank
+#endif
 #endif
 
-#if TGR_REGION_JPN
+#if TGR_REGION_JPN || TGR_REGION_EUR
 /* WHAT IT DOES: One frame of the data screen (a game mode).  The first frame
  * loads its artwork and picks the menu from how it was entered: the whole
  * menu, or a save-the-season or save-the-ghost menu.  Japan's menu is a
@@ -218,6 +231,9 @@ void BrLoadSaveScreen(void)
   int len;
   int sum;
   int check;
+#if TGR_REGION_EUR
+  int newSize;
+#endif
   static BrDataItem jpn_D_80273F98[] = {
     { 13, "-- GAME PAK --" },
     { 6, "LOAD SEASON DATA" },
@@ -237,17 +253,31 @@ void BrLoadSaveScreen(void)
     { 0, 0 },
   };
   static BrDataItem jpn_D_80274018[] = {
+#if TGR_REGION_EUR
+    { 7, "SAVE SEASON DATA TO GAME PAK" },
+    { 15, "" },
+    { 1, "SAVE SEASON DATA TO CONTROLLER PAK" },
+    { 15, "" },
+    { 11, "CONTINUE" },
+#else
     { 7, "%j\xB9(\xA6\x8D\x8F\xA1" "D\x92(\xAA\xCF\xBB(\x83w\xB2(\xAC" "B6R&" },
     { 15, "" },
     { 1, "%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D\x92(\xAA\xCF\xBB(\x83w\xB2(\xAC" "B6R&" },
     { 15, "" },
     { 11, "OK" },
+#endif
     { 0, 0 },
   };
   static BrDataItem jpn_D_80274048[] = {
+#if TGR_REGION_EUR
+    { 3, "SAVE GHOST CAR DATA TO CONTROLLER PAK" },
+    { 15, "" },
+    { 11, "DONE" },
+#else
     { 3, "%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D\xC9(\xA2\xC3\x81(\xBB(\x83w\xB2(\xAC" "B6R&" },
     { 15, "" },
     { 11, "OK" },
+#endif
     { 0, 0 },
   };
   static unsigned char D_80272550 = 0;  /* the row */
@@ -447,6 +477,10 @@ void BrLoadSaveScreen(void)
         check += D_80272500[k];
       }
       if (check != sum) {
+#if TGR_REGION_EUR
+        osSyncPrintf("checksum fail (%08x vs %08x/%02x%02x%02x%02x) (%d)\n", check, sum, D_80272500[0],
+                     D_80272500[1], D_80272500[2], D_80272500[3], len);
+#endif
         if (items[D_80272550].kind == 6 || items[D_80272550].kind == 8) {
           D_802724F0 = 5;
           D_80272554 = 15;
@@ -459,9 +493,14 @@ void BrLoadSaveScreen(void)
         ((int *)(data + 0x128))[3] = D_8031B760[1].season->xe0;
         ((int *)(data + 0x128))[4] = D_8031B760[1].season->xe4;
         memcpy(data + 0x13c, D_802723D0, 12);
-      } else if (items[D_80272550].kind == 7) {
-        D_80272554 = 13;
-        break;
+      } else {
+#if TGR_REGION_EUR
+        osSyncPrintf("checksum pass\n");
+#endif
+        if (items[D_80272550].kind == 7) {
+          D_80272554 = 13;
+          break;
+        }
       }
     }
     jpn_D_80316D38 = 0;
@@ -512,10 +551,19 @@ void BrLoadSaveScreen(void)
       ((int *)(data + 0x128))[3] = D_8031B760[1].season->xe0;
       ((int *)(data + 0x128))[4] = D_8031B760[1].season->xe4;
       sum = 0xBFED812;
+#if TGR_REGION_EUR
+      for (k = 4; k < len; k++) {
+        sum += D_80272500[k];
+      }
+      memcpy(D_80272500, &sum, 4);
+      osSyncPrintf("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum, D_80272500[0], D_80272500[1],
+                   D_80272500[2], D_80272500[3], len);
+#else
       for (; k < len; k++) {
         sum += D_80272500[k];
       }
       memcpy(D_80272500, &sum, 4);
+#endif
       if (osEepromLongWrite(D_80272D48, 0, D_80272500, len) != 0) {
         D_802724F0 = 5;
         D_80272554 = 15;
@@ -554,6 +602,10 @@ void BrLoadSaveScreen(void)
         s += D_80272500[j];
       }
       memcpy(D_80272500, &s, 4);
+#if TGR_REGION_EUR
+      osSyncPrintf("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", s, D_80272500[0], D_80272500[1],
+                   D_80272500[2], D_80272500[3], n);
+#endif
       if (osEepromLongWrite(D_80272D48, 0, D_80272500, n) != 0) {
         D_802724F0 = 5;
         D_80272554 = 15;
@@ -568,6 +620,9 @@ void BrLoadSaveScreen(void)
       D_802724F0 = 1;
       D_80272554 = 15;
     } else {
+#if TGR_REGION_EUR
+      osSyncPrintf("\nInitializing controller pak...\n");
+#endif
       D_802724F0 = osPfsInitPak(D_80272D48, PFS, D_80271FA8);
       if (D_802724F0 != 0) {
         if (D_802724F0 == 10) {
@@ -626,6 +681,7 @@ void BrLoadSaveScreen(void)
   case 10:                      /* find the file */
     D_802724F0 = osPfsFindFile(PFS, COMPANY, GAME, name, ext, &D_80316424);
     if (D_802724F0 == 3) {
+      DBG(("File system is corrupted, attempting repair...\n"));
       osPfsChecker(PFS);
       D_802724F0 = osPfsFindFile(PFS, COMPANY, GAME, name, ext, &D_80316424);
     }
@@ -648,17 +704,43 @@ void BrLoadSaveScreen(void)
         break;
       }
     } else if (D_802724F0 == 5) {
+#if TGR_REGION_EUR
+      switch (items[D_80272550].kind) {
+      case 0:
+      case 2:
+      case 4:
+        D_80272554 = 15;
+        break;
+      default:
+        D_80272554 = 12;
+        break;
+      }
+#else
       if (items[D_80272550].kind == 0 || items[D_80272550].kind == 2 || items[D_80272550].kind == 4) {
         D_80272554 = 15;
       } else {
         D_80272554 = 12;
       }
+#endif
     } else {
       D_80272554 = 15;
     }
     break;
   case 11:                      /* load */
     if (D_802724F0 == 0) {
+#if TGR_REGION_EUR
+      switch (items[D_80272550].kind) {
+      case 0:
+        osSyncPrintf("Loading season data...\n");
+        break;
+      case 2:
+        osSyncPrintf("Loading compressed ghost data...\n");
+        break;
+      case 4:
+        osSyncPrintf("Loading Options...\n");
+        break;
+      }
+#endif
       if (items[D_80272550].kind != 4) {
         D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0, size, D_80272500);
       } else {
@@ -666,7 +748,12 @@ void BrLoadSaveScreen(void)
       }
       if (D_802724F0 != 0) {
         D_80272554 = 15;
+#if TGR_REGION_EUR
+      } else switch (items[D_80272550].kind) {
+      case 0:
+#else
       } else if (items[D_80272550].kind == 0) {
+#endif
         if (D_802724F4 == 0) {
           opts[0] = D_8031B760[D_80271FA8 ^ 1].season->xd4;
           opts[1] = D_8031B760[D_80271FA8 ^ 1].season->xd8;
@@ -683,24 +770,41 @@ void BrLoadSaveScreen(void)
           D_8031B760[D_80271FA8 ^ 1].season->xe0 = opts[3];
           D_8031B760[D_80271FA8 ^ 1].season->xe4 = opts[4];
         }
+        DBG(("Done!\n"));
         if (D_802724FC == 0) {
           D_80272554 = 18;
         } else {
           D_80272554 = 16;
         }
         D_80316422 = 1;
+#if TGR_REGION_EUR
+        break;
+      case 2:
+#else
       } else if (items[D_80272550].kind == 2) {
+#endif
+        DBG(("Extracting ghost data...\n"));
         D_80270784 = func_8021CB4C(D_80307F00, 0xDE5C, D_80272500, 2);
         D_8028B940 = D_80307F00[0];
+#if TGR_REGION_EUR
+        D_8031B760[0].season->xce |= 1 << D_80307F00[0];
+#else
         D_8031B760[0].season->xce |= 1 << D_8028B940;
+#endif
         D_8031B760[0].season->unlocked |= 1 << D_80307F00[1];
+        DBG(("Done!\n"));
         if (D_802724FC == 0) {
           D_80272554 = 18;
         } else {
           D_80272554 = 16;
         }
         D_80316422 = 1;
+#if TGR_REGION_EUR
+        break;
+      case 4:
+#else
       } else if (items[D_80272550].kind == 4) {
+#endif
         memcpy(D_802723D0, D_80272500, 12);
         D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
@@ -710,15 +814,23 @@ void BrLoadSaveScreen(void)
           D_8031B760[D_80271FA8].season->xdc = opts[2];
           D_8031B760[D_80271FA8].season->xe0 = opts[3];
           D_8031B760[D_80271FA8].season->xe4 = opts[4];
+          DBG(("Done!\n"));
           BrVolumesApply();
           D_80272554 = 16;
         } else {
           D_80272554 = 15;
         }
+#if TGR_REGION_EUR
+        break;
+#endif
       }
+#if TGR_REGION_EUR
+    }
+#else
     } else {
       D_80272554 = 15;
     }
+#endif
     break;
   case 12:                      /* make room for a new file */
     D_802724F0 = osPfsFreeBlocks(PFS, &freeBytes);
@@ -727,6 +839,19 @@ void BrLoadSaveScreen(void)
         D_802724F0 = 7;
         D_80272554 = 15;
       } else {
+#if TGR_REGION_EUR
+        switch (items[D_80272550].kind) {
+        case 1:
+          osSyncPrintf("Allocating %d bytes for season data...\n", size);
+          break;
+        case 3:
+          osSyncPrintf("Allocating %d bytes for ghost data...\n", size);
+          break;
+        case 5:
+          osSyncPrintf("Allocating %d bytes for options...\n", size);
+          break;
+        }
+#endif
         D_802724F0 = osPfsAllocateFile(PFS, COMPANY, GAME, name, ext, size, &D_80316424);
         if (D_802724F0 == 3) {
           osPfsChecker(PFS);
@@ -745,6 +870,21 @@ void BrLoadSaveScreen(void)
   case 6:                       /* erase both seasons and the options? */
     y = 0x139 - D_8028D0B0.w;
     D_80316423 = 0;
+#if TGR_REGION_EUR
+    func_80246F90(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextAlignLeft();
+    BrTextHighlightOff();
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+    BrTextSetFont(13);
+    BrTextPrint("ABOUT TO ERASE SEASON DATA AND", 65, 108);
+    BrTextPrint("OPTION DATA STORED ON GAME PAK.", 65, 122);
+    BrTextPrint("DO YOU REALLY WANT TO DO THIS?", 65, 136);
+    BrTextSetFont(10);
+    BrTextPrint("%wwOK", (D_8028D0B0.w + 0x8BU) >> 1, (y + 18) >> 1);
+    BrTextPrint("%wwCANCEL", (D_8028D0E0.h + 0x19DU) >> 1, (y + 18) >> 1);
+    BrImageDrawAt(&D_8028D0B0, 0x85, y);
+    BrImageDrawAt(&D_8028D0E0, 0x197, y);
+#else
     func_80246F90(0x5F, 0xBB, 0x1C2, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
     BrTextHighlightOff();
@@ -757,6 +897,7 @@ void BrLoadSaveScreen(void)
     BrTextPrint("%wwCANCEL", (D_8028D0E0.h + 0x1B1U) >> 1, (y + 18) >> 1);
     BrImageDrawAt(&D_8028D0B0, 0x71, y);
     BrImageDrawAt(&D_8028D0E0, 0x1AB, y);
+#endif
     if (PAD->pressed & 0x10) {
       BrPadConsume(PAD, 0x10);
       D_80272554 = 5;
@@ -778,8 +919,14 @@ void BrLoadSaveScreen(void)
     BrTextAlignLeft();
     BrTextHighlightOff();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+#if TGR_REGION_EUR
+    BrTextSetFont(13);
+    BrTextPrint("OK TO OVERWRITE", 114, (h + 30) >> 1);
+    BrTextPrint("SAVED DATA?", 114, ((h + 30) >> 1) + 14);
+#else
     BrTextSetFont(14);
     BrTextPrint("%j\xDA\xE4" "AB6R1%%", 114, ((h + 30) >> 1) + 7);
+#endif
     BrTextSetFont(10);
     BrTextPrint("%wwOK", (D_8028D0B0.w + 0xEDU) >> 1, (y + 18) >> 1);
     BrTextPrint("%wwCANCEL", (D_8028D0E0.h + 0x13BU) >> 1, (y + 18) >> 1);
@@ -801,6 +948,61 @@ void BrLoadSaveScreen(void)
     }
     break;
   case 14:                      /* save */
+#if TGR_REGION_EUR
+    switch (items[D_80272550].kind) {
+    case 1:
+      osSyncPrintf("Saving season data...\n");
+      memcpy(D_80272500, D_8031B760[0].season, 0x128);
+      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x200, D_80272500);
+      if (D_802724F0 == 0) {
+        osSyncPrintf("Done!\n");
+        D_80272554 = 16;
+      } else {
+        D_80272554 = 15;
+      }
+      break;
+    case 3:
+      osSyncPrintf("Compressing ghost data...\n");
+      newSize = func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2);
+      osSyncPrintf("new size = %d\n", newSize);
+      if (newSize != -1) {
+        osSyncPrintf("Saving ghost data to controller pak...\n");
+        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
+        if (D_802724F0 == 0) {
+          osSyncPrintf("Done!\n");
+          D_80272554 = 16;
+        } else {
+          D_80272554 = 15;
+        }
+      } else {
+        D_802724F0 = -99999;
+        D_80272554 = 15;
+      }
+      break;
+    case 5:
+      osSyncPrintf("Saving options...\n");
+      memcpy(D_80272500, D_802723D0, 12);
+      D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x80, D_80272500);
+      if (D_802724F0 != 0) {
+        D_80272554 = 15;
+      } else {
+        opts[0] = D_8031B760[D_80271FA8].season->xd4;
+        opts[1] = D_8031B760[D_80271FA8].season->xd8;
+        opts[2] = D_8031B760[D_80271FA8].season->xdc;
+        opts[3] = D_8031B760[D_80271FA8].season->xe0;
+        opts[4] = D_8031B760[D_80271FA8].season->xe4;
+        memcpy(D_80272500, opts, 20);
+        D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
+        if (D_802724F0 == 0) {
+          osSyncPrintf("Done!\n");
+          D_80272554 = 16;
+        } else {
+          D_80272554 = 15;
+        }
+      }
+      break;
+    }
+#else
     if (items[D_80272550].kind == 1) {
       memcpy(D_80272500, D_8031B760[0].season, 0x128);
       D_802724F0 = osPfsReadWriteFile(PFS, D_80316424, 1, 0, 0x200, D_80272500);
@@ -841,11 +1043,148 @@ void BrLoadSaveScreen(void)
         }
       }
     }
+#endif
     break;
   case 15:                      /* an error, or the Rumble Pak is in the way */
     D_80316423 = 0;
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_EUR
+    BrTextSetFont(12);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+    switch (D_802724F0) {
+    case 10:
+      func_80246F90(0xBD, 0xD9, 0x106, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("THE CONTROLLER PAK", 102, 124);
+      BrTextPrint("IS NONFUNCTIONAL.", 102, 138);
+      break;
+    case 1:
+    case 11:
+      func_80246F90(0x50, 0xD8, 0x1E0, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      switch (items[D_80272550].kind) {
+      case 6:
+      case 7:
+      case 8:
+      case 9:
+        BrTextPrint("CANNOT ACCESS GAME PAK SAVE AREA.", 48, 124);
+        break;
+      default:
+        BrTextPrint("CONTROLLER PAK NOT FOUND.", 48, 124);
+        break;
+      }
+      switch (items[D_80272550].kind) {
+      case 0:
+      case 2:
+      case 4:
+      case 6:
+      case 8:
+        BrTextPrint("DATA CANNOT BE LOADED.", 48, 138);
+        break;
+      default:
+        BrTextPrint("DATA CANNOT BE SAVED.", 48, 138);
+        break;
+      }
+      break;
+    case 9999:
+      y = 0x146 - D_8028D0B0.w;
+      func_80246F90(0x79, 0xAE, 0x18D, 0xA0, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
+      BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
+      BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
+      BrTextPrint("THE A BUTTON WHEN READY.", 68, 142);
+      BrTextAlignLeft();
+      BrTextSetFont(10);
+      BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwCANCEL", (D_8028D0E0.w + 0x144U) >> 1, (y + 18) >> 1);
+      BrImageDrawAt(&D_8028D0B0, 0xDD, y);
+      BrImageDrawAt(&D_8028D0E0, 0x13E, y);
+      break;
+    case 7:
+    case 8:
+      func_80246F90(0xA5, 0x9F, 0x136, 0xBD, 3, 0, 0, 0x80, 0x80, 0x80);
+      switch (items[D_80272550].kind) {
+      case 1:
+        BrTextPrint("INSUFFICIENT FREE PAGES", 90, 95);
+        BrTextPrint("OR FREE NOTES IN THE", 90, 108);
+        BrTextPrint("CONTROLLER PAK.", 90, 121);
+        BrTextPrint("TWO PAGES AND ONE NOTE", 90, 140);
+        BrTextPrint("ARE NEEDED TO SAVE THE", 90, 153);
+        BrTextPrint("SEASON DATA.", 90, 166);
+        break;
+      case 3:
+        BrTextPrint("INSUFFICIENT FREE PAGES", 90, 95);
+        BrTextPrint("OR FREE NOTES IN THE", 90, 108);
+        BrTextPrint("CONTROLLER PAK.", 90, 121);
+        BrTextPrint("58 PAGES AND ONE NOTE", 90, 140);
+        BrTextPrint("ARE NEEDED TO SAVE THE", 90, 153);
+        BrTextPrint("GHOST CAR DATA.", 90, 166);
+        break;
+      case 5:
+        BrTextPrint("INSUFFICIENT FREE PAGES", 90, 95);
+        BrTextPrint("OR FREE NOTES IN THE", 90, 108);
+        BrTextPrint("CONTROLLER PAK.", 90, 121);
+        BrTextPrint("ONE PAGE AND ONE NOTE", 90, 140);
+        BrTextPrint("ARE NEEDED TO SAVE THE", 90, 153);
+        BrTextPrint("OPTIONS.", 90, 166);
+        break;
+      }
+      break;
+    case -99999:
+      func_80246F90(0x75, 0xBD, 0x196, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("UNABLE TO SAVE GHOST CAR DATA.", 66, 110);
+      BrTextPrint("GHOST CAR DATA IS LARGER THAN", 66, 124);
+      BrTextPrint("THE MAXIMUM ALLOCATED SPACE", 66, 138);
+      BrTextPrint("IN THE CONTROLLER PAK.", 66, 152);
+      break;
+    case 4:
+      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("CONTROLLER ERROR", 103, 124);
+      BrTextPrint("HAS BEEN DETECTED!", 103, 138);
+      break;
+    case 5:
+      switch (items[D_80272550].kind) {
+      case 6:
+      case 8:
+        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrTextPrint("SAVED DATA NOT FOUND", 94, 124);
+        BrTextPrint("IN GAME PAK.", 94, 138);
+        break;
+      case 7:
+      case 9:
+        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrTextPrint("ERROR WRITING TO THE", 94, 124);
+        BrTextPrint("GAME PAK SAVE AREA.", 94, 138);
+        break;
+      case 0:
+      case 2:
+      case 4:
+        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrTextPrint("SAVED DATA NOT FOUND", 94, 124);
+        BrTextPrint("IN CONTROLLER PAK.", 94, 138);
+        break;
+      case 1:
+      case 3:
+      case 5:
+        func_80246F90(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrTextPrint("UNABLE TO SAVE DATA", 99, 124);
+        BrTextPrint("TO CONTROLLER PAK.", 99, 138);
+        break;
+      }
+      break;
+    case 2:
+      func_80246F90(0xAF, 0xBB, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("A NEW CONTROLLER PAK", 95, 109);
+      BrTextPrint("WAS INSERTED.", 95, 122);
+      BrTextPrint("THIS CONTROLLER PAK", 95, 141);
+      BrTextPrint("WILL BE USED.", 95, 154);
+      break;
+    default:
+      func_80246F90(0xB1, 0xD9, 0x11E, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("CONTROLLER PAK ERROR", 96, 124);
+      BrTextPrint("HAS BEEN DETECTED!", 96, 138);
+      break;
+    }
+#else
     BrTextSetFont(14);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     switch (D_802724F0) {
@@ -981,6 +1320,7 @@ void BrLoadSaveScreen(void)
       BrTextPrint("%j9\xD0\xD1kR&", 96, 138);
       break;
     }
+#endif
     if (D_802724F0 != 9999) {
       if (PAD->pressed & 0x8030) {
         BrPadConsume(PAD, 0x8030);
@@ -1007,7 +1347,11 @@ void BrLoadSaveScreen(void)
     D_80316423 = 0;
     BrTextAlignCentre();
     BrTextHighlightOff();
+#if TGR_REGION_EUR
+    BrTextSetFont(12);
+#else
     BrTextSetFont(14);
+#endif
     switch (items[D_80272550].kind) {
     case 0:
     case 6:
@@ -1017,7 +1361,12 @@ void BrLoadSaveScreen(void)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
+      BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+#else
       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+#endif
       break;
     case 2:
       if (D_802724F4 == 0) {
@@ -1026,7 +1375,12 @@ void BrLoadSaveScreen(void)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
+      BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+#else
       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+#endif
       break;
     case 1:
     case 7:
@@ -1036,7 +1390,12 @@ void BrLoadSaveScreen(void)
         h = 0xCE;
       }
       func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
+      BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
+#else
       BrTextPrint("%yw%j\xB2(\xAC%e OK!", 159, ((h + 32) >> 1) + 7);
+#endif
       break;
     case 3:
       if (D_802724F4 == 0) {
@@ -1045,17 +1404,30 @@ void BrLoadSaveScreen(void)
         h = 0xCE;
       }
       func_80246F90(0xD8, h, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywGHOST CAR DATA", 159, (h + 32) >> 1);
+      BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
+#else
       BrTextPrint("%yw%j\xB2(\xAC%e OK!", 159, ((h + 32) >> 1) + 7);
+#endif
       break;
     case 4:
     case 8:
       func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywOPTIONS LOADED OK!", 159, 131);
+#else
       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, 131);
+#endif
       break;
     case 5:
     case 9:
       func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+      BrTextPrint("%ywOPTIONS SAVED OK!", 159, 131);
+#else
       BrTextPrint("%yw%j\xB2(\xAC%e OK!", 159, 131);
+#endif
       break;
     case 10:
       func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -1081,11 +1453,21 @@ void BrLoadSaveScreen(void)
     BrTextHighlightOff();
     BrTextAlignLeft();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+#if TGR_REGION_EUR
+    func_80246F90(0x73, 0xB2, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextSetFont(12);
+    BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 105);
+    BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 118);
+    BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 131);
+    BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 65, 144);
+    BrTextPrint("TO CONTINUE.", 65, 157);
+#else
     func_80246F90(0xAA, 0xCC, 0x12C, 0x64, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextSetFont(14);
     BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 93, 118);
     BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 93, 131);
     BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xD4\xD5" "Bc\xDB" "2@&", 93, 144);
+#endif
     if (PAD->pressed & 0x10) {
       BrPadConsume(PAD, 0x10);
       if (items[D_80272550].kind == 0 || items[D_80272550].kind == 2) {
