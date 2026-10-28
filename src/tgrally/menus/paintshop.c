@@ -180,7 +180,7 @@ extern BrPaintNames D_8028DCF4;        /* the four style names */
 extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
 extern BrPaintNames D_8028DD04;        /* and their names */
 /* Europe's BrImageDraw takes a palette for a 4-bit image; these pass none. */
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 void BrImageDraw(BrImage *img, void *tlut);
 #define BR_IMAGE_DRAW(img) BrImageDraw(img, 0)
 #else
@@ -411,8 +411,21 @@ void BrPakMessage(int msg, char op, char mode)
 
 /* WHAT IT DOES: The character for index i of the name-entry character set
  * (a NUL, blanks, digits, capitals, punctuation; 66 entries, no
- * terminator); a space past its end. */
+ * terminator; Japan adds &./ and 80 kana codes, 149 entries); a space
+ * past its end. */
 /* @implements 0x80253460 tgr BrPaintCharset */
+#if TGR_REGION_JPN
+char BrPaintCharset(unsigned char i)
+{
+  char set[0x95] =
+      "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@&./\x8E\x9E\xAE\xBE\xCE\x8F\x9F\xAF\xBF\xC7\xCF\x80\x90\xA0\xB0\xC0\x81\x91\xA1\xB1\xC1\x82\x92\xA2\xB2\xC2\x83\x93\xA3\xB3\xC3\x84\x94\xA4\xB4\xC4\x85\x95\xA5\xB5\xC5\x86\x96\xA6\xB6\xC6\x87\x97\xA7\x88\x98\xA8\xB8\xC8\xB7\x89\x99\xA9\xB9\xC9\x8A\x9A\xAA\xBA\xCA\x8B\x9B\xAB\xBB\xCB\x8C\x9C\xAC\xBC\xCC\x8D\x9D\xAD\xBD\xCD";
+
+  if (i < 0x95) {
+    return set[i];
+  }
+  return ' ';
+}
+#else
 char BrPaintCharset(unsigned char i)
 {
   char set[0x42] = "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@";
@@ -422,6 +435,7 @@ char BrPaintCharset(unsigned char i)
   }
   return ' ';
 }
+#endif
 
 /* WHAT IT DOES: Reset the paint shop for a new session: cursor to the
  * centre, decal slot 2 selected everywhere, the default colour and brush,
