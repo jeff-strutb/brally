@@ -26,6 +26,9 @@ void BrFrameBeginLayout1(void);
 void BrFrameEnd(void);
 void osViBlack(char param_1);
 extern int D_8028A884;
+#if TGR_REGION_JPN
+extern int jpn_D_8028C844;               /* the picture is blanked */
+#endif
 #if TGR_REGION_EUR
 typedef struct BrViField {      /* libultra's OSViFieldRegs */
   unsigned int origin, yScale, vStart, vBurst, vIntr;
@@ -749,16 +752,35 @@ void BrVideoUnblank(void)
 }
 #endif
 
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Blank the picture (Japan): turn the output black and note
+ * it is blanked. */
+/* @implements jpn:0x8021AE40 tgr BrScreenBlank */
+void BrScreenBlank(void)
+{
+  osViBlack(1);
+  jpn_D_8028C844 = 1;
+}
+
+/* WHAT IT DOES: Show the picture again (Japan) and note it is shown. */
+/* @implements jpn:0x8021AE68 tgr BrScreenUnblank */
+void BrScreenUnblank(void)
+{
+  osViBlack(0);
+  jpn_D_8028C844 = 0;
+}
+#endif
+
 /* WHAT IT DOES: Push two empty black frames through the second screen
  * layout with the video output blanked, so a mode change starts from a
- * clean screen.  Europe leaves the output as it is, pushes the first frame
- * through the first layout and clears the frame buffers' words (0x800D4000
+ * clean screen.  Europe and Japan leave the output as it is, push the first frame
+ * through the first layout and clear the frame buffers' words (0x800D4000
  * to the code) between the two.  The dead i = 0 after the clear keeps IDO
  * from unrolling it, as the ROM has it (also in BrScreenFlush2Layout0). */
 /* @implements 0x8021A4C8 tgr BrScreenFlush2Layout1 */
 void BrScreenFlush2Layout1(void)
 {
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   unsigned int i;
 
   D_8028A884 = 1;
@@ -789,13 +811,13 @@ void BrScreenFlush2Layout1(void)
 
 /* WHAT IT DOES: Push two empty black frames through the first screen layout
  * with the video output blanked, so a mode change starts from a clean
- * screen.  Europe leaves the output as it is, pushes the two frames through
- * the second layout, clears the words from 0x801B5000 to the code and
- * pushes a third through the first layout. */
+ * screen.  Europe and Japan leave the output as it is, push the two frames
+ * through the second layout, clear the words from 0x801B5000 to the code
+ * and push a third through the first layout. */
 /* @implements 0x8021A540 tgr BrScreenFlush2Layout0 */
 void BrScreenFlush2Layout0(void)
 {
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
   unsigned int i;
 
   D_8028A884 = 1;
