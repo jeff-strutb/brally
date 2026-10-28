@@ -15,3 +15,4 @@ va,name,kind
 8021AE40,BrScreenBlank,func
 8021AE68,BrScreenUnblank,func
 8022F2B0,BrJpGlyphLoad,func
+8022F1A0,BrJpGlyphReset,func

@@ -30,6 +30,7 @@ extern int D_8028A884;
 extern int jpn_D_8028C844;               /* the picture is blanked */
 extern int jpn_D_8028C55C;               /* the reset button was pressed */
 void BrJpGlyphLoad(void);
+void BrJpGlyphReset(void);
 void BrScreenUnblank(void);
 #endif
 #if TGR_REGION_EUR
@@ -348,7 +349,8 @@ typedef struct BrCamView {      /* the lens offsets in a car's model buffer */
 } BrCamView;
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high):
+/* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high; Japan
+ * also empties the Japanese glyph cache):
  * lay out the players' views, reset the frame counters and pools, choose
  * the frame buffers when the resolution has changed, and open this frame's
  * display list with the fixed RDP and RSP state: pipe sync, full-screen
@@ -372,6 +374,9 @@ void BrFrameBegin(int hires)
     D_8028A850 = hires;
   }
   BrPerfMark(0, 0, 0x82, 0, 0xff);
+#if TGR_REGION_JPN
+  BrJpGlyphReset();
+#endif
   switch (D_8028AB0C) {
   case 1:
     x = 8;
@@ -1006,7 +1011,8 @@ void BrPadPollAll(void)
   }
 }
 
-/* WHAT IT DOES: Finish the frame and hand it to the RSP: close the display
+/* WHAT IT DOES: Finish the frame and hand it to the RSP (Japan first loads
+ * the frame's Japanese glyphs): close the display
  * list, fill in this buffer's graphics task (F3DEX FIFO microcode, the
  * list, the RDP FIFO), record the frame's list, matrix and vertex counts
  * (a list over 6000 commands is fatal); unless this is the first frame,
