@@ -253,10 +253,159 @@ void BrPaintDecalApply(void)
  * and msg and y share s1 as in the ROM; the unused pad[2] gives its 0x68
  * frame. */
 /* @t4-pass 0x80244D84 1 2026-10-03 compiles 26 best 434 moved 1  (tools/tgrally/n64permute.py) */
-/* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (tools/tgrally/n64permute.py) */
+/* @t4-pass 0x80244D84 2 2026-10-03 compiles 26 best 434 moved 0  (tools/tgrally/n64permute.py)
+ * Japan's messages are Japanese, in its own panel sizes. */
 /* @implements 0x80244D84 tgr BrPakMessage */
 void BrPakMessage(int msg, char op, char mode)
 {
+#if TGR_REGION_JPN
+  int x;
+  int y;
+  int w;
+  int ty;
+  int pad[2];                   /* declared, never used: the frame is the ROM's 0x68 */
+
+  BrTextSetFont(14);
+  if (1 == mode) {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  } else {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+  }
+  BrTextAlignLeft();
+  BrTextHighlightOff();
+  switch (msg) {
+  case 1:
+  case 11:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xea;
+    }
+    BrBevelPanel(0xcc, y, 0xe8, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x6e, ty);
+    BrTextPrint("%j0H6b\x7F&", 0x6e, ty + 14);
+    break;
+  case 7:
+  case 8:
+    y = 0xaf;
+    if (mode == 1) {
+      y = 0xdb;
+    }
+    BrBevelPanel(0xb9, y, 0x10e, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 100, ty);
+    BrTextPrint("%j\xE1" "A\xBD(\x9A" "9\xE2H6b\x7F&", 100, ty + 12);
+    BrTextPrint("%j\xBB\x81(\xA8t\xB2(\xAC" "D5", 100, ty + 30);
+    BrTextPrint("62%j\xBD(\x9A\xD6\xD7kR&", 100, ty + 42);
+    break;
+  case 3:
+    w = 0x116;
+    if (op == 10) {
+      w = 0x106;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", (x + 16) >> 1, ty);
+      BrTextPrint("%j18\xE3" "F\xE5" "F9kA6b\x7F&", (x + 16) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", (x + 16) >> 1, ty);
+      BrTextPrint("%je\xE4" "A\xE5" "F9kA6b\x7F&", (x + 16) >> 1, ty + 14);
+    }
+    break;
+  case 5:
+    w = 0xf2;
+    if (op == 10) {
+      w = 0x10c;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", (x + 16) >> 1, ty);
+      BrTextPrint("%j\xBB\x81(\xA8" "90H6b\x7F&", (x + 16) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6", (x + 16) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 16) >> 1, ty + 14);
+    }
+    break;
+  case 99999:
+    w = 0x114;
+    if (op == 10) {
+      w = 0x10b;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xC8(\xCB\xE6", (x + 15) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 15) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6", (x + 15) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 15) >> 1, ty + 14);
+    }
+    break;
+  case 6:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe4;
+    }
+    BrBevelPanel(0xb6, y, 0x114, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xC8(\xCB\xE6" "D\xD0\xD1", 0x62, ty);
+      BrTextPrint("%j\xBB(\x83" "9\xED\xEE" "B6B3&", 0x62, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6" "D\xD0\xD1", 0x62, ty);
+      BrTextPrint("%j\xBB(\x83" "9\xED\xEE" "B6B3&", 0x62, ty + 14);
+    }
+    break;
+  case 4:
+    y = 0xb0;
+    if (mode == 1) {
+      y = 0xdc;
+    }
+    BrBevelPanel(0xcd, y, 0xe6, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x6d, ty);
+    BrTextPrint("%j\xD0\xD1kR&", 0x6d, ty + 12);
+    if (op == 9) {
+      BrTextPrint("%j\xBB\x81(\xA8w", 0x6d, ty + 30);
+      BrTextPrint("%j\xC8(\xCBkA6b\x7F&", 0x6d, ty + 42);
+    } else {
+      BrTextPrint("%j\xBB\x81(\xA8w", 0x6d, ty + 30);
+      BrTextPrint("%j\xB2(\xACkA6b\x7F&", 0x6d, ty + 42);
+    }
+    break;
+  case 10:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xf8;
+    }
+    BrBevelPanel(0x50, y, 0x1e0, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9'qghc@6R&", 0x30, ty);
+    BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'2Bc\xDB" "2@&", 0x30, ty + 14);
+    break;
+  }
+#else
   int x;
   int y;
   int w;
@@ -407,6 +556,7 @@ void BrPakMessage(int msg, char op, char mode)
     BrTextPrint("IS NONFUNCTIONAL", 0x6e, ty + 14);
     break;
   }
+#endif
 }
 
 /* WHAT IT DOES: The character for index i of the name-entry character set
