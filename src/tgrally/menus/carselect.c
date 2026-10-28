@@ -1266,28 +1266,28 @@ void BrCarSelect(void)
             }
             if (a & 2) {
               if (a & 0x800) {
-                if (CAR(p)->colour[0] < 8) {
-                  CAR(p)->colour[0] = 0;
+                if (CAR(p)->colour[0] >= 8) {
+                  CAR(p)->colour[0] -= 8;
                   a = ((BrPadRec *)car->pad)->pressed;
                 } else {
-                  CAR(p)->colour[0] -= 8;
+                  CAR(p)->colour[0] = 0;
                   a = ((BrPadRec *)car->pad)->pressed;
                 }
               }
               if (a & 0x100) {
-                if (CAR(p)->colour[1] < 8) {
-                  CAR(p)->colour[1] = 0;
+                if (CAR(p)->colour[1] >= 8) {
+                  CAR(p)->colour[1] -= 8;
                   a = ((BrPadRec *)car->pad)->pressed;
                 } else {
-                  CAR(p)->colour[1] -= 8;
+                  CAR(p)->colour[1] = 0;
                   a = ((BrPadRec *)car->pad)->pressed;
                 }
               }
               if (a & 0x200) {
-                if (CAR(p)->colour[2] < 8) {
-                  CAR(p)->colour[2] = 0;
-                } else {
+                if (CAR(p)->colour[2] >= 8) {
                   CAR(p)->colour[2] -= 8;
+                } else {
+                  CAR(p)->colour[2] = 0;
                 }
               }
             }
