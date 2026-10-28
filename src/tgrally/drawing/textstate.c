@@ -827,6 +827,71 @@ void BrTextPrint(unsigned char *s, int x, int y)
 /* @implements 0x8022F720 tgr BrTextWidth */
 int BrTextWidth(unsigned char *s, int size)
 {
+#if TGR_REGION_JPN
+  int w;
+  int div;
+  int pad;
+  int *tbl;
+  int c;
+  unsigned char g;
+  unsigned char n;
+  int esc;
+  int jp;
+
+  w = 0;
+  jp = 0;
+  esc = '%';
+  if (D_8028A850 != 0) {
+    size <<= 1;
+  }
+  div = 40;
+  if (size < 25) {
+    div = 20;
+    pad = 4;
+    tbl = D_802A187C;
+  } else {
+    pad = 7;
+    tbl = D_802A17A0;
+  }
+  while (*s != 0) {
+    c = *s;
+    if ((c < 0x21 || c >= 0x80) && !jp) {
+      w += size * 12 / 40;
+    } else {
+      if (esc == c && (n = s[1])) {
+        if (n == '%') {
+          s++;
+        } else if (n == 'j') {
+          s++;
+          jp = 1;
+          goto next;
+        } else if (n == 'e') {
+          s++;
+          jp = 0;
+          goto next;
+        } else if (n == 'i' || n == 'n') {
+          s++;
+          goto next;
+        } else if (s[2] != 0) {
+          s += 2;
+          goto next;
+        }
+      }
+      if (jp) {
+        w += (div * 36 / 40 - pad) * size / div;
+      } else {
+        g = D_802A1740[c - 0x21];
+        w += (tbl[g + 1] - tbl[g] - pad + 1) * size / div;
+      }
+    }
+next:
+    s++;
+  }
+  if (D_8028A850 != 0) {
+    w >>= 1;
+  }
+  return w;
+#else
   int w;
   int div;
   int pad;
@@ -876,5 +941,6 @@ next:
     w >>= 1;
   }
   return w;
+#endif
 }
 
