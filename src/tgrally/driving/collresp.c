@@ -698,7 +698,8 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * test asks whether any normal component exceeds 0.999 (the edge-to-face
  * case is the else); each half-extent sign is a conditional expression; the
  * plane offset and the push-out distance add the first two products and
- * then the third; the last two angular copies share a line. */
+ * then the third; the last two angular copies share a line.  Europe has no
+ * game-mode-4 special cases: every contact is a cube edge on a triangle. */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
@@ -745,6 +746,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
     D_802A4A28 = 0;
     cnt++;
     planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+#if !TGR_REGION_EUR
     if (D_8026FF18 == 4) {
       if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) > 0.999f
           || (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) > 0.999f
@@ -758,6 +760,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
         D_802A4A28 = 2;
       }
     }
+#endif
     osSyncPrintf("Cube Edge to Triangle Face\n");
     e1[0] = nrm[0] * planeD;
     e1[1] = nrm[1] * planeD;
