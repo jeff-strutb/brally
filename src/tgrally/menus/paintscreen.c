@@ -213,7 +213,7 @@ void BrPaintExitPrompt(void);
 extern unsigned char jpn_D_8028F020[];  /* a 16-colour palette, read from ROM */
 extern char jpn_D_001DC050[];
 extern char jpn_D_001DC070[];
-void BrRomRead(void *dst, int rom, int len);
+void BrRomRead(void *dst, void *rom, int len);
 #endif
 /* -- end declarations -- */
 
@@ -432,7 +432,7 @@ void BrPaintShopScreen(void)
       BrAllocPaintShopGfxMem(D_8028DAD4[i]);
     }
 #if TGR_REGION_JPN
-    BrRomRead(jpn_D_8028F020, (int)jpn_D_001DC050, (int)jpn_D_001DC070 - (int)jpn_D_001DC050);
+    BrRomRead(jpn_D_8028F020, jpn_D_001DC050, jpn_D_001DC070 - jpn_D_001DC050);
 #endif
     BrAllocPaintShopGfxMem(&D_8028D110);
     BrAllocPaintShopGfxMem(&D_8028D140);

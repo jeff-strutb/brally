@@ -314,6 +314,13 @@ When a web's total save does not beat its best cost it is split:
   ([levers/n64-paintclick-locals-lineno-2026-10-05](levers/n64-paintclick-locals-lineno-2026-10-05.md),
   [functions/n64-imagestrip-wip-2026-10-06](functions/n64-imagestrip-wip-2026-10-06.md)).
   Read decisions with `cc -Wa,-R`.
+- A constant uopt keeps in a register (an address used twice, e.g. a
+  pointer argument and the same pointer in a subtraction) is materialised at
+  the top of its block, before the statement's `.loc`, so it carries the
+  previous line and wins as1 ties against the statement's own temporaries.
+  `(int)S` in both places is one CSE'd cast and stays inline instead
+  (BrPaintShopScreen Japan: `BrRomRead(dst, start, end - start)` with a
+  `void *` ROM parameter).
 - Hoisted code inherits the last `.loc` of its block.
 - **Cross-block hoist (xbb)**: one instruction moves from a dominated block
   into a dominating block with idle cycles if their level difference is
