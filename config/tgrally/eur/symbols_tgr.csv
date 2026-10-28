@@ -2,3 +2,15 @@ va,name,kind
 802224B0,BrCamTracksideAim,func
 802277D0,BrCamTracksidePick,func
 802A7BA0,osViModePalHaf1,data
+80211CA0,BrOptionsEepromLoad,func
+80211E78,BrOptionsEepromSave,func
+80262DD0,osEepromProbe,func
+80262E40,osEepromLongRead,func
+80262F80,osEepromLongWrite,func
+8026AB40,osEepromWrite,func
+8026ACF0,__osPackEepWriteData,func
+8026ADFC,__osEepStatus,func
+8026B020,osEepromRead,func
+8026B210,__osPackEepReadData,func
+80381378,__osEepromTimer,data
+803837E0,__osEepPifRam,data
