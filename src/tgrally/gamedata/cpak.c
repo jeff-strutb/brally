@@ -107,7 +107,14 @@ int BrRumbleInsertPrompt(int anyPad)
 
   BrTextHighlightOff();
   BrTextAlignLeft();
-#if TGR_REGION_EUR
+#if TGR_REGION_JPN
+  BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  func_80246F90(0xaa, 0xce, 300, 100, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrTextSetFont(14);
+  BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 0x5d, 0x77);
+  BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 0x5d, 0x84);
+  BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xD4\xD5" "Bc\xDB" "2@&", 0x5d, 0x91);
+#elif TGR_REGION_EUR
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(12);
@@ -116,11 +123,13 @@ int BrRumbleInsertPrompt(int anyPad)
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
   func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
 #endif
+#if !TGR_REGION_JPN
   BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 0x41, 0x6a);
   BrTextPrint("REMOVE THE CONTROLLER PAK AND", 0x41, 0x77);
   BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 0x41, 0x84);
   BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 0x41, 0x91);
   BrTextPrint("TO CONTINUE.", 0x41, 0x9e);
+#endif
   for (i = 0; i < 2; i++) {
     if (anyPad == 0 && i != D_80271FA8) continue;
     if (*(unsigned int *)((char *)&D_8036A8E0 + i * 0x15c) & 0x8030) {
