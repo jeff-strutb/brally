@@ -351,8 +351,15 @@ void BrSndNearestOfferDefault(int f8C, void *pPos, void *pListener)
   }
 }
 
+/* The car sound buffer's size: Japan's is smaller. */
+#if TGR_REGION_JPN
+#define BR_CAR_SFX_SPACE 0x29428
+#else
+#define BR_CAR_SFX_SPACE 0x29fe0
+#endif
+
 /* WHAT IT DOES: Load the 16 car sound samples into the car sound buffer
- * (0x29FE0 bytes at 0x80324550): each sample's size is read from ROM, a -1
+ * (0x29FE0 bytes at 0x80324550, 0x29428 in Japan): each sample's size is read from ROM, a -1
  * loop start or loop length becomes the size, the sample is unpacked and its
  * first loop-length bytes are copied again after its end (so a looping voice
  * can read past it); a sample that would not fit is pointed at the buffer
@@ -381,7 +388,7 @@ void BrCarSfxLoad(void)
     if (D_8028BC04[i].loopLen == -1) {
       D_8028BC04[i].loopLen = D_8028BC04[i].size;
     }
-    if (pos + D_8028BC04[i].size + D_8028BC04[i].loopLen > base + 0x29fe0) {
+    if (pos + D_8028BC04[i].size + D_8028BC04[i].loopLen > base + BR_CAR_SFX_SPACE) {
       D_8028BC04[i].data = (unsigned char *)base;
       osSyncPrintf("ERROR: Sound buffer allocation overflow on car sound %d\n", i);
     } else {
@@ -394,8 +401,8 @@ void BrCarSfxLoad(void)
     pos += D_8028BC04[i].size + D_8028BC04[i].loopLen;
   }
   s = D_8028BC04;
-  osSyncPrintf("Car sound effect space used: %d/%d\n", pos - base, 0x29fe0);
-  if (pos - base > 0x29fe0) {
+  osSyncPrintf("Car sound effect space used: %d/%d\n", pos - base, BR_CAR_SFX_SPACE);
+  if (pos - base > BR_CAR_SFX_SPACE) {
     BrFatal("Car sound effect overflow");
   }
   BrSfxVoicePlay(0, (unsigned int)s->data, s->size, s->loop);
