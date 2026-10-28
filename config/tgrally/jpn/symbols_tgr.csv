@@ -1,0 +1,13 @@
+va,name,kind
+80211B60,BrOptionsEepromLoad,func
+80211D38,BrOptionsEepromSave,func
+80262870,osEepromProbe,func
+802628E0,osEepromLongRead,func
+80262A20,osEepromLongWrite,func
+8026A5F0,osEepromWrite,func
+8026A7A0,__osPackEepWriteData,func
+8026A8AC,__osEepStatus,func
+8026AAD0,osEepromRead,func
+8026ACC0,__osPackEepReadData,func
+8037FFE8,__osEepromTimer,data
+80382450,__osEepPifRam,data

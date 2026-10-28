@@ -25,7 +25,7 @@ void BrCtrlConfigScreen(void);
 void BrMainMenu(void);
 void func_80200634(void);
 #if TGR_REGION_JPN
-void BrOptionsSave(void);
+void BrOptionsEepromSave(void);
 #endif
 int sprintf(char *buf, const char *fmt, ...);
 extern int D_80271FA0;
@@ -228,7 +228,7 @@ void BrOptionsScreen(void)
     BrModeSet(BrMainMenu);
     entered = 0;
     if (changed) {
-      BrOptionsSave();
+      BrOptionsEepromSave();
     }
     break;
   }
