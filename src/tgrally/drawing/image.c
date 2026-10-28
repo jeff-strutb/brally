@@ -20,8 +20,13 @@ typedef struct BrImage {
   int drawH;                    /* 0x28 */
   char kind;                    /* 0x2C  'c': drawn with the car-select combiner */
 } BrImage;
+#if TGR_REGION_EUR
+void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
+                  int dh, unsigned char r, unsigned char g, unsigned char b);
+#else
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
                   unsigned char r, unsigned char g, unsigned char b);
+#endif
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                  /* the texture filter mode */
@@ -101,10 +106,23 @@ void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, i
   gRaw(D_8028A858++, 0xba001301, 0x80000);
 }
 
+/* Europe's strips take a palette for 4-bit images (0 for none); only
+ * BrImageDraw passes one on. */
+#if TGR_REGION_EUR
+#define STRIP_TLUT(t) t,
+#else
+#define STRIP_TLUT(t)
+#endif
+
 /* WHAT IT DOES: Draw an image at its own position and size, strip by
- * strip from the bottom of its pixel data. */
+ * strip from the bottom of its pixel data (Europe: with a palette for a
+ * 4-bit image, or 0). */
 /* @implements 0x80245470 tgr BrImageDraw */
+#if TGR_REGION_EUR
+void BrImageDraw(BrImage *img, void *tlut)
+#else
 void BrImageDraw(BrImage *img)
+#endif
 {
   unsigned int total;
   unsigned int strip;
@@ -122,7 +140,7 @@ void BrImageDraw(BrImage *img)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, img->data + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, img->data + total - strip * i, STRIP_TLUT(tlut) img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, 0, 0, 0);
   }
 }
@@ -147,8 +165,8 @@ void BrImageDrawAt(BrImage *img, int x, int y)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, img->data + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
-                 img->drawW, step, 0, 0, 0);
+    BrImageStrip(img, img->data + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, x,
+                 y + step * (i - 1), img->drawW, step, 0, 0, 0);
   }
 }
 
@@ -173,7 +191,7 @@ void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned 
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, img->data + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, img->data + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, r, g, b);
   }
 }
@@ -200,8 +218,8 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
   n = img->h / img->stripH;
   step = h / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, img->data + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
-                 w, step, r, g, b);
+    BrImageStrip(img, img->data + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, x,
+                 y + step * (i - 1), w, step, r, g, b);
   }
 }
 
@@ -215,8 +233,13 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
  * the 8-bit line as width * 1), each through fmt; the tile-size command
  * is a block, one statement per line, as the other commands here. */
 /* @implements 0x80245B00 tgr BrImageStrip */
+#if TGR_REGION_EUR
+void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
+                  int dh, unsigned char r, unsigned char g, unsigned char b)
+#else
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
                   unsigned char r, unsigned char g, unsigned char b)
+#endif
 {
   int bitsS;
   int bitsT;
@@ -238,6 +261,13 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
   switch (img->siz) {
   case 4:
+#if TGR_REGION_EUR
+    if (tlut != 0) {
+      fmt = 2;
+      gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
+      gDPSetRenderMode(D_8028A858++, 0x0f0a4000, 0);
+    } else {
+#endif
     fmt = 4;
     if (img == &D_8028CB40) {
       gDPSetCombine(D_8028A858++, 0x309861, 0x5532ff7f);
@@ -246,6 +276,9 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
       gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
     }
+#if TGR_REGION_EUR
+    }
+#endif
     gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
     gDPSetTile(D_8028A858++, fmt, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
     gDPLoadSync(D_8028A858++);
@@ -302,7 +335,22 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
     }
     break;
   }
+#if TGR_REGION_EUR
+  if (fmt == 2) {
+    /* a 4-bit image with a palette: load its 16 colours (RGBA16) */
+    gDPSetTextureImage(D_8028A858++, 0, 2, 1, tlut);
+    gDPTileSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadTLUTCmd(D_8028A858++, 7, 15);
+    gDPPipeSync(D_8028A858++);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0x8000);
+  } else {
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+  }
+#else
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+#endif
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
   if (D_8028A850 == 0) {
     x >>= 1;
@@ -523,8 +571,13 @@ void BrPaintDecalCommit(void);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
 /* -- end declarations -- */
 
+#if TGR_REGION_EUR
+#define COMPANY 0x3746          /* "7F" */
+#define GAME 0x4E545250         /* "NTRP" */
+#else
 #define COMPANY 0x3544          /* "5D" */
 #define GAME 0x4E475245         /* "NGRE" */
+#endif
 #define OP_LOAD 9
 #define PAD (&D_8036A8E0[port])
 #define PFS (&D_80369EC0[port])
