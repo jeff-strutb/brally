@@ -286,6 +286,50 @@ def sext16(x):
     return x - 0x10000 if x & 0x8000 else x
 
 
+def pair_addrs(ws):
+    """-> {instruction index: address} for every %hi/%lo pair a body forms."""
+    out, hi = {}, {}
+    for i, w in enumerate(ws):
+        op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+        if op == 0x0F:
+            hi[rt] = (w & 0xffff) << 16
+            continue
+        if rs in hi and op in (0x09, 0x20, 0x21, 0x23, 0x24, 0x25, 0x28, 0x29, 0x2B,
+                               0x31, 0x35, 0x39, 0x3D):
+            out[i] = (hi[rs] + sext16(w & 0xffff)) & 0xffffffff
+    return out
+
+
+_USA = None
+
+
+def usa_says_other(fn, rom_va):
+    """A region reference to rom_va from fn that is not the object at rom_va:
+    fn is a `same` pair in the region map, and at every instruction where its
+    body forms rom_va the USA body forms another address than rom_va's USA
+    counterpart (a field or array end that happens to land on it)."""
+    global _USA
+    if region.REGION == 'usa':
+        return False
+    if _USA is None:
+        _USA = dict(rom=open(region.rom_path('usa'), 'rb').read(), fn={}, data={})
+        for r in csv.DictReader(open(os.path.join(region.config_dir(), 'addrmap.csv'))):
+            if r['va'] and r['kind'] == 'func' and r['how'] == 'same':
+                _USA['fn'][int(r['va'], 16)] = int(r['usa'], 16)
+            elif r['va'] and r['kind'] == 'data':
+                _USA['data'].setdefault(int(r['va'], 16), set()).add(int(r['usa'], 16))
+    u, homes = _USA['fn'].get(fn), _USA['data'].get(rom_va)
+    if u is None or not homes:
+        return False
+    rom = Rom()
+    n = function_map()[fn] // 4
+    mine = pair_addrs([rom.word(fn + 4 * k) for k in range(n)])
+    off = u - BASE + ROMOFF
+    theirs = pair_addrs(list(struct.unpack_from('>%dI' % n, _USA['rom'], off)))
+    at = [k for k, a in mine.items() if a == rom_va]
+    return bool(at) and all(k in theirs and theirs[k] not in homes for k in at)
+
+
 def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
     """Compare one carved function with the ROM at va.
     -> (status, ndiff, notes, ours_resolved, theirs)."""
@@ -376,7 +420,8 @@ def grade(obj, rom, name, start, end, va, rom_size, syms, fnvas):
             if rom_va - addend != base:
                 return 'file-static %s+0x%X -> %08X: this object\'s other .bss statics sit at base %08X' % (
                     secname, addend, rom_va, base)
-            outside = sorted(rom_refs().get(rom_va, set()) - set(fnvas.values()))
+            outside = sorted(f for f in rom_refs().get(rom_va, set()) - set(fnvas.values())
+                             if not usa_says_other(f, rom_va))
             if outside:
                 return 'file-static %s+0x%X -> %08X is also used by %s, outside this file' % (
                     secname, addend, rom_va, ', '.join('%08X' % v for v in outside[:3]))
