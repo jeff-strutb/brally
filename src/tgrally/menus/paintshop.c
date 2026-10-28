@@ -849,16 +849,21 @@ unsigned char BrPaintPeek(unsigned char *tex, int x, int y)
  * A (select) and B (cancel) buttons; left or right swaps the choice, A
  * keeps it and B restores the previous one, both closing the box.  The
  * pad record is re-addressed at every test (no pad or pressed local: the
- * ROM's frame has no slots for them). */
+ * ROM's frame has no slots for them).
+ * Japan leaves out the style's name. */
 /* @implements 0x8024D89C tgr BrPaintBrushSelect */
 void BrPaintBrushSelect(void)
 {
   char spare[28];               /* declared, never used: the frame holds it */
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames2 names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DCE4;
+#endif
   y = 322 - D_8028D0B0.w;
   bx = 349 - D_8028D0E0.w;
   BrBevelPanel(200, 0x96, 0xf0, 0xb4, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -880,10 +885,14 @@ void BrPaintBrushSelect(void)
   } else {
     BrFillRect(D_8028D410.drawW + 276, 202, 38, 38, 0, 0, 0);
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(names.n[D_8028DBB8], 159, 138);
+#endif
   BrImageDrawAt(&D_8028D0B0, 216, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrTextSetFont(10);
@@ -1079,7 +1088,8 @@ void BrPaintTextStamp(int sx, int sy)
  * the box.  The four names are a local copy of the table at 0x8028DCF4.
  * The pictures' x is written out per call (i * 76 + 175), and the pad
  * record is re-addressed at every test with an unsigned (sizeof) multiply:
- * the ROM keeps 0x15C in a saved register for multu. */
+ * the ROM keeps 0x15C in a saved register for multu.
+ * Japan leaves out the style's name. */
 /* @implements 0x8024F39C tgr BrPaintStyleSelect */
 void BrPaintStyleSelect(void)
 {
@@ -1088,9 +1098,13 @@ void BrPaintStyleSelect(void)
   int i;
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DCF4;
+#endif
   y = 323 - D_8028D0B0.w;
   bx = 353 - D_8028D0E0.w;
   BrBevelPanel(0x9f, 0x95, 0x142, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -1109,10 +1123,14 @@ void BrPaintStyleSelect(void)
       BrImageDrawAt(D_8028DB34[i], i * 76 + 175, 203);
     }
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(names.n[D_8028DBB8], 159, 140);
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 219) >> 1, (y + 18) >> 1);
@@ -1580,7 +1598,8 @@ void BrPaintFrameRoundRect(int sx0, int sy0, int sx1, int sy1)
  * and the chosen style's name, A (select) and B (cancel) under it; left and
  * right move the choice round, A keeps it and B restores the previous one,
  * both closing the box.  The pad record is re-addressed at every test
- * (no pad or pressed local), as the ROM rebuilds its address each time. */
+ * (no pad or pressed local), as the ROM rebuilds its address each time.
+ * Japan leaves out the style's name. */
 /* @implements 0x80250698 tgr BrPaintOvalStyleSelect */
 void BrPaintOvalStyleSelect(void)
 {
@@ -1589,9 +1608,13 @@ void BrPaintOvalStyleSelect(void)
   int i;
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DD04;
+#endif
   y = 323 - D_8028D0B0.w;
   bx = 352 - D_8028D0E0.w;
   BrBevelPanel(0xb8, 0x95, 0x110, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -1619,10 +1642,14 @@ void BrPaintOvalStyleSelect(void)
       BR_IMAGE_DRAW(D_8028DB44[i]);
     }
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(names.n[D_8028DBB8], 159, 139);
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 220) >> 1, (y + 18) >> 1);
