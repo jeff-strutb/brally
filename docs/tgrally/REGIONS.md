@@ -92,12 +92,19 @@ status line in the README).
    each new function, until the region's ledger is all EXACT; then the
    whole-image check.
 
-**Port and Remastered: region content.** Built on the USA code, so they do not
-depend on the region decomps. A region swaps content (title screen, music,
-demo, cars, text) taken from that region's ROM; the game logic stays the
-USA's and always runs at 60 Hz.
+**Port.** The port's region flag builds from that region's decomp source and
+needs only that region's ROM, so it lands with each region's decomp effort.
+The USA code cannot stand in: of the data it needs, 96.3% (Europe) and 93.6%
+(Japan) is in the region's ROM once pointers are translated; the rest is text
+and tables the region rewrote (Japanese-script messages, Europe's EEPROM
+messages), so a build from that ROM alone has nothing to put there. The port
+always runs at 60 Hz.
 
-1. Port (`ports/tgrally`): a region flag; building needs only that region's ROM.
-2. Remastered: the Menus option offers Boss Rally, Top Gear Rally (USA), Top
-   Gear Rally (Europe) and Top Gear Rally (Japan). Packaging needs all three
-   ROMs.
+**Remastered: region content now.** Built on the USA code, so it does not
+wait for the region decomps. A region swaps content taken from that region's
+ROM: the title screen and legal text, the title and menu music, the intro
+demo, the cars (models, liveries, names) and the plain-text terms. The game
+logic stays the USA's at 60 Hz. Japan's Japanese-script text needs Japan's
+own text code and arrives with the Japan decomp; until then those lines stay
+English. The Menus option offers Boss Rally, Top Gear Rally (USA), Top Gear
+Rally (Europe) and Top Gear Rally (Japan); packaging needs all three ROMs.
