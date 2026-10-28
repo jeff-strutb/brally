@@ -860,7 +860,8 @@ BrVec3 D_8035D510;              /* the light direction this frame */
  * pair shares a register.  The else arm's matrix packet goes through the
  * function's Gfx pointer g and writes (unsigned int)mtx - 0x80000000; with
  * that the restore block's light colours load D_8028AB58 with a lui each and
- * the frame is the declaration order. */
+ * the frame is the declaration order.  Japan drops the overflow dump, and
+ * its frame homes mtx directly below billboard. */
 /* @implements 0x80235BAC tgr BrTrackDraw */
 void BrTrackDraw(int pass)
 {
@@ -872,9 +873,15 @@ void BrTrackDraw(int pass)
   int i;
   unsigned short obj;
   int billboard;
+#if TGR_REGION_JPN
+  BrMtx *mtx;
+  int fl;
+  BrTrackObj *o;
+#else
   int fl;
   BrTrackObj *o;
   BrMtx *mtx;
+#endif
   int j;
   Gfx *g;
 
@@ -1112,6 +1119,7 @@ void BrTrackDraw(int pass)
         lo = mm[3][3][3];
       }
       if (32767.0 < hi || lo < -32767.0) {
+#if !TGR_REGION_JPN
         if (i == 1) {
           osSyncPrintf("Bad Final Matrix: in=%d (%s), s=%f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n",
                        obj, D_80025C5C != 0 ? D_80025C5C[obj] : "???", s,
@@ -1128,6 +1136,7 @@ void BrTrackDraw(int pass)
                        D_8031AB10[2][0], D_8031AB10[2][1], D_8031AB10[2][2], D_8031AB10[2][3],
                        D_8031AB10[3][0], D_8031AB10[3][1], D_8031AB10[3][2], D_8031AB10[3][3]);
         }
+#endif
         if (-lo < hi) {
           s = 32767.0f / hi;
         } else {
