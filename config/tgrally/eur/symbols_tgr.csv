@@ -15,3 +15,5 @@ va,name,kind
 80381378,__osEepromTimer,data
 803837E0,__osEepPifRam,data
 80274490,BrOptionsChanged,data
+8021B4E8,BrVideoBlank,func
+8021B54C,BrVideoUnblank,func

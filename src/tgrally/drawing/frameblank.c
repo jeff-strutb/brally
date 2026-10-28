@@ -116,10 +116,14 @@ unsigned int osGetCount(void);
 void osSpTaskLoad(BrTask *t);
 void osSpTaskStartGo(BrTask *t);
 /* Blanking the picture: Japan goes through its own call, which also notes
- * the picture is blanked. */
+ * the picture is blanked; Europe through BrVideoBlank, which also puts
+ * libultra's PAL mode back. */
 #if TGR_REGION_JPN
 void BrScreenBlank(void);
 #define BLANK_SCREEN() BrScreenBlank()
+#elif TGR_REGION_EUR
+void BrVideoBlank(void);
+#define BLANK_SCREEN() BrVideoBlank()
 #else
 #define BLANK_SCREEN() osViBlack(1)
 #endif
