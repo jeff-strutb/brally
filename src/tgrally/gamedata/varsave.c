@@ -27,9 +27,14 @@ extern BrCarModelBuf D_803C8000[];      /* the four cars' model buffers */
 
 /* WHAT IT DOES: Copy every variable in a list into a buffer, one after the
  * other; using more than the space available is fatal, with both sizes in
- * the message. */
+ * the message.  Europe reads each variable at an offset from its registered
+ * address (0 for the game's own copy) and returns the bytes used. */
 /* @implements 0x8022ADCC tgr BrVarListSave */
+#if TGR_REGION_EUR
+int BrVarListSave(BrVarEnt *e, char *dst, int avail, int off)
+#else
 void BrVarListSave(BrVarEnt *e, char *dst, int avail)
+#endif
 {
   int i;
   char *start;
@@ -37,25 +42,56 @@ void BrVarListSave(BrVarEnt *e, char *dst, int avail)
 
   start = dst;
   for (i = 0; e[i].ptr != 0; i++) {
+#if TGR_REGION_EUR
+    memcpy(dst, e[i].ptr + off, e[i].size);
+#else
     memcpy(dst, e[i].ptr, e[i].size);
+#endif
     dst += e[i].size;
   }
+#if TGR_REGION_EUR
+  i = dst - start;
+  if (avail < i) {
+    sprintf(msg, "VAR SAVE OVERFLOW (%d avail, %d used)", avail, i);
+    BrFatal(msg);
+  }
+  return i;
+#else
   if (avail < dst - start) {
     sprintf(msg, "VAR SAVE OVERFLOW (%d avail, %d used)", avail, dst - start);
     BrFatal(msg);
   }
+#endif
 }
 
-/* WHAT IT DOES: Copy every variable in a list back out of a buffer. */
+/* WHAT IT DOES: Copy every variable in a list back out of a buffer
+ * (Europe: to an offset from each registered address, returning the bytes
+ * read). */
 /* @implements 0x8022AE70 tgr BrVarListLoad */
+#if TGR_REGION_EUR
+int BrVarListLoad(BrVarEnt *e, char *src, int off)
+#else
 void BrVarListLoad(BrVarEnt *e, char *src)
+#endif
 {
   int i;
+#if TGR_REGION_EUR
+  char *start;
+
+  start = src;
+#endif
 
   for (i = 0; e[i].ptr != 0; i++) {
+#if TGR_REGION_EUR
+    memcpy(e[i].ptr + off, src, e[i].size);
+#else
     memcpy(e[i].ptr, src, e[i].size);
+#endif
     src += e[i].size;
   }
+#if TGR_REGION_EUR
+  return src - start;
+#endif
 }
 
 /* WHAT IT DOES: Copy every registered game variable into the save buffer,
@@ -63,7 +99,11 @@ void BrVarListLoad(BrVarEnt *e, char *src)
 /* @implements 0x8022AED8 tgr BrVarSaveAll */
 void BrVarSaveAll(char *buf)
 {
+#if TGR_REGION_EUR
+  BrVarListSave(D_8028BB0C, buf + 0x7080, 0xdf88, 0);
+#else
   BrVarListSave(D_8028BB0C, buf + 0x7080, 0xdf88);
+#endif
 }
 
 /* WHAT IT DOES: Copy every registered game variable back out of the save
@@ -71,21 +111,33 @@ void BrVarSaveAll(char *buf)
 /* @implements 0x8022AF08 tgr BrVarLoadAll */
 void BrVarLoadAll(char *buf)
 {
+#if TGR_REGION_EUR
+  BrVarListLoad(D_8028BB0C, buf + 0x7080, 0);
+#else
   BrVarListLoad(D_8028BB0C, buf + 0x7080);
+#endif
 }
 
 /* WHAT IT DOES: Save the second variable list into its own 64-byte buffer. */
 /* @implements 0x8022AF34 tgr BrVarSaveSmall */
 void BrVarSaveSmall(void)
 {
+#if TGR_REGION_EUR
+  BrVarListSave(D_8028BBC4, D_8034E570, 0x40, 0);
+#else
   BrVarListSave(D_8028BBC4, D_8034E570, 0x40);
+#endif
 }
 
 /* WHAT IT DOES: Restore the second variable list from its 64-byte buffer. */
 /* @implements 0x8022AF64 tgr BrVarLoadSmall */
 void BrVarLoadSmall(void)
 {
+#if TGR_REGION_EUR
+  BrVarListLoad(D_8028BBC4, D_8034E570, 0);
+#else
   BrVarListLoad(D_8028BBC4, D_8034E570);
+#endif
 }
 
 /* WHAT IT DOES: When a player starts the last lap (or the race is one lap)
