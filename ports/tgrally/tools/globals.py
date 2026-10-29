@@ -49,6 +49,12 @@ GEN = os.path.join(OUT, 'gen')
 NATIVE = os.environ.get('TGR_TARGET') or subprocess.run(['clang', '-dumpmachine'], capture_output=True,
                                                          text=True).stdout.strip()
 N64 = 'mips-linux-gnu'
+# libclang carries no system headers: on macOS the native read needs the SDK
+# (without it stdint.h is missing and every native layout comes out empty)
+SYSROOT = []
+if 'apple' in NATIVE:
+    SYSROOT = ['-isysroot', os.environ.get('SDKROOT') or subprocess.run(
+        ['xcrun', '--show-sdk-path'], capture_output=True, text=True).stdout.strip()]
 
 TEXT_LO, DATA_LO, BSS_LO, BSS_HI = 0x80200000, 0x8026FAB0, 0x802AC400, 0x80382BB0
 ARENA_LO, ARENA_HI = 0x80000000, 0x80800000
@@ -179,7 +185,7 @@ def tus():
 def parse(tu, target):
     idx = ci.Index.create()
     inc = os.path.join(ROOT, 'ports/tgrally/platform/include')
-    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else []
+    extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else SYSROOT
     return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC'] + extra + [
                                                     '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
                                                     '-I' + inc, '-include', os.path.join(inc, 'tgr_os.h'),
