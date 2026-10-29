@@ -68,26 +68,6 @@ unsigned int BrIfaceMemAlloc(int size)
   return p;
 }
 
-/* WHAT IT DOES: Give an interface image its RAM copy: take width x height x
- * depth / 8 bytes from the interface pool and decompress the ROM image into
- * it. A ROM image of any other size is reported and the game stops. The
- * original name is in its error message.  Japan prints none of this
- * file's messages. */
-/* @implements 0x80242B10 tgr BrAllocPaintShopGfxMem */
-void BrAllocPaintShopGfxMem(BrIfaceImage *img)
-{
-  img->data = BrIfaceMemAlloc(img->w * img->h * img->depth >> 3);
-  if (BrRomReadSize(img->rom) != img->w * img->h * img->depth >> 3) {
-#if !TGR_REGION_JPN
-    osSyncPrintf("ERROR: AllocPaintShopGfxMem given image %dx%dx%d = %d bytes but uncompressed rom image is %d bytes\n",
-                 img->w, img->h, img->depth, BrRomReadSize(img->rom));
-#endif
-    for (;;) {
-    }
-  }
-  BrRomUnpack(img->data, img->rom, 0);
-}
-
 /* WHAT IT DOES: Set aside memory for the paint shop: its two car-texture
  * buffers and a 14,848-byte data buffer, all from the interface memory
  * pool. */
@@ -100,17 +80,4 @@ void BrPaintShopMemInit(void)
   osSyncPrintf("Allocating %d bytes for data_buf...\n",0x3a00);
 #endif
   D_80272500 = BrIfaceMemAlloc(0x3a00);
-}
-
-/* WHAT IT DOES: Set aside the 2 KB decal buffer from the interface memory
- * pool, then the paint shop's two car-texture buffers. */
-/* @implements 0x80248F38 tgr BrDecalMemInit */
-void BrDecalMemInit(void)
-{
-#if !TGR_REGION_JPN
-  osSyncPrintf("\nAllocating %d bytes for decal buffer...\n\n",0x800);
-#endif
-  D_8028DB80 = BrIfaceMemAlloc(0x800);
-  BrAllocPaintShopGfxMem(&D_8028D0B0);
-  BrAllocPaintShopGfxMem(&D_8028D0E0);
 }
