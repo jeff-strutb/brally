@@ -9,7 +9,11 @@
 #include "tgr_core.h"
 #include "sha1.h"
 
+#if TGR_REGION_EUR
+int32_t  tgr_tv_type = 0;              /* PAL: Europe's console */
+#else
 int32_t  tgr_tv_type = 1;              /* NTSC */
+#endif
 uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
 uint64_t tgr_clock_rate = 62500000;
 uint32_t tgr_rom_base = 0xB0000000;

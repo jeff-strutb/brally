@@ -22,6 +22,11 @@
 #define EV_MAX 16
 #define MAXTIMERS 16
 #define TICKS_HZ 46875000ull
+#if TGR_REGION_EUR
+#define VI_HZ 50                    /* Europe's PAL console retraces 50 times a second */
+#else
+#define VI_HZ 60
+#endif
 
 typedef struct TThread {
     TgrThread *os;
@@ -217,7 +222,7 @@ static void *clock_main(void *v)
     host_thread_interactive();
     host_mutex_lock(G);
     while (!s_finished) {
-        uint64_t next_vi = (uint64_t)(s_frame + 1) * TICKS_HZ / 60, next = next_vi, now;
+        uint64_t next_vi = (uint64_t)(s_frame + 1) * TICKS_HZ / VI_HZ, next = next_vi, now;
         int i;
         if (tgr_paused) {
             /* the window is in the background: the N64's time stands still */

@@ -17,6 +17,10 @@ void BrTexSizeBits(unsigned int v, int *mask, int *bits);
 #define CALC_DXT(width, b_txl)  (((1 << 11) + TXL2WORDS(width, b_txl) - 1) / TXL2WORDS(width, b_txl))
 #define TXL2WORDS_4b(txls)      MAX(1, ((txls) / 16))
 #define CALC_DXT_4b(width)      (((1 << 11) + TXL2WORDS_4b(width) - 1) / TXL2WORDS_4b(width))
+#if TGR_REGION_JPN
+void BrTextAlignCentre(void);
+extern int D_8028AAB0;                  /* the screen's width */
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Draw the part (s, t, sw by th texels) of a 4-bit image as a
@@ -941,7 +945,8 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
               int i;
               int size;
 
-              size = (m->parts[m->decal[D_80369E61]].w * m->parts[m->decal[D_80369E61]].h) >> 1;
+              size = (BE16(BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].w) *
+                      BE16(BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].h)) >> 1;
               if (D_80369E61 == 0) {
                 tgr_print("# Format SB BitSize 8 Rows 1 Columns 1\n");
               }
@@ -1008,7 +1013,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           int i;
 
           for (i = 0; i < 16; i++) {
-            tgr_print("%02x\n%02x\n", BE16(pal[i]) >> 8, BE16(pal[i]) & 0xFF);
+            tgr_print("%02x\n%02x\n", tgr_rd16(&pal[i]) >> 8, tgr_rd16(&pal[i]) & 0xFF);
           }
         }
 #endif

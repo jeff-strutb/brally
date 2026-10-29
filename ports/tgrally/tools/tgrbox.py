@@ -27,8 +27,8 @@ import n64box  # noqa: E402
 class Box(n64box.Box):
     def install_hle(self):
         super().install_hle()
-        self.hle[0x80266A08] = ('__d_to_ull', lambda: self.to_ull(self.fdouble(12)))
-        self.hle[0x80266AA8] = ('__f_to_ull', lambda: self.to_ull(self.fsingle(12)))
+        self.hle[n64box.U(0x80266A08)] = ('__d_to_ull', lambda: self.to_ull(self.fdouble(12)))
+        self.hle[n64box.U(0x80266AA8)] = ('__f_to_ull', lambda: self.to_ull(self.fsingle(12)))
 
     def to_ull(self, x):
         """the ROM's __d_to_ull: truncation toward zero inside [0, 2^64),

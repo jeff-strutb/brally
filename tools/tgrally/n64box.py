@@ -349,8 +349,19 @@ class Box:
                       0x8031B9B0: 0x8031B1B0,       # DP event thread, filled 2 KB
                       0x8031C1B0: 0x8031B9B0,       # Pre-NMI thread
                       0x8031D6B0: 0x8031D2B0,       # fault thread
-                      0x8037BA68: 0x8037B668}}.get(region.REGION, {})   # audio thread
-    BOOT_SP = {'usa': 0x803168D0, 'eur': 0x803185B0}.get(region.REGION)   # the entry stub's sp
+                      0x8037BA68: 0x8037B668},      # audio thread
+              # Japan, from its own code as Europe's: BrIdleThread starts the
+              # main thread at the idle stack's array + 0x2000, BrSchedInit
+              # the DP thread at the SP stack + 0x800 and the Pre-NMI thread
+              # at jpn_D_8031A5E0 + 0x800; the fault stack is its thread + 0x1B0
+              'jpn': {0x803175E0: 0x803171E0,       # idle
+                      0x803195E0: 0x803175E0,       # main game thread, filled 8 KB
+                      0x80319DE0: 0x803195E0,       # SP event thread, filled 2 KB
+                      0x8031A5E0: 0x80319DE0,       # DP event thread, filled 2 KB
+                      0x8031ADE0: 0x8031A5E0,       # Pre-NMI thread
+                      0x8031C2E0: 0x8031BEE0,       # fault thread
+                      0x8037A6D8: 0x8037A2D8}}.get(region.REGION, {})   # audio thread
+    BOOT_SP = {'usa': 0x803168D0, 'eur': 0x803185B0, 'jpn': 0x803171E0}.get(region.REGION)   # the entry stub's sp
 
     def ram_digest(self):
         """The game's .data and .bss, without the threads' stacks.  A stack
@@ -435,7 +446,7 @@ class Box:
         H[0x80268530] = ('osAiGetLength', lambda: self.ret(self.ai_length()))
         H[0x80268230] = ('osAiSetFrequency', self.os_ai_set_frequency)
         H[0x80268470] = ('osAiSetNextBuffer', self.os_ai_set_next)
-        if PAL:
+        if region.REGION in self.EEPROM:
             self.install_eeprom()
         H = self.hle
         for va in H:
@@ -618,12 +629,13 @@ class Box:
         self.log.append((self.frame, 'ai', hashlib.sha1(self.read(self.arg(0), n)).hexdigest()[:16]))
         self.ret(0)
 
-    # Europe's cartridge has a 4 Kbit EEPROM beside the Controller Pak.
+    # Europe's and Japan's cartridges have a 4 Kbit EEPROM beside the Controller Pak.
     # osEepromProbe / osEepromRead / osEepromWrite are modelled (the SI
     # transfer behind them is hardware); osEepromLongRead/LongWrite, which
     # loop over 8-byte blocks with a timer between them, run for real.
     EEP_BLOCKS = 64
-    EEPROM = {'eur': dict(probe=0x80262DD0, read=0x8026B020, write=0x8026AB40)}
+    EEPROM = {'eur': dict(probe=0x80262DD0, read=0x8026B020, write=0x8026AB40),
+              'jpn': dict(probe=0x80262870, read=0x8026AAD0, write=0x8026A5F0)}
 
     def install_eeprom(self):
         e = self.EEPROM[region.REGION]

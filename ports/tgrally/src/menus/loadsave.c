@@ -128,9 +128,6 @@ typedef struct BrEepSave {      /* the EEPROM block after its checksum word */
   int opts[5];                  /* player 2's per-season words */
   unsigned char cfg[12];        /* the options */
 } BrEepSave;
-s32 osEepromProbe(void *mq);
-s32 osEepromLongRead(void *mq, unsigned char address, unsigned char *buffer, int length);
-s32 osEepromLongWrite(void *mq, unsigned char address, unsigned char *buffer, int length);
 void BrCarReset(BrCar *car);
 extern int D_8028A884;          /* a screen flush holds the picture blank */
 #if TGR_REGION_JPN
@@ -182,7 +179,7 @@ void BrLoadSaveScreen(void)
   unsigned char *name;
   int freeBytes;
   unsigned char pakBits;
-  BrDataItem *items;
+  static BrDataItem *items;      /* port: set on the first frame; the ROM finds it in its stack slot after */
   int unusedE4;
   int size;
   int opts[5];
@@ -250,13 +247,17 @@ void BrLoadSaveScreen(void)
 #endif
     { 0, 0 },
   };
-  static unsigned char D_80272550 = 0;  /* the row */
-  static unsigned char D_80272554 = 1;  /* the screen's state */
-  static unsigned char D_80316422;      /* data was loaded */
-  static unsigned char D_80316423;      /* the menu is live (not behind a message) */
-  static int D_80316424;                /* the open file */
-  static unsigned char jpn_D_80316D38;  /* the EEPROM save was confirmed over good data */
-  static unsigned char D_80316428;      /* frames the fade has been done */
+  extern unsigned char D_80272550;  /* the row (initialised data: 0) */
+  extern unsigned char D_80272554;  /* the screen's state (initialised data: 1) */
+  extern unsigned char D_80316422;      /* data was loaded */
+  extern unsigned char D_80316423;      /* the menu is live (not behind a message) */
+  extern int D_80316424;                /* the open file */
+#if TGR_REGION_JPN
+  extern unsigned char jpn_D_80316D38;  /* the EEPROM save was confirmed over good data */
+#else
+  static unsigned char jpn_D_80316D38;  /* (Europe's has no name of its own: a function static) */
+#endif
+  extern unsigned char D_80316428;      /* frames the fade has been done */
 
   if (D_802724F8 == 0) {
     D_802724F8 = 1;
@@ -276,7 +277,7 @@ void BrLoadSaveScreen(void)
     BrAllocPaintShopGfxMem(&D_8028CB70);
     BrAllocPaintShopGfxMem(&D_8028D0B0);
     BrAllocPaintShopGfxMem(&D_8028D0E0);
-    D_80272500 = (unsigned char *)BrIfaceMemAlloc(0x3A00);
+    D_80272500 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x3A00));
     jpn_D_80316D38 = 0;
     D_80272550 = 0;
     if (D_802724F4 == 0) {
@@ -376,7 +377,7 @@ void BrLoadSaveScreen(void)
     break;
   case 1:                       /* the menu: the cursor skips headings and gaps */
     D_80316423 = 1;
-    BrPadStickToButtons(PAD);
+    BrPadStickToButtons(tgr_addr32(PAD));
     if (PAD->pressed & 2) {
       BrPadConsume(PAD, 2);
       do {
@@ -429,7 +430,7 @@ void BrLoadSaveScreen(void)
     break;
   case 4:                       /* the Game Pak's EEPROM: load, or save */
     D_802724FC = 0;
-    if (jpn_D_80316D38 == 0 && osEepromProbe(D_80272D48) == 0) {
+    if (jpn_D_80316D38 == 0 && tgr_eeprom_probe((TgrMsgQueue *)D_80272D48) == 0) {
       D_802724F0 = 1;
       D_80272554 = 15;
       break;
@@ -438,7 +439,7 @@ void BrLoadSaveScreen(void)
     p2 = (int *)(data + 0x128);
     len = (data - D_80272500 + 0x14f) & ~7;
     if (jpn_D_80316D38 == 0) {
-      if (osEepromLongRead(D_80272D48, 0, D_80272500, len) != 0 &&
+      if (tgr_eeprom_long_read((TgrMsgQueue *)D_80272D48, 0, D_80272500, len) != 0 &&
           ((mode = items[D_80272550].kind) == 6 || mode == 8)) {
         D_802724F0 = 5;
         D_80272554 = 15;
@@ -459,12 +460,12 @@ void BrLoadSaveScreen(void)
           D_80272554 = 15;
           break;
         }
-        memcpy(data, D_8031B760[0].season, 0x128);
-        p2[0] = D_8031B760[1].season->xd4;
-        p2[1] = D_8031B760[1].season->xd8;
-        p2[2] = D_8031B760[1].season->xdc;
-        p2[3] = D_8031B760[1].season->xe0;
-        p2[4] = D_8031B760[1].season->xe4;
+        memcpy(data, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
+        p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+        p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+        p2[2] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc;
+        p2[3] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0;
+        p2[4] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4;
         memcpy(data + 0x13c, D_802723D0, 12);
       } else {
 #if TGR_REGION_EUR
@@ -479,50 +480,50 @@ void BrLoadSaveScreen(void)
     jpn_D_80316D38 = 0;
     switch (items[D_80272550].kind) {
     case 6:
-      memcpy(D_8031B760[0].season, data, 0x128);
-      memcpy(D_8031B760[1].season, data, 0x128);
-      D_8031B760[1].season->xd4 = p2[0];
-      D_8031B760[1].season->xd8 = p2[1];
-      D_8031B760[1].season->xdc = p2[2];
-      D_8031B760[1].season->xe0 = p2[3];
-      D_8031B760[1].season->xe4 = p2[4];
+      memcpy(TGR_PTR(BrSeason *, D_8031B760[0].season), data, 0x128);
+      memcpy(TGR_PTR(BrSeason *, D_8031B760[1].season), data, 0x128);
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4 = p2[0];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8 = p2[1];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc = p2[2];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0 = p2[3];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4 = p2[4];
       D_80272554 = 18;
       D_80316422 = 1;
       break;
     case 8:
-      D_8031B760[0].season->xd4 = ((BrSeason *)data)->xd4;
-      D_8031B760[0].season->xd8 = ((BrSeason *)data)->xd8;
-      D_8031B760[0].season->xdc = ((BrSeason *)data)->xdc;
-      D_8031B760[0].season->xe0 = ((BrSeason *)data)->xe0;
-      D_8031B760[0].season->xe4 = ((BrSeason *)data)->xe4;
-      D_8031B760[1].season->xd4 = p2[0];
-      D_8031B760[1].season->xd8 = p2[1];
-      D_8031B760[1].season->xdc = p2[2];
-      D_8031B760[1].season->xe0 = p2[3];
-      D_8031B760[1].season->xe4 = p2[4];
+      TGR_PTR(BrSeason *, D_8031B760[0].season)->xd4 = ((BrSeason *)data)->xd4;
+      TGR_PTR(BrSeason *, D_8031B760[0].season)->xd8 = ((BrSeason *)data)->xd8;
+      TGR_PTR(BrSeason *, D_8031B760[0].season)->xdc = ((BrSeason *)data)->xdc;
+      TGR_PTR(BrSeason *, D_8031B760[0].season)->xe0 = ((BrSeason *)data)->xe0;
+      TGR_PTR(BrSeason *, D_8031B760[0].season)->xe4 = ((BrSeason *)data)->xe4;
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4 = p2[0];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8 = p2[1];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc = p2[2];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0 = p2[3];
+      TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4 = p2[4];
       memcpy(D_802723D0, data + 0x13c, 12);
       BrVolumesApply();
       D_80316422 = 1;
       D_80272554 = 16;
       break;
     case 9:
-      ((BrSeason *)data)->xd4 = D_8031B760[0].season->xd4;
-      ((BrSeason *)data)->xd8 = D_8031B760[0].season->xd8;
-      ((BrSeason *)data)->xdc = D_8031B760[0].season->xdc;
-      ((BrSeason *)data)->xe0 = D_8031B760[0].season->xe0;
-      ((BrSeason *)data)->xe4 = D_8031B760[0].season->xe4;
+      ((BrSeason *)data)->xd4 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xd4;
+      ((BrSeason *)data)->xd8 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xd8;
+      ((BrSeason *)data)->xdc = TGR_PTR(BrSeason *, D_8031B760[0].season)->xdc;
+      ((BrSeason *)data)->xe0 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xe0;
+      ((BrSeason *)data)->xe4 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xe4;
       k = 4;
       memcpy(data + 0x13c, D_802723D0, 12);
       goto write;
     case 7:
       k = 4;
-      memcpy(data, D_8031B760[0].season, 0x128);
+      memcpy(data, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
     write:
-      p2[0] = D_8031B760[1].season->xd4;
-      p2[1] = D_8031B760[1].season->xd8;
-      p2[2] = D_8031B760[1].season->xdc;
-      p2[3] = D_8031B760[1].season->xe0;
-      p2[4] = D_8031B760[1].season->xe4;
+      p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+      p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+      p2[2] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc;
+      p2[3] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0;
+      p2[4] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4;
       sum = 0xBFED812;
       for (k = 4; k < len; k++) {
         sum += D_80272500[k];
@@ -530,7 +531,7 @@ void BrLoadSaveScreen(void)
       memcpy(D_80272500, &sum, 4);
       DBG(("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum, D_80272500[0], D_80272500[1],
            D_80272500[2], D_80272500[3], len));
-      if (osEepromLongWrite(D_80272D48, 0, D_80272500, len) != 0) {
+      if (tgr_eeprom_long_write((TgrMsgQueue *)D_80272D48, 0, D_80272500, len) != 0) {
         D_802724F0 = 5;
         D_80272554 = 15;
       } else {
@@ -541,7 +542,7 @@ void BrLoadSaveScreen(void)
     break;
   case 5:                       /* erase: both seasons afresh, written to the EEPROM */
     D_802724FC = 0;
-    if (osEepromProbe(D_80272D48) == 0) {
+    if (tgr_eeprom_probe((TgrMsgQueue *)D_80272D48) == 0) {
       D_802724F0 = 1;
       D_80272554 = 15;
     } else {
@@ -557,12 +558,12 @@ void BrLoadSaveScreen(void)
       n = (blk - D_80272500 + 0x14f) & ~7;
       BrCarReset(&D_8031B760[0]);
       BrCarReset(&D_8031B760[1]);
-      memcpy(blk, D_8031B760[0].season, 0x128);
-      p2[0] = D_8031B760[1].season->xd4;
-      p2[1] = D_8031B760[1].season->xd8;
-      p2[2] = D_8031B760[1].season->xdc;
-      p2[3] = D_8031B760[1].season->xe0;
-      p2[4] = D_8031B760[1].season->xe4;
+      memcpy(blk, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
+      p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+      p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+      p2[2] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc;
+      p2[3] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0;
+      p2[4] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4;
       memcpy(blk + 0x13c, D_802723D0, 12);
       s = 0xBFED812;
       for (j = 4; j < n; j++) {
@@ -573,7 +574,7 @@ void BrLoadSaveScreen(void)
       tgr_print("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", s, D_80272500[0], D_80272500[1],
                    D_80272500[2], D_80272500[3], n);
 #endif
-      if (osEepromLongWrite(D_80272D48, 0, D_80272500, n) != 0) {
+      if (tgr_eeprom_long_write((TgrMsgQueue *)D_80272D48, 0, D_80272500, n) != 0) {
         D_802724F0 = 5;
         D_80272554 = 15;
       } else {
@@ -636,7 +637,7 @@ void BrLoadSaveScreen(void)
 #if TGR_REGION_EUR
     BrTextSetFont(12);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
-    func_80246F90(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextPrint("A NEW CONTROLLER PAK", 95, 108);
     BrTextPrint("WAS INSERTED.", 95, 121);
     BrTextPrint("THIS CONTROLLER PAK", 95, 140);
@@ -644,7 +645,7 @@ void BrLoadSaveScreen(void)
 #else
     BrTextSetFont(14);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
-    func_80246F90(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 108);
     BrTextPrint("%j2Bq6hc@6R&", 84, 121);
     BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 140);
@@ -732,20 +733,20 @@ void BrLoadSaveScreen(void)
       } else if (items[D_80272550].kind == 0) {
 #endif
         if (D_802724F4 == 0) {
-          opts[0] = D_8031B760[D_80271FA8 ^ 1].season->xd4;
-          opts[1] = D_8031B760[D_80271FA8 ^ 1].season->xd8;
-          opts[2] = D_8031B760[D_80271FA8 ^ 1].season->xdc;
-          opts[3] = D_8031B760[D_80271FA8 ^ 1].season->xe0;
-          opts[4] = D_8031B760[D_80271FA8 ^ 1].season->xe4;
+          opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4;
+          opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8;
+          opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc;
+          opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0;
+          opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4;
         }
-        memcpy(D_8031B760[0].season, D_80272500, 0x128);
-        memcpy(D_8031B760[1].season, D_80272500, 0x128);
+        memcpy(TGR_PTR(BrSeason *, D_8031B760[0].season), D_80272500, 0x128);
+        memcpy(TGR_PTR(BrSeason *, D_8031B760[1].season), D_80272500, 0x128);
         if (D_802724F4 == 0) {
-          D_8031B760[D_80271FA8 ^ 1].season->xd4 = opts[0];
-          D_8031B760[D_80271FA8 ^ 1].season->xd8 = opts[1];
-          D_8031B760[D_80271FA8 ^ 1].season->xdc = opts[2];
-          D_8031B760[D_80271FA8 ^ 1].season->xe0 = opts[3];
-          D_8031B760[D_80271FA8 ^ 1].season->xe4 = opts[4];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd4 = opts[0];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xd8 = opts[1];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xdc = opts[2];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe0 = opts[3];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8 ^ 1].season)->xe4 = opts[4];
         }
         DBG(("Done!\n"));
         if (D_802724FC == 0) {
@@ -761,14 +762,14 @@ void BrLoadSaveScreen(void)
       } else if (items[D_80272550].kind == 2) {
 #endif
         DBG(("Extracting ghost data...\n"));
-        D_80270784 = func_8021CB4C(D_80307F00, 0xDE5C, D_80272500, 2);
+        D_80270784 = BrRlePlanesUnpack(D_80307F00, 0xDE5C, D_80272500, 2);
         D_8028B940 = D_80307F00[0];
 #if TGR_REGION_EUR || TGR_REGION_JPN
-        D_8031B760[0].season->xce |= 1 << D_80307F00[0];
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << D_80307F00[0];
 #else
-        D_8031B760[0].season->xce |= 1 << D_8028B940;
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->xce |= 1 << D_8028B940;
 #endif
-        D_8031B760[0].season->unlocked |= 1 << D_80307F00[1];
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked |= 1 << D_80307F00[1];
         DBG(("Done!\n"));
         if (D_802724FC == 0) {
           D_80272554 = 18;
@@ -786,11 +787,11 @@ void BrLoadSaveScreen(void)
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 0, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
           memcpy(opts, D_80272500, 20);
-          D_8031B760[D_80271FA8].season->xd4 = opts[0];
-          D_8031B760[D_80271FA8].season->xd8 = opts[1];
-          D_8031B760[D_80271FA8].season->xdc = opts[2];
-          D_8031B760[D_80271FA8].season->xe0 = opts[3];
-          D_8031B760[D_80271FA8].season->xe4 = opts[4];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4 = opts[0];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8 = opts[1];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc = opts[2];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0 = opts[3];
+          TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4 = opts[4];
           DBG(("Done!\n"));
           BrVolumesApply();
           D_80272554 = 16;
@@ -848,7 +849,7 @@ void BrLoadSaveScreen(void)
     D_80316423 = 0;
     y = 0x139 - D_8028D0B0.w;
 #if TGR_REGION_EUR
-    func_80246F90(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
     BrTextHighlightOff();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -862,7 +863,7 @@ void BrLoadSaveScreen(void)
     BrImageDrawAt(&D_8028D0B0, 0x85, y);
     BrImageDrawAt(&D_8028D0E0, 0x197, y);
 #else
-    func_80246F90(0x5F, 0xBB, 0x1C2, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0x5F, 0xBB, 0x1C2, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
     BrTextHighlightOff();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -892,7 +893,7 @@ void BrLoadSaveScreen(void)
       h = 0xC9;
     }
     y = h - D_8028D0B0.w + 0x62;
-    func_80246F90(0xD5, h, 0xD6, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xD5, h, 0xD6, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
     BrTextHighlightOff();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -929,7 +930,7 @@ void BrLoadSaveScreen(void)
     switch (items[D_80272550].kind) {
     case 1:
       tgr_print("Saving season data...\n");
-      memcpy(D_80272500, D_8031B760[0].season, 0x128);
+      memcpy(D_80272500, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
       D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x200, D_80272500);
       if (D_802724F0 == 0) {
         tgr_print("Done!\n");
@@ -940,7 +941,7 @@ void BrLoadSaveScreen(void)
       break;
     case 3:
       tgr_print("Compressing ghost data...\n");
-      newSize = func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2);
+      newSize = BrRleEncode(D_80272500, 0x3A00, D_80307F00, D_80270784, 2);
       tgr_print("new size = %d\n", newSize);
       if (newSize != -1) {
         tgr_print("Saving ghost data to controller pak...\n");
@@ -963,11 +964,11 @@ void BrLoadSaveScreen(void)
       if (D_802724F0 != 0) {
         D_80272554 = 15;
       } else {
-        opts[0] = D_8031B760[D_80271FA8].season->xd4;
-        opts[1] = D_8031B760[D_80271FA8].season->xd8;
-        opts[2] = D_8031B760[D_80271FA8].season->xdc;
-        opts[3] = D_8031B760[D_80271FA8].season->xe0;
-        opts[4] = D_8031B760[D_80271FA8].season->xe4;
+        opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4;
+        opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8;
+        opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc;
+        opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
+        opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
         memcpy(D_80272500, opts, 20);
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
@@ -982,7 +983,7 @@ void BrLoadSaveScreen(void)
 #elif TGR_REGION_JPN
     switch (items[D_80272550].kind) {
     case 1:
-      memcpy(D_80272500, D_8031B760[0].season, 0x128);
+      memcpy(D_80272500, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
       D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x200, D_80272500);
       if (D_802724F0 == 0) {
         D_80272554 = 16;
@@ -991,7 +992,7 @@ void BrLoadSaveScreen(void)
       }
       break;
     case 3:
-      if (func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2) != -1) {
+      if (BrRleEncode(D_80272500, 0x3A00, D_80307F00, D_80270784, 2) != -1) {
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
         if (D_802724F0 == 0) {
           D_80272554 = 16;
@@ -1009,11 +1010,11 @@ void BrLoadSaveScreen(void)
       if (D_802724F0 != 0) {
         D_80272554 = 15;
       } else {
-        opts[0] = D_8031B760[D_80271FA8].season->xd4;
-        opts[1] = D_8031B760[D_80271FA8].season->xd8;
-        opts[2] = D_8031B760[D_80271FA8].season->xdc;
-        opts[3] = D_8031B760[D_80271FA8].season->xe0;
-        opts[4] = D_8031B760[D_80271FA8].season->xe4;
+        opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4;
+        opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8;
+        opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc;
+        opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
+        opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
         memcpy(D_80272500, opts, 20);
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
@@ -1026,7 +1027,7 @@ void BrLoadSaveScreen(void)
     }
 #else
     if (items[D_80272550].kind == 1) {
-      memcpy(D_80272500, D_8031B760[0].season, 0x128);
+      memcpy(D_80272500, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
       D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x200, D_80272500);
       if (D_802724F0 == 0) {
         D_80272554 = 16;
@@ -1034,7 +1035,7 @@ void BrLoadSaveScreen(void)
         D_80272554 = 15;
       }
     } else if (items[D_80272550].kind == 3) {
-      if (func_8021C878(D_80272500, 0x3A00, D_80307F00, D_80270784, 2) != -1) {
+      if (BrRleEncode(D_80272500, 0x3A00, D_80307F00, D_80270784, 2) != -1) {
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0, 0x3A00, D_80272500);
         if (D_802724F0 == 0) {
           D_80272554 = 16;
@@ -1051,11 +1052,11 @@ void BrLoadSaveScreen(void)
       if (D_802724F0 != 0) {
         D_80272554 = 15;
       } else {
-        opts[0] = D_8031B760[D_80271FA8].season->xd4;
-        opts[1] = D_8031B760[D_80271FA8].season->xd8;
-        opts[2] = D_8031B760[D_80271FA8].season->xdc;
-        opts[3] = D_8031B760[D_80271FA8].season->xe0;
-        opts[4] = D_8031B760[D_80271FA8].season->xe4;
+        opts[0] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd4;
+        opts[1] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xd8;
+        opts[2] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xdc;
+        opts[3] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe0;
+        opts[4] = TGR_PTR(BrSeason *, D_8031B760[D_80271FA8].season)->xe4;
         memcpy(D_80272500, opts, 20);
         D_802724F0 = tgr_pak_io(PFS, D_80316424, 1, 0x80, 0x80, D_80272500);
         if (D_802724F0 == 0) {
@@ -1076,13 +1077,13 @@ void BrLoadSaveScreen(void)
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     switch (D_802724F0) {
     case 10:
-      func_80246F90(0xBD, 0xD9, 0x106, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xBD, 0xD9, 0x106, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("THE CONTROLLER PAK", 102, 124);
       BrTextPrint("IS NONFUNCTIONAL.", 102, 138);
       break;
     case 1:
     case 11:
-      func_80246F90(0x50, 0xD8, 0x1E0, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x50, 0xD8, 0x1E0, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
       switch (items[D_80272550].kind) {
       case 6:
       case 7:
@@ -1109,7 +1110,7 @@ void BrLoadSaveScreen(void)
       break;
     case 9999:
       y = 0x146 - D_8028D0B0.w;
-      func_80246F90(0x79, 0xAE, 0x18D, 0xA0, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x79, 0xAE, 0x18D, 0xA0, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
       BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
       BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
@@ -1123,7 +1124,7 @@ void BrLoadSaveScreen(void)
       break;
     case 7:
     case 8:
-      func_80246F90(0xA5, 0x9F, 0x136, 0xBD, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xA5, 0x9F, 0x136, 0xBD, 3, 0, 0, 0x80, 0x80, 0x80);
       switch (items[D_80272550].kind) {
       case 1:
         BrTextPrint("INSUFFICIENT FREE PAGES", 90, 95);
@@ -1152,14 +1153,14 @@ void BrLoadSaveScreen(void)
       }
       break;
     case -99999:
-      func_80246F90(0x75, 0xBD, 0x196, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x75, 0xBD, 0x196, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("UNABLE TO SAVE GHOST CAR DATA.", 66, 110);
       BrTextPrint("GHOST CAR DATA IS LARGER THAN", 66, 124);
       BrTextPrint("THE MAXIMUM ALLOCATED SPACE", 66, 138);
       BrTextPrint("IN THE CONTROLLER PAK.", 66, 152);
       break;
     case 4:
-      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("CONTROLLER ERROR", 103, 124);
       BrTextPrint("HAS BEEN DETECTED!", 103, 138);
       break;
@@ -1167,41 +1168,41 @@ void BrLoadSaveScreen(void)
       switch (items[D_80272550].kind) {
       case 6:
       case 8:
-        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("SAVED DATA NOT FOUND", 94, 124);
         BrTextPrint("IN GAME PAK.", 94, 138);
         break;
       case 7:
       case 9:
-        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("ERROR WRITING TO THE", 94, 124);
         BrTextPrint("GAME PAK SAVE AREA.", 94, 138);
         break;
       case 0:
       case 2:
       case 4:
-        func_80246F90(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xAD, 0xD9, 0x125, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("SAVED DATA NOT FOUND", 94, 124);
         BrTextPrint("IN CONTROLLER PAK.", 94, 138);
         break;
       case 1:
       case 3:
       case 5:
-        func_80246F90(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("UNABLE TO SAVE DATA", 99, 124);
         BrTextPrint("TO CONTROLLER PAK.", 99, 138);
         break;
       }
       break;
     case 2:
-      func_80246F90(0xAF, 0xBB, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xAF, 0xBB, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("A NEW CONTROLLER PAK", 95, 109);
       BrTextPrint("WAS INSERTED.", 95, 122);
       BrTextPrint("THIS CONTROLLER PAK", 95, 141);
       BrTextPrint("WILL BE USED.", 95, 154);
       break;
     default:
-      func_80246F90(0xB1, 0xD9, 0x11E, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xB1, 0xD9, 0x11E, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("CONTROLLER PAK ERROR", 96, 124);
       BrTextPrint("HAS BEEN DETECTED!", 96, 138);
       break;
@@ -1211,7 +1212,7 @@ void BrLoadSaveScreen(void)
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     switch (D_802724F0) {
     case 10:
-      func_80246F90(0x50, 0xD9, 0x1E0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x50, 0xD9, 0x1E0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9'qghc@6R&", 48, 124);
       BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'2Bc\xDB" "2@&", 48, 138);
       break;
@@ -1229,7 +1230,7 @@ void BrLoadSaveScreen(void)
         break;
       }
       y = (0x280 - newSize) >> 1;
-      func_80246F90(y, 0xD8, newSize, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(y, 0xD8, newSize, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
       switch (items[D_80272550].kind) {
       case 6:
       case 7:
@@ -1256,7 +1257,7 @@ void BrLoadSaveScreen(void)
       break;
     case 9999:
       y = 0x139 - D_8028D0B0.w;
-      func_80246F90(0xC8, 0xBB, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xC8, 0xBB, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1s", 108, 109);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w", 108, 122);
       BrTextPrint("%j\xD4\xD5" "Bc\xDB" "2@&", 108, 135);
@@ -1269,7 +1270,7 @@ void BrLoadSaveScreen(void)
       break;
     case 7:
     case 8:
-      func_80246F90(0x82, 0xB7, 0x17C, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x82, 0xB7, 0x17C, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
       switch (items[D_80272550].kind) {
       case 1:
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 73, 107);
@@ -1292,14 +1293,14 @@ void BrLoadSaveScreen(void)
       }
       break;
     case -99999:
-      func_80246F90(0xB9, 0xBD, 0x10E, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xB9, 0xBD, 0x10E, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC9(\xA2\xC3\x81(\xBB(\x83w", 100, 110);
       BrTextPrint("%j\xB2(\xACkA6b\x7F&", 100, 124);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1t", 100, 138);
       BrTextPrint("%j\xE1" "A\xBD(\x9A" "9\xE2H6b\x7F&", 100, 152);
       break;
     case 4:
-      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88" "D\xB0\x88(9", 103, 124);
       BrTextPrint("%j\xED\xEE" "B6B3&", 103, 138);
       break;
@@ -1307,41 +1308,41 @@ void BrLoadSaveScreen(void)
       switch (items[D_80272550].kind) {
       case 6:
       case 8:
-        func_80246F90(0xAA, 0xD9, 0x12C, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xAA, 0xD9, 0x12C, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("%j\xB9(\xA6\x8D\x8F\xA1" "D", 93, 124);
         BrTextPrint("%j\xB2(\xAC\xBB(\x83" "90H6b\x7F&", 93, 138);
         break;
       case 7:
       case 9:
-        func_80246F90(0xCD, 0xD9, 0xE6, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xCD, 0xD9, 0xE6, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("%j\xB9(\xA6\x8D\x8F\xA1" "D", 110, 124);
         BrTextPrint("%j\xE4" "A\xE5" "FkA6b\x7F&", 110, 138);
         break;
       case 0:
       case 2:
       case 4:
-        func_80246F90(0xB6, 0xD9, 0x113, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xB6, 0xD9, 0x113, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 99, 124);
         BrTextPrint("%j\xB2(\xAC\xBB(\x83" "90H6b\x7F&", 99, 138);
         break;
       case 1:
       case 3:
       case 5:
-        func_80246F90(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+        BrBevelPanel(0xB6, 0xD9, 0x114, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 99, 124);
         BrTextPrint("%j\xB2(\xACkA6b\x7F&", 99, 138);
         break;
       }
       break;
     case 2:
-      func_80246F90(0x99, 0xBB, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x99, 0xBB, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 109);
       BrTextPrint("%j2Bq6hc@6R&", 84, 122);
       BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 141);
       BrTextPrint("%j\xDE@6R&", 84, 154);
       break;
     default:
-      func_80246F90(0xB1, 0xD9, 0x11E, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xB1, 0xD9, 0x11E, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", 96, 124);
       BrTextPrint("%j9\xD0\xD1kR&", 96, 138);
       break;
@@ -1386,7 +1387,7 @@ void BrLoadSaveScreen(void)
       } else {
         h = 0xCE;
       }
-      func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
@@ -1400,7 +1401,7 @@ void BrLoadSaveScreen(void)
       } else {
         h = 0xCE;
       }
-      func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
@@ -1415,7 +1416,7 @@ void BrLoadSaveScreen(void)
       } else {
         h = 0xCE;
       }
-      func_80246F90(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
@@ -1429,7 +1430,7 @@ void BrLoadSaveScreen(void)
       } else {
         h = 0xCE;
       }
-      func_80246F90(0xD8, h, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xD8, h, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywGHOST CAR DATA", 159, (h + 32) >> 1);
       BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
@@ -1439,7 +1440,7 @@ void BrLoadSaveScreen(void)
       break;
     case 4:
     case 8:
-      func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywOPTIONS LOADED OK!", 159, 131);
 #else
@@ -1448,7 +1449,7 @@ void BrLoadSaveScreen(void)
       break;
     case 5:
     case 9:
-      func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
 #if TGR_REGION_EUR
       BrTextPrint("%ywOPTIONS SAVED OK!", 159, 131);
 #else
@@ -1456,7 +1457,7 @@ void BrLoadSaveScreen(void)
 #endif
       break;
     case 10:
-      func_80246F90(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%ywDONE!", 159, 131);
       break;
     default:
@@ -1480,7 +1481,7 @@ void BrLoadSaveScreen(void)
     BrTextAlignLeft();
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
 #if TGR_REGION_EUR
-    func_80246F90(0x73, 0xB2, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0x73, 0xB2, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextSetFont(12);
     BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 105);
     BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 118);
@@ -1488,7 +1489,7 @@ void BrLoadSaveScreen(void)
     BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 65, 144);
     BrTextPrint("TO CONTINUE.", 65, 157);
 #else
-    func_80246F90(0xAA, 0xCC, 0x12C, 0x64, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xAA, 0xCC, 0x12C, 0x64, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextSetFont(14);
     BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 93, 118);
     BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 93, 131);
@@ -1520,8 +1521,8 @@ void BrLoadSaveScreen(void)
   }
   {
     Gfx *g = D_8028A858++;
-    g->words.w1 = 0;
-    g->words.w0 = 0xE7000000;
+    SET32(g->words.w1, 0);
+    SET32(g->words.w0, 0xE7000000);
   }
   BrFadeBarsDraw();
   BrFrameEnd();
@@ -1536,18 +1537,18 @@ void BrLoadSaveScreen(void)
     D_802724F0 = 0;
     if ((items[D_80272550].kind == 0 || items[D_80272550].kind == 6) && D_80316422 != 0) {
       D_80316422 = 0;
-      BrModeSet((int)BrChampionshipStart);
+      BrModeSet(BrChampionshipStart);
     } else if (items[D_80272550].kind == 2 && D_80316422 != 0) {
       D_80316422 = 0;
-      BrModeSet((int)BrTimeAttackStart);
+      BrModeSet(BrTimeAttackStart);
     } else {
       D_80272550 = 0;
       if (D_802724F4 == 0) {
-        BrModeSet((int)BrMainMenu);
+        BrModeSet(BrMainMenu);
       } else if ((mode = D_802724F4) == 1) {
-        BrModeSet((int)func_80209434);
+        BrModeSet(BrTrackSelectScreen);
       } else if ((mode | 0) == 2) {
-        BrModeSet((int)BrMainMenu);
+        BrModeSet(BrMainMenu);
       }
     }
   }

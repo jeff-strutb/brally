@@ -96,14 +96,14 @@ int BrRumbleInsertPrompt(int anyPad)
   BrTextAlignLeft();
 #if TGR_REGION_JPN
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
-  func_80246F90(0xaa, 0xce, 300, 100, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrBevelPanel(0xaa, 0xce, 300, 100, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(14);
   BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 0x5d, 0x77);
   BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 0x5d, 0x84);
   BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xD4\xD5" "Bc\xDB" "2@&", 0x5d, 0x91);
 #elif TGR_REGION_EUR
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
-  func_80246F90(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+  BrBevelPanel(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
   BrTextSetFont(12);
 #else
   BrTextSetFont(12);
@@ -317,7 +317,7 @@ int BrCpakCheck(int kind, unsigned char quiet)
 #if TGR_REGION_JPN
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
       BrTextSetFont(14);
-      func_80246F90(0x99, 0xC3, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x99, 0xC3, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 113);
       BrTextPrint("%j2Bq6hc@6R&", 84, 126);
       BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 145);
@@ -485,13 +485,13 @@ int BrCpakCheck(int kind, unsigned char quiet)
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     switch (D_802724F0) {
     case 10:
-      func_80246F90(0x50, 0xD9, 0x1E0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x50, 0xD9, 0x1E0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9'qghc@6R&", 48, 124);
       BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'2Bc\xDB" "2@&", 48, 138);
       break;
     case 1:
     case 11:
-      func_80246F90(0x94, 0xD8, 0x158, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x94, 0xD8, 0x158, 0x4C, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "90H6b\x7F&", 82, 124);
       if (kind == 3) {
         BrTextPrint("%j\xBB(\x83w\xB2(\xACkA6b\x7F&", 82, 138);
@@ -500,33 +500,33 @@ int BrCpakCheck(int kind, unsigned char quiet)
       }
       break;
     case 9999:
-      y = 0x13B - D_8028D0C0;
-      func_80246F90(0xC8, 0xBD, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+      y = 0x13B - D_8028D0B0.w;
+      BrBevelPanel(0xC8, 0xBD, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1s", 108, 110);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w", 108, 123);
       BrTextPrint("%j\xD4\xD5" "Bc\xDB" "2@&", 108, 136);
       BrTextAlignLeft();
       BrTextSetFont(10);
-      BrTextPrint("%wwOK", (D_8028D0C0 + 0xDEU) >> 1, (y + 18) >> 1);
-      BrTextPrint("%wwCANCEL", (D_8028D0F0 + 0x14AU) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwOK", (D_8028D0B0.w + 0xDEU) >> 1, (y + 18) >> 1);
+      BrTextPrint("%wwCANCEL", (D_8028D0E0.w + 0x14AU) >> 1, (y + 18) >> 1);
       BrImageDrawAt(&D_8028D0B0, 0xD8, y);
       BrImageDrawAt(&D_8028D0E0, 0x144, y);
       break;
     case 7:
     case 8:
-      func_80246F90(0xA5, 0xBD, 0x136, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xA5, 0xBD, 0x136, 0x8D, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 90, 110);
       BrTextPrint("%j\xE1" "A\xBD(\x9A" "90H6b\x7F&", 90, 123);
       BrTextPrint("%j\xC0\xAD\x92\xBF\xCF\xBB(\x83w\xB2(\xACRXD5", 90, 142);
       BrTextPrint("1%j\xBD(\x9A\xD6\xD7kR&", 90, 155);
       break;
     case 4:
-      func_80246F90(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xBF, 0xD9, 0x102, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88" "D\xB0\x88(", 103, 124);
       BrTextPrint("%j9\xED\xEE" "B6B3&", 103, 138);
       break;
     case 5:
-      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       if (kind == 3) {
         BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", 95, 124);
         BrTextPrint("%j9\xD0\xD1kR&", 95, 138);
@@ -536,14 +536,14 @@ int BrCpakCheck(int kind, unsigned char quiet)
       }
       break;
     case 2:
-      func_80246F90(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0x99, 0xB9, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, 108);
       BrTextPrint("%j2Bq6hc@6R&", 84, 121);
       BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 140);
       BrTextPrint("%j\xDE@6R&", 84, 153);
       break;
     default:
-      func_80246F90(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrBevelPanel(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", 95, 124);
       BrTextPrint("%j9\xD0\xD1kR&", 95, 138);
       break;

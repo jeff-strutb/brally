@@ -81,7 +81,7 @@ int BrPakCheckFiles(void)
     }
   }
 #if TGR_REGION_JPN
-  bad = 0;
+  D_8028DDA0 = 0;
 #endif
   for (i = 0; i < 16; i++) {
     if (tgr_pak_stat(&D_80369EC0[0], i, &D_8036A280[i]) != 0) {
@@ -94,9 +94,9 @@ int BrPakCheckFiles(void)
       tgr_print("%d: %08x %04x\n", i, D_8036A280[i].company, D_8036A280[i].game);
 #endif
 #if TGR_REGION_JPN
-      if (states[i].company != 0x4e54524a || states[i].game != 0x3238) {   /* "NTRJ", "28" */
+      if (D_8036A280[i].company != 0x4e54524a || D_8036A280[i].game != 0x3238) {   /* "NTRJ", "28" */
 #elif TGR_REGION_EUR
-      if (states[i].company != 0x4e545250 || states[i].game != 0x3746) {   /* "NTRP", "7F" */
+      if (D_8036A280[i].company != 0x4e545250 || D_8036A280[i].game != 0x3746) {   /* "NTRP", "7F" */
 #else
       if (D_8036A280[i].company != 0x4e475245 || D_8036A280[i].game != 0x3544) {
 #endif

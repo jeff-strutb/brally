@@ -1501,9 +1501,9 @@ void BrSchedInit(void)
       r = tgr_pak_open(D_80272D48, &D_8031A3F8[i], i);
       if (r != 0 && (r == 10 || r == 11)) {
 #if TGR_REGION_EUR || TGR_REGION_JPN
-        if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+        if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) == 0) {
           D_8031B1E8[i] = 1;
-          func_80261F20(&D_8031A3F8[i]);
+          tgr_rumble_off(&D_8031A3F8[i]);
         }
 #else
         if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) != 0) {

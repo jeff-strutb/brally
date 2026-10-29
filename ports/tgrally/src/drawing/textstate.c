@@ -65,7 +65,7 @@ void BrJpGlyphReset(void)
     jpn_D_80352058[i] = 0;
   }
   size = 0x5A0;
-  jpn_D_8028DF54 = ((unsigned int)jpn_D_803837A0 + 7) & ~7;
+  jpn_D_8028DF54 = (tgr_addr32(jpn_D_803837A0) + 7) & ~7;
   jpn_D_8028DF58 = 0x803B1000;
   jpn_D_8028DF5C = (jpn_D_8028DF58 - jpn_D_8028DF54) / size;
   jpn_D_8028DF58 = jpn_D_8028DF5C * size + jpn_D_8028DF54;
@@ -117,16 +117,22 @@ void BrJpGlyphLoad(void)
       a = 0;                    /* dead: numbers a ahead of b */
       dst = slot * 0x5A0 + jpn_D_8028DF54;
       c -= 0x20;
-      b = jpn_D_80352258[c + 1];
+      b = (int)tgr_rd32(&jpn_D_80352258[c + 1]);   /* the offsets as read from ROM: big-endian */
       if (b < 0) {
         b = -b;
       }
-      a = jpn_D_80352258[c];
+      a = (int)tgr_rd32(&jpn_D_80352258[c]);
       if (a < 0) {
-        BrRomRead((void *)dst, (int)(jpn_D_000DCF40 - a), a + b);
+        BrRomRead(TGR_PTR(void *, dst), (int)(jpn_D_000DCF40 - a), a + b);
       } else {
         BrRomRead(jpn_D_803525A0, (a | 0) + (int)jpn_D_000DCF40, b - a);
-        BrRlePlanesUnpack((void *)dst, 0x5A0, jpn_D_803525A0, 1);
+        {
+          /* port: the plane's length word as the cartridge stores it (big-endian);
+             the unpacker reads it natively */
+          unsigned int len = tgr_rd32(jpn_D_803525A0);
+          memcpy(jpn_D_803525A0, &len, 4);
+        }
+        BrRlePlanesUnpack(TGR_PTR(void *, dst), 0x5A0, jpn_D_803525A0, 1);
       }
       c += 0x20;
     }
@@ -233,8 +239,8 @@ void BrTextEmitString(unsigned char *s)
   gDPSetTextureLUT(D_8028A858++, 0);
   gDPSetTexturePersp(D_8028A858++, G_TP_NONE);
   {
-    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)( 0xba) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 16) & ((0x01 << ( 8)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 8)) - 1)) << ( 0))) );
-    _g->words.w1 = (unsigned int)( 0);
+    Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, (((unsigned int)(((unsigned int)( 0xba) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 16) & ((0x01 << ( 8)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 8)) - 1)) << ( 0))) ));
+    tgr_wr32(&_g->words.w1, (unsigned int)( 0));
   }
   gSPTexture(D_8028A858++, 0xffff, 0xffff, 0, 0, 1);
   gDPTileSync(D_8028A858++);
@@ -243,23 +249,23 @@ void BrTextEmitString(unsigned char *s)
   {
     Gfx *_g = (Gfx *)(D_8028A858++);
 
-    _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_RGBA, 21, 3) | _SHIFTL(G_IM_SIZ_16b, 19, 2) |
-                   _SHIFTL(0, 9, 9) | _SHIFTL(0x1B0, 0, 9);
-    _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(0, 18, 2) | _SHIFTL(0, 14, 4) |
-                   _SHIFTL(0, 10, 4) | _SHIFTL(0, 8, 2) | _SHIFTL(0, 4, 4) | _SHIFTL(0, 0, 4);
+    tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_RGBA, 21, 3) | _SHIFTL(G_IM_SIZ_16b, 19, 2) |
+                   _SHIFTL(0, 9, 9) | _SHIFTL(0x1B0, 0, 9));
+    tgr_wr32(&_g->words.w1, _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(0, 18, 2) | _SHIFTL(0, 14, 4) |
+                   _SHIFTL(0, 10, 4) | _SHIFTL(0, 8, 2) | _SHIFTL(0, 4, 4) | _SHIFTL(0, 0, 4));
   }
   gDPSetTextureImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, D_8028BDC8 ? rampB : rampA);
   {
-    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)(0xf3) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
-    _g->words.w1 = (((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)(((( 319) < ( 2047) ? ( 319) : ( 2047)))) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+    Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, (((unsigned int)(((unsigned int)(0xf3) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) ));
+    tgr_wr32(&_g->words.w1, (((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)(((( 319) < ( 2047) ? ( 319) : ( 2047)))) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) ));
   }
   {
-    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0x1B0) & ((0x01 << ( 9)) - 1)) << ( 0)));
-    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+    Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0x1B0) & ((0x01 << ( 9)) - 1)) << ( 0))));
+    tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0))));
   }
   {
-    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
-    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0x1E) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0x9E) & ((0x01 << ( 12)) - 1)) << ( 0)));
+    Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
+    tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0x1E) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0x9E) & ((0x01 << ( 12)) - 1)) << ( 0))));
   }
   if (D_8028BDCC != 0) {
     gDPSetEnvColor(D_8028A858++, D_8028BDD0, D_8028BDD4, D_8028BDD8, 0xff);
@@ -395,32 +401,32 @@ void BrTextEmitString(unsigned char *s)
           {
             Gfx *_g = (Gfx *)(D_8028A858++);
 
-            _g->words.w0 = _SHIFTL(G_SETTIMG, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) |
-                           _SHIFTL(G_IM_SIZ_8b, 19, 2) | _SHIFTL((36)-1, 0, 12);
-            _g->words.w1 = (unsigned int)(BrJpGlyphSlot(g));
+            tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTIMG, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) |
+                           _SHIFTL(G_IM_SIZ_8b, 19, 2) | _SHIFTL((36)-1, 0, 12));
+            tgr_wr32(&_g->words.w1, (unsigned int)(BrJpGlyphSlot(g)));
           }
           line = ((w + 1) + 7) >> 3;
           if (lastLine != line) {
             {
               Gfx *_g = (Gfx *)(D_8028A858++);
 
-              _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
-                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9);
-              _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
-                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4);
+              tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
+                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9));
+              tgr_wr32(&_g->words.w1, _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
+                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4));
             }
             lastLine = line;
           }
           gDPLoadSync(D_8028A858++);
           {
-            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0)));
-            _g->words.w1 = ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( w << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( cell << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))));
+            tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( w << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( cell << 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
           }
           {
             Gfx *_g = (Gfx *)(D_8028A858++);
 
-            _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0)));
-            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+            tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0))));
+            tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0))));
           }
         } else {
           g = D_802A1740[c - 0x21];
@@ -435,29 +441,29 @@ void BrTextEmitString(unsigned char *s)
             {
               Gfx *_g = (Gfx *)(D_8028A858++);
 
-              _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
-                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9);
-              _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
-                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4);
+              tgr_wr32(&_g->words.w0, _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
+                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9));
+              tgr_wr32(&_g->words.w1, _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
+                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4));
             }
             lastLine = line;
           }
           gDPLoadSync(D_8028A858++);
           {
-            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( uls << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( row << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
-            _g->words.w1 = ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( lrs << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( (row + cell) << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( uls << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( row << 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
+            tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( lrs << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( (row + cell) << 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
           }
           {
             Gfx *_g = (Gfx *)(D_8028A858++);
 
-            _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0)));
-            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+            tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0))));
+            tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0))));
           }
         }
         if (w != lastW || cell != lastCell) {
           {
-            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
-            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( ((w - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( ((cell - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
+            tgr_wr32(&_g->words.w1, ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( ((w - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( ((cell - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 0))));
           }
           lastW = w;
           lastCell = cell;
@@ -465,15 +471,15 @@ void BrTextEmitString(unsigned char *s)
         lrs = w * size / cell;
         if (x < 0 || x + lrs > 320 || y < 0 || y + size > 240) {
           {
-            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)((x + lrs) << 2), 0), 12, 12) | _SHIFTL(MAX((s16)((y + size) << 2), 0), 0, 12));
-            _g->words.w1 = (_SHIFTL((0), 24, 3) | _SHIFTL(MAX((s16)(x << 2), 0), 12, 12) | _SHIFTL(MAX((s16)(y << 2), 0), 0, 12));
+            Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)((x + lrs) << 2), 0), 12, 12) | _SHIFTL(MAX((s16)((y + size) << 2), 0), 0, 12)));
+            tgr_wr32(&_g->words.w1, (_SHIFTL((0), 24, 3) | _SHIFTL(MAX((s16)(x << 2), 0), 12, 12) | _SHIFTL(MAX((s16)(y << 2), 0), 0, 12)));
             gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(((16) - (((s16)(x << 2) < 0) ? (((s16)((w << 10) / (lrs)) < 0) ? (MAX((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0)) : (MIN((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0))) : 0)), 16, 16) | _SHIFTL(((((cell - 1) << 5) + 16) - (((y << 2) < 0) ? (((s16)(-dtdy) < 0) ? (MAX((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0)) : (MIN((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0))) : 0)), 0, 16)));
             gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(((w << 10) / (lrs)), 16, 16) | _SHIFTL((-dtdy), 0, 16)));
           }
         } else {
           {
-            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + lrs) << 2, 12, 12) | _SHIFTL((y + size) << 2, 0, 12));
-            _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+            Gfx *_g = (Gfx *)(D_8028A858++); tgr_wr32(&_g->words.w0, (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + lrs) << 2, 12, 12) | _SHIFTL((y + size) << 2, 0, 12)));
+            tgr_wr32(&_g->words.w1, (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12)));
             gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(16, 16, 16) | _SHIFTL(((cell - 1) << 5) + 16, 0, 16)));
             gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((w << 10) / (lrs), 16, 16) | _SHIFTL(-dtdy, 0, 16)));
           }

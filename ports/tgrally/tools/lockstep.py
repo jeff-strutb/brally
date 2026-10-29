@@ -20,6 +20,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
 import tgrbox as n64box  # noqa: E402  (the port's view of the box: tools/tgrbox.py)
+import region as R  # noqa: E402  (TGR_REGION: the cartridge compared)
+BUILD = 'build/tgrally/null-null' + ('' if R.REGION == 'usa' else '-' + R.REGION)
 
 
 def box_memory(task, script):
@@ -37,18 +39,21 @@ def box_memory(task, script):
                 box.stop_reason = 'dumped'
             state['n'] += 1
         orig()
-    box.hle[0x80264C7C] = ('osSpTaskLoad', hook)
+    box.hle[R.to_region(0x80264C7C)] = ('osSpTaskLoad', hook)
     box.run(100000)
     return state['dl'], state['mem']
 
 
 def port_memory(task, script):
-    out = os.path.join(ROOT, 'build/tgrally/null-null/lockstep')
+    out = os.path.join(ROOT, BUILD + '/lockstep')
     env = dict(os.environ, TGR_DUMP_TASK=str(task), TGR_DUMP=out)
-    cmd = [os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), '--headless', '--frames', str(2 * task + 10)]
+    cmd = [os.path.join(ROOT, BUILD + '/tgrally'), '--headless', '--frames', str(3 * task + 100)]
     if script:
         cmd += ['--script', script]
-    subprocess.run(cmd, env=env, cwd=ROOT, capture_output=True)      # a crash after the dump is fine
+    try:                        # a crash or a hang after the dump is fine
+        subprocess.run(cmd, env=env, cwd=ROOT, capture_output=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        pass
     blob = open('%s.task%d.bin' % (out, task), 'rb').read()
     return struct.unpack('<I', blob[:4])[0], blob[4:]
 
@@ -97,7 +102,7 @@ def walk(mem, dl, limit=200000):
     return out
 
 
-DATA_VA, DATA_ROM, DATA_END = 0x8026FAB0, 0x70AB0, 0xAD400
+DATA_VA, DATA_ROM, DATA_END = R.DATA_VA, R.TEXT_E, R.DATA_E
 
 
 def normalise(pmem):
@@ -117,7 +122,7 @@ def normalise(pmem):
             done[d:d + size] = b'\x01' * size
         p = a & 0x7FFFFF
         m[p:p + size] = m[p:p + size][::-1]
-    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))):
+    for sym in json.load(open(os.path.join(ROOT, BUILD + '/symunits.json'))):
         for off, size in sym['units']:
             a = sym['addr'] + off
             if DATA_VA <= a < DATA_VA + len(done):
@@ -125,7 +130,7 @@ def normalise(pmem):
             else:
                 unit(a, size, False)
     rom = open(n64box.ROM_PATH, 'rb').read()
-    for nat in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/natunits.json'))):
+    for nat in json.load(open(os.path.join(ROOT, BUILD + '/natunits.json'))):
         for k in range(nat['count']):
             r = DATA_ROM + nat['addr'] - DATA_VA + 4 * k
             a = struct.unpack('>I', rom[r:r + 4])[0]
@@ -138,29 +143,37 @@ def normalise(pmem):
 STACKS = n64box.Box.STACKS
 
 
+def span(lo, hi):
+    """a USA range at its home in the region (its start mapped, its length kept)"""
+    b = R.to_region(lo)
+    if b is None:
+        b = lo
+    return (b, b + hi - lo)
+
+
 def state_diff(bmem, pmem, limit=40):
     """the .data/.bss symbols whose bytes differ"""
     import bisect
     import json
     syms = sorted((s['addr'], s['size'], s['name']) for s in
-                  json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))))
+                  json.load(open(os.path.join(ROOT, BUILD + '/symunits.json'))))
     starts = [x[0] for x in syms]
-    lo, hi = 0x8026FAB0, 0x80382BB0
+    lo, hi = R.DATA_VA, R.BSS_E
     # the threads' stacks, and the 16-byte argument home area above each
     # top: a thread's entry spills its arguments there on the VR4300
     stack = [(max(b, lo), min(t + 16, hi)) for t, b in STACKS.items()]
-    stack.append((0x80316800, 0x803168E0))     # the boot code's own stack
-    stack.append((0x802A6000, 0x802A6400))     # libultra's internal state
+    stack.append(span(0x80316800, 0x803168E0))     # the boot code's own stack
+    stack.append(span(0x802A6000, 0x802A6400))     # libultra's internal state
     # zlib's statics (its allocator, the fixed Huffman tables): zlib is
     # native C, its state native-sized and kept natively
-    stack.append((0x80368AC8, 0x80369B70))
-    stack.append((0x8028CAB8, 0x8028CABC))      # zlib's fixed_built
-    stack.append((0x80324550, 0x8033CBF0))      # the unpack scratch zlib allocates from
+    stack.append(span(0x80368AC8, 0x80369B70))
+    stack.append(span(0x8028CAB8, 0x8028CABC))      # zlib's fixed_built
+    stack.append(span(0x80324550, 0x8033CBF0))      # the unpack scratch zlib allocates from
     # bytes inside a unit some declaration gives a width: normalise() put
     # those back to big-endian; elsewhere a field's width is unknown, so a
     # word or halfword that matches once swapped is the same value
     covered = bytearray(hi - lo)
-    for sym in json.load(open(os.path.join(ROOT, 'build/tgrally/null-null/symunits.json'))):
+    for sym in json.load(open(os.path.join(ROOT, BUILD + '/symunits.json'))):
         for off, size in sym['units']:
             b = sym['addr'] + off - lo
             if 0 <= b < len(covered):

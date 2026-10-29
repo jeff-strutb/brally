@@ -128,7 +128,7 @@ void BrSeasonDrawHelp(int row)
     need = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].xc - TGR_PTR(BrSeason *, D_8031B760[0].season)->points[TGR_PTR(BrSeason *, D_8031B760[0].season)->round];
     if (need <= 0) {
 #if TGR_REGION_JPN
-      sprintf(text, "%%wwYOU ARE READY TO NEXT SEASON");
+      sprintf(D_80315EE8, "%%wwYOU ARE READY TO NEXT SEASON");
 #else
       sprintf(D_80315EE8, "%%wwYou have enough points to advance to next season");
 #endif
@@ -238,11 +238,11 @@ void BrSeasonDraw(void)
     sprintf(D_80315F38, "Race %d", i + 1);
     BrTextPrint(D_80315F38, D_8028AAB0 * 4 / 32 - off, y);
 #if TGR_REGION_JPN
-    sprintf(text, "%%j%c", D_8028B944[round].races[i][1] + 0x29);
+    sprintf(D_80315F38, "%%j%c", D_8028B944[round].races[i][1] + 0x29);
     BrTextSetFont(13);
-    BrTextPrint(text, D_8028AAB0 * 8 / 32 - off + 4, y + 1);
+    BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y + 1);
     BrTextSetFont(10);
-    BrTextPrint(D_80271D1C[k]->label, D_8028AAB0 * 8 / 32 - off + 16, y);
+    BrTextPrint(TGR_PTR(char *, D_80271D1C[k]->label), D_8028AAB0 * 8 / 32 - off + 16, y);
 #else
     sprintf(D_80315F38, "%s/%s", TGR_PTR(const char *, D_80271D1C[k]->label), TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[i][1]]->label));
     BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
@@ -386,7 +386,7 @@ void BrTrackSelectScreen(void)
     } else {
       D_80271FCC = 0;
 #if TGR_REGION_JPN
-      sprintf(text, "Race %d: %s %%j%c%%e", D_8031B760[0].season->race + 1, label,
+      sprintf(D_80315F98, "Race %d: %s %%j%c%%e", TGR_PTR(BrSeason *, D_8031B760[0].season)->race + 1, label,
               D_8028C800 + 0x29);
 #else
       sprintf(D_80315F98, "Race %d: %s/%s", TGR_PTR(BrSeason *, D_8031B760[0].season)->race + 1, label,
@@ -408,7 +408,7 @@ void BrTrackSelectScreen(void)
       (*pp)->label = tgr_addr32(D_80315F98);
     }
 #if TGR_REGION_JPN
-    i = BrMenu("COURSE SELECT", count, D_80271D1C, &sel, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
+    i = BrMenu("COURSE SELECT", D_80315F88, D_80271D1C, &D_80315F8C, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
 #else
     i = BrMenu("TRACK SELECT", D_80315F88, D_80271D1C, &D_80315F8C, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
 #endif

@@ -16,7 +16,7 @@ extern BrMode D_8031B31C;               /* run once while the next frame is buil
 extern BrMode D_8031B320;               /* and again at its very end */
 
 /* where the demo recordings sit in the cartridge */
-#define BR_ROM_DEMOS 0xAD400
+#define BR_ROM_DEMOS TGR_VA(000AD400)
 
 void BrFatal(char *msg);
 #endif

@@ -205,6 +205,10 @@ int32_t  tgr_pak_stat(TgrPak *pfs, int32_t file_no, TgrPakFile *state);
 int32_t  tgr_rumble_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel);
 int32_t  tgr_rumble_on(TgrPak *pfs);
 int32_t  tgr_rumble_off(TgrPak *pfs);
+/* the cartridge's EEPROM (Europe and Japan: 4 Kbit, 64 blocks of 8 bytes) */
+int32_t  tgr_eeprom_probe(TgrMsgQueue *mq);          /* 1: a 4 Kbit part */
+int32_t  tgr_eeprom_long_read(TgrMsgQueue *mq, uint8_t address, uint8_t *buffer, int32_t length);
+int32_t  tgr_eeprom_long_write(TgrMsgQueue *mq, uint8_t address, uint8_t *buffer, int32_t length);
 
 void     tgr_task_load(TgrTask *task);
 void     tgr_task_run(TgrTask *task);

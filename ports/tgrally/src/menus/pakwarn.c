@@ -70,14 +70,14 @@ void BrPakWarnScreen(void)
     D_8028A884 = 1;
     PAKWARN_BLANK();
     BrFrameBeginLayout1();
-    func_8021AA08();
+    BrFrameEnd();
     BrIfaceMemReset();
     PAKWARN_BLANK();
     BrFrameBeginLayout1();
-    func_8021AA08();
+    BrFrameEnd();
     PAKWARN_BLANK();
     BrFrameBeginLayout1();
-    func_8021AA08();
+    BrFrameEnd();
 #else
     BrIfaceMemReset();
     BrFrameBeginLayout1();

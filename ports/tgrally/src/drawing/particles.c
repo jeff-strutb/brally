@@ -444,9 +444,9 @@ void BrSkidAge(void)
     if ((car = TGR_PTR(BrCar *, D_803239A0[i].x60)) == 0) {
       continue;
     }
-    dx = (car->pos1d78.x - car->mtx0[3][0]) * 127.0f;
-    dy = (car->pos1d78.y - car->mtx0[3][1]) * 127.0f;
-    dz = (car->pos1d78.z - car->mtx0[3][2]) * 127.0f;
+    dx = (short)(int)((car->pos1d78.x - car->mtx0[3][0]) * 127.0f);   /* the N64 truncates to a word and keeps its low half (it wraps) */
+    dy = (short)(int)((car->pos1d78.y - car->mtx0[3][1]) * 127.0f);
+    dz = (short)(int)((car->pos1d78.z - car->mtx0[3][2]) * 127.0f);
     car->pos1d78.x -= dx * 0.007874016f;
     car->pos1d78.y -= dy * 0.007874016f;
     car->pos1d78.z -= dz * 0.007874016f;

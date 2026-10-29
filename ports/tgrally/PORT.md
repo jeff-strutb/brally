@@ -55,6 +55,30 @@ checked against the ROM's own code by `tools/printfcheck.py`. The rest of
 libultra (the OS, the I/O managers, the RCP) is what the platform layer
 replaces.
 
+## Regions
+
+`TGR_REGION=usa` (the default), `eur` or `jpn` builds the game from that
+cartridge: the decomp's code for it (`#if TGR_REGION_EUR` / `_JPN`) and its
+ROM's data, so only that region's ROM is needed. Output goes to
+`OUT-eur` / `OUT-jpn` (`build/tgrally/null-null-eur`, ...).
+
+```bash
+TGR_REGION=eur HOST=macos RENDER=metal ports/tgrally/link.sh
+```
+
+The source names USA addresses, as the decomp does. `tools/globals.py`
+places every symbol at its home in the chosen cartridge through
+`config/tgrally/<region>/addrmap.csv` (a name the map does not pair is placed
+inside the mapped object below it, and reported), and writes
+`gen/tgr_region.h`: the image's bounds and `TGR_VA(80XXXXXX)`, a USA address
+the port's own code writes, at its home in the region. Europe's game runs at
+its console's 50 Hz (its physics step is 1/25 s); its and Japan's cartridges
+add a 4 Kbit EEPROM for the settings (`platform/os/si.c`, `eeprom.bin` in the
+save folder; `TGR_EEPROM_FILE` in a scripted run).
+
+Checked like the USA build, against n64box running that cartridge:
+`TGR_REGION=eur TGR_CHECK=1 tools/suite.py`.
+
 ## The memory model
 
 The game is ILP32 big-endian; the port is LP64 little-endian.

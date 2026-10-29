@@ -29,6 +29,11 @@ FLAGS = ['-O0', '-fsyntax-only', '-std=gnu89', '-Wno-everything', '-Werror=int-c
          '-Werror=int-to-void-pointer-cast', '-fdiagnostics-print-source-range-info',
          '-fno-caret-diagnostics', '-ferror-limit=0', '-Iports/tgrally/include', '-I%s/include' % P,
          '-include', '%s/include/tgr_os.h' % P, '-include', '%s/include/tgr_core.h' % P]
+# the region the core is built for (build.sh's TGR_REGION and its gen/tgr_region.h)
+_REG = os.environ.get('TGR_REGION', 'usa')
+FLAGS += ['-DTGR_REGION_%s=1' % _REG.upper(), '-include',
+          os.path.join(os.environ.get('OUT') or 'build/tgrally/null-null' + ('' if _REG == 'usa' else '-' + _REG),
+                       'gen/tgr_region.h')]
 
 DIAG = re.compile(r'^(.*?):(\d+):(\d+):((?:\{\d+:\d+-\d+:\d+\})*): error: (.*)$')
 

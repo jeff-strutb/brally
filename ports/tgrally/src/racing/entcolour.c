@@ -7,7 +7,7 @@
 #include "tgr/load.h"
 void BrEntPaintTexture(BrCarModel *m, unsigned int r, unsigned int g, int b);
 void BrCarPhysInit(BrCar *car);
-void func_8021D2A0(int param_1,int param_2);
+void BrCarColourFromModel(BrCar *car, BrCarModel *m);
 void BrCarModelInstall(int slot, int car, void *src);
 void BrFatal(char *msg);
 void BrEntRebaseModel(BrCarModel *m);
@@ -31,8 +31,8 @@ void BrEntRefreshColour(BrCar *car)
 #if !TGR_REGION_JPN
   BrEntPaintTexture(TGR_PTR(BrCarModel *, car->model), car->colour[0] >> 3, car->colour[1] >> 3,
                     car->colour[2] >> 3);
-  BrCarPhysInit(car);
 #endif
+  BrCarPhysInit(car);
 }
 
 /* WHAT IT DOES: Load a car into its slot and attach that car's artwork
@@ -44,7 +44,7 @@ void BrEntLoadRecord(BrCar *car, int slot, int kind)
   BrCarModelInstall(slot, kind, 0);
   BrEntSetRecord(car, slot);
 #if TGR_REGION_JPN
-  func_8021D2A0(param_1,*(int *)(param_1 + 0x2078));
+  BrCarColourFromModel(car, TGR_PTR(BrCarModel *, car->model));
 #endif
 }
 
@@ -55,14 +55,13 @@ void BrEntLoadRecord(BrCar *car, int slot, int kind)
  * and nothing in Europe calls it. */
 /* @implements jpn:0x80220F38 tgr BrEntLoadRecordPainted */
 /* @implements eur:0x80221774 tgr BrEntLoadRecordPainted */
-void BrEntLoadRecordPainted(int param_1,int param_2,int param_3)
+void BrEntLoadRecordPainted(BrCar *car, int slot, int kind)
 {
-  BrCarModelInstall(param_2,param_3,0);
-  func_802203F0(param_1,param_2);
+  BrCarModelInstall(slot, kind, 0);
+  BrEntSetRecord(car, slot);
 #if TGR_REGION_JPN
-  func_8021D140(*(int *)(param_1 + 0x2078),(int)(unsigned int)*(unsigned char *)(param_1 + 0x2060) >> 3,
-               (int)(unsigned int)*(unsigned char *)(param_1 + 0x2061) >> 3,
-               (int)(unsigned int)*(unsigned char *)(param_1 + 0x2062) >> 3);
+  BrEntPaintTexture(TGR_PTR(BrCarModel *, car->model), car->colour[0] >> 3, car->colour[1] >> 3,
+                    car->colour[2] >> 3);
 #endif
 }
 #endif

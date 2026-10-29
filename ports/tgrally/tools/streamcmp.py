@@ -17,9 +17,13 @@ PY = os.path.join(ROOT, '.venv/bin/python')
 KINDS = ('gfx', 'swap', 'ai')
 
 
+# the cartridge compared (TGR_REGION, as the port was built: its build folder)
+REGION = os.environ.get('TGR_REGION', 'usa')
+BUILD = 'build/tgrally/null-null' + ('' if REGION == 'usa' else '-' + REGION)
+
 def streams(path):
     out = {k: [] for k in KINDS}
-    for line in open(path):
+    for line in open(path, encoding='latin-1'):
         f = line.split()
         if len(f) >= 3 and f[1] in out:
             out[f[1]].append((int(f[0]), f[2]))
@@ -41,7 +45,7 @@ def run_box(a):
 def script_frames(path):
     """a script's full length: its `frames N` line, else its last input + 300"""
     last, fixed = 0, None
-    for line in open(path):
+    for line in open(path, encoding='latin-1'):
         w = line.split('#')[0].split()
         if not w:
             continue
@@ -58,7 +62,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--script')
     ap.add_argument('--frames', type=int, default=600)
-    ap.add_argument('--bin', default=os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), help='the port binary')
+    ap.add_argument('--bin', default=os.path.join(ROOT, BUILD, 'tgrally'), help='the port binary')
     ap.add_argument('--timeout', type=int, default=180, help='seconds before the port counts as hung')
     ap.add_argument('--box', action='store_true', help=argparse.SUPPRESS)
     ap.add_argument('--log', help=argparse.SUPPRESS)
@@ -67,7 +71,7 @@ def main():
         run_box(a)
         return
     tag = os.path.splitext(os.path.basename(a.script))[0] if a.script else 'boot'
-    d = os.path.join(ROOT, 'build/tgrally/null-null/stream')
+    d = os.path.join(ROOT, BUILD, 'stream')
     os.makedirs(d, exist_ok=True)
     plog = os.path.join(d, tag + '.port')
     sc = ['--script', a.script] if a.script else []
@@ -80,10 +84,10 @@ def main():
     for part in (open(a.script, 'rb').read() if a.script else b'', str(full).encode(),
                  open(os.path.join(ROOT, 'tools/tgrally/n64box.py'), 'rb').read(),
                  inspect.getsource(run_box).encode(),
-                 open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tgrbox.py'), 'rb').read(), str(os.path.getsize(os.path.join(
-                     ROOT, 'reference/tgrally/Top Gear Rally (USA).z64'))).encode()):
+                 open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tgrbox.py'), 'rb').read(),
+                 REGION.encode(), open(os.path.join(ROOT, 'tools/tgrally/region.py'), 'rb').read()):
         key.update(part)
-    cache = os.path.join(ROOT, 'build/tgrally/null-null/boxcache')
+    cache = os.path.join(ROOT, BUILD, 'boxcache')
     os.makedirs(cache, exist_ok=True)
     blog = os.path.join(cache, '%s-%s.log' % (tag, key.hexdigest()[:16]))
     box = None

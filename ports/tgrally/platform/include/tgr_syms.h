@@ -26,6 +26,8 @@ typedef struct TgrFn {      /* a game function: its original address */
 extern const TgrRun tgr_runs[];
 extern const TgrSym tgr_syms[];
 extern const int tgr_nsyms;
+extern const TgrSym tgr_bsyms[];    /* .bss symbols' layouts (zero at start-up) */
+extern const int tgr_nbsyms;
 extern const TgrFn tgr_fns[];
 extern const int tgr_nfns;
 #endif

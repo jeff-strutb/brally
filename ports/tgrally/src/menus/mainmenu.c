@@ -186,9 +186,9 @@ void BrMainMenu(void)
       tgr_print("BANG!\n");
       BrPadConsume(&D_8036A8E0[0], 0x200);
       if (++bangs == 3) {
-        D_8031B760[0].season->xce = 0xffff;
-        D_8031B760[0].season->unlocked = 0xffff;
-        D_8031B760[0].season->xd0 = 0xffff;
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->xce = 0xffff;
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked = 0xffff;
+        TGR_PTR(BrSeason *, D_8031B760[0].season)->xd0 = 0xffff;
       }
     }
   } else {

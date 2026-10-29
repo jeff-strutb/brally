@@ -26,9 +26,18 @@ import lockstep  # noqa: E402
 
 
 def address_of(fn):
+    """the function's address in the cartridge compared (TGR_REGION): its
+    @implements tag in the port's source, else the USA symbol table's"""
+    import glob
+    for p in glob.glob(os.path.join(ROOT, 'ports/tgrally/src/**/*.c'), recursive=True):
+        for usa, va, name, line in lockstep.R.tags(open(p).read()):
+            if name == fn and va is not None:
+                return va
     for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv'))):
         if r['name'] == fn:
-            return int(r['va'], 16)
+            v = lockstep.R.to_region(int(r['va'], 16))
+            if v is not None:
+                return v
     sys.exit('fncheck: %s is not in the symbol table' % fn)
 
 
@@ -49,14 +58,14 @@ def box_memory(va, nth, script):
 
 
 def port_memory(fn, nth, script, frames):
-    out = os.path.join(ROOT, 'build/tgrally/null-null/fncheck.bin')
+    out = os.path.join(ROOT, lockstep.BUILD, 'fncheck.bin')
     if os.path.exists(out):
         os.remove(out)
     cmd = ['lldb', '--batch', '-o', 'breakpoint set -n %s' % fn]
     if nth > 1:
         cmd += ['-o', 'breakpoint modify -i %d 1' % (nth - 1)]
     cmd += ['-o', 'run', '-o', 'expr (void)tgr_dump_state("%s", 0)' % out, '-o', 'kill', '--',
-            os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), '--headless', '--frames', str(frames)]
+            os.path.join(ROOT, lockstep.BUILD, 'tgrally'), '--headless', '--frames', str(frames)]
     if script:
         cmd += ['--script', script]
     subprocess.run(cmd, cwd=ROOT, capture_output=True)

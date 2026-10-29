@@ -79,18 +79,17 @@ void BrDemoRaceStartA(void);
 void BrPadConsume(BrPadRec *pad, unsigned int bits);
 void BrCreditsDrawCars(void);
 #if TGR_REGION_JPN
-typedef struct BrRomImage BrRomImage;
+#include "tgr/romimage.h"
 extern BrRomImage jpn_D_802722A0;       /* the Japanese title picture */
 #define jpn_D_001F5EA0 0x001F5EA0           /* its palette in ROM */
 extern int D_8028A884;
 void BrScreenBlank(void);
 void BrFrameEnd(void);
-void BrRomFileUnpack(BrRomImage *f, void *(*alloc)(int size));
+void BrRomFileUnpack(void *file, unsigned int (*alloc)(int));
 void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg, int pb, int pa,
                     int er, int eg, int eb, int ea, int mode);
 void BrScreenDim(float level);
 void BrScreenFlush2Layout0(void);
-void tgr_print(char *fmt, ...);
 #define INTRO_BLANK BrScreenBlank
 #define INTRO_LOGO_SCALE 0.028125f
 #endif
@@ -101,23 +100,22 @@ extern int D_8028A884;
 void BrVideoBlank(void);
 void BrFrameEnd(void);
 void BrScreenFlush2Layout0(void);
-void tgr_print(char *fmt, ...);
 #define INTRO_BLANK BrVideoBlank
 #define INTRO_LOGO_SCALE 0.03125f
 #endif
 /* -- end declarations -- */
 
 #if TGR_REGION_JPN
-static int D_80315E84;                  /* the two publisher logos */
-static int D_80315E88;
-static unsigned short D_80315E8C[256];  /* the title picture's palette */
+extern int D_80315E84;                  /* the two publisher logos */
+extern int D_80315E88;
+extern unsigned short D_80315E8C[256];  /* the title picture's palette */
 #elif TGR_REGION_EUR
-static int D_80315E84;                  /* the two publisher logos, */
-static int D_80315E88;
-static int D_80315E8C;                  /* then the four title-card models */
-static int D_80315E90;
-static int D_80315E94;
-static int D_80315E98;
+extern int D_80315E84;                  /* the two publisher logos, */
+extern int D_80315E88;
+extern int D_80315E8C;                  /* then the four title-card models */
+extern int D_80315E90;
+extern int D_80315E94;
+extern int D_80315E98;
 #else
 extern int D_80315E80;                  /* the three publisher logos, */
 extern int D_80315E84;
@@ -189,34 +187,34 @@ void BrIntroScreen(void)
     BrIfaceMemReset();
 #if TGR_REGION_EUR
     D_80315E88 = (int)BrIfaceMemAlloc(BrRomReadSize(eur_D_001DB870));
-    BrModelLoad(D_80315E88, eur_D_001DB870);
+    BrModelLoad(TGR_PTR(void *, D_80315E88), eur_D_001DB870);
     D_80315E84 = (int)BrIfaceMemAlloc(BrRomReadSize(eur_D_001DA840));
-    BrModelLoad(D_80315E84, eur_D_001DA840);
+    BrModelLoad(TGR_PTR(void *, D_80315E84), eur_D_001DA840);
     D_80315E8C = (int)BrIfaceMemAlloc(BrRomReadSize(D_001E09F0));
-    BrModelLoad(D_80315E8C, D_001E09F0);
-    BrAnimSetLoop(D_80315E8C);
+    BrModelLoad(TGR_PTR(void *, D_80315E8C), D_001E09F0);
+    BrAnimSetLoop(TGR_PTR(void *, D_80315E8C));
     D_80315E90 = (int)BrIfaceMemAlloc(BrRomReadSize(D_001E3DB0));
-    BrModelLoad(D_80315E90, D_001E3DB0);
-    BrAnimSetLoop(D_80315E90);
+    BrModelLoad(TGR_PTR(void *, D_80315E90), D_001E3DB0);
+    BrAnimSetLoop(TGR_PTR(void *, D_80315E90));
     D_80315E94 = (int)BrIfaceMemAlloc(BrRomReadSize(D_001E1CA0));
-    BrModelLoad(D_80315E94, D_001E1CA0);
-    BrAnimSetLoop(D_80315E94);
+    BrModelLoad(TGR_PTR(void *, D_80315E94), D_001E1CA0);
+    BrAnimSetLoop(TGR_PTR(void *, D_80315E94));
     D_80315E98 = (int)BrIfaceMemAlloc(BrRomReadSize(D_001E2B40));
-    BrModelLoad(D_80315E98, D_001E2B40);
-    BrAnimSetLoop(D_80315E98);
+    BrModelLoad(TGR_PTR(void *, D_80315E98), D_001E2B40);
+    BrAnimSetLoop(TGR_PTR(void *, D_80315E98));
 #else
     D_80315E88 = (int)BrIfaceMemAlloc(BrRomReadSize(D_001DCD70));
-    BrModelLoad(D_80315E88, D_001DCD70);
+    BrModelLoad(TGR_PTR(void *, D_80315E88), D_001DCD70);
     D_80315E84 = (int)BrIfaceMemAlloc(BrRomReadSize(D_001DBA40));
-    BrModelLoad(D_80315E84, D_001DBA40);
+    BrModelLoad(TGR_PTR(void *, D_80315E84), D_001DBA40);
     BrRomFileUnpack(&jpn_D_802722A0, BrIfaceMemAlloc);
-    BrRomUnpack((unsigned char *)D_80315E8C, jpn_D_001F5EA0, 0);
+    BrRomUnpack((unsigned char *)D_80315E8C, jpn_D_001F5EA0, 0);   /* the palette as the cartridge has it */
 #endif
     D_80315EA0 = BrRomReadSize(D_001B5440);
-    D_80315EA4 = BrIfaceMemAlloc(D_80315EA0 + 0x100);
+    D_80315EA4 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80315EA0 + 0x100));
     BrRomUnpack(D_80315EA4, D_001B5440, 0);
     D_80315EA8 = BrRomReadSize(D_001B93C0);
-    D_80315EAC = BrIfaceMemAlloc(D_80315EA8 + 0x100);
+    D_80315EAC = TGR_PTR(unsigned char *, BrIfaceMemAlloc(D_80315EA8 + 0x100));
     BrRomUnpack(D_80315EAC, D_001B93C0, 0);
     for (i = 0; i != 0x100; i++) {
       D_80315EA4[D_80315EA0 + i] = 0;
@@ -275,7 +273,7 @@ void BrIntroScreen(void)
         short v1 = BrSfxFreeVoice();
 
         if (v1 != -1) {
-          BrSfxVoiceStart(v1, D_80315EA4, D_80315EA0, 0);
+          BrSfxVoiceStart(v1, tgr_addr32(D_80315EA4), D_80315EA0, 0);
           D_802A4920[v1].level = 0x200020;
           D_802A4920[v1].pitch = 0x100000000;
         }
@@ -285,7 +283,7 @@ void BrIntroScreen(void)
         short v2 = BrSfxFreeVoice();
 
         if (v2 != -1) {
-          BrSfxVoiceStart(v2, D_80315EAC, D_80315EA8, 0);
+          BrSfxVoiceStart(v2, tgr_addr32(D_80315EAC), D_80315EA8, 0);
           D_802A4920[v2].level = 0x200020;
           D_802A4920[v2].pitch = 0x100000000;
         }
@@ -305,7 +303,7 @@ void BrIntroScreen(void)
         if (D_80315EB4 < 2) {
           D_80315EB0 = BrSfxFreeVoice();
           if (D_80315EB0 != -1) {
-            BrSfxVoiceStart(D_80315EB0, D_80315EA4, D_80315EA0, 0);
+            BrSfxVoiceStart(D_80315EB0, tgr_addr32(D_80315EA4), D_80315EA0, 0);
             D_802A4920[D_80315EB0].level = 0x140014;
             D_802A4920[D_80315EB0].pitch = 0x100000000;
           }
@@ -343,7 +341,7 @@ void BrIntroScreen(void)
         short v3 = BrSfxFreeVoice();
 
         if (v3 != -1) {
-          BrSfxVoiceStart(v3, D_80315EA4, D_80315EA0, 0);
+          BrSfxVoiceStart(v3, tgr_addr32(D_80315EA4), D_80315EA0, 0);
           D_802A4920[v3].level = 0x200020;
           D_802A4920[v3].pitch = 0x100000000;
         }
@@ -353,7 +351,7 @@ void BrIntroScreen(void)
         short v4 = BrSfxFreeVoice();
 
         if (v4 != -1) {
-          BrSfxVoiceStart(v4, D_80315EAC, D_80315EA8, 0);
+          BrSfxVoiceStart(v4, tgr_addr32(D_80315EAC), D_80315EA8, 0);
           D_802A4920[v4].level = 0x200020;
           D_802A4920[v4].pitch = 0x100000000;
         }
@@ -379,7 +377,7 @@ void BrIntroScreen(void)
         if (D_80315EC0 < 2) {
           D_80315EBC = BrSfxFreeVoice();
           if (D_80315EBC != -1) {
-            BrSfxVoiceStart(D_80315EBC, D_80315EA4, D_80315EA0, 0);
+            BrSfxVoiceStart(D_80315EBC, tgr_addr32(D_80315EA4), D_80315EA0, 0);
             D_802A4920[D_80315EBC].level = 0x140014;
             D_802A4920[D_80315EBC].pitch = 0x100000000;
           }
@@ -496,7 +494,7 @@ void BrIntroScreen(void)
     BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
     BrPerfMeterDraw();
   }
-  BrFrameSetHook((int)BrCreditsDrawCars);
+  BrFrameSetHook(BrCreditsDrawCars);
   BrFrameEnd();
   if (BrFadeIsOut() != 0) {
     if (BrFadeAtTarget() != 0) {
@@ -508,7 +506,7 @@ void BrIntroScreen(void)
       D_802A4920[4].level = D_802A4920[4].pitch = 0;
       if (D_80315ED4 != 0) {
         BrScreenFlush3Layout1();
-        BrModeSet((int)BrMainMenu);
+        BrModeSet(BrMainMenu);
       } else {
         INTRO_BLANK();
         D_8028A884 = 1;

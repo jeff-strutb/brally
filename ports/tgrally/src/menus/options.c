@@ -29,12 +29,8 @@ void BrDemoRaceStartB(void);
 #if TGR_REGION_EUR || TGR_REGION_JPN
 void BrOptionsEepromSave(void);
 extern unsigned char *D_80272500;      /* the paint shop's data buffer */
-extern char D_80272D48[];              /* the SI message queue */
+extern TgrMsgQueue D_80272D48;          /* the SI message queue */
 extern short D_802A4BE8;               /* the SI is free for the pak code */
-s32 osEepromProbe(void *mq);
-s32 osEepromLongRead(void *mq, unsigned char address, unsigned char *buffer, int length);
-s32 osEepromLongWrite(void *mq, unsigned char address, unsigned char *buffer, int length);
-void *memcpy(void *dst, const void *src, unsigned int n);
 #endif
 extern int D_80271FA0;
 extern int D_80271FA4;
@@ -311,10 +307,10 @@ int BrOptionsEepromLoad(void)
   p2 = (int *)(data + 0x128);
   n = (data - D_80272500 + 0x14f) & ~7;
   D_802A4BE8 = 0;
-  if (osEepromProbe(D_80272D48) == 0) {
+  if (tgr_eeprom_probe(&D_80272D48) == 0) {
     goto fail;
   }
-  if (osEepromLongRead(D_80272D48, 0, D_80272500, n) != 0) {
+  if (tgr_eeprom_long_read(&D_80272D48, 0, D_80272500, n) != 0) {
     goto fail;
   }
   memcpy(&stored, D_80272500, 4);
@@ -325,13 +321,13 @@ int BrOptionsEepromLoad(void)
   if (sum != stored) {
     goto fail;
   }
-  memcpy(D_8031B760[0].season, data, 0x128);
-  memcpy(D_8031B760[1].season, data, 0x128);
-  D_8031B760[1].season->xd4 = p2[0];
-  D_8031B760[1].season->xd8 = p2[1];
-  D_8031B760[1].season->xdc = p2[2];
-  D_8031B760[1].season->xe0 = p2[3];
-  D_8031B760[1].season->xe4 = p2[4];
+  memcpy(TGR_PTR(BrSeason *, D_8031B760[0].season), data, 0x128);   /* port: the settings as the port keeps them */
+  memcpy(TGR_PTR(BrSeason *, D_8031B760[1].season), data, 0x128);
+  TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4 = p2[0];
+  TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8 = p2[1];
+  TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc = p2[2];
+  TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0 = p2[3];
+  TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4 = p2[4];
   memcpy(D_802723D0, data + 0x13c, 0xc);
   D_802A4BE8 = 1;
   return 1;
@@ -365,8 +361,8 @@ void BrOptionsEepromSave(void)
   p2 = (int *)(data + 0x128);
   n = (data - D_80272500 + 0x14f) & ~7;
   D_802A4BE8 = 0;
-  if (osEepromProbe(D_80272D48) != 0) {
-    if (osEepromLongRead(D_80272D48, 0, D_80272500, n) == 0) {
+  if (tgr_eeprom_probe(&D_80272D48) != 0) {
+    if (tgr_eeprom_long_read(&D_80272D48, 0, D_80272500, n) == 0) {
       memcpy(&sum, D_80272500, 4);
       check = 0xBFED812;
       for (i = 4; i < n; i++) {
@@ -377,25 +373,25 @@ void BrOptionsEepromSave(void)
         tgr_print("checksum fail (%08x vs %08x/%02x%02x%02x%02x) (%d)\n", check, sum,
                      D_80272500[0], D_80272500[1], D_80272500[2], D_80272500[3], n);
 #endif
-        memcpy(data, D_8031B760[0].season, 0x128);
-        p2[0] = D_8031B760[1].season->xd4;
-        p2[1] = D_8031B760[1].season->xd8;
-        p2[2] = D_8031B760[1].season->xdc;
-        p2[3] = D_8031B760[1].season->xe0;
-        p2[4] = D_8031B760[1].season->xe4;
+        memcpy(data, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
+        p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+        p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+        p2[2] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc;
+        p2[3] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0;
+        p2[4] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4;
         memcpy(data + 0x13c, D_802723D0, 0xc);
       }
-      ((BrSeason *)data)->xd4 = D_8031B760[0].season->xd4;
-      ((BrSeason *)data)->xd8 = D_8031B760[0].season->xd8;
-      ((BrSeason *)data)->xdc = D_8031B760[0].season->xdc;
-      ((BrSeason *)data)->xe0 = D_8031B760[0].season->xe0;
-      ((BrSeason *)data)->xe4 = D_8031B760[0].season->xe4;
+      ((BrSeason *)data)->xd4 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xd4;
+      ((BrSeason *)data)->xd8 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xd8;
+      ((BrSeason *)data)->xdc = TGR_PTR(BrSeason *, D_8031B760[0].season)->xdc;
+      ((BrSeason *)data)->xe0 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xe0;
+      ((BrSeason *)data)->xe4 = TGR_PTR(BrSeason *, D_8031B760[0].season)->xe4;
       memcpy(data + 0x13c, D_802723D0, 0xc);
-      p2[0] = D_8031B760[1].season->xd4;
-      p2[1] = D_8031B760[1].season->xd8;
-      p2[2] = D_8031B760[1].season->xdc;
-      p2[3] = D_8031B760[1].season->xe0;
-      p2[4] = D_8031B760[1].season->xe4;
+      p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+      p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+      p2[2] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xdc;
+      p2[3] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe0;
+      p2[4] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xe4;
       sum = 0xBFED812;
       for (i = 4; i < n; i++) {
         sum += D_80272500[i];
@@ -405,7 +401,7 @@ void BrOptionsEepromSave(void)
       tgr_print("checksum is (%08x/%02x%02x%02x%02x) (%d)\n", sum,
                    D_80272500[0], D_80272500[1], D_80272500[2], D_80272500[3], n);
 #endif
-      osEepromLongWrite(D_80272D48, 0, D_80272500, n);
+      tgr_eeprom_long_write(&D_80272D48, 0, D_80272500, n);
     }
   }
   D_802A4BE8 = 1;

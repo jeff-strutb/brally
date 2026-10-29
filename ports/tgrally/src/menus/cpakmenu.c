@@ -237,7 +237,7 @@ void BrPakManager(void)
 #if TGR_REGION_JPN
         kana = 0;
         for (k = 0, p = name; k < 16; k++) {
-          ch = D_8036A070[i].name[k];
+          ch = D_8036A070[i].game_name[k];
           was = kana;
           if (ch < 0x42) {
             if (kana) {
@@ -263,7 +263,7 @@ void BrPakManager(void)
             *p++ = '%';
           }
         }
-        c = BrPaintCharset(D_8036A070[i].ext[0]);
+        c = BrPaintCharset(D_8036A070[i].ext_name[0]);
         if (c != 0) {
           if (kana) {
             *p++ = '%';
@@ -271,7 +271,7 @@ void BrPakManager(void)
           }
           *p++ = ' ';
           *p++ = '.';
-          if (D_8036A070[i].ext[0] >= 0x42) {
+          if (D_8036A070[i].ext_name[0] >= 0x42) {
             *p++ = '%';
             *p++ = 'j';
           }
@@ -305,7 +305,7 @@ void BrPakManager(void)
         }
 #if TGR_REGION_JPN
         BrTextPrint((char *)name, 0x5a, i * 9 + y);
-        sprintf(num, "%d", D_8036A070[i].size >> 8);
+        sprintf(num, "%d", D_8036A070[i].file_size >> 8);
         BrTextAlignRight();
         BrTextPrint(num, 0xf8, i * 9 + y);
 #else
@@ -534,7 +534,7 @@ void BrPakManager(void)
     BrTextHighlightOff();
     BrTextAlignLeft();
 #if TGR_REGION_JPN
-    func_80246F90(0x99, 0xb5, 0x14e, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0x99, 0xb5, 0x14e, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextSetFont(14);
     BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x54, 0x6a);
     BrTextPrint("%j2Bq6hc@6R&", 0x54, 0x77);
@@ -542,7 +542,7 @@ void BrPakManager(void)
     BrTextPrint("%j\xDE@6R&", 0x54, 0x97);
 #else
 #if TGR_REGION_EUR
-    func_80246F90(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrBevelPanel(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextSetFont(12);
 #else
     BrTextSetFont(12);

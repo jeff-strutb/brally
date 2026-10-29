@@ -303,12 +303,8 @@ void BrCamTracksidePick(BrCar *car)
   float dy;
 
   best = 16777216.0f;
-  if (car) {
-  }
-  if (i * 12) {
-  }
   for (i = 0; i < D_80025C88; i++) {
-    p = &D_80025C84[i];
+    p = BRV(&D_80025C84[i]);   /* cartridge data, read natively */
     dx = car->mtx0[3][0] - p->x;
     dy = car->mtx0[3][1] - p->y;
     dx = dx * dx;
@@ -317,7 +313,7 @@ void BrCamTracksidePick(BrCar *car)
     if (!(dz > 10.0f)) {
       dz = dz * dz;
       if ((d = dx + dy + dz) < best) {
-        q = &D_80025C84[i];
+        q = BRV(&D_80025C84[i]);
         b[0] = q->x;
         b[1] = q->y;
         b[2] = q->z;
@@ -326,20 +322,20 @@ void BrCamTracksidePick(BrCar *car)
     }
   }
   if (best < 22500.0f) {
-    if (car->cam != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
+    if (TGR_PTR(BrCarCam *, car->cam) != &car->cams[3] || car->cams[3].mtx[3][0] != b[0] || car->cams[3].mtx[3][1] != b[1] ||
         car->cams[3].mtx[3][2] != b[2]) {
       car->xf48 = 1;
     }
     car->cams[3].mtx[3][0] = b[0];
     car->cams[3].mtx[3][1] = b[1];
     car->cams[3].mtx[3][2] = b[2];
-    car->cam = &car->cams[3];
-  } else if (car->cam == &car->cams[3]) {
+    car->cam = tgr_addr32(&car->cams[3]);
+  } else if (TGR_PTR(BrCarCam *, car->cam) == &car->cams[3]) {
     car->xf48 = 1;
     if (D_8028B9EC != 0 || D_8028B7FC != 0) {
-      car->cam = &car->cams[0];
+      car->cam = tgr_addr32(&car->cams[0]);
     } else {
-      car->cam = &car->cams[1];
+      car->cam = tgr_addr32(&car->cams[1]);
     }
     D_8028B9EC = D_8028B9EC == 0;
     D_8028B7F8 = 60;

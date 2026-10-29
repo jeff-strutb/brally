@@ -82,3 +82,46 @@ void tgr_lift(void)
         }
     }
 }
+
+/* The bytes [addr, addr + size) of game memory, just written as the
+ * cartridge has them (big-endian), turned native: every unit of a .data or
+ * .bss symbol's layout lying wholly inside the range is swapped, and every
+ * aligned word of a word-aligned range that no unit covers (a field the
+ * port's layout leaves as padding: the game's records are words there).
+ * (Europe's and Japan's intro demo copies game variables back out of its
+ * recording.) */
+static void be_to_native(const TgrSym *t, int n, uint32_t addr, uint32_t size, uint8_t *done)
+{
+    int i;
+    uint32_t j, k, b, end = addr + size;
+    for (i = 0; i < n; i++) {
+        if (t[i].addr >= end || t[i].addr + t[i].size <= addr)
+            continue;
+        for (j = 0; j < t[i].nruns; j++) {
+            const TgrRun *r = &tgr_runs[t[i].run0 + j];
+            for (k = 0; k < r->count; k++) {
+                uint32_t u = t[i].addr + r->off + k * r->stride;
+                if (u >= addr && u + r->size <= end) {
+                    swap_unit(tgr_rdram + (u & 0x7FFFFF), r->size);
+                    for (b = 0; b < r->size; b++)
+                        done[u - addr + b] = 1;
+                }
+            }
+        }
+    }
+}
+
+void tgr_be_to_native(uint32_t addr, uint32_t size)
+{
+    static uint8_t done[0x10000];
+    uint32_t w;
+    if (size > sizeof done)
+        size = sizeof done;
+    memset(done, 0, size);
+    be_to_native(tgr_syms, tgr_nsyms, addr, size, done);
+    be_to_native(tgr_bsyms, tgr_nbsyms, addr, size, done);
+    if (size >= 4 && !(addr & 3))
+        for (w = 0; w + 4 <= size; w += 4)
+            if (!done[w] && !done[w + 1] && !done[w + 2] && !done[w + 3])
+                swap_unit(tgr_rdram + ((addr + w) & 0x7FFFFF), 4);
+}

@@ -19,7 +19,11 @@
 
 #define MAXT 16
 #define EV_MAX 16
+#if TGR_REGION_EUR
+#define TICKS_PER_FRAME 937500u     /* the count at 46.875 MHz, 1/50 s: Europe's PAL console */
+#else
 #define TICKS_PER_FRAME 781250u     /* the count at 46.875 MHz, 1/60 s */
+#endif
 
 typedef struct TThread {
     TgrThread *os;

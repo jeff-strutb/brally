@@ -627,6 +627,107 @@ static int pak_load(const char *path)
     return i == n;
 }
 
+/* ---- the cartridge's EEPROM ------------------------------------------------
+ * Europe's and Japan's cartridges carry a 4 Kbit EEPROM (64 blocks of 8
+ * bytes) for the settings.  In play it is <save folder>/eeprom.bin; in a
+ * scripted run TGR_EEPROM_FILE, else a blank part that is not kept.  A blank
+ * part reads 0xFF, as n64box models it.  libultra's osEepromLongRead and
+ * LongWrite wait 12 ms on a timer after each block; so do these, so the game's clock
+ * runs as on the console. */
+#define EEP_BLOCKS 64
+static uint8_t s_eep[EEP_BLOCKS * 8];
+static char s_eep_path[1024];
+static int s_eep_up;
+
+static void eep_init(void)
+{
+    const char *e;
+    FILE *f;
+    if (s_eep_up)
+        return;
+    s_eep_up = 1;
+    memset(s_eep, 0xFF, sizeof s_eep);
+    e = s_scripted ? getenv("TGR_EEPROM_FILE") : NULL;
+    if (e)
+        snprintf(s_eep_path, sizeof s_eep_path, "%s", e);
+    else if (!s_scripted && host_save_dir()) {
+        host_mkdir(host_save_dir());
+        snprintf(s_eep_path, sizeof s_eep_path, "%s/eeprom.bin", host_save_dir());
+    }
+    if (s_eep_path[0] && (f = fopen(s_eep_path, "rb"))) {
+        if (fread(s_eep, 1, sizeof s_eep, f) != sizeof s_eep)
+            memset(s_eep, 0xFF, sizeof s_eep);       /* not a whole part: blank */
+        fclose(f);
+    }
+}
+
+static void eep_save(void)
+{
+    char tmp[1100];
+    FILE *f;
+    if (!s_eep_path[0])
+        return;
+    snprintf(tmp, sizeof tmp, "%s.tmp", s_eep_path);
+    if (!(f = fopen(tmp, "wb")))
+        return;
+    fwrite(s_eep, 1, sizeof s_eep, f);
+    if (fclose(f) == 0)
+        host_rename(tmp, s_eep_path);
+}
+
+int32_t tgr_eeprom_probe(TgrMsgQueue *mq)
+{
+    (void)mq;
+    eep_init();
+    return 1;
+}
+
+/* the part's 12 ms after each block (libultra's long read and write) */
+static void eep_wait(void)
+{
+    static TgrMsgQueue q;
+    static TgrMsg qmsg[1];
+    static TgrTimer t;
+    tgr_mq_init(&q, qmsg, 1);
+    tgr_timer(&t, (TgrTime)(12000 * tgr_clock_rate / 1000000), 0, &q, 0);
+    tgr_mq_recv(&q, NULL, TGR_BLOCK);
+}
+
+int32_t tgr_eeprom_long_read(TgrMsgQueue *mq, uint8_t address, uint8_t *buffer, int32_t length)
+{
+    (void)mq;
+    eep_init();
+    if (address > EEP_BLOCKS)
+        return -1;
+    while (length > 0) {                            /* whole blocks, each then 12 ms */
+        if (address < EEP_BLOCKS)
+            memcpy(buffer, s_eep + address * 8, 8);
+        length -= 8;
+        address++;
+        buffer += 8;
+        eep_wait();
+    }
+    return 0;
+}
+
+int32_t tgr_eeprom_long_write(TgrMsgQueue *mq, uint8_t address, uint8_t *buffer, int32_t length)
+{
+    (void)mq;
+    eep_init();
+    if (address > EEP_BLOCKS)
+        return -1;
+    while (length > 0) {                            /* whole blocks, each then 12 ms */
+        if (address < EEP_BLOCKS)
+            memcpy(s_eep + address * 8, buffer, 8);
+        length -= 8;
+        address++;
+        buffer += 8;
+        eep_wait();
+    }
+    eep_save();
+    return 0;
+}
+
 /* in play (no script) a Controller Pak is plugged into port 1, kept in
  * <save folder>/controller-pak-1.bin */
 void tgr_pak_init(void)

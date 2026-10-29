@@ -137,4 +137,7 @@ static inline uint64_t tgr_f2ull(double x)
 {
     return (x > -1.0 && x < 18446744073709551616.0) ? (uint64_t)x : ~0ull;
 }
+/* game memory [addr, addr + n) just written in the cartridge's byte order,
+ * turned native by the symbols' layouts (os/lift.c) */
+void tgr_be_to_native(uint32_t addr, uint32_t n);
 #endif

@@ -40,7 +40,7 @@ void BrVarListSave(BrVarEnt *e, char *dst, int avail)
   start = dst;
   for (i = 0; e[i].ptr != 0; i++) {
 #if TGR_REGION_EUR || TGR_REGION_JPN
-    memcpy(dst, e[i].ptr + off, e[i].size);
+    memcpy(dst, TGR_PTR(char *, e[i].ptr + off), e[i].size);
 #else
     memcpy(dst, TGR_PTR(char *, e[i].ptr), e[i].size);
 #endif
@@ -80,7 +80,7 @@ void BrVarListLoad(BrVarEnt *e, char *src)
 
   for (i = 0; e[i].ptr != 0; i++) {
 #if TGR_REGION_EUR || TGR_REGION_JPN
-    memcpy(e[i].ptr + off, src, e[i].size);
+    memcpy(TGR_PTR(char *, e[i].ptr + off), src, e[i].size);
 #else
     memcpy(TGR_PTR(char *, e[i].ptr), src, e[i].size);
 #endif
@@ -161,6 +161,18 @@ extern int D_8026FF1C;                  /* which demo */
 void BrCamTracksidePick(BrCar *car);
 void BrCamTracksideAim(BrCar *car, BrCarCam *cam);
 
+/* port: a resync list read out of the recording, which holds the variables
+ * as the cartridge does (big-endian): each one turned native once copied */
+static int DemoVarsLoad(BrVarEnt *e, char *src, int off)
+{
+  int i, n = BrVarListLoad(e, src, off);
+
+  for (i = 0; e[i].ptr != 0; i++) {
+    tgr_be_to_native(e[i].ptr + off, e[i].size);
+  }
+  return n;
+}
+
 /* WHAT IT DOES: The intro demo (mode 4, demo 0; Europe and Japan) resyncs itself from
  * its recording: count the frame, and where the recording being played
  * for the first car has an 0xFF 0xFF marker at its read position, skip it
@@ -176,17 +188,17 @@ void BrDemoVarsLoad(void)
 
   DEMO_FRAMES++;
   if (D_8026FF18 == 4 && D_8026FF1C == 0) {
-    p = (BrPadRec *)D_8031B760[0].pad;
-    if (p->ghostPos < p->ghostLen && (p->ghostPos + p->ghost)[0] == 0xff
-        && (p->ghostPos + p->ghost)[1] == 0xff) {
+    p = TGR_PTR(BrPadRec *, D_8031B760[0].pad);
+    if (p->ghostPos < p->ghostLen && TGR_PTR(unsigned char *, p->ghost)[p->ghostPos] == 0xff
+        && TGR_PTR(unsigned char *, p->ghost)[p->ghostPos + 1] == 0xff) {
       p->ghostPos += 2;
-      p = (BrPadRec *)D_8031B760[0].pad;
-      n = BrVarListLoad(DEMO_VARS_A, p->ghostPos + (char *)p->ghost, 0);
-      p = (BrPadRec *)D_8031B760[0].pad;
-      n += BrVarListLoad(DEMO_VARS_B, p->ghostPos + (char *)p->ghost + n, 0);
-      p = (BrPadRec *)D_8031B760[0].pad;
-      n += BrVarListLoad(DEMO_VARS_C, p->ghostPos + (char *)p->ghost + n, 0);
-      p = (BrPadRec *)D_8031B760[0].pad;
+      p = TGR_PTR(BrPadRec *, D_8031B760[0].pad);
+      n = DemoVarsLoad(DEMO_VARS_A, p->ghostPos + TGR_PTR(char *, p->ghost), 0);
+      p = TGR_PTR(BrPadRec *, D_8031B760[0].pad);
+      n += DemoVarsLoad(DEMO_VARS_B, p->ghostPos + TGR_PTR(char *, p->ghost) + n, 0);
+      p = TGR_PTR(BrPadRec *, D_8031B760[0].pad);
+      n += DemoVarsLoad(DEMO_VARS_C, p->ghostPos + TGR_PTR(char *, p->ghost) + n, 0);
+      p = TGR_PTR(BrPadRec *, D_8031B760[0].pad);
       p->ghostPos += (n + 1) & ~1;
       D_8031B760[0].xf48 = 1;
       BrCamTracksidePick(&D_8031B760[0]);

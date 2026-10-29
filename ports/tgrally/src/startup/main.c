@@ -17,7 +17,7 @@ void BrFadeSet(float level);
 void BrIntroScreen(void);
 void BrIfaceMemReset(void);
 void BrPaintShopMemInit(void);
-#if TGR_REGION_EUR
+#if TGR_REGION_EUR || TGR_REGION_JPN
 int BrOptionsEepromLoad(void);
 #endif
 int BrCpakCheck(int, unsigned char);
@@ -26,7 +26,7 @@ void BrMusicInit(int, void *);
 void BrMainLoop(void);
 extern int D_80270784;
 extern char D_80307F00[];
-#define BR_ROM_MODULES 0xEBC00          /* the front end's music module */
+#define BR_ROM_MODULES TGR_VA(000EBC00)         /* the front end's music module */
 extern char D_802AC400[];
 void BrMusicStop(void);
 void BrMusicStart(int, int);

@@ -4,7 +4,8 @@
 The port binary is copied first, so the tree can be rebuilt while a suite
 runs; the longest scripts start first (the run takes as long as the
 longest one); the original's streams come from streamcmp's cache after the
-first run.  Results go to build/tgrally/null-null/suite/<time>/: one .res per script
+first run.  Results go to build/tgrally/null-null/suite/<time>/ (TGR_REGION=eur
+or jpn: the region's build, null-null-eur, null-null-jpn): one .res per script
 and summary.txt, which is also printed.
 
     suite.py [--jobs N] [NAME...]      (names: script basenames, default all)
@@ -53,10 +54,12 @@ def main():
     ap.add_argument('--jobs', type=int, default=os.cpu_count() or 8)
     ap.add_argument('names', nargs='*')
     a = ap.parse_args()
-    out = os.path.join(ROOT, 'build/tgrally/null-null/suite', time.strftime('%Y%m%d-%H%M%S'))
+    reg = os.environ.get('TGR_REGION', 'usa')
+    build = 'build/tgrally/null-null' + ('' if reg == 'usa' else '-' + reg)
+    out = os.path.join(ROOT, build, 'suite', time.strftime('%Y%m%d-%H%M%S'))
     os.makedirs(out)
     binary = os.path.join(out, 'tgrally')
-    shutil.copy2(os.path.join(ROOT, 'build/tgrally/null-null/tgrally'), binary)
+    shutil.copy2(os.path.join(ROOT, build, 'tgrally'), binary)
     jobs = []
     for p in sorted(glob.glob(os.path.join(SCRIPTS, '*.txt'))):
         name = os.path.splitext(os.path.basename(p))[0]

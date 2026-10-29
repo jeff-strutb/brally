@@ -754,17 +754,17 @@ void BrHudDraw(void)
     BrTextSetFont(20);
 #if TGR_REGION_JPN
     if (D_802723D8 != 0) {
-      func_8022F5DC((unsigned char *)D_80361C30, x - 20, y - 3);
+      BrTextPrint((unsigned char *)D_80361C30, x - 20, y - 3);
     } else {
-      func_8022F5DC((unsigned char *)D_80361C30, x - 11, y - 3);
+      BrTextPrint((unsigned char *)D_80361C30, x - 11, y - 3);
     }
     if (D_8028AAF4 != &D_8028AAF0->cams[2]) {
-      func_8022F5D0(15);
-      func_8022F514();
+      BrTextSetFont(15);
+      BrTextAlignLeft();
       if (D_802723D8 != 0) {
-        func_8022F5DC((unsigned char *)"%wwMile/h", x - 20, y - 3);
+        BrTextPrint((unsigned char *)"%wwMile/h", x - 20, y - 3);
       } else {
-        func_8022F5DC((unsigned char *)"%wwKm/h", x - 11, y - 3);
+        BrTextPrint((unsigned char *)"%wwKm/h", x - 11, y - 3);
       }
     }
 #else

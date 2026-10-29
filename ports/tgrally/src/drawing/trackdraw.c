@@ -896,7 +896,7 @@ void BrTrackDraw(int pass)
     Gfx *g_ = D_8028A858++;
 
     tgr_wr32(&g_->words.w0, 0x01060040);
-    tgr_wr32(&g_->words.w1, 0x28A8C0);
+    tgr_wr32(&g_->words.w1, TGR_VA(0028A8C0));
   }
   G(0xBC00000E, D_8028A874);
   G(0x03840010, D_8028C774);
@@ -935,7 +935,7 @@ void BrTrackDraw(int pass)
   BrViewportApply();
   G(0x01030040, tgr_addr32(D_8028A878) - 0x80000000u);
   G(0xBC00000E, D_8028A874);
-  G(0x01060040, 0x28A8C0);
+  G(0x01060040, TGR_VA(0028A8C0));
   G(0xBC000002, 0x80000040);
   G(0x03860010, tgr_addr32(&D_8028C640[D_8028C6A0].l));
   G(0x03880010, tgr_addr32(&D_8028C640[D_8028C6A0]));
@@ -1043,7 +1043,7 @@ void BrTrackDraw(int pass)
       hi = 0.0f;
       lo = 0.f;
       if (!billboard) {
-        G(0x01020040, 0x28A8C0);
+        G(0x01020040, TGR_VA(0028A8C0));
         billboard = 1;
       }
       s = BEF(o->m[0][0]) * D_8035D51C + 0.375f;
@@ -1228,7 +1228,7 @@ void BrTrackDraw(int pass)
     }
     D_8028C78C = last - D_8028C78C + split;
   }
-  G(0x01020040, 0x28A8C0);
+  G(0x01020040, TGR_VA(0028A8C0));
   G(0xB6000000, 0x10000);
   G(0xE7000000, 0);
   BrPerfMark(0, 0, 0xB4, 0, 0xFF);
