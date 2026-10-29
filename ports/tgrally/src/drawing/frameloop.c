@@ -25,6 +25,22 @@ void BrScreenClear(int r, int g, int b);
 void BrFrameBeginLayout1(void);
 void BrFrameEnd(void);
 extern int D_8028A884;
+#if TGR_REGION_JPN
+extern int jpn_D_8028C844;               /* the picture is blanked */
+extern int jpn_D_8028C55C;               /* the reset button was pressed */
+void BrJpGlyphLoad(void);
+void BrJpGlyphReset(void);
+void BrScreenUnblank(void);
+#endif
+#if TGR_REGION_EUR
+extern TgrVideoMode osViModePalHaf1;      /* libultra's PAL modes */
+extern TgrVideoMode osViModePalLan1;
+extern TgrVideoMode eur_D_8028CD74;       /* the game's 640-wide PAL mode */
+extern TgrVideoMode eur_D_8028CDC4;       /* and its 320-wide one */
+extern int eur_D_8028CE14;              /* the picture is blanked */
+extern int eur_D_8028CA8C;              /* the reset button was pressed */
+void BrVideoUnblank(void);
+#endif
 void BrFrameBeginLayout0(void);
 extern int D_8028AA08;
 extern int D_8028AA0C;
@@ -62,7 +78,7 @@ extern int D_8028A8A4;                  /* the viewport being used */
 extern char D_8028A900[];               /* the viewports (0x28 bytes each) */
 extern char D_801B5000[];               /* the low-res frame buffers */
 extern char D_801DA800[];
-#define D_0028A8C0 0x28A8C0        /* a ROM offset */
+#define D_0028A8C0 TGR_VA(0028A8C0)        /* a ROM offset */
 typedef struct BrTask {         /* an OSTask (0x40 bytes) */
   unsigned int type;
   unsigned int flags;
@@ -286,7 +302,8 @@ typedef struct BrCamView {      /* the lens offsets in a car's model buffer */
 } BrCamView;
 /* -- end declarations -- */
 
-/* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high):
+/* WHAT IT DOES: Start a frame at the given resolution (0 low, 1 high; Japan
+ * also empties the Japanese glyph cache):
  * lay out the players' views, reset the frame counters and pools, choose
  * the frame buffers when the resolution has changed, and open this frame's
  * display list with the fixed RDP and RSP state: pipe sync, full-screen
@@ -310,6 +327,9 @@ void BrFrameBegin(int hires)
     D_8028A850 = hires;
   }
   BrPerfMark(0, 0, 0x82, 0, 0xff);
+#if TGR_REGION_JPN
+  BrJpGlyphReset();
+#endif
   switch (D_8028AB0C) {
   case 1:
     x = 8;
@@ -656,12 +676,83 @@ void BrViewFrame(int x, int y, int w, int h)
   }
 }
 
+#if TGR_REGION_EUR
+
+/* WHAT IT DOES: Blank the picture (Europe): unless it already is, first
+ * put the VI back on libultra's own PAL mode for the resolution in use (640
+ * or 320 wide), then turn the output black and note it is blanked. */
+/* @implements eur:0x8021B4E8 tgr BrVideoBlank */
+void BrVideoBlank(void)
+{
+  if (eur_D_8028CE14 == 0) {
+    if (D_8028A854 != 0) {
+      tgr_video_mode(&osViModePalHaf1);
+    } else {
+      tgr_video_mode(&osViModePalLan1);
+    }
+  }
+  eur_D_8028CE14 = 1;
+}
+
+/* WHAT IT DOES: Show the picture again (Europe): turn the output on and, if
+ * it was blanked, switch the VI to the game's own PAL mode for the
+ * resolution in use (the 240-line window). */
+/* @implements eur:0x8021B54C tgr BrVideoUnblank */
+void BrVideoUnblank(void)
+{
+  if (eur_D_8028CE14 != 0) {
+    if (D_8028A854 != 0) {
+      tgr_video_mode(&eur_D_8028CD74);
+    } else {
+      tgr_video_mode(&eur_D_8028CDC4);
+    }
+  }
+  eur_D_8028CE14 = 0;
+}
+#endif
+
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Blank the picture (Japan): turn the output black and note
+ * it is blanked. */
+/* @implements jpn:0x8021AE40 tgr BrScreenBlank */
+void BrScreenBlank(void)
+{
+  jpn_D_8028C844 = 1;
+}
+
+/* WHAT IT DOES: Show the picture again (Japan) and note it is shown. */
+/* @implements jpn:0x8021AE68 tgr BrScreenUnblank */
+void BrScreenUnblank(void)
+{
+  jpn_D_8028C844 = 0;
+}
+#endif
+
 /* WHAT IT DOES: Push two empty black frames through the second screen
  * layout with the video output blanked, so a mode change starts from a
- * clean screen. */
+ * clean screen.  Europe and Japan leave the output as it is, push the first frame
+ * through the first layout and clear the frame buffers' words (0x800D4000
+ * to the code) between the two.  The dead i = 0 after the clear keeps IDO
+ * from unrolling it, as the ROM has it (also in BrScreenFlush2Layout0). */
 /* @implements 0x8021A4C8 tgr BrScreenFlush2Layout1 */
 void BrScreenFlush2Layout1(void)
 {
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  unsigned int i;
+
+  D_8028A884 = 1;
+  BrFrameBeginLayout0();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  for (i = 0x800D4000 / 4; i < 0x80200000 / 4; i++) {
+    ((int *)0)[i] = 0;
+  }
+  i = 0;
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  D_8028A884 = 0;
+#else
   D_8028A884 = 1;
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
@@ -670,14 +761,36 @@ void BrScreenFlush2Layout1(void)
   BrScreenClear(0,0,0);
   BrFrameEnd();
   D_8028A884 = 0;
+#endif
 }
 
 /* WHAT IT DOES: Push two empty black frames through the first screen layout
  * with the video output blanked, so a mode change starts from a clean
- * screen. */
+ * screen.  Europe and Japan leave the output as it is, push the two frames
+ * through the second layout, clear the words from 0x801B5000 to the code
+ * and push a third through the first layout. */
 /* @implements 0x8021A540 tgr BrScreenFlush2Layout0 */
 void BrScreenFlush2Layout0(void)
 {
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  unsigned int i;
+
+  D_8028A884 = 1;
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  BrFrameBeginLayout1();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  for (i = 0x801B5000 / 4; i < 0x80200000 / 4; i++) {
+    ((int *)0)[i] = 0;
+  }
+  i = 0;
+  BrFrameBeginLayout0();
+  BrScreenClear(0,0,0);
+  BrFrameEnd();
+  D_8028A884 = 0;
+#else
   D_8028A884 = 1;
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
@@ -686,6 +799,7 @@ void BrScreenFlush2Layout0(void)
   BrScreenClear(0,0,0);
   BrFrameEnd();
   D_8028A884 = 0;
+#endif
 }
 
 
@@ -811,7 +925,8 @@ void BrPadPollAll(void)
   }
 }
 
-/* WHAT IT DOES: Finish the frame and hand it to the RSP: close the display
+/* WHAT IT DOES: Finish the frame and hand it to the RSP (Japan first loads
+ * the frame's Japanese glyphs): close the display
  * list, fill in this buffer's graphics task (F3DEX FIFO microcode, the
  * list, the RDP FIFO), record the frame's list, matrix and vertex counts
  * (a list over 6000 commands is fatal); unless this is the first frame,
@@ -826,9 +941,12 @@ void BrPadPollAll(void)
  * The empty do/while before the first count ends uopt's first block, so
  * the gRaw locals' registers (v1, a0) are free again for the counts.
  * Task stores follow the ROM's ring order (output_buff and its size before
- * ucode_size); the osGetCount difference shares the call's line and the
+ * ucode_size); the tgr_clock difference shares the call's line and the
  * debug copy's multiplier shares its count's line, for as1's ordering.
- * v is an unused word of the ROM frame. */
+ * v is an unused word of the ROM frame.
+ * Europe switches to its own 240-line PAL modes after a resolution change,
+ * and only while nothing holds the picture blank (a flush, the blank
+ * counter, the reset button), and shows the picture through BrVideoUnblank. */
 /* @implements 0x8021AA08 tgr BrFrameEnd */
 void BrFrameEnd(void)
 {
@@ -900,9 +1018,23 @@ void BrFrameEnd(void)
       D_8031B31C();
       D_8031B31C = 0;
     }
+#if TGR_REGION_JPN
+    BrJpGlyphLoad();
+#endif
     D_8028AAE8 = tgr_clock(); D_8028AAE0 = D_8028AAE8 - D_8028AAE4;
     if (D_8028A84C != 0) {
       if (--D_8028A84C == 0) {
+#if TGR_REGION_EUR
+        if (D_8028A850 != 0) {
+          if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+            tgr_video_mode(&eur_D_8028CD74);
+          }
+        } else {
+          if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+            tgr_video_mode(&eur_D_8028CDC4);
+          }
+        }
+#else
         if (D_8028A850 != 0) {
           if (tgr_tv_type == 2) {
             tgr_video_mode(D_802A6040);
@@ -916,6 +1048,9 @@ void BrFrameEnd(void)
             tgr_video_mode(D_802A54B0);
           }
         }
+#if !TGR_REGION_JPN
+#endif
+#endif
         D_8028A854 = D_8028A850;
       }
     }
@@ -929,8 +1064,22 @@ void BrFrameEnd(void)
     if (tgr_video_shown() != fb) {
       tgr_mq_recv(D_8031A390, 0, 1);
     }
+#if TGR_REGION_EUR
+    if (D_8028A884 == 0 && D_8028A888 == 0 && eur_D_8028CA8C == 0) {
+      BrVideoUnblank();
+    } else {
+      /* the empty arm is the ROM's block layout */
+    }
+#elif TGR_REGION_JPN
+    if (D_8028A884 == 0 && D_8028A888 == 0 && jpn_D_8028C55C == 0) {
+      BrScreenUnblank();
+    } else {
+      /* the empty arm is the ROM's block layout */
+    }
+#else
     if (D_8028A884 == 0 && D_8028A888 == 0) {
     }
+#endif
     if (D_8028A888 != 0) {
       D_8028A888--;
     }
@@ -1207,6 +1356,48 @@ void BrDpEventThread(void *arg)
   }
 }
 
+#if TGR_REGION_EUR || TGR_REGION_JPN
+#if TGR_REGION_EUR
+extern int eur_D_8031C870[];            /* the reset button's queue */
+extern int eur_D_8031C888[];
+void BrVideoBlank(void);
+#define PRENMI_QUEUE eur_D_8031C870
+#define PRENMI_MSG eur_D_8031C888
+#define PRENMI_RESET eur_D_8028CA8C
+#define PRENMI_BLANK BrVideoBlank
+#else
+extern int jpn_D_8031B4A0[];            /* the reset button's queue */
+extern int jpn_D_8031B4B8[];
+extern int jpn_D_8028C55C;              /* the reset button was pressed */
+void BrScreenBlank(void);
+#define PRENMI_QUEUE jpn_D_8031B4A0
+#define PRENMI_MSG jpn_D_8031B4B8
+#define PRENMI_RESET jpn_D_8028C55C
+#define PRENMI_BLANK BrScreenBlank
+#endif
+extern unsigned char D_802A49C4;        /* music volume */
+extern unsigned char D_802A49CC;        /* effects volume */
+
+/* WHAT IT DOES: The reset-button thread (Europe and Japan): wait for the
+ * pre-NMI event (the console's reset button) and, each time it comes, mute
+ * the music and the effects, note the reset and blank the picture, so the
+ * reset is clean.  Never returns. */
+/* @implements eur:0x8021CE88 tgr BrPreNmiThread */
+/* @implements jpn:0x8021C758 tgr BrPreNmiThread */
+void BrPreNmiThread(void *arg)
+{
+  tgr_mq_init(PRENMI_QUEUE, PRENMI_MSG, 1);
+  tgr_event_mq(14, PRENMI_QUEUE, D_8031A3CC);       /* OS_EVENT_PRENMI */
+  for (;;) {
+    tgr_mq_recv(PRENMI_QUEUE, 0, 1);
+    D_802A49CC = 0;
+    D_802A49C4 = 0;
+    PRENMI_RESET = 1;
+    PRENMI_BLANK();
+  }
+}
+#endif
+
 /* WHAT IT DOES: The retrace thread: on every vertical retrace, pass the
  * event on to the retrace queue the game waits on and step the 16-frame
  * retrace counter. Never returns. */
@@ -1238,14 +1429,29 @@ void BrCamShakeAdd(int cam, float amount)
   }
 }
 
+#if TGR_REGION_EUR
+extern char eur_D_80274D90[];                   /* the reset-button thread */
+extern unsigned long long eur_D_8031B9B0[0x100];   /* and its stack */
+void BrPreNmiThread(void *arg);
+#endif
+#if TGR_REGION_JPN
+extern char jpn_D_80274860[];                   /* the reset-button thread */
+extern unsigned long long jpn_D_8031A5E0[0x100];   /* and its stack */
+void BrPreNmiThread(void *arg);
+#endif
+
 /* WHAT IT DOES: Bring up the scheduler side of the game: the two frame
  * buffers, the RSP, RDP and retrace event queues, the RSP and RDP event
- * threads, the controllers (through the SI queue), and for each controller
+ * threads (Europe and Japan also start the reset-button thread), the controllers (through the SI queue), and for each controller
  * with a pak that answers as a rumble pak, mark it and stop its motor.
  * When the second pak call fails the loop continues to the next controller,
  * which puts the loop bound ahead of the stored 1 when equal-priority
  * constants are coloured: the bound keeps its saved register and the 1 is
- * loaded where it is stored. */
+ * loaded where it is stored.
+ * Europe and Japan test each port's rumble flag twice at the end of the loop
+ * with empty bodies (reports compiled out): the four extra blocks raise
+ * uopt's saved-register cost above a loop constant's saving, so none of the
+ * loop's constants is kept in a saved register. */
 /* @implements 0x8021BE88 tgr BrSchedInit */
 void BrSchedInit(void)
 {
@@ -1267,8 +1473,20 @@ void BrSchedInit(void)
   tgr_retrace_mq(D_8031A390, D_8031A3CC, 1);
   tgr_thread_new(D_802729E0, 10, BrSpEventThread, D_8026FF04, D_803196D0, 60);
   tgr_thread_start(D_802729E0);
+#if TGR_REGION_EUR
+  tgr_thread_new(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_803196D0 + 0x800, 60);
+  tgr_thread_start(D_80272B90);
+  tgr_thread_new(eur_D_80274D90, 12, BrPreNmiThread, D_8026FF04, eur_D_8031B9B0 + 0x100, 60);
+  tgr_thread_start(eur_D_80274D90);
+#elif TGR_REGION_JPN
+  tgr_thread_new(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_803196D0 + 0x800, 60);
+  tgr_thread_start(D_80272B90);
+  tgr_thread_new(jpn_D_80274860, 12, BrPreNmiThread, D_8026FF04, jpn_D_8031A5E0 + 0x100, 60);
+  tgr_thread_start(jpn_D_80274860);
+#else
   tgr_thread_new(D_80272B90, 11, BrDpEventThread, D_8026FF04, D_80319ED0, 60);
   tgr_thread_start(D_80272B90);
+#endif
   D_8028A8B0 = 46875.0f;
   tgr_mq_init(q, &msg, 1);
   tgr_event_mq(5, q, 1);
@@ -1282,13 +1500,27 @@ void BrSchedInit(void)
         (D_8031A3D0[i].status & 1)) {
       r = tgr_pak_open(D_80272D48, &D_8031A3F8[i], i);
       if (r != 0 && (r == 10 || r == 11)) {
+#if TGR_REGION_EUR || TGR_REGION_JPN
+        if (func_80262370(D_80272D48, &D_8031A3F8[i], i) == 0) {
+          D_8031B1E8[i] = 1;
+          func_80261F20(&D_8031A3F8[i]);
+        }
+#else
         if (tgr_rumble_open(D_80272D48, &D_8031A3F8[i], i) != 0) {
           continue;
         }
         D_8031B1E8[i] = 1;
         tgr_rumble_off(&D_8031A3F8[i]);
+#endif
       }
     }
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    /* compiled-out reports of each port: a rumble pak, or none */
+    if (D_8031B1E8[i] != 0) {
+    }
+    if (D_8031B1E8[i] == 0) {
+    }
+#endif
   }
 }
 

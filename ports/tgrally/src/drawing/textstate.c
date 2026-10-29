@@ -33,7 +33,109 @@ extern unsigned char D_8028C070[];      /* the small font's */
 extern unsigned char D_8028C1B0[];
 extern unsigned char D_8028FE00[];      /* the large font's glyph page */
 extern unsigned char D_8029DA00[];      /* the small font's */
+#if TGR_REGION_JPN
+extern int jpn_D_8028DF50;              /* the next free glyph slot */
+extern unsigned int jpn_D_8028DF54;              /* the glyph cache, less one slot */
+extern unsigned int jpn_D_8028DF58;              /* the glyph cache's end */
+extern int jpn_D_8028DF5C;              /* the number of glyph slots */
+extern int jpn_D_8028DF60;              /* the glyph offsets are loaded */
+extern unsigned char jpn_D_80351F50[];  /* each slot's character */
+extern unsigned char jpn_D_80352058[];  /* each character's slot */
+extern int jpn_D_80352258[];            /* each glyph's offset in ROM */
+extern unsigned char jpn_D_803525A0[];  /* a packed glyph */
+extern unsigned char jpn_D_803837A0[];  /* free memory after .bss */
+#define jpn_D_000DCF40 0x000DCF40          /* the Japanese glyphs in ROM */
+void BrRomRead(void *dst, int rom, int len);
+int BrRlePlanesUnpack(void *dst, int max, void *data, int n);
+int BrJpGlyphSlot(int c);
+#endif
 /* -- end declarations -- */
+
+#if TGR_REGION_JPN
+/* WHAT IT DOES: Empty the Japanese glyph cache: no character has a slot,
+ * and the slots (0x5A0 bytes each, slot 0 unused) fill the free memory from
+ * the end of .bss, 8-byte aligned, to 0x803B1000. */
+/* @implements jpn:0x8022F1A0 tgr BrJpGlyphReset */
+void BrJpGlyphReset(void)
+{
+  int i;
+  unsigned int size;
+
+  for (i = 0; i < 256; i++) {
+    jpn_D_80352058[i] = 0;
+  }
+  size = 0x5A0;
+  jpn_D_8028DF54 = ((unsigned int)jpn_D_803837A0 + 7) & ~7;
+  jpn_D_8028DF58 = 0x803B1000;
+  jpn_D_8028DF5C = (jpn_D_8028DF58 - jpn_D_8028DF54) / size;
+  jpn_D_8028DF58 = jpn_D_8028DF5C * size + jpn_D_8028DF54;
+  jpn_D_8028DF50 = 1;
+  jpn_D_8028DF54 -= size;
+}
+
+/* WHAT IT DOES: The address of a Japanese character's glyph in the cache,
+ * giving it the next free slot the first time it is asked for. */
+/* @implements jpn:0x8022F258 tgr BrJpGlyphSlot */
+int BrJpGlyphSlot(int c)
+{
+  unsigned char *p;
+  int slot;
+
+  p = &jpn_D_80352058[c];
+  slot = *p;
+  if (slot == 0) {
+    slot = jpn_D_8028DF50++;
+    *p = slot;
+  }
+  return slot * 0x5A0 + jpn_D_8028DF54;
+}
+
+/* WHAT IT DOES: Fill the Japanese glyph cache: the first time, read the
+ * glyph offset table from ROM (0xDCF40); then every character with a slot
+ * whose glyph is not there yet has it read in, as stored (a negative
+ * offset) or run-length packed and unpacked into the slot; the slots no
+ * character holds are marked empty.  One variable walks the slots in both
+ * loops (one web, so the glyph slot takes a0), and the packed glyph's ROM
+ * address adds the offset first ((a | 0) keeps it a node). */
+/* @implements jpn:0x8022F2B0 tgr BrJpGlyphLoad */
+void BrJpGlyphLoad(void)
+{
+  int c;
+  int slot;
+  int b;
+  int a;
+  int dst;
+
+  if (jpn_D_8028DF60 == 0) {
+    jpn_D_8028DF60 = 1;
+    BrRomRead(jpn_D_80352258, (int)jpn_D_000DCF40, 0x344);
+  }
+  for (c = 0; c < 256; c++) {
+    slot = jpn_D_80352058[c];
+    if (slot != 0 && c != jpn_D_80351F50[slot]) {
+      jpn_D_80351F50[slot] = c;
+      a = 0;                    /* dead: numbers a ahead of b */
+      dst = slot * 0x5A0 + jpn_D_8028DF54;
+      c -= 0x20;
+      b = jpn_D_80352258[c + 1];
+      if (b < 0) {
+        b = -b;
+      }
+      a = jpn_D_80352258[c];
+      if (a < 0) {
+        BrRomRead((void *)dst, (int)(jpn_D_000DCF40 - a), a + b);
+      } else {
+        BrRomRead(jpn_D_803525A0, (a | 0) + (int)jpn_D_000DCF40, b - a);
+        BrRlePlanesUnpack((void *)dst, 0x5A0, jpn_D_803525A0, 1);
+      }
+      c += 0x20;
+    }
+  }
+  for (slot = jpn_D_8028DF50; slot < jpn_D_8028DF5C; slot++) {
+    jpn_D_80351F50[slot] = 0;
+  }
+}
+#endif
 
 /* WHAT IT DOES: Draw a string at the text position in the current font size
  * and colours: set up the two-cycle shaded-glyph combine and load the
@@ -49,10 +151,345 @@ extern unsigned char D_8029DA00[];      /* the small font's */
  * word order or register use is fixed by the line layout are written out as
  * explicit blocks; the t origin of the clamped rectangle is computed into
  * u1 between its two words, which numbers it ahead of dtdy and fixes the
- * frame slots of the hoisted rectangle terms. */
+ * frame slots of the hoisted rectangle terms.
+ * Japan adds %j and %e (Japanese glyphs on and off, switching a small font
+ * to the large cell) and draws a Japanese glyph from the slot BrJpGlyphSlot
+ * loads. The glyph code is read into g ahead of the display-list stores, so
+ * it comes from the register that carries *p round the loop; the byte
+ * locals sit together and x ahead of p, which leaves one word after p and
+ * puts the block-local homes where the ROM has them. */
 /* @implements 0x8022E4E0 tgr BrTextEmitString */
 void BrTextEmitString(unsigned char *s)
 {
+#if TGR_REGION_JPN
+  int w;
+  int adv;
+  int uls;
+  int lrs;
+  int row;
+  int y;
+  int cell;
+  unsigned char *rampA;
+  unsigned char *rampB;
+  int dtdy;
+  int line;
+  int lastW;
+  int lastCell;
+  int lastLine;
+  int jp;
+  int c;
+  unsigned char n;
+  unsigned char g;
+  int pad;
+  int texw;
+  unsigned char *tex;
+  int *tbl;
+  int small;
+  int x;
+  unsigned char *p;
+  int size;
+
+  size = D_803519D8;
+  x = D_803519D0[0];
+  y = D_803519D0[1];
+  lastW = -1;
+  lastCell = -1;
+  lastLine = -1;
+  jp = 0;
+  y -= size * 30 / 40;
+  if (D_8028A850 != 0) {
+    x <<= 1;
+    y <<= 1;
+    size <<= 1;
+  }
+  small = size < 25;
+  if (small) {
+    cell = 20;
+    pad = 4;
+    tbl = D_802A187C;
+    texw = 392;
+    tex = D_8029DA00;
+    rampA = D_8028C070;
+    rampB = D_8028C1B0;
+  } else {
+    cell = 40;
+    pad = 7;
+    tbl = D_802A17A0;
+    texw = 704;
+    tex = D_8028FE00;
+    rampA = D_8028BDF0;
+    rampB = D_8028BF30;
+  }
+  dtdy = ((cell << 10) - (1 << 10)) / size;
+  gDPPipeSync(D_8028A858++);
+  gDPSetCycleType(D_8028A858++, G_CYC_2CYCLE);
+  if (D_8028BDC8) {
+    gDPSetCombine(D_8028A858++, 0x317E02, 0x51FEF3FA);
+  } else {
+    gDPSetCombine(D_8028A858++, 0x317E02, 0x5FFEF3FA);
+  }
+  gDPSetRenderMode(D_8028A858++, G_RM_PASS, G_RM_XLU_SURF2);
+  gDPSetTextureFilter(D_8028A858++, D_8028A898);
+  gDPSetTextureLUT(D_8028A858++, 0);
+  gDPSetTexturePersp(D_8028A858++, G_TP_NONE);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)( 0xba) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 16) & ((0x01 << ( 8)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 8)) - 1)) << ( 0))) );
+    _g->words.w1 = (unsigned int)( 0);
+  }
+  gSPTexture(D_8028A858++, 0xffff, 0xffff, 0, 0, 1);
+  gDPTileSync(D_8028A858++);
+  gDPLoadSync(D_8028A858++);
+  gDPPipeSync(D_8028A858++);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++);
+
+    _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_RGBA, 21, 3) | _SHIFTL(G_IM_SIZ_16b, 19, 2) |
+                   _SHIFTL(0, 9, 9) | _SHIFTL(0x1B0, 0, 9);
+    _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(0, 18, 2) | _SHIFTL(0, 14, 4) |
+                   _SHIFTL(0, 10, 4) | _SHIFTL(0, 8, 2) | _SHIFTL(0, 4, 4) | _SHIFTL(0, 0, 4);
+  }
+  gDPSetTextureImage(D_8028A858++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, D_8028BDC8 ? rampB : rampA);
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (((unsigned int)(((unsigned int)(0xf3) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+    _g->words.w1 = (((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)(((( 319) < ( 2047) ? ( 319) : ( 2047)))) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0))) );
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0x1B0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+  }
+  {
+    Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+    _g->words.w1 = ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0x1E) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0x9E) & ((0x01 << ( 12)) - 1)) << ( 0)));
+  }
+  if (D_8028BDCC != 0) {
+    gDPSetEnvColor(D_8028A858++, D_8028BDD0, D_8028BDD4, D_8028BDD8, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, D_8028BDDC, D_8028BDE0, D_8028BDE4, 0xff);
+  } else if (D_8028BDC0) {
+    gDPSetEnvColor(D_8028A858++, 0xff, 0x7f, 0, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff, 0x7f, 0xff);
+  } else {
+    gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0, 0xff);
+    gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xe6, 0xe6, 0, 0xff);
+  }
+  p = s;
+  while (*p != 0) {
+    c = *p;
+    if (c != ' ') {
+      if (c == '%' && (n = p[1])) {
+        if (n == '%') {
+          if (n);                 /* compiled out: keeps p's register below the cell-1 term */
+          c = *++p;
+        } else if (n == 'j') {
+          jp = 1;
+          if (small) {
+            cell = 40;
+            pad = 7;
+            tbl = D_802A17A0;
+            texw = 704;
+            tex = D_8028FE00;
+            dtdy = ((cell << 10) - (1 << 10)) / size;
+          }
+          p++;
+          goto next;
+        } else if (n == 'e') {
+          jp = 0;
+          if (small) {
+            cell = 20;
+            pad = 4;
+            tbl = D_802A187C;
+            texw = 392;
+            tex = D_8029DA00;
+            dtdy = ((cell << 10) - (1 << 10)) / size;
+          }
+          p++;
+          goto next;
+        } else if (n == 'i') {
+          p++;
+          goto next;
+        } else if (n == 'n') {
+          p++;
+          goto next;
+        } else if (p[2] != 0) {
+          gDPPipeSync(D_8028A858++);
+          switch (p[1]) {
+          case 'r':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xbe, 0, 0, 0xff);
+            break;
+          case 'o':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xcd, 0x5f, 0, 0xff);
+            break;
+          case 'O':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0x78, 0, 0xff);
+            break;
+          case 'y':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xf5, 0, 0xff);
+            break;
+          case 'Y':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xfa, 0x80, 0xff);
+            break;
+          case 'g':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0x96, 0, 0xff);
+            break;
+          case 'b':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0, 0xc8, 0xff);
+            break;
+          case 'p':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xc8, 0, 0xc8, 0xff);
+            break;
+          case '1':
+          case 'w':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+            break;
+          case '5':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0x80, 0x80, 0x80, 0xff);
+            break;
+          case '0':
+            gDPSetPrimColor(D_8028A858++, 0xff, 0xff, 0, 0, 0, 0xff);
+            break;
+          }
+          switch (p[2]) {
+          case 'r':
+            gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0, 0xff);
+            break;
+          case 'o':
+            gDPSetEnvColor(D_8028A858++, 0xcd, 0x5f, 0, 0xff);
+            break;
+          case 'O':
+            gDPSetEnvColor(D_8028A858++, 0xff, 0x78, 0, 0xff);
+            break;
+          case 'y':
+            gDPSetEnvColor(D_8028A858++, 0xd2, 0xbe, 0, 0xff);
+            break;
+          case 'Y':
+            gDPSetEnvColor(D_8028A858++, 0xd2, 0xc8, 0x69, 0xff);
+            break;
+          case 'g':
+            gDPSetEnvColor(D_8028A858++, 0, 0x96, 0, 0xff);
+            break;
+          case 'b':
+            gDPSetEnvColor(D_8028A858++, 0, 0, 0xc8, 0xff);
+            break;
+          case 'p':
+            gDPSetEnvColor(D_8028A858++, 0xc8, 0, 0xc8, 0xff);
+            break;
+          case '1':
+          case 'w':
+            gDPSetEnvColor(D_8028A858++, 0xff, 0xff, 0xff, 0xff);
+            break;
+          case '5':
+            gDPSetEnvColor(D_8028A858++, 0x80, 0x80, 0x80, 0xff);
+            break;
+          case '0':
+            gDPSetEnvColor(D_8028A858++, 0, 0, 0, 0xff);
+            break;
+          }
+          p += 2;
+          goto next;
+        }
+      }
+      if ((c >= 0x21 && c < 0x80) || jp) {
+        if (jp) {
+          g = (int)*p;
+          w = cell * 36 / 40;
+          adv = w - pad;
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++);
+
+            _g->words.w0 = _SHIFTL(G_SETTIMG, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) |
+                           _SHIFTL(G_IM_SIZ_8b, 19, 2) | _SHIFTL((36)-1, 0, 12);
+            _g->words.w1 = (unsigned int)(BrJpGlyphSlot(g));
+          }
+          line = ((w + 1) + 7) >> 3;
+          if (lastLine != line) {
+            {
+              Gfx *_g = (Gfx *)(D_8028A858++);
+
+              _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
+                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9);
+              _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
+                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4);
+            }
+            lastLine = line;
+          }
+          gDPLoadSync(D_8028A858++);
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            _g->words.w1 = ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( w << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( cell << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+          }
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++);
+
+            _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+          }
+        } else {
+          g = D_802A1740[c - 0x21];
+          row = g < 27 ? cell : 0;
+          uls = tbl[g];
+          w = tbl[g + 1] - uls + 1;
+          lrs = uls + w;
+          adv = w - pad;
+          gDPSetTextureImage(D_8028A858++, G_IM_FMT_IA, G_IM_SIZ_8b, texw, tex);
+          line = ((lrs - uls + 1) + 7) >> 3;
+          if (lastLine != line) {
+            {
+              Gfx *_g = (Gfx *)(D_8028A858++);
+
+              _g->words.w0 = _SHIFTL(G_SETTILE, 24, 8) | _SHIFTL(G_IM_FMT_IA, 21, 3) | _SHIFTL(G_IM_SIZ_8b, 19, 2) |
+                             _SHIFTL(line, 9, 9) | _SHIFTL(0, 0, 9);
+              _g->words.w1 = _SHIFTL(7, 24, 3) | _SHIFTL(0, 20, 4) | _SHIFTL(2, 18, 2) | _SHIFTL(6, 14, 4) |
+                             _SHIFTL(0, 10, 4) | _SHIFTL(2, 8, 2) | _SHIFTL(6, 4, 4) | _SHIFTL(0, 0, 4);
+            }
+            lastLine = line;
+          }
+          gDPLoadSync(D_8028A858++);
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf4) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( uls << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( row << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            _g->words.w1 = ((unsigned int)(((unsigned int)( 7) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( lrs << 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( (row + cell) << 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+          }
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++);
+
+            _g->words.w0 = ((unsigned int)(((unsigned int)(0xf5) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 3) & ((0x01 << ( 3)) - 1)) << ( 21))) | ((unsigned int)(((unsigned int)( 1) & ((0x01 << ( 2)) - 1)) << ( 19))) | ((unsigned int)(((unsigned int)( ((w + 1) + 7) >> 3) & ((0x01 << ( 9)) - 1)) << ( 9))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 9)) - 1)) << ( 0)));
+            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 20))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 18))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 14))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 10))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 2)) - 1)) << ( 8))) | ((unsigned int)(((unsigned int)( 6) & ((0x01 << ( 4)) - 1)) << ( 4))) | ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 4)) - 1)) << ( 0)));
+          }
+        }
+        if (w != lastW || cell != lastCell) {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = ((unsigned int)(((unsigned int)( 0xf2) & ((0x01 << ( 8)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+            _g->words.w1 = ((unsigned int)(((unsigned int)( 0) & ((0x01 << ( 3)) - 1)) << ( 24))) | ((unsigned int)(((unsigned int)( ((w - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 12))) | ((unsigned int)(((unsigned int)( ((cell - 1) << 2) + 2) & ((0x01 << ( 12)) - 1)) << ( 0)));
+          }
+          lastW = w;
+          lastCell = cell;
+        }
+        lrs = w * size / cell;
+        if (x < 0 || x + lrs > 320 || y < 0 || y + size > 240) {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL(MAX((s16)((x + lrs) << 2), 0), 12, 12) | _SHIFTL(MAX((s16)((y + size) << 2), 0), 0, 12));
+            _g->words.w1 = (_SHIFTL((0), 24, 3) | _SHIFTL(MAX((s16)(x << 2), 0), 12, 12) | _SHIFTL(MAX((s16)(y << 2), 0), 0, 12));
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(((16) - (((s16)(x << 2) < 0) ? (((s16)((w << 10) / (lrs)) < 0) ? (MAX((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0)) : (MIN((((s16)(x << 2) * (s16)((w << 10) / (lrs))) >> 7), 0))) : 0)), 16, 16) | _SHIFTL(((((cell - 1) << 5) + 16) - (((y << 2) < 0) ? (((s16)(-dtdy) < 0) ? (MAX((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0)) : (MIN((((s16)(y << 2) * (s16)(-dtdy)) >> 7), 0))) : 0)), 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL(((w << 10) / (lrs)), 16, 16) | _SHIFTL((-dtdy), 0, 16)));
+          }
+        } else {
+          {
+            Gfx *_g = (Gfx *)(D_8028A858++); _g->words.w0 = (_SHIFTL(G_TEXRECT, 24, 8) | _SHIFTL((x + lrs) << 2, 12, 12) | _SHIFTL((y + size) << 2, 0, 12));
+            _g->words.w1 = (_SHIFTL(0, 24, 3) | _SHIFTL(x << 2, 12, 12) | _SHIFTL(y << 2, 0, 12));
+            gImmp1(D_8028A858++, G_RDPHALF_1, (_SHIFTL(16, 16, 16) | _SHIFTL(((cell - 1) << 5) + 16, 0, 16)));
+            gImmp1(D_8028A858++, G_RDPHALF_2, (_SHIFTL((w << 10) / (lrs), 16, 16) | _SHIFTL(-dtdy, 0, 16)));
+          }
+        }
+        x += adv * size / cell;
+      }
+    } else {
+      x += size * 12 / 40 + 1;
+    }
+  next:
+    p++;
+  }
+  gDPPipeSync(D_8028A858++);
+  gDPSetTexturePersp(D_8028A858++, G_TP_PERSP);
+  gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+#else
   int size;
   int x;
   int y;
@@ -295,6 +732,7 @@ void BrTextEmitString(unsigned char *s)
   gDPPipeSync(D_8028A858++);
   gDPSetTexturePersp(D_8028A858++, G_TP_PERSP);
   gDPSetCycleType(D_8028A858++, G_CYC_1CYCLE);
+#endif
 }
 
 /* WHAT IT DOES: Draw the following text in the highlight colours (orange
@@ -446,6 +884,72 @@ void BrTextPrint(char *s, int x, int y)
 /* @implements 0x8022F720 tgr BrTextWidth */
 int BrTextWidth(unsigned char *s, int size)
 {
+#if TGR_REGION_JPN
+  int w;
+  int div;
+  int pad;
+  int *tbl;
+  int c;
+  unsigned char g;
+  unsigned char n;
+  int esc;
+  int jp;
+
+  w = 0;
+  jp = 0;
+  esc = '%';
+  if (D_8028A850 != 0) {
+    size <<= 1;
+  }
+  div = 40;
+  if (size < 25) {
+    div = 20;
+    pad = 4;
+    tbl = D_802A187C;
+  } else {
+    pad = 7;
+    tbl = D_802A17A0;
+  }
+  while (*s != 0) {
+    c = *s;
+    if ((c < 0x21 || c >= 0x80) && !jp) {
+      w += size * 12 / 40;
+    } else {
+      if (esc == c && (n = s[1])) {
+        if (n == '%') {
+          s++;
+        } else if (n == 'j') {
+          s++;
+          jp = 1;
+          goto next;
+        } else if (n == 'e') {
+          s++;
+          jp = 0;
+          goto next;
+        } else if (n == 'i' || n == 'n') {
+          s++;
+          goto next;
+        } else if (s[2] != 0) {
+          s += 2;
+          goto next;
+        }
+      }
+      if (jp) {
+        w += (div * 36 / 40 - pad) * size / div;
+      } else {
+        g = D_802A1740[c - 0x21];
+        w += (tbl[g + 1] - tbl[g] - pad + 1) * size / div;
+      }
+    }
+next:
+    s++;
+  }
+  if (div);                     /* compiled out: keeps div live, so size keeps a1 */
+  if (D_8028A850 != 0) {
+    w >>= 1;
+  }
+  return w;
+#else
   int w;
   int div;
   int pad;
@@ -495,5 +999,6 @@ next:
     w >>= 1;
   }
   return w;
+#endif
 }
 

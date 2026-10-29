@@ -10,7 +10,8 @@
 #                fallback for a PC without Vulkan; offscreen on macOS, for checks)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
 #                tgrally.exe: host/win32 replaces host/posix
-#        OUT     build directory (default build/tgrally/null-null/HOST-RENDER)
+#        OUT     build directory (default build/tgrally/HOST-RENDER, -eur or -jpn added)
+#        TGR_REGION usa (default) | eur | jpn: the cartridge it is built from
 #        TGR_ROM your cartridge's ROM (default reference/tgrally/Top Gear Rally (USA).z64):
 #                its data is built into the executable (tools/assets.py); the game
 #                needs no ROM once built
@@ -21,7 +22,10 @@ set -e
 cd "$(dirname "$0")/../.."
 HOST=${HOST:-null}
 RENDER=${RENDER:-null}
-OUT=${OUT:-build/tgrally/$HOST-$RENDER}
+TGR_REGION=${TGR_REGION:-usa}
+case "$TGR_REGION" in usa) SUF=;; eur|jpn) SUF=-$TGR_REGION;; *) echo "link: TGR_REGION is usa, eur or jpn" >&2; exit 2;; esac
+export TGR_REGION
+OUT=${OUT:-build/tgrally/$HOST-$RENDER$SUF}
 case "$OUT" in build/*) ;; *) echo "link: OUT must be under build/ (got $OUT)" >&2; exit 2;; esac
 export OUT
 CC=${CC:-clang}
@@ -30,7 +34,8 @@ TGR_TARGET=$($CC -dumpmachine 2>/dev/null); export TGR_TARGET
 P=ports/tgrally/platform
 H=ports/brally/platform/host
 PFLAGS="-O2 ${GFLAG:--g} -std=gnu11 -Wall -Wno-unused-function -ffp-contract=off -fno-strict-aliasing \
-  -I$P/include -I$P/os -I$H -Iports/brally/platform/render -Iports/tgrally/include"
+  -I$P/include -I$P/os -I$H -Iports/brally/platform/render -Iports/tgrally/include \
+  -DTGR_REGION_$(echo $TGR_REGION | tr a-z A-Z)=1 -include $OUT/gen/tgr_region.h"
 mkdir -p $OUT/plat
 
 ports/tgrally/build.sh

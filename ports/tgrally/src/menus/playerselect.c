@@ -25,7 +25,8 @@ void BrTrackSelectScreen(void);
 
 /* WHAT IT DOES: Draw one row of the 1P/2P select screen; when the row needs
  * a second controller that is not present it also draws the notice asking
- * for two controllers to be plugged in. */
+ * for two controllers to be plugged in.  Japan's notice is Japanese text
+ * (the %j escape, in the game's own character codes) in font 18. */
 /* @implements 0x802114E0 tgr BrPlayerSelectDrawRow */
 void BrPlayerSelectDrawRow(int row)
 {
@@ -35,10 +36,17 @@ void BrPlayerSelectDrawRow(int row)
     BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
     BrTextHighlightOff();
     BrTextAlignCentre();
+#if TGR_REGION_JPN
+    BrTextSetFont(18);
+    BrTextPrint("%ww%j\xC1\xCF\xC3\xC8(\x88w", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 30);
+    BrTextPrint("%ww%j\xC1\xCF\xC3\xC8(\x88%e2", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 15);
+    BrTextPrint(" %ww%jD2Bc\xDB" "2@&", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16);
+#else
     BrTextSetFont(15);
     BrTextPrint("%wwYou Need To Have", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 30);
     BrTextPrint("%wwTwo Controllers", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 15);
     BrTextPrint("%wwPlugged in", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16);
+#endif
   }
 }
 

@@ -11,9 +11,11 @@ the executable (romdata.S, .incbin), so a built game needs no ROM.
 
     assets.py OUT_DIR [--rom FILE]
 
-The ROM is FILE, else $TGR_ROM, else reference/tgrally/Top Gear Rally (USA).z64;
-.z64, .v64 or .n64 byte order; it must be Top Gear Rally (USA).  Written only
-when it changes (a stamp of its digest), so a rebuild does not redo it.
+The cartridge is TGR_REGION's (usa, eur or jpn; tools/tgrally/region.py): the
+ROM is FILE, else $TGR_ROM, else reference/tgrally/<that cartridge>.z64; .z64,
+.v64 or .n64 byte order.  The first byte read is that cartridge's: its .data
+starts where its code ends.  Written only when it changes (a stamp of its
+digest), so a rebuild does not redo it.
 """
 import argparse
 import hashlib
@@ -21,9 +23,12 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-DEFAULT = os.path.join(ROOT, 'reference/tgrally/Top Gear Rally (USA).z64')
-SHA1 = 'bfc51f086ebdb78904dc24ad0c3a2d946e26d022'   # Top Gear Rally (USA), .z64 order
-BASE = 0x70AB0                                      # the first byte the port reads
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
+import region as R  # noqa: E402
+NAME = R.R['name']                                  # the cartridge
+DEFAULT = os.path.join(ROOT, 'reference/tgrally/%s.z64' % NAME)
+SHA1 = R.R['sha1']                                  # .z64 order
+BASE = R.TEXT_E                                     # the first byte the port reads
 
 
 def big_endian(rom):
@@ -46,11 +51,11 @@ def main():
     a = ap.parse_args()
     if not os.path.isfile(a.rom):
         sys.exit('assets: no ROM at %s: the build takes the game\'s data from your cartridge\'s ROM '
-                 '(Top Gear Rally (USA), .z64, .v64 or .n64); name it with TGR_ROM=FILE' % a.rom)
+                 '(%s, .z64, .v64 or .n64); name it with TGR_ROM=FILE' % (a.rom, NAME))
     rom = big_endian(open(a.rom, 'rb').read())
     digest = hashlib.sha1(rom).hexdigest()
     if digest != SHA1:
-        sys.exit('assets: %s is not Top Gear Rally (USA) (sha1 %s, expected %s)' % (a.rom, digest, SHA1))
+        sys.exit('assets: %s is not %s (sha1 %s, expected %s)' % (a.rom, NAME, digest, SHA1))
     os.makedirs(a.out, exist_ok=True)
     stamp = os.path.join(a.out, 'romdata.sha1')
     blob = os.path.join(a.out, 'romdata.bin')

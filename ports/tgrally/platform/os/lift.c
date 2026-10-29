@@ -1,7 +1,8 @@
 /* lift.c: the game's initialised data, from the cartridge's (tgr_romdata).
  *
- * What the N64's boot code did: the ROM's .data/.rodata (ROM 0x70AB0..
- * 0xAD400) lands at 0x8026FAB0 and .bss after it is zero.  Here it lands in
+ * What the N64's boot code did: the ROM's .data/.rodata (on the USA
+ * cartridge ROM 0x70AB0..0xAD400) lands at 0x8026FAB0 and .bss after it is
+ * zero; each region's bounds are in gen/tgr_region.h.  Here it lands in
  * the arena; then each symbol's multi-byte units are turned to native order
  * (tools/globals.py's runs) and the pointer variables, which are native
  * objects, are given native pointers for the original addresses the ROM
@@ -12,10 +13,10 @@
 #include "tgr_syms.h"
 #include "plat.h"
 
-#define DATA_VA   0x8026FAB0u
-#define DATA_ROM  0x70AB0u
-#define DATA_END  0xAD400u
-#define TEXT_LO   0x80200000u
+#define DATA_VA   TGR_DATA_VA          /* the region's image (gen/tgr_region.h) */
+#define DATA_ROM  TGR_DATA_ROM
+#define DATA_END  TGR_DATA_END
+#define TEXT_LO   TGR_TEXT_LO
 
 static void swap_unit(uint8_t *p, uint32_t size)
 {

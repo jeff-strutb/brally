@@ -71,7 +71,44 @@ extern short D_8028DDDC;       /* the text colour */
 extern short D_8028DFC0[][7][5];   /* the 5 by 7 font */
 extern short D_8028F2A0[][7][3];   /* the 3 by 7 font, its own colours */
 
+#if TGR_REGION_EUR || TGR_REGION_JPN
+extern int D_8028A884;                  /* a screen flush holds the picture blank */
+#endif
+#if TGR_REGION_EUR
+void BrVideoBlank(void);
+#elif TGR_REGION_JPN
+void BrScreenBlank(void);
+#define BrVideoBlank BrScreenBlank
+#endif
 /* -- end declarations -- */
+
+/* WHAT IT DOES: The character for index i of the name-entry character set
+ * (a NUL, blanks, digits, capitals, punctuation; 66 entries, no
+ * terminator; Japan adds &./ and 80 kana codes, 149 entries); a space
+ * past its end. */
+/* @implements 0x80253460 tgr BrPaintCharset */
+#if TGR_REGION_JPN
+char BrPaintCharset(unsigned char i)
+{
+  char set[0x95] =
+      "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@&./\x8E\x9E\xAE\xBE\xCE\x8F\x9F\xAF\xBF\xC7\xCF\x80\x90\xA0\xB0\xC0\x81\x91\xA1\xB1\xC1\x82\x92\xA2\xB2\xC2\x83\x93\xA3\xB3\xC3\x84\x94\xA4\xB4\xC4\x85\x95\xA5\xB5\xC5\x86\x96\xA6\xB6\xC6\x87\x97\xA7\x88\x98\xA8\xB8\xC8\xB7\x89\x99\xA9\xB9\xC9\x8A\x9A\xAA\xBA\xCA\x8B\x9B\xAB\xBB\xCB\x8C\x9C\xAC\xBC\xCC\x8D\x9D\xAD\xBD\xCD";
+
+  if (i < 0x95) {
+    return set[i];
+  }
+  return ' ';
+}
+#else
+char BrPaintCharset(unsigned char i)
+{
+  char set[0x42] = "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@";
+
+  if (i < 0x42) {
+    return set[i];
+  }
+  return ' ';
+}
+#endif
 
 /* WHAT IT DOES: The Controller Pak manager, one frame of it: on the first
  * frame check a pak is in (else back to the title), load the menu's images
@@ -111,13 +148,31 @@ void BrPakManager(void)
   int maxFiles;
   unsigned char pattern;
   char num[11];
+#if TGR_REGION_JPN
+  unsigned char name[128];
+  unsigned char *p;
+  int kana;
+  int was;
+  unsigned char ch;
+#else
   unsigned char name[28];
+#endif
   int u2;                       /* unused: the frame has it */
+#if TGR_REGION_JPN
+  int u3;                       /* unused: the frame has it */
+#endif
 
   D_802A4BE8 = 0;
   if (D_8028DD94 == 0) {
     D_8028DD94 = 1;
     D_8036A060 = 0;
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    D_8028A884 = 1;
+    BrVideoBlank();
+    BrFrameBeginLayout1();
+    BrFrameEnd();
+    D_8028A884 = 0;
+#endif
     tgr_pak_present(D_80272D48, &pattern);
     if ((pattern & 1) == 0) {
       BrModeSet(BrFrontReturnToTitle);
@@ -134,6 +189,9 @@ void BrPakManager(void)
     D_802724F0 = 0;
     D_8036A270 = 1;
     BrFadeTo(1.0f, 0.2f);
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    D_8028A884 = 0;
+#endif
   }
   BrClockTick();
   BrFadeStep();
@@ -151,10 +209,18 @@ void BrPakManager(void)
   BrTextAlignLeft();
   BrTextSetFont(12);
   BrTextPrint("%yw#", 0x48, 0x34);
+#if TGR_REGION_JPN
+  BrTextSetFont(13);
+  BrTextPrint("%yw%j\xB9(\xA6\xC4(\xC3", 0x74, 0x34);
+  BrTextAlignRight();
+  BrTextPrint("%yw%j\xBD(\x9A", 0xfa, 0x34);
+  BrTextSetFont(11);
+#else
   BrTextPrint("%ywGAME NOTE", 0x74, 0x34);
   BrTextAlignRight();
   BrTextPrint("%ywPAGES", 0xfa, 0x34);
   BrTextSetFont(9);
+#endif
   y = 0x3f;
   for (i = 0; i < 16; i++) {
     sprintf(num, "%d", i + 1);
@@ -168,6 +234,53 @@ void BrPakManager(void)
   if (D_8036A060 != 0 && D_8036A270 != 4) {
     for (i = 0; i < 16; i++) {
       if ((D_8028DD98 & (1 << i)) == 0) {
+#if TGR_REGION_JPN
+        kana = 0;
+        for (k = 0, p = name; k < 16; k++) {
+          ch = D_8036A070[i].name[k];
+          was = kana;
+          if (ch < 0x42) {
+            if (kana) {
+              *p++ = '%';
+              *p++ = 'e';
+              kana = 0;
+            }
+          } else if (!kana) {
+            *p++ = '%';
+            *p++ = 'j';
+            kana = 1;
+          }
+          c = BrPaintCharset(ch);
+          *p = c;
+          if (c == 0) {
+            break;
+          }
+          p++;
+          if (p[-1] == '.' && was) {
+            *p++ = ' ';
+          }
+          if (p[-1] == '%') {
+            *p++ = '%';
+          }
+        }
+        c = BrPaintCharset(D_8036A070[i].ext[0]);
+        if (c != 0) {
+          if (kana) {
+            *p++ = '%';
+            *p++ = 'e';
+          }
+          *p++ = ' ';
+          *p++ = '.';
+          if (D_8036A070[i].ext[0] >= 0x42) {
+            *p++ = '%';
+            *p++ = 'j';
+          }
+          *p++ = c;
+          *p = 0;
+        } else {
+          *p = 0;
+        }
+#else
         for (k = 0; k < 16; k++) {
           name[k] = BrPaintCharset(D_8036A070[i].game_name[k]);
           if (name[k] == 0) {
@@ -183,19 +296,30 @@ void BrPakManager(void)
         } else {
           name[k] = 0;
         }
+#endif
         BrTextAlignLeft();
         if (D_8036A064 != 0 && i == D_8036A061) {
           BrTextSetColours(0x80, 0xff, 0x80, 0, 0xff, 0);
         } else {
           BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
         }
+#if TGR_REGION_JPN
+        BrTextPrint((char *)name, 0x5a, i * 9 + y);
+        sprintf(num, "%d", D_8036A070[i].size >> 8);
+        BrTextAlignRight();
+        BrTextPrint(num, 0xf8, i * 9 + y);
+#else
         BrTextPrint((char *)name, 0x62, i * 9 + y);
         sprintf(num, "%d", D_8036A070[i].file_size >> 8);
         BrTextAlignRight();
         BrTextPrint(num, 0xf4, i * 9 + y);
+#endif
       }
     }
   }
+#if TGR_REGION_JPN
+  BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
+#endif
   switch (D_8036A270) {
   case 0:
     D_802724F0 = tgr_pak_open_new(D_80272D48, &D_80369EC0[0], 0);
@@ -231,6 +355,9 @@ void BrPakManager(void)
         break;
       }
     }
+#if TGR_REGION_JPN
+    D_8028DD98 = 0;
+#endif
     for (i = 0; i < 16; i++) {
       if (tgr_pak_stat(&D_80369EC0[0], i, &D_8036A070[i]) != 0) {
         D_8028DD98 |= 1 << i;
@@ -295,17 +422,33 @@ void BrPakManager(void)
     }
     break;
   case 3:
+#if TGR_REGION_JPN
+    if (D_8036A061 + 1 < 10) {
+      w = 0x15a;
+    } else {
+      w = 0x166;
+    }
+#else
     if (D_8036A061 + 1 < 10) {
       w = 0x128;
     } else {
       w = 0x134;
     }
+#endif
+#if TGR_REGION_JPN
+    ox = (0x280 - w) >> 1;      /* dead: numbers the box's left edge ahead of by */
+#endif
     by = 0x110 - D_8028D0B0.h;
     BrBevelPanel((0x280 - w) >> 1, 200, w, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignCentre();
     BrTextHighlightOff();
+#if TGR_REGION_JPN
+    BrTextSetFont(14);
+    sprintf((char *)name, "%%yw%%j\xB9(\xA6\xC4(\xC3w\xE0" "B6R1%%%%%%e NO%d", D_8036A061 + 1);
+#else
     BrTextSetFont(12);
     sprintf((char *)name, "%%ywDELETE GAME NOTE #%d?", D_8036A061 + 1);
+#endif
     BrTextPrint((char *)name, 0x9f, 0x73);
     BrTextAlignLeft();
     BrTextSetFont(10);
@@ -328,9 +471,15 @@ void BrPakManager(void)
     BrBevelPanel(0xb1, 0xcb, 0x11e, 0x4a, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignCentre();
     BrTextHighlightOff();
+#if TGR_REGION_JPN
+    BrTextSetFont(14);
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 0x9f, 0x75);
+    BrTextPrint(" %j\xB0\x88(9\xED\xEE" "B6B3&", 0x9f, 0x83);
+#else
     BrTextSetFont(12);
     BrTextPrint("%ywCONTROLLER PAK ERROR", 0x9f, 0x75);
     BrTextPrint("%ywHAS BEEN DETECTED", 0x9f, 0x83);
+#endif
     if (D_8036A8E0[0].pressed & 0x4030) {
       BrPadConsume(&D_8036A8E0[0], 0x4030);
       D_8036A270 = 7;
@@ -384,12 +533,26 @@ void BrPakManager(void)
   case 6:
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_JPN
+    func_80246F90(0x99, 0xb5, 0x14e, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextSetFont(14);
+    BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x54, 0x6a);
+    BrTextPrint("%j2Bq6hc@6R&", 0x54, 0x77);
+    BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 0x54, 0x8a);
+    BrTextPrint("%j\xDE@6R&", 0x54, 0x97);
+#else
+#if TGR_REGION_EUR
+    func_80246F90(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextSetFont(12);
+#else
     BrTextSetFont(12);
     BrBevelPanel(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
     BrTextPrint("%ywA NEW CONTROLLER PAK", 0x5f, 0x6a);
     BrTextPrint("%ywWAS INSERTED.", 0x5f, 0x77);
     BrTextPrint("%ywTHIS CONTROLLER PAK", 0x5f, 0x8a);
     BrTextPrint("%ywWILL BE USED.", 0x5f, 0x97);
+#endif
     if (D_8036A8E0[0].pressed & 0x8030) {
       BrPadConsume(&D_8036A8E0[0], 0x8030);
       D_8036A060 = 0;
@@ -427,9 +590,18 @@ void BrPakManager(void)
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    D_8028A884 = 1;
+    BrVideoBlank();
     BrFrameBeginLayout1();
     BrScreenClear(0, 0, 0);
     BrFrameEnd();
+    D_8028A884 = 0;
+#else
+    BrFrameBeginLayout1();
+    BrScreenClear(0, 0, 0);
+    BrFrameEnd();
+#endif
     BrModeSet(BrFrontReturnToTitle);
   }
   D_802A4BE8 = 1;

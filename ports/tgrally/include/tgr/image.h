@@ -22,4 +22,18 @@ typedef struct BrImage {
 } BrImage;
 
 void BrImageDrawAt(BrImage *img, int x, int y);
+/* Europe and Japan pass each strip's palette (a TLUT) along: 0 is none */
+#if TGR_REGION_EUR || TGR_REGION_JPN
+void BrImageDraw(BrImage *img, void *tlut);
+void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
+                  int dh, unsigned char r, unsigned char g, unsigned char b);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img, 0)
+#define STRIP_TLUT(t) t,
+#else
+void BrImageDraw(BrImage *img);
+void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
+                  unsigned char r, unsigned char g, unsigned char b);
+#define BR_IMAGE_DRAW(img) BrImageDraw(img)
+#define STRIP_TLUT(t)
+#endif
 #endif

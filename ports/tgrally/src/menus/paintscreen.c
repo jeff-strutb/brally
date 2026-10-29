@@ -157,7 +157,6 @@ void BrFrameTintSetup(void);
 void BrPerfMeterDraw(void);
 void BrModeSet(void (*mode)(void));
 void BrFrontReturnToTitle(void);
-void BrImageDraw(BrImage *img);
 void BrImageDrawAt(BrImage *img, int x, int y);
 void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned char b);
 void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, int w, int h,
@@ -187,6 +186,12 @@ void BrPaintOvalStyleSelect(void);
 void BrPaintMirrorMenu(void);
 void BrPaintClearMenu(void);
 void BrPaintExitPrompt(void);
+#if TGR_REGION_JPN
+extern unsigned char jpn_D_8028F020[0x20];   /* the decal swatches' palette (Japan) */
+#define jpn_D_001DC050 0x1DC050              /* its ROM range */
+#define jpn_D_001DC070 0x1DC070
+void BrRomRead(void *dst, int rom, int size);
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The paint shop screen, one frame.  The first time in: put
@@ -288,7 +293,9 @@ void BrPaintShopScreen(void)
     D_8031B760[D_8028DBBC].x2000 = 0;
     D_8031B760[D_8028DBBC].x2044 = 0;
     BrIfaceMemReset();
+#if !TGR_REGION_JPN
     tgr_print("\nAllocating %d bytes (x2) for decal buffers...\n\n", 0x800);
+#endif
     D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
     D_8028DB84 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
     BrAllocPaintShopGfxMem(&D_8028CB40);
@@ -401,6 +408,9 @@ void BrPaintShopScreen(void)
       D_8028DAD4[i]->kind = 0;
       BrAllocPaintShopGfxMem(D_8028DAD4[i]);
     }
+#if TGR_REGION_JPN
+    BrRomRead(jpn_D_8028F020, jpn_D_001DC050, jpn_D_001DC070 - jpn_D_001DC050);
+#endif
     BrAllocPaintShopGfxMem(&D_8028D110);
     BrAllocPaintShopGfxMem(&D_8028D140);
     BrAllocPaintShopGfxMem(&D_8028D170);
@@ -427,7 +437,7 @@ void BrPaintShopScreen(void)
       BrAllocPaintShopGfxMem(D_8028DB34[i]);
       BrAllocPaintShopGfxMem(D_8028DB44[i]);
     }
-    tgr_dash_slot = (0x8028DB44 >> 16) & 0xFF;  /* BrRomUnpack saved s2, &D_8028DB44 (paintshop.c) */
+    tgr_dash_slot = (TGR_VA(8028DB44) >> 16) & 0xFF;  /* BrRomUnpack saved s2, &D_8028DB44 (paintshop.c) */
     D_8028DB78 = BEPTR(unsigned char *, BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].tex);
     D_8028DB7C = TGR_PTR(unsigned char *, tgr_rd32(BEPTR(be32_t *, D_8028AB08->mask) + D_8028DB68));
     D_8028DB88 = BE16(BEPTR(BrPaintPart *, D_8028AB08->parts)[D_8028AB08->decal[D_8028DB68]].w);
@@ -478,11 +488,19 @@ void BrPaintShopScreen(void)
   BrZBufferClear();
   BrScreenClear(0, 0, 0);
   BrImageDrawTinted(&D_8028CB40, 0x71, 0xb, 0x40);
-  BrImageDraw(&D_8028CB70);
+  BR_IMAGE_DRAW(&D_8028CB70);
+#if TGR_REGION_JPN
+  BrTextSetFont(0x1e);
+#else
   BrTextSetFont(0x22);
+#endif
   BrTextAlignCentre();
   BrTextHighlightOff();
+#if TGR_REGION_JPN
+  BrTextPrint("%ryPAINT SHOP", 0xa0, 0x25);
+#else
   BrTextPrint("%ryPAINT SHOP", 0xa0, 0x26);
+#endif
   for (i = 0; i < 10; i++) {
     if (i == D_8028DB68) {
       BrImageDrawTinted(D_8028DB0C[i], 0x20, 200, 0xff);
@@ -499,9 +517,9 @@ void BrPaintShopScreen(void)
   BrFillRect(D_80369CD8[0].x, D_80369CD8[0].y, D_80369CD8[0].w, D_80369CD8[0].h, 0, 0, 0);
   BrFillRect(D_80369CD8[0].x + 4, D_80369CD8[0].y + 4, D_80369CD8[0].w - 8, D_80369CD8[0].h - 8, 0xff, 0xca, 0);
   if (D_8028CE70.kind == 0) {
-    BrImageDraw(&D_8028CE10);
+    BR_IMAGE_DRAW(&D_8028CE10);
   } else {
-    BrImageDraw(&D_8028CE40);
+    BR_IMAGE_DRAW(&D_8028CE40);
   }
   BrFillRect(D_8028D4F0[D_8028DAC0].x, D_8028D4F0[D_8028DAC0].y, D_8028D4F0[D_8028DAC0].w,
              D_8028D4F0[D_8028DAC0].h, 0, 0, 0);
@@ -523,7 +541,11 @@ void BrPaintShopScreen(void)
       BrFillRect(D_80369CD8[i].x, D_80369CD8[i].y, D_80369CD8[i].w, D_80369CD8[i].h, 0, 0, 0);
     }
     BrFillRect(D_80369CD8[i].x + 4, D_80369CD8[i].y + 4, D_80369CD8[i].w - 8, D_80369CD8[i].h - 8, 0xff, 0xca, 0);
-    BrImageDraw(D_8028DAD4[i]);
+#if TGR_REGION_JPN
+    BrImageDraw(D_8028DAD4[i], jpn_D_8028F020);
+#else
+    BR_IMAGE_DRAW(D_8028DAD4[i]);
+#endif
   }
   if (D_8028DBD8 != 0) {
     D_8028AA80 = 0;
@@ -561,7 +583,7 @@ void BrPaintShopScreen(void)
           BrImageDrawAt(&D_8028D1D0, D_8028D110.x - (D_8028D1D0.drawW >> 1), D_8028D110.y - D_8028D1D0.drawH);
         }
       } else {
-        BrImageDraw(&D_8028D110);
+        BR_IMAGE_DRAW(&D_8028D110);
       }
       break;
     case 2:
@@ -572,7 +594,7 @@ void BrPaintShopScreen(void)
       }
       break;
     default:
-      BrImageDraw(&D_8028D110);
+      BR_IMAGE_DRAW(&D_8028D110);
       break;
     }
     } else {
@@ -626,7 +648,7 @@ void BrPaintShopScreen(void)
       } else {
         BrPaintClick();
         BrPaintStickMove();
-        BrImageDraw(&D_8028D110);
+        BR_IMAGE_DRAW(&D_8028D110);
       }
       break;
     }

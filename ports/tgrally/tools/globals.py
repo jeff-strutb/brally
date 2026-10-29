@@ -28,11 +28,20 @@ values.  For every data symbol the TUs reference this picks one owning TU
 Layouts come from libclang (the `libclang` package in .venv), each TU read
 twice: as IDO saw it (mips, ILP32 big-endian) and as the host compiles it.
 
-Regions (original addresses):
+Regions (original addresses; the USA cartridge's shown, a region's from
+tools/tgrally/region.py):
   0x80000000..0x80200000, 0x80382BB0..0x80800000   arena (fixed RAM)
   0x80200000..0x8026FAB0   code (data names here are reported)
   0x8026FAB0..0x802AC400   .data/.rodata: defined, values lifted from the ROM
   0x802AC400..0x80382BB0   .bss: defined, zero
+
+Europe and Japan (TGR_REGION=eur|jpn): the source names USA addresses, as
+the decomp does; each is placed at its home in the region's cartridge
+through config/tgrally/<region>/addrmap.csv.  A name only that region has
+(eur_D_80XXXXXX, or a name in config/tgrally/<region>/symbols_tgr.csv) is at
+its own address.  gen/tgr_region.h gives the core and the platform the
+region's image bounds and TGR_VA(80XXXXXX): a USA address written in the
+port's code, at its home in the region.
 """
 import bisect
 import csv
@@ -44,6 +53,9 @@ from concurrent.futures import ProcessPoolExecutor
 import clang.cindex as ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import sys
+sys.path.insert(0, os.path.join(ROOT, 'tools/tgrally'))
+import region as R  # noqa: E402  (TGR_REGION: the cartridge the build is made from)
 OUT = os.path.join(ROOT, os.environ.get('OUT', 'build/tgrally/null-null'))
 GEN = os.path.join(OUT, 'gen')
 NATIVE = os.environ.get('TGR_TARGET') or subprocess.run(['clang', '-dumpmachine'], capture_output=True,
@@ -56,7 +68,8 @@ if 'apple' in NATIVE:
     SYSROOT = ['-isysroot', os.environ.get('SDKROOT') or subprocess.run(
         ['xcrun', '--show-sdk-path'], capture_output=True, text=True).stdout.strip()]
 
-TEXT_LO, DATA_LO, BSS_LO, BSS_HI = 0x80200000, 0x8026FAB0, 0x802AC400, 0x80382BB0
+# the region's image: .text, .data/.rodata, .bss (tools/tgrally/region.py)
+TEXT_LO, DATA_LO, BSS_LO, BSS_HI = R.BASE, R.DATA_VA, R.BSS_S, R.BSS_E
 ARENA_LO, ARENA_HI = 0x80000000, 0x80800000
 
 # names the platform defines (libultra's own data)
@@ -83,16 +96,25 @@ def symbol_addresses():
     syms = {}
     for r in csv.DictReader(open(os.path.join(ROOT, 'config/tgrally/symbols_tgr.csv'))):
         try:
-            syms[r['name']] = int(r['va'], 16)
+            v = R.to_region(int(r['va'], 16))
         except (KeyError, ValueError):
-            pass
+            continue
+        if v is not None:
+            syms[r['name']] = v
+    if R.REGION != 'usa':
+        p = os.path.join(R.config_dir(), 'symbols_tgr.csv')
+        if os.path.exists(p):
+            for r in csv.DictReader(open(p)):
+                syms[r['name']] = int(r['va'], 16)
     return syms
 
 
 def addr_of(name, syms):
-    m = re.match(r'^D_([0-9A-Fa-f]{8})$', name)
+    m = re.match(r'^(?:(usa|eur|jpn)_)?D_([0-9A-Fa-f]{8})$', name)
     if m:
-        return int(m.group(1), 16)
+        if m.group(1) is None:
+            return R.to_region(int(m.group(2), 16))
+        return int(m.group(2), 16) if m.group(1) == R.REGION else None
     return syms.get(name)
 
 
@@ -186,10 +208,12 @@ def parse(tu, target):
     idx = ci.Index.create()
     inc = os.path.join(ROOT, 'ports/tgrally/platform/include')
     extra = ['-nostdinc', '-I' + os.path.join(ROOT, 'ports/tgrally/tools/include')] if target == N64 else SYSROOT
-    return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC'] + extra + [
+    return idx.parse(os.path.join(ROOT, tu), args=['-target', target, '-std=gnu89', '-w', '-DTGR_NO_LIBC',
+                                                    '-DTGR_REGION_%s=1' % R.REGION.upper()] + extra + [
                                                     '-I' + os.path.join(ROOT, 'ports/tgrally/include'),
                                                     '-I' + inc, '-include', os.path.join(inc, 'tgr_os.h'),
-                                                    '-include', os.path.join(inc, 'tgr_core.h')])
+                                                    '-include', os.path.join(inc, 'tgr_core.h'),
+                                                    '-include', os.path.join(GEN, 'tgr_region.h')])
 
 
 def scan(tu):
@@ -282,12 +306,52 @@ def scan(tu):
 
 
 def implemented():
-    """{original address: function name} from the core's @implements tags."""
+    """{original address: function name} from the core's @implements tags
+    (each at its home in the region's cartridge)."""
     out = {}
     for tu in tus():
-        for m in re.finditer(r'@implements 0x([0-9A-Fa-f]+) tgr (\w+)', open(os.path.join(ROOT, tu)).read()):
-            out[int(m.group(1), 16)] = m.group(2)
+        for usa, va, name, line in R.tags(open(os.path.join(ROOT, tu)).read()):
+            if va is not None:
+                out[va] = name
     return out
+
+
+VA_USE = re.compile(r'\bTGR_VA\(([0-9A-Fa-f]{8})\)')
+
+
+def region_header():
+    """gen/tgr_region.h: the image bounds and every TGR_VA(80XXXXXX) the
+    port's code writes, at its home in the region's cartridge."""
+    used = set()
+    for top in ('ports/tgrally/src', 'ports/tgrally/include', 'ports/tgrally/platform'):
+        for dp, dn, fn in os.walk(os.path.join(ROOT, top)):
+            for f in fn:
+                if f.endswith(('.c', '.h', '.m')):
+                    used |= {int(x, 16) for x in VA_USE.findall(open(os.path.join(dp, f), errors='replace').read())}
+    lines = ['/* generated by ports/tgrally/tools/globals.py: the cartridge the build is made from */',
+             '#ifndef TGR_REGION_H', '#define TGR_REGION_H',
+             '#define TGR_REGION_NAME "%s"' % R.REGION,
+             '#define TGR_TEXT_LO   0x%08Xu' % R.BASE,
+             '#define TGR_DATA_VA   0x%08Xu   /* .data/.rodata */' % R.DATA_VA,
+             '#define TGR_DATA_ROM  0x%Xu' % R.TEXT_E,
+             '#define TGR_DATA_END  0x%Xu' % R.DATA_E,
+             '#define TGR_BSS_LO    0x%08Xu' % R.BSS_S,
+             '#define TGR_BSS_HI    0x%08Xu' % R.BSS_E,
+             '#define TGR_VA(usa) TGR_VA_##usa     /* a USA address, at its home here */']
+    missing = []
+    for v in sorted(used):
+        h = R.to_region(v)
+        if h is None:
+            missing.append(v)
+            continue
+        lines.append('#define TGR_VA_%08X 0x%08Xu' % (v, h))
+    lines += ['#endif', '']
+    os.makedirs(GEN, exist_ok=True)
+    p = os.path.join(GEN, 'tgr_region.h')
+    txt = '\n'.join(lines)
+    if not os.path.exists(p) or open(p).read() != txt:
+        open(p, 'w').write(txt)
+    return ['TGR_VA(%08X): no home in %s' % (v, R.REGION) for v in missing]
 
 
 def declare(spelling, name, count=None):
@@ -312,11 +376,12 @@ def rel(path, frm):
 
 
 def main():
+    va_report = region_header()
     syms = symbol_addresses()
     with ProcessPoolExecutor(14) as ex:
         per_tu = dict(ex.map(scan, tus()))
 
-    report, layout = [], {}
+    report, layout = list(va_report), {}
     decl = {}
     for tu, rows in per_tu.items():
         for key, (n0, n1) in rows.pop('__records__').items():

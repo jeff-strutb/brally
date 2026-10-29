@@ -17,6 +17,9 @@ void BrFadeSet(float level);
 void BrIntroScreen(void);
 void BrIfaceMemReset(void);
 void BrPaintShopMemInit(void);
+#if TGR_REGION_EUR
+int BrOptionsEepromLoad(void);
+#endif
 int BrCpakCheck(int, unsigned char);
 void BrVolumesApply(void);
 void BrMusicInit(int, void *);
@@ -51,7 +54,9 @@ extern float D_8031AB10[4][4];
  * cars, set the first game mode (the title), unpack the front end's data,
  * wait until the controller-pak checks pass, apply the volumes, load and
  * start the music data, report the big record sizes on the debug output
- * and run the main loop for good. */
+ * and run the main loop for good.  Europe skips the controller-pak checks
+ * when the options load from the cartridge's EEPROM, and reports one more
+ * record size. */
 /* @implements 0x802001B4 tgr BrMainThread */
 void BrMainThread(void *arg)
 {
@@ -67,18 +72,36 @@ void BrMainThread(void *arg)
   D_80270784 = 8;
   BrIfaceMemReset();
   BrPaintShopMemInit();
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  if (!BrOptionsEepromLoad()) {
+    BrIfaceMemReset();
+    BrPaintShopMemInit();
+    while (!BrCpakCheck(0, 1)) {
+    }
+    BrIfaceMemReset();
+    BrPaintShopMemInit();
+    while (!BrCpakCheck(2, 1)) {
+    }
+  }
+#else
   while (!BrCpakCheck(0, 1)) {
   }
   BrIfaceMemReset();
   BrPaintShopMemInit();
   while (!BrCpakCheck(2, 1)) {
   }
+#endif
   BrVolumesApply();
   BrRomUnpack((unsigned char *)&D_80025C00, BR_ROM_MODULES, 0);
   BrMusicInit(tgr_addr32(&D_80025C00), D_802AC400);
+#if !TGR_REGION_JPN
+#if TGR_REGION_EUR
+  tgr_print("sizeof(OBJECT)=%d\n", 0x208);
+#endif
   tgr_print("sizeof(UltraCarHeader)=%d\n", 0xdf88);
   tgr_print("sizeof(Vehicle)=%d\n", 0x2090);
   tgr_print("sizeof(Enemy)=%d\n", 0x78);
+#endif
   BrMainLoop();
 }
 

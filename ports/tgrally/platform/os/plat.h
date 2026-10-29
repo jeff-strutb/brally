@@ -29,8 +29,8 @@ extern TgrConfig g_tgr;
  * into the executable at build time (tools/assets.py, ROMDATA=embed), or
  * written beside the game by the release builder and read at start-up
  * (ROMDATA=file, os/romdata.c). No ROM at run time either way */
-#define TGR_ROMDATA_BASE 0x70AB0u
-#define TGR_ROMDATA_SIZE 0x78F550u                  /* an 8 MB cartridge, less 0x70AB0 */
+#define TGR_ROMDATA_BASE TGR_DATA_ROM               /* the region's .data on (gen/tgr_region.h) */
+#define TGR_ROMDATA_SIZE (0x800000u - TGR_DATA_ROM)  /* an 8 MB cartridge, less its code */
 extern const uint8_t *tgr_romdata, *tgr_romdata_end;
 int tgr_romdata_load(void);                         /* 1 when the data is in place */
 /* ROM bytes [off, off + n) into dst; what lies outside the data reads as zero */

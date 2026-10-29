@@ -28,16 +28,27 @@ extern char D_803163E0[];
  * Returns 1 when the pak can be used.
  * The ROM's frame is 0x80 with the file-count word at sp+0x64: two
  * declared, never-used buffers around it (24 bytes above, 40 below) hold
- * their slots under IDO. */
+ * their slots under IDO.  Europe checks for its own codes ("7F", "NTRP"),
+ * and its frame is 0x68 (4 bytes above).  Japan checks for "NTRJ", "28",
+ * clears the unreadable-file bits before counting, prints nothing, and its
+ * frame is 0x60 (4 bytes above, 32 below). */
 /* @implements 0x80254620 tgr BrPakCheckFiles */
 int BrPakCheckFiles(void)
 {
   extern unsigned short D_8028DDA0;          /* 0x8028DDA0: files whose state would not read */
   extern int D_8036A278;                        /* 0x8036A278 */
   extern BrPfsState D_8036A280[16];           /* 0x8036A280 */
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  char unusedA[4];
+#else
   char unusedA[24];
+#endif
   int maxFiles;
+#if TGR_REGION_JPN
+  char unusedB[32];
+#else
   char unusedB[40];
+#endif
   int i;
 
   D_802A4BE8 = 0;
@@ -69,6 +80,9 @@ int BrPakCheckFiles(void)
       return 1;
     }
   }
+#if TGR_REGION_JPN
+  bad = 0;
+#endif
   for (i = 0; i < 16; i++) {
     if (tgr_pak_stat(&D_80369EC0[0], i, &D_8036A280[i]) != 0) {
       D_8028DDA0 |= 1 << i;
@@ -76,8 +90,16 @@ int BrPakCheckFiles(void)
   }
   for (i = 0; i < 16; i++) {
     if (!(D_8028DDA0 & (1 << i))) {
+#if !TGR_REGION_JPN
       tgr_print("%d: %08x %04x\n", i, D_8036A280[i].company, D_8036A280[i].game);
+#endif
+#if TGR_REGION_JPN
+      if (states[i].company != 0x4e54524a || states[i].game != 0x3238) {   /* "NTRJ", "28" */
+#elif TGR_REGION_EUR
+      if (states[i].company != 0x4e545250 || states[i].game != 0x3746) {   /* "NTRP", "7F" */
+#else
       if (D_8036A280[i].company != 0x4e475245 || D_8036A280[i].game != 0x3544) {
+#endif
         D_802A4BE8 = 1;
         return 0;
       }

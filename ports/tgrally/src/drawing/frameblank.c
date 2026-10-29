@@ -48,7 +48,7 @@ extern int D_8028A8A4;                  /* the viewport being used */
 extern char D_8028A900[];               /* the viewports (0x28 bytes each) */
 extern char D_801B5000[];               /* the low-res frame buffers */
 extern char D_801DA800[];
-#define D_0028A8C0 0x28A8C0        /* a ROM offset */
+#define D_0028A8C0 TGR_VA(0028A8C0)        /* a ROM offset */
 typedef struct BrTask {         /* an OSTask (0x40 bytes) */
   unsigned int type;
   unsigned int flags;
@@ -105,6 +105,18 @@ extern int D_8028AA20;
 extern int D_8028AA24;
 void BrFatal(char *msg);
 void BrPerfFrameStart(void);
+/* Blanking the picture: Japan goes through its own call, which also notes
+ * the picture is blanked; Europe through BrVideoBlank, which also puts
+ * libultra's PAL mode back. */
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define BLANK_SCREEN() BrScreenBlank()
+#elif TGR_REGION_EUR
+void BrVideoBlank(void);
+#define BLANK_SCREEN() BrVideoBlank()
+#else
+#define BLANK_SCREEN() ((void)0)            /* osViBlack: nothing to do on the host */
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Clear the Z-buffer: point the colour image at it, fill it
@@ -223,12 +235,15 @@ void BrGfxFillRect(int x, int y, int w, int h, int r, int g, int b)
 void BrScreenFlush3Layout1(void)
 {
   D_8028A884 = 1;
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrScreenClear(0,0,0);
   BrFrameEnd();
+  BLANK_SCREEN();
   BrFrameBeginLayout1();
   BrFrameEnd();
   D_8028A884 = 0;
@@ -241,12 +256,15 @@ void BrScreenFlush3Layout1(void)
 void BrScreenFlush3Layout0(void)
 {
   D_8028A884 = 1;
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrScreenClear(0,0,0);
   BrFrameEnd();
+  BLANK_SCREEN();
   BrFrameBeginLayout0();
   BrFrameEnd();
   D_8028A884 = 0;

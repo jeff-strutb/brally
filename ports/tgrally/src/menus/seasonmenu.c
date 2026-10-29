@@ -8,7 +8,7 @@
 /* -- declarations -- */
 extern int D_802723D0;
 extern int D_8028B94C;
-#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
+#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, TGR_VA(8031C5BC)))   /* car 0\'s season (a member of D_8031B760) */
 void BrSeasonValidate(void);
 void BrFrontSetMenuFlag(int param_1);
 void BrChampionshipStart(void);
@@ -113,21 +113,31 @@ void BrSeasonDrawHelp(int row)
   int i;
   int need;
 
+#if !TGR_REGION_JPN
   if (D_8026FF18 == 1) {
     BrTextSetFont(10);
     BrTextHighlightOff();
     BrTextAlignCentre();
     BrTextPrint("%wwPush up or down to adjust number of laps", 0xa0, 0x5a);
   }
+#endif
   if (D_8026FF18 == 0 && row < D_8028AE04) {
     BrTextSetFont(10);
     BrTextHighlightOff();
     BrTextAlignCentre();
     need = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].xc - TGR_PTR(BrSeason *, D_8031B760[0].season)->points[TGR_PTR(BrSeason *, D_8031B760[0].season)->round];
     if (need <= 0) {
+#if TGR_REGION_JPN
+      sprintf(text, "%%wwYOU ARE READY TO NEXT SEASON");
+#else
       sprintf(D_80315EE8, "%%wwYou have enough points to advance to next season");
+#endif
     } else {
+#if TGR_REGION_JPN
+      BrTextPrint("%ww1st=9, 2nd=6, 3rd=5, 4th=3, 5th=2, 6th=1", 0xa0, 100);
+#else
       BrTextPrint("%wwFirst=9, Second=6, Third=5, Fourth=3, Fifth=2, Sixth=1", 0xa0, 100);
+#endif
       sprintf(D_80315EE8, "%%ww%d point%s needed to advance to next season", need, need == 1 ? "" : "s");
     }
     BrTextPrint(D_80315EE8, 0xa0, 0x5a);
@@ -162,6 +172,8 @@ void BrSeasonDrawHelp(int row)
  * races (track and weather, mirrored on a mirror season; the one to run
  * next blinks yellow) with the player's race and lap records for each track,
  * and the cars on offer, with the two car views set up side by side.
+ * Japan shows each race's weather as a Japanese glyph (the %j escape,
+ * code 0x29 on) before the track name.
  * Source facts: the text printer takes a char * (an int cast makes the
  * buffer's address a second web), the round's entry is indexed each time
  * rather than held in a pointer (uopt's temp for it is the ROM's 0x70
@@ -225,8 +237,16 @@ void BrSeasonDraw(void)
     }
     sprintf(D_80315F38, "Race %d", i + 1);
     BrTextPrint(D_80315F38, D_8028AAB0 * 4 / 32 - off, y);
+#if TGR_REGION_JPN
+    sprintf(text, "%%j%c", D_8028B944[round].races[i][1] + 0x29);
+    BrTextSetFont(13);
+    BrTextPrint(text, D_8028AAB0 * 8 / 32 - off + 4, y + 1);
+    BrTextSetFont(10);
+    BrTextPrint(D_80271D1C[k]->label, D_8028AAB0 * 8 / 32 - off + 16, y);
+#else
     sprintf(D_80315F38, "%s/%s", TGR_PTR(const char *, D_80271D1C[k]->label), TGR_PTR(const char *, D_802722A4[D_8028B944[round].races[i][1]]->label));
     BrTextPrint(D_80315F38, D_8028AAB0 * 8 / 32 - off + 4, y);
+#endif
     BrTextAlignRight();
     if (TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k] != 0) {
       BrTimeFormat(D_80315F38, TGR_PTR(BrSeason *, D_8031B760[0].season)->xe8[k]);
@@ -267,8 +287,8 @@ void BrSeasonDraw(void)
  * the cursor on the season's track (stepping past rows that may not be
  * chosen) and names the extra rows: the season's load and reset rows in a
  * Championship, the ghost car's otherwise.  Each frame the highlighted row
- * shows what it leads to (the race number and weather in a Championship, or
- * the lap count in Arcade), then the menu is run: A on a track goes on to
+ * shows what it leads to (the race number and weather in a Championship,
+ * the weather as a Japanese glyph in Japan, or the lap count in Arcade), then the menu is run: A on a track goes on to
  * weather or car select, A on an extra row loads data or resets the season
  * (or the ghost car), B goes back, and up and down set the lap count in
  * Arcade. */
@@ -365,8 +385,13 @@ void BrTrackSelectScreen(void)
       item->flags |= 2;
     } else {
       D_80271FCC = 0;
+#if TGR_REGION_JPN
+      sprintf(text, "Race %d: %s %%j%c%%e", D_8031B760[0].season->race + 1, label,
+              D_8028C800 + 0x29);
+#else
       sprintf(D_80315F98, "Race %d: %s/%s", TGR_PTR(BrSeason *, D_8031B760[0].season)->race + 1, label,
               TGR_PTR(const char *, D_802722A4[D_8028C800]->label));
+#endif
       (*pp)->label = tgr_addr32(D_80315F98);
     }
     i = BrMenu(TGR_PTR(char *, D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].x0), D_80315F88, D_80271D1C, &D_80315F8C,
@@ -382,7 +407,11 @@ void BrTrackSelectScreen(void)
       sprintf(D_80315F98, "%s: %d laps", label, D_8028B304);
       (*pp)->label = tgr_addr32(D_80315F98);
     }
+#if TGR_REGION_JPN
+    i = BrMenu("COURSE SELECT", count, D_80271D1C, &sel, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
+#else
     i = BrMenu("TRACK SELECT", D_80315F88, D_80271D1C, &D_80315F8C, BrTrackSelectable, 0, 0, 0, 0x80, 0, 0x80);
+#endif
   }
   switch (i) {
   case 3:

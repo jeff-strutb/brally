@@ -28,6 +28,15 @@ typedef struct BrCarWheel {     /* a wheel's rigid body */
   float mtx[4][4];              /* 0xBC */
 } BrCarWheel;
 #define CP_AT(car, off) ((char *)(car) + (off))
+/* The physics step: two video frames, 1/30 s, or 1/25 s in Europe (PAL);
+ * the steering rate per step scales with it. */
+#if TGR_REGION_EUR
+#define FRAME_DT 0.04f
+#define STEER_RATE 0.008333333f
+#else
+#define FRAME_DT 0.033333335f
+#define STEER_RATE 0.01f
+#endif
 typedef struct BrPhysBody {     /* a rigid body as the car embeds it (0x208 bytes) */
   char pad00[0x1C];
   int shape;                    /* 0x1C  1: box; 2: wheel */
@@ -129,10 +138,10 @@ void BrCarPhysStep(BrCar *car)
     *(float *)CP_AT(car, 0xE44) = 0.0f;
     *(float *)CP_AT(car, 0xE4C) = 0.0f;
     *(unsigned char *)CP_AT(car, 0xE50) = 0;
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[0]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[1]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[2]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), 0.033333335f);
-    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[3]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), 0.033333335f);
+    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[0]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), FRAME_DT);
+    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[1]), (float *)CP_AT(car, 0xE4C), (unsigned char *)CP_AT(car, 0xE50), FRAME_DT);
+    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[2]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), FRAME_DT);
+    BrWheelTyre(CP_AT(car, 0x148), TGR_PTR(struct BrCarWheel *, car->wheel[3]), (float *)CP_AT(car, 0xE44), (unsigned char *)CP_AT(car, 0xE48), FRAME_DT);
   }
   *(int *)CP_AT(car, 0xE54) = 0;
   *(float *)CP_AT(car, 0x244) = 0.0f;
@@ -142,8 +151,8 @@ void BrCarPhysStep(BrCar *car)
   *(float *)CP_AT(car, 0x254) = 0.0f;
   *(float *)CP_AT(car, 0x258) = 0.0f;
   BrRbForcesClear(CP_AT(car, 0x148));
-  BrRbIntegrate(&car->st, CP_AT(car, 0x148), 0.033333335f);
-  BrCarAxleGrip(CP_AT(car, 0x148), 0.033333335f, (float *)CP_AT(car, 0xE4C), (float *)CP_AT(car, 0xE44),
+  BrRbIntegrate(&car->st, CP_AT(car, 0x148), FRAME_DT);
+  BrCarAxleGrip(CP_AT(car, 0x148), FRAME_DT, (float *)CP_AT(car, 0xE4C), (float *)CP_AT(car, 0xE44),
                 (unsigned char *)CP_AT(car, 0xE50), (unsigned char *)CP_AT(car, 0xE48));
   BrRbQuatDerivative(&car->st);
   *(TgrAddr *)CP_AT(car, 0x160) = tgr_addr32(CP_AT(car, 0xBF0));
@@ -161,7 +170,7 @@ void BrCarPhysStep(BrCar *car)
   *(float *)CP_AT(car, 0x258) = 0.0f;
   BrRbForcesClear(CP_AT(car, 0x148));
   memcpy((char *)&car->stB, (char *)&car->st, sizeof(BrRbState));
-  BrRbIntegrate(&car->stB, CP_AT(car, 0x148), 0.033333335f);
+  BrRbIntegrate(&car->stB, CP_AT(car, 0x148), FRAME_DT);
   for (i = 0; i < 3; i++) {
     if (((&car->st.angVel.x)[i] == 0.0f ? 0.0f : ((&car->st.angVel.x)[i] > 0.0f ? 1.0f : -1.0f)) !=
         ((&car->stB.angVel.x)[i] == 0.0f ? 0.0f : ((&car->stB.angVel.x)[i] > 0.0f ? 1.0f : -1.0f))) {
@@ -281,7 +290,7 @@ void BrCarDriveInput(BrCar *car)
     switch (car->xe68) {
     case 0:
       D_8028B720 = 14.0f;
-      D_8028B724 = 0.01f;
+      D_8028B724 = STEER_RATE;
       D_8028B728 = 6.0f;
       D_8028B72C = 10.0f;
       D_8028B730 = 0;
@@ -290,7 +299,7 @@ void BrCarDriveInput(BrCar *car)
       break;
     case 1:
       D_8028B720 = 14.0f;
-      D_8028B724 = 0.01f;
+      D_8028B724 = STEER_RATE;
       D_8028B728 = 6.0f;
       D_8028B72C = 10.0f;
       D_8028B730 = 0;

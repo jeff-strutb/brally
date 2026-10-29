@@ -171,12 +171,21 @@ extern int D_802723D0;          /* music volume */
 extern int D_802723D4;          /* effects volume */
 extern unsigned char D_802724F4;
 extern short D_802A4C04;
-#define D_000AD400 0xAD400        /* a ROM offset */
-#define D_000AD740 0xAD740        /* a ROM offset */
-#define D_000ADB00 0xADB00        /* a ROM offset */
-#define D_001CB410 0x1CB410        /* a ROM offset */
-#define D_001D9CF0 0x1D9CF0        /* a ROM offset */
+#define D_000AD400 TGR_VA(000AD400)        /* a ROM offset */
+#define D_000AD740 TGR_VA(000AD740)        /* a ROM offset */
+#define D_000ADB00 TGR_VA(000ADB00)        /* a ROM offset */
+#define D_001CB410 TGR_VA(001CB410)        /* a ROM offset */
+#define D_001D9CF0 TGR_VA(001D9CF0)        /* a ROM offset */
 
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define RACE_BLANK() BrScreenBlank()
+#elif TGR_REGION_EUR
+void BrVideoBlank(void);
+#define RACE_BLANK() BrVideoBlank()
+#else
+#define RACE_BLANK() ((void)0)            /* osViBlack: nothing to do on the host */
+#endif
 void guRotateF(float mf[4][4], float a, float x, float y, float z);
 void guMtxCatF(float m[4][4], float n[4][4], float r[4][4]);
 void BrRaceSetKind(int kind);
@@ -232,6 +241,27 @@ void * BrModelReadRaw(void *, int, int);
 void BrTrackLoad(int track);
 int BrGroundRay(void *, void *, void *, void *, void *, void *, void *, void *, void *);
 void BrEntLoadRecord(BrCar *car, int slot, int kind);
+#if TGR_REGION_JPN
+void BrEntLoadRecordPainted(BrCar *car, int slot, int kind);
+#endif
+#if TGR_REGION_EUR || TGR_REGION_JPN
+void BrDemoVarsLoad(void);
+#endif
+#if TGR_REGION_EUR
+void BrScreenDim(float level);
+#endif
+#if TGR_REGION_EUR
+extern int eur_D_8028DEC0;              /* demo frames played */
+extern int eur_D_80272798;              /* the FINISH! cheat */
+#define DEMO_FRAMES eur_D_8028DEC0
+#define CHEAT_FINISH eur_D_80272798
+#endif
+#if TGR_REGION_JPN
+extern int jpn_D_8028D8F0;              /* demo frames played */
+extern int jpn_D_80272248;              /* the FINISH! cheat */
+#define DEMO_FRAMES jpn_D_8028D8F0
+#define CHEAT_FINISH jpn_D_80272248
+#endif
 void BrScreenFlashClear(void);
 void BrScreenFlashDraw(void);
 void BrFadeTo(float level, float seconds);
@@ -325,7 +355,9 @@ void tgr_exit_game(void);
  * entity, flies the airplane, draws each view (and the rear-view mirror)
  * with the HUD or the replay captions, runs the pause menu, and once the
  * screen has faded out picks the next game mode: the replay, results, the
- * next race or the menus.
+ * next race or the menus.  Europe and Japan add the intro demo (Mountain,
+ * resynced every frame from the demo variables) and the FINISH! cheat;
+ * Europe's demo cuts at 170 s and 42 s and dims over its last half-second.
  */
 /* @implements 0x8020082C tgr BrRaceTick */
 void BrRaceTick(void)
@@ -377,8 +409,10 @@ void BrRaceTick(void)
 
   if (D_802707C8 == 0) {
     D_8028A884 = 1;
+    RACE_BLANK();
     BrFrameBeginLayout0();
     BrFrameEnd();
+    RACE_BLANK();
     BrFrameBeginLayout0();
     BrFrameEnd();
     BrRandSeed(123);
@@ -433,7 +467,7 @@ void BrRaceTick(void)
       D_8028B7F4 = 1;
       D_8027078C = 0;
       D_8031B760[0].xe58 = 0;
-      PAD(0)->ghost = 0x80197000;
+      PAD(0)->ghost = TGR_VA(80197000);
       switch (D_8026FF1C) {
       case 0:
         PAD(0)->ghostLen = BrRomReadSize((int)D_000AD400);
@@ -473,7 +507,7 @@ void BrRaceTick(void)
       D_8028B7F4 = D_8028B7F0 = D_8026FF08 + 1;
       D_8027078C = 0;
       D_802707A8 = 0;
-      PAD(D_8026FF08)->ghost = 0x80197000;
+      PAD(D_8026FF08)->ghost = TGR_VA(80197000);
       tgr_print("savedRecordingLength = %d\n", D_80270784);
       memcpy(TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost), D_80307F00, D_80270784);
       D_8031B760[D_8026FF08].kind = D_8031B760[D_8026FF08].x2058 = TGR_PTR(unsigned char *, PAD(D_8026FF08)->ghost)[1];
@@ -487,7 +521,7 @@ void BrRaceTick(void)
         PAD(D_8026FF08)->ghostLen = D_80270784;
       }
       for (i = 0; i < D_8026FF08; i++) {
-        PAD(i)->rec[i] = (0x801A6000 + i * 0xF000);
+        PAD(i)->rec[i] = (TGR_VA(801A6000) + i * 0xF000);
         TGR_PTR(unsigned char *, PAD(i)->rec[i])[0] = D_8028B940;
         TGR_PTR(unsigned char *, PAD(i)->rec[i])[1] = D_8031B760[i].kind;
         TGR_PTR(unsigned char *, PAD(i)->rec[i])[2] = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd4;
@@ -583,7 +617,15 @@ void BrRaceTick(void)
     D_8031B2C8[1].car = !D_8031B2C8[0].car;
     if (D_8026FF18 == 4) {
       D_8031B760[0].cam = tgr_addr32(&D_8031B760[0].cams[1]);
+#if TGR_REGION_JPN || TGR_REGION_EUR
+      if (D_8026FF1C == 0) {
+        D_8028B7F8 = 0;
+      } else {
+        D_8028B7F8 = 180;
+      }
+#else
       D_8028B7F8 = 180;
+#endif
     } else {
       for (i = 0; i < D_8026FF08; i++) {
         D_8031B760[i].xe6c = TGR_PTR(BrSeason *, D_8031B760[i].season)->xd8;
@@ -630,9 +672,23 @@ void BrRaceTick(void)
           p5 = &D_8031B760[i];
           p5->colour[3] = 0;
         }
+#if TGR_REGION_JPN
+        if (D_8031B760[i].xe58 == 0) {
+          if (i < D_8026FF08) {
+            BrEntLoadRecordPainted(&D_8031B760[i], i, D_8031B760[i].kind);
+          } else if (i == 1 && (D_8026FF18 == 1 || D_8026FF18 == 2)) {
+            BrEntLoadRecordPainted(&D_8031B760[i], i, D_8031B760[i].kind);
+          } else {
+            BrEntLoadRecord(&D_8031B760[i], i, D_8031B760[i].kind);
+          }
+        } else {
+          tgr_print("not loading %d\n", i);
+        }
+#else
         if (D_8031B760[i].xe58 == 0) {
           BrEntLoadRecord(&D_8031B760[i], i, D_8031B760[i].kind);
         }
+#endif
         BrCarGridStart(&D_8031B760[i]);
         D_8031B760[i].xf4c = 0;
         D_8031B760[i].msgA = 0;
@@ -648,6 +704,10 @@ void BrRaceTick(void)
       D_802F7EF8 = 4;
     } else if (D_8026FF18 == 5) {
       D_802F7EF8 = 4;
+#if TGR_REGION_JPN || TGR_REGION_EUR
+    } else if (D_8026FF18 == 4 && D_8026FF1C == 0) {
+      D_802F7EF8 = 4;
+#endif
     } else {
       D_802F7EF8 = 0;
     }
@@ -683,19 +743,39 @@ void BrRaceTick(void)
       BrRaceClockReset();
       BrSndNearestReset();
     }
+#if TGR_REGION_JPN || TGR_REGION_EUR
+    D_80315E70 = 0;
     D_8028A884 = 0;
+    DEMO_FRAMES = -1;
+#else
+    D_8028A884 = 0;
+#endif
   }
 
   /* ---- every frame ---- */
   D_802A4C04 = 0;
+#if TGR_REGION_JPN || TGR_REGION_EUR
+  BrDemoVarsLoad();
+#endif
   if (D_80315E78 == 4) {
     for (i = 0; i < D_8026FF08; i++) {
       BrLastLapSave(&D_8031B760[i]);
     }
   }
+#if TGR_REGION_EUR
+  /* Europe flips it every frame; the attract-race test is left empty */
+  D_802A4A30 ^= 1;
   if (D_8026FF18 != 4) {
+  }
+#else
+#if TGR_REGION_JPN
+  if (D_8026FF18 != 4 || D_8026FF1C == 0) {
+#else
+  if (D_8026FF18 != 4) {
+#endif
     D_802A4A30 ^= 1;
   }
+#endif
   /* the replay ends when the recordings run out */
   if (D_80270788 != 0 && D_80315E78 == 4) {
     if (D_8026FF18 == 1) {
@@ -790,9 +870,21 @@ void BrRaceTick(void)
     goto timer;
   } else if (D_80315E78 == 4) {
     running = 1;
+#if TGR_REGION_EUR
+    if (((D_8026FF18 == 4
+          && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 170.0f)
+              || (D_8026FF1C == 1 && D_8031B760[0].lapTime > 42.0f)
+              || (D_8026FF1C == 0 && PAD(0)->ghostPos == PAD(0)->ghostLen)))
+#elif TGR_REGION_JPN
+    if (((D_8026FF18 == 4
+          && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
+              || (D_8026FF1C == 1 && D_8031B760[0].lapTime > 39.6f)
+              || (D_8026FF1C == 0 && PAD(0)->ghostPos == PAD(0)->ghostLen)))
+#else
     if (((D_8026FF18 == 4
           && ((D_8026FF1C == 2 && D_8031B760[0].lapTime > 140.0f)
               || (D_8026FF1C != 2 && D_8031B760[0].lapTime > 39.6f)))
+#endif
          || (D_8026FF18 == 5 && D_8031B760[0].lapTime > 16.0f))
         && BrFadeIsOut() == 0) {
       BrFadeTo(0.0f, 0.2f);
@@ -1019,7 +1111,13 @@ draw:
     BrStub8022BA98(tgr_addr32(D_8028AAF4));
   }
   BrSndNearestCommit();
+#if TGR_REGION_JPN
+  if (D_8026FF18 != 4 || D_8026FF1C != 0 || PAD(0)->ghostPos >= 0x7EA) {
+    BrFadeStep();
+  }
+#else
   BrFadeStep();
+#endif
   BrFrameBeginLayout0();
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrVtxPoolsReset();
@@ -1198,10 +1296,18 @@ draw:
         BrTextHighlightOff();
         BrTextAlignLeft();
         BrTextSetFont(15);
+#if !TGR_REGION_JPN
         BrTextPrint("%wwINSTANT REPLAY!", 28, 32);
+#endif
+#if TGR_REGION_JPN
+        BrTextPrint("%wwA : RESTART", 28, D_8028AAB4 - 24);
+        BrTextAlignRight();
+        BrTextPrint("%wwSTART : EXIT", D_8028AAB0 - 28, D_8028AAB4 - 24);
+#else
         BrTextPrint("%wwA to restart", 28, D_8028AAB4 - 24);
         BrTextAlignRight();
         BrTextPrint("%wwSTART to exit", D_8028AAB0 - 28, D_8028AAB4 - 24);
+#endif
       } else {
         if (&D_8028AAF0->cams[3] != D_8028AAF4) {
           BrPerfMark(0, 0xFF, 0, 0, 0xFF);
@@ -1219,6 +1325,24 @@ draw:
   }
   BrStub80217C8C();
   BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
+#if TGR_REGION_JPN || TGR_REGION_EUR
+  /* the FINISH! cheat: both cars have done every lap */
+  if (CHEAT_FINISH != 0) {
+    D_8031B760[0].xfac = 0;
+    D_8031B760[0].laps = D_8028B304;
+    D_803239A0[0].flags &= 1;
+    D_803239A0[0].flags |= 2;
+    D_8031B760[1].xfac = 1;
+    D_8031B760[1].laps = D_8028B304;
+    D_803239A0[1].flags &= 1;
+    D_803239A0[1].flags |= 2;
+    D_8027078C = 0;
+    if (D_80315E78 < 4) {
+      D_80315E78 = 4;
+    }
+    CHEAT_FINISH = 0;
+  }
+#endif
 
   /* input: skip the demo, pause, or the pause menu */
   if (D_8026FF10 != 0) {
@@ -1410,6 +1534,16 @@ draw:
   BrTexAnimUpdate();
   BrPerfMark(0, 0, 0x82, 0, 0xFF);
   BrFrameSetHook(BrRaceDrawLayers);
+#if TGR_REGION_JPN || TGR_REGION_EUR
+  /* the intro demo's last half-second goes to black */
+  if (D_8026FF18 == 4 && D_8026FF1C == 0 && PAD(0)->ghostLen - 30 <= PAD(0)->ghostPos) {
+#if TGR_REGION_EUR
+    BrScreenDim((PAD(0)->ghostLen - PAD(0)->ghostPos) / 30.0f);
+#else
+    BrScreenClear(0, 0, 0);
+#endif
+  }
+#endif
   BrFrameEnd();
 
   /* faded out: on to the next thing */

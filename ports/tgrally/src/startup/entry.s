@@ -3,7 +3,8 @@
 
 /* WHAT IT DOES: Clear the whole .bss (0x802AC400, 0xD67B0 bytes) a
  * doubleword at a time, set the boot stack (its top at 0x803168D0) and jump
- * into BrBoot; never returns. */
+ * into BrBoot; never returns.  Europe's .bss is 0xD6A40 bytes, Japan's
+ * 0xD6C70. */
 /* @implements 0x80200000 tgr BrEntry */
 
 /* registers by number: $8-$10 = t0-t2, $29 = sp (IDO as has no names) */
@@ -17,7 +18,13 @@ BrEntry:
     lui     $8, %hi(D_802AC400)
     lui     $9, 0x000D
     addiu   $8, $8, %lo(D_802AC400)
+#if TGR_REGION_EUR
+    ori     $9, $9, 0x6A40
+#elif TGR_REGION_JPN
+    ori     $9, $9, 0x6C70
+#else
     ori     $9, $9, 0x67B0
+#endif
 1:
     addi    $9, $9, -8
     sw      $0, 0($8)

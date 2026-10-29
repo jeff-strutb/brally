@@ -65,18 +65,18 @@ static void hud_state(void)
         int kind = *(const int *)(car + 0x205C);
         dialed = 1;
         fputc('D', f);
-        fwrite(TGR_PTR(uint8_t *, 0x8028AE0Cu + kind * 0x60), 1, 0x60, f);
+        fwrite(TGR_PTR(uint8_t *, TGR_VA(8028AE0C) + kind * 0x60), 1, 0x60, f);
     }
     w[0] = tgr_frame();
-    w[1] = *TGR_PTR(uint32_t *, 0x8026FF18u);     /* race mode */
-    w[2] = *TGR_PTR(uint32_t *, 0x8026FF10u);
-    w[3] = *TGR_PTR(uint32_t *, 0x802723D8u);     /* mph */
-    w[4] = *TGR_PTR(uint32_t *, 0x8028AB0Cu);     /* players' layout */
-    w[5] = *TGR_PTR(uint32_t *, 0x8028AA80u);     /* night */
-    w[6] = *TGR_PTR(uint32_t *, 0x8028B304u);     /* laps in the race */
+    w[1] = *TGR_PTR(uint32_t *, TGR_VA(8026FF18));     /* race mode */
+    w[2] = *TGR_PTR(uint32_t *, TGR_VA(8026FF10));
+    w[3] = *TGR_PTR(uint32_t *, TGR_VA(802723D8));     /* mph */
+    w[4] = *TGR_PTR(uint32_t *, TGR_VA(8028AB0C));     /* players' layout */
+    w[5] = *TGR_PTR(uint32_t *, TGR_VA(8028AA80));     /* night */
+    w[6] = *TGR_PTR(uint32_t *, TGR_VA(8028B304));     /* laps in the race */
     for (i = 0; i < 4; i++)
-        w[7 + i] = TGR_PTR(uint32_t *, 0x8031B2C8u)[i];          /* view 0: x y w h */
-    w[11] = *TGR_PTR(uint16_t *, 0x8028C7B4u + 2);                /* its panel's height */
+        w[7 + i] = TGR_PTR(uint32_t *, TGR_VA(8031B2C8))[i];          /* view 0: x y w h */
+    w[11] = *TGR_PTR(uint16_t *, TGR_VA(8028C7A8) + 0xC + 2);                /* its panel's height */
     w[12] = *(const uint32_t *)(car + 0xF78);     /* laps */
     w[13] = *(const uint32_t *)(car + 0xF80);     /* raceTime (the lap time shown) */
     w[14] = *(const uint32_t *)(car + 0xF98);     /* best lap */

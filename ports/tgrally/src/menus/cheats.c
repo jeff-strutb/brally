@@ -30,6 +30,27 @@ void BrCheatToggleAA94(void)
   D_8028AA94 = !D_8028AA94;
 }
 
+#if TGR_REGION_EUR || TGR_REGION_JPN
+#if TGR_REGION_EUR
+extern int eur_D_80272798;              /* finish the race now */
+#define CHEAT_FINISH eur_D_80272798
+#else
+extern int jpn_D_80272248;              /* finish the race now */
+#define CHEAT_FINISH jpn_D_80272248
+#endif
+void tgr_print(const char *fmt, ...);
+
+/* WHAT IT DOES: Cheat (Europe and Japan): finish the race at once (the
+ * race step reads the flag), and say so on the debug output (no newline). */
+/* @implements eur:0x802564F8 tgr BrCheatFinish */
+/* @implements jpn:0x80255E88 tgr BrCheatFinish */
+void BrCheatFinish(void)
+{
+  CHEAT_FINISH = 1;
+  tgr_print("FINISH!");
+}
+#endif
+
 /* WHAT IT DOES: Cheat: set bits 0x1F of player 1's season record's second unlock mask. */
 /* @implements 0x80254F58 tgr BrCheatUnlockCE1F */
 void BrCheatUnlockCE1F(void)

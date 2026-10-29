@@ -354,8 +354,8 @@ void tgr_thread_idle(void)
 
 void tgr_mq_init(TgrMsgQueue *mq, TgrMsg *msg, int32_t count)
 {
-    mq->mtqueue = 0x802A6230;       /* libultra's empty thread queue, as n64box sets it */
-    mq->fullqueue = 0x802A6230;
+    mq->mtqueue = TGR_VA(802A6230);       /* libultra's empty thread queue, as n64box sets it */
+    mq->fullqueue = TGR_VA(802A6230);
     mq->validCount = 0;
     mq->first = 0;
     mq->msgCount = count;

@@ -65,7 +65,7 @@ extern float D_8031AB10[4][4];    /* an object's matrix times the view */
 extern int D_8031B360[4];
 extern int D_8026FF18;          /* the game mode */
 extern int D_8028B940;          /* the track */
-#define D_8031C5BC TGR_PTR(BrSeason *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
+#define D_8031C5BC TGR_PTR(BrSeason *, *TGR_PTR(TgrAddr *, TGR_VA(8031C5BC)))   /* car 0\'s season (a member of D_8031B760) */    /* player one's season */
 float BrMat4MaxAbs(float m[16]);
 void BrFogSetup(void);
 void BrViewportApply(void);
@@ -835,7 +835,8 @@ full:
  * pair shares a register.  The else arm's matrix packet goes through the
  * function's Gfx pointer g and writes (unsigned int)mtx - 0x80000000; with
  * that the restore block's light colours load D_8028AB58 with a lui each and
- * the frame is the declaration order. */
+ * the frame is the declaration order.  Japan drops the overflow dump, and
+ * its frame homes mtx directly below billboard. */
 /* @implements 0x80235BAC tgr BrTrackDraw */
 void BrTrackDraw(int pass)
 {
@@ -847,9 +848,15 @@ void BrTrackDraw(int pass)
   int i;
   unsigned short obj;
   int billboard;
+#if TGR_REGION_JPN
+  BrMtx *mtx;
+  int fl;
+  BrTrackObj *o;
+#else
   int fl;
   BrTrackObj *o;
   BrMtx *mtx;
+#endif
   int j;
   Gfx *g;
   float om[4][4];                /* an object's matrix, natively */
@@ -1088,6 +1095,7 @@ void BrTrackDraw(int pass)
         lo = D_8031AB10[3][3];
       }
       if (32767.0 < hi || lo < -32767.0) {
+#if !TGR_REGION_JPN
         if (i == 1) {
           tgr_print("Bad Final Matrix: in=%d (%s), s=%f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n%f %f %f %f\n-------------\n",
                        obj, BE32(D_80025C00.names) == 0 ? "???" : BEPTR(char *, BEPTR(be32_t *, D_80025C00.names)[obj]), s,
@@ -1104,6 +1112,7 @@ void BrTrackDraw(int pass)
                        D_8031AB10[2][0], D_8031AB10[2][1], D_8031AB10[2][2], D_8031AB10[2][3],
                        D_8031AB10[3][0], D_8031AB10[3][1], D_8031AB10[3][2], D_8031AB10[3][3]);
         }
+#endif
         if (-lo < hi) {
           s = 32767.0f / hi;
         } else {

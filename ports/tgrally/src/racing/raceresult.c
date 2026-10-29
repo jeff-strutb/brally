@@ -81,6 +81,7 @@ void BrRaceResultRestore(void)
  * before the next season starts.  The round's points are cleared for the
  * new round, and the track and weather just raced are marked seen.  The
  * messages go to the results screen's lines, a blank line between groups.
+ * Japan's messages are shorter, and its helmet car is the Type-MN.
  * Each message line is stored with its own n++ (two in a row for the
  * bonus-track pair), which keeps the message pointer ahead of the last
  * round's race count in the ROM's register order. */
@@ -138,7 +139,11 @@ bonus:
               if (n) {
                 D_80315DB0[n++] = "";
               }
+#if TGR_REGION_JPN
+              D_80315DB0[n++] = "Bonus: Type-MN Car Added!";
+#else
               D_80315DB0[n++] = "Bonus: Helmet Car Added!";
+#endif
               TGR_PTR(BrSeason *, D_8031B760[i].season)->unlocked |= 0x200;
             } else if (TGR_PTR(BrSeason *, D_8031B760[i].season)->state == 2) {
               if (n) {
@@ -162,13 +167,21 @@ bonus:
             TGR_PTR(BrSeason *, D_8031B760[i].season)->round = 0;
             TGR_PTR(BrSeason *, D_8031B760[i].season)->state++;
           } else {
+#if TGR_REGION_JPN
+            D_80315DB0[n++] = "SEASON COMPLETE";
+#else
             D_80315DB0[n++] = "SEASON COMPLETED!";
             D_80315DB0[n++] = "";
             D_80315DB0[n++] = "PROGRESS TO THE NEXT SEASON";
+#endif
           }
         } else {
+#if TGR_REGION_JPN
+          D_80315DB0[n++] = "SEASON TRY AGAIN";
+#else
           D_80315DB0[n++] = "Sorry, you don't have enough points to";
           D_80315DB0[n++] = "pass this season.  You'll have to try again.";
+#endif
         }
         TGR_PTR(BrSeason *, D_8031B760[i].season)->points[TGR_PTR(BrSeason *, D_8031B760[i].season)->round] = 0;
       }

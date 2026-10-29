@@ -220,9 +220,9 @@ int16_t sins(uint16_t x)
     uint16_t v = (x >> 4) & 0xFFFF;
     int16_t r;
     if (v & 0x400)
-        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, 0x802A540Eu - (v & 0x3FF) * 2));
+        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, TGR_VA(802A540E) - (v & 0x3FF) * 2));
     else
-        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, 0x802A4C10u + (v & 0x3FF) * 2));
+        r = (int16_t)tgr_rd16(TGR_PTR(uint8_t *, TGR_VA(802A4C10) + (v & 0x3FF) * 2));
     if (v & 0x800)
         return (int16_t)-r;
     return r;

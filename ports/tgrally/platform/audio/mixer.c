@@ -26,8 +26,8 @@ static inline uint64_t acc_of(const Voice *v) { return (uint64_t)v->pos << 32 | 
 static inline void acc_set(Voice *v, uint64_t a) { v->pos = (uint32_t)(a >> 32); v->frac = (uint32_t)a; }
 static inline int32_t smp(uint64_t a) { return (int8_t)*TGR_PTR(uint8_t *, (uint32_t)(a >> 32)); }
 
-#define MUSIC   0x802A4790u     /* u16 ring position, then six voices from +8 */
-#define SFX     0x802A4918u     /* u64 lane mask, five voices from +8, a second source at +0x98 */
+#define MUSIC   TGR_VA(802A4790)     /* u16 ring position, then six voices from +8 */
+#define SFX     TGR_VA(802A4918)     /* u64 lane mask, five voices from +8, a second source at +0x98 */
 
 /* BrCopy16: two doublewords, from an original address */
 void BrCopy16(void *dst, unsigned int src)
@@ -147,7 +147,7 @@ static void snd_dump(void)
     static uint32_t last = 0xFFFFFFFF, seen[256];
     static int nseen;
     uint8_t *blk = TGR_PTR(uint8_t *, SFX);
-    const uint32_t *loops = TGR_PTR(const uint32_t *, 0x80378F50u);
+    const uint32_t *loops = TGR_PTR(const uint32_t *, TGR_VA(80378F50));
     Voice *v = (Voice *)(blk + 8);
     uint32_t fr = tgr_frame(), w[8];
     int i, k;
@@ -174,8 +174,8 @@ static void snd_dump(void)
     }
     fputc('F', f);
     w[0] = fr;
-    w[1] = *TGR_PTR(uint8_t *, 0x802A49CCu);
-    w[2] = *TGR_PTR(uint8_t *, 0x802A49D0u);
+    w[1] = *TGR_PTR(uint8_t *, TGR_VA(802A49CC));
+    w[2] = *TGR_PTR(uint8_t *, TGR_VA(802A49D0));
     w[3] = *(uint32_t *)blk;
     w[4] = *(uint32_t *)(blk + 4);
     w[5] = *(uint32_t *)(blk + 0x98);
@@ -194,11 +194,11 @@ static void snd_dump(void)
     /* 'M': the music player as it stands: its six channels, its state, its six
        voices, the instrument and pattern tables (32 each), as the game holds them */
     fputc('M', f);
-    fwrite(TGR_PTR(uint8_t *, 0x80378DD0u), 1, 6 * 0x18, f);
-    fwrite(TGR_PTR(uint8_t *, 0x80378FA0u), 1, 0x14, f);
+    fwrite(TGR_PTR(uint8_t *, TGR_VA(80378DD0)), 1, 6 * 0x18, f);
+    fwrite(TGR_PTR(uint8_t *, TGR_VA(80378FA0)), 1, 0x14, f);
     fwrite(TGR_PTR(uint8_t *, MUSIC + 8), 1, 6 * 0x18, f);
-    fwrite(TGR_PTR(uint8_t *, 0x803787D0u), 1, 32 * 4, f);
-    fwrite(TGR_PTR(uint8_t *, 0x803789D0u), 1, 32 * 4, f);
+    fwrite(TGR_PTR(uint8_t *, TGR_VA(803787D0)), 1, 32 * 4, f);
+    fwrite(TGR_PTR(uint8_t *, TGR_VA(803789D0)), 1, 32 * 4, f);
 }
 
 void BrMixSfx(short *buf, unsigned int bytes, unsigned int pos)

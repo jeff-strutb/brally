@@ -29,7 +29,7 @@ extern unsigned char *D_8028DB80;
 /* @implements 0x80242940 tgr BrIfaceMemReset */
 void BrIfaceMemReset(void)
 {
-  D_80369B70 = 0x80096400;
+  D_80369B70 = TGR_VA(80096400);
 }
 
 /* WHAT IT DOES: Return the interface memory pool's current top, so a caller
@@ -59,8 +59,8 @@ unsigned int BrIfaceMemAlloc(int size)
 
   p = (D_80369B70 + 7) & ~7;
   D_80369B70 = p + size;
-  if (D_80369B70 > 0x800D4000) {
-    sprintf(msg, "Insufficient interface memory (need %d, have %d)", size, 0x800D4000 - p);
+  if (D_80369B70 > TGR_VA(800D4000)) {
+    sprintf(msg, "Insufficient interface memory (need %d, have %d)", size, TGR_VA(800D4000) - p);
     BrFatal(msg);
   }
   return p;
@@ -75,8 +75,10 @@ void BrAllocPaintShopGfxMem(BrIfaceImage *img)
 {
   img->data = BrIfaceMemAlloc(img->w * img->h * img->depth >> 3);
   if (BrRomReadSize(img->rom) != img->w * img->h * img->depth >> 3) {
+#if !TGR_REGION_JPN
     tgr_print("ERROR: AllocPaintShopGfxMem given image %dx%dx%d = %d bytes but uncompressed rom image is %d bytes\n",
                  img->w, img->h, img->depth, BrRomReadSize(img->rom));
+#endif
     for (;;) {
     }
   }
@@ -91,7 +93,9 @@ void BrPaintShopMemInit(void)
 {
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);
+#if !TGR_REGION_JPN
   tgr_print("Allocating %d bytes for data_buf...\n",0x3a00);
+#endif
   D_80272500 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x3a00));
 }
 
@@ -100,7 +104,9 @@ void BrPaintShopMemInit(void)
 /* @implements 0x80248F38 tgr BrDecalMemInit */
 void BrDecalMemInit(void)
 {
+#if !TGR_REGION_JPN
   tgr_print("\nAllocating %d bytes for decal buffer...\n\n",0x800);
+#endif
   D_8028DB80 = TGR_PTR(unsigned char *, BrIfaceMemAlloc(0x800));
   BrAllocPaintShopGfxMem(&D_8028D0B0);
   BrAllocPaintShopGfxMem(&D_8028D0E0);

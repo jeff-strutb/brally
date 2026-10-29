@@ -76,6 +76,7 @@ int BrTriCubeTest(float *tri, float *norm);
 void BrCrListPush(void *plane);
 
 extern int D_8026FF18;                /* the game mode; 4 arms the contact-kick path */
+extern int D_8026FF1C;                /* which demo */
 void BrVec3NormaliseF(float v[3]);
 int BrCrContactKick(BrTipBody *b, float *pN, int dampFlag, int spinFlag);
 extern double D_802AB7E8;              /* 1.05 */
@@ -427,7 +428,7 @@ void BrCrListPush(void *plane)
 }
 
 /* WHAT IT DOES: Debug print of how many contacts are on the list (the
- * print itself is compiled out in the retail osSyncPrintf). */
+ * print itself is compiled out in the retail tgr_print). */
 /* @implements 0x8025C27C tgr BrCrListPrintCount */
 void BrCrListPrintCount(void)
 {
@@ -688,7 +689,10 @@ void BrCrPlaneResolve(BrTipBody *b, float *pA, float planeD, float *pEdgeN, floa
  * test asks whether any normal component exceeds 0.999 (the edge-to-face
  * case is the else); each half-extent sign is a conditional expression; the
  * plane offset and the push-out distance add the first two products and
- * then the third; the last two angular copies share a line. */
+ * then the third; the last two angular copies share a line.  Europe has no
+ * game-mode-4 special cases: every contact is a cube edge on a triangle.
+ * Japan computes the plane offset before the flag and counter stores, so
+ * the axis test reloads the normal. */
 /* @implements 0x8025DFCC tgr BrCrRespWalk */
 int BrCrRespWalk(BrTipBody *b, float m[4][4])
 {
@@ -731,11 +735,23 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
       continue;
     }
     BrVec3NormaliseF(nrm);
+#if TGR_REGION_JPN
+    planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+    flag = 1;
+    D_802A4A28 = 0;
+    cnt++;
+#else
     flag = 1;
     D_802A4A28 = 0;
     cnt++;
     planeD = (nrm[0] * v[0] + nrm[1] * v[1]) + nrm[2] * v[2];
+#endif
+#if !TGR_REGION_EUR
+#if TGR_REGION_JPN
+    if (D_8026FF18 == 4 && D_8026FF1C != 0) {   /* not in the demos */
+#else
     if (D_8026FF18 == 4) {
+#endif
       if ((nrm[0] < 0.0f ? -nrm[0] : nrm[0]) > 0.999f
           || (nrm[1] < 0.0f ? -nrm[1] : nrm[1]) > 0.999f
           || (nrm[2] < 0.0f ? -nrm[2] : nrm[2]) > 0.999f) {
@@ -748,6 +764,7 @@ int BrCrRespWalk(BrTipBody *b, float m[4][4])
         D_802A4A28 = 2;
       }
     }
+#endif
     tgr_print("Cube Edge to Triangle Face\n");
     e1[0] = nrm[0] * planeD;
     e1[1] = nrm[1] * planeD;
@@ -837,7 +854,11 @@ void BrCarPhysAdvance(BrTipBody *b)
   BrCollRespBroadPhase(b, m);
   BrPerfMark(0, 0x80, 0x80, 0, 0xff);
   s[0] = 1.0f / b->f1DC;
+#if TGR_REGION_EUR
+  t = 0.04f;                    /* 1/25 s: the PAL physics step */
+#else
   t = 0.033333335f;
+#endif
   s[1] = 1.0f / b->f1E0;
   s[2] = 1.0f / b->f1E4;
   dt = t / 4;

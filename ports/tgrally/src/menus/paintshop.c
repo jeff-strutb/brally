@@ -167,7 +167,6 @@ typedef struct { TgrAddr n[4]; } BrPaintNames;   /* char * */
 extern BrPaintNames D_8028DCF4;        /* the four style names */
 extern BrImage *D_8028DB44[4];         /* the four oval style pictures */
 extern BrPaintNames D_8028DD04;        /* and their names */
-void BrImageDraw(BrImage *img);
 extern BrImage D_8028D230;              /* the on-screen keyboard */
 extern BrImage D_8028D260;              /* the text box under it */
 extern unsigned char D_8028DBA4;        /* the key under the cursor */
@@ -240,6 +239,154 @@ void BrPaintDecalApply(void)
 /* @implements 0x80244D84 tgr BrPakMessage */
 void BrPakMessage(int msg, char op, char mode)
 {
+#if TGR_REGION_JPN
+  int x;
+  int y;
+  int w;
+  int ty;
+  int pad[2];                   /* declared, never used: the frame is the ROM's 0x68 */
+
+  BrTextSetFont(14);
+  if (1 == mode) {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+  } else {
+    BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+  }
+  BrTextAlignLeft();
+  BrTextHighlightOff();
+  switch (msg) {
+  case 1:
+  case 11:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xea;
+    }
+    BrBevelPanel(0xcc, y, 0xe8, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x6e, ty);
+    BrTextPrint("%j0H6b\x7F&", 0x6e, ty + 14);
+    break;
+  case 7:
+  case 8:
+    y = 0xaf;
+    if (mode == 1) {
+      y = 0xdb;
+    }
+    BrBevelPanel(0xb9, y, 0x10e, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 100, ty);
+    BrTextPrint("%j\xE1" "A\xBD(\x9A" "9\xE2H6b\x7F&", 100, ty + 12);
+    BrTextPrint("%j\xBB\x81(\xA8t\xB2(\xAC" "D5", 100, ty + 30);
+    BrTextPrint("62%j\xBD(\x9A\xD6\xD7kR&", 100, ty + 42);
+    break;
+  case 3:
+    w = 0x116;
+    if (op == 10) {
+      w = 0x106;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", (x + 16) >> 1, ty);
+      BrTextPrint("%j18\xE3" "F\xE5" "F9kA6b\x7F&", (x + 16) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1", (x + 16) >> 1, ty);
+      BrTextPrint("%je\xE4" "A\xE5" "F9kA6b\x7F&", (x + 16) >> 1, ty + 14);
+    }
+    break;
+  case 5:
+    w = 0xf2;
+    if (op == 10) {
+      w = 0x10c;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", (x + 16) >> 1, ty);
+      BrTextPrint("%j\xBB\x81(\xA8" "90H6b\x7F&", (x + 16) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6", (x + 16) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 16) >> 1, ty + 14);
+    }
+    break;
+  case 99999:
+    w = 0x114;
+    if (op == 10) {
+      w = 0x10b;
+    }
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe2;
+    }
+    x = (0x280 - w) >> 1;
+    BrBevelPanel(x, y, w, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xC8(\xCB\xE6", (x + 15) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 15) >> 1, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6", (x + 15) >> 1, ty);
+      BrTextPrint("%jD\xB0\x88(9\xED\xEE" "B6B3&", (x + 15) >> 1, ty + 14);
+    }
+    break;
+  case 6:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xe4;
+    }
+    BrBevelPanel(0xb6, y, 0x114, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    if (op == 9) {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xC8(\xCB\xE6" "D\xD0\xD1", 0x62, ty);
+      BrTextPrint("%j\xBB(\x83" "9\xED\xEE" "B6B3&", 0x62, ty + 14);
+    } else {
+      ty = (y + 30) >> 1;
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6" "D\xD0\xD1", 0x62, ty);
+      BrTextPrint("%j\xBB(\x83" "9\xED\xEE" "B6B3&", 0x62, ty + 14);
+    }
+    break;
+  case 4:
+    y = 0xb0;
+    if (mode == 1) {
+      y = 0xdc;
+    }
+    BrBevelPanel(0xcd, y, 0xe6, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x6d, ty);
+    BrTextPrint("%j\xD0\xD1kR&", 0x6d, ty + 12);
+    if (op == 9) {
+      BrTextPrint("%j\xBB\x81(\xA8w", 0x6d, ty + 30);
+      BrTextPrint("%j\xC8(\xCBkA6b\x7F&", 0x6d, ty + 42);
+    } else {
+      BrTextPrint("%j\xBB\x81(\xA8w", 0x6d, ty + 30);
+      BrTextPrint("%j\xB2(\xACkA6b\x7F&", 0x6d, ty + 42);
+    }
+    break;
+  case 10:
+    y = 0xcc;
+    if (mode == 1) {
+      y = 0xf8;
+    }
+    BrBevelPanel(0x50, y, 0x1e0, 0x48, 3, 0, 0, 0x80, 0x80, 0x80);
+    ty = (y + 30) >> 1;
+    BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9'qghc@6R&", 0x30, ty);
+    BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'2Bc\xDB" "2@&", 0x30, ty + 14);
+    break;
+  }
+#else
   int x;
   int y;
   int w;
@@ -356,11 +503,19 @@ void BrPakMessage(int msg, char op, char mode)
     }
     break;
   case 4:
+#if TGR_REGION_EUR
+    y = 0xaf;
+    if (mode == 1) {
+      y = 0xdb;
+    }
+    BrBevelPanel(0xae, y, 0x124, 0x82, 3, 0, 0, 0x80, 0x80, 0x80);
+#else
     y = 0xb0;
     if (mode == 1) {
       y = 0xdc;
     }
     BrBevelPanel(0xae, y, 0x124, 0x80, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
     ty = (y + 30) >> 1;
     BrTextPrint("CONTROLLER ERROR HAS", 0x5e, ty);
     BrTextPrint("BEEN DETECTED.", 0x5e, ty + 12);
@@ -384,21 +539,8 @@ void BrPakMessage(int msg, char op, char mode)
   default:
     return;
   }
+#endif
   tgr_dash_slot = 0x2A;         /* every case printed a literal at 0x802AA6xx (see tgr_dash_slot) */
-}
-
-/* WHAT IT DOES: The character for index i of the name-entry character set
- * (a NUL, blanks, digits, capitals, punctuation; 66 entries, no
- * terminator); a space past its end. */
-/* @implements 0x80253460 tgr BrPaintCharset */
-char BrPaintCharset(unsigned char i)
-{
-  char set[0x42] = "\000               0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#'*+,-./:=?@";
-
-  if (i < 0x42) {
-    return set[i];
-  }
-  return ' ';
 }
 
 /* WHAT IT DOES: Reset the paint shop for a new session: cursor to the
@@ -513,12 +655,29 @@ void BrPaintExitPrompt(void)
       y = 285 - D_8028D0B0.w;
       bx = 361 - D_8028D0E0.w;
       BrBevelPanel(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_JPN
+      BrTextHighlightOff();
+      BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+      BrTextAlignCentre();
+      BrTextSetFont(14);
+      BrTextPrint("%j\xB2(\xAC" "bZD", D_8028AAB0 / 2, 109);
+      BrTextPrint("EXIT%jB6R1%%", D_8028AAB0 / 2, 123);
+      BrTextAlignLeft();
+#else
+#if TGR_REGION_EUR
+      BrTextHighlightOff();
+      BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+      BrTextAlignLeft();
+      BrTextSetFont(12);
+#else
       BrTextSetFont(12);
       BrTextAlignLeft();
       BrTextHighlightOff();
       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+#endif
       BrTextPrint("CHANGES NOT SAVED.", 103, 109);
       BrTextPrint("EXIT ANYWAY?", 103, 123);
+#endif
       BrTextSetFont(10);
       BrTextPrint("%wwYES", (D_8028D0B0.drawW + 249) >> 1, (y + 18) >> 1);
       BrTextPrint("%wwNO", (bx + D_8028D0E0.drawW + 8) >> 1, (y + 18) >> 1);
@@ -576,7 +735,7 @@ void BrPaintKeyboard(void)
       BrImageDrawTinted((BrImage *)&D_8028D290, 0xff, 0xeb, 0);
     }
   }
-  BrImageDraw(&D_8028D230);
+  BR_IMAGE_DRAW(&D_8028D230);
   x = D_8028D230.x;
   y = D_8028D230.y + D_8028D230.h + 32;
   BrImageDrawRect(&D_8028D260, x, y, 200, 48, 0xe0, 0xe0, 0xe0);
@@ -803,9 +962,13 @@ void BrPaintBrushSelect(void)
   char spare[28];               /* declared, never used: the frame holds it */
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames2 names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DCE4;
+#endif
   y = 322 - D_8028D0B0.w;
   bx = 349 - D_8028D0E0.w;
   BrBevelPanel(200, 0x96, 0xf0, 0xb4, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -827,10 +990,14 @@ void BrPaintBrushSelect(void)
   } else {
     BrFillRect(D_8028D410.drawW + 276, 202, 38, 38, 0, 0, 0);
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xe0, 0xff, 0xc0, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 138);
+#endif
   BrImageDrawAt(&D_8028D0B0, 216, y);
   BrImageDrawAt(&D_8028D0E0, bx, y);
   BrTextSetFont(10);
@@ -1035,9 +1202,13 @@ void BrPaintStyleSelect(void)
   int i;
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DCF4;
+#endif
   y = 323 - D_8028D0B0.w;
   bx = 353 - D_8028D0E0.w;
   BrBevelPanel(0x9f, 0x95, 0x142, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -1056,11 +1227,15 @@ void BrPaintStyleSelect(void)
       BrImageDrawAt(D_8028DB34[i], i * 76 + 175, 203);
     }
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xb1, 0x103, 0x11e, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   tgr_dash_slot_bevel(0x11e);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 140);
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 219) >> 1, (y + 18) >> 1);
@@ -1231,7 +1406,7 @@ void BrPaintFillRect(int sx0, int sy0, int sx1, int sy1)
   int t;
   int y;
 
-  tgr_dash_slot = (0x8028DB60 >> 16) & 0xFF;  /* the saved s3's second byte (see tgr_dash_slot) */
+  tgr_dash_slot = (TGR_VA(8028DB60) >> 16) & 0xFF;  /* the saved s3's second byte (see tgr_dash_slot) */
   x0 = (sx0 - D_8028DB94.x) >> 2; sy0 = (D_8028DB94.y + D_8028DB94.h - sy0) >> 2;
   x1 = (sx1 - D_8028DB94.x) >> 2; y1 = (D_8028DB94.y + D_8028DB94.h - sy1) >> 2;
   if (x1 < x0) {
@@ -1560,9 +1735,13 @@ void BrPaintOvalStyleSelect(void)
   int i;
   int y;
   int bx;
+#if !TGR_REGION_JPN
   BrPaintNames names;
+#endif
 
+#if !TGR_REGION_JPN
   names = D_8028DD04;
+#endif
   y = 323 - D_8028D0B0.w;
   bx = 352 - D_8028D0E0.w;
   BrBevelPanel(0xb8, 0x95, 0x110, 0xb6, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -1587,14 +1766,18 @@ void BrPaintOvalStyleSelect(void)
       BrImageDrawRect(D_8028DB44[i], D_8028DB44[i]->x, D_8028DB44[i]->y, D_8028DB44[i]->drawW,
                       D_8028DB44[i]->drawH, 0x20, 200, 0xff);
     } else {
-      BrImageDraw(D_8028DB44[i]);
+      BR_IMAGE_DRAW(D_8028DB44[i]);
     }
   }
+#if !TGR_REGION_JPN
   BrBevelPanel(0xce, 0x101, 0xe4, 0x1e, 1, 1, 1, 0x80, 0x80, 0x80);
   tgr_dash_slot_bevel(0xe4);
+#endif
   BrTextSetFont(11);
   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+#if !TGR_REGION_JPN
   BrTextPrint(TGR_PTR(char *, names.n[D_8028DBB8]), 159, 139);
+#endif
   BrTextSetFont(10);
   BrTextAlignLeft();
   BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 220) >> 1, (y + 18) >> 1);

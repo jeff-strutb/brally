@@ -39,13 +39,26 @@ extern BrImage D_8028D0B0;              /* the PROCEED button */
 extern unsigned char D_80270840;        /* 0 no controller, 1 no pak, 2 foreign pak data */
 extern unsigned short D_8028DBB0;       /* frames on this screen */
 extern int D_802724F0;
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define PAKWARN_BLANK BrScreenBlank
+#endif
+#if TGR_REGION_EUR
+void BrVideoBlank(void);
+#define PAKWARN_BLANK BrVideoBlank
+#endif
+#if TGR_REGION_EUR || TGR_REGION_JPN
+extern int D_8028A884;
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: The warning screen shown at boot when there is no
  * controller, no Controller Pak, or a pak full of another game's data, run
  * once per frame: on entry blank two frames and load its images, then draw
  * the backdrop, the panel and the message; START (or about 16 seconds)
- * fades out and goes on to the main menu. */
+ * fades out and goes on to the main menu.  Japan's messages are
+ * Japanese and its button reads OK; Europe's missing-pak message names the
+ * ghost car and paint shop data; both blank three frames on entry. */
 /* @implements 0x80208570 tgr BrPakWarnScreen */
 void BrPakWarnScreen(void)
 {
@@ -53,16 +66,33 @@ void BrPakWarnScreen(void)
 
   if (D_80270844 == 0) {
     D_80270844 = 1;
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    D_8028A884 = 1;
+    PAKWARN_BLANK();
+    BrFrameBeginLayout1();
+    func_8021AA08();
+    BrIfaceMemReset();
+    PAKWARN_BLANK();
+    BrFrameBeginLayout1();
+    func_8021AA08();
+    PAKWARN_BLANK();
+    BrFrameBeginLayout1();
+    func_8021AA08();
+#else
     BrIfaceMemReset();
     BrFrameBeginLayout1();
     BrFrameEnd();
     BrFrameBeginLayout1();
     BrFrameEnd();
+#endif
     BrAllocPaintShopGfxMem(&D_8028CB40);
     BrAllocPaintShopGfxMem(&D_8028CB70);
     BrAllocPaintShopGfxMem(&D_8028D0B0);
     BrFadeTo(1.0f, 0.2f);
     D_8028DBB0 = 0;
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    D_8028A884 = 0;
+#endif
   }
   BrClockTick();
   BrFadeStep();
@@ -77,6 +107,55 @@ void BrPakWarnScreen(void)
   BrTextAlignCentre();
   BrTextSetFont(0x1e);
   BrTextPrint("%ryWARNING", 0xa0, 0x29);
+#if TGR_REGION_JPN
+  BrTextSetFont(0x14);
+  switch (D_80270840) {
+  case 0:
+    BrTextPrint(" %yw%j\xC1\xCF\xC3\xC8(\x88" "90H6b\x7F&", 0xa0, 0x7c);
+    break;
+  case 1:
+    BrTextPrint("%yw%j \xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "94@tk'", 0xa0, 0x5f);
+    BrTextPrint("%yw%j\xC9(\xA2\xC3\x81(\xBB(\x83s\xBD\x90\xCF\xC3\x92\xBF\x8F\xAD", 0xa0, 0x73);
+    BrTextPrint("%yw %jt\xBB\x81(\xA8\xBB(\x83" "9\xB2(\xACkA6b\x7F&", 0xa0, 0x87);
+    BrTextPrint("%yw%j\xB9(\xA6w5Jf6R1%%", 0xa0, 0x9b);
+    break;
+  case 2:
+    BrTextPrint("%yw%j\xE9t\xB9(\xA6\xBB(\x83" "9", 0xa0, 0x55);
+    BrTextPrint(" %yw%j\xB2(\xAC" "2hc@6R&", 0xa0, 0x69);
+    BrTextPrint("%yw%j\xE1" "A\xBD(\x9A" "9\xE2" "84@tk", 0xa0, 0x7d);
+    BrTextPrint("%yw%jqt\xB9(\xA6\xBB(\x83w", 0xa0, 0x91);
+    BrTextPrint(" %yw%j\xB2(\xACkA6b\x7F&", 0xa0, 0xa5);
+    break;
+  }
+  BrTextAlignLeft();
+  BrTextSetFont(0xb);
+  BrImageDrawAt(&D_8028D0B0, 0x116, 0x1b0);
+  BrTextPrint("%wwOK", 0x9a, D_8028AAB4 * 19 / 20 - 3);
+#elif TGR_REGION_EUR
+  BrTextSetFont(0x12);
+  switch (D_80270840) {
+  case 0:
+    BrTextPrint("%ywCONTROLLER NOT FOUND", 0xa0, 0x7c);
+    break;
+  case 1:
+    BrTextPrint("%ywCONTROLLER PAK NOT FOUND", 0xa0, 0x5f);
+    BrTextPrint("%ywGHOST CAR AND PAINT SHOP DATA", 0xa0, 0x73);
+    BrTextPrint("%ywCANNOT BE SAVED", 0xa0, 0x87);
+    BrTextPrint("%ywIF YOU CHOOSE TO PROCEED", 0xa0, 0x9b);
+    break;
+  case 2:
+    BrTextPrint("%ywCONTROLLER PAK CONTAINS GAME", 0xa0, 0x55);
+    BrTextPrint("%ywDATA SAVED FROM ANOTHER GAME.", 0xa0, 0x69);
+    BrTextPrint("%ywTHERE MAY NOT BE ENOUGH PAGES", 0xa0, 0x7d);
+    BrTextPrint("%ywAND/OR FILES FREE WHEN YOU NEED", 0xa0, 0x91);
+    BrTextPrint("%ywTO SAVE GAME DATA FROM THIS GAME.", 0xa0, 0xa5);
+    break;
+  }
+  BrTextAlignLeft();
+  BrTextSetFont(0xb);
+  BrImageDrawAt(&D_8028D0B0, 0xfe, 0x1b0);
+  BrTextPrint("%wwPROCEED", 0x8e, D_8028AAB4 * 19 / 20 - 3);
+#else
   BrTextSetFont(0x12);
   switch (D_80270840) {
   case 0:
@@ -99,6 +178,7 @@ void BrPakWarnScreen(void)
   BrTextAlignLeft();
   BrTextSetFont(0xb);
   BrTextPrint("%wwPROCEED", 0x8e, D_8028AAB4 * 19 / 20 - 3);
+#endif
   gDPPipeSync(D_8028A858++);
   BrFadeBarsDraw();
   BrFrameEnd();

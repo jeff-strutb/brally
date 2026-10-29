@@ -114,6 +114,18 @@ void BrSeasonPickRace(void)
   D_8028C800 = D_8028B944[TGR_PTR(BrSeason *, D_8031B760[0].season)->round].races[TGR_PTR(BrSeason *, D_8031B760[0].season)->race][1];
 }
 
+/* Blanking the picture: Europe goes through BrVideoBlank, which also puts
+ * libultra's PAL mode back. */
+#if TGR_REGION_JPN
+void BrScreenBlank(void);
+#define BLANK_SCREEN() BrScreenBlank()
+#elif TGR_REGION_EUR
+void BrVideoBlank(void);
+#define BLANK_SCREEN() BrVideoBlank()
+#else
+#define BLANK_SCREEN() ((void)0)            /* osViBlack: nothing to do on the host */
+#endif
+
 /* WHAT IT DOES: Load a menu screen's items: blank the screen for two frames
  * (in the current resolution's layout), then count the NULL-terminated item
  * list and give every item with an icon its decompressed icon, sharing the
@@ -125,13 +137,17 @@ void BrMenuLoadItems(MenuItem **items, int *count)
 
   D_8028A884 = 1;
   if (D_8028A850) {
+    BLANK_SCREEN();
     BrFrameBeginLayout1();
     BrFrameEnd();
+    BLANK_SCREEN();
     BrFrameBeginLayout1();
     BrFrameEnd();
   } else {
+    BLANK_SCREEN();
     BrFrameBeginLayout0();
     BrFrameEnd();
+    BLANK_SCREEN();
     BrFrameBeginLayout0();
     BrFrameEnd();
   }

@@ -80,6 +80,15 @@ extern int D_8028B7F4;                  /* cars in the race */
 extern int D_8028B940;                  /* the chosen track */
 extern int D_8028C800;                  /* the difficulty, 1-3 */
 #define D_80025C70 BEPTR(BrPathSeg *, D_80025C00.path)   /* the track's path */
+#define VEC3_COPY(d, s)                                                 \
+{                                                                       \
+  float *_d = (float *)(d);                                             \
+  float *_s = (float *)(s);                                             \
+                                                                        \
+  _d[0] = _s[0];                                                        \
+  _d[1] = _s[1];                                                        \
+  _d[2] = _s[2];                                                        \
+}
 void BrPathGates(BrPathSeg *seg, float d);
 void BrCarResetFrames(BrCar *car);
 void BrEntSetRecord(BrCar *car, int slot);
@@ -121,7 +130,7 @@ extern BrVec3 D_8031B730;               /* aim point */
 extern BrVec3 D_8031B740;               /* half-depth look-ahead point */
 void BrAiInputClear(short *);
 typedef struct BrMenuPick { char pad00[4]; unsigned char b4; unsigned char b5; } BrMenuPick;
-#define D_8031C5BC TGR_PTR(BrMenuPick *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */          /* player one's season: its two option bytes */
+#define D_8031C5BC TGR_PTR(BrMenuPick *, *TGR_PTR(TgrAddr *, TGR_VA(8031C5BC)))   /* car 0\'s season (a member of D_8031B760) */          /* player one's season: its two option bytes */
 extern float D_8028B9F0[][4][2];        /* the AI's pace, by options and entrant */
 extern BrVec3 D_8028BAB0;               /* (0, 0, 1) */
 extern float D_8028AAD8;                /* seconds this frame */
@@ -243,7 +252,10 @@ void BrCarGridStart(BrCar *car)
  * their segment, point and gates found by BrPathGates, stopped, and given
  * the track's time for the difficulty and the lead car's class.  The mode
  * switch is written one case per line: with each case over two lines IDO
- * schedules the default's load out of the branch delay slot. */
+ * schedules the default's load out of the branch delay slot.  Japan drops
+ * the print and copies both vectors with VEC3_COPY: one line each (the
+ * prev copy's y and z issue ahead of x) and the point read through its
+ * address, which keeps the block open to k so the point's address takes v1. */
 /* @implements 0x802291F8 tgr BrCarEntInit */
 void BrCarEntInit(BrCarEnt *e)
 {
@@ -278,13 +290,23 @@ void BrCarEntInit(BrCarEnt *e)
       e->dist = e->index * 550;
     }
     BrPathGates(D_80025C70, e->dist);
+#if TGR_REGION_JPN
+    VEC3_COPY(&e->pos, &D_8031B750);
+#else
     e->pos.x = D_8031B750.x;
     e->pos.y = D_8031B750.y;
     e->pos.z = D_8031B750.z;
+#endif
     e->seg = tgr_addr32(D_8028B824);
     e->pt = D_8028B828;
     e->gates = e->gates2 = D_8028B82C;
     e->laps = e->laps2 = D_8028B830;
+#if TGR_REGION_JPN
+    VEC3_COPY(&e->prev, &e->pos);
+    e->x30 = 0.0f;
+    e->x38 = 0.0f;
+    e->x34 = 0.0f;
+#else
     tgr_print("Initial lap.gate for %d(%d): %d.%d (dist=%f)\n", e->index, e->x74, e->laps, e->gates, e->dist);
     e->prev.x = e->pos.x;
     e->x30 = 0.0f;
@@ -292,6 +314,7 @@ void BrCarEntInit(BrCarEnt *e)
     e->x34 = 0.0f;
     e->prev.y = e->pos.y;
     e->prev.z = e->pos.z;
+#endif
     k = D_8028C800 - 1;
     if (k > 2 || k < 0) {
       k = 0;
@@ -985,7 +1008,11 @@ void BrCtlAiBody(BrCar *car)
         BrVec3MulAddTo(&car->st.vel, &car->lineUp, rel[2]);
       }
       if (D_8026FF18 == 0) {
+#if TGR_REGION_EUR
+        BrVec3ScaleBy(&car->st.vel, D_8028B9F0[D_8031C5BC->b4][D_8031C5BC->b5][TGR_PTR(struct BrCarLink *, car->link)->x74] * 0.9988f);
+#else
         BrVec3ScaleBy(&car->st.vel, D_8028B9F0[D_8031C5BC->b4][D_8031C5BC->b5][TGR_PTR(struct BrCarLink *, car->link)->x74]);
+#endif
       } else if (D_8026FF18 == 1) {
         w = D_8028C800 - 1;
         if (w > 2 || w < 0) {

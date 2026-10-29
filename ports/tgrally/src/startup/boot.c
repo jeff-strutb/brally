@@ -11,7 +11,7 @@
  * here in ROM order from romread.c, entcolour.c, carselect.c, anim.c,
  * trackload.c, trackselect.c and the old boot.c; BrFaultThread then
  * matches.  Where those files declared one symbol with different types the
- * types are unified (osRecvMesg takes pointers; BrFatal a message).
+ * types are unified (tgr_mq_recv takes pointers; BrFatal a message).
  */
 #include "tgr/common.h"
 
@@ -53,7 +53,7 @@ extern char D_803D5F88[];
 
 int BrCarModelPresent(int param_1);
 extern int D_80272070;
-#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, 0x8031C5BC))   /* car 0\'s season (a member of D_8031B760) */
+#define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, TGR_VA(8031C5BC)))   /* car 0\'s season (a member of D_8031B760) */
 extern Gfx *D_8028A858;
 
 void BrAnimSetFlags(BrAnimSet *set, int on, int off);
@@ -100,10 +100,28 @@ extern TgrMsg D_8031B1C8[1];
 extern TgrThread D_8031AC00;          /* the fault thread */
 extern TgrThread D_80272830;          /* the main game thread */
 extern unsigned long long D_80316CD0[0x400];
+#if TGR_REGION_EUR
+#endif
 extern unsigned long long D_8031ADB0[0x80];   /* the fault thread's stack */
 extern unsigned long long D_80318CD0[];
 extern unsigned long long D_80318ED0[0x100];
 extern unsigned long long D_803196D0[0x100];
+#if TGR_REGION_EUR
+#define VI_FLD(k, r) (9 + (k) * 5 + (r))   /* OSViMode: type word, comRegs[9], fldRegs[2] {origin, yScale, vStart, vBurst, vIntr} */
+extern TgrVideoMode osViModePalHaf1;
+extern TgrVideoMode osViModePalLan1;
+extern TgrVideoMode eur_D_8028CD74;         /* the game's 640-wide PAL mode */
+extern TgrVideoMode eur_D_8028CDC4;         /* and its 320-wide one */
+extern int eur_D_8028CE14;
+extern int eur_D_8031C3B0[];            /* the PI manager's queue */
+#define BR_VI_UP eur_D_8028CE14         /* set once the video is up */
+#define BR_PI_QUEUE eur_D_8031C3B0
+#elif TGR_REGION_JPN
+extern int jpn_D_8028C844;
+extern int jpn_D_8031ADE0[];
+#define BR_VI_UP jpn_D_8028C844
+#define BR_PI_QUEUE jpn_D_8031ADE0
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Correct one address inside data just loaded from ROM: if it
@@ -567,7 +585,7 @@ void BrTrackLoad(int track)
     tgr_print("Loading track %d (%d / %d)\n", track, BE32(D_80025C00.x00), 0x171400);
   }
   BrRomUnpack((unsigned char *)&D_80025C00, D_80270854[track].x14, 0);
-  tgr_print("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, 0x80029560)), tgr_rd16(TGR_PTR(void *, 0x80029568)));
+  tgr_print("hmm = %04x %04x\n", tgr_rd16(TGR_PTR(void *, TGR_VA(80029560))), tgr_rd16(TGR_PTR(void *, TGR_VA(80029568))));
   BrRomRead(D_80373EB0, D_80270854[track].x1c, 0x20);
   BrRomUnpack((unsigned char *)D_803736B0, D_80270854[track].x1c + 0x20, 0);
   BrRomRead(D_803746D0, D_80270854[track].x24, 0x20);
@@ -670,7 +688,13 @@ void BrFaultThread(void *arg)
  * to the lowest priority for good.
  * The first two stack fills walk a pointer alongside the counter (which
  * keeps IDO from unrolling them) and the third indexes the array (which it
- * unrolls by four), as the ROM has them. */
+ * unrolls by four), as the ROM has them.
+ * Europe also makes the game's two PAL video modes (640 and 320 wide, the
+ * picture's vertical window and scale set for 240 lines), starts in the
+ * 320-wide PAL mode unless the console is MPAL, clears the frame buffers
+ * (the words from 0x800D4000 to the code) and gives the PI manager a queue
+ * of its own; its main stack's top is the end of the stack array.  u is
+ * two words of Europe's frame with no visible use. */
 /* @t4-pass 0x8021E2C8 1 2026-10-03 compiles 119 best 34 moved 0  (tools/tgrally/n64permute.py) */
 /* @t4-pass 0x8021E2C8 2 2026-10-03 compiles 117 best 34 moved 0  (tools/tgrally/n64permute.py) */
 /* @implements 0x8021E2C8 tgr BrIdleThread */
@@ -680,6 +704,9 @@ void BrIdleThread(void *arg)
   char *p;
   unsigned int i;
   unsigned int buf[16];
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  int u[2];
+#endif
   unsigned long long *s;
 
   for (i = 0; i < 16; i++) {
@@ -703,11 +730,32 @@ void BrIdleThread(void *arg)
   D_8026FF00 = &D_8028B2EC;
   D_8028AAB0 = 320;
   D_8028AAB4 = 240;
+#if TGR_REGION_EUR
+  /* the game's own PAL modes: libultra's, with the picture's vertical
+   * window and scale set for 240 lines (fld[k].vStart, .yScale) */
+  memcpy(&eur_D_8028CD74, &osViModePalHaf1, sizeof(TgrVideoMode));
+  memcpy(&eur_D_8028CDC4, &osViModePalLan1, sizeof(TgrVideoMode));
+  eur_D_8028CD74.regs[VI_FLD(0, 2)] = (osViModePalHaf1.regs[VI_FLD(0, 2)] & 0xFC00FC00) | 0x390000 | 0x25B;
+  eur_D_8028CD74.regs[VI_FLD(1, 2)] = (osViModePalHaf1.regs[VI_FLD(1, 2)] & 0xFC00FC00) | 0x3B0000 | 0x25D;
+  eur_D_8028CD74.regs[VI_FLD(0, 1)] = 0x6F0;
+  eur_D_8028CD74.regs[VI_FLD(1, 1)] = 0x6F0;
+  eur_D_8028CDC4.regs[VI_FLD(0, 2)] = (osViModePalLan1.regs[VI_FLD(0, 2)] & 0xFC00FC00) | 0x390000 | 0x25B;
+  eur_D_8028CDC4.regs[VI_FLD(1, 2)] = (osViModePalLan1.regs[VI_FLD(1, 2)] & 0xFC00FC00) | 0x3B0000 | 0x25D;
+  eur_D_8028CDC4.regs[VI_FLD(0, 1)] = 0x378;
+  eur_D_8028CDC4.regs[VI_FLD(1, 1)] = 0x378;
+#endif
   if (tgr_tv_type == 2) {
     tgr_video_mode(&D_802A5D70);
   } else {
+#if TGR_REGION_EUR
+    tgr_video_mode(&osViModePalLan1);
+#else
     tgr_video_mode(&D_802A54B0);
+#endif
   }
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  BR_VI_UP = 1;                         /* blanked; the frame buffers it clears start clear here */
+#endif
   tgr_mq_init(&D_8031B1B0, D_8031B1C8, 1);
   tgr_thread_new(&D_8031AC00, 5, BrFaultThread, TGR_PTR(char **, D_8028B2EC.argv), D_8031ADB0 + 0x80, 50);
   tgr_thread_start(&D_8031AC00);
@@ -720,7 +768,7 @@ void BrIdleThread(void *arg)
   for (i = 0; i < 0x100; i++) {
     D_803196D0[i] = 0x5015A1DBFED15C00ULL;
   }
-  tgr_thread_new(&D_80272830, 3, BrMainThread, arg, D_80318CD0, 10);
+  tgr_thread_new(&D_80272830, 3, BrMainThread, arg, D_80316CD0 + 0x400, 10);   /* the stack's top */
   tgr_thread_start(&D_80272830);
   tgr_thread_pri(0, 0);
   tgr_thread_idle();                    /* port: the N64's spun here */
@@ -728,10 +776,14 @@ void BrIdleThread(void *arg)
 
 /* WHAT IT DOES: The game's entry point after the boot stub clears memory:
  * initialise the N64 operating system, then create and start the idle
- * thread that brings everything else up. */
+ * thread that brings everything else up.  Europe first sets the TV type
+ * to PAL and the video clock to the PAL rate, whatever the console says. */
 /* @implements 0x8021E5C4 tgr BrBoot */
 void BrBoot(void)
 {
+#if TGR_REGION_EUR
+  tgr_tv_type = 0;                 /* OS_TV_PAL */
+#endif
   tgr_os_init();
   tgr_thread_new(&D_80272680,1,BrIdleThread,0,D_80316CD0,10);
   tgr_thread_start(&D_80272680);

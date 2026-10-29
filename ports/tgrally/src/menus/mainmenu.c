@@ -4,6 +4,10 @@
 #include "tgr/common.h"
 #include "tgr/romimage.h"
 #include "tgr/menu.h"
+#if TGR_REGION_JPN || TGR_REGION_EUR
+#include "tgr/pad.h"
+#include "tgr/car.h"
+#endif
 
 /* -- declarations -- */
 void BrModeSet(void (*fn)(void));
@@ -38,7 +42,7 @@ extern MenuItem *D_80272360[];
 extern int D_80272380;
 extern unsigned char D_802724F4;
 extern int D_80316380;
-#define D_000EBC00 0xEBC00        /* a ROM offset */
+#define D_000EBC00 TGR_VA(000EBC00)        /* a ROM offset */
 extern char D_802AC400[];
 extern int D_8028AAB0;                  /* the screen's width */
 void BrTextSetFont(int size);
@@ -48,6 +52,9 @@ void BrTextAlignCentre(void);
 void BrTextPrint(char *s, int x, int y);
 int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
 void tgr_exit_menu_frame(void);
+#if TGR_REGION_JPN || TGR_REGION_EUR
+void BrPadConsume(BrPadRec *pad, unsigned int bits);
+#endif
 /* -- end declarations -- */
 
 /* WHAT IT DOES: Begin a one-player Championship: set the race type, go to
@@ -80,11 +87,16 @@ void BrTimeAttackStart(void)
  * set up the menu (and start the title music if it is not playing), put the
  * cursor back on the mode just left, run the menu and start the chosen
  * mode -- Championship, Arcade, Time Attack, Practice, Paint Shop,
- * Load/Save or Options; B goes back to the attract sequence. */
+ * Load/Save or Options; B goes back to the attract sequence.  Europe and
+ * Japan add a cheat: holding 0x3000 and pressing 0x200 three times (letting
+ * go starts the count again) opens every car, track and weather. */
 /* @implements 0x802111E0 tgr BrMainMenu */
 void BrMainMenu(void)
 {
   extern int D_80272384;         /* 0x80272384: 1 once set up, -1 = returning from a sub-screen */
+#if TGR_REGION_JPN || TGR_REGION_EUR
+  static int bangs = 0;           /* times the cheat combination was pressed */
+#endif
   extern int D_80316384;                 /* 0x80316384: the highlighted item */
 
   if (D_80272384 <= 0) {
@@ -94,8 +106,8 @@ void BrMainMenu(void)
     BrFrontMenuEnter(D_80272360, &D_80316380);
     if (D_802A49C0 < 8) {
       BrMusicStop();
-      BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
-      BrMusicStart(0x80025C00, tgr_addr32(D_802AC400));
+      BrRomUnpack(TGR_PTR(unsigned char *, TGR_VA(80025C00)), D_000EBC00, 0);
+      BrMusicStart(TGR_VA(80025C00), tgr_addr32(D_802AC400));
     }
     D_80271FB0 = &D_802722C0;
     D_80271FB4 = 25;
@@ -168,4 +180,19 @@ void BrMainMenu(void)
     BrTextPrint("%wwEsc: Exit Game", D_8028AAB0 - 8, 12);
     BrTextAlignCentre();
   }
+#if TGR_REGION_JPN || TGR_REGION_EUR
+  if ((D_8036A8E0[0].pressed & 0x3000) == 0x3000) {
+    if (bangs < 3 && (D_8036A8E0[0].pressed & 0x200)) {
+      tgr_print("BANG!\n");
+      BrPadConsume(&D_8036A8E0[0], 0x200);
+      if (++bangs == 3) {
+        D_8031B760[0].season->xce = 0xffff;
+        D_8031B760[0].season->unlocked = 0xffff;
+        D_8031B760[0].season->xd0 = 0xffff;
+      }
+    }
+  } else {
+    bangs = 0;
+  }
+#endif
 }

@@ -42,8 +42,8 @@ extern float D_8028AAD8;                /* seconds this frame */
 extern int D_8028AA98;
 extern int D_8028A8A8;
 extern Gfx *D_8028A858;
-#define D_001BF480 0x1BF480        /* a ROM offset */
-#define D_001BFEC0 0x1BFEC0        /* a ROM offset */
+#define D_001BF480 TGR_VA(001BF480)        /* a ROM offset */
+#define D_001BFEC0 TGR_VA(001BFEC0)        /* a ROM offset */
 extern int D_8026FF08;                  /* human players */
 extern BrCar D_8031B760[];
 extern float D_8031AB10[4][4];

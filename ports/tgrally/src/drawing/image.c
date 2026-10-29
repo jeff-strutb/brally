@@ -6,8 +6,6 @@
 
 /* -- declarations -- */
 #include "tgr/image.h"
-void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
-                  unsigned char r, unsigned char g, unsigned char b);
 extern Gfx *D_8028A858;
 extern int D_8028A850;
 extern int D_8028A898;                  /* the texture filter mode */
@@ -90,7 +88,11 @@ void BrImageDrawPart(BrImage *img, int s, int t, int sw, int th, int x, int y, i
 /* WHAT IT DOES: Draw an image at its own position and size, strip by
  * strip from the bottom of its pixel data. */
 /* @implements 0x80245470 tgr BrImageDraw */
+#if TGR_REGION_EUR || TGR_REGION_JPN
+void BrImageDraw(BrImage *img, void *tlut)
+#else
 void BrImageDraw(BrImage *img)
+#endif
 {
   unsigned int total;
   unsigned int strip;
@@ -108,7 +110,7 @@ void BrImageDraw(BrImage *img)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, STRIP_TLUT(tlut) img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, 0, 0, 0);
   }
 }
@@ -133,7 +135,7 @@ void BrImageDrawAt(BrImage *img, int x, int y)
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, x, y + step * (i - 1),
                  img->drawW, step, 0, 0, 0);
   }
 }
@@ -159,7 +161,7 @@ void BrImageDrawTinted(BrImage *img, unsigned char r, unsigned char g, unsigned 
   n = img->h / img->stripH;
   step = img->drawH / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, img->x,
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, img->x,
                  img->y + step * (i - 1), img->drawW, step, r, g, b);
   }
 }
@@ -186,7 +188,7 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
   n = img->h / img->stripH;
   step = h / n;
   for (i = 1; i <= n; i++) {
-    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, img->w, img->stripH, x, y + step * (i - 1),
+    BrImageStrip(img, TGR_PTR(unsigned char *, img->data) + total - strip * i, STRIP_TLUT(0) img->w, img->stripH, x, y + step * (i - 1),
                  w, step, r, g, b);
   }
 }
@@ -201,8 +203,13 @@ void BrImageDrawRect(BrImage *img, int x, int y, int w, int h, unsigned char r, 
  * the 8-bit line as width * 1), each through fmt; the tile-size command
  * is a block, one statement per line, as the other commands here. */
 /* @implements 0x80245B00 tgr BrImageStrip */
+#if TGR_REGION_EUR || TGR_REGION_JPN
+void BrImageStrip(BrImage *img, unsigned char *data, void *tlut, int w, int h, int x, int y, int dw,
+                  int dh, unsigned char r, unsigned char g, unsigned char b)
+#else
 void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y, int dw, int dh,
                   unsigned char r, unsigned char g, unsigned char b)
+#endif
 {
   int bitsS;
   int bitsT;
@@ -224,6 +231,13 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 12, 2, D_8028A898);
   switch (img->siz) {
   case 4:
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    if (tlut != 0) {
+      fmt = 2;
+      gDPSetCombine(D_8028A858++, 0xffffff, 0xfffcf279);
+      gDPSetRenderMode(D_8028A858++, 0x0f0a4000, 0);
+    } else {
+#endif
     fmt = 4;
     if (img == &D_8028CB40) {
       gDPSetCombine(D_8028A858++, 0x309861, 0x5532ff7f);
@@ -232,6 +246,9 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
       gDPSetCombine(D_8028A858++, 0xffffff, 0xfffdf2f9);
       gDPSetRenderMode(D_8028A858++, 0x00504240, 0);
     }
+#if TGR_REGION_EUR || TGR_REGION_JPN
+    }
+#endif
     gDPSetTextureImage(D_8028A858++, fmt, 2, 1, data);
     gDPSetTile(D_8028A858++, fmt, 2, 0, 0, 7, 0, 0, bitsT, 0, 0, bitsS, 0);
     gDPLoadSync(D_8028A858++);
@@ -288,7 +305,22 @@ void BrImageStrip(BrImage *img, unsigned char *data, int w, int h, int x, int y,
     }
     break;
   }
+#if TGR_REGION_EUR || TGR_REGION_JPN
+  if (fmt == 2) {
+    /* a 4-bit image with a palette: load its 16 colours (RGBA16) */
+    gDPSetTextureImage(D_8028A858++, 0, 2, 1, tlut);
+    gDPTileSync(D_8028A858++);
+    gDPSetTile(D_8028A858++, 0, 0, 0, 0x100, 7, 0, 0, 0, 0, 0, 0, 0);
+    gDPLoadSync(D_8028A858++);
+    gDPLoadTLUTCmd(D_8028A858++, 7, 15);
+    gDPPipeSync(D_8028A858++);
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0x8000);
+  } else {
+    gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+  }
+#else
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 14, 2, 0);
+#endif
   gSPSetOtherMode(D_8028A858++, G_SETOTHERMODE_H, 19, 1, 0);
   if (D_8028A850 == 0) {
     x >>= 1;
@@ -532,9 +564,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
   int freeBytes;
   int w;
   int h;
+  unsigned short *pal;
   int k;
   int flip;
-  unsigned short *pal;
   int n;
   int x2;
   int tx;
@@ -575,6 +607,23 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     break;
   case 2:                       /* load/save? */
     y = 0x110 - D_8028D0B0.w;
+#if TGR_REGION_JPN
+    BrBevelPanel(0xAA, 200, 300, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextAlignLeft();
+    BrTextHighlightOff();
+    BrTextSetFont(14);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    if (op == OP_LOAD) {
+      BrTextPrint("%j\xBB\x81(\xA8w\xC8(\xCB" "B6R1%%", 94, 116);
+    } else {
+      BrTextPrint("%j\xBB\x81(\xA8w\xB2(\xAC" "B6R1%%", 94, 116);
+    }
+    BrTextSetFont(10);
+    BrTextPrint("%wwOK", (D_8028D0B0.w + 0xC0U) >> 1, (y + 18) >> 1);
+    BrTextPrint("%wwCANCEL", (D_8028D0E0.w + 0x168U) >> 1, (y + 18) >> 1);
+    BrImageDrawAt(&D_8028D0B0, 0xBA, y);
+    BrImageDrawAt(&D_8028D0E0, 0x162, y);
+#else
     BrBevelPanel(0xDC, 200, 200, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
     BrTextHighlightOff();
@@ -590,6 +639,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     BrTextPrint("%wwCANCEL", (D_8028D0E0.w + 0x136U) >> 1, (y + 18) >> 1);
     BrImageDrawAt(&D_8028D0B0, 0xEC, y);
     BrImageDrawAt(&D_8028D0E0, 0x130, y);
+#endif
     if (PAD->pressed & 0x10) {
       BrPadConsume(PAD, 0x10);
       D_80369E60 = 0;
@@ -608,7 +658,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       D_80369E54 = 1;
       D_80369E60 = 12;
     } else {
+#if !TGR_REGION_JPN
       tgr_print("\nInitializing controller pak...\n");
+#endif
       D_80369E54 = tgr_pak_open_new(D_80272D48, PFS, port);
       if (D_80369E54 == 0) {
         D_8031B1E8[D_80271FA8] = 0;
@@ -657,17 +709,24 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     D_80369E54 = tgr_pak_find(pfs, COMPANY, GAME, name, ext, &D_80369E58);
     if (D_80369E54 == 0) {
       if (op == OP_LOAD) {
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
         top = 0xC5;
         if (fromMenu == 1) {
           top = 0xDB;
         }
         BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#elif TGR_REGION_EUR
+        if (fromMenu == 1) {    /* the panel moved to state 7; the test stays */
+        }
+#endif
         BrTextAlignLeft();
         BrTextHighlightOff();
         BrTextSetFont(13);
         BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
         BrTextPrint("LOADING DECALS...", 114, (top + 30) >> 1);
         BrBevelPanel(0xE6, top + 0x34, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
         D_80369E60 = 7;
       } else {
         D_80369E60 = 5;
@@ -680,13 +739,17 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
           D_80369E54 = 7;
           D_80369E60 = 12;
         } else {
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
           BrBevelPanel(0xD4, 0xC5, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
           BrTextAlignLeft();
           BrTextHighlightOff();
           BrTextSetFont(13);
           BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
           BrTextPrint("SAVING DECALS...", 115, 113);
           BrBevelPanel(0xE6, 0xF9, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
+#endif
           D_8028DCC0 = 1;
           D_80369E60 = 7;
           D_80369E62 = 0;
@@ -710,6 +773,24 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     }
     break;
   case 5:                       /* overwrite? */
+#if TGR_REGION_JPN
+    BrBevelPanel(0xD6, 0xBB, 0xD4, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextAlignLeft();
+    BrTextHighlightOff();
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    BrTextSetFont(14);
+    BrTextPrint("%j\xDA\xE4" "AB6R1%%", 121, 113);
+    y = 0x118 - D_8028D0B0.w;
+#elif TGR_REGION_EUR
+    BrBevelPanel(0xD6, 0xBB, 0xD4, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
+    BrTextAlignLeft();
+    BrTextHighlightOff();
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    BrTextSetFont(13);
+    BrTextPrint("OK TO OVERWRITE", 114, 108);
+    BrTextPrint("SAVED DECALS?", 114, 122);
+    y = 0x11D - D_8028D0B0.w;
+#else
     y = 0x11D - D_8028D0B0.w;
     BrBevelPanel(0xD6, 0xBB, 0xD4, 0x6A, 3, 0, 0, 0x80, 0x80, 0x80);
     BrTextAlignLeft();
@@ -718,6 +799,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
     BrTextPrint("OK TO OVERWRITE", 114, 108);
     BrTextPrint("SAVED DECALS?", 114, 122);
+#endif
     BrTextSetFont(10);
     BrTextPrint("%wwOK", (D_8028D0B0.w + 0xEEU) >> 1, (y + 18) >> 1);
     BrTextPrint("%wwCANCEL", (D_8028D0E0.h + 0x13AU) >> 1, (y + 18) >> 1);
@@ -732,14 +814,41 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     }
     break;
   case 7:                       /* one decal a frame */
+#if TGR_REGION_JPN
+    top = 0xC5;
+    ty = 0x71;
+    if (fromMenu == 1) {
+      top = 0xDB;
+      ty = 0x7C;
+    }
+    if (op == OP_LOAD) {
+      BrBevelPanel(0xC4, top, 0xF8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+    } else {
+      BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+    }
+    BrTextHighlightOff();
+    BrTextAlignCentre();
+    BrTextSetFont(14);
+    BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
+    if (op == OP_LOAD) {
+      BrTextPrint("%j\xBB\x81(\xA8\xC8(\xCB\xE6", D_8028AAB0 / 2, ty);
+    } else {
+      BrTextPrint("%j\xBB\x81(\xA8\xB2(\xAC\xE6", D_8028AAB0 / 2, ty);
+    }
+#else
     top = 0xC5;
     ty = 0x71;
     if (fromMenu == 1) {
       ty = 0x7C; if (ty); top = 0xDB;
     }
     BrBevelPanel(0xD4, top, 0xD8, 0x56, 3, 0, 0, 0x80, 0x80, 0x80);
+#if TGR_REGION_EUR
+    BrTextHighlightOff();
+    BrTextAlignLeft();
+#else
     BrTextAlignLeft();
     BrTextHighlightOff();
+#endif
     BrTextSetFont(13);
     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
     tx = 114;
@@ -749,6 +858,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       tx++;
       BrTextPrint("SAVING DECALS...", tx, ty);
     }
+#endif
     BrBevelPanel(0xE6, top + 0x34, 0xB4, 0x14, 1, 1, 1, 0x80, 0x80, 0x80);
     if (D_80369E62++ > 1) {
       if (D_8028DCC0 != 0) {
@@ -802,7 +912,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         switch (D_80369E54) {
         case 0:
           if (op == OP_LOAD) {
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
             tgr_print("Loading decal %d...\n", D_80369E61);
+#endif
             tex = BEPTR(unsigned char *, BEPTR(BrPaintPart *, m->parts)[m->decal[D_80369E61]].tex);
             mask = TGR_PTR(unsigned char *, tgr_rd32(BEPTR(be32_t *, m->mask) + D_80369E61));  /* a table of
                                                    original addresses, big-endian */
@@ -823,6 +935,21 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
                 }
               }
             }
+#if TGR_REGION_EUR
+            {
+              /* dump the decal's bytes on the debug output, one a line */
+              int i;
+              int size;
+
+              size = (m->parts[m->decal[D_80369E61]].w * m->parts[m->decal[D_80369E61]].h) >> 1;
+              if (D_80369E61 == 0) {
+                tgr_print("# Format SB BitSize 8 Rows 1 Columns 1\n");
+              }
+              for (i = 0; i < size; i++) {
+                tgr_print("%02x\n", tex[i]);
+              }
+            }
+#endif
           } else {
             tgr_print("Saving decal %d...\n", D_80369E61);
           }
@@ -867,12 +994,24 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     break;
   case 8:                       /* the palette */
     if (op == OP_LOAD) {
+#if !TGR_REGION_EUR && !TGR_REGION_JPN
       tgr_print("Loading color palette...\n");
+#endif
       pfs = PFS;
       D_80369E54 = tgr_pak_io(pfs, D_80369E58, 0, D_8028DCC4, 0x20,
                                       (unsigned char *)BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal));
       if (D_80369E54 == 0) {
         pal = BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal);
+#if TGR_REGION_EUR
+        {
+          /* dump the palette on the debug output, a byte a line */
+          int i;
+
+          for (i = 0; i < 16; i++) {
+            tgr_print("%02x\n%02x\n", BE16(pal[i]) >> 8, BE16(pal[i]) & 0xFF);
+          }
+        }
+#endif
         BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->paint[0]].pal)[0] = pal[0];
         BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->paint[0]].pal)[1] = pal[1];
         BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->paint[1]].pal)[0] = pal[0];
@@ -883,18 +1022,22 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
         }
       }
     } else {
+#if !TGR_REGION_JPN
       tgr_print("Saving color palette...\n");
+#endif
       pfs = PFS;
       D_80369E54 = tgr_pak_io(pfs, D_80369E58, 1, D_8028DCC4, 0x20,
                                       (unsigned char *)BEPTR(unsigned short *, BEPTR(BrPaintPart *, m->parts)[m->decal[2]].pal));
     }
     switch (D_80369E54) {
     case 0:
+#if !TGR_REGION_JPN
       if (op == OP_LOAD) {
         tgr_print("Color palette loaded successfully!\n\n");
       } else {
         tgr_print("Color palette saved successfully!\n\n");
       }
+#endif
       D_80369E60 = 11;
       if (fromMenu == 0) {
         D_8028DBB4 = 0;
@@ -912,7 +1055,9 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       break;
     }
     if (D_80369E54 != 0) {
+#if !TGR_REGION_JPN
       tgr_print("err_code = %d\n\n", D_80369E54);
+#endif
       if (D_80369E54 == 2) {
         D_80369E60 = 9;
         D_80369E51 = 1;
@@ -931,17 +1076,29 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     }
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_JPN
+    BrTextSetFont(14);
+    BrBevelPanel(0x99, top, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+#else
     BrTextSetFont(12);
     BrBevelPanel(0xAF, top, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+#endif
     if (fromMenu == 1) {
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     } else {
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
     }
+#if TGR_REGION_JPN
+    BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 84, (top + 32) >> 1);
+    BrTextPrint("%j2Bq6hc@6R&", 84, ((top + 32) >> 1) + 13);
+    BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, ((top + 32) >> 1) + 32);
+    BrTextPrint("%j\xDE@6R&", 84, ((top + 32) >> 1) + 45);
+#else
     BrTextPrint("A NEW CONTROLLER PAK", 95, (top + 32) >> 1);
     BrTextPrint("WAS INSERTED.", 95, ((top + 32) >> 1) + 13);
     BrTextPrint("THIS CONTROLLER PAK", 95, ((top + 32) >> 1) + 32);
     BrTextPrint("WILL BE USED.", 95, ((top + 32) >> 1) + 45);
+#endif
     if (PAD->pressed & 0x8030) {
       BrPadConsume(PAD, 0x8030);
       if (D_80369E51 != 0) {
@@ -955,13 +1112,28 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
   case 10:                      /* a Rumble Pak is in the way, or an error */
     BrTextHighlightOff();
     BrTextAlignLeft();
+#if TGR_REGION_JPN
+    BrTextSetFont(14);
+#else
     BrTextSetFont(12);
+#endif
     if (fromMenu == 1) {
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
     } else {
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xCA, 0);
     }
     if (D_80369E54 == 9999) {
+#if TGR_REGION_JPN
+      top = 0xAD;
+      if (fromMenu == 1) {
+        top = 0xD5;
+      }
+      y = top - D_8028D0B0.w + 0x7E;
+      BrBevelPanel(200, top, 0xF0, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1s", 108, (top + 32) >> 1);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w", 108, ((top + 32) >> 1) + 13);
+      BrTextPrint("%j\xD4\xD5" "Bc\xDB" "2@&", 108, ((top + 32) >> 1) + 26);
+#else
       top = 0xA0;
       if (fromMenu == 1) {
         top = 200;
@@ -972,6 +1144,7 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
       BrTextPrint("AND INSERT THE CONTROLLER PAK", 69, ((top + 32) >> 1) + 13);
       BrTextPrint("INTO CONTROLLER.  PRESS THE A", 69, ((top + 32) >> 1) + 26);
       BrTextPrint("BUTTON WHEN READY.", 69, ((top + 32) >> 1) + 39);
+#endif
       BrTextSetFont(10);
       BrTextPrint("%wwOK", (D_8028D0B0.w + 0xDEU) >> 1, (y + 18) >> 1);
       BrTextPrint("%wwCANCEL", (D_8028D0E0.w + 0x14AU) >> 1, (y + 18) >> 1);
@@ -1004,16 +1177,32 @@ int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMe
     if (fromMenu == 0) {
       D_80369E60 = 12;
     } else if (D_80369E50 != 0) {
+#if TGR_REGION_JPN
+      BrBevelPanel(0xAA, 0xE6, 300, 100, 3, 0, 0, 0x80, 0x80, 0x80);
+      BrTextHighlightOff();
+      BrTextAlignLeft();
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      BrTextSetFont(14);
+      BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 93, 131);
+      BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 93, 144);
+      BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xD4\xD5" "Bc\xDB" "2@&", 93, 157);
+#else
       BrBevelPanel(0x73, 0xCC, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
       BrTextHighlightOff();
       BrTextAlignLeft();
+#if TGR_REGION_EUR
+      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+      BrTextSetFont(12);
+#else
       BrTextSetFont(12);
       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+#endif
       BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 118);
       BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 131);
       BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 144);
       BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 65, 157);
       BrTextPrint("TO CONTINUE.", 65, 170);
+#endif
       if (PAD->pressed & 0x8010) {
         BrPadConsume(PAD, 0x8010);
         D_80369E50 = 0;
