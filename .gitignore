@@ -69,3 +69,6 @@ temp*
 *.idb
 *.pdb
 !ports/common/**/candidates/*.json
+tools/toolchains/msvc5/
+tools/toolchains/wine/
+tools/toolchains/glide2x-sdk/

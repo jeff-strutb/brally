@@ -155,6 +155,31 @@ Functions: FENCED 134.
 |---|---|---|
 | `8026C990` | `__osDevMgrMain` | FENCED |
 
+## `eepromlongread.c`
+
+| address | function | tier |
+|---|---|---|
+
+## `eepromlongwrite.c`
+
+| address | function | tier |
+|---|---|---|
+
+## `eepromprobe.c`
+
+| address | function | tier |
+|---|---|---|
+
+## `eepromread.c`
+
+| address | function | tier |
+|---|---|---|
+
+## `eepromwrite.c`
+
+| address | function | tier |
+|---|---|---|
+
 ## `epirawdma.c`
 
 | address | function | tier |
