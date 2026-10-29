@@ -8,12 +8,13 @@
 #   build/builder/dist/RallyBuilder-VERSION-Windows.zip  Rally Builder\RallyBuilder.exe
 #                                                        and games\ (the payload), x64
 #
-# Each carries the three games (ports/brally, ports/tgrally, ports/remastered)
-# built with none of the games' data in them: ports/brally with IMAGE=runtime,
-# ports/tgrally with ROMDATA=file. check_payload.py proves that before anything
-# is packaged.
-# VERSION is builder/version.py's (the average M2 percentage, or its RELEASE
-# while that is ahead) unless set.
+# Each carries the games (ports/brally, ports/tgrally for each of its three
+# cartridges, ports/remastered) built with none of the games' data in them:
+# ports/brally with IMAGE=runtime, ports/tgrally with ROMDATA=file.
+# check_payload.py proves that before anything is packaged.
+# VERSION is builder/version.py's (the average M2 percentage over Top Gear
+# Rally's three cartridges and Boss Rally, or its RELEASE while that is ahead)
+# unless set.
 #
 # Needs the toolchains the ports already use: Xcode's clang and the iOS SDK
 # with xcodegen (macOS), and mingw-w64 (x86_64-w64-mingw32-*) for Windows.
@@ -37,16 +38,22 @@ export IMAGE ROMDATA
 for A in arm64 x86_64; do
     MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/brally-macos-$A \
         HOST=macos RENDER=metal GFLAG=-g0 ports/brally/link64.sh | grep -E "FAIL|linked"
-    MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDFLAGS_TGR="-arch $A" OUT=$B/tgrally-macos-$A \
-        HOST=macos RENDER=metal GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
+    for G in usa eur jpn; do        # Top Gear Rally: each cartridge's game (tgrally, tgrally-eur, tgrally-jpn)
+        X=; [ $G != usa ] && X=-$G
+        TGR_REGION=$G MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDFLAGS_TGR="-arch $A" \
+            OUT=$B/tgrally$X-macos-$A HOST=macos RENDER=metal GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
+    done
     MACOSX_DEPLOYMENT_TARGET=12.0 CC="clang -arch $A" LDCXX="clang++ -arch $A" OUT=$B/remastered-macos-$A \
         HOST=macos RENDER=metal GFLAG=-g0 ports/remastered/link.sh | grep -E "FAIL|linked"
 done
 lipo -create $B/brally-macos-arm64/brally64 $B/brally-macos-x86_64/brally64 -output $B/payload-macos/brally64
-lipo -create $B/tgrally-macos-arm64/tgrally $B/tgrally-macos-x86_64/tgrally -output $B/payload-macos/tgrally
+for X in "" -eur -jpn; do
+    lipo -create $B/tgrally$X-macos-arm64/tgrally $B/tgrally$X-macos-x86_64/tgrally -output $B/payload-macos/tgrally$X
+done
 lipo -create $B/remastered-macos-arm64/remastered $B/remastered-macos-x86_64/remastered \
     -output $B/payload-macos/remastered
-strip -S $B/payload-macos/brally64 $B/payload-macos/tgrally $B/payload-macos/remastered
+strip -S $B/payload-macos/brally64 $B/payload-macos/tgrally $B/payload-macos/tgrally-eur $B/payload-macos/tgrally-jpn \
+    $B/payload-macos/remastered
 IS=$B/AppIcon.iconset
 rm -rf $IS && mkdir -p $IS
 for s in 16 32 128 256 512; do
@@ -68,20 +75,26 @@ cp builder/src/mac/ios_sign.sh $B/payload-macos/ios_sign.sh
 for R in vulkan gl; do
     S=; [ $R = gl ] && S=-gl
     CC=$WINCC OUT=$B/brally-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/brally/link64.sh | grep -E "FAIL|linked"
-    CC=$WINCC OUT=$B/tgrally-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/tgrally/link.sh | grep -E "FAIL|linked"
+    for G in usa eur jpn; do
+        X=; [ $G != usa ] && X=-$G
+        TGR_REGION=$G CC=$WINCC OUT=$B/tgrally$X-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/tgrally/link.sh \
+            | grep -E "FAIL|linked"
+        x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally$X$S.exe $B/tgrally$X-windows-$R/tgrally.exe
+    done
     CC=$WINCC OUT=$B/remastered-windows-$R HOST=windows RENDER=$R GFLAG=-g0 ports/remastered/link.sh | grep -E "FAIL|linked"
     x86_64-w64-mingw32-strip -o $B/payload-windows/brally64$S.exe $B/brally-windows-$R/brally64.exe
-    x86_64-w64-mingw32-strip -o $B/payload-windows/tgrally$S.exe $B/tgrally-windows-$R/tgrally.exe
     x86_64-w64-mingw32-strip -o $B/payload-windows/remastered$S.exe $B/remastered-windows-$R/remastered.exe
 done
 cp $B/remastered-windows-vulkan/icon.ico $B/payload-windows/icon.ico
 
 # x86-64 game code must not assume 16-byte alignment of the original's data
 $PY builder/check_alignment.py $B/brally-macos-x86_64/obj $B/tgrally-macos-x86_64/obj \
-    $B/brally-windows-vulkan/obj $B/tgrally-windows-vulkan/obj \
+    $B/tgrally-eur-macos-x86_64/obj $B/tgrally-jpn-macos-x86_64/obj \
+    $B/brally-windows-vulkan/obj $B/tgrally-windows-vulkan/obj $B/tgrally-eur-windows-vulkan/obj $B/tgrally-jpn-windows-vulkan/obj \
     $B/remastered-macos-x86_64/brally/obj $B/remastered-macos-x86_64/tgrally/obj \
     $B/remastered-windows-vulkan/brally/obj $B/remastered-windows-vulkan/tgrally/obj
-$PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally $B/payload-macos/remastered \
+$PY builder/check_payload.py $B/payload-macos/brally64 $B/payload-macos/tgrally $B/payload-macos/tgrally-eur \
+    $B/payload-macos/tgrally-jpn $B/payload-macos/remastered \
     "$B/payload-macos/ios/app/Top Gear Rally Remastered" $B/payload-windows/*.exe
 
 # ---- macOS: Rally Builder.app -------------------------------------------------------------------

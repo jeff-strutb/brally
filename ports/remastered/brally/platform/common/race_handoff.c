@@ -63,6 +63,8 @@ int         host_cond_wait(host_cond *c, host_mutex *m, uint32_t timeout_ms);
 void        host_cond_broadcast(host_cond *c);
 void plat_script_autopilot(void);       /* script_game.c */
 void plat_script_autopilot_off(void);
+void plat_script_autopilot_want(int driver, int *want);
+void plat_script_autopilot_keys(const int *want);
 void plat_script_key(int vk, int dik, int down);   /* script.c */
 void rm_menuopts_refresh(void);         /* src/core/menus/rm_menuopts.cpp */
 
@@ -81,6 +83,11 @@ static int s_frames;                 /* frames the race step ran (a check's repo
 #define PLAYBACK (s_req.mode == HOST_RACE_ATTRACT || s_req.mode == HOST_RACE_SEASON_END)
 #define AUTOPILOT ((s_test || getenv("BR_HANDOFF_AUTOPILOT")) && !getenv("BR_PADFAKE"))
 static int s_ap_paused;              /* the autopilot let go for the pause menu */
+static int s_ap_driving, s_ap_want[4]; /* the autopilot drives the first car this frame, these */
+
+/* (race_pads.c: the first car's record is the autopilot's then, not the keys it
+   presses, which are the PC game's and not Remastered's bindings) */
+const int *br_handoff_autopilot_want(void) { return s_ap_driving ? s_ap_want : NULL; }
 static int s_underway;               /* this race reached its racing light (4): the light script
                                        holds the last race's finish until the step re-inits it */
 
@@ -916,6 +923,7 @@ void plat_race_frame(void)
         if (racing) {
             g_brRaceTick = 1;
             s_frames++;
+            s_ap_driving = 0;
             check_taps();
             race_shots();
             if (DAT_105ccb68[12] == 2)
@@ -930,8 +938,11 @@ void plat_race_frame(void)
                 static int n;
                 BrDriverCar *c = g_aBrRaceDriver[0].pCar;
                 int rev = getenv("BR_HANDOFF_REVERSE_AT") ? atoi(getenv("BR_HANDOFF_REVERSE_AT")) : 0;
-                if (AUTOPILOT && !(rev && n >= rev))
-                    plat_script_autopilot();
+                if (AUTOPILOT && !(rev && n >= rev)) {
+                    plat_script_autopilot_want(0, s_ap_want);   /* plat_script_autopilot's, kept */
+                    plat_script_autopilot_keys(s_ap_want);
+                    s_ap_driving = 1;
+                }
                 if (rev && n == rev) {                /* the reverse action held from here (a check) */
                     plat_script_autopilot_off();
                     plat_script_key(0x28, 0xD0, 1);

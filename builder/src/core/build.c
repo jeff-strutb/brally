@@ -5,18 +5,20 @@
  *                 /Contents/Resources/disc/           the CD's data track
  *                 /Contents/Resources/music/cd/       its audio tracks 2..13 as FLAC
  *                 /Contents/Resources/BossRally.icns  the disc's icon
- *   Top Gear Rally.app/Contents/MacOS/tgrally
- *                     /Contents/Resources/romdata.bin the cartridge's data
+ *   Top Gear Rally.app/Contents/MacOS/tgrally           (Europe's and Japan's: "Top Gear
+ *                     /Contents/Resources/romdata.bin  Rally (Japan).app", tgrally-jpn) the cartridge's data
  *   Top Gear Rally Remastered.app/Contents/MacOS/remastered     the two games
- *                                /Contents/Resources/disc/, music/cd/, romdata.bin, AppIcon.icns
+ *                                /Contents/Resources/disc/, music/cd/, romdata.bin, romdata-jpn.bin,
+ *                                AppIcon.icns
  * iPhone (Remastered): Top Gear Rally Remastered.ipa, the app (Payload/...app)
  *   with disc/, music/cd/ and romdata.bin inside, signed with the player's
  *   Xcode signing when this Mac has it (rb_ios_signing), else unsigned for the
  *   player to sign
  * Windows: a folder named for the game
  *   Boss Rally\Boss Rally.exe, icon.ico (the disc's), disc\, music\cd\
- *   Top Gear Rally\Top Gear Rally.exe, romdata.bin
- *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, disc\, music\cd\, romdata.bin
+ *   Top Gear Rally\Top Gear Rally.exe, romdata.bin (Europe's and Japan's: Top Gear Rally (Japan)\...)
+ *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, disc\, music\cd\, romdata.bin,
+ *     romdata-jpn.bin
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -38,26 +40,62 @@ extern char **environ;
 
 #define MARKER ".rally-builder"
 #define BRGLIDE_MD5 "5d6417cd547097fd00954c6874f85e97"   /* BRGlide.dll on the retail disc */
-#define TGR_DATA 0x70AB0u                                 /* ROM bytes the port reads: 0x70AB0 to the end */
 #define TGR_ROM_SIZE 0x800000u
+#define TGR_EXTRAS_CARS 0x40000u                          /* the extras: the tune, then the cars (regionextras.py) */
+
+/* Top Gear Rally's cartridges: each one's MD5 (.z64 order), where its data begins (the port
+ * reads from there to the end), where its front-end tune's packed record is, and its car
+ * models table (0x60 bytes a car); the game each builds; a Mac app's identifier */
+static const struct {
+    const char *name, *md5;
+    uint32_t data, tune, cars;
+    const char *payload, *id;
+} k_tgr[RB_REGIONS] = {
+    { "USA", RB_TGR_ROM_MD5, 0x70AB0, 0xEBC00, 0x8BE0C, "tgrally", "com.strutb.tgrally" },
+    { "Europe", RB_TGR_EUR_MD5, 0x72A80, 0xEB310, 0x8E0BC, "tgrally-eur", "com.strutb.tgrally-eur" },
+    { "Japan", RB_TGR_JPN_MD5, 0x72530, 0x102B50, 0x8DAEC, "tgrally-jpn", "com.strutb.tgrally-jpn" },
+};
+
+const char *rb_region_name(int r) { return r >= 0 && r < RB_REGIONS ? k_tgr[r].name : "?"; }
 #define IOS_APP RB_PRODUCT ".app"
 
 const char *rb_game_name(int g) { return g == RB_BOSS_RALLY ? "Boss Rally" : g == RB_TOP_GEAR_RALLY ? "Top Gear Rally" : RB_PRODUCT; }
 
 const char *rb_target_name(int t) { return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : "Windows"; }
 
-const char *rb_output_name(int g, int t)
+/* the game's name as the build has it: Top Gear Rally's with its cartridge but the USA's */
+static const char *build_name(int g, int region)
 {
-    static const char *const mac[] = { "Boss Rally.app", "Top Gear Rally.app", RB_PRODUCT ".app" };
-    if (t == RB_IOS)
-        return RB_PRODUCT ".ipa";
-    return t == RB_MACOS ? mac[g] : rb_game_name(g);
+    static char buf[64];
+    if (g != RB_TOP_GEAR_RALLY || region <= RB_USA || region >= RB_REGIONS)
+        return rb_game_name(g);
+    snprintf(buf, sizeof buf, "%s (%s)", rb_game_name(g), k_tgr[region].name);
+    return buf;
 }
 
-void rb_output_path(const rb_job *job, char *out, size_t n) { rb_join(out, n, job->dest_dir, rb_output_name(job->game, job->target)); }
+const char *rb_output_name(int g, int t, int region)
+{
+    static char buf[80];
+    if (t == RB_IOS)
+        return RB_PRODUCT ".ipa";
+    if (t != RB_MACOS)
+        return build_name(g, region);
+    snprintf(buf, sizeof buf, "%s.app", build_name(g, region));
+    return buf;
+}
+
+void rb_output_path(const rb_job *job, char *out, size_t n)
+{
+    rb_join(out, n, job->dest_dir, rb_output_name(job->game, job->target, job->region));
+}
 
 /* each game's executable in the payload */
-static const char *game_payload(int g) { return g == RB_BOSS_RALLY ? "brally64" : g == RB_TOP_GEAR_RALLY ? "tgrally" : "remastered"; }
+static const char *game_payload(int g, int region)
+{
+    if (g == RB_TOP_GEAR_RALLY)
+        return k_tgr[region >= 0 && region < RB_REGIONS ? region : RB_USA].payload;
+    return g == RB_BOSS_RALLY ? "brally64" : "remastered";
+}
 
 /* ---- checks --------------------------------------------------------------------------- */
 static int md5_file(const char *path, char hex[33], rb_progress cb, void *ctx, volatile int *cancel)
@@ -169,12 +207,13 @@ static uint8_t *load_rom(const char *path, size_t *n, char md5_as_is[33], int *o
 int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, volatile int *cancel)
 {
     size_t n;
-    int order;
+    int order, i;
     uint8_t *r, d[16];
     char z[33];
     rb_md5 m;
     (void)cancel;
     memset(out, 0, sizeof *out);
+    out->region = -1;
     if (cb)
         cb(ctx, 0, NULL);
     if (!(r = load_rom(path, &n, out->md5, &order))) {
@@ -188,11 +227,18 @@ int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
     free(r);
     if (cb)
         cb(ctx, 1, NULL);
-    out->ok = !strcmp(z, RB_TGR_ROM_MD5);
+    out->region = -1;
+    for (i = 0; i < RB_REGIONS; i++)
+        if (!strcmp(z, k_tgr[i].md5))
+            out->region = i;
+    out->ok = out->region >= 0;
     if (out->ok && order)
-        snprintf(out->note, sizeof out->note, "A %s dump: in .z64 byte order its MD5 is %s.", order == 1 ? ".v64" : ".n64", z);
-    else if (!out->ok)
-        snprintf(out->note, sizeof out->note, "This is not Top Gear Rally (USA).");
+        snprintf(out->note, sizeof out->note, "Top Gear Rally (%s), a %s dump: in .z64 byte order its MD5 is %s.",
+                 k_tgr[out->region].name, order == 1 ? ".v64" : ".n64", z);
+    else if (out->ok)
+        snprintf(out->note, sizeof out->note, "Top Gear Rally (%s).", k_tgr[out->region].name);
+    else
+        snprintf(out->note, sizeof out->note, "This is not Top Gear Rally (USA, Europe or Japan).");
     return out->ok;
 }
 
@@ -320,7 +366,10 @@ static void say(ctx *c, double f, const char *s)
 /* the Mac app's Info.plist: each game its own name, identifier and icon */
 static int mac_plist(ctx *c)
 {
-    static const char *const id[] = { "com.strutb.bossrally64", "com.strutb.tgrally", "com.strutb.tgrally-remastered" };
+    const char *id = c->job->game == RB_BOSS_RALLY ? "com.strutb.bossrally64"
+                     : c->job->game == RB_REMASTERED ? "com.strutb.tgrally-remastered"
+                     : k_tgr[c->job->region >= 0 && c->job->region < RB_REGIONS ? c->job->region : RB_USA].id;
+    const char *name = build_name(c->job->game, c->job->region);
     static const char *const min = "12.0";      /* every game and the builder: macOS 12 (builder/build.sh) */
     int g = c->job->game;
     const char *icon = g == RB_REMASTERED ? "AppIcon" : g == RB_BOSS_RALLY && c->icon ? "BossRally" : NULL;
@@ -344,7 +393,7 @@ static int mac_plist(ctx *c)
              "    <key>NSHighResolutionCapable</key><true/>\n"
              "    <key>GCSupportsControllerUserInteraction</key><true/>\n"
              "</dict>\n</plist>\n",
-             rb_game_name(g), rb_game_name(g), id[g], game_payload(g), ic, RB_VERSION, RB_VERSION, min);
+             name, name, id, game_payload(g, c->job->region), ic, RB_VERSION, RB_VERSION, min);
     rb_join(contents, sizeof contents, c->root, "Contents");
     rb_join(path, sizeof path, contents, "Info.plist");
     if (!rb_write_file(path, buf, strlen(buf))) {
@@ -378,7 +427,7 @@ static int stage(ctx *c)
 {
     char tmpname[512], path[2048], dir[2048];
     int t = c->job->target, g = c->job->game;
-    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(g, t));
+    snprintf(tmpname, sizeof tmpname, ".%s.building", rb_output_name(g, t, c->job->region));
     rb_join(c->root, sizeof c->root, c->job->dest_dir, tmpname);
     if (rb_exists(c->root) && !rb_rmtree(c->root)) {        /* a build that stopped partway */
         rb_err(c->err, c->errlen, "cannot clear %s", c->root);
@@ -390,8 +439,8 @@ static int stage(ctx *c)
         rb_join(dir, sizeof dir, c->root, "Contents/MacOS");
         if (!rb_mkdirs(dir) || !rb_mkdirs(c->res))
             goto nodir;
-        rb_join(path, sizeof path, dir, game_payload(g));
-        if (!payload(c, game_payload(g), path, 0))
+        rb_join(path, sizeof path, dir, game_payload(g, c->job->region));
+        if (!payload(c, game_payload(g, c->job->region), path, 0))
             return 0;
         rb_set_exec(path);
         if (g != RB_REMASTERED)
@@ -413,10 +462,10 @@ static int stage(ctx *c)
         goto nodir;
     {
         char exe[512];
-        snprintf(exe, sizeof exe, "%s.exe", rb_game_name(g));
+        snprintf(exe, sizeof exe, "%s.exe", build_name(g, c->job->region));
         rb_join(path, sizeof path, c->root, exe);
     }
-    if (!payload(c, game_payload(g), path, 0))
+    if (!payload(c, game_payload(g, c->job->region), path, 0))
         return 0;
     if (g != RB_REMASTERED)
         return 1;
@@ -485,32 +534,140 @@ static int finish(ctx *c)
     return 1;
 }
 
-/* Top Gear Rally's data, from the ROM */
-static int rom_data(ctx *c, double lo, double hi)
+static uint32_t be32(const uint8_t *p) { return (uint32_t)p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3]; }
+static void put_be32(uint8_t *p, uint32_t v) { p[0] = v >> 24; p[1] = v >> 16; p[2] = v >> 8; p[3] = (uint8_t)v; }
+
+/* a ROM, read, in .z64 order and checked to be cartridge `want` (-1: any); its region in *got */
+static uint8_t *tgr_rom(ctx *c, const char *path, int want, int *got)
 {
-    char path[2048], md5[33];
+    char md5[33], z[33];
     size_t n;
-    int order;
-    uint8_t *r;
-    say(c, lo, "Reading the ROM");
-    if (!(r = load_rom(c->job->rom, &n, md5, &order))) {
-        rb_err(c->err, c->errlen, "cannot read the ROM");
+    int order, i;
+    uint8_t *r, d[16];
+    rb_md5 m;
+    if (!(r = load_rom(path, &n, md5, &order))) {
+        rb_err(c->err, c->errlen, "cannot read the ROM %s", path);
+        return NULL;
+    }
+    rb_md5_init(&m);
+    rb_md5_update(&m, r, n);
+    rb_md5_final(&m, d);
+    rb_md5_hex(d, z);
+    *got = -1;
+    for (i = 0; i < RB_REGIONS; i++)
+        if (!strcmp(z, k_tgr[i].md5))
+            *got = i;
+    if (n != TGR_ROM_SIZE || *got < 0 || (want >= 0 && *got != want)) {
+        free(r);
+        rb_err(c->err, c->errlen, "%s is not Top Gear Rally (%s)", path, want >= 0 ? k_tgr[want].name : "USA, Europe or Japan");
+        return NULL;
+    }
+    return r;
+}
+
+/* a packed record's length: its header (compressed length, unpacked size) and its bytes */
+static uint32_t record_len(const uint8_t *rom, uint32_t off) { return 8 + be32(rom + off); }
+
+/* Remastered: what one Top Gear Rally library takes from the other cartridge (`other`, its
+ * region ro), placed at ROM 0x800000 after the library's own data, as
+ * ports/remastered/tools/regionextras.py makes it: the other's front-end tune (a packed
+ * record), then at 0x40000 its three cars that Japan changed (kinds 3, 6, 9): a count, each
+ * one's kind, its 0x60-byte record (its name's address 0, its model's ROM offset moved to its
+ * copy here) and its name (16 bytes), then the three model files, each 16-aligned */
+static uint8_t *extras(const uint8_t *other, int ro, size_t *len)
+{
+    static const int kinds[3] = { 3, 6, 9 };
+    const uint32_t head = 4 + 3 * (4 + 0x60 + 16), first = TGR_EXTRAS_CARS + head;
+    uint32_t tune = k_tgr[ro].tune, tl = record_len(other, tune), files = 0, k;
+    size_t cap = first + 3 * 0x10000;
+    uint8_t *b = calloc(1, cap), *h;
+    if (!b || tl > TGR_EXTRAS_CARS)
+        return free(b), NULL;
+    memcpy(b, other + tune, tl);
+    h = b + TGR_EXTRAS_CARS;
+    put_be32(h, 3);
+    for (k = 0; k < 3; k++) {
+        uint8_t *e = h + 4 + k * (4 + 0x60 + 16);
+        const uint8_t *rec = other + k_tgr[ro].cars + kinds[k] * 0x60;
+        uint32_t name = be32(rec) - 0x80200000u + 0x1000u, model = be32(rec + 0x14), ml = record_len(other, model), i;
+        if (first + files + ml + 16 > cap) {
+            uint8_t *nb = realloc(b, cap = first + files + ml + 16);
+            if (!nb)
+                return free(b), NULL;
+            b = nb;
+            h = b + TGR_EXTRAS_CARS;
+            e = h + 4 + k * (4 + 0x60 + 16);
+        }
+        put_be32(e, (uint32_t)kinds[k]);
+        memcpy(e + 4, rec, 0x60);
+        put_be32(e + 4, 0);
+        put_be32(e + 4 + 0x14, TGR_ROM_SIZE + first + files);
+        for (i = 0; i < 15 && other[name + i]; i++)
+            e[4 + 0x60 + i] = other[name + i];
+        memcpy(b + first + files, other + model, ml);
+        files += ml;
+        files = (files + 15) & ~15u;
+    }
+    *len = first + files;
+    return b;
+}
+
+/* a library's data file: its cartridge's data from where its code ends, then (Remastered)
+ * what it takes from the other cartridge */
+static int write_data(ctx *c, const char *name, const uint8_t *rom, int region, const uint8_t *other, int ro)
+{
+    char path[2048];
+    uint32_t d = k_tgr[region].data;
+    size_t xl = 0;
+    uint8_t *x = other ? extras(other, ro, &xl) : NULL, *all;
+    int ok;
+    if (other && !x) {
+        rb_err(c->err, c->errlen, "cannot take the other cartridge's tune and cars");
         return 0;
     }
-    if (n != TGR_ROM_SIZE) {
-        free(r);
-        rb_err(c->err, c->errlen, "the ROM is not 8 MB");
+    if (!(all = malloc(TGR_ROM_SIZE - d + xl))) {
+        free(x);
+        rb_err(c->err, c->errlen, "out of memory");
+        return 0;
+    }
+    memcpy(all, rom + d, TGR_ROM_SIZE - d);
+    if (x)
+        memcpy(all + TGR_ROM_SIZE - d, x, xl);
+    rb_join(path, sizeof path, c->res, name);
+    ok = rb_write_file(path, all, TGR_ROM_SIZE - d + xl);
+    free(all);
+    free(x);
+    if (!ok)
+        rb_err(c->err, c->errlen, "cannot write %s", path);
+    return ok;
+}
+
+/* Top Gear Rally's data, from the ROM (Remastered: from the USA's and Japan's) */
+static int rom_data(ctx *c, double lo, double hi)
+{
+    uint8_t *usa, *jpn;
+    int got, ok;
+    say(c, lo, "Reading the ROM");
+    if (c->job->game != RB_REMASTERED) {
+        if (!(usa = tgr_rom(c, c->job->rom, c->job->region, &got)))
+            return 0;
+        say(c, (lo + hi) / 2, "Writing Top Gear Rally's data");
+        ok = write_data(c, "romdata.bin", usa, got, NULL, 0);
+        free(usa);
+        return ok;
+    }
+    if (!(usa = tgr_rom(c, c->job->rom, RB_USA, &got)))
+        return 0;
+    if (!(jpn = tgr_rom(c, c->job->rom_jpn, RB_JAPAN, &got))) {
+        free(usa);
         return 0;
     }
     say(c, (lo + hi) / 2, "Writing Top Gear Rally's data");
-    rb_join(path, sizeof path, c->res, "romdata.bin");
-    if (!rb_write_file(path, r + TGR_DATA, n - TGR_DATA)) {
-        free(r);
-        rb_err(c->err, c->errlen, "cannot write %s", path);
-        return 0;
-    }
-    free(r);
-    return 1;
+    ok = write_data(c, "romdata.bin", usa, RB_USA, jpn, RB_JAPAN) &&
+         write_data(c, "romdata-jpn.bin", jpn, RB_JAPAN, usa, RB_USA);
+    free(usa);
+    free(jpn);
+    return ok;
 }
 
 /* Boss Rally's data, from the disc: the data track's files, the audio tracks as FLAC (the
@@ -595,8 +752,19 @@ static int data(ctx *c)
 int rb_build(const rb_job *job, rb_progress cb, void *cctx, volatile int *cancel, char *err, size_t errlen)
 {
     ctx c;
+    rb_job j = *job;
     int ok;
     memset(&c, 0, sizeof c);
+    if (j.game == RB_TOP_GEAR_RALLY) {   /* the build is the ROM's cartridge's, whatever the front end said */
+        rb_check ck;
+        rb_check_rom(j.rom, &ck, NULL, NULL, NULL);
+        if (!ck.ok) {
+            rb_err(err, errlen, "%s", ck.note[0] ? ck.note : "the ROM is not Top Gear Rally");
+            return 0;
+        }
+        j.region = ck.region;
+    }
+    job = &j;
     c.job = job;
     c.cb = cb;
     c.cctx = cctx;

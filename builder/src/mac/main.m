@@ -10,7 +10,7 @@
  *   5 the result: the app or .ipa, or what went wrong
  *
  * Arguments fill in the choices for a scripted run:
- *   --game br|tgr|remastered  --target mac|ios  --dest DIR  --bin FILE  --cue FILE  --rom FILE
+ *   --game br|tgr|remastered  --target mac|ios  --dest DIR  --bin FILE  --cue FILE  --rom FILE  --rom-jpn FILE
  * RB_SNAPSHOT=DIR writes each page the window shows to DIR as a PNG.
  */
 #import <Cocoa/Cocoa.h>
@@ -23,7 +23,8 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
     @autoreleasepool {
         static NSDictionary<NSString *, NSString *> *map;
         if (!map)
-            map = @{ @"brally64": @"brally64", @"tgrally": @"tgrally", @"remastered": @"remastered",
+            map = @{ @"brally64": @"brally64", @"tgrally": @"tgrally", @"tgrally-eur": @"tgrally-eur",
+                     @"tgrally-jpn": @"tgrally-jpn", @"remastered": @"remastered",
                      @"icon": @"AppIcon.icns", @"ios-app": @"ios/app", @"ios-sign": @"ios_sign.sh" };
         NSString *rel = map[@(name)];
         NSString *src = rel ? [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:
@@ -43,8 +44,9 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
 @property int game, target;
 @property (copy) NSString *signing;          /* the iPhone build's signing, nil: unsigned */
 @property BOOL destChosen;                    /* else the target's own: Applications, or the Desktop for an .ipa */
-@property (copy) NSString *dest, *bin, *cue, *rom;
-@property BOOL binOK, cueOK, romOK;
+@property (copy) NSString *dest, *bin, *cue, *rom, *romJpn;
+@property BOOL binOK, cueOK, romOK, romJpnOK;
+@property int romRegion;
 @property (strong) NSTextField *destLabel;
 @property (strong) NSMutableDictionary<NSString *, NSTextField *> *rows;
 @property (strong) NSButton *buildButton;
@@ -126,6 +128,7 @@ static void progress_cb(void *ctx, double f, const char *s)
             else if ([k isEqualToString:@"--bin"]) self.bin = v;
             else if ([k isEqualToString:@"--cue"]) self.cue = v;
             else if ([k isEqualToString:@"--rom"]) self.rom = v;
+            else if ([k isEqualToString:@"--rom-jpn"]) self.romJpn = v;
             else continue;
             i++;
         }
@@ -205,8 +208,8 @@ static void progress_cb(void *ctx, double f, const char *s)
 {
     static const char *const what[] = {
         "The 1999 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
-        "The 1997 Nintendo 64 game, from your cartridge ROM.",
-        "Top Gear Rally's menus with Boss Rally's engine running the races, from both. "
+        "The 1997 Nintendo 64 game, from your cartridge ROM: USA, Europe or Japan.",
+        "Top Gear Rally's menus (the USA's and Japan's) with Boss Rally's engine running the races. "
         "For the Mac, or for the iPhone and iPad.",
     };
     NSMutableArray<NSView *> *v = [NSMutableArray arrayWithArray:@[
@@ -299,7 +302,7 @@ static void progress_cb(void *ctx, double f, const char *s)
 }
 
 /* ---- 2: the player's dump ------------------------------------------------------------------- */
-- (NSView *)row:(NSString *)key title:(NSString *)title expect:(const char *)md5
+- (NSView *)row:(NSString *)key title:(NSString *)title expect:(NSString *)md5
 {
     NSButton *b = [self button:@"Choose..." action:@selector(chooseFile:)];
     b.identifier = key;
@@ -307,7 +310,7 @@ static void progress_cb(void *ctx, double f, const char *s)
     state.lineBreakMode = NSLineBreakByTruncatingMiddle;
     self.rows[key] = state;
     return vstack(@[ hstack(@[ label(title, 13, YES), b ]),
-                     mono([NSString stringWithFormat:@"Expected MD5  %s", md5]),
+                     mono([NSString stringWithFormat:@"Expected MD5  %@", md5]),
                      state ], 4);
 }
 
@@ -321,19 +324,25 @@ static void progress_cb(void *ctx, double f, const char *s)
         intro = @"The game's data is copyrighted, so the builder cannot include it. Provide a BIN/CUE image of the retail "
                 @"Boss Rally CD. Choosing either file of the image finds the other beside it.";
     else if (g == RB_TOP_GEAR_RALLY)
-        intro = @"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-                @"cartridge (.z64, .v64 or .n64).";
+        intro = @"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of a Top Gear Rally "
+                @"cartridge (.z64, .v64 or .n64): the USA's, Europe's or Japan's. The build is that cartridge's game.";
     else
-        intro = @"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-                @"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
-                @"image finds the other beside it.";
+        intro = @"The games' data is copyrighted, so the builder cannot include it. Provide ROMs of the Top Gear Rally (USA) "
+                @"and Top Gear Rally (Japan) cartridges (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. "
+                @"Choosing either file of the image finds the other beside it.";
     [v addObject:label(rb_needs_disc(g) && rb_needs_rom(g) ? @"Your copies of the games" : @"Your copy of the game", 20, YES)];
     [v addObject:label(intro, 13, NO)];
-    if (rb_needs_rom(g))
-        [v addObject:[self row:@"rom" title:@"Top Gear Rally: cartridge ROM" expect:RB_TGR_ROM_MD5]];
+    if (g == RB_TOP_GEAR_RALLY)
+        [v addObject:[self row:@"rom" title:@"Top Gear Rally: cartridge ROM"
+                        expect:@"USA " RB_TGR_ROM_MD5 "\n              Europe " RB_TGR_EUR_MD5
+                               "\n              Japan " RB_TGR_JPN_MD5]];
+    else if (rb_needs_rom(g))
+        [v addObject:[self row:@"rom" title:@"Top Gear Rally (USA): cartridge ROM" expect:@RB_TGR_ROM_MD5]];
+    if (rb_needs_rom_jpn(g))
+        [v addObject:[self row:@"romjpn" title:@"Top Gear Rally (Japan): cartridge ROM" expect:@RB_TGR_JPN_MD5]];
     if (rb_needs_disc(g)) {
-        [v addObject:[self row:@"bin" title:@"Boss Rally: disc image (.bin)" expect:RB_BR_BIN_MD5]];
-        [v addObject:[self row:@"cue" title:@"Boss Rally: cue sheet (.cue)" expect:RB_BR_CUE_MD5]];
+        [v addObject:[self row:@"bin" title:@"Boss Rally: disc image (.bin)" expect:@RB_BR_BIN_MD5]];
+        [v addObject:[self row:@"cue" title:@"Boss Rally: cue sheet (.cue)" expect:@RB_BR_CUE_MD5]];
     }
     self.destLabel = mono(self.dest);
     self.destLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
@@ -345,6 +354,7 @@ static void progress_cb(void *ctx, double f, const char *s)
     self.buildButton.keyEquivalent = @"\r";
     [self setPage:vstack(v, 14) buttons:@[ back, self.buildButton ]];
     if (self.rom && rb_needs_rom(g)) [self check:@"rom" path:self.rom];
+    if (self.romJpn && rb_needs_rom_jpn(g)) [self check:@"romjpn" path:self.romJpn];
     if (self.bin && rb_needs_disc(g)) [self check:@"bin" path:self.bin];
     if (self.cue && rb_needs_disc(g)) [self check:@"cue" path:self.cue];
     [self updateBuildButton];
@@ -360,7 +370,8 @@ static void progress_cb(void *ctx, double f, const char *s)
 
 - (void)updateBuildButton
 {
-    BOOL ok = (!rb_needs_disc(self.game) || (self.binOK && self.cueOK)) && (!rb_needs_rom(self.game) || self.romOK);
+    BOOL ok = (!rb_needs_disc(self.game) || (self.binOK && self.cueOK)) && (!rb_needs_rom(self.game) || self.romOK) &&
+              (!rb_needs_rom_jpn(self.game) || self.romJpnOK);
     self.buildButton.enabled = ok && atomic_load(&g_checks) == 0;
 }
 
@@ -374,8 +385,8 @@ static void progress_cb(void *ctx, double f, const char *s)
         if (r != NSModalResponseOK)
             return;
         NSString *path = p.URL.path;
-        if ([key isEqualToString:@"rom"]) {
-            [self check:@"rom" path:path];
+        if ([key isEqualToString:@"rom"] || [key isEqualToString:@"romjpn"]) {
+            [self check:key path:path];
             return;
         }
         /* either file of the pair: find the other beside it */
@@ -408,23 +419,33 @@ static void progress_cb(void *ctx, double f, const char *s)
     if ([key isEqualToString:@"bin"]) { self.bin = path; self.binOK = NO; }
     if ([key isEqualToString:@"cue"]) { self.cue = path; self.cueOK = NO; }
     if ([key isEqualToString:@"rom"]) { self.rom = path; self.romOK = NO; }
+    if ([key isEqualToString:@"romjpn"]) { self.romJpn = path; self.romJpnOK = NO; }
     row.stringValue = [NSString stringWithFormat:@"%@: checking...", name];
     row.textColor = NSColor.secondaryLabelColor;
     atomic_fetch_add(&g_checks, 1);
     [self updateBuildButton];
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-        rb_check c;
+        rb_check cc;
         const char *p = path.fileSystemRepresentation;
         if ([key isEqualToString:@"bin"])
-            rb_check_bin(p, &c, NULL, NULL, NULL);
+            rb_check_bin(p, &cc, NULL, NULL, NULL);
         else if ([key isEqualToString:@"cue"])
-            rb_check_cue(p, &c);
+            rb_check_cue(p, &cc);
         else
-            rb_check_rom(p, &c, NULL, NULL, NULL);
+            rb_check_rom(p, &cc, NULL, NULL, NULL);
         dispatch_async(dispatch_get_main_queue(), ^{
             BOOL current = [key isEqualToString:@"bin"] ? [self.bin isEqualToString:path]
-                         : [key isEqualToString:@"cue"] ? [self.cue isEqualToString:path] : [self.rom isEqualToString:path];
+                         : [key isEqualToString:@"cue"] ? [self.cue isEqualToString:path]
+                         : [key isEqualToString:@"romjpn"] ? [self.romJpn isEqualToString:path] : [self.rom isEqualToString:path];
             atomic_fetch_sub(&g_checks, 1);
+            /* Remastered's rows want one cartridge each: the USA's, Japan's */
+            int want = [key isEqualToString:@"romjpn"] ? RB_JAPAN : [key isEqualToString:@"rom"] && self.game == RB_REMASTERED ? RB_USA : -1;
+            rb_check c = cc;
+            if (c.ok && want >= 0 && c.region != want) {
+                snprintf(c.note, sizeof c.note, "This is Top Gear Rally (%s); this one is Top Gear Rally (%s).",
+                         rb_region_name(c.region), rb_region_name(want));
+                c.ok = 0;
+            }
             if (current) {
                 NSString *verdict = c.ok ? @"\u2713 matches" : @"\u2717 does not match";
                 NSString *note = c.note[0] ? [NSString stringWithFormat:@"\n%s", c.note] : @"";
@@ -432,7 +453,8 @@ static void progress_cb(void *ctx, double f, const char *s)
                 row.textColor = c.ok ? NSColor.systemGreenColor : NSColor.systemRedColor;
                 if ([key isEqualToString:@"bin"]) self.binOK = c.ok;
                 if ([key isEqualToString:@"cue"]) self.cueOK = c.ok;
-                if ([key isEqualToString:@"rom"]) self.romOK = c.ok;
+                if ([key isEqualToString:@"rom"]) { self.romOK = c.ok; self.romRegion = c.region; }
+                if ([key isEqualToString:@"romjpn"]) self.romJpnOK = c.ok;
             }
             [self updateBuildButton];
             [self snapshot];
@@ -448,17 +470,18 @@ static void progress_cb(void *ctx, double f, const char *s)
     job.game = self.game;
     job.target = self.target;
     job.dest_dir = self.dest.fileSystemRepresentation;
+    job.region = self.romRegion;
     if (rb_output_exists(&job, &ours)) {
         char out[2048];
         rb_output_path(&job, out, sizeof out);
         NSAlert *a = [NSAlert new];
         if (!ours) {
-            a.messageText = [NSString stringWithFormat:@"%s already exists", rb_output_name(self.game, self.target)];
+            a.messageText = [NSString stringWithFormat:@"%s already exists", rb_output_name(self.game, self.target, self.romRegion)];
             a.informativeText = [NSString stringWithFormat:@"%s was not made by Rally Builder, so it will not be replaced. Move it away or choose another folder.", out];
             [a beginSheetModalForWindow:self.window completionHandler:nil];
             return;
         }
-        a.messageText = [NSString stringWithFormat:@"Replace %s?", rb_output_name(self.game, self.target)];
+        a.messageText = [NSString stringWithFormat:@"Replace %s?", rb_output_name(self.game, self.target, self.romRegion)];
         a.informativeText = [NSString stringWithFormat:@"An earlier build is at %s. Your saved games are kept; they live in your Library (on the iPhone, with the app's data), not in the build.", out];
         [a addButtonWithTitle:@"Replace"];
         [a addButtonWithTitle:@"Cancel"];
@@ -485,7 +508,8 @@ static void progress_cb(void *ctx, double f, const char *s)
                             self.bar, self.status ], 14) buttons:@[ cancel ]];
     g_cancel = 0;
     int game = self.game, target = self.target;
-    NSString *dest = self.dest, *bin = self.bin, *cue = self.cue, *rom = self.rom;
+    NSString *dest = self.dest, *bin = self.bin, *cue = self.cue, *rom = self.rom, *romJpn = self.romJpn;
+    int region = self.romRegion;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         rb_job job = { 0 };
         char err[1024] = "", out[2048];
@@ -495,6 +519,8 @@ static void progress_cb(void *ctx, double f, const char *s)
         job.bin = bin.fileSystemRepresentation;
         job.cue = cue.fileSystemRepresentation;
         job.rom = rom.fileSystemRepresentation;
+        job.region = region;
+        job.rom_jpn = romJpn.fileSystemRepresentation;
         int ok = rb_build(&job, progress_cb, (__bridge void *)self, &g_cancel, err, sizeof err);
         rb_output_path(&job, out, sizeof out);
         NSString *e = @(err), *o = @(out);

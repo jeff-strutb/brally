@@ -1,0 +1,37 @@
+--- a/platform/os/romdata.c
++++ b/platform/os/romdata.c
+@@ -24,17 +24,23 @@
+     return 1;
+ }
+ #else
++/* Remastered: each of its Top Gear Rally libraries reads its own file (rm_tgrp.h
++   names the second's), the other cartridge's tune and cars after the 8 MB */
++#ifndef TGR_ROMDATA_NAME
++#define TGR_ROMDATA_NAME "romdata.bin"
++#define TGR_ROMDATA_ENV "TGR_ROMDATA"
++#endif
+ int tgr_romdata_load(void)
+ {
+     char path[1100];
+-    const char *e = getenv("TGR_ROMDATA");
++    const char *e = getenv(TGR_ROMDATA_ENV);
+     uint8_t *p;
+     FILE *f;
+     long n;
+     if (e)
+         snprintf(path, sizeof path, "%s", e);
+     else
+-        snprintf(path, sizeof path, "%s/romdata.bin", host_resource_dir());
++        snprintf(path, sizeof path, "%s/%s", host_resource_dir(), TGR_ROMDATA_NAME);
+     if (!(f = fopen(path, "rb"))) {
+         fprintf(stderr, "tgr: no game data at %s\n", path);
+         return 0;
+@@ -42,7 +48,7 @@
+     fseek(f, 0, SEEK_END);
+     n = ftell(f);
+     fseek(f, 0, SEEK_SET);
+-    if (n != (long)TGR_ROMDATA_SIZE || !(p = malloc((size_t)n)) || fread(p, 1, (size_t)n, f) != (size_t)n) {
++    if (n < (long)TGR_ROMDATA_SIZE || !(p = malloc((size_t)n)) || fread(p, 1, (size_t)n, f) != (size_t)n) {
+         fprintf(stderr, "tgr: %s is not Top Gear Rally's data (%ld bytes)\n", path, n);
+         fclose(f);
+         return 0;

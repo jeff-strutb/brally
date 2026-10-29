@@ -29,8 +29,9 @@
 #define WM_RB_DONE     (WM_APP + 3)
 
 enum { ID_DEST = 100, ID_NEXT, ID_BACK, ID_BUILD, ID_CANCEL, ID_SHOW, ID_PLAY, ID_DONE,
-       ID_PICK_BIN, ID_PICK_CUE, ID_PICK_ROM, ID_GAME };     /* ID_GAME + each game */
-enum { K_BIN, K_CUE, K_ROM, K_N };
+       ID_PICK_BIN, ID_PICK_CUE, ID_PICK_ROM, ID_PICK_ROMJPN, ID_GAME };     /* ID_GAME + each game */
+enum { K_BIN, K_CUE, K_ROM, K_ROMJPN, K_N };   /* K_ROMJPN: Remastered's Japan ROM */
+#define BOTTOM 572                       /* the buttons' row (Remastered: four dumps above it) */
 
 static HWND s_wnd, s_bar, s_status, s_build;
 static HWND s_rowtext[K_N];
@@ -40,6 +41,7 @@ static int s_nctl, s_page, s_game = RB_REMASTERED;
 static wchar_t s_dest[MAX_PATH];
 static wchar_t s_file[K_N][MAX_PATH];
 static int s_ok[K_N], s_checking;
+static int s_region = -1;               /* the Top Gear Rally ROM's cartridge (rb_check) */
 static volatile int s_cancel;
 static wchar_t s_status_text[256];
 static double s_fraction;
@@ -100,7 +102,8 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
     GetModuleFileNameW(NULL, src, MAX_PATH);
     if ((s = wcsrchr(src, L'\\')) != NULL)
         *s = 0;
-    if (!strcmp(name, "remastered") || !strcmp(name, "brally64") || !strcmp(name, "tgrally"))
+    if (!strcmp(name, "remastered") || !strcmp(name, "brally64") || !strcmp(name, "tgrally") ||
+        !strcmp(name, "tgrally-eur") || !strcmp(name, "tgrally-jpn"))
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\%hs%ls.exe", name, vulkan_usable() ? L"" : L"-gl");
     else if (!strcmp(name, "icon"))
         swprintf(src + wcslen(src), MAX_PATH - wcslen(src), L"\\games\\icon.ico");
@@ -149,8 +152,8 @@ static void page_game(void)
 {
     static const wchar_t *const what[] = {
         L"The 1999 PC game, from your retail CD (BIN/CUE), with its CD soundtrack.",
-        L"The 1997 Nintendo 64 game, from your cartridge ROM.",
-        L"Top Gear Rally's menus with Boss Rally's engine running the races, from both.",
+        L"The 1997 Nintendo 64 game, from your cartridge ROM: USA, Europe or Japan.",
+        L"Top Gear Rally's menus (the USA's and Japan's) with Boss Rally's engine running the races.",
     };
     int g;
     s_page = 1;
@@ -167,12 +170,13 @@ static void page_game(void)
         SendMessageW(r, BM_SETCHECK, g == s_game ? BST_CHECKED : BST_UNCHECKED, 0);
         text(what[g], 44, 138 + g * 72, 520, 36, s_font);
     }
-    button(L"Continue", 464, 472, 100, ID_NEXT, 1);
+    button(L"Continue", 464, BOTTOM, 100, ID_NEXT, 1);
 }
 
 static void update_build(void)
 {
-    int ok = (!rb_needs_disc(s_game) || (s_ok[K_BIN] && s_ok[K_CUE])) && (!rb_needs_rom(s_game) || s_ok[K_ROM]);
+    int ok = (!rb_needs_disc(s_game) || (s_ok[K_BIN] && s_ok[K_CUE])) && (!rb_needs_rom(s_game) || s_ok[K_ROM]) &&
+             (!rb_needs_rom_jpn(s_game) || s_ok[K_ROMJPN]);
     if (s_build)
         EnableWindow(s_build, ok && !s_checking);
 }
@@ -180,7 +184,7 @@ static void update_build(void)
 static void row(int k, const wchar_t *title, const char *md5, int y, int id)
 {
     wchar_t e[128];
-    swprintf(e, 128, L"Expected MD5  %hs", md5);
+    swprintf(e, 128, L"Expected MD5  %hs", md5);   /* (Top Gear Rally: any of its three, by name) */
     text(title, 24, y, 300, 22, s_bold);
     button(L"Choose...", 464, y - 3, 100, id, 0);
     text(e, 24, y + 22, 540, 18, s_mono);
@@ -196,32 +200,43 @@ static void page_dumps(void)
     clear_page();
     if (s_game == RB_REMASTERED) {
         text(L"Your copies of the games", 24, 20, 540, 32, s_title);
-        text(L"The games' data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-             L"cartridge (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. Choosing either file of the "
-             L"image finds the other beside it.", 24, 58, 540, 56, s_font);
+        text(L"The games' data is copyrighted, so the builder cannot include it. Provide ROMs of the Top Gear Rally (USA) "
+             L"and Top Gear Rally (Japan) cartridges (.z64, .v64 or .n64), and a BIN/CUE image of the retail Boss Rally CD. "
+             L"Choosing either file of the image finds the other beside it.", 24, 58, 540, 56, s_font);
     } else if (s_game == RB_BOSS_RALLY) {
         text(L"Your copy of the game", 24, 20, 540, 32, s_title);
         text(L"The game's data is copyrighted, so the builder cannot include it. Provide a BIN/CUE image of the retail "
              L"Boss Rally CD. Choosing either file of the image finds the other beside it.", 24, 58, 540, 56, s_font);
     } else {
         text(L"Your copy of the game", 24, 20, 540, 32, s_title);
-        text(L"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of the Top Gear Rally (USA) "
-             L"cartridge (.z64, .v64 or .n64).", 24, 58, 540, 56, s_font);
+        text(L"The game's data is copyrighted, so the builder cannot include it. Provide a ROM of a Top Gear Rally "
+             L"cartridge (.z64, .v64 or .n64): the USA's, Europe's or Japan's. The build is that cartridge's game.",
+             24, 58, 540, 56, s_font);
     }
-    if (rb_needs_rom(s_game)) {
-        row(K_ROM, L"Top Gear Rally: cartridge ROM", RB_TGR_ROM_MD5, y, ID_PICK_ROM);
-        y += 96;
-    }
-    if (rb_needs_disc(s_game)) {
-        row(K_BIN, L"Boss Rally: disc image (.bin)", RB_BR_BIN_MD5, y, ID_PICK_BIN);
-        row(K_CUE, L"Boss Rally: cue sheet (.cue)", RB_BR_CUE_MD5, y + 96, ID_PICK_CUE);
-        y += 192;
+    {
+        int step = 96;
+        if (s_game == RB_TOP_GEAR_RALLY) {
+            row(K_ROM, L"Top Gear Rally: cartridge ROM (USA, Europe or Japan)", RB_TGR_ROM_MD5 " (USA)", y, ID_PICK_ROM);
+            y += step;
+        } else if (rb_needs_rom(s_game)) {
+            row(K_ROM, L"Top Gear Rally (USA): cartridge ROM", RB_TGR_ROM_MD5, y, ID_PICK_ROM);
+            y += step;
+        }
+        if (rb_needs_rom_jpn(s_game)) {
+            row(K_ROMJPN, L"Top Gear Rally (Japan): cartridge ROM", RB_TGR_JPN_MD5, y, ID_PICK_ROMJPN);
+            y += step;
+        }
+        if (rb_needs_disc(s_game)) {
+            row(K_BIN, L"Boss Rally: disc image (.bin)", RB_BR_BIN_MD5, y, ID_PICK_BIN);
+            row(K_CUE, L"Boss Rally: cue sheet (.cue)", RB_BR_CUE_MD5, y + step, ID_PICK_CUE);
+            y += 2 * step;
+        }
     }
     text(L"Build into:", 24, y + 4, 100, 22, s_bold);
     add(L"STATIC", s_dest, SS_LEFT | SS_NOPREFIX | SS_PATHELLIPSIS | SS_SUNKEN, 124, y, 330, 26, 0, s_mono);
     button(L"Choose...", 464, y - 1, 100, ID_DEST, 0);
-    button(L"Back", 352, 472, 100, ID_BACK, 0);
-    s_build = button(L"Build", 464, 472, 100, ID_BUILD, 1);
+    button(L"Back", 352, BOTTOM, 100, ID_BACK, 0);
+    s_build = button(L"Build", 464, BOTTOM, 100, ID_BUILD, 1);
     for (k = 0; k < K_N; k++)
         if (s_file[k][0] && s_rowtext[k])
             start_check(k, s_file[k]);
@@ -241,7 +256,7 @@ static void page_build(void)
     s_bar = add(PROGRESS_CLASSW, L"", 0, 24, 80, 540, 22, 0, s_font);
     SendMessageW(s_bar, PBM_SETRANGE32, 0, 1000);
     s_status = text(L"Starting", 24, 112, 540, 44, s_font);
-    button(L"Cancel", 464, 472, 100, ID_CANCEL, 0);
+    button(L"Cancel", 464, BOTTOM, 100, ID_CANCEL, 0);
 }
 
 static void page_result(void)
@@ -265,15 +280,15 @@ static void page_result(void)
                                        : L"Alt+Enter switches to full screen and back. Options, Keys and Pad sets the keys and "
                                          L"pad buttons; Escape on the main menu, or the pause menu's Exit Game, quits.",
              24, 150, 540, 60, s_font);
-        button(L"Done", 240, 472, 100, ID_DONE, 0);
-        button(L"Open Folder", 352, 472, 100, ID_SHOW, 0);
-        button(L"Play", 464, 472, 100, ID_PLAY, 1);
+        button(L"Done", 240, BOTTOM, 100, ID_DONE, 0);
+        button(L"Open Folder", 352, BOTTOM, 100, ID_SHOW, 0);
+        button(L"Play", 464, BOTTOM, 100, ID_PLAY, 1);
     } else {
         text(L"The build did not finish", 24, 20, 540, 32, s_title);
         to16(s_err[0] ? s_err : "The build failed.", t, 2048);
         text(t, 24, 64, 540, 120, s_font);
-        button(L"Quit", 352, 472, 100, ID_DONE, 0);
-        button(L"Back", 464, 472, 100, ID_BACK, 1);
+        button(L"Quit", 352, BOTTOM, 100, ID_DONE, 0);
+        button(L"Back", 464, BOTTOM, 100, ID_BACK, 1);
     }
 }
 
@@ -321,7 +336,16 @@ static void checked(check_job *j)
     if (!wcscmp(j->path, s_file[j->k])) {
         wchar_t t[1024];
         const wchar_t *name = wcsrchr(j->path, L'\\') ? wcsrchr(j->path, L'\\') + 1 : j->path;
+        /* Remastered's rows want one cartridge each: the USA's, Japan's */
+        int want = j->k == K_ROMJPN ? RB_JAPAN : j->k == K_ROM && s_game == RB_REMASTERED ? RB_USA : -1;
+        if (j->c.ok && want >= 0 && j->c.region != want) {
+            snprintf(j->c.note, sizeof j->c.note, "This is Top Gear Rally (%s); this one is Top Gear Rally (%s).",
+                     rb_region_name(j->c.region), rb_region_name(want));
+            j->c.ok = 0;
+        }
         s_ok[j->k] = j->c.ok;
+        if (j->k == K_ROM)
+            s_region = j->c.region;
         swprintf(t, 1024, L"%ls\r\nYour file's MD5  %hs  %ls%ls%hs", name, j->c.md5,
                  j->c.ok ? L"\x2713 matches" : L"\x2717 does not match", j->c.note[0] ? L"\r\n" : L"", j->c.note);
         if (s_rowtext[j->k]) {
@@ -401,18 +425,21 @@ static void progress(void *ctx, double f, const char *s)
 static DWORD WINAPI build_thread(LPVOID p)
 {
     rb_job job = { 0 };
-    char dest[MAX_PATH * 3], bin[MAX_PATH * 3], cue[MAX_PATH * 3], rom[MAX_PATH * 3];
+    char dest[MAX_PATH * 3], bin[MAX_PATH * 3], cue[MAX_PATH * 3], rom[MAX_PATH * 3], romjpn[MAX_PATH * 3];
     (void)p;
     to8(s_dest, dest, sizeof dest);
     to8(s_file[K_BIN], bin, sizeof bin);
     to8(s_file[K_CUE], cue, sizeof cue);
     to8(s_file[K_ROM], rom, sizeof rom);
+    to8(s_file[K_ROMJPN], romjpn, sizeof romjpn);
     job.game = s_game;
     job.target = RB_WINDOWS;
     job.dest_dir = dest;
     job.bin = bin;
     job.cue = cue;
     job.rom = rom;
+    job.rom_jpn = romjpn;
+    job.region = s_region;
     s_err[0] = 0;
     s_result = rb_build(&job, progress, NULL, &s_cancel, s_err, sizeof s_err);
     rb_output_path(&job, s_out, sizeof s_out);
@@ -431,6 +458,14 @@ static void build(void)
     job.game = s_game;
     job.target = RB_WINDOWS;
     job.dest_dir = dest;
+    if (s_game == RB_TOP_GEAR_RALLY && s_region < 0) {      /* (--rom: not checked by a row) */
+        char rom[MAX_PATH * 3];
+        rb_check c;
+        to8(s_file[K_ROM], rom, sizeof rom);
+        rb_check_rom(rom, &c, NULL, NULL, NULL);
+        s_region = c.region;
+    }
+    job.region = s_region;                                  /* the earlier build looked for is this cartridge's */
     if (rb_output_exists(&job, &ours)) {
         rb_output_path(&job, out, sizeof out);
         to16(out, o16, 2048);
@@ -484,10 +519,10 @@ static LRESULT CALLBACK proc(HWND w, UINT m, WPARAM wp, LPARAM lp)
                 picked_pair(k, p);
             break;
         }
-        case ID_PICK_ROM: {
+        case ID_PICK_ROM: case ID_PICK_ROMJPN: {
             wchar_t p[MAX_PATH];
             if (pick(0, p, L"N64 ROM (*.z64;*.v64;*.n64)", L"*.z64;*.v64;*.n64"))
-                start_check(K_ROM, p);
+                start_check(LOWORD(wp) == ID_PICK_ROM ? K_ROM : K_ROMJPN, p);
             break;
         }
         case ID_BUILD: build(); break;
@@ -546,7 +581,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmd, int show)
     NONCLIENTMETRICSW ncm = { sizeof ncm };
     INITCOMMONCONTROLSEX icc = { sizeof icc, ICC_PROGRESS_CLASS | ICC_STANDARD_CLASSES };
     LOGFONTW lf;
-    RECT r = { 0, 0, 588, 520 };
+    RECT r = { 0, 0, 588, BOTTOM + 48 };
     MSG msg;
     PWSTR docs;
     UINT d;
@@ -594,6 +629,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR cmd, int show)
             else if (!wcscmp(k, L"--bin")) { wcsncpy(s_file[K_BIN], v, MAX_PATH - 1); s_ok[K_BIN] = 1; }
             else if (!wcscmp(k, L"--cue")) { wcsncpy(s_file[K_CUE], v, MAX_PATH - 1); s_ok[K_CUE] = 1; }
             else if (!wcscmp(k, L"--rom")) { wcsncpy(s_file[K_ROM], v, MAX_PATH - 1); s_ok[K_ROM] = 1; }
+            else if (!wcscmp(k, L"--rom-jpn")) { wcsncpy(s_file[K_ROMJPN], v, MAX_PATH - 1); s_ok[K_ROMJPN] = 1; }
             else continue;
             i++;
         }

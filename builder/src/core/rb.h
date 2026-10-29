@@ -7,13 +7,18 @@
  * with none of the originals' data in it; the data comes from the dumps the
  * player provides, checked by MD5:
  *
- *   Top Gear Rally  the N64 cartridge ROM (USA): its data region, from ROM
- *                   0x70AB0 to the end, as romdata.bin
+ *   Top Gear Rally  the N64 cartridge ROM (USA, Europe or Japan: the build is
+ *                   that cartridge's): its data region, from the end of its
+ *                   code to the end, as romdata.bin
  *   Boss Rally      the BIN/CUE of the retail PC CD: the data track's files
  *                   (BRGlide.dll's data is read from there at start-up) and
  *                   its twelve audio tracks, encoded as FLAC
  *
- * Remastered reads both. The result needs no dump once built. It is for the
+ * Remastered reads the disc and two ROMs, the USA's and Japan's: each of its
+ * two Top Gear Rally libraries reads its own cartridge's data (romdata.bin,
+ * romdata-jpn.bin) with the other cartridge's front-end tune and three cars
+ * after it (as ports/remastered/tools/regionextras.py makes them). The result
+ * needs no dump once built. It is for the
  * system the builder runs on (Windows: Windows; macOS: the Mac, or for
  * Remastered the iPhone and iPad as an .ipa).
  *
@@ -41,6 +46,11 @@ typedef void (*rb_progress)(void *ctx, double fraction, const char *status);
 #define RB_BR_BIN_MD5  "31c64f9b1e09788c2dfc384b44af8f6c"   /* BossRally.BIN */
 #define RB_BR_CUE_MD5  "a48a4a5860558177c3041afee57e03c9"   /* BossRally.cue */
 #define RB_TGR_ROM_MD5 "6f7030284b6bc84a49e07da864526b52"   /* Top Gear Rally (USA), .z64 order */
+#define RB_TGR_EUR_MD5 "1698508f521280d0a80e078ec981d4ac"   /* Top Gear Rally (Europe) */
+#define RB_TGR_JPN_MD5 "6e0af13dcefee6a11c4d7262206d6d2d"   /* Top Gear Rally (Japan) */
+/* Top Gear Rally's cartridges: the builder builds each one's own game */
+enum { RB_USA, RB_EUROPE, RB_JAPAN, RB_REGIONS };
+const char *rb_region_name(int region);       /* "USA" / "Europe" / "Japan" */
 
 #define RB_PRODUCT "Top Gear Rally Remastered"
 const char *rb_game_name(int game);           /* "Boss Rally" / "Top Gear Rally" / RB_PRODUCT */
@@ -48,15 +58,21 @@ const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" */
 /* the dumps a game is built from */
 #define rb_needs_disc(game) ((game) != RB_TOP_GEAR_RALLY)
 #define rb_needs_rom(game)  ((game) != RB_BOSS_RALLY)
+/* Remastered: the USA cartridge's ROM (rom) and Japan's (rom_jpn): its menus
+ * are both cartridges' (TGR (USA) and TGR (PAL/Japan)) */
+#define rb_needs_rom_jpn(game) ((game) == RB_REMASTERED)
 /* what the build is called in the destination folder: "Boss Rally.app" (Mac),
- * "Top Gear Rally Remastered.ipa" (iPhone), the folder "Boss Rally" (Windows) */
-const char *rb_output_name(int game, int target);
+ * "Top Gear Rally Remastered.ipa" (iPhone), the folder "Boss Rally" (Windows);
+ * Top Gear Rally's is its cartridge's: "Top Gear Rally (Japan).app" (region
+ * matters for Top Gear Rally alone) */
+const char *rb_output_name(int game, int target, int region);
 
 /* ---- checking what the player provides ---------------------------------------- */
 typedef struct rb_check {
     int  ok;                  /* the file is the dump the builder reads */
     char md5[33];             /* the file's MD5, as it is */
     char note[256];           /* why it is not, or how it was taken (byte order) */
+    int  region;              /* a ROM: whose cartridge it is (RB_USA...), -1 none */
 } rb_check;
 
 /* the BIN image (MD5 over the whole file) */
@@ -65,7 +81,7 @@ int rb_check_bin(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
  * disc's (a cue written by another ripper names the BIN differently) */
 int rb_check_cue(const char *path, rb_check *out);
 /* the ROM in any of the three byte orders (.z64, .v64, .n64): its MD5 as it
- * is, and in .z64 order against RB_TGR_ROM_MD5 */
+ * is, and in .z64 order against the three cartridges' (region: which) */
 int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, volatile int *cancel);
 /* the BIN a cue sheet names, beside it: 1 and the path in out */
 int rb_cue_bin_path(const char *cue, char *out, size_t n);
@@ -75,7 +91,9 @@ typedef struct rb_job {
     int         game;         /* RB_BOSS_RALLY / RB_TOP_GEAR_RALLY / RB_REMASTERED */
     int         target;       /* RB_MACOS / RB_IOS (Remastered only) / RB_WINDOWS */
     const char *bin, *cue;    /* Boss Rally */
-    const char *rom;          /* Top Gear Rally */
+    const char *rom;          /* Top Gear Rally: its cartridge's ROM; Remastered: the USA's */
+    int         region;       /* Top Gear Rally: the cartridge rom is (rb_check's region) */
+    const char *rom_jpn;      /* Remastered: Japan's */
     const char *dest_dir;     /* the folder the build goes into */
 } rb_job;
 
@@ -95,7 +113,8 @@ int rb_ios_signing(char *desc, size_t n);
 
 /* ---- supplied by each front end -------------------------------------------------- */
 /* where a piece shipped inside the builder is (a file, or the iPhone app's
- * folder): "brally64", "tgrally", "remastered" (each game for this system),
+ * folder): "brally64", "tgrally", "tgrally-eur", "tgrally-jpn", "remastered" (each
+ * game for this system; Top Gear Rally one a cartridge),
  * "icon" (Remastered's icon: AppIcon.icns or icon.ico), "ios-app", "ios-sign";
  * 1 on success */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen);

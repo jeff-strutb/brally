@@ -21,4 +21,6 @@
 #define tgr_audio_lowpass   tgrp_audio_lowpass
 #define tgr_race_speed      tgrp_race_speed
 #define tgr_music_mute      tgrp_music_mute
+#define TGR_ROMDATA_NAME    "romdata-jpn.bin"   /* its data file (platform/os/romdata.c) */
+#define TGR_ROMDATA_ENV     "TGRP_ROMDATA"
 #endif

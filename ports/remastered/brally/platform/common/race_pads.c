@@ -29,6 +29,7 @@ void rm_player_drive(int player, const unsigned char *dik, const host_pad *pad, 
                      int *sx, int *sy);
 extern uint8_t g_plat_dik[256];         /* br_os_window.c: scan codes held down */
 void plat_script_autopilot_want(int driver, int *want);   /* script_game.c (checks) */
+const int *br_handoff_autopilot_want(void);              /* race_handoff.c (checks) */
 
 static int s_on;
 extern int g_brMode0AA8B4;              /* the views (1, or 2: split) */
@@ -81,9 +82,11 @@ void br_race_pads(void)
         } else {
             s_view_bit[i] = 0;
         }
-        if (i == 1 && getenv("BR_HANDOFF_AUTOPILOT2")) {   /* (a check: the autopilot drives the second car) */
-            int want[4];
-            plat_script_autopilot_want(1, want);
+        if ((i == 1 && getenv("BR_HANDOFF_AUTOPILOT2")) || (i == 0 && br_handoff_autopilot_want())) {
+            int w2[4];                          /* (a check: the autopilot drives this car) */
+            const int *want = i ? w2 : br_handoff_autopilot_want();
+            if (i)
+                plat_script_autopilot_want(1, w2);
             b = (unsigned short)((want[0] ? 0x8800 : 0) | (want[1] ? 0x8400 : 0) | (want[2] ? 0x0200 : 0) |
                                  (want[3] ? 0x0100 : 0));
             x = want[2] ? -80 : want[3] ? 80 : 0;

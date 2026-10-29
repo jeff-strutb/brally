@@ -58,8 +58,13 @@ LIB=build/lib                         # under the tree
 PY=${PYTHON:-.venv/bin/python}
 $PY ports/remastered/tools/regionextras.py usa $OUT/extras-usa.bin
 $PY ports/remastered/tools/regionextras.py jpn $OUT/extras-jpn.bin
-RM_EXTRAS=$(pwd)/$OUT/extras-usa.bin OUT=$LIB/tgrally HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
-RM_EXTRAS=$(pwd)/$OUT/extras-jpn.bin TGR_REGION=jpn RM_CFLAGS="-include $(pwd)/$R/rm_tgrp.h -DTGR_RM_EN=1" \
+# On Windows the two name their data alike, and clang's .refptr stub for each
+# datum is link-once by that name: the link would keep the first library's
+# and leave the second's code pointing at nothing. Direct references need none.
+DIRECT=
+[ $OS != windows ] || DIRECT=-fno-auto-import
+RM_EXTRAS=$(pwd)/$OUT/extras-usa.bin RM_CFLAGS="$DIRECT" OUT=$LIB/tgrally HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
+RM_EXTRAS=$(pwd)/$OUT/extras-jpn.bin TGR_REGION=jpn RM_CFLAGS="-include $(pwd)/$R/rm_tgrp.h -DTGR_RM_EN=1 $DIRECT" \
   OUT=$LIB/tgrally-jpn HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
 OUT=$LIB/brally HOST=lib RENDER=$RENDER CC=$CC $T/ports/brally/link64.sh
 
@@ -157,4 +162,8 @@ if [ "$HOST" = ios ]; then
   exit 0
 fi
 $LDXX ${LDFLAGS_RM} -o "$OUT/remastered$EXE" $OUT/tgrally.o $OUT/tgrally-jpn.o $OUT/brally.o $OBJS $LIBS $VKLIBS $OSLIBS
+if [ $OS = windows ] && x86_64-w64-mingw32-nm "$OUT/remastered$EXE" | grep -q ' U \.refptr\.'; then
+  echo "link: FAIL: .refptr stubs dropped for another library's (DIRECT above)" >&2
+  exit 1
+fi
 echo "linked $OUT/remastered$EXE (host $HOST, renderer $RENDER)"
