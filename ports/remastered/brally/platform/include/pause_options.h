@@ -8,7 +8,9 @@ extern "C" {
 #endif
 
 /* the menu's rows: the game's six with Remaster Options before the quits */
-#define RM_PAUSE_ROWS 7
+#define RM_PAUSE_ROWS rm_pause_rows()   /* seven; six on the iPhone, without Quit Game (race_handoff.c) */
+int rm_pause_rows(void);
+int rm_phone(void);
 #define RM_PAUSE_ROW  4             /* Remaster Options */
 
 int  rm_pause_active(void);         /* 1 while the Remaster Options page is up */

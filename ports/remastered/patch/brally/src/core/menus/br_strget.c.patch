@@ -1,0 +1,14 @@
+--- a/src/core/menus/br_strget.c
++++ b/src/core/menus/br_strget.c
+@@ -41,8 +41,11 @@
+  * number -- every menu caption, button label and message comes through here.
+  * A number that is not in the table gives nothing back rather than an error. */
+ /* @implements 0x10074030 d3d BrStrGet */
++const char *rm_br_string(int id);   /* Remastered: a string naming the controls (race_handoff.c) */
+ char *BrStrGet(int id)
+ {
++    if (rm_br_string(id))
++        return (char *)rm_br_string(id);
+     /* br_bits.h's BrHandleLookup IS this function with the table address
+      * turned into an argument; the original INLINES it here (byte shape:
+      * both range tests jump to one shared `return NULL`).  The range test

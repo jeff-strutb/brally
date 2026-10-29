@@ -8,7 +8,7 @@
  
  /* -- declarations -- */
  
-@@ -215,6 +216,7 @@
+@@ -231,6 +232,7 @@
  int BrPakCheckFiles(void);
  void BrPadConsume(void *pad, int button);
  extern void (*D_8031B318)(void);
@@ -16,14 +16,10 @@
  extern char D_80270840;
  extern int D_802724F0;
  extern char D_803163E0[];
-@@ -826,9 +828,60 @@
-  * The empty do/while before the first count ends uopt's first block, so
-  * the gRaw locals' registers (v1, a0) are free again for the counts.
-  * Task stores follow the ROM's ring order (output_buff and its size before
-- * ucode_size); the osGetCount difference shares the call's line and the
-+ * ucode_size); the tgr_clock difference shares the call's line and the
-  * debug copy's multiplier shares its count's line, for as1's ordering.
-  * v is an unused word of the ROM frame. */
+@@ -947,6 +949,57 @@
+  * Europe switches to its own 240-line PAL modes after a resolution change,
+  * and only while nothing holds the picture blank (a flush, the blank
+  * counter, the reset button), and shows the picture through BrVideoUnblank. */
 +/* Top Gear Rally Remastered's Show FPS (its Remaster Options,
 + * ports/remastered/platform/options.c): the frames this game showed in the
 + * last second, at the bottom centre of its picture, over everything; the text
@@ -78,7 +74,7 @@
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -843,6 +896,7 @@
+@@ -961,6 +1014,7 @@
    int i;
    void *fb;
  
@@ -86,7 +82,7 @@
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -925,7 +979,16 @@
+@@ -1060,7 +1114,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
      tgr_mq_recv(D_8031A390, 0, 1);
      tgr_video_show(fb);
@@ -104,7 +100,7 @@
      if (tgr_video_shown() != fb) {
        tgr_mq_recv(D_8031A390, 0, 1);
      }
-@@ -967,6 +1030,7 @@
+@@ -1116,6 +1179,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -112,7 +108,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -999,15 +1063,18 @@
+@@ -1148,15 +1212,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {
@@ -133,3 +129,21 @@
  }
  
  /* WHAT IT DOES: Set the front end's 3D camera: looking straight into a
+@@ -1187,11 +1254,16 @@
+     D_8028A86C = 1.0;
+     D_8028A870 = 500.0f;
+   }
+-  guPerspectiveF(D_8031AA90, &D_8028A874, 45.0f, 1.3333334f, D_8028A86C, D_8028A870, 1.0f);
++  {
++    float fovy = 45.0f, aspect = 1.3333334f;
++    tgr_view_menu_lens(&fovy, &aspect);   /* Remastered: as wide as the window (tgr_view.h) */
++    guPerspectiveF(D_8031AA90, &D_8028A874, fovy, aspect, D_8028A86C, D_8028A870, 1.0f);
++  }
+   guMtxCatF(D_8031AAD0, D_8031AA90, D_8031AA50);
+   gSPPerspNormalize(D_8028A858++, D_8028A874);
+   D_8028A878 = BrMtxAlloc();
+   guMtxF2L(D_8031AA50, D_8028A878);
++  tgr_view_proj_menu(D_8028A878);
+   gSPMatrix(D_8028A858++, OS_K0_TO_PHYSICAL(D_8028A878), G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+ }
+ 

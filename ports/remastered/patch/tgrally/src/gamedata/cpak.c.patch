@@ -1,0 +1,99 @@
+--- a/src/gamedata/cpak.c
++++ b/src/gamedata/cpak.c
+@@ -81,6 +81,7 @@
+ #else
+ #define CPAK_LOG(args) tgr_print args
+ #endif
++char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
+ /* -- end declarations -- */
+ 
+ /* WHAT IT DOES: Ask the player to swap the Controller Pak for the Rumble
+@@ -94,14 +95,14 @@
+ 
+   BrTextHighlightOff();
+   BrTextAlignLeft();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+   BrBevelPanel(0xaa, 0xce, 300, 100, 3, 0, 0, 0x80, 0x80, 0x80);
+   BrTextSetFont(14);
+   BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xDEPsA5'", 0x5d, 0x77);
+   BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1s", 0x5d, 0x84);
+   BrTextPrint("%j\xD2\xD3\x8D\x8F\xA1w\xD4\xD5" "Bc\xDB" "2@&", 0x5d, 0x91);
+-#elif TGR_REGION_EUR
++#elif TGR_REGION_EUR || TGR_RM_EN
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+   BrBevelPanel(0x73, 0xb4, 0x19a, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+   BrTextSetFont(12);
+@@ -114,7 +115,7 @@
+   BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 0x41, 0x6a);
+   BrTextPrint("REMOVE THE CONTROLLER PAK AND", 0x41, 0x77);
+   BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 0x41, 0x84);
+-  BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 0x41, 0x91);
++  BrTextPrint(rm_ptext("CONTROLLER.  PRESS {A}"), 0x41, 0x91);
+   BrTextPrint("TO CONTINUE.", 0x41, 0x9e);
+ #endif
+   for (i = 0; i < 2; i++) {
+@@ -314,7 +315,7 @@
+     } else {
+       BrTextHighlightOff();
+       BrTextAlignLeft();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+       BrTextSetFont(14);
+       BrBevelPanel(0x99, 0xC3, 0x14E, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+@@ -323,7 +324,7 @@
+       BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 84, 145);
+       BrTextPrint("%j\xDE@6R&", 84, 158);
+ #else
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+       BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+       BrTextSetFont(12);
+ #else
+@@ -479,7 +480,7 @@
+       break;
+     }
+     BrTextHighlightOff();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextAlignLeft();
+     BrTextSetFont(14);
+     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+@@ -574,7 +575,7 @@
+       BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 104);
+       BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 117);
+       BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 130);
+-      BrTextPrint("THE A BUTTON WHEN READY.", 68, 143);
++      BrTextPrint(rm_ptext("{A} WHEN READY."), 68, 143);
+       BrTextAlignLeft();
+       BrTextSetFont(10);
+       BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
+@@ -617,7 +618,7 @@
+     default:
+       BrBevelPanel(0xAF, 0xD9, 0x122, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+       BrTextPrint("CONTROLLER PAK ERROR", 95, 124);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+       BrTextPrint("HAS BEEN DETECTED!", 95, 138);
+ #else
+       BrTextPrint("HAS BEEN DETECTED.", 95, 138);
+@@ -664,7 +665,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+ #else
+       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
+@@ -678,7 +679,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, ((h + 32) >> 1) + 7);
+ #else
+       BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);

@@ -6,9 +6,9 @@
  #include "sha1.h"
 +#include "tgr_touch.h"
  
- int32_t  tgr_tv_type = 1;              /* NTSC */
- uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
-@@ -102,6 +103,9 @@
+ #if TGR_REGION_EUR
+ int32_t  tgr_tv_type = 0;              /* PAL: Europe's console */
+@@ -106,6 +107,9 @@
  void tgr_task_load(TgrTask *task)
  {
      if (task->t.type == TGR_TASK_GFX) {

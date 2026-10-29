@@ -5,8 +5,10 @@
  * for either player, in the carousel the options screen uses:
  *
  *   Player       up, down or A: whose controls the rows below show and set
- *   an action    (Accelerate, Brake, Reverse, Steer Left, Steer Right, Gear Up,
- *                Gear Down, Change View) its key and its pad button under the
+ *   an action    (Accelerate / Select, Brake / Back, Reverse, the steering, the
+ *                gears, Change View, Up, Down, Pause / Start, Z, the other C
+ *                buttons: each one N64 button, the same in the races and the
+ *                menus, controls.h) its key and its pad button under the
  *                label; A (the foot of the screen's Select), then the next key
  *                or pad button pressed, is the new one (a key for the keyboard,
  *                a button for that player's pad); Escape leaves it as it was
@@ -41,7 +43,7 @@ extern int D_80271FBC;
 extern int D_80271FC0;
 extern BrRomImage D_8027205C;
 /* the app's (ports/remastered/platform/controls.h) */
-enum { RM_ACT_COUNT = 8, RM_BIND_KEY = 0, RM_BIND_PAD = 1 };
+enum { RM_ACT_COUNT = 15, RM_BIND_KEY = 0, RM_BIND_PAD = 1 };
 const char *rm_action_name(int act);
 int  rm_bind(int player, int act, int kind);
 void rm_bind_set(int player, int act, int kind, int code);
@@ -51,6 +53,7 @@ int host_pad_read(host_pad *p);
 int host_pad_read_n(int i, host_pad *p);
 const char *rm_bind_label(int kind, int code, char *buf, int n);
 const unsigned char *tgr_input_dik(void);   /* si.c: the scan codes held */
+char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
 /* -- end declarations -- */
 
 #define ROWS (RM_ACT_COUNT + 2)         /* the player, the actions, reset */
@@ -129,14 +132,14 @@ static void help(int row)
     return;
   }
   if (row == 0) {
-    BrTextPrint("%wwPush up or down to choose", 160, 90);
+    BrTextPrint(rm_ptext("%wwPush {UP} or {DOWN} to choose"), 160, 90);
   } else if (row <= RM_ACT_COUNT) {
     rm_bind_label(RM_BIND_KEY, rm_bind(s_player, row - 1, RM_BIND_KEY), k, sizeof k);
     rm_bind_label(RM_BIND_PAD, rm_bind(s_player, row - 1, RM_BIND_PAD), p, sizeof p);
     sprintf(buf, "%%wwKey: %s    Pad: %s", k, p);
     BrTextPrint(buf, 160, 90);
   } else {
-    BrTextPrint("%wwPress A to restore the defaults", 160, 90);
+    BrTextPrint(rm_ptext("%wwPress {A} to restore the defaults"), 160, 90);
   }
 }
 

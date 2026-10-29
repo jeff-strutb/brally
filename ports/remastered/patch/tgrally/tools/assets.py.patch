@@ -1,0 +1,16 @@
+--- a/tools/assets.py
++++ b/tools/assets.py
+@@ -56,6 +56,13 @@
+     digest = hashlib.sha1(rom).hexdigest()
+     if digest != SHA1:
+         sys.exit('assets: %s is not %s (sha1 %s, expected %s)' % (a.rom, NAME, digest, SHA1))
++    # Top Gear Rally Remastered: what this library takes from the other
++    # cartridges (ports/remastered/tools/regionextras.py), from ROM 0x800000
++    extras = os.environ.get('RM_EXTRAS')
++    if extras:
++        more = open(extras, 'rb').read()
++        rom = rom.ljust(0x800000, b"\xff") + more
++        digest += '-' + hashlib.sha1(more).hexdigest()
+     os.makedirs(a.out, exist_ok=True)
+     stamp = os.path.join(a.out, 'romdata.sha1')
+     blob = os.path.join(a.out, 'romdata.bin')

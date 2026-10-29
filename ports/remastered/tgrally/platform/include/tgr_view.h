@@ -56,6 +56,8 @@ void tgr_view_wedge(float *half_w, float *half_h, int mirror);
 /* the Mtx (in the arena) the camera just made: a race view's projection, or
  * the mirror's, so the RCP knows what it draws (gfx/rcp.c) */
 void tgr_view_proj(const void *mtx, int mirror);
+void tgr_view_menu_lens(float *fovy, float *aspect);   /* the menus' screen camera, widened (view.c) */
+void tgr_view_proj_menu(const void *mtx);
 /* the RCP: what a projection loaded from this address is: 0 neither, 1 a
  * widened race view's, 2 the mirror's beside one; *kx, *ky the scale its
  * lens was made for */

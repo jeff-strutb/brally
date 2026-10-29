@@ -8,7 +8,7 @@
  /* -- end declarations -- */
  
  /* WHAT IT DOES: The paint shop's text-style popup: a normal and a
-@@ -115,6 +116,9 @@
+@@ -122,6 +123,9 @@
      BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
      BrImageDrawAt(&D_8028D0B0, x, yb);
      BrImageDrawAt(&D_8028D0E0, bx, yb);
@@ -18,7 +18,7 @@
      BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
      if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
        BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
-@@ -148,6 +152,9 @@
+@@ -155,6 +159,9 @@
      BrTextPrint("%wwSELECT", (x + (unsigned int)D_8028D0B0.w + 6) >> 1, ty);
      BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, ty);
      }

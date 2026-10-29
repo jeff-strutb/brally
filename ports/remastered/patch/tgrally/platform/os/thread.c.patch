@@ -1,6 +1,6 @@
 --- a/platform/os/thread.c
 +++ b/platform/os/thread.c
-@@ -378,7 +378,39 @@
+@@ -383,7 +383,39 @@
  
  int32_t tgr_mq_send(TgrMsgQueue *mq, TgrMsg msg, int32_t flag) { return tgr_check ? chk_mq_send(mq, msg, flag) : send(mq, msg, flag, 0); }
  int32_t tgr_mq_jam(TgrMsgQueue *mq, TgrMsg msg, int32_t flag)  { return tgr_check ? chk_mq_jam(mq, msg, flag) : send(mq, msg, flag, 1); }
@@ -40,7 +40,7 @@
  int32_t tgr_mq_recv(TgrMsgQueue *mq, TgrMsg *msg, int32_t flag)
  {
      if (tgr_check)
-@@ -391,6 +423,11 @@
+@@ -396,6 +428,11 @@
          }
          while (s_finished)          /* the run is over: the game's threads stop here */
              host_cond_wait(s_changed, G, 0xFFFFFFFFu);

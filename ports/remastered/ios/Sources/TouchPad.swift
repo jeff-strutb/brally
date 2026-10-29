@@ -70,7 +70,7 @@ final class TouchPad {
         if Front.bossRally {
             return (x, 0, 1 << 2)                                   // its reverse: brakes, then backs up
         }
-        if !reversing && tgr_race_speed() < TouchPad.reverseBelowKph { reversing = true }
+        if !reversing && rm_tgr_race_speed() < TouchPad.reverseBelowKph { reversing = true }
         return reversing ? (x, 1, 1 << 0) : (x, 0, 1 << 1)          // A, the stick pulled back : B
     }
 
@@ -161,7 +161,7 @@ final class TouchSurface: UIView {
         if Front.bossRally {
             br_race_key(Int32(BR_KEY_ESCAPE))
         } else {
-            tgr_touch_press(0x1000)                                     // START
+            rm_tgr_touch_press(0x1000)                                     // START
         }
     }
 
@@ -188,7 +188,7 @@ final class TouchSurface: UIView {
             if p.x < bounds.width * TouchPad.brakeZone { return .brake }
             return hasWheel ? .none : .wheel
         }
-        if !Front.bossRally && tgr_pointer_wanted() != 0 {
+        if !Front.bossRally && rm_tgr_pointer_wanted() != 0 {
             return paintTouch == nil ? .paint : .none
         }
         return fingers.values.contains { $0.role == .menu } ? .none : .menu
@@ -202,7 +202,7 @@ final class TouchSurface: UIView {
 
     private func pointer(_ p: CGPoint, _ buttons: Int32) {
         let (u, v) = fraction(p)
-        tgr_pointer(u, v, buttons)
+        rm_tgr_pointer(u, v, buttons)
     }
 
     /// The paint finger presses where it landed
@@ -312,7 +312,7 @@ final class TouchSurface: UIView {
                 if Front.bossRally {
                     br_race_key(Int32(BR_KEY_ESCAPE))                       // its pause
                 } else {
-                    tgr_touch_press(0x1000)                                 // START
+                    rm_tgr_touch_press(0x1000)                                 // START
                 }
             } else if gestureFingers == 3 {
                 show(AudioFilter.step())
@@ -331,12 +331,12 @@ final class TouchSurface: UIView {
 
     /// The game in front's race is being driven: touch is the wheel and the pedals.
     static var driving: Bool {
-        Front.bossRally ? br_race_driving() != 0 : tgr_view_driving() != 0
+        Front.bossRally ? br_race_driving() != 0 : rm_tgr_view_driving() != 0
     }
 
     private func swipe(_ dx: CGFloat, _ dy: CGFloat) {
         guard Front.bossRally else {
-            tgr_touch_swipe(Float(dx), Float(dy))
+            rm_tgr_touch_swipe(Float(dx), Float(dy))
             return
         }
         let key = abs(dx) >= abs(dy) ? (dx < 0 ? BR_KEY_RIGHT : BR_KEY_LEFT) : (dy < 0 ? BR_KEY_DOWN : BR_KEY_UP)
@@ -350,7 +350,7 @@ final class TouchSurface: UIView {
             br_race_tap(nx, ny)
             return
         }
-        tgr_touch_tap(nx, ny)
+        rm_tgr_touch_tap(nx, ny)
     }
 
     func reset() {
@@ -376,7 +376,7 @@ enum AudioFilter {
         UserDefaults.standard.object(forKey: key) as? Int ?? 5000
     }
 
-    static func apply() { tgr_audio_lowpass(Int32(current)) }
+    static func apply() { rm_tgr_audio_lowpass(Int32(current)) }
 
     /// The next setting; its name.
     static func step() -> String {

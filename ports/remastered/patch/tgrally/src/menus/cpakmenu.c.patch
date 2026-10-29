@@ -8,13 +8,58 @@
  
  /* -- declarations -- */
  #include "tgr/image.h"
-@@ -188,6 +189,9 @@
-           BrTextSetColours(0x80, 0xff, 0x80, 0, 0xff, 0);
+@@ -209,7 +210,7 @@
+   BrTextAlignLeft();
+   BrTextSetFont(12);
+   BrTextPrint("%yw#", 0x48, 0x34);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   BrTextSetFont(13);
+   BrTextPrint("%yw%j\xB9(\xA6\xC4(\xC3", 0x74, 0x34);
+   BrTextAlignRight();
+@@ -303,6 +304,9 @@
          } else {
            BrTextSetColours(0xff, 0xff, 0xff, 0x80, 0x80, 0x80);
-+        }
+         }
 +        if (D_8036A064 != 0) {
 +          tgr_touch_row(i, D_8036A061);  /* port: a tap target (tgr_touch.h) */
-         }
-         BrTextPrint((char *)name, 0x62, i * 9 + y);
++        }
+ #if TGR_REGION_JPN
+         BrTextPrint((char *)name, 0x5a, i * 9 + y);
          sprintf(num, "%d", D_8036A070[i].file_size >> 8);
+@@ -442,7 +446,7 @@
+     BrBevelPanel((0x280 - w) >> 1, 200, w, 0x50, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextAlignCentre();
+     BrTextHighlightOff();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(14);
+     sprintf((char *)name, "%%yw%%j\xB9(\xA6\xC4(\xC3w\xE0" "B6R1%%%%%%e NO%d", D_8036A061 + 1);
+ #else
+@@ -471,7 +475,7 @@
+     BrBevelPanel(0xb1, 0xcb, 0x11e, 0x4a, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextAlignCentre();
+     BrTextHighlightOff();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(14);
+     BrTextPrint("%j\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "D", 0x9f, 0x75);
+     BrTextPrint(" %j\xB0\x88(9\xED\xEE" "B6B3&", 0x9f, 0x83);
+@@ -533,7 +537,7 @@
+   case 6:
+     BrTextHighlightOff();
+     BrTextAlignLeft();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrBevelPanel(0x99, 0xb5, 0x14e, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextSetFont(14);
+     BrTextPrint("%j038B@\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1" "9", 0x54, 0x6a);
+@@ -541,7 +545,7 @@
+     BrTextPrint("%jqt\xC1\xCF\xC3\xC8(\x88\x8D\x8F\xA1w'", 0x54, 0x8a);
+     BrTextPrint("%j\xDE@6R&", 0x54, 0x97);
+ #else
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+     BrBevelPanel(0xaf, 0xb5, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextSetFont(12);
+ #else

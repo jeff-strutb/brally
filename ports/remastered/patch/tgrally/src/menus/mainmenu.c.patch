@@ -1,6 +1,15 @@
 --- a/src/menus/mainmenu.c
 +++ b/src/menus/mainmenu.c
-@@ -18,6 +18,10 @@
+@@ -4,7 +4,7 @@
+ #include "tgr/common.h"
+ #include "tgr/romimage.h"
+ #include "tgr/menu.h"
+-#if TGR_REGION_JPN || TGR_REGION_EUR
++#if 1  /* Remastered: Europe's and Japan's cheat, in both libraries */
+ #include "tgr/pad.h"
+ #include "tgr/car.h"
+ #endif
+@@ -22,6 +22,10 @@
  void BrCarSelect(void);
  void BrLoadSaveScreen(void);
  void BrIntroScreen(void);
@@ -11,9 +20,35 @@
  void BrOptionsScreen(void);
  extern int D_8026FF08;
  extern int D_8026FF18;
-@@ -86,12 +90,13 @@
+@@ -42,7 +46,8 @@
+ extern int D_80272380;
+ extern unsigned char D_802724F4;
+ extern int D_80316380;
+-#define D_000EBC00 TGR_VA(000EBC00)        /* a ROM offset */
++int rm_menu_tune(void);                 /* Remastered: the front-end tune the Music chose (rmregion.c) */
++#define D_000EBC00 rm_menu_tune()
+ extern char D_802AC400[];
+ extern int D_8028AAB0;                  /* the screen's width */
+ void BrTextSetFont(int size);
+@@ -52,9 +57,8 @@
+ void BrTextPrint(char *s, int x, int y);
+ int tgr_exit_shown(void);               /* port: Exit Game (platform/os/si.c, tgr_keys.h) */
+ void tgr_exit_menu_frame(void);
+-#if TGR_REGION_JPN || TGR_REGION_EUR
+-void BrPadConsume(BrPadRec *pad, unsigned int bits);
+-#endif
++int rm_cheat_unlock(void);
++int rm_two_players(void);              /* Remastered: rmmainmenu.c */            /* Remastered: platform/os/rmcheat.c */
+ /* -- end declarations -- */
+ 
+ /* WHAT IT DOES: Begin a one-player Championship: set the race type, go to
+@@ -94,16 +98,14 @@
+ void BrMainMenu(void)
  {
    extern int D_80272384;         /* 0x80272384: 1 once set up, -1 = returning from a sub-screen */
+-#if TGR_REGION_JPN || TGR_REGION_EUR
+-  static int bangs = 0;           /* times the cheat combination was pressed */
+-#endif
    extern int D_80316384;                 /* 0x80316384: the highlighted item */
 +  int res;
  
@@ -25,8 +60,8 @@
 +    BrFrontMenuEnter(rm_mainmenu_items(D_80272360), &D_80316380);   /* port: with Quit */
      if (D_802A49C0 < 8) {
        BrMusicStop();
-       BrRomUnpack(TGR_PTR(unsigned char *, 0x80025C00), D_000EBC00, 0);
-@@ -116,8 +121,12 @@
+       BrRomUnpack(TGR_PTR(unsigned char *, TGR_VA(80025C00)), D_000EBC00, 0);
+@@ -128,8 +130,12 @@
        D_80316384 = 0;
      }
      D_80272384 = 1;
@@ -40,7 +75,35 @@
    case 1:
      D_80272070 = 0;
      switch (D_80316384) {
-@@ -151,6 +160,9 @@
+@@ -139,7 +145,12 @@
+     case 1:
+       D_8026FF08 = 2;
+       D_8026FF18 = 1;
+-      BrModeSet(BrPlayerSelectScreen);
++      if (rm_two_players()) {
++        BrModeSet(BrPlayerSelectScreen);
++      } else {
++        D_8026FF08 = 1;                 /* Remastered on the iPhone: one player (rmmainmenu.c) */
++        BrModeSet(BrTrackSelectScreen);
++      }
+       break;
+     case 2:
+       BrTimeAttackStart();
+@@ -147,7 +158,12 @@
+     case 3:
+       D_8026FF08 = 2;
+       D_8026FF18 = 3;
+-      BrModeSet(BrPlayerSelectScreen);
++      if (rm_two_players()) {
++        BrModeSet(BrPlayerSelectScreen);
++      } else {
++        D_8026FF08 = 1;                 /* Remastered on the iPhone: one player (rmmainmenu.c) */
++        BrModeSet(BrTrackSelectScreen);
++      }
+       break;
+     case 4:
+       D_80272070 = 1;
+@@ -163,6 +179,9 @@
      case 6:
        BrModeSet(BrOptionsScreen);
        break;
@@ -50,3 +113,30 @@
      }
      D_80272384 = -1;
      break;
+@@ -180,19 +199,12 @@
+     BrTextPrint("%wwEsc: Exit Game", D_8028AAB0 - 8, 12);
+     BrTextAlignCentre();
+   }
+-#if TGR_REGION_JPN || TGR_REGION_EUR
+-  if ((D_8036A8E0[0].pressed & 0x3000) == 0x3000) {
+-    if (bangs < 3 && (D_8036A8E0[0].pressed & 0x200)) {
+-      tgr_print("BANG!\n");
+-      BrPadConsume(&D_8036A8E0[0], 0x200);
+-      if (++bangs == 3) {
+-        TGR_PTR(BrSeason *, D_8031B760[0].season)->xce = 0xffff;
+-        TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked = 0xffff;
+-        TGR_PTR(BrSeason *, D_8031B760[0].season)->xd0 = 0xffff;
+-      }
+-    }
+-  } else {
+-    bangs = 0;
++  /* Remastered: Europe's and Japan's cheat, in both libraries, on the first
++     player's own controls (platform/os/rmcheat.c) */
++  if (rm_cheat_unlock()) {
++    tgr_print("BANG!\n");
++    TGR_PTR(BrSeason *, D_8031B760[0].season)->xce = 0xffff;
++    TGR_PTR(BrSeason *, D_8031B760[0].season)->unlocked = 0xffff;
++    TGR_PTR(BrSeason *, D_8031B760[0].season)->xd0 = 0xffff;
+   }
+-#endif
+ }

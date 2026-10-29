@@ -29,19 +29,24 @@ Remastered adds laid over them (`tree.sh`).
 | `icon.png` | the app's icon (the `.icns` on macOS, `icon.ico` beside the exe on Windows) |
 
 Each race is handed to Boss Rally (`host_race.h`,
-`tgrally/src/racing/handoff.c`, `brally/platform/common/race_handoff.c`).
+`tgrally/src/racing/handoff.c`, `brally/platform/common/race_handoff.c`). There
+is no loading screen: the track is loaded in the race's first frames (under a
+tenth of a second), which fade in from black (`br_boot.c`, its loading state);
+the seconds before the start are the race's own fly-by and countdown. Boss
+Rally's replay after a finish is not run (`race_handoff.c`): the race goes back
+to the menus that started it.
 
 **Remaster Options.** Top Gear Rally's options screen has them as rows of its
 carousel after Units, each with its own turning icon (Widescreen the PC's
 monitor, 4:3 when off and 16:9 when on; Music the monitor for the PC's
 soundtrack or the console for the N64's; Show FPS Time Attack's stopwatch;
 View Distance the Coastline course's own, its lighthouse included):
-up or down (a swipe on the iPhone) or A takes the other choice
+up or down (a swipe on the iPhone) or A takes the next choice
 (`tgrally/src/menus/rmoptions.c`). Boss Rally's pause menu has a Remaster
 Options row before its quits. It opens a page of that name in the menu's own style: one
-row an option, its two choices side by side, the one in force in the row's
-colour and the other faded, then Back. Up and down move, left and right
-choose at once; Return takes the other choice, and Back or Escape returns to
+row an option, its choices side by side, the one in force in the row's
+colour and the others faded, then Back. Up and down move, left and right
+step through the choices at once; Return takes the next, and Back or Escape returns to
 the pause menu. A tap or a click chooses a row or a choice. The choices go to
 both games and are kept (`platform/options.c`, `remaster.cfg` in the save
 folder; `RM_OPT_<NAME>=N` sets one for a check):
@@ -49,13 +54,43 @@ folder; `RM_OPT_<NAME>=N` sets one for a check):
 | option | choices | default |
 |---|---|---|
 | Widescreen | On: a race and the menus fill the window (`TGR_FLAG_ANY_ASPECT`, `BR_FLAG_ANY_ASPECT`); Off: the games' 4:3, boxed | On |
-| Music | PC: Boss Rally's CD; N64: Top Gear Rally's pieces | N64 |
+| Music | Boss Rally: its CD; TGR (USA): Top Gear Rally's pieces with the USA cartridge's front-end tune; TGR (PAL/Japan): the same with Europe's and Japan's (one tune; the race pieces are the same in all three) | TGR (USA) |
 | Show FPS | the frames a second at the bottom centre, in either game | Off |
 | View Distance | Unlimited: a race sees the whole world, nothing pops in as it comes into range (`BR_FLAG_VIEW_UNLIMITED`, `rm_view.h`); Original: the game's 400 | Unlimited |
-| Menus | Top Gear Rally's or Boss Rally's (below) | Top Gear Rally |
+| Menus | TGR (USA), Boss Rally, or TGR (PAL/Japan): Top Gear Rally's as Japan's cartridge has them (below) | TGR (USA) |
+
+**Regions.** Remastered builds Top Gear Rally twice: from the USA cartridge
+and from Japan's (`link.sh`: the second library's entry points `tgrp_*`,
+`platform/rm_tgrp.h`; it needs both ROMs). Menus TGR (PAL/Japan) is Japan's:
+its title (the start screen, as Japan has it), its pictures, its cars' real
+liveries, its Load/Save with the cartridge's EEPROM (Game Pak) rows beside
+the Controller Pak's. Its text is English: where Japan's screens print
+Japanese the library is built with Europe's English (`TGR_RM_EN`: the text
+arms of Japan's source take Europe's, layout and all), but for the weather
+symbols beside a course's name, which are pictures. The two libraries keep
+their own state (every file built `-fno-common`, so no variable is shared at
+the link) and one Controller Pak file: each reads it again when the other has
+written it (`platform/os/si.c`, `pak_fresh`). Each library carries what it
+takes from the other cartridge at ROM 0x800000 (`tools/regionextras.py`): its
+front-end tune, and its three cars. Japan replaced Type-RS, Type-M3 and the
+Helmet with Type-PJ, Type-TR and Type-MN; Remastered offers both of each pair,
+the other cartridge's beside this one's in the car select and unlocked with
+it (`tgrally/src/menus/rmregion.c`), raced as Boss Rally's own (its cars 3, 6
+and 9, and 13, 14 and 15).
+
+**Cheats.** Europe's and Japan's two, in both libraries and on the first
+player's controls (above all what each N64 button does): on the main menu,
+Gear Up and Gear Down held and Change View pressed three times opens every
+car, course and weather (`tgrally/platform/os/rmcheat.c`); in a race, Gear Up,
+Gear Up, Steer Right, Accelerate, Change View, Steer Right finishes it there,
+the first player first and the second second (`race_handoff.c`, `finish_now`).
 
 **Menus.** Top Gear Rally's options screen has a Menus row after Show FPS
-(the console its icon); taking it puts Boss Rally's own front end in front:
+(the console its icon); up goes to the other Top Gear Rally's, down to Boss
+Rally's. The other Top Gear Rally's run while this one's game thread waits,
+and come back the same way (`main.c`, `other_from_usa`); the wait does not
+count as menu time (`handoff.c`, `clock_resume`). Boss Rally's puts its own
+front end in front:
 its main menu, its championship, time attack and quick race, its own races,
 while Top Gear Rally's game thread waits as it does for a race
 (`tgr_menus_away`, `main.c` `menus_engine`, `br_menus_run`), its music
@@ -65,15 +100,17 @@ the choice in force (Widescreen, Music, Show FPS, View Distance, Menus), Back, a
 the machine whose music plays (the PC or the N64; with View Distance the row
 chosen, Race Setup's picture of Coastline, whole at Unlimited and without its
 lighthouse end at Original).  Return or a click takes
-a row's other choice; Menus there hands back to Top Gear Rally's options
-screen.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear
+a row's next choice; Menus there hands back to the Top Gear Rally that
+handed over, on its options screen.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear
 Rally goes straight to its main menu (no intro) and hands over on its first
 frame, which is where the player comes back to.  In Boss Rally's menus:
 its races are driven with the app's controls (`race_pads.c`, as the handed
 races are); its Quit, and its pause menu's Quit Game, close the app as the
-window's close does, after its own saves (`rm_quit`; on the iPhone, where an
-app does not close itself, they go back instead); a touch on the iPhone
-clicks where it lands.
+window's close does, after its own saves (`rm_quit`); a touch on the iPhone
+clicks where it lands. On the iPhone, where an app does not close itself and
+one screen is in one pair of hands, its main menu has neither Multiplayer nor
+Quit and its pause menu no Quit Game (`rm_phone`; `RM_PHONE=1` shows them so
+for a check).
 
 At Widescreen Boss Rally's menus fill the window: their picture is as wide
 as the window at the game's height (854 at 16:9, up to twice 640), each
@@ -88,12 +125,19 @@ Top Gear Rally's menus at Widescreen keep their 4:3 layout at its size in the mi
 the window; a picture across the whole screen (a menu's background) is scaled
 up to cover the window, and the title's 3D backdrop, which already reaches past
 the 4:3 edges, simply shows more (`tgrally/platform/gfx/rcp.c`, `place_menu`).
+The menus' screen camera sees as much more as the window shows (`view.c`,
+`tgr_view_menu_lens`), so a carousel item slides in and out from the window's
+own edges. A screen change's wipe draws its bars whole every frame, from the
+screen's edges (`drawing/screenflash.c`): the cartridge drew only each frame's
+new strip and left the rest in its frame buffers, which a window wider than
+4:3 placed apart from the wipe.
 The renderer hashes the texture memory once a load rather than once a
 primitive (`rcp.c`, `tile_texture`): the icons are thousands of one-colour
 triangles, and the console's 8000 hashed 4 KB each, some 30 ms a frame.
 
-**Two players.** The 1P/2P screen offers two players (on a desktop always: a
-keyboard is there; on the iPhone with a game controller), and the race goes to
+**Two players.** The 1P/2P screen offers two players on a desktop (a keyboard
+is there; the iPhone has no 1P/2P screen: Arcade and Practice go straight to
+the course select with one player), and the race goes to
 Boss Rally's engine split screen. In a 4:3 window the two views sit one above
 the other with the HUD beside them, as the N64 lays them out; with Widescreen
 on they sit side by side, each filling its half, each with its own HUD
@@ -111,17 +155,34 @@ console its icon (`tgrally/src/menus/rmmainmenu.c`): the app closes as its
 window's close does (`rm_quit`), as Boss Rally's menus' Quit does. The
 cartridge has none, and neither has the iPhone.
 
-**Controls.** The options screen's controller row opens Controls: a Player row
-(up, down or A: whose controls), a row an action (Accelerate, Brake, Reverse,
-Steer Left, Steer Right, Gear Up, Gear Down, Change View) showing its key and
-its pad button (A, then the next key or button pressed sets it; Escape leaves
-it), and Reset (`tgrally/src/menus/rmcontrols.c`, `platform/controls.c`). The
+**Controls.** One set for both games: each action is one N64 button, the same
+in Boss Rally's races and in Top Gear Rally's menus (Accelerate / Select is A,
+Brake / Back B, Gear Up R, Gear Down L, Change View C-up, Pause / Start Start,
+Up, Down and the steering the stick's four ways, Z and the other C buttons the
+menus' own, Reverse A with the stick back). The options screen's controller
+row opens Controls: a Player row (up, down or A: whose controls), a row an
+action showing its key and its pad button (A, then the next key or button
+pressed sets it, taken from any other action that had it; Escape leaves it),
+and Reset (`tgrally/src/menus/rmcontrols.c`, `platform/controls.c`). The
 first player drives with the keyboard and the first pad (on the iPhone, the
 touch controls), the second with the keyboard and the second pad; the left
-stick always steers. Defaults: player 1 Boss Rally's keys (arrows, right Ctrl
-brakes, A and Z gears, Delete the view), player 2 I accelerates, K reverses,
-J and L steer, O brakes, U and M gears, Y the view; on a pad A accelerates,
-B brakes, X reverses, RB and LB change gear, Y the view. In a race Change View
+stick always steers. Defaults, no key doing two things: player 1 X
+accelerates and selects, Z brakes and goes back, C reverses, the arrows steer
+and move, W and Q change gear, I the view, K, J and L the other C buttons,
+Space Z, Escape pauses; player 2 A, S and D, F and H steer, T and G up and
+down, R and E gears, V the view, P pauses; on a pad A accelerates, B brakes,
+X reverses, the d-pad steers and moves, RB and LB change gear, Y the view,
+Menu pauses, LT Z. A file of the first controls (before version 2) is set
+aside for these. Boss Rally's own screens that read keys (its menus, the
+pause menu) are given the same controls (`race_handoff.c`, `pad_keys`).
+
+**Prompts.** Every button the screens show is the first player's own: the
+foot of a menu and a popup's buttons draw a key cap in the cartridge's
+colours (A blue, B green) naming the key, or the pad button when a pad was
+used last, and a line that says "press A" names it too
+(`tgrally/src/menus/rmprompt.c`; Boss Rally's "Press ESC to exit" the same).
+On the iPhone the prompts are touch's: the words are buttons to tap, a line
+says tap or swipe (`RM_PROMPT=key|pad|touch` for a check). In a race Change View
 steps through the views from the one on the screen: the car's own (where a race
 starts), the chase view, then (one player on the screen) the bonnet, and round
 again (`race_pads.c`).

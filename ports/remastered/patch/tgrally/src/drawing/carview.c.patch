@@ -1,0 +1,15 @@
+--- a/src/drawing/carview.c
++++ b/src/drawing/carview.c
+@@ -88,7 +88,11 @@
+   gSPPerspNormalize(D_8028A858++, &D_8028A874);
+   m = BrMtxAlloc();
+   k = D_8031B238[(BrCarModelBuf *)TGR_PTR(char *, car->model) - D_803C8000];
+-  guScaleF(D_8031AB10, D_8028AE0C[k].len / (double)256, D_8028AE0C[k].wid * 2.0 / 256, 1.0f / 256.0f);
++  {
++    BrCarModelRec *rm_slot_rec(int slot, int k);
++    BrCarModelRec *r = rm_slot_rec((int)((BrCarModelBuf *)TGR_PTR(char *, car->model) - D_803C8000), k);
++    guScaleF(D_8031AB10, r->len / (double)256, r->wid * 2.0 / 256, 1.0f / 256.0f);
++  }
+   memcpy(D_8031AB50, car, 0x40);
+   D_8031AB10[3][2] -= D_802A9EF0;
+   guMtxCatF(D_8031AB10, D_8031AB50, D_8031AB50);

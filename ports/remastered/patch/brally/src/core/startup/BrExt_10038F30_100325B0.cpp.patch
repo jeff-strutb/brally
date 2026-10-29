@@ -1,6 +1,6 @@
 --- a/src/core/startup/BrExt_10038F30_100325B0.cpp
 +++ b/src/core/startup/BrExt_10038F30_100325B0.cpp
-@@ -66,10 +66,20 @@
+@@ -64,10 +64,20 @@
  
  /* 64-bit core: declared once, in br_globals.h or its struct's header */
  

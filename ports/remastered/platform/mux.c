@@ -51,6 +51,7 @@ int tgr_flag(int flag);                 /* the Top Gear Rally object's (os/view.
 
 /* the two objects' music (link.sh exports them) */
 void  tgr_music_mute(int on);           /* platform/audio/mixer.c */
+void  tgrp_music_mute(int on);          /* the same, Japan's cartridge's build */
 void  br_music_gain(float g);           /* platform/common/audio.c */
 void  br_effects_quiet(int on);
 float br_music_volume(void);
@@ -124,6 +125,10 @@ void mux_front(int g)
 }
 
 int mux_front_game(void) { return s_front; }
+
+static volatile int s_tgr_active = MUX_TGR;
+void mux_tgr_active(int g) { s_tgr_active = g; }
+int  mux_tgr_active_game(void) { return s_tgr_active; }
 
 /* ---- the window ----------------------------------------------------------------- */
 static int s_open;                      /* Top Gear Rally opened the real window */
@@ -323,9 +328,10 @@ static void route(const host_event *e)
     }
     host_mutex_lock(s_m);
     switch (e->type) {
-    case HOST_EV_FOCUS:                 /* both pause in the background */
+    case HOST_EV_FOCUS:                 /* all pause in the background */
         qpush(MUX_TGR, e);
         qpush(MUX_BR, e);
+        qpush(MUX_TGRP, e);
         break;
     case HOST_EV_CLOSE:                 /* the app ends with Top Gear Rally */
         qpush(MUX_TGR, e);
@@ -498,10 +504,11 @@ static float s_tgr_to = -1, s_tgr_step; /* where it is moving, and by how much a
  * CD; snap: at once (a change of game in front), else crossfaded */
 static void music_targets(int snap)
 {
-    int race = s_front == MUX_BR, n64 = s_music == RM_MUSIC_N64;
+    int race = s_front == MUX_BR, n64 = s_music != RM_MUSIC_PC;   /* either of Top Gear Rally's */
     /* the menus' N64 music, or nothing; under a race Top Gear Rally plays its
        piece and the gain decides */
     tgr_music_mute(!race && !n64);
+    tgrp_music_mute(!race && !n64);
     br_music_gain(n64 ? 0.0f : 1.0f);
     br_effects_quiet(!race);
     s_tgr_want = race ? (n64 ? N64_GAIN : 0.0f) : N64_GAIN;
@@ -539,7 +546,9 @@ static void mix(float *lr, int frames, void *user)
                 continue;
             if (g == MUX_BR && s_front != MUX_BR && s_music != RM_MUSIC_PC)
                 continue;               /* Boss Rally is silent between races, but for its CD */
-            if (g == MUX_TGR) {         /* Top Gear Rally at its gain */
+            if (g == MUX_TGR || g == MUX_TGRP) {   /* Top Gear Rally at its gain: the one in use */
+                if (g != s_tgr_active)
+                    continue;
                 static float tmp[2 * CHUNK];
                 /* under a race the N64's music follows Boss Rally's music volume, as its CD does */
                 float want = s_tgr_want * (s_front == MUX_BR ? br_music_volume() : 1.0f), step;
@@ -642,3 +651,93 @@ const char *mux_tgr_host_resource_dir(void) { return host_resource_dir(); }
 const char *mux_br_host_resource_dir(void)  { return host_resource_dir(); }
 const char *mux_tgr_host_music_dir(void) { return host_music_dir(); }
 const char *mux_br_host_music_dir(void)  { return host_music_dir(); }   /* the PC's music */
+
+/* ---- Top Gear Rally from Japan's cartridge (Menus TGR (PAL/Japan)) ---------------- *
+ * Started on a thread of its own once asked for (main.c), as Boss Rally is: the
+ * window is the first Top Gear Rally's, its events come through a queue of
+ * their own; it draws, sounds and is driven as that one is, when in front */
+int mux_tgrp_host_window_open(int width, int height, const char *title)
+{
+    (void)width;
+    (void)height;
+    (void)title;
+    return s_open || host_window_open(width, height, NULL);
+}
+void mux_tgrp_host_window_close(void) {}
+int mux_tgrp_host_window_visible(void) { return s_front == MUX_TGRP && s_visible; }
+void mux_tgrp_host_window_lock_aspect(int lock) { (void)lock; }
+void *mux_tgrp_host_window_handle(void) { return host_window_handle(); }
+void mux_tgrp_host_window_pixels(int *w, int *h) { host_window_pixels(w, h); }
+void mux_tgrp_host_present(const uint32_t *argb, int w, int h)
+{
+    if (s_front == MUX_TGRP)
+        host_present(argb, w, h);
+}
+void mux_tgrp_host_message_box(const char *text, const char *caption)
+{
+    fprintf(stderr, "%s: %s\n", caption ? caption : "Top Gear Rally", text ? text : "");
+}
+#if defined(__APPLE__) && defined(MUX_METAL_LAYER)
+void *mux_tgrp_host_macos_metal_layer(void) { return host_macos_metal_layer(); }
+void mux_tgrp_host_macos_layer_fit(int *w, int *h) { host_macos_layer_fit(w, h); }
+#endif
+#ifdef _WIN32
+void *mux_tgrp_host_win32_instance(void) { return host_win32_instance(); }
+void *mux_tgrp_host_win32_window(void)   { return host_win32_window(); }
+#endif
+int mux_tgrp_host_poll_event(host_event *ev, uint32_t wait_ms)
+{
+    int r;
+    init_once();
+    host_mutex_lock(s_m);
+    if (s_q[MUX_TGRP].h == s_q[MUX_TGRP].t && wait_ms > 0)
+        host_cond_wait(s_c, s_m, wait_ms);
+    r = qpop(MUX_TGRP, ev);
+    host_mutex_unlock(s_m);
+    return r;
+}
+int mux_tgrp_host_pad_read(host_pad *p) { return pad_read(MUX_TGRP, p); }
+int mux_tgrp_host_pad_read_n(int i, host_pad *p) { return pad_read_n(MUX_TGRP, i, p); }
+int mux_tgrp_host_pad_can_rumble(int i) { return host_pad_can_rumble(i); }
+int mux_tgrp_host_pad_rumble(int i, int on) { return host_pad_rumble(i, on); }
+int mux_tgrp_host_audio_open(int rate, host_audio_fn fn, void *user) { return audio_open(MUX_TGRP, rate, fn, user); }
+void mux_tgrp_host_audio_close(void) { s_a[MUX_TGRP].fn = NULL; }
+host_stream *mux_tgrp_host_stream_open(const char *path, int rate) { return host_stream_open(path, rate); }
+int mux_tgrp_host_stream_read(host_stream *s, float *lr, int frames) { return host_stream_read(s, lr, frames); }
+void mux_tgrp_host_stream_close(host_stream *s) { host_stream_close(s); }
+void mux_tgrp_host_set_app_name(const char *dir, const char *title) { (void)dir; (void)title; }
+void mux_tgrp_host_init(int argc, char **argv) { (void)argc; (void)argv; init_once(); }
+void mux_tgrp_host_shutdown(void) {}
+const char *mux_tgrp_host_save_dir(void) { return host_save_dir(); }     /* the same saves as the first */
+const char *mux_tgrp_host_game_dir(void) { return host_game_dir(); }
+const char *mux_tgrp_host_cd_dir(void)   { return host_cd_dir(); }
+const char *mux_tgrp_host_resource_dir(void) { return host_resource_dir(); }
+const char *mux_tgrp_host_music_dir(void) { return host_music_dir(); }
+
+/* ---- the touch host's way to Top Gear Rally (ios/Sources): the one in use ----------- */
+int   tgr_view_driving(void);
+int   tgrp_view_driving(void);
+void  tgr_audio_lowpass(int hz);
+void  tgrp_audio_lowpass(int hz);
+float tgr_race_speed(void);
+float tgrp_race_speed(void);
+void  tgr_touch_tap(float u, float v);
+void  tgrp_touch_tap(float u, float v);
+void  tgr_touch_swipe(float dx, float dy);
+void  tgrp_touch_swipe(float dx, float dy);
+void  tgr_touch_press(unsigned short button);
+void  tgrp_touch_press(unsigned short button);
+void  tgr_pointer(float u, float v, int buttons);
+void  tgrp_pointer(float u, float v, int buttons);
+int   tgr_pointer_wanted(void);
+int   tgrp_pointer_wanted(void);
+#define PAL (s_tgr_active == MUX_TGRP)
+int   rm_tgr_view_driving(void) { return PAL ? tgrp_view_driving() : tgr_view_driving(); }
+void  rm_tgr_audio_lowpass(int hz) { tgr_audio_lowpass(hz); tgrp_audio_lowpass(hz); }
+float rm_tgr_race_speed(void) { return PAL ? tgrp_race_speed() : tgr_race_speed(); }
+void  rm_tgr_touch_tap(float u, float v) { if (PAL) tgrp_touch_tap(u, v); else tgr_touch_tap(u, v); }
+void  rm_tgr_touch_swipe(float dx, float dy) { if (PAL) tgrp_touch_swipe(dx, dy); else tgr_touch_swipe(dx, dy); }
+void  rm_tgr_touch_press(unsigned short b) { if (PAL) tgrp_touch_press(b); else tgr_touch_press(b); }
+void  rm_tgr_pointer(float u, float v, int buttons) { if (PAL) tgrp_pointer(u, v, buttons); else tgr_pointer(u, v, buttons); }
+int   rm_tgr_pointer_wanted(void) { return PAL ? tgrp_pointer_wanted() : tgr_pointer_wanted(); }
+#undef PAL

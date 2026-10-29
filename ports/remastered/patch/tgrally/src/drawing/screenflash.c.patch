@@ -1,0 +1,55 @@
+--- a/src/drawing/screenflash.c
++++ b/src/drawing/screenflash.c
+@@ -225,34 +225,27 @@
+       tgr_wr32(&_g->words.w0, 0xfa00ffff);
+       tgr_wr32(&_g->words.w1, 0);
+     }
+-    if (D_8028B740 != 0) {
+-      l = D_8031B410[D_8028A85C ^ 1];
+-      if (D_8028B740 < l) {
+-        l = 0;
+-      }
+-      r = D_8028B740;
+-      if (l != 0) {
+-        l--;
+-      }
+-      if (BrFadeOutDone()) {
+-        D_8028B788 = 3;
+-      }
+-      gDPFillRectangle(D_8028A858++, l << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+-    }
+-    if (D_8028B744 < D_8028AAB0) {
+-      l = D_8028B744;
+-      r = D_8028AAB0;
+-      if (D_8028B788 != 0) {
+-        D_8028B788--;
+-        gDPFillRectangle(D_8028A858++, l << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
++    /* Remastered: each bar whole, every frame.  The cartridge blacks only the strip the
++       wipe uncovered since the other frame buffer's frame, and the right bar for a few
++       frames, the rest left in the buffers; Remastered draws every frame afresh, and a
++       window wider than 4:3 stretches a bar only when it runs from a screen edge
++       (rcp.c, place_menu): so the bars reach the window's sides with the wipe */
++    if (BrFadeOutDone()) {
++      D_8028B788 = 3;
++    }
++    if (D_8028B75C == 0.0f) {
++      gDPFillRectangle(D_8028A858++, 0, 0, (D_8028AAB0 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
++    } else {
++      if (D_8028B740 > 0) {
++        gDPFillRectangle(D_8028A858++, 0, 0, (D_8028B740 << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
+       }
+-    } else if (D_8028B75C == 0.0f) {
+-      r = D_8028AAB0;
+-      if (D_8028B788 != 0) {
+-        D_8028B788--;
+-        gDPFillRectangle(D_8028A858++, 0 << D_8028A850, 0, (r << D_8028A850) - 1, (D_8028AAB4 << D_8028A850) - 1);
++      if (D_8028B744 < D_8028AAB0) {
++        gDPFillRectangle(D_8028A858++, D_8028B744 << D_8028A850, 0, (D_8028AAB0 << D_8028A850) - 1,
++                         (D_8028AAB4 << D_8028A850) - 1);
+       }
+     }
++    (void)l;
++    (void)r;
+     gDPPipeSync(D_8028A858++);
+   }
+ }

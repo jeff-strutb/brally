@@ -48,10 +48,12 @@ extern const unsigned int rm_icon_crt_len, rm_icon_n64_len;
 /* -- end declarations -- */
 
 enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
-enum { RM_MUSIC_PC, RM_MUSIC_N64 };
-enum { RM_MENUS_TGR, RM_MENUS_BR };
+enum { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL, RM_MUSIC_COUNT };
+enum { RM_MENUS_TGR, RM_MENUS_BR, RM_MENUS_TGR_PAL };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 void tgr_menus_away(void);              /* src/racing/handoff.c */
+void tgr_menus_other(int menus);        /* src/racing/handoff.c: the other cartridge's menus */
+void rm_menu_tune_restart(void);        /* rmregion.c */
 
 #define RM_FIRST 3                      /* our rows: after BGM, SFX and Units */
 #define RM_ROWS 5
@@ -208,15 +210,24 @@ MenuItem **rm_options_items(MenuItem **game)
 void rm_options_frame(void)
 {
   int wide = rm_option(RM_OPT_WIDESCREEN) != 0;
-  int pc = rm_option(RM_OPT_MUSIC) == RM_MUSIC_PC;
+  int music = rm_option(RM_OPT_MUSIC), pc = music == RM_MUSIC_PC;
+#if TGR_REGION_JPN                      /* (Japan's font has no brackets) */
+  static const char *const k_music[RM_MUSIC_COUNT] = { "Boss Rally", "TGR USA", "TGR PAL/Japan" };
+#else
+  static const char *const k_music[RM_MUSIC_COUNT] = { "Boss Rally", "TGR (USA)", "TGR (PAL/Japan)" };
+#endif
 
   sprintf(s_label[0], "Widescreen: %s", wide ? "On" : "Off");
-  sprintf(s_label[1], "Music: %s", pc ? "PC" : "N64");
+  sprintf(s_label[1], "Music: %s", k_music[music]);
   sprintf(s_label[2], "Show FPS: %s", rm_option(RM_OPT_FPS) ? "On" : "Off");
   s_row[0].label = tgr_addr32(s_label[0]);
   s_row[1].label = tgr_addr32(s_label[1]);
   sprintf(s_label[3], "View Distance: %s", rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? "Unlimited" : "Original");
-  sprintf(s_label[4], "Menus: Top Gear Rally");
+#if TGR_REGION_JPN
+  sprintf(s_label[4], "Menus: TGR PAL/Japan");
+#else
+  sprintf(s_label[4], "Menus: TGR (USA)");
+#endif
   s_row[2].label = tgr_addr32(s_label[2]);
   s_row[3].label = tgr_addr32(s_label[3]);
   s_row[4].label = tgr_addr32(s_label[4]);
@@ -241,10 +252,25 @@ int rm_options_row(int result, int row)
     if (result == 1 || result == 3 || result == 4) {
       int o = k_opt[row - RM_FIRST];
       if (o == RM_OPT_MENUS) {
-        rm_option_set(o, RM_MENUS_BR);
-        tgr_menus_away();               /* Boss Rally's menus, until the player is back */
+        /* the next of the three, in front at once: USA, PAL/Japan, Boss
+           Rally (down goes the other way round) */
+#if TGR_REGION_JPN
+        int next = result == 4 ? RM_MENUS_TGR : RM_MENUS_BR;
+#else
+        int next = result == 4 ? RM_MENUS_BR : RM_MENUS_TGR_PAL;
+#endif
+        rm_option_set(o, next);
+        if (next == RM_MENUS_BR) {
+          tgr_menus_away();             /* Boss Rally's menus, until the player is back */
+        } else {
+          tgr_menus_other(next);        /* the other cartridge's, likewise */
+        }
       } else if (o == RM_OPT_MUSIC) {
-        rm_option_set(o, rm_option(o) == RM_MUSIC_PC ? RM_MUSIC_N64 : RM_MUSIC_PC);
+        int was = rm_option(o), now = (was + (result == 4 ? RM_MUSIC_COUNT - 1 : 1)) % RM_MUSIC_COUNT;
+        rm_option_set(o, now);
+        if (was != RM_MUSIC_PC && now != RM_MUSIC_PC) {
+          rm_menu_tune_restart();       /* the other cartridge's front-end tune */
+        }
       } else {
         rm_option_set(o, !rm_option(o));
       }

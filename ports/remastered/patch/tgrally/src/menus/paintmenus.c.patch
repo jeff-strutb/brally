@@ -8,7 +8,32 @@
  /* -- end declarations -- */
  
  
-@@ -149,6 +150,9 @@
+@@ -102,7 +103,7 @@
+   int y;
+   int bx;
+   int r[4][4];
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   char *msg[4][2] = {
+     { "%j\xE7\x7F;\x81\x88(k", "  %jqt\xBB\x81(\xA8w\xE0" "B6R&" },
+     { "%j\xCC\xBB\x9E\x81\x88(k", "  %jqt\xBB\x81(\xA8w\xE0" "B6R&" },
+@@ -148,13 +149,13 @@
+   BrTextSetFont(16);
+   BrTextPrint("%rySELECT OPTION", 0x9e, 0x4e);
+   BrBevelPanel(0xba, r[0][1] + r[0][3] + 12, 0x10c, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+   BrTextSetFont(14);
+   BrTextPrint(msg[D_8028CFC0.kind][0], 0x9e, 0x8e);
+   BrTextPrint(msg[D_8028CFC0.kind][1], 0x9e, 0x9b);
+ #else
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+   BrTextSetFont(11);
+ #else
+@@ -170,6 +171,9 @@
    BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
    BrImageDrawAt(&D_8028D0B0, 0xd3, y);
    BrImageDrawAt(&D_8028D0E0, bx, y);
@@ -18,7 +43,43 @@
    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
-@@ -319,6 +323,9 @@
+@@ -256,7 +260,7 @@
+   int y;
+   int bx;
+   int r[3][4];
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   char *flip[2][2] = {
+     { "%jqt\xBB\x81(\xA8w", " %j\xD8\xD9\xDC\xDD" "B6R&" },
+     { "%jqt\xBB\x81(\xA8w", " %j\xDA\xDB\xDC\xDD" "B6R&" },
+@@ -275,7 +279,7 @@
+   char *flip1[2] = { "FLIP CURRENT DECAL", "FLIP CURRENT DECAL" };
+   char *flip2[2] = { "HORIZONTALLY", "VERTICALLY" };
+ #endif
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   char *mirror[8][2] = {        /* by decal part: where its mirror goes */
+     { "MIRROR CURRENT DECAL", "TO THE RIGHT DOOR" },
+     { "MIRROR CURRENT DECAL", "TO THE LEFT DOOR" },
+@@ -324,7 +328,7 @@
+       BrFillFrame(r[i][0], r[i][1], r[i][2], r[i][3], 1, 0x20, 0x20, 0x20);
+     }
+   }
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   BrBevelPanel(0xac, 0xf8, 0x128, 0x3a, 1, 1, 1, 0x80, 0x80, 0x80);
+   BrTextSetFont(14);
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+@@ -346,7 +350,7 @@
+   BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xf5, 0);
+   if (D_8028DBB8 == 0) {
+     if (D_8028DBCC != 0) {
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+       BrTextPrint(mirror[D_8028DB68][0], 0x9f, 0x87);
+       BrTextPrint(mirror[D_8028DB68][1], 0x9f, 0x94);
+ #else
+@@ -392,6 +396,9 @@
    BrTextPrint("%wwCANCEL", (bx + (unsigned int)D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
    BrImageDrawAt(&D_8028D0B0, 0xd3, y);
    BrImageDrawAt(&D_8028D0E0, bx, y);

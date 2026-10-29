@@ -16,7 +16,7 @@
  
  typedef struct BrTimeLimit {    /* time allowed per difficulty and car class (0x1C bytes) */
    float secs;
-@@ -193,6 +195,7 @@
+@@ -202,6 +204,7 @@
  void BrIntroScreen(void);
  void BrTimeFormat(char *psz, float t);
  void BrResultsRun(void);
@@ -24,7 +24,7 @@
  void BrMainMenu(void);
  void BrMusicVolumeUp(void);
  void BrMusicVolumeDown(void);
-@@ -375,6 +378,9 @@
+@@ -407,6 +410,9 @@
    int kb8;
    int kbc;
  
@@ -33,8 +33,8 @@
 +  }
    if (D_802707C8 == 0) {
      D_8028A884 = 1;
-     BrFrameBeginLayout0();
-@@ -1038,6 +1044,7 @@
+     RACE_BLANK();
+@@ -1136,6 +1142,7 @@
    }
  
    /* each view */
@@ -42,15 +42,15 @@
    for (j = 0; j < D_8028AB0C; j++) {
      BrPerfMark(0, 0, 0, 0, 0xFF);
      D_8028AAF0 = &D_8031B760[D_8031B2C8[j].car];
-@@ -1217,6 +1224,7 @@
+@@ -1323,6 +1330,7 @@
      }
      BrViewOutline(D_8031B2C8[j].x, D_8031B2C8[j].y, D_8031B2C8[j].w, D_8031B2C8[j].h);
    }
 +  tgr_view_race(0);
    BrStub80217C8C();
    BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
- 
-@@ -1308,16 +1316,21 @@
+ #if TGR_REGION_JPN || TGR_REGION_EUR
+@@ -1432,16 +1440,21 @@
        BrTextPrint("%ryPAUSED", x, D_8028AAB4 * 5 / 16);
        y = D_8028AAB4 * 5 / 11;
        BrTextSetFont(20);

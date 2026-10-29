@@ -1,0 +1,20 @@
+--- a/src/menus/pakwarn.c
++++ b/src/menus/pakwarn.c
+@@ -107,7 +107,7 @@
+   BrTextAlignCentre();
+   BrTextSetFont(0x1e);
+   BrTextPrint("%ryWARNING", 0xa0, 0x29);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   BrTextSetFont(0x14);
+   switch (D_80270840) {
+   case 0:
+@@ -131,7 +131,7 @@
+   BrTextSetFont(0xb);
+   BrImageDrawAt(&D_8028D0B0, 0x116, 0x1b0);
+   BrTextPrint("%wwOK", 0x9a, D_8028AAB4 * 19 / 20 - 3);
+-#elif TGR_REGION_EUR
++#elif TGR_REGION_EUR || TGR_RM_EN
+   BrTextSetFont(0x12);
+   switch (D_80270840) {
+   case 0:

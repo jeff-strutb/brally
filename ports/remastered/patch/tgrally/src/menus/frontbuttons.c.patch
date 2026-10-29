@@ -9,21 +9,57 @@
  void BrMenuBackdropDraw(void);
  void BrAnimUpdate(void *set);
  void BrMenuIconDraw(int, float, float, float, float);
-@@ -89,9 +91,13 @@
+@@ -79,34 +81,38 @@
+ void BrScreenFlush3Layout1(void);
+ void BrPadStickToButtons(int);
+ void BrPadConsume(unsigned int *pad, unsigned int bits);
++int rm_foot_prompt(int act, const char *word, int x, int ty);   /* Remastered: a control's prompt (rmprompt.c) */
++int BrTextWidth(unsigned char *s, int size);
+ /* -- end declarations -- */
+ 
+ /* WHAT IT DOES: Draw the A and B button icons at the foot of the screen
+- * with the prompts Select and Go Back. */
++ * with the prompts Select and Go Back.  Remastered: key caps naming what the
++ * controls have those buttons on (rmprompt.c), each word after its cap. */
+ /* @implements 0x8020AAE0 tgr BrFrontPromptSelect */
+ void BrFrontPromptSelect(void)
+ {
++  int x, ty = (D_8028AAB4 * 0x13) / 0x14 + -3;
++
    BrTextHighlightOff();
    BrTextAlignLeft();
-   BrRomImageDraw(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+-  BrRomImageDraw(&D_80271D70,100,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
 -  BrRomImageDraw(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
-   BrTextSetFont(0xb);
-   BrTextPrint("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
+-  BrTextSetFont(0xb);
+-  BrTextPrint("%wwSelect",0x73,(D_8028AAB4 * 0x13) / 0x14 + -3);
+-  BrTextPrint("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
++  x = rm_foot_prompt(0, "Select", 100, ty);
 +  if (rm_menu_no_back) {                /* port: nothing to go back to */
 +    return;
 +  }
-+  BrRomImageDraw(&D_80271D84,0xa0,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
-+  BrTextSetFont(0xb);
-   BrTextPrint("%wwGo Back",0xaf,(D_8028AAB4 * 0x13) / 0x14 + -3);
++  rm_foot_prompt(1, "Go Back", x + 12, ty);
  }
  
+ /* WHAT IT DOES: Draw the A and B button icons at the foot of the screen
+- * with the prompts Continue and Exit. */
++ * with the prompts Continue and Exit (Remastered: key caps, as above). */
+ /* @implements 0x8020AC18 tgr BrFrontPromptContinue */
+ void BrFrontPromptContinue(void)
+ {
++  int x, ty = (D_8028AAB4 * 0x13) / 0x14 + -3;
++
+   BrTextHighlightOff();
+   BrTextAlignLeft();
+-  BrRomImageDraw(&D_80271D70,0x66,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+-  BrRomImageDraw(&D_80271D84,0xb2,0xd8,0xc,0xc,0,0,0,0xff,0,0,0,0xff,0);
+-  BrTextSetFont(0xb);
+-  BrTextPrint("%wwContinue",0x76,(D_8028AAB4 * 0x13) / 0x14 + -3);
+-  BrTextPrint("%wwExit",0xc1,(D_8028AAB4 * 0x13) / 0x14 + -3);
++  x = rm_foot_prompt(0, "Continue", 0x66, ty);
++  rm_foot_prompt(1, "Exit", x + 12, ty);
+ }
+ 
+ /* WHAT IT DOES: Set the front-end flag that the season and track-select
 @@ -251,6 +257,10 @@
        guMtxF2L(D_8031AB10, mtx);
        gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);

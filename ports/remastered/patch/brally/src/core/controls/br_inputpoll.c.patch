@@ -8,7 +8,7 @@
  #include "br_coretypes.h"   /* br_globals: its objects */
  #include "br_race.h"   /* br_globals: its objects */
  #include "slice1_10.h"   /* br_globals: its objects */
-@@ -354,6 +355,8 @@
+@@ -344,6 +345,8 @@
          } else {
              (*(int32_t *)&DAT_10226a50) = 1;
              (*(int32_t *)&g_BrX18ABAD0) = 0x4000;
@@ -17,11 +17,12 @@
              return 0x4000;
          }
      }
-@@ -544,6 +547,7 @@
+@@ -534,6 +537,8 @@
          if (BrInputJustPressed(1))  flags |= 2;
          if (BrInputJustPressed(2))  flags |= 4;
          (*(int32_t *)&g_BrX18ABAD0) = flags;
-+        rm_pause_note(flags);     /* Remastered: kept until the race step reads them (pause_options.h) */
++        /* Remastered: the pause menu's presses are the app's controls' (race_handoff.c,
++           pad_keys: rm_pause_note), not these, which would count a key twice */
          return flags;
      }
  

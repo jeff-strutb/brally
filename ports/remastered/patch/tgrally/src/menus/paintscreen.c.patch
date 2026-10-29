@@ -1,6 +1,15 @@
 --- a/src/menus/paintscreen.c
 +++ b/src/menus/paintscreen.c
-@@ -178,6 +178,8 @@
+@@ -133,6 +133,8 @@
+ void BrCarDefaultColour(BrCar *car);
+ void BrCarCamStep(void *car);
+ void BrEntLoadRecord(BrCar *car, int slot, int kind);
++void rm_car_rec_begin(int p, int kind, int slot);
++void rm_car_rec_end(int p, int kind);
+ void BrVec3Negate(BrVec3 *out, BrVec3 *v);
+ void BrVec3Normalise(BrVec3 *v);
+ void BrVec3Cross(BrVec3 *out, BrVec3 *a, BrVec3 *b);
+@@ -177,6 +179,8 @@
  int BrDecalPakTransfer(BrPaintModel *m, unsigned char port, char op, char fromMenu, unsigned char *done);
  void BrPaintClick(void);
  extern unsigned char tgr_dash_slot;
@@ -9,7 +18,17 @@
  void BrPaintStickMove(void);
  void BrPaintColourMix(void);
  void BrPaintBrushSelect(void);
-@@ -533,6 +535,7 @@
+@@ -247,7 +251,9 @@
+     car->xed8 = TGR_FA(BrCarCamStep);
+     n = D_8028DBBC;
+     D_8031B760[n].kind = D_8031B760[0].kind;
++    rm_car_rec_begin(0, D_8031B760[n].kind, n);
+     BrEntLoadRecord(&D_8031B760[n], n, D_8031B760[n].kind);
++    rm_car_rec_end(0, D_8031B760[n].kind);
+     D_8028AB08 = (BrPaintModel *)TGR_PTR(char *, D_8031B760[D_8028DBBC].model);
+     {
+       float *p = D_8031B760[D_8028DBBC].mtx0[3];
+@@ -555,6 +561,7 @@
      BrMenuCameraSet((float)D_8028AAB0, (float)D_8028AAB4);
      BrViewportSet(0, 0, D_8028AAB0, D_8028AAB4, 1);
    }
@@ -17,7 +36,7 @@
    if (BrPaintCursorInRect(&D_8028DB94)) {
      BrPaintClick();
      BrPaintStickMove();
-@@ -658,6 +661,7 @@
+@@ -680,6 +687,7 @@
    } else {
      D_8028DBEC = 0;
    }

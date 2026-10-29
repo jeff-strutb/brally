@@ -1,6 +1,16 @@
 --- a/src/startup/main.c
 +++ b/src/startup/main.c
-@@ -45,6 +45,8 @@
+@@ -26,7 +26,8 @@
+ void BrMainLoop(void);
+ extern int D_80270784;
+ extern char D_80307F00[];
+-#define BR_ROM_MODULES TGR_VA(000EBC00)         /* the front end's music module */
++int rm_menu_tune(void);                 /* Remastered: the front-end tune the Music chose (rmregion.c) */
++#define BR_ROM_MODULES rm_menu_tune()
+ extern char D_802AC400[];
+ void BrMusicStop(void);
+ void BrMusicStart(int, int);
+@@ -48,6 +49,8 @@
  extern void *D_8028A878;
  extern Mtx D_8028A8C0;              /* the identity, as the RSP reads it */
  extern float D_8031AB10[4][4];
@@ -9,7 +19,7 @@
  /* -- end declarations -- */
  
  /* WHAT IT DOES: The main game thread: bring up the scheduler, reset the
-@@ -61,7 +63,7 @@
+@@ -66,7 +69,7 @@
    BrEntAllReset();
    BrBootCheck();
    BrFadeSet(0.0f);

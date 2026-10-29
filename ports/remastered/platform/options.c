@@ -11,6 +11,7 @@
 #include "options.h"
 #include "mux.h"
 #include "tgr_view.h"                   /* Top Gear Rally's switches (its object's tgr_flag_set) */
+void tgrp_flag_set(int flag, int on);   /* the same, the build from Japan's cartridge (rm_tgrp.h) */
 #include "br_flags.h"                   /* Boss Rally's (its object's br_flag_set) */
 
 static const struct { const char *name; int def; } k_opt[RM_OPT_COUNT] = {
@@ -30,6 +31,7 @@ static void apply(int which)
     switch (which) {
     case RM_OPT_WIDESCREEN:
         tgr_flag_set(TGR_FLAG_ANY_ASPECT, v);
+        tgrp_flag_set(TGR_FLAG_ANY_ASPECT, v);   /* Japan's cartridge's build too */
         br_flag_set(BR_FLAG_ANY_ASPECT, v);
         break;
     case RM_OPT_MUSIC:
@@ -39,6 +41,16 @@ static void apply(int which)
         br_flag_set(BR_FLAG_VIEW_UNLIMITED, v == RM_VIEW_UNLIMITED);
         break;
     }
+}
+
+/* a choice as the option takes it: Music and Menus have three, the others two */
+static int clamp(int which, int v)
+{
+    if (which == RM_OPT_MUSIC)
+        return v >= 0 && v < RM_MUSIC_COUNT ? v : RM_MUSIC_N64;
+    if (which == RM_OPT_MENUS)
+        return v >= 0 && v < RM_MENUS_COUNT ? v : RM_MENUS_TGR;
+    return v != 0;
 }
 
 static void path(char *out, size_t n)
@@ -75,7 +87,7 @@ void rm_options_load(void)
                 continue;
             for (i = 0; i < RM_OPT_COUNT; i++)
                 if (!strcmp(name, k_opt[i].name))
-                    s_val[i] = i == RM_OPT_MUSIC ? (v == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : v != 0;
+                    s_val[i] = clamp(i, v);
         }
         fclose(f);
     }
@@ -89,7 +101,7 @@ void rm_options_load(void)
                 e[7 + k] = (char)(n[k] - 'a' + 'A');
             e[7 + k] = 0;
             if ((s = getenv(e)))
-                s_val[i] = atoi(s);
+                s_val[i] = clamp(i, atoi(s));
         }
     }
     s_loaded = 1;
@@ -110,7 +122,7 @@ void rm_option_set(int which, int value)
         rm_options_load();
     if (which < 0 || which >= RM_OPT_COUNT)
         return;
-    value = which == RM_OPT_MUSIC ? (value == RM_MUSIC_PC ? RM_MUSIC_PC : RM_MUSIC_N64) : value != 0;
+    value = clamp(which, value);
     if (s_val[which] == value)
         return;
     s_val[which] = value;

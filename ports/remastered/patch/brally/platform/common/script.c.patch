@@ -1,6 +1,6 @@
 --- a/platform/common/script.c
 +++ b/platform/common/script.c
-@@ -401,9 +401,12 @@
+@@ -435,9 +435,12 @@
  }
  
  /* BrAppFrame's entry: one script frame */

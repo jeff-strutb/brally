@@ -1,6 +1,6 @@
 --- a/src/menus/paintshop.c
 +++ b/src/menus/paintshop.c
-@@ -181,6 +181,7 @@
+@@ -180,6 +180,7 @@
  typedef struct { int y, xl, xr, dy; } BrFillSeg;
  int BrPaintCursorInBox(BrPaintBox *);               /* defined below */
  int BrPaintCursorInBrush(int *);
@@ -8,7 +8,43 @@
  /* -- end declarations -- */
  
  /* WHAT IT DOES: Take the chosen preset's rectangle, and make every view
-@@ -837,6 +838,8 @@
+@@ -239,7 +240,7 @@
+ /* @implements 0x80244D84 tgr BrPakMessage */
+ void BrPakMessage(int msg, char op, char mode)
+ {
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+   int x;
+   int y;
+   int w;
+@@ -503,7 +504,7 @@
+     }
+     break;
+   case 4:
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+     y = 0xaf;
+     if (mode == 1) {
+       y = 0xdb;
+@@ -655,7 +656,7 @@
+       y = 285 - D_8028D0B0.w;
+       bx = 361 - D_8028D0E0.w;
+       BrBevelPanel(0xbf, 0xbb, 0x102, 0x6a, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextHighlightOff();
+       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+       BrTextAlignCentre();
+@@ -664,7 +665,7 @@
+       BrTextPrint("EXIT%jB6R1%%", D_8028AAB0 / 2, 123);
+       BrTextAlignLeft();
+ #else
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN
+       BrTextHighlightOff();
+       BrTextSetColours(0xff, 0xff, 0xff, 0xff, 0xca, 0);
+       BrTextAlignLeft();
+@@ -1004,6 +1005,8 @@
    BrTextAlignLeft();
    BrTextPrint("%wwSELECT", (unsigned int)(D_8028D0B0.w + 222) >> 1, (y + 18) >> 1);
    BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
@@ -17,7 +53,7 @@
    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c) & 5) {
      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * 0x15c), 5);
-@@ -1067,6 +1070,9 @@
+@@ -1242,6 +1245,9 @@
    BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
    BrImageDrawAt(&D_8028D0B0, 213, y);
    BrImageDrawAt(&D_8028D0E0, bx, y);
@@ -27,7 +63,7 @@
    BrPadStickToButtons(tgr_addr32(&PADS[D_8028DBBC]));
    if (*(unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)) & 4) {
      BrPadConsume((unsigned int *)(&D_8036A8E0 + D_8028DBBC * sizeof(BrPadRec)), 4);
-@@ -1601,6 +1607,9 @@
+@@ -1784,6 +1790,9 @@
    BrTextPrint("%wwCANCEL", (unsigned int)(bx + D_8028D0E0.w + 6) >> 1, (y + 18) >> 1);
    BrImageDrawAt(&D_8028D0B0, 214, y);
    BrImageDrawAt(&D_8028D0E0, bx, y);

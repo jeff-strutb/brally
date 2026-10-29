@@ -1,0 +1,78 @@
+--- a/src/core/menus/BrUiRootEnter_100425E0.cpp
++++ b/src/core/menus/BrUiRootEnter_100425E0.cpp
+@@ -1,6 +1,9 @@
+ #include "br_coretypes.h"   /* br_globals: its objects */
+ #include "br_phase.h"   /* BrPhase_, the canonical record */
+ #include "br_ui.h"   /* BrUiCtl_, the canonical record */
++
++extern "C" int rm_phone(void);          /* Remastered: the iPhone's menus (race_handoff.c) */
++#define RM_ROOT_DY(phone, own) (rm_phone() ? (phone) : (own))   /* (the rows below Multiplayer, moved up) */
+ /* WHAT IT DOES: build one menu page: creates the page container, adds every
+  * control on it in turn, and reports failure if any of them could not be
+  * made. One of a family of page builders, each laying out its own screen --
+@@ -181,6 +184,7 @@
+         FUN_100378c0(4);
+     p->s38(parent, 80.0f, 46.0f, 0x809, 2, 5, 0, 6);
+     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
++    if (!rm_phone()) {                  /* Remastered: no Multiplayer (and its icon) on the iPhone */
+     p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
+     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
+     bad = (p == 0);
+@@ -202,12 +206,13 @@
+         FUN_100378c0(4);
+     p->s38(parent, 80.0f, 46.0f, 0x809, 2, 5, 0, 7);
+     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
++    }
+     p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
+     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_1007764c, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - RM_ROOT_DY(DAT_10077648, DAT_1007764c), 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrPhaseTick_100474B0;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)Ctl3E0E0_fn;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -228,7 +233,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077650, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - RM_ROOT_DY(DAT_1007764c, DAT_10077650), 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)Ctl3E4A0_fn;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -249,7 +254,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077654, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - RM_ROOT_DY(DAT_10077650, DAT_10077654), 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrPhaseTick_100474B0;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)Ctl3E730_fn;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -270,7 +275,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077658, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - RM_ROOT_DY(DAT_10077654, DAT_10077658), 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrPhaseTick_100475F0;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrUiCreditsAction_1003AED0;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -279,6 +284,7 @@
+     (*(short *)&((BrUiCtl_ *)(p))->cChild) += 1;
+     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
++    if (!rm_phone()) {                  /* Remastered: no Quit on the iPhone, where an app is not closed */
+     p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
+     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
+     bad = (p == 0);
+@@ -291,6 +297,7 @@
+     p->s34((char *)(BrStrGet(8)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
++    }
+     p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
+     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
+     bad = (p == 0);

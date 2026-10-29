@@ -1,6 +1,10 @@
 --- a/platform/os/si.c
 +++ b/platform/os/si.c
-@@ -11,7 +11,36 @@
+@@ -8,10 +8,56 @@
+ #include <stdlib.h>
+ #include <math.h>
+ #include <string.h>
++#include <sys/stat.h>
  #include "host.h"
  #include "plat.h"
  #include "tgr_keys.h"
@@ -16,6 +20,22 @@
 +static unsigned char s_dik[256];        /* scan codes held (tgr_input_scan) */
 +
 +const unsigned char *tgr_input_dik(void) { return s_dik; }
++
++/* what the screens' prompts name (rmprompt.c): 0 the keyboard, 1 a pad (the one
++ * the first player used last), 2 touch (the iPhone: its prompts say tap and
++ * swipe); RM_PROMPT=key|pad|touch for a check */
++static int s_p1_pad = -1;
++int tgr_input_prompt_mode(void)
++{
++    const char *e = getenv("RM_PROMPT");
++    if (e)
++        return !strcmp(e, "touch") ? 2 : !strcmp(e, "pad");
++#if defined(__APPLE__) && TARGET_OS_IPHONE
++    return 2;
++#else
++    return s_p1_pad > 0;
++#endif
++}
 +
 +void tgr_input_scan(int scan, int down)
 +{
@@ -37,7 +57,16 @@
  enum { B_A = 0x8000, B_B = 0x4000, B_Z = 0x2000, B_START = 0x1000, B_DU = 0x0800, B_DD = 0x0400,
         B_DL = 0x0200, B_DR = 0x0100, B_L = 0x0020, B_R = 0x0010, B_CU = 0x0008, B_CD = 0x0004,
         B_CL = 0x0002, B_CR = 0x0001 };
-@@ -248,6 +277,7 @@
+@@ -21,6 +67,8 @@
+ static int s_nev[2];
+ static int s_pads = 1;
+ static int s_pak, s_rumble;
++static void pak_fresh(void);            /* (Remastered) */
++static char s_pak_path[1024];          /* the pak's file (below) */
+ static int s_scripted;
+ static struct { uint16_t b; int8_t x, y; } s_now[4];
+ 
+@@ -248,6 +296,7 @@
  /* everything released (the window lost the keyboard: its key-ups go elsewhere) */
  void tgr_input_release(void)
  {
@@ -45,7 +74,7 @@
      memset(s_vk, 0, sizeof s_vk);
      s_keys = 0;
      s_kx = s_ky = 0;
-@@ -364,7 +394,7 @@
+@@ -364,7 +413,7 @@
  static uint32_t s_exit_menu_at;         /* the retrace the main menu last drew */
  static int s_exit_menu_seen;
  
@@ -54,15 +83,32 @@
  
  void tgr_exit_game(void) { tgr_quit = 1; }
  
-@@ -401,6 +431,16 @@
+@@ -401,6 +450,33 @@
  void tgr_input_frame(uint32_t frame)
  {
      int p, i;
-+    if (s_scripted && getenv("RM_SCANS")) {       /* checks: RM_SCANS=F:S,... a key held at frame F for 4 */
++    if (s_scripted && getenv("TGR_PAK_POKE") && s_pak_path[0]) {   /* checks: TGR_PAK_POKE=F:file, the pak
++                                                                         replaced at frame F (the other library's save) */
++        int f;
++        char src[1024];
++        if (sscanf(getenv("TGR_PAK_POKE"), "%d:%1023s", &f, src) == 2 && (int)frame == f) {
++            FILE *a = fopen(src, "rb"), *b = a ? fopen(s_pak_path, "wb") : NULL;
++            int c;
++            while (b && (c = fgetc(a)) != EOF)
++                fputc(c, b);
++            if (b)
++                fclose(b);
++            if (a)
++                fclose(a);
++        }
++    }
++    if (s_scripted && getenv("RM_SCANS")) {       /* checks: RM_SCANS=F:S[/N],... a key held at frame F for N (4) */
 +        const char *e = getenv("RM_SCANS");
-+        int f, sc;
++        int f, sc, len;
 +        while (e && sscanf(e, "%d:%x", &f, &sc) == 2) {
-+            if ((int)frame == f || (int)frame == f + 4)
++            const char *sl = strchr(e, '/'), *cm = strchr(e, ',');
++            len = sl && (!cm || sl < cm) ? atoi(sl + 1) : 4;
++            if ((int)frame == f || (int)frame == f + len)
 +                tgr_input_scan(sc, (int)frame == f);
 +            e = strchr(e, ',');
 +            e = e ? e + 1 : NULL;
@@ -71,15 +117,88 @@
      if (s_scripted) {
          for (p = 0; p < 2; p++) {
              s_now[p].b = 0;
-@@ -459,9 +499,20 @@
-             b = 0;                                    /* the game sees nothing pressed */
-             x = y = 0;
+@@ -411,58 +487,53 @@
+                 s_now[p].y = s_ev[p][i].y;
+             }
          }
++        if (getenv("RM_SCANS")) {                 /* (checks: the keys held also as the first
++                                                     player's controls read them) */
++            unsigned short b;
++            int x, y;
++            rm_player_menu(0, s_dik, NULL, &b, &x, &y);
++            s_now[0].b |= b;
++            if (x)
++                s_now[0].x = (int8_t)x;
++            if (y)
++                s_now[0].y = (int8_t)y;
++        }
+         return;
+     }
+-    {
++    {                                             /* the first player (Remastered): the app's
++                                                     controls, as Boss Rally's races read them */
+         host_pad hp;
+-        int x = s_kx, y = s_ky;
+-        uint16_t b = s_keys;
+-        if (!s_keys_loaded)
+-            keys_load();
+-        s_pad_now = 0;
+-        if (host_pad_read(&hp)) {
+-            int px, py, in, k;
+-            s_pad_now = hp.buttons & 0xFFFF;
+-            n64_stick(hp.x, -hp.y, &px, &py);
+-            if (px || py) {
+-                x = px;
+-                y = py;
+-            }
+-            if (hp.rx > 0.5f) b |= B_CR;              /* the right stick: the C buttons */
++        unsigned short b;
++        int x, y, has = host_pad_read(&hp), k;
++        rm_player_menu(0, s_dik, has ? &hp : NULL, &b, &x, &y);
++        if (has && (hp.buttons || hp.x > 0.3f || hp.x < -0.3f || hp.y > 0.3f || hp.y < -0.3f))
++            s_p1_pad = 1;                         /* what the screens' prompts name (rmprompt.c) */
++        for (k = 2; k < 256; k++)
++            if (s_dik[k])
++                s_p1_pad = 0;
++        if (s_p1_pad < 0)
++            s_p1_pad = has;
++        if (has) {                                    /* the right stick: the C buttons */
++            if (hp.rx > 0.5f) b |= B_CR;
+             if (hp.rx < -0.5f) b |= B_CL;
+             if (hp.ry > 0.5f) b |= B_CD;
+             if (hp.ry < -0.5f) b |= B_CU;
+-            for (in = 0; in < TGR_KEYS_COUNT; in++)   /* the buttons, as Keys and Pad has them */
+-                for (k = 0; k < 2; k++)
+-                    if (s_padb[in][k] >= 0 && (hp.buttons >> s_padb[in][k]) & 1) {
+-                        b |= k_in[in].b;
+-                        if (in == K_STICK_U) y = 80;
+-                        if (in == K_STICK_D) y = -80;
+-                        if (in == K_STICK_L) x = -80;
+-                        if (in == K_STICK_R) x = 80;
+-                    }
+         }
+-        if (s_cap >= 0) {                             /* a button awaited (keysmenu.c) */
+-            unsigned fresh = s_pad_now & ~s_cap_padwas;
+-            int i;
+-            for (i = 0; i < 16; i++)
+-                if ((fresh >> i) & 1) {
+-                    tgr_keys_bind(s_cap, 1, i);
+-                    s_cap = -1;
+-                    break;
+-                }
+-            s_cap_padwas &= s_pad_now;               /* (a button let go may be pressed again) */
+-        }
+-        if (s_cap_hold && s_cap < 0 && all_up())
+-            s_cap_hold = 0;
+-        if (s_cap >= 0 || s_cap_hold) {               /* waiting, or what ended it still held: */
+-            b = 0;                                    /* the game sees nothing pressed */
+-            x = y = 0;
+-        }
 +        tgr_touch_input(&b, &x, &y);              /* a touch's presses (tgr_touch.h) */
          s_now[0].b = b;
          s_now[0].x = (int8_t)x;
          s_now[0].y = (int8_t)y;
-+    }
+     }
 +    {                                             /* the second player (Remastered) */
 +        host_pad hp;
 +        unsigned short b2;
@@ -89,6 +208,119 @@
 +        s_now[1].b = b2;
 +        s_now[1].x = (int8_t)x2;
 +        s_now[1].y = (int8_t)y2;
-     }
++    }
  }
  
+ /* ---- libultra ---------------------------------------------------------------- */
+@@ -516,6 +587,7 @@
+ 
+ int32_t tgr_pak_open(TgrMsgQueue *mq, TgrPak *pfs, int32_t channel)
+ {
++    pak_fresh();
+     if (!s_pak)
+         return s_rumble ? TGR_PAK_ID_FATAL : TGR_PAK_NONE;
+     pfs->status = 0;
+@@ -541,7 +613,7 @@
+ static struct { int used; uint16_t company; uint32_t game; uint8_t name[16], ext[4]; uint8_t *data; int size; }
+     s_notes[PAK_NOTES];
+ 
+-static char s_pak_path[1024];
++static void pak_mark(void);
+ 
+ static void put32(FILE *f, uint32_t v) { fputc((int)(v >> 24), f); fputc((int)(v >> 16) & 255, f); fputc((int)(v >> 8) & 255, f); fputc((int)v & 255, f); }
+ static uint32_t get32(FILE *f)
+@@ -582,6 +654,7 @@
+     }
+     if (fclose(f) == 0)
+         host_rename(tmp, s_pak_path);
++    pak_mark();
+ }
+ 
+ static void pak_clear(void)
+@@ -625,6 +698,30 @@
+     }
+     fclose(f);
+     return i == n;
++}
++
++/* Remastered: both Top Gear Rally libraries keep this pak (one file): before
++ * each use the notes are read again when the other has written it since this
++ * one last read or wrote it (the file, its size, its time) */
++static struct stat s_pak_seen;
++static int s_pak_seen_ok;
++
++static void pak_mark(void)
++{
++    s_pak_seen_ok = s_pak_path[0] && stat(s_pak_path, &s_pak_seen) == 0;
++}
++
++static void pak_fresh(void)
++{
++    struct stat st;
++    if (!s_pak_path[0] || stat(s_pak_path, &st) != 0)
++        return;
++    if (s_pak_seen_ok && st.st_ino == s_pak_seen.st_ino && st.st_size == s_pak_seen.st_size &&
++        st.st_mtime == s_pak_seen.st_mtime)
++        return;
++    pak_clear();
++    pak_load(s_pak_path);
++    pak_mark();
+ }
+ 
+ /* ---- the cartridge's EEPROM ------------------------------------------------
+@@ -741,6 +838,7 @@
+         if (e) {
+             snprintf(s_pak_path, sizeof s_pak_path, "%s", e);
+             pak_load(s_pak_path);
++            pak_mark();
+         }
+         return;
+     }
+@@ -760,6 +858,7 @@
+     }
+     pak_clear();
+     pak_load(s_pak_path);
++    pak_mark();
+ }
+ 
+ static int note_find(uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)
+@@ -776,6 +875,7 @@
+ {
+     int i;
+     (void)pfs;
++    pak_fresh();
+     if (!s_pak)
+         return TGR_PAK_NONE;
+     i = note_find(company, game, name, ext);
+@@ -790,6 +890,7 @@
+ {
+     int i, used = 0;
+     (void)pfs;
++    pak_fresh();
+     if (!s_pak)
+         return TGR_PAK_NONE;
+     for (i = 0; i < PAK_NOTES; i++)
+@@ -815,6 +916,7 @@
+ {
+     int i;
+     (void)pfs;
++    pak_fresh();
+     if (!s_pak)
+         return TGR_PAK_NONE;
+     i = note_find(company, game, name, ext);
+@@ -846,6 +948,7 @@
+ {
+     int i, used = 0;
+     (void)pfs;
++    pak_fresh();
+     if (!s_pak)
+         return TGR_PAK_NONE;
+     for (i = 0; i < PAK_NOTES; i++)
+@@ -859,6 +962,7 @@
+ {
+     int i, n = 0;
+     (void)pfs;
++    pak_fresh();
+     if (!s_pak)
+         return TGR_PAK_NONE;
+     for (i = 0; i < PAK_NOTES; i++)

@@ -1,6 +1,6 @@
 --- a/src/core/menus/br_uinav.c
 +++ b/src/core/menus/br_uinav.c
-@@ -442,6 +442,8 @@
+@@ -436,6 +436,8 @@
   * DEAD PROBE: wrapping the `f` block differently (extra scope, a dummy
   * static to defeat the block merge) leaves it at 943/297/0+1.  A fix has to
   * change which value VC5 puts in eax at 0x153, not the zero stores. */
@@ -9,7 +9,7 @@
  void __fastcall BrGlNavPoll(BrGlNavRec *pNav, int _unused)
  {
      uint8_t aState[0x10];
-@@ -477,10 +479,12 @@
+@@ -471,10 +473,12 @@
      pNav->x += *(int32_t *)&aState[0];
      pNav->y += *(int32_t *)&aState[4];
      pNav->z += *(int32_t *)&aState[8];
@@ -26,7 +26,7 @@
      if (pNav->y < 0)
          pNav->y = 0;
      else if (pNav->y >= BrGlNavMaxY)
-@@ -512,18 +516,21 @@
+@@ -506,18 +510,21 @@
      if ((g_BrDikEdge[88]) != 0)
          BrCdTrackNext();
  

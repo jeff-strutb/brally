@@ -6,7 +6,8 @@
  * ports/remastered/platform/mux.c), as Boss Rally's own menus' Quit does
  * there; the row is the last, after Options, its icon the console (the hand-
  * built one of the Remaster Options' rows: rmoptions.c).  On the iPhone, where
- * an app does not close itself, there is no such row.
+ * an app does not close itself, there is no such row; nor a 1P/2P choice
+ * (rm_two_players).
  *
  * mainmenu.c (port) asks for the screen's items (rm_mainmenu_items) and hands
  * a chosen row past the game's own to rm_mainmenu_row. */
@@ -65,4 +66,17 @@ void rm_mainmenu_row(int row)
   if (RM_QUIT_ROW && row == s_game_rows) {
     rm_quit();
   }
+}
+
+/* two players: not on the iPhone (one screen in one pair of hands), where
+ * Arcade and Practice go straight to the track select with one player, and
+ * back from it to the main menu (mainmenu.c, seasonmenu.c) */
+char *getenv(const char *name);         /* the host's (RM_PHONE=1: a check of the iPhone's menus) */
+int rm_two_players(void)
+{
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+  return 0;
+#else
+  return getenv("RM_PHONE") == 0;
+#endif
 }

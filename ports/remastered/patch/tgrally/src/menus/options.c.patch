@@ -1,6 +1,6 @@
 --- a/src/menus/options.c
 +++ b/src/menus/options.c
-@@ -42,6 +42,11 @@
+@@ -49,6 +49,12 @@
  extern char D_803163B0[24];
  extern char D_803163C8[24];
  extern MenuItem D_802723DC[];
@@ -9,19 +9,25 @@
 +int rm_options_ours(int row);
 +int rm_options_row(int result, int row);
 +void rm_controls_screen(void);         /* port: the controls (rmcontrols.c) */
++char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
  /* -- end declarations -- */
  
  /* WHAT IT DOES: Turn the music up one notch on the options screen (to at
-@@ -106,7 +111,7 @@
- /* @implements 0x8021196C tgr BrOptionsDrawHelp */
+@@ -114,11 +120,11 @@
  void BrOptionsDrawHelp(int row)
  {
+ #if !TGR_REGION_JPN
 -  if (row < 2) {
 +  if (row < 2 || rm_options_ours(row)) {   /* port: our rows too */
      BrTextSetFont(10);
      BrTextHighlightOff();
      BrTextAlignCentre();
-@@ -145,7 +150,7 @@
+-    BrTextPrint("%wwPush up or down to adjust", 160, 90);
++    BrTextPrint(rm_ptext("%wwPush {UP} or {DOWN} to adjust"), 160, 90);
+   }
+ #endif
+   if (D_803163A0 != 0) {
+@@ -163,7 +169,7 @@
    if (D_802724E0 <= 0) {
      D_80271FA4 = -1;
      D_80271FA0 = -1;
@@ -30,9 +36,9 @@
      BrPaintShopMemInit();
      D_80271FC8 = BrOptionsDrawHelp;
      D_80271FB0 = &D_8027205C;
-@@ -167,10 +172,11 @@
-   } else {
+@@ -203,10 +209,11 @@
      D_802723DC[2].label = tgr_addr32("Units: kph");
+ #endif
    }
 +  rm_options_frame();                   /* port: our rows' labels and icons */
    {
@@ -44,12 +50,12 @@
    switch (D_803163AC < 0 ? 0 : res) {
    case 4:
      switch (D_803163AC) {
-@@ -207,7 +213,7 @@
+@@ -250,7 +257,7 @@
        D_802724E0 = -1;
        D_80271FA0 = D_80271FA8;
        D_80271FA4 = 1 << D_80271FA0;
 -      BrModeSet(BrCtrlConfigScreen);
 +      BrModeSet(rm_controls_screen);    /* port: the app's controls, either player's */
        break;
+ #if TGR_REGION_JPN || TGR_REGION_EUR
      case 4:
-       D_803163A4 = 1;

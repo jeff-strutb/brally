@@ -232,6 +232,80 @@ static void controls(void)
     }
 }
 
+/* ---- Europe's and Japan's FINISH! cheat, on the first player's own controls ------------
+ * The cartridges watch the first pad for d-pad up, up, right, A, C-down, d-pad right, each
+ * let go before the next, and end the race there: every lap done, the first player first
+ * and the second second.  Remastered watches the actions that play those buttons' parts
+ * (controls.h): Gear Up, Gear Up, Steer Right, Accelerate, Change View, Steer Right, and
+ * finishes the players' cars as Boss Rally's finish line does (br_race.c), every lap
+ * counted and the time as it stands. */
+unsigned rm_player_actions(int player, const unsigned char *dik, const host_pad *pad);   /* the app's */
+extern uint8_t g_plat_dik[256];         /* br_os_window.c: scan codes held down */
+enum { ACT_ACCEL = 1 << 0, ACT_RIGHT = 1 << 4, ACT_GEAR_UP = 1 << 5, ACT_VIEW = 1 << 7 };
+static const unsigned k_finish[] = {    /* newest first, as the cartridges keep them */
+    ACT_RIGHT, 0, ACT_VIEW, 0, ACT_ACCEL, 0, ACT_RIGHT, 0, ACT_GEAR_UP, 0, ACT_GEAR_UP, 0,
+};
+#define NFINISH (int)(sizeof k_finish / sizeof k_finish[0])
+static unsigned s_hist[NFINISH];        /* the first player's actions, a change each, newest first */
+
+static void finish_now(void)
+{
+    int k, i, n = br_race_humans(), fresh = 0;
+    for (k = 0; k < n; k++)
+        if (!(g_aBrRaceDriver[k].f68 & BR_DRIVER_SKIP))
+            fresh++;
+    for (i = n; i < g_brRaceNDriver; i++)      /* (any car already in: behind them) */
+        if ((g_aBrRaceDriver[i].f68 & BR_DRIVER_SKIP) && g_aBrRaceDriver[i].pCar)
+            g_aBrRaceDriver[i].pCar->fFF8 += fresh;
+    for (k = 0; k < n; k++) {
+        BrDriver *d = &g_aBrRaceDriver[k];
+        BrDriverCar *c = d->pCar;
+        if (d->f68 & BR_DRIVER_SKIP)
+            continue;
+        d->f68 |= BR_DRIVER_SKIP;          /* (the driver's lap and clock are the car's, copied each frame) */
+        if (c) {
+            c->lap = c->lapB = g_CBE8;      /* the time stands as it is, as on the cartridges */
+            c->f29B0 = 0.9f;
+            c->fFF8 = k;
+            c->pszBanner = g_brRaceRules.mode == 6 ? (char *)"" : BrStrGet(g_aBrRacePlaceMsg[k]);
+            c->f1000 = 5.0f;
+        }
+        g_brRaceNFinished++;
+    }
+}
+
+/* one racing frame: the first player's actions into the history; the race ends on the
+   sequence's last press */
+static void finish_cheat(void)
+{
+    host_pad p;
+    int has = host_pad_read_n(0, &p), i;
+    unsigned m = rm_player_actions(0, g_plat_dik, has ? &p : NULL);
+    if (getenv("BR_FINISH_ACTS")) {      /* (a check: BR_FINISH_ACTS=F:mask,... the actions at race frame F) */
+        const char *e = getenv("BR_FINISH_ACTS");
+        int f;
+        unsigned v;
+        m = 0;
+        while (e && sscanf(e, "%d:%x", &f, &v) == 2) {
+            if (s_frames >= f)
+                m = v;
+            e = strchr(e, ',');
+            e = e ? e + 1 : NULL;
+        }
+    }
+    if (m == s_hist[0])
+        return;
+    memmove(s_hist + 1, s_hist, sizeof s_hist - sizeof s_hist[0]);
+    s_hist[0] = m;
+    for (i = 0; i < NFINISH && s_hist[i] == k_finish[i]; i++)
+        ;
+    if (i == NFINISH) {
+        fprintf(stderr, "FINISH!\n");
+        memset(s_hist, 0, sizeof s_hist);
+        finish_now();
+    }
+}
+
 static void result_of(int k, HostRaceResult *r)
 {
     BrDriverCar *car = g_aBrRaceDriver[k].pCar;
@@ -468,47 +542,147 @@ static void own_race(int racing)
     }
 }
 
-/* a controller on the game's own menus while they are the app's: its d-pad
- * and left stick are the arrow keys, A Return, each held as long as it is
- * (the menus repeat a held arrow themselves); the menus never read a
- * controller (rm_menuwide.c puts the pointer away for the keys).  B has no
- * part: the menus have no key for Back, the page's Back row is chosen as any
- * other */
-static void menu_pad(int on)
+/* the iPhone's menus (RM_PHONE=1: a check of them anywhere): no Quit, no
+ * Multiplayer (BrUiRootEnter_100425E0.cpp), no Quit Game on the pause menu */
+int rm_phone(void)
+{
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+    return 1;
+#else
+    static int e = -1;
+    if (e < 0)
+        e = getenv("RM_PHONE") != NULL;
+    return e;
+#endif
+}
+
+int rm_pause_rows(void) { return rm_phone() ? 6 : 7; }
+
+/* Boss Rally's strings that name a key, naming instead what the first player has
+ * that control on (controls.h): the replay's "Press ESC to exit" (244) is the
+ * Pause / Start control, which leaves it (pad_keys, below); the key, or the pad
+ * button while a pad is plugged in; on the iPhone a tap.  NULL: the game's own
+ * string. */
+int rm_bind(int player, int act, int kind);
+const char *rm_bind_label(int kind, int code, char *buf, int n);
+const char *rm_br_string(int id)
+{
+    static char buf[64];
+    char name[32];
+    host_pad p;
+    int pad, code;
+    const char *e = getenv("RM_PROMPT");        /* (a check: key, pad or touch) */
+    if (id != 244)
+        return NULL;
+#if defined(__APPLE__) && TARGET_OS_IPHONE
+    if (!e)
+        e = "touch";
+#endif
+    if (e && !strcmp(e, "touch"))
+        return "%wwTap to exit";             /* (a tap is Return: taps) */
+    pad = e ? !strcmp(e, "pad") : host_pad_read(&p);
+    code = rm_bind(0, 10, pad);                /* RM_ACT_START: its key (0) or pad button (1) */
+    if (pad ? code < 0 : code <= 0) {
+        pad = !pad;
+        code = rm_bind(0, 10, pad);
+    }
+    rm_bind_label(pad, code, name, sizeof name);
+    snprintf(buf, sizeof buf, "%%wwPress %s to exit",
+             !strcmp(name, "ESCAPE") ? "ESC" : !strncmp(name, "PAD ", 4) ? name + 4 : name);
+    return buf;
+}
+
+/* the first player's controls (controls.h) on Boss Rally's own screens, which
+ * read keys: on its menus while they are the app's, Up, Down and the steering
+ * are the arrow keys and Accelerate / Select Return (the menus have no key for
+ * Back: the page's Back row is chosen as any other); in a race Pause / Start is
+ * the game's pause key, Escape; on the pause menu the arrows and Return as on
+ * the menus (straight into its presses, rm_pause_note), and Brake / Back or
+ * Pause / Start close it (Back on the Remaster Options page: that page); in a demo Pause /
+ * Start is Escape, which leaves it (the menu has no key
+ * for that: its Continue row, or a network player's resume, the same steps,
+ * DAT_105ccb68[6]).  Each
+ * key is held as long as its control is (the menus repeat a held arrow
+ * themselves); a control already held when the screen comes up counts only
+ * once it has been let go (the accelerator held into the pause menu). */
+enum { PK_NONE, PK_MENUS, PK_RACE, PK_PAUSED, PK_DEMO };
+void rm_player_menu(int player, const unsigned char *dik, const host_pad *pad, unsigned short *buttons,
+                    int *sx, int *sy);   /* the app's (controls.h) */
+
+static void pad_keys(int ctx)
 {
     static const struct { int vk, dik; } k[] = {
-        { 0x26, 0xC8 }, { 0x28, 0xD0 }, { 0x25, 0xCB }, { 0x27, 0xCD }, { 0x0D, 0x1C },
+        { 0x26, 0xC8 }, { 0x28, 0xD0 }, { 0x25, 0xCB }, { 0x27, 0xCD }, { 0x0D, 0x1C }, { 0x1B, 0x01 },
     };
-    static int was[5], frame;
-    int now[5] = { 0, 0, 0, 0, 0 }, i, has;
+    static int was[7], frame, prev = PK_NONE;
+    static unsigned block;
+    int want[7] = { 0, 0, 0, 0, 0, 0, 0 }, i, has, x, y;
+    unsigned short b;
+    unsigned now = 0;
     host_pad p;
     const char *e = getenv("RM_MENUPAD");
     has = host_pad_read(&p);
     frame++;
     if (e) {        /* (a check: RM_MENUPAD=F:buttons[;...], the pad's buttons from frame F on) */
-        unsigned b = 0;
+        unsigned v0 = 0;
         for (; *e; e = strchr(e, ';') ? strchr(e, ';') + 1 : e + strlen(e)) {
             int f = 0;
             unsigned v = 0;
             if (sscanf(e, "%d:%x", &f, &v) == 2 && f <= frame)
-                b = v;
+                v0 = v;
         }
         memset(&p, 0, sizeof p);
-        p.buttons = b;
+        p.buttons = v0;
         has = 1;
     }
-    if (on && has) {
-        now[0] = (p.buttons >> 12 & 1) || p.y < -0.5f;   /* up */
-        now[1] = (p.buttons >> 14 & 1) || p.y > 0.5f;    /* down */
-        now[2] = (p.buttons >> 15 & 1) || p.x < -0.5f;   /* left */
-        now[3] = (p.buttons >> 13 & 1) || p.x > 0.5f;    /* right */
-        now[4] = p.buttons & 1;                           /* A */
+    rm_player_menu(0, g_plat_dik, has ? &p : NULL, &b, &x, &y);
+    if (ctx == PK_MENUS || ctx == PK_PAUSED) {
+        want[0] = y > 40;
+        want[1] = y < -40;
+        want[2] = x < -40;
+        want[3] = x > 40;
+        want[4] = (b & 0x8000) != 0;                      /* A */
     }
-    for (i = 0; i < 5; i++)
-        if (now[i] != was[i]) {
-            plat_script_key(k[i].vk, k[i].dik, now[i]);
-            was[i] = now[i];
+    if (ctx == PK_PAUSED)
+        want[6] = (b & 0x4000) || (b & 0x1000);           /* B, Start: resume */
+    if (ctx == PK_RACE || ctx == PK_DEMO)
+        want[5] = (b & 0x1000) != 0;                      /* Start (a demo: leaves it, as Escape) */
+    for (i = 0; i < 7; i++)
+        now |= (unsigned)want[i] << i;
+    if (ctx != prev) {
+        block = now;
+        prev = ctx;
+    }
+    block &= now;
+    now &= ~block;
+    for (i = 0; i < 7; i++) {
+        int on = (now >> i) & 1;
+        if (on != was[i] && ctx == PK_PAUSED) {
+            /* the pause menu: its presses straight in (up, down, left, right, Return,
+               and Back: the Remaster Options page's close, else the race's resume) */
+            static const int k_bits[5] = { 0x1000, 0x2000, 1, 2, 0x8000 };
+            if (on && i < 5)
+                rm_pause_note(k_bits[i]);
+            else if (on && i == 6) {
+                if (rm_pause_active() && (b & 0x4000))
+                    rm_pause_note(0x4000);
+                else
+                    DAT_105ccb68[6] = 1;
+            }
+            was[i] = on;
+            continue;
         }
+        if (on != was[i]) {
+            if (i == 5 && ctx == PK_DEMO) {
+                if (on)
+                    br_race_key(5);       /* (a demo's skip: the host's keys come this way) */
+            } else if (i < 6)
+                plat_script_key(k[i].vk, k[i].dik, on);
+            else if (on)
+                DAT_105ccb68[6] = 1;
+            was[i] = on;
+        }
+    }
 }
 
 /* The races' tick rate: Top Gear Rally Remastered runs Boss Rally's simulation
@@ -617,6 +791,23 @@ static void ticklog(void)
     fputc('\n', f);
 }
 
+/* BR_HANDOFF_SHOTS=dir:F,...: the race's own frame at race frame F (a check) */
+static void race_shots(void)
+{
+    char dir[512], path[600];
+    const char *e = getenv("BR_HANDOFF_SHOTS"), *c;
+    int brr_shot(const char *path);
+    if (!e || !(c = strchr(e, ':')) || c - e >= (int)sizeof dir)
+        return;
+    memcpy(dir, e, (size_t)(c - e));
+    dir[c - e] = 0;
+    for (c++; *c; c = strchr(c, ',') ? strchr(c, ',') + 1 : c + strlen(c))
+        if (atoi(c) == s_frames) {
+            snprintf(path, sizeof path, "%s/race%05d.png", dir, s_frames);
+            brr_shot(path);
+        }
+}
+
 /* BrAppFrame's entry */
 void plat_race_frame(void)
 {
@@ -633,7 +824,15 @@ void plat_race_frame(void)
         controls();
     if (s_phase == IDLE && s_menus)
         own_race(racing);
-    menu_pad(s_menus && s_phase == IDLE && state == 4 && g_brPAA29B8 != 0);
+    if (getenv("RM_LOG") && s_phase == RACE) {   /* (a check: the pause menu's coming and going) */
+        static int was_paused;
+        if ((g_BrX06909B4 != 0) != was_paused)
+            fprintf(stderr, "handoff: race frame %d %s\n", s_frames, g_BrX06909B4 ? "paused" : "resumed");
+        was_paused = g_BrX06909B4 != 0;
+    }
+    pad_keys(s_menus && s_phase == IDLE && state == 4 && g_brPAA29B8 != 0 ? PK_MENUS
+             : s_phase == RACE && racing && PLAYBACK ? PK_DEMO
+             : s_phase == RACE && racing ? (g_BrX06909B4 != 0 ? PK_PAUSED : PK_RACE) : PK_NONE);
     switch (s_phase) {
     case IDLE:
         /* the menus are up (state 4, a phase built) */
@@ -699,6 +898,7 @@ void plat_race_frame(void)
         if (racing && PLAYBACK) {
             g_brRaceTick = 1;
             s_frames++;
+            race_shots();
             if (s_test && getenv("BR_HANDOFF_SKIP_AT") && s_frames == atoi(getenv("BR_HANDOFF_SKIP_AT")))
                 s_key = BR_KEY_ENTER;
             if (s_key >= 0 && !s_skip && BrFadeIsClosing() == 0) {
@@ -717,6 +917,7 @@ void plat_race_frame(void)
             g_brRaceTick = 1;
             s_frames++;
             check_taps();
+            race_shots();
             if (DAT_105ccb68[12] == 2)
                 DAT_105ccb68[12] = 1;   /* the pause menu's "quit game" ends the app's race, not the app */
             if ((AUTOPILOT || s_test) && s_underway && DAT_105ccb68[8] == 0 && g_brRaceLights < 5 &&
@@ -742,8 +943,11 @@ void plat_race_frame(void)
                     fprintf(stderr, "handoff: frame %d lights %d lap %d along %.0f speed %.1f\n", n,
                             g_brRaceLights, c->lap, c->fFF4, hypotf(c->f1024.x, c->f1024.y));
             }
-            if (DAT_105ccb68[8] == 0 && g_brRaceLights == 4)
+            if (DAT_105ccb68[8] == 0 && g_brRaceLights == 4) {
                 s_underway = 1;
+                if (g_BrX06909B4 == 0)       /* (not paused) */
+                    finish_cheat();
+            }
             if (!s_got && s_underway && DAT_105ccb68[8] == 0 && g_brRaceLights >= 5) {
                 result();
                 s_got = 1;
@@ -764,6 +968,12 @@ void plat_race_frame(void)
                arcade race's does (BrInit220B20) */
             if (s_got)
                 DAT_105ccb60 = 0;
+            /* nor Boss Rally's replay: the race's end goes on to the menus, as the
+               caller's way back (the replay would restore the race from snapshots the
+               port never takes: BrWrap_10067940, the per-car slots; a car without its
+               equipment, and the race's set-up reads it).  The caller replays nothing */
+            if (s_got)
+                DAT_105ccb68[9] = 0;
             return;
         }
         if (PLAYBACK) {

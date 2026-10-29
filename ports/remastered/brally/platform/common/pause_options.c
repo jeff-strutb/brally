@@ -31,7 +31,7 @@
 int  rm_option(int which);
 void rm_option_set(int which, int value);
 enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
-enum { RM_MUSIC_PC, RM_MUSIC_N64 };
+enum { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 uint32_t plat_time_ms(void);
 
@@ -43,13 +43,15 @@ uint32_t plat_time_ms(void);
 static const struct {
     const char *label;
     int opt;
-    const char *choice[2];
-    int value[2];                   /* the option's value each choice sets */
+    int n;                          /* its choices */
+    const char *choice[3];
+    int value[3];                   /* the option's value each choice sets */
 } k_rows[] = {
-    { "Widescreen", RM_OPT_WIDESCREEN, { "On", "Off" }, { 1, 0 } },
-    { "Music", RM_OPT_MUSIC, { "PC", "N64" }, { RM_MUSIC_PC, RM_MUSIC_N64 } },
-    { "Show FPS", RM_OPT_FPS, { "On", "Off" }, { 1, 0 } },
-    { "View Distance", RM_OPT_VIEWDIST, { "Original", "Unlimited" }, { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED } },
+    { "Widescreen", RM_OPT_WIDESCREEN, 2, { "On", "Off" }, { 1, 0 } },
+    { "Music", RM_OPT_MUSIC, 3, { "Boss Rally", "TGR USA", "TGR PAL/Japan" },
+      { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL } },
+    { "Show FPS", RM_OPT_FPS, 2, { "On", "Off" }, { 1, 0 } },
+    { "View Distance", RM_OPT_VIEWDIST, 2, { "Original", "Unlimited" }, { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED } },
 };
 #define NOPT ((int)(sizeof k_rows / sizeof k_rows[0]))
 #define NROW (NOPT + 1)             /* and Back */
@@ -81,7 +83,11 @@ static void close_page(void)
 
 static int chosen(int r)
 {
-    return rm_option(k_rows[r].opt) == k_rows[r].value[0] ? 0 : 1;
+    int c;
+    for (c = 0; c < k_rows[r].n; c++)
+        if (rm_option(k_rows[r].opt) == k_rows[r].value[c])
+            return c;
+    return 0;
 }
 
 static void choose(int r, int c)
@@ -107,12 +113,13 @@ void rm_pause_step(int f)
     if (f & 0x2000)
         s_row = (s_row + 1) % NROW;
     if (s_row < NOPT) {
-        if (f & 1)
-            choose(s_row, 0);
+        int n = k_rows[s_row].n;
+        if (f & 1)                  /* left and right step through the choices */
+            choose(s_row, (chosen(s_row) + n - 1) % n);
         if (f & 2)
-            choose(s_row, 1);
-        if (f & 0x8000)
-            choose(s_row, 1 - chosen(s_row));
+            choose(s_row, (chosen(s_row) + 1) % n);
+        if (f & 0x8000)             /* Return: the next */
+            choose(s_row, (chosen(s_row) + 1) % n);
     } else if (f & 0x8000) {
         close_page();
     }
@@ -137,8 +144,10 @@ static void draw_faded(const char *s, int x, int y)
 /* an option's row: its whole width (game pixels) and, drawing, its pieces */
 static int row_width(int r)
 {
-    return width(k_rows[r].label, ROW) + GAP + width(k_rows[r].choice[0], ROW) + GAP +
-           width(k_rows[r].choice[1], ROW);
+    int w = width(k_rows[r].label, ROW), c;
+    for (c = 0; c < k_rows[r].n; c++)
+        w += GAP + width(k_rows[r].choice[c], ROW);
+    return w;
 }
 
 static int title_size(void)
@@ -161,7 +170,7 @@ void rm_pause_draw(int x, int h)
             int px = x - row_width(r) / 2;
             fprintf(stderr, "pause: row %d y %d label %d+%d", r, yy, px, width(k_rows[r].label, ROW));
             px += width(k_rows[r].label, ROW) + GAP;
-            for (c = 0; c < 2; c++) {
+            for (c = 0; c < k_rows[r].n; c++) {
                 fprintf(stderr, " %s %d+%d", k_rows[r].choice[c], px, width(k_rows[r].choice[c], ROW));
                 px += width(k_rows[r].choice[c], ROW) + GAP;
             }
@@ -181,7 +190,7 @@ void rm_pause_draw(int x, int h)
         snprintf(buf, sizeof buf, "%s%s", col, k_rows[r].label);
         BrTextDraw(buf, px, y);
         px += width(k_rows[r].label, ROW) + GAP;
-        for (c = 0; c < 2; c++) {
+        for (c = 0; c < k_rows[r].n; c++) {
             if (c == pick) {
                 snprintf(buf, sizeof buf, "%s%s", col, k_rows[r].choice[c]);
                 BrTextDraw(buf, px, y);
@@ -225,7 +234,7 @@ int rm_pause_tap(float nx, float ny, int x, int h, int *press)
         return 0;
     if (!s_open) {
         /* the menu's rows: Continue, Restart, the two volumes, ours, the quits */
-        static const char *const k_menu[RM_PAUSE_ROWS] = {
+        static const char *const k_menu[7] = {
             "Continue", "Restart Race", "Music Volume: 9", "SFX Volume: 9", "Remaster Options",
             "Quit Championship", "Quit Game" };
         tap_at(nx, ny, x, y0, RM_PAUSE_ROWS, &gx, &gy);
@@ -250,9 +259,15 @@ int rm_pause_tap(float nx, float ny, int x, int h, int *press)
         } else {
             /* the label moves the cursor; a choice is chosen */
             float c0 = (float)(x - w / 2 + width(k_rows[r].label, ROW) + GAP / 2);
-            float c1 = c0 + GAP / 2 + width(k_rows[r].choice[0], ROW) + GAP / 2;
-            if (gx >= c0)
-                choose(r, gx < c1 ? 0 : 1);
+            int c;
+            for (c = 0; c < k_rows[r].n && gx >= c0; c++) {
+                float c1 = c0 + GAP / 2 + width(k_rows[r].choice[c], ROW) + GAP / 2;
+                if (gx < c1 || c == k_rows[r].n - 1) {
+                    choose(r, c);
+                    break;
+                }
+                c0 = c1;
+            }
         }
         return 1;
     }

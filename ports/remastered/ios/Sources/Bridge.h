@@ -10,13 +10,20 @@
 /* the process (ports/remastered/platform/main.c, built as rm_main): run on its own thread */
 int rm_main(int argc, char **argv);
 
-/* Top Gear Rally */
+/* Top Gear Rally: the one whose menus are in use, USA's cartridge's or
+ * Europe's (platform/mux.c sends each call on) */
 /* 1 while a race is driven: touch is the wheel; else menu swipes and taps */
-int tgr_view_driving(void);
+int rm_tgr_view_driving(void);
 /* the sound's low-pass cut, Hz (0: none; platform/audio/out.c) */
-void tgr_audio_lowpass(int hz);
+void rm_tgr_audio_lowpass(int hz);
 /* the player's speed, km/h, negative backing up (src/racing/handoff.c) */
-float tgr_race_speed(void);
+float rm_tgr_race_speed(void);
+/* the menus by touch and the paint shop's pointer (tgr_touch.h) */
+void rm_tgr_touch_tap(float u, float v);
+void rm_tgr_touch_swipe(float dx, float dy);
+void rm_tgr_touch_press(unsigned short button);
+void rm_tgr_pointer(float u, float v, int buttons);
+int  rm_tgr_pointer_wanted(void);
 
 /* Boss Rally, running a race (platform/common/race_handoff.c) */
 int  br_race_driving(void);

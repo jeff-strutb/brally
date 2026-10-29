@@ -16,10 +16,11 @@
  * Unlimited, its far end (the lighthouse and the loop behind it) gone at
  * Original (coast_icon).
  * Each row says its option and the choice in force; Return or a click on it
- * takes the other choice, at once, both games told (the app's options.c,
- * rm_option_set).  Menus takes Top Gear Rally's: the game's menus wait for
- * races again (race_handoff.c, br_menus_leave) and Top Gear Rally's come back
- * in front, on its own options screen.  Back returns to Options, as Game
+ * takes the next choice (Music: Boss Rally, TGR USA, TGR PAL/Japan), at once,
+ * both games told (the app's options.c, rm_option_set).  Menus takes Top Gear
+ * Rally's, the one that handed over (USA or PAL/Japan): the game's menus wait
+ * for races again (race_handoff.c, br_menus_leave) and that Top Gear Rally's
+ * come back in front, on its own options screen.  Back returns to Options, as Game
  * Options' does (BrOpt6710).
  *
  * The page's phase lives in a slot of its own; the menus' shutdown frees it
@@ -98,8 +99,10 @@ extern "C" int  rm_option(int which);
 extern "C" void rm_option_set(int which, int value);
 extern "C" void br_menus_leave(void);   /* race_handoff.c */
 enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
-enum { RM_MUSIC_PC, RM_MUSIC_N64 };
-enum { RM_MENUS_TGR, RM_MENUS_BR };
+enum { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL, RM_MUSIC_COUNT };
+enum { RM_MENUS_TGR, RM_MENUS_BR, RM_MENUS_TGR_PAL };
+extern "C" int mux_tgr_active_game(void);   /* the app's (mux.h): the Top Gear Rally last in use */
+enum { MUX_TGR, MUX_BR, MUX_TGRP };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 
 #define SPR_WRENCH  9                   /* the options pages' emblem (op.bmp) */
@@ -229,7 +232,7 @@ extern "C" int rm_sprite_draw(int i, int x, int y)
     /* the View Distance row chosen: Coastline, as that choice sees it */
     if (s_row[ROW_VIEW] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_VIEW]))->flags1C & 0x20))
         s = coast_icon(rm_option(RM_OPT_VIEWDIST) == RM_VIEW_ORIGINAL);
-    if (s == 0 && (s = icon(rm_option(RM_OPT_MUSIC) == RM_MUSIC_N64)) == 0)
+    if (s == 0 && (s = icon(rm_option(RM_OPT_MUSIC) != RM_MUSIC_PC)) == 0)
         return 1;
     rect[0] = 0;
     rect[1] = 0;
@@ -250,7 +253,9 @@ static const char *row_text(int r)
         snprintf(s_text[r], sizeof s_text[r], "WIDESCREEN  %s", rm_option(RM_OPT_WIDESCREEN) ? "ON" : "OFF");
         break;
     case ROW_MUSIC:
-        snprintf(s_text[r], sizeof s_text[r], "MUSIC  %s", rm_option(RM_OPT_MUSIC) == RM_MUSIC_PC ? "PC" : "N64");
+        snprintf(s_text[r], sizeof s_text[r], "MUSIC  %s",
+                 rm_option(RM_OPT_MUSIC) == RM_MUSIC_PC ? "BOSS RALLY"
+                 : rm_option(RM_OPT_MUSIC) == RM_MUSIC_N64 ? "TGR USA" : "TGR PAL/JAPAN");
         break;
     case ROW_FPS:
         snprintf(s_text[r], sizeof s_text[r], "SHOW FPS  %s", rm_option(RM_OPT_FPS) ? "ON" : "OFF");
@@ -281,7 +286,7 @@ static int act_wide(RmCtl *)
 
 static int act_music(RmCtl *)
 {
-    rm_option_set(RM_OPT_MUSIC, rm_option(RM_OPT_MUSIC) == RM_MUSIC_PC ? RM_MUSIC_N64 : RM_MUSIC_PC);
+    rm_option_set(RM_OPT_MUSIC, (rm_option(RM_OPT_MUSIC) + 1) % RM_MUSIC_COUNT);   /* the next of the three */
     relabel(ROW_MUSIC);
     return 1;
 }
@@ -302,7 +307,7 @@ static int act_view(RmCtl *)
 
 static int act_menus(RmCtl *)
 {
-    rm_option_set(RM_OPT_MENUS, RM_MENUS_TGR);
+    rm_option_set(RM_OPT_MENUS, mux_tgr_active_game() == MUX_TGRP ? RM_MENUS_TGR_PAL : RM_MENUS_TGR);   /* the Top Gear Rally that left */
     br_menus_leave();
     return 1;
 }

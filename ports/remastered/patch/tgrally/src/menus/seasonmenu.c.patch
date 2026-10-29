@@ -1,6 +1,24 @@
 --- a/src/menus/seasonmenu.c
 +++ b/src/menus/seasonmenu.c
-@@ -446,7 +446,11 @@
+@@ -72,6 +72,8 @@
+ void BrWeatherScreen(void);
+ void BrMainMenu(void);
+ void BrPlayerSelectScreen(void);
++int rm_two_players(void);              /* Remastered: rmmainmenu.c */
++char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
+ /* -- end declarations -- */
+ 
+ static int loadPending = 0;     /* 0x80271D58: Load Season/Ghost Data was chosen; the help panel runs the load */
+@@ -118,7 +120,7 @@
+     BrTextSetFont(10);
+     BrTextHighlightOff();
+     BrTextAlignCentre();
+-    BrTextPrint("%wwPush up or down to adjust number of laps", 0xa0, 0x5a);
++    BrTextPrint(rm_ptext("%wwPush {UP} or {DOWN} to adjust number of laps"), 0xa0, 0x5a);
+   }
+ #endif
+   if (D_8026FF18 == 0 && row < D_8028AE04) {
+@@ -475,10 +477,16 @@
      }
      break;
    case 2:
@@ -11,5 +29,11 @@
 +                                           cartridge went on to the main menu */
 +    } else if (D_8026FF18 == 2 || D_8026FF18 == 0) {
        BrModeSet(BrMainMenu);
-     } else {
+-    } else {
++    } else if (rm_two_players()) {
        BrModeSet(BrPlayerSelectScreen);
++    } else {
++      BrModeSet(BrMainMenu);            /* Remastered on the iPhone: no 1P/2P screen (rmmainmenu.c) */
+     }
+     D_80271D60 = 0;
+     break;

@@ -2,14 +2,22 @@
  * app's save folder, "controls.cfg": "p<player> <action> key <code>" and
  * "... pad <code>" a line; a missing file or line is the default:
  *
- *   player 1  keys: Boss Rally's own (up accelerates, right Ctrl brakes, down
- *             reverses, the arrows steer, A and Z change gear, Delete the view);
- *             pad: A accelerates, B brakes, X reverses, the d-pad steers, RB and
- *             LB change gear, Y the view (the iPhone's touch controls send A, B
- *             and X: accelerator, brake, reverse)
- *   player 2  keys: I accelerates, O brakes, K reverses, J and L steer, U and M
- *             change gear, Y the view (none of them a key either game's own
- *             keys or debug keys use for driving); pad: as player 1's */
+ *   player 1  keys: X accelerates and selects, Z brakes and goes back, C
+ *             reverses, the arrows steer and move through the menus, W and Q
+ *             change gear (R and L), I changes the view (C-up), K, J and L the
+ *             other C buttons, Space Z, Escape pauses (Start); one key an
+ *             action, none of them a key Boss Rally keeps for itself (the
+ *             arrows, Return and Escape are its menus' own, the same meaning)
+ *   player 2  keys: A accelerates, S brakes, D reverses, F and H steer, T and G
+ *             up and down, R and E change gear, V the view, P pauses; Z and the
+ *             other C buttons none (player 1 paints)
+ *   both      pad: A accelerates, B brakes, X reverses, the d-pad steers and
+ *             moves, RB and LB change gear, Y the view, Menu pauses, LT Z, R3,
+ *             RT and L3 the other C buttons (the iPhone's touch controls send
+ *             A, B and X: accelerator, brake, reverse)
+ *
+ * The file starts "version 2"; one without it holds the first controls (Boss
+ * Rally's keys, which collided with the menus') and is set aside for these. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,16 +26,20 @@
 #include "controls.h"
 
 static const char *const k_act[RM_ACT_COUNT] = {
-    "Accelerate", "Brake", "Reverse", "Steer Left", "Steer Right", "Gear Up", "Gear Down", "Change View",
+    "Accelerate / Select", "Brake / Back", "Reverse", "Steer Left", "Steer Right", "Gear Up", "Gear Down",
+    "Change View", "Up", "Down", "Pause / Start", "Z", "C Down", "C Left", "C Right",
 };
 static const char *const k_tag[RM_ACT_COUNT] = {
     "accel", "brake", "reverse", "left", "right", "gearup", "geardown", "view",
+    "up", "down", "start", "z", "cdown", "cleft", "cright",
 };
 static const unsigned char k_key_def[2][RM_ACT_COUNT] = {
-    { 0xC8, 0x9D, 0xD0, 0xCB, 0xCD, 0x1E, 0x2C, 0xD3 },
-    { 0x17, 0x18, 0x25, 0x24, 0x26, 0x16, 0x32, 0x15 },
+    /*  X     Z     C     <     >     W     Q     I     ^     v    Esc  Space   K     J     L */
+    { 0x2D, 0x2C, 0x2E, 0xCB, 0xCD, 0x11, 0x10, 0x17, 0xC8, 0xD0, 0x01, 0x39, 0x25, 0x24, 0x26 },
+    /*  A     S     D     F     H     R     E     V     T     G     P */
+    { 0x1E, 0x1F, 0x20, 0x21, 0x23, 0x13, 0x12, 0x2F, 0x14, 0x22, 0x19, 0, 0, 0, 0 },
 };
-static const signed char k_pad_def[RM_ACT_COUNT] = { 0, 1, 2, 15, 13, 5, 4, 3 };
+static const signed char k_pad_def[RM_ACT_COUNT] = { 0, 1, 2, 15, 13, 5, 4, 3, 12, 14, 7, 10, 9, 11, 8 };
 
 static int s_key[2][RM_ACT_COUNT], s_pad[2][RM_ACT_COUNT];
 static int s_loaded;
@@ -65,6 +77,7 @@ static void save(void)
     path(p, sizeof p);
     if (!(f = fopen(p, "w")))
         return;
+    fprintf(f, "version 2\n");
     for (pl = 0; pl < 2; pl++)
         for (a = 0; a < RM_ACT_COUNT; a++) {
             fprintf(f, "p%d %s key %d\n", pl + 1, k_tag[a], s_key[pl][a]);
@@ -77,7 +90,7 @@ void rm_controls_load(void)
 {
     char p[1100], line[128], tag[32], kind[8];
     FILE *f;
-    int pl, a, v;
+    int pl, a, v, ours = 0;
     rm_bind_defaults(0);
     rm_bind_defaults(1);
     s_loaded = 1;
@@ -85,7 +98,9 @@ void rm_controls_load(void)
     if (!(f = fopen(p, "r")))
         return;
     while (fgets(line, sizeof line, f)) {
-        if (sscanf(line, "p%d %31s %7s %d", &pl, tag, kind, &v) != 4 || pl < 1 || pl > 2)
+        if (!strncmp(line, "version 2", 9))
+            ours = 1;
+        if (!ours || sscanf(line, "p%d %31s %7s %d", &pl, tag, kind, &v) != 4 || pl < 1 || pl > 2)
             continue;
         for (a = 0; a < RM_ACT_COUNT; a++)
             if (!strcmp(tag, k_tag[a])) {
@@ -96,6 +111,8 @@ void rm_controls_load(void)
             }
     }
     fclose(f);
+    if (!ours)
+        save();                         /* the first controls: these from now on */
 }
 
 int rm_bind(int player, int act, int kind)
@@ -217,28 +234,42 @@ void rm_player_drive(int player, const unsigned char *dik, const host_pad *pad, 
     *sy = y;
 }
 
+unsigned rm_player_actions(int player, const unsigned char *dik, const host_pad *pad)
+{
+    unsigned m = 0;
+    int a, x = pad ? stick(pad->x) : 0;
+    for (a = 0; a < RM_ACT_COUNT; a++)
+        if (held(player, a, dik, pad))
+            m |= 1u << a;
+    if (x >= 60)
+        m |= 1u << RM_ACT_RIGHT;
+    if (x <= -60)
+        m |= 1u << RM_ACT_LEFT;
+    return m;
+}
+
 void rm_player_menu(int player, const unsigned char *dik, const host_pad *pad, unsigned short *buttons,
                     int *sx, int *sy)
 {
+    static const struct { int act; unsigned short b; } k_btn[] = {
+        { RM_ACT_ACCEL, RM_N64_A }, { RM_ACT_BRAKE, RM_N64_B }, { RM_ACT_GEAR_UP, RM_N64_R },
+        { RM_ACT_GEAR_DOWN, RM_N64_L }, { RM_ACT_VIEW, RM_N64_CU }, { RM_ACT_START, RM_N64_START },
+        { RM_ACT_Z, RM_N64_Z }, { RM_ACT_C_DOWN, RM_N64_CD }, { RM_ACT_C_LEFT, RM_N64_CL },
+        { RM_ACT_C_RIGHT, RM_N64_CR },
+    };
     unsigned short b = 0;
     int x = pad ? stick(pad->x) : 0, y = pad ? -stick(pad->y) : 0;
-    if (held(player, RM_ACT_ACCEL, dik, pad))
-        b |= RM_N64_A;
-    if (held(player, RM_ACT_BRAKE, dik, pad))
-        b |= RM_N64_B;
+    unsigned i;
+    for (i = 0; i < sizeof k_btn / sizeof k_btn[0]; i++)
+        if (held(player, k_btn[i].act, dik, pad))
+            b |= k_btn[i].b;
     if (held(player, RM_ACT_LEFT, dik, pad))
         x = -80;
     if (held(player, RM_ACT_RIGHT, dik, pad))
         x = 80;
-    if (held(player, RM_ACT_GEAR_UP, dik, pad))
+    if (held(player, RM_ACT_UP, dik, pad))
         y = 80;
-    if (held(player, RM_ACT_GEAR_DOWN, dik, pad))
-        y = -80;
-    if (pad && (pad->buttons & (1u << 7)))
-        b |= RM_N64_START;
-    if (pad && (pad->buttons & (1u << 12)))
-        y = 80;
-    if (pad && (pad->buttons & (1u << 14)))
+    if (held(player, RM_ACT_DOWN, dik, pad))
         y = -80;
     *buttons = b;
     *sx = x;

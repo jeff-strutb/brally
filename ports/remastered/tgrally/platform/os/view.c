@@ -144,6 +144,40 @@ void tgr_view_proj(const void *mtx, int mirror)
     s_proj[i].ky = s_ky;
 }
 
+/* the menus' screen camera (frameloop.c, BrScreenCameraSet) on a window of another
+ * shape than 4:3, outside a race: the lens sees as much more as the window shows
+ * (Hor+ across, Vert+ down, as a race's), and the projection is known as the menus'
+ * (kind 3) so what it draws is spread over the window (rcp.c, place_menu): a carousel
+ * item keeps its size at the centre and slides in and out from the window's edges */
+static float s_mkx = 1, s_mky = 1;
+
+void tgr_view_menu_lens(float *fovy, float *aspect)
+{
+    s_mkx = s_mky = 1.0f;
+    if (s_race)
+        return;
+    tgr_view_scale(&s_mkx, &s_mky);
+    if (s_mkx <= 1.0f && s_mky <= 1.0f)
+        return;
+    if (s_mky > 1.0f)
+        *fovy = (float)(2.0 * atan(s_mky * tan(*fovy * M_PI / 360.0)) * 180.0 / M_PI);
+    *aspect = *aspect * s_mkx / s_mky;
+}
+
+void tgr_view_proj_menu(const void *mtx)
+{
+    int i = s_nproj++ % NPROJ;
+    if (s_mkx <= 1.0f && s_mky <= 1.0f) {
+        s_proj[i].mtx = NULL;
+        return;
+    }
+    s_proj[i].mtx = mtx;
+    s_proj[i].hash = mtx_hash(mtx);
+    s_proj[i].kind = 3;
+    s_proj[i].kx = s_mkx;
+    s_proj[i].ky = s_mky;
+}
+
 int tgr_view_proj_kind(const void *mtx, float *kx, float *ky)
 {
     uint32_t h = 0;

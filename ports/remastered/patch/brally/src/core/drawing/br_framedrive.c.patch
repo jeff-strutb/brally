@@ -102,7 +102,7 @@
      } else if ((*(int *)&g_BrX06909B4) != 0) {
          x = (aViews->w >> 1) + aViews->x;
          BrPodNop();
-@@ -598,26 +623,31 @@
+@@ -598,26 +623,32 @@
                  DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
          BrTextDraw(DAT_10396f28, x, y);
          y += 0x14;
@@ -129,7 +129,9 @@
              psz = BrStrGet(0x107);
          else
              psz = BrStrGet(0x108);
-         BrTextDraw(psz, x, y);
+-        BrTextDraw(psz, x, y);
++        if (!rm_phone())                /* Remastered: no Quit Game on the iPhone */
++            BrTextDraw(psz, x, y);
      }
  
 +    rm_fps_frame((aViews->w >> 1) + aViews->x, (*(int *)&g_brRaceCueBase));   /* Remastered: Show FPS */

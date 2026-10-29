@@ -1,6 +1,6 @@
 --- a/platform/gfx/rcp.c
 +++ b/platform/gfx/rcp.c
-@@ -18,7 +18,9 @@
+@@ -20,7 +20,9 @@
  #include <stdlib.h>
  #include <string.h>
  #include "plat.h"
@@ -10,7 +10,7 @@
  #include "../render/rdr.h"
  
  /* ---- debugging switches (environment, read once) ------------------------------ *
-@@ -99,10 +101,22 @@
+@@ -101,10 +103,22 @@
      }
  }
  
@@ -34,7 +34,7 @@
      rdr_vi(tgr_vi_ctrl());
      rdr_frame_end();
      t = host_ticks_ns() - t0;
-@@ -448,6 +462,8 @@
+@@ -450,6 +464,8 @@
  static uint64_t s_cur_key;                            /* the last texture looked up (TGR_WORLDDUMP) */
  static FILE *s_wdump;                                 /* TGR_WORLDDUMP: the world geometry, for tools */
  
@@ -43,7 +43,7 @@
  static uint64_t fnv(const uint8_t *p, int n, uint64_t h)
  {
      int i;
-@@ -521,7 +537,7 @@
+@@ -523,7 +539,7 @@
          fwrite(rgba, 4, (size_t)w * h, s_wdump);
      }
      if (s_cache[slot].tex)
@@ -52,7 +52,7 @@
      s_cache[slot].tex = rdr_texture(rgba, w, h);
      if (s_texdump) {
          static int n;
-@@ -708,12 +724,443 @@
+@@ -710,12 +726,446 @@
      st->scissor[1] = s_scissor[1];
      st->scissor[2] = s_scissor[2];
      st->scissor[3] = s_scissor[3];
@@ -71,7 +71,7 @@
 + * Rally port's placement (ports/brally/platform/common/br_gfx.c).  Any other frame (the menus,
 + * the results, the car select) fills the window too: its 4:3 at its size in the centre, a
 + * picture across the whole screen scaled up to cover the window (place_menu). */
-+enum { K_2D, K_RACE, K_MIRROR };
++enum { K_2D, K_RACE, K_MIRROR, K_MENU3D };   /* K_MENU3D: the menus' widened screen camera (view.c) */
 +typedef struct { double ax, bx, ay, by; } XMap;     /* target = a * game + b (b times w) */
 +typedef struct {
 +    int type;                   /* 0 triangles, 1 a rectangle, 2 a depth clear */
@@ -142,8 +142,8 @@
 +        }
 +    }
 +    return r;
-+}
-+
+ }
+ 
 +static void put_tris(const RdrState *st, const RdrVtx *v, int n)
 +{
 +    Rec *r;
@@ -359,6 +359,9 @@
 +            map[i] = (XMap){ s_kx, 0, s_ky, 0 };      /* a screen change's bar (BrFadeBarsDraw), growing
 +                                                        from an edge at full height: across the window,
 +                                                        so the wipe covers all of it */
++        else if (a->type == 0 && a->kind == K_MENU3D)
++            map[i] = (XMap){ s_kx, 0, s_ky, 0 };      /* 3D through the menus' widened lens: spread over
++                                                        the window, its size kept at the centre */
 +        else if (a->type == 0 && !(across && down && !textured))
 +            map[i] = centred;                         /* 3D: what lies past the 4:3 edges shows */
 +        else if (!across)
@@ -368,8 +371,8 @@
 +        else
 +            map[i] = (XMap){ s_kx, 0, down ? s_ky : 1, down ? 0 : centred.by };
 +    }
- }
- 
++}
++
 +/* the scissor in the window's image: a whole-screen one stays whole, the mirror's goes
 + * with the mirror, any other is stretched with the views (2D moves within it); in any
 + * other frame than a race's (menu), moved with the centred picture */
@@ -497,7 +500,7 @@
          s_frame_open = 1;
      }
  }
-@@ -954,11 +1401,113 @@
+@@ -956,11 +1406,113 @@
              fan[m++] = poly[k + 1];
          }
          if (m)
@@ -613,7 +616,7 @@
  /* ---- the display list ----------------------------------------------------------------- */
  static void rect_tex(uint32_t w0, uint32_t w1, uint32_t h2, uint32_t hc)
  {
-@@ -968,6 +1517,7 @@
+@@ -970,6 +1522,7 @@
      int tile = (w1 >> 24) & 7, cyc = (s_omh >> 20) & 3;
      float s = (int16_t)(h2 >> 16) / 32.0f, t = (int16_t)h2 / 32.0f;
      float dsdx = (int16_t)(hc >> 16) / 1024.0f, dtdy = (int16_t)hc / 1024.0f;
@@ -621,7 +624,7 @@
      frame_open();
      state(&st, tile);
      if (s_log)
-@@ -995,7 +1545,7 @@
+@@ -997,7 +1550,7 @@
          if (!st.tile[0].tex)
              fill_tile(&st.tile[0], tile);
      }
@@ -630,7 +633,7 @@
  }
  
  static void rect_fill(uint32_t w0, uint32_t w1)
-@@ -1004,12 +1554,13 @@
+@@ -1006,12 +1559,13 @@
      float x1 = ((w0 >> 12) & 0xFFF) / 4.0f, y1 = (w0 & 0xFFF) / 4.0f;
      float x0 = ((w1 >> 12) & 0xFFF) / 4.0f, y0 = (w1 & 0xFFF) / 4.0f;
      int cyc = (s_omh >> 20) & 3;
@@ -645,7 +648,7 @@
          return;
      }
      if (cyc == 3 && s_cimg != s_zimg) {
-@@ -1031,16 +1582,16 @@
+@@ -1033,16 +1587,16 @@
          st.scissor[2] = s_scissor[2];
          st.scissor[3] = s_scissor[3];
          if (hl[0] == hl[1]) {
@@ -665,7 +668,7 @@
  }
  
  static void run(uint32_t dl)
-@@ -1057,11 +1608,15 @@
+@@ -1059,11 +1613,15 @@
              M4 m;
              int p = (w0 >> 16) & 0xFF;
              m4_load(&m, seg_addr(w1));
@@ -683,7 +686,7 @@
              } else {
                  if ((p & 4) && s_mvn < 9) {
                      s_mv[s_mvn + 1] = s_mv[s_mvn];
-@@ -1204,6 +1759,16 @@
+@@ -1206,6 +1764,16 @@
              s_scissor[1] = (int)(w0 & 0xFFF) / 4;
              s_scissor[2] = (int)((w1 >> 12) & 0xFFF) / 4;
              s_scissor[3] = (int)(w1 & 0xFFF) / 4;
@@ -700,7 +703,7 @@
              break;
          case 0xEF: s_omh = w0 & 0xFFFFFF; s_oml = w1; break; /* G_RDPSETOTHERMODE */
          case 0xF0:                                    /* G_LOADTLUT */
-@@ -1299,6 +1864,13 @@
+@@ -1301,6 +1869,13 @@
      }
      s_mvn = 0;                                        /* each task starts the matrix stack at the
                                                           task's dram_stack base */
@@ -714,15 +717,10 @@
      run(dl);
      if (getenv("TGR_RAMDUMP")) {                      /* FILE@FRAME: game memory and the segments, once */
          static int done;
-@@ -1313,10 +1885,62 @@
-                 fclose(f);
-             }
-             done = 1;
-+        }
-+    }
-+    if (s_frame_open) {
-+        frame_end();
-+        s_frame_open = 0;
+@@ -1320,5 +1895,57 @@
+     if (s_frame_open) {
+         frame_end();
+         s_frame_open = 0;
 +        if (tween_on()) {                             /* Remastered: the newest, shown from here */
 +            TwFrame *f = &s_tw[s_tw_new ^ 1];
 +            f->dl = dl;
@@ -734,9 +732,9 @@
 +            s_tw_new ^= 1;
 +            t_render = 1;
 +            tgr_tween_present();
-         }
++        }
      }
-+}
+ }
 +
 +/* Top Gear Rally Remastered: a picture to the screen now, between the game's frames (above):
 + * 1 if one went.  The renderer's present keeps to the display's refresh (Metal's drawables,
@@ -767,13 +765,13 @@
 +    s_mvn = 0;
 +    s_kind = K_2D;
 +    run(b->dl);
-     if (s_frame_open) {
-         frame_end();
-         s_frame_open = 0;
-     }
++    if (s_frame_open) {
++        frame_end();
++        s_frame_open = 0;
++    }
 +    s_replay = 0;
 +    s_tw_k = 1.0f;
 +    s_last_present = host_ticks_ns();
 +    tgr_tween_presents++;
 +    return 1;
- }
++}

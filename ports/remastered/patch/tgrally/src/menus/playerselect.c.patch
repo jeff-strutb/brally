@@ -1,0 +1,11 @@
+--- a/src/menus/playerselect.c
++++ b/src/menus/playerselect.c
+@@ -36,7 +36,7 @@
+     BrScissorSet(0, 0, D_8028AAB0, D_8028AAB4);
+     BrTextHighlightOff();
+     BrTextAlignCentre();
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(18);
+     BrTextPrint("%ww%j\xC1\xCF\xC3\xC8(\x88w", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 30);
+     BrTextPrint("%ww%j\xC1\xCF\xC3\xC8(\x88%e2", D_8028AAB0 / 2, D_8028AAB4 * 10 / 16 - 15);

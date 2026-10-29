@@ -8,7 +8,148 @@
  extern BrImage D_8028CB40;      /* the background */
  extern BrImage D_8028CB70;      /* the panel */
  extern BrImage D_8028D0B0;      /* the A button */
-@@ -221,6 +222,7 @@
+@@ -79,6 +80,7 @@
+ void BrTextPrint(char *s, int x, int y);
+ void BrPadConsume(BrPadRec *pad, unsigned int bits);
+ void BrPadStickToButtons(int);
++char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
+ /* -- end declarations -- */
+ 
+ #define PAD (&D_8036A8E0[D_80271FA8])
+@@ -220,7 +222,7 @@
+     { 0, 0 },
+   };
+   static BrDataItem jpn_D_80274018[] = {
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     { 7, "SAVE SEASON DATA TO GAME PAK" },
+     { 15, "" },
+     { 1, "SAVE SEASON DATA TO CONTROLLER PAK" },
+@@ -236,7 +238,7 @@
+     { 0, 0 },
+   };
+   static BrDataItem jpn_D_80274048[] = {
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     { 3, "SAVE GHOST CAR DATA TO CONTROLLER PAK" },
+     { 15, "" },
+     { 11, "DONE" },
+@@ -634,7 +636,7 @@
+     D_80316423 = 0;
+     BrTextHighlightOff();
+     BrTextAlignLeft();
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(12);
+     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+     BrBevelPanel(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
+@@ -848,7 +850,7 @@
+   case 6:                       /* erase both seasons and the options? */
+     D_80316423 = 0;
+     y = 0x139 - D_8028D0B0.w;
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrBevelPanel(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextAlignLeft();
+     BrTextHighlightOff();
+@@ -897,7 +899,7 @@
+     BrTextAlignLeft();
+     BrTextHighlightOff();
+     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(13);
+     BrTextPrint("OK TO OVERWRITE", 114, (h + 30) >> 1);
+     BrTextPrint("SAVED DATA?", 114, ((h + 30) >> 1) + 14);
+@@ -1072,7 +1074,7 @@
+     D_80316423 = 0;
+     BrTextHighlightOff();
+     BrTextAlignLeft();
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrTextSetFont(12);
+     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+     switch (D_802724F0) {
+@@ -1114,7 +1116,7 @@
+       BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
+       BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
+       BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
+-      BrTextPrint("THE A BUTTON WHEN READY.", 68, 142);
++      BrTextPrint(rm_ptext("{A} WHEN READY."), 68, 142);
+       BrTextAlignLeft();
+       BrTextSetFont(10);
+       BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
+@@ -1388,7 +1390,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
+       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+ #else
+@@ -1402,7 +1404,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
+       BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
+ #else
+@@ -1417,7 +1419,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
+       BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
+ #else
+@@ -1431,7 +1433,7 @@
+         h = 0xCE;
+       }
+       BrBevelPanel(0xD8, h, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywGHOST CAR DATA", 159, (h + 32) >> 1);
+       BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
+ #else
+@@ -1441,7 +1443,7 @@
+     case 4:
+     case 8:
+       BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywOPTIONS LOADED OK!", 159, 131);
+ #else
+       BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, 131);
+@@ -1450,7 +1452,7 @@
+     case 5:
+     case 9:
+       BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+       BrTextPrint("%ywOPTIONS SAVED OK!", 159, 131);
+ #else
+       BrTextPrint("%yw%j\xB2(\xAC%e OK!", 159, 131);
+@@ -1480,13 +1482,13 @@
+     BrTextHighlightOff();
+     BrTextAlignLeft();
+     BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
+-#if TGR_REGION_EUR
++#if TGR_REGION_EUR || TGR_RM_EN  /* (Remastered, Japan's menus in English: TGR_RM_EN) */
+     BrBevelPanel(0x73, 0xB2, 0x19A, 0x98, 3, 0, 0, 0x80, 0x80, 0x80);
+     BrTextSetFont(12);
+     BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 105);
+     BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 118);
+     BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 131);
+-    BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 65, 144);
++    BrTextPrint(rm_ptext("CONTROLLER.  PRESS {A}"), 65, 144);
+     BrTextPrint("TO CONTINUE.", 65, 157);
+ #else
+     BrBevelPanel(0xAA, 0xCC, 0x12C, 0x64, 3, 0, 0, 0x80, 0x80, 0x80);
+@@ -1671,6 +1673,7 @@
        } else {
          BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
        }
@@ -16,3 +157,21 @@
        BrTextPrint(labels[i], 158, 87 + i * 18);
      }
      BrImageDrawAt(&D_8028D0B0, 202, 432);
+@@ -2058,7 +2061,7 @@
+       BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
+       BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
+       BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
+-      BrTextPrint("THE A BUTTON WHEN READY.", 68, 142);
++      BrTextPrint(rm_ptext("{A} WHEN READY."), 68, 142);
+       BrTextAlignLeft();
+       BrTextSetFont(10);
+       BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
+@@ -2235,7 +2238,7 @@
+     BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 105);
+     BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 118);
+     BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 131);
+-    BrTextPrint("CONTROLLER.  PRESS THE A BUTTON", 65, 144);
++    BrTextPrint(rm_ptext("CONTROLLER.  PRESS {A}"), 65, 144);
+     BrTextPrint("TO CONTINUE.", 65, 157);
+     if (PAD->pressed & 0x10) {
+       BrPadConsume(PAD, 0x10);

@@ -14,8 +14,13 @@ enum {
     RM_OPT_VIEWDIST,                /* RM_VIEW_*: how far a race view sees */
     RM_OPT_COUNT
 };
-enum { RM_MUSIC_PC, RM_MUSIC_N64 };
-enum { RM_MENUS_TGR, RM_MENUS_BR };
+/* the soundtrack: Boss Rally's CD, or Top Gear Rally's pieces with the USA
+ * cartridge's front-end tune or Europe's and Japan's (its races' are the same) */
+enum { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL, RM_MUSIC_COUNT };
+/* the menus: Top Gear Rally's as the USA cartridge has them, Boss Rally's, or
+ * Top Gear Rally's as Japan's cartridge has them (its pictures and text, its
+ * saves to the cartridge's EEPROM) */
+enum { RM_MENUS_TGR, RM_MENUS_BR, RM_MENUS_TGR_PAL, RM_MENUS_COUNT };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 
 int  rm_option(int which);

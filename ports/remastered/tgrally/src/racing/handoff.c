@@ -34,6 +34,7 @@
  * and with their own controls (ports/remastered/platform/controls.h); both
  * outcomes come back.  Not handed over: the replay. */
 #include "tgr/common.h"
+int rm_car_br_code(int p, int kind);
 #include "tgr/car.h"
 #include "tgr/season.h"
 #include "tgr_view.h"
@@ -148,15 +149,89 @@ static void *menus_thread(void *arg)
   return 0;
 }
 
-/* on the game thread: the other game's menus, until the player is back */
+/* The other cartridge's Top Gear Rally (Remastered builds the game from the
+ * USA cartridge and from Japan's: Menus TGR (USA) and TGR (PAL/Japan)):
+ * the host runs it while this one waits, as for Boss Rally's menus, and
+ * comes back when the player chooses this one's menus again */
+static void (*s_other)(int menus);
+static int s_other_menus;
+
+void tgr_other_engine(void (*fn)(int menus)) { s_other = fn; }
+
+static void *other_thread(void *arg)
+{
+  (void)arg;
+  s_other(s_other_menus);
+  tgr_post_mesg(&s_menus_done, 0);
+  return 0;
+}
+
+int rm_option(int which);               /* the app's (ports/remastered/platform/options.h) */
+#define RM_OPT_MENUS 3                  /* (options.h: keep in step) */
+#define RM_MENUS_TGR 0
+#define RM_MENUS_BR 1
+#define RM_MENUS_TGR_PAL 2
+#if TGR_REGION_JPN
+#define RM_MENUS_OWN RM_MENUS_TGR_PAL   /* this game's menus: the Menus choice that is ours */
+#else
+#define RM_MENUS_OWN RM_MENUS_TGR
+#endif
+#define RM_MENUS_AT_LAUNCH 0x100        /* (to the other cartridge's: the app has only just started) */
+
+/* back from a wait (another game's menus, or its race): the game clock goes
+ * on from now, not from before it (BrClockTick takes a frame's length from its
+ * last reading: the wait whole would be one frame, and a menu idle that long
+ * goes to the attract sequence) */
+static void clock_resume(void)
+{
+  extern unsigned long long D_8028ADF8; /* the clock, in counts (0: not started) */
+  extern unsigned int D_8028AE00;       /* its last reading */
+  extern unsigned int D_8028AAD4;       /* the clock in milliseconds, as last ticked */
+  unsigned int now = tgr_clock();
+
+  if (D_8028ADF8 == 0) {                /* (left at launch, before the clock's first tick) */
+    D_8028ADF8 = now;
+    D_8028AAD4 = D_8028ADF8 * 1000000 / tgr_clock_rate / 1000;
+  }
+  D_8028AE00 = now;
+}
+
+static void wait_away(void *(*fn)(void *))
+{
+  tgr_mq_init(&s_menus_done, s_menus_done_buf, 1);
+  host_thread_start(fn, 0);
+  tgr_mq_recv(&s_menus_done, 0, TGR_BLOCK);
+  clock_resume();
+}
+
+/* on the game thread: the other cartridge's menus, until the player is back */
+void tgr_menus_other(int menus)
+{
+  if (s_other == 0) {
+    return;
+  }
+  s_other_menus = menus;
+  wait_away(other_thread);
+  if (getenv("TGR_MENUS_SHOTS")) {     /* (a check: shots counted from the return) */
+    tgr_shots_from_now(getenv("TGR_MENUS_SHOTS"));
+  }
+}
+
+/* on the game thread: the other game's menus, until the player is back; a
+ * player who chose the other cartridge's menus there goes on to them */
 void tgr_menus_away(void)
 {
+  int m;
+
   if (s_menus == 0) {
     return;
   }
-  tgr_mq_init(&s_menus_done, s_menus_done_buf, 1);
-  host_thread_start(menus_thread, 0);
-  tgr_mq_recv(&s_menus_done, 0, TGR_BLOCK);
+  wait_away(menus_thread);
+  m = rm_option(RM_OPT_MENUS);
+  if (m != RM_MENUS_OWN && m != RM_MENUS_BR && s_other != 0) {
+    tgr_menus_other(m);
+    return;
+  }
   if (getenv("TGR_MENUS_SHOTS")) {     /* (a check: shots counted from the return) */
     tgr_shots_from_now(getenv("TGR_MENUS_SHOTS"));
   }
@@ -166,17 +241,21 @@ void tgr_menus_away(void)
  * straight to its main menu, not the intro (startup/main.c), and leaves for
  * the other game's on that menu's first frame, its music started
  * (menus/mainmenu.c): the main menu is where the player comes back to. */
-int rm_option(int which);               /* the app's (ports/remastered/platform/options.h) */
-#define RM_OPT_MENUS 3                  /* (options.h: keep in step) */
-#define RM_MENUS_BR 1
 void BrFadeTo(float level, float secs);
 void BrSfxFadeTo(float level, float secs);
 static int s_menus_boot;
+static int s_boot_to_menu;              /* started by the other cartridge's Top Gear Rally from its options */
+
+/* the host: this game starts at its main menu (it was asked for from the
+ * other cartridge's options screen, where the player is already past the
+ * intro) */
+void tgr_boot_to_menu(int on) { s_boot_to_menu = on; }
 
 int tgr_menus_at_boot(void)
 {
-  s_menus_boot = s_menus != 0 && rm_option(RM_OPT_MENUS) == RM_MENUS_BR;
-  return s_menus_boot;
+  int m = rm_option(RM_OPT_MENUS);
+  s_menus_boot = m != RM_MENUS_OWN && (m == RM_MENUS_BR ? s_menus != 0 : s_other != 0);
+  return s_menus_boot || s_boot_to_menu;
 }
 
 void tgr_menus_boot_leave(void)
@@ -189,7 +268,11 @@ void tgr_menus_boot_leave(void)
   BrSfxFadeTo(1.0f, 0.2f);
   D_8028B760 = D_8028B768 = 1.0f;      /* the music at full level at once: the fade is stepped */
   D_802A49C8 = 255;                    /* by the game loop, which waits (as for a race) */
-  tgr_menus_away();
+  if (rm_option(RM_OPT_MENUS) == RM_MENUS_BR) {
+    tgr_menus_away();
+  } else {
+    tgr_menus_other(rm_option(RM_OPT_MENUS) | RM_MENUS_AT_LAUNCH);
+  }
 }
 
 /* BrRaceTick's first call: 1 when the race was run by the other engine and
@@ -221,7 +304,7 @@ int BrRaceHandoff(void)
     r.weather = r.track == 3 ? 0 : 1;   /* Time Attack's, as the race set-up picks it */
   }
   r.laps = D_8026FF18 == 1 ? D_8028B304 : 3;
-  r.car = car->kind;
+  r.car = rm_car_br_code(0, car->kind);
   r.handling = 1;                      /* Boss Rally's own (it has no handling choice) */
   r.automatic = season->xd8;
   r.tires = season->xdc;
@@ -230,7 +313,7 @@ int BrRaceHandoff(void)
   r.car2 = -1;
   if (r.players == 2) {                /* the second player's car and set-up */
     BrSeason *s2 = TGR_PTR(BrSeason *, D_8031B760[1].season);
-    r.car2 = D_8031B760[1].kind;
+    r.car2 = rm_car_br_code(1, D_8031B760[1].kind);
     r.automatic2 = s2->xd8;
     r.tires2 = s2->xdc;
     r.suspension2 = s2->xe0;
@@ -244,6 +327,7 @@ int BrRaceHandoff(void)
   tgr_mq_init(&s_done, s_done_buf, 1);
   host_thread_start(race_thread, 0);
   tgr_mq_recv(&s_done, 0, TGR_BLOCK);
+  clock_resume();
   if (!s_job.ok) {
     return 0;
   }

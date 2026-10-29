@@ -137,14 +137,14 @@
                  if (f & 0x1000) {
 -                    DAT_105bc8dc = (DAT_105bc8dc + 5) % 6;
 -                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 5) % 6;
-+                    DAT_105bc8dc = (DAT_105bc8dc + 6) % 7;   /* Remastered: seven rows */
-+                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 6) % 7;
++                    DAT_105bc8dc = (DAT_105bc8dc + RM_PAUSE_ROWS - 1) % RM_PAUSE_ROWS;   /* Remastered: seven rows (six on the iPhone) */
++                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + RM_PAUSE_ROWS - 1) % RM_PAUSE_ROWS;
                  }
                  if (f & 0x2000) {
 -                    DAT_105bc8dc = (DAT_105bc8dc + 1) % 6;
 -                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % 6;
-+                    DAT_105bc8dc = (DAT_105bc8dc + 1) % 7;
-+                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % 7;
++                    DAT_105bc8dc = (DAT_105bc8dc + 1) % RM_PAUSE_ROWS;
++                    if ((*(int *)&g_brRaceNet) != 0 && DAT_105bc8dc == 1) DAT_105bc8dc = (DAT_105bc8dc + 1) % RM_PAUSE_ROWS;
                  }
                  if (f & 1) {
                      if (DAT_105bc8dc == 2)      BrUiSelADec();

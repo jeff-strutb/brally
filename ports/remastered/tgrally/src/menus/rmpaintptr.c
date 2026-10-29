@@ -64,6 +64,7 @@ static int s_spent;                     /* given bits the game took while the bu
 static int s_pending;                   /* a drag's end: A to give this frame */
 static int s_bar = -1;                  /* the mixer's bar being dragged */
 static struct { int bit, x, y, h; } s_btn[8];   /* the A and B pictures drawn since the last frame */
+static int s_swallow;                   /* a popup's button was clicked: nothing more till the button is up */
 static int s_nbtn;
 
 static BrPadRec *pad(void) { return &D_8036A8E0[D_8028DBBC]; }
@@ -130,10 +131,12 @@ void rm_paint_pointer(void)
     /* a popup is drawn instead of the cursor (BrPaintShopScreen) */
     popup = !on_decal(D_8028D110.x, D_8028D110.y) &&
             (D_8028DBE0 || D_8028DBD4 || (D_8028DB60 >= 7 && D_8028DB60 <= 10) || D_8028DB60 == 12);
+    if (s_swallow && !(s_p.down & 1))
+        s_swallow = 0;                  /* the button that chose a popup's button is up */
     if (!popup) {
         if (s_p.moved)
             place(s_p.x, s_p.y);
-        if ((s_p.down | s_p.clicks) & 1 || pending)
+        if (((s_p.down | s_p.clicks) & 1 || pending) && !s_swallow)
             bits |= P_A;
         if ((s_p.down | s_p.clicks) & 2)
             bits |= P_B;
@@ -149,6 +152,7 @@ void rm_paint_pointer(void)
             if (s_p.clicks & 1 && inside(s_p.x, s_p.y, s_btn[i].x, s_btn[i].y, right - s_btn[i].x, s_btn[i].h, 6)) {
                 bits |= s_btn[i].bit;
                 s_p.clicks &= ~1;
+                s_swallow = 1;          /* still held when the popup has gone: not A there */
             }
             any = 1;
         }

@@ -51,7 +51,16 @@ case "$CC" in /*|*/*) CC=$(cd "$(dirname "$CC")" && pwd)/$(basename "$CC");; esa
 # ---- the two games, as libraries ----------------------------------------------------
 ports/remastered/tree.sh make $T
 LIB=build/lib                         # under the tree
-OUT=$LIB/tgrally HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
+# Top Gear Rally twice: from the USA cartridge (Menus TGR (USA)) and from
+# Japan's (TGR (PAL/Japan)), each with what it takes from the other
+# cartridge (tools/regionextras.py: its front-end tune, its three cars); the
+# second's entry points tgrp_* (platform/rm_tgrp.h).  The USA and Japan ROMs.
+PY=${PYTHON:-.venv/bin/python}
+$PY ports/remastered/tools/regionextras.py usa $OUT/extras-usa.bin
+$PY ports/remastered/tools/regionextras.py jpn $OUT/extras-jpn.bin
+RM_EXTRAS=$(pwd)/$OUT/extras-usa.bin OUT=$LIB/tgrally HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
+RM_EXTRAS=$(pwd)/$OUT/extras-jpn.bin TGR_REGION=jpn RM_CFLAGS="-include $(pwd)/$R/rm_tgrp.h -DTGR_RM_EN=1" \
+  OUT=$LIB/tgrally-jpn HOST=lib RENDER=$RENDER CC=$CC $T/ports/tgrally/link.sh
 OUT=$LIB/brally HOST=lib RENDER=$RENDER CC=$CC $T/ports/brally/link64.sh
 
 # ---- each as one object: its thunks in, only its entry points global ----------------
@@ -80,7 +89,10 @@ lump() {   # lump NAME LIB ENGINE SYMBOLS...
 # (and the Remaster Options': options.c, mux.c)
 lump tgrally $T/$LIB/tgrally/libtgrally.a tgr tgr_main tgr_race_engine tgr_menus_engine tgr_flag tgr_flag_set \
     tgr_view_driving tgr_touch_tap tgr_touch_swipe tgr_touch_press tgr_pointer tgr_pointer_wanted tgr_audio_lowpass tgr_race_speed \
-    tgr_music_mute
+    tgr_music_mute tgr_other_engine tgr_boot_to_menu
+lump tgrally-jpn $T/$LIB/tgrally-jpn/libtgrally.a tgrp tgrp_main tgrp_race_engine tgrp_menus_engine tgrp_flag tgrp_flag_set \
+    tgrp_view_driving tgrp_touch_tap tgrp_touch_swipe tgrp_touch_press tgrp_pointer tgrp_pointer_wanted tgrp_audio_lowpass \
+    tgrp_race_speed tgrp_music_mute tgrp_other_engine tgrp_boot_to_menu
 lump brally $T/$LIB/brally/libbrally.a br br_main br_race_serve br_race_run br_menus_run br_race_driving br_race_key \
     br_race_tap br_race_click br_flag_set br_music_gain br_effects_quiet br_music_volume
 
@@ -140,9 +152,9 @@ if [ $OS = windows ]; then          # name, version and manifest
 fi
 if [ "$HOST" = ios ]; then
   rm -f $OUT/libgames.a
-  ar rcs $OUT/libgames.a $OUT/tgrally.o $OUT/brally.o $OBJS
+  ar rcs $OUT/libgames.a $OUT/tgrally.o $OUT/tgrally-jpn.o $OUT/brally.o $OBJS
   echo "archived $OUT/libgames.a (host ios, renderer $RENDER)"
   exit 0
 fi
-$LDXX ${LDFLAGS_RM} -o "$OUT/remastered$EXE" $OUT/tgrally.o $OUT/brally.o $OBJS $LIBS $VKLIBS $OSLIBS
+$LDXX ${LDFLAGS_RM} -o "$OUT/remastered$EXE" $OUT/tgrally.o $OUT/tgrally-jpn.o $OUT/brally.o $OBJS $LIBS $VKLIBS $OSLIBS
 echo "linked $OUT/remastered$EXE (host $HOST, renderer $RENDER)"

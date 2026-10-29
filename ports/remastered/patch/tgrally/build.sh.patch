@@ -1,0 +1,11 @@
+--- a/build.sh
++++ b/build.sh
+@@ -23,7 +23,7 @@
+   -Werror=incompatible-library-redeclaration -Werror=int-conversion -Werror=pointer-to-int-cast -Werror=int-to-pointer-cast -Werror=void-pointer-to-int-cast -Werror=int-to-void-pointer-cast -Werror=incompatible-function-pointer-types -Wno-error=int-to-pointer-cast-not-really -fno-strict-aliasing -fwrapv -ffp-contract=off \
+   -fno-common -ferror-limit=0 -fno-builtin-sinf -fno-builtin-cosf ${WARN} \
+   -Iports/tgrally/include -I$P/include -Iports/brally/platform/host -include $P/include/tgr_os.h -include $P/include/tgr_core.h -DTGR_CORE -include $P/include/tgr_libc.h \
+-  -DTGR_REGION_$(echo $TGR_REGION | tr a-z A-Z)=1 -include $OUT/gen/tgr_region.h"
++  -DTGR_REGION_$(echo $TGR_REGION | tr a-z A-Z)=1 -include $OUT/gen/tgr_region.h ${RM_CFLAGS}"
+ export CC CFLAGS OUT
+ mkdir -p $OUT/obj
+ $PY ports/tgrally/tools/globals.py >&2

@@ -22,6 +22,13 @@ enum {
     RM_ACT_GEAR_UP,
     RM_ACT_GEAR_DOWN,
     RM_ACT_VIEW,
+    RM_ACT_UP,          /* the menus' own: the stick's up and down */
+    RM_ACT_DOWN,
+    RM_ACT_START,       /* Start in the menus; a race's pause */
+    RM_ACT_Z,           /* the N64 buttons Top Gear Rally's menus also read (the paint shop, */
+    RM_ACT_C_DOWN,      /* the car select) */
+    RM_ACT_C_LEFT,
+    RM_ACT_C_RIGHT,
     RM_ACT_COUNT
 };
 enum { RM_BIND_KEY, RM_BIND_PAD };
@@ -45,15 +52,28 @@ void rm_controls_load(void);                         /* (main.c, before either g
 /* a binding's name: "UP ARROW", "PAD A"; "-" for none */
 const char *rm_bind_label(int kind, int code, char *buf, int n);
 
+/* Each action is one N64 button, the same in both games: Boss Rally's races read
+ * an N64 pad (race_pads.c) and Top Gear Rally's menus are the N64's.  Accelerate
+ * is A (the menus' select), Brake B (back), Gear Up R, Gear Down L, Change View
+ * C-up, Pause Start; Up, Down and the steering the stick's four ways; Z and the
+ * other three C buttons the menus' alone; Reverse is A with the stick back, the
+ * races' alone. */
+
 /* a player's car controls this moment as an N64 pad: dik the keys held (DirectInput
  * scan codes, nonzero held), pad the player's own (NULL: none).  Accelerate is A,
  * brake B, reverse A with the stick back, steering the stick (and the d-pad's
  * sides for a key: the race steers keys on a curve), gears R and L, the view C-up */
 void rm_player_drive(int player, const unsigned char *dik, const struct host_pad *pad,
                      unsigned short *buttons, int *sx, int *sy);
-/* the same player in a menu: the stick's four ways from steering and the gears,
- * A from accelerate, B from brake, START from the pad's menu button */
+/* the same player in a menu: every action's button, the stick's four ways from
+ * the steering and Up and Down (and the pad's own stick) */
 void rm_player_menu(int player, const unsigned char *dik, const struct host_pad *pad,
                     unsigned short *buttons, int *sx, int *sy);
+
+/* the actions the player holds this moment, a bit each (1 << RM_ACT_...); the pad's
+ * stick pushed most of the way counts as the steering's.  Europe's and Japan's cheats
+ * read them: the cartridges matched the pad's buttons, Remastered the actions that
+ * play those buttons' parts (rmregion.c, race_handoff.c) */
+unsigned rm_player_actions(int player, const unsigned char *dik, const struct host_pad *pad);
 
 #endif
