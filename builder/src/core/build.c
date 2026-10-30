@@ -204,6 +204,19 @@ static uint8_t *load_rom(const char *path, size_t *n, char md5_as_is[33], int *o
     return r;
 }
 
+/* the cartridge a ROM's header names (its country code, .z64 order), -1 none */
+static int header_region(const uint8_t *r, size_t n)
+{
+    if (n < 0x40)
+        return -1;
+    switch (r[0x3E]) {
+    case 'E': return RB_USA;
+    case 'J': return RB_JAPAN;
+    case 'P': case 'D': case 'F': case 'I': case 'S': case 'U': case 'X': case 'Y': return RB_EUROPE;
+    }
+    return -1;
+}
+
 int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, volatile int *cancel)
 {
     size_t n;
@@ -224,7 +237,6 @@ int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
     rb_md5_update(&m, r, n);
     rb_md5_final(&m, d);
     rb_md5_hex(d, z);
-    free(r);
     if (cb)
         cb(ctx, 1, NULL);
     out->region = -1;
@@ -232,6 +244,9 @@ int rb_check_rom(const char *path, rb_check *out, rb_progress cb, void *ctx, vol
         if (!strcmp(z, k_tgr[i].md5))
             out->region = i;
     out->ok = out->region >= 0;
+    if (!out->ok)
+        out->region = header_region(r, n);
+    free(r);
     if (out->ok && order)
         snprintf(out->note, sizeof out->note, "Top Gear Rally (%s), a %s dump: in .z64 byte order its MD5 is %s.",
                  k_tgr[out->region].name, order == 1 ? ".v64" : ".n64", z);
@@ -557,6 +572,18 @@ static uint8_t *tgr_rom(ctx *c, const char *path, int want, int *got)
     for (i = 0; i < RB_REGIONS; i++)
         if (!strcmp(z, k_tgr[i].md5))
             *got = i;
+    if (c->job->unchecked) {             /* the player's choice: read it as the cartridge wanted */
+        if (n != TGR_ROM_SIZE) {
+            free(r);
+            rb_err(c->err, c->errlen, "%s is %lu bytes; a Top Gear Rally ROM is %u (8 MB)", path, (unsigned long)n, TGR_ROM_SIZE);
+            return NULL;
+        }
+        if (want >= 0)
+            *got = want;
+        else if (*got < 0 && (*got = header_region(r, n)) < 0)
+            *got = RB_USA;
+        return r;
+    }
     if (n != TGR_ROM_SIZE || *got < 0 || (want >= 0 && *got != want)) {
         free(r);
         rb_err(c->err, c->errlen, "%s is not Top Gear Rally (%s)", path, want >= 0 ? k_tgr[want].name : "USA, Europe or Japan");
@@ -581,7 +608,7 @@ static uint8_t *extras(const uint8_t *other, int ro, size_t *len)
     uint32_t tune = k_tgr[ro].tune, tl = record_len(other, tune), files = 0, k;
     size_t cap = first + 3 * 0x10000;
     uint8_t *b = calloc(1, cap), *h;
-    if (!b || tl > TGR_EXTRAS_CARS)
+    if (!b || tl < 8 || tl > TGR_EXTRAS_CARS || (uint64_t)tune + tl > TGR_ROM_SIZE)
         return free(b), NULL;
     memcpy(b, other + tune, tl);
     h = b + TGR_EXTRAS_CARS;
@@ -589,7 +616,11 @@ static uint8_t *extras(const uint8_t *other, int ro, size_t *len)
     for (k = 0; k < 3; k++) {
         uint8_t *e = h + 4 + k * (4 + 0x60 + 16);
         const uint8_t *rec = other + k_tgr[ro].cars + kinds[k] * 0x60;
-        uint32_t name = be32(rec) - 0x80200000u + 0x1000u, model = be32(rec + 0x14), ml = record_len(other, model), i;
+        uint32_t name = be32(rec) - 0x80200000u + 0x1000u, model = be32(rec + 0x14), ml, i;
+        /* (a dump that is not the cartridge, built anyway: its addresses may point anywhere) */
+        if (name > TGR_ROM_SIZE - 16 || model > TGR_ROM_SIZE - 8 || (ml = record_len(other, model)) < 8 ||
+            (uint64_t)model + ml > TGR_ROM_SIZE)
+            return free(b), NULL;
         if (first + files + ml + 16 > cap) {
             uint8_t *nb = realloc(b, cap = first + files + ml + 16);
             if (!nb)
@@ -686,7 +717,11 @@ static int disc_data(ctx *c, double lo, double hi)
     if (!rb_extract_data_track(c->job->bin, disc, c->cb, c->cctx, lo, mid, c->cancel, c->err, c->errlen))
         return 0;
     rb_join(path, sizeof path, disc, "BRGlide.dll");
-    if (!md5_file(path, hex, NULL, NULL, NULL) || strcmp(hex, BRGLIDE_MD5)) {
+    if (!md5_file(path, hex, NULL, NULL, NULL)) {
+        rb_err(c->err, c->errlen, "the disc has no BRGlide.dll");
+        return 0;
+    }
+    if (strcmp(hex, BRGLIDE_MD5) && !c->job->unchecked) {
         rb_err(c->err, c->errlen, "the disc's BRGlide.dll is not the retail one");
         return 0;
     }
@@ -758,11 +793,11 @@ int rb_build(const rb_job *job, rb_progress cb, void *cctx, volatile int *cancel
     if (j.game == RB_TOP_GEAR_RALLY) {   /* the build is the ROM's cartridge's, whatever the front end said */
         rb_check ck;
         rb_check_rom(j.rom, &ck, NULL, NULL, NULL);
-        if (!ck.ok) {
+        if (!ck.ok && !j.unchecked) {
             rb_err(err, errlen, "%s", ck.note[0] ? ck.note : "the ROM is not Top Gear Rally");
             return 0;
         }
-        j.region = ck.region;
+        j.region = ck.region >= 0 ? ck.region : RB_USA;   /* (built anyway: its header's, else the USA's) */
     }
     job = &j;
     c.job = job;

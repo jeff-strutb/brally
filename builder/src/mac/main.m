@@ -5,9 +5,10 @@
  *     with the player's own Xcode signing when this Mac has it, else an
  *     unsigned .ipa); the other two build for the Mac
  *   3 the player's own dumps the game needs (the Top Gear Rally ROM, the Boss
- *     Rally BIN and cue), checked by MD5, and the folder to build into
+ *     Rally BIN and cue), checked by MD5, and the folder to build into; a dump
+ *     that does not match builds only after a warning the player accepts
  *   4 the build (core/build.c), with progress
- *   5 the result: the app or .ipa, or what went wrong
+ *   5 the result: the app or .ipa, or the error that stopped it
  *
  * Arguments fill in the choices for a scripted run:
  *   --game br|tgr|remastered  --target mac|ios  --dest DIR  --bin FILE  --cue FILE  --rom FILE  --rom-jpn FILE
@@ -46,6 +47,7 @@ int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t er
 @property BOOL destChosen;                    /* else the target's own: Applications, or the Desktop for an .ipa */
 @property (copy) NSString *dest, *bin, *cue, *rom, *romJpn;
 @property BOOL binOK, cueOK, romOK, romJpnOK;
+@property BOOL unchecked;                     /* building from dumps that do not match, the player's choice */
 @property int romRegion;
 @property (strong) NSTextField *destLabel;
 @property (strong) NSMutableDictionary<NSString *, NSTextField *> *rows;
@@ -368,11 +370,27 @@ static void progress_cb(void *ctx, double f, const char *s)
         [self showGame];
 }
 
+/* every dump the game needs is chosen (matching or not) */
+- (BOOL)allChosen
+{
+    return (!rb_needs_disc(self.game) || (self.bin && self.cue)) && (!rb_needs_rom(self.game) || self.rom) &&
+           (!rb_needs_rom_jpn(self.game) || self.romJpn);
+}
+
+/* the chosen dumps that do not match, by name; empty when all do */
+- (NSArray<NSString *> *)mismatched
+{
+    NSMutableArray<NSString *> *m = [NSMutableArray new];
+    if (rb_needs_rom(self.game) && !self.romOK) [m addObject:self.rom.lastPathComponent];
+    if (rb_needs_rom_jpn(self.game) && !self.romJpnOK) [m addObject:self.romJpn.lastPathComponent];
+    if (rb_needs_disc(self.game) && !self.binOK) [m addObject:self.bin.lastPathComponent];
+    if (rb_needs_disc(self.game) && !self.cueOK) [m addObject:self.cue.lastPathComponent];
+    return m;
+}
+
 - (void)updateBuildButton
 {
-    BOOL ok = (!rb_needs_disc(self.game) || (self.binOK && self.cueOK)) && (!rb_needs_rom(self.game) || self.romOK) &&
-              (!rb_needs_rom_jpn(self.game) || self.romJpnOK);
-    self.buildButton.enabled = ok && atomic_load(&g_checks) == 0;
+    self.buildButton.enabled = [self allChosen] && atomic_load(&g_checks) == 0;
 }
 
 - (void)chooseFile:(NSButton *)b
@@ -465,6 +483,31 @@ static void progress_cb(void *ctx, double f, const char *s)
 /* ---- 3: the build ------------------------------------------------------------------------------ */
 - (void)build:(id)s
 {
+    NSArray<NSString *> *bad = [self mismatched];
+    self.unchecked = NO;
+    if (bad.count) {
+        NSAlert *a = [NSAlert new];
+        a.alertStyle = NSAlertStyleCritical;
+        a.messageText = bad.count == 1 ? @"This file does not match. Build anyway?" : @"These files do not match. Build anyway?";
+        a.informativeText = [NSString stringWithFormat:@"%@\n\nRally Builder is made for the dumps whose MD5s it lists. A file "
+                                                       @"that does not match may be another version of the game, a modified "
+                                                       @"copy or a bad dump: the build may fail, or the game it makes may not "
+                                                       @"work properly.", [bad componentsJoinedByString:@"\n"]];
+        [a addButtonWithTitle:@"Cancel"];
+        [a addButtonWithTitle:@"Build Anyway"];
+        [a beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse r) {
+            if (r == NSAlertSecondButtonReturn) {
+                self.unchecked = YES;
+                dispatch_async(dispatch_get_main_queue(), ^{ [self buildChecked]; });   /* (after this sheet closes) */
+            }
+        }];
+        return;
+    }
+    [self buildChecked];
+}
+
+- (void)buildChecked
+{
     rb_job job = { 0 };
     int ours = 0;
     job.game = self.game;
@@ -509,7 +552,7 @@ static void progress_cb(void *ctx, double f, const char *s)
     g_cancel = 0;
     int game = self.game, target = self.target;
     NSString *dest = self.dest, *bin = self.bin, *cue = self.cue, *rom = self.rom, *romJpn = self.romJpn;
-    int region = self.romRegion;
+    int region = self.romRegion, unchecked = self.unchecked;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         rb_job job = { 0 };
         char err[1024] = "", out[2048];
@@ -521,6 +564,7 @@ static void progress_cb(void *ctx, double f, const char *s)
         job.rom = rom.fileSystemRepresentation;
         job.region = region;
         job.rom_jpn = romJpn.fileSystemRepresentation;
+        job.unchecked = unchecked;
         int ok = rb_build(&job, progress_cb, (__bridge void *)self, &g_cancel, err, sizeof err);
         rb_output_path(&job, out, sizeof out);
         NSString *e = @(err), *o = @(out);
@@ -566,12 +610,33 @@ static void progress_cb(void *ctx, double f, const char *s)
                                 label([NSString stringWithFormat:@"The build is complete. It carries everything it needs, so your "
                                                                  @"copies of the games are no longer required to play. %@", how], 13, NO),
                                 mono(out) ], 14) buttons:buttons];
+    } else if (g_cancel) {
+        NSButton *back = [self button:@"Back" action:@selector(toDumps:)];
+        NSButton *quit = [self button:@"Quit" action:@selector(terminate:)];
+        back.keyEquivalent = @"\r";
+        [self setPage:vstack(@[ label(@"The build was cancelled", 20, YES),
+                                label(@"Nothing was left behind in the folder.", 13, NO) ], 14) buttons:@[ quit, back ]];
     } else {
         NSButton *back = [self button:@"Back" action:@selector(toDumps:)];
         NSButton *quit = [self button:@"Quit" action:@selector(terminate:)];
-        NSTextField *msg = label(err.length ? err : @"The build failed.", 13, NO);
+        NSImageView *icon = [NSImageView imageViewWithImage:[NSImage imageNamed:NSImageNameCaution]];
+        NSTextField *msg = label(err.length ? [NSString stringWithFormat:@"Error: %@", err] : @"Error: the build failed.", 13, NO);
+        NSMutableArray<NSView *> *v = [NSMutableArray arrayWithArray:@[
+            hstack(@[ icon, label([NSString stringWithFormat:@"%s could not be built", rb_game_name(self.game)], 20, YES) ]), msg ]];
         msg.textColor = NSColor.systemRedColor;
-        [self setPage:vstack(@[ label(@"The build did not finish", 20, YES), msg ], 14) buttons:@[ quit, back ]];
+        [msg.widthAnchor constraintEqualToConstant:540].active = YES;
+        [icon.widthAnchor constraintEqualToConstant:40].active = YES;
+        [icon.heightAnchor constraintEqualToConstant:40].active = YES;
+        if (self.unchecked) {
+            NSTextField *why = label([NSString stringWithFormat:@"The build used files that do not match the dumps Rally Builder "
+                                                                @"is made for (%@), which is the likely cause. Choose the matching "
+                                                                @"dumps and build again.", [[self mismatched] componentsJoinedByString:@", "]], 13, NO);
+            [why.widthAnchor constraintEqualToConstant:540].active = YES;
+            [v addObject:why];
+        }
+        [v addObject:label(@"Nothing was left behind in the folder.", 12, NO)];
+        back.keyEquivalent = @"\r";
+        [self setPage:vstack(v, 14) buttons:@[ quit, back ]];
     }
 }
 

@@ -3,9 +3,10 @@
  *
  *   1 which game
  *   2 the player's own dumps the game needs (the Top Gear Rally ROM, the Boss
- *     Rally BIN and cue), checked by MD5, and the folder to build into
+ *     Rally BIN and cue), checked by MD5, and the folder to build into; a dump
+ *     that does not match builds only after a warning the player accepts
  *   3 the build (core/build.c), with progress
- *   4 the result: the game's folder, or what went wrong
+ *   4 the result: the game's folder, or the error that stopped it
  *
  * The game executables and the icon are plain files in the games folder
  * beside it.
@@ -33,7 +34,7 @@ enum { ID_DEST = 100, ID_NEXT, ID_BACK, ID_BUILD, ID_CANCEL, ID_SHOW, ID_PLAY, I
 enum { K_BIN, K_CUE, K_ROM, K_ROMJPN, K_N };   /* K_ROMJPN: Remastered's Japan ROM */
 #define BOTTOM 572                       /* the buttons' row (Remastered: four dumps above it) */
 
-static HWND s_wnd, s_bar, s_status, s_build;
+static HWND s_wnd, s_bar, s_status, s_build, s_errtext;
 static HWND s_rowtext[K_N];
 static HFONT s_font, s_bold, s_title, s_mono;
 static HWND s_ctl[64];
@@ -47,6 +48,7 @@ static wchar_t s_status_text[256];
 static double s_fraction;
 static char s_err[1024], s_out[2048];
 static int s_result;
+static int s_unchecked;                 /* building from dumps that do not match, the player's choice */
 
 /* ---- UTF-8 <-> UTF-16 -------------------------------------------------------------------- */
 static void to8(const wchar_t *w, char *out, int n) { WideCharToMultiByte(CP_UTF8, 0, w, -1, out, n, NULL, NULL); }
@@ -127,7 +129,7 @@ static void clear_page(void)
     for (i = 0; i < s_nctl; i++)
         DestroyWindow(s_ctl[i]);
     s_nctl = 0;
-    s_bar = s_status = s_build = NULL;
+    s_bar = s_status = s_build = s_errtext = NULL;
     memset(s_rowtext, 0, sizeof s_rowtext);
 }
 
@@ -173,10 +175,33 @@ static void page_game(void)
     button(L"Continue", 464, BOTTOM, 100, ID_NEXT, 1);
 }
 
+/* the dumps this game needs */
+static int needed(int k)
+{
+    return k == K_ROM ? rb_needs_rom(s_game) : k == K_ROMJPN ? rb_needs_rom_jpn(s_game) : rb_needs_disc(s_game);
+}
+
+/* the chosen dumps that do not match, by name, one a line (n: how many) */
+static int mismatched(wchar_t *out, int len, const wchar_t *sep)
+{
+    int k, n = 0;
+    out[0] = 0;
+    for (k = 0; k < K_N; k++)
+        if (needed(k) && !s_ok[k]) {
+            const wchar_t *name = wcsrchr(s_file[k], L'\\') ? wcsrchr(s_file[k], L'\\') + 1 : s_file[k];
+            if (n++)
+                wcsncat(out, sep, len - wcslen(out) - 1);
+            wcsncat(out, name, len - wcslen(out) - 1);
+        }
+    return n;
+}
+
 static void update_build(void)
 {
-    int ok = (!rb_needs_disc(s_game) || (s_ok[K_BIN] && s_ok[K_CUE])) && (!rb_needs_rom(s_game) || s_ok[K_ROM]) &&
-             (!rb_needs_rom_jpn(s_game) || s_ok[K_ROMJPN]);
+    int ok = 1, k;
+    for (k = 0; k < K_N; k++)
+        if (needed(k) && !s_file[k][0])
+            ok = 0;                     /* (matching or not: a mismatch asks before it builds) */
     if (s_build)
         EnableWindow(s_build, ok && !s_checking);
 }
@@ -283,10 +308,28 @@ static void page_result(void)
         button(L"Done", 240, BOTTOM, 100, ID_DONE, 0);
         button(L"Open Folder", 352, BOTTOM, 100, ID_SHOW, 0);
         button(L"Play", 464, BOTTOM, 100, ID_PLAY, 1);
+    } else if (s_cancel) {
+        text(L"The build was cancelled", 24, 20, 540, 32, s_title);
+        text(L"Nothing was left behind in the folder.", 24, 64, 540, 40, s_font);
+        button(L"Quit", 352, BOTTOM, 100, ID_DONE, 0);
+        button(L"Back", 464, BOTTOM, 100, ID_BACK, 1);
     } else {
-        text(L"The build did not finish", 24, 20, 540, 32, s_title);
-        to16(s_err[0] ? s_err : "The build failed.", t, 2048);
-        text(t, 24, 64, 540, 120, s_font);
+        wchar_t name[64], title[128], err[1100], bad[1024], why[1400];
+        HWND icon = add(L"STATIC", L"", SS_ICON, 24, 20, 32, 32, 0, s_font);
+        SendMessageW(icon, STM_SETICON, (WPARAM)LoadIconW(NULL, (LPCWSTR)IDI_ERROR), 0);
+        to16(rb_game_name(s_game), name, 64);
+        swprintf(title, 128, L"%ls could not be built", name);
+        text(title, 68, 22, 496, 32, s_title);
+        to16(s_err[0] ? s_err : "the build failed.", t, 2048);
+        swprintf(err, 1100, L"Error: %ls", t);
+        s_errtext = text(err, 24, 70, 540, 100, s_font);
+        if (s_unchecked) {
+            mismatched(bad, 1024, L", ");
+            swprintf(why, 1400, L"The build used files that do not match the dumps Rally Builder is made for (%ls), which "
+                                L"is the likely cause. Choose the matching dumps and build again.", bad);
+            text(why, 24, 180, 540, 80, s_font);
+        }
+        text(L"Nothing was left behind in the folder.", 24, s_unchecked ? 270 : 180, 540, 24, s_font);
         button(L"Quit", 352, BOTTOM, 100, ID_DONE, 0);
         button(L"Back", 464, BOTTOM, 100, ID_BACK, 1);
     }
@@ -440,6 +483,7 @@ static DWORD WINAPI build_thread(LPVOID p)
     job.rom = rom;
     job.rom_jpn = romjpn;
     job.region = s_region;
+    job.unchecked = s_unchecked;
     s_err[0] = 0;
     s_result = rb_build(&job, progress, NULL, &s_cancel, s_err, sizeof s_err);
     rb_output_path(&job, s_out, sizeof s_out);
@@ -454,6 +498,20 @@ static void build(void)
     wchar_t msg[4096], o16[2048];
     int ours = 0;
     HANDLE h;
+    s_unchecked = 0;
+    {
+        wchar_t bad[1024];
+        int n = mismatched(bad, 1024, L"\r\n");
+        if (n) {
+            swprintf(msg, 4096, L"%ls\r\n\r\nRally Builder is made for the dumps whose MD5s it lists. A file that does not "
+                                L"match may be another version of the game, a modified copy or a bad dump: the build may "
+                                L"fail, or the game it makes may not work properly.\r\n\r\nBuild anyway?", bad);
+            if (MessageBoxW(s_wnd, msg, n == 1 ? L"This file does not match" : L"These files do not match",
+                            MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) != IDYES)
+                return;
+            s_unchecked = 1;
+        }
+    }
     to8(s_dest, dest, sizeof dest);
     job.game = s_game;
     job.target = RB_WINDOWS;
@@ -499,6 +557,8 @@ static LRESULT CALLBACK proc(HWND w, UINT m, WPARAM wp, LPARAM lp)
         for (k = 0; k < K_N; k++)
             if (c == s_rowtext[k] && s_file[k][0] && !s_checking)
                 SetTextColor(dc, s_ok[k] ? RGB(0, 128, 0) : RGB(192, 0, 0));
+        if (c == s_errtext && c)
+            SetTextColor(dc, RGB(192, 0, 0));
         return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
     }
     case WM_COMMAND:

@@ -72,7 +72,8 @@ typedef struct rb_check {
     int  ok;                  /* the file is the dump the builder reads */
     char md5[33];             /* the file's MD5, as it is */
     char note[256];           /* why it is not, or how it was taken (byte order) */
-    int  region;              /* a ROM: whose cartridge it is (RB_USA...), -1 none */
+    int  region;              /* a ROM: whose cartridge it is (RB_USA...); when not ok, the one its
+                                 header's country code names; -1 none */
 } rb_check;
 
 /* the BIN image (MD5 over the whole file) */
@@ -95,6 +96,8 @@ typedef struct rb_job {
     int         region;       /* Top Gear Rally: the cartridge rom is (rb_check's region) */
     const char *rom_jpn;      /* Remastered: Japan's */
     const char *dest_dir;     /* the folder the build goes into */
+    int         unchecked;    /* the player chose to build from dumps whose MD5s do not match: the
+                                 build skips the MD5 checks (sizes and layouts still hold) */
 } rb_job;
 
 /* 1 when dest_dir already holds this target's output; *ours is 1 when this

@@ -44,7 +44,7 @@ Rally Builder makes a native build of a game from your own copy of it. Pick one 
 - **Top Gear Rally** (Nintendo 64, 1997), from your cartridge ROM: the USA's, Europe's or Japan's. The build is that cartridge's game.
 - **Top Gear Rally Remastered**, from the USA and Japan ROMs and the CD: Top Gear Rally's menus, seasons and soundtrack, with every race run by Boss Rally's engine on the same tracks.
 
-On a Mac, Boss Rally and Top Gear Rally build for the Mac, and Remastered for the Mac or for the iPhone and iPad; on Windows, each builds for Windows. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5, takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
+On a Mac, Boss Rally and Top Gear Rally build for the Mac, and Remastered for the Mac or for the iPhone and iPad; on Windows, each builds for Windows. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5 (a dump that does not match can still be built after a warning), takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
 
 The games are the decompilations' own code, compiled natively: Top Gear Rally's is byte-exact to each of its three cartridges, every function, and Boss Rally's behaves exactly as the retail game does, every function, most of them byte-exact too. The version follows that byte-exact (M2) progress, the average over the three cartridges and Boss Rally:
 \`\`\`
@@ -52,6 +52,7 @@ $(cat $NOTES.m2)
 \`\`\`
 
 ### In this release
+- **Build Anyway**: a dump whose MD5 does not match (another release of the game, a modified copy, a different rip) no longer stops you. Choose it and press Build: the builder lists the files that do not match and warns that the build may fail or the game may not work properly, then builds if you choose Build Anyway. A ROM is read as the cartridge its header names. If the build fails, an error screen says why, names the files that did not match, and nothing is left behind in the folder.
 - **Top Gear Rally**: all three cartridges. The USA's, Europe's (at its own 25 frames a second, PAL 50 Hz, with its Game Pak saves) and Japan's (its own title, Japanese text and real liveries, its three cars): give the builder any of the three ROMs.
 - **Remastered, menus**: Menus chooses Top Gear Rally (USA), Top Gear Rally (PAL/Japan) (Japan's own menus, title and liveries, in English, with the cartridge's Game Pak saves) or Boss Rally's own. Music chooses Boss Rally's CD, Top Gear Rally (USA) or Top Gear Rally (PAL/Japan) (the two cartridges' front-end tunes).
 - **Remastered, cars and cheats**: Japan's Type-PJ, Type-TR and Type-MN beside the Type-RS, Type-M3 and Helmet they replaced, each unlocked with its twin. Europe's and Japan's cheats, on your own controls: on the main menu hold Gear Up and Gear Down and press Change View three times for every car, course and weather; in a race, Gear Up, Gear Up, Steer Right, Accelerate, Change View, Steer Right finishes it in first place.

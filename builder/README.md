@@ -17,9 +17,15 @@ Releases page; nothing here ships game data.
    ROM (the USA's, Europe's or Japan's cartridge: the build is that cartridge's
    game), the retail Boss Rally CD as BIN/CUE, or for Remastered the USA's and
    Japan's ROMs and the CD. The builder shows the MD5 it expects and each
-   file's own, and builds only from a match.
+   file's own. A file that does not match builds only after a warning the
+   player accepts (Build Anyway): the build then skips the MD5 checks but
+   still needs the dump's size and layout (an 8 MB ROM; a cue sheet and a
+   MODE1/2352 BIN with the game's files), and a ROM is read as the cartridge
+   its header's country code names.
 4. The build: the code ships inside the builder; the data comes from the dumps.
-5. The result: the app, the .ipa or the folder, or the reason the build stopped.
+5. The result: the app, the .ipa or the folder, or an error screen with the
+   reason the build stopped (and, after Build Anyway, which files did not
+   match). A failed build leaves nothing in the folder.
 
 The result needs no dump nor this tree: it carries the cartridge's data (from
 the end of its code on) as `romdata.bin`, the CD's data track as `disc`
@@ -31,7 +37,7 @@ cars after it, made by the builder from the two ROMs as
 `ports/remastered/tools/regionextras.py` makes them. Linux is not built yet (no
 Linux window host in the ports).
 
-Version 0.94. The builder and every game it builds run on macOS 12 or later
+Version 0.95. The builder and every game it builds run on macOS 12 or later
 (Apple silicon and Intel) and Windows 10 or later (64-bit, with a Vulkan
 driver or OpenGL 3.3); Remastered's iPhone and iPad app on iOS 16 or later.
 

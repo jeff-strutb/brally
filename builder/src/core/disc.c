@@ -267,6 +267,10 @@ static int walk_dir(walk *w, uint32_t lba, uint32_t size, const char *dir, int d
         memcpy(&csize, d + i + 10, 4);
         if (!(d[i + 32] == 1 && (d[i + 33] == 0 || d[i + 33] == 1))) {   /* not . or .. */
             rec_name(w->s, d + i + 33, d[i + 32], name, sizeof name);
+            if (!name[0] || !strcmp(name, ".") || !strcmp(name, "..") || strchr(name, '/') || strchr(name, '\\')) {
+                ok = 0;                                  /* not a name a file can have here */
+                break;
+            }
             rb_join(path, sizeof path, dir, name);
             if (depth == 0 && !kept(name, d[i + 25] & 2)) {
                 /* not something the game reads */
