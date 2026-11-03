@@ -15,17 +15,23 @@
  * the ring as the others do:
  *
  *   Widescreen  the PC's monitor, 4:3 when off and drawn 16:9 when on
- *   Music       the PC's monitor for the PC's soundtrack, the console for the N64's
+ *   Music       the box of the game whose soundtrack it is: Boss Rally's, Top
+ *               Gear Rally's USA box, or its Japanese (the PAL/Japan cartridge's)
  *   Show FPS    Time Attack's stopwatch (the main menu's, from the cartridge)
  *   View Distance  the Coastline course's own (the course menu's, from the
  *               cartridge): its lighthouse is what Original lets pop in
- *   Menus       the console for Top Gear Rally's (the N64 game's), the
- *               monitor for Boss Rally's (the PC game's, on the Music row's
- *               terms)
+ *   Menus       the box of the game whose menus they are, as Music's
+ *
+ * A box chosen on Music or Menus turns to the next: a whole turn in half a
+ * second over the ring's own spin, the box taken when it is edge on, as the
+ * game turns an icon to a new one (BrMenu, an item's flag 4), up turning it
+ * one way and down the other (rm_options_turn, frontbuttons.c (port)).
  *
  * The monitor and the console are built by hand
  * (ports/remastered/tools/handicons.py: platform/os/rm_icons.c, the game's own
- * icon format).  They are placed once in the arena's upper half, which the
+ * icon format), the boxes from their pictures (tools/boxicons.py:
+ * platform/os/rm_boxes.c, the same format, their faces textured).  They are
+ * placed once in the arena's upper half, which the
  * game never uses (it runs in the N64's 4 MB, no Expansion Pak): copied, the
  * wide monitor's vertices stretched across, and rebased as BrModelLoad rebases
  * a model from the cartridge.
@@ -39,6 +45,7 @@
 
 /* -- declarations -- */
 void BrModelRebase(BrModel *m);
+float floorf(float x);
 unsigned int BrRomUnpack(unsigned char *dst, unsigned int rom, void *s);
 int  BrRomReadSize(int rom);
 extern MenuItem *D_80272360[];          /* the main menu's rows: [2] is Time Attack */
@@ -47,6 +54,10 @@ int  rm_option(int which);              /* the app's (ports/remastered/platform/
 void rm_option_set(int which, int value);
 extern const unsigned char rm_icon_crt[], rm_icon_n64[];
 extern const unsigned int rm_icon_crt_len, rm_icon_n64_len;
+extern const unsigned char rm_box_usa[], rm_box_jpn[], rm_box_br[];
+extern const unsigned int rm_box_usa_len, rm_box_jpn_len, rm_box_br_len;
+extern float D_80316228;                /* the ring's icon spin (BrMenu) */
+extern float D_8028AAD8;                /* seconds this frame */
 /* -- end declarations -- */
 
 enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
@@ -72,7 +83,15 @@ static char s_label[RM_ROWS][32];
 static MenuItem *s_items[16];
 static unsigned int s_crt, s_wide, s_n64;   /* the icons, placed */
 static unsigned int s_course, s_coursecut; /* View Distance's: Unlimited's, Original's */
+static unsigned int s_box[3];           /* the boxes, by Menus choice: TGR USA, Boss Rally, TGR PAL/Japan */
 static int s_menus_next = -1;           /* the Menus chosen, taken on leaving the screen (-1: none) */
+static int s_turn_row = -1;             /* the row whose box is turning (-1: none) */
+static float s_turn;                    /* its turn left, 1 to 0 */
+static float s_turn_dir;                /* 1 or -1: the way it turns */
+static unsigned int s_turn_old;         /* the box it turns from, until it is edge on */
+static float s_turn_at;                 /* its angle as drawn, unwrapped (BrMenu wraps its spin) */
+static int s_turn_half;                 /* the half turn of the spin it started in */
+static int s_turn_fresh;                /* started this frame: rm_options_row's own rm_options_frame */
 
 /* a model copied to `at` (stretched across by kx: its vertices' x) and rebased;
  * answers where the next may go */
@@ -182,6 +201,52 @@ static void icons(void)
   at = course(at, 0);
   s_coursecut = at;
   at = course(at, 1);
+  s_box[RM_MENUS_TGR] = at;
+  at = place(at, rm_box_usa, rm_box_usa_len, 1.0f);
+  s_box[RM_MENUS_BR] = at;
+  at = place(at, rm_box_br, rm_box_br_len, 1.0f);
+  s_box[RM_MENUS_TGR_PAL] = at;
+  at = place(at, rm_box_jpn, rm_box_jpn_len, 1.0f);
+}
+
+/* the box of a Music choice */
+static unsigned int music_box(int music)
+{
+  return s_box[music == RM_MUSIC_PC ? RM_MENUS_BR : music == RM_MUSIC_N64 ? RM_MENUS_TGR : RM_MENUS_TGR_PAL];
+}
+
+/* the turn, on the screen's own spin: the angle it adds (BrMenu draws the
+ * row's icon at D_80316228 and this) */
+static float turn_angle(void)
+{
+  return s_turn_dir * -s_turn * 6.2831855f;
+}
+
+/* a half turn of the spin as drawn, counted from edge on (an icon's front,
+ * its -y, faces the screen at 0: BrMenuIconDraw turns it about its z, then
+ * stands it up, -90 degrees about x) */
+static int half_turn(float a)
+{
+  return (int)floorf((a - 1.5707964f) / 3.1415927f);
+}
+
+/* the row's box turns from `old` to its new one */
+static void turn_start(int k, unsigned int old, int dir)
+{
+  s_turn_row = RM_FIRST + k;
+  s_turn = 1.0f;
+  s_turn_dir = (float)dir;
+  s_turn_old = old;
+  s_turn_at = D_80316228 + turn_angle();
+  s_turn_half = half_turn(s_turn_at);
+  s_turn_fresh = 1;
+}
+
+/* the angle a row's icon turns by (BrMenu, frontbuttons.c (port)): the turn
+ * of a box on this screen's row, else 0 */
+float rm_options_turn(MenuItem **items, int row)
+{
+  return items == s_items && row == s_turn_row ? turn_angle() : 0.0f;
 }
 
 /* the console's icon, placed (the main menu's Quit: rmmainmenu.c) */
@@ -217,8 +282,9 @@ MenuItem **rm_options_items(MenuItem **game)
 /* each frame: our rows' labels and icons, from the options in force */
 void rm_options_frame(void)
 {
+  unsigned int old = 0;
   int wide = rm_option(RM_OPT_WIDESCREEN) != 0;
-  int music = rm_option(RM_OPT_MUSIC), pc = music == RM_MUSIC_PC;
+  int music = rm_option(RM_OPT_MUSIC);
 #if TGR_REGION_JPN                      /* (Japan's font has no brackets) */
   static const char *const k_music[RM_MUSIC_COUNT] = { "Boss Rally", "TGR USA", "TGR PAL/Japan" };
 #else
@@ -238,14 +304,35 @@ void rm_options_frame(void)
 #else
     sprintf(s_label[4], "Menus: %s", m == RM_MENUS_BR ? "Boss Rally" : m == RM_MENUS_TGR ? "TGR (USA)" : "TGR (PAL/Japan)");
 #endif
-    s_row[4].icon = m == RM_MENUS_BR ? s_crt : s_n64;
+    s_row[4].icon = s_box[m];
   }
   s_row[2].label = tgr_addr32(s_label[2]);
   s_row[3].label = tgr_addr32(s_label[3]);
   s_row[4].label = tgr_addr32(s_label[4]);
   s_row[0].icon = wide ? s_wide : s_crt;
-  s_row[1].icon = pc ? s_crt : s_n64;
+  s_row[1].icon = music_box(music);
   s_row[3].icon = rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? s_course : s_coursecut;
+  /* a box turning: on, the box it turns from until the spin as drawn this
+     frame (BrMenu's, after this) has passed edge on */
+  if (s_turn_row >= 0 && s_turn_fresh) {
+    s_turn_fresh = 0;                   /* (its frame drawn: the next frame's turns it) */
+    old = s_turn_old;
+  } else if (s_turn_row >= 0) {
+    float was = turn_angle();
+    s_turn -= D_8028AAD8 + D_8028AAD8;  /* (the game's own turn: BrMenu's D_80316224) */
+    if (s_turn < 0.0f) {
+      s_turn = 0.0f;
+    }
+    s_turn_at += D_8028AAD8 + D_8028AAD8 + turn_angle() - was;   /* (the spin: BrMenu's step) */
+    if (s_turn == 0.0f) {
+      s_turn_row = -1;
+    } else if (half_turn(s_turn_at) == s_turn_half) {
+      old = s_turn_old;
+    }
+    if (old != 0) {
+      s_row[s_turn_row - RM_FIRST].icon = old;
+    }
+  }
 }
 
 /* 1 for one of our rows */
@@ -291,10 +378,12 @@ int rm_options_row(int result, int row)
         int m = s_menus_next >= 0 ? s_menus_next : RM_MENUS_OWN, i;
         for (i = 0; i < 3 && k_cycle[i] != m; i++) {
         }
+        turn_start(row - RM_FIRST, s_box[m], result == 4 ? -1 : 1);
         m = k_cycle[(i + (result == 4 ? 2 : 1)) % 3];
         s_menus_next = m == RM_MENUS_OWN ? -1 : m;
       } else if (o == RM_OPT_MUSIC) {
         int was = rm_option(o), now = (was + (result == 4 ? RM_MUSIC_COUNT - 1 : 1)) % RM_MUSIC_COUNT;
+        turn_start(row - RM_FIRST, music_box(was), result == 4 ? -1 : 1);
         rm_option_set(o, now);
         if (was != RM_MUSIC_PC && now != RM_MUSIC_PC) {
           rm_menu_tune_restart();       /* the other cartridge's front-end tune */

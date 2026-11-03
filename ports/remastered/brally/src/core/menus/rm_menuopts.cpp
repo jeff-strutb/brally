@@ -7,11 +7,11 @@
  * own options pages are (Game Options, BrExt_1004E830): the wrench in the top
  * left lobe, the title, a row an option in the middle lobe and Back below,
  * and here, in the top right lobe as Options shows the keyboard, while the
- * Menus row is the one chosen the icon of the game whose menus it says (Boss
- * Rally's own, or the N64 for Top Gear Rally's), else the machine
- * whose soundtrack plays: the PC (the app's drawing of one,
- * ports/common/assets/retro_pc.svg) or the N64 (the console Top Gear Rally's
- * options screen turns, drawn from the same point of view), rm_menuicons.c.
+ * Menus row is the one chosen the box of the game whose menus it says (Boss
+ * Rally's, or Top Gear Rally's USA or Japanese box for the one that handed
+ * over), else the box of the game whose soundtrack plays: pictures of the
+ * boxes Top Gear Rally's options screen turns (tools/menuicons.py,
+ * rm_menuicons.c).
  * While the View Distance row is the one chosen the lobe shows Race Setup's
  * own picture of Coastline instead, as that choice sees it: whole at
  * Unlimited, its far end (the lighthouse and the loop behind it) gone at
@@ -109,8 +109,8 @@ enum { MUX_TGR, MUX_BR, MUX_TGRP };
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 
 #define SPR_WRENCH  9                   /* the options pages' emblem (op.bmp) */
-#define SPR_MUSIC   RM_SPR_BASE         /* the soundtrack's machine, the PC or the N64 (rm_menuicons.c),
-                                           or with the Menus row chosen Boss Rally's own icon */
+#define SPR_MUSIC   RM_SPR_BASE         /* the soundtrack's game's box (rm_menuicons.c), or with the
+                                           Menus row chosen the box of the menus it says */
 
 /* The page's own pictures, past the game's sprite table (its 145): a
  * control's sprite number from RM_SPR_BASE up draws one of these
@@ -121,10 +121,12 @@ enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 enum { ROW_WIDE, ROW_MUSIC, ROW_FPS, ROW_VIEW, ROW_MENUS, NROW };
 static RmCtl *s_row[NROW];
 extern "C" const unsigned short rm_menuicon_key;
-extern "C" const int rm_pcicon_w, rm_pcicon_h, rm_n64icon_w, rm_n64icon_h;
-extern "C" const unsigned short rm_pcicon[], rm_n64icon[];
+extern "C" const int rm_usaboxicon_w, rm_usaboxicon_h, rm_jpnboxicon_w, rm_jpnboxicon_h;
+extern "C" const int rm_brboxicon_w, rm_brboxicon_h;
+extern "C" const unsigned short rm_usaboxicon[], rm_jpnboxicon[], rm_brboxicon[];
 extern "C" int rm_menu_ox(void);        /* rm_menuwide.c */
-static BrSurf *s_icon[2];
+enum { BOX_USA, BOX_JPN, BOX_BR, NBOX };
+static BrSurf *s_icon[NBOX];
 static int s_menus_tgr;                 /* Menus says Top Gear Rally's: taken on leaving the page */
 
 #define SPR_COAST 17                    /* Race Setup's picture of Coastline */
@@ -149,78 +151,18 @@ static BrSurf *coast_icon(int cut)
     return s_coastcut;
 }
 
+/* a game's box, made a surface the first time */
 static BrSurf *icon(int k)
 {
-    int w = k ? rm_n64icon_w : rm_pcicon_w, h = k ? rm_n64icon_h : rm_pcicon_h;
+    static const int *const k_w[NBOX] = { &rm_usaboxicon_w, &rm_jpnboxicon_w, &rm_brboxicon_w };
+    static const int *const k_h[NBOX] = { &rm_usaboxicon_h, &rm_jpnboxicon_h, &rm_brboxicon_h };
+    static const unsigned short *const k_px[NBOX] = { rm_usaboxicon, rm_jpnboxicon, rm_brboxicon };
+    int w = *k_w[k], h = *k_h[k];
     if (s_icon[k] == 0 && (s_icon[k] = BrSurfNew(w, h)) != 0) {
-        memcpy(s_icon[k]->pPix, k ? rm_n64icon : rm_pcicon, (size_t)w * h * 2);
+        memcpy(s_icon[k]->pPix, k_px[k], (size_t)w * h * 2);
         s_icon[k]->key = rm_menuicon_key;
     }
     return s_icon[k];
-}
-
-/* Boss Rally's own icon, the program's (the disc's Boss.ico, the same picture
- * as BossRally.exe's): read from the data, 32x32 in 16 colours, drawn twice
- * its size pixel for pixel, its black (and anything its mask leaves out) the
- * lobe's */
-static BrSurf *s_boss;
-static int s_boss_tried;
-
-static BrSurf *boss_icon(void)
-{
-    unsigned char buf[4096], *d;
-    FILE *f;
-    size_t n;
-    int w, h, bpp, ncol, stride, mstride, x, y;
-    const unsigned char *pal, *bits, *mask;
-    if (s_boss_tried)
-        return s_boss;
-    s_boss_tried = 1;
-    if ((f = fopen("Boss.ico", "rb")) == 0)  /* (the game's own lookup: its folder, then the disc) */
-        return 0;
-    n = fread(buf, 1, sizeof buf, f);
-    fclose(f);
-    if (n < 22 + 40 || buf[2] != 1 || buf[4] == 0)
-        return 0;
-    {
-        unsigned off = buf[18] | buf[19] << 8 | buf[20] << 16 | (unsigned)buf[21] << 24;
-        if (off + 40 > n)
-            return 0;
-        d = buf + off;
-    }
-    w = d[4] | d[5] << 8;
-    h = (d[8] | d[9] << 8) / 2;           /* (the picture and its mask) */
-    bpp = d[14] | d[15] << 8;
-    if (w <= 0 || w > 64 || h <= 0 || h > 64 || (bpp != 4 && bpp != 8))
-        return 0;
-    ncol = d[32] | d[33] << 8;
-    if (ncol == 0)
-        ncol = 1 << bpp;
-    pal = d + 40;
-    bits = pal + 4 * ncol;
-    stride = ((w * bpp + 31) / 32) * 4;
-    mask = bits + stride * h;
-    mstride = ((w + 31) / 32) * 4;
-    if ((size_t)(mask + mstride * h - buf) > n)
-        return 0;
-    if ((s_boss = BrSurfNew(w * 2, h * 2)) == 0)
-        return 0;
-    s_boss->key = rm_menuicon_key;
-    for (y = 0; y < h; y++) {
-        const unsigned char *row = bits + stride * (h - 1 - y), *mrow = mask + mstride * (h - 1 - y);
-        for (x = 0; x < w; x++) {
-            int k = bpp == 4 ? (row[x >> 1] >> (x & 1 ? 0 : 4)) & 15 : row[x];
-            const unsigned char *c = pal + 4 * k;     /* B G R */
-            unsigned short v = (unsigned short)((c[2] >> 3) << 11 | (c[1] >> 2) << 5 | c[0] >> 3);
-            if ((mrow[x >> 3] >> (7 - (x & 7)) & 1) || (c[0] | c[1] | c[2]) == 0)
-                v = rm_menuicon_key;
-            s_boss->pPix[(2 * y) * (w * 2) + 2 * x] = v;
-            s_boss->pPix[(2 * y) * (w * 2) + 2 * x + 1] = v;
-            s_boss->pPix[(2 * y + 1) * (w * 2) + 2 * x] = v;
-            s_boss->pPix[(2 * y + 1) * (w * 2) + 2 * x + 1] = v;
-        }
-    }
-    return s_boss;
 }
 
 extern "C" int rm_sprite_draw(int i, int x, int y)
@@ -229,15 +171,18 @@ extern "C" int rm_sprite_draw(int i, int x, int y)
     BrSurf *s = 0;
     if (i != SPR_MUSIC)
         return 1;
-    /* the Menus row chosen: the game whose menus these are; else the machine
-       whose music plays */
+    /* the Menus row chosen: the box of the game whose menus these are; else
+       of the game whose music plays */
     if (s_row[ROW_MENUS] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_MENUS]))->flags1C & 0x20))
-        s = s_menus_tgr ? icon(1) : boss_icon();
+        s = icon(!s_menus_tgr ? BOX_BR : mux_tgr_active_game() == MUX_TGRP ? BOX_JPN : BOX_USA);
     /* the View Distance row chosen: Coastline, as that choice sees it */
     if (s_row[ROW_VIEW] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_VIEW]))->flags1C & 0x20))
         s = coast_icon(rm_option(RM_OPT_VIEWDIST) == RM_VIEW_ORIGINAL);
-    if (s == 0 && (s = icon(rm_option(RM_OPT_MUSIC) != RM_MUSIC_PC)) == 0)
-        return 1;
+    if (s == 0) {
+        int m = rm_option(RM_OPT_MUSIC);
+        if ((s = icon(m == RM_MUSIC_PC ? BOX_BR : m == RM_MUSIC_N64 ? BOX_USA : BOX_JPN)) == 0)
+            return 1;
+    }
     rect[0] = 0;
     rect[1] = 0;
     rect[2] = s->cx;

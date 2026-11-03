@@ -9,11 +9,12 @@
  void BrMenuBackdropDraw(void);
  void BrAnimUpdate(void *set);
  void BrMenuIconDraw(int, float, float, float, float);
-@@ -79,34 +81,38 @@
+@@ -79,34 +81,39 @@
  void BrScreenFlush3Layout1(void);
  void BrPadStickToButtons(int);
  void BrPadConsume(unsigned int *pad, unsigned int bits);
 +int rm_foot_prompt(int act, const char *word, int x, int ty);   /* Remastered: a control's prompt (rmprompt.c) */
++float rm_options_turn(MenuItem **items, int row);   /* Remastered: a row's icon turning to its new choice (rmoptions.c) */
 +int BrTextWidth(unsigned char *s, int size);
  /* -- end declarations -- */
  
@@ -60,7 +61,7 @@
  }
  
  /* WHAT IT DOES: Set the front-end flag that the season and track-select
-@@ -251,6 +257,10 @@
+@@ -251,6 +258,10 @@
        guMtxF2L(D_8031AB10, mtx);
        gSPMatrix(D_8028A858++, mtx, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
        BrMenuRingDraw();
@@ -71,7 +72,17 @@
        row = D_80316244;
        do {
          row = (row + n - 1) % n;
-@@ -408,7 +418,7 @@
+@@ -315,7 +326,8 @@
+           if (items[D_80316244]->flags & 0x10) {
+             D_8028A8A8 = 1;
+           }
+-          BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f, D_80316228);
++          BrMenuIconDraw(items[D_80316244]->icon, D_8028AAB0 / 2, (D_8028AAB4 * 6) / 16, 0.0f,
++                         D_80316228 + rm_options_turn(items, D_80316244));   /* Remastered: a choice turning */
+           D_8028A8A8 = 0;
+         } else {
+           sprintf(buf, "%%ww%s", TGR_PTR(const char *, items[D_80316244]->label));
+@@ -408,7 +420,7 @@
                goto choose;
              }
            }

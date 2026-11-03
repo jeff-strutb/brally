@@ -13,9 +13,10 @@ Remastered adds laid over them (`tree.sh`).
 | `brally/`, `patch/brally` | Boss Rally as Remastered has it: the race that fills any window, the races run for Top Gear Rally's menus (`race_handoff.c`, `host_race.h`), split screen and the players' controls (`race_pads.c`), Top Gear Rally's Rumble Pak (`rm_rumble.c`), the pause menu's Remaster Options and frame rate (`pause_options.c`), its own menus as the app's (`race_handoff.c`, `br_menus_run`), their Remaster Options page (`src/core/menus/rm_menuopts.cpp`, `rm_menuicons.c`) and their 16:9 layout (`src/core/drawing/rm_menuwide.c`), the music hooks (`audio.c`) |
 | `tgrally/`, `patch/tgrally` | Top Gear Rally as Remastered has it: the race that fills any window (`view.c`, `gfx/rcp.c`), the hand-over of the races and of the menus (`src/racing/handoff.c`), touch (`os/touch.c`), the frame rate (`drawing/frameloop.c`), the music's mute (`audio/mixer.c`) |
 | `platform/options.c` | the Remaster Options: kept in the save folder (`remaster.cfg`), applied to both games |
-| `tools/menuicons.py` | Boss Rally's Remaster Options page's two machines, into `brally/src/core/menus/rm_menuicons.c`: the PC from `ports/common/assets/retro_pc.svg`, the N64 the hand-built console drawn in that drawing's oblique, its greys a real console's (`ports/common/assets/n64console.png`) |
+| `tools/menuicons.py` | Boss Rally's Remaster Options page's pictures of the three games' boxes (`boxicons.py`'s, still, seen from the left and above), into `brally/src/core/menus/rm_menuicons.c` |
 | `platform/controls.c` | the two players' controls: kept in the save folder (`controls.cfg`), read by both games |
 | `tools/handicons.py` | the options screen's monitor and console icons, built by hand in a few hundred triangles of flat colour as the game's own icons are, their sizes, heights and colours measured off renders of a monitor and a console model, into `tgrally/platform/os/rm_icons.c` |
+| `tools/boxicons.py` | the games' boxes the options screen turns for Music and Menus: Top Gear Rally's USA and Japanese boxes and Boss Rally's, each of its front picture's proportions, its faces textured from `ports/common/assets/boxart` in tiles of TMEM's size (Boss Rally's back shows its front: there is no back picture), its edges the colour of the front's edge they meet, into `tgrally/platform/os/rm_boxes.c` |
 | `ports/tgrally/link.sh`, `HOST=lib` | Top Gear Rally as `libtgrally.a`, its `main()` as `tgr_main` |
 | `ports/brally/link64.sh`, `HOST=lib` | Boss Rally as `libbrally.a`, its `main()` as `br_main` |
 | `platform/thunks.c` | each game's calls to the host for the window, input, sound and folders, sent on to `mux_tgr_*` or `mux_br_*` |
@@ -38,11 +39,14 @@ to the menus that started it.
 
 **Remaster Options.** Top Gear Rally's options screen has them as rows of its
 carousel after Units, each with its own turning icon (Widescreen the PC's
-monitor, 4:3 when off and 16:9 when on; Music the monitor for the PC's
-soundtrack or the console for the N64's; Show FPS Time Attack's stopwatch;
+monitor, 4:3 when off and 16:9 when on; Music the box of the game whose
+soundtrack it is (Boss Rally's, or Top Gear Rally's USA or Japanese box);
+Show FPS Time Attack's stopwatch;
 View Distance the Coastline course's own, its lighthouse included):
 up or down (a swipe on the iPhone) or A takes the next choice
-(`tgrally/src/menus/rmoptions.c`). Boss Rally's pause menu has a Remaster
+(`tgrally/src/menus/rmoptions.c`); a box chosen turns to the next, a whole
+turn in half a second as the game turns an icon to a new one, taken when
+it is edge on. Boss Rally's pause menu has a Remaster
 Options row before its quits. It opens a page of that name in the menu's own style: one
 row an option, its choices side by side, the one in force in the row's
 colour and the others faded, then Back. Up and down move, left and right
@@ -86,7 +90,7 @@ Gear Up, Steer Right, Accelerate, Change View, Steer Right finishes it there,
 the first player first and the second second (`race_handoff.c`, `finish_now`).
 
 **Menus.** Top Gear Rally's options screen has a Menus row after Show FPS
-(the console its icon, the monitor for Boss Rally's); up chooses the other
+(the box of the game whose menus they are, as Music's); up chooses the other
 Top Gear Rally's, down Boss Rally's, taken only when the player leaves the
 screen (B), not at once (`rmoptions.c`, `menus_leave`): the player comes back
 to the main menu. The other Top Gear Rally's run while this one's game thread waits,
@@ -99,7 +103,8 @@ while Top Gear Rally's game thread waits as it does for a race
 playing on.  Boss Rally's Options has a Remaster Options row before Back,
 opening a page in its own style: the wrench top left, a row an option saying
 the choice in force (Widescreen, Music, Show FPS, View Distance, Menus), Back, and top right
-the machine whose music plays (the PC or the N64; with View Distance the row
+a picture of the box of the game whose music plays (with Menus the row
+chosen, of the menus it says; with View Distance the row
 chosen, Race Setup's picture of Coastline, whole at Unlimited and without its
 lighthouse end at Original).  Return or a click takes
 a row's next choice; Menus there chooses Boss Rally's or the Top Gear Rally

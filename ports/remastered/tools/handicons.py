@@ -331,6 +331,18 @@ def model(m, colours, size_key, size_val):
     ring = lo_[:-1] + hi_[:-1]
     if len(ring) > 32:
         ring = [ring[int(i * len(ring) / 32)] for i in range(32)]
+    sdl = shadow_dl(blob, ring)
+    struct.pack_into('>IHHfff', blob, 8 + 20 * len(used), sdl, 8, 0, 0.0, 0.0, 0.0)
+    return bytes(blob), ntri
+
+
+def shadow_dl(blob, ring):
+    """the shadow the game's icons cast on the ring, `ring` its outline at z 0 (at most 32
+    points, counter-clockwise from above): its texture, vertices and display list appended to
+    `blob`, blended in the second pass with the game's own commands; answers the list's offset"""
+    def align8():
+        while len(blob) % 8:
+            blob.append(0)
     align8()
     stex = len(blob)
     blob += bytes.fromhex('7777777777777777')
@@ -349,8 +361,7 @@ def model(m, colours, size_key, size_val):
         blob += struct.pack('>II', 0xBF000000, (0 << 16) | (k * 2 << 8) | ((k + 1) * 2))
     for w0, w1 in ((0xE7000000, 0), (0xB900031D, 0x0C192038), (0xFC26A004, 0x1FFC93F8), (0xB8000000, 0)):
         blob += struct.pack('>II', w0, w1)
-    struct.pack_into('>IHHfff', blob, 8 + 20 * len(used), sdl, 8, 0, 0.0, 0.0, 0.0)
-    return bytes(blob), ntri
+    return sdl
 
 
 def main():
