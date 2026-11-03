@@ -37,7 +37,7 @@ cars after it, made by the builder from the two ROMs as
 `ports/remastered/tools/regionextras.py` makes them. Linux is not built yet (no
 Linux window host in the ports).
 
-Version 0.96. The builder and every game it builds run on macOS 12 or later
+Version 0.97. The builder and every game it builds run on macOS 12 or later
 (Apple silicon and Intel) and Windows 10 or later (64-bit, with a Vulkan
 driver or OpenGL 3.3); Remastered's iPhone and iPad app on iOS 16 or later.
 
