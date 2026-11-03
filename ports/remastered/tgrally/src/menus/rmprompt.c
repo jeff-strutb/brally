@@ -43,14 +43,15 @@ static const struct { const char *from, *to; } k_short[] = {
     { "DELETE", "DEL" }, { "INSERT", "INS" },
 };
 
-/* what the first player presses for action `act` */
-const char *rm_prompt(int act)
+/* what player `player` presses for action `act` (the prompts' device: the
+ * first player's last) */
+static const char *prompt_of(int player, int act)
 {
   static char buf[4][24];
   static int n;
   char *b = buf[n++ & 3];
   int mode = tgr_input_prompt_mode(), pad = mode == 1;
-  int code = rm_bind(0, act, pad ? RM_BIND_PAD : RM_BIND_KEY);
+  int code = rm_bind(player, act, pad ? RM_BIND_PAD : RM_BIND_KEY);
   unsigned i;
 
   if (mode == 2) {
@@ -58,7 +59,7 @@ const char *rm_prompt(int act)
   }
   if (pad ? code < 0 : code <= 0) {     /* nothing there: the other's */
     pad = !pad;
-    code = rm_bind(0, act, pad ? RM_BIND_PAD : RM_BIND_KEY);
+    code = rm_bind(player, act, pad ? RM_BIND_PAD : RM_BIND_KEY);
   }
   rm_bind_label(pad ? RM_BIND_PAD : RM_BIND_KEY, code, b, sizeof buf[0]);
   if (pad && !strncmp(b, "PAD ", 4)) {
@@ -70,6 +71,12 @@ const char *rm_prompt(int act)
     }
   }
   return b;
+}
+
+/* what the first player presses for action `act` */
+const char *rm_prompt(int act)
+{
+  return prompt_of(0, act);
 }
 
 /* the text printer's state, kept round a key cap */
@@ -276,8 +283,8 @@ int rm_keycap_image(BrImage *img, int x, int y)
 }
 
 /* a line naming controls: {A} (Accelerate / Select), {B} (Brake / Back), {UP},
- * {DOWN} and {START} filled in with what the first player has them on */
-char *rm_ptext(const char *fmt)
+ * {DOWN} and {START} filled in with what player `player` has them on */
+char *rm_ptext_p(int player, const char *fmt)
 {
   static const struct { const char *keys, *touch; } k_touch[] = {   /* touch's words for them */
     { "PRESS {A}", "TAP" }, { "Press {A}", "Tap" }, { "pressing {A}", "tapping" }, { "{A} WHEN", "TAP WHEN" },
@@ -317,7 +324,7 @@ char *rm_ptext(const char *fmt)
     for (i = 0; i < sizeof k_tok / sizeof k_tok[0]; i++) {
       size_t l = strlen(k_tok[i].tok);
       if (!strncmp(fmt, k_tok[i].tok, l)) {
-        const char *p = rm_prompt(k_tok[i].act);
+        const char *p = prompt_of(player, k_tok[i].act);
         while (*p && o < out + sizeof buf[0] - 1) {
           *o++ = *p++;
         }
@@ -331,4 +338,10 @@ char *rm_ptext(const char *fmt)
   }
   *o = 0;
   return out;
+}
+
+/* the same, the first player's */
+char *rm_ptext(const char *fmt)
+{
+  return rm_ptext_p(0, fmt);
 }

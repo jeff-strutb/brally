@@ -1,14 +1,15 @@
 --- a/src/menus/carselect.c
 +++ b/src/menus/carselect.c
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,8 @@
  #define D_8031C5BC TGR_PTR(char *, *TGR_PTR(TgrAddr *, TGR_VA(8031C5BC)))   /* car 0\'s season (a member of D_8031B760) */
  extern char D_8028AE24;
  extern Gfx *D_8028A858;
 +char *rm_ptext(const char *fmt);       /* Remastered: the controls named (rmprompt.c) */
++char *rm_ptext_p(int player, const char *fmt);
  /* -- end declarations -- */
  
  /* WHAT IT DOES: Draw one of the car-select screen's stat bars at (x, y),
-@@ -356,6 +357,7 @@
+@@ -356,6 +358,7 @@
  void BrTextPrint(char *s, int x, int y);
  void BrCarStatBarDraw(int x, int y, int w, int h, float frac);
  void BrFrontPromptSelect(void);
@@ -16,7 +17,7 @@
  void BrFrontPromptContinue(void);
  void BrFadeBarsDraw(void);
  void BrPerfMeterDraw(void);
-@@ -412,6 +414,11 @@
+@@ -412,6 +415,13 @@
  /* -- end declarations -- */
  
  #define CAR(i) (&D_8031B760[i])
@@ -24,11 +25,13 @@
 +void rm_car_rec_begin(int p, int kind, int slot);
 +void rm_car_rec_end(int p, int kind);
 +int rm_car_step(BrCar *car, int p, int dir);
++int rm_car_variant(BrCar *car, int p);
++const char *rm_car_variant_hint(int p, int kind);
 +#define RM_CREC(c) (*rm_car_rec((int)((c) - &D_8031B760[0]), (c)->x2058))
  /* the pad loop's car: Japan indexes the array outside the colour block */
  #if TGR_REGION_JPN
  #else
-@@ -565,7 +572,9 @@
+@@ -565,7 +575,9 @@
          }
          CAR(p)->kind = n;
          CAR(p)->x2058 = n;
@@ -38,7 +41,7 @@
        }
      }
      /* the two players' turntable frames and the camera that looks at them */
-@@ -969,7 +978,7 @@
+@@ -969,7 +981,7 @@
      if (D_8026FF08 == 2) {
        BrTextSetFont(17);
        if (D_803162B0[0] == 0) {
@@ -47,7 +50,7 @@
        } else if (D_803162B0[0] == 6) {
          sprintf(buf, "%%ryREADY!");
        } else {
-@@ -977,14 +986,14 @@
+@@ -977,14 +989,14 @@
        }
        BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 / 4);
        if (D_803162B0[1] == 0) {
@@ -64,7 +67,7 @@
        BrTextSetFont(14);
        BrTextAlignLeft();
        if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
-@@ -1006,14 +1015,14 @@
+@@ -1006,14 +1018,14 @@
          BrTextPrint("%wwthe Rumble Pak, you", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 28);
          BrTextPrint("%wwshould ensure that it", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 37);
          BrTextPrint("%wwis plugged in before", D_8028AAB0 * 11 / 16, D_8028AAB4 / 4 + 45);
@@ -81,7 +84,7 @@
        }
  #endif
        BrTextAlignRight();
-@@ -1023,15 +1032,15 @@
+@@ -1023,15 +1035,18 @@
          BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 + 2);
          BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 / 4 - 6);
          BrTextAlignCentre();
@@ -99,10 +102,13 @@
          BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 / 2 - 6, 80, 11,
 -                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
 +                         *(float *)((char *)&RM_CREC(car) + 0x48) / 10.0);
++        if (rm_car_variant_hint(0, car->x2058)) {   /* Remastered: up and down (rmregion.c) */
++          BrTextPrint(rm_ptext(rm_car_variant_hint(0, car->x2058)), D_8028AAB0 / 2, D_8028AAB4 / 4 + 12);
++        }
        }
        if (D_803162B0[1] == 0) {
          car = CAR(1);
-@@ -1039,24 +1048,27 @@
+@@ -1039,24 +1054,30 @@
          BrTextPrint("%wwAcceleration", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 + 2);
          BrTextPrint("%wwMax Speed", D_8028AAB0 / 4 - 5, D_8028AAB4 * 3 / 5 - 6);
          BrTextAlignCentre();
@@ -120,6 +126,9 @@
          BrCarStatBarDraw(D_8028AAB0 / 2, D_8028AAB4 * 6 / 5 - 6, 80, 11,
 -                         *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
 +                         *(float *)((char *)&RM_CREC(car) + 0x48) / 10.0);
++        if (rm_car_variant_hint(1, car->x2058)) {   /* Remastered: up and down (rmregion.c) */
++          BrTextPrint(rm_ptext_p(1, rm_car_variant_hint(1, car->x2058)), D_8028AAB0 / 2, D_8028AAB4 * 3 / 5 + 12);
++        }
        }
      } else {
 +      if (D_803162B0[0] != 6) {
@@ -137,7 +146,7 @@
          } else if (D_803162B0[0] == 6) {
            sprintf(buf, "%%ryLET'S GO!");
          } else {
-@@ -1065,7 +1077,7 @@
+@@ -1065,7 +1086,7 @@
          BrTextPrint(buf, D_8028AAB0 / 2, D_8028AAB4 * 20 / 64);
          BrTextSetFont(8);
          BrTextAlignCentre();
@@ -146,7 +155,7 @@
          if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
            BrTextSetFont(14);
            BrTextPrint("%ww %j\xD2\xD3" "2b3@sA5'\xD2\xD3\x8D\x8F\xA1w2Bc\xDB" "2@&", D_8028AAB0 / 2,
-@@ -1076,7 +1088,7 @@
+@@ -1076,7 +1097,7 @@
          if (D_803162B0[0] == 5 && D_80316278[0] != 1 && D_80316260[0] == 0) {
            BrTextPrint("%wwIf you wish to use the Rumble Pak, you should", D_8028AAB0 / 2,
                        D_8028AAB4 * 3 / 8 - 6);
@@ -155,7 +164,7 @@
                        D_8028AAB4 * 3 / 8 + 2);
          }
  #endif
-@@ -1087,15 +1099,15 @@
+@@ -1087,15 +1108,18 @@
            BrTextPrint("%wwMax Speed", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 - 6);
            BrTextPrint("%wwAcceleration", D_8028AAB0 * 3 / 8, D_8028AAB4 * 3 / 8 + 2);
            BrTextAlignCentre();
@@ -173,10 +182,13 @@
            BrCarStatBarDraw(D_8028AAB0 * 3 / 4 + 10, D_8028AAB4 * 3 / 4 - 6, 80, 11,
 -                           *(float *)((char *)&D_8028AE0C[car->x2058] + 0x48) / 10.0);
 +                           *(float *)((char *)&RM_CREC(car) + 0x48) / 10.0);
++          if (rm_car_variant_hint(0, car->x2058)) {   /* Remastered: up and down (rmregion.c) */
++            BrTextPrint(rm_ptext(rm_car_variant_hint(0, car->x2058)), D_8028AAB0 / 2, D_8028AAB4 * 27 / 32);
++          }
          }
        }
      }
-@@ -1225,21 +1237,13 @@
+@@ -1225,21 +1249,24 @@
            /* the car (step 0): left and right pick the next selectable car */
            if (D_803162B0[p] == 0) {
              if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 4) {
@@ -190,6 +202,17 @@
                  goto newcar;
                }
              }
++            /* Remastered: up and down, the other cartridge's car of its kind
++               (rmregion.c); not with a colour button held (up and down set
++               the colour then) */
++            a = ((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed;
++            if ((a & 0xA) && !(a & 0xB00)) {
++              BrPadConsume((BrPadRec *)TGR_PTR(unsigned int *, car->pad), 0xA);
++              if (rm_car_variant(car, p)) {
++                D_80316260[p] = a & 8 ? 1.0f : -1.0f;
++                goto newcar;
++              }
++            }
              if (((BrPadRec *)TGR_PTR(unsigned int *, car->pad))->pressed & 1) {
 -              n = car->x2058;
 -              do {
@@ -200,7 +223,7 @@
                  D_80316260[p] = -1.0f;
                newcar:
                  v = BrSfxFreeVoice();
-@@ -1247,7 +1251,9 @@
+@@ -1247,7 +1274,9 @@
                    BrSfxVoiceStart(v, tgr_addr32(D_8031629C), D_803162A0, 0);
                  }
                  D_80316258[p] ^= 2;
@@ -210,7 +233,7 @@
                }
              }
            }
-@@ -1585,10 +1591,14 @@
+@@ -1585,10 +1614,14 @@
                  BrSfxVoiceStart(v, tgr_addr32(D_803162A4), D_803162A8, 0);
                }
                back = 0;

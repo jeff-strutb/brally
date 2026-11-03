@@ -157,38 +157,61 @@ BrCarModelRec *rm_slot_rec(int slot, int k)
   return j ? j : &D_8028AE0C[k];
 }
 
-/* the car select's left and right: the next selectable car, the twin after
- * this cartridge's; 1 when it moved */
+/* the car select's left and right: the next selectable car, of this
+ * cartridge or the other as the player last chose (up and down); 1 when it
+ * moved */
 int rm_car_step(BrCar *car, int p, int dir)
 {
   int n = D_8028AE08, i;
-  int k0 = car->x2058, j0 = rm_twin_car[p & 3];
-  int k = k0, j = j0;
+  int k0 = car->x2058, k = k0;
 
-  for (i = 0; i < 2 * n; i++) {
-    if (dir > 0) {
-      if (!j && twin_rec(k)) {
-        j = 1;
-      } else {
-        j = 0;
-        k = (k + 1) % n;
-      }
-    } else {
-      if (j) {
-        j = 0;
-      } else {
-        k = (k + n - 1) % n;
-        j = twin_rec(k) != 0;
-      }
-    }
+  for (i = 0; i < n; i++) {
+    k = (k + (dir > 0 ? 1 : n - 1)) % n;
     if (BrCarSelectable(k)) {
       break;
     }
   }
-  tgr_print("car step: player %d %d%s -> %d%s\n", p, k0, j0 ? " (twin)" : "", k, j ? " (twin)" : "");   /* (TGR_LOG) */
+  tgr_print("car step: player %d %d -> %d%s\n", p, k0, k, rm_twin_car[p & 3] && twin_rec(k) ? " (twin)" : "");   /* (TGR_LOG) */
   car->x2058 = k;
-  rm_twin_car[p & 3] = j;
-  return k != k0 || j != j0;
+  return k != k0;
+}
+
+/* the car select's up and down: the car's twin of the other cartridge, or
+ * back to this one's; 1 when the car has a twin */
+int rm_car_variant(BrCar *car, int p)
+{
+  int k = car->x2058;
+
+  if (!twin_rec(k)) {
+    return 0;
+  }
+  rm_twin_car[p & 3] ^= 1;
+  tgr_print("car variant: player %d %d%s\n", p, k, rm_twin_car[p & 3] ? " (twin)" : "");   /* (TGR_LOG) */
+  return 1;
+}
+
+/* the car select's line naming what up and down bring on, for player p's
+ * car of `kind`; 0 when it has no twin.  The line goes through rm_ptext
+ * (rmprompt.c), which names the controls. */
+const char *rm_car_variant_hint(int p, int kind)
+{
+  static char buf[2][64];
+  BrCarModelRec *j = twin_rec(kind);
+  int twin = rm_twin_car[p & 3] != 0;
+  const char *name;
+  int japans;
+
+  if (!j) {
+    return 0;
+  }
+  name = TGR_PTR(const char *, twin ? D_8028AE0C[kind].name : j->name);
+#if TGR_REGION_JPN
+  japans = twin;                        /* the twin is the USA's: back is Japan's */
+#else
+  japans = !twin;                       /* the twin is Japan's */
+#endif
+  sprintf(buf[p & 1], "%%wwPush {UP} or {DOWN} for %s %s", japans ? "Japan's" : "the USA's", name);
+  return buf[p & 1];
 }
 
 /* the car Boss Rally races for player p of `kind`: kinds 3, 6 and 9 are its

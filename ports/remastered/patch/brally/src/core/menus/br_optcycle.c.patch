@@ -1,0 +1,77 @@
+--- a/src/core/menus/br_optcycle.c
++++ b/src/core/menus/br_optcycle.c
+@@ -222,21 +222,28 @@
+  * the player left it, because the search compares against the already-
+  * stepped value. */
+ /* @implements 0x10042B30 d3d BrOptCycleTrack */
++int rm_br_car_offered(int v);       /* Remastered: Car Setup's VERSION row (rm_carversion.cpp) */
++int rm_br_car_class(int v);
++int rm_br_car_version(int v);
++void rm_br_version_relabel(void);
+ int BrOptCycleTrack(void)
+ {
+     int32_t v, vStart;
+ 
++    /* Remastered: a step from a pair's Japan version is from its USA entry */
++    if (g_act1 != 0 || g_act0 != 0)
++        (*(int32_t *)&g_brSel0ABDF4) = rm_br_car_class((*(int32_t *)&g_brSel0ABDF4));
+     if (g_act1 != 0) {
+         v = BrOptTrackStepUp();
+         vStart = v;
+-        if (BrOptAvailB(v) == 0) {
++        if (rm_br_car_offered(v) == 0) {
+             for (;;) {
+                 v = BrOptTrackStepUp();
+                 /* Unlike 0x10042EE0's loop, the wrap path here still runs
+                  * the full-circle test. */
+                 if (v == vStart)
+                     break;
+-                if (BrOptAvailB(v) != 0) {
++                if (rm_br_car_offered(v) != 0) {
+                     v = (*(int32_t *)&g_brSel0ABDF4);
+                     break;
+                 }
+@@ -247,12 +254,12 @@
+     } else if (g_act0 != 0) {
+         v = BrOptTrackStepDown();
+         vStart = v;
+-        if (BrOptAvailB(v) == 0) {
++        if (rm_br_car_offered(v) == 0) {
+             for (;;) {
+                 v = BrOptTrackStepDown();
+                 if (v == vStart)
+                     break;
+-                if (BrOptAvailB(v) != 0) {
++                if (rm_br_car_offered(v) != 0) {
+                     v = (*(int32_t *)&g_brSel0ABDF4);
+                     break;
+                 }
+@@ -264,7 +271,12 @@
+         v = (*(int32_t *)&g_brSel0ABDF4);
+     }
+ 
++    /* Remastered: a pair of Top Gear Rally's cartridges' versions is one step,
++       its version the one last chosen (rm_carversion.cpp) */
++    if (g_act1 != 0 || g_act0 != 0)
++        v = (*(int32_t *)&g_brSel0ABDF4) = rm_br_car_version(v);
+     (*(int32_t *)&g_226e7c) = g_aBrAC420[v];
++    rm_br_version_relabel();
+ 
+     if (g_brP277B40 != NULL) {
+         /* 32 tracks, 16 names: indices 0x10..0x1F reuse the first sixteen
+@@ -822,3 +834,15 @@
+  * port keeps both buffers at their original frame offsets so the behaviour
+  * is preserved rather than silently repaired.
+  */
++
++/* Remastered: the car changed on Car Setup's VERSION row (rm_carversion.cpp),
++ * told to the other players as a step of the CAR row is (BrOptCycleTrack) */
++void rm_br_car_announce(int v)
++{
++    if (g_brP277B40 != NULL) {
++        if (v > 0xF)
++            v -= 0x10;
++        sprintf(g_szBrName4DB0, BrStrGet(BR_OPT_STR_TRACK), BrStrGet((int)g_aBrAC368[v]));
++        BrOptFlushMessage();
++    }
++}

@@ -1,0 +1,52 @@
+--- a/src/core/menus/BrPhaseEnterPlaceholder_1004A580_100439B0.cpp
++++ b/src/core/menus/BrPhaseEnterPlaceholder_1004A580_100439B0.cpp
+@@ -140,6 +140,7 @@
+ 
+ typedef int (*CtlFn)(BrCtl *);
+ 
++extern "C" void rm_br_version_row(GameUi *parent, void *page);   /* Remastered: rm_carversion.cpp */
+ int BrPhaseEnterPlaceholder_1004A580(GameUi *parent)
+ {
+     Phase32F *cont;
+@@ -188,12 +189,13 @@
+     p->s34((char *)(BrStrGet(0x14)), 1, 1, (char *)(&(*(char *)&g_hot0)));
+     (*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl) += 1;
+     (*(short *)&((BrUiPage_ *)(cont))->cSel) += 1;
++    rm_br_version_row(parent, cont);   /* Remastered: VERSION (rm_carversion.cpp) */
+     p = ((BrCtl *)br_new_obj(sizeof(BrUiCtl_), (void *(*)(void *))BrMenuObjCtor_10040B10));
+     (*(BrCtl * (*)[199])&((BrUiPage_ *)(cont))->apCtl[0])[(*(unsigned short *)&((BrUiPage_ *)(cont))->cCtl)] = p;
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077648, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_1007764c, 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrOptCycleAC64C;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -205,7 +207,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_1007764c, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077650, 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrOptCycleAC650;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -217,7 +219,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077650, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077654, 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrOptCycleAC65C;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;
+@@ -229,7 +231,7 @@
+     bad = (p == 0);
+     if (bad)
+         FUN_100378c0(4);
+-    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077654, 0x102001, 2, 5, 1, -1);
++    p->s38(parent, (*(float *)&((BrUiPage_ *)(cont))->fX), (*(float *)&((BrUiPage_ *)(cont))->fY) - DAT_10077658, 0x102001, 2, 5, 1, -1);
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn0C) = (CtlFn)BrSub10047360;
+     (*(int (**)(BrCtl *))&((BrUiCtl_ *)(p))->pfn08) = (CtlFn)BrOptCycleAA2A08;
+     (*(unsigned short *)&((BrUiCtl_ *)(p))->w1E20C) = 3;

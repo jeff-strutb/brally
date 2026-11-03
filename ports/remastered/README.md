@@ -77,10 +77,15 @@ the link) and one Controller Pak file: each reads it again when the other has
 written it (`platform/os/si.c`, `pak_fresh`). Each library carries what it
 takes from the other cartridge at ROM 0x800000 (`tools/regionextras.py`): its
 front-end tune, and its three cars. Japan replaced Type-RS, Type-M3 and the
-Helmet with Type-PJ, Type-TR and Type-MN; Remastered offers both of each pair,
-the other cartridge's beside this one's in the car select and unlocked with
-it (`tgrally/src/menus/rmregion.c`), raced as Boss Rally's own (its cars 3, 6
-and 9, and 13, 14 and 15).
+Helmet with Type-PJ, Type-TR and Type-MN; Remastered offers both of each pair
+as one car, unlocked with this cartridge's (`tgrally/src/menus/rmregion.c`):
+left and right step the cars, up and down turn a pair to its other version (a
+line under the car says which, naming the player's controls), and the version
+last chosen is kept for the next pair. They race as Boss Rally's own (its cars
+3, 6 and 9, and 13, 14 and 15). Boss Rally's own menus do the same on Car
+Setup (`brally/src/core/menus/rm_carversion.cpp`): the CAR row steps the cars
+with each pair as one, and a VERSION row under it says USA or JAPAN and turns
+to the other, each version unlocked as Boss Rally unlocks it.
 
 **Cheats.** Europe's and Japan's two, in both libraries and on the first
 player's controls (above all what each N64 button does): on the main menu,

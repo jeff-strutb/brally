@@ -1,18 +1,20 @@
 --- a/src/core/menus/BrPhaseShutdown_10048B20_10041F50.cpp
 +++ b/src/core/menus/BrPhaseShutdown_10048B20_10041F50.cpp
-@@ -35,6 +35,7 @@
+@@ -35,6 +35,8 @@
      void m();                   /* 0x10008D60 */
  };
  
 +extern "C" void rm_menuopts_release(void);   /* Remastered (rm_menuopts.cpp) */
++extern "C" void rm_br_version_release(void);   /* Remastered (rm_carversion.cpp) */
  extern "C" {
  /* 64-bit core: declared once, in br_globals.h or its struct's header */
  /* 64-bit core: declared once, in br_globals.h or its struct's header */
-@@ -348,6 +349,7 @@
+@@ -348,6 +350,8 @@
          br_vdelete((*(Ph * *)&g_5CE0));
          (*(Ph * *)&g_5CE0) = 0;
      }
 +    rm_menuopts_release();      /* Remastered: its Remaster Options page (rm_menuopts.cpp) */
++    rm_br_version_release();    /* Remastered: Car Setup's VERSION rows (rm_carversion.cpp) */
  
      if (DAT_10ac5ce8 != 0) {
          DAT_10ac5ce8->v7();
