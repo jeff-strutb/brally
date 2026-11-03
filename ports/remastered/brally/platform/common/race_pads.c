@@ -12,8 +12,21 @@
  * host's first (on the iPhone the touch controls), the second's the host's
  * second.  The game's own reading still runs for its menus (the pause menu).
  *
+ * Reset Car puts the player's car back on the road as the game does a car stuck
+ * on its roof: the race's reset (BrCarRespawn, 0x1005C6D0), asked for by that
+ * car's player.  The PC game asked for it with a key of its own through one
+ * request for whichever human car stepped first (DAT_118eeee4); here each
+ * player's press is kept for that player's car (the first humans' cars are the
+ * players', in order) and taken in its own step (FUN_1005c8b0, Remastered's
+ * patch) where the PC game's request is: after the step's physics, which would
+ * otherwise put the reset flag back on a car the right way up.  Asked for only
+ * while the player drives (br_race_driving: not paused, not a replay) and, as
+ * the PC game's, in neither mode 4 nor 5.
+ *
  * Built with the core's flags, for its types. */
+#include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "br_addr32.h"
@@ -30,11 +43,46 @@ void rm_player_drive(int player, const unsigned char *dik, const host_pad *pad, 
 extern uint8_t g_plat_dik[256];         /* br_os_window.c: scan codes held down */
 void plat_script_autopilot_want(int driver, int *want);   /* script_game.c (checks) */
 const int *br_handoff_autopilot_want(void);              /* race_handoff.c (checks) */
+unsigned rm_player_actions(int player, const unsigned char *dik, const host_pad *pad);   /* the app's */
+#define RM_ACT_RESET 15                 /* (controls.h: keep in step) */
+int br_race_driving(void);              /* race_handoff.c */
 
 static int s_on;
 extern int g_brMode0AA8B4;              /* the views (1, or 2: split) */
 
-void br_race_pads_on(int on) { s_on = on; }
+static unsigned char s_reset_held[2], s_reset[2];   /* Reset Car: held last frame; asked for */
+static unsigned char s_reset_log[2];                /* (RM_LOG: the car after it, logged next frame) */
+
+static void reset_log(int i, const char *when)
+{
+    const BrDriverCar *c = &g_aBrRaceCar[i];
+    const BrVec3 *v = &c->aBody[0].rb.st.vel;
+    fprintf(stderr, "race_pads: player %d reset car %s: at %.1f %.1f %.1f body speed %.2f\n", i + 1, when, c->pos.x,
+            c->pos.y, c->pos.z, sqrtf(v->x * v->x + v->y * v->y + v->z * v->z));
+}
+
+void br_race_pads_on(int on)
+{
+    s_on = on;
+    memset(s_reset, 0, sizeof s_reset);
+}
+
+/* the human step (FUN_1005c8b0): 1 when this car's player asked for a reset,
+ * taken */
+int br_race_reset_take(const void *car)
+{
+    int i;
+    for (i = 0; i < 2; i++)
+        if (car == &g_aBrRaceCar[i] && s_reset[i]) {
+            s_reset[i] = 0;
+            if (getenv("RM_LOG")) {
+                reset_log(i, "asked");
+                s_reset_log[i] = 1;
+            }
+            return 1;
+        }
+    return 0;
+}
 
 /* Change View: the game's views are a C button each (the driving step,
  * FUN_1005c8b0): C-up the car's own view (aSnap[0], where a race starts),
@@ -75,6 +123,16 @@ void br_race_pads(void)
         int x, y, has = host_pad_read_n(i, &p);
         unsigned char *r = g_aBrEntRecs[i].b;
         rm_player_drive(i, g_plat_dik, has ? &p : 0, &b, &x, &y);
+        if (s_reset_log[i]) {
+            reset_log(i, "after");
+            s_reset_log[i] = 0;
+        }
+        {
+            int held = (rm_player_actions(i, g_plat_dik, has ? &p : 0) >> RM_ACT_RESET) & 1;
+            if (held && !s_reset_held[i] && br_race_driving() && g_brRaceRules.mode != 4 && g_brRaceRules.mode != 5)
+                s_reset[i] = 1;                 /* (pressed: taken in the car's next step) */
+            s_reset_held[i] = (unsigned char)held;
+        }
         if (b & 0x0008) {                       /* Change View (RM_N64_CU): the next view */
             if (!s_view_bit[i])
                 s_view_bit[i] = next_view(i);

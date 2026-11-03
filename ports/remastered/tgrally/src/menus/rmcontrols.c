@@ -8,7 +8,8 @@
  *   an action    (Accelerate / Select, Brake / Back, Reverse, the steering, the
  *                gears, Change View, Up, Down, Pause / Start, Z, the other C
  *                buttons: each one N64 button, the same in the races and the
- *                menus, controls.h) its key and its pad button under the
+ *                menus, controls.h; and Reset Car, the races' alone, the car
+ *                put back on the road) its key and its pad button under the
  *                label; A (the foot of the screen's Select), then the next key
  *                or pad button pressed, is the new one (a key for the keyboard,
  *                a button for that player's pad); Escape leaves it as it was
@@ -43,7 +44,7 @@ extern int D_80271FBC;
 extern int D_80271FC0;
 extern BrRomImage D_8027205C;
 /* the app's (ports/remastered/platform/controls.h) */
-enum { RM_ACT_COUNT = 15, RM_BIND_KEY = 0, RM_BIND_PAD = 1 };
+enum { RM_ACT_COUNT = 16, RM_BIND_KEY = 0, RM_BIND_PAD = 1 };   /* (controls.h: keep in step) */
 const char *rm_action_name(int act);
 int  rm_bind(int player, int act, int kind);
 void rm_bind_set(int player, int act, int kind, int code);

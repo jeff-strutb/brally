@@ -86,8 +86,10 @@ Gear Up, Steer Right, Accelerate, Change View, Steer Right finishes it there,
 the first player first and the second second (`race_handoff.c`, `finish_now`).
 
 **Menus.** Top Gear Rally's options screen has a Menus row after Show FPS
-(the console its icon); up goes to the other Top Gear Rally's, down to Boss
-Rally's. The other Top Gear Rally's run while this one's game thread waits,
+(the console its icon, the monitor for Boss Rally's); up chooses the other
+Top Gear Rally's, down Boss Rally's, taken only when the player leaves the
+screen (B), not at once (`rmoptions.c`, `menus_leave`): the player comes back
+to the main menu. The other Top Gear Rally's run while this one's game thread waits,
 and come back the same way (`main.c`, `other_from_usa`); the wait does not
 count as menu time (`handoff.c`, `clock_resume`). Boss Rally's puts its own
 front end in front:
@@ -100,8 +102,9 @@ the choice in force (Widescreen, Music, Show FPS, View Distance, Menus), Back, a
 the machine whose music plays (the PC or the N64; with View Distance the row
 chosen, Race Setup's picture of Coastline, whole at Unlimited and without its
 lighthouse end at Original).  Return or a click takes
-a row's next choice; Menus there hands back to the Top Gear Rally that
-handed over, on its options screen.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear
+a row's next choice; Menus there chooses Boss Rally's or the Top Gear Rally
+that handed over, which takes over when the player leaves the page by Back,
+on its main menu.  Kept in `remaster.cfg`: launched with Boss Rally's menus, Top Gear
 Rally goes straight to its main menu (no intro) and hands over on its first
 frame, which is where the player comes back to.  In Boss Rally's menus:
 its races are driven with the app's controls (`race_pads.c`, as the handed
@@ -159,7 +162,10 @@ cartridge has none, and neither has the iPhone.
 in Boss Rally's races and in Top Gear Rally's menus (Accelerate / Select is A,
 Brake / Back B, Gear Up R, Gear Down L, Change View C-up, Pause / Start Start,
 Up, Down and the steering the stick's four ways, Z and the other C buttons the
-menus' own, Reverse A with the stick back). The options screen's controller
+menus' own, Reverse A with the stick back; Reset Car, the races' alone, puts
+the player's car back on the road as the game does a car stuck on its roof:
+the race's own reset, `race_pads.c`, taken in that car's step after its
+physics). The options screen's controller
 row opens Controls: a Player row (up, down or A: whose controls), a row an
 action showing its key and its pad button (A, then the next key or button
 pressed sets it, taken from any other action that had it; Escape leaves it),
@@ -169,17 +175,21 @@ touch controls), the second with the keyboard and the second pad; the left
 stick always steers. Defaults, no key doing two things: player 1 X
 accelerates and selects, Z brakes and goes back, C reverses, the arrows steer
 and move, W and Q change gear, I the view, K, J and L the other C buttons,
-Space Z, Escape pauses; player 2 A, S and D, F and H steer, T and G up and
-down, R and E gears, V the view, P pauses; on a pad A accelerates, B brakes,
-X reverses, the d-pad steers and moves, RB and LB change gear, Y the view,
-Menu pauses, LT Z. A file of the first controls (before version 2) is set
-aside for these. Boss Rally's own screens that read keys (its menus, the
+Space Z, Escape pauses, Backspace resets the car; player 2 A, S and D, F and
+H steer, T and G up and down, R and E gears, V the view, P pauses, Y resets;
+on a pad A accelerates, B brakes, X reverses, the d-pad steers and moves, RB
+and LB change gear, Y the view, Menu pauses, View resets, LT Z. A file of the
+first controls (before version 2) is set aside for these; a file from before
+Reset Car keeps its keys, Reset Car taking its default only where the file has
+not given that key or button to another action. Boss Rally's own screens that read keys (its menus, the
 pause menu) are given the same controls (`race_handoff.c`, `pad_keys`).
 
 **Prompts.** Every button the screens show is the first player's own: the
-foot of a menu and a popup's buttons draw a key cap in the cartridge's
-colours (A blue, B green) naming the key, or the pad button when a pad was
-used last, and a line that says "press A" names it too
+foot of a menu and a popup's buttons draw the cartridge's own kind of button
+(round, A blue and B green, lit from the upper left as its pictures are,
+measured from them; longer with round ends for a longer name) naming the key,
+or the pad button when a pad was used last, and a line that says "press A"
+names it too
 (`tgrally/src/menus/rmprompt.c`; Boss Rally's "Press ESC to exit" the same).
 On the iPhone the prompts are touch's: the words are buttons to tap, a line
 says tap or swipe (`RM_PROMPT=key|pad|touch` for a check). In a race Change View

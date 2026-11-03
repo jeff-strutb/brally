@@ -29,6 +29,7 @@ enum {
     RM_ACT_C_DOWN,      /* the car select) */
     RM_ACT_C_LEFT,
     RM_ACT_C_RIGHT,
+    RM_ACT_RESET,       /* the races' alone: the car put back on the road, as the game does a stuck one */
     RM_ACT_COUNT
 };
 enum { RM_BIND_KEY, RM_BIND_PAD };
@@ -57,7 +58,8 @@ const char *rm_bind_label(int kind, int code, char *buf, int n);
  * is A (the menus' select), Brake B (back), Gear Up R, Gear Down L, Change View
  * C-up, Pause Start; Up, Down and the steering the stick's four ways; Z and the
  * other three C buttons the menus' alone; Reverse is A with the stick back, the
- * races' alone. */
+ * races' alone; Reset Car no button at all (race_pads.c: the race's own reset
+ * of a stuck car, asked for). */
 
 /* a player's car controls this moment as an N64 pad: dik the keys held (DirectInput
  * scan codes, nonzero held), pad the player's own (NULL: none).  Accelerate is A,

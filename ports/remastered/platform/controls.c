@@ -5,15 +5,17 @@
  *   player 1  keys: X accelerates and selects, Z brakes and goes back, C
  *             reverses, the arrows steer and move through the menus, W and Q
  *             change gear (R and L), I changes the view (C-up), K, J and L the
- *             other C buttons, Space Z, Escape pauses (Start); one key an
+ *             other C buttons, Space Z, Escape pauses (Start), Backspace puts
+ *             the car back on the road (Reset Car); one key an
  *             action, none of them a key Boss Rally keeps for itself (the
  *             arrows, Return and Escape are its menus' own, the same meaning)
  *   player 2  keys: A accelerates, S brakes, D reverses, F and H steer, T and G
- *             up and down, R and E change gear, V the view, P pauses; Z and the
- *             other C buttons none (player 1 paints)
+ *             up and down, R and E change gear, V the view, P pauses, Y resets
+ *             the car; Z and the other C buttons none (player 1 paints)
  *   both      pad: A accelerates, B brakes, X reverses, the d-pad steers and
- *             moves, RB and LB change gear, Y the view, Menu pauses, LT Z, R3,
- *             RT and L3 the other C buttons (the iPhone's touch controls send
+ *             moves, RB and LB change gear, Y the view, Menu pauses, View resets
+ *             the car, LT Z, R3, RT and L3 the other C buttons (the iPhone's
+ *             touch controls send
  *             A, B and X: accelerator, brake, reverse)
  *
  * The file starts "version 2"; one without it holds the first controls (Boss
@@ -27,19 +29,19 @@
 
 static const char *const k_act[RM_ACT_COUNT] = {
     "Accelerate / Select", "Brake / Back", "Reverse", "Steer Left", "Steer Right", "Gear Up", "Gear Down",
-    "Change View", "Up", "Down", "Pause / Start", "Z", "C Down", "C Left", "C Right",
+    "Change View", "Up", "Down", "Pause / Start", "Z", "C Down", "C Left", "C Right", "Reset Car",
 };
 static const char *const k_tag[RM_ACT_COUNT] = {
     "accel", "brake", "reverse", "left", "right", "gearup", "geardown", "view",
-    "up", "down", "start", "z", "cdown", "cleft", "cright",
+    "up", "down", "start", "z", "cdown", "cleft", "cright", "reset",
 };
 static const unsigned char k_key_def[2][RM_ACT_COUNT] = {
-    /*  X     Z     C     <     >     W     Q     I     ^     v    Esc  Space   K     J     L */
-    { 0x2D, 0x2C, 0x2E, 0xCB, 0xCD, 0x11, 0x10, 0x17, 0xC8, 0xD0, 0x01, 0x39, 0x25, 0x24, 0x26 },
-    /*  A     S     D     F     H     R     E     V     T     G     P */
-    { 0x1E, 0x1F, 0x20, 0x21, 0x23, 0x13, 0x12, 0x2F, 0x14, 0x22, 0x19, 0, 0, 0, 0 },
+    /*  X     Z     C     <     >     W     Q     I     ^     v    Esc  Space   K     J     L    Bksp */
+    { 0x2D, 0x2C, 0x2E, 0xCB, 0xCD, 0x11, 0x10, 0x17, 0xC8, 0xD0, 0x01, 0x39, 0x25, 0x24, 0x26, 0x0E },
+    /*  A     S     D     F     H     R     E     V     T     G     P                            Y */
+    { 0x1E, 0x1F, 0x20, 0x21, 0x23, 0x13, 0x12, 0x2F, 0x14, 0x22, 0x19, 0, 0, 0, 0, 0x15 },
 };
-static const signed char k_pad_def[RM_ACT_COUNT] = { 0, 1, 2, 15, 13, 5, 4, 3, 12, 14, 7, 10, 9, 11, 8 };
+static const signed char k_pad_def[RM_ACT_COUNT] = { 0, 1, 2, 15, 13, 5, 4, 3, 12, 14, 7, 10, 9, 11, 8, 6 };
 
 static int s_key[2][RM_ACT_COUNT], s_pad[2][RM_ACT_COUNT];
 static int s_loaded;
@@ -90,7 +92,9 @@ void rm_controls_load(void)
 {
     char p[1100], line[128], tag[32], kind[8];
     FILE *f;
-    int pl, a, v, ours = 0;
+    int pl, a, v, ours = 0, b;
+    unsigned char seen[2][RM_ACT_COUNT][2];   /* the file's lines: player, action, key or pad */
+    memset(seen, 0, sizeof seen);
     rm_bind_defaults(0);
     rm_bind_defaults(1);
     s_loaded = 1;
@@ -105,12 +109,24 @@ void rm_controls_load(void)
         for (a = 0; a < RM_ACT_COUNT; a++)
             if (!strcmp(tag, k_tag[a])) {
                 if (!strcmp(kind, "key") && v >= 0 && v < 256)
-                    s_key[pl - 1][a] = v;
+                    s_key[pl - 1][a] = v, seen[pl - 1][a][0] = 1;
                 else if (!strcmp(kind, "pad") && v >= -1 && v < 16)
-                    s_pad[pl - 1][a] = v;
+                    s_pad[pl - 1][a] = v, seen[pl - 1][a][1] = 1;
             }
     }
     fclose(f);
+    /* an action newer than the file (Reset Car) keeps its default only where the
+       file has not given that key or button to another */
+    for (pl = 0; ours && pl < 2; pl++)
+        for (a = 0; a < RM_ACT_COUNT; a++)
+            for (b = 0; b < RM_ACT_COUNT; b++) {
+                if (b == a)
+                    continue;
+                if (!seen[pl][a][0] && seen[pl][b][0] && s_key[pl][a] && s_key[pl][b] == s_key[pl][a])
+                    s_key[pl][a] = 0;
+                if (!seen[pl][a][1] && seen[pl][b][1] && s_pad[pl][a] >= 0 && s_pad[pl][b] == s_pad[pl][a])
+                    s_pad[pl][a] = -1;
+            }
     if (!ours)
         save();                         /* the first controls: these from now on */
 }

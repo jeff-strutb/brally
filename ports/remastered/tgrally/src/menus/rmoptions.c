@@ -7,19 +7,21 @@
  * Menus, then the
  * game's own controller, save, load and credits rows.  Each is a row like
  * Units: up or down (a swipe on the iPhone: tgr_touch_value_row) or A takes
- * its other choice, at once, both games told.  Menus takes Boss Rally's
- * menus: the game waits while they are in front (src/racing/handoff.c,
- * tgr_menus_away) and comes back here when the player chooses Top Gear
- * Rally's on Boss Rally's Remaster Options page.  Their icons, turning on the
- * ring as the others do:
+ * its other choice, at once, both games told.  Menus is chosen the same way
+ * but taken only when the player leaves the screen (B): the menus chosen,
+ * Boss Rally's or the other cartridge's, come in front then, the game waiting
+ * while they are (src/racing/handoff.c, tgr_menus_away, tgr_menus_other), and
+ * the player comes back to this game's main menu.  Their icons, turning on
+ * the ring as the others do:
  *
  *   Widescreen  the PC's monitor, 4:3 when off and drawn 16:9 when on
  *   Music       the PC's monitor for the PC's soundtrack, the console for the N64's
  *   Show FPS    Time Attack's stopwatch (the main menu's, from the cartridge)
  *   View Distance  the Coastline course's own (the course menu's, from the
  *               cartridge): its lighthouse is what Original lets pop in
- *   Menus       the console: these are the N64 game's (Boss Rally's, the PC
- *               game's, are the monitor's on the Music row's terms)
+ *   Menus       the console for Top Gear Rally's (the N64 game's), the
+ *               monitor for Boss Rally's (the PC game's, on the Music row's
+ *               terms)
  *
  * The monitor and the console are built by hand
  * (ports/remastered/tools/handicons.py: platform/os/rm_icons.c, the game's own
@@ -50,6 +52,11 @@ extern const unsigned int rm_icon_crt_len, rm_icon_n64_len;
 enum { RM_OPT_WIDESCREEN, RM_OPT_MUSIC, RM_OPT_FPS, RM_OPT_MENUS, RM_OPT_VIEWDIST };
 enum { RM_MUSIC_PC, RM_MUSIC_N64, RM_MUSIC_N64_PAL, RM_MUSIC_COUNT };
 enum { RM_MENUS_TGR, RM_MENUS_BR, RM_MENUS_TGR_PAL };
+#if TGR_REGION_JPN
+#define RM_MENUS_OWN RM_MENUS_TGR_PAL   /* this game's menus: the Menus choice that is ours */
+#else
+#define RM_MENUS_OWN RM_MENUS_TGR
+#endif
 enum { RM_VIEW_ORIGINAL, RM_VIEW_UNLIMITED };
 void tgr_menus_away(void);              /* src/racing/handoff.c */
 void tgr_menus_other(int menus);        /* src/racing/handoff.c: the other cartridge's menus */
@@ -65,6 +72,7 @@ static char s_label[RM_ROWS][32];
 static MenuItem *s_items[16];
 static unsigned int s_crt, s_wide, s_n64;   /* the icons, placed */
 static unsigned int s_course, s_coursecut; /* View Distance's: Unlimited's, Original's */
+static int s_menus_next = -1;           /* the Menus chosen, taken on leaving the screen (-1: none) */
 
 /* a model copied to `at` (stretched across by kx: its vertices' x) and rebased;
  * answers where the next may go */
@@ -223,18 +231,21 @@ void rm_options_frame(void)
   s_row[0].label = tgr_addr32(s_label[0]);
   s_row[1].label = tgr_addr32(s_label[1]);
   sprintf(s_label[3], "View Distance: %s", rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? "Unlimited" : "Original");
+  {
+    int m = s_menus_next >= 0 ? s_menus_next : RM_MENUS_OWN;
 #if TGR_REGION_JPN
-  sprintf(s_label[4], "Menus: TGR PAL/Japan");
+    sprintf(s_label[4], "Menus: %s", m == RM_MENUS_BR ? "Boss Rally" : m == RM_MENUS_TGR ? "TGR USA" : "TGR PAL/Japan");
 #else
-  sprintf(s_label[4], "Menus: TGR (USA)");
+    sprintf(s_label[4], "Menus: %s", m == RM_MENUS_BR ? "Boss Rally" : m == RM_MENUS_TGR ? "TGR (USA)" : "TGR (PAL/Japan)");
 #endif
+    s_row[4].icon = m == RM_MENUS_BR ? s_crt : s_n64;
+  }
   s_row[2].label = tgr_addr32(s_label[2]);
   s_row[3].label = tgr_addr32(s_label[3]);
   s_row[4].label = tgr_addr32(s_label[4]);
   s_row[0].icon = wide ? s_wide : s_crt;
   s_row[1].icon = pc ? s_crt : s_n64;
   s_row[3].icon = rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? s_course : s_coursecut;
-  s_row[4].icon = s_n64;
 }
 
 /* 1 for one of our rows */
@@ -243,28 +254,45 @@ int rm_options_ours(int row)
   return row >= RM_FIRST && row < RM_FIRST + RM_ROWS;
 }
 
+/* leaving the screen: the Menus chosen on it, if not this game's, in front
+ * (until the player is back, to the main menu the screen leaves for) */
+static void menus_leave(void)
+{
+  int next = s_menus_next;
+
+  s_menus_next = -1;
+  if (next < 0 || next == RM_MENUS_OWN) {
+    return;
+  }
+  rm_option_set(RM_OPT_MENUS, next);
+  if (next == RM_MENUS_BR) {
+    tgr_menus_away();                   /* Boss Rally's menus, until the player is back */
+  } else {
+    tgr_menus_other(next);              /* the other cartridge's, likewise */
+  }
+}
+
 /* the menu's answer on `row`: ours taken here (-1 back: nothing for the
  * game's switch); else the row's number in the game's own screen.  B (2: the
- * menu backed out) is the screen's whatever the row, and goes to its switch */
+ * menu backed out) is the screen's whatever the row, and goes to its switch,
+ * the Menus chosen taken first */
 int rm_options_row(int result, int row)
 {
+  if (result == 2) {
+    menus_leave();
+  }
   if (rm_options_ours(row) && result != 2) {
     if (result == 1 || result == 3 || result == 4) {
       int o = k_opt[row - RM_FIRST];
       if (o == RM_OPT_MENUS) {
-        /* the next of the three, in front at once: USA, PAL/Japan, Boss
-           Rally (down goes the other way round) */
-#if TGR_REGION_JPN
-        int next = result == 4 ? RM_MENUS_TGR : RM_MENUS_BR;
-#else
-        int next = result == 4 ? RM_MENUS_BR : RM_MENUS_TGR_PAL;
-#endif
-        rm_option_set(o, next);
-        if (next == RM_MENUS_BR) {
-          tgr_menus_away();             /* Boss Rally's menus, until the player is back */
-        } else {
-          tgr_menus_other(next);        /* the other cartridge's, likewise */
+        /* the next of the three, USA, PAL/Japan, Boss Rally (down goes the
+           other way round), shown now and taken on leaving the screen */
+        static const int k_cycle[3] = { RM_MENUS_TGR, RM_MENUS_TGR_PAL, RM_MENUS_BR };
+        int m = s_menus_next >= 0 ? s_menus_next : RM_MENUS_OWN, i;
+        for (i = 0; i < 3 && k_cycle[i] != m; i++) {
         }
+        m = k_cycle[(i + (result == 4 ? 2 : 1)) % 3];
+        s_menus_next = m == RM_MENUS_OWN ? -1 : m;
       } else if (o == RM_OPT_MUSIC) {
         int was = rm_option(o), now = (was + (result == 4 ? RM_MUSIC_COUNT - 1 : 1)) % RM_MUSIC_COUNT;
         rm_option_set(o, now);

@@ -3,12 +3,16 @@
  * "press A"; Remastered's controls are the app's (ports/remastered/platform/
  * controls.h), so each prompt names what the first player has that control on:
  * the key, or the pad button when a pad was the last thing they used.  A
- * button's picture becomes a key cap with that name, the size of the picture;
- * a name too wide for it is drawn in a smaller font.  On the iPhone the prompts
+ * button's picture becomes a button of the cartridge's kind with that name on
+ * it, the size of the picture: round, A blue and B green, lit from the upper
+ * left as its pictures are; a name too wide for it is drawn in a smaller font,
+ * then on a longer button with round ends.  On the iPhone the prompts
  * are touch's: the words at the foot are buttons to tap, a popup's button
  * pictures say TAP (their words are tapped), and a line says tap or swipe. */
 #include "tgr/common.h"
 #include "tgr/image.h"
+#include "tgr/romimage.h"
+#include <math.h>
 
 /* -- declarations -- */
 void BrTextPrint(char *s, int x, int y);
@@ -24,6 +28,8 @@ extern BrImage D_8028D0E0;              /* the B button */
 int rm_bind(int player, int act, int kind);   /* the app's (controls.h) */
 const char *rm_bind_label(int kind, int code, char *buf, int n);
 int tgr_input_prompt_mode(void);        /* si.c: 0 keys, 1 a pad, 2 touch */
+void BrRomImageDraw(BrRomImage *img, int x, int y, int w, int h, int pr, int pg, int pb, int pa, int er, int eg,
+                    int eb, int ea, int mode);
 /* -- end declarations -- */
 
 enum { RM_BIND_KEY, RM_BIND_PAD };
@@ -77,33 +83,138 @@ static TextState save(void)
   return s;
 }
 
-/* a cap's panel in its button's colour, as the cartridge's pictures have them:
- * A blue, B green (measured from its foot-of-screen icons); white names on them */
-static void cap_panel(int act, int x, int y, int w, int h)
+/* ---- the buttons' pictures ------------------------------------------------
+ * The cartridge's A and B (the foot of its menus) are round buttons lit from
+ * the upper left: a dark outline, a rim bright at the top left (1.55 to 1.65
+ * times the face's colour) and dark at the bottom right (0.72), a face
+ * shaded the same way more gently (1.3 by the rim at the top left, 0.78 at
+ * the bottom right), measured from the pictures as the game draws them.  A
+ * button here is drawn the same way at the size asked, with round ends when
+ * it is longer than it is high, as a picture (RGBA 5551, four texels a pixel
+ * of the 320-wide screen) made once a size and colour in the arena's top
+ * (below rmregion.c's names, far above rmoptions.c's icons) and drawn as the
+ * game draws its pictures (BrRomImageDraw). */
+#define RM_CAPS 0x807B0000u
+#define RM_CAPS_END 0x807F0000u           /* (rmregion.c's names) */
+#define CAP_TEX 4
+#define NCAP 16
+
+static const unsigned char k_face[3][3] = {
+  { 0x1e, 0x00, 0x9e },                 /* A: the face's middle, measured */
+  { 0x00, 0x7a, 0x19 },                 /* B */
+  { 0x58, 0x58, 0x60 },                 /* the others: the N64's grey */
+};
+
+typedef struct { int col, w, h; BrRomImage img; } Cap;
+static Cap s_cap[NCAP];
+static int s_ncap;
+static unsigned int s_capat = RM_CAPS;
+
+static unsigned char shade(int c, float k)
 {
-  if (act == 0) {
-    BrBevelPanel(x, y, w, h, 2, 0, 0, 0x20, 0x00, 0x9c);
-  } else if (act == 1) {
-    BrBevelPanel(x, y, w, h, 2, 0, 0, 0x00, 0x77, 0x18);
-  } else {
-    BrBevelPanel(x, y, w, h, 2, 0, 0, 0x50, 0x50, 0x58);
+  float v = c * k;
+  return (unsigned char)(v > 255.0f ? 255 : v < 0.0f ? 0 : v);
+}
+
+/* the picture of a w by h texel button in colour `col` */
+static void cap_make(unsigned char *t, int col, int w, int h)
+{
+  const unsigned char *f = k_face[col];
+  float r0 = h * 0.5f - 0.5f;           /* the outline's outside: the picture's edge, as the cartridge's */
+  float ow = h / 24.0f, rw = h * 0.085f;    /* the outline (a pixel of its 24) and the rim, in from it */
+  float cy = h * 0.5f, cx0 = h * 0.5f, cx1 = w - h * 0.5f;
+  int i, j;
+
+  for (j = 0; j < h; j++) {
+    for (i = 0; i < w; i++) {
+      float px = i + 0.5f, py = j + 0.5f;
+      float qx = px < cx0 ? cx0 : px > cx1 ? cx1 : px;
+      float dx = px - qx, dy = py - cy, r = sqrtf(dx * dx + dy * dy), d = r - r0;
+      float s = r > 0.0f ? (-dx - dy) * 0.70710678f / r : 0.0f;   /* toward the light: 1 the top left */
+      unsigned char c[3];
+      int a = 1, k;
+
+      if (d > 0.0f || d > -ow) {        /* the outline, and outside it (its colour: no light fringe) */
+        c[0] = 3, c[1] = 2, c[2] = 3;
+        a = d <= 0.0f;
+      } else if (d > -(ow + rw)) {      /* the rim */
+        float m = s > 0.0f ? 1.0f + 0.6f * s : 1.0f + 0.28f * s;
+        for (k = 0; k < 3; k++) {
+          c[k] = shade(f[k], m);
+        }
+      } else {                          /* the face: the light the stronger nearer the rim */
+        float e = r / (r0 - ow - rw), m = s > 0.0f ? 1.0f + 0.3f * s * e : 1.0f + 0.22f * s * e;
+        for (k = 0; k < 3; k++) {
+          c[k] = shade(f[k], m);
+        }
+      }
+      {
+        unsigned int v = (c[0] >> 3) << 11 | (c[1] >> 3) << 6 | (c[2] >> 3) << 1 | a;
+        unsigned char *o = t + ((h - 1 - j) * w + i) * 2;   /* (the bottom row first, as BrRomImageDraw has them) */
+        o[0] = (unsigned char)(v >> 8);  /* (big-endian, as the RDP reads RDRAM) */
+        o[1] = (unsigned char)v;
+      }
+    }
   }
 }
 
-/* a key cap for action `act`: a raised panel at x, y, w by h (in the 640-wide
- * coordinates the panels use) and the name on it, in white; its width (at least
- * w: wider when the name needs it, from x) */
+/* the picture for a w by h texel button in colour `col`, made the first time */
+static BrRomImage *cap_image(int col, int w, int h)
+{
+  int i;
+  unsigned int n = (unsigned int)(w * h * 2 + 15) & ~15u;
+  Cap *c;
+
+  for (i = 0; i < s_ncap; i++) {
+    if (s_cap[i].col == col && s_cap[i].w == w && s_cap[i].h == h) {
+      return &s_cap[i].img;
+    }
+  }
+  if (s_ncap == NCAP || s_capat + n > RM_CAPS_END) {   /* (full: begin again) */
+    s_ncap = 0;
+    s_capat = RM_CAPS;
+  }
+  c = &s_cap[s_ncap++];
+  c->col = col;
+  c->w = w;
+  c->h = h;
+  memset(&c->img, 0, sizeof c->img);
+  c->img.data = s_capat;
+  c->img.w = (unsigned short)w;
+  c->img.h = (unsigned short)h;
+  c->img.fmt = 0;                       /* G_IM_FMT_RGBA */
+  c->img.siz = 2;                       /* 16-bit */
+  cap_make(TGR_PTR(unsigned char *, s_capat), col, w, h);
+  s_capat += n;
+  return &c->img;
+}
+
+/* a button for action `act` at x, y, w by h (640-wide, as the panels are) */
+static void cap_panel(int act, int x, int y, int w, int h)
+{
+  int col = act == 0 ? 0 : act == 1 ? 1 : 2;
+  int tw = (w >> 1) * CAP_TEX, th = (h >> 1) * CAP_TEX;
+
+  if (tw < th) {
+    tw = th;
+  }
+  BrRomImageDraw(cap_image(col, tw, th), x >> 1, y >> 1, tw / CAP_TEX, th / CAP_TEX, 0, 0, 0, 0xff, 0, 0, 0, 0xff, 0);
+}
+
+/* a button for action `act` at x, y, w by h (in the 640-wide coordinates the
+ * panels use) and the name on it, in white; its width (at least w: longer when
+ * the name needs it, from x, its round ends kept clear) */
 int rm_keycap(int act, int x, int y, int w, int h)
 {
   TextState s = save();
   const char *name = rm_prompt(act);
   int size = 11, tw;
 
-  while ((tw = BrTextWidth((unsigned char *)name, size)) * 2 + 4 > w && size > 8) {
-    size--;                             /* (a long name: smaller, then a wider cap) */
+  while ((tw = BrTextWidth((unsigned char *)name, size)) * 2 + h * 3 / 10 > w && size > 8) {
+    size--;                             /* (a long name: smaller, then a longer button) */
   }
-  if (tw * 2 + 8 > w) {
-    w = tw * 2 + 8;
+  if (tw * 2 + h * 3 / 10 > w) {        /* (the text kept off the round ends) */
+    w = (tw * 2 + h * 3 / 10 + 1) & ~1;
   }
   cap_panel(act, x, y, w, h);
   D_8028BDC0 = 0;                       /* highlight off */
@@ -112,7 +223,10 @@ int rm_keycap(int act, int x, int y, int w, int h)
   D_8028BDD0 = D_8028BDD4 = D_8028BDD8 = 0xff;
   D_8028BDDC = D_8028BDE0 = D_8028BDE4 = 0xff;
   D_803519D8 = size;
-  BrTextPrint((char *)name, (x + w / 2) >> 1, ((y + h / 2) >> 1) + size / 2 - 3);   /* (y: near the text's foot) */
+  /* (y: near the text's foot; the font's slant puts its centre a pixel right of
+     where it is asked for, so asked a pixel left: on the button's middle, a
+     pixel up and left of it as the cartridge's letters are) */
+  BrTextPrint((char *)name, ((x + w / 2) >> 1) - 1, ((y + h / 2) >> 1) + size / 2 - 2);
   D_8028BDC0 = s.t[0]; D_8028BDC4 = s.t[1]; D_8028BDCC = s.t[2]; D_8028BDD0 = s.t[3];
   D_8028BDD4 = s.t[4]; D_8028BDD8 = s.t[5]; D_8028BDDC = s.t[6]; D_8028BDE0 = s.t[7];
   D_8028BDE4 = s.t[8]; D_803519D8 = s.t[9];

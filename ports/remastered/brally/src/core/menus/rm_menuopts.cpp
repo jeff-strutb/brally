@@ -6,8 +6,9 @@
  * BrPhaseEnterPlaceholder_1004BDC0); it opens this page, built as the game's
  * own options pages are (Game Options, BrExt_1004E830): the wrench in the top
  * left lobe, the title, a row an option in the middle lobe and Back below,
- * and here, in the top right lobe as Options shows the keyboard, Boss
- * Rally's own icon while the Menus row is the one chosen, else the machine
+ * and here, in the top right lobe as Options shows the keyboard, while the
+ * Menus row is the one chosen the icon of the game whose menus it says (Boss
+ * Rally's own, or the N64 for Top Gear Rally's), else the machine
  * whose soundtrack plays: the PC (the app's drawing of one,
  * ports/common/assets/retro_pc.svg) or the N64 (the console Top Gear Rally's
  * options screen turns, drawn from the same point of view), rm_menuicons.c.
@@ -17,11 +18,13 @@
  * Original (coast_icon).
  * Each row says its option and the choice in force; Return or a click on it
  * takes the next choice (Music: Boss Rally, TGR USA, TGR PAL/Japan), at once,
- * both games told (the app's options.c, rm_option_set).  Menus takes Top Gear
- * Rally's, the one that handed over (USA or PAL/Japan): the game's menus wait
- * for races again (race_handoff.c, br_menus_leave) and that Top Gear Rally's
- * come back in front, on its own options screen.  Back returns to Options, as Game
- * Options' does (BrOpt6710).
+ * both games told (the app's options.c, rm_option_set).  Menus chooses
+ * between these menus and Top Gear Rally's, the one that handed over (USA or
+ * PAL/Japan), taken only when the player leaves the page: Back returns to
+ * Options, as Game Options' does (BrOpt6710), and with Top Gear Rally's
+ * chosen the game's menus then wait for races again (race_handoff.c,
+ * br_menus_leave) and that Top Gear Rally's come back in front, on its main
+ * menu.
  *
  * The page's phase lives in a slot of its own; the menus' shutdown frees it
  * with the game's (rm_menuopts_release, BrPhaseShutdown_10048B20). */
@@ -122,6 +125,7 @@ extern "C" const int rm_pcicon_w, rm_pcicon_h, rm_n64icon_w, rm_n64icon_h;
 extern "C" const unsigned short rm_pcicon[], rm_n64icon[];
 extern "C" int rm_menu_ox(void);        /* rm_menuwide.c */
 static BrSurf *s_icon[2];
+static int s_menus_tgr;                 /* Menus says Top Gear Rally's: taken on leaving the page */
 
 #define SPR_COAST 17                    /* Race Setup's picture of Coastline */
 #define COAST_CUT 60                    /* Original's: its columns left of this gone */
@@ -228,7 +232,7 @@ extern "C" int rm_sprite_draw(int i, int x, int y)
     /* the Menus row chosen: the game whose menus these are; else the machine
        whose music plays */
     if (s_row[ROW_MENUS] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_MENUS]))->flags1C & 0x20))
-        s = boss_icon();
+        s = s_menus_tgr ? icon(1) : boss_icon();
     /* the View Distance row chosen: Coastline, as that choice sees it */
     if (s_row[ROW_VIEW] && (*(unsigned int *)&((BrUiCtl_ *)(s_row[ROW_VIEW]))->flags1C & 0x20))
         s = coast_icon(rm_option(RM_OPT_VIEWDIST) == RM_VIEW_ORIGINAL);
@@ -265,7 +269,8 @@ static const char *row_text(int r)
                  rm_option(RM_OPT_VIEWDIST) == RM_VIEW_UNLIMITED ? "UNLIMITED" : "ORIGINAL");
         break;
     default:
-        snprintf(s_text[r], sizeof s_text[r], "MENUS  BOSS RALLY");
+        snprintf(s_text[r], sizeof s_text[r], "MENUS  %s",
+                 !s_menus_tgr ? "BOSS RALLY" : mux_tgr_active_game() == MUX_TGRP ? "TGR PAL/JAPAN" : "TGR USA");
         break;
     }
     return s_text[r];
@@ -307,15 +312,21 @@ static int act_view(RmCtl *)
 
 static int act_menus(RmCtl *)
 {
-    rm_option_set(RM_OPT_MENUS, mux_tgr_active_game() == MUX_TGRP ? RM_MENUS_TGR_PAL : RM_MENUS_TGR);   /* the Top Gear Rally that left */
-    br_menus_leave();
+    s_menus_tgr = !s_menus_tgr;        /* shown now, taken on leaving the page */
+    relabel(ROW_MENUS);
     return 1;
 }
 
-/* Back: to Options, as Game Options' Back (BrOpt6710) */
+/* Back: to Options, as Game Options' Back (BrOpt6710); with Top Gear Rally's
+ * menus chosen, those, the Top Gear Rally that left */
 static int act_back(RmCtl *pCtl)
 {
     RmPhase *ph;
+    if (s_menus_tgr) {
+        s_menus_tgr = 0;
+        rm_option_set(RM_OPT_MENUS, mux_tgr_active_game() == MUX_TGRP ? RM_MENUS_TGR_PAL : RM_MENUS_TGR);
+        br_menus_leave();
+    }
     (*(RmOwnerSub **)&((BrUiCtl_ *)(pCtl))->pOwner)->s7();
     ph = (*(RmPhase **)&g_brPAA29B8);
     if (ph != 0)
@@ -433,4 +444,5 @@ extern "C" void rm_menuopts_release(void)
         s_slot = 0;
     }
     memset(s_row, 0, sizeof s_row);
+    s_menus_tgr = 0;
 }
