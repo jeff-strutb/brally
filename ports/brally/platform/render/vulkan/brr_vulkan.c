@@ -24,7 +24,7 @@
  * refers to it is destroyed once that frame has finished.
  *
  * The window surface is the one OS-specific part: a CAMetalLayer on macOS,
- * an HWND on Windows. Without one (headless) frames are drawn and shots work,
+ * an HWND on Windows, the SDL window on Linux (host/linux makes it). Without one (headless) frames are drawn and shots work,
  * nothing is shown. */
 #if defined(__APPLE__)
 #define VK_USE_PLATFORM_METAL_EXT
@@ -58,6 +58,11 @@ typedef VkResult (VKAPI_PTR *br_create_win32_surface)(VkInstance, const br_win32
                                                      const VkAllocationCallbacks *, VkSurfaceKHR *);
 #define BR_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR ((VkStructureType)1000009000)
 #define BR_KHR_WIN32_SURFACE_EXTENSION_NAME "VK_KHR_win32_surface"
+#elif defined(__linux__)
+/* the Linux host (host/linux): the instance extensions its window's surface
+ * needs (X11's or Wayland's), and the surface, made by SDL */
+int host_linux_vk_extensions(const char *const **names, uint32_t *n);
+int host_linux_vk_surface(void *window, void *instance, void *surface);
 #endif
 
 /* the shader's uniform block, std140: see shaders/glide_u.glsl */
@@ -935,9 +940,11 @@ static int swap_make(void)
     if (caps.maxImageCount && ci.minImageCount > caps.maxImageCount)
         ci.minImageCount = caps.maxImageCount;
     ci.imageExtent = caps.currentExtent;
-    if (ci.imageExtent.width == UINT32_MAX) {
-        ci.imageExtent.width = (uint32_t)s_w * 2;
-        ci.imageExtent.height = (uint32_t)s_h * 2;
+    if (ci.imageExtent.width == UINT32_MAX) {     /* the window says (Wayland): its pixels */
+        int fw = 0, fh = 0;
+        host_window_pixels(&fw, &fh);
+        ci.imageExtent.width = fw > 0 ? (uint32_t)fw : (uint32_t)s_w * 2;
+        ci.imageExtent.height = fh > 0 ? (uint32_t)fh : (uint32_t)s_h * 2;
     }
     ci.imageArrayLayers = 1;
     ci.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -978,6 +985,8 @@ static int surface_make(void)
     si.hinstance = host_win32_instance();
     si.hwnd = host_window_handle();
     return fn && si.hwnd && fn(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
+#elif defined(__linux__)
+    return host_linux_vk_surface(host_window_handle(), s_inst, &s_surface);
 #else
     return 0;
 #endif
@@ -999,7 +1008,7 @@ static int make_instance(void)
     VkInstanceCreateInfo ci = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     VkExtensionProperties ext[64];
     uint32_t n = 64;
-    const char *want[5];
+    const char *want[8];
     uint32_t nw = 0;
     vkEnumerateInstanceExtensionProperties(NULL, &n, ext);
 #if defined(__APPLE__)
@@ -1011,6 +1020,17 @@ static int make_instance(void)
     if (has_ext(ext, n, VK_KHR_SURFACE_EXTENSION_NAME) && has_ext(ext, n, BR_KHR_WIN32_SURFACE_EXTENSION_NAME)) {
         want[nw++] = VK_KHR_SURFACE_EXTENSION_NAME;
         want[nw++] = BR_KHR_WIN32_SURFACE_EXTENSION_NAME;
+    }
+#elif defined(__linux__)
+    {
+        const char *const *hx;
+        uint32_t nh = 0, i, all = 1;
+        if (host_linux_vk_extensions(&hx, &nh) && nh <= 4) {
+            for (i = 0; i < nh; i++)
+                all &= (uint32_t)has_ext(ext, n, hx[i]);
+            for (i = 0; all && i < nh; i++)
+                want[nw++] = hx[i];
+        }
     }
 #endif
     /* a layered implementation (MoltenVK) is listed only when asked for */
@@ -1700,7 +1720,7 @@ void brr_present(void)
     frame_begin();                                  /* a frame with nothing drawn still presents */
     pass_end();
     if (s_surface && !s_offscreen && host_window_visible()) {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
         {                                           /* the swapchain follows the window's pixels */
             int fw, fh;
             host_window_pixels(&fw, &fh);

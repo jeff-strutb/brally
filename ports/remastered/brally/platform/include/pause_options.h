@@ -25,6 +25,8 @@ int  rm_pause_tap(float nx, float ny, int x, int h, int *press);
 void rm_pause_note(int presses);
 int  rm_pause_take(void);
 void rm_fps_frame(int x, int h);    /* each race frame: the frame rate, when shown */
+void rm_pads_race(void);            /* each race frame: the players' controllers, a moment after a change */
+void rm_pads_menu(void);            /* each menu frame: the same, in the menus' lettering */
 
 /* br_gfx.c: a tap at nx, ny (0..1 across the window) in the game's pixels, as
  * a piece of 2D with box b (x0 y0 x1 y1) is placed on the window */

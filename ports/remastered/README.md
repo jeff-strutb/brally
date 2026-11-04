@@ -194,6 +194,23 @@ Reset Car keeps its keys, Reset Car taking its default only where the file has
 not given that key or button to another action. Boss Rally's own screens that read keys (its menus, the
 pause menu) are given the same controls (`race_handoff.c`, `pad_keys`).
 
+**Players' controllers.** The pads are the players' in the order they were
+connected: the first connected that is still there is player 1's, the next
+player 2's, on every host (on a Mac too, where the GameController framework's
+current controller is the one touched last, which would swap two players at a
+press: `host_macos.m`, `pads_in_order`; on Windows and Linux SDL's gamepads,
+`host/sdl/sdl_pads.c`; on the iPhone player 1 is the touch controls and the
+first game controller player 2's). A second pad plugged in is player 2's at
+once. At start-up, and for three seconds whenever a controller comes or goes,
+the top left of the screen says whose is which: PLAYER 1: and the first pad's
+name as its maker gives it (KEYBOARD without one, TOUCH on the iPhone), and
+PLAYER 2: and the second's while there is one (`platform/controls.c`,
+`rm_pad_banner`), on a black strip, in the lettering of whichever screen is up:
+Top Gear Rally's menus (`frameloop.c`), Boss Rally's races under the lap
+counter and its menus (`pause_options.c`). `RM_LOG=1` prints each change and
+when the lines go; on the headless host `BR_PAD_NAMES="A,B"` names two pads and
+`BR_PAD_NAMES_LATER="S:A[,B]"` changes them S seconds in (a check).
+
 **Prompts.** Every button the screens show is the first player's own: the
 foot of a menu and a popup's buttons draw the cartridge's own kind of button
 (round, A blue and B green, lit from the upper left as its pictures are,
@@ -218,7 +235,7 @@ Top Gear Rally's three knock effects there, and a thread runs
 them on the N64: so many hundredths of a second on, so many off. Paused, in a
 replay or the attract demos, in the season's ceremony and out of a race the
 motors are off. The motor is the pad's heavy one at full strength, on or off
-(XInput on Windows, Core Haptics on the Mac and the iPhone); on the iPhone the
+(SDL 3's gamepads on Windows and Linux, Core Haptics on the Mac and the iPhone); on the iPhone the
 touch controls have none, so only a game controller rumbles.
 
 The window opens at 16:9 with Widescreen on and takes any shape the player
@@ -278,7 +295,9 @@ HOST=macos RENDER=metal ports/remastered/link.sh          # build/remastered/mac
 ports/remastered/package_app.sh                           # ... /Top Gear Rally Remastered.app
 CC=ports/brally/tools/wincc.sh HOST=windows RENDER=vulkan ports/remastered/link.sh
                                                           # build/remastered/windows-vulkan/remastered.exe
-HOST=null ports/remastered/link.sh                        # headless (Linux has no window host yet)
+CC=ports/brally/tools/linuxcc.sh HOST=linux RENDER=vulkan ports/remastered/link.sh
+                                                          # build/remastered/linux-vulkan/remastered
+HOST=null ports/remastered/link.sh                        # headless
 ports/remastered/ios/build.sh [--sim] [--install [--device ID]]
                                                           # build/remastered/ios-metal (ios-sim-metal)
 ```

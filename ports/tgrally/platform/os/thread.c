@@ -281,7 +281,7 @@ static void *clock_main(void *v)
  * the count's, 3/4 of the CPU's (initialize.c) */
 void tgr_os_init(void)
 {
-    extern uint64_t tgr_clock_rate;
+    extern unsigned long long tgr_clock_rate;
     tgr_clock_rate = tgr_clock_rate * 3 / 4;
 }
 

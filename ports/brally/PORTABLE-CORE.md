@@ -16,8 +16,8 @@ thin platform layer under it:
 | OS | renderer | status |
 |---|---|---|
 | macOS | Metal (or Vulkan on MoltenVK) | plays |
-| Windows | Vulkan | builds |
-| Linux | Vulkan | not started (a window host is what is missing) |
+| Windows | Vulkan (or OpenGL 3.3) | builds |
+| Linux | Vulkan (or OpenGL 3.3) | builds (host/linux: SDL 3; cross-built from the Mac against the Steam Runtime 3 SDK, `tools/linuxcc.sh`) |
 
 Game logic is built once, for every OS. Each OS supplies only the platform
 backends (window, input, audio out, timing, files, CD audio, renderer).

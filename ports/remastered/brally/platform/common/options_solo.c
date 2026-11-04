@@ -58,3 +58,7 @@ void rm_option_set(int which, int value)
 
 /* the app's close (mux.c): alone, the game's own quit runs (its menus are never the app's) */
 int rm_quit(void) { return 0; }
+
+/* the app's (mux.c): the Top Gear Rally last in use; alone there is none, and
+ * the Remaster Options page names the USA's, as the app does at launch (MUX_TGR) */
+int mux_tgr_active_game(void) { return 0; }

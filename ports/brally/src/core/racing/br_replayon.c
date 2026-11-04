@@ -63,7 +63,7 @@ void BrStore_1003BD40(uint32_t v)
  *     pins the pair to edx:eax -- returning nothing (or just the low
  *     half) leaves VC5 free to pick ecx for the high word, which it does. */
 /* @implements 0x10071F00 glide BrTickAdd_10078C10 */
-int64_t BrTickAdd_10078C10(void)
+long long BrTickAdd_10078C10(void)   /* (br_funcs.h's type: int64_t is long on Linux) */
 {
     int64_t t = g_18ABDE0_64;
 

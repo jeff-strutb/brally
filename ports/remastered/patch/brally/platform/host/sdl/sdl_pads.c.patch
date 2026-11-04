@@ -1,0 +1,23 @@
+--- a/platform/host/sdl/sdl_pads.c
++++ b/platform/host/sdl/sdl_pads.c
+@@ -180,3 +180,20 @@
+     SDL_UnlockMutex(s_m);
+     return r;
+ }
++
++int sdl_pads_name(int n, char *buf, int len)
++{
++    const char *s;
++    int r = 0;
++    if (!s_up || len <= 0)
++        return 0;
++    SDL_LockMutex(s_m);
++    look();
++    if (n >= 0 && n < s_npads) {
++        s = SDL_GetGamepadName(s_pads[n]);
++        snprintf(buf, (size_t)len, "%s", s && *s ? s : "Controller");
++        r = 1;
++    }
++    SDL_UnlockMutex(s_m);
++    return r;
++}

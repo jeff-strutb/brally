@@ -17,7 +17,10 @@
  *             On Windows Boss Rally draws into a child window over the
  *             client area, shown while it is in front (a Vulkan swapchain
  *             owns the window it presents to, an OpenGL context the pixel
- *             format it draws with)
+ *             format it draws with); on Linux each game's Vulkan renderer
+ *             lets its swapchain go when another game comes in front
+ *             (brr_window_release, rdr_window_release) and makes it again
+ *             when its turn comes
  *   sound     one output at the first game's rate (Top Gear Rally's), each
  *             game's mixer added in, the other rate's resampled, a limiter
  *             over the sum.  The music is the Remaster Options' (options.c,
@@ -313,6 +316,26 @@ void *mux_tgr_host_win32_instance(void) { return host_win32_instance(); }
 void *mux_br_host_win32_instance(void)  { return host_win32_instance(); }
 void *mux_tgr_host_win32_window(void)   { return host_win32_window(); }
 void *mux_br_host_win32_window(void)    { return mux_br_host_window_handle(); }
+#endif
+
+#ifdef __linux__
+/* the one window's surface and context for each game's renderer (host/linux) */
+int   host_linux_vk_extensions(const char *const **names, uint32_t *n);
+int   host_linux_vk_surface(void *window, void *instance, void *surface);
+void *host_linux_gl_open(void *window);
+void *host_linux_gl_proc(const char *name);
+void  host_linux_gl_swap(void *window);
+#define MUX_LINUX(g)                                                                                \
+    int mux_##g##_host_linux_vk_extensions(const char *const **names, uint32_t *n)                  \
+    { return host_linux_vk_extensions(names, n); }                                                  \
+    int mux_##g##_host_linux_vk_surface(void *window, void *instance, void *surface)                \
+    { return host_linux_vk_surface(window, instance, surface); }                                    \
+    void *mux_##g##_host_linux_gl_open(void *window) { return host_linux_gl_open(window); }         \
+    void *mux_##g##_host_linux_gl_proc(const char *name) { return host_linux_gl_proc(name); }       \
+    void mux_##g##_host_linux_gl_swap(void *window) { host_linux_gl_swap(window); }
+MUX_LINUX(tgr)
+MUX_LINUX(tgrp)
+MUX_LINUX(br)
 #endif
 
 /* ---- events ----------------------------------------------------------------------- */

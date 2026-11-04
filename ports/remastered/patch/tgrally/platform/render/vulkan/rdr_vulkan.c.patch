@@ -1,6 +1,6 @@
 --- a/platform/render/vulkan/rdr_vulkan.c
 +++ b/platform/render/vulkan/rdr_vulkan.c
-@@ -142,6 +142,7 @@
+@@ -147,6 +147,7 @@
  }
  
  int rdr_covers(void) { return 0; }
@@ -8,7 +8,41 @@
  int rdr_presents(void) { return 1; }
  void rdr_vi(uint32_t ctrl) { s_gamma = (ctrl & 0x08) != 0; }
  
-@@ -1062,10 +1063,10 @@
+@@ -1019,6 +1020,8 @@
+ }
+ 
+ /* ---- the window ---------------------------------------------------------------------------- */
++void rdr_window_release(void);
++
+ static void swap_destroy(void)
+ {
+     uint32_t i;
+@@ -1041,7 +1044,24 @@
+     s_swap_view = NULL;
+     s_swap_fb = NULL;
+     s_nswap = 0;
++}
++
++#ifdef __linux__
++/* Top Gear Rally Remastered on Linux: the window is another game's now, and a
++ * window has one swapchain at a time (Vulkan's rule, which macOS's shared
++ * layer and Windows' child window meet otherwise): this renderer's goes, made
++ * again on its next present in front (gfx/rcp.c's pictures between frames,
++ * which go on while the game waits; the present, whenever it is not in front) */
++void rdr_window_release(void)
++{
++    if (s_swap) {
++        vkDeviceWaitIdle(s_dev);
++        swap_destroy();
++    }
+ }
++#else
++void rdr_window_release(void) {}
++#endif
+ 
+ /* the window's size in pixels (0 x 0 when minimised or there is none) */
+ static void window_size(uint32_t *w, uint32_t *h)
+@@ -1087,10 +1107,10 @@
      /* the game keeps its own time (os/thread.c paces the retraces): a
       * present must not wait for the display when it need not */
      ci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
@@ -23,3 +57,17 @@
      ci.surface = s_surface;
      ci.minImageCount = caps.minImageCount + 1;
      if (caps.maxImageCount && ci.minImageCount > caps.maxImageCount)
+@@ -1416,7 +1436,13 @@
+         vkCmdEndRenderPass(s_cmd);
+         s_in_pass = 0;
+     }
++#ifdef __linux__
++    if (s_swap && !host_window_visible())
++        rdr_window_release();                         /* (Remastered: another game's window now) */
++    if (s_surface && host_window_visible()) {
++#else
+     if (s_surface) {
++#endif
+         window_size(&ww, &wh);
+         if (s_swap && (ww != s_swap_w || wh != s_swap_h))
+             swap_destroy();

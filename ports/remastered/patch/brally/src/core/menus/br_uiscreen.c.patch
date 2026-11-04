@@ -1,14 +1,18 @@
 --- a/src/core/menus/br_uiscreen.c
 +++ b/src/core/menus/br_uiscreen.c
-@@ -204,6 +204,7 @@
+@@ -204,15 +204,19 @@
  }
  
  /* WHAT IT DOES: menu teardown callback: release a resource and invoke the cleanup funcptr. */
++void rm_pads_menu(void);
 +void rm_menu_frame(void);
  /* @implements 0x10041DB0 glide BrMenuCallback41DB0 */
  
  int BrMenuCallback41DB0(void)
-@@ -213,6 +214,7 @@
+ 
+ {
++  rm_pads_menu();           /* Remastered: the players' controllers, a moment after a change (pause_options.c) */
+   BrGlideLfbWrite(DAT_10ac5d84);
                      
                      
    (*(*(funcptr *)&BrGlFlipHook))();

@@ -78,4 +78,15 @@ void rm_player_menu(int player, const unsigned char *dik, const struct host_pad 
  * play those buttons' parts (rmregion.c, race_handoff.c) */
 unsigned rm_player_actions(int player, const unsigned char *dik, const struct host_pad *pad);
 
+/* the players' controllers, on screen at the top left for a moment: at start-up
+ * and for RM_PAD_BANNER_MS after a controller comes or goes.  line[0] is
+ * "PLAYER 1: " and the first player's pad's name (the keyboard's, or touch on the
+ * iPhone, without one), line[1] "PLAYER 2: " and the second's, only while there is
+ * a second pad; upper case, as the games' own text.  The number of lines to draw
+ * now, 0 when none.  Each game draws them in its own text, over its picture: Top
+ * Gear Rally's frame end (drawing/frameloop.c), Boss Rally's race frame
+ * (br_framedrive.c) and its menus (menus/br_uiscreen.c) */
+#define RM_PAD_BANNER_MS 3000
+int rm_pad_banner(char line[2][48]);
+
 #endif

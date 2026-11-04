@@ -148,7 +148,7 @@ int BrX10072580(int a0)
  * never claims a pitch the device refused.  Sound down is a silent 1. */
 /* @implements 0x1006B5F0 glide BrSndChanSetRatio */
 
-int BrSndChanSetRatio(int iSlot, int64_t ratio)
+int BrSndChanSetRatio(int iSlot, long long ratio)   /* (br_funcs.h's type: int64_t is long on Linux) */
 
 {
   if ((((*(int32_t *)&DAT_100b51e4[1036]) != 0) && (BrSndPDS != 0)) && (BrSndG18290FC != 0)) {

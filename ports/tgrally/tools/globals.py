@@ -67,6 +67,8 @@ SYSROOT = []
 if 'apple' in NATIVE:
     SYSROOT = ['-isysroot', os.environ.get('SDKROOT') or subprocess.run(
         ['xcrun', '--show-sdk-path'], capture_output=True, text=True).stdout.strip()]
+elif 'linux' in NATIVE:      # (ports/brally/tools/linuxcc.sh's sysroot)
+    SYSROOT = ['--sysroot', os.environ.get('LINUX_SYSROOT') or os.path.join(ROOT, 'tools/toolchains/linux/sysroot')]
 
 # the region's image: .text, .data/.rodata, .bss (tools/tgrally/region.py)
 TEXT_LO, DATA_LO, BSS_LO, BSS_HI = R.BASE, R.DATA_VA, R.BSS_S, R.BSS_E

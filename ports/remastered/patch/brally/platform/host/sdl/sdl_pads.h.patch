@@ -1,0 +1,11 @@
+--- a/platform/host/sdl/sdl_pads.h
++++ b/platform/host/sdl/sdl_pads.h
+@@ -16,5 +16,8 @@
+ /* the n-th's rumble: whether it has a motor, and its heavy one on or off */
+ int  sdl_pads_can_rumble(int n);
+ int  sdl_pads_rumble(int n, int on);
++/* the n-th's name, as SDL gives it (Remastered: the players' controllers on
++ * screen); 0 when there is none */
++int  sdl_pads_name(int n, char *buf, int len);
+ 
+ #endif

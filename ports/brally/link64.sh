@@ -2,7 +2,8 @@
 # Link the portable 64-bit game: the core (build64.sh), the data lifted from
 # the user's BRGlide.dll (tools/brally/datalift.py, generated under build/), and
 # the platform layer for one host.
-#   env: HOST   null (default, headless) | macos | windows | lib (a static library,
+#   env: HOST   null (default, headless) | macos | windows | linux (SDL 3: needs
+#               CC=ports/brally/tools/linuxcc.sh) | lib (a static library,
 #               libbrally.a, for an app that brings its own host; main() is br_main)
 #        RENDER null (default) | metal (metal needs HOST=macos) | vulkan (Vulkan headers
 #               and loader: VULKAN_SDK, else Homebrew's; on macOS it runs on MoltenVK) |
@@ -15,7 +16,9 @@
 #               (datalift.py --runtime-image; what the release builder ships)
 #        CC     a compiler targeting Windows (x86_64-w64-mingw32) builds
 #               brally64.exe: host/win32 replaces host/posix, LDCXX links
-#               (default x86_64-w64-mingw32-g++)
+#               (default x86_64-w64-mingw32-g++); one targeting Linux
+#               (ports/brally/tools/linuxcc.sh) builds the Linux executable,
+#               linked by the same driver as C++, libstdc++ in it
 #        WARN / LDFLAGS64  extra compile / link flags (an ASan build: WARN="-fsanitize=address -fsanitize-recover=address" LDFLAGS64=-fsanitize=address OUT=build/brally/null-asan)
 set -e
 cd "$(dirname "$0")/../.."
@@ -49,12 +52,18 @@ SRCS="$P/common/main.c $P/common/crt.c $P/common/br_os.c $P/common/br_os_window.
       $P/common/win_rsrc.c $P/common/br_in.c $P/common/br_snd.c $P/common/audio.c $P/common/br_net.c $P/common/peersync.c $P/common/script.c $P/common/ear.c $P/common/cdaudio.c $P/common/br_gfx.c $P/common/data_image.c \
       $P/render/$RENDER/brr_$RENDER.* $P/render/brr_png.c"
 # the OS layer under the host: Windows or POSIX
+LINUX=
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OSHOST=$P/host/win32/host_win32.c; EXE=.exe
                      LDCXX=${LDCXX:-x86_64-w64-mingw32-g++}; OSLIBS="-static -lws2_32";;
+  *linux*)           OSHOST=$P/host/posix/host_posix.c; EXE=; LINUX=1
+                     LDCXX=${LDCXX:-$CC --driver-mode=g++}
+                     OSLIBS="-static-libstdc++ -static-libgcc -lpthread -ldl -lm -lrt";;
   *)                 OSHOST=$P/host/posix/host_posix.c; EXE=; LDCXX=${LDCXX:-clang++}; OSLIBS=;;
 esac
-if [ "$RENDER" = vulkan ]; then
+if [ "$RENDER" = vulkan ] && [ -n "$LINUX" ]; then
+  VKLIBS=-lvulkan                                 # the sysroot's headers and loader (libvulkan.so.1)
+elif [ "$RENDER" = vulkan ]; then
   VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
   PFLAGS="$PFLAGS -I$VK/include"
   VKLIBS="-L$VK/lib -lvulkan"
@@ -70,14 +79,25 @@ fi
 if [ "$RENDER" = gl ]; then
   # the context (WGL, CGL), built with the system's headers as the OS layer is
   SRCS="$SRCS $P/render/gl/gl_ctx.c"
-  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; else GLLIBS="-framework OpenGL"; fi
+  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; elif [ -n "$LINUX" ]; then GLLIBS=; else GLLIBS="-framework OpenGL"; fi
 fi
 case "$HOST" in
   null)  SRCS="$SRCS $OSHOST $P/host/null/host_null.c"
          # Metal without a window: frames drawn offscreen (shots, measurements)
          [ "$RENDER" = metal ] && LIBS="-framework Metal -framework QuartzCore -framework ImageIO -framework CoreGraphics -framework Foundation";;
-  windows) SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c"
-           LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
+  windows) TW=tools/toolchains/windows
+           [ -f $TW/sdl3/lib/libSDL3.a ] || { echo "link64: no SDL 3 for the controllers (tools/toolchains/windows/setup.sh)" >&2; exit 2; }
+           SRCS="$SRCS $OSHOST $P/host/windows/host_windows.c $P/host/sdl/sdl_pads.c"
+           HOSTFLAGS="-I$P/host/sdl -I$TW/sdl3/include"
+           LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -mwindows \
+                 $TW/sdl3/lib/libSDL3.a -lkernel32 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lversion -luuid -ladvapi32 -lsetupapi -lshell32 -ldinput8";;
+  linux) [ -n "$LINUX" ] || { echo "link64: HOST=linux needs CC=ports/brally/tools/linuxcc.sh" >&2; exit 2; }
+         TL=tools/toolchains/linux; SL=$TL/sysroot/usr/lib/x86_64-linux-gnu
+         [ -f $TL/sdl3/lib/libSDL3.a ] || { echo "link64: no SDL 3 (tools/toolchains/linux/setup.sh)" >&2; exit 2; }
+         SRCS="$SRCS $OSHOST $P/host/linux/host_linux.c $P/host/sdl/sdl_pads.c"
+         HOSTFLAGS="-I$P/host/sdl -I$TL/sdl3/include"
+         case "$RENDER" in vulkan) HOSTFLAGS="$HOSTFLAGS -DHOST_LINUX_VULKAN";; gl) HOSTFLAGS="$HOSTFLAGS -DHOST_LINUX_GL";; esac
+         LIBS="$TL/sdl3/lib/libSDL3.a $SL/libFLAC.a $SL/libogg.a";;
   lib)   SRCS="$SRCS $OSHOST";;                  # the app's own
   macos) SRCS="$SRCS $OSHOST $P/host/macos/host_macos.m"
          LIBS="-framework Cocoa -framework Metal -framework QuartzCore -framework ImageIO -framework AudioToolbox -framework GameController";;
@@ -87,9 +107,10 @@ for s in $SRCS; do
   o=$OUT/plat/$(basename "$s").o
   case "$s" in *.m) X="-x objective-c -fobjc-arc";; *) X="";; esac
   [ "$HOST" = lib ] && [ "$s" = $P/common/main.c ] && X=-Dmain=br_main   # the app owns main()
-  if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ] || [ "$s" = "$P/render/gl/gl_ctx.c" ]; then
+  if [ "$s" = "$OSHOST" ] || [ "$s" = "$P/host/windows/host_windows.c" ] || [ "$s" = "$P/host/linux/host_linux.c" ] ||
+     [ "$s" = "$P/host/sdl/sdl_pads.c" ] || [ "$s" = "$P/render/gl/gl_ctx.c" ]; then
     # the OS layer sees the real system headers, not the game's Win32 surface
-    $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$P/host -c "$s" -o "$o"
+    $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$P/host $HOSTFLAGS -c "$s" -o "$o"
   else
     $CC $PFLAGS $X -c "$s" -o "$o"
   fi
@@ -102,7 +123,8 @@ fi
 if [ "$HOST" = lib ]; then
   rm -f $OUT/libbrally.a
   # the target's own archiver (the system one cannot index Windows objects)
-  case "$EXE" in .exe) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
+  # (the Mac's own ar indexes Mach-O only; mingw-w64's reads ELF too)
+  case "$EXE$LINUX" in .exe|1) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
   $AR rcs $OUT/libbrally.a $OUT/obj/*.o $OBJS
   echo "archived $OUT/libbrally.a (host $HOST, renderer $RENDER)"
   exit 0

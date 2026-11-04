@@ -55,6 +55,19 @@ int host_window_open(int width, int height, const char *title)
 
 void host_window_close(void) {}
 void *host_window_handle(void) { return NULL; }
+#ifdef __linux__
+/* (host/linux's: no window, so no Vulkan surface or OpenGL context; the
+ * renderers draw offscreen) */
+int host_linux_vk_extensions(const char *const **names, uint32_t *n) { *names = NULL; *n = 0; return 0; }
+int host_linux_vk_surface(void *window, void *instance, void *surface)
+{
+    (void)window; (void)instance; (void)surface;
+    return 0;
+}
+void *host_linux_gl_open(void *window) { (void)window; return NULL; }
+void *host_linux_gl_proc(const char *name) { (void)name; return NULL; }
+void host_linux_gl_swap(void *window) { (void)window; }
+#endif
 void host_window_pixels(int *w, int *h) { *w = *h = 0; }
 int host_window_visible(void) { return 0; }
 void host_window_lock_aspect(int lock) { (void)lock; }

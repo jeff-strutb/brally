@@ -28,20 +28,41 @@
  @end
  
  @implementation BrWindowDelegate
-@@ -611,50 +617,170 @@
-  * GameController.framework; the current one, else the first with a full
-  * gamepad profile. One plugged in while the game runs is picked up at the
-  * next read. */
+@@ -608,53 +614,195 @@
+ 
+ /* ---- game controllers ------------------------------------------------------------- */
+ /* any controller macOS knows (Xbox, PlayStation, MFi, Switch Pro) through
+- * GameController.framework; the current one, else the first with a full
+- * gamepad profile. One plugged in while the game runs is picked up at the
+- * next read. */
++ * GameController.framework, with a full gamepad profile, in the order they were
++ * connected (Remastered: the first is player 1's, the second player 2's, as
++ * host/windows and host/linux count them; not macOS's current controller, the
++ * one touched last, which would swap two players at a press). One plugged in
++ * while the game runs is picked up at the next read, one unplugged dropped. */
++static NSMutableArray<GCController *> *s_order;
++
++static NSArray<GCController *> *pads_in_order(void)
++{
++    @synchronized([GCController class]) {
++        NSArray<GCController *> *now = GCController.controllers;
++        NSUInteger i;
++        if (!s_order)
++            s_order = [NSMutableArray new];
++        for (i = s_order.count; i-- > 0;)
++            if (![now containsObject:s_order[i]] || !s_order[i].extendedGamepad)
++                [s_order removeObjectAtIndex:i];
++        for (GCController *k in now)
++            if (k.extendedGamepad && ![s_order containsObject:k])
++                [s_order addObject:k];
++        return [s_order copy];
++    }
++}
++
 +static GCController *pad_first(void)
 +{
-+    GCController *c = GCController.current;
-+    if (!c || !c.extendedGamepad)
-+        for (GCController *k in GCController.controllers)
-+            if (k.extendedGamepad) {
-+                c = k;
-+                break;
-+            }
-+    return c && c.extendedGamepad ? c : nil;
++    NSArray<GCController *> *o = pads_in_order();
++    return o.count ? o[0] : nil;
 +}
 +
 +static int pad_fill(GCController *c, host_pad *o)
@@ -99,7 +120,25 @@
 -                    break;
 -                }
 -        if (!c || !(g = c.extendedGamepad))
--            return 0;
++        return pad_fill(pad_first(), o);
++    }
++}
++
++/* the i-th, in the order they were connected (pads_in_order) */
++static GCController *pad_nth(int i)
++{
++    NSArray<GCController *> *o = pads_in_order();
++    return i >= 0 && (NSUInteger)i < o.count ? o[(NSUInteger)i] : nil;
++}
++
++/* the i-th's name, as its maker gives it ("DualSense Wireless Controller") */
++int host_pad_name_n(int i, char *buf, int n)
++{
++    @autoreleasepool {
++        GCController *c = pad_nth(i);
++        NSString *s;
++        if (!c || n <= 0)
+             return 0;
 -        o->x = g.leftThumbstick.xAxis.value;
 -        o->y = -g.leftThumbstick.yAxis.value;
 -        o->z = g.rightTrigger.value - g.leftTrigger.value;
@@ -126,22 +165,10 @@
 -        if (u || r || d || l) {
 -            static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
 -            o->pov = ang[r - l + 1][u - d + 1];
-+        return pad_fill(pad_first(), o);
++        s = c.vendorName.length ? c.vendorName : @"Controller";
++        snprintf(buf, (size_t)n, "%s", s.UTF8String ? s.UTF8String : "Controller");
++        return 1;
 +    }
-+}
-+
-+/* the i-th: the first as above, then the others with a full gamepad profile in
-+ * the order macOS lists them */
-+static GCController *pad_nth(int i)
-+{
-+    GCController *first = pad_first();
-+    int n = 0;
-+    if (i == 0)
-+        return first;
-+    for (GCController *k in GCController.controllers)
-+        if (k.extendedGamepad && k != first && ++n == i)
-+            return k;
-+    return nil;
 +}
 +
 +int host_pad_read_n(int i, host_pad *o)

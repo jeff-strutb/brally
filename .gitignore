@@ -46,6 +46,13 @@ work/
 tools/toolchains/*
 !tools/toolchains/wine.sh
 !tools/toolchains/msvc5-compat/
+# the Linux and Windows SDL/sysroot recipes (what they stage stays out)
+!tools/toolchains/linux/
+tools/toolchains/linux/*
+!tools/toolchains/linux/setup.sh
+!tools/toolchains/windows/
+tools/toolchains/windows/*
+!tools/toolchains/windows/setup.sh
 
 # The Remastered assets (sources, concepts, decimated and packed models,
 # textures, audio) are large and stay out of git. Their recipes are tracked:

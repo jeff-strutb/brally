@@ -291,3 +291,65 @@ void rm_player_menu(int player, const unsigned char *dik, const host_pad *pad, u
     *sx = x;
     *sy = y;
 }
+
+/* ---- the players' controllers on screen (controls.h) ------------------------------ */
+/* the host's name for pad i as host_pad_read_n counts them (host/macos, host/windows,
+ * host/linux, host/null, the iPhone app's): 1 and its name, 0 when there is none */
+int host_pad_name_n(int i, char *buf, int n);
+
+/* the host's name for pad i, upper case and cut to fit after "PLAYER n: " */
+static int pad_name(int i, char *out, int n)
+{
+    char raw[64];
+    int k;
+    if (!host_pad_name_n(i, raw, sizeof raw) || !raw[0])
+        return 0;
+    for (k = 0; raw[k] && k < n - 1; k++)
+        out[k] = (raw[k] >= 'a' && raw[k] <= 'z') ? (char)(raw[k] - 32)
+                 : (raw[k] >= 0x20 && raw[k] < 0x7F) ? raw[k] : ' ';
+    out[k] = 0;
+    return 1;
+}
+
+int rm_pad_banner(char line[2][48])
+{
+    static host_mutex *m;
+    static char shown[2][48];
+    static int nshown = -1;            /* (none yet: the first look starts the banner) */
+    static uint64_t looked, until;
+    uint64_t now = host_ticks_ns() / 1000000u;
+    int n;
+    if (!m)
+        m = host_mutex_new();         /* (the first caller is the window's thread, alone) */
+    host_mutex_lock(m);
+    if (nshown < 0 || now - looked >= 250) {   /* the pads looked at four times a second */
+        char p1[30], p2[30], l[2][48];
+        int k = 0;
+        looked = now;
+        snprintf(l[0], sizeof l[0], "PLAYER 1: %s", pad_name(0, p1, sizeof p1) ? p1 : "KEYBOARD");
+        k = 1;
+        if (pad_name(1, p2, sizeof p2)) {
+            snprintf(l[1], sizeof l[1], "PLAYER 2: %s", p2);
+            k = 2;
+        }
+        if (k != nshown || strcmp(l[0], shown[0]) || (k == 2 && strcmp(l[1], shown[1]))) {
+            memcpy(shown, l, sizeof shown);
+            nshown = k;
+            until = now + RM_PAD_BANNER_MS;
+            if (getenv("RM_LOG"))      /* (a check: each change, and when its lines go) */
+                fprintf(stderr, "remastered: controllers at %llu ms: %s%s%s\n", (unsigned long long)now, l[0],
+                        k == 2 ? "; " : "", k == 2 ? l[1] : "");
+        }
+    }
+    n = now < until ? nshown : 0;
+    {
+        static int was;
+        if (was && !n && getenv("RM_LOG"))
+            fprintf(stderr, "remastered: controllers hidden at %llu ms\n", (unsigned long long)now);
+        was = n;
+    }
+    if (n)
+        memcpy(line, shown, sizeof shown);
+    host_mutex_unlock(m);
+    return n;
+}

@@ -23,6 +23,8 @@
 #include "br_addr32.h"
 #include "br_coretypes.h"
 #include "slice3_41.h"     /* BrDriverCar, g_aBrRaceCar */
+#include "slice3_39.h"     /* BrTextBox: the menus' text */
+#include "br_surf.h"       /* BrSurf: the menu's picture */
 #include "br_race.h"
 #include "br_bits.h"       /* BrBitLatch */
 #include "pause_options.h"
@@ -299,4 +301,54 @@ void rm_fps_frame(int x, int h)
     BrSet_10019270();
     BrSetGlobal_ABB30(ROW);
     BrTextDraw(buf, x, h - 8);
+}
+
+/* ---- the players' controllers on screen (the app's controls.h, rm_pad_banner) ------ */
+int rm_pad_banner(char line[2][48]);
+
+/* each race frame, once over every view: in the race's text, at the screen's top
+ * left, under the lap counter (br_hudlappos.c: size 15, left-aligned, 16 in, its
+ * baseline at 20); a text's y is its baseline */
+void rm_pads_race(void)
+{
+    char l[2][48];
+    int n = rm_pad_banner(l), i;
+    if (!n)
+        return;
+    BrTextFlag358Clear();
+    BrSub_10019280();              /* left-aligned (BrSet_10019270 centres) */
+    BrSetGlobal_ABB30(0xF);
+    for (i = 0; i < n; i++)
+        BrTextDraw(l[i], 16, 44 + i * 18);
+}
+
+/* each menu frame, before it goes to the screen (menus/br_uiscreen.c): in the
+ * menus' own lettering (the first sprite font, as a text box draws it) into the
+ * menu's picture, at its top left (the whole width with Widescreen on), on a
+ * black strip as wide as the longer line: a long name reaches the page's title
+ * at the top centre, which the strip covers while the lines are up */
+void rm_pads_menu(void)
+{
+    static BrTextBox box;
+    BrSurf *sf = (BrSurf *)DAT_10ac5d84;
+    char l[2][48];
+    int n = rm_pad_banner(l), i, w = 0, x, y;
+    if (!n || !sf || !sf->pPix)
+        return;
+    BrTextBoxInit(&box);           /* (kind 1: the menus' white lettering) */
+    for (i = 0; i < n; i++) {
+        memset(box.sz, 0, sizeof box.sz);
+        strncpy(box.sz, l[i], sizeof box.sz - 1);
+        BrTextBoxMeasureA(&box);
+        if (box.width > w)
+            w = box.width;
+    }
+    for (y = 4; y < 8 + n * 16 + 2 && y < sf->cy; y++)
+        for (x = 2; x < 8 + w + 6 && x < sf->cx; x++)
+            sf->pPix[(size_t)y * (size_t)sf->cx + (size_t)x] = 0;
+    for (i = 0; i < n; i++) {
+        memset(box.sz, 0, sizeof box.sz);
+        strncpy(box.sz, l[i], sizeof box.sz - 1);
+        BrSprFontDrawAt_100541B0(&box, 8.0f, (float)(8 + i * 16));
+    }
 }

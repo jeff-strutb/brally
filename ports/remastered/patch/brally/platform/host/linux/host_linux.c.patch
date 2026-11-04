@@ -1,0 +1,42 @@
+--- a/platform/host/linux/host_linux.c
++++ b/platform/host/linux/host_linux.c
+@@ -237,7 +237,7 @@
+ /* ---- the window ----------------------------------------------------------------- */
+ static SDL_Window *s_win;
+ static int s_w = 640, s_h = 480;      /* the size the game asked for: the mouse's units */
+-static int s_buttons;                  /* the mouse buttons held: 1 the left */
++static int s_buttons;                  /* the mouse buttons held: 1 the left, 2 the right (Remastered: the paint shop's B) */
+ 
+ int host_window_open(int width, int height, const char *title)
+ {
+@@ -428,11 +428,12 @@
+         break;
+     case SDL_EVENT_MOUSE_BUTTON_DOWN:
+     case SDL_EVENT_MOUSE_BUTTON_UP:
+-        if (ev->button.button == SDL_BUTTON_LEFT) {
+-            if (ev->type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+-                s_buttons |= 1;
++        if (ev->button.button == SDL_BUTTON_LEFT || ev->button.button == SDL_BUTTON_RIGHT) {
++            int b = ev->button.button == SDL_BUTTON_LEFT ? 1 : 2;
++            if (ev->type == SDL_EVENT_MOUSE_BUTTON_DOWN)
++                s_buttons |= b;
+             else
+-                s_buttons &= ~1;
++                s_buttons &= ~b;
+             mouse_event(ev->button.x, ev->button.y);
+         }
+         break;
+@@ -652,3 +653,13 @@
+ 
+ /* ---- game controllers: SDL's gamepads (host/sdl/sdl_pads.c) ------------------------ */
+ int host_pad_read(host_pad *o) { return sdl_pads_read(0, o); }
++
++/* Remastered: the n-th controller (0: the first), and its rumble: the N64
++ * Rumble Pak's one motor, on or off at one strength, as the pad's heavy
++ * low-frequency motor at full (sdl_pads.c) */
++int host_pad_read_n(int n, host_pad *o) { return sdl_pads_read(n, o); }
++int host_pad_can_rumble(int n) { return sdl_pads_can_rumble(n); }
++int host_pad_rumble(int n, int on) { return sdl_pads_rumble(n, on); }
++/* Remastered: the n-th controller's name, as SDL gives it ("PS5 Controller",
++ * "Steam Deck") */
++int host_pad_name_n(int n, char *buf, int len) { return sdl_pads_name(n, buf, len); }

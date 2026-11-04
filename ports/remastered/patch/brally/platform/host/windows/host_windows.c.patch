@@ -1,6 +1,6 @@
 --- a/platform/host/windows/host_windows.c
 +++ b/platform/host/windows/host_windows.c
-@@ -307,13 +307,15 @@
+@@ -312,13 +312,15 @@
      case WM_MOUSEMOVE:
      case WM_LBUTTONDOWN:
      case WM_LBUTTONUP:
@@ -19,60 +19,17 @@
              ReleaseCapture();
          return 0;
      case WM_SETFOCUS:
-@@ -721,7 +723,8 @@
- }
+@@ -727,3 +729,13 @@
  
- /* ---- game controllers: XInput -------------------------------------------------- */
--int host_pad_read(host_pad *o)
-+/* the n-th connected XInput pad (0: the first) */
-+int host_pad_read_n(int n, host_pad *o)
- {
-     XINPUT_STATE st;
-     const XINPUT_GAMEPAD *g;
-@@ -731,7 +734,7 @@
-     memset(o, 0, sizeof *o);
-     o->pov = -1;
-     for (i = 0; i < XUSER_MAX_COUNT; i++)
--        if (XInputGetState(i, &st) == ERROR_SUCCESS)
-+        if (XInputGetState(i, &st) == ERROR_SUCCESS && n-- == 0)
-             break;
-     if (i == XUSER_MAX_COUNT)
-         return 0;
-@@ -769,3 +772,37 @@
-     }
-     return 1;
- }
+ /* ---- game controllers: SDL's gamepads (host/sdl/sdl_pads.c) ------------------------ */
+ int host_pad_read(host_pad *o) { return sdl_pads_read(0, o); }
 +
-+int host_pad_read(host_pad *o) { return host_pad_read_n(0, o); }
-+
-+/* the n-th connected pad's rumble (as host_pad_read_n counts them): the N64
++/* Remastered: the n-th controller (0: the first), and its rumble: the N64
 + * Rumble Pak's one motor, on or off at one strength, as the pad's heavy
-+ * low-frequency motor at full */
-+static int pad_user(int n)
-+{
-+    XINPUT_STATE st;
-+    DWORD i;
-+    for (i = 0; i < XUSER_MAX_COUNT; i++)
-+        if (XInputGetState(i, &st) == ERROR_SUCCESS && n-- == 0)
-+            return (int)i;
-+    return -1;
-+}
-+
-+int host_pad_can_rumble(int n)
-+{
-+    XINPUT_CAPABILITIES caps;
-+    int u = pad_user(n);
-+    return u >= 0 && XInputGetCapabilities((DWORD)u, 0, &caps) == ERROR_SUCCESS &&
-+           caps.Vibration.wLeftMotorSpeed != 0;
-+}
-+
-+int host_pad_rumble(int n, int on)
-+{
-+    XINPUT_VIBRATION v;
-+    int u = pad_user(n);
-+    if (u < 0)
-+        return 0;
-+    v.wLeftMotorSpeed = on ? 65535 : 0;
-+    v.wRightMotorSpeed = 0;
-+    return XInputSetState((DWORD)u, &v) == ERROR_SUCCESS;
-+}
++ * low-frequency motor at full (sdl_pads.c) */
++int host_pad_read_n(int n, host_pad *o) { return sdl_pads_read(n, o); }
++int host_pad_can_rumble(int n) { return sdl_pads_can_rumble(n); }
++int host_pad_rumble(int n, int on) { return sdl_pads_rumble(n, on); }
++/* Remastered: the n-th controller's name, as SDL gives it ("PS5 Controller",
++ * "Steam Deck") */
++int host_pad_name_n(int n, char *buf, int len) { return sdl_pads_name(n, buf, len); }

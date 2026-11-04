@@ -15,7 +15,10 @@
  *   sound     WASAPI, shared mode, 32-bit float, on its own thread
  *   music     Media Foundation's source reader (FLAC is built in from
  *             Windows 10 on), resampled to the mixer's rate
- *   pads      XInput's first controller
+ *   pads      every game controller SDL 3 knows (host/sdl/sdl_pads.c, SDL
+ *             for the controllers alone, read on a thread of its own):
+ *             Xbox, PlayStation, Switch and plain USB pads, the first one
+ *             connected that is still there
  *   Alt+Enter full screen: the window without its frame over its monitor
  *
  * Directories (environment, else the defaults):
@@ -36,13 +39,13 @@
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include <shlobj.h>
-#include <xinput.h>
 #include <cpuid.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "host.h"
+#include "sdl_pads.h"
 
 static char s_cd[MAX_PATH], s_game[MAX_PATH], s_save[MAX_PATH], s_music[MAX_PATH];
 static const char *s_app_dir = "Boss Rally 64", *s_app_title = "Boss Rally";
@@ -177,6 +180,7 @@ void host_init(int argc, char **argv)
         snprintf(s_music, sizeof s_music, "%s\\music\\cd", here);
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
     MFStartup(MF_VERSION, MFSTARTUP_LITE);
+    sdl_pads_init(1);
 }
 
 void host_shutdown(void)
@@ -184,6 +188,7 @@ void host_shutdown(void)
     host_audio_close();
     host_window_close();
     MFShutdown();
+    sdl_pads_quit();
 }
 
 const char *host_game_dir(void) { return s_game; }
@@ -720,52 +725,5 @@ void host_stream_close(host_stream *s)
     }
 }
 
-/* ---- game controllers: XInput -------------------------------------------------- */
-int host_pad_read(host_pad *o)
-{
-    XINPUT_STATE st;
-    const XINPUT_GAMEPAD *g;
-    unsigned b = 0;
-    int u, r, d, l;
-    DWORD i;
-    memset(o, 0, sizeof *o);
-    o->pov = -1;
-    for (i = 0; i < XUSER_MAX_COUNT; i++)
-        if (XInputGetState(i, &st) == ERROR_SUCCESS)
-            break;
-    if (i == XUSER_MAX_COUNT)
-        return 0;
-    g = &st.Gamepad;
-    o->x = g->sThumbLX / 32767.0f;
-    o->y = -g->sThumbLY / 32767.0f;
-    if (o->x < -1) o->x = -1;
-    if (o->y < -1) o->y = -1;
-    o->z = (g->bRightTrigger - g->bLeftTrigger) / 255.0f;
-    o->rx = g->sThumbRX / 32767.0f;
-    o->ry = -g->sThumbRY / 32767.0f;
-    if (o->rx < -1) o->rx = -1;
-    if (o->ry < -1) o->ry = -1;
-    if (g->wButtons & XINPUT_GAMEPAD_A) b |= 1u << 0;
-    if (g->wButtons & XINPUT_GAMEPAD_B) b |= 1u << 1;
-    if (g->wButtons & XINPUT_GAMEPAD_X) b |= 1u << 2;
-    if (g->wButtons & XINPUT_GAMEPAD_Y) b |= 1u << 3;
-    if (g->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) b |= 1u << 4;
-    if (g->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER) b |= 1u << 5;
-    if (g->wButtons & XINPUT_GAMEPAD_BACK) b |= 1u << 6;
-    if (g->wButtons & XINPUT_GAMEPAD_START) b |= 1u << 7;
-    if (g->wButtons & XINPUT_GAMEPAD_LEFT_THUMB) b |= 1u << 8;
-    if (g->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB) b |= 1u << 9;
-    if (g->bLeftTrigger > 127) b |= 1u << 10;
-    if (g->bRightTrigger > 127) b |= 1u << 11;
-    u = (g->wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
-    r = (g->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) != 0;
-    d = (g->wButtons & XINPUT_GAMEPAD_DPAD_DOWN) != 0;
-    l = (g->wButtons & XINPUT_GAMEPAD_DPAD_LEFT) != 0;
-    b |= (unsigned)u << 12 | (unsigned)r << 13 | (unsigned)d << 14 | (unsigned)l << 15;
-    o->buttons = b;
-    if (u || r || d || l) {
-        static const int ang[3][3] = { { 22500, 27000, 31500 }, { 18000, -1, 0 }, { 13500, 9000, 4500 } };
-        o->pov = ang[r - l + 1][u - d + 1];
-    }
-    return 1;
-}
+/* ---- game controllers: SDL's gamepads (host/sdl/sdl_pads.c) ------------------------ */
+int host_pad_read(host_pad *o) { return sdl_pads_read(0, o); }

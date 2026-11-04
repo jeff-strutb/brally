@@ -18,7 +18,7 @@
  * destroyed once that frame has finished.
  *
  * The window surface is the one OS-specific part: an HWND on Windows, the
- * host's CAMetalLayer on macOS. Without a window (headless) frames are drawn
+ * host's CAMetalLayer on macOS, the SDL window on Linux (host/linux makes it). Without a window (headless) frames are drawn
  * and read back for screenshots, nothing is shown. */
 #if defined(__APPLE__)
 #define VK_USE_PLATFORM_METAL_EXT
@@ -48,6 +48,11 @@ typedef VkResult (VKAPI_PTR *tgr_create_win32_surface)(VkInstance, const tgr_win
                                                       const VkAllocationCallbacks *, VkSurfaceKHR *);
 #define TGR_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR ((VkStructureType)1000009000)
 #define TGR_KHR_WIN32_SURFACE_EXTENSION_NAME "VK_KHR_win32_surface"
+#elif defined(__linux__)
+/* the Linux host (host/linux): the instance extensions its window's surface
+ * needs (X11's or Wayland's), and the surface, made by SDL */
+int host_linux_vk_extensions(const char *const **names, uint32_t *n);
+int host_linux_vk_surface(void *window, void *instance, void *surface);
 #endif
 
 /* ---- the draw's state: shaders/rcp_u.glsl, std140 -------------------------------------- */
@@ -739,7 +744,7 @@ static int make_instance(void)
     VkInstanceCreateInfo ci = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     VkExtensionProperties ext[64];
     uint32_t n = 64;
-    const char *want[5];
+    const char *want[8];
     uint32_t nw = 0;
     vkEnumerateInstanceExtensionProperties(NULL, &n, ext);
 #if defined(__APPLE__)
@@ -751,6 +756,17 @@ static int make_instance(void)
     if (has_ext(ext, n, VK_KHR_SURFACE_EXTENSION_NAME) && has_ext(ext, n, TGR_KHR_WIN32_SURFACE_EXTENSION_NAME)) {
         want[nw++] = VK_KHR_SURFACE_EXTENSION_NAME;
         want[nw++] = TGR_KHR_WIN32_SURFACE_EXTENSION_NAME;
+    }
+#elif defined(__linux__)
+    {
+        const char *const *hx;
+        uint32_t nh = 0, i, all = 1;
+        if (host_linux_vk_extensions(&hx, &nh) && nh <= 4) {
+            for (i = 0; i < nh; i++)
+                all &= (uint32_t)has_ext(ext, n, hx[i]);
+            for (i = 0; all && i < nh; i++)
+                want[nw++] = hx[i];
+        }
     }
 #endif
     if (has_ext(ext, n, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {   /* MoltenVK is listed only if asked */
@@ -788,6 +804,8 @@ static int make_surface(void)
         si.hwnd = s_window;
         return fn && fn(s_inst, &si, NULL, &s_surface) == VK_SUCCESS;
     }
+#elif defined(__linux__)
+    return host_linux_vk_surface(s_window, s_inst, &s_surface);
 #else
     return 0;
 #endif
@@ -1032,8 +1050,15 @@ static void window_size(uint32_t *w, uint32_t *h)
     *w = *h = 0;
     if (!s_surface || vkGetPhysicalDeviceSurfaceCapabilitiesKHR(s_phys, s_surface, &caps) != VK_SUCCESS)
         return;
-    *w = caps.currentExtent.width == UINT32_MAX ? (uint32_t)s_fb_w * 2 : caps.currentExtent.width;
-    *h = caps.currentExtent.height == UINT32_MAX ? (uint32_t)s_fb_h * 2 : caps.currentExtent.height;
+    if (caps.currentExtent.width == UINT32_MAX) {     /* the window says (Wayland): its pixels */
+        int fw = 0, fh = 0;
+        host_window_pixels(&fw, &fh);
+        *w = fw > 0 ? (uint32_t)fw : (uint32_t)s_fb_w * 2;
+        *h = fh > 0 ? (uint32_t)fh : (uint32_t)s_fb_h * 2;
+        return;
+    }
+    *w = caps.currentExtent.width;
+    *h = caps.currentExtent.height;
 }
 
 static int swap_make(void)

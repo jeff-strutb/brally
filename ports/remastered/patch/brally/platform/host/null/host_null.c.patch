@@ -1,6 +1,6 @@
 --- a/platform/host/null/host_null.c
 +++ b/platform/host/null/host_null.c
-@@ -98,6 +98,24 @@
+@@ -111,6 +111,49 @@
      p->pov = -1;
      return 0;
  }
@@ -11,6 +11,31 @@
 +}
 +/* no pads, so no rumble; BR_RUMBLE_LOG=1 (a check) has two that rumble, each
 + * change of their motors on stderr with the time in milliseconds */
++/* no pads, so no names; BR_PAD_NAMES="A,B" (a check) has them, the first pad's
++ * and the second's, for the players' controllers on screen (controls.c), and
++ * BR_PAD_NAMES_LATER="S:A[,B]" others from S seconds after the first look */
++int host_pad_name_n(int i, char *buf, int n)
++{
++    static uint64_t t0;
++    const char *e = getenv("BR_PAD_NAMES"), *l = getenv("BR_PAD_NAMES_LATER"), *c;
++    int k = 0;
++    if (!t0)
++        t0 = host_ticks_ns();
++    if (l && strchr(l, ':') && (host_ticks_ns() - t0) / 1000000000u >= (uint64_t)atoi(l))
++        e = strchr(l, ':') + 1;
++    if (!e || i < 0 || n <= 0)
++        return 0;
++    for (; i > 0 && e; i--)
++        e = (c = strchr(e, ',')) ? c + 1 : NULL;
++    if (!e || !*e || *e == ',')
++        return 0;
++    while (e[k] && e[k] != ',' && k < n - 1) {
++        buf[k] = e[k];
++        k++;
++    }
++    buf[k] = 0;
++    return 1;
++}
 +int host_pad_can_rumble(int i)
 +{
 +    return getenv("BR_RUMBLE_LOG") && i >= 0 && i < 2;

@@ -142,8 +142,8 @@
 +        }
 +    }
 +    return r;
- }
- 
++}
++
 +static void put_tris(const RdrState *st, const RdrVtx *v, int n)
 +{
 +    Rec *r;
@@ -484,8 +484,8 @@
 +    s_race = 0;
 +    s_kx = s_ky = 1;
 +    s_mirror_ok = 0;
-+}
-+
+ }
+ 
  static void frame_open(void)
  {
      if (!s_frame_open) {
@@ -509,8 +509,8 @@
      }
 -    rdr_triangles(&st, out, 3);
 +    put_tris(&st, out, 3);
- }
- 
++}
++
 +/* ---- Top Gear Rally Remastered: pictures between the game's frames ----------------------- *
 + * The menus run 60 frames a second (drawing/frameloop.c); the screen may take more.  Each
 + * frame's display list is kept (its address: the game builds the next in the other half of
@@ -609,8 +609,8 @@
 +    *y0 = mixf(q[1], *y0, s_tw_k);
 +    *x1 = mixf(q[2], *x1, s_tw_k);
 +    *y1 = mixf(q[3], *y1, s_tw_k);
-+}
-+
+ }
+ 
 +static void tw_rect(float *x0, float *y0, float *x1, float *y1) { tw_quad(0, x0, y0, x1, y1); }
 +
  /* ---- the display list ----------------------------------------------------------------- */
@@ -717,7 +717,7 @@
      run(dl);
      if (getenv("TGR_RAMDUMP")) {                      /* FILE@FRAME: game memory and the segments, once */
          static int done;
-@@ -1320,5 +1895,57 @@
+@@ -1320,5 +1895,72 @@
      if (s_frame_open) {
          frame_end();
          s_frame_open = 0;
@@ -743,11 +743,26 @@
 + * race, the other game's menus) */
 +int tgr_tween_render_thread(void) { return t_render; }   /* (a check: os/thread.c) */
 +
++#ifdef __linux__
++/* the renderer's swapchain let go (render/vulkan); none for the others */
++__attribute__((weak)) void rdr_window_release(void) {}
++int host_window_visible(void);          /* (host.h: the game in front's window to see) */
++#endif
++
 +int tgr_tween_present(void)
 +{
 +    const TwFrame *a = &s_tw[s_tw_new ^ 1], *b = &s_tw[s_tw_new];
 +    uint64_t now = host_ticks_ns();
 +    float k = 1.0f;
++#ifdef __linux__
++    /* another game in front (a race, the other menus): the window is its, and a
++       window has one swapchain at a time; called each retrace while this game
++       waits, on its renderer's thread under the renderer's lock (os/thread.c) */
++    if (!g_tgr.headless && !host_window_visible()) {
++        rdr_window_release();
++        return 0;
++    }
++#endif
 +    if (!tween_on() || (!t_render && !rdr_any_thread()) || !b->valid || now - b->t > 250000000ull)
 +        return 0;
 +    if (now - s_last_present < 4166666ull && now - b->t > 1000000ull)

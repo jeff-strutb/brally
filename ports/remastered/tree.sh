@@ -29,7 +29,7 @@ op=$1; ROOT=$2
 case "$ROOT" in /*) ;; *) ROOT=$REPO/$ROOT;; esac
 GAMES="brally tgrally"
 # never saved
-skip() { case "$1" in */__pycache__/*|*.pyc|*/.DS_Store|.DS_Store) return 0;; esac; return 1; }
+skip() { case "$1" in */__pycache__/*|*.pyc|*/.DS_Store|.DS_Store|*.orig|*.rej) return 0;; esac; return 1; }
 
 make_tree() {
     mkdir -p "$ROOT/ports" "$ROOT/build/brally"
@@ -91,8 +91,13 @@ save_into() {
 
 case "$op" in
 make)
-    make_tree;;
+    # (a tree whose making stopped, a patch not applying, is no tree to save:
+    # saving it would drop every patch not yet applied)
+    rm -f "$ROOT/.tree-made"
+    make_tree
+    touch "$ROOT/.tree-made";;
 save|check)
+    [ -f "$ROOT/.tree-made" ] || { echo "tree: $ROOT was not made whole (tree.sh make); not saving from it" >&2; exit 1; }
     tmp=$(mktemp -d)
     save_into "$tmp"
     changed=0

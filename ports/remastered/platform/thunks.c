@@ -52,6 +52,15 @@ FWD(int, host_pad_rumble, (int i, int on), (i, on))
 FWD(void *, host_macos_metal_layer, (void), ())
 FWDV(host_macos_layer_fit, (int *w, int *h), (w, h))
 #endif
+#ifdef __linux__
+/* the window's Vulkan surface and OpenGL context (host/linux; host/null's say
+ * none), for the renderers */
+FWD(int, host_linux_vk_extensions, (const char *const **names, uint32_t *n), (names, n))
+FWD(int, host_linux_vk_surface, (void *window, void *instance, void *surface), (window, instance, surface))
+FWD(void *, host_linux_gl_open, (void *window), (window))
+FWD(void *, host_linux_gl_proc, (const char *name), (name))
+FWDV(host_linux_gl_swap, (void *window), (window))
+#endif
 #ifdef _WIN32
 /* the module and window (host/windows), for the Vulkan renderers */
 FWD(void *, host_win32_instance, (void), ())

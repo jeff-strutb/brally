@@ -2,14 +2,16 @@
 # Link Top Gear Rally: the core (build.sh), the symbol table and arena
 # generated from the source (tools/globals.py), the platform layer, and one
 # host (shared with the Boss Rally port: ports/brally/platform/host).
-#   env: HOST    null (default, headless) | macos | windows | lib (a static library,
+#   env: HOST    null (default, headless) | macos | windows | linux (SDL 3: needs
+#                CC=ports/brally/tools/linuxcc.sh) | lib (a static library,
 #                libtgrally.a, for an app that brings its own host; main() is tgr_main)
 #        RENDER  null (default) | soft (deprecated: the CPU reference the renderers
 #                are checked against) | metal (needs HOST=macos) | vulkan (Windows; on
 #                macOS through MoltenVK: VULKAN_SDK, else Homebrew's) | gl (OpenGL 3.3, the
 #                fallback for a PC without Vulkan; offscreen on macOS, for checks)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
-#                tgrally.exe: host/win32 replaces host/posix
+#                tgrally.exe: host/win32 replaces host/posix; one aimed at Linux
+#                (ports/brally/tools/linuxcc.sh) the Linux executable
 #        OUT     build directory (default build/tgrally/HOST-RENDER, -eur or -jpn added)
 #        TGR_REGION usa (default) | eur | jpn: the cartridge it is built from
 #        TGR_ROM your cartridge's ROM (default reference/tgrally/Top Gear Rally (USA).z64):
@@ -59,10 +61,14 @@ fi
 SRCS="$P/os/addr.c $P/os/romdata.c $P/os/lift.c $P/os/thread.c $P/os/checkrun.c $P/os/io.c $P/os/si.c $P/os/main.c $P/os/trace.c $P/os/sha1.c \
       $P/audio/mixer.c $P/audio/out.c $P/gfx/gfx.c $P/gfx/rcp.c $P/libc/xprintf.c $P/libc/bstring.c \
       ports/brally/platform/render/brr_png.c"
-# the OS layer under the host: Windows or POSIX
+# the OS layer under the host: Windows or POSIX (Linux: POSIX)
+LINUX=
 case "$TGR_TARGET" in
   *mingw*|*windows*) OSHOST=$H/win32/host_win32.c; EXE=.exe; LD=${LD_TGR:-x86_64-w64-mingw32-gcc}
                      OSLIBS="-static -lws2_32"; ZLIB=;;
+  *linux*)          OSHOST=$H/posix/host_posix.c; EXE=; LD=$CC; LINUX=1
+                     TL=tools/toolchains/linux; SL=$TL/sysroot/usr/lib/x86_64-linux-gnu
+                     OSLIBS="-static-libgcc -lpthread -ldl -lm -lrt"; ZLIB=$SL/libz.a;;
   *)                 OSHOST=$H/posix/host_posix.c; EXE=; LD=$CC; OSLIBS=; ZLIB=-lz;;
 esac
 SRCS="$SRCS $OSHOST"
@@ -75,7 +81,9 @@ case "$RENDER" in
   *) echo "link: unknown RENDER $RENDER" >&2; exit 2;;
 esac
 VKLIBS=
-if [ "$RENDER" = vulkan ]; then
+if [ "$RENDER" = vulkan ] && [ -n "$LINUX" ]; then
+  VKLIBS=-lvulkan                                 # the sysroot's headers and loader (libvulkan.so.1)
+elif [ "$RENDER" = vulkan ]; then
   VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
   PFLAGS="$PFLAGS -I$VK/include"
   if [ -n "$EXE" ]; then
@@ -91,16 +99,26 @@ if [ "$RENDER" = vulkan ]; then
 fi
 GLLIBS=
 if [ "$RENDER" = gl ]; then
-  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; else GLLIBS="-framework OpenGL"; fi
+  if [ -n "$EXE" ]; then GLLIBS="-lopengl32 -lgdi32"; elif [ -n "$LINUX" ]; then GLLIBS=; else GLLIBS="-framework OpenGL"; fi
 fi
 LIBS="$ZLIB"
 case "$HOST" in
   null)  SRCS="$SRCS $H/null/host_null.c";;
   macos) SRCS="$SRCS $H/macos/host_macos.m"
          LIBS="$LIBS -framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework QuartzCore -framework Metal -framework AVFoundation";;
+  linux) [ -n "$LINUX" ] || { echo "link: HOST=linux needs CC=ports/brally/tools/linuxcc.sh" >&2; exit 2; }
+         [ -f $TL/sdl3/lib/libSDL3.a ] || { echo "link: no SDL 3 (tools/toolchains/linux/setup.sh)" >&2; exit 2; }
+         SRCS="$SRCS $H/linux/host_linux.c $H/sdl/sdl_pads.c"
+         HOSTFLAGS="-I$H/sdl -I$TL/sdl3/include"
+         case "$RENDER" in vulkan) HOSTFLAGS="$HOSTFLAGS -DHOST_LINUX_VULKAN";; gl) HOSTFLAGS="$HOSTFLAGS -DHOST_LINUX_GL";; esac
+         LIBS="$LIBS $TL/sdl3/lib/libSDL3.a $SL/libFLAC.a $SL/libogg.a";;
   lib)   ;;                                    # the app's own
-  windows) SRCS="$SRCS $H/windows/host_windows.c"
-           LIBS="$LIBS -lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
+  windows) TW=tools/toolchains/windows
+           [ -f $TW/sdl3/lib/libSDL3.a ] || { echo "link: no SDL 3 for the controllers (tools/toolchains/windows/setup.sh)" >&2; exit 2; }
+           SRCS="$SRCS $H/windows/host_windows.c $H/sdl/sdl_pads.c"
+           HOSTFLAGS="-I$H/sdl -I$TW/sdl3/include"
+           LIBS="$LIBS -lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -mwindows \
+                 $TW/sdl3/lib/libSDL3.a -lkernel32 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lversion -luuid -ladvapi32 -lsetupapi -lshell32 -ldinput8";;
   *) echo "link: unknown HOST $HOST" >&2; exit 2;;
 esac
 OBJS=
@@ -108,9 +126,10 @@ for s in $SRCS; do
   o=$OUT/plat/$(echo "$s" | sed 's#/#__#g').o
   case "$s" in */render/metal/*) XF=-fobjc-arc;; *) XF=;; esac   # the Metal renderer is ARC
   [ "$HOST" = lib ] && [ "$s" = $P/os/main.c ] && XF=-Dmain=tgr_main   # the app owns main()
-  if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ] || [ "$s" = ports/brally/platform/render/gl/gl_ctx.c ]; then
+  if [ "$s" = "$OSHOST" ] || [ "$s" = "$H/windows/host_windows.c" ] || [ "$s" = "$H/linux/host_linux.c" ] ||
+     [ "$s" = "$H/sdl/sdl_pads.c" ] || [ "$s" = ports/brally/platform/render/gl/gl_ctx.c ]; then
     # the OS layer sees the real system headers, not the game's
-    $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H -c "$s" -o "$o"
+    $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H $HOSTFLAGS -c "$s" -o "$o"
   else
     $CC -c $PFLAGS $XF "$s" -o "$o"
   fi
@@ -125,7 +144,8 @@ fi
 if [ "$HOST" = lib ]; then
   rm -f $OUT/libtgrally.a
   # the target's own archiver (the system one cannot index Windows objects)
-  case "$EXE" in .exe) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
+  # (the Mac's own ar indexes Mach-O only; mingw-w64's reads ELF too)
+  case "$EXE$LINUX" in .exe|1) AR=${AR:-x86_64-w64-mingw32-ar};; *) AR=${AR:-ar};; esac
   $AR rcs $OUT/libtgrally.a $CORE $OUT/plat/tgr_syms.o $OUT/plat/arena.o $BLOB $OBJS
   echo "archived $OUT/libtgrally.a (host $HOST, renderer $RENDER)"
   exit 0

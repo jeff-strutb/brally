@@ -8,18 +8,20 @@
 #               linked into one object with its own thunks to the host
 #               (platform/thunks.c) and only its entry points global: the two
 #               share some hundred function names
-#   the host:   one real host under both (host/macos, host/windows, host/null, or
-#               the iPhone app's Swift: ios/Sources), shared out by platform/mux.c;
+#   the host:   one real host under both (host/macos, host/windows, host/linux,
+#               host/null, or the iPhone app's Swift: ios/Sources), shared out by platform/mux.c;
 #               platform/main.c is the process
 #
-#   env: HOST    null (default, headless: Linux has no window host yet) | macos | windows |
+#   env: HOST    null (default, headless) | macos | windows | linux (SDL 3:
+#                CC=ports/brally/tools/linuxcc.sh) |
 #                ios (libgames.a for the iPhone app, ios/build.sh: CC=ports/remastered/ios/cc.sh;
 #                main() is rm_main, run on a thread of the app's)
 #        RENDER  null (default) | metal (HOST=macos) | vulkan | gl (OpenGL 3.3: Windows'
 #                fallback for a PC without Vulkan; offscreen on macOS, for checks) |
 #                soft (deprecated: the CPU reference the renderers are checked against)
 #        CC      a compiler aimed at Windows (ports/brally/tools/wincc.sh) links
-#                "Top Gear Rally Remastered.exe"
+#                "Top Gear Rally Remastered.exe"; one aimed at Linux
+#                (ports/brally/tools/linuxcc.sh) the Linux executable
 #        OUT     build directory (default build/remastered/HOST-RENDER)
 #        TGR_ROM Top Gear Rally's ROM, built in (ports/tgrally/link.sh)
 #        DLL     Boss Rally's BRGlide.dll, its data built in (ports/brally/link64.sh)
@@ -33,15 +35,18 @@ CC=${CC:-clang}
 R=ports/remastered/platform
 T=$OUT/tree                           # the two ports as Remastered builds them (tree.sh)
 H=$T/ports/brally/platform/host
+LINUX=
 case "$($CC -dumpmachine 2>/dev/null)" in
   *mingw*|*windows*) OS=windows;;
   *apple*|*darwin*)  OS=macos;;
+  *linux*)           OS=elf; LINUX=1;;
   *)                 OS=elf;;
 esac
 case "$HOST" in
   null) ;;
   macos) [ $OS = macos ] || { echo "link: HOST=macos needs a compiler for macOS" >&2; exit 2; };;
   windows) [ $OS = windows ] || { echo "link: HOST=windows needs CC=ports/brally/tools/wincc.sh" >&2; exit 2; };;
+  linux) [ -n "$LINUX" ] || { echo "link: HOST=linux needs CC=ports/brally/tools/linuxcc.sh" >&2; exit 2; };;
   ios) [ $OS = macos ] || { echo "link: HOST=ios needs CC=ports/remastered/ios/cc.sh" >&2; exit 2; };;
   *) echo "link: unknown HOST $HOST" >&2; exit 2;;
 esac
@@ -77,7 +82,8 @@ lump() {   # lump NAME LIB ENGINE SYMBOLS...
     name=$1; lib=$(pwd)/$2; eng=$3; shift 3
     d=$OUT/$name.x
     rm -rf $d && mkdir -p $d
-    case $OS in windows) (cd $d && x86_64-w64-mingw32-ar x "$lib");; *) (cd $d && ar x "$lib");; esac
+    # (Linux: mingw-w64's binutils read ELF too, the Mac's own only Mach-O)
+    case $OS$LINUX in windows|elf1) (cd $d && x86_64-w64-mingw32-ar x "$lib");; *) (cd $d && ar x "$lib");; esac
     $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall -I$H $XFLAGS -DENGINE=$eng -c $R/thunks.c -o $d/zz_mux_thunks.o
     for s in "$@"; do echo "$PFX$s"; done > $OUT/$name.exp
     case $OS in
@@ -85,8 +91,12 @@ lump() {   # lump NAME LIB ENGINE SYMBOLS...
       windows) x86_64-w64-mingw32-ld -r -o $OUT/$name.o $d/*.o
                # (clang's address-significance table: a link drops it, ld -r keeps it as a section)
                x86_64-w64-mingw32-objcopy --remove-section=.llvm_addrsig --keep-global-symbols=$OUT/$name.exp $OUT/$name.o;;
-      elf)     ${LD_R:-ld} -r -o $OUT/$name.o $d/*.o
-               ${OBJCOPY:-objcopy} --keep-global-symbols=$OUT/$name.exp $OUT/$name.o;;
+      elf)     if [ -n "$LINUX" ]; then      # (from the Mac: LLVM's linker, mingw-w64's objcopy, which reads ELF)
+                 LD_R=${LD_R:-$(command -v ld.lld || echo /opt/homebrew/opt/lld/bin/ld.lld)}
+                 OBJCOPY=${OBJCOPY:-x86_64-w64-mingw32-objcopy}
+               fi
+               ${LD_R:-ld} -r -o $OUT/$name.o $d/*.o
+               ${OBJCOPY:-objcopy} --remove-section=.llvm_addrsig --keep-global-symbols=$OUT/$name.exp $OUT/$name.o;;
     esac
     rm -rf $d
 }
@@ -106,7 +116,12 @@ SRCS="$R/mux.c $R/main.c $R/options.c $R/controls.c"
 case $OS in
   windows) SRCS="$SRCS $H/win32/host_win32.c"; EXE=.exe; LDXX=${LDCXX:-x86_64-w64-mingw32-g++}
            OSLIBS="-static -lws2_32";;
-  *)       SRCS="$SRCS $H/posix/host_posix.c"; EXE=; LDXX=${LDCXX:-clang++}; OSLIBS="-lz -lpthread";;
+  *)       SRCS="$SRCS $H/posix/host_posix.c"; EXE=; LDXX=${LDCXX:-clang++}; OSLIBS="-lz -lpthread"
+           if [ -n "$LINUX" ]; then         # (libstdc++, libgcc and zlib in it; the rest the system's)
+             TL=tools/toolchains/linux; SL=$TL/sysroot/usr/lib/x86_64-linux-gnu
+             LDXX=${LDCXX:-$CC --driver-mode=g++}
+             OSLIBS="$SL/libz.a -static-libstdc++ -static-libgcc -lpthread -ldl -lm -lrt"
+           fi;;
 esac
 LIBS=
 case "$HOST" in
@@ -116,8 +131,14 @@ case "$HOST" in
   ios)     ;;                                  # the app's Swift (ios/Sources)
   macos)   SRCS="$SRCS $H/macos/host_macos.m"
            LIBS="-framework Cocoa -framework AudioToolbox -framework CoreAudio -framework GameController -framework CoreHaptics -framework QuartzCore -framework Metal -weak_framework MetalFX -framework ImageIO -framework AVFoundation";;
-  windows) SRCS="$SRCS $H/windows/host_windows.c"
-           LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -lxinput9_1_0 -mwindows";;
+  windows) TW=tools/toolchains/windows
+           [ -f $TW/sdl3/lib/libSDL3.a ] || { echo "link: no SDL 3 for the controllers (tools/toolchains/windows/setup.sh)" >&2; exit 2; }
+           SRCS="$SRCS $H/windows/host_windows.c $H/sdl/sdl_pads.c"
+           LIBS="-lgdi32 -luser32 -lshell32 -lole32 -luuid -lmfplat -lmfreadwrite -lmfuuid -mwindows \
+                 $TW/sdl3/lib/libSDL3.a -lkernel32 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lversion -luuid -ladvapi32 -lsetupapi -lshell32 -ldinput8";;
+  linux)   [ -f $TL/sdl3/lib/libSDL3.a ] || { echo "link: no SDL 3 (tools/toolchains/linux/setup.sh)" >&2; exit 2; }
+           SRCS="$SRCS $H/linux/host_linux.c $H/sdl/sdl_pads.c"
+           LIBS="$TL/sdl3/lib/libSDL3.a $SL/libFLAC.a $SL/libogg.a";;
 esac
 VKLIBS=
 if [ "$RENDER" = vulkan ]; then
@@ -129,13 +150,15 @@ if [ "$RENDER" = vulkan ]; then
         grep -o 'vk[A-Z][A-Za-z0-9]*(' | tr -d '(' | sort -u; } > $OUT/vulkan-1.def
     x86_64-w64-mingw32-dlltool -d $OUT/vulkan-1.def -l $OUT/libvulkan-1.a
     VKLIBS="-L$OUT -lvulkan-1"
+  elif [ -n "$LINUX" ]; then
+    VKLIBS=-lvulkan                   # the sysroot's loader (libvulkan.so.1)
   else
     VK=${VULKAN_SDK:-$(brew --prefix 2>/dev/null)}
     VKLIBS="-L$VK/lib -lvulkan"
   fi
 fi
 if [ "$RENDER" = gl ]; then   # (each game's renderer finds its functions at run time: gl_ctx.c)
-  if [ $OS = windows ]; then VKLIBS="-lopengl32 -lgdi32"; else VKLIBS="-framework OpenGL"; fi
+  if [ $OS = windows ]; then VKLIBS="-lopengl32 -lgdi32"; elif [ -n "$LINUX" ]; then VKLIBS=; else VKLIBS="-framework OpenGL"; fi
 fi
 OBJS=
 for s in $SRCS; do
@@ -145,6 +168,14 @@ for s in $SRCS; do
   # the host and the multiplexer see the real system headers, not either game's
   # (the options see each game's switches: tgr_view.h, br_flags.h)
   [ "$s" = $R/options.c ] && X="-I$T/ports/tgrally/platform/include -I$T/ports/brally/platform/include"
+  # the Linux host: SDL's headers, and the window made for the renderer; the
+  # controllers (Linux, Windows): SDL's headers
+  if [ "$s" = $H/linux/host_linux.c ] || { [ "$s" = $H/sdl/sdl_pads.c ] && [ -n "$LINUX" ]; }; then
+    X="-I$H/sdl -I$(pwd)/tools/toolchains/linux/sdl3/include"
+    case "$RENDER" in vulkan) X="$X -DHOST_LINUX_VULKAN";; gl) X="$X -DHOST_LINUX_GL";; esac
+  elif [ "$s" = $H/windows/host_windows.c ] || [ "$s" = $H/sdl/sdl_pads.c ]; then
+    X="-I$H/sdl -I$(pwd)/tools/toolchains/windows/sdl3/include"
+  fi
   $CC -O2 ${GFLAG:--g} -std=gnu11 -Wall $X -I$H -I$R $XFLAGS -c "$s" -o "$o"
   OBJS="$OBJS $o"
 done

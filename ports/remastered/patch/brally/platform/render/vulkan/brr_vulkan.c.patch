@@ -1,6 +1,6 @@
 --- a/platform/render/vulkan/brr_vulkan.c
 +++ b/platform/render/vulkan/brr_vulkan.c
-@@ -848,12 +848,14 @@
+@@ -853,12 +853,14 @@
      uint32_t *px;
      int i, j;
      VkBufferImageCopy cp;
@@ -17,3 +17,36 @@
      frame_begin();
      so = ring_take(&s_stage, (VkDeviceSize)w * (VkDeviceSize)h * 4, 16);
      if (so < 0)
+@@ -1707,6 +1709,21 @@
+     memcpy(s_xt_map, t, (size_t)n * 16);
+ }
+ 
++#ifdef __linux__
++/* Top Gear Rally Remastered on Linux: the window is another game's now, and a
++ * window has one swapchain at a time (Vulkan's rule, which macOS's shared
++ * layer and Windows' child window meet otherwise): this renderer's goes, made
++ * again on its next present in front (race_handoff.c, before Boss Rally's
++ * thread waits; brr_present, whenever it is not in front) */
++void brr_window_release(void)
++{
++    if (s_swap) {
++        vkDeviceWaitIdle(s_dev);
++        swap_destroy();
++    }
++}
++#endif
++
+ void brr_present(void)
+ {
+     VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+@@ -1719,6 +1736,10 @@
+ 
+     frame_begin();                                  /* a frame with nothing drawn still presents */
+     pass_end();
++#ifdef __linux__
++    if (s_swap && !host_window_visible())
++        brr_window_release();                       /* (Remastered: another game's window now) */
++#endif
+     if (s_surface && !s_offscreen && host_window_visible()) {
+ #if defined(__APPLE__) || defined(__linux__)
+         {                                           /* the swapchain follows the window's pixels */

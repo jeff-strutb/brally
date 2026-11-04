@@ -15,7 +15,7 @@ int32_t  tgr_tv_type = 0;              /* PAL: Europe's console */
 int32_t  tgr_tv_type = 1;              /* NTSC */
 #endif
 uint32_t tgr_mem_size = 0x400000;      /* 4 MB, no Expansion Pak */
-uint64_t tgr_clock_rate = 62500000;
+unsigned long long tgr_clock_rate = 62500000;
 uint32_t tgr_rom_base = 0xB0000000;
 int32_t  tgr_reset_type = 0;
 

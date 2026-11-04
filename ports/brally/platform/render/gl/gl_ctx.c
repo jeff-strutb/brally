@@ -6,6 +6,8 @@
  *            core one; offscreen, the same on a hidden window of its own
  *   macOS    CGL, a 3.2+ core profile (4.1 in practice), always offscreen: the
  *            Mac draws with Metal, this is for checking the GL renderer there
+ *   Linux    SDL's (GLX or EGL), through the host (host/linux), on its window
+ *            or, offscreen, on a hidden one of its own
  *
  * Anything else: no context (the renderer fails to open). */
 #include <stdio.h>
@@ -139,6 +141,24 @@ int gl_ctx_open(void *win)
 }
 
 void gl_ctx_swap(void) {}
+
+#elif defined(__linux__)
+/* host/linux */
+void *host_linux_gl_open(void *window);
+void *host_linux_gl_proc(const char *name);
+void host_linux_gl_swap(void *window);
+
+static void *s_win;
+
+void *gl_ctx_proc(const char *name) { return host_linux_gl_proc(name); }
+
+int gl_ctx_open(void *win)
+{
+    s_win = win;
+    return host_linux_gl_open(win) != NULL;
+}
+
+void gl_ctx_swap(void) { host_linux_gl_swap(s_win); }
 
 #else
 void *gl_ctx_proc(const char *name) { (void)name; return NULL; }

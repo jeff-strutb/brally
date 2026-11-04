@@ -102,7 +102,7 @@
      } else if ((*(int *)&g_BrX06909B4) != 0) {
          x = (aViews->w >> 1) + aViews->x;
          BrPodNop();
-@@ -598,26 +623,32 @@
+@@ -598,26 +623,33 @@
                  DAT_105bc8dc == 3 ? DAT_100a6b64 : DAT_100a6b60, (*(int *)&g_brItemIconCount));
          BrTextDraw(DAT_10396f28, x, y);
          y += 0x14;
@@ -135,6 +135,7 @@
      }
  
 +    rm_fps_frame((aViews->w >> 1) + aViews->x, (*(int *)&g_brRaceCueBase));   /* Remastered: Show FPS */
++    rm_pads_race();                 /* Remastered: the players' controllers, a moment after a change */
 +
      /* Attract mode: the text list, or a credits page once its timer runs. */
      if ((*(int *)&g_brRaceRules.mode) == 4 && g_5bc760 == 2) {

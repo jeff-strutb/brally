@@ -203,6 +203,27 @@ func hostPadReadN(_ i: Int32, _ p: UnsafeMutablePointer<host_pad>) -> Int32 {
     return 1
 }
 
+// the i-th pad's name, counted as host_pad_read_n's: 0 the touch controls ("Touch"),
+// then each game controller's as its maker gives it (the players' controllers on
+// screen: controls.c)
+@_cdecl("host_pad_name_n")
+func hostPadNameN(_ i: Int32, _ buf: UnsafeMutablePointer<CChar>, _ n: Int32) -> Int32 {
+    guard n > 0 else { return 0 }
+    var name: String
+    if i == 0 {
+        name = "Touch"
+    } else {
+        let pads = GCController.controllers().filter { $0.extendedGamepad != nil }
+        guard i >= 1, Int(i) - 1 < pads.count else { return 0 }
+        name = pads[Int(i) - 1].vendorName ?? "Controller"
+        if name.isEmpty { name = "Controller" }
+    }
+    let bytes = Array(name.utf8.prefix(Int(n) - 1))
+    for (k, b) in bytes.enumerated() { buf[k] = CChar(bitPattern: b) }
+    buf[bytes.count] = 0
+    return 1
+}
+
 // ---- the pads' rumble -----------------------------------------------------------------
 // The i-th pad's rumble, counted as host_pad_read_n's (0, the touch controls, has
 // none): the N64 Rumble Pak's one motor, on or off at one strength, as the

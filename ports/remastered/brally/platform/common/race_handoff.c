@@ -62,6 +62,11 @@ host_cond  *host_cond_new(void);
 int         host_cond_wait(host_cond *c, host_mutex *m, uint32_t timeout_ms);
 void        host_cond_broadcast(host_cond *c);
 void plat_script_autopilot(void);       /* script_game.c */
+#ifdef __linux__
+/* the renderer's swapchain let go (render/vulkan: Linux, where a window has one
+   at a time and both games draw in one); none for the others */
+__attribute__((weak)) void brr_window_release(void) {}
+#endif
 void plat_script_autopilot_off(void);
 void plat_script_autopilot_want(int driver, int *want);
 void plat_script_autopilot_keys(const int *want);
@@ -812,6 +817,8 @@ static void race_shots(void)
         if (atoi(c) == s_frames) {
             snprintf(path, sizeof path, "%s/race%05d.png", dir, s_frames);
             brr_shot(path);
+            if (getenv("RM_LOG"))
+                fprintf(stderr, "handoff: shot race frame %d\n", s_frames);
         }
 }
 
@@ -851,6 +858,13 @@ void plat_race_frame(void)
                 host_mutex_unlock(s_m);
                 return;
             }
+#ifdef __linux__
+            if (!s_pending && !s_menus) {   /* the window another game's while this one waits */
+                host_mutex_unlock(s_m);
+                brr_window_release();
+                host_mutex_lock(s_m);
+            }
+#endif
             while (!s_pending && !s_menus)
                 host_cond_wait(s_c, s_m, 0xFFFFFFFFu);
             if (!s_pending) {         /* the app's menus: they run */

@@ -155,7 +155,7 @@ extern "C" {
 /* the game's view of the machine */
 extern int32_t  tgr_tv_type;
 extern uint32_t tgr_mem_size;
-extern uint64_t tgr_clock_rate;
+extern unsigned long long tgr_clock_rate;   /* (the core's u64: uint64_t is unsigned long on Linux) */
 extern uint32_t tgr_rom_base;
 extern int32_t  tgr_reset_type;
 

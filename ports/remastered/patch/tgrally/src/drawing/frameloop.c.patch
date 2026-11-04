@@ -16,7 +16,7 @@
  extern char D_80270840;
  extern int D_802724F0;
  extern char D_803163E0[];
-@@ -947,6 +949,57 @@
+@@ -947,6 +949,102 @@
   * Europe switches to its own 240-line PAL modes after a resolution change,
   * and only while nothing holds the picture blank (a flush, the blank
   * counter, the reset button), and shows the picture through BrVideoUnblank. */
@@ -28,6 +28,7 @@
 +uint64_t host_ticks_ns(void);
 +void BrTextHighlightOff(void);
 +void BrTextAlignCentre(void);
++void BrTextAlignLeft(void);
 +void BrTextSetFont(int font);
 +void BrTextPrint(char *s, int x, int y);
 +extern int D_8028BDC0, D_8028BDC4, D_8028BDC8, D_8028BDCC, D_8028BDD0, D_8028BDD4, D_8028BDD8,
@@ -71,18 +72,63 @@
 +  D_803519D8 = sv[10];
 +}
 +
++/* Top Gear Rally Remastered: the players' controllers (the app's controls.h,
++ * rm_pad_banner) for a moment after a change, at the top left of the picture,
++ * in the menus' small lettering on a black strip as wide as the longer line (a
++ * screen's title runs under it: the season's, the options'), the text state as
++ * the game left it.  A text's y is its bottom; the strip is filled as
++ * BrScreenClear fills (frameblank.c), in the frame buffer's pixels */
++int rm_pad_banner(char line[2][48]);
++int BrTextWidth(unsigned char *s, int size);
++static void rm_pads(void)
++{
++  char l[2][48];
++  int n = rm_pad_banner(l), i, w = 0, sv[11], x1, y1;
++  unsigned short c;
++  if (!n)
++    return;
++  for (i = 0; i < n; i++)
++    if (BrTextWidth((unsigned char *)l[i], 11) > w)
++      w = BrTextWidth((unsigned char *)l[i], 11);
++  x1 = 8 + w + 4 < D_8028AAB0 ? 8 + w + 4 : D_8028AAB0;
++  y1 = 16 + (n - 1) * 10 + 3;
++  c = GPACK_RGBA5551(0, 0, 0, 1);
++  gDPPipeSync(D_8028A858++);
++  gDPSetScissor(D_8028A858++, G_SC_NON_INTERLACE, 0, 0, D_8028AAB0 << D_8028A850, D_8028AAB4 << D_8028A850);
++  gDPSetRenderMode(D_8028A858++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
++  gDPSetCycleType(D_8028A858++, G_CYC_FILL);
++  gDPSetFillColor(D_8028A858++, c | c << 16);
++  gDPFillRectangle(D_8028A858++, 3 << D_8028A850, 4 << D_8028A850, (x1 << D_8028A850) - 1, (y1 << D_8028A850) - 1);
++  gDPPipeSync(D_8028A858++);
++  sv[0] = D_8028BDC0; sv[1] = D_8028BDC4; sv[2] = D_8028BDC8; sv[3] = D_8028BDCC; sv[4] = D_8028BDD0;
++  sv[5] = D_8028BDD4; sv[6] = D_8028BDD8; sv[7] = D_8028BDDC; sv[8] = D_8028BDE0; sv[9] = D_8028BDE4;
++  sv[10] = D_803519D8;
++  gDPPipeSync(D_8028A858++);
++  gDPSetScissor(D_8028A858++, G_SC_NON_INTERLACE, 0, 0, D_8028AAB0 << D_8028A850, D_8028AAB4 << D_8028A850);
++  D_8028BDCC = 0;
++  BrTextHighlightOff();
++  BrTextAlignLeft();
++  BrTextSetFont(11);
++  for (i = 0; i < n; i++)
++    BrTextPrint(l[i], 8, 16 + i * 10);
++  D_8028BDC0 = sv[0]; D_8028BDC4 = sv[1]; D_8028BDC8 = sv[2]; D_8028BDCC = sv[3]; D_8028BDD0 = sv[4];
++  D_8028BDD4 = sv[5]; D_8028BDD8 = sv[6]; D_8028BDDC = sv[7]; D_8028BDE0 = sv[8]; D_8028BDE4 = sv[9];
++  D_803519D8 = sv[10];
++}
++
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -961,6 +1014,7 @@
+@@ -961,6 +1059,8 @@
    int i;
    void *fb;
  
 +  rm_fps();                       /* Remastered: Show FPS */
++  rm_pads();                      /* Remastered: the players' controllers, a moment after a change */
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -1060,7 +1114,16 @@
+@@ -1060,7 +1160,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
      tgr_mq_recv(D_8031A390, 0, 1);
      tgr_video_show(fb);
@@ -100,7 +146,7 @@
      if (tgr_video_shown() != fb) {
        tgr_mq_recv(D_8031A390, 0, 1);
      }
-@@ -1116,6 +1179,7 @@
+@@ -1116,6 +1225,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -108,7 +154,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -1148,15 +1212,18 @@
+@@ -1148,15 +1258,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {
@@ -129,7 +175,7 @@
  }
  
  /* WHAT IT DOES: Set the front end's 3D camera: looking straight into a
-@@ -1187,11 +1254,16 @@
+@@ -1187,11 +1300,16 @@
      D_8028A86C = 1.0;
      D_8028A870 = 500.0f;
    }
