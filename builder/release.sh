@@ -1,7 +1,7 @@
 #!/bin/sh
 # builder/release.sh: build Rally Builder (it builds Boss Rally, Top Gear
-# Rally or Top Gear Rally Remastered) for macOS and Windows and publish both on
-# the repository's GitHub Releases page as vVERSION.
+# Rally or Top Gear Rally Remastered) for macOS, Windows and Linux and publish
+# the three on the repository's GitHub Releases page as vVERSION.
 #
 # VERSION is version.py's: the average of the two decompilations' M2
 # progress, or its RELEASE while that is ahead of M2.
@@ -22,6 +22,7 @@ TAG=v$VERSION
 DIST=build/builder/dist
 MAC=$DIST/RallyBuilder-$VERSION-macOS.zip
 WIN=$DIST/RallyBuilder-$VERSION-Windows.zip
+LIN=$DIST/RallyBuilder-$VERSION-Linux-x86_64.AppImage
 
 if [ -n "$(git status --porcelain -- builder ports)" ]; then
     echo "release: builder/ or ports/ has uncommitted changes; commit them first" >&2
@@ -44,7 +45,7 @@ Rally Builder makes a native build of a game from your own copy of it. Pick one 
 - **Top Gear Rally** (Nintendo 64, 1997), from your cartridge ROM: the USA's, Europe's or Japan's. The build is that cartridge's game.
 - **Top Gear Rally Remastered**, from the USA and Japan ROMs and the CD: Top Gear Rally's menus, seasons and soundtrack, with every race run by Boss Rally's engine on the same tracks.
 
-On a Mac, Boss Rally and Top Gear Rally build for the Mac, and Remastered for the Mac or for the iPhone and iPad; on Windows, each builds for Windows. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5 (a dump that does not match can still be built after a warning), takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
+On a Mac, Boss Rally and Top Gear Rally build for the Mac, and Remastered for the Mac or for the iPhone and iPad; on Windows, each builds for Windows, and on Linux for Linux. The games' data is copyrighted, so the builder does not include it: you provide your dumps, the builder checks them by MD5 (a dump that does not match can still be built after a warning), takes what the game needs from them, and produces a game that runs on its own. The dumps are not needed once the build is done.
 
 The games are the decompilations' own code, compiled natively: Top Gear Rally's is byte-exact to each of its three cartridges, every function, and Boss Rally's behaves exactly as the retail game does, every function, most of them byte-exact too. The version follows that byte-exact (M2) progress, the average over the three cartridges and Boss Rally:
 \`\`\`
@@ -52,9 +53,13 @@ $(cat $NOTES.m2)
 \`\`\`
 
 ### In this release
-- **Remastered, one car, two versions**: Japan's cartridge replaced three cars with its own (Type-RS with Type-PJ, Type-M3 with Type-TR, the Helmet with Type-MN). Each pair is now one car on the car select: left and right step through the cars, and up and down switch the car between the USA's version and Japan's, whichever menus you are in. A line under the car's name says what up or down brings and names your own keys (on the iPhone, swipe up or down); in two-player each player switches their own. The version you last chose stays for the next pair. Boss Rally's own menus do the same on Car Setup: a new Version row under Car says USA or Japan and switches it, and Car steps each pair as one car.
+- **Linux**: Rally Builder now runs on Linux, as an AppImage, and builds all three games for it, drawn with Vulkan or OpenGL 3.3. Controllers are picked up as they are plugged in, and the Steam Deck's own controls are meant to work the same way. The result page's Add to Applications puts the game in your desktop's menu, where Steam's Add a Non-Steam Game finds it, for Game Mode on a Steam Deck. This is the first Linux release: it was built and checked on a Mac and has not yet been run on a Linux machine or a Steam Deck, so expect rough edges and please report what you find. It runs under X11 or Xwayland; there is no native Wayland yet.
+- **Windows, controllers**: PlayStation, Switch Pro, 8BitDo and plain USB pads are now picked up as they are plugged in, not only Xbox ones, and Remastered's rumble works on any of them with a motor.
+- **Remastered, players' controllers on screen**: at start-up, and for three seconds whenever a controller is plugged in or out, the top left of the screen shows PLAYER 1 and PLAYER 2 with each one's controller by name, in the lettering of whichever screen is up. Without a controller player 1 shows KEYBOARD (TOUCH on the iPhone and iPad); the PLAYER 2 line appears with a second controller, which is player 2's at once.
+- **Remastered, player order on the Mac**: fixed: with two controllers on a Mac, a press on player 2's swapped the players. Controllers now belong to the players in the order they were connected, on every system.
 
-### Earlier, in 0.97, 0.96, 0.95 and 0.94
+### Earlier, in 0.98, 0.97, 0.96, 0.95 and 0.94
+- **Remastered, one car, two versions**: Japan's cartridge replaced three cars with its own (Type-RS with Type-PJ, Type-M3 with Type-TR, the Helmet with Type-MN). Each pair is now one car on the car select: left and right step through the cars, and up and down switch the car between the USA's version and Japan's, whichever menus you are in. A line under the car's name says what up or down brings and names your own keys (on the iPhone, swipe up or down); in two-player each player switches their own. The version you last chose stays for the next pair. Boss Rally's own menus do the same on Car Setup: a new Version row under Car says USA or Japan and switches it, and Car steps each pair as one car.
 - **Remastered, the games' boxes**: the Music and Menus choices show the box of the game they pick instead of a monitor or a console: Top Gear Rally's USA box, its Japanese box for PAL/Japan, or Boss Rally's. On Top Gear Rally's options screen each is a 3D box in its art's own proportions, turning on the ring as the other icons do, and when you change the choice it spins round to the next box. Boss Rally's Remaster Options page shows a picture of the same box.
 - **Remastered, Menus waits for you**: choosing other menus on the options screen no longer switches the moment you press. The Menus row shows your choice and the other menus take over when you leave the options screen, on their main menu. Boss Rally's Remaster Options page works the same way: Menus there says which menus you have chosen, and Back takes you to them.
 - **Remastered, button prompts in the cartridge's style**: the A and B prompts at the foot of the menus and on the popups are drawn as Top Gear Rally's own round N64 buttons, A blue and B green and lit from the upper left as the cartridge's pictures are, instead of square key caps. Each still names your own key or pad button; a longer name (ENTER, ESC) gets a longer button with round ends.
@@ -64,14 +69,14 @@ $(cat $NOTES.m2)
 - **Remastered, menus**: Menus chooses Top Gear Rally (USA), Top Gear Rally (PAL/Japan) (Japan's own menus, title and liveries, in English, with the cartridge's Game Pak saves) or Boss Rally's own. Music chooses Boss Rally's CD, Top Gear Rally (USA) or Top Gear Rally (PAL/Japan) (the two cartridges' front-end tunes).
 - **Remastered, cars and cheats**: Japan's Type-PJ, Type-TR and Type-MN as versions of the Type-RS, Type-M3 and Helmet they replaced, each unlocked with its twin. Europe's and Japan's cheats, on your own controls: on the main menu hold Gear Up and Gear Down and press Change View three times for every car, course and weather; in a race, Gear Up, Gear Up, Steer Right, Accelerate, Change View, Steer Right finishes it in first place.
 - **Remastered, controls**: one set of controls for the menus and the races, every action one N64 button, with keyboard defaults where no key does two things (X select and accelerate, Z back and brake, the arrows steer and move, W and Q change gear, Escape pauses); rebind anything on the controller screen. Every prompt on screen names your own key or pad button; on the iPhone and iPad they say tap and swipe.
-- **Remastered, rumble**: a game controller shakes as Top Gear Rally's Rumble Pak did, in every race (XInput on Windows, Core Haptics on the Mac, the iPhone and the iPad).
+- **Remastered, rumble**: a game controller shakes as Top Gear Rally's Rumble Pak did, in every race (on Windows and Linux any pad with a motor, Core Haptics on the Mac, the iPhone and the iPad).
 - **Remastered, paint shop**: works by mouse and by touch: the cursor follows the pointer, a click or a finger paints, drags out lines and shapes, picks tools and colours and presses a popup's buttons; the right button (a two-finger tap) is B.
 - **Remastered, everything else**: no loading screen before a race (they load in under a tenth of a second); widescreen menus that slide and wipe to the window's edges; on the iPhone and iPad no Quit, no two-player screen and no network play. Fixed: a championship round's end no longer crashes, and coming back to Top Gear Rally's menus from the other menus no longer drops into the attract demo.
 
 ### Download
 - **macOS** (12 or later, Apple silicon and Intel; the games it builds need the same): \`RallyBuilder-$VERSION-macOS.zip\`. Unzip and open Rally Builder. It is not notarized: if macOS refuses to open it, Control-click it and choose Open, or allow it in System Settings, Privacy & Security.
 - **Windows** (10 or later, 64-bit; the games it builds need the same, and a Vulkan driver or OpenGL 3.3): \`RallyBuilder-$VERSION-Windows.zip\`. Unzip it and run \`RallyBuilder.exe\` from the unzipped folder (the \`games\` folder beside it holds the games' code). It is not signed: if SmartScreen stops it, choose More info, then Run anyway.
-- Linux is not built yet.
+- **Linux** (x86-64, glibc 2.31 or later: Ubuntu 20.04, Debian 11, Fedora 32, SteamOS 3 or newer; GTK 3 for the builder; the games need a Vulkan driver or OpenGL 3.3): \`RallyBuilder-$VERSION-Linux-x86_64.AppImage\`. Make it executable (\`chmod +x\`, or Properties, Permissions) and run it. On a Steam Deck, do this in Desktop Mode. If your system has no FUSE, run it with \`--appimage-extract-and-run\`.
 
 ### What it needs
 | Game | Your dump | MD5 |
@@ -83,31 +88,32 @@ $(cat $NOTES.m2)
 - Mac: \`Boss Rally.app\`, \`Top Gear Rally.app\` (Europe's and Japan's: \`Top Gear Rally (Europe).app\`, \`Top Gear Rally (Japan).app\`) or \`Top Gear Rally Remastered.app\`.
 - iPhone and iPad (Remastered, from the Mac builder, iOS 16 or later): \`Top Gear Rally Remastered.ipa\`. When your Mac has Xcode signing (a development certificate with a provisioning profile for it), the .ipa is signed with it, ready to install from Xcode (Devices and Simulators) or Apple Configurator. Otherwise the builder says so in red and the .ipa is unsigned, for you to sign and install with a tool such as AltStore or Sideloadly.
 - Windows: a folder named for the game, with the game's .exe in it.
+- Linux: a folder named for the game, with the game in it and a launcher (\`Boss Rally.desktop\`) for your desktop's menu; the result page's Add to Applications puts it there.
 
 ### Playing
-- Full screen: View, Enter Full Screen (Control-Command-F) on a Mac, Alt+Enter on Windows.
+- Full screen: View, Enter Full Screen (Control-Command-F) on a Mac, Alt+Enter on Windows and Linux (in Steam's Game Mode it is full screen already).
 - **Boss Rally** is the PC game as it shipped, its menus and its keys; its pause menu has Quit Game.
 - **Top Gear Rally** is the cartridge your ROM is from: the USA's and Japan's at their own 30 frames a second, Europe's at its 25 (PAL). Saves are a Controller Pak kept in your user folder, and Europe's and Japan's Game Pak (EEPROM) beside it. A gamepad or the keyboard is the N64 pad (X or Return is A, Z is B, the arrows the stick, Escape START); Options, Keys and Pad changes that. Escape on the main menu, or the pause menu's Exit Game, quits.
 
 ### Top Gear Rally Remastered
 The menus are Top Gear Rally's; each race is run by Boss Rally's engine at 60 ticks a second and its result goes back into Top Gear Rally's results, season and records. The options screen adds **Widescreen** (the races and menus fill any window shape), **Music** (Boss Rally's CD, or Top Gear Rally's soundtrack with the USA's or the PAL/Japan front-end tune), **Show FPS**, **View Distance** (Unlimited: nothing pops in) and **Menus** (Top Gear Rally (USA), Top Gear Rally (PAL/Japan), or Boss Rally's own front end with its championship, time attack and quick race; taken when you leave the options screen). Two players race split screen on a desktop, side by side when Widescreen is on. The controller screen sets each player's keys and gamepad buttons, for the menus and the races alike; Change View steps through the car's view, the chase view and the bonnet, and Reset Car puts a stuck car back on the road. A game controller rumbles as the Rumble Pak did. The paint shop works by mouse and touch. Quit is on the main menu (not on the iPhone and iPad). On the iPhone and iPad, touch drives it: in a race a finger on the right steers and accelerates, one on the left brakes; in the menus, tap and swipe; two fingers pause.
 
-Saves live in your user folder (Application Support on macOS, the iPhone and the iPad, AppData on Windows), so rebuilding never touches them. Source: [builder/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/builder), [ports/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/ports).
+Saves live in your user folder (Application Support on macOS, the iPhone and the iPad, AppData on Windows, ~/.local/share on Linux), so rebuilding never touches them. Source: [builder/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/builder), [ports/](https://github.com/jeff-strutb/brally/tree/$(git rev-parse HEAD)/ports).
 EOF
 
 if [ $DRY = 1 ]; then
     cat $NOTES
-    ls -la $MAC $WIN
+    ls -la $MAC $WIN $LIN
     exit 0
 fi
 if gh release view $TAG >/dev/null 2>&1; then
     # the same version again: its tag moves to the source these files are from
     git tag -f $TAG $REV >/dev/null
     git push -q -f origin refs/tags/$TAG
-    gh release upload $TAG $MAC $WIN --clobber
+    gh release upload $TAG $MAC $WIN $LIN --clobber
     gh release edit $TAG --notes-file $NOTES
 else
-    gh release create $TAG $MAC $WIN --target "$REV" --title "Rally Builder $VERSION" --notes-file $NOTES
+    gh release create $TAG $MAC $WIN $LIN --target "$REV" --title "Rally Builder $VERSION" --notes-file $NOTES
 fi
 rm -f $NOTES $NOTES.m2
 gh release view $TAG --json url -q .url

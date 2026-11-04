@@ -18,7 +18,7 @@ has a README listing its files and functions
 ([src/tgrally/](src/tgrally/README.md)). The 1997 cartridge now exists as
 readable C that rebuilds it exactly.
 
-**Play it:** download **Rally Builder** for macOS or Windows from
+**Play it:** download **Rally Builder** for macOS, Windows or Linux from
 [Releases](https://github.com/jeff-strutb/brally/releases/latest). It builds a
 native copy of any of the three games (Boss Rally, Top Gear Rally or Top Gear
 Rally Remastered, below) from your own BIN/CUE or ROM, checked by MD5; no game
@@ -323,7 +323,7 @@ derived platform code, not byte-matched.
     tools/toolchains/            MSVC 5.0, Wine, IDO 5.3 (staged by setup.sh)
     docs/{brally,tgrally}/       procedure, rules, and everything the work learned
     ports/brally/                the native 64-bit port: a retyped fork of the core
-                                 plus a cross-platform layer (macOS, Windows)
+                                 plus a cross-platform layer (macOS, Windows, Linux)
     ports/tgrally/               the native Top Gear Rally port
     ports/common/                Remastered assets (recipes tracked, binaries not)
     reference/                   the original disc, ROM, compilers and corpora (not tracked)
@@ -351,9 +351,9 @@ Further reading: [docs/brally/ARCHITECTURE.md](docs/brally/ARCHITECTURE.md), [do
   function reports MATCH or DIFF with the first divergence. `tools/brally/pe_patch.py`
   patches matches back into the DLL for drop-in testing.
 - The playable builds are the [Boss Rally native port](#native-ports)
-  (macOS, Windows, headless; its scenario suite is `ports/brally/tools/suite.sh`)
+  (macOS, Windows, Linux, headless; its scenario suite is `ports/brally/tools/suite.sh`)
   and Top Gear Rally Remastered (`ports/remastered`), which runs it behind Top
-  Gear Rally's menus on macOS, Windows and the iPhone.
+  Gear Rally's menus on macOS, Windows, Linux and the iPhone.
 
 ### Reference data (you supply; none tracked in git)
 
@@ -450,25 +450,26 @@ run natively on modern computers, with no emulator:
 
 | Game | What it is | Runs on |
 |---|---|---|
-| **Boss Rally** | The 1999 PC game, as it shipped. 4:3 picture, the original music and menus. | macOS, Windows |
-| **Top Gear Rally** | The 1997 N64 game, as it shipped. | macOS, Windows |
+| **Boss Rally** | The 1999 PC game, as it shipped. 4:3 picture, the original music and menus. | macOS, Windows, Linux |
+| **Top Gear Rally** | The 1997 N64 game, as it shipped. | macOS, Windows, Linux |
 | **Top Gear Rally Remastered** | The best of both: Top Gear Rally's menus, with Boss Rally's engine driving the races. Adds widescreen, a choice of PC or N64 music, an FPS counter, a choice of either game's menus, two-player split screen and each player's controls. | macOS, Windows, iPhone and iPad |
 
 The first two are faithful ports: they play just like the originals. They add
 only what a computer needs: full screen (Control-Command-F on a Mac, Alt+Enter
-on Windows) and, in Top Gear Rally, Options > Keys and Pad for the keyboard and
+on Windows and Linux) and, in Top Gear Rally, Options > Keys and Pad for the keyboard and
 gamepad, and Exit Game. Remastered is where the improvements live.
 
 They run on macOS 12 or later (Apple silicon and Intel), Windows 10 or later
-(64-bit, with a Vulkan driver or OpenGL 3.3), and, for Remastered, iOS 16 or
-later.
+(64-bit, with a Vulkan driver or OpenGL 3.3), x86-64 Linux with glibc 2.31 or
+later (the same drivers; new in 0.99, not yet run on a real Linux machine) and,
+for Remastered, iOS 16 or later.
 
 ### Building a game with Rally Builder
 
 No game data ships with this project, so you need your own copy of the game.
 **Rally Builder** turns that copy into a game you can play.
 
-1. Download Rally Builder for macOS or Windows from
+1. Download Rally Builder for macOS, Windows or Linux from
    [Releases](https://github.com/jeff-strutb/brally/releases/latest) and open it.
 2. Pick a game: Boss Rally, Top Gear Rally or Remastered.
 3. On a Mac with Remastered, pick the Mac or an iPhone.
@@ -479,7 +480,7 @@ No game data ships with this project, so you need your own copy of the game.
 
    The builder checks each file's MD5 and builds only from a correct copy.
 5. Pick a folder and press build. You get the app (or an iPhone `.ipa`, or a
-   Windows folder) ready to play. Your original files are no longer needed.
+   Windows or Linux folder) ready to play. Your original files are no longer needed.
 
 ### Building from source
 

@@ -12,7 +12,9 @@ Exit Game in Top Gear Rally, Quit and the views in Remastered, M2 still at
 0.96: Remastered's Menus taken on leaving Options, cartridge-style button
 prompts and Reset Car, M2 still at 0.94; 0.97: the games' boxes for
 Remastered's Music and Menus choices, M2 still at 0.94; 0.98: the cartridges'
-car versions on up and down in Remastered, M2 still at 0.94). It
+car versions on up and down in Remastered, M2 still at 0.94; 0.99: Linux, every
+pad on Windows and the players' controllers on screen in Remastered, M2 still
+at 0.94). It
 gives way to M2 once M2 passes it.
 
 The counts come from the same tools that draw the README's bars
@@ -29,7 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools', 'brally'))
 import progressbar  # noqa: E402
 
-RELEASE = '0.98'
+RELEASE = '0.99'
 
 
 def main():

@@ -45,6 +45,8 @@ int rb_flac_encode(FILE *f, uint64_t frames, const char *path, rb_progress cb, v
 /* ---- icons (icon.c) ------------------------------------------------------------------ */
 /* an .ico's largest image as an .icns (PNG entries, nearest-neighbour scaled) */
 int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen);
+/* the same as one PNG, px a side (Linux: the window's and the launcher's icon) */
+int rb_ico_to_png(const char *ico, const char *png, int px, char *err, size_t errlen);
 
 void rb_err(char *err, size_t errlen, const char *fmt, ...);
 

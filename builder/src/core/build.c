@@ -19,6 +19,9 @@
  *   Top Gear Rally\Top Gear Rally.exe, romdata.bin (Europe's and Japan's: Top Gear Rally (Japan)\...)
  *   Top Gear Rally Remastered\Top Gear Rally Remastered.exe, icon.ico, disc\, music\cd\, romdata.bin,
  *     romdata-jpn.bin
+ * Linux: the same folder, the game without .exe and its icon a PNG (icon.png, the
+ *   window's: host/linux), with a launcher for the desktop's menus beside them
+ *   (Boss Rally.desktop: the game and its icon by their place once built)
  *
  * The build is made in a hidden folder beside its destination and renamed
  * into place when complete; an earlier build is replaced only when it carries
@@ -61,7 +64,10 @@ const char *rb_region_name(int r) { return r >= 0 && r < RB_REGIONS ? k_tgr[r].n
 
 const char *rb_game_name(int g) { return g == RB_BOSS_RALLY ? "Boss Rally" : g == RB_TOP_GEAR_RALLY ? "Top Gear Rally" : RB_PRODUCT; }
 
-const char *rb_target_name(int t) { return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : "Windows"; }
+const char *rb_target_name(int t)
+{
+    return t == RB_MACOS ? "Mac" : t == RB_IOS ? "iPhone" : t == RB_LINUX ? "Linux" : "Windows";
+}
 
 /* the game's name as the build has it: Top Gear Rally's with its cartridge but the USA's */
 static const char *build_name(int g, int region)
@@ -315,7 +321,7 @@ int rb_ios_signing(char *desc, size_t n)
 #endif
 
 /* the marker sits in the app's Resources (Mac), the app inside the .ipa
- * (iPhone), or the folder (Windows) */
+ * (iPhone), or the folder (Windows, Linux) */
 static void marker_path(int target, const char *root, char *out, size_t n)
 {
     char r[2048], a[2048];
@@ -477,18 +483,99 @@ static int stage(ctx *c)
         goto nodir;
     {
         char exe[512];
-        snprintf(exe, sizeof exe, "%s.exe", build_name(g, c->job->region));
+        snprintf(exe, sizeof exe, "%s%s", build_name(g, c->job->region), t == RB_LINUX ? "" : ".exe");
         rb_join(path, sizeof path, c->root, exe);
     }
     if (!payload(c, game_payload(g, c->job->region), path, 0))
         return 0;
+    rb_set_exec(path);
     if (g != RB_REMASTERED)
         return 1;
-    rb_join(path, sizeof path, c->root, "icon.ico");     /* the window's icon (host/windows) */
-    return payload(c, "icon", path, 0);   /* (host_resource_dir: beside the exe) */
+    /* the window's icon (host/windows, host/linux: host_resource_dir, beside the game) */
+    rb_join(path, sizeof path, c->root, t == RB_LINUX ? "icon.png" : "icon.ico");
+    return payload(c, "icon", path, 0);
 nodir:
     rb_err(c->err, c->errlen, "cannot make folders in %s (is it writable?)", c->job->dest_dir);
     return 0;
+}
+
+/* a desktop entry's string value: a backslash doubled, a line break as \n */
+static void de_string(char *out, size_t n, const char *s)
+{
+    size_t k = 0;
+    for (; *s && k + 3 < n; s++) {
+        if (*s == '\\' || *s == '\n') {
+            out[k++] = '\\';
+            out[k++] = *s == '\n' ? 'n' : '\\';
+        } else {
+            out[k++] = *s;
+        }
+    }
+    out[k] = 0;
+}
+
+/* one quoted argument of Exec: inside the quotes " ` $ \ each after a backslash, % as %%;
+ * then the value's own string escaping (de_string) over the whole */
+static void de_exec_arg(char *out, size_t n, const char *s)
+{
+    char q[4096];
+    size_t k = 0;
+    q[k++] = '"';
+    for (; *s && k + 4 < sizeof q; s++) {
+        if (*s == '"' || *s == '`' || *s == '$' || *s == '\\')
+            q[k++] = '\\';
+        else if (*s == '%')
+            q[k++] = '%';
+        q[k++] = *s;
+    }
+    q[k++] = '"';
+    q[k] = 0;
+    de_string(out, n, q);
+}
+
+/* Linux: a launcher for the desktop's menus (the freedesktop.org desktop entry), the game
+ * and its icon named by where the build will be; its window's class is the one the game
+ * gives its window (host/linux: the name of its save folder, lower case, dashed) */
+static int linux_desktop(ctx *c)
+{
+    const char *name = build_name(c->job->game, c->job->region);
+    const char *cls = c->job->game == RB_BOSS_RALLY ? "boss-rally-64"
+                      : c->job->game == RB_REMASTERED ? "top-gear-rally-remastered" : "top-gear-rally";
+    const char *what = c->job->game == RB_BOSS_RALLY ? "The 1999 PC rally game"
+                       : c->job->game == RB_REMASTERED ? "Top Gear Rally's menus with Boss Rally's engine running the races"
+                       : "The 1997 Nintendo 64 rally game";
+    char out[2048], file[600], path[2048], game[2600], exec[8192], dir[4200], icon[4300] = "", buf[20000];
+    int has_icon = c->job->game == RB_REMASTERED || (c->job->game == RB_BOSS_RALLY && c->icon);
+    rb_output_path(c->job, out, sizeof out);
+    rb_join(game, sizeof game, out, name);
+    de_exec_arg(exec, sizeof exec, game);
+    de_string(dir, sizeof dir, out);
+    if (has_icon) {
+        char p[2100], e[4200];
+        rb_join(p, sizeof p, out, "icon.png");
+        de_string(e, sizeof e, p);
+        snprintf(icon, sizeof icon, "Icon=%s\n", e);
+    }
+    snprintf(buf, sizeof buf,
+             "[Desktop Entry]\n"
+             "Type=Application\n"
+             "Name=%s\n"
+             "Comment=%s\n"
+             "Exec=%s\n"
+             "Path=%s\n"
+             "%s"
+             "Terminal=false\n"
+             "Categories=Game;\n"
+             "StartupWMClass=%s\n",
+             name, what, exec, dir, icon, cls);
+    snprintf(file, sizeof file, "%s.desktop", name);
+    rb_join(path, sizeof path, c->root, file);
+    if (!rb_write_file(path, buf, strlen(buf))) {
+        rb_err(c->err, c->errlen, "cannot write the launcher %s", path);
+        return 0;
+    }
+    rb_set_exec(path);                 /* (a desktop that asks it to be trusted: it is the player's own) */
+    return 1;
 }
 
 /* sealed and moved into place */
@@ -497,6 +584,8 @@ static int finish(ctx *c)
     char out[2048], mk[2048], staged[2048];
     int ours = 0, t = c->job->target;
     if (t == RB_MACOS && !mac_plist(c))
+        return 0;
+    if (t == RB_LINUX && !linux_desktop(c))
         return 0;
     marker_path(t, c->root, mk, sizeof mk);
     if (!rb_write_file(mk, RB_VERSION "\n", strlen(RB_VERSION "\n"))) {
@@ -752,14 +841,18 @@ static int disc_data(ctx *c, double lo, double hi)
         done += cue.t[i].count;
     }
     fclose(bin);
-    /* the disc's icon: Boss Rally's app (Mac) or window (Windows, from icon.ico beside the game);
-     * Remastered has its own */
+    /* the disc's icon: Boss Rally's app (Mac) or window (Windows, from icon.ico beside the game;
+     * Linux, icon.png); Remastered has its own */
     rb_join(path, sizeof path, disc, "Boss.ico");
     if (c->job->game == RB_BOSS_RALLY && rb_file_size(path)) {
         char icon[2048];
         if (c->job->target == RB_MACOS) {
             rb_join(icon, sizeof icon, c->res, "BossRally.icns");
             if (!rb_ico_to_icns(path, icon, c->err, c->errlen))
+                return 0;
+        } else if (c->job->target == RB_LINUX) {
+            rb_join(icon, sizeof icon, c->root, "icon.png");
+            if (!rb_ico_to_png(path, icon, 256, c->err, c->errlen))
                 return 0;
         } else {
             rb_join(icon, sizeof icon, c->root, "icon.ico");

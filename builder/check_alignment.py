@@ -10,9 +10,9 @@ is not 16-aligned; Rosetta, and so Wine on a Mac, does not check. The ports
 stop clang assuming that alignment of the game's externs (br_crt.h, cc64.sh,
 tgr_libc.h); this checks the result. It lists, per object, every such
 instruction whose memory operand is a register other than the stack pointer
-or frame pointer, or a register just set to a stack address (the stack and
-RIP-relative constants are aligned by the compiler), and fails if there is
-any.
+or frame pointer, or a register just set to a stack address or copied from
+the stack pointer (the stack and RIP-relative constants are aligned by the
+compiler), and fails if there is any.
 
     check_alignment.py OBJ_DIR...    the core's objects (OUT/obj of a build)
 """
@@ -46,6 +46,8 @@ def scan(obj):
             if dest:
                 if LEA_STACK.match(i.group(1)) and ('(%rsp' in ops or '(%rbp' in ops):
                     stack.add(dest.group(1))
+                elif i.group(1) in ('mov', 'movq') and re.match(r'%r[sb]p,', ops):
+                    stack.add(dest.group(1))      # the stack pointer itself (SysV: a va_list on the stack)
                 else:
                     stack.discard(dest.group(1))
         m = OPS.match(line)

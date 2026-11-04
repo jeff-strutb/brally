@@ -1,4 +1,4 @@
-/* rb.h: the release builder's core, shared by the macOS and Windows front ends.
+/* rb.h: the release builder's core, shared by the macOS, Windows and Linux front ends.
  *
  * The builder turns the player's own copies of the games into a native build
  * of one of three: Boss Rally (ports/brally), Top Gear Rally (ports/tgrally),
@@ -19,8 +19,8 @@
  * romdata-jpn.bin) with the other cartridge's front-end tune and three cars
  * after it (as ports/remastered/tools/regionextras.py makes them). The result
  * needs no dump once built. It is for the
- * system the builder runs on (Windows: Windows; macOS: the Mac, or for
- * Remastered the iPhone and iPad as an .ipa).
+ * system the builder runs on (Windows: Windows; Linux: Linux; macOS: the Mac,
+ * or for Remastered the iPhone and iPad as an .ipa).
  *
  * Paths are UTF-8 everywhere. Every long call reports progress through an
  * rb_progress and stops early (with an error) when *cancel becomes nonzero.
@@ -38,7 +38,7 @@ extern "C" {
 /* which game */
 enum { RB_BOSS_RALLY, RB_TOP_GEAR_RALLY, RB_REMASTERED };
 /* what the build is for */
-enum { RB_MACOS, RB_IOS, RB_WINDOWS };
+enum { RB_MACOS, RB_IOS, RB_WINDOWS, RB_LINUX };
 
 typedef void (*rb_progress)(void *ctx, double fraction, const char *status);
 
@@ -54,7 +54,7 @@ const char *rb_region_name(int region);       /* "USA" / "Europe" / "Japan" */
 
 #define RB_PRODUCT "Top Gear Rally Remastered"
 const char *rb_game_name(int game);           /* "Boss Rally" / "Top Gear Rally" / RB_PRODUCT */
-const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" */
+const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" / "Linux" */
 /* the dumps a game is built from */
 #define rb_needs_disc(game) ((game) != RB_TOP_GEAR_RALLY)
 #define rb_needs_rom(game)  ((game) != RB_BOSS_RALLY)
@@ -62,7 +62,7 @@ const char *rb_target_name(int target);       /* "Mac" / "iPhone" / "Windows" */
  * are both cartridges' (TGR (USA) and TGR (PAL/Japan)) */
 #define rb_needs_rom_jpn(game) ((game) == RB_REMASTERED)
 /* what the build is called in the destination folder: "Boss Rally.app" (Mac),
- * "Top Gear Rally Remastered.ipa" (iPhone), the folder "Boss Rally" (Windows);
+ * "Top Gear Rally Remastered.ipa" (iPhone), the folder "Boss Rally" (Windows, Linux);
  * Top Gear Rally's is its cartridge's: "Top Gear Rally (Japan).app" (region
  * matters for Top Gear Rally alone) */
 const char *rb_output_name(int game, int target, int region);
@@ -90,7 +90,7 @@ int rb_cue_bin_path(const char *cue, char *out, size_t n);
 /* ---- building ---------------------------------------------------------------------- */
 typedef struct rb_job {
     int         game;         /* RB_BOSS_RALLY / RB_TOP_GEAR_RALLY / RB_REMASTERED */
-    int         target;       /* RB_MACOS / RB_IOS (Remastered only) / RB_WINDOWS */
+    int         target;       /* RB_MACOS / RB_IOS (Remastered only) / RB_WINDOWS / RB_LINUX */
     const char *bin, *cue;    /* Boss Rally */
     const char *rom;          /* Top Gear Rally: its cartridge's ROM; Remastered: the USA's */
     int         region;       /* Top Gear Rally: the cartridge rom is (rb_check's region) */
@@ -118,7 +118,7 @@ int rb_ios_signing(char *desc, size_t n);
 /* where a piece shipped inside the builder is (a file, or the iPhone app's
  * folder): "brally64", "tgrally", "tgrally-eur", "tgrally-jpn", "remastered" (each
  * game for this system; Top Gear Rally one a cartridge),
- * "icon" (Remastered's icon: AppIcon.icns or icon.ico), "ios-app", "ios-sign";
+ * "icon" (Remastered's icon: AppIcon.icns, icon.ico or icon.png), "ios-app", "ios-sign";
  * 1 on success */
 int rb_host_payload(const char *name, char *path, size_t n, char *err, size_t errlen);
 

@@ -3,8 +3,8 @@
  * The disc carries one 32x32 16-colour image. On macOS it becomes an .icns
  * of PNGs at every size, each a nearest-neighbour upscale (a smoothing
  * filter turns 32 pixels to mush at 1024), the ICO's AND mask as alpha, as
- * ports/brally/tools/mkicns.py does. (On Windows the game loads the .ico
- * itself.) */
+ * ports/brally/tools/mkicns.py does; on Linux one PNG, scaled the same way.
+ * (On Windows the game loads the .ico itself.) */
 #include <stdlib.h>
 #include <string.h>
 #include "rb_int.h"
@@ -273,5 +273,26 @@ int rb_ico_to_icns(const char *ico, const char *icns, char *err, size_t errlen)
     free(d);
     if (!ok)
         rb_err(err, errlen, "cannot write %s", icns);
+    return ok;
+}
+
+int rb_ico_to_png(const char *ico, const char *png, int px, char *err, size_t errlen)
+{
+    size_t n;
+    uint8_t *d = rb_read_file(ico, &n), *rgba;
+    obuf out = { 0 };
+    int w, h, ok;
+    if (!d || !(rgba = ico_rgba(d, n, &w, &h))) {
+        free(d);
+        rb_err(err, errlen, "the disc's icon is unreadable");
+        return 0;
+    }
+    png_scaled(&out, rgba, w, h, px / w > 0 ? px / w : 1);
+    ok = rb_write_file(png, out.p, out.n);
+    free(out.p);
+    free(rgba);
+    free(d);
+    if (!ok)
+        rb_err(err, errlen, "cannot write %s", png);
     return ok;
 }
