@@ -2,7 +2,7 @@
  * Rally's engine runs the races (main.c); each game asks the host for its
  * window, input, sound and folders through its own thunks (thunks.c), and
  * this gives both the one real host underneath (host/macos, host/windows,
- * host/null, or the iPhone app's Swift: ios/Sources/Host.swift):
+ * host/linux, host/null, or the iPhone app's Swift: ios/Sources/Host.swift):
  *
  *   front     one game is in front at a time (mux_front): the keys, the
  *             mouse and the pad are its, and only it sees its window

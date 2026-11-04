@@ -6,7 +6,9 @@
 
 Project lead decision 2026-09-30: stop the wasm32 intermediary ([macos-port-32bit-wasm-lane](macos-port-32bit-wasm-lane.md)) and build a true 64-bit native port, **platform-agnostic**: one portable core (src/brally/core + shared port specs, fixed-width types so LP64 and LLP64 both work) under a thin platform interface. Windows and Linux builds are planned; do the ILP32 work ONCE, not per OS.
 
-Renderers (project lead choice): **Metal on macOS, OpenGL on Linux, Windows = Vulkan/OpenGL/D3D decided later** "based on what's most superior". Not SDL_GPU. So the renderer interface must be API-neutral; Remastered shaders should have one source translated per API, not three hand ports.
+Since 0.99 Linux draws with Vulkan, with OpenGL 3.3 as the fallback, as Windows does (`ports/brally/PORTABLE-CORE.md`).
+
+Renderers (project lead choice, as decided then): **Metal on macOS, OpenGL on Linux, Windows = Vulkan/OpenGL/D3D decided later** "based on what's most superior". Not SDL_GPU. So the renderer interface must be API-neutral; Remastered shaders should have one source translated per API, not three hand ports.
 
 **Why:** the decomp is complete (every BRGlide fn T3/T4), and Remastered host code written against guest memory (W_P/W_LD) grows the migration cost weekly.
 

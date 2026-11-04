@@ -8,7 +8,9 @@
  *   host/win32    the same on Windows
  *   host/null     a headless window, input and audio (tests, lockstep)
  *   host/macos    a Cocoa window and input, Core Audio
- *   host/windows  a Win32 window and input, WASAPI, Media Foundation, XInput
+ *   host/windows  a Win32 window and input, WASAPI, Media Foundation
+ *   host/linux    a window, input and audio over SDL 3, libFLAC
+ *   host/sdl      game controllers through SDL 3 (host/windows, host/linux)
  *
  * and a renderer backend behind platform/render/brr.h.
  */
@@ -92,7 +94,7 @@ void host_window_lock_aspect(int lock);
 int  host_poll_event(host_event *ev, uint32_t wait_ms);
 void host_message_box(const char *text, const char *caption);
 /* what a GPU renderer draws into: the window's HWND on Windows, its
- * CAMetalLayer on macOS; NULL without a window */
+ * CAMetalLayer on macOS, its SDL_Window on Linux; NULL without a window */
 void *host_window_handle(void);
 /* the window's drawing area in pixels, the layer kept to it on macOS (0 x 0
  * without a window) */

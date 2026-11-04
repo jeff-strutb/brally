@@ -12,7 +12,7 @@ principles as the Boss Rally port (`ports/brally/PORTABLE-CORE.md`):
    window, input, audio out, timing and files behind one small interface
    (the Boss Rally port's `platform/host/host.h`, shared). Rendering goes
    through an interface neutral between graphics APIs.
-3. **macOS first** (Metal). Windows and Linux follow on the same core.
+3. **macOS first** (Metal). Windows and Linux followed on the same core (`ports/brally/platform/host`: host/windows, host/linux).
 4. **The user's own ROM, at build time.** Nothing derived from the cartridge is
    committed. The build takes what the port needs from the builder's
    `Top Gear Rally (USA)` ROM (`tools/assets.py`: the initialised data and
