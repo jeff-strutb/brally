@@ -12,8 +12,8 @@
  * pair's USA entry standing for it (br_optcycle.c, BrOptCycleTrack), and a
  * VERSION row under CAR says USA or JAPAN for a pair (a dash for any other
  * car) and turns to the other on Return or a click.  Each version is offered
- * as Boss Rally's own unlocks offer it (BrOptAvailB); a pair is on the CAR row
- * when either version is.  The version last chosen is kept for the next pair
+ * as Boss Rally's own unlocks offer it (BrOptAvailB, Type-MN with the Helmet);
+ * a pair is on the CAR row when either version is.  The version last chosen is kept for the next pair
  * the CAR row comes to.
  *
  * The row goes in both Car Setup pages, one player's (BrPhaseEnterPlaceholder_

@@ -119,16 +119,20 @@
  /* @implements 0x8021AA08 tgr BrFrameEnd */
  void BrFrameEnd(void)
  {
-@@ -961,6 +1059,8 @@
+@@ -961,6 +1059,12 @@
    int i;
    void *fb;
  
++  {
++    void rm_progress_tick(void);
++    rm_progress_tick();           /* Remastered: the one progress (rmprogress.c) */
++  }
 +  rm_fps();                       /* Remastered: Show FPS */
 +  rm_pads();                      /* Remastered: the players' controllers, a moment after a change */
    gRaw(D_8028A858++, 0xe9000000, 0);
    gRaw(D_8028A858++, 0xb8000000, 0);
    t = &D_8031A9A8[D_8028A85C];
-@@ -1060,7 +1160,16 @@
+@@ -1060,7 +1164,16 @@
      fb = TGR_PTR(void *, D_8031AA28[D_8028A85C ^ 1]);
      tgr_mq_recv(D_8031A390, 0, 1);
      tgr_video_show(fb);
@@ -146,7 +150,7 @@
      if (tgr_video_shown() != fb) {
        tgr_mq_recv(D_8031A390, 0, 1);
      }
-@@ -1116,6 +1225,7 @@
+@@ -1116,6 +1229,7 @@
    if (D_8028AB0C == 2) {
      halfH *= 0.5f;
    }
@@ -154,7 +158,7 @@
    D_8031B1F0.eye[0] = m[3][0];
    D_8031B1F0.eye[1] = m[3][1];
    D_8031B1F0.eye[2] = m[3][2];
-@@ -1148,15 +1258,18 @@
+@@ -1148,15 +1262,18 @@
  /* @implements 0x8021B2F8 tgr BrCameraSet */
  void BrCameraSet(float m[4][4], float fov, float far, float w, float h)
  {
@@ -175,7 +179,7 @@
  }
  
  /* WHAT IT DOES: Set the front end's 3D camera: looking straight into a
-@@ -1187,11 +1300,16 @@
+@@ -1187,11 +1304,16 @@
      D_8028A86C = 1.0;
      D_8028A870 = 500.0f;
    }

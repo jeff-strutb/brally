@@ -1,0 +1,29 @@
+--- a/src/core/menus/br_optavail.c
++++ b/src/core/menus/br_optavail.c
+@@ -91,7 +91,7 @@
+     if ((*(int32_t *)&g_brRaceRules.mode) == 0) {
+         if ((*(int32_t *)&g_5BF4) != 0) {
+             if (idx == 15)
+-                idx = 11;
++                idx = 9;    /* Remastered: Type-MN, the Helmet's version */
+             if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+                 return 1;
+             /* `and esi,0xFFFF` -- the LOW half of the same dword */
+@@ -99,7 +99,7 @@
+                              & ((uint32_t)(*(int32_t *)&DAT_10ac5b38) & 0xFFFFu));
+         }
+         if (idx == 15)
+-            idx = 11;
++            idx = 9;        /* Remastered: as above */
+         if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+             return 1;
+         return (int32_t)((1u << idx) & (uint32_t)DAT_10ac58f0);
+@@ -117,7 +117,7 @@
+         return 1;
+ 
+     if (idx == 15)
+-        idx = 11;
++        idx = 9;            /* Remastered: as above */
+     if (g_br6EE1D8_fLowAlways != 0 && idx <= 15)
+         return 1;
+     /* movsx: SIGN-extended, unlike the zero-extended masks above. */

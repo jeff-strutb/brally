@@ -176,7 +176,7 @@
 -                        if (in == K_STICK_L) x = -80;
 -                        if (in == K_STICK_R) x = 80;
 -                    }
-         }
+-        }
 -        if (s_cap >= 0) {                             /* a button awaited (keysmenu.c) */
 -            unsigned fresh = s_pad_now & ~s_cap_padwas;
 -            int i;
@@ -194,6 +194,7 @@
 -            b = 0;                                    /* the game sees nothing pressed */
 -            x = y = 0;
 -        }
++        }
 +        tgr_touch_input(&b, &x, &y);              /* a touch's presses (tgr_touch.h) */
          s_now[0].b = b;
          s_now[0].x = (int8_t)x;
@@ -237,12 +238,78 @@
  }
  
  static void pak_clear(void)
-@@ -625,6 +698,30 @@
-     }
-     fclose(f);
-     return i == n;
+@@ -594,6 +667,62 @@
+ }
+ 
+ /* the notes from a pak file: 1 when it was read whole */
++/* Remastered: one set of notes, the USA's, for both libraries: Japan's move
++ * across (its note stays where the USA's has the same name; what its season
++ * opened is kept all the same), and the first time, the saved seasons join the
++ * app's one save, no Load needed (progress.h; a season note begins with the
++ * season block) */
++int  rm_progress_seeded(void);
++void rm_progress_seed_tgr(const void *season);
++void rm_progress_seed_done(void);
++#define RM_SEASON_SIZE 0x128
++
++static void pak_one_game(void)
++{
++    static const uint8_t k_season[16] = { 0x2D, 0x28, 0x29, 0x0F, 0x20, 0x1E, 0x1A, 0x2B, 0x0F, 0x2C, 0x1E, 0x1A, 0x2C, 0x28, 0x27, 0x00 };
++    int i, j;
++    for (i = 0; i < PAK_NOTES; i++) {
++        if (!s_notes[i].used || s_notes[i].company != 0x3238 || s_notes[i].game != 0x4E54524A)
++            continue;
++        for (j = 0; j < PAK_NOTES; j++)
++            if (s_notes[j].used && s_notes[j].company == 0x3544 && s_notes[j].game == 0x4E475245 &&
++                !memcmp(s_notes[j].name, s_notes[i].name, 16) && !memcmp(s_notes[j].ext, s_notes[i].ext, 4))
++                break;
++        if (j == PAK_NOTES) {
++            s_notes[i].company = 0x3544;
++            s_notes[i].game = 0x4E475245;
++        }
++    }
++    if (s_scripted || rm_progress_seeded())
++        return;
++    for (i = 0; i < PAK_NOTES; i++) {
++        if (s_notes[i].used && s_notes[i].size >= RM_SEASON_SIZE && !memcmp(s_notes[i].name, k_season, 16) &&
++            ((s_notes[i].company == 0x3544 && s_notes[i].game == 0x4E475245) ||
++             (s_notes[i].company == 0x3238 && s_notes[i].game == 0x4E54524A)))
++            rm_progress_seed_tgr(s_notes[i].data);
++    }
++    {                                             /* and Japan's Game Pak (loadsave.c): the block
++                                                     after its checksum, 0x150 bytes in all */
++        char p[1100];
++        uint8_t b[0x150];
++        FILE *f;
++        snprintf(p, sizeof p, "%s/eeprom.bin", host_save_dir());
++        if ((f = fopen(p, "rb"))) {
++            if (fread(b, 1, sizeof b, f) == sizeof b) {
++                uint32_t sum = 0xBFED812, want;
++                size_t k;
++                for (k = 4; k < sizeof b; k++)
++                    sum += b[k];
++                memcpy(&want, b, 4);
++                if (sum == want)
++                    rm_progress_seed_tgr(b + 4);
++            }
++            fclose(f);
++        }
++    }
++    rm_progress_seed_done();
 +}
 +
+ static int pak_load(const char *path)
+ {
+     char magic[8];
+@@ -624,9 +753,35 @@
+         n = 1;                                        /* not a pak */
+     }
+     fclose(f);
++    if (i == n)
++        pak_one_game();
+     return i == n;
+ }
+ 
 +/* Remastered: both Top Gear Rally libraries keep this pak (one file): before
 + * each use the notes are read again when the other has written it since this
 + * one last read or wrote it (the file, its size, its time) */
@@ -265,10 +332,12 @@
 +    pak_clear();
 +    pak_load(s_pak_path);
 +    pak_mark();
- }
- 
++}
++
  /* ---- the cartridge's EEPROM ------------------------------------------------
-@@ -741,6 +838,7 @@
+  * Europe's and Japan's cartridges carry a 4 Kbit EEPROM (64 blocks of 8
+  * bytes) for the settings.  In play it is <save folder>/eeprom.bin; in a
+@@ -741,6 +896,7 @@
          if (e) {
              snprintf(s_pak_path, sizeof s_pak_path, "%s", e);
              pak_load(s_pak_path);
@@ -276,7 +345,7 @@
          }
          return;
      }
-@@ -760,6 +858,7 @@
+@@ -760,6 +916,7 @@
      }
      pak_clear();
      pak_load(s_pak_path);
@@ -284,7 +353,7 @@
  }
  
  static int note_find(uint16_t company, uint32_t game, uint8_t *name, uint8_t *ext)
-@@ -776,6 +875,7 @@
+@@ -776,6 +933,7 @@
  {
      int i;
      (void)pfs;
@@ -292,7 +361,7 @@
      if (!s_pak)
          return TGR_PAK_NONE;
      i = note_find(company, game, name, ext);
-@@ -790,6 +890,7 @@
+@@ -790,6 +948,7 @@
  {
      int i, used = 0;
      (void)pfs;
@@ -300,7 +369,7 @@
      if (!s_pak)
          return TGR_PAK_NONE;
      for (i = 0; i < PAK_NOTES; i++)
-@@ -815,6 +916,7 @@
+@@ -815,6 +974,7 @@
  {
      int i;
      (void)pfs;
@@ -308,7 +377,7 @@
      if (!s_pak)
          return TGR_PAK_NONE;
      i = note_find(company, game, name, ext);
-@@ -846,6 +948,7 @@
+@@ -846,6 +1006,7 @@
  {
      int i, used = 0;
      (void)pfs;
@@ -316,7 +385,7 @@
      if (!s_pak)
          return TGR_PAK_NONE;
      for (i = 0; i < PAK_NOTES; i++)
-@@ -859,6 +962,7 @@
+@@ -859,6 +1020,7 @@
  {
      int i, n = 0;
      (void)pfs;

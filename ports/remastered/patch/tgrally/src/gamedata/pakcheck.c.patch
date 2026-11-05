@@ -1,0 +1,11 @@
+--- a/src/gamedata/pakcheck.c
++++ b/src/gamedata/pakcheck.c
+@@ -93,7 +93,7 @@
+ #if !TGR_REGION_JPN
+       tgr_print("%d: %08x %04x\n", i, D_8036A280[i].company, D_8036A280[i].game);
+ #endif
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered: the one set of notes, the USA's; si.c) */
+       if (D_8036A280[i].company != 0x4e54524a || D_8036A280[i].game != 0x3238) {   /* "NTRJ", "28" */
+ #elif TGR_REGION_EUR
+       if (D_8036A280[i].company != 0x4e545250 || D_8036A280[i].game != 0x3746) {   /* "NTRP", "7F" */

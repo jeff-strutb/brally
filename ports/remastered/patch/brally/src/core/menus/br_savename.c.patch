@@ -1,0 +1,13 @@
+--- a/src/core/menus/br_savename.c
++++ b/src/core/menus/br_savename.c
+@@ -108,6 +108,10 @@
+                 memset((char *)(*(int * *)&g_aBrRaceCar[0].pEquip) + 0x50, 0, 24 * 4);
+             }
+             BrMenuSub100709A0();
++            {
++                extern void rm_br_season_saved(void);
++                rm_br_season_saved();   /* Remastered: the app's one save (race_handoff.c) */
++            }
+             g_5C3C = 1;
+         }
+     }

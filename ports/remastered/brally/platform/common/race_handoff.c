@@ -48,6 +48,12 @@
 #include "br_gamestep.h"     /* g_pfnStep */
 #include "../host/host.h"    /* host_pad_read */
 #include "slice2_25.h"       /* g_brPAA29B8 */
+void rm_progress_br(unsigned short *cars, unsigned short *tracks, unsigned short *weather);   /* the app's */
+int  rm_progress_gen(void);
+int  rm_progress_season_ver(void);
+int  rm_progress_season_put_br(const void *p0, const void *p1);
+void rm_progress_season_get_br(void *p0, void *p1);
+void rm_progress_records_br(void *block);
 #include "../host/host_race.h"
 #include "pause_options.h"
 #include "race_pads.h"
@@ -102,6 +108,95 @@ static void init(void)
         s_m = host_mutex_new();
         s_c = host_cond_new();
     }
+}
+
+/* the app's one save (ports/remastered/platform/progress.h), each frame of
+   these menus.  The season block holds what Boss Rally has opened, and the masks
+   its menus read are copies of it, kept apart from the block; its arcade and
+   network modes fill the block's three words for their race, not earned.  The
+   championship goes by the game's own AutoSave.brf, which it writes after every
+   race and continues from: a save here joins the one save (rm_br_season_saved),
+   and when the one save has moved on elsewhere the file is written anew */
+static int s_season_seen;
+
+void rm_br_season_saved(void)
+{
+    if (g_aBrRaceCar[0].pEquip && g_aBrRaceCar[1].pEquip)
+        s_season_seen = rm_progress_season_put_br(g_aBrRaceCar[0].pEquip, g_aBrRaceCar[1].pEquip);
+}
+
+static void season_out(void)
+{
+    static unsigned char b[2][0x200];
+    char keep[260];
+    uint8_t *p0 = g_aBrRaceCar[0].pEquip;
+    int v = rm_progress_season_ver();
+
+    if (v == 0 || v == s_season_seen)
+        return;
+    s_season_seen = v;
+    rm_progress_season_get_br(b[0], b[1]);
+    snprintf(keep, sizeof keep, "%s", DAT_117a6030);
+    strcpy(DAT_117a6030, s_AutoSave_brf);
+    g_aBrRaceCar[0].pEquip = b[0];       /* (what the writer writes from) */
+    BrMenuSub100709A0();
+    g_aBrRaceCar[0].pEquip = p0;
+    strcpy(DAT_117a6030, keep);
+    if (getenv("RM_LOG"))
+        fprintf(stderr, "one save: AutoSave.brf round %d race %d\n", b[0][4], b[0][5]);
+}
+
+static void progress(void)
+{
+    static int gen;
+    unsigned char *p = (unsigned char *)g_aBrRaceCar[0].pEquip;
+    unsigned short c = 0, t = 0, w = 0;
+    int g = rm_progress_gen(), i;
+
+    if (g != gen) {                  /* erased: afresh, as a new session */
+        gen = g;
+        for (i = 0; i < 2; i++) {
+            unsigned char *q = (unsigned char *)g_aBrRaceCar[i].pEquip;
+            if (q) {
+                *(unsigned short *)(q + 0xf0) = 0x102;
+                *(unsigned short *)(q + 0xf2) = 4;
+                *(unsigned short *)(q + 0xf4) = 1;
+            }
+        }
+        *(unsigned short *)&DAT_10ac5b38 = 0x102;
+        DAT_10ac58f0 = 0x102;
+        DAT_100aab84 = 0x102;
+        DAT_10ac5d68 = 0x102;
+        DAT_10ac5d6c = 4;
+        DAT_100aab8c = 4;
+    }
+    if (p) {
+        c = *(unsigned short *)(p + 0xf0);
+        t = *(unsigned short *)(p + 0xf2);
+        w = *(unsigned short *)(p + 0xf4);
+        if (c == 0xffff && t == 0xffff && w == 0xffff)
+            c = t = w = 0;
+        rm_progress_records_br(p);
+    }
+    rm_progress_br(&c, &t, &w);
+    for (i = 0; i < 2; i++) {
+        unsigned char *q = (unsigned char *)g_aBrRaceCar[i].pEquip;
+        if (q) {
+            *(unsigned short *)(q + 0xf0) |= c;
+            *(unsigned short *)(q + 0xf2) |= t;
+            *(unsigned short *)(q + 0xf4) |= w;
+        }
+    }
+    *(unsigned short *)&DAT_10ac5b38 |= c;
+    *(unsigned short *)((char *)&DAT_10ac5b38 + 2) |= t;
+    *(unsigned short *)((char *)&DAT_10ac5b38 + 4) |= w;
+    DAT_10ac58f0 |= c;
+    DAT_10ac40a0 |= t;
+    DAT_100aab84 |= c;
+    DAT_100aab8c |= t;
+    DAT_10ac5d68 |= c;
+    DAT_10ac5d6c |= t;
+    season_out();
 }
 
 /* the caller's side (another thread): one race, waited for */
@@ -836,8 +931,10 @@ void plat_race_frame(void)
     keys();
     if (s_phase == RACE)
         controls();
-    if (s_phase == IDLE && s_menus)
+    if (s_phase == IDLE && s_menus) {
+        progress();
         own_race(racing);
+    }
     if (getenv("RM_LOG") && s_phase == RACE) {   /* (a check: the pause menu's coming and going) */
         static int was_paused;
         if ((g_BrX06909B4 != 0) != was_paused)

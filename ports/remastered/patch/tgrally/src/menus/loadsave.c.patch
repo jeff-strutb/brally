@@ -8,7 +8,7 @@
  extern BrImage D_8028CB40;      /* the background */
  extern BrImage D_8028CB70;      /* the panel */
  extern BrImage D_8028D0B0;      /* the A button */
-@@ -79,6 +80,7 @@
+@@ -79,11 +80,12 @@
  void BrTextPrint(char *s, int x, int y);
  void BrPadConsume(BrPadRec *pad, unsigned int bits);
  void BrPadStickToButtons(int);
@@ -16,6 +16,12 @@
  /* -- end declarations -- */
  
  #define PAD (&D_8036A8E0[D_80271FA8])
+ #define PFS (&D_80369EC0[D_80271FA8])
+-#if TGR_REGION_JPN
++#if TGR_REGION_JPN && !TGR_RM_EN  /* (Remastered: the one set of notes, the USA's; si.c) */
+ #define COMPANY 0x3238          /* "28" */
+ #define GAME 0x4E54524A         /* "NTRJ" */
+ #elif TGR_REGION_EUR
 @@ -220,7 +222,7 @@
      { 0, 0 },
    };
@@ -34,7 +40,18 @@
      { 3, "SAVE GHOST CAR DATA TO CONTROLLER PAK" },
      { 15, "" },
      { 11, "DONE" },
-@@ -634,7 +636,7 @@
+@@ -558,6 +560,10 @@
+       n = (blk - D_80272500 + 0x14f) & ~7;
+       BrCarReset(&D_8031B760[0]);
+       BrCarReset(&D_8031B760[1]);
++      {
++        void rm_progress_erase(void);
++        rm_progress_erase();            /* Remastered: all three games' (progress.h) */
++      }
+       memcpy(blk, TGR_PTR(BrSeason *, D_8031B760[0].season), 0x128);
+       p2[0] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd4;
+       p2[1] = TGR_PTR(BrSeason *, D_8031B760[1].season)->xd8;
+@@ -634,7 +640,7 @@
      D_80316423 = 0;
      BrTextHighlightOff();
      BrTextAlignLeft();
@@ -43,7 +60,7 @@
      BrTextSetFont(12);
      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
      BrBevelPanel(0xAF, 0xB9, 0x122, 0x89, 3, 0, 0, 0x80, 0x80, 0x80);
-@@ -848,7 +850,7 @@
+@@ -848,7 +854,7 @@
    case 6:                       /* erase both seasons and the options? */
      D_80316423 = 0;
      y = 0x139 - D_8028D0B0.w;
@@ -52,7 +69,7 @@
      BrBevelPanel(0x73, 0xBB, 0x19A, 0x86, 3, 0, 0, 0x80, 0x80, 0x80);
      BrTextAlignLeft();
      BrTextHighlightOff();
-@@ -897,7 +899,7 @@
+@@ -897,7 +903,7 @@
      BrTextAlignLeft();
      BrTextHighlightOff();
      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -61,7 +78,7 @@
      BrTextSetFont(13);
      BrTextPrint("OK TO OVERWRITE", 114, (h + 30) >> 1);
      BrTextPrint("SAVED DATA?", 114, ((h + 30) >> 1) + 14);
-@@ -1072,7 +1074,7 @@
+@@ -1072,7 +1078,7 @@
      D_80316423 = 0;
      BrTextHighlightOff();
      BrTextAlignLeft();
@@ -70,7 +87,7 @@
      BrTextSetFont(12);
      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
      switch (D_802724F0) {
-@@ -1114,7 +1116,7 @@
+@@ -1114,7 +1120,7 @@
        BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
        BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
        BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
@@ -79,7 +96,7 @@
        BrTextAlignLeft();
        BrTextSetFont(10);
        BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
-@@ -1388,7 +1390,7 @@
+@@ -1388,7 +1394,7 @@
          h = 0xCE;
        }
        BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -88,7 +105,7 @@
        BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
        BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
  #else
-@@ -1402,7 +1404,7 @@
+@@ -1402,7 +1408,7 @@
          h = 0xCE;
        }
        BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -97,7 +114,7 @@
        BrTextPrint("%ywGHOST DATA", 159, (h + 32) >> 1);
        BrTextPrint("%ywLOADED OK!", 159, ((h + 32) >> 1) + 14);
  #else
-@@ -1417,7 +1419,7 @@
+@@ -1417,7 +1423,7 @@
          h = 0xCE;
        }
        BrBevelPanel(0xE2, h, 0xBC, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -106,7 +123,7 @@
        BrTextPrint("%ywSEASON DATA", 159, (h + 32) >> 1);
        BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
  #else
-@@ -1431,7 +1433,7 @@
+@@ -1431,7 +1437,7 @@
          h = 0xCE;
        }
        BrBevelPanel(0xD8, h, 0xD0, 0x4A, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -115,7 +132,7 @@
        BrTextPrint("%ywGHOST CAR DATA", 159, (h + 32) >> 1);
        BrTextPrint("%ywSAVED OK!", 159, ((h + 32) >> 1) + 14);
  #else
-@@ -1441,7 +1443,7 @@
+@@ -1441,7 +1447,7 @@
      case 4:
      case 8:
        BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -124,7 +141,7 @@
        BrTextPrint("%ywOPTIONS LOADED OK!", 159, 131);
  #else
        BrTextPrint("%yw%j\xC8(\xCB%e OK!", 159, 131);
-@@ -1450,7 +1452,7 @@
+@@ -1450,7 +1456,7 @@
      case 5:
      case 9:
        BrBevelPanel(0xC3, 0xE7, 0xFA, 0x2E, 3, 0, 0, 0x80, 0x80, 0x80);
@@ -133,7 +150,7 @@
        BrTextPrint("%ywOPTIONS SAVED OK!", 159, 131);
  #else
        BrTextPrint("%yw%j\xB2(\xAC%e OK!", 159, 131);
-@@ -1480,13 +1482,13 @@
+@@ -1480,13 +1486,13 @@
      BrTextHighlightOff();
      BrTextAlignLeft();
      BrTextSetColours(0xFF, 0xFF, 0xFF, 0xFF, 0xF5, 0);
@@ -149,7 +166,7 @@
      BrTextPrint("TO CONTINUE.", 65, 157);
  #else
      BrBevelPanel(0xAA, 0xCC, 0x12C, 0x64, 3, 0, 0, 0x80, 0x80, 0x80);
-@@ -1671,6 +1673,7 @@
+@@ -1671,6 +1677,7 @@
        } else {
          BrTextSetColours(0x80, 0x78, 0, 100, 0, 0);
        }
@@ -157,7 +174,7 @@
        BrTextPrint(labels[i], 158, 87 + i * 18);
      }
      BrImageDrawAt(&D_8028D0B0, 202, 432);
-@@ -2058,7 +2061,7 @@
+@@ -2058,7 +2065,7 @@
        BrTextPrint("PLEASE REMOVE THE RUMBLE PAK", 68, 103);
        BrTextPrint("AND INSERT THE CONTROLLER PAK", 68, 116);
        BrTextPrint("INTO THE CONTROLLER.  PRESS", 68, 129);
@@ -166,7 +183,7 @@
        BrTextAlignLeft();
        BrTextSetFont(10);
        BrTextPrint("%wwOK", (D_8028D0B0.w + 0xE3U) >> 1, (y + 18) >> 1);
-@@ -2235,7 +2238,7 @@
+@@ -2235,7 +2242,7 @@
      BrTextPrint("IF THE RUMBLE PAK IS TO BE USED,", 65, 105);
      BrTextPrint("REMOVE THE CONTROLLER PAK AND", 65, 118);
      BrTextPrint("INSERT THE RUMBLE PAK INTO THE", 65, 131);

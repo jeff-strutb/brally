@@ -73,7 +73,8 @@ Japanese the library is built with Europe's English (`TGR_RM_EN`: the text
 arms of Japan's source take Europe's, layout and all), but for the weather
 symbols beside a course's name, which are pictures. The two libraries keep
 their own state (every file built `-fno-common`, so no variable is shared at
-the link) and one Controller Pak file: each reads it again when the other has
+the link) and one Controller Pak file, with one set of notes, the USA's (Japan's
+move across when the pak is read): each reads it again when the other has
 written it (`platform/os/si.c`, `pak_fresh`). Each library carries what it
 takes from the other cartridge at ROM 0x800000 (`tools/regionextras.py`): its
 front-end tune, and its three cars. Japan replaced Type-RS, Type-M3 and the
@@ -86,6 +87,19 @@ last chosen is kept for the next pair. They race as Boss Rally's own (its cars
 Setup (`brally/src/core/menus/rm_carversion.cpp`): the CAR row steps the cars
 with each pair as one, and a VERSION row under it says USA or JAPAN and turns
 to the other, each version unlocked as Boss Rally unlocks it.
+
+**One save.** The app has one save across Boss Rally and both Top Gear Rally
+menus (`platform/progress.c`, `progress.sav` in the save folder). What is open,
+cars, courses and weather: every menu frame each game merges its own there and
+takes the rest back (`tgrally/src/menus/rmprogress.c`, `race_handoff.c`). A pair
+is one car here too: either version opens both. The championship: the two games'
+are the same six rounds, with the same races, points, courses and weather, and
+the season block goes between them as it changes, so it stands where it was in
+whichever menus come next. Boss Rally reads it as its own: `AutoSave.brf` is
+written anew when the save has moved on elsewhere, and continuing there
+continues the one championship; its own autosave after a race joins the save.
+Saves made before it join once, the first time the pak is read, the furthest
+season standing for the championship.
 
 **Cheats.** Europe's and Japan's two, in both libraries and on the first
 player's controls (above all what each N64 button does): on the main menu,
