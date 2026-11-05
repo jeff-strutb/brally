@@ -39,7 +39,7 @@ music). Remastered carries two cartridges' data, `romdata.bin` (the USA's) and
 cars after it, made by the builder from the two ROMs as
 `ports/remastered/tools/regionextras.py` makes them.
 
-Version 0.99. The builder and every game it builds run on macOS 12 or later
+Version 0.991. The builder and every game it builds run on macOS 12 or later
 (Apple silicon and Intel), Windows 10 or later (64-bit, with a Vulkan
 driver or OpenGL 3.3) and x86-64 Linux with glibc 2.31 or later (the Steam
 Runtime's: SteamOS 3, Ubuntu 20.04, Debian 11, Fedora 32 or newer; the builder
@@ -62,7 +62,7 @@ USB pads, the Steam Deck's own controls).
 |---|---|---|
 | Boss Rally | `ports/brally`, from `src/brally` (every function certified to behave as the retail game's, 78.6% of its bytes byte-exact) | the PC game as it shipped: its menus, keys, CD soundtrack and Quit Game; drawn with Metal on a Mac, Vulkan or OpenGL 3.3 on Windows and Linux |
 | Top Gear Rally | `ports/tgrally`, from `src/tgrally` (byte-exact, every function, all three cartridges) | the cartridge the ROM is from: the USA's, Europe's (at its own 25 frames a second, PAL 50 Hz) or Japan's (its own title, text and real liveries), drawn as the N64's RDP drew it; saves on a Controller Pak kept as a file, and Europe's and Japan's settings on the cartridge's EEPROM. Beyond the cartridge: Options > Keys and Pad (the keys and gamepad buttons for each of the N64 pad's), Exit Game on the pause menu and Escape on the main menu (`ports/tgrally/PORT.md`) |
-| Top Gear Rally Remastered | `ports/remastered`, both ports in one app | Top Gear Rally's menus and seasons with every race run by Boss Rally's engine, races at 60 ticks a second; Remaster Options (Widescreen, Music, Show FPS, View Distance, Menus); the menus of the USA cartridge, of Japan's in English (with its Game Pak saves), or Boss Rally's own; all six cars Japan and the USA differ by; Europe's and Japan's cheats; two players split screen; one set of controls for the menus and the races, every on-screen prompt naming your own; controller rumble (the Rumble Pak's, in every race); the paint shop by mouse and touch; no loading screens; touch on the iPhone and iPad (`ports/remastered/README.md`) |
+| Top Gear Rally Remastered | `ports/remastered`, both ports in one app | Top Gear Rally's menus and seasons with every race run by Boss Rally's engine, races at 60 ticks a second; Remaster Options (Widescreen, Music, Show FPS, View Distance, Menus); the menus of the USA cartridge, of Japan's in English (with its Game Pak saves), or Boss Rally's own, with one save across them, what is open and the championship; all six cars Japan and the USA differ by; Europe's and Japan's cheats; two players split screen; one set of controls for the menus and the races, every on-screen prompt naming your own; controller rumble (the Rumble Pak's, in every race); the paint shop by mouse and touch; no loading screens; touch on the iPhone and iPad (`ports/remastered/README.md`) |
 
 ## Layout
 
