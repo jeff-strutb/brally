@@ -1,5 +1,35 @@
 # Boss Rally / Top Gear Rally: byte-exact decompilation
 
+## Bring your classic game to a new generation
+
+**Jeffrey Wilbur, Strut B, LLC** ·
+[retro@strutb.com](mailto:retro@strutb.com)
+
+If you hold the rights to a classic game, I would love to help it live
+again. This repository shows what I do: I take a shipped cartridge back
+to readable, commented source that rebuilds the original ROM byte for
+byte, prove every routine behaves exactly as the original did, and then
+run that source natively on today's hardware, with no emulation of any
+processor. From there the game can grow: widescreen, two-player split
+screen, a choice of soundtracks and of front ends, controls for each
+player, 3D drawn on the GPU through Metal, Vulkan or OpenGL, and builds
+for macOS, Windows, Linux, iPhone and iPad, all without losing the game
+your players remember. The originals still build just as they shipped,
+right beside the remaster.
+
+- **Preserve** it: source you own and can read, maintain and build on,
+  recovered from the code that shipped, checked against the original at
+  every step.
+- **Remaster** it: modern screens and controls, on the platforms your
+  audience plays on today, with the feel of the original intact.
+- **Reach new players**, and give your longtime fans the version they
+  always pictured.
+
+If you have a game you would like to see again, write to me at
+[retro@strutb.com](mailto:retro@strutb.com).
+
+## Boss Rally / Top Gear Rally
+
 <p>
 <img src="docs/brally/img/native-brally.png" width="49%" alt="Boss Rally racing along the Coastline sea wall, chasing a rival car, in the native 64-bit build on macOS">
 <img src="docs/tgrally/img/native-tgrally.png" width="49%" alt="Top Gear Rally racing out of the Coastline town in the chase view, in the native build on macOS">
@@ -23,9 +53,6 @@ readable C that rebuilds it exactly.
 native copy of any of the three games (Boss Rally, Top Gear Rally or Top Gear
 Rally Remastered, below) from your own BIN/CUE or ROM, checked by MD5; no game
 data ships with it ([builder/](builder/README.md)).
-
-**Maintainer:** Jeffrey Wilbur, Strut B, LLC\
-**Contact:** [retro@strutb.com](mailto:retro@strutb.com)
 
 ## License, and no claim to the games
 
