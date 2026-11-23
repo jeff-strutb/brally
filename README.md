@@ -30,6 +30,8 @@ If you have a game you would like to see again, write to me at
 
 ## Boss Rally / Top Gear Rally
 
+https://github.com/user-attachments/assets/103d5d28-fac4-4932-8688-9ca0f9e0ae07
+
 <p>
 <img src="docs/brally/img/native-brally.png" width="49%" alt="Boss Rally racing along the Coastline sea wall, chasing a rival car, in the native 64-bit build on macOS">
 <img src="docs/tgrally/img/native-tgrally.png" width="49%" alt="Top Gear Rally racing out of the Coastline town in the chase view, in the native build on macOS">
